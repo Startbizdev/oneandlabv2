@@ -1,0 +1,141 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme {
+  /* Typographie */
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  
+  /* Couleur primary (bleu OneAndLab) - Définir directement les couleurs pour remplacer le bleu Tailwind */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #0652DD;
+  --color-primary-600: #0652DD;
+  --color-primary-700: #0542b3;
+  --color-primary-800: #043289;
+  --color-primary-900: #03215f;
+  --color-primary-950: #02113a;
+  
+  /* Remplacer aussi le bleu Tailwind par défaut */
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-200: #bfdbfe;
+  --color-blue-300: #93c5fd;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #0652DD;
+  --color-blue-600: #0652DD;
+  --color-blue-700: #0542b3;
+  --color-blue-800: #043289;
+  --color-blue-900: #03215f;
+  --color-blue-950: #02113a;
+  
+  /* Couleurs secondary (jaune) */
+  --color-secondary-50: #fefce8;
+  --color-secondary-100: #fef9c3;
+  --color-secondary-200: #fef08a;
+  --color-secondary-300: #fde047;
+  --color-secondary-400: #facc15;
+  --color-secondary-500: #F8C12D;
+  --color-secondary-600: #eab308;
+  --color-secondary-700: #ca8a04;
+  --color-secondary-800: #a16207;
+  --color-secondary-900: #854d0e;
+  
+  /* Couleurs success (vert) */
+  --color-success-50: #f0fdf4;
+  --color-success-100: #dcfce7;
+  --color-success-200: #bbf7d0;
+  --color-success-300: #86efac;
+  --color-success-400: #4ade80;
+  --color-success-500: #0F9D58;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+  --color-success-800: #166534;
+  --color-success-900: #14532d;
+  
+  /* Couleurs error (rouge) */
+  --color-error-50: #fef2f2;
+  --color-error-100: #fee2e2;
+  --color-error-200: #fecaca;
+  --color-error-300: #fca5a5;
+  --color-error-400: #f87171;
+  --color-error-500: #DB4437;
+  --color-error-600: #dc2626;
+  --color-error-700: #b91c1c;
+  --color-error-800: #991b1b;
+  --color-error-900: #7f1d1d;
+  
+  /* Couleurs warning (orange) */
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-300: #fcd34d;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #F4B400;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+  --color-warning-900: #78350f;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  }
+  
+  /* Désactiver les outlines sur focus pour les boutons et liens */
+  button:focus,
+  button:focus-visible,
+  a:focus,
+  a:focus-visible {
+    outline: none !important;
+  }
+  
+  /* Permettre les bordures et ombres pour les champs de formulaire Nuxt UI */
+  input:focus,
+  input:focus-visible,
+  textarea:focus,
+  textarea:focus-visible,
+  select:focus,
+  select:focus-visible {
+    outline: none !important;
+  }
+
+  /* Override spécifique pour bordures des séparateurs */
+  .border-b,
+  .border-t {
+    border-color: theme('colors.gray.200') !important;
+  }
+}
+
+@layer utilities {
+  /* Scrollbar personnalisé pour la sidebar */
+  .sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(209 213 219) transparent;
+  }
+  
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background-color: rgb(209 213 219);
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+  }
+  
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(156 163 175);
+  }
+}
