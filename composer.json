@@ -1,0 +1,17 @@
+{
+    "name": "oneandlab/backend",
+    "description": "Backend PHP pour OneAndLab V2",
+    "type": "project",
+    "require": {
+        "php": ">=8.2",
+        "firebase/php-jwt": "^6.10",
+        "phpmailer/phpmailer": "^7.0"
+    },
+    "autoload": {
+        "classmap": [
+            "backend/lib",
+            "backend/models",
+            "backend/middleware"
+        ]
+    }
+}
