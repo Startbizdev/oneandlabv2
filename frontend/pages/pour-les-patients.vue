@@ -6,10 +6,9 @@
       title="Soins à domicile, à votre rythme"
       subtitle="Prise de sang et soins infirmiers directement chez vous"
       description="Réservez en quelques clics. Un professionnel qualifié se déplace à votre domicile, au créneau qui vous convient. Simple, rapide, rassurant."
-      image-src="/undraw/accueil.svg"
-      image-alt="Soins à domicile"
       :ctas="heroCtas"
-      background-class="bg-white"
+      :background-image="heroBackgroundImage"
+      overlay-class="bg-black/55"
     />
 
     <LandingTrust
@@ -29,6 +28,14 @@
       subtitle="En 3 étapes, obtenez votre rendez-vous à domicile."
       :steps="howItWorksSteps"
       background-class="bg-gray-50"
+    />
+
+    <Reviews
+      title="Ce que disent les patients"
+      subtitle="Des milliers de réservations à domicile. Voici ce qu'en pensent ceux qui ont déjà essayé."
+      :reviews="landingReviews"
+      :max-reviews="6"
+      background-class="bg-white"
     />
 
     <LandingFaq
@@ -57,9 +64,11 @@ useLandingSeo({
   path: '/pour-les-patients',
 })
 
+// Image hero Unsplash - patient / réservation à domicile (différente de l'accueil)
+const heroBackgroundImage = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1920&q=80'
+
 const heroCtas = [
-  { label: 'Prise de sang', to: '/rendez-vous/nouveau?type=blood_test', color: 'primary', size: 'xl', variant: 'solid', icon: 'i-lucide-droplet' },
-  { label: 'Soins infirmiers', to: '/rendez-vous/nouveau?type=nursing', color: 'primary', size: 'xl', variant: 'outline', icon: 'i-lucide-heart-pulse' },
+  { label: 'Prendre rendez-vous à domicile', to: '/rendez-vous/nouveau', color: 'primary', variant: 'solid', size: 'xl', icon: 'i-lucide-calendar-plus' },
 ]
 
 const trustItems = [
@@ -84,6 +93,15 @@ const howItWorksSteps = [
   { title: 'Rendez-vous à domicile', description: 'Le professionnel se déplace chez vous au créneau convenu. Présentez votre ordonnance si besoin. C\'est aussi simple que ça.', icon: 'i-lucide-home' },
 ]
 
+const landingReviews = [
+  { id: '1', patientName: 'Marie D.', rating: 5, comment: 'J\'ai réservé une prise de sang pour ma mère qui ne peut plus se déplacer. L\'infirmière est venue à l\'heure, très douce et professionnelle. Plus de stress pour nous.', response: 'Merci Marie pour votre confiance. Ravi d\'avoir pu vous aider. — Sarah M., IDEL', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
+  { id: '2', patientName: 'Jean P.', rating: 5, comment: 'Prise de sang à domicile en 48 h. Le préleveur du labo était à l\'heure, geste propre et rapide. Je recommande à 100 %.', response: 'Merci Jean ! À bientôt. — Labo BioSanté', date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) },
+  { id: '3', patientName: 'Sophie L.', rating: 5, comment: 'Soins infirmiers réguliers pour mon père. L\'équipe OneAndLab nous a bien accompagnés. Réservation simple, toujours le même infirmier quand c\'est possible.', response: 'Merci pour votre fidélité Sophie. — Marc D., infirmier', date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000) },
+  { id: '4', patientName: 'Pierre M.', rating: 5, comment: 'Première fois que je fais une prise de sang à domicile. Très pratique, plus besoin de prendre le bus. Résultat en ligne comme en labo.', response: 'Content que ça vous ait convenu. — Laboratoire MédiLab', date: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000) },
+  { id: '5', patientName: 'Claire B.', rating: 5, comment: 'RDV le jour même pour un pansement. L\'infirmière était disponible en fin de matinée. Service au top.', response: 'Merci Claire, bon rétablissement ! — Julie B., IDEL', date: new Date(Date.now() - 22 * 24 * 60 * 60 * 1000) },
+  { id: '6', patientName: 'Thomas R.', rating: 5, comment: 'Interface claire, rappel SMS la veille. Le professionnel a sonné à l\'heure pile. Parfait pour quelqu\'un qui travaille.', response: 'Merci Thomas pour votre retour. — Équipe OneAndLab', date: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000) },
+]
+
 const faqItems = [
   { question: 'Dois-je créer un compte pour réserver ?', answer: 'Vous pouvez prendre rendez-vous sans compte. Pour suivre vos rendez-vous et accéder à vos documents, nous vous conseillons de créer un compte patient (gratuit) après votre première réservation.' },
   { question: 'Quels types de soins sont proposés ?', answer: 'OneAndLab propose la prise de sang à domicile et les soins infirmiers à domicile (pansements, injections, prélèvements, etc.). Selon votre zone, des infirmiers et laboratoires partenaires sont disponibles.' },
@@ -93,7 +111,6 @@ const faqItems = [
 ]
 
 const ctaButtons = [
-  { label: 'Prendre rendez-vous', to: '/rendez-vous/nouveau', color: 'primary', icon: 'i-lucide-calendar-plus' },
-  { label: 'Créer un compte', to: '/login', color: 'neutral', icon: 'i-lucide-user' },
+  { label: 'Prendre rendez-vous à domicile', to: '/rendez-vous/nouveau', color: 'primary', size: 'xl', icon: 'i-lucide-calendar-plus' },
 ]
 </script>

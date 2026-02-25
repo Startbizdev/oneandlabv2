@@ -1,17 +1,22 @@
 <template>
-  <div class="container mx-auto px-4 py-8 max-w-7xl">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold">Mes proches</h1>
-      <UButton
-        color="primary"
-        icon="i-lucide-plus"
-        size="xl"
-        @click="showCreateModal = true"
-      >
-        Ajouter un proche
-      </UButton>
-    </div>
+  <div class="space-y-6">
+    <TitleDashboard
+      title="Mes proches"
+      description="Gérez les proches pour lesquels vous prenez des rendez-vous"
+    >
+      <template #actions>
+        <UButton
+          color="primary"
+          icon="i-lucide-plus"
+          size="sm"
+          @click="showCreateModal = true"
+        >
+          Ajouter un proche
+        </UButton>
+      </template>
+    </TitleDashboard>
 
+    <div class="container mx-auto px-4 max-w-7xl">
     <!-- Liste des proches -->
     <div v-if="loading" class="text-center py-8">
       <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-primary mb-2" />
@@ -48,12 +53,12 @@
           <div class="flex items-start justify-between gap-3">
             <div class="flex items-start gap-3 flex-1 min-w-0">
               <div class="flex-shrink-0">
-                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 dark:from-primary-600 dark:to-primary-700 flex items-center justify-center text-white font-semibold text-lg shadow-sm">
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 dark:from-primary-600 dark:to-primary-700 flex items-center justify-center text-white font-normal text-lg shadow-sm">
                   {{ getInitials(relative.first_name, relative.last_name) }}
                 </div>
               </div>
               <div class="flex-1 min-w-0">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                <h3 class="text-lg font-normal text-gray-900 dark:text-gray-100 truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                   {{ relative.first_name }} {{ relative.last_name }}
                 </h3>
                 <UBadge
@@ -307,6 +312,7 @@
       :loading="deleting"
       @confirm="confirmDelete"
     />
+    </div>
   </div>
 </template>
 
@@ -320,7 +326,7 @@ definePageMeta({
 });
 
 const { user } = useAuth();
-const toast = useToast();
+const toast = useAppToast();
 
 // État
 const relatives = ref<any[]>([]);

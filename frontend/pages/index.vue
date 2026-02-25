@@ -1,14 +1,14 @@
 <template>
   <div>
-    <!-- Hero Section -->
-    <Hero
+    <!-- Hero Section (style Stripe / Linear / Notion / n8n) -->
+    <LandingHero
+      badge="Soins à domicile"
+      badge-icon="i-lucide-heart-pulse"
       title="Soins médicaux à domicile"
-      subtitle="Prise de sang et soins infirmiers directement chez vous"
-      description="Professionnels qualifiés, disponibles rapidement, pour votre confort et votre santé."
-      :image-src="'/undraw/accueil.svg'"
-      image-alt="Soins médicaux à domicile"
+      :description="heroLead"
       :ctas="heroCTAs"
-      cta-label="J'ai besoin d'un(e)"
+      :background-image="heroBackgroundImage"
+      show-login-link
     />
     
     <!-- Comment ça marche -->
@@ -17,15 +17,6 @@
       subtitle="En 3 étapes simples, obtenez vos soins médicaux à domicile"
       :steps="howItWorksSteps"
       background-class="bg-white"
-    />
-    
-    <!-- Avis -->
-    <Reviews
-      title="Ils nous font confiance"
-      subtitle="Découvrez les avis de nos patients sur nos professionnels de santé"
-      :reviews="sampleReviews"
-      :max-reviews="6"
-      background-class="bg-gray-50"
     />
     
     <!-- CTA Professionnels -->
@@ -40,6 +31,23 @@
       pro-learn-more-link="/pro"
       background-class="bg-white"
     />
+
+    <!-- Avis -->
+    <Reviews
+      title="Ils nous font confiance"
+      subtitle="Découvrez les avis de nos patients sur nos professionnels de santé"
+      :reviews="sampleReviews"
+      :max-reviews="6"
+      background-class="bg-gray-50"
+    />
+
+    <!-- FAQ -->
+    <LandingFaq
+      title="Questions fréquentes"
+      subtitle="Tout ce que vous devez savoir sur OneAndLab : prise de rendez-vous à domicile et inscription des professionnels."
+      :items="faqItems"
+      background-class="bg-gray-50"
+    />
   </div>
 </template>
 
@@ -48,23 +56,21 @@ definePageMeta({
   layout: 'default',
 });
 
-// CTAs pour le Hero
+// Image hero (undraw accueil – bleu OneAndLab)
+const heroBackgroundImage = '/undraw/accueil.svg'
+
+// Paragraphe hero : synthèse SEO (prise de sang, soins infirmiers, à domicile, professionnels)
+const heroLead = 'Prise de sang et soins infirmiers à domicile par des professionnels qualifiés, disponibles rapidement pour votre confort et votre santé.'
+
+// CTA principal Hero : un seul gros bouton vers la prise de RDV
 const heroCTAs = [
   {
-    label: "Prise de sang",
-    to: '/rendez-vous/nouveau?type=blood_test',
+    label: 'Prendre rendez-vous à domicile',
+    to: '/rendez-vous/nouveau',
     color: 'primary' as const,
-    size: 'lg' as const,
-    variant: 'outline' as const,
-    icon: 'i-lucide-droplet',
-  },
-  {
-    label: "Soins infirmiers",
-    to: '/rendez-vous/nouveau?type=nursing',
-    color: 'primary' as const,
-    size: 'lg' as const,
-    variant: 'outline' as const,
-    icon: 'i-lucide-heart-pulse',
+    size: 'xl' as const,
+    variant: 'solid' as const,
+    icon: 'i-lucide-calendar-plus',
   },
 ];
 
@@ -136,6 +142,30 @@ const sampleReviews = [
     comment: 'Service de qualité avec des professionnels compétents. La plateforme est intuitive et le suivi des rendez-vous est parfait.',
     response: 'Merci Thomas pour votre confiance ! Nous travaillons chaque jour à améliorer notre service pour vous offrir la meilleure expérience possible. À très bientôt ! - Laboratoire Santé Plus',
     date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000), // Il y a 20 jours
+  },
+];
+
+// FAQ accueil (patients + professionnels)
+const faqItems = [
+  {
+    question: 'Comment prendre rendez-vous à domicile ?',
+    answer: 'Rendez-vous sur la page "Prendre rendez-vous", choisissez le type de soin (prise de sang ou soins infirmiers), votre adresse, la date et un créneau. Un professionnel qualifié accepte votre demande et vous confirme le rendez-vous par email et SMS.',
+  },
+  {
+    question: 'Dois-je créer un compte pour réserver ?',
+    answer: 'Vous pouvez réserver sans compte. Pour suivre vos rendez-vous et accéder à vos documents, nous vous conseillons de créer un compte patient (gratuit) après votre première réservation.',
+  },
+  {
+    question: 'Comment rejoindre le réseau en tant qu\'infirmier ou laboratoire ?',
+    answer: 'Cliquez sur "Rejoindre le réseau" ou "Inscrire mon laboratoire" selon votre profil. Remplissez le formulaire d\'inscription. Après validation de votre dossier, vous recevrez des demandes de rendez-vous dans votre secteur et pourrez gérer votre planning depuis votre espace.',
+  },
+  {
+    question: 'Les soins à domicile sont-ils remboursés ?',
+    answer: 'Les actes réalisés à domicile par des professionnels conventionnés sont pris en charge par l\'Assurance maladie comme en cabinet. Pensez à transmettre votre carte Vitale et votre ordonnance au professionnel.',
+  },
+  {
+    question: 'La plateforme est-elle conforme aux données de santé ?',
+    answer: 'Oui. OneAndLab est conçu pour être conforme à l\'hébergement des données de santé (HDS) et au RGPD. Les données sont chiffrées et sécurisées pour les patients comme pour les professionnels.',
   },
 ];
 

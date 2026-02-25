@@ -151,7 +151,7 @@ const emit = defineEmits<{
   'saved': [];
 }>();
 
-const toast = useToast();
+const toast = useAppToast();
 
 const isOpen = computed({
   get: () => props.open,

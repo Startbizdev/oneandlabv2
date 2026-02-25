@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
-if ($user['role'] !== 'lab') {
+if (strtolower((string)($user['role'] ?? '')) !== 'lab') {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Accès réservé aux laboratoires']);
     exit;
@@ -51,9 +51,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'lab'
     );
     
+    $data = is_array($result['data'] ?? null) ? $result['data'] : [];
+    // Log assignation : debug sous-comptes (à retirer en prod)
+    error_log('[lab/subaccounts] GET user_id=' . $labId . ' role=' . ($user['role'] ?? '') . ' total=' . ($result['total'] ?? 0) . ' data_count=' . count($data));
+    
     echo json_encode([
         'success' => true,
-        'data' => $result['data'],
+        'data' => $data,
         'pagination' => [
             'page' => $result['page'],
             'limit' => $result['limit'],
@@ -81,6 +85,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Email invalide']);
         exit;
+    }
+    
+    // Vérifier la limite sous-comptes selon le plan
+    $config = require __DIR__ . '/../../../config/database.php';
+    $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
+    $db = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
+    $stmt = $db->prepare('SELECT plan_slug FROM subscriptions WHERE user_id = ? AND status IN (\'active\', \'trialing\') ORDER BY updated_at DESC LIMIT 1');
+    $stmt->execute([$labId]);
+    $sub = $stmt->fetch(PDO::FETCH_ASSOC);
+    $planSlug = $sub ? ($sub['plan_slug'] ?? 'free') : 'free';
+    $limits = require __DIR__ . '/../../../config/plan-limits.php';
+    $labLimits = $limits['lab'][$planSlug] ?? $limits['lab']['free'];
+    $maxSubaccounts = $labLimits['max_subaccounts'] ?? 0;
+    if ($maxSubaccounts !== null) {
+        $stmt = $db->prepare('SELECT COUNT(*) FROM profiles WHERE lab_id = ? AND role = \'subaccount\'');
+        $stmt->execute([$labId]);
+        $count = (int) $stmt->fetchColumn();
+        if ($count >= $maxSubaccounts) {
+            http_response_code(403);
+            $msg = $planSlug === 'free'
+                ? 'Souscrivez à un abonnement Starter ou Pro pour créer des sous-comptes.'
+                : 'Limite de sous-comptes atteinte pour votre offre. Passez à l\'offre Pro pour des sous-comptes illimités.';
+            echo json_encode(['success' => false, 'error' => $msg]);
+            exit;
+        }
     }
     
     try {

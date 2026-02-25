@@ -1,5 +1,12 @@
 <template>
-  <div class="flex h-screen bg-gray-50">
+  <div class="flex flex-col h-screen bg-gray-50">
+    <ClientOnly>
+      <SubscriptionBanner />
+      <template #fallback>
+        <div class="w-full h-0" aria-hidden="true" />
+      </template>
+    </ClientOnly>
+    <div class="flex flex-1 min-h-0">
     <!-- Sidebar -->
     <aside
       :class="[
@@ -33,7 +40,7 @@
               <li v-for="item in navigationItems[0]" :key="item.to">
                 <NuxtLink
                   :to="item.to"
-                  @click="mobileSidebarOpen = false"
+                  @click="(e) => { mobileSidebarOpen = false; handleSidebarNavigate(e, item.to) }"
                   :class="[
                     'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1',
@@ -78,7 +85,7 @@
               <li v-for="item in navigationItems[1]" :key="item.to">
                 <NuxtLink
                   :to="item.to"
-                  @click="mobileSidebarOpen = false"
+                  @click="(e) => { mobileSidebarOpen = false; handleSidebarNavigate(e, item.to) }"
                   :class="[
                     'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1',
@@ -181,7 +188,7 @@
             <div class="relative" ref="notificationsMenuRef">
               <button
                 type="button"
-                @click="notificationsMenuOpen = !notificationsMenuOpen"
+                @click.stop="notificationsMenuOpen = !notificationsMenuOpen"
                 class="relative h-9 w-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
                 :aria-label="`Notifications${unreadCount > 0 ? ` (${unreadCount} non lues)` : ''}`"
                 :aria-expanded="notificationsMenuOpen"
@@ -220,9 +227,9 @@
                       <UIcon :name="item.icon || 'i-lucide-bell'" class="w-4 h-4" />
                     </span>
                     <span class="flex flex-col gap-0.5 min-w-0 flex-1">
-                      <span :class="{ 'font-medium': !item.isRead }">{{ item.label }}</span>
+                      <span :class="{ 'font-medium': !item.isRead }" class="whitespace-normal break-words">{{ item.label }}</span>
                       <span v-if="item.description" class="text-xs text-gray-400">{{ item.description }}</span>
-                      <span v-if="item.message" class="text-xs text-gray-500 line-clamp-2">{{ item.message }}</span>
+                      <span v-if="item.message" class="text-xs text-gray-500 whitespace-normal break-words">{{ item.message }}</span>
                     </span>
                   </button>
                 </template>
@@ -239,6 +246,12 @@
                   :aria-label="`Menu utilisateur: ${headerUserDisplayName}`"
                   :aria-expanded="userMenuOpen"
                 >
+                  <UserAvatar
+                    :src="headerAvatarSrc"
+                    :initial="headerAvatarInitial"
+                    :alt="headerUserDisplayName"
+                    size="md"
+                  />
                   <span class="text-sm font-medium">{{ headerUserDisplayName }}</span>
                   <UIcon name="i-lucide-chevron-down" class="h-4 w-4 transition-transform" :class="{ 'rotate-180': userMenuOpen }" />
                 </button>
@@ -282,16 +295,17 @@
         </footer>
       </main>
     </div>
+    </div>
   </div>
 
-  <!-- Modal de notification pour nouveaux rendez-vous (infirmiers uniquement) -->
+  <!-- Popup de notification pour nouveaux RDV (infirmiers, lab, sous-compte) — s'ouvre automatiquement au polling -->
   <ClientOnly>
     <Teleport to="body">
       <AppointmentModal
-        v-if="user?.role === 'nurse'"
+        v-if="['nurse', 'lab', 'subaccount'].includes(user?.role ?? '')"
         v-model="showAppointmentModal"
         :appointment="selectedAppointment"
-        :role="'nurse'"
+        :role="(user?.role === 'subaccount' ? 'subaccount' : user?.role === 'lab' ? 'lab' : 'nurse')"
         @accepted="handleAppointmentAccepted"
         @refused="handleAppointmentRefused"
       />
@@ -305,6 +319,7 @@ import { apiFetch } from "~/utils/api";
 
 const { user, logout, fetchCurrentUser } = useAuth();
 const route = useRoute();
+const router = useRouter();
 const notifications = useState<any[]>("notifications.list", () => []);
 
 // S'assurer que les infos utilisateur sont complètes (une seule fois pour éviter boucle infinie)
@@ -321,6 +336,17 @@ watch(() => user.value, async (currentUser) => {
   }
 }, { immediate: true });
 
+// État partagé : la page profil met à jour cette URL pour que le header affiche la même photo
+const profileImageForHeader = useState<string | null>('profileImageForHeader', () => null);
+// URL de l'avatar pour le header : priorité à la photo de la page profil, sinon user
+const headerAvatarSrc = computed(() => {
+  const fromProfilePage = profileImageForHeader.value;
+  if (fromProfilePage) return fromProfilePage;
+  const u = user.value;
+  if (!u) return null;
+  return u.profile_image_url ?? u.avatar ?? null;
+});
+
 
 // État de la sidebar mobile
 const mobileSidebarOpen = ref(false);
@@ -332,6 +358,15 @@ const userMenuRef = ref<HTMLElement | null>(null);
 // État du menu notifications
 const notificationsMenuOpen = ref(false);
 const notificationsMenuRef = ref<HTMLElement | null>(null);
+
+// Navigation sidebar : forcer navigation programmatique pour éviter blocage (ex. page Abonnements)
+const handleSidebarNavigate = (e: MouseEvent, to: string) => {
+  const current = route.path.replace(/\/$/, '') || '/';
+  const target = to.replace(/\/$/, '') || '/';
+  if (current === target) return;
+  e.preventDefault();
+  router.push(to);
+};
 
 // Handler pour les clics sur les items du menu utilisateur
 const handleUserMenuItemClick = (item: any) => {
@@ -419,6 +454,21 @@ const selectedAppointment = ref<any>(null);
 const lastPendingCount = ref(0);
 const seenAppointmentIds = ref<Set<string>>(new Set());
 
+/** Ouvre la popup RDV avec un rendez-vous chargé par ID (notif ou ?openAppointment=). */
+async function openAppointmentModalById(appointmentId: string) {
+  const role = user.value?.role;
+  if (!appointmentId || !['nurse', 'lab', 'subaccount'].includes(role ?? '')) return;
+  try {
+    const detailRes = await apiFetch(`/appointments/${appointmentId}`, { method: 'GET' });
+    if (detailRes?.success && detailRes.data) {
+      selectedAppointment.value = detailRes.data;
+      showAppointmentModal.value = true;
+    }
+  } catch (e) {
+    console.error('[openAppointmentModalById]', e);
+  }
+}
+
 const unreadCount = computed(
   () => notifications.value.filter(n => !n.read_at).length
 );
@@ -466,8 +516,8 @@ const breadcrumbItems = computed(() => {
     // Routes nurse
     "/nurse/appointments": { label: "Rendez-vous", icon: "i-lucide-calendar" },
     "/nurse/soins": { label: "Soins actifs", icon: "i-lucide-activity" },
-    "/nurse/public-profile": { label: "Profil public", icon: "i-lucide-globe" },
-    "/nurse/settings": { label: "Paramètres", icon: "i-lucide-settings" },
+    "/nurse/reviews": { label: "Réputation", icon: "i-lucide-star" },
+    "/nurse/abonnement": { label: "Abonnement", icon: "i-lucide-credit-card" },
     
     // Routes admin
     "/admin": { label: "Tableau de bord", icon: "i-lucide-layout-dashboard" },
@@ -479,6 +529,7 @@ const breadcrumbItems = computed(() => {
     "/admin/coverage": { label: "Zones", icon: "i-lucide-map" },
     "/admin/reviews": { label: "Avis", icon: "i-lucide-star" },
     "/admin/notifications": { label: "Notifications", icon: "i-lucide-bell" },
+    "/admin/abonnements": { label: "Abonnements", icon: "i-lucide-credit-card" },
     "/admin/logs": { label: "Logs", icon: "i-lucide-file-text" },
     
     // Routes lab
@@ -488,18 +539,18 @@ const breadcrumbItems = computed(() => {
     "/lab/stats": { label: "Statistiques", icon: "i-lucide-bar-chart" },
     "/lab/subaccounts": { label: "Sous-comptes", icon: "i-lucide-users" },
     "/lab/preleveurs": { label: "Préleveurs", icon: "i-lucide-user-check" },
-    "/lab/settings": { label: "Paramètres", icon: "i-lucide-settings" },
+    "/lab/abonnement": { label: "Abonnement", icon: "i-lucide-credit-card" },
     
     // Routes subaccount
     "/subaccount": { label: "Tableau de bord", icon: "i-lucide-layout-dashboard" },
     "/subaccount/appointments": { label: "Rendez-vous", icon: "i-lucide-calendar" },
     "/subaccount/calendar": { label: "Calendrier", icon: "i-lucide-calendar-days" },
+    "/subaccount/reviews": { label: "Réputation", icon: "i-lucide-star" },
     "/subaccount/preleveurs": { label: "Préleveurs", icon: "i-lucide-user-check" },
-    "/subaccount/public-profile": { label: "Profil public", icon: "i-lucide-globe" },
-    "/subaccount/settings": { label: "Paramètres", icon: "i-lucide-settings" },
     
     // Routes preleveur
     "/preleveur": { label: "Tableau de bord", icon: "i-lucide-layout-dashboard" },
+    "/preleveur/appointments": { label: "Rendez-vous", icon: "i-lucide-calendar" },
     "/preleveur/calendar": { label: "Calendrier", icon: "i-lucide-calendar-days" },
     
     // Routes pro
@@ -541,25 +592,41 @@ const breadcrumbItems = computed(() => {
     });
   }
 
+  // Label dynamique pour la dernière entrée (ex: nom du patient sur la page détail RDV)
+  const breadcrumbDetailLabel = useState<string>("breadcrumbDetailLabel", () => "");
+
   // Ajouter les segments suivants
   let currentPath = roleBasePath;
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   for (let i = 1; i < pathSegments.length; i++) {
     const segment = pathSegments[i];
-    
-    // Ignorer les IDs numériques dans le breadcrumb
-    if (/^\d+$/.test(segment)) {
-      // C'est un ID, on peut ajouter "Détails" ou le nom de la ressource
-      const parentPath = currentPath;
-      const parentLabel = routeLabels[parentPath]?.label || segment;
+
+    // Page Mon profil (route /profile commune à tous les rôles)
+    if (segment === "profile") {
+      items.push({ label: "Mon profil", icon: "i-lucide-user" });
+      break;
+    }
+
+    // ID type UUID (ex: détail rendez-vous) → afficher le label dynamique (nom patient) ou "Détails"
+    if (uuidRegex.test(segment)) {
       items.push({
-        label: "Détails",
+        label: breadcrumbDetailLabel.value || "Détails",
         icon: "i-lucide-file-text",
       });
       break;
     }
-    
+
+    // ID numérique
+    if (/^\d+$/.test(segment)) {
+      items.push({
+        label: breadcrumbDetailLabel.value || "Détails",
+        icon: "i-lucide-file-text",
+      });
+      break;
+    }
+
     currentPath = `${currentPath}/${segment}`;
-    
+
     if (routeLabels[currentPath]) {
       items.push({
         label: routeLabels[currentPath].label,
@@ -567,10 +634,9 @@ const breadcrumbItems = computed(() => {
         to: currentPath,
       });
     } else {
-      // Segment non reconnu, utiliser le nom du segment capitalisé
       items.push({
         label: segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " "),
-        icon: "i-lucide-chevron-right",
+        icon: "i-lucide-file-text",
       });
     }
   }
@@ -582,6 +648,8 @@ const navigationItems = computed(() => {
   const role = user.value?.role;
   const p = route.path;
   const active = (x: string) => p.startsWith(x);
+  // "Mon profil" actif uniquement sur son propre profil (pas en édition préleveur/sous-compte)
+  const isOwnProfilePage = p === "/profile" && !route.query.userId && route.query.newPreleveur !== "1" && route.query.newPreleveur !== "true";
 
   const menus: Record<string, NavigationMenuItem[][]> = {
     super_admin: [
@@ -641,6 +709,12 @@ const navigationItems = computed(() => {
           active: active("/admin/notifications"),
         },
         {
+          label: "Abonnements",
+          icon: "i-lucide-credit-card",
+          to: "/admin/abonnements",
+          active: active("/admin/abonnements"),
+        },
+        {
           label: "Logs HDS",
           icon: "i-lucide-file-text",
           to: "/admin/logs",
@@ -664,16 +738,22 @@ const navigationItems = computed(() => {
           active: active("/nurse/soins"),
         },
         {
-          label: "Profil public",
-          icon: "i-lucide-globe",
-          to: "/nurse/public-profile",
-          active: active("/nurse/public-profile"),
+          label: "Réputation",
+          icon: "i-lucide-star",
+          to: "/nurse/reviews",
+          active: active("/nurse/reviews"),
         },
         {
-          label: "Paramètres",
-          icon: "i-lucide-settings",
-          to: "/nurse/settings",
-          active: active("/nurse/settings"),
+          label: "Mon profil",
+          icon: "i-lucide-user",
+          to: "/profile",
+          active: isOwnProfilePage,
+        },
+        {
+          label: "Abonnement",
+          icon: "i-lucide-credit-card",
+          to: "/nurse/abonnement",
+          active: active("/nurse/abonnement"),
         },
       ],
       [],
@@ -693,28 +773,34 @@ const navigationItems = computed(() => {
           active: active("/subaccount/calendar"),
         },
         {
+          label: "Réputation",
+          icon: "i-lucide-star",
+          to: "/subaccount/reviews",
+          active: active("/subaccount/reviews"),
+        },
+        {
           label: "Préleveurs",
           icon: "i-lucide-user-check",
           to: "/subaccount/preleveurs",
           active: active("/subaccount/preleveurs"),
         },
         {
-          label: "Profil public",
-          icon: "i-lucide-globe",
-          to: "/subaccount/public-profile",
-          active: active("/subaccount/public-profile"),
-        },
-        {
-          label: "Paramètres",
-          icon: "i-lucide-settings",
-          to: "/subaccount/settings",
-          active: active("/subaccount/settings"),
+          label: "Mon profil",
+          icon: "i-lucide-user",
+          to: "/profile",
+          active: isOwnProfilePage,
         },
       ],
       [],
     ],
     lab: [
       [
+        {
+          label: "Tableau de bord",
+          icon: "i-lucide-layout-dashboard",
+          to: "/lab",
+          active: p === "/lab" || p === "/lab/",
+        },
         {
           label: "Rendez-vous",
           icon: "i-lucide-calendar",
@@ -726,6 +812,12 @@ const navigationItems = computed(() => {
           icon: "i-lucide-calendar-days",
           to: "/lab/calendar",
           active: active("/lab/calendar"),
+        },
+        {
+          label: "Réputation",
+          icon: "i-lucide-star",
+          to: "/lab/reviews",
+          active: active("/lab/reviews"),
         },
         {
           label: "Statistiques",
@@ -746,10 +838,16 @@ const navigationItems = computed(() => {
           active: active("/lab/preleveurs"),
         },
         {
-          label: "Paramètres",
-          icon: "i-lucide-settings",
-          to: "/lab/settings",
-          active: active("/lab/settings"),
+          label: "Abonnement",
+          icon: "i-lucide-credit-card",
+          to: "/lab/abonnement",
+          active: active("/lab/abonnement"),
+        },
+        {
+          label: "Mon profil",
+          icon: "i-lucide-user",
+          to: "/profile",
+          active: isOwnProfilePage,
         },
       ],
       [],
@@ -768,6 +866,12 @@ const navigationItems = computed(() => {
           to: "/preleveur/calendar",
           active: active("/preleveur/calendar"),
         },
+        {
+          label: "Mon profil",
+          icon: "i-lucide-user",
+          to: "/profile",
+          active: isOwnProfilePage,
+        },
       ],
       [],
     ],
@@ -780,22 +884,28 @@ const navigationItems = computed(() => {
           active: p === "/pro" || p === "/pro/",
         },
         {
-          label: "Rendez-vous",
-          icon: "i-lucide-calendar",
-          to: "/pro/appointments",
-          active: active("/pro/appointments"),
-        },
-        {
           label: "Patients",
           icon: "i-lucide-users",
           to: "/pro/patients",
           active: active("/pro/patients"),
         },
         {
+          label: "Rendez-vous",
+          icon: "i-lucide-calendar",
+          to: "/pro/appointments",
+          active: active("/pro/appointments"),
+        },
+        {
           label: "Calendrier",
           icon: "i-lucide-calendar-days",
           to: "/pro/calendar",
           active: active("/pro/calendar"),
+        },
+        {
+          label: "Mon profil",
+          icon: "i-lucide-user",
+          to: "/profile",
+          active: isOwnProfilePage,
         },
       ],
       [],
@@ -810,6 +920,10 @@ const headerUserDisplayName = computed(() => {
     return `${user.value.first_name} ${user.value.last_name}`;
   return user.value?.email || "Utilisateur";
 });
+
+const headerAvatarInitial = computed(() =>
+  (user.value?.first_name?.charAt(0) || user.value?.email?.charAt(0) || "U").toUpperCase()
+);
 
 const headerUserMenuItems = computed(() => [
   {
@@ -834,19 +948,29 @@ const notificationItems = computed(() => {
     ];
   }
 
-  return notifications.value.slice(0, 10).map((notif) => ({
-    label: notif.title || notif.message || "Notification",
-    message: notif.title ? (notif.message || undefined) : undefined,
-    description: notif.created_at
-      ? new Date(notif.created_at).toLocaleString("fr-FR")
-      : undefined,
-    icon: notif.type === "marketing" ? "i-lucide-megaphone" : "i-lucide-bell",
-    isRead: !!notif.read_at,
-    click: () => {
-      if (notif.appointment_id)
-        navigateTo(`/nurse/appointments/${notif.appointment_id}`);
-    },
-  }));
+  const role = user.value?.role;
+  const reviewsPath = role === 'nurse' ? '/nurse/reviews' : role === 'lab' ? '/lab/reviews' : role === 'subaccount' ? '/subaccount/reviews' : null;
+  return notifications.value.slice(0, 10).map((notif) => {
+    const data = typeof notif.data === 'string' ? (() => { try { return JSON.parse(notif.data); } catch { return {}; } })() : (notif.data || {});
+    const isNewReview = notif.type === 'new_review' || data.review_id;
+    return {
+      label: notif.title || notif.message || "Notification",
+      message: notif.title ? (notif.message || undefined) : undefined,
+      description: notif.created_at
+        ? new Date(notif.created_at).toLocaleString("fr-FR")
+        : undefined,
+      icon: notif.type === "marketing" ? "i-lucide-megaphone" : notif.type === "new_review" ? "i-lucide-star" : "i-lucide-bell",
+      isRead: !!notif.read_at,
+      click: () => {
+        if (isNewReview && reviewsPath) navigateTo(reviewsPath);
+        else if (notif.appointment_id && ['nurse', 'lab', 'subaccount'].includes(role ?? '')) {
+          openAppointmentModalById(notif.appointment_id);
+          const appointmentsPath = role === 'nurse' ? '/nurse/appointments' : role === 'subaccount' ? '/subaccount/appointments' : '/lab/appointments';
+          navigateTo(appointmentsPath);
+        } else if (notif.appointment_id) navigateTo(`/nurse/appointments/${notif.appointment_id}`);
+      },
+    };
+  });
 });
 
 const { start: startPolling, stop: stopPolling } = usePolling(async () => {
@@ -871,63 +995,45 @@ const { start: startPolling, stop: stopPolling } = usePolling(async () => {
   }
 }, 10000); // Réduire à 10 secondes pour les notifications
 
-// Détecter les nouveaux rendez-vous pour les infirmiers
+// Détecter les nouveaux rendez-vous pour infirmiers, lab et sous-compte (popup auto)
 const { start: startAppointmentPolling, stop: stopAppointmentPolling, isPolling: isAppointmentPolling } = usePolling(async () => {
-  if (user.value?.role !== 'nurse') {
-    console.log('[AppointmentPolling] Skipped - not a nurse');
+  const role = user.value?.role;
+  if (!['nurse', 'lab', 'subaccount'].includes(role ?? '')) {
     return;
   }
   
-  // Ne pas ouvrir une nouvelle popup si une est déjà ouverte, mais continuer le polling
   const shouldOpenModal = !showAppointmentModal.value;
   
-  console.log('[AppointmentPolling] Fetching appointments...', { shouldOpenModal });
   const res = await apiFetch('/appointments?status=pending&limit=100', {
     method: 'GET'
   });
   
-  console.log('[AppointmentPolling] Response', {
-    success: res?.success,
-    dataCount: res?.data?.length || 0
-  });
-  
   if (res?.success && res.data) {
-    const pending = res.data.filter((a: any) => 
-      a.status === 'pending' && !a.assigned_nurse_id
-    );
-    
-    console.log('[AppointmentPolling] Filtered pending', {
-      total: res.data.length,
-      pending: pending.length,
-      pendingIds: pending.map((a: any) => a.id),
-      seenIds: Array.from(seenAppointmentIds.value)
+    const pending = res.data.filter((a: any) => {
+      if (role === 'nurse') return a.status === 'pending' && !a.assigned_nurse_id;
+      if (role === 'lab' || role === 'subaccount') return a.status === 'pending' && a.type === 'blood_test' && !a.assigned_lab_id;
+      return false;
     });
     
-    // Trouver les nouveaux rendez-vous (ceux qu'on n'a pas encore vus)
     const newAppointments = pending.filter((a: any) => !seenAppointmentIds.value.has(a.id));
     
-    console.log('[AppointmentPolling] New appointments', {
-      newCount: newAppointments.length,
-      newIds: newAppointments.map((a: any) => a.id),
-      shouldOpenModal
-    });
-    
-    // Si on a des nouveaux rendez-vous ET qu'on peut ouvrir la modal, afficher la popup
     if (newAppointments.length > 0 && shouldOpenModal) {
-      console.log('[AppointmentPolling] Loading full appointment details for', newAppointments[0].id);
-      
-      // Charger les détails complets du rendez-vous avant d'afficher la popup
+      const appId = newAppointments[0].id;
       try {
-        const detailRes = await apiFetch(`/appointments/${newAppointments[0].id}`, {
-          method: 'GET'
-        });
-        
+        const detailRes = await apiFetch(`/appointments/${appId}`, { method: 'GET' });
         if (detailRes?.success && detailRes.data) {
-          console.log('[AppointmentPolling] Showing modal for', newAppointments[0].id);
-          selectedAppointment.value = detailRes.data;
-          showAppointmentModal.value = true;
-          // Marquer ce rendez-vous comme vu seulement après l'avoir affiché
-          seenAppointmentIds.value.add(newAppointments[0].id);
+          const data = detailRes.data;
+          const alreadyAcceptedByOther = role === 'nurse'
+            ? (data.assigned_nurse_id != null || data.assigned_lab_id != null)
+            : (data.assigned_lab_id != null);
+          if (alreadyAcceptedByOther) {
+            // Ne pas rouvrir la popup : déjà pris par un confrère
+            seenAppointmentIds.value.add(appId);
+          } else {
+            selectedAppointment.value = data;
+            showAppointmentModal.value = true;
+            seenAppointmentIds.value.add(appId);
+          }
         } else {
           console.error('[AppointmentPolling] Failed to load appointment details', detailRes);
         }
@@ -966,94 +1072,63 @@ const handleAppointmentRefused = () => {
   }, 500);
 };
 
-// Initialiser le compteur quand l'utilisateur est disponible
+// Ouvrir la popup depuis ?openAppointment= (redirection depuis détail pour un RDV pending)
+watch(
+  () => ({ path: route.path, openAppointment: route.query.openAppointment }),
+  async (curr) => {
+    const role = user.value?.role;
+    if (!['nurse', 'lab', 'subaccount'].includes(role ?? '') || !curr.openAppointment) return;
+    const appointmentsPath = role === 'nurse' ? '/nurse/appointments' : role === 'subaccount' ? '/subaccount/appointments' : '/lab/appointments';
+    if (curr.path !== appointmentsPath) return;
+    const id = Array.isArray(curr.openAppointment) ? curr.openAppointment[0] : curr.openAppointment;
+    await openAppointmentModalById(id);
+    await navigateTo(appointmentsPath, { replace: true });
+  },
+  { immediate: true },
+);
+
+// Initialiser et ouvrir la popup auto pour nurse / lab / subaccount
 let appointmentCounterInitialized = false;
 watch(() => user.value?.role, async (role) => {
-  if (role === 'nurse' && !appointmentCounterInitialized && user.value) {
-    appointmentCounterInitialized = true;
-    // Initialiser le compteur de manière asynchrone
-    console.log('[AppointmentInit] Initializing for nurse', user.value?.id);
-    try {
-      const res = await apiFetch('/appointments?status=pending&limit=100', {
-        method: 'GET'
+  if (!['nurse', 'lab', 'subaccount'].includes(role ?? '') || appointmentCounterInitialized || !user.value) return;
+  appointmentCounterInitialized = true;
+  try {
+    const res = await apiFetch('/appointments?status=pending&limit=100', { method: 'GET' });
+    if (res?.success && res.data) {
+      const pending = res.data.filter((a: any) => {
+        if (role === 'nurse') return a.status === 'pending' && !a.assigned_nurse_id;
+        if (role === 'lab' || role === 'subaccount') return a.status === 'pending' && a.type === 'blood_test' && !a.assigned_lab_id;
+        return false;
       });
-      console.log('[AppointmentInit] Initial fetch response', {
-        success: res?.success,
-        dataCount: res?.data?.length || 0,
-        data: res?.data
-      });
-      
-      if (res?.success && res.data) {
-        const pending = res.data.filter((a: any) => 
-          a.status === 'pending' && !a.assigned_nurse_id
-        );
-        
-        console.log('[AppointmentInit] Filtered pending', {
-          total: res.data.length,
-          pending: pending.length,
-          pendingIds: pending.map((a: any) => a.id)
-        });
-        
-        lastPendingCount.value = pending.length;
-        
-        // Si on a des rendez-vous pending, afficher la popup pour le premier
-        if (pending.length > 0) {
-          console.log('[AppointmentInit] Loading full appointment details for', pending[0].id);
-          
-          // Charger les détails complets du rendez-vous avant d'afficher la popup
-          try {
-            const detailRes = await apiFetch(`/appointments/${pending[0].id}`, {
-              method: 'GET'
-            });
-            
-            if (detailRes?.success && detailRes.data) {
-              console.log('[AppointmentInit] Showing modal for first appointment', pending[0].id);
-              selectedAppointment.value = detailRes.data;
+      lastPendingCount.value = pending.length;
+      if (pending.length > 0) {
+        const firstId = pending[0].id;
+        try {
+          const detailRes = await apiFetch(`/appointments/${firstId}`, { method: 'GET' });
+          if (detailRes?.success && detailRes.data) {
+            const data = detailRes.data;
+            const alreadyAcceptedByOther = role === 'nurse'
+              ? (data.assigned_nurse_id != null || data.assigned_lab_id != null)
+              : (data.assigned_lab_id != null);
+            if (!alreadyAcceptedByOther) {
+              selectedAppointment.value = data;
               showAppointmentModal.value = true;
-              // Marquer le premier comme vu immédiatement
-              seenAppointmentIds.value.add(pending[0].id);
-            } else {
-              console.error('[AppointmentInit] Failed to load appointment details', detailRes);
             }
-          } catch (error) {
-            console.error('[AppointmentInit] Error loading appointment details', error);
+            seenAppointmentIds.value.add(firstId);
           }
-          
-          // Ne pas marquer les autres comme vus immédiatement
-          // Ils seront gérés par le polling qui les affichera un par un
-        } else {
-          // Pas de rendez-vous au démarrage
-          console.log('[AppointmentInit] No pending appointments found');
-        }
-        
-        // Marquer tous les rendez-vous existants comme vus pour éviter de les réafficher
-        // mais seulement après un délai pour permettre au polling de démarrer
-        setTimeout(() => {
-          pending.forEach((a: any) => {
-            if (a.id !== pending[0]?.id) {
-              seenAppointmentIds.value.add(a.id);
-            }
-          });
-          console.log('[AppointmentInit] Marked existing appointments as seen (except first)');
-        }, 5000);
+        } catch (_) {}
       }
-      
-      // Démarrer le polling immédiatement après l'initialisation
-      console.log('[AppointmentInit] Starting polling...');
-      try {
-        startAppointmentPolling();
-        console.log('[AppointmentInit] Polling started successfully');
-      } catch (error) {
-        console.error('[AppointmentInit] Error starting polling:', error);
-      }
-    } catch (error) {
-      console.error('[AppointmentInit] Error', error);
-      // Les erreurs seront gérées par onErrorCaptured
+      setTimeout(() => {
+        pending.forEach((a: any) => { if (a.id !== pending[0]?.id) seenAppointmentIds.value.add(a.id); });
+      }, 5000);
     }
-  }
+    startAppointmentPolling();
+  } catch (_) {}
 }, { immediate: true });
 
 onMounted(async () => {
+  // Rafraîchir l'utilisateur pour avoir la photo de profil à jour dans le header (profile_image_url)
+  await fetchCurrentUser();
   // Charger les notifications immédiatement
   const res = await apiFetch('/notifications?limit=10', { method: 'GET' })
   if (res && res.success) {

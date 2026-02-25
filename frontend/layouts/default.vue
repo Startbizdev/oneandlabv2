@@ -41,9 +41,166 @@
               />
             </NuxtLink>
 
-            <!-- Navigation desktop -->
-            <nav class="hidden lg:flex items-center min-w-0">
-              <UNavigationMenu :items="navigationItems" />
+            <!-- Navigation desktop : liens simples + dropdowns Infirmiers / Laboratoire (icônes + descriptions) -->
+            <nav class="hidden lg:flex items-center gap-1 min-w-0">
+              <!-- Dropdown Patient (marketing) -->
+              <UPopover mode="hover" :open-delay="100" :close-delay="80">
+                <button
+                  type="button"
+                  class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                  :class="{ 'bg-primary-50 text-primary-600': route.path === '/pour-les-patients' || route.path.startsWith('/laboratoires') || route.path.startsWith('/infirmiers') || route.path === '/rendez-vous/nouveau' }"
+                >
+                  Patient
+                  <UIcon name="i-lucide-chevron-down" class="h-4 w-4 shrink-0 text-gray-500" />
+                </button>
+                <template #content>
+                  <div class="w-[320px] p-2 bg-white rounded-xl shadow-lg">
+                    <NuxtLink
+                      to="/rendez-vous/nouveau"
+                      class="flex gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                    >
+                      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 group-hover:bg-primary-100">
+                        <UIcon name="i-lucide-calendar-plus" class="h-5 w-5" />
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900">Prendre rendez-vous</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Réservez une prise de sang ou des soins infirmiers à domicile.</p>
+                      </div>
+                    </NuxtLink>
+                    <NuxtLink
+                      to="/laboratoires"
+                      class="flex gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                    >
+                      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 group-hover:bg-primary-100">
+                        <UIcon name="i-lucide-building-2" class="h-5 w-5" />
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900">Explorer les laboratoires</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Les meilleurs laboratoires de France pour vos prélèvements à domicile.</p>
+                      </div>
+                    </NuxtLink>
+                    <NuxtLink
+                      to="/infirmiers"
+                      class="flex gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                    >
+                      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 group-hover:bg-primary-100">
+                        <UIcon name="i-lucide-heart-pulse" class="h-5 w-5" />
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900">Explorer les infirmiers</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Trouvez un infirmier à domicile près de chez vous.</p>
+                      </div>
+                    </NuxtLink>
+                    <NuxtLink
+                      to="/pour-les-patients"
+                      class="flex gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                    >
+                      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600 group-hover:bg-gray-200">
+                        <UIcon name="i-lucide-info" class="h-5 w-5" />
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900">Pour les patients</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Découvrez comment prendre rendez-vous et gérer vos soins.</p>
+                      </div>
+                    </NuxtLink>
+                  </div>
+                </template>
+              </UPopover>
+
+              <!-- Dropdown Infirmiers -->
+              <UPopover mode="hover" :open-delay="100" :close-delay="80">
+                <button
+                  type="button"
+                  class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                  :class="{ 'bg-primary-50 text-primary-600': route.path.startsWith('/pour-les-infirmiers') }"
+                >
+                  Infirmiers
+                  <UIcon name="i-lucide-chevron-down" class="h-4 w-4 shrink-0 text-gray-500" />
+                </button>
+                <template #content>
+                  <div class="w-[320px] p-2 bg-white rounded-xl shadow-lg">
+                    <NuxtLink
+                      to="/pour-les-infirmiers"
+                      class="flex gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                    >
+                      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 group-hover:bg-primary-100">
+                        <UIcon name="i-lucide-heart-pulse" class="h-5 w-5" />
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900">Présentation</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Découvrez les avantages pour les infirmiers et comment rejoindre le réseau.</p>
+                      </div>
+                    </NuxtLink>
+                    <NuxtLink
+                      to="/pour-les-infirmiers/tarifs"
+                      class="flex gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                    >
+                      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100">
+                        <UIcon name="i-lucide-credit-card" class="h-5 w-5" />
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900">Tarifs</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Offre Découverte gratuite et Pro à 29 €/mois avec 30 jours d'essai.</p>
+                      </div>
+                    </NuxtLink>
+                  </div>
+                </template>
+              </UPopover>
+
+              <!-- Dropdown Laboratoire -->
+              <UPopover mode="hover" :open-delay="100" :close-delay="80">
+                <button
+                  type="button"
+                  class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                  :class="{ 'bg-primary-50 text-primary-600': route.path.startsWith('/pour-les-laboratoires') }"
+                >
+                  Laboratoire
+                  <UIcon name="i-lucide-chevron-down" class="h-4 w-4 shrink-0 text-gray-500" />
+                </button>
+                <template #content>
+                  <div class="w-[320px] p-2 bg-white rounded-xl shadow-lg">
+                    <NuxtLink
+                      to="/pour-les-laboratoires"
+                      class="flex gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                    >
+                      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 group-hover:bg-primary-100">
+                        <UIcon name="i-lucide-building-2" class="h-5 w-5" />
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900">Présentation</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Connectez votre laboratoire, gérez préleveurs et tournées à domicile.</p>
+                      </div>
+                    </NuxtLink>
+                    <NuxtLink
+                      to="/pour-les-laboratoires/tarifs"
+                      class="flex gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                    >
+                      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100">
+                        <UIcon name="i-lucide-credit-card" class="h-5 w-5" />
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900">Tarifs</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Starter 49 € et Pro 129 €/mois, 30 jours d'essai gratuit.</p>
+                      </div>
+                    </NuxtLink>
+                  </div>
+                </template>
+              </UPopover>
+
+              <NuxtLink
+                to="/pour-les-professionnels"
+                class="px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                :class="{ 'bg-primary-50 text-primary-600': route.path === '/pour-les-professionnels' }"
+              >
+                Professionnel
+              </NuxtLink>
+              <NuxtLink
+                to="/contact"
+                class="px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                :class="{ 'bg-primary-50 text-primary-600': route.path === '/contact' }"
+              >
+                Contact
+              </NuxtLink>
             </nav>
           </div>
 
@@ -70,7 +227,7 @@
                   </ClientOnly>
                   <span
                     v-if="unreadCount > 0"
-                    class="absolute -top-0.5 -right-0.5 h-4.5 w-4.5 min-w-[18px] flex items-center justify-center rounded-full bg-primary-600 text-[10px] font-semibold text-white leading-none px-0.5 border-2 border-white"
+                    class="absolute -top-0.5 -right-0.5 h-4.5 w-4.5 min-w-[18px] flex items-center justify-center rounded-full bg-primary-600 text-[10px] font-normal text-white leading-none px-0.5 border-2 border-white"
                   >
                     {{ unreadCount > 9 ? '9+' : unreadCount }}
                   </span>
@@ -104,50 +261,89 @@
                 </div>
               </div>
 
-              <!-- Desktop: dropdown menu -->
+              <!-- Desktop: avatar + dropdown menu -->
               <div class="relative hidden sm:block flex-shrink-0" ref="userMenuRef">
                 <button
                   type="button"
                   @click="userMenuOpen = !userMenuOpen"
-                  class="flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-700 hover:bg-gray-100 active:bg-gray-200 transition-colors flex-shrink-0 min-w-0 max-w-full"
+                  class="flex items-center gap-2 pl-1 pr-2 sm:pl-1.5 sm:pr-3 py-1.5 sm:py-2 rounded-xl text-gray-700 hover:bg-gray-100 active:bg-gray-200 transition-all duration-200 flex-shrink-0 min-w-0 max-w-full border border-transparent hover:border-gray-200"
                   :aria-label="`Menu utilisateur: ${userDisplayName}`"
                   :aria-expanded="userMenuOpen"
                 >
-                  <span class="text-xs sm:text-sm font-medium whitespace-nowrap truncate max-w-[100px] sm:max-w-[140px] md:max-w-[180px]">{{ userDisplayName }}</span>
                   <ClientOnly>
                     <template #default>
-                      <UIcon name="i-lucide-chevron-down" class="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0 transition-transform" :class="{ 'rotate-180': userMenuOpen }" />
+                      <img
+                        v-if="(user?.profile_image_url ?? user?.avatar)"
+                        :src="(user?.profile_image_url ?? user?.avatar)"
+                        :alt="userDisplayName"
+                        class="h-8 w-8 sm:h-9 sm:w-9 rounded-full object-cover ring-2 ring-white shadow-sm"
+                      />
+                      <div
+                        v-else
+                        class="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-sm font-normal shadow-sm ring-2 ring-white"
+                      >
+                        {{ (user?.first_name?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase() }}
+                      </div>
                     </template>
                     <template #fallback>
-                      <span class="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                      <div class="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
                     </template>
                   </ClientOnly>
+                  <span class="text-xs sm:text-sm font-medium whitespace-nowrap truncate max-w-[90px] sm:max-w-[120px] md:max-w-[160px]">{{ userDisplayName }}</span>
+                  <UIcon name="i-lucide-chevron-down" class="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0 text-gray-500 transition-transform duration-200" :class="{ 'rotate-180': userMenuOpen }" />
                 </button>
                 
-                <!-- Dropdown Menu -->
-                <div
-                  v-if="userMenuOpen"
-                  class="absolute right-0 mt-2 w-56 rounded-lg bg-white border border-gray-200 shadow-lg z-50 py-1"
+                <!-- Dropdown Menu moderne -->
+                <Transition
+                  enter-active-class="transition ease-out duration-150"
+                  enter-from-class="opacity-0 translate-y-1"
+                  enter-to-class="opacity-100 translate-y-0"
+                  leave-active-class="transition ease-in duration-100"
+                  leave-from-class="opacity-100 translate-y-0"
+                  leave-to-class="opacity-0 translate-y-1"
                 >
-                  <template v-for="(item, index) in userMenuItems" :key="index">
-                    <button
-                      v-if="item.type !== 'divider'"
-                      @click="handleUserMenuItemClick(item)"
-                      class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
-                    >
-                      <ClientOnly>
-                        <template #default>
-                          <UIcon v-if="item.icon" :name="item.icon" class="h-4 w-4 flex-shrink-0" />
-                        </template>
-                        <template #fallback>
-                          <span v-if="item.icon" class="h-4 w-4 flex-shrink-0" />
-                        </template>
-                      </ClientOnly>
-                      <span>{{ item.label }}</span>
-                    </button>
-                    <div v-else class="border-t border-gray-200 my-1" />
-                  </template>
-                </div>
+                  <div
+                    v-if="userMenuOpen"
+                    class="absolute right-0 mt-2 w-64 rounded-xl bg-white border border-gray-200/80 shadow-xl shadow-gray-200/50 dark:shadow-none dark:border-gray-700 z-50 overflow-hidden"
+                  >
+                    <!-- En-tête profil -->
+                    <div class="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
+                      <div class="flex items-center gap-3">
+                        <img
+                          v-if="(user?.profile_image_url ?? user?.avatar)"
+                          :src="(user?.profile_image_url ?? user?.avatar)"
+                          :alt="userDisplayName"
+                          class="h-10 w-10 rounded-full object-cover ring-2 ring-white shadow"
+                        />
+                        <div
+                          v-else
+                          class="h-10 w-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-normal ring-2 ring-white"
+                        >
+                          {{ (user?.first_name?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase() }}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                          <p class="text-sm font-normal text-gray-900 dark:text-white truncate">{{ userDisplayName }}</p>
+                          <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
+                            {{ roleLabel }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="py-1.5">
+                      <template v-for="(item, index) in userMenuItems" :key="index">
+                        <button
+                          v-if="item.type !== 'divider'"
+                          @click="handleUserMenuItemClick(item)"
+                          class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-left"
+                        >
+                          <UIcon v-if="item.icon" :name="item.icon" class="h-4 w-4 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+                          <span>{{ item.label }}</span>
+                        </button>
+                        <div v-else class="border-t border-gray-100 dark:border-gray-700 my-1" />
+                      </template>
+                    </div>
+                  </div>
+                </Transition>
               </div>
             </template>
             
@@ -251,9 +447,21 @@
           <!-- Utilisateur connecté -->
           <div v-if="isAuthenticated && user" class="mb-6 pb-6 border-b border-gray-200">
             <div class="flex items-center gap-3 mb-4">
+              <img
+                v-if="(user?.profile_image_url ?? user?.avatar)"
+                :src="(user?.profile_image_url ?? user?.avatar)"
+                :alt="userDisplayName"
+                class="h-12 w-12 rounded-full object-cover shrink-0 ring-2 ring-gray-100"
+              />
+              <div
+                v-else
+                class="h-12 w-12 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-normal shrink-0 ring-2 ring-gray-100"
+              >
+                {{ (user?.first_name?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase() }}
+              </div>
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-gray-900 truncate">{{ userDisplayName }}</p>
-                <p class="text-xs text-gray-500">{{ roleLabel }}</p>
+                <p class="text-sm font-normal text-gray-900 truncate">{{ userDisplayName }}</p>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-primary-100 text-primary-700">{{ roleLabel }}</span>
               </div>
             </div>
             
@@ -283,21 +491,22 @@
             </div>
           </div>
           
-          <!-- Navigation mobile -->
+          <!-- Navigation mobile (labels clairs + descriptions marketing) -->
           <nav class="space-y-1">
             <NuxtLink
-              v-for="item in navigationItems"
-              :key="item.to"
+              v-for="item in mobileNavigationItems"
+              :key="item.to + item.label"
               :to="item.to"
               @click="mobileMenuOpen = false"
               :class="[
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                item.active
+                'flex flex-col gap-0.5 px-3 py-3 rounded-lg text-left transition-colors',
+                route.path === item.to
                   ? 'bg-primary-50 text-primary-600'
                   : 'text-gray-700 hover:bg-gray-100'
               ]"
             >
-              <span>{{ item.label }}</span>
+              <span class="text-sm font-medium">{{ item.label }}</span>
+              <span v-if="item.description" class="text-xs text-gray-500">{{ item.description }}</span>
             </NuxtLink>
           </nav>
           
@@ -385,7 +594,7 @@
           </div>
           
           <div>
-            <h3 class="text-lg font-semibold mb-4">Services</h3>
+            <h3 class="text-lg font-normal mb-4">Services</h3>
             <ul class="space-y-2">
               <li>
                 <NuxtLink 
@@ -414,11 +623,23 @@
                   Prendre un rendez-vous
                 </NuxtLink>
               </li>
+              <li>
+                <NuxtLink to="/laboratoires" class="text-gray-400 hover:text-white transition-colors flex items-center">
+                  <UIcon name="i-lucide-building-2" class="w-4 h-4 mr-2" />
+                  Explorer les laboratoires
+                </NuxtLink>
+              </li>
+              <li>
+                <NuxtLink to="/infirmiers" class="text-gray-400 hover:text-white transition-colors flex items-center">
+                  <UIcon name="i-lucide-heart-pulse" class="w-4 h-4 mr-2" />
+                  Explorer les infirmiers
+                </NuxtLink>
+              </li>
             </ul>
           </div>
           
           <div>
-            <h3 class="text-lg font-semibold mb-4">Professionnels</h3>
+            <h3 class="text-lg font-normal mb-4">Professionnels</h3>
             <ul class="space-y-2">
               <li>
                 <NuxtLink 
@@ -456,7 +677,7 @@
           </div>
           
           <div>
-            <h3 class="text-lg font-semibold mb-4">Liens utiles</h3>
+            <h3 class="text-lg font-normal mb-4">Liens utiles</h3>
             <ul class="space-y-2">
               <li>
                 <NuxtLink 
@@ -506,11 +727,11 @@
 </template>
 
 <script setup lang="ts">
-import type { NavigationMenuItem } from '@nuxt/ui'
 import { apiFetch } from '~/utils/api'
 
 const route = useRoute()
-const { user, isAuthenticated, logout } = useAuth()
+const { isAuthenticated } = useAuth()
+const { user, roleLabel, userMenuItems, userDisplayName } = useHeaderUserMenu()
 
 const mobileMenuOpen = ref(false)
 const userMenuOpen = ref(false)
@@ -624,21 +845,6 @@ onUnmounted(() => {
   }
 })
 
-const roleLabel = computed(() => {
-  const role = user.value?.role
-  const roleLabels: Record<string, string> = {
-    super_admin: 'Super Admin',
-    admin: 'Admin',
-    lab: 'Laboratoire',
-    subaccount: 'Sous-compte',
-    nurse: 'Infirmier',
-    preleveur: 'Préleveur',
-    pro: 'Professionnel',
-    patient: 'Patient',
-  }
-  return roleLabels[role || ''] || 'Utilisateur'
-})
-
 const handleMenuItemClick = (item: any) => {
   if (item.click) {
     item.click()
@@ -646,246 +852,35 @@ const handleMenuItemClick = (item: any) => {
   mobileMenuOpen.value = false
 }
 
-const navigationItems = computed<NavigationMenuItem[]>(() => [
-  {
-    label: 'Patient',
-    to: '/pour-les-patients',
-    active: route.path === '/pour-les-patients',
-  },
-  {
-    label: 'Infirmiers',
-    to: '/pour-les-infirmiers',
-    active: route.path === '/pour-les-infirmiers',
-  },
-  {
-    label: 'Laboratoire',
-    to: '/pour-les-laboratoires',
-    active: route.path === '/pour-les-laboratoires',
-  },
-  {
-    label: 'Professionnel',
-    to: '/pour-les-professionnels',
-    active: route.path === '/pour-les-professionnels',
-  },
-  {
-    label: 'Contact',
-    to: '/contact',
-    active: route.path === '/contact',
-  },
-])
-
-const userDisplayName = computed(() => {
-  if (user.value?.first_name && user.value?.last_name) {
-    return `${user.value.first_name} ${user.value.last_name}`
-  }
-  return user.value?.email || 'Utilisateur'
-})
-
-const userMenuItems = computed(() => {
-  const role = user.value?.role
-  const items: any[] = []
-  
-  // Menu selon le rôle
-  if (role === 'patient') {
-    items.push(
-      {
-        label: 'Mes rendez-vous',
-        icon: 'i-lucide-calendar',
-        click: () => navigateTo('/patient'),
-      },
-      {
-        label: 'Nouveau rendez-vous',
-        icon: 'i-lucide-calendar-plus',
-        click: () => navigateTo('/rendez-vous/nouveau'),
-      },
-      {
-        label: 'Mes proches',
-        icon: 'i-lucide-users',
-        click: () => navigateTo('/patient/relatives'),
-      },
-      {
-        label: 'Mes avis',
-        icon: 'i-lucide-star',
-        click: () => navigateTo('/patient/reviews'),
-      },
-      {
-        label: 'Mon profil',
-        icon: 'i-lucide-user',
-        click: () => navigateTo('/profile'),
-      }
-    )
-  } else if (role === 'nurse') {
-    items.push(
-      {
-        label: 'Rendez-vous',
-        icon: 'i-lucide-calendar',
-        click: () => navigateTo('/nurse/appointments'),
-      },
-      {
-        label: 'Soins actifs',
-        icon: 'i-lucide-activity',
-        click: () => navigateTo('/nurse/soins'),
-      },
-      {
-        label: 'Paramètres',
-        icon: 'i-lucide-settings',
-        click: () => navigateTo('/profile'),
-      }
-    )
-  } else if (role === 'lab') {
-    items.push(
-      {
-        label: 'Tableau de bord',
-        icon: 'i-lucide-layout-dashboard',
-        click: () => navigateTo('/lab'),
-      },
-      {
-        label: 'Rendez-vous',
-        icon: 'i-lucide-calendar',
-        click: () => navigateTo('/lab/appointments'),
-      },
-      {
-        label: 'Calendrier',
-        icon: 'i-lucide-calendar-days',
-        click: () => navigateTo('/lab/calendar'),
-      },
-      {
-        label: 'Statistiques',
-        icon: 'i-lucide-bar-chart',
-        click: () => navigateTo('/lab/stats'),
-      },
-      {
-        label: 'Sous-comptes',
-        icon: 'i-lucide-users',
-        click: () => navigateTo('/lab/subaccounts'),
-      },
-      {
-        label: 'Préleveurs',
-        icon: 'i-lucide-user-check',
-        click: () => navigateTo('/lab/preleveurs'),
-      },
-      {
-        label: 'Paramètres',
-        icon: 'i-lucide-settings',
-        click: () => navigateTo('/profile'),
-      }
-    )
-  } else if (role === 'subaccount') {
-    items.push(
-      {
-        label: 'Tableau de bord',
-        icon: 'i-lucide-layout-dashboard',
-        click: () => navigateTo('/subaccount'),
-      },
-      {
-        label: 'Rendez-vous',
-        icon: 'i-lucide-calendar',
-        click: () => navigateTo('/subaccount/appointments'),
-      },
-      {
-        label: 'Calendrier',
-        icon: 'i-lucide-calendar-days',
-        click: () => navigateTo('/subaccount/calendar'),
-      },
-      {
-        label: 'Préleveurs',
-        icon: 'i-lucide-user-check',
-        click: () => navigateTo('/subaccount/preleveurs'),
-      },
-      {
-        label: 'Paramètres',
-        icon: 'i-lucide-settings',
-        click: () => navigateTo('/profile'),
-      }
-    )
-  } else if (role === 'preleveur') {
-    items.push(
-      {
-        label: 'Tableau de bord',
-        icon: 'i-lucide-layout-dashboard',
-        click: () => navigateTo('/preleveur'),
-      },
-      {
-        label: 'Calendrier',
-        icon: 'i-lucide-calendar-days',
-        click: () => navigateTo('/preleveur/calendar'),
-      }
-    )
-  } else if (role === 'pro') {
-    items.push(
-      {
-        label: 'Tableau de bord',
-        icon: 'i-lucide-layout-dashboard',
-        click: () => navigateTo('/pro'),
-      },
-      {
-        label: 'Rendez-vous',
-        icon: 'i-lucide-calendar',
-        click: () => navigateTo('/pro/appointments'),
-      },
-      {
-        label: 'Mes patients',
-        icon: 'i-lucide-users',
-        click: () => navigateTo('/pro/patients'),
-      },
-      {
-        label: 'Calendrier',
-        icon: 'i-lucide-calendar-days',
-        click: () => navigateTo('/pro/calendar'),
-      },
-      {
-        label: 'Paramètres',
-        icon: 'i-lucide-settings',
-        click: () => navigateTo('/profile'),
-      }
-    )
-  } else if (role === 'admin' || role === 'super_admin') {
-    items.push(
-      {
-        label: 'Tableau de bord',
-        icon: 'i-lucide-layout-dashboard',
-        click: () => navigateTo('/admin'),
-      },
-      {
-        label: 'Rendez-vous',
-        icon: 'i-lucide-calendar',
-        click: () => navigateTo('/admin/appointments'),
-      },
-      {
-        label: 'Utilisateurs',
-        icon: 'i-lucide-users',
-        click: () => navigateTo('/admin/users'),
-      },
-      {
-        label: 'Catégories',
-        icon: 'i-lucide-tags',
-        click: () => navigateTo('/admin/categories'),
-      },
-      {
-        label: 'Zones de couverture',
-        icon: 'i-lucide-map',
-        click: () => navigateTo('/admin/coverage'),
-      },
-      {
-        label: 'Logs',
-        icon: 'i-lucide-file-text',
-        click: () => navigateTo('/admin/logs'),
-      }
-    )
-  }
-  
-  // Séparateur avant déconnexion
-  if (items.length > 0) {
-    items.push({ type: 'divider' })
-  }
-  
-  // Déconnexion
+// Menu mobile : liens avec labels clairs et descriptions marketing
+const mobileNavigationItems = computed(() => {
+  const items: { label: string; to: string; description?: string }[] = []
+  items.push({ label: 'Prendre rendez-vous', to: '/rendez-vous/nouveau', description: 'Réserver une prise de sang ou soins à domicile' })
+  items.push({ label: 'Explorer les laboratoires', to: '/laboratoires', description: 'Les meilleurs laboratoires de France' })
+  items.push({ label: 'Explorer les infirmiers', to: '/infirmiers', description: 'Trouvez un infirmier à domicile' })
+  items.push({ label: 'Pour les patients', to: '/pour-les-patients', description: 'Découvrez comment prendre rendez-vous' })
   items.push({
-    label: 'Déconnexion',
-    icon: 'i-lucide-log-out',
-    click: () => logout(),
+    label: 'Présentation · Infirmiers',
+    to: '/pour-les-infirmiers',
+    description: 'Avantages et inscription pour les infirmiers',
   })
-  
+  items.push({
+    label: 'Tarifs · Infirmiers',
+    to: '/pour-les-infirmiers/tarifs',
+    description: 'Découverte gratuit, Pro 29 €/mois, 30 j d\'essai',
+  })
+  items.push({
+    label: 'Présentation · Laboratoire',
+    to: '/pour-les-laboratoires',
+    description: 'Connectez votre labo, préleveurs et tournées',
+  })
+  items.push({
+    label: 'Tarifs · Laboratoire',
+    to: '/pour-les-laboratoires/tarifs',
+    description: 'Starter 49 €, Pro 129 €/mois, 30 j d\'essai',
+  })
+  items.push({ label: 'Professionnel', to: '/pour-les-professionnels' })
+  items.push({ label: 'Contact', to: '/contact' })
   return items
 })
 

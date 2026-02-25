@@ -75,6 +75,11 @@ try {
         exit;
     }
     
+    // S'assurer que les champs utilisés par le header (avatar) sont présents
+    if (!array_key_exists('profile_image_url', $user)) {
+        $user['profile_image_url'] = null;
+    }
+    
     // Retourner les informations utilisateur
     echo json_encode([
         'success' => true,

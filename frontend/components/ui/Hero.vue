@@ -9,7 +9,7 @@
         <div class="text-center lg:text-left order-2 lg:order-1" :class="textAlignment">
           <h1 
             v-if="title" 
-            class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-6 leading-tight tracking-tight"
+            class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-normal text-gray-900 mb-4 sm:mb-5 md:mb-6 leading-tight tracking-tight"
           >
             {{ title }}
           </h1>
@@ -31,7 +31,7 @@
           <!-- Label des CTAs -->
           <p 
             v-if="ctaLabel && ctas && ctas.length > 0" 
-            class="text-lg sm:text-xl font-semibold text-gray-800 mb-4 sm:mb-5 text-center lg:text-left"
+            class="text-lg sm:text-xl font-normal text-gray-800 mb-4 sm:mb-5 text-center lg:text-left"
           >
             {{ ctaLabel }}
           </p>
@@ -49,7 +49,7 @@
               :size="cta.size || 'lg'"
               :variant="cta.variant || 'outline'"
               :icon="cta.icon"
-              class="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+              class="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-normal border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
             >
               {{ cta.label }}
             </UButton>

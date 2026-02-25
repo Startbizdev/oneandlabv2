@@ -6,7 +6,7 @@
           <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" :class="headerIconBg">
             <UIcon :name="headerIcon" class="w-7 h-7 text-white" />
           </div>
-          <h1 class="text-2xl sm:text-3xl font-bold text-foreground">
+          <h1 class="text-2xl sm:text-3xl font-normal text-foreground">
             {{ title }}
           </h1>
           <p class="text-muted mt-2 text-sm sm:text-base">
@@ -85,8 +85,26 @@
           </UFormField>
         </template>
 
-        <!-- Pro: Numéro Adeli -->
+        <!-- Pro: Emploi (profession de santé) + Numéro Adeli -->
         <template v-if="role === 'pro'">
+          <UFormField label="Profession (emploi)" name="emploi" required class="w-full">
+            <USelectMenu
+              v-model="form.emploi"
+              :items="proEmploiItems"
+              value-key="value"
+              placeholder="Rechercher votre profession..."
+              size="lg"
+              class="w-full"
+              :ui="{ rounded: 'rounded-xl' }"
+              searchable
+              by="value"
+            >
+              <template #label>
+                <span v-if="form.emploi">{{ form.emploi }}</span>
+                <span v-else class="text-gray-400">Rechercher votre profession...</span>
+              </template>
+            </USelectMenu>
+          </UFormField>
           <UFormField label="Numéro Adeli" name="adeli" required class="w-full">
             <UInput
               v-model="form.adeli"
@@ -152,6 +170,10 @@
 </template>
 
 <script setup lang="ts">
+import { PRO_SANTE_EMPLOIS } from '~/constants/proEmploi';
+
+const proEmploiItems = [...PRO_SANTE_EMPLOIS];
+
 const props = withDefaults(
   defineProps<{
     role: 'lab' | 'pro' | 'nurse';
@@ -191,6 +213,7 @@ const form = reactive({
   adeli: '',
   rpps: '',
   company_name: '',
+  emploi: '' as string,
 });
 
 // Pré-remplir l'email depuis l'URL (ex. /nurse/register?email=xxx après choix sur login)
@@ -208,7 +231,7 @@ const loading = ref(false);
 const canSubmit = computed(() => {
   if (!form.email?.trim() || !form.first_name?.trim() || !form.last_name?.trim()) return false;
   if (props.role === 'lab' && !form.siret?.replace(/\s/g, '')) return false;
-  if (props.role === 'pro' && !form.adeli?.replace(/\s/g, '')) return false;
+  if (props.role === 'pro' && (!form.adeli?.replace(/\s/g, '') || !form.emploi?.trim())) return false;
   if (props.role === 'nurse' && !form.rpps?.replace(/\s/g, '')) return false;
   return true;
 });
@@ -226,7 +249,10 @@ function onSubmit() {
     payload.siret = (form.siret || '').replace(/\s/g, '');
     payload.company_name = form.company_name?.trim() || '';
   }
-  if (props.role === 'pro') payload.adeli = (form.adeli || '').replace(/\s/g, '');
+  if (props.role === 'pro') {
+    payload.adeli = (form.adeli || '').replace(/\s/g, '');
+    if (form.emploi?.trim()) payload.emploi = form.emploi.trim();
+  }
   if (props.role === 'nurse') payload.rpps = (form.rpps || '').replace(/\s/g, '');
   emit('submit', payload);
 }

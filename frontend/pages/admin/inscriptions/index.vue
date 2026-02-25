@@ -72,7 +72,7 @@
         </template>
 
         <div class="space-y-3 text-sm">
-          <div class="font-semibold text-foreground truncate">
+          <div class="font-normal text-foreground truncate">
             {{ req.first_name }} {{ req.last_name }}
           </div>
           <div class="flex items-center gap-2 text-muted">
@@ -152,7 +152,7 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
-const toast = useToast();
+const toast = useAppToast();
 
 const requests = ref<any[]>([]);
 const loading = ref(true);

@@ -43,12 +43,14 @@ $db = new PDO($dsn, $config['username'], $config['password'], $config['options']
 $crypto = new Crypto();
 $logger = new Logger();
 
-// Extraire l'ID depuis l'URL
+// Extraire l'ID depuis l'URL (injecté par le routeur dans $_GET, ou fallback depuis REQUEST_URI)
 $id = $_GET['id'] ?? null;
-
-// #region agent log - HYPOTHESIS 2, 5: After ID extraction
-file_put_contents('/Users/alessandro/Documents/onev2/.cursor/debug.log', json_encode(['sessionId'=>'debug-session','runId'=>'run1','hypothesisId'=>'H2_H5','location'=>'medical-documents/[id]/download.php:45','message'=>'ID extracted','data'=>['id'=>$id,'id_is_null'=>$id===null],'timestamp'=>round(microtime(true)*1000)])."\n", FILE_APPEND);
-// #endregion
+if ($id === null || $id === '') {
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    if (preg_match('#/medical-documents/([a-f0-9-]{36})/download#i', $uri, $m)) {
+        $id = $m[1];
+    }
+}
 
 if (!$id) {
     http_response_code(400);
@@ -57,17 +59,17 @@ if (!$id) {
 }
 
 try {
-    // Récupérer le document
+    // Récupérer le document (LEFT JOIN : document de profil peut avoir appointment_id NULL)
     $stmt = $db->prepare('
         SELECT 
             md.*,
-            a.patient_id,
+            a.patient_id AS apt_patient_id,
             a.assigned_to,
             a.assigned_nurse_id,
             a.assigned_lab_id,
-            a.created_by
+            a.created_by AS apt_created_by
         FROM medical_documents md
-        JOIN appointments a ON md.appointment_id = a.id
+        LEFT JOIN appointments a ON md.appointment_id = a.id
         WHERE md.id = ?
     ');
     $stmt->execute([$id]);
@@ -81,14 +83,84 @@ try {
     }
     
     // Vérifier les permissions
-    $hasAccess = (
-        $document['patient_id'] === $user['user_id'] ||
-        $document['assigned_nurse_id'] === $user['user_id'] ||
-        $document['assigned_lab_id'] === $user['user_id'] ||
-        $document['created_by'] === $user['user_id'] ||
-        $document['uploaded_by'] === $user['user_id'] ||
-        $user['role'] === 'super_admin'
-    );
+    $hasAccess = false;
+    if ($user['role'] === 'super_admin') {
+        $hasAccess = true;
+    } elseif ($document['uploaded_by'] === $user['user_id']) {
+        $hasAccess = true;
+    } elseif (!empty($document['appointment_id'])) {
+        // Document lié à un RDV : droits via le rendez-vous
+        $hasAccess = (
+            $document['apt_patient_id'] === $user['user_id'] ||
+            $document['assigned_nurse_id'] === $user['user_id'] ||
+            $document['assigned_lab_id'] === $user['user_id'] ||
+            (!empty($document['assigned_to']) && $document['assigned_to'] === $user['user_id']) ||
+            $document['apt_created_by'] === $user['user_id']
+        );
+        // Lab / subaccount / nurse : si pas d'accès via ce RDV, autoriser si au moins un RDV avec ce patient leur est assigné (doc "compte patient" d'un autre RDV)
+        if (!$hasAccess && !empty($document['apt_patient_id']) && in_array($user['role'], ['lab', 'subaccount', 'nurse'], true)) {
+            $docPatientId = $document['apt_patient_id'];
+            if ($user['role'] === 'nurse') {
+                $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND assigned_nurse_id = ? LIMIT 1');
+                $chk->execute([$docPatientId, $user['user_id']]);
+                if ($chk->fetch()) {
+                    $hasAccess = true;
+                }
+            } else {
+                $teamStmt = $db->prepare("SELECT id FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
+                $teamStmt->execute([$user['user_id'], $user['user_id']]);
+                $teamIds = array_column($teamStmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+                if (!empty($teamIds)) {
+                    $placeholders = implode(',', array_fill(0, count($teamIds), '?'));
+                    $chk = $db->prepare("SELECT 1 FROM appointments WHERE patient_id = ? AND (assigned_lab_id IN ($placeholders) OR assigned_to IN ($placeholders)) LIMIT 1");
+                    $chk->execute(array_merge([$docPatientId], $teamIds, $teamIds));
+                    if ($chk->fetch()) {
+                        $hasAccess = true;
+                    }
+                }
+            }
+        }
+    } else {
+        // Document de profil (appointment_id NULL) : patient, pro créateur, ou lab/subaccount/nurse ayant un RDV avec ce patient
+        $patStmt = $db->prepare('SELECT patient_id FROM patient_documents WHERE medical_document_id = ? LIMIT 1');
+        $patStmt->execute([$id]);
+        $pd = $patStmt->fetch(PDO::FETCH_ASSOC);
+        if ($pd && !empty($pd['patient_id'])) {
+            $docPatientId = $pd['patient_id'];
+            if ($docPatientId === $user['user_id']) {
+                $hasAccess = true;
+            } else {
+                $createdStmt = $db->prepare('SELECT created_by FROM profiles WHERE id = ? LIMIT 1');
+                $createdStmt->execute([$docPatientId]);
+                $prof = $createdStmt->fetch(PDO::FETCH_ASSOC);
+                if ($prof && ($prof['created_by'] ?? '') === $user['user_id']) {
+                    $hasAccess = true;
+                }
+            }
+            // Lab / subaccount / nurse : accès si au moins un RDV avec ce patient leur est assigné
+            if (!$hasAccess && in_array($user['role'], ['lab', 'subaccount', 'nurse'], true)) {
+                if ($user['role'] === 'nurse') {
+                    $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND assigned_nurse_id = ? LIMIT 1');
+                    $chk->execute([$docPatientId, $user['user_id']]);
+                    if ($chk->fetch()) {
+                        $hasAccess = true;
+                    }
+                } else {
+                    $teamStmt = $db->prepare("SELECT id FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
+                    $teamStmt->execute([$user['user_id'], $user['user_id']]);
+                    $teamIds = array_column($teamStmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+                    if (!empty($teamIds)) {
+                        $placeholders = implode(',', array_fill(0, count($teamIds), '?'));
+                        $chk = $db->prepare("SELECT 1 FROM appointments WHERE patient_id = ? AND (assigned_lab_id IN ($placeholders) OR assigned_to IN ($placeholders)) LIMIT 1");
+                        $chk->execute(array_merge([$docPatientId], $teamIds, $teamIds));
+                        if ($chk->fetch()) {
+                            $hasAccess = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
     
     if (!$hasAccess) {
         http_response_code(403);

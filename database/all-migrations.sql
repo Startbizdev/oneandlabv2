@@ -512,6 +512,14 @@ ALTER TABLE care_categories
 ADD COLUMN icon VARCHAR(120) NULL DEFAULT NULL AFTER type;
 
 -- ============================================================================
+-- Migration 037 : created_by sur profiles (patients créés par le pro)
+-- ============================================================================
+ALTER TABLE profiles
+ADD COLUMN created_by CHAR(36) NULL AFTER role,
+ADD INDEX idx_profiles_created_by (created_by),
+ADD CONSTRAINT fk_profiles_created_by FOREIGN KEY (created_by) REFERENCES profiles(id) ON DELETE SET NULL;
+
+-- ============================================================================
 -- FIN DES MIGRATIONS
 -- ============================================================================
 -- Pour créer les utilisateurs de test avec chiffrement, exécutez :

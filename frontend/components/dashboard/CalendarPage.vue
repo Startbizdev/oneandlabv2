@@ -49,6 +49,7 @@
             <span class="sm:hidden">Rafraîchir</span>
           </UButton>
           <UButton
+            v-if="showNewAppointmentButton"
             color="primary"
             size="sm"
             icon="i-lucide-plus"
@@ -97,6 +98,7 @@
             item-date-key="scheduled_at"
             item-status-key="status"
             :selected-day="selectedDay"
+            :disable-add="!showNewAppointmentButton"
             @item-click="viewAppointment"
             @day-click="onDayClick"
             @add-event="onAddEvent"
@@ -125,7 +127,7 @@
         >
           <div class="sticky top-4 rounded-xl border border-default bg-default p-3 sm:p-4 shadow-sm">
             <div class="flex items-center justify-between mb-4">
-              <h3 class="font-semibold text-default">
+              <h3 class="font-normal text-default">
                 {{ selectedDayLabel }}
               </h3>
               <UButton
@@ -205,12 +207,15 @@ const props = withDefaults(
     showTypeFilter?: boolean
     /** Masquer les boutons Actualiser / Nouveau RDV (à utiliser quand la page utilise TitleDashboard #actions) */
     hideHeaderActions?: boolean
+    /** Afficher le bouton Nouveau RDV (masquer pour préleveur : ne crée pas de RDV) */
+    showNewAppointmentButton?: boolean
   }>(),
   {
     title: 'Calendrier',
     showSearch: false,
     showTypeFilter: false,
     hideHeaderActions: false,
+    showNewAppointmentButton: true,
   }
 );
 
@@ -326,7 +331,7 @@ const onDayClick = (day: { fullDate: Date | null }) => {
   selectedDay.value = day.fullDate ?? null;
 };
 
-const toast = useToast();
+const toast = useAppToast();
 
 const onAddEvent = (date?: Date) => {
   const query: Record<string, string> = {};
@@ -357,6 +362,11 @@ watch(loading, (now, prev) => {
 
 onMounted(() => {
   fetchAppointments();
+});
+
+defineExpose({
+  fetchAppointments,
+  loading,
 });
 
 const viewAppointment = (appointment: any) => {

@@ -210,6 +210,18 @@ class Review
                 }
             }
             
+            // Nom affiché pour le professionnel (ex: "M. D.")
+            $first = $decryptedReview['patient_first_name'] ?? null;
+            $last = $decryptedReview['patient_last_name'] ?? null;
+            if ($first !== null && $first !== '') {
+                $decryptedReview['reviewer_name'] = substr($first, 0, 1) . '.';
+                if ($last !== null && $last !== '') {
+                    $decryptedReview['reviewer_name'] .= ' ' . substr($last, 0, 1) . '.';
+                }
+            } else {
+                $decryptedReview['reviewer_name'] = 'Patient';
+            }
+            
             $decryptedReviews[] = $decryptedReview;
         }
         

@@ -35,7 +35,9 @@ if (!$appointmentId) {
     exit;
 }
 
-$pdo = getDBConnection();
+$config = require __DIR__ . '/../../../config/database.php';
+$dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
+$pdo = new PDO($dsn, $config['username'], $config['password'], $config['options']);
 
 $sql = 'SELECT * FROM appointment_status_updates WHERE appointment_id = :id ORDER BY created_at DESC';
 $stmt = $pdo->prepare($sql);

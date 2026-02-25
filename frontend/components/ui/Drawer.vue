@@ -53,7 +53,7 @@
           <div class="relative flex h-full flex-col bg-white py-6 shadow-xl overflow-hidden">
             <!-- Header -->
             <div class="px-4 sm:px-6 flex-shrink-0">
-              <h2 :id="`drawer-title-${drawerId.value}`" class="text-base font-semibold text-gray-900">
+              <h2 :id="`drawer-title-${drawerId.value}`" class="text-base font-normal text-gray-900">
                 <slot name="title">{{ title }}</slot>
               </h2>
             </div>

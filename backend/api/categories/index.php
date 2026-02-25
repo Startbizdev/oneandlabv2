@@ -37,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Liste des catégories (public pour patients, authentifié pour admins)
     try {
         $type = $_GET['type'] ?? null;
+        $providerId = $_GET['provider_id'] ?? null;
         $includeInactive = isset($_GET['include_inactive']) && $_GET['include_inactive'] === 'true';
 
         // Vérifier si l'utilisateur est authentifié (pour voir les catégories inactives)
@@ -46,23 +47,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $user = $authMiddleware->handle();
         }
 
-        $sql = 'SELECT id, name, description, type, icon, is_active, created_at FROM care_categories WHERE 1=1';
-        $params = [];
+        // Si provider_id est fourni, retourner uniquement les catégories activées par ce provider
+        if ($providerId) {
+            // Déterminer le rôle du provider
+            $roleStmt = $db->prepare('SELECT role FROM profiles WHERE id = ?');
+            $roleStmt->execute([$providerId]);
+            $providerRow = $roleStmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$includeInactive || !$user) {
-            $sql .= ' AND is_active = TRUE';
+            if ($providerRow && $providerRow['role'] === 'nurse') {
+                // Infirmier : catégories nursing activées via nurse_category_preferences
+                $iconColStmt = $db->query("SHOW COLUMNS FROM care_categories LIKE 'icon'");
+                $iconCol = $iconColStmt && $iconColStmt->rowCount() > 0 ? ', cc.icon' : '';
+                $sql = "
+                    SELECT cc.id, cc.name, cc.description, cc.type{$iconCol}, cc.is_active, cc.created_at
+                    FROM care_categories cc
+                    LEFT JOIN nurse_category_preferences ncp
+                        ON cc.id = ncp.category_id AND ncp.nurse_id = ?
+                    WHERE cc.is_active = TRUE
+                    AND cc.type = 'nursing'
+                    AND (ncp.id IS NULL OR ncp.is_enabled = TRUE)
+                    ORDER BY cc.name ASC
+                ";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([$providerId]);
+                $categories = $stmt->fetchAll();
+            } else {
+                // Lab/subaccount : toutes les catégories blood_test actives
+                $sql = 'SELECT id, name, description, type, icon, is_active, created_at FROM care_categories WHERE is_active = TRUE AND type = ? ORDER BY name ASC';
+                $stmt = $db->prepare($sql);
+                $stmt->execute(['blood_test']);
+                $categories = $stmt->fetchAll();
+            }
+        } else {
+            $sql = 'SELECT id, name, description, type, icon, is_active, created_at FROM care_categories WHERE 1=1';
+            $params = [];
+
+            if (!$includeInactive || !$user) {
+                $sql .= ' AND is_active = TRUE';
+            }
+
+            if ($type) {
+                $sql .= ' AND type = ?';
+                $params[] = $type;
+            }
+
+            $sql .= ' ORDER BY name ASC';
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            $categories = $stmt->fetchAll();
         }
-
-        if ($type) {
-            $sql .= ' AND type = ?';
-            $params[] = $type;
-        }
-
-        $sql .= ' ORDER BY name ASC';
-
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-        $categories = $stmt->fetchAll();
 
         echo json_encode([
             'success' => true,

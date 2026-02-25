@@ -1,12 +1,17 @@
 <template>
-  <div class="container mx-auto px-4 py-8 max-w-7xl">
-    <div class="flex justify-between items-center mb-8">
-      <h1 class="text-3xl font-bold">Mes documents médicaux</h1>
-      <UButton @click="showUploadModal = true" color="primary" icon="i-lucide-upload" size="lg">
-        Ajouter un document
-      </UButton>
-    </div>
+  <div class="space-y-6">
+    <TitleDashboard
+      title="Mes documents médicaux"
+      description="Consultez et gérez vos documents de santé"
+    >
+      <template #actions>
+        <UButton @click="showUploadModal = true" color="primary" icon="i-lucide-upload" size="sm">
+          Ajouter un document
+        </UButton>
+      </template>
+    </TitleDashboard>
 
+    <div class="container mx-auto px-4 max-w-7xl">
     <div v-if="loading" class="py-12 text-center">
       <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-primary mb-2" />
       <p class="text-gray-500">Chargement des documents...</p>
@@ -26,7 +31,7 @@
             <div class="flex items-center gap-3">
               <UIcon name="i-lucide-file-text" class="w-8 h-8 text-blue-500" />
               <div>
-                <p class="font-semibold">{{ doc.file_name }}</p>
+                <p class="font-normal">{{ doc.file_name }}</p>
                 <p class="text-sm text-gray-500">{{ doc.document_type }}</p>
               </div>
             </div>
@@ -52,7 +57,7 @@
     <UModal v-model="showUploadModal">
       <UCard>
         <template #header>
-          <h2 class="text-xl font-bold">Ajouter un document</h2>
+          <h2 class="text-xl font-normal">Ajouter un document</h2>
         </template>
         
         <UForm :state="uploadForm" @submit="uploadDocument" class="space-y-4">
@@ -65,7 +70,7 @@
               type="file" 
               ref="fileInput"
               @change="handleFileSelect"
-              class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-normal file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
             />
             <p v-if="uploadForm.file" class="text-sm text-gray-600 mt-2">
               {{ uploadForm.file.name }} ({{ (uploadForm.file.size / 1024 / 1024).toFixed(2) }} MB)
@@ -83,6 +88,7 @@
         </UForm>
       </UCard>
     </UModal>
+    </div>
   </div>
 </template>
 
@@ -100,7 +106,7 @@ const loading = ref(true);
 const showUploadModal = ref(false);
 const uploading = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
-const toast = useToast();
+const toast = useAppToast();
 
 const uploadForm = reactive({
   document_type: 'prescription',

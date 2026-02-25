@@ -24,7 +24,7 @@ definePageMeta({
 
 import { apiFetch } from '~/utils/api';
 const route = useRoute();
-const toast = useToast();
+const toast = useAppToast();
 const formRef = ref<{ setLoading: (v: boolean) => void } | null>(null);
 
 async function onSubmit(payload: Record<string, string>) {

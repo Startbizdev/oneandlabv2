@@ -33,25 +33,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Authentification (optionnelle pour GET, requise pour POST)
+// Authentification requise pour GET (liste filtrée par rôle) et POST
 $user = null;
-if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_SERVER['HTTP_AUTHORIZATION'])) {
-    logAppointment('Authentification requise', ['method' => $_SERVER['REQUEST_METHOD'], 'has_auth_header' => isset($_SERVER['HTTP_AUTHORIZATION'])]);
-    try {
-        $authMiddleware = new AuthMiddleware();
-        $user = $authMiddleware->handle();
-        logAppointment('Authentification réussie', ['user_id' => $user['user_id'] ?? null, 'role' => $user['role'] ?? null]);
-        
-        // Vérifier CSRF pour les requêtes modifiantes
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            CSRFMiddleware::handle();
-        }
-    } catch (Exception $e) {
-        logAppointment('ERREUR lors de l\'authentification', ['error' => $e->getMessage()]);
-        throw $e;
+try {
+    $authMiddleware = new AuthMiddleware();
+    $user = $authMiddleware->handle();
+    logAppointment('Authentification réussie', ['user_id' => $user['user_id'] ?? null, 'role' => $user['role'] ?? null]);
+    
+    // Vérifier CSRF pour les requêtes modifiantes
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        CSRFMiddleware::handle();
     }
-} else {
-    logAppointment('Pas d\'authentification requise pour GET');
+} catch (Exception $e) {
+    logAppointment('ERREUR lors de l\'authentification', ['error' => $e->getMessage()]);
+    throw $e;
 }
 
 $appointmentModel = new Appointment();
@@ -154,103 +149,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $params[] = $type;
     }
     
-    // Filtrer selon le rôle de l'utilisateur
+    // Filtrer selon le rôle de l'utilisateur (super_admin peut passer user_id pour voir les RDV d'un user)
     if ($user) {
         $role = $user['role'];
         $userId = $user['user_id'];
-        
+        if ($user['role'] === 'super_admin' && !empty($_GET['user_id'])) {
+            $requestedUserId = trim((string) $_GET['user_id']);
+            $roleStmt = $db->prepare('SELECT role FROM profiles WHERE id = ? LIMIT 1');
+            $roleStmt->execute([$requestedUserId]);
+            $targetProfile = $roleStmt->fetch(PDO::FETCH_ASSOC);
+            if ($targetProfile && !empty($targetProfile['role'])) {
+                $userId = $requestedUserId;
+                $role = $targetProfile['role'];
+                logAppointment('Super admin: RDV pour user_id', ['user_id' => $userId, 'role' => $role]);
+            }
+        }
+
         if ($role === 'patient') {
             $sql .= ' AND a.patient_id = ?';
             $params[] = $userId;
         } elseif ($role === 'nurse') {
             logAppointment('Filtrage pour infirmier', ['user_id' => $userId, 'status' => $status]);
-            
-            // Les infirmiers ne voient QUE les rendez-vous de soins infirmiers (pas les prises de sang)
             $sql .= " AND a.type = 'nursing'";
-            
-            // Si on cherche spécifiquement les pending, retourner SEULEMENT les rendez-vous pending non assignés dans la zone
-            $isPendingFilter = ($status === 'pending' || (is_string($status) && strpos($status, 'pending') !== false));
-            
-            if ($isPendingFilter) {
-                // Pour status=pending, on veut SEULEMENT les rendez-vous qu'on peut accepter (non assignés, dans la zone)
-                logAppointment('Filtre pending: recherche rendez-vous à accepter uniquement');
-                
-                // Récupérer la zone de couverture de l'infirmier
-                $coverageZoneSql = 'SELECT center_lat, center_lng, radius_km FROM coverage_zones WHERE owner_id = ? AND role = ? AND is_active = TRUE LIMIT 1';
-                $coverageStmt = $db->prepare($coverageZoneSql);
-                $coverageStmt->execute([$userId, 'nurse']);
-                $coverageZone = $coverageStmt->fetch(PDO::FETCH_ASSOC);
-                
-                logAppointment('Zone de couverture récupérée pour pending', ['coverageZone' => $coverageZone]);
-                
-                if ($coverageZone && $coverageZone['center_lat'] && $coverageZone['center_lng'] && $coverageZone['radius_km']) {
-                    $centerLat = floatval($coverageZone['center_lat']);
-                    $centerLng = floatval($coverageZone['center_lng']);
-                    $radiusKm = floatval($coverageZone['radius_km']);
-                    
-                    // Condition pour les rendez-vous pending NON ASSIGNÉS dans la zone de couverture
-                    // Note: le filtre status='pending' est déjà appliqué avant (ligne 134-143)
-                    $sql .= " AND a.assigned_nurse_id IS NULL";
-                    $sql .= " AND a.location_lat IS NOT NULL";
-                    $sql .= " AND a.location_lng IS NOT NULL";
-                    $sql .= " AND (
-                        6371 * acos(
-                            cos(? * PI() / 180) * cos(a.location_lat * PI() / 180) *
-                            cos(a.location_lng * PI() / 180 - ? * PI() / 180) +
-                            sin(? * PI() / 180) * sin(a.location_lat * PI() / 180)
-                        )
-                    ) <= ?";
-                    $params[] = $centerLat;
-                    $params[] = $centerLng;
-                    $params[] = $centerLat;
-                    $params[] = $radiusKm;
-                    
-                    logAppointment('Condition pending dans zone ajoutée (non assignés uniquement)');
-                } else {
-                    // Pas de zone de couverture, aucun rendez-vous pending à retourner
-                    logAppointment('Pas de zone de couverture, aucun pending disponible');
-                    $sql .= " AND 1=0"; // Retourner aucun résultat
-                }
-            } else {
-                // Pour les autres statuts ou sans filtre, retourner les rendez-vous assignés à l'infirmier
-                logAppointment('Pas de filtre pending: retourner rendez-vous assignés');
-                $sql .= ' AND a.assigned_nurse_id = ?';
-                $params[] = $userId;
-                
-                // Si pas de filtre de statut, inclure aussi les pending dans la zone pour la liste générale
-                if ($status === null) {
-                    $coverageZoneSql = 'SELECT center_lat, center_lng, radius_km FROM coverage_zones WHERE owner_id = ? AND role = ? AND is_active = TRUE LIMIT 1';
-                    $coverageStmt = $db->prepare($coverageZoneSql);
-                    $coverageStmt->execute([$userId, 'nurse']);
-                    $coverageZone = $coverageStmt->fetch(PDO::FETCH_ASSOC);
-                    
-                    if ($coverageZone && $coverageZone['center_lat'] && $coverageZone['center_lng'] && $coverageZone['radius_km']) {
-                        $centerLat = floatval($coverageZone['center_lat']);
-                        $centerLng = floatval($coverageZone['center_lng']);
-                        $radiusKm = floatval($coverageZone['radius_km']);
-                        
-                        $inZoneCondition = "(
-                            a.status = 'pending' 
-                            AND a.assigned_nurse_id IS NULL 
-                            AND a.location_lat IS NOT NULL 
-                            AND a.location_lng IS NOT NULL
-                            AND (
-                                6371 * acos(
-                                    cos(? * PI() / 180) * cos(a.location_lat * PI() / 180) *
-                                    cos(a.location_lng * PI() / 180 - ? * PI() / 180) +
-                                    sin(? * PI() / 180) * sin(a.location_lat * PI() / 180)
-                                )
-                            ) <= ?
-                        )";
-                        
-                        $sql .= ' OR ' . $inZoneCondition;
-                        $params[] = $centerLat;
-                        $params[] = $centerLng;
-                        $params[] = $centerLat;
-                        $params[] = $radiusKm;
-                    }
-                }
-            }
+            // Assignés à moi OU offerts à moi (pending, dans appointment_offers) — même logique que les labs
+            $sql .= " AND (a.assigned_nurse_id = ? OR (a.assigned_nurse_id IS NULL AND a.status = 'pending' AND EXISTS (SELECT 1 FROM appointment_offers o WHERE o.appointment_id = a.id AND o.profile_id = ?)))";
+            $params[] = $userId;
+            $params[] = $userId;
 
             // Filtrer selon les préférences de catégories de l'infirmier
             // Si l'infirmier n'a pas de préférences, accepter tous les rendez-vous
@@ -277,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 logAppointment('Aucune préférence de catégorie, tous les rendez-vous acceptés');
             }
         } elseif ($role === 'lab') {
-            // Lab : RDV du labo + sous-comptes + préleveurs, prises de sang uniquement
+            // Lab : RDV assignés à l'équipe OU RDV offerts (pending) à l'équipe — prises de sang uniquement
             $teamStmt = $db->prepare("SELECT id FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
             $teamStmt->execute([$userId, $userId]);
             $teamIds = array_column($teamStmt->fetchAll(PDO::FETCH_ASSOC), 'id');
@@ -285,12 +209,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $teamIds = [$userId];
             }
             $placeholders = implode(',', array_fill(0, count($teamIds), '?'));
-            $sql .= " AND a.assigned_lab_id IN ($placeholders) AND a.type = 'blood_test'";
-            $params = array_merge($params, $teamIds);
+            $sql .= " AND a.type = 'blood_test' AND (a.assigned_lab_id IN ($placeholders) OR (a.assigned_lab_id IS NULL AND a.status = 'pending' AND EXISTS (SELECT 1 FROM appointment_offers o WHERE o.appointment_id = a.id AND o.profile_id IN ($placeholders))))";
+            $params = array_merge($params, $teamIds, $teamIds);
         } elseif ($role === 'subaccount') {
-            $sql .= ' AND a.assigned_lab_id = ? AND a.type = ?';
+            $sql .= " AND a.type = 'blood_test' AND (a.assigned_lab_id = ? OR (a.assigned_lab_id IS NULL AND a.status = 'pending' AND EXISTS (SELECT 1 FROM appointment_offers o WHERE o.appointment_id = a.id AND o.profile_id = ?)))";
             $params[] = $userId;
-            $params[] = 'blood_test';
+            $params[] = $userId;
         } elseif ($role === 'preleveur') {
             // Les préleveurs sont assignés via assigned_lab_id (ils appartiennent à un labo)
             // Pour l'instant, on utilise assigned_to comme fallback pour compatibilité
@@ -298,8 +222,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $sql .= ' AND (a.assigned_lab_id = ? OR a.assigned_to = ?) AND a.type = "blood_test"';
             $params[] = $userId;
             $params[] = $userId;
+        } elseif ($role === 'pro') {
+            // Pro : RDV créés par ce professionnel (prise en charge pour ses patients)
+            $sql .= ' AND a.created_by = ?';
+            $params[] = $userId;
         }
-        // super_admin voit tout
+        // super_admin sans user_id voit tout (pas de filtre supplémentaire)
     }
     
     // Compter le total - construire la requête COUNT à partir de la requête principale
@@ -492,6 +420,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'keys' => array_keys($input)
     ]);
     
+    // Remonter category_id en racine si envoyé uniquement dans form_data (ex: formulaire pro)
+    if (empty($input['category_id']) && !empty($input['form_data']['category_id'])) {
+        $input['category_id'] = $input['form_data']['category_id'];
+    }
+    
     try {
         logAppointment('Appel à appointmentModel->create', ['user_id' => $user['user_id'], 'role' => $user['role']]);
         $id = $appointmentModel->create($input, $user['user_id'], $user['role']);
@@ -545,6 +478,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'success' => true,
             'data' => ['id' => $id],
         ]);
+        if (ob_get_level()) {
+            ob_end_flush();
+        }
+        flush();
+        // Dispatch + notifications en arrière-plan pour éviter timeout/crash du serveur
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+        $workerScript = realpath(__DIR__ . '/../../scripts/process-appointment-notifications.php');
+        if ($workerScript && is_readable($workerScript)) {
+            $php = defined('PHP_BINARY') ? PHP_BINARY : 'php';
+            $cmd = sprintf('%s %s %s > /dev/null 2>&1 &', escapeshellcmd($php), escapeshellarg($workerScript), escapeshellarg($id));
+            if (DIRECTORY_SEPARATOR === '\\') {
+                pclose(popen('start /B ' . $cmd, 'r'));
+            } else {
+                exec($cmd);
+            }
+        } else {
+            try {
+                $appointmentModel->runPostCreateNotifications($id, $input);
+            } catch (Throwable $e) {
+                error_log('runPostCreateNotifications failed: ' . $e->getMessage());
+            }
+        }
     } catch (Exception $e) {
         logAppointment('ERREUR lors de la création du rendez-vous', [
             'error' => $e->getMessage(),

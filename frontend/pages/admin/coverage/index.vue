@@ -84,7 +84,7 @@
               <template #header>
               <div class="flex items-start justify-between gap-4">
                 <div>
-                  <h2 class="text-xl font-bold text-foreground">
+                  <h2 class="text-xl font-normal text-foreground">
                     {{ editingZone ? 'Modifier la zone' : 'Créer une zone' }}
                   </h2>
                   <p class="text-sm text-muted mt-1">
@@ -155,7 +155,7 @@
                     :step="5"
                     class="flex-1"
                   />
-                  <span class="font-semibold text-primary-600 w-14">{{ zoneForm.radius_km }} km</span>
+                  <span class="font-normal text-primary-600 w-14">{{ zoneForm.radius_km }} km</span>
                 </div>
               </UFormField>
 
@@ -191,7 +191,7 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
-const toast = useToast();
+const toast = useAppToast();
 
 const zones = ref<any[]>([]);
 const nurses = ref<any[]>([]);

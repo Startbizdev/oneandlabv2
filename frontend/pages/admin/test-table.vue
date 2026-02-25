@@ -1,7 +1,7 @@
 <template>
-  <div class="p-8">
-    <h1 class="text-2xl mb-4">Test Table</h1>
-    
+  <div class="space-y-6">
+    <TitleDashboard title="Test Table" description="Page de test du composant tableau" />
+
     <UTable :data="testData" :columns="columns">
       <template #actions-data="{ row }">
         <UButton size="sm">Voir</UButton>

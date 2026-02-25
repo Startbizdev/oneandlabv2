@@ -129,8 +129,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     $role = $input['role'] ?? $user['role'];
     $ownerId = $user['user_id'];
-    if ($isAdmin && !empty($input['owner_id'])) {
-        $ownerId = $input['owner_id'];
+    if (!empty($input['owner_id'])) {
+        if ($isAdmin) {
+            $ownerId = $input['owner_id'];
+        } elseif ($user['role'] === 'lab') {
+            $userModel = new User();
+            $targetLabId = $userModel->getLabId($input['owner_id']);
+            if ($targetLabId === $user['user_id']) {
+                $ownerId = $input['owner_id'];
+            }
+        }
     }
 
     // Validation pour les cercles uniquement
@@ -148,6 +156,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $centerLng = (float) $input['center_lng'];
     $radiusKm = (float) $input['radius_km'];
     $isActive = !array_key_exists('is_active', $input) || $input['is_active'];
+
+    // Limite rayon pour les infirmiers selon l'abonnement
+    if ($role === 'nurse') {
+        $stmtSub = $db->prepare('SELECT plan_slug FROM subscriptions WHERE user_id = ? AND status IN (\'active\', \'trialing\') ORDER BY updated_at DESC LIMIT 1');
+        $stmtSub->execute([$ownerId]);
+        $sub = $stmtSub->fetch(PDO::FETCH_ASSOC);
+        $planSlug = $sub ? ($sub['plan_slug'] ?? 'discovery') : 'discovery';
+        $limits = require __DIR__ . '/../../config/plan-limits.php';
+        $nurseLimits = $limits['nurse'][$planSlug] ?? $limits['nurse']['discovery'];
+        $maxRadiusKm = $nurseLimits['max_radius_km'] ?? 20;
+        if ($radiusKm > $maxRadiusKm) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'error' => "Votre offre actuelle limite le rayon à {$maxRadiusKm} km. Passez à l'offre Pro pour étendre jusqu'à 100 km.",
+                'code' => 'PLAN_LIMIT',
+                'max_radius_km' => (int) $maxRadiusKm,
+            ]);
+            exit;
+        }
+    }
 
     // Vérifier si une zone existe déjà pour cet owner_id + role
     $stmt = $db->prepare('SELECT id FROM coverage_zones WHERE owner_id = ? AND role = ? LIMIT 1');

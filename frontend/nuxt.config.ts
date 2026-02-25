@@ -7,7 +7,7 @@ export default defineNuxtConfig({
   
     modules: ['@nuxt/ui'],
   
-    css: ['~/assets/css/main.css'],
+    css: ['~/assets/css/main.css', 'leaflet/dist/leaflet.css'],
   
     runtimeConfig: {
       public: {
@@ -71,7 +71,8 @@ export default defineNuxtConfig({
         link: [
           { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
           { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-          { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap' },
+          { rel: 'preconnect', href: 'https://api.iconify.design', crossorigin: '' },
+          { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap' },
         ],
       },
     },

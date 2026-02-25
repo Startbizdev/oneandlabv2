@@ -4,7 +4,7 @@
       <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30">
         <UIcon name="i-lucide-help-circle" class="w-5 h-5 text-primary-600 dark:text-primary-400" />
       </div>
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white">Questions fréquentes</h2>
+      <h2 class="text-xl font-normal text-gray-900 dark:text-white">Questions fréquentes</h2>
     </div>
     <div class="space-y-3">
       <UAccordion 
@@ -26,7 +26,7 @@
         }"
       >
         <template #default="{ item }">
-          <span class="font-semibold text-gray-900 dark:text-white text-sm lg:text-base">
+          <span class="font-normal text-gray-900 dark:text-white text-sm lg:text-base">
             {{ item.label }}
           </span>
         </template>

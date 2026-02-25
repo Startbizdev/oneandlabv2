@@ -6,7 +6,7 @@
           <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900/50 mb-4">
             <UIcon name="i-lucide-check-circle" class="w-10 h-10 text-primary" />
           </div>
-          <h1 class="text-2xl sm:text-3xl font-bold text-foreground">
+          <h1 class="text-2xl sm:text-3xl font-normal text-foreground">
             Demande bien reçue
           </h1>
           <p class="text-muted mt-2">

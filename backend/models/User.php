@@ -84,6 +84,17 @@ class User
         $insertFields = 'id, role, email_encrypted, email_dek, email_hash, first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek, phone_encrypted, phone_dek, created_at, updated_at';
         $insertPlaceholders = '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()';
         $insertParams = [$id, $role, $emailEncrypted['encrypted'], $emailEncrypted['dek'], $emailHash, $firstNameEncrypted['encrypted'], $firstNameEncrypted['dek'], $lastNameEncrypted['encrypted'], $lastNameEncrypted['dek'], $phoneEncrypted, $phoneDek];
+
+        // Patient créé par un pro ou super_admin : lien created_by
+        $createdBy = null;
+        if (($role === 'patient') && !empty($data['created_by']) && in_array($actorRole, ['pro', 'super_admin'], true)) {
+            $createdBy = $data['created_by'];
+        }
+        if ($this->hasCreatedByColumn() && $createdBy) {
+            $insertFields .= ', created_by';
+            $insertPlaceholders .= ', ?';
+            $insertParams[] = $createdBy;
+        }
         
         if ($hasLabId && $labId) {
             $insertFields .= ', lab_id';
@@ -119,6 +130,21 @@ class User
             $insertPlaceholders .= ', ?, ?';
             $insertParams[] = $addressEnc['encrypted'];
             $insertParams[] = $addressEnc['dek'];
+        }
+        // Pro : Adeli et emploi (lors de la création depuis une demande d'inscription)
+        if ($role === 'pro' && $this->hasAdeliColumn() && !empty(trim((string)($data['adeli'] ?? '')))) {
+            $adeliEnc = $this->crypto->encryptField(trim((string)$data['adeli']));
+            $insertFields .= ', adeli_encrypted, adeli_dek';
+            $insertPlaceholders .= ', ?, ?';
+            $insertParams[] = $adeliEnc['encrypted'];
+            $insertParams[] = $adeliEnc['dek'];
+        }
+        if ($role === 'pro' && $this->hasEmploiColumn() && !empty(trim((string)($data['emploi'] ?? '')))) {
+            $emploiVal = trim((string)$data['emploi']);
+            if (strlen($emploiVal) > 120) $emploiVal = substr($emploiVal, 0, 120);
+            $insertFields .= ', emploi';
+            $insertPlaceholders .= ', ?';
+            $insertParams[] = $emploiVal;
         }
         
         $stmt = $this->db->prepare("INSERT INTO profiles ($insertFields) VALUES ($insertPlaceholders)");
@@ -234,6 +260,11 @@ class User
             } else {
                 $user['adeli'] = null;
             }
+            if ($this->hasEmploiColumn() && array_key_exists('emploi', $user)) {
+                $user['emploi'] = $user['emploi'] !== null ? trim((string)$user['emploi']) : null;
+            } else {
+                $user['emploi'] = null;
+            }
             
             // Logger le déchiffrement (obligatoire HDS)
             $this->logger->logDecrypt(
@@ -272,6 +303,20 @@ class User
         
         // Les champs du profil public sont déjà en clair, pas besoin de déchiffrement
         // public_slug, profile_image_url, cover_image_url, biography, faq, is_public_profile_enabled
+        // Décoder les colonnes JSON pour la réponse API
+        foreach (['opening_hours', 'social_links', 'nurse_qualifications'] as $jsonCol) {
+            if (isset($user[$jsonCol]) && is_string($user[$jsonCol]) && $user[$jsonCol] !== '') {
+                $decoded = json_decode($user[$jsonCol], true);
+                $user[$jsonCol] = $decoded !== null ? $decoded : $user[$jsonCol];
+            }
+        }
+
+        // Normaliser les booléens lab/subaccount pour que le front reçoive toujours true/false (évite 0/1)
+        foreach (['is_accepting_appointments', 'accept_rdv_saturday', 'accept_rdv_sunday'] as $boolCol) {
+            if (array_key_exists($boolCol, $user)) {
+                $user[$boolCol] = (bool) ($user[$boolCol] ?? false);
+            }
+        }
         
         return $user;
     }
@@ -458,6 +503,12 @@ class User
                 $updates[] = 'adeli_encrypted = NULL, adeli_dek = NULL';
             }
         }
+        if ($this->hasEmploiColumn() && array_key_exists('emploi', $data)) {
+            $emploiVal = trim((string)$data['emploi']);
+            if (strlen($emploiVal) > 120) $emploiVal = substr($emploiVal, 0, 120);
+            $updates[] = 'emploi = ?';
+            $params[] = $emploiVal !== '' ? $emploiVal : null;
+        }
         
         if ($this->hasLabIdColumn() && array_key_exists('lab_id', $data)) {
             $updates[] = 'lab_id = ?';
@@ -494,9 +545,65 @@ class User
             $updates[] = 'is_public_profile_enabled = ?';
             $params[] = $data['is_public_profile_enabled'] ? 1 : 0;
         }
-        
+        if (array_key_exists('website_url', $data)) {
+            $updates[] = 'website_url = ?';
+            $params[] = !empty(trim((string)$data['website_url'])) ? trim((string)$data['website_url']) : null;
+        }
+        if (array_key_exists('opening_hours', $data)) {
+            $updates[] = 'opening_hours = ?';
+            $params[] = is_array($data['opening_hours']) ? json_encode($data['opening_hours']) : ($data['opening_hours'] ?: null);
+        }
+        if (array_key_exists('social_links', $data)) {
+            $updates[] = 'social_links = ?';
+            $params[] = is_array($data['social_links']) ? json_encode($data['social_links']) : ($data['social_links'] ?: null);
+        }
+        if (array_key_exists('years_experience', $data)) {
+            $updates[] = 'years_experience = ?';
+            $params[] = $data['years_experience'] ?: null;
+        }
+        if (array_key_exists('nurse_qualifications', $data)) {
+            $updates[] = 'nurse_qualifications = ?';
+            $params[] = is_array($data['nurse_qualifications']) ? json_encode($data['nurse_qualifications']) : ($data['nurse_qualifications'] ?: null);
+        }
+        if (array_key_exists('is_accepting_appointments', $data)) {
+            $updates[] = 'is_accepting_appointments = ?';
+            $params[] = $data['is_accepting_appointments'] ? 1 : 0;
+        }
+        if (array_key_exists('min_booking_lead_time_hours', $data)) {
+            $hours = (int) $data['min_booking_lead_time_hours'];
+            if (in_array($hours, [0, 24, 48, 72], true)) {
+                $updates[] = 'min_booking_lead_time_hours = ?';
+                $params[] = $hours;
+            }
+        }
+        if (array_key_exists('accept_rdv_saturday', $data)) {
+            $updates[] = 'accept_rdv_saturday = ?';
+            $params[] = $data['accept_rdv_saturday'] ? 1 : 0;
+        }
+        if (array_key_exists('accept_rdv_sunday', $data)) {
+            $updates[] = 'accept_rdv_sunday = ?';
+            $params[] = $data['accept_rdv_sunday'] ? 1 : 0;
+        }
+
         if (empty($updates)) {
             return false;
+        }
+        
+        // Redirection 301 : enregistrer l’ancien slug quand public_slug change (lab/subaccount)
+        if (isset($data['public_slug'])) {
+            $newSlug = trim((string) ($data['public_slug'] ?? ''));
+            $stmtCurrent = $this->db->prepare('SELECT public_slug FROM profiles WHERE id = ?');
+            $stmtCurrent->execute([$id]);
+            $row = $stmtCurrent->fetch(PDO::FETCH_ASSOC);
+            $oldSlug = $row ? trim((string) ($row['public_slug'] ?? '')) : '';
+            if ($oldSlug !== '' && $oldSlug !== $newSlug && $this->hasSlugRedirectsTable()) {
+                try {
+                    $ins = $this->db->prepare('INSERT INTO slug_redirects (old_slug, profile_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE profile_id = VALUES(profile_id)');
+                    $ins->execute([$oldSlug, $id]);
+                } catch (Exception $e) {
+                    // ignorer si table absente ou erreur
+                }
+            }
         }
         
         $updates[] = 'updated_at = NOW()';
@@ -542,6 +649,16 @@ class User
         return $hasColumn;
     }
 
+    private function hasCreatedByColumn(): bool
+    {
+        static $hasColumn = null;
+        if ($hasColumn === null) {
+            $stmt = $this->db->query("SHOW COLUMNS FROM profiles LIKE 'created_by'");
+            $hasColumn = $stmt->rowCount() > 0;
+        }
+        return $hasColumn;
+    }
+
     private function hasSiretColumn(): bool
     {
         static $hasColumn = null;
@@ -552,11 +669,31 @@ class User
         return $hasColumn;
     }
 
+    private function hasSlugRedirectsTable(): bool
+    {
+        static $has = null;
+        if ($has === null) {
+            $stmt = $this->db->query("SHOW TABLES LIKE 'slug_redirects'");
+            $has = $stmt->rowCount() > 0;
+        }
+        return $has;
+    }
+
     private function hasAdeliColumn(): bool
     {
         static $hasColumn = null;
         if ($hasColumn === null) {
             $stmt = $this->db->query("SHOW COLUMNS FROM profiles LIKE 'adeli_encrypted'");
+            $hasColumn = $stmt->rowCount() > 0;
+        }
+        return $hasColumn;
+    }
+
+    private function hasEmploiColumn(): bool
+    {
+        static $hasColumn = null;
+        if ($hasColumn === null) {
+            $stmt = $this->db->query("SHOW COLUMNS FROM profiles LIKE 'emploi'");
             $hasColumn = $stmt->rowCount() > 0;
         }
         return $hasColumn;
@@ -585,6 +722,11 @@ class User
             $sql .= ' AND lab_id = ?';
             $params[] = $filters['lab_id'];
         }
+        // Filtrer par created_by (patients du pro)
+        if (!empty($filters['created_by']) && $this->hasCreatedByColumn()) {
+            $sql .= ' AND created_by = ?';
+            $params[] = $filters['created_by'];
+        }
         
         // Compter le total
         $countSql = 'SELECT COUNT(*) as total FROM profiles WHERE 1=1';
@@ -596,6 +738,10 @@ class User
         if (!empty($filters['lab_id']) && $this->hasLabIdColumn()) {
             $countSql .= ' AND lab_id = ?';
             $countParams[] = $filters['lab_id'];
+        }
+        if (!empty($filters['created_by']) && $this->hasCreatedByColumn()) {
+            $countSql .= ' AND created_by = ?';
+            $countParams[] = $filters['created_by'];
         }
         
         $countStmt = $this->db->prepare($countSql);

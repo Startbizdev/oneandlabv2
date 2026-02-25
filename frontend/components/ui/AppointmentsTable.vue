@@ -235,8 +235,9 @@ const getStatusLabel = (status: string) => {
     inProgress: 'En cours',
     completed: 'Terminé',
     canceled: 'Annulé',
-    expired: 'Expiré',
+    cancelled: 'Annulé',
     refused: 'Refusé',
+    expired: 'Expiré',
   };
   return labels[status] || status;
 };

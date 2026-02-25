@@ -2,6 +2,7 @@
 
 /**
  * Classe d'envoi d'emails via SMTP OVH
+ * Template de base minimal (Stripe/Linear/Notion) avec logo.
  */
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -81,6 +82,143 @@ class Email
     }
 
     /**
+     * Template de base minimal (Stripe/Linear/Notion) avec logo.
+     * @param string $content HTML du corps (sans header/footer)
+     * @param array $options title (h1), ctaUrl, ctaLabel
+     */
+    private function baseLayout(string $content, array $options = []): string
+    {
+        $logoUrl = $_ENV['EMAIL_LOGO_URL'] ?? ($_ENV['FRONTEND_URL'] ?? 'https://app.oneandlab.fr') . '/images/onelogo.png';
+        $title = $options['title'] ?? 'OneAndLab';
+        $ctaUrl = $options['ctaUrl'] ?? '';
+        $ctaLabel = $options['ctaLabel'] ?? '';
+        $ctaHtml = '';
+        if ($ctaUrl !== '' && $ctaLabel !== '') {
+            $ctaHtml = '<p style="margin: 24px 0;"><a href="' . htmlspecialchars($ctaUrl) . '" style="display: inline-block; background: #18181b; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500;">' . htmlspecialchars($ctaLabel) . '</a></p>';
+        }
+        return '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; line-height: 1.6; color: #18181b; margin: 0; padding: 0; background: #fafafa; }
+        .wrap { max-width: 480px; margin: 0 auto; padding: 40px 24px; }
+        .card { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .logo { display: block; margin-bottom: 24px; height: 32px; }
+        h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; color: #18181b; }
+        p { margin: 0 0 12px; font-size: 15px; color: #3f3f46; }
+        .footer { text-align: center; margin-top: 32px; font-size: 12px; color: #71717a; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <img src="' . htmlspecialchars($logoUrl) . '" alt="OneAndLab" class="logo" />
+            <h1>' . htmlspecialchars($title) . '</h1>
+            ' . $content . '
+            ' . $ctaHtml . '
+        </div>
+        <p class="footer">OneAndLab — Prise de sang et soins infirmiers à domicile</p>
+    </div>
+</body>
+</html>';
+    }
+
+    public function sendWelcome(string $to, array $p): bool
+    {
+        $content = '<p>Bienvenue sur OneAndLab.</p><p>Vous pouvez désormais prendre rendez-vous pour des prises de sang ou soins infirmiers à domicile.</p>';
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
+        $body = $this->baseLayout($content, [
+            'title' => 'Bienvenue',
+            'ctaUrl' => $baseUrl,
+            'ctaLabel' => 'Accéder à mon espace',
+        ]);
+        return $this->send($to, 'Bienvenue sur OneAndLab', $body, true);
+    }
+
+    public function sendAppointmentCreated(string $to, array $p): bool
+    {
+        $type = ($p['type'] ?? '') === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers';
+        $date = isset($p['scheduled_at']) ? (new DateTime($p['scheduled_at']))->format('d/m/Y à H:i') : '';
+        $content = '<p>Votre rendez-vous a bien été enregistré.</p>';
+        $content .= '<p><strong>Type :</strong> ' . htmlspecialchars($type) . '</p>';
+        if ($date) {
+            $content .= '<p><strong>Date :</strong> ' . htmlspecialchars($date) . '</p>';
+        }
+        $content .= '<p>Il sera pris en charge par un professionnel sous peu. Vous recevrez une confirmation par email.</p>';
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
+        $body = $this->baseLayout($content, [
+            'title' => 'Rendez-vous enregistré',
+            'ctaUrl' => $baseUrl . '/patient',
+            'ctaLabel' => 'Voir mes rendez-vous',
+        ]);
+        return $this->send($to, 'Votre rendez-vous OneAndLab a été enregistré', $body, true);
+    }
+
+    public function sendAppointmentCanceledToPatient(string $to, array $p): bool
+    {
+        $actor = $p['actor_display_label'] ?? 'Le professionnel de santé';
+        $content = '<p>' . htmlspecialchars($actor) . ' a annulé votre rendez-vous.</p>';
+        if (!empty($p['scheduled_at'])) {
+            $date = (new DateTime($p['scheduled_at']))->format('d/m/Y à H:i');
+            $content .= '<p><strong>Date prévue :</strong> ' . htmlspecialchars($date) . '</p>';
+        }
+        $content .= '<p>Vous pouvez prendre un nouveau rendez-vous à tout moment.</p>';
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
+        $body = $this->baseLayout($content, [
+            'title' => 'Rendez-vous annulé',
+            'ctaUrl' => $baseUrl . '/rendez-vous/nouveau',
+            'ctaLabel' => 'Prendre un nouveau rendez-vous',
+        ]);
+        return $this->send($to, 'Rendez-vous annulé — OneAndLab', $body, true);
+    }
+
+    public function sendNewAppointmentToPro(string $to, array $p): bool
+    {
+        $content = '<p>Un nouveau rendez-vous est disponible dans votre zone.</p>';
+        if (!empty($p['scheduled_at'])) {
+            $date = (new DateTime($p['scheduled_at']))->format('d/m/Y à H:i');
+            $content .= '<p><strong>Date :</strong> ' . htmlspecialchars($date) . '</p>';
+        }
+        $content .= '<p>Connectez-vous à votre espace pour l\'accepter.</p>';
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
+        $appointmentId = $p['appointment_id'] ?? '';
+        $path = ($p['role'] ?? '') === 'nurse' ? '/nurse/appointments' : '/lab/appointments';
+        if ($appointmentId) {
+            $path .= '/' . $appointmentId;
+        }
+        $body = $this->baseLayout($content, [
+            'title' => 'Nouveau rendez-vous disponible',
+            'ctaUrl' => $baseUrl . $path,
+            'ctaLabel' => 'Voir le rendez-vous',
+        ]);
+        return $this->send($to, 'Nouveau rendez-vous disponible — OneAndLab', $body, true);
+    }
+
+    public function sendAppointmentAssignedToPreleveur(string $to, array $p): bool
+    {
+        $content = '<p>Un rendez-vous vous a été assigné.</p>';
+        if (!empty($p['scheduled_at'])) {
+            $date = (new DateTime($p['scheduled_at']))->format('d/m/Y à H:i');
+            $content .= '<p><strong>Date :</strong> ' . htmlspecialchars($date) . '</p>';
+        }
+        $content .= '<p>Consultez votre calendrier pour les détails.</p>';
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
+        $appointmentId = $p['appointment_id'] ?? '';
+        $url = $baseUrl . '/preleveur/calendar';
+        if ($appointmentId) {
+            $url = $baseUrl . '/preleveur/appointments/' . $appointmentId;
+        }
+        $body = $this->baseLayout($content, [
+            'title' => 'Rendez-vous assigné',
+            'ctaUrl' => $url,
+            'ctaLabel' => 'Voir le rendez-vous',
+        ]);
+        return $this->send($to, 'Rendez-vous assigné — OneAndLab', $body, true);
+    }
+
+    /**
      * Envoie un code OTP par email
      */
     public function sendOTP(string $to, string $otp): bool
@@ -101,40 +239,39 @@ class Email
     }
 
     /**
-     * Template HTML pour l'email OTP
+     * Template HTML pour l'email OTP — style institutionnel (Stripe/Notion/Linear), logo header sans fond
      */
     private function getOTPTemplate(string $otp): string
     {
-        return '
-<!DOCTYPE html>
+        $logoUrl = $_ENV['EMAIL_LOGO_URL'] ?? ($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr') . '/images/onelogo.png';
+        return '<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #0652DD; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; background-color: #f9f9f9; }
-        .otp-code { font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 5px; color: #0652DD; padding: 20px; background-color: white; border: 2px dashed #0652DD; margin: 20px 0; }
-        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        body { font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; line-height: 1.6; color: #18181b; margin: 0; padding: 0; background: #fafafa; }
+        .wrap { max-width: 480px; margin: 0 auto; padding: 40px 24px; }
+        .card { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .logo { display: block; margin-bottom: 24px; height: 32px; }
+        h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; color: #18181b; }
+        p { margin: 0 0 12px; font-size: 15px; color: #3f3f46; }
+        .otp-code { font-size: 28px; font-weight: 600; text-align: center; letter-spacing: 6px; color: #18181b; padding: 20px; background: #f4f4f5; border-radius: 8px; margin: 24px 0; font-family: ui-monospace, monospace; }
+        .footer { text-align: center; margin-top: 32px; font-size: 12px; color: #71717a; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>OneAndLab</h1>
-        </div>
-        <div class="content">
-            <h2>Votre code de connexion</h2>
+    <div class="wrap">
+        <div class="card">
+            <img src="' . htmlspecialchars($logoUrl) . '" alt="OneAndLab" class="logo" />
+            <h1>Votre code de connexion</h1>
             <p>Bonjour,</p>
             <p>Voici votre code de connexion à usage unique :</p>
             <div class="otp-code">' . htmlspecialchars($otp) . '</div>
             <p>Ce code est valable pendant <strong>5 minutes</strong>.</p>
             <p>Si vous n\'avez pas demandé ce code, ignorez cet email.</p>
         </div>
-        <div class="footer">
-            <p>OneAndLab - Prise de sang et soins infirmiers à domicile</p>
-        </div>
+        <p class="footer">OneAndLab — Prise de sang et soins infirmiers à domicile</p>
     </div>
 </body>
 </html>';
@@ -152,42 +289,41 @@ class Email
     }
 
     /**
-     * Template HTML pour confirmation de rendez-vous
+     * Template HTML pour confirmation de rendez-vous — style institutionnel, logo sans fond
      */
     private function getAppointmentConfirmationTemplate(array $data): string
     {
-        return '
-<!DOCTYPE html>
+        $logoUrl = $_ENV['EMAIL_LOGO_URL'] ?? ($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr') . '/images/onelogo.png';
+        return '<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #0652DD; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; background-color: #f9f9f9; }
-        .info-box { background-color: white; padding: 15px; margin: 10px 0; border-left: 4px solid #0652DD; }
-        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        body { font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; line-height: 1.6; color: #18181b; margin: 0; padding: 0; background: #fafafa; }
+        .wrap { max-width: 480px; margin: 0 auto; padding: 40px 24px; }
+        .card { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .logo { display: block; margin-bottom: 24px; height: 32px; }
+        h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; color: #18181b; }
+        p { margin: 0 0 12px; font-size: 15px; color: #3f3f46; }
+        .info-box { background: #f4f4f5; padding: 16px; margin: 16px 0; border-radius: 8px; border-left: 4px solid #18181b; }
+        .footer { text-align: center; margin-top: 32px; font-size: 12px; color: #71717a; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>OneAndLab</h1>
-        </div>
-        <div class="content">
-            <h2>Votre rendez-vous est confirmé</h2>
+    <div class="wrap">
+        <div class="card">
+            <img src="' . htmlspecialchars($logoUrl) . '" alt="OneAndLab" class="logo" />
+            <h1>Votre rendez-vous est confirmé</h1>
             <p>Bonjour,</p>
             <p>Votre rendez-vous a été confirmé avec succès.</p>
             <div class="info-box">
-                <p><strong>Date et heure :</strong> ' . htmlspecialchars($data['scheduled_at'] ?? '') . '</p>
-                <p><strong>Type :</strong> ' . htmlspecialchars($data['type'] ?? '') . '</p>
+                <p style="margin:0;"><strong>Date et heure :</strong> ' . htmlspecialchars($data['scheduled_at'] ?? '') . '</p>
+                <p style="margin:8px 0 0 0;"><strong>Type :</strong> ' . htmlspecialchars($data['type'] ?? '') . '</p>
             </div>
             <p>Vous recevrez un rappel 30 minutes avant votre rendez-vous.</p>
         </div>
-        <div class="footer">
-            <p>OneAndLab - Prise de sang et soins infirmiers à domicile</p>
-        </div>
+        <p class="footer">OneAndLab — Prise de sang et soins infirmiers à domicile</p>
     </div>
 </body>
 </html>';
@@ -211,40 +347,35 @@ class Email
     {
         $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
         $reviewUrl = $baseUrl . '/patient/appointments/' . $appointmentId;
-        
-        return '
-<!DOCTYPE html>
+        $logoUrl = $_ENV['EMAIL_LOGO_URL'] ?? $baseUrl . '/images/onelogo.png';
+        return '<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #0652DD; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; background-color: #f9f9f9; }
-        .cta-button { display: inline-block; background-color: #0652DD; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
-        .cta-button:hover { background-color: #0540b8; }
-        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        body { font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; line-height: 1.6; color: #18181b; margin: 0; padding: 0; background: #fafafa; }
+        .wrap { max-width: 480px; margin: 0 auto; padding: 40px 24px; }
+        .card { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .logo { display: block; margin-bottom: 24px; height: 32px; }
+        h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; color: #18181b; }
+        p { margin: 0 0 12px; font-size: 15px; color: #3f3f46; }
+        .cta { display: inline-block; background: #18181b; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 500; font-size: 15px; }
+        .footer { text-align: center; margin-top: 32px; font-size: 12px; color: #71717a; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>OneAndLab</h1>
-        </div>
-        <div class="content">
-            <h2>Votre rendez-vous est terminé</h2>
+    <div class="wrap">
+        <div class="card">
+            <img src="' . htmlspecialchars($logoUrl) . '" alt="OneAndLab" class="logo" />
+            <h1>Votre rendez-vous est terminé</h1>
             <p>Bonjour,</p>
             <p>Votre rendez-vous du ' . htmlspecialchars($data['scheduled_at'] ?? '') . ' est maintenant terminé.</p>
-            <p>Nous serions ravis de connaître votre avis sur le service reçu. Votre opinion nous aide à améliorer nos services.</p>
-            <div style="text-align: center;">
-                <a href="' . htmlspecialchars($reviewUrl) . '" class="cta-button">Donner mon avis</a>
-            </div>
-            <p>Merci pour votre confiance !</p>
+            <p>Nous serions ravis de connaître votre avis sur le service reçu.</p>
+            <p style="text-align: center;"><a href="' . htmlspecialchars($reviewUrl) . '" class="cta">Donner mon avis</a></p>
+            <p>Merci pour votre confiance.</p>
         </div>
-        <div class="footer">
-            <p>OneAndLab - Prise de sang et soins infirmiers à domicile</p>
-        </div>
+        <p class="footer">OneAndLab — Prise de sang et soins infirmiers à domicile</p>
     </div>
 </body>
 </html>';
@@ -284,128 +415,125 @@ class Email
     }
 
     /**
-     * Template HTML pour avertissement incident
+     * Template HTML pour avertissement incident — style institutionnel, logo sans fond
      */
     private function getIncidentWarningTemplate(int $incidentCount, string $reason): string
     {
-        return '
-<!DOCTYPE html>
+        $logoUrl = $_ENV['EMAIL_LOGO_URL'] ?? ($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr') . '/images/onelogo.png';
+        return '<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #F4B400; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; background-color: #f9f9f9; }
-        .warning-box { background-color: #fff3cd; border-left: 4px solid #F4B400; padding: 15px; margin: 10px 0; }
-        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        body { font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; line-height: 1.6; color: #18181b; margin: 0; padding: 0; background: #fafafa; }
+        .wrap { max-width: 480px; margin: 0 auto; padding: 40px 24px; }
+        .card { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .logo { display: block; margin-bottom: 24px; height: 32px; }
+        h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; color: #18181b; }
+        p { margin: 0 0 12px; font-size: 15px; color: #3f3f46; }
+        .warning-box { background: #fefce8; border-left: 4px solid #eab308; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0; }
+        .footer { text-align: center; margin-top: 32px; font-size: 12px; color: #71717a; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>OneAndLab</h1>
-        </div>
-        <div class="content">
-            <h2>Avertissement</h2>
+    <div class="wrap">
+        <div class="card">
+            <img src="' . htmlspecialchars($logoUrl) . '" alt="OneAndLab" class="logo" />
+            <h1>Avertissement</h1>
             <p>Bonjour,</p>
             <div class="warning-box">
-                <p><strong>Un incident a été enregistré sur votre compte.</strong></p>
-                <p><strong>Raison :</strong> ' . htmlspecialchars($reason) . '</p>
-                <p><strong>Nombre d\'incidents :</strong> ' . $incidentCount . '</p>
+                <p style="margin:0;"><strong>Un incident a été enregistré sur votre compte.</strong></p>
+                <p style="margin:8px 0 0 0;"><strong>Raison :</strong> ' . htmlspecialchars($reason) . '</p>
+                <p style="margin:8px 0 0 0;"><strong>Nombre d\'incidents :</strong> ' . $incidentCount . '</p>
             </div>
             <p>Nous vous rappelons l\'importance de respecter les règles de la plateforme. En cas de récidive, des sanctions pourront être appliquées.</p>
             <p>Si vous avez des questions, n\'hésitez pas à nous contacter.</p>
         </div>
-        <div class="footer">
-            <p>OneAndLab - Prise de sang et soins infirmiers à domicile</p>
-        </div>
+        <p class="footer">OneAndLab — Prise de sang et soins infirmiers à domicile</p>
     </div>
 </body>
 </html>';
     }
 
     /**
-     * Template HTML pour suspension
+     * Template HTML pour suspension — style institutionnel, logo sans fond
      */
     private function getSuspensionTemplate(int $days, string $reason): string
     {
-        return '
-<!DOCTYPE html>
+        $logoUrl = $_ENV['EMAIL_LOGO_URL'] ?? ($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr') . '/images/onelogo.png';
+        return '<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #DB4437; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; background-color: #f9f9f9; }
-        .suspension-box { background-color: #ffebee; border-left: 4px solid #DB4437; padding: 15px; margin: 10px 0; }
-        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        body { font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; line-height: 1.6; color: #18181b; margin: 0; padding: 0; background: #fafafa; }
+        .wrap { max-width: 480px; margin: 0 auto; padding: 40px 24px; }
+        .card { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .logo { display: block; margin-bottom: 24px; height: 32px; }
+        h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; color: #18181b; }
+        p { margin: 0 0 12px; font-size: 15px; color: #3f3f46; }
+        .alert-box { background: #fef2f2; border-left: 4px solid #dc2626; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0; }
+        .footer { text-align: center; margin-top: 32px; font-size: 12px; color: #71717a; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>OneAndLab</h1>
-        </div>
-        <div class="content">
-            <h2>Suspension de votre compte</h2>
+    <div class="wrap">
+        <div class="card">
+            <img src="' . htmlspecialchars($logoUrl) . '" alt="OneAndLab" class="logo" />
+            <h1>Suspension de votre compte</h1>
             <p>Bonjour,</p>
-            <div class="suspension-box">
-                <p><strong>Votre compte a été suspendu pour une durée de ' . $days . ' jours.</strong></p>
-                <p><strong>Raison :</strong> ' . htmlspecialchars($reason) . '</p>
+            <div class="alert-box">
+                <p style="margin:0;"><strong>Votre compte a été suspendu pour une durée de ' . (int) $days . ' jours.</strong></p>
+                <p style="margin:8px 0 0 0;"><strong>Raison :</strong> ' . htmlspecialchars($reason) . '</p>
             </div>
             <p>Cette suspension fait suite à plusieurs incidents enregistrés sur votre compte. Pendant cette période, vous ne pourrez pas accéder à la plateforme.</p>
             <p>Votre compte sera automatiquement réactivé après la période de suspension.</p>
             <p>Si vous avez des questions ou souhaitez contester cette décision, n\'hésitez pas à nous contacter.</p>
         </div>
-        <div class="footer">
-            <p>OneAndLab - Prise de sang et soins infirmiers à domicile</p>
-        </div>
+        <p class="footer">OneAndLab — Prise de sang et soins infirmiers à domicile</p>
     </div>
 </body>
 </html>';
     }
 
     /**
-     * Template HTML pour bannissement
+     * Template HTML pour bannissement — style institutionnel, logo sans fond
      */
     private function getBanTemplate(string $reason): string
     {
-        return '
-<!DOCTYPE html>
+        $logoUrl = $_ENV['EMAIL_LOGO_URL'] ?? ($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr') . '/images/onelogo.png';
+        return '<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #DB4437; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; background-color: #f9f9f9; }
-        .ban-box { background-color: #ffebee; border-left: 4px solid #DB4437; padding: 15px; margin: 10px 0; }
-        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        body { font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; line-height: 1.6; color: #18181b; margin: 0; padding: 0; background: #fafafa; }
+        .wrap { max-width: 480px; margin: 0 auto; padding: 40px 24px; }
+        .card { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .logo { display: block; margin-bottom: 24px; height: 32px; }
+        h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; color: #18181b; }
+        p { margin: 0 0 12px; font-size: 15px; color: #3f3f46; }
+        .alert-box { background: #fef2f2; border-left: 4px solid #dc2626; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0; }
+        .footer { text-align: center; margin-top: 32px; font-size: 12px; color: #71717a; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>OneAndLab</h1>
-        </div>
-        <div class="content">
-            <h2>Bannissement de votre compte</h2>
+    <div class="wrap">
+        <div class="card">
+            <img src="' . htmlspecialchars($logoUrl) . '" alt="OneAndLab" class="logo" />
+            <h1>Bannissement de votre compte</h1>
             <p>Bonjour,</p>
-            <div class="ban-box">
-                <p><strong>Votre compte a été définitivement banni de la plateforme OneAndLab.</strong></p>
-                <p><strong>Raison :</strong> ' . htmlspecialchars($reason) . '</p>
+            <div class="alert-box">
+                <p style="margin:0;"><strong>Votre compte a été définitivement banni de la plateforme OneAndLab.</strong></p>
+                <p style="margin:8px 0 0 0;"><strong>Raison :</strong> ' . htmlspecialchars($reason) . '</p>
             </div>
             <p>Cette décision fait suite à de multiples incidents graves enregistrés sur votre compte. Vous ne pourrez plus accéder à la plateforme.</p>
             <p>Si vous avez des questions ou souhaitez contester cette décision, vous pouvez nous contacter par email.</p>
         </div>
-        <div class="footer">
-            <p>OneAndLab - Prise de sang et soins infirmiers à domicile</p>
-        </div>
+        <p class="footer">OneAndLab — Prise de sang et soins infirmiers à domicile</p>
     </div>
 </body>
 </html>';

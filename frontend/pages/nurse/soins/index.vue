@@ -1,33 +1,27 @@
 <template>
   <div class="space-y-6">
-    <!-- En-tête avec filtres -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-          Plans de soins actifs
-        </h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Gérez vos soins récurrents sur plusieurs jours
-        </p>
-      </div>
-
-      <!-- Filtres par période -->
-      <div class="flex items-center gap-2">
-        <div class="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-1">
-          <UButton
-            v-for="tab in dateTabs"
-            :key="tab.value"
-            :variant="dateFilter === tab.value ? 'solid' : 'ghost'"
-            :color="dateFilter === tab.value ? 'primary' : 'gray'"
-            size="sm"
-            @click="dateFilter = tab.value"
-            class="transition-all"
-          >
-            {{ tab.label }}
-          </UButton>
+    <TitleDashboard
+      title="Plans de soins actifs"
+      description="Gérez vos soins récurrents sur plusieurs jours"
+    >
+      <template #actions>
+        <div class="flex items-center gap-2">
+          <div class="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-1">
+            <UButton
+              v-for="tab in dateTabs"
+              :key="tab.value"
+              :variant="dateFilter === tab.value ? 'solid' : 'ghost'"
+              :color="dateFilter === tab.value ? 'primary' : 'gray'"
+              size="sm"
+              @click="dateFilter = tab.value"
+              class="transition-all"
+            >
+              {{ tab.label }}
+            </UButton>
+          </div>
         </div>
-      </div>
-    </div>
+      </template>
+    </TitleDashboard>
 
     <div v-if="loading" class="text-center py-12">
       <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-primary-500 mb-2" />
@@ -244,7 +238,7 @@ definePageMeta({
 import { apiFetch } from '~/utils/api';
 
 const { appointments, loading, fetchAppointments } = useAppointments();
-const toast = useToast();
+const toast = useAppToast();
 
 const dateFilter = ref('today');
 const processingAppointments = ref(new Set<string>());
@@ -411,7 +405,10 @@ const getStatusLabel = (status: string) => {
     confirmed: 'Confirmé',
     inProgress: 'En cours',
     completed: 'Terminé',
+    canceled: 'Annulé',
     cancelled: 'Annulé',
+    refused: 'Refusé',
+    expired: 'Expiré',
   };
   return labels[status] || status;
 };

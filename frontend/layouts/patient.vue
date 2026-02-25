@@ -4,20 +4,75 @@
     <header class="sticky top-0 z-50 bg-white border-b border-gray-200">
       <div class="container mx-auto px-4">
         <div class="flex items-center justify-between h-16 gap-4">
-          <!-- Left: Logo -->
-          <NuxtLink 
-            to="/patient" 
-            aria-label="OneAndLab" 
-            class="flex items-center gap-2 shrink-0"
+          <!-- Left: Hamburger mobile (patient) + Logo → accueil -->
+          <div class="flex items-center gap-2 shrink-0">
+            <!-- Hamburger : visible uniquement sur mobile pour le patient -->
+            <button
+              v-if="isAuthenticated && user && user.role === 'patient'"
+              type="button"
+              @click="mobileMenuOpen = !mobileMenuOpen"
+              class="md:hidden h-9 w-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+              aria-label="Ouvrir le menu"
+              :aria-expanded="mobileMenuOpen"
+            >
+              <UIcon :name="mobileMenuOpen ? 'i-lucide-x' : 'i-lucide-menu'" class="h-5 w-5" />
+            </button>
+            <NuxtLink 
+              to="/" 
+              aria-label="OneAndLab - Accueil" 
+              class="flex items-center gap-2 shrink-0"
+            >
+              <img 
+                src="/images/onelogo.png" 
+                alt="OneAndLab" 
+                class="h-8 sm:h-10 w-auto object-contain" 
+                loading="eager"
+                decoding="async"
+              />
+            </NuxtLink>
+          </div>
+
+          <!-- Centre (patient) : liens de navigation (ceux du menu avatar) -->
+          <nav
+            v-if="isAuthenticated && user && user.role === 'patient'"
+            class="hidden md:flex flex-1 items-center justify-center gap-1 min-w-0"
+            aria-label="Navigation patient"
           >
-            <img 
-              src="/images/onelogo.png" 
-              alt="OneAndLab" 
-              class="h-8 sm:h-10 w-auto object-contain" 
-              loading="eager"
-              decoding="async"
-            />
-          </NuxtLink>
+            <NuxtLink
+              to="/patient"
+              class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+              :class="{ 'bg-gray-100 text-gray-900': route.path === '/patient' }"
+            >
+              Mes rendez-vous
+            </NuxtLink>
+            <NuxtLink
+              to="/rendez-vous/nouveau"
+              class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+            >
+              Nouveau RDV
+            </NuxtLink>
+            <NuxtLink
+              to="/patient/relatives"
+              class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+              :class="{ 'bg-gray-100 text-gray-900': route.path.startsWith('/patient/relatives') }"
+            >
+              Mes proches
+            </NuxtLink>
+            <NuxtLink
+              to="/patient/reviews"
+              class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+              :class="{ 'bg-gray-100 text-gray-900': route.path.startsWith('/patient/reviews') }"
+            >
+              Mes avis
+            </NuxtLink>
+            <NuxtLink
+              to="/profile"
+              class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+              :class="{ 'bg-gray-100 text-gray-900': route.path.startsWith('/profile') }"
+            >
+              Mon profil
+            </NuxtLink>
+          </nav>
 
           <!-- Right: Notifications + Avatar ou Bouton Connexion -->
           <div class="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -27,7 +82,7 @@
               <div class="relative" ref="notificationsMenuRef">
                 <button
                   type="button"
-                  @click="notificationsMenuOpen = !notificationsMenuOpen"
+                  @click.stop="notificationsMenuOpen = !notificationsMenuOpen"
                   class="relative h-9 w-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
                   :aria-label="`Notifications${unreadCount > 0 ? ` (${unreadCount} non lues)` : ''}`"
                   :aria-expanded="notificationsMenuOpen"
@@ -69,67 +124,72 @@
                 </div>
               </div>
 
-              <!-- Avatar avec menu -->
+              <!-- Avatar + dropdown menu (détection rôle, liens adaptés) -->
               <div class="relative" ref="userMenuRef">
                 <button
                   type="button"
                   @click="userMenuOpen = !userMenuOpen"
-                  class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors shrink-0 min-w-0"
+                  class="flex items-center gap-2 pl-1 pr-2 sm:pl-1.5 sm:pr-3 py-1.5 sm:py-2 rounded-xl text-gray-700 hover:bg-gray-100 transition-all duration-200 shrink-0 min-w-0 border border-transparent hover:border-gray-200"
                   :aria-label="`Menu utilisateur: ${userDisplayName}`"
                   :aria-expanded="userMenuOpen"
                 >
-                  <ClientOnly>
-                    <template #default>
-                      <img
-                        v-if="user?.avatar"
-                        :src="user.avatar"
-                        :alt="userDisplayName"
-                        class="h-8 w-8 rounded-full object-cover shrink-0"
-                      />
-                      <div
-                        v-else
-                        class="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-medium shrink-0"
-                      >
-                        {{ userDisplayName.charAt(0).toUpperCase() }}
-                      </div>
-                    </template>
-                    <template #fallback>
-                      <div class="h-8 w-8 rounded-full bg-gray-300 animate-pulse shrink-0" />
-                    </template>
-                  </ClientOnly>
-                  <ClientOnly>
-                    <template #default>
-                      <span class="hidden sm:inline text-sm font-medium whitespace-nowrap min-w-0 max-w-[150px] sm:max-w-[200px] truncate">{{ userDisplayName }}</span>
-                    </template>
-                    <template #fallback>
-                      <span class="hidden sm:inline text-sm font-medium whitespace-nowrap min-w-0 max-w-[150px] sm:max-w-[200px] truncate">...</span>
-                    </template>
-                  </ClientOnly>
-                  <UIcon name="i-lucide-chevron-down" class="hidden sm:block h-4 w-4 shrink-0 transition-transform" :class="{ 'rotate-180': userMenuOpen }" />
+                  <UserAvatar
+                    :src="user?.profile_image_url ?? user?.avatar"
+                    :initial="(user?.first_name?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase()"
+                    :alt="userDisplayName"
+                    size="md"
+                  />
+                  <span class="hidden sm:inline text-sm font-medium whitespace-nowrap min-w-0 max-w-[120px] sm:max-w-[160px] truncate">{{ userDisplayName }}</span>
+                  <UIcon name="i-lucide-chevron-down" class="hidden sm:block h-4 w-4 shrink-0 text-gray-500 transition-transform duration-200" :class="{ 'rotate-180': userMenuOpen }" />
                 </button>
                 
-                <!-- Dropdown Menu -->
-                <div
-                  v-if="userMenuOpen"
-                  class="absolute right-0 mt-2 w-56 rounded-lg bg-white border border-gray-200 shadow-lg z-50 py-1"
+                <!-- Dropdown moderne avec en-tête profil + rôle -->
+                <Transition
+                  enter-active-class="transition ease-out duration-150"
+                  enter-from-class="opacity-0 translate-y-1"
+                  enter-to-class="opacity-100 translate-y-0"
+                  leave-active-class="transition ease-in duration-100"
+                  leave-from-class="opacity-100 translate-y-0"
+                  leave-to-class="opacity-0 translate-y-1"
                 >
-                  <template v-for="(item, index) in userMenuItems" :key="index">
-                    <button
-                      v-if="item.type !== 'divider'"
-                      @click="handleUserMenuItemClick(item)"
-                      class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors text-left"
-                    >
-                      <UIcon v-if="item.icon" :name="item.icon" class="h-4 w-4" />
-                      <span>{{ item.label }}</span>
-                    </button>
-                    <div v-else class="border-t border-gray-200 my-1" />
-                  </template>
-                </div>
+                  <div
+                    v-if="userMenuOpen"
+                    class="absolute right-0 mt-2 w-64 rounded-xl bg-white border border-gray-200/80 shadow-xl shadow-gray-200/50 z-50 overflow-hidden"
+                  >
+                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                      <div class="flex items-center gap-3">
+                        <UserAvatar
+                          :src="user?.profile_image_url ?? user?.avatar"
+                          :initial="(user?.first_name?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase()"
+                          :alt="userDisplayName"
+                          size="lg"
+                        />
+                        <div class="min-w-0 flex-1">
+                          <p class="text-sm font-normal text-gray-900 truncate">{{ userDisplayName }}</p>
+                          <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-primary-100 text-primary-700">{{ roleLabel }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="py-1.5">
+                      <template v-for="(item, index) in userMenuItems" :key="index">
+                        <button
+                          v-if="item.type !== 'divider'"
+                          @click="handleUserMenuItemClick(item)"
+                          class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                        >
+                          <UIcon v-if="item.icon" :name="item.icon" class="h-4 w-4 flex-shrink-0 text-gray-500" />
+                          <span>{{ item.label }}</span>
+                        </button>
+                        <div v-else class="border-t border-gray-100 my-1" />
+                      </template>
+                    </div>
+                  </div>
+                </Transition>
               </div>
             </template>
             
-            <!-- Si non connecté : Bouton Connexion / Inscription -->
-            <template v-else>
+            <!-- Si non connecté : Bouton Connexion / Inscription (caché sur la page partage RDV) -->
+            <template v-else-if="!isSharedRdvPage">
               <UButton 
                 :to="loginUrl"
                 variant="outline"
@@ -145,9 +205,84 @@
         </div>
       </div>
     </header>
+
+    <!-- Menu mobile drawer (patient) -->
+    <Teleport to="body">
+      <div
+        v-if="mobileMenuOpen"
+        class="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300"
+        @click="mobileMenuOpen = false"
+      />
+      <div
+        :class="[
+          'fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] bg-white shadow-xl transform transition-transform duration-300 ease-in-out md:hidden overflow-y-auto',
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        ]"
+      >
+        <div class="flex items-center justify-between px-4 h-16 border-b border-gray-200">
+          <NuxtLink to="/" @click="mobileMenuOpen = false" class="flex items-center gap-2">
+            <img src="/images/onelogo.png" alt="OneAndLab" class="h-8 w-auto" />
+          </NuxtLink>
+          <button
+            type="button"
+            @click="mobileMenuOpen = false"
+            class="h-9 w-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+            aria-label="Fermer le menu"
+          >
+            <UIcon name="i-lucide-x" class="h-5 w-5" />
+          </button>
+        </div>
+        <nav class="px-4 py-6 space-y-1" aria-label="Navigation patient">
+          <NuxtLink
+            to="/patient"
+            @click="mobileMenuOpen = false"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            :class="route.path === '/patient' ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-100'"
+          >
+            <UIcon name="i-lucide-calendar" class="h-5 w-5 shrink-0 text-gray-500" />
+            Mes rendez-vous
+          </NuxtLink>
+          <NuxtLink
+            to="/rendez-vous/nouveau"
+            @click="mobileMenuOpen = false"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <UIcon name="i-lucide-calendar-plus" class="h-5 w-5 shrink-0 text-gray-500" />
+            Nouveau RDV
+          </NuxtLink>
+          <NuxtLink
+            to="/patient/relatives"
+            @click="mobileMenuOpen = false"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            :class="route.path.startsWith('/patient/relatives') ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-100'"
+          >
+            <UIcon name="i-lucide-users" class="h-5 w-5 shrink-0 text-gray-500" />
+            Mes proches
+          </NuxtLink>
+          <NuxtLink
+            to="/patient/reviews"
+            @click="mobileMenuOpen = false"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            :class="route.path.startsWith('/patient/reviews') ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-100'"
+          >
+            <UIcon name="i-lucide-star" class="h-5 w-5 shrink-0 text-gray-500" />
+            Mes avis
+          </NuxtLink>
+          <NuxtLink
+            to="/profile"
+            @click="mobileMenuOpen = false"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            :class="route.path.startsWith('/profile') ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-100'"
+          >
+            <UIcon name="i-lucide-user" class="h-5 w-5 shrink-0 text-gray-500" />
+            Mon profil
+          </NuxtLink>
+        </nav>
+      </div>
+    </Teleport>
     
     <!-- Main Content -->
-    <main class="flex-1">
+    <main class="flex-1 py-6 px-4 sm:px-6 lg:px-8">
       <slot />
     </main>
 
@@ -175,10 +310,15 @@ import { apiFetch } from '~/utils/api'
 
 const route = useRoute()
 const router = useRouter()
-const { user, isAuthenticated, logout } = useAuth()
+const { isAuthenticated } = useAuth()
+
+// Cacher le bouton Connexion/Inscription sur la page partage RDV (/p/rdv/[token])
+const isSharedRdvPage = computed(() => route.path.startsWith('/p/rdv/'))
+const { user, roleLabel, userMenuItems, userDisplayName } = useHeaderUserMenu()
 
 const userMenuOpen = ref(false)
 const userMenuRef = ref<HTMLElement | null>(null)
+const mobileMenuOpen = ref(false)
 
 // URL de connexion avec redirection vers la page actuelle
 const loginUrl = computed(() => {
@@ -256,6 +396,11 @@ watch(notificationsMenuOpen, async (isOpen) => {
   }
 })
 
+// Fermer le menu mobile au changement de route
+watch(() => route.path, () => {
+  mobileMenuOpen.value = false
+})
+
 // Fermer les menus quand on clique en dehors
 const handleClickOutside = (event: MouseEvent) => {
   if (userMenuRef.value && !userMenuRef.value.contains(event.target as Node)) {
@@ -281,51 +426,6 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
-const userDisplayName = computed(() => {
-  if (user.value?.first_name && user.value?.last_name) {
-    return `${user.value.first_name} ${user.value.last_name}`
-  }
-  return user.value?.email || 'Utilisateur'
-})
-
-const userMenuItems = computed(() => {
-  const items: any[] = [
-    {
-      label: 'Mes rendez-vous',
-      icon: 'i-lucide-calendar',
-      click: () => navigateTo('/patient'),
-    },
-    {
-      label: 'Nouveau rendez-vous',
-      icon: 'i-lucide-calendar-plus',
-      click: () => navigateTo('/rendez-vous/nouveau'),
-    },
-    {
-      label: 'Mes proches',
-      icon: 'i-lucide-users',
-      click: () => navigateTo('/patient/relatives'),
-    },
-    {
-      label: 'Mes avis',
-      icon: 'i-lucide-star',
-      click: () => navigateTo('/patient/reviews'),
-    },
-    {
-      label: 'Mon profil',
-      icon: 'i-lucide-user',
-      click: () => navigateTo('/profile'),
-    },
-    { type: 'divider' },
-    {
-      label: 'Déconnexion',
-      icon: 'i-lucide-log-out',
-      click: () => logout(),
-    },
-  ]
-  
-  return items
-})
-
 const unreadCount = computed(
   () => notifications.value.filter(n => !n.read_at).length
 )
@@ -342,10 +442,14 @@ const notificationItems = computed(() => {
 
   return notifications.value.slice(0, 10).map((notif) => ({
     label: notif.message || notif.title || 'Notification',
+    description: notif.created_at ? new Date(notif.created_at).toLocaleString('fr-FR') : undefined,
     isRead: !!notif.read_at,
     click: () => {
       if (notif.appointment_id) {
-        navigateTo(`/patient/appointments/${notif.appointment_id}`)
+        const role = user.value?.role
+        if (role === 'patient') navigateTo(`/patient/appointments/${notif.appointment_id}`)
+        else if (role === 'nurse') navigateTo(`/nurse/appointments/${notif.appointment_id}`)
+        else if (role === 'lab' || role === 'subaccount') navigateTo(`/lab/appointments/${notif.appointment_id}`)
       }
     },
   }))
@@ -353,60 +457,9 @@ const notificationItems = computed(() => {
 
 const { start: startPolling } = usePolling(async () => {
   if (isAuthenticated.value) {
-    // #region agent log
-    if (typeof window !== 'undefined') {
-      fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'POLL1',
-          location: 'layouts/patient.vue:330',
-          message: 'Polling notifications',
-          data: {
-            isAuthenticated: isAuthenticated.value,
-            currentNotificationsCount: notifications.value.length,
-            currentUnreadCount: notifications.value.filter(n => !n.read_at).length,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    }
-    // #endregion
-    
     const res = await apiFetch('/notifications?limit=10', { method: 'GET' })
-    if (res && res.success) {
-      const oldUnreadCount = notifications.value.filter(n => !n.read_at).length
-      const newUnreadCount = res.data.filter((n: any) => !n.read_at).length
-      
-      // #region agent log
-      if (typeof window !== 'undefined') {
-        fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'POLL2',
-            location: 'layouts/patient.vue:345',
-            message: 'Notifications fetched',
-            data: {
-              notificationsCount: res.data.length,
-              oldUnreadCount,
-              newUnreadCount,
-              hasNewNotifications: newUnreadCount > oldUnreadCount,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-      }
-      // #endregion
-      
-      // Forcer la réactivité en créant un nouveau tableau
-      notifications.value = [...res.data]
-    }
+    if (res && res.success) notifications.value = [...res.data]
   }
-}, 10000) // Réduire à 10 secondes pour détecter plus rapidement les nouvelles notifications
+}, 30000)
 </script>
 

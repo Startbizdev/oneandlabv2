@@ -6,10 +6,9 @@
       title="Orientez vos patients vers des soins à domicile"
       subtitle="Médecins, kinés, professionnels : collaborez avec OneAndLab"
       description="Référencez vos patients sur la plateforme pour une prise de sang ou des soins infirmiers à domicile. Ils réserveront en quelques clics. Vous gardez la main sur le suivi et la coordination."
-      image-src="/undraw/accueil.svg"
-      image-alt="Professionnel de santé"
       :ctas="heroCtas"
-      background-class="bg-white"
+      :background-image="heroBackgroundImage"
+      overlay-class="bg-black/55"
     />
 
     <LandingTrust
@@ -31,6 +30,14 @@
       background-class="bg-gray-50"
     />
 
+    <Reviews
+      title="Ce que disent les professionnels de santé"
+      subtitle="Médecins et professionnels qui orientent leurs patients vers OneAndLab."
+      :reviews="landingReviews"
+      :max-reviews="6"
+      background-class="bg-white"
+    />
+
     <LandingFaq
       title="Questions fréquentes"
       subtitle="Tout ce qu’il faut savoir en tant que professionnel de santé."
@@ -39,8 +46,8 @@
     />
 
     <LandingCtaBlock
-      title="Inscrivez-vous en tant que professionnel"
-      subtitle="Après validation, vous pourrez créer des rendez-vous pour vos patients et suivre les soins à domicile depuis votre espace."
+      title="Orientez vos patients vers des soins à domicile"
+      subtitle="Médecins, kinés, professionnels : inscrivez-vous gratuitement. Créez des rendez-vous pour vos patients et suivez les soins à domicile en un clic."
       :buttons="ctaButtons"
       background-class="bg-primary-50/30"
     />
@@ -57,8 +64,11 @@ useLandingSeo({
   path: '/pour-les-professionnels',
 })
 
+// Image hero (undraw pro – bleu OneAndLab)
+const heroBackgroundImage = '/undraw/pro.svg'
+
 const heroCtas = [
-  { label: "S'inscrire", to: '/pro/register', color: 'primary', variant: 'solid', icon: 'i-lucide-stethoscope' },
+  { label: 'Rejoindre en tant que professionnel', to: '/pro/register', color: 'primary', variant: 'solid', size: 'xl', icon: 'i-lucide-stethoscope' },
 ]
 
 const trustItems = [
@@ -83,6 +93,15 @@ const howItWorksSteps = [
   { title: 'Orientez vos patients', description: 'Indiquez à vos patients qu’ils peuvent réserver sur OneAndLab (prise de sang ou soins infirmiers). Ils remplissent le formulaire et un professionnel les contacte.', icon: 'i-lucide-user-check' },
 ]
 
+const landingReviews = [
+  { id: '1', patientName: 'Dr. Pierre M., médecin généraliste', rating: 5, comment: 'J\'oriente mes patients âgés ou à mobilité réduite vers OneAndLab pour les prises de sang. Ils sont ravis, plus besoin de les accompagner au labo. Gain de temps pour tout le monde.', response: 'Merci Docteur pour votre confiance. — OneAndLab', date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000) },
+  { id: '2', patientName: 'Marie L., kinésithérapeute', rating: 5, comment: 'Plusieurs de mes patients ont des soins infirmiers à domicile. Je leur recommande OneAndLab pour la prise de sang et les pansements. Coordination simple, suivi visible.', response: 'Merci Marie. — Équipe OneAndLab', date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
+  { id: '3', patientName: 'Dr. Sophie R., médecin', rating: 5, comment: 'Inscription rapide, interface claire. Je crée parfois le RDV moi-même pour des patients qui ne sont pas à l\'aise avec internet. Très pratique.', response: 'Content que ça vous convienne. — OneAndLab', date: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000) },
+  { id: '4', patientName: 'Thomas B., infirmier coordinateur', rating: 5, comment: 'On utilise OneAndLab pour orienter nos patients vers des soins à domicile quand on ne peut pas nous-mêmes. Réseau fiable, retours patients positifs.', response: 'Merci Thomas. — Équipe', date: new Date(Date.now() - 27 * 24 * 60 * 60 * 1000) },
+  { id: '5', patientName: 'Dr. Isabelle F., généraliste', rating: 5, comment: 'Mes patients en ALD ou avec difficultés de déplacement utilisent OneAndLab depuis que je leur ai présenté. Moins d\'absentéisme aux bilans.', response: 'Merci pour ce retour. — OneAndLab', date: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000) },
+  { id: '6', patientName: 'Nathalie D., médecin', rating: 5, comment: 'Simple, sécurisé, conforme. Je recommande à mes confrères qui cherchent une solution pour les soins à domicile de leurs patients.', response: 'Merci Nathalie. — OneAndLab', date: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000) },
+]
+
 const faqItems = [
   { question: 'Qu’est-ce qu’OneAndLab pour un professionnel ?', answer: 'OneAndLab est une plateforme de mise en relation entre patients et professionnels (infirmiers, laboratoires) pour des soins à domicile. En tant que médecin, kiné ou autre professionnel, vous pouvez y référer vos patients pour une prise de sang ou des soins infirmiers à domicile, et suivre les rendez-vous si besoin.' },
   { question: 'Dois-je payer pour inscrire mes patients ?', answer: 'Les conditions d’utilisation pour les professionnels de santé vous sont communiquées lors de l’inscription. L’objectif est de faciliter l’orientation de vos patients sans surcoût ni complexité pour vous.' },
@@ -92,7 +111,6 @@ const faqItems = [
 ]
 
 const ctaButtons = [
-  { label: "S'inscrire comme professionnel", to: '/pro/register', color: 'primary', icon: 'i-lucide-stethoscope' },
-  { label: 'Nous contacter', to: '/contact', color: 'neutral', icon: 'i-lucide-mail' },
+  { label: 'Rejoindre en tant que professionnel', to: '/pro/register', color: 'primary', size: 'xl', icon: 'i-lucide-stethoscope' },
 ]
 </script>

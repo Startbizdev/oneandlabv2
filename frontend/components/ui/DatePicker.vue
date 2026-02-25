@@ -10,6 +10,12 @@ const props = defineProps<{
   minYear?: number
   maxYear?: number
   appointmentType?: 'lab' | 'nurse'
+  /** Délai minimum en heures avant la date sélectionnable (ex. 48). Si non défini, aucun grisage (RDV "à tous"). */
+  minLeadTimeHours?: number | null
+  /** Accepter les RDV le samedi (sinon grisé). Défaut true. */
+  acceptSaturday?: boolean
+  /** Accepter les RDV le dimanche (sinon grisé). Défaut true. */
+  acceptSunday?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -43,13 +49,17 @@ const getNowInParis = () => {
 }
 
 // -----------------------------------------------------
-// Min date selon type RDV - Toujours 48h minimum
+// Min date : uniquement si minLeadTimeHours est défini (RDV avec provider). Sinon pas de grisage (RDV à tous).
 // -----------------------------------------------------
 const minDate = computed(() => {
+  const hours = props.minLeadTimeHours
+  if (hours == null || hours === undefined)
+    return undefined
+  const h = Number(hours)
+  if (!Number.isFinite(h) || h < 0)
+    return undefined
   const now = getNowInParis()
-  // Toujours minimum 48h à l'avance pour tous les types de RDV
-  const min = new Date(now.getTime() + 48 * 60 * 60 * 1000)
-
+  const min = new Date(now.getTime() + h * 60 * 60 * 1000)
   return new CalendarDate(min.getFullYear(), min.getMonth() + 1, min.getDate())
 })
 
@@ -110,6 +120,15 @@ const maxDate = computed(() => {
   if (props.maxYear) return new CalendarDate(props.maxYear, 12, 31)
   return undefined
 })
+
+// Désactiver samedi (6) et/ou dimanche (0) selon les paramètres du lab
+const isDateDisabled = (date: CalendarDate) => {
+  const jsDate = new Date(date.year, date.month - 1, date.day)
+  const day = jsDate.getDay()
+  if (day === 0 && props.acceptSunday === false) return true
+  if (day === 6 && props.acceptSaturday === false) return true
+  return false
+}
 </script>
 
 <template>
@@ -133,8 +152,9 @@ const maxDate = computed(() => {
         @update:modelValue="handleSelect"
         locale="fr-FR"
         class="p-2"
-        :min-value="minDate"
+        :min-value="minDate ?? undefined"
         :max-value="maxDate"
+        :is-date-disabled="isDateDisabled"
       />
     </template>
   </UPopover>

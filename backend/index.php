@@ -14,8 +14,8 @@
  * Car cela empêche le routeur de fonctionner.
  */
 
-// Charger les variables d'environnement
-$envFile = __DIR__ . '/.env';
+// Charger les variables d'environnement (racine du projet)
+$envFile = __DIR__ . '/../.env';
 if (file_exists($envFile) && is_readable($envFile)) {
     $lines = @file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     if ($lines !== false) {

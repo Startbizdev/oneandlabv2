@@ -11,7 +11,7 @@
         {{ appointment ? `Informations détaillées du rendez-vous de type ${getAppointmentTypeLabel(appointment.type)}` : 'Informations détaillées du rendez-vous' }}
       </DialogDescription>
       <div class="w-full">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <h2 class="text-xl font-normal text-gray-900 dark:text-gray-100">
           Nouveau rendez-vous
         </h2>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -27,13 +27,22 @@
         <p class="text-gray-500 mt-2">Chargement...</p>
       </div>
 
-      <!-- ALREADY ACCEPTED -->
+      <!-- ALREADY ACCEPTED (empty state) -->
       <div v-else-if="isAlreadyAccepted" class="text-center py-10 px-6">
         <UIcon name="i-lucide-calendar-x" class="w-16 h-16 mx-auto text-red-500 mb-4" />
-        <h3 class="text-xl font-semibold mb-2">Rendez-vous déjà pris</h3>
-        <p class="text-gray-600 mb-4">
-          Ce rendez-vous a déjà été accepté par {{ acceptedBy?.name || 'un autre professionnel' }}.
+        <h3 class="text-xl font-normal mb-2">Rendez-vous déjà pris</h3>
+        <p class="text-gray-600 dark:text-gray-400 mb-6">
+          Désolé, ce rendez-vous a déjà été accepté par un confrère. D'autres rendez-vous arrivent bientôt !
         </p>
+        <UButton
+          color="primary"
+          variant="solid"
+          size="md"
+          leading-icon="i-lucide-calendar"
+          @click="closeModalAndGoToList"
+        >
+          Voir mes rendez-vous
+        </UButton>
       </div>
 
       <!-- CONTENT -->
@@ -130,7 +139,7 @@
 
         <!-- CONFIDENTIAL -->
         <section v-if="isAccepted" class="border-t pt-6">
-          <h3 class="font-semibold text-md flex items-center gap-2 mb-4">
+          <h3 class="font-normal text-md flex items-center gap-2 mb-4">
             <UIcon name="i-lucide-lock" class="w-4 h-4" /> Informations confidentielles
           </h3>
 
@@ -181,7 +190,7 @@
           color="error"
           variant="outline"
           leading-icon="i-lucide-x"
-          :loading="processing"
+          :loading="refusing"
           block
           @click="refuseAppointment"
         >
@@ -191,7 +200,7 @@
         <UButton
           color="success"
           leading-icon="i-lucide-check"
-          :loading="processing"
+          :loading="accepting"
           block
           @click="acceptAppointment"
         >
@@ -214,7 +223,7 @@
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api'
 import { useAuth } from '~/composables/useAuth'
-import { useToast } from '#imports'
+import { useAppToast } from '~/composables/useAppToast'
 import { ref, computed, watch, nextTick, h, resolveComponent } from 'vue'
 import { DialogTitle, DialogDescription } from 'reka-ui'
 
@@ -256,10 +265,11 @@ const isOpen = computed({
 })
 
 const { user } = useAuth()
-const toast = useToast()
+const toast = useAppToast()
 
 const loading = ref(false)
-const processing = ref(false)
+const accepting = ref(false)
+const refusing = ref(false)
 const isAlreadyAccepted = ref(false)
 const acceptedBy = ref<any>(null)
 const isAccepted = ref(false)
@@ -315,10 +325,21 @@ const canAccept = computed(() => {
   return false
 })
 
+const appointmentsListPath = computed(() => {
+  if (props.role === 'nurse') return '/nurse/appointments'
+  if (props.role === 'subaccount') return '/subaccount'
+  return '/lab'
+})
+
+function closeModalAndGoToList() {
+  closeModal()
+  navigateTo(appointmentsListPath.value)
+}
+
 /* ---------------- ACTIONS ---------------- */
 
 const acceptAppointment = async () => {
-  processing.value = true
+  accepting.value = true
   try {
     const res = await apiFetch(`/appointments/${props.appointment.id}`, {
       method: 'PUT',
@@ -330,23 +351,18 @@ const acceptAppointment = async () => {
       isAccepted.value = true
       emit('accepted', props.appointment)
       emit('refresh')
-      
-      // Recharger la liste des rendez-vous
+      closeModal()
+      // Rafraîchir la liste en arrière-plan (sans bloquer)
       const { fetchAppointments } = useAppointments()
-      await fetchAppointments()
-      
-      // Fermer après un délai
-      setTimeout(() => {
-        closeModal()
-      }, 1500)
+      void fetchAppointments()
     }
   } finally {
-    processing.value = false
+    accepting.value = false
   }
 }
 
 const refuseAppointment = async () => {
-  processing.value = true
+  refusing.value = true
   try {
     const res = await apiFetch(`/appointments/${props.appointment.id}`, {
       method: 'PUT',
@@ -358,9 +374,11 @@ const refuseAppointment = async () => {
       emit('refused', props.appointment.id)
       emit('refresh')
       closeModal()
+      const { fetchAppointments } = useAppointments()
+      void fetchAppointments()
     }
   } finally {
-    processing.value = false
+    refusing.value = false
   }
 }
 

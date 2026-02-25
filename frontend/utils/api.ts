@@ -120,10 +120,12 @@ export async function apiFetch(path: string, options: any = {}) {
     }
   }
 
+  // Timeout configurable (certaines routes lab/stats peuvent être lentes)
+  const timeoutMs = options.timeout ?? 60000; // 60 s par défaut
+
   try {
-    // Créer un AbortController pour gérer les timeouts
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 secondes de timeout pour les uploads
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     
     const response = await fetch(url, {
       method,
@@ -252,14 +254,14 @@ export async function apiFetch(path: string, options: any = {}) {
       let userMessage = `Impossible de se connecter au serveur backend sur ${apiBase}`;
       
       if (errorName === 'AbortError') {
-        userMessage = `La requête a expiré (timeout). Le serveur backend ne répond pas sur ${apiBase}`;
+        userMessage = `La requête a expiré (timeout). Le backend ne répond pas (${apiBase}).`;
       } else if (errorMessageLower.includes('failed to fetch') || errorMessageLower.includes('networkerror')) {
-        userMessage = `Connexion impossible au serveur backend. Assurez-vous que le serveur est démarré sur ${apiBase}`;
+        userMessage = `Connexion impossible au backend (${apiBase}). Vérifiez que le serveur est démarré.`;
       }
       
-      throw new Error(
-        `${userMessage}\n\nPour démarrer le serveur backend:\n  cd backend && ./start-server.sh`
-      );
+      const backendHint = 'Pour démarrer le backend : cd backend && ./start-server.sh';
+      const proxyHint = apiBase.startsWith('http') ? '' : ' En dev, les appels passent par le proxy (Nuxt sur :3000 → backend :8888). Si le timeout persiste, essayez NUXT_PUBLIC_API_BASE=http://localhost:8888/api pour appeler le backend directement.';
+      throw new Error(`${userMessage}\n\n${backendHint}${proxyHint}`);
     }
 
     // Pour les autres erreurs, préserver le message original

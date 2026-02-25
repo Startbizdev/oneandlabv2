@@ -1,78 +1,47 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
-      title="Tableau de bord"
-      description="Vue d'ensemble de la plateforme OneAndLab — statistiques, derniers rendez-vous et activité en temps réel."
-    >
-      <template #actions>
-        <UButton
-          variant="ghost"
-          size="sm"
-          icon="i-lucide-refresh-cw"
-          :loading="loading"
-          aria-label="Actualiser"
-          @click="fetchDashboard"
-        >
-          Actualiser
-        </UButton>
-        <UButton
-          color="primary"
-          variant="solid"
-          size="sm"
-          icon="i-lucide-calendar"
-          to="/admin/appointments"
-        >
-          Rendez-vous
-        </UButton>
-        <UButton
-          variant="outline"
-          size="sm"
-          icon="i-lucide-calendar-days"
-          to="/admin/calendar"
-        >
-          Calendrier
-        </UButton>
-      </template>
-    </TitleDashboard>
+  <DashboardLayout
+    title="Tableau de bord"
+    description="Vue d'ensemble de la plateforme OneAndLab — statistiques, derniers rendez-vous et activité en temps réel."
+    :loading="loading"
+    :error="error"
+    :stats-cards="statsCards"
+  >
+    <template #actions>
+      <UButton
+        variant="ghost"
+        size="sm"
+        icon="i-lucide-refresh-cw"
+        :loading="loading"
+        aria-label="Actualiser"
+        @click="fetchDashboard"
+      >
+        Actualiser
+      </UButton>
+      <UButton
+        color="primary"
+        variant="solid"
+        size="sm"
+        icon="i-lucide-calendar"
+        to="/admin/appointments"
+      >
+        Rendez-vous
+      </UButton>
+      <UButton
+        variant="outline"
+        size="sm"
+        icon="i-lucide-calendar-days"
+        to="/admin/calendar"
+      >
+        Calendrier
+      </UButton>
+    </template>
 
-    <UAlert v-if="error" color="error" variant="soft" :title="error" />
-
-    <div v-if="loading" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <div v-for="i in 4" :key="i" class="h-24 rounded-xl border border-gray-200 bg-white animate-pulse dark:border-gray-800 dark:bg-gray-900" />
-    </div>
-
-    <template v-else-if="data">
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
-        <!-- Contenu principal (2/3) -->
-        <div class="space-y-6 lg:col-span-2">
-          <!-- 4 cartes statistiques (structure type Shadcn: header icon+value, content title+description) -->
-          <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <div
-              v-for="card in statsCards"
-              :key="card.title"
-              class="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-              :class="{ 'cursor-pointer transition hover:border-primary/30 hover:shadow': card.to }"
-              @click="card.to ? $router.push(card.to) : null"
-            >
-              <div class="flex items-center gap-4">
-                <div class="flex size-8 shrink-0 items-center justify-center rounded-md bg-gray-100 dark:bg-gray-800">
-                  <UIcon :name="card.icon" class="size-4 text-gray-500 dark:text-gray-400" />
-                </div>
-                <span class="text-2xl font-bold tabular-nums text-gray-900 dark:text-white">{{ card.value }}</span>
-              </div>
-              <div class="flex flex-col gap-2">
-                <span class="font-semibold text-gray-900 dark:text-white">{{ card.title }}</span>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ card.description }}
-                </p>
-              </div>
-            </div>
-          </section>
-
+    <template #main>
+      <template v-if="data">
           <!-- Historique des rendez-vous -->
           <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800 md:px-5">
-              <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+              <h2 class="flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
                 <UIcon name="i-lucide-calendar-clock" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 Historique des rendez-vous
               </h2>
@@ -137,7 +106,7 @@
           <!-- Derniers inscrits -->
           <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800 md:px-5">
-              <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+              <h2 class="flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
                 <UIcon name="i-lucide-user-plus" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 Derniers inscrits
               </h2>
@@ -151,7 +120,7 @@
                 class="flex flex-col gap-1.5 rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2.5 transition hover:border-primary/30 hover:bg-gray-100/80 dark:border-gray-800 dark:bg-gray-800/50 dark:hover:border-primary/40 dark:hover:bg-gray-800/80"
               >
                 <div class="flex items-center gap-2">
-                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-normal text-gray-600 dark:bg-gray-700 dark:text-gray-300">
                     {{ getUserInitials(u) }}
                   </div>
                   <div class="min-w-0 flex-1">
@@ -181,7 +150,7 @@
           <section class="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <div class="border-b border-gray-200 px-4 py-3 dark:border-gray-800 md:px-5">
-                <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                <h2 class="flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
                   <UIcon name="i-lucide-activity" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   Dernières activités
                 </h2>
@@ -204,7 +173,7 @@
             </div>
             <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <div class="border-b border-gray-200 px-4 py-3 dark:border-gray-800 md:px-5">
-                <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                <h2 class="flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
                   <UIcon name="i-lucide-user-cog" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   Mises à jour compte
                 </h2>
@@ -233,29 +202,30 @@
               </div>
             </div>
           </section>
-        </div>
+      </template>
+    </template>
 
-        <!-- Colonne de droite -->
-        <div class="space-y-6 lg:sticky lg:top-6">
+    <template #sidebar>
+      <template v-if="data">
           <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 md:p-5">
-            <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+            <h3 class="mb-3 flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
               <UIcon name="i-lucide-users" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
               Répartition comptes
             </h3>
             <div class="space-y-2">
               <div v-for="role in roleStats" :key="role.key" class="flex items-center justify-between text-xs">
                 <span class="text-gray-600 dark:text-gray-400">{{ role.label }}</span>
-                <span class="font-semibold tabular-nums text-gray-900 dark:text-white">{{ data.usersByRole[role.key] ?? 0 }}</span>
+                <span class="font-normal tabular-nums text-gray-900 dark:text-white">{{ data.usersByRole[role.key] ?? 0 }}</span>
               </div>
               <div class="flex items-center justify-between border-t border-gray-200 pt-2 dark:border-gray-800">
-                <span class="text-xs font-semibold text-gray-900 dark:text-white">Total</span>
-                <span class="font-semibold tabular-nums text-gray-900 dark:text-white">{{ data.usersByRole.total }}</span>
+                <span class="text-xs font-normal text-gray-900 dark:text-white">Total</span>
+                <span class="font-normal tabular-nums text-gray-900 dark:text-white">{{ data.usersByRole.total }}</span>
               </div>
             </div>
           </div>
 
           <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 md:p-5">
-            <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+            <h3 class="mb-3 flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
               <UIcon name="i-lucide-pie-chart" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
               Bilan historique RDV
             </h3>
@@ -271,19 +241,19 @@
                   </div>
                   <span class="text-xs text-gray-600 dark:text-gray-400 truncate">{{ item.label }}</span>
                 </div>
-                <span class="text-xs font-semibold tabular-nums text-gray-900 dark:text-white shrink-0">
+                <span class="text-xs font-normal tabular-nums text-gray-900 dark:text-white shrink-0">
                   {{ data.appointmentsByStatus[item.key] ?? 0 }}
                 </span>
               </div>
             </div>
             <div class="mt-2 flex items-center justify-between rounded-lg border-t border-gray-200 bg-gray-50/80 px-2 py-1.5 dark:border-gray-800 dark:bg-gray-800/50">
-              <span class="text-xs font-semibold text-gray-900 dark:text-white">Total</span>
-              <span class="text-xs font-semibold tabular-nums text-gray-900 dark:text-white">{{ data.appointmentsByStatus.total }}</span>
+              <span class="text-xs font-normal text-gray-900 dark:text-white">Total</span>
+              <span class="text-xs font-normal tabular-nums text-gray-900 dark:text-white">{{ data.appointmentsByStatus.total }}</span>
             </div>
           </div>
 
           <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 md:p-5">
-            <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+            <h3 class="mb-3 flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
               <UIcon name="i-lucide-zap" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
               Accès rapide
             </h3>
@@ -299,10 +269,9 @@
               </NuxtLink>
             </div>
           </div>
-        </div>
-      </div>
+      </template>
     </template>
-  </div>
+  </DashboardLayout>
 </template>
 
 <script setup lang="ts">
@@ -317,30 +286,34 @@ const { data, loading, error, fetchDashboard } = useAdminDashboard();
 const statsCards = computed(() => [
   {
     icon: 'i-lucide-calendar',
+    iconBg: 'bg-primary/10',
+    iconColor: 'text-primary',
     value: String(data.value?.appointmentsByStatus.total ?? 0),
     title: 'Total RDV',
-    description: 'Tous créés',
     to: null,
   },
   {
     icon: 'i-lucide-clock',
+    iconBg: 'bg-amber-500/10',
+    iconColor: 'text-amber-600 dark:text-amber-400',
     value: String(data.value?.appointmentsByStatus.pending ?? 0),
     title: 'En attente',
-    description: 'À confirmer',
     to: null,
   },
   {
     icon: 'i-lucide-circle-check',
+    iconBg: 'bg-emerald-500/10',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
     value: String(data.value?.appointmentsByStatus.completed ?? 0),
     title: 'Terminés',
-    description: 'Réalisés',
     to: null,
   },
   {
     icon: 'i-lucide-user-plus',
+    iconBg: 'bg-blue-500/10',
+    iconColor: 'text-blue-600 dark:text-blue-400',
     value: String(data.value?.registrationRequestsPending ?? 0),
     title: 'Inscriptions',
-    description: 'À valider',
     to: '/admin/inscriptions',
   },
 ]);
@@ -430,7 +403,9 @@ function getStatusLabel(status: string): string {
     inProgress: 'En cours',
     completed: 'Terminé',
     canceled: 'Annulé',
+    cancelled: 'Annulé',
     refused: 'Refusé',
+    expired: 'Expiré',
   };
   return labels[status] || status;
 }

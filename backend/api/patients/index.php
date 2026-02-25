@@ -43,8 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Filtres de base: rôle patient
     $filters = ['role' => 'patient'];
     
-    // Si created_by est fourni, filtrer par créateur
-    if ($createdBy) {
+    // Si created_by est fourni, filtrer par créateur ; pour le pro, forcer son propre id
+    if ($user['role'] === 'pro') {
+        $filters['created_by'] = $user['user_id'];
+    } elseif ($createdBy) {
         $filters['created_by'] = $createdBy;
     }
     
@@ -85,12 +87,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     // Créer le patient
     try {
+        $birthDate = $input['birth_date'] ?? $input['date_of_birth'] ?? null;
         $patientData = [
             'email' => $input['email'],
             'first_name' => $input['first_name'],
             'last_name' => $input['last_name'],
             'phone' => $input['phone'],
-            'date_of_birth' => $input['date_of_birth'] ?? null,
+            'birth_date' => $birthDate ? trim((string) $birthDate) : null,
+            'gender' => isset($input['gender']) && trim((string) $input['gender']) !== '' ? trim((string) $input['gender']) : null,
             'address' => $input['address'] ?? null,
             'role' => 'patient',
             'created_by' => $user['user_id'], // Associer au pro qui crée

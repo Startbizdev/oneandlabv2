@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/Email.php';
+require_once __DIR__ . '/../../lib/EmailQueue.php';
 require_once __DIR__ . '/../../lib/Crypto.php';
 
 // CORS
@@ -107,13 +108,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $bannedUntil = null;
         
         if ($incidentCount === 1) {
-            // Email d'avertissement
+            // Email d'avertissement (async)
             if ($patientEmail) {
-                try {
-                    $email->sendIncidentWarning($patientEmail, $incidentCount, $reason);
-                } catch (Exception $e) {
-                    // Erreur d'envoi email - continuer sans bloquer
-                }
+                EmailQueue::add('incident_warning', $patientEmail, ['count' => $incidentCount, 'reason' => $reason]);
             }
         } elseif ($incidentCount === 3) {
             // Suspension 7 jours
@@ -121,13 +118,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $db->prepare('UPDATE profiles SET banned_until = ? WHERE id = ?');
             $stmt->execute([$bannedUntil, $userId]);
             
-            // Email de suspension
+            // Email de suspension (async)
             if ($patientEmail) {
-                try {
-                    $email->sendSuspensionEmail($patientEmail, 7, $reason);
-                } catch (Exception $e) {
-                    // Erreur d'envoi email - continuer sans bloquer
-                }
+                EmailQueue::add('suspension', $patientEmail, ['days' => 7, 'reason' => $reason]);
             }
         } elseif ($incidentCount >= 6) {
             // Bannissement définitif
@@ -135,13 +128,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $db->prepare('UPDATE profiles SET banned_until = ? WHERE id = ?');
             $stmt->execute([$bannedUntil, $userId]);
             
-            // Email de bannissement
+            // Email de bannissement (async)
             if ($patientEmail) {
-                try {
-                    $email->sendBanEmail($patientEmail, $reason);
-                } catch (Exception $e) {
-                    // Erreur d'envoi email - continuer sans bloquer
-                }
+                EmailQueue::add('ban', $patientEmail, ['reason' => $reason]);
             }
         }
         

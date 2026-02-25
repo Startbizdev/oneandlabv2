@@ -1,6 +1,10 @@
 <template>
   <div class="space-y-6">
-    <TitleDashboard title="Sous-comptes" icon="i-lucide-user-cog">
+    <TitleDashboard
+      title="Sous-comptes"
+      description="Gérez les sous-comptes qui gèrent les rendez-vous pour votre laboratoire."
+      icon="i-lucide-user-cog"
+    >
       <template #actions>
         <div class="flex items-center gap-2">
           <UButton
@@ -18,68 +22,40 @@
       </template>
     </TitleDashboard>
 
-    <p class="text-sm text-muted">
-      Gérez les sous-comptes qui gèrent les rendez-vous pour votre laboratoire.
-    </p>
+    <TeamMemberListPage
+      :items="subaccounts"
+      :loading="loading"
+      search-placeholder="Rechercher par email, nom, raison sociale..."
+      :search-fields="['email', 'first_name', 'last_name', 'company_name']"
+      empty-title="Aucun sous-compte"
+      empty-description="Aucun résultat pour votre recherche ou créez votre premier sous-compte pour gérer les rendez-vous."
+      empty-icon="i-lucide-users"
+      :empty-actions="[{ label: 'Créer un sous-compte', icon: 'i-lucide-plus', onClick: openCreateModal }]"
+    >
+      <template #cardContent="{ item }">
+        <TeamMemberCard
+          :display-name="subaccountDisplayName(item)"
+          :email="item.email"
+          :phone="item.phone"
+          :photo-src="profileImageUrl(item.profile_image_url)"
+          :date-label="formatDate(item.created_at)"
+          icon="i-lucide-user-cog"
+        />
+      </template>
+      <template #cardActions="{ item }">
+        <UButton size="xs" variant="soft" icon="i-lucide-user" :to="`/profile?userId=${item.id}`">
+          Modifier
+        </UButton>
+        <UButton size="xs" variant="soft" color="primary" icon="i-lucide-calendar" :to="`/lab/appointments?assigned_lab_id=${item.id}`">
+          RDV
+        </UButton>
+        <UButton size="xs" variant="soft" color="red" icon="i-lucide-trash-2" @click="confirmDelete(item)">
+          Supprimer
+        </UButton>
+      </template>
+    </TeamMemberListPage>
 
-    <!-- Barre de filtres -->
-    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-      <UInput
-        v-model="searchQuery"
-        placeholder="Rechercher par email, nom, prénom..."
-        icon="i-lucide-search"
-        class="flex-1 min-w-0 sm:max-w-xs"
-      />
-    </div>
-
-    <!-- Loading -->
-    <div v-if="loading" class="flex flex-col items-center justify-center py-16">
-      <UIcon name="i-lucide-loader-2" class="w-10 h-10 animate-spin text-primary mb-4" />
-      <p class="text-muted">Chargement…</p>
-    </div>
-
-    <!-- Tableau -->
-    <div v-else class="rounded-xl border border-default/50 bg-default overflow-hidden shadow-sm">
-      <UTable :data="filteredSubaccounts" :columns="columns">
-      <template #empty>
-        <div class="py-12">
-          <UEmpty
-            icon="i-lucide-users"
-            title="Aucun sous-compte"
-            :description="searchQuery ? 'Aucun résultat pour votre recherche' : 'Créez votre premier sous-compte pour gérer les rendez-vous'"
-            :actions="!searchQuery ? [{ label: 'Créer un sous-compte', icon: 'i-lucide-plus', onClick: openCreateModal }] : []"
-            variant="naked"
-          />
-        </div>
-      </template>
-      <template #email-data="{ row }">
-        <span class="font-medium">{{ row.email || '-' }}</span>
-      </template>
-      
-      <template #created_at-data="{ row }">
-        {{ formatDate(row.created_at) }}
-      </template>
-      
-      <template #actions-data="{ row }">
-        <div class="flex gap-2">
-          <UButton size="sm" variant="ghost" icon="i-lucide-pencil" @click="editSubaccount(row)">
-            Modifier
-          </UButton>
-          <UButton
-            size="sm"
-            variant="ghost"
-            color="red"
-            icon="i-lucide-trash-2"
-            @click="confirmDelete(row)"
-          >
-            Supprimer
-          </UButton>
-        </div>
-      </template>
-    </UTable>
-    </div>
-    
-    <!-- Slideover création/édition (guide Nuxt UI: formulaire dans Slideover) -->
+    <!-- Slideover création/édition -->
     <USlideover
       v-model:open="showModal"
       :title="editingSubaccount ? 'Modifier le sous-compte' : 'Créer un sous-compte'"
@@ -105,7 +81,7 @@
                 />
               </UFormField>
             </div>
-            
+
             <UFormField label="Email" name="email" required>
               <UInput
                 v-model="form.email"
@@ -117,7 +93,7 @@
                 L'email ne peut pas être modifié pour des raisons de sécurité.
               </template>
             </UFormField>
-            
+
             <UFormField label="Téléphone" name="phone">
               <UInput
                 v-model="form.phone"
@@ -125,7 +101,7 @@
                 placeholder="06 12 34 56 78"
               />
             </UFormField>
-            
+
             <UCheckbox
               v-if="!editingSubaccount"
               v-model="form.consent"
@@ -142,8 +118,8 @@
         </UButton>
       </template>
     </USlideover>
-    
-    <!-- Modal confirmation suppression (slots natifs UModal, portal) -->
+
+    <!-- Modal confirmation suppression -->
     <UModal
       v-model:open="showDeleteModal"
       title="Confirmer la suppression"
@@ -169,15 +145,17 @@ useHead({
   title: 'Sous-comptes – Laboratoire',
 });
 
+import TeamMemberListPage from '~/components/dashboard/TeamMemberListPage.vue';
+import { useAppToast } from '~/composables/useAppToast';
 import { apiFetch } from '~/utils/api';
 
-const toast = useToast();
+const toast = useAppToast();
+const { profileImageUrl } = useProfileImageUrl();
 
 const subaccounts = ref<any[]>([]);
 const loading = ref(true);
 const saving = ref(false);
 const deleting = ref(false);
-const searchQuery = ref('');
 const showModal = ref(false);
 const showDeleteModal = ref(false);
 const editingSubaccount = ref<any>(null);
@@ -191,24 +169,9 @@ const form = ref({
   consent: false,
 });
 
-const columns = [
-  { id: 'email', accessorKey: 'email', header: 'Email' },
-  { id: 'first_name', accessorKey: 'first_name', header: 'Prénom' },
-  { id: 'last_name', accessorKey: 'last_name', header: 'Nom' },
-  { id: 'created_at', accessorKey: 'created_at', header: 'Créé le' },
-  { id: 'actions', accessorKey: 'actions', header: '' },
-];
-
-const filteredSubaccounts = computed(() => {
-  if (!searchQuery.value.trim()) return subaccounts.value;
-  const q = searchQuery.value.toLowerCase();
-  return subaccounts.value.filter(
-    (s) =>
-      s.email?.toLowerCase().includes(q) ||
-      s.first_name?.toLowerCase().includes(q) ||
-      s.last_name?.toLowerCase().includes(q)
-  );
-});
+/** Affiche company_name (raison sociale) en priorité, sinon prénom + nom, sinon email */
+const subaccountDisplayName = (item: any) =>
+  (item.company_name && String(item.company_name).trim()) || [String(item.first_name ?? '').trim(), String(item.last_name ?? '').trim()].filter(Boolean).join(' ') || item.email || '—';
 
 const formatDate = (date: string) => {
   if (!date) return '-';

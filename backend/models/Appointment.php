@@ -6,6 +6,8 @@ require_once __DIR__ . '/../lib/Logger.php';
 require_once __DIR__ . '/../lib/Twilio.php';
 require_once __DIR__ . '/../lib/Email.php';
 require_once __DIR__ . '/../lib/NotificationService.php';
+require_once __DIR__ . '/../lib/EmailQueue.php';
+require_once __DIR__ . '/../lib/SmsQueue.php';
 require_once __DIR__ . '/../lib/Validation.php';
 
 /**
@@ -159,6 +161,11 @@ class Appointment
             throw new Exception('ID de proche invalide (format UUID requis).');
         }
         
+        $status = 'pending';
+        if (!empty($data['status']) && Validation::appointmentStatus($data['status'])) {
+            $status = $data['status'];
+        }
+        
         $id = $this->generateUUID();
         
         // Chiffrer l'adresse
@@ -182,12 +189,29 @@ class Appointment
         
         $assignedLabId = null;
         $assignedNurseId = null;
+        $assignedTo = null;
         if (!empty($data['type'])) {
-            if (($data['type'] === 'blood_test') && !empty($data['assigned_lab_id'])) {
-                $assignedLabId = $data['assigned_lab_id'];
+            if ($data['type'] === 'blood_test') {
+                if (!empty($data['assigned_lab_id'])) {
+                    $assignedLabId = $data['assigned_lab_id'];
+                }
+                if (!empty($data['assigned_to'])) {
+                    $assignedTo = $data['assigned_to'];
+                }
             }
             if (($data['type'] === 'nursing') && !empty($data['assigned_nurse_id'])) {
                 $assignedNurseId = $data['assigned_nurse_id'];
+            }
+        }
+
+        // Validation paramètres lab pour RDV prise de sang (création par pro ou assignation à un lab)
+        if ($data['type'] === 'blood_test') {
+            $effectiveLabId = $assignedLabId;
+            if (!$effectiveLabId && in_array($createdByRole, ['lab', 'subaccount'], true)) {
+                $effectiveLabId = $createdBy;
+            }
+            if ($effectiveLabId) {
+                $this->validateLabAppointmentParams($effectiveLabId, $data['scheduled_at'], $scheduledDate);
             }
         }
 
@@ -200,15 +224,15 @@ class Appointment
                 form_data_encrypted, form_data_dek,
                 guest_token, guest_email_encrypted, guest_email_dek,
                 scheduled_at,
-                assigned_lab_id, assigned_nurse_id,
+                assigned_lab_id, assigned_nurse_id, assigned_to,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         ');
 
         $stmt->execute([
             $id,
             $data['type'],
-            'pending',
+            $status,
             $data['patient_id'] ?? null,
             $data['relative_id'] ?? null,
             $createdBy,
@@ -227,6 +251,7 @@ class Appointment
             $data['scheduled_at'],
             $assignedLabId,
             $assignedNurseId,
+            $assignedTo,
         ]);
         
         // Logger la création
@@ -236,24 +261,70 @@ class Appointment
             'create',
             'appointment',
             $id,
-            ['type' => $data['type'], 'status' => 'pending']
+            ['type' => $data['type'], 'status' => $status]
         );
         
-        // Dispatch géographique automatique
-        $this->dispatchGeographic($id, $data['type'], $data['address']['lat'], $data['address']['lng']);
-        
-        // Envoyer notifications
+        // Dispatch et notifications sont exécutés après l'envoi de la réponse HTTP (voir API POST /appointments) pour éviter timeout
+        return $id;
+    }
+
+    /**
+     * À appeler après l'envoi de la réponse HTTP (création RDV) : dispatch géo + notifications.
+     * Évite le timeout côté client quand le dispatch/SMS prennent du temps.
+     */
+    public function runPostCreateNotifications(string $id, array $data): void
+    {
+        $lat = isset($data['address']['lat']) ? (float) $data['address']['lat'] : 0.0;
+        $lng = isset($data['address']['lng']) ? (float) $data['address']['lng'] : 0.0;
+        $this->dispatchGeographic($id, $data['type'] ?? '', $lat, $lng, $data['scheduled_at'] ?? null);
         $this->notificationService->notifyNewAppointment($id, [
             'patient_id' => $data['patient_id'] ?? null,
             'patient_email' => $data['patient_email'] ?? null,
-            'type' => $data['type'],
-            'scheduled_at' => $data['scheduled_at'],
+            'type' => $data['type'] ?? null,
+            'scheduled_at' => $data['scheduled_at'] ?? null,
         ]);
-        
-        // Notifier tous les admins super_admin
-        $this->notifyAllAdmins($id, $data['type'], $data['scheduled_at']);
-        
-        return $id;
+        $this->notifyAllAdmins($id, $data['type'] ?? '', $data['scheduled_at'] ?? '');
+    }
+
+    /**
+     * Valide que la date du RDV respecte les paramètres du lab (délai min, samedi, dimanche).
+     * @throws Exception si la date ne respecte pas les contraintes
+     */
+    private function validateLabAppointmentParams(string $labId, string $scheduledAtIso, DateTime $scheduledDate): void
+    {
+        try {
+            $stmt = $this->db->prepare('
+                SELECT min_booking_lead_time_hours,
+                       COALESCE(accept_rdv_saturday, 1) as accept_rdv_saturday,
+                       COALESCE(accept_rdv_sunday, 1) as accept_rdv_sunday
+                FROM profiles WHERE id = ?
+            ');
+            $stmt->execute([$labId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            return;
+        }
+        if (!$row) {
+            return;
+        }
+        $minHours = (int) ($row['min_booking_lead_time_hours'] ?? 48);
+        $acceptSaturday = (bool) ($row['accept_rdv_saturday'] ?? true);
+        $acceptSunday = (bool) ($row['accept_rdv_sunday'] ?? true);
+
+        $now = new DateTime();
+        if ($minHours > 0) {
+            $minAllowed = (clone $now)->modify("+{$minHours} hours");
+            if ($scheduledDate < $minAllowed) {
+                throw new Exception("La date du rendez-vous doit être au moins {$minHours}h à l'avance par rapport à maintenant.");
+            }
+        }
+        $dayOfWeek = (int) $scheduledDate->format('w'); // 0 = dimanche, 6 = samedi
+        if ($dayOfWeek === 0 && !$acceptSunday) {
+            throw new Exception('Ce laboratoire n\'accepte pas les rendez-vous le dimanche.');
+        }
+        if ($dayOfWeek === 6 && !$acceptSaturday) {
+            throw new Exception('Ce laboratoire n\'accepte pas les rendez-vous le samedi.');
+        }
     }
 
     /**
@@ -273,6 +344,8 @@ class Appointment
                 pr.phone_encrypted as relative_phone_encrypted,
                 pr.phone_dek as relative_phone_dek,
                 pr.relationship_type as relative_relationship_type,
+                pr.birth_date_encrypted as relative_birth_date_encrypted,
+                pr.birth_date_dek as relative_birth_date_dek,
                 cc.name as category_name,
                 cc.type as category_type
             FROM appointments a
@@ -308,6 +381,9 @@ class Appointment
                     $appointment['relative_phone_dek']
                 ) : null,
                 'relationship_type' => $appointment['relative_relationship_type'],
+                'birth_date' => (!empty($appointment['relative_birth_date_encrypted']) && !empty($appointment['relative_birth_date_dek']))
+                    ? $this->crypto->decryptField($appointment['relative_birth_date_encrypted'], $appointment['relative_birth_date_dek'])
+                    : null,
                 'contact_is_parent' => false,
             ];
 
@@ -356,7 +432,9 @@ class Appointment
                 $appointment['relative_email_dek'],
                 $appointment['relative_phone_encrypted'],
                 $appointment['relative_phone_dek'],
-                $appointment['relative_relationship_type']
+                $appointment['relative_relationship_type'],
+                $appointment['relative_birth_date_encrypted'],
+                $appointment['relative_birth_date_dek']
             );
         }
         
@@ -391,11 +469,58 @@ class Appointment
         unset($appointment['address_encrypted'], $appointment['address_dek']);
         unset($appointment['form_data_encrypted'], $appointment['form_data_dek']);
         
+        // Libellés et infos d'assignation (lab / préleveur) pour la liste et pour la page patient (logo, adresse, tél)
+        $appointment['assigned_lab_display_name'] = null;
+        $appointment['assigned_lab_role'] = null;
+        $appointment['assigned_lab_phone'] = null;
+        $appointment['assigned_lab_address'] = null;
+        $appointment['assigned_lab_profile_image_url'] = null;
+        $appointment['assigned_lab_public_slug'] = null;
+        $appointment['assigned_to_display_name'] = null;
+        $appointment['assigned_to_phone'] = null;
+        $appointment['assigned_to_address'] = null;
+        $appointment['assigned_to_profile_image_url'] = null;
+        $appointment['assigned_to_email'] = null;
+        try {
+            require_once __DIR__ . '/User.php';
+            $userModel = new User();
+            if (!empty($appointment['assigned_lab_id'])) {
+                $labProfile = $userModel->getById($appointment['assigned_lab_id'], 'system', 'system');
+                if ($labProfile) {
+                    $company = isset($labProfile['company_name']) ? trim((string)$labProfile['company_name']) : '';
+                    $first = trim((string)($labProfile['first_name'] ?? ''));
+                    $last = trim((string)($labProfile['last_name'] ?? ''));
+                    $name = trim($first . ' ' . $last);
+                    $appointment['assigned_lab_display_name'] = $company !== '' ? $company : ($name !== '' ? $name : null);
+                    $appointment['assigned_lab_role'] = $labProfile['role'] ?? null;
+                    $appointment['assigned_lab_phone'] = isset($labProfile['phone']) ? trim((string)$labProfile['phone']) : null;
+                    $appointment['assigned_lab_address'] = isset($labProfile['address']['label']) ? trim((string)$labProfile['address']['label']) : (is_string($labProfile['address'] ?? null) ? trim($labProfile['address']) : null);
+                    $appointment['assigned_lab_profile_image_url'] = isset($labProfile['profile_image_url']) ? trim((string)$labProfile['profile_image_url']) : null;
+                    $appointment['assigned_lab_public_slug'] = isset($labProfile['public_slug']) && trim((string)$labProfile['public_slug']) !== '' ? trim((string)$labProfile['public_slug']) : null;
+                }
+            }
+            if (!empty($appointment['assigned_to'])) {
+                $preleveurProfile = $userModel->getById($appointment['assigned_to'], 'system', 'system');
+                if ($preleveurProfile) {
+                    $first = trim((string)($preleveurProfile['first_name'] ?? ''));
+                    $last = trim((string)($preleveurProfile['last_name'] ?? ''));
+                    $appointment['assigned_to_display_name'] = trim($first . ' ' . $last) ?: null;
+                    $appointment['assigned_to_phone'] = isset($preleveurProfile['phone']) ? trim((string)$preleveurProfile['phone']) : null;
+                    $appointment['assigned_to_address'] = isset($preleveurProfile['address']['label']) ? trim((string)$preleveurProfile['address']['label']) : (is_string($preleveurProfile['address'] ?? null) ? trim($preleveurProfile['address']) : null);
+                    $appointment['assigned_to_profile_image_url'] = isset($preleveurProfile['profile_image_url']) ? trim((string)$preleveurProfile['profile_image_url']) : null;
+                    $appointment['assigned_to_email'] = isset($preleveurProfile['email']) ? trim((string)$preleveurProfile['email']) : null;
+                }
+            }
+        } catch (Exception $e) {
+            // Ne pas faire échouer getById si résolution des noms échoue
+        }
+        
         return $appointment;
     }
 
     /**
      * Change le statut d'un rendez-vous
+     * Pour status = canceled, optionnel : cancellation_reason, cancellation_comment, cancellation_photo_document_id
      */
     public function updateStatus(
         string $id,
@@ -403,10 +528,13 @@ class Appointment
         string $actorId,
         string $actorRole,
         ?string $note = null,
-        bool $redispatch = false
+        bool $redispatch = false,
+        ?string $cancellationReason = null,
+        ?string $cancellationComment = null,
+        ?string $cancellationPhotoDocumentId = null
     ): void {
         // Récupérer le statut actuel et le type
-        $stmt = $this->db->prepare('SELECT status, type, assigned_nurse_id, assigned_lab_id, location_lat, location_lng FROM appointments WHERE id = ?');
+        $stmt = $this->db->prepare('SELECT status, type, assigned_nurse_id, assigned_lab_id, assigned_to, location_lat, location_lng, scheduled_at FROM appointments WHERE id = ?');
         $stmt->execute([$id]);
         $appointment = $stmt->fetch();
         
@@ -419,6 +547,19 @@ class Appointment
         // Préparer la requête de mise à jour
         $updateFields = ['status = ?', 'updated_at = NOW()'];
         $params = [$newStatus];
+        
+        // Annulation par un pro : enregistrer motif, commentaire, photo
+        if ($newStatus === 'canceled') {
+            $updateFields[] = 'canceled_by = ?';
+            $params[] = $actorId;
+            $updateFields[] = 'canceled_at = NOW()';
+            $updateFields[] = 'cancellation_reason = ?';
+            $params[] = $cancellationReason;
+            $updateFields[] = 'cancellation_comment = ?';
+            $params[] = $cancellationComment ?? '';
+            $updateFields[] = 'cancellation_photo_document_id = ?';
+            $params[] = $cancellationPhotoDocumentId;
+        }
         
         // Si c'est un redispatch, on remet les assignations à NULL et on relance le dispatch
         if ($redispatch && $newStatus === 'pending') {
@@ -446,6 +587,11 @@ class Appointment
         if ($newStatus === 'confirmed' && in_array($actorRole, ['lab', 'subaccount']) && $appointment['type'] === 'blood_test') {
             $updateFields[] = 'assigned_lab_id = ?';
             $params[] = $actorId;
+        }
+        
+        // Quand le RDV est marqué terminé, enregistrer completed_at
+        if ($newStatus === 'completed') {
+            $updateFields[] = 'completed_at = NOW()';
         }
         
         // Ajouter l'ID à la fin des paramètres
@@ -484,10 +630,11 @@ class Appointment
         // Si redispatch, relancer le dispatch géographique
         if ($redispatch && $newStatus === 'pending') {
             $this->dispatchGeographic(
-                $id, 
-                $appointment['type'], 
-                $appointment['location_lat'], 
-                $appointment['location_lng']
+                $id,
+                $appointment['type'],
+                (float) $appointment['location_lat'],
+                (float) $appointment['location_lng'],
+                $appointment['scheduled_at'] ?? null
             );
         }
         
@@ -555,6 +702,14 @@ class Appointment
             $params[] = !empty($data['assigned_nurse_id']) ? $data['assigned_nurse_id'] : null;
         }
 
+        if (array_key_exists('category_id', $data)) {
+            if (!empty($data['category_id']) && !Validation::uuid($data['category_id'])) {
+                throw new Exception('ID de catégorie invalide (format UUID requis).');
+            }
+            $updateFields[] = 'category_id = ?';
+            $params[] = !empty($data['category_id']) ? $data['category_id'] : null;
+        }
+
         if (empty($params)) {
             return;
         }
@@ -576,7 +731,7 @@ class Appointment
     {
         // Récupérer les informations complètes du rendez-vous
         $stmt = $this->db->prepare('
-            SELECT a.patient_id, a.assigned_to, a.assigned_nurse_id, a.assigned_lab_id,
+            SELECT a.patient_id, a.type, a.assigned_to, a.assigned_nurse_id, a.assigned_lab_id,
                    a.scheduled_at, a.address_encrypted, a.address_dek, a.category_id,
                    c.name as category_name
             FROM appointments a
@@ -605,6 +760,7 @@ class Appointment
         // Récupérer les infos du patient
         $patientFirstName = '';
         $patientLastName = '';
+        $patientEmail = null;
         if ($patientId) {
             try {
                 require_once __DIR__ . '/User.php';
@@ -613,19 +769,29 @@ class Appointment
                 if ($patient) {
                     $patientFirstName = $patient['first_name'] ?? '';
                     $patientLastName = $patient['last_name'] ?? '';
+                    $patientEmail = $patient['email'] ?? null;
                 }
             } catch (Exception $e) {
                 // Ignorer les erreurs
             }
         }
         
+        // Libellé de l'acteur (labo, sous-compte, préleveur, infirmier) pour les messages de notification
+        $actorDisplayLabel = null;
+        if ($actorId && $actorRole && in_array($actorRole, ['nurse', 'lab', 'subaccount', 'preleveur'])) {
+            $actorDisplayLabel = $this->getActorDisplayLabel($actorId, $actorRole);
+        }
+        
         switch ($status) {
             case 'confirmed':
-                // Notification au patient (si patient existe)
+                // Notification au patient (si patient existe) + email confirmation (async)
                 if ($patientId) {
                     $this->notificationService->notifyAppointmentConfirmed($appointmentId, [
                         'patient_id' => $patientId,
+                        'patient_email' => $patientEmail,
                         'id' => $appointmentId,
+                        'scheduled_at' => $appointment['scheduled_at'] ?? null,
+                        'type' => $appointment['type'] ?? 'blood_test',
                     ]);
                 }
                 
@@ -653,7 +819,16 @@ class Appointment
                 
             case 'completed':
                 if ($patientId) {
-                    $this->notificationService->notifyAppointmentCompleted($appointmentId, $patientId);
+                    $this->notificationService->notifyAppointmentCompleted(
+                        $appointmentId,
+                        $patientId,
+                        $actorDisplayLabel,
+                        $patientFirstName,
+                        $patientLastName,
+                        $appointment['assigned_lab_id'] ?? null,
+                        $appointment['assigned_to'] ?? null,
+                        $appointment['assigned_nurse_id'] ?? null
+                    );
                 }
                 break;
                 
@@ -664,18 +839,28 @@ class Appointment
                     $canceledBy = 'nurse'; // Ou 'professional' mais on garde 'nurse' pour simplifier
                 }
                 
+                $appointmentType = $appointment['type'] ?? null;
+                $careTypeLabel = $appointment['category_name'] ?? (
+                    $appointmentType === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers'
+                );
                 $this->notificationService->notifyAppointmentCanceled(
                     $appointmentId,
                     [
                         'patient_id' => $patientId,
+                        'patient_email' => $patientEmail,
                         'patient_first_name' => $patientFirstName,
                         'patient_last_name' => $patientLastName,
                         'scheduled_at' => $appointment['scheduled_at'],
                         'address' => $address,
-                        'category_name' => $appointment['category_name'] ?? 'Soins infirmiers',
+                        'category_name' => $careTypeLabel,
+                        'type' => $appointmentType,
                         'assigned_nurse_id' => $appointment['assigned_nurse_id'],
+                        'assigned_lab_id' => $appointment['assigned_lab_id'] ?? null,
+                        'assigned_to' => $appointment['assigned_to'] ?? null,
+                        'actor_display_label' => $actorDisplayLabel,
                     ],
-                    $canceledBy
+                    $canceledBy,
+                    $actorDisplayLabel
                 );
                 break;
                 
@@ -729,9 +914,11 @@ class Appointment
     }
 
     /**
-     * Dispatch géographique : trouve les professionnels disponibles
+     * Dispatch géographique : trouve les professionnels disponibles.
+     * Pour blood_test : ne notifie que les labs qui acceptent les RDV et dont le délai min (min_booking_lead_time_hours) est respecté.
+     * @param string|null $scheduledAt Date/heure du RDV (Y-m-d H:i:s) pour filtrer les labs par délai min
      */
-    private function dispatchGeographic(string $appointmentId, string $type, float $lat, float $lng): void
+    private function dispatchGeographic(string $appointmentId, string $type, float $lat, float $lng, ?string $scheduledAt = null): void
     {
         if ($type === 'nursing') {
             $roleFilter = 'nurse';
@@ -755,16 +942,23 @@ class Appointment
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$roleFilter]);
         } else {
+            // Labs/subaccounts : inclure toute zone active (centre ou adresse profil pour la distance)
+            // p.lab_id : pour que le lab parent reçoive toujours les RDV des sous-comptes
             $sql = "
                 SELECT cz.*, p.id as profile_id, p.role,
-                       p.address_encrypted, p.address_dek
+                       p.address_encrypted, p.address_dek,
+                       p.is_accepting_appointments,
+                       COALESCE(p.min_booking_lead_time_hours, 48) as min_booking_lead_time_hours,
+                       COALESCE(p.accept_rdv_saturday, 1) as accept_rdv_saturday,
+                       COALESCE(p.accept_rdv_sunday, 1) as accept_rdv_sunday,
+                       p.lab_id
                 FROM coverage_zones cz
                 INNER JOIN profiles p ON cz.owner_id = p.id
                 WHERE cz.role IN ('lab', 'subaccount')
                 AND cz.is_active = TRUE
                 AND cz.radius_km IS NOT NULL
-                AND p.address_encrypted IS NOT NULL
-                AND p.address_dek IS NOT NULL
+                AND (cz.center_lat IS NOT NULL AND cz.center_lng IS NOT NULL
+                     OR (p.address_encrypted IS NOT NULL AND p.address_dek IS NOT NULL))
             ";
             $stmt = $this->db->prepare($sql);
             $stmt->execute();
@@ -815,15 +1009,73 @@ class Appointment
             }
             
             if ($isInZone) {
-                $professionals[] = [
+                $entry = [
                     'id' => $zone['profile_id'],
                     'role' => $zone['role'],
                 ];
+                if ($type === 'blood_test' && isset($zone['is_accepting_appointments'], $zone['min_booking_lead_time_hours'])) {
+                    $entry['is_accepting_appointments'] = (bool) $zone['is_accepting_appointments'];
+                    $entry['min_booking_lead_time_hours'] = (int) $zone['min_booking_lead_time_hours'];
+                    $entry['accept_rdv_saturday'] = (bool) ($zone['accept_rdv_saturday'] ?? true);
+                    $entry['accept_rdv_sunday'] = (bool) ($zone['accept_rdv_sunday'] ?? true);
+                    $entry['lab_id'] = !empty($zone['lab_id']) ? $zone['lab_id'] : null;
+                }
+                $professionals[] = $entry;
             }
         }
         
-        // Limiter à 10 professionnels
-        $professionals = array_slice($professionals, 0, 10);
+        // Pour blood_test sans lab assigné : exclure les labs qui n'acceptent pas les RDV, dont le délai min n'est pas respecté, ou qui n'acceptent pas samedi/dimanche
+        if ($type === 'blood_test' && $scheduledAt !== null && $scheduledAt !== '') {
+            $scheduledTs = strtotime($scheduledAt);
+            $dayOfWeek = (int) date('w', $scheduledTs); // 0 = dimanche, 6 = samedi
+            $now = time();
+            $professionals = array_filter($professionals, function ($p) use ($scheduledTs, $now, $dayOfWeek) {
+                if (empty($p['is_accepting_appointments'])) {
+                    return false;
+                }
+                if ($dayOfWeek === 0 && empty($p['accept_rdv_sunday'])) {
+                    return false;
+                }
+                if ($dayOfWeek === 6 && empty($p['accept_rdv_saturday'])) {
+                    return false;
+                }
+                $minHours = (int) ($p['min_booking_lead_time_hours'] ?? 48);
+                if ($minHours <= 0) {
+                    return true;
+                }
+                $minAllowedTs = $now + ($minHours * 3600);
+                return $scheduledTs >= $minAllowedTs;
+            });
+        }
+        
+        // Pour blood_test : ajouter le lab parent pour chaque sous-compte restant, afin qu'il reçoive toujours les RDV et puisse accepter pour eux
+        if ($type === 'blood_test') {
+            $labIdsToNotify = [];
+            foreach ($professionals as $p) {
+                if (($p['role'] ?? '') === 'subaccount' && !empty($p['lab_id'])) {
+                    $labIdsToNotify[$p['lab_id']] = true;
+                }
+            }
+            foreach (array_keys($labIdsToNotify) as $labId) {
+                $professionals[] = ['id' => $labId, 'role' => 'lab'];
+            }
+            // Dédupliquer par id (un lab peut être déjà dans la liste via sa propre zone)
+            $seen = [];
+            $professionals = array_values(array_filter($professionals, function ($p) use (&$seen) {
+                $id = $p['id'];
+                if (in_array($id, $seen, true)) {
+                    return false;
+                }
+                $seen[] = $id;
+                return true;
+            }));
+        }
+        
+        // Limiter le nombre de professionnels notifiés pour éviter surcharge/timeout (100 max)
+        $professionals = array_slice($professionals, 0, 100);
+        
+        // Enregistrer les offres (labs + infirmiers) pour afficher les RDV dans les listes et permettre la popup accepter/refuser
+        $this->insertAppointmentOffers($appointmentId, $professionals);
         
         // Créer une notification web pour chaque professionnel trouvé
         foreach ($professionals as $professional) {
@@ -835,42 +1087,54 @@ class Appointment
                     'Un nouveau rendez-vous est disponible dans votre zone de couverture',
                     ['appointment_id' => $appointmentId]
                 );
+                // Email async (envoyé après la réponse HTTP)
+                EmailQueue::add('new_appointment_pro', null, [
+                    'appointment_id' => $appointmentId,
+                    'scheduled_at' => $scheduledAt ?? date('Y-m-d H:i:s'),
+                    'role' => $type === 'nursing' ? 'nurse' : 'lab',
+                ], $professional['id']);
             } catch (Exception $e) {
                 // Continuer même si une notification échoue
             }
         }
         
-        // Envoyer SMS à chaque professionnel (si Twilio est configuré)
-        if ($this->twilio !== null) {
-            foreach ($professionals as $professional) {
-                try {
-                    // Récupérer le téléphone du professionnel (nécessite déchiffrement)
-                    $stmt = $this->db->prepare('
-                        SELECT phone_encrypted, phone_dek 
-                        FROM profiles 
-                        WHERE id = ?
-                    ');
-                    $stmt->execute([$professional['id']]);
-                    $profile = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
-                    if ($profile && $profile['phone_encrypted'] && $profile['phone_dek']) {
-                        $phone = $this->crypto->decryptField($profile['phone_encrypted'], $profile['phone_dek']);
-                        
-                        if ($phone) {
-                            $this->twilio->sendNewAppointmentNotification(
-                                $phone,
-                                [
-                                    'id' => $appointmentId,
-                                    'scheduled_at' => date('Y-m-d H:i:s'),
-                                ]
-                            );
-                        }
-                    }
-                } catch (Exception $e) {
-                    // Ne pas bloquer le processus si l'envoi SMS échoue
-                }
-            }
+        // SMS en file (shutdown) pour ne pas bloquer la réponse
+        $scheduledAtStr = $scheduledAt ?? date('Y-m-d H:i:s');
+        foreach ($professionals as $professional) {
+            SmsQueue::addNewAppointment($professional['id'], $appointmentId, $scheduledAtStr);
         }
+    }
+
+    /**
+     * Retourne le libellé d'affichage de l'acteur (laboratoire, sous-compte, préleveur, infirmier) pour les notifications
+     */
+    private function getActorDisplayLabel(string $actorId, string $actorRole): string
+    {
+        try {
+            require_once __DIR__ . '/User.php';
+            $userModel = new User();
+            $actor = $userModel->getById($actorId, 'system', 'system');
+            if (!$actor) {
+                return $actorRole === 'nurse' ? "L'infirmier" : ($actorRole === 'preleveur' ? 'Le préleveur' : 'Le laboratoire');
+            }
+            $first = trim((string)($actor['first_name'] ?? ''));
+            $last = trim((string)($actor['last_name'] ?? ''));
+            $name = trim($first . ' ' . $last);
+            $company = isset($actor['company_name']) ? trim((string)$actor['company_name']) : '';
+            if ($actorRole === 'lab' || $actorRole === 'subaccount') {
+                $labName = $company !== '' ? $company : ($name !== '' ? $name : 'Ce laboratoire');
+                return 'Le laboratoire ' . $labName;
+            }
+            if ($actorRole === 'preleveur') {
+                return 'Le préleveur ' . ($name !== '' ? $name : '');
+            }
+            if ($actorRole === 'nurse') {
+                return ($name !== '' ? "L'infirmier " . $name : "L'infirmier");
+            }
+        } catch (Exception $e) {
+            // Ignorer
+        }
+        return $actorRole === 'nurse' ? "L'infirmier" : ($actorRole === 'preleveur' ? 'Le préleveur' : 'Le laboratoire');
     }
 
     /**
@@ -914,6 +1178,25 @@ class Appointment
         } catch (Exception $e) {
             // Logger l'erreur mais ne pas bloquer la création du rendez-vous
             error_log("Erreur lors de la récupération des admins: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Enregistre les offres (appointment_offers) pour que les labs/infirmiers voient le RDV dans leur liste.
+     */
+    private function insertAppointmentOffers(string $appointmentId, array $professionals): void
+    {
+        try {
+            $stmt = $this->db->prepare('INSERT IGNORE INTO appointment_offers (appointment_id, profile_id) VALUES (?, ?)');
+            foreach ($professionals as $p) {
+                $profileId = $p['id'] ?? null;
+                if ($profileId) {
+                    $stmt->execute([$appointmentId, $profileId]);
+                }
+            }
+        } catch (Throwable $e) {
+            // Table peut ne pas exister si migration 040 non exécutée
+            error_log('insertAppointmentOffers: ' . $e->getMessage());
         }
     }
 

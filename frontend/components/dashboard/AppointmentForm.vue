@@ -5,7 +5,7 @@
       <div class="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-3 min-w-0">
           <UButton
-            to="/admin/appointments"
+            :to="appointmentsBasePath"
             variant="ghost"
             color="gray"
             size="sm"
@@ -13,7 +13,7 @@
             :aria-label="isCreate ? 'Retour' : 'Retour à la liste'"
           />
           <div class="min-w-0">
-            <h1 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white truncate flex items-center gap-2">
+            <h1 class="text-lg sm:text-xl font-normal text-gray-900 dark:text-white truncate flex items-center gap-2">
               {{ isCreate ? 'Nouveau rendez-vous' : 'Édition du rendez-vous' }}
               <UBadge v-if="!isCreate && appointment" :color="getStatusColor(form.status)" variant="subtle" size="xs" class="flex-shrink-0">
                 {{ getStatusLabel(form.status) }}
@@ -26,10 +26,10 @@
           </div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
-          <UButton v-if="isEdit && appointmentId" :to="`/admin/appointments/${appointmentId}`" variant="ghost" color="gray" size="sm">
+          <UButton v-if="isEdit && appointmentId" :to="`${appointmentsBasePath}/${appointmentId}`" variant="ghost" color="gray" size="sm">
             Voir détail
           </UButton>
-          <UButton type="button" variant="ghost" color="gray" to="/admin/appointments" class="hidden sm:inline-flex">Annuler</UButton>
+          <UButton type="button" variant="ghost" color="gray" :to="appointmentsBasePath" class="hidden sm:inline-flex">Annuler</UButton>
           <UButton type="submit" color="primary" :loading="saving" icon="i-lucide-check" size="sm" @click="submit">
             {{ isCreate ? 'Créer' : 'Enregistrer' }}
           </UButton>
@@ -48,9 +48,9 @@
         <div class="p-4 rounded-full bg-red-50 dark:bg-red-900/20 mb-4">
           <UIcon name="i-lucide-alert-circle" class="w-8 h-8 text-red-500" />
         </div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Rendez-vous introuvable</h3>
+        <h3 class="text-lg font-normal text-gray-900 dark:text-white">Rendez-vous introuvable</h3>
         <p class="text-gray-500 mb-6">Ce rendez-vous n'existe pas ou a été supprimé.</p>
-        <UButton to="/admin/appointments" color="gray" variant="solid">Retour à la liste</UButton>
+        <UButton :to="appointmentsBasePath" color="gray" variant="solid">Retour à la liste</UButton>
       </div>
 
       <form v-else-if="isCreate || (isEdit && appointment)" @submit.prevent="submit" class="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -58,7 +58,7 @@
         <div class="lg:col-span-7 space-y-6">
           
           <section v-if="isCreate" class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-search" class="w-5 h-5 text-primary-500 shrink-0" />
               Recherche Patient
             </h2>
@@ -85,7 +85,7 @@
           </section>
 
           <section class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-user-circle" class="w-5 h-5 text-primary-500 shrink-0" />
               Identité du patient
             </h2>
@@ -122,7 +122,7 @@
           </section>
 
           <section class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-clipboard-list" class="w-5 h-5 text-primary-500 shrink-0" />
               Nature de l'intervention
             </h2>
@@ -208,7 +208,7 @@
           </section>
 
           <section class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-file-text" class="w-5 h-5 text-primary-500 shrink-0" />
               Notes & Instructions
             </h2>
@@ -227,7 +227,7 @@
         <div class="lg:col-span-5 space-y-6">
           
           <section class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-calendar-clock" class="w-5 h-5 text-primary-500 shrink-0" />
               Planification
             </h2>
@@ -248,7 +248,9 @@
                 <DatePicker 
                   v-model="form.scheduled_at" 
                   class="w-full"
-                  :appointment-type="form.type === 'blood_test' ? 'lab' : 'nurse'" 
+                  :appointment-type="form.type === 'blood_test' ? 'lab' : 'nurse'"
+                  :accept-saturday="true"
+                  :accept-sunday="true"
                 />
               </UFormField>
 
@@ -277,8 +279,8 @@
 
                 <div v-if="form.form_data.availability_type === 'custom'" class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
                   <div class="flex justify-between items-end mb-4">
-                    <span class="text-xs uppercase tracking-wide text-gray-400 font-bold">Heure</span>
-                    <span class="text-lg font-mono font-bold text-primary-600">
+                    <span class="text-xs uppercase tracking-wide text-gray-400 font-normal">Heure</span>
+                    <span class="text-lg font-mono font-normal text-primary-600">
                       {{ formatTime(availabilityRange[0]) }} - {{ formatTime(availabilityRange[1]) }}
                     </span>
                   </div>
@@ -305,7 +307,7 @@
           </section>
 
           <section v-if="form.type === 'blood_test'" class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-flask-conical" class="w-5 h-5 text-primary-500 shrink-0" />
               Assigner à un laboratoire
             </h2>
@@ -325,7 +327,7 @@
           </section>
 
           <section v-else-if="form.type === 'nursing'" class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-stethoscope" class="w-5 h-5 text-primary-500 shrink-0" />
               Assigner à un infirmier
             </h2>
@@ -345,7 +347,7 @@
           </section>
 
           <section class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-map-pin" class="w-5 h-5 text-primary-500 shrink-0" />
               Lieu du RDV
             </h2>
@@ -363,11 +365,17 @@
           </section>
 
           <section class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+            <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-1 flex items-center gap-2">
               <UIcon name="i-lucide-file-up" class="w-5 h-5 text-primary-500 shrink-0" />
               Documents requis
             </h2>
-            <p class="text-xs text-gray-500 mb-4 ml-7">Glissez les fichiers ou cliquez pour importer.</p>
+            <p class="text-xs text-gray-500 mb-4 ml-7">
+              <span v-if="loadingPatientDocuments" class="inline-flex items-center gap-1.5">
+                <UIcon name="i-lucide-loader-2" class="w-3.5 h-3.5 animate-spin" />
+                Chargement des documents du patient…
+              </span>
+              <template v-else>Glissez les fichiers ou cliquez pour importer.</template>
+            </p>
             
             <div class="space-y-3">
               <div 
@@ -385,7 +393,7 @@
                   :class="[
                     draggedOver === doc.key 
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 scale-[1.02]' 
-                      : (form.files[doc.key] || (isEdit && existingFileNames[doc.key])) 
+                      : hasDocumentForType(doc.key) 
                         ? 'border-green-200 bg-green-50/30 dark:border-green-900/30 dark:bg-green-900/10' 
                         : 'border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-gray-50 dark:hover:bg-gray-800'
                   ]"
@@ -394,7 +402,7 @@
                   <div 
                     class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors"
                     :class="[
-                       (form.files[doc.key] || (isEdit && existingFileNames[doc.key])) ? 'bg-green-100 text-green-600' : doc.iconBg + ' ' + doc.iconColor
+                       hasDocumentForType(doc.key) ? 'bg-green-100 text-green-600' : doc.iconBg + ' ' + doc.iconColor
                     ]"
                   >
                      <UIcon :name="doc.icon" class="w-5 h-5" />
@@ -404,10 +412,37 @@
                     <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ doc.label }}</p>
                     <p v-if="form.files[doc.key]" class="text-xs text-green-600 font-medium truncate">{{ form.files[doc.key].name }}</p>
                     <p v-else-if="isEdit && existingFileNames[doc.key]" class="text-xs text-green-600/80 truncate">Fichier existant</p>
+                    <p v-else-if="patientDocuments[doc.key]" class="text-xs truncate" :class="uploadingDocumentType === doc.key ? 'text-gray-500' : 'text-green-600/80'" :title="patientDocuments[doc.key].file_name">
+                      {{ uploadingDocumentType === doc.key ? 'Enregistrement…' : patientDocuments[doc.key].file_name }}
+                    </p>
                     <p v-else class="text-xs text-gray-400 group-hover:text-primary-500 transition-colors">Ajouter un fichier</p>
                   </div>
 
-                  <div v-if="form.files[doc.key]" class="p-1 rounded-full hover:bg-red-100 text-gray-400 hover:text-red-500" @click.stop="delete form.files[doc.key]">
+                  <div v-if="patientDocuments[doc.key] && !form.files[doc.key]" class="flex items-center gap-1 shrink-0">
+                    <UButton
+                      size="xs"
+                      color="neutral"
+                      variant="ghost"
+                      icon="i-lucide-download"
+                      :loading="uploadingDocumentType === doc.key"
+                      :disabled="!!uploadingDocumentType"
+                      @click.stop="downloadPatientDocument(patientDocuments[doc.key].medical_document_id, patientDocuments[doc.key].file_name)"
+                    >
+                      Télécharger
+                    </UButton>
+                    <UButton
+                      size="xs"
+                      color="neutral"
+                      variant="ghost"
+                      icon="i-lucide-file-up"
+                      :loading="uploadingDocumentType === doc.key"
+                      :disabled="!!uploadingDocumentType"
+                      @click.stop="triggerFileInput(doc.key)"
+                    >
+                      Remplacer
+                    </UButton>
+                  </div>
+                  <div v-else-if="form.files[doc.key]" class="p-1 rounded-full hover:bg-red-100 text-gray-400 hover:text-red-500" @click.stop="delete form.files[doc.key]">
                     <UIcon name="i-lucide-x" class="w-4 h-4" />
                   </div>
                 </div>
@@ -423,7 +458,7 @@
               size="xl"
               :loading="saving"
               icon="i-lucide-check"
-              class="w-full !py-4 text-base font-semibold"
+              class="w-full !py-4 text-base font-normal"
             >
               {{ isCreate ? 'Créer le rendez-vous' : 'Enregistrer les modifications' }}
             </UButton>
@@ -432,7 +467,7 @@
         </div>
 
         <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-t border-gray-200 dark:border-gray-800 sm:hidden z-40 flex gap-3">
-          <UButton block variant="soft" color="gray" to="/admin/appointments" class="flex-1">Annuler</UButton>
+          <UButton block variant="soft" color="gray" :to="appointmentsBasePath" class="flex-1">Annuler</UButton>
           <UButton block type="submit" color="primary" size="lg" :loading="saving" class="flex-1">
              {{ isCreate ? 'Créer le rendez-vous' : 'Sauvegarder' }}
           </UButton>
@@ -454,10 +489,16 @@ type StatusType = 'pending' | 'confirmed' | 'inProgress' | 'completed' | 'cancel
 interface SelectOption { label: string; value: string | number }
 
 // --- PROPS ---
-const props = defineProps<{
-  mode: 'create' | 'edit';
-  appointmentId?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    mode: 'create' | 'edit';
+    appointmentId?: string;
+    /** Base path pour les liens Retour / Annuler (ex: /admin, /preleveur) */
+    basePath?: string;
+  }>(),
+  { basePath: '/admin' }
+);
+const appointmentsBasePath = computed(() => `${props.basePath}/appointments`);
 
 // --- CONSTANTS & OPTIONS (Static) ---
 const NEW_PATIENT_VALUE = '__new_patient__';
@@ -501,7 +542,11 @@ const frequencyOptions = [{ label: 'Quotidien', value: 'daily' }, { label: '1j s
 
 // --- COMPOSABLES ---
 const router = useRouter();
-const toast = useToast();
+const route = useRoute();
+const toast = useAppToast();
+const { user } = useAuth();
+/** Formulaire utilisé par un pro (basePath /pro) : patients via /patients, pas de labos/infirmiers */
+const isProForm = computed(() => props.basePath === '/pro');
 
 // --- STATE ---
 const isCreate = computed(() => props.mode === 'create');
@@ -516,6 +561,10 @@ const patients = ref<any[]>([]);
 const patientsLoading = ref(false);
 const selectedPatient = ref<any>(null);
 const selectedPatientId = ref<string>(NEW_PATIENT_VALUE);
+const patientDocuments = ref<Record<string, any>>({});
+const loadingPatientDocuments = ref(false);
+const uploadingDocumentType = ref<string | null>(null);
+const PATIENT_DOC_TYPES = ['carte_vitale', 'carte_mutuelle', 'autres_assurances'];
 
 // Form Data
 const categoryOptions = ref<SelectOption[]>([]);
@@ -572,7 +621,7 @@ const existingFileNames = computed(() => {
 
 const labSelectItems = computed(() =>
   labs.value.map((p) => ({
-    label: `${(p.first_name || '').trim()} ${(p.last_name || '').trim()}`.trim() || p.email || p.id,
+    label: (p.company_name && String(p.company_name).trim()) || `${(p.first_name || '').trim()} ${(p.last_name || '').trim()}`.trim() || p.email || p.id,
     value: p.id,
   }))
 );
@@ -623,6 +672,13 @@ function setServiceType(type: ServiceType) {
 }
 
 // File Handling
+function hasDocumentForType(key: string) {
+  if (form.files[key]) return true;
+  if (isEdit.value && existingFileNames.value[key]) return true;
+  if (isCreate.value && selectedPatientId.value !== NEW_PATIENT_VALUE && patientDocuments.value[key]) return true;
+  return false;
+}
+
 function setFileInputRef(key: string, el: unknown) {
   if (el && el instanceof HTMLInputElement) fileInputRefs[key] = el;
 }
@@ -639,13 +695,97 @@ function handleDrop(event: DragEvent, key: string) {
   const file = event.dataTransfer?.files?.[0];
   if (file) processFile(file, key);
 }
-function processFile(file: File, key: string) {
+async function processFile(file: File, key: string) {
   if (file.size > 10 * 1024 * 1024) {
     toast.add({ title: 'Fichier trop volumineux', description: 'Max 10 Mo', color: 'red', icon: 'i-lucide-alert-circle' });
     return;
   }
+  const isPatientDocType = PATIENT_DOC_TYPES.includes(key);
+  const canUpdateProfile = isProForm.value && selectedPatientId.value !== NEW_PATIENT_VALUE && selectedPatient.value?.id;
+  if (isPatientDocType && canUpdateProfile) {
+    await uploadPatientDocumentToProfile(key, file);
+    return;
+  }
   form.files[key] = file;
   toast.add({ title: 'Fichier ajouté', description: file.name, color: 'green', icon: 'i-lucide-check', timeout: 2000 });
+}
+
+function getApiBase(): string {
+  if (import.meta.client && (window as any).__NUXT__?.config?.public?.apiBase) {
+    return (window as any).__NUXT__.config.public.apiBase;
+  }
+  return import.meta.env?.NUXT_PUBLIC_API_BASE || 'http://localhost:8888/api';
+}
+
+async function downloadPatientDocument(medicalDocumentId: string, fileName?: string) {
+  try {
+    const apiBase = getApiBase();
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const url = `${apiBase}/medical-documents/${medicalDocumentId}/download?t=${Date.now()}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { Authorization: token ? `Bearer ${token}` : '' },
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Erreur lors du téléchargement');
+    const blob = await response.blob();
+    const objectUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = (fileName && fileName.trim()) ? fileName : `document-${medicalDocumentId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(objectUrl);
+    document.body.removeChild(a);
+    toast.add({ title: 'Téléchargement démarré', color: 'green', icon: 'i-lucide-download', timeout: 2000 });
+  } catch (e) {
+    console.error('Download error:', e);
+    toast.add({ title: 'Erreur', description: 'Impossible de télécharger le document', color: 'red', icon: 'i-lucide-alert-circle' });
+  }
+}
+
+async function uploadPatientDocumentToProfile(key: string, file: File) {
+  const patientId = selectedPatient.value?.id;
+  if (!patientId) return;
+  uploadingDocumentType.value = key;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('document_type', key);
+    formData.append('user_id', patientId);
+    const res = await apiFetch('/patient-documents/upload', { method: 'POST', body: formData });
+    if (res?.success) {
+      toast.add({ title: 'Document enregistré', description: 'La fiche patient a été mise à jour.', color: 'green', icon: 'i-lucide-check', timeout: 2000 });
+      await loadPatientDocuments(patientId);
+    } else {
+      throw new Error((res as any)?.error || 'Erreur lors de l\'enregistrement');
+    }
+  } catch (e: any) {
+    toast.add({ title: 'Erreur', description: e?.message || 'Impossible d\'enregistrer le document', color: 'red', icon: 'i-lucide-alert-circle' });
+  } finally {
+    uploadingDocumentType.value = null;
+  }
+}
+
+/** Copie les documents du patient (fiche) vers le RDV pour que lab / infirmier / admin y aient accès. */
+async function copyPatientDocumentsToAppointment(appointmentId: string) {
+  for (const key of PATIENT_DOC_TYPES) {
+    const doc = patientDocuments.value[key];
+    if (!doc?.medical_document_id) continue;
+    try {
+      const res = await apiFetch('/medical-documents/copy', {
+        method: 'POST',
+        body: {
+          source_medical_document_id: doc.medical_document_id,
+          appointment_id: appointmentId,
+          document_type: key,
+        },
+      });
+      if (!res?.success) console.warn('Copy doc failed:', key, (res as any)?.error);
+    } catch (e) {
+      console.warn('Copy doc error:', key, e);
+    }
+  }
 }
 
 // Form Logic
@@ -673,15 +813,17 @@ function selectPatient(p: any) {
   }
 
   if (p.address) {
-    form.address = typeof p.address === 'object' 
+    form.address = typeof p.address === 'object'
       ? { label: p.address.label || '', lat: p.address.lat || 0, lng: p.address.lng || 0 }
       : null;
   }
+  if (p?.id) loadPatientDocuments(p.id);
 }
 
 function clearPatient() {
   selectedPatient.value = null;
   selectedPatientId.value = NEW_PATIENT_VALUE;
+  patientDocuments.value = {};
   form.form_data.first_name = '';
   form.form_data.last_name = '';
   form.form_data.email = '';
@@ -690,6 +832,26 @@ function clearPatient() {
   form.address = null;
   form.form_data.address_complement = '';
   resetBirthDate();
+}
+
+async function loadPatientDocuments(patientId: string) {
+  if (!patientId) return;
+  loadingPatientDocuments.value = true;
+  patientDocuments.value = {};
+  try {
+    const res = await apiFetch(`/patient-documents?user_id=${encodeURIComponent(patientId)}`, { method: 'GET' });
+    if (res?.success && res.data && Array.isArray(res.data)) {
+      const map: Record<string, any> = {};
+      (res.data as any[]).forEach((doc: any) => {
+        if (doc.document_type) map[doc.document_type] = doc;
+      });
+      patientDocuments.value = map;
+    }
+  } catch (e) {
+    console.error('Erreur chargement documents patient:', e);
+  } finally {
+    loadingPatientDocuments.value = false;
+  }
 }
 
 function resetBirthDate() {
@@ -729,10 +891,25 @@ async function loadCategories(type: 'blood_test' | 'nursing') {
 async function fetchPatients() {
   patientsLoading.value = true;
   try {
-    const res = await apiFetch('/users?limit=300', { method: 'GET' });
-    if (res.success && Array.isArray(res.data)) {
-      patients.value = (res.data as any[]).filter((u) => u.role === 'patient');
+    if (isProForm.value) {
+      const createdBy = user.value?.id ?? '';
+      const res = await apiFetch(`/patients?created_by=${encodeURIComponent(createdBy)}&limit=500`, { method: 'GET' });
+      if (res.success && Array.isArray(res.data)) {
+        patients.value = res.data as any[];
+      } else {
+        patients.value = [];
+      }
+    } else {
+      const res = await apiFetch('/users?limit=300', { method: 'GET' });
+      if (res.success && Array.isArray(res.data)) {
+        patients.value = (res.data as any[]).filter((u) => u.role === 'patient');
+      } else {
+        patients.value = [];
+      }
     }
+  } catch (e) {
+    console.error('Erreur chargement patients:', e);
+    patients.value = [];
   } finally {
     patientsLoading.value = false;
   }
@@ -853,12 +1030,14 @@ async function submit() {
       }
     };
 
+    const categoryId = form.form_data.category_id || undefined;
     let response;
     if (isCreate.value) {
       const createBody: Record<string, unknown> = {
         ...basePayload,
         status: 'pending',
         patient_id: selectedPatient.value?.id || undefined,
+        category_id: categoryId,
       };
       if (form.type === 'blood_test' && form.assigned_lab_id) createBody.assigned_lab_id = form.assigned_lab_id;
       if (form.type === 'nursing' && form.assigned_nurse_id) createBody.assigned_nurse_id = form.assigned_nurse_id;
@@ -867,14 +1046,17 @@ async function submit() {
       if (!appointment.value) return;
       response = await apiFetch(`/appointments/${appointment.value.id}`, { 
         method: 'PUT', 
-        body: { ...basePayload, status: form.status } 
+        body: { ...basePayload, status: form.status, category_id: categoryId } 
       });
     }
 
     if (response.success) {
-      toast.add({ title: isCreate.value ? 'Rendez-vous créé' : 'Modifications enregistrées', color: 'green', icon: 'i-lucide-check-circle' });
       const id = (response as any).data?.id || appointment.value?.id;
-      if (id) await router.push(`/admin/appointments/${id}`);
+      if (isCreate.value && id && selectedPatientId.value !== NEW_PATIENT_VALUE) {
+        await copyPatientDocumentsToAppointment(id);
+      }
+      toast.add({ title: isCreate.value ? 'Rendez-vous créé' : 'Modifications enregistrées', color: 'green', icon: 'i-lucide-check-circle' });
+      if (id) await router.push(`${props.basePath}/appointments/${id}`);
     } else {
       throw new Error((response as any).error);
     }
@@ -933,7 +1115,12 @@ watch(availabilityRange, (newVal) => {
 onMounted(async () => {
   if (isCreate.value) {
     loadCategories('blood_test');
-    fetchPatients();
+    await fetchPatients();
+    const patientIdFromQuery = route.query.patient_id as string | undefined;
+    if (patientIdFromQuery && patients.value.length > 0) {
+      const p = patients.value.find((x) => String(x.id) === String(patientIdFromQuery));
+      if (p) selectPatient(p);
+    }
     labsLoading.value = true;
     nursesLoading.value = true;
     try {

@@ -1,11 +1,10 @@
 <template>
-  <!-- Marges négatives alignées sur le body : p-4 mobile, p-6 md -->
-  <div class="-mx-4 -mt-4 md:-mx-6 md:-mt-6 mb-6 bg-white border-b border-gray-200">
+  <div class="-mx-4 -mt-4 md:-mx-6 md:-mt-6 mb-6 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800">
     <div class="px-4 md:px-6 py-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
       <!-- Titre + description -->
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-3 min-w-0 flex-wrap">
-          <h1 class="text-lg sm:text-xl font-semibold text-gray-900 truncate">
+          <h1 class="text-lg sm:text-xl font-normal text-gray-900 truncate">
             {{ title }}
           </h1>
           <UBadge

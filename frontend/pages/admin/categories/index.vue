@@ -65,12 +65,12 @@
                 class="flex items-center justify-center w-11 h-11 rounded-xl shrink-0 bg-muted/60 dark:bg-muted/40 border border-default transition-colors"
               >
                 <UIcon
-                  :name="cat.icon ? `i-lucide-${cat.icon}` : 'i-lucide-tag'"
+                  :name="getIconName(cat.icon)"
                   class="w-6 h-6 text-muted"
                 />
               </div>
               <div class="min-w-0 flex-1">
-                <h3 class="font-semibold text-foreground truncate">
+                <h3 class="font-normal text-foreground truncate">
                   {{ cat.name }}
                 </h3>
                 <UBadge
@@ -139,7 +139,7 @@
               <template #header>
                 <div class="flex items-start justify-between gap-4">
                   <div>
-                    <h2 class="text-xl font-bold text-foreground">
+                    <h2 class="text-xl font-normal text-foreground">
                       {{ editingCategory ? 'Modifier la catégorie' : 'Nouvelle catégorie de soin' }}
                     </h2>
                     <p class="text-sm text-muted mt-1">
@@ -185,22 +185,22 @@
                     v-model="categoryForm.icon"
                     :items="iconSelectItems"
                     value-key="value"
-                    :search-input="{ placeholder: 'Rechercher une icône...' }"
+                    :search-input="{ placeholder: 'Rechercher une icône médicale...' }"
                     :filter-fields="['label']"
-                    placeholder="Choisir une icône Lucide"
+                    placeholder="Choisir une icône (Lucide ou Medical)"
                     size="md"
                     class="w-full"
                   >
                     <template #leading>
                       <UIcon
-                        :name="categoryForm.icon ? `i-lucide-${categoryForm.icon}` : 'i-lucide-search'"
+                        :name="categoryForm.icon ? getIconName(categoryForm.icon) : 'i-lucide-search'"
                         :class="categoryForm.icon ? 'w-4 h-4 text-primary-500' : 'w-4 h-4 text-muted'"
                       />
                     </template>
                     <template #item="{ item }">
                       <div class="flex items-center gap-3 py-1.5">
                         <div class="flex items-center justify-center w-8 h-8 rounded bg-default">
-                          <UIcon :name="`i-lucide-${item.value}`" class="w-4 h-4 text-muted" />
+                          <UIcon :name="getIconName(item.value)" class="w-4 h-4 text-muted" />
                         </div>
                         <span class="font-medium">{{ item.label }}</span>
                       </div>
@@ -241,7 +241,7 @@
                 <UIcon name="i-lucide-trash-2" class="w-5 h-5 text-error-600 dark:text-error-400" />
               </div>
               <div>
-                <h3 class="font-semibold text-foreground">Supprimer la catégorie</h3>
+                <h3 class="font-normal text-foreground">Supprimer la catégorie</h3>
                 <p class="text-sm text-muted mt-0.5">Cette action est irréversible.</p>
               </div>
             </div>
@@ -273,7 +273,7 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
-const toast = useToast();
+const toast = useAppToast();
 
 const categories = ref<any[]>([]);
 const loading = ref(true);
@@ -297,41 +297,78 @@ const typeOptionsForm = [
   { label: 'Soins infirmiers', value: 'nursing' },
 ];
 
-const LUCIDE_ICON_NAMES = [
+// Icônes Lucide limitées au médical / soins
+const LUCIDE_MEDICAL_ICON_NAMES = [
   'activity', 'ambulance', 'bandage', 'beaker', 'heart', 'heart-pulse', 'stethoscope', 'syringe', 'pill', 'thermometer',
   'bone', 'brain', 'eye', 'ear', 'hand-heart', 'baby', 'user-round', 'droplet', 'flask-conical', 'test-tubes',
-  'microscope', 'scan', 'scan-heart', 'pulse', 'apple', 'carrot', 'chef-hat', 'clipboard-list', 'file-text', 'file',
-  'plus', 'pencil', 'trash-2', 'check', 'x', 'search', 'calendar', 'clock', 'map-pin', 'phone', 'mail',
-  'shield', 'shield-check', 'badge-check', 'award', 'star', 'sparkles', 'zap', 'sun', 'moon', 'cloud',
-  'home', 'building', 'hospital', 'cross', 'first-aid', 'medal', 'target', 'circle-dot', 'hexagon',
-  'layers', 'package', 'box', 'gift', 'bookmark', 'tag', 'tags', 'folder', 'archive', 'inbox',
-  'bell', 'message-circle', 'send', 'mail', 'phone-call', 'video', 'camera', 'image', 'film',
-  'music', 'headphones', 'mic', 'volume-2', 'radio', 'tv', 'monitor', 'smartphone', 'tablet',
-  'wifi', 'bluetooth', 'battery', 'battery-charging', 'power', 'plug', 'usb', 'cpu',
-  'keyboard', 'mouse', 'hard-drive', 'database', 'server', 'cloud', 'globe', 'compass',
-  'navigation', 'map', 'map-pin', 'route', 'car', 'bus', 'plane', 'train', 'bike',
-  'footprints', 'person-standing', 'users', 'user-plus', 'user-minus', 'user-cog',
-  'settings', 'sliders', 'toggle-left', 'toggle-right', 'switch-camera', 'filter',
-  'refresh-cw', 'rotate-cw', 'rotate-ccw', 'repeat', 'shuffle', 'play', 'pause', 'stop',
-  'skip-back', 'skip-forward', 'fast-forward', 'rewind', 'circle', 'square', 'triangle',
-  'minus', 'divide', 'percent', 'calculator', 'hash', 'at-sign', 'link', 'unlink',
-  'copy', 'clipboard', 'scissors', 'type', 'align-left', 'align-center', 'align-right',
-  'bold', 'italic', 'underline', 'strikethrough', 'list', 'list-ordered', 'list-checks',
-  'quote', 'code', 'terminal', 'bug', 'lightbulb', 'flame', 'droplets', 'wind',
-  'leaf', 'tree-pine', 'flower', 'flower-2', 'sprout', 'circle-ellipsis', 'more-horizontal',
-  'info', 'help-circle', 'alert-circle', 'alert-triangle', 'alert-octagon', 'check-circle',
-  'x-circle', 'loader-2', 'timer', 'hourglass', 'calendar-days', 'calendar-check',
-  'credit-card', 'wallet', 'banknote', 'receipt', 'briefcase', 'shopping-cart', 'store',
-  'truck', 'package-check', 'package-x', 'box-select', 'archive-restore', 'undo', 'redo',
-  'save', 'download', 'upload', 'share', 'share-2', 'lock', 'unlock', 'key', 'key-round',
+  'microscope', 'scan', 'scan-heart', 'pulse', 'apple', 'carrot', 'clipboard-list', 'file-text', 'file',
+  'hospital', 'cross', 'first-aid', 'badge-check', 'tag', 'tags',
 ];
 
-const iconSelectItems = computed(() =>
-  LUCIDE_ICON_NAMES.map((name) => ({
+// Set "Medical Icons" (Iconify) — icônes médicales
+const MEDICAL_ICON_NAMES = [
+  'first-aid', 'ambulance', 'hospital', 'emergency', 'pharmacy', 'laboratory', 'surgery', 'dental', 'dermatology',
+  'cardiology', 'neurology', 'oncology', 'pediatrics', 'pathology', 'radiology', 'anesthesia', 'physical-therapy',
+  'mental-health', 'nutrition', 'immunizations', 'infectious-diseases', 'internal-medicine', 'ophthalmology',
+  'ear-nose-throat', 'kidney', 'mammography', 'ultrasound', 'medical-records', 'health-education', 'health-services',
+  'inpatient', 'outpatient', 'intensive-care', 'labor-delivery', 'nursery', 'womens-health', 'genetics',
+  'diabetes-education', 'hearing-assistance', 'medical-library', 'billing', 'registration', 'waiting-area',
+  'care-staff-area', 'administration', 'accessibility', 'alternative-complementary', 'cath-lab', 'family-practice',
+  'imaging-alternative-ct', 'imaging-alternative-mri', 'imaging-alternative-pet', 'respiratory', 'mri-pet',
+];
+
+// Set "Health Icons" (Iconify) — 2000+ icônes santé / soins
+const HEALTH_ICON_NAMES = [
+  'syringe', 'stethoscope', 'thermometer', 'test-tubes', 'microscope', 'medicine-mortar', 'medicine-bottle',
+  'hospital', 'doctor', 'nurse', 'health-worker', 'blood-drop', 'heart-organ', 'xray', 'wheelchair', 'crutches',
+  'bandage-adhesive', 'medicines', 'pill-1', 'nutrition', 'exercise', 'walking', 'running', 'weight',
+  'intravenous-bag', 'pulse-oximeter', 'defibrillator', 'blood-pressure-monitor', 'ultrasound-scanner',
+  'tooth', 'ear', 'eye', 'lungs', 'kidneys', 'stomach', 'bladder', 'skeleton', 'joints',
+  'pediatrics', 'cardiology', 'oncology', 'radiology', 'general-surgery', 'gynecology', 'urology',
+  'outpatient', 'inpatient', 'intensive-care-unit', 'emergency-post', 'ambulatory-clinic',
+  'syringe-vaccine', 'ppe-face-mask', 'ppe-sanitizer',
+];
+
+// Set "Covid Icons" (Iconify) — vaccins, symptômes, protection
+const COVID_ICON_NAMES = [
+  'vaccine-protection-syringe', 'vaccine-protection-face-mask-1', 'vaccine-protection-wash-hands',
+  'vaccine-protection-shield', 'vaccine-protection-infrared-thermometer-gun', 'vaccine-protection-medicine-pill',
+  'symptoms-fever', 'symptoms-cold-fever', 'symptoms-virus-headache-1', 'personal-hygiene-hand-sanitizer-spray',
+  'quarantine-place-hospital', 'virus-lab-research-syringe', 'virus-lab-research-test-tube',
+];
+
+/** Retourne le nom d’icône pour UIcon (rétrocompat: anciennes valeurs sans préfixe = Lucide) */
+function getIconName(icon: string | null | undefined): string {
+  if (!icon) return 'i-lucide-tag';
+  if (icon.startsWith('medical-icon:')) return 'i-medical-icon-' + icon.slice('medical-icon:'.length);
+  if (icon.startsWith('healthicons:')) return 'i-healthicons-' + icon.slice('healthicons:'.length);
+  if (icon.startsWith('covid:')) return 'i-covid-' + icon.slice('covid:'.length);
+  return 'i-lucide-' + icon;
+}
+
+function iconLabel(prefix: string, name: string): string {
+  return prefix + ' · ' + name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+const iconSelectItems = computed(() => {
+  const lucide = LUCIDE_MEDICAL_ICON_NAMES.map((name) => ({
     value: name,
-    label: name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-  }))
-);
+    label: iconLabel('Lucide', name),
+  }));
+  const medical = MEDICAL_ICON_NAMES.map((name) => ({
+    value: 'medical-icon:' + name,
+    label: iconLabel('Medical', name),
+  }));
+  const health = HEALTH_ICON_NAMES.map((name) => ({
+    value: 'healthicons:' + name,
+    label: iconLabel('Health', name),
+  }));
+  const covid = COVID_ICON_NAMES.map((name) => ({
+    value: 'covid:' + name,
+    label: iconLabel('Covid', name),
+  }));
+  return [...lucide, ...medical, ...health, ...covid];
+});
 
 const categoryForm = ref({
   name: '',

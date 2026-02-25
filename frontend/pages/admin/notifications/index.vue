@@ -21,7 +21,7 @@
     <!-- Formulaire d'envoi -->
     <UCard class="rounded-xl border border-default/50 shadow-sm">
       <template #header>
-        <h2 class="text-lg font-semibold flex items-center gap-2">
+        <h2 class="text-lg font-normal flex items-center gap-2">
           <UIcon name="i-lucide-send" class="w-5 h-5 text-primary" />
           Envoyer une notification
         </h2>
@@ -108,7 +108,7 @@
     <!-- Audit des envois -->
     <div class="rounded-xl border border-default/50 bg-default shadow-sm overflow-hidden">
       <div class="px-6 py-4 border-b border-default/50 flex items-center justify-between">
-        <h2 class="text-lg font-semibold flex items-center gap-2">
+        <h2 class="text-lg font-normal flex items-center gap-2">
           <UIcon name="i-lucide-history" class="w-5 h-5" />
           Audit des notifications envoyées
         </h2>
@@ -229,7 +229,7 @@ definePageMeta({
   role: ['super_admin'],
 });
 
-const toast = useToast();
+const toast = useAppToast();
 
 const form = reactive({
   title: '',

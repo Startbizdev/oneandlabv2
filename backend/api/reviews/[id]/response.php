@@ -12,7 +12,7 @@ $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $corsConfig['allowed_origins'], true)) {
     header('Access-Control-Allow-Origin: ' . $origin);
 }
-header('Access-Control-Allow-Methods: PUT, OPTIONS');
+header('Access-Control-Allow-Methods: PUT, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Access-Control-Allow-Credentials: true');
 
@@ -43,7 +43,7 @@ if (!$id) {
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+if ($_SERVER['REQUEST_METHOD'] === 'PUT' || $_SERVER['REQUEST_METHOD'] === 'POST') {
     // Vérifier CSRF pour les requêtes modifiantes
     CSRFMiddleware::handle();
 
