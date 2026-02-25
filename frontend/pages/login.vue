@@ -37,7 +37,7 @@
           </div>
           <Transition name="fade-slide" mode="out-in">
             <div :key="step">
-              <h1 class="text-2xl font-bold text-gray-900">
+              <h1 class="text-2xl font-normal text-gray-900">
                 {{ stepHeaderConfig.title }}
               </h1>
               <p class="text-sm text-gray-500 mt-2 leading-relaxed">
@@ -45,17 +45,6 @@
               </p>
             </div>
           </Transition>
-        </div>
-
-        <!-- Indicateur d'étape -->
-        <div class="px-8 pt-2 pb-1 flex justify-center gap-2">
-          <span
-            v-for="s in ['email', 'role-select', 'otp']"
-            :key="s"
-            class="inline-block w-2 h-2 rounded-full transition-colors"
-            :class="step === s ? 'bg-primary-500' : stepOrder(step) > stepOrder(s) ? 'bg-primary-300' : 'bg-gray-200'"
-            :aria-current="step === s ? 'step' : undefined"
-          />
         </div>
 
         <!-- Body -->
@@ -115,7 +104,7 @@
                     <UIcon :name="option.icon" class="w-6 h-6 text-white" />
                   </div>
                   <div class="flex-1 min-w-0">
-                    <p class="font-semibold text-gray-900 text-sm">{{ option.label }}</p>
+                    <p class="font-normal text-gray-900 text-sm">{{ option.label }}</p>
                     <p class="text-xs text-gray-500 mt-0.5">{{ option.description }}</p>
                   </div>
                   <UIcon
@@ -142,7 +131,7 @@
             <form v-else-if="step === 'otp'" key="otp" @submit.prevent="onVerifyOTP" class="space-y-5">
               <div class="bg-primary-50/50 border border-primary-100 rounded-xl p-4 text-center">
                 <p class="text-sm text-primary-700">Code envoyé à</p>
-                <p class="font-semibold text-primary-900 mt-1">{{ email }}</p>
+                <p class="font-normal text-primary-900 mt-1">{{ email }}</p>
               </div>
 
               <UFormField name="otp">
@@ -219,7 +208,7 @@ definePageMeta({
 const { login, verifyOTP, isAuthenticated, user } = useAuth()
 const router = useRouter()
 const route = useRoute()
-const toast = useToast()
+const toast = useAppToast()
 
 // -- Redirect si déjà connecté --
 const roleRoutes: Record<string, string> = {
@@ -267,10 +256,6 @@ const formatCountdown = computed(() => {
   const seconds = countdown.value % 60
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 })
-
-function stepOrder(s: Step): number {
-  return { email: 0, 'role-select': 1, otp: 2 }[s] ?? 0
-}
 
 // -- Role options --
 const roleOptions = [

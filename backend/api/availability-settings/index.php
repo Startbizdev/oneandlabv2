@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
+require_once __DIR__ . '/../../models/User.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -53,8 +54,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $ownerId = $_GET['owner_id'] ?? $user['user_id'];
     $role = $_GET['role'] ?? $user['role'];
     
-    // Vérifier que l'utilisateur peut accéder à ces horaires
-    if ($ownerId !== $user['user_id'] && $user['role'] !== 'super_admin') {
+    // Vérifier que l'utilisateur peut accéder à ces horaires (propre compte, admin, ou lab accédant à un sous-compte)
+    $canAccess = ($ownerId === $user['user_id'] || $user['role'] === 'super_admin');
+    if (!$canAccess && $user['role'] === 'lab') {
+        $userModel = new User();
+        $targetLabId = $userModel->getLabId($ownerId);
+        $canAccess = ($targetLabId === $user['user_id']);
+    }
+    if (!$canAccess) {
         http_response_code(403);
         echo json_encode([
             'success' => false,
@@ -114,8 +121,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $ownerId = $input['owner_id'] ?? $user['user_id'];
     $role = $input['role'] ?? $user['role'];
     
-    // Vérifier que l'utilisateur peut modifier ces horaires
-    if ($ownerId !== $user['user_id'] && $user['role'] !== 'super_admin') {
+    // Vérifier que l'utilisateur peut modifier ces horaires (propre compte, admin, ou lab modifiant un sous-compte)
+    $canEdit = ($ownerId === $user['user_id'] || $user['role'] === 'super_admin');
+    if (!$canEdit && $user['role'] === 'lab') {
+        $userModel = new User();
+        $targetLabId = $userModel->getLabId($ownerId);
+        $canEdit = ($targetLabId === $user['user_id']);
+    }
+    if (!$canEdit) {
         http_response_code(403);
         echo json_encode([
             'success' => false,

@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/Email.php';
+require_once __DIR__ . '/EmailQueue.php';
 require_once __DIR__ . '/Twilio.php';
 
 /**
@@ -140,17 +141,12 @@ class NotificationService
             }
         }
         
-        // Email au patient si email disponible
+        // Email au patient (async pour ne pas bloquer le bouton)
         if (!empty($appointmentData['patient_email'])) {
-            try {
-                $this->email->sendAppointmentConfirmation(
-                    $appointmentData['patient_email'],
-                    $appointmentData
-                );
-            } catch (Exception $e) {
-                // Logger l'erreur mais ne pas bloquer le processus
-                error_log("Erreur envoi email patient pour RDV {$appointmentId}: " . $e->getMessage());
-            }
+            EmailQueue::add('appointment_created', $appointmentData['patient_email'], [
+                'type' => $appointmentData['type'] ?? 'blood_test',
+                'scheduled_at' => $appointmentData['scheduled_at'] ?? null,
+            ]);
         }
         
         // Les notifications aux professionnels (labos, sous-labos, infirmiers) 
@@ -171,6 +167,14 @@ class NotificationService
             'Votre rendez-vous a été confirmé',
             ['appointment_id' => $appointmentId]
         );
+        
+        // Email confirmation au patient (async)
+        if (!empty($appointmentData['patient_email'])) {
+            EmailQueue::add('appointment_confirmation', $appointmentData['patient_email'], [
+                'scheduled_at' => $appointmentData['scheduled_at'] ?? null,
+                'type' => ($appointmentData['type'] ?? 'blood_test') === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers',
+            ]);
+        }
         
         // SMS au patient (si Twilio est configuré)
         if (!empty($appointmentData['patient_phone']) && $this->twilio !== null) {
@@ -248,12 +252,17 @@ class NotificationService
 
     /**
      * Notifie l'annulation d'un rendez-vous
+     * @param string|null $actorDisplayLabel Ex: "Le laboratoire X", "Le préleveur Y" — si fourni, message personnalisé + notif admins
      */
-    public function notifyAppointmentCanceled(string $appointmentId, array $appointmentData, string $canceledBy): void
-    {
+    public function notifyAppointmentCanceled(
+        string $appointmentId,
+        array $appointmentData,
+        string $canceledBy,
+        ?string $actorDisplayLabel = null
+    ): void {
         $patientName = '';
         if (!empty($appointmentData['patient_first_name']) && !empty($appointmentData['patient_last_name'])) {
-            $patientName = $appointmentData['patient_first_name'] . ' ' . $appointmentData['patient_last_name'];
+            $patientName = trim($appointmentData['patient_first_name'] . ' ' . $appointmentData['patient_last_name']);
         }
         
         $scheduledAt = '';
@@ -262,15 +271,23 @@ class NotificationService
             $scheduledAt = $date->format('d/m/Y');
         }
         
-        $careType = $appointmentData['category_name'] ?? 'Soins infirmiers';
+        $careType = $appointmentData['category_name'] ?? (
+            (isset($appointmentData['type']) && $appointmentData['type'] === 'blood_test')
+            ? 'Prise de sang'
+            : 'Soins infirmiers'
+        );
         $address = $appointmentData['address'] ?? '';
         
-        // Notification au patient (si annulé par l'infirmier)
+        // Notification au patient (si annulé par un professionnel : lab, sous-compte, préleveur, infirmier)
         if ($canceledBy === 'nurse' && !empty($appointmentData['patient_id'])) {
             $message = "Votre rendez-vous";
-            if ($careType) $message .= " ({$careType})";
-            if ($scheduledAt) $message .= " du {$scheduledAt}";
-            $message .= " a été annulé par le professionnel de santé.";
+            if ($actorDisplayLabel !== null && $actorDisplayLabel !== '') {
+                $message = $actorDisplayLabel . ' a annulé votre rendez-vous.';
+            } else {
+                if ($careType) $message .= " ({$careType})";
+                if ($scheduledAt) $message .= " du {$scheduledAt}";
+                $message .= " a été annulé par le professionnel de santé.";
+            }
             
             $this->createNotification(
                 $appointmentData['patient_id'],
@@ -282,6 +299,28 @@ class NotificationService
                     'canceled_by' => $canceledBy,
                 ]
             );
+            
+            // Email au patient (async)
+            if (!empty($appointmentData['patient_email'])) {
+                EmailQueue::add('appointment_canceled_patient', $appointmentData['patient_email'], [
+                    'actor_display_label' => $actorDisplayLabel ?? 'Le professionnel de santé',
+                    'scheduled_at' => $appointmentData['scheduled_at'] ?? null,
+                ]);
+            }
+            // Notification aux admins + préleveur / lab / infirmier : "Le laboratoire NOM a annulé le RDV de PRÉNOM NOM"
+            if ($actorDisplayLabel !== null && $actorDisplayLabel !== '' && $patientName !== '') {
+                $messageToPros = $actorDisplayLabel . ' a annulé le RDV de ' . $patientName . '.';
+                $this->notifyAllAdmins('appointment_canceled_by_pro', 'RDV annulé', $messageToPros, ['appointment_id' => $appointmentId]);
+                $this->notifyAssignees(
+                    $appointmentData['assigned_lab_id'] ?? null,
+                    $appointmentData['assigned_to'] ?? null,
+                    $appointmentData['assigned_nurse_id'] ?? null,
+                    'appointment_canceled_by_pro',
+                    'RDV annulé',
+                    $messageToPros,
+                    ['appointment_id' => $appointmentId]
+                );
+            }
         }
         
         // Notification au patient qu'il a annulé son RDV (confirmation)
@@ -321,6 +360,21 @@ class NotificationService
                     'canceled_by' => $canceledBy,
                 ]
             );
+        }
+        
+        // Notification au lab / préleveur (si annulé par le patient — RDV prise de sang)
+        if ($canceledBy === 'patient') {
+            $messageLab = "Le rendez-vous de {$patientName}";
+            if ($careType) $messageLab .= " ({$careType})";
+            if ($scheduledAt) $messageLab .= " prévu le {$scheduledAt}";
+            $messageLab .= " a été annulé par le patient.";
+            $dataLab = ['appointment_id' => $appointmentId, 'patient_name' => $patientName, 'canceled_by' => $canceledBy];
+            if (!empty($appointmentData['assigned_lab_id'])) {
+                $this->createNotification($appointmentData['assigned_lab_id'], 'appointment_canceled', 'Rendez-vous annulé par le patient', $messageLab, $dataLab);
+            }
+            if (!empty($appointmentData['assigned_to'])) {
+                $this->createNotification($appointmentData['assigned_to'], 'appointment_canceled', 'Rendez-vous annulé par le patient', $messageLab, $dataLab);
+            }
         }
         
         // Notification à l'infirmier qu'il a annulé le RDV (confirmation)
@@ -396,54 +450,119 @@ class NotificationService
 
     /**
      * Notifie la fin d'un soin
+     * @param string|null $actorDisplayLabel Ex: "Le laboratoire X", "Le préleveur Y" — si fourni, message personnalisé + notif admins et assignés
+     * @param string|null $patientFirstName
+     * @param string|null $patientLastName
+     * @param string|null $assignedLabId
+     * @param string|null $assignedTo (préleveur)
+     * @param string|null $assignedNurseId
      */
-    public function notifyAppointmentCompleted(string $appointmentId, string $patientId): void
-    {
-        // Notification web
+    public function notifyAppointmentCompleted(
+        string $appointmentId,
+        string $patientId,
+        ?string $actorDisplayLabel = null,
+        ?string $patientFirstName = null,
+        ?string $patientLastName = null,
+        ?string $assignedLabId = null,
+        ?string $assignedTo = null,
+        ?string $assignedNurseId = null
+    ): void {
+        $patientName = trim(($patientFirstName ?? '') . ' ' . ($patientLastName ?? ''));
+        $messageToPatient = 'Votre rendez-vous est terminé. N\'oubliez pas de laisser un avis !';
+        if ($actorDisplayLabel !== null && $actorDisplayLabel !== '') {
+            $messageToPatient = $actorDisplayLabel . ' a terminé votre rendez-vous.';
+        }
+        // Notification web au patient
         $this->createNotification(
             $patientId,
             'appointment_completed',
-            'Soin terminé',
-            'Votre rendez-vous est terminé. N\'oubliez pas de laisser un avis !',
+            'RDV terminé',
+            $messageToPatient,
             ['appointment_id' => $appointmentId]
         );
+        // Notification aux admins + préleveur / lab / infirmier : "Le laboratoire NOM a terminé le RDV de PRÉNOM NOM"
+        if ($actorDisplayLabel !== null && $actorDisplayLabel !== '' && $patientName !== '') {
+            $messageToPros = $actorDisplayLabel . ' a terminé le RDV de ' . $patientName . '.';
+            $this->notifyAllAdmins('appointment_completed_by_pro', 'RDV terminé', $messageToPros, ['appointment_id' => $appointmentId]);
+            $this->notifyAssignees($assignedLabId, $assignedTo, $assignedNurseId, 'appointment_completed_by_pro', 'RDV terminé', $messageToPros, ['appointment_id' => $appointmentId]);
+        }
         
-        // Récupérer l'email du patient pour envoyer l'invitation à noter
+        // Email invitation à la review (async pour ne pas bloquer le bouton)
         try {
             require_once __DIR__ . '/../models/User.php';
             $userModel = new User();
             $patient = $userModel->getById($patientId, 'system', 'system');
-            
-            if ($patient && !empty($patient['email'])) {
-                // Récupérer les infos du rendez-vous pour l'email
-                $config = require __DIR__ . '/../config/database.php';
-                $dsn = sprintf(
-                    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
-                    $config['host'],
-                    $config['port'],
-                    $config['database'],
-                    $config['charset']
-                );
-                $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
-                
-                $stmt = $db->prepare('SELECT scheduled_at, type FROM appointments WHERE id = ?');
-                $stmt->execute([$appointmentId]);
-                $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($appointment) {
-                    // Envoyer l'email d'invitation à noter
-                    $this->email->sendReviewInvitation(
-                        $patient['email'],
-                        $appointmentId,
-                        [
-                            'scheduled_at' => $appointment['scheduled_at'],
-                            'type' => $appointment['type'] === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers',
-                        ]
-                    );
+            if (!$patient || empty($patient['email'])) {
+                return;
+            }
+            $config = require __DIR__ . '/../config/database.php';
+            $dsn = sprintf(
+                'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+                $config['host'],
+                $config['port'],
+                $config['database'],
+                $config['charset']
+            );
+            $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
+            $stmt = $db->prepare('SELECT scheduled_at, type FROM appointments WHERE id = ?');
+            $stmt->execute([$appointmentId]);
+            $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($appointment) {
+                EmailQueue::add('review_invitation', $patient['email'], [
+                    'appointment_id' => $appointmentId,
+                    'scheduled_at' => $appointment['scheduled_at'],
+                    'type' => $appointment['type'] === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers',
+                ]);
+            }
+        } catch (Exception $e) {
+            // Ne pas bloquer le processus
+        }
+    }
+
+    /**
+     * Notifie tous les super_admin (cloche) avec un message type "Le laboratoire NOM a terminé/annulé le RDV de PRÉNOM NOM"
+     */
+    private function notifyAllAdmins(string $type, string $title, string $message, ?array $data = null): void
+    {
+        try {
+            $stmt = $this->db->prepare('SELECT id FROM profiles WHERE role = ? AND id IS NOT NULL');
+            $stmt->execute(['super_admin']);
+            $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($admins as $admin) {
+                try {
+                    $this->createNotification($admin['id'], $type, $title, $message, $data);
+                } catch (Exception $e) {
+                    error_log("Erreur notification admin {$admin['id']}: " . $e->getMessage());
                 }
             }
         } catch (Exception $e) {
-            // Ne pas bloquer le processus si l'envoi échoue
+            error_log("Erreur récupération admins pour notification: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Notifie les assignés du RDV (lab, préleveur, infirmier) — chaque userId unique reçoit la notification
+     */
+    private function notifyAssignees(
+        ?string $assignedLabId,
+        ?string $assignedTo,
+        ?string $assignedNurseId,
+        string $type,
+        string $title,
+        string $message,
+        ?array $data = null
+    ): void {
+        $seen = [];
+        foreach ([$assignedLabId, $assignedTo, $assignedNurseId] as $userId) {
+            if (empty($userId) || isset($seen[$userId])) {
+                continue;
+            }
+            $seen[$userId] = true;
+            try {
+                $this->createNotification($userId, $type, $title, $message, $data);
+            } catch (Exception $e) {
+                error_log("Erreur notification assigné {$userId}: " . $e->getMessage());
+            }
         }
     }
 

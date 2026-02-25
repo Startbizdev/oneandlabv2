@@ -1,7 +1,7 @@
 <template>
   <UCard>
     <template #header>
-      <h2 class="text-xl font-bold">Statistiques</h2>
+      <h2 class="text-xl font-normal">Statistiques</h2>
     </template>
     
     <div v-if="loading" class="text-center py-8">
@@ -10,7 +10,7 @@
     
     <div v-else-if="stats" class="space-y-4">
       <div class="text-center">
-        <div class="text-4xl font-bold text-blue-500">{{ stats.average_rating }}</div>
+        <div class="text-4xl font-normal text-blue-500">{{ stats.average_rating }}</div>
         <div class="text-sm text-gray-600">Note moyenne</div>
         <div class="text-sm text-gray-500 mt-1">{{ stats.total_reviews }} avis</div>
       </div>

@@ -21,12 +21,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Authentification + Vérification rôle admin
+// Authentification
 $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
-$roleMiddleware = new RoleMiddleware();
-$roleMiddleware->handle($user, ['super_admin']);
+// Pro : autoriser GET uniquement pour lister lab/sublab/infirmiers (assignation RDV)
+$isProListingAssignable = ($_SERVER['REQUEST_METHOD'] === 'GET' && $user['role'] === 'pro');
+$roleParam = isset($_GET['role']) ? trim((string) $_GET['role']) : null;
+if ($isProListingAssignable && in_array($roleParam, ['lab', 'subaccount', 'nurse'], true)) {
+    // Pro peut lister labos, sous-comptes et infirmiers pour assigner un RDV
+} else {
+    $roleMiddleware = new RoleMiddleware();
+    $roleMiddleware->handle($user, ['super_admin']);
+}
 
 $userModel = new User();
 

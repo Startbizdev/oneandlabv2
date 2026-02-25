@@ -27,8 +27,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
-// Seuls les patients peuvent accéder à leurs documents
-if ($user['role'] !== 'patient') {
+// Patient : ses documents ; super_admin : documents d'un user via ?user_id=xxx ; pro : documents d'un patient qu'il a créé
+$targetPatientId = $user['user_id'];
+if ($user['role'] === 'super_admin') {
+    $requestedUserId = isset($_GET['user_id']) ? trim($_GET['user_id']) : null;
+    if ($requestedUserId !== null && $requestedUserId !== '') {
+        $targetPatientId = $requestedUserId;
+    } else {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Paramètre user_id requis pour l\'admin']);
+        exit;
+    }
+} elseif ($user['role'] === 'pro') {
+    $requestedUserId = isset($_GET['user_id']) ? trim($_GET['user_id']) : null;
+    if ($requestedUserId === null || $requestedUserId === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Paramètre user_id requis (patient)']);
+        exit;
+    }
+    $targetPatientId = $requestedUserId;
+    // Vérification créée par ce pro : faite après création de $db ci-dessous
+} elseif ($user['role'] !== 'patient') {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Accès refusé']);
     exit;
@@ -45,11 +64,23 @@ $dsn = sprintf(
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
 $logger = new Logger();
 
+// Pro : vérifier que le patient a bien été créé par ce pro (created_by)
+if ($user['role'] === 'pro') {
+    $checkStmt = $db->prepare('SELECT id, role, created_by FROM profiles WHERE id = ? LIMIT 1');
+    $checkStmt->execute([$targetPatientId]);
+    $profile = $checkStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$profile || ($profile['role'] ?? '') !== 'patient' || ($profile['created_by'] ?? '') !== $user['user_id']) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Accès refusé']);
+        exit;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
         // Vérifier d'abord combien de documents existent pour ce patient
         $countStmt = $db->prepare('SELECT COUNT(*) as count FROM patient_documents WHERE patient_id = ?');
-        $countStmt->execute([$user['user_id']]);
+        $countStmt->execute([$targetPatientId]);
         $totalCount = $countStmt->fetch(PDO::FETCH_ASSOC)['count'];
         
         // Récupérer les documents du profil patient
@@ -71,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             WHERE pd.patient_id = ?
             ORDER BY pd.document_type
         ');
-        $stmt->execute([$user['user_id']]);
+        $stmt->execute([$targetPatientId]);
         $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Filtrer les documents qui ont bien un medical_document associé
@@ -90,12 +121,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $user['role'],
             'view',
             'patient_documents',
-            $user['user_id'],
+            $targetPatientId,
             [
                 'count' => count($validDocuments),
                 'total_found' => count($documents),
                 'total_in_db' => $totalCount,
-                'patient_id' => $user['user_id'],
+                'patient_id' => $targetPatientId,
                 'document_types' => array_column($documents, 'document_type'),
                 'has_medical_docs' => array_column($documents, 'medical_document_id'),
                 'documents_without_md' => count($documentsWithoutMd)
@@ -115,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'valid_documents' => count($validDocuments),
             'filtered_out' => count($documents) - count($validDocuments),
             'documents_without_medical_doc' => count($documentsWithoutMd),
-            'patient_id' => $user['user_id']
+            'patient_id' => $targetPatientId
         ];
         
         // Si des documents existent mais n'ont pas de medical_document associé, ajouter un avertissement

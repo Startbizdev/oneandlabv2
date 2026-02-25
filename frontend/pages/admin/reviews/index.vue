@@ -84,16 +84,16 @@
         <UModal v-model:open="showDetailsModal">
           <UCard v-if="selectedReview">
             <template #header>
-              <h2 class="text-xl font-bold">Détails de l'avis</h2>
+              <h2 class="text-xl font-normal">Détails de l'avis</h2>
             </template>
             <div class="space-y-4">
               <div>
                 <p class="text-sm text-muted">Patient</p>
-                <p class="font-semibold">{{ selectedReview.reviewer_name }}</p>
+                <p class="font-normal">{{ selectedReview.reviewer_name }}</p>
               </div>
               <div>
                 <p class="text-sm text-muted">Professionnel</p>
-                <p class="font-semibold">{{ selectedReview.reviewee_name }}</p>
+                <p class="font-normal">{{ selectedReview.reviewee_name }}</p>
               </div>
               <div>
                 <p class="text-sm text-muted">Note</p>
@@ -144,7 +144,7 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
-const toast = useToast();
+const toast = useAppToast();
 
 const reviews = ref<any[]>([]);
 const loading = ref(true);

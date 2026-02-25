@@ -5,23 +5,43 @@
 import { apiFetch } from '~/utils/api';
 import type { Appointment, AppointmentFilters, AppointmentCreatePayload } from '~/types/appointments';
 
+export interface AppointmentsPagination {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
+
 export const useAppointments = () => {
   const appointments = useState<Appointment[]>('appointments.list', () => []);
   const loading = useState<boolean>('appointments.loading', () => false);
   const error = useState<string | null>('appointments.error', () => null);
-  
+  const pagination = useState<AppointmentsPagination | null>('appointments.pagination', () => null);
+
   const fetchAppointments = async (filters?: AppointmentFilters) => {
     loading.value = true;
     error.value = null;
-    
+
     try {
-      const queryString = filters ? '?' + new URLSearchParams(filters as any).toString() : '';
-      const response = await apiFetch(`/appointments${queryString}`, {
+      const params: Record<string, string> = {};
+      if (filters) {
+        if (filters.status != null) params.status = String(filters.status);
+        if (filters.type != null) params.type = String(filters.type);
+        if (filters.page != null) params.page = String(filters.page);
+        if (filters.limit != null) params.limit = String(filters.limit);
+      }
+      const queryString = Object.keys(params).length ? '?' + new URLSearchParams(params).toString() : '';
+      const response = await apiFetch<{ success: boolean; data?: Appointment[]; pagination?: AppointmentsPagination; error?: string }>(`/appointments${queryString}`, {
         method: 'GET',
       });
-      
+
       if (response.success && response.data) {
         appointments.value = response.data;
+        if (response.pagination) {
+          pagination.value = response.pagination;
+        } else {
+          pagination.value = null;
+        }
       } else {
         error.value = response.error || 'Erreur lors du chargement';
       }
@@ -41,30 +61,6 @@ export const useAppointments = () => {
       const files = data.form_data?.files || {};
       const filesToUpload: Record<string, File> = {};
       
-      // #region agent log
-      if (typeof window !== 'undefined') {
-        fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'UU',
-            location: 'useAppointments.ts:40',
-            message: 'Extracting files from form_data',
-            data: {
-              hasFormData: !!data.form_data,
-              hasFiles: !!data.files,
-              formDataFilesKeys: data.form_data?.files ? Object.keys(data.form_data.files) : [],
-              filesKeys: data.files ? Object.keys(data.files) : [],
-              formDataFiles: data.form_data?.files,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-      }
-      // #endregion
-      
       // Séparer les fichiers réels des métadonnées
       if (data.files && typeof data.files === 'object') {
         Object.keys(data.files).forEach(key => {
@@ -81,33 +77,11 @@ export const useAppointments = () => {
       const response = await apiFetch('/appointments', {
         method: 'POST',
         body: appointmentData,
+        timeout: 90000,
       });
       
       if (response.success && response.data?.id) {
         const appointmentId = response.data.id;
-        
-        // #region agent log
-        if (typeof window !== 'undefined') {
-          fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId: 'debug-session',
-              runId: 'run1',
-              hypothesisId: 'KK',
-              location: 'useAppointments.ts:62',
-              message: 'Appointment created, preparing upload',
-              data: {
-                appointmentId,
-                filesToUploadCount: Object.keys(filesToUpload).length,
-                filesToUploadKeys: Object.keys(filesToUpload),
-                formDataFiles: Object.keys(files),
-              },
-              timestamp: Date.now(),
-            }),
-          }).catch(() => {});
-        }
-        // #endregion
         
         // Gérer les documents du profil (avec medical_document_id)
         const profileDocumentsToLink: Array<{ fieldName: string; medicalDocumentId: string; documentType: string }> = [];
@@ -125,28 +99,6 @@ export const useAppointments = () => {
           }
         });
         
-        // #region agent log
-        if (typeof window !== 'undefined') {
-          fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId: 'debug-session',
-              runId: 'run1',
-              hypothesisId: 'PP',
-              location: 'useAppointments.ts:90',
-              message: 'Profile documents to link',
-              data: {
-                appointmentId,
-                profileDocumentsCount: profileDocumentsToLink.length,
-                profileDocuments: profileDocumentsToLink,
-              },
-              timestamp: Date.now(),
-            }),
-          }).catch(() => {});
-        }
-        // #endregion
-        
         // Attendre un peu pour s'assurer que le token est bien synchronisé
         await new Promise(resolve => setTimeout(resolve, 300));
         
@@ -162,77 +114,14 @@ export const useAppointments = () => {
               },
             });
             
-            // #region agent log
-            if (typeof window !== 'undefined') {
-              fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  sessionId: 'debug-session',
-                  runId: 'run1',
-                  hypothesisId: 'QQ',
-                  location: 'useAppointments.ts:115',
-                  message: 'Profile document linked successfully',
-                  data: {
-                    appointmentId,
-                    fieldName: doc.fieldName,
-                    medicalDocumentId: doc.medicalDocumentId,
-                  },
-                  timestamp: Date.now(),
-                }),
-              }).catch(() => {});
-            }
-            // #endregion
           } catch (err: any) {
             console.error(`Erreur lors de la liaison du document du profil ${doc.fieldName}:`, err);
             
-            // #region agent log
-            if (typeof window !== 'undefined') {
-              fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  sessionId: 'debug-session',
-                  runId: 'run1',
-                  hypothesisId: 'RR',
-                  location: 'useAppointments.ts:130',
-                  message: 'Error linking profile document',
-                  data: {
-                    appointmentId,
-                    fieldName: doc.fieldName,
-                    medicalDocumentId: doc.medicalDocumentId,
-                    error: err.message,
-                  },
-                  timestamp: Date.now(),
-                }),
-              }).catch(() => {});
-            }
-            // #endregion
           }
         }
         
         // Uploader les nouveaux fichiers si présents
         if (Object.keys(filesToUpload).length > 0) {
-          // #region agent log
-          if (typeof window !== 'undefined') {
-            fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                sessionId: 'debug-session',
-                runId: 'run1',
-                hypothesisId: 'LL',
-                location: 'useAppointments.ts:150',
-                message: 'Calling uploadMedicalDocuments',
-                data: {
-                  appointmentId,
-                  filesToUploadCount: Object.keys(filesToUpload).length,
-                },
-                timestamp: Date.now(),
-              }),
-            }).catch(() => {});
-          }
-          // #endregion
           
           await uploadMedicalDocuments(appointmentId, filesToUpload);
         }
@@ -301,82 +190,12 @@ export const useAppointments = () => {
         const documentType = fieldMapping[fieldName] || fieldName;
         formData.append('document_type', documentType);
         
-        // #region agent log
-        if (typeof window !== 'undefined') {
-          fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId: 'debug-session',
-              runId: 'run1',
-              hypothesisId: 'MM',
-              location: 'useAppointments.ts:130',
-              message: 'Uploading medical document',
-              data: {
-                appointmentId,
-                fieldName,
-                documentType,
-                fileName: file.name,
-                fileSize: file.size,
-              },
-              timestamp: Date.now(),
-            }),
-          }).catch(() => {});
-        }
-        // #endregion
-        
         await apiFetch('/medical-documents', {
           method: 'POST',
           body: formData,
         });
-        
-        // #region agent log
-        if (typeof window !== 'undefined') {
-          fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId: 'debug-session',
-              runId: 'run1',
-              hypothesisId: 'NN',
-              location: 'useAppointments.ts:145',
-              message: 'Medical document uploaded successfully',
-              data: {
-                appointmentId,
-                fieldName,
-                documentType,
-              },
-              timestamp: Date.now(),
-            }),
-          }).catch(() => {});
-        }
-        // #endregion
       } catch (err: any) {
         console.error(`Erreur upload ${fieldName}:`, err);
-        
-        // #region agent log
-        if (typeof window !== 'undefined') {
-          fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId: 'debug-session',
-              runId: 'run1',
-              hypothesisId: 'OO',
-              location: 'useAppointments.ts:150',
-              message: 'Error uploading medical document',
-              data: {
-                appointmentId,
-                fieldName,
-                documentType,
-                error: err.message,
-              },
-              timestamp: Date.now(),
-            }),
-          }).catch(() => {});
-        }
-        // #endregion
-        
         // Continuer avec les autres fichiers même en cas d'erreur
       }
     }
@@ -386,6 +205,7 @@ export const useAppointments = () => {
     appointments,
     loading,
     error,
+    pagination,
     fetchAppointments,
     createAppointment,
   };

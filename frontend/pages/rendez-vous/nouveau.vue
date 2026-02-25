@@ -1,30 +1,96 @@
 <template>
   <div class="container mx-auto px-4 py-8 max-w-4xl">
-      <!-- Étape 1 : Sélection du service -->
-      <div v-if="step === 0">
-        <h2 class="text-2xl font-bold mb-6">Choisissez votre service</h2>
-        <div class="grid grid-cols-2 gap-4 mb-6">
-          <UCard 
+      <!-- Étape 0 : Choix catégorie — mobile-first, description visible partout -->
+      <div v-if="step === 0" class="max-w-5xl mx-auto px-0 sm:px-2">
+        <header class="text-center mb-5 sm:mb-6 px-1">
+          <h1 class="text-xl sm:text-2xl md:text-3xl font-normal text-gray-900 dark:text-white mb-1.5 sm:mb-2 tracking-tight">
+            Quel type de soin souhaitez-vous ?
+          </h1>
+          <p v-if="providerName" class="text-xs sm:text-sm md:text-base text-primary-600 dark:text-primary-400 font-medium mb-1">
+            Rendez-vous avec {{ providerName }}
+          </p>
+          <p class="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400 max-w-md mx-auto leading-relaxed">
+            Choisissez une catégorie pour continuer vers le formulaire de prise de rendez-vous.
+          </p>
+        </header>
+
+        <!-- Chargement -->
+        <div v-if="categoriesLoading" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-3">
+          <div v-for="i in 8" :key="i" class="rounded-xl bg-gray-100 dark:bg-gray-800 min-h-[8rem] sm:min-h-[7.5rem] animate-pulse" />
+        </div>
+
+        <!-- Grille catégories : mobile 2 cols avec description, touch-friendly -->
+        <div
+          v-else-if="careCategoriesList.length > 0"
+          class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-3"
+        >
+          <button
+            v-for="cat in careCategoriesList"
+            :key="cat.id"
+            type="button"
+            @click="selectCategory(cat)"
+            class="group relative flex flex-col items-center justify-center text-center min-h-[7.75rem] sm:min-h-[7.5rem] py-4 px-3 sm:py-4 sm:px-4 rounded-xl border-2 border-primary-200 dark:border-primary-800 bg-primary-50/80 dark:bg-primary-950/30 hover:border-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30 active:scale-[0.98] transition-all duration-200 touch-manipulation"
+          >
+            <UBadge
+              :color="cat.type === 'blood_test' ? 'error' : 'primary'"
+              variant="soft"
+              size="xs"
+              class="absolute top-1.5 right-1.5 sm:top-2 sm:right-2"
+            >
+              {{ cat.type === 'blood_test' ? 'Laboratoire' : 'Soins infirmiers' }}
+            </UBadge>
+            <div
+              :class="[
+                'w-10 h-10 sm:w-11 sm:h-11 rounded-lg flex items-center justify-center flex-shrink-0 mb-2',
+                cat.type === 'blood_test'
+                  ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400'
+                  : 'bg-primary-200 dark:bg-primary-800 text-primary-600 dark:text-primary-400',
+              ]"
+            >
+              <ClientOnly>
+                <UIcon :name="categoryIcon(cat)" class="w-5 h-5 sm:w-6 sm:h-6" />
+                <template #fallback>
+                  <span class="w-5 h-5 sm:w-6 sm:h-6 rounded bg-current opacity-50" />
+                </template>
+              </ClientOnly>
+            </div>
+            <h3 class="font-normal text-gray-900 dark:text-white text-xs sm:text-sm line-clamp-2 leading-tight">
+              {{ cat.name }}
+            </h3>
+            <p v-if="cat.description" class="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-1 leading-snug">
+              {{ cat.description }}
+            </p>
+          </button>
+        </div>
+
+        <!-- Fallback si aucune catégorie -->
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <button
             v-for="item in serviceItems"
             :key="item.value"
-            @click="selectedService = item.value" 
-            class="cursor-pointer hover:shadow-lg transition-shadow"
-            :class="{ 'ring-2 ring-primary': selectedService === item.value }"
+            type="button"
+            @click="selectFallbackService(item.value)"
+            class="relative flex flex-col items-center justify-center text-center min-h-[7.75rem] py-4 px-4 rounded-xl border-2 border-primary-200 dark:border-primary-800 bg-primary-50/80 hover:bg-primary-100 dark:hover:bg-primary-900/30 active:scale-[0.99] transition-all touch-manipulation"
           >
-            <div class="flex items-center gap-3">
-              <UIcon :name="item.icon" class="w-6 h-6 text-primary" />
-              <div>
-                <h3 class="text-lg font-semibold">{{ item.label }}</h3>
-                <p class="text-sm text-gray-500">{{ item.description }}</p>
-              </div>
+            <UBadge
+              :color="item.value === 'blood_test' ? 'error' : 'primary'"
+              variant="soft"
+              size="xs"
+              class="absolute top-2 right-2"
+            >
+              {{ item.value === 'blood_test' ? 'Laboratoire' : 'Soins infirmiers' }}
+            </UBadge>
+            <div
+              :class="[
+                'w-10 h-10 rounded-lg flex items-center justify-center mb-2',
+                item.value === 'blood_test' ? 'bg-red-100 text-red-600' : 'bg-primary-200 text-primary-600',
+              ]"
+            >
+              <UIcon :name="item.icon" class="w-5 h-5" />
             </div>
-          </UCard>
-        </div>
-        
-        <div class="flex justify-end mt-6">
-          <UButton @click="nextStep" :disabled="!selectedService" size="xl">
-            Continuer
-          </UButton>
+            <h3 class="font-normal text-gray-900 dark:text-white text-sm">{{ item.label }}</h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-1 leading-snug">{{ item.description }}</p>
+          </button>
         </div>
       </div>
       
@@ -50,7 +116,7 @@
           <template #header>
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-users" class="w-5 h-5 text-primary" />
-              <h3 class="text-lg font-semibold">Pour qui prenez-vous ce rendez-vous ?</h3>
+              <h3 class="text-lg font-normal">Pour qui prenez-vous ce rendez-vous ?</h3>
             </div>
           </template>
 
@@ -80,7 +146,7 @@
                     />
                   </div>
                   <div>
-                    <p class="font-semibold text-gray-900 dark:text-white">Pour moi-même</p>
+                    <p class="font-normal text-gray-900 dark:text-white">Pour moi-même</p>
                     <p class="text-xs text-gray-500">Mes informations</p>
                   </div>
                 </div>
@@ -110,7 +176,7 @@
                       />
                     </div>
                     <div>
-                      <p class="font-semibold text-gray-900 dark:text-white">Pour un proche</p>
+                      <p class="font-normal text-gray-900 dark:text-white">Pour un proche</p>
                       <p class="text-xs text-gray-500">
                         {{ typeof selectedRelative === 'string' ? relatives.find(r => r.id === selectedRelative)?.first_name + ' sélectionné(e)' : 'Enfant, parent, conjoint...' }}
                       </p>
@@ -132,7 +198,8 @@
                 </label>
                 
                 <!-- Liste des proches en cartes -->
-                <div v-if="relatives.length > 0" class="grid grid-cols-1 gap-3 mb-3">
+                <div v-if="relatives.length > 0" class="space-y-3">
+                  <div class="grid grid-cols-1 gap-3">
                   <button
                     v-for="relative in relatives"
                     :key="relative.id"
@@ -147,7 +214,7 @@
                     <div class="flex items-center gap-3">
                       <!-- Avatar avec initiale -->
                       <div :class="[
-                        'w-12 h-12 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0',
+                        'w-12 h-12 rounded-full flex items-center justify-center text-white font-normal flex-shrink-0',
                         selectedRelative === relative.id
                           ? 'bg-gradient-to-br from-primary-500 to-primary-600'
                           : 'bg-gradient-to-br from-gray-400 to-gray-500'
@@ -156,7 +223,7 @@
                       </div>
                       
                       <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-gray-900 dark:text-white mb-1">
+                        <p class="font-normal text-gray-900 dark:text-white mb-1">
                           {{ relative.first_name }} {{ relative.last_name }}
                         </p>
                         
@@ -185,33 +252,35 @@
                       </div>
                     </div>
                   </button>
+                  </div>
+                  <UButton
+                    @click="openAddRelativeModal"
+                    variant="outline"
+                    size="sm"
+                    icon="i-lucide-plus"
+                    class="w-full border-dashed"
+                  >
+                    Ajouter un autre proche
+                  </UButton>
                 </div>
                 
-                <!-- Message si aucun proche -->
-                <div v-else class="text-center py-8 bg-gray-50 dark:bg-gray-900/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
-                  <UIcon name="i-lucide-users" class="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Aucun proche enregistré</p>
-                </div>
+                <!-- Empty state : aucun proche -->
+                <UEmpty
+                  v-else
+                  icon="i-lucide-users"
+                  title="Aucun proche enregistré"
+                  description="Ajoutez un proche (enfant, parent, conjoint…) pour prendre rendez-vous à sa place. Vous pourrez réutiliser ses informations à chaque réservation."
+                  class="rounded-xl border-2 border-dashed border-default py-8"
+                  :actions="[{ label: 'Ajouter un proche', icon: 'i-lucide-plus', variant: 'solid', onClick: openAddRelativeModal }]"
+                />
               </div>
-              
-              <!-- Bouton ajouter un proche -->
-              <UButton
-                @click="openAddRelativeModal"
-                variant="outline"
-                size="lg"
-                icon="i-lucide-plus"
-                block
-                class="border-dashed"
-              >
-                Ajouter un nouveau proche
-              </UButton>
             </div>
 
             <!-- Récapitulatif des infos pré-remplies -->
             <div v-if="((selectedRelative === null && !showRelativesSelector) || (typeof selectedRelative === 'string' && selectedRelative.length > 0)) && !showFullForm" class="pt-4 border-t">
               <div class="flex items-center justify-between mb-4">
                 <div>
-                  <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Informations enregistrées</h4>
+                  <h4 class="text-sm font-normal text-gray-900 dark:text-white">Informations enregistrées</h4>
                   <p class="text-xs text-gray-500 mt-0.5">Complétez le reste du formulaire ci-dessous</p>
                 </div>
                 <UButton
@@ -234,7 +303,7 @@
                     </div>
                     <div class="flex-1 min-w-0">
                       <p class="text-xs text-gray-500 dark:text-gray-400">Nom complet</p>
-                      <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                      <p class="text-sm font-normal text-gray-900 dark:text-white truncate">
                         {{ prefilledInfo.first_name }} {{ prefilledInfo.last_name }}
                       </p>
                     </div>
@@ -247,7 +316,7 @@
                     </div>
                     <div class="flex-1 min-w-0">
                       <p class="text-xs text-gray-500 dark:text-gray-400">Date de naissance</p>
-                      <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                      <p class="text-sm font-normal text-gray-900 dark:text-white">
                         {{ formatBirthDate(prefilledInfo.birth_date) }}
                       </p>
                     </div>
@@ -260,7 +329,7 @@
                     </div>
                     <div class="flex-1 min-w-0">
                       <p class="text-xs text-gray-500 dark:text-gray-400">Email</p>
-                      <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                      <p class="text-sm font-normal text-gray-900 dark:text-white truncate">
                         {{ prefilledInfo.email }}
                       </p>
                     </div>
@@ -273,7 +342,7 @@
                     </div>
                     <div class="flex-1 min-w-0">
                       <p class="text-xs text-gray-500 dark:text-gray-400">Téléphone</p>
-                      <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                      <p class="text-sm font-normal text-gray-900 dark:text-white">
                         {{ prefilledInfo.phone }}
                       </p>
                     </div>
@@ -286,7 +355,7 @@
                     </div>
                     <div class="flex-1 min-w-0">
                       <p class="text-xs text-gray-500 dark:text-gray-400">Adresse</p>
-                      <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                      <p class="text-sm font-normal text-gray-900 dark:text-white">
                         {{ typeof prefilledInfo.address === 'string' ? prefilledInfo.address : prefilledInfo.address?.label }}
                       </p>
                     </div>
@@ -315,12 +384,15 @@
         </UCard>
         
         <ClientOnly>
-          <LabForm 
+          <LabForm
             v-if="selectedService === 'blood_test'"
             v-model="formData"
             @submit="handleFormSubmit"
             ref="labFormRef"
             :hide-personal-info="isAuthenticated && (selectedRelative !== undefined || showRelativesSelector) && !showFullForm"
+            :min-lead-time-hours="isProviderBooking && providerType === 'lab' ? providerMinLeadTimeHours : undefined"
+            :accept-saturday="isProviderBooking && providerType === 'lab' ? providerAcceptSaturday : true"
+            :accept-sunday="isProviderBooking && providerType === 'lab' ? providerAcceptSunday : true"
           />
           <NursingForm 
             v-else-if="selectedService === 'nursing'"
@@ -347,14 +419,14 @@
       
       <!-- Étape 3 : Récapitulatif -->
       <div v-if="step === 2" class="max-w-2xl mx-auto">
-        <h2 class="text-2xl font-bold mb-6">Récapitulatif de votre demande</h2>
+        <h2 class="text-2xl font-normal mb-6">Récapitulatif de votre demande</h2>
         
         <!-- Informations personnelles -->
         <UCard class="mb-4">
           <template #header>
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-user" class="w-5 h-5 text-primary" />
-              <h3 class="text-lg font-semibold">Informations personnelles</h3>
+              <h3 class="text-lg font-normal">Informations personnelles</h3>
             </div>
           </template>
           <div class="space-y-3">
@@ -396,7 +468,7 @@
           <template #header>
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-calendar" class="w-5 h-5 text-primary" />
-              <h3 class="text-lg font-semibold">Informations du rendez-vous</h3>
+              <h3 class="text-lg font-normal">Informations du rendez-vous</h3>
             </div>
           </template>
           <div class="space-y-3">
@@ -432,7 +504,7 @@
           <template #header>
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-map-pin" class="w-5 h-5 text-primary" />
-              <h3 class="text-lg font-semibold">Adresse</h3>
+              <h3 class="text-lg font-normal">Adresse</h3>
             </div>
           </template>
           <div>
@@ -448,7 +520,7 @@
           <template #header>
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-file-text" class="w-5 h-5 text-primary" />
-              <h3 class="text-lg font-semibold">Documents</h3>
+              <h3 class="text-lg font-normal">Documents</h3>
             </div>
           </template>
           <div class="space-y-2">
@@ -482,7 +554,7 @@
           <template #header>
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-message-square" class="w-5 h-5 text-primary" />
-              <h3 class="text-lg font-semibold">Notes</h3>
+              <h3 class="text-lg font-normal">Notes</h3>
             </div>
           </template>
           <p class="text-gray-700">{{ formData.notes }}</p>
@@ -523,19 +595,19 @@
                   :class="{ 'animate-pulse': otpLoading }"
                 />
               </div>
-              <h1 class="text-2xl font-bold text-center">
+              <h1 class="text-2xl font-normal text-center">
                 Code de vérification
               </h1>
               <p class="text-sm text-gray-600 text-center">
-                Code envoyé à <span class="font-semibold text-primary">{{ formData.email }}</span>
+                Code envoyé à <span class="font-normal text-primary">{{ formData.email }}</span>
               </p>
             </div>
           </template>
           
-          <UForm @submit="verifyOTPAndCreate" class="space-y-4">
+          <form class="space-y-4" @submit.prevent="verifyOTPAndCreate">
             <!-- Champ OTP -->
             <div class="space-y-3">
-              <UFormField name="otp" required>
+              <UFormField name="otp" label="Code à 6 chiffres" required>
                 <div class="flex justify-center">
                   <UPinInput 
                     id="otp"
@@ -567,6 +639,7 @@
               <UButton 
                 variant="outline" 
                 size="sm"
+                type="button"
                 :disabled="otpLoading"
                 @click="prevStep"
                 class="text-xs"
@@ -579,6 +652,7 @@
               <UButton 
                 variant="ghost" 
                 size="sm"
+                type="button"
                 :disabled="countdown > 0 || resending"
                 :loading="resending"
                 @click="resendOTP"
@@ -598,7 +672,7 @@
               :title="error"
               class="animate-in fade-in slide-in-from-top-2 duration-300"
             />
-          </UForm>
+          </form>
         </UCard>
       </div>
 
@@ -627,14 +701,14 @@
             <UIcon name="i-lucide-alert-triangle" class="w-6 h-6 text-red-600 dark:text-red-400" />
           </div>
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Supprimer ce proche ?</h3>
+            <h3 class="text-lg font-normal text-gray-900 dark:text-white">Supprimer ce proche ?</h3>
           </div>
         </div>
 
         <!-- Body -->
         <p class="text-gray-600 dark:text-gray-400">
           Êtes-vous sûr de vouloir supprimer
-          <span class="font-semibold text-gray-900 dark:text-white">{{ deletingRelative?.first_name }} {{ deletingRelative?.last_name }}</span> ?
+          <span class="font-normal text-gray-900 dark:text-white">{{ deletingRelative?.first_name }} {{ deletingRelative?.last_name }}</span> ?
           Cette action est irréversible.
         </p>
 
@@ -670,17 +744,29 @@ definePageMeta({
   layout: 'patient',
 });
 
-const toast = useToast();
+const toast = useAppToast();
 
 const route = useRoute();
 const router = useRouter();
 const { createAppointment } = useAppointments();
 const { verifyOTP: verifyOTPAuth, isAuthenticated, user } = useAuth();
 
-const step = ref(route.query.type ? 1 : 0);
-const selectedService = ref<string | null>(route.query.type as string || null);
+const step = ref(0);
+const selectedService = ref<string | null>(null);
 const consent = ref(false);
+const careCategoriesList = ref<Array<{ id: string; name: string; description?: string; type: string; icon?: string | null }>>([]);
+const categoriesLoading = ref(true);
 const formData = ref<any>({});
+
+// Provider spécifique (quand on vient d'un profil public)
+const providerId = computed(() => (route.query.provider_id as string) || null);
+const providerType = computed(() => (route.query.provider_type as string) || null);
+const providerName = ref<string | null>(null);
+/** Délai min du lab (heures) pour griser les dates quand RDV depuis fiche publique */
+const providerMinLeadTimeHours = ref<number | null>(null);
+const providerAcceptSaturday = ref<boolean>(true);
+const providerAcceptSunday = ref<boolean>(true);
+const isProviderBooking = computed(() => !!providerId.value && !!providerType.value);
 const requestingOTP = ref(false);
 const otpLoading = ref(false);
 const resending = ref(false);
@@ -756,19 +842,83 @@ const hasDocuments = computed(() => {
 });
 
 const serviceItems = [
-  {
-    label: 'Prise de sang',
-    value: 'blood_test',
-    icon: 'i-lucide-droplet',
-    description: 'Prélèvements sanguins à domicile'
-  },
-  {
-    label: 'Soins infirmiers',
-    value: 'nursing',
-    icon: 'i-lucide-stethoscope',
-    description: 'Soins à domicile par des professionnels'
-  }
+  { label: 'Prise de sang', value: 'blood_test', icon: 'i-lucide-droplet', description: 'Prélèvements sanguins à domicile' },
+  { label: 'Soins infirmiers', value: 'nursing', icon: 'i-lucide-heart-pulse', description: 'Soins à domicile par des professionnels' },
 ];
+
+function categoryIcon(cat: { icon?: string | null; type: string }): string {
+  const raw = cat.icon && String(cat.icon).trim();
+  if (raw) {
+    if (raw.startsWith('medical-icon:')) return 'i-medical-icon-' + raw.slice('medical-icon:'.length);
+    if (raw.startsWith('healthicons:')) return 'i-healthicons-' + raw.slice('healthicons:'.length);
+    if (raw.startsWith('covid:')) return 'i-covid-' + raw.slice('covid:'.length);
+    const name = raw.replace(/^i-lucide-/, '').replace(/^lucide:/, '').replace(/\s+/g, '-').toLowerCase();
+    if (name) return `i-lucide-${name}`;
+  }
+  return cat.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-heart-pulse';
+}
+
+function selectCategory(cat: { id: string; type: string }) {
+  selectedService.value = cat.type;
+  formData.value = { ...formData.value, category_id: cat.id };
+  nextStep();
+}
+
+function selectFallbackService(value: string) {
+  selectedService.value = value;
+  formData.value = { ...formData.value };
+  nextStep();
+}
+
+async function loadCareCategories() {
+  categoriesLoading.value = true;
+  careCategoriesList.value = [];
+  try {
+    if (isProviderBooking.value) {
+      // Charger les catégories spécifiques au provider depuis son profil public
+      await loadProviderCategories();
+    } else {
+      const response = await apiFetch('/categories', { method: 'GET' });
+      if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
+        careCategoriesList.value = response.data;
+      }
+    }
+  } catch (e) {
+    console.error('Erreur chargement catégories:', e);
+  } finally {
+    categoriesLoading.value = false;
+  }
+}
+
+async function loadProviderCategories() {
+  if (!providerId.value || !providerType.value) return;
+  try {
+    const response = await apiFetch(`/categories?provider_id=${providerId.value}`, { method: 'GET' });
+    if (response.success && response.data?.length > 0) {
+      careCategoriesList.value = response.data;
+    }
+  } catch (e) {
+    console.error('Erreur chargement catégories provider:', e);
+  }
+}
+
+async function loadProviderName() {
+  if (!providerId.value) return;
+  try {
+    const response = await apiFetch(`/public/provider-name?id=${providerId.value}`, { method: 'GET' });
+    if (response.success && response.data?.name) {
+      providerName.value = response.data.name;
+    }
+    if (response.success && response.data && typeof response.data.min_booking_lead_time_hours === 'number') {
+      providerMinLeadTimeHours.value = response.data.min_booking_lead_time_hours;
+    } else {
+      providerMinLeadTimeHours.value = null;
+    }
+  } catch {
+    providerName.value = null;
+    providerMinLeadTimeHours.value = null;
+  }
+}
 
 const labFormRef = ref<any>(null);
 const nursingFormRef = ref<any>(null);
@@ -897,9 +1047,12 @@ const nextStep = () => {
 const prevStep = () => {
   if (step.value > 0) {
     step.value--;
-    // Réinitialiser les erreurs quand on revient en arrière
     error.value = '';
     validationError.value = '';
+    if (step.value === 0) {
+      selectedService.value = null;
+      formData.value = { ...formData.value, category_id: '' };
+    }
   }
 };
 
@@ -1110,13 +1263,22 @@ const createAppointmentDirectly = async () => {
   error.value = '';
 
   try {
-    const result = await createAppointment({
+    const appointmentPayload: any = {
       type: selectedService.value,
       form_type: selectedService.value,
       patient_id: user.value?.id,
       ...formData.value,
-    });
-    
+    };
+    // Assigner directement au provider si on vient d'un profil public
+    if (isProviderBooking.value && providerId.value) {
+      if (providerType.value === 'nurse') {
+        appointmentPayload.assigned_nurse_id = providerId.value;
+      } else if (providerType.value === 'lab') {
+        appointmentPayload.assigned_lab_id = providerId.value;
+      }
+    }
+    const result = await createAppointment(appointmentPayload);
+
     if (result.success) {
       router.push('/patient');
     } else {
@@ -1195,13 +1357,22 @@ const verifyOTPAndCreate = async () => {
     const patientId = user.value?.id || otpResult.user?.id || userId.value;
 
     // Créer le rendez-vous avec le patient_id de l'utilisateur authentifié
-    const result = await createAppointment({
+    const otpPayload: any = {
       type: selectedService.value,
       form_type: selectedService.value,
       patient_id: patientId,
       ...formData.value,
-    });
-    
+    };
+    // Assigner directement au provider si on vient d'un profil public
+    if (isProviderBooking.value && providerId.value) {
+      if (providerType.value === 'nurse') {
+        otpPayload.assigned_nurse_id = providerId.value;
+      } else if (providerType.value === 'lab') {
+        otpPayload.assigned_lab_id = providerId.value;
+      }
+    }
+    const result = await createAppointment(otpPayload);
+
     if (result.success) {
       router.push('/patient');
     } else {
@@ -1239,7 +1410,7 @@ onBeforeRouteLeave((to, from, next) => {
   next();
 });
 
-// Charger les proches
+// Charger les proches (403 = endpoint réservé à certains rôles : on garde une liste vide)
 const fetchRelatives = async () => {
   if (!isAuthenticated.value) return;
   
@@ -1251,7 +1422,12 @@ const fetchRelatives = async () => {
     if (response.success && response.data) {
       relatives.value = response.data;
     }
-  } catch (error) {
+  } catch (error: any) {
+    const msg = error?.message?.toLowerCase() ?? '';
+    if (msg.includes('refusé') || msg.includes('403') || msg.includes('forbidden')) {
+      relatives.value = [];
+      return;
+    }
     console.error('Erreur lors du chargement des proches:', error);
   }
 };
@@ -1465,9 +1641,30 @@ const formatBirthDate = (dateStr: string) => {
   }
 };
 
-// Charger les catégories et restaurer l'état au montage
-onMounted(() => {
-  // Restaurer l'état après connexion
+// Charger les catégories (liste pour l’étape 0) et appliquer les query params
+onMounted(async () => {
+  if (isProviderBooking.value) {
+    loadProviderName();
+  }
+  await loadCareCategories();
+
+  const typeFromUrl = route.query.type as string | undefined;
+  const categoryFromUrl = route.query.category as string | undefined;
+
+  if (typeFromUrl === 'blood_test' || typeFromUrl === 'nursing') {
+    selectedService.value = typeFromUrl;
+    if (categoryFromUrl) {
+      formData.value = { ...formData.value, category_id: categoryFromUrl };
+    }
+    if (categoryFromUrl || careCategoriesList.value.length === 0) {
+      step.value = 1;
+    }
+  }
+
+  if (selectedService.value) {
+    loadCategories();
+  }
+
   if (typeof window !== 'undefined') {
     const savedState = sessionStorage.getItem('appointment_booking_state');
     if (savedState) {
@@ -1476,23 +1673,16 @@ onMounted(() => {
         if (state.step !== undefined) step.value = state.step;
         if (state.selectedService) selectedService.value = state.selectedService;
         if (state.formData) formData.value = state.formData;
-        // Nettoyer après restauration
         sessionStorage.removeItem('appointment_booking_state');
       } catch (e) {
         console.error('Erreur lors de la restauration de l\'état:', e);
       }
     }
   }
-  
-  // Charger les catégories
-  if (selectedService.value) {
-    loadCategories();
-  }
-  
-  // Charger les proches si connecté
+
   if (isAuthenticated.value) {
     fetchRelatives();
-    selectForMyself(); // Par défaut, sélectionner "Pour moi-même"
+    selectForMyself();
   }
 });
 

@@ -53,25 +53,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ncp.is_enabled,
                 cc.name,
                 cc.description,
-                cc.type
+                cc.type,
+                cc.icon
             FROM nurse_category_preferences ncp
             JOIN care_categories cc ON ncp.category_id = cc.id
-            WHERE ncp.nurse_id = ? AND cc.is_active = TRUE
+            WHERE ncp.nurse_id = ? AND cc.is_active = TRUE AND cc.type = \'nursing\'
             ORDER BY cc.type, cc.name
         ');
         $stmt->execute([$user['user_id']]);
         $preferences = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Récupérer aussi les catégories non préférencées (avec is_enabled = true par défaut)
+        // Récupérer aussi les catégories non préférencées (avec is_enabled = true par défaut) — uniquement type nursing
         $stmt = $db->prepare('
             SELECT
                 cc.id as category_id,
                 cc.name,
                 cc.description,
                 cc.type,
+                cc.icon,
                 TRUE as is_enabled
             FROM care_categories cc
-            WHERE cc.is_active = TRUE
+            WHERE cc.is_active = TRUE AND cc.type = \'nursing\'
             AND cc.id NOT IN (
                 SELECT category_id FROM nurse_category_preferences WHERE nurse_id = ?
             )
@@ -104,14 +106,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
         $data = json_decode(file_get_contents('php://input'), true);
 
-        if (!$data || !isset($data['category_id']) || !isset($data['is_enabled'])) {
+        if (!$data || empty($data['category_id'])) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'Données invalides']);
             exit;
         }
 
-        // Vérifier que la catégorie existe et est active
-        $stmt = $db->prepare('SELECT id FROM care_categories WHERE id = ? AND is_active = TRUE');
+        // is_enabled : accepter bool, int, ou string et forcer 0/1 pour MySQL
+        $isEnabled = (int) filter_var($data['is_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        // Vérifier que la catégorie existe, est active et de type nursing
+        $stmt = $db->prepare('SELECT id FROM care_categories WHERE id = ? AND is_active = TRUE AND type = \'nursing\'');
         $stmt->execute([$data['category_id']]);
         $category = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -119,6 +124,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'Catégorie invalide']);
             exit;
+        }
+
+        // Limite types de soins selon l'abonnement (discovery = 3, nurse_pro = illimité)
+        if ($isEnabled) {
+            $stmtSub = $db->prepare('SELECT plan_slug FROM subscriptions WHERE user_id = ? AND status IN (\'active\', \'trialing\') ORDER BY updated_at DESC LIMIT 1');
+            $stmtSub->execute([$user['user_id']]);
+            $sub = $stmtSub->fetch(PDO::FETCH_ASSOC);
+            $planSlug = $sub ? ($sub['plan_slug'] ?? 'discovery') : 'discovery';
+            $limits = require __DIR__ . '/../../config/plan-limits.php';
+            $nurseLimits = $limits['nurse'][$planSlug] ?? $limits['nurse']['discovery'];
+            $maxCareTypes = $nurseLimits['max_care_types'] ?? 3;
+            if ($maxCareTypes !== null) {
+                $stmtCount = $db->prepare('SELECT COUNT(*) FROM nurse_category_preferences WHERE nurse_id = ? AND is_enabled = 1 AND category_id != ?');
+                $stmtCount->execute([$user['user_id'], $data['category_id']]);
+                $currentEnabled = (int) $stmtCount->fetchColumn();
+                if ($currentEnabled >= $maxCareTypes) {
+                    http_response_code(403);
+                    echo json_encode([
+                        'success' => false,
+                        'error' => "Votre offre Découverte limite à {$maxCareTypes} types de soins. Passez à l'offre Pro pour en proposer davantage.",
+                        'code' => 'PLAN_LIMIT',
+                    ]);
+                    exit;
+                }
+            }
         }
 
         // Insérer ou mettre à jour la préférence
@@ -133,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $id,
             $user['user_id'],
             $data['category_id'],
-            $data['is_enabled']
+            $isEnabled
         ]);
 
         $logger->log($user['user_id'], $user['role'], 'update', 'nurse_category_preference', $id, $data);
@@ -143,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => [
                 'id' => $id,
                 'category_id' => $data['category_id'],
-                'is_enabled' => $data['is_enabled']
+                'is_enabled' => (bool) $isEnabled
             ]
         ]);
     } catch (Exception $e) {

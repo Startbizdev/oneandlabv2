@@ -20,7 +20,7 @@
       :class="size === 'xl' ? 'size-12' : 'size-10'"
     />
     <div class="space-y-1">
-      <h3 v-if="title" class="font-semibold text-foreground">
+      <h3 v-if="title" class="font-normal text-foreground">
         {{ title }}
       </h3>
       <p v-if="description" class="text-sm text-muted max-w-sm mx-auto">

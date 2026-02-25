@@ -86,14 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         
-        // Vérifier les permissions (le patient doit être le propriétaire du document source)
-        if ($sourceDoc['patient_id'] !== $user['user_id'] && $user['role'] !== 'super_admin') {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Accès refusé au document source']);
-            exit;
-        }
-        
-        // Vérifier que le nouveau rendez-vous existe et appartient au même patient
+        // Rendez-vous cible
         $stmt = $db->prepare('SELECT patient_id FROM appointments WHERE id = ?');
         $stmt->execute([$appointmentId]);
         $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -104,9 +97,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         
-        if ($appointment['patient_id'] !== $user['user_id'] && $user['role'] !== 'super_admin') {
+        $appointmentPatientId = $appointment['patient_id'];
+        $sourceDocumentPatientId = $sourceDoc['patient_id']; // NULL si document de profil (appointment_id NULL)
+        
+        // Document de profil : récupérer le patient_id via patient_documents
+        if ($sourceDocumentPatientId === null) {
+            $pdStmt = $db->prepare('SELECT patient_id FROM patient_documents WHERE medical_document_id = ? LIMIT 1');
+            $pdStmt->execute([$sourceMedicalDocumentId]);
+            $pd = $pdStmt->fetch(PDO::FETCH_ASSOC);
+            $sourceDocumentPatientId = $pd ? $pd['patient_id'] : null;
+        }
+        
+        $allowed = false;
+        if ($user['role'] === 'super_admin') {
+            $allowed = true;
+        } elseif ($user['role'] === 'patient') {
+            $allowed = ($sourceDocumentPatientId === $user['user_id'] && $appointmentPatientId === $user['user_id']);
+        } elseif ($user['role'] === 'pro') {
+            // Pro : document doit appartenir au patient du RDV et le patient doit avoir été créé par ce pro
+            if ($sourceDocumentPatientId && $sourceDocumentPatientId === $appointmentPatientId) {
+                $profStmt = $db->prepare('SELECT created_by FROM profiles WHERE id = ? AND role = ? LIMIT 1');
+                $profStmt->execute([$appointmentPatientId, 'patient']);
+                $prof = $profStmt->fetch(PDO::FETCH_ASSOC);
+                $allowed = $prof && ($prof['created_by'] === $user['user_id']);
+            }
+        }
+        
+        if (!$allowed) {
             http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Accès refusé au rendez-vous']);
+            echo json_encode(['success' => false, 'error' => 'Accès refusé au document source ou au rendez-vous']);
+            exit;
+        }
+        
+        if ($sourceDocumentPatientId !== $appointmentPatientId) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Le document ne concerne pas le patient de ce rendez-vous']);
             exit;
         }
         

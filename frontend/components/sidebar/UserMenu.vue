@@ -1,43 +1,34 @@
 <template>
-  <div class="border-t border-gray-200 bg-white p-3">
-    <UDropdown :items="menuItems" :popper="{ placement: 'top', offsetDistance: 12 }">
+  <div class="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3">
+    <UDropdown :items="dropdownItems" :popper="{ placement: 'top', offsetDistance: 8 }">
       <button
-        class="group w-full flex items-center gap-3 rounded-lg px-3 py-3 transition-all duration-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+        class="group w-full flex items-center gap-3 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
       >
         <!-- Avatar -->
         <div class="relative flex-shrink-0">
-          <img
-            v-if="user?.avatar"
-            :src="user.avatar"
-            :alt="displayName"
-            class="h-9 w-9 rounded-lg object-cover shadow-sm"
+          <UserAvatar
+            :src="user?.profile_image_url ?? user?.avatar"
+            :initial="avatarInitial"
+            :alt="userDisplayName"
+            size="md"
           />
-          <div
-            v-else
-            class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 text-xs font-bold text-white shadow-sm"
-          >
-            {{ displayName.charAt(0).toUpperCase() }}
-          </div>
-          
-          <!-- Status indicator -->
-          <div class="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500" />
+          <span class="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full border-2 border-white dark:border-gray-900 bg-green-500" />
         </div>
 
         <!-- User info -->
         <div v-if="!collapsed" class="flex-1 min-w-0 text-left">
-          <p class="truncate text-sm font-semibold text-gray-900">
-            {{ displayName }}
+          <p class="truncate text-sm font-normal text-gray-900 dark:text-white">
+            {{ userDisplayName }}
           </p>
-          <p class="truncate text-xs text-gray-500">
-            {{ user?.role || 'Utilisateur' }}
-          </p>
+          <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300">
+            {{ roleLabel }}
+          </span>
         </div>
 
-        <!-- Chevron -->
         <UIcon
           v-if="!collapsed"
           name="i-lucide-chevron-down"
-          class="h-4 w-4 flex-shrink-0 text-gray-400 transition-colors group-hover:text-gray-600"
+          class="h-4 w-4 flex-shrink-0 text-gray-400 transition-colors group-hover:text-gray-600 dark:group-hover:text-gray-300"
         />
       </button>
     </UDropdown>
@@ -49,38 +40,22 @@ defineProps<{
   collapsed?: boolean;
 }>();
 
-const { user, logout } = useAuth();
+const { user, roleLabel, userMenuItems, userDisplayName } = useHeaderUserMenu();
 
-const displayName = computed(() => {
-  if (user.value?.first_name && user.value?.last_name) {
-    return `${user.value.first_name} ${user.value.last_name}`;
-  }
-  return user.value?.email || 'Utilisateur';
-});
+const avatarInitial = computed(() =>
+  (user.value?.first_name?.charAt(0) || user.value?.email?.charAt(0) || 'U').toUpperCase()
+);
 
-// Handler de logout
-const handleLogoutClick = async () => {
-  await logout();
-};
-
-const menuItems = computed(() => {
-  return [
-    {
-      label: 'Mon profil',
-      icon: 'i-lucide-user',
-      click: () => navigateTo('/profile'),
-    },
-    {
-      label: 'Aide',
-      icon: 'i-lucide-help-circle',
-    },
-    {
-      label: 'Déconnexion',
-      icon: 'i-lucide-log-out',
-      click: handleLogoutClick,
-    },
-  ];
-});
+// Format pour UDropdown : items avec label, icon, onSelect (click)
+const dropdownItems = computed(() =>
+  userMenuItems.value
+    .filter((item: any) => item.type !== 'divider')
+    .map((item: any) => ({
+      label: item.label,
+      icon: item.icon,
+      onSelect: item.click,
+    }))
+);
 </script>
 
 <style scoped>

@@ -31,8 +31,26 @@ $user = $authMiddleware->handle();
 // Vérifier CSRF
 CSRFMiddleware::handle();
 
-// Seuls les patients peuvent uploader leurs documents
-if ($user['role'] !== 'patient') {
+// Patient : ses documents ; super_admin : upload pour un patient via POST user_id ; pro : upload pour un patient qu'il a créé
+$targetPatientId = $user['user_id'];
+if ($user['role'] === 'super_admin') {
+    $requestedUserId = isset($_POST['user_id']) ? trim((string) $_POST['user_id']) : null;
+    if ($requestedUserId !== null && $requestedUserId !== '') {
+        $targetPatientId = $requestedUserId;
+    } else {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Paramètre user_id requis pour l\'admin']);
+        exit;
+    }
+} elseif ($user['role'] === 'pro') {
+    $requestedUserId = isset($_POST['user_id']) ? trim((string) $_POST['user_id']) : null;
+    if ($requestedUserId === null || $requestedUserId === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Paramètre user_id requis (patient)']);
+        exit;
+    }
+    $targetPatientId = $requestedUserId;
+} elseif ($user['role'] !== 'patient') {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Accès refusé']);
     exit;
@@ -49,6 +67,18 @@ $dsn = sprintf(
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
 $crypto = new Crypto();
 $logger = new Logger();
+
+// Pro : vérifier que le patient a bien été créé par ce pro (created_by)
+if ($user['role'] === 'pro') {
+    $checkStmt = $db->prepare('SELECT id, role, created_by FROM profiles WHERE id = ? LIMIT 1');
+    $checkStmt->execute([$targetPatientId]);
+    $profile = $checkStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$profile || ($profile['role'] ?? '') !== 'patient' || ($profile['created_by'] ?? '') !== $user['user_id']) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Accès refusé']);
+        exit;
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Logs de débogage (dans le projet ET dans le log PHP)
@@ -182,72 +212,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('Le fichier n\'a pas été correctement sauvegardé: ' . $filePath);
         }
 
-        // Créer un rendez-vous temporaire "draft" pour stocker le document
-        // (car medical_documents nécessite un appointment_id)
-        $data = random_bytes(16);
-        $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // Version 4
-        $data[8] = chr(ord($data[8]) & 0x3f | 0x80); // Variant
-        $draftAppointmentId = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
-        
-        // Vérifier si un appointment draft existe déjà pour ce patient
-        // On utilise un statut spécial 'expired' pour les appointments de documents de profil
-        $checkAppointmentStmt = $db->prepare('
-            SELECT id FROM appointments 
-            WHERE patient_id = ? AND status = ? AND type = ?
-            LIMIT 1
-        ');
-        $checkAppointmentStmt->execute([$user['user_id'], 'expired', 'blood_test']);
-        $existingAppointment = $checkAppointmentStmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($existingAppointment) {
-            $draftAppointmentId = $existingAppointment['id'];
-        } else {
-            // Créer un nouvel appointment draft avec les champs requis
-            // Note: scheduled_at est NOT NULL, donc on utilise une date future par défaut
-            $stmt = $db->prepare('
-                INSERT INTO appointments (
-                    id, type, status, patient_id, created_by, created_by_role,
-                    form_type, location_lat, location_lng, address_encrypted, address_dek,
-                    scheduled_at, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 1 YEAR), NOW(), NOW())
-            ');
-            
-            // Données par défaut pour l'appointment draft
-            $defaultAddress = 'Document de profil';
-            $addressData = $crypto->encryptField($defaultAddress);
-            
-            $result = $stmt->execute([
-                $draftAppointmentId,
-                'blood_test',
-                'expired', // Utiliser 'expired' pour marquer ces appointments comme fictifs
-                $user['user_id'],
-                $user['user_id'],
-                'patient',
-                'blood_test', // form_type doit être 'blood_test' ou 'nursing'
-                0.0, // location_lat par défaut
-                0.0, // location_lng par défaut
-                $addressData['encrypted'],
-                $addressData['dek'],
-            ]);
-            
-            if (!$result) {
-                throw new Exception('Erreur lors de la création de l\'appointment draft: ' . implode(', ', $stmt->errorInfo()));
-            }
-        }
-
-        // Stocker les métadonnées en base
+        // Documents de profil (Carte Vitale, etc.) : pas de rendez-vous associé (appointment_id NULL)
         $relativePath = '/uploads/medical/' . $id . '/' . $fileName . '.encrypted';
 
         $stmt = $db->prepare('
             INSERT INTO medical_documents (
                 id, appointment_id, uploaded_by, file_name, file_path,
                 file_size, mime_type, encrypted, file_dek, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, NOW())
         ');
 
         $result = $stmt->execute([
             $id,
-            $draftAppointmentId,
             $user['user_id'],
             $fileName,
             $relativePath,
@@ -266,7 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             SELECT id FROM patient_documents 
             WHERE patient_id = ? AND document_type = ?
         ');
-        $checkStmt->execute([$user['user_id'], $documentType]);
+        $checkStmt->execute([$targetPatientId, $documentType]);
         $existingDoc = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
         if ($existingDoc) {
@@ -290,7 +266,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ');
             $insertResult = $insertStmt->execute([
                 $patientDocId,
-                $user['user_id'],
+                $targetPatientId,
                 $documentType,
                 $id
             ]);
@@ -338,7 +314,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'file_exists' => file_exists($filePath),
                     'file_size_on_disk' => file_exists($filePath) ? filesize($filePath) : 0,
                     'upload_dir' => $uploadDir,
-                    'patient_id' => $user['user_id'],
+                    'patient_id' => $targetPatientId,
                 ]
             ],
         ]);

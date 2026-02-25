@@ -29,9 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
-if ($user['role'] !== 'lab') {
+$role = $user['role'] ?? '';
+if (!in_array($role, ['lab', 'subaccount'], true)) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Accès réservé aux laboratoires']);
+    echo json_encode(['success' => false, 'error' => 'Accès réservé aux laboratoires et sous-comptes']);
     exit;
 }
 
@@ -46,17 +47,25 @@ $dsn = sprintf(
 );
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
 
-// IDs à inclure : lab + sous-comptes + préleveurs (profiles où lab_id = labId)
-$stmt = $db->prepare("SELECT id FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
-$stmt->execute([$labId, $labId]);
-$labIds = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'id');
-
-if (empty($labIds)) {
+// Sous-compte : uniquement les RDV assignés à ce sous-compte. Lab : lab + sous-comptes + préleveurs
+$teamMembers = [];
+if ($role === 'subaccount') {
     $labIds = [$labId];
+} else {
+    $stmt = $db->prepare("SELECT id, role FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
+    $stmt->execute([$labId, $labId]);
+    $teamRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $labIds = array_column($teamRows, 'id');
+    foreach ($teamRows as $r) {
+        $teamMembers[$r['id']] = $r['role'];
+    }
+    if (empty($labIds)) {
+        $labIds = [$labId];
+    }
 }
 
 $placeholders = implode(',', array_fill(0, count($labIds), '?'));
-$params = array_merge($labIds, $labIds);
+$params = array_merge($labIds, []);
 
 $sql = "SELECT a.* FROM appointments a
     WHERE a.assigned_lab_id IN ($placeholders)
@@ -72,7 +81,7 @@ $appointmentModel = new Appointment();
 $appointments = [];
 foreach ($rows as $row) {
     try {
-        $decrypted = $appointmentModel->getById($row['id'], $labId, 'lab');
+        $decrypted = $appointmentModel->getById($row['id'], $labId, $role);
         if ($decrypted) {
             $appointments[] = $decrypted;
         }
@@ -86,14 +95,21 @@ foreach ($rows as $row) {
             'duration_minutes' => $row['duration_minutes'] ?? null,
             'started_at' => $row['started_at'] ?? null,
             'completed_at' => $row['completed_at'] ?? null,
+            'assigned_lab_id' => $row['assigned_lab_id'] ?? null,
         ];
     }
 }
 
 $now = new DateTime();
+$todayStart = (clone $now)->setTime(0, 0, 0);
+$todayEnd = (clone $now)->setTime(23, 59, 59);
 $monthStart = (new DateTime())->setDate((int) $now->format('Y'), (int) $now->format('m'), 1)->setTime(0, 0, 0);
 
 $monthApps = array_filter($appointments, fn($a) => (new DateTime($a['scheduled_at'])) >= $monthStart);
+$todayApps = array_filter($appointments, function ($a) use ($todayStart, $todayEnd) {
+    $t = new DateTime($a['scheduled_at']);
+    return $t >= $todayStart && $t <= $todayEnd;
+});
 $completed = array_filter($appointments, fn($a) => ($a['status'] ?? '') === 'completed');
 $durations = array_filter(array_map(fn($a) => $a['duration_minutes'] ?? null, $completed), fn($d) => $d !== null && $d > 0);
 
@@ -116,17 +132,71 @@ $completionRate = count($appointments) > 0
     ? (int) round((count($completed) / count($appointments)) * 100)
     : 0;
 
+$statsOnly = isset($_GET['stats_only']) && $_GET['stats_only'] === '1';
+$stats = [
+    'totalAppointments' => count($appointments),
+    'monthAppointments' => count($monthApps),
+    'todayCount' => count($todayApps),
+    'completionRate' => $completionRate,
+    'averageDuration' => $avgDuration,
+    'byStatus' => $byStatus,
+    'byType' => $byType,
+];
+
+$data = ['stats' => $stats];
+if (!$statsOnly) {
+    $data['appointments'] = $appointments;
+}
+
+// Vue lab : indicateur + répartition par assigné (sous-compte / préleveur)
+if ($role === 'lab') {
+    $data['isLabView'] = true;
+    $data['teamSummary'] = [
+        'total' => count($labIds),
+        'lab' => (int) (isset($teamMembers[$labId]) && $teamMembers[$labId] === 'lab'),
+        'subaccounts' => count(array_filter($teamMembers, fn($r) => $r === 'subaccount')),
+        'preleveurs' => count(array_filter($teamMembers, fn($r) => $r === 'preleveur')),
+    ];
+    $byAssignedLab = [];
+    foreach ($appointments as $a) {
+        $id = $a['assigned_lab_id'] ?? null;
+        if ($id === null || $id === '') {
+            continue;
+        }
+        if (!isset($byAssignedLab[$id])) {
+            $byAssignedLab[$id] = [
+                'id' => $id,
+                'displayName' => $a['assigned_lab_display_name'] ?? 'Inconnu',
+                'role' => $a['assigned_lab_role'] ?? 'lab',
+                'total' => 0,
+                'month' => 0,
+                'today' => 0,
+                'completed' => 0,
+                'byStatus' => [],
+            ];
+        }
+        $byAssignedLab[$id]['total']++;
+        $sched = isset($a['scheduled_at']) ? new DateTime($a['scheduled_at']) : null;
+        if ($sched && $sched >= $monthStart) {
+            $byAssignedLab[$id]['month']++;
+        }
+        if ($sched && $sched >= $todayStart && $sched <= $todayEnd) {
+            $byAssignedLab[$id]['today']++;
+        }
+        if (($a['status'] ?? '') === 'completed') {
+            $byAssignedLab[$id]['completed']++;
+        }
+        $st = $a['status'] ?? 'unknown';
+        $byAssignedLab[$id]['byStatus'][$st] = ($byAssignedLab[$id]['byStatus'][$st] ?? 0) + 1;
+    }
+    foreach ($byAssignedLab as $id => &$row) {
+        $row['completionRate'] = $row['total'] > 0 ? (int) round(($row['completed'] / $row['total']) * 100) : 0;
+    }
+    unset($row);
+    $data['byAssignedLab'] = array_values($byAssignedLab);
+}
+
 echo json_encode([
     'success' => true,
-    'data' => [
-        'appointments' => $appointments,
-        'stats' => [
-            'totalAppointments' => count($appointments),
-            'monthAppointments' => count($monthApps),
-            'completionRate' => $completionRate,
-            'averageDuration' => $avgDuration,
-            'byStatus' => $byStatus,
-            'byType' => $byType,
-        ],
-    ],
+    'data' => $data,
 ]);

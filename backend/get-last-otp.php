@@ -23,8 +23,7 @@ if (file_exists($envFile) && is_readable($envFile)) {
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/lib/Auth.php';
 
-$email = 'infirmier@oneandlab.fr';
-$emailHash = hash('sha256', strtolower($email));
+$email = isset($argv[1]) ? trim($argv[1]) : 'infirmier@oneandlab.fr';
 
 echo "=== RÉCUPÉRATION DU DERNIER CODE OTP ===\n\n";
 echo "Email: $email\n\n";

@@ -1,5 +1,11 @@
 <template>
-  <CalendarPage base-path="/lab" />
+  <div class="space-y-6">
+    <TitleDashboard
+      title="Calendrier"
+      description="Vue d'ensemble des rendez-vous du laboratoire"
+    />
+    <CalendarPage base-path="/lab" />
+  </div>
 </template>
 
 <script setup lang="ts">

@@ -3,7 +3,7 @@
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 max-w-2xl">
       <!-- En-tête -->
       <header class="text-center mb-10 sm:mb-12">
-        <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+        <h1 class="text-2xl sm:text-3xl md:text-4xl font-normal text-gray-900 mb-3">
           Nous contacter
         </h1>
         <p class="text-base sm:text-lg text-gray-600 font-normal max-w-xl mx-auto">
@@ -19,7 +19,7 @@
         <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 text-green-600 mb-4">
           <UIcon name="i-lucide-check" class="w-7 h-7" />
         </div>
-        <h2 class="text-xl font-semibold text-gray-900 mb-2">Message envoyé</h2>
+        <h2 class="text-xl font-normal text-gray-900 mb-2">Message envoyé</h2>
         <p class="text-gray-600 mb-6">
           Nous avons bien reçu votre message et vous répondrons dans les plus brefs délais.
         </p>
@@ -101,7 +101,7 @@
               size="lg"
               :loading="loading"
               :disabled="!canSubmit"
-              class="w-full sm:w-auto font-semibold justify-center text-center min-w-[160px]"
+              class="w-full sm:w-auto font-normal justify-center text-center min-w-[160px]"
             >
               Envoyer
               <template #trailing>

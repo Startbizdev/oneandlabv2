@@ -73,21 +73,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $appointment['patient_id'] === $user['user_id'] ||
             $appointment['assigned_nurse_id'] === $user['user_id'] ||
             $appointment['assigned_lab_id'] === $user['user_id'] ||
+            (!empty($appointment['assigned_to']) && $appointment['assigned_to'] === $user['user_id']) ||
             $appointment['created_by'] === $user['user_id'] ||
             $user['role'] === 'super_admin'
         );
-        
+        // Lab / subaccount : accès si le RDV est assigné à quelqu'un de leur équipe
+        if (!$hasAccess && in_array($user['role'], ['lab', 'subaccount'], true)) {
+            $teamStmt = $db->prepare("SELECT id FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
+            $teamStmt->execute([$user['user_id'], $user['user_id']]);
+            $teamIds = array_column($teamStmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+            if (in_array($appointment['assigned_lab_id'], $teamIds, true) || (!empty($appointment['assigned_to']) && in_array($appointment['assigned_to'], $teamIds, true))) {
+                $hasAccess = true;
+            }
+        }
         if (!$hasAccess) {
             http_response_code(403);
             echo json_encode(['success' => false, 'error' => 'Accès refusé']);
             exit;
         }
         
-        // #region agent log
-        file_put_contents('/Users/alessandro/Documents/onev2/.cursor/debug.log', json_encode(['sessionId'=>'debug-session','runId'=>'run1','hypothesisId'=>'FF','location'=>'medical-documents/index.php:87','message'=>'Fetching medical documents','data'=>['appointment_id'=>$appointmentId],'timestamp'=>round(microtime(true)*1000)])."\n", FILE_APPEND);
-        // #endregion
-        
-        // Récupérer les documents
+        // Documents du RDV (appointment_id = ce RDV)
         $stmt = $db->prepare('
             SELECT 
                 id,
@@ -105,10 +110,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ');
         $stmt->execute([$appointmentId]);
         $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($documents as &$d) {
+            $d['source'] = 'appointment';
+        }
+        unset($d);
         
-        // #region agent log
-        file_put_contents('/Users/alessandro/Documents/onev2/.cursor/debug.log', json_encode(['sessionId'=>'debug-session','runId'=>'run1','hypothesisId'=>'GG','location'=>'medical-documents/index.php:103','message'=>'Medical documents fetched','data'=>['appointment_id'=>$appointmentId,'count'=>count($documents),'documents'=>$documents],'timestamp'=>round(microtime(true)*1000)])."\n", FILE_APPEND);
-        // #endregion
+        // Documents du compte patient (profil patient, hors ce RDV) pour lab/subaccount/nurse/pro/admin
+        $patientId = $appointment['patient_id'] ?? null;
+        if ($patientId && in_array($user['role'], ['lab', 'subaccount', 'nurse', 'pro', 'super_admin'], true)) {
+            $stmtPat = $db->prepare('
+                SELECT 
+                    md.id,
+                    md.appointment_id,
+                    md.uploaded_by,
+                    md.file_name,
+                    md.file_size,
+                    md.mime_type,
+                    md.document_type,
+                    md.encrypted,
+                    md.created_at
+                FROM patient_documents pd
+                JOIN medical_documents md ON pd.medical_document_id = md.id
+                WHERE pd.patient_id = ?
+                ORDER BY pd.document_type, md.created_at DESC
+            ');
+            $stmtPat->execute([$patientId]);
+            $patientDocs = $stmtPat->fetchAll(PDO::FETCH_ASSOC);
+            $appointmentDocIds = array_column($documents, 'id');
+            foreach ($patientDocs as $pd) {
+                if (!in_array($pd['id'], $appointmentDocIds, true)) {
+                    $pd['source'] = 'patient_profile';
+                    $documents[] = $pd;
+                }
+            }
+        }
         
         // Logger l'accès
         $logger->log(
@@ -160,7 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         // Vérifier les permissions
         $stmt = $db->prepare('
-            SELECT patient_id, assigned_to, assigned_nurse_id
+            SELECT patient_id, assigned_to, assigned_nurse_id, assigned_lab_id
             FROM appointments
             WHERE id = ?
         ');
@@ -177,6 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $appointment['patient_id'] === $user['user_id'] ||
             $appointment['assigned_nurse_id'] === $user['user_id'] ||
             $appointment['assigned_lab_id'] === $user['user_id'] ||
+            (!empty($appointment['assigned_to']) && $appointment['assigned_to'] === $user['user_id']) ||
             $user['role'] === 'super_admin'
         );
         

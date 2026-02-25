@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Logger.php';
 require_once __DIR__ . '/../../../lib/Email.php';
+require_once __DIR__ . '/../../../lib/EmailQueue.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
 
 // CORS
@@ -94,13 +95,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                 $stmt = $db->prepare('UPDATE profiles SET banned_until = ? WHERE id = ?');
                 $stmt->execute([$bannedUntil, $id]);
                 
-                // Email de suspension
+                // Email de suspension (async)
                 if ($userEmail) {
-                    try {
-                        $email->sendSuspensionEmail($userEmail, $days, $reason);
-                    } catch (Exception $e) {
-                        // Erreur d'envoi email - continuer sans bloquer
-                    }
+                    EmailQueue::add('suspension', $userEmail, ['days' => $days, 'reason' => $reason]);
                 }
                 
                 // Logger
@@ -120,13 +117,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                 $stmt = $db->prepare('UPDATE profiles SET banned_until = ? WHERE id = ?');
                 $stmt->execute([$bannedUntil, $id]);
                 
-                // Email de bannissement
+                // Email de bannissement (async)
                 if ($userEmail) {
-                    try {
-                        $email->sendBanEmail($userEmail, $reason);
-                    } catch (Exception $e) {
-                        // Erreur d'envoi email - continuer sans bloquer
-                    }
+                    EmailQueue::add('ban', $userEmail, ['reason' => $reason]);
                 }
                 
                 // Logger

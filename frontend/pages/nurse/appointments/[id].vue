@@ -5,36 +5,19 @@
   >
     <template #sidebarActions="{ appointment, loadAppointment }">
       <div class="flex flex-col gap-3">
-        <UButton
-          v-if="appointment.status === 'pending'"
-          color="success"
-          variant="solid"
-          size="lg"
-          leading-icon="i-lucide-check"
-          :loading="processing"
-          :loading-auto="false"
-          block
-          @click="acceptAppointment(loadAppointment)"
-        >
-          Accepter le rendez-vous
-        </UButton>
-        <UButton
-          v-if="appointment.status === 'pending'"
-          color="error"
-          variant="outline"
-          size="lg"
-          leading-icon="i-lucide-x"
-          :loading="processing"
-          :loading-auto="false"
-          block
-          @click="refuseAppointment"
-        >
-          Refuser
-        </UButton>
+        <UEmpty
+          v-if="appointment.status === 'canceled'"
+          icon="i-lucide-calendar-x"
+          title="Rendez-vous annulé"
+          description="Ce rendez-vous a été annulé. Aucune action disponible."
+          variant="naked"
+          size="md"
+        />
+        <template v-else>
         <UButton
           v-if="appointment.status === 'confirmed'"
           color="primary"
-          variant="solid"
+          variant="soft"
           size="lg"
           leading-icon="i-lucide-play"
           :loading="processing"
@@ -47,7 +30,7 @@
         <UButton
           v-if="appointment.status === 'inProgress'"
           color="success"
-          variant="solid"
+          variant="soft"
           size="lg"
           leading-icon="i-lucide-check-circle"
           :loading="processing"
@@ -58,15 +41,53 @@
           Terminer le soin
         </UButton>
         <UButton
+          v-if="['confirmed', 'inProgress'].includes(appointment.status)"
+          type="button"
+          color="primary"
+          variant="soft"
+          size="md"
+          leading-icon="i-lucide-calendar-plus"
+          block
+          @click="openRescheduleModal(appointment)"
+        >
+          Reprendre RDV pour ce patient
+        </UButton>
+        <template v-if="appointment.status !== 'canceled' && (appointment.relative?.phone || appointment.form_data?.phone || appointment.address)">
+          <UButton
+            v-if="appointment.relative?.phone || appointment.form_data?.phone"
+            type="button"
+            color="info"
+            variant="soft"
+            size="md"
+            leading-icon="i-lucide-message-square"
+            block
+            @click="sendSMS"
+          >
+            Message
+          </UButton>
+          <UButton
+            v-if="appointment.address"
+            type="button"
+            color="warning"
+            variant="soft"
+            size="md"
+            leading-icon="i-lucide-navigation"
+            block
+            @click="openInWaze"
+          >
+            Itinéraire Waze
+          </UButton>
+        </template>
+        <UButton
           v-if="appointment.status === 'confirmed'"
           color="error"
-          variant="outline"
+          variant="soft"
           size="lg"
           leading-icon="i-lucide-x-circle"
           :loading="processing"
           :loading-auto="false"
           block
-          @click="cancelAppointment"
+          @click="showCancelModal = true"
         >
           Annuler le rendez-vous
         </UButton>
@@ -81,7 +102,7 @@
           </div>
           <UButton
             color="warning"
-            variant="outline"
+            variant="soft"
             size="lg"
             leading-icon="i-lucide-refresh-ccw"
             :loading="processing"
@@ -92,6 +113,7 @@
             Redispatcher le rendez-vous
           </UButton>
         </div>
+        </template>
       </div>
     </template>
 
@@ -99,7 +121,7 @@
       <div v-if="canUploadDocuments(appointment)" class="mb-6 space-y-4">
         <div class="flex items-center gap-2 mb-4">
           <UIcon name="i-lucide-upload" class="w-5 h-5 text-gray-500" />
-          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Ajouter des documents</h3>
+          <h3 class="text-sm font-normal text-gray-700 dark:text-gray-300">Ajouter des documents</h3>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div
@@ -183,7 +205,7 @@
         variant="naked"
       />
       <div v-else-if="getOtherDocuments(documents).length > 0" class="space-y-3">
-        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Autres documents</h3>
+        <h3 class="text-sm font-normal text-gray-700 dark:text-gray-300 mb-2">Autres documents</h3>
         <div
           v-for="doc in getOtherDocuments(documents)"
           :key="doc.id"
@@ -242,6 +264,17 @@
       </UButton>
     </template>
   </AppointmentDetailPage>
+
+  <CancelAppointmentModal
+    v-model:open="showCancelModal"
+    :loading="processing"
+    @confirm="onConfirmCancel"
+  />
+  <RescheduleAppointmentModal
+    v-model="showRescheduleModal"
+    :appointment="rescheduleAppointment"
+    @done="onRescheduleDone"
+  />
 </template>
 
 <script setup lang="ts">
@@ -253,10 +286,38 @@ definePageMeta({
 
 import { apiFetch } from '~/utils/api';
 
-const toast = useToast();
+const toast = useAppToast();
 const detailRef = ref<{ loadAppointment: () => Promise<void>; loadDocuments: () => Promise<void>; appointment: { value: any } } | null>(null);
 
+// Rediriger vers la liste et ouvrir la popup pour les RDV en attente (accepter/refuser uniquement dans la popup, comme lab)
+watch(
+  () => detailRef.value?.appointment?.value,
+  (app) => {
+    if (app?.status === 'pending') {
+      navigateTo(`/nurse/appointments?openAppointment=${app.id}`);
+    }
+  },
+  { immediate: true },
+);
+
 const processing = ref(false);
+const showCancelModal = ref(false);
+const showRescheduleModal = ref(false);
+const rescheduleAppointment = ref<any>(null);
+
+function openRescheduleModal(apt: any) {
+  rescheduleAppointment.value = apt ?? null;
+  showRescheduleModal.value = true;
+}
+
+function onRescheduleDone(newAppointmentId?: string) {
+  rescheduleAppointment.value = null;
+  if (newAppointmentId) {
+    navigateTo(`/nurse/appointments/${newAppointmentId}`);
+  } else {
+    detailRef.value?.loadAppointment();
+  }
+}
 const downloadingDocuments = ref(new Set<string>());
 const uploadingTypes = ref(new Set<string>());
 const draggedOver = ref<string | null>(null);
@@ -413,41 +474,6 @@ function sendSMS() {
   window.location.href = `sms:${phone.replace(/\s/g, '')}?body=${message}`;
 }
 
-async function acceptAppointment(loadAppointment: () => Promise<void>) {
-  const appointment = detailRef.value?.appointment?.value;
-  if (!appointment) return;
-  processing.value = true;
-  try {
-    const response = await apiFetch(`/appointments/${appointment.id}`, { method: 'PUT', body: { status: 'confirmed' } });
-    if (response.success) {
-      toast.add({ title: 'Rendez-vous accepté', description: 'Le rendez-vous a été accepté avec succès.', color: 'success' });
-      await loadAppointment();
-      await detailRef.value?.loadDocuments();
-    } else {
-      toast.add({ title: 'Erreur', description: response.error || "Impossible d'accepter le rendez-vous", color: 'error' });
-    }
-  } catch (error: any) {
-    toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' });
-  } finally {
-    processing.value = false;
-  }
-}
-
-function refuseAppointment() {
-  const appointment = detailRef.value?.appointment?.value;
-  if (!appointment) return;
-  processing.value = true;
-  apiFetch(`/appointments/${appointment.id}`, { method: 'PUT', body: { status: 'refused' } })
-    .then((response) => {
-      if (response.success) {
-        toast.add({ title: 'Rendez-vous refusé', description: 'Le rendez-vous a été refusé.', color: 'warning' });
-        navigateTo('/nurse/appointments');
-      } else toast.add({ title: 'Erreur', description: response.error || 'Impossible de refuser le rendez-vous', color: 'error' });
-    })
-    .catch((error: any) => toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' }))
-    .finally(() => { processing.value = false; });
-}
-
 async function startAppointment(loadAppointment: () => Promise<void>) {
   const appointment = detailRef.value?.appointment?.value;
   if (!appointment) return;
@@ -481,20 +507,38 @@ function completeAppointment() {
     .finally(() => { processing.value = false; });
 }
 
-function cancelAppointment() {
-  if (!confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ?\n\nLe rendez-vous sera annulé et le patient en sera notifié.\nCette action est irréversible.')) return;
+async function onConfirmCancel(payload: { reason: string; comment: string; photoFile: File | null }) {
   const appointment = detailRef.value?.appointment?.value;
   if (!appointment) return;
   processing.value = true;
-  apiFetch(`/appointments/${appointment.id}`, { method: 'PUT', body: { status: 'canceled' } })
-    .then((response) => {
-      if (response.success) {
-        toast.add({ title: 'Rendez-vous annulé', description: 'Le rendez-vous a été annulé avec succès.', color: 'success' });
-        navigateTo('/nurse/appointments');
-      } else toast.add({ title: 'Erreur', description: response.error || "Impossible d'annuler le rendez-vous", color: 'error' });
-    })
-    .catch((error: any) => toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' }))
-    .finally(() => { processing.value = false; });
+  try {
+    let photoDocId: string | null = null;
+    if (payload.photoFile) {
+      const formData = new FormData();
+      formData.append('file', payload.photoFile);
+      formData.append('appointment_id', appointment.id);
+      formData.append('document_type', 'cancellation_photo');
+      const uploadRes = await apiFetch('/medical-documents', { method: 'POST', body: formData });
+      if (uploadRes.success && uploadRes.data?.id) photoDocId = uploadRes.data.id;
+    }
+    const body: Record<string, unknown> = {
+      status: 'canceled',
+      cancellation_reason: payload.reason,
+      cancellation_comment: payload.comment,
+    };
+    if (photoDocId) body.cancellation_photo_document_id = photoDocId;
+    const response = await apiFetch(`/appointments/${appointment.id}`, { method: 'PUT', body });
+    if (response.success) {
+      toast.add({ title: 'Rendez-vous annulé', description: 'Le rendez-vous a été annulé avec succès.', color: 'success' });
+      await navigateTo('/nurse/appointments');
+    } else {
+      toast.add({ title: 'Erreur', description: response.error || "Impossible d'annuler le rendez-vous", color: 'error' });
+    }
+  } catch (error: any) {
+    toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' });
+  } finally {
+    processing.value = false;
+  }
 }
 
 function redispatchAppointment() {

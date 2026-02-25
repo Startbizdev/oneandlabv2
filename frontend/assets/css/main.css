@@ -2,8 +2,9 @@
 @import "@nuxt/ui";
 
 @theme {
-  /* Typographie */
-  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  /* Typographie : Inter pour le body, Outfit pour les titres */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Outfit', ui-sans-serif, system-ui, sans-serif;
   
   /* Couleur primary (bleu OneAndLab) - Définir directement les couleurs pour remplacer le bleu Tailwind */
   --color-primary-50: #eff6ff;
@@ -86,6 +87,10 @@
   }
   
   body {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
   }
   
@@ -137,5 +142,10 @@
   
   .sidebar-scroll::-webkit-scrollbar-thumb:hover {
     background-color: rgb(156 163 175);
+  }
+
+  /* Safe area pour barre fixe en bas (encoche / barre d'accueil) */
+  .safe-area-pb {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   }
 }

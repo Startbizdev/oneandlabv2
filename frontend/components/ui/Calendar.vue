@@ -35,7 +35,7 @@
               @click="navigate(1)"
             />
           </div>
-          <h2 class="text-base sm:text-xl font-bold text-foreground capitalize tracking-tight flex items-center gap-2">
+          <h2 class="text-base sm:text-xl font-normal text-foreground capitalize tracking-tight flex items-center gap-2">
             <UIcon name="i-lucide-calendar" class="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
             <span class="truncate">{{ currentLabel }}</span>
           </h2>
@@ -103,7 +103,7 @@
               <div
                 v-for="d in weekDays"
                 :key="d"
-                class="py-2 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+                class="py-2 text-center text-[10px] font-normal uppercase tracking-wider text-muted-foreground"
               >
                 {{ d }}
               </div>
@@ -123,7 +123,7 @@
                 @click="handleDayClick(day)"
               >
                 <span
-                  class="text-sm font-semibold tabular-nums w-7 h-7 flex items-center justify-center rounded-full transition-colors"
+                  class="text-sm font-normal tabular-nums w-7 h-7 flex items-center justify-center rounded-full transition-colors"
                   :class="[
                     day.isToday && selectedDayId !== day.dateStr && 'bg-primary text-white',
                     selectedDayId === day.dateStr && 'bg-white/20',
@@ -172,7 +172,7 @@
               </template>
               <template v-else>
                 <div v-for="(group, dateStr) in mobileListGroups" :key="dateStr" class="space-y-2">
-                  <h3 class="text-xs font-bold text-foreground uppercase tracking-wider sticky top-0 bg-default/95 backdrop-blur py-2 z-10 border-b border-default/50">
+                  <h3 class="text-xs font-normal text-foreground uppercase tracking-wider sticky top-0 bg-default/95 backdrop-blur py-2 z-10 border-b border-default/50">
                     {{ formatDateFull(dateStr) }}
                   </h3>
                   <div class="space-y-2">
@@ -187,7 +187,7 @@
                         <UIcon :name="getTypeIcon(item)" class="w-5 h-5 text-primary" />
                       </div>
                       <div class="flex-1 min-w-0">
-                        <span class="font-semibold text-foreground block truncate">{{ getPatientLabel(item) }}</span>
+                        <span class="font-normal text-foreground block truncate">{{ getPatientLabel(item) }}</span>
                         <span class="text-xs text-muted-foreground block mt-0.5">{{ getCreneauLabel(item) }} · {{ item.type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers' }}</span>
                         <p v-if="getItemAddress(item)" class="text-xs text-muted-foreground mt-1.5 truncate flex items-center gap-1" :title="getItemAddress(item)">
                           <UIcon name="i-lucide-map-pin" class="w-3.5 h-3.5 shrink-0" />
@@ -209,7 +209,7 @@
               <div
                 v-for="(day, i) in weekDays"
                 :key="day"
-                class="py-2 text-center text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                class="py-2 text-center text-[10px] sm:text-xs font-normal uppercase tracking-wider text-muted-foreground"
               >
                 {{ day }}
               </div>
@@ -232,7 +232,7 @@
               <!-- Date Number -->
               <div class="flex justify-between items-start">
                 <span
-                  class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 text-xs sm:text-sm font-semibold rounded-full transition-all"
+                  class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 text-xs sm:text-sm font-normal rounded-full transition-all"
                   :class="[
                     day.isToday 
                       ? 'bg-primary text-white shadow-md shadow-primary/25 scale-110' 
@@ -243,8 +243,9 @@
                   {{ day.dayNumber }}
                 </span>
                 
-                <!-- Quick Add Button (Desktop only) -->
-                <button 
+                <!-- Quick Add Button (Desktop only, masqué si disableAdd) -->
+                <button
+                  v-if="!disableAdd"
                   class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded-md text-muted-foreground hover:text-primary"
                   title="Ajouter un événement"
                   @click.stop="$emit('add-event', day.fullDate)"
@@ -314,7 +315,7 @@
             </template>
             <div v-else class="space-y-4">
               <div v-for="(group, dateStr) in groupedItems" :key="dateStr" class="space-y-2">
-                <h3 class="text-xs font-bold text-foreground uppercase tracking-wider sticky top-0 bg-default/95 backdrop-blur py-2 z-10 border-b border-default/50">
+                <h3 class="text-xs font-normal text-foreground uppercase tracking-wider sticky top-0 bg-default/95 backdrop-blur py-2 z-10 border-b border-default/50">
                   {{ formatDateFull(dateStr) }}
                 </h3>
                 <div class="space-y-2">
@@ -329,7 +330,7 @@
                       <UIcon :name="getTypeIcon(item)" class="w-5 h-5 text-primary" />
                     </div>
                     <div class="flex-1 min-w-0">
-                      <span class="font-semibold text-foreground block truncate">{{ getPatientLabel(item) }}</span>
+                      <span class="font-normal text-foreground block truncate">{{ getPatientLabel(item) }}</span>
                       <span class="text-xs text-muted-foreground block mt-0.5">{{ getCreneauLabel(item) }} · {{ item.type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers' }}</span>
                       <p v-if="getItemAddress(item)" class="text-xs text-muted-foreground mt-1.5 truncate flex items-center gap-1" :title="getItemAddress(item)">
                         <UIcon name="i-lucide-map-pin" class="w-3.5 h-3.5 shrink-0" />
@@ -353,7 +354,7 @@
             <div v-else class="max-w-3xl mx-auto space-y-6">
               <div v-for="(group, dateStr) in groupedItems" :key="dateStr" class="relative pl-6 border-l-2 border-muted">
                 <span class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-background border-2 border-primary" />
-                <h3 class="text-sm font-bold text-foreground mb-3 sticky top-0 bg-background/95 backdrop-blur py-1 z-10">
+                <h3 class="text-sm font-normal text-foreground mb-3 sticky top-0 bg-background/95 backdrop-blur py-1 z-10">
                   {{ formatDateFull(dateStr) }}
                 </h3>
                 <div class="space-y-2">
@@ -365,7 +366,7 @@
                   >
                     <div class="flex flex-col items-center min-w-[3rem] sm:min-w-[3.5rem] gap-1">
                       <UIcon :name="getTypeIcon(item)" class="w-4 h-4 text-muted-foreground shrink-0" />
-                      <span class="text-xs font-bold text-foreground tabular-nums">{{ getCreneauLabel(item) }}</span>
+                      <span class="text-xs font-normal text-foreground tabular-nums">{{ getCreneauLabel(item) }}</span>
                       <UBadge
                         :color="getStatusBadgeColor(item[itemStatusKey])"
                         variant="soft"
@@ -376,7 +377,7 @@
                     </div>
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2">
-                        <span class="font-semibold text-foreground truncate">
+                        <span class="font-normal text-foreground truncate">
                           {{ getPatientLabel(item) }}
                         </span>
                       </div>

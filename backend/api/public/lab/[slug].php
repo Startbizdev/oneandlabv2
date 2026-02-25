@@ -49,53 +49,82 @@ try {
     );
     $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
     
-    // Récupérer le profil public du sous-lab
-    $stmt = $db->prepare('
-        SELECT 
-            id,
-            role,
-            public_slug,
-            profile_image_url,
-            cover_image_url,
-            biography,
-            faq,
-            is_public_profile_enabled,
-            first_name_encrypted,
-            first_name_dek,
-            last_name_encrypted,
-            last_name_dek
-        FROM profiles
-        WHERE public_slug = ? 
-        AND role = "subaccount"
-        AND is_public_profile_enabled = TRUE
-    ');
+    // Colonnes de base + optionnelles (city_plain, company_name, adresse, site, horaires, réseaux)
+    $selectFields = 'id, role, public_slug, profile_image_url, cover_image_url, biography, faq, is_public_profile_enabled, first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek';
+    $stmt = $db->query("SHOW COLUMNS FROM profiles LIKE 'city_plain'");
+    if ($stmt && $stmt->rowCount() > 0) {
+        $selectFields .= ', city_plain';
+    }
+    $stmt = $db->query("SHOW COLUMNS FROM profiles LIKE 'company_name_encrypted'");
+    if ($stmt && $stmt->rowCount() > 0) {
+        $selectFields .= ', company_name_encrypted, company_name_dek';
+    }
+    $stmt = $db->query("SHOW COLUMNS FROM profiles LIKE 'address_encrypted'");
+    if ($stmt && $stmt->rowCount() > 0) {
+        $selectFields .= ', address_encrypted, address_dek';
+    }
+    // Site web + horaires + réseaux (migration 030 : website_url, opening_hours, social_links)
+    foreach (['website_url', 'opening_hours', 'social_links'] as $col) {
+        $stmt = $db->query("SHOW COLUMNS FROM profiles LIKE " . $db->quote($col));
+        if ($stmt && $stmt->rowCount() > 0) {
+            $selectFields .= ', ' . $col;
+        }
+    }
+    $stmt = $db->query("SHOW COLUMNS FROM profiles LIKE 'min_booking_lead_time_hours'");
+    if ($stmt && $stmt->rowCount() > 0) {
+        $selectFields .= ', min_booking_lead_time_hours';
+    }
+    foreach (['accept_rdv_saturday', 'accept_rdv_sunday'] as $col) {
+        $stmt = $db->query("SHOW COLUMNS FROM profiles LIKE " . $db->quote($col));
+        if ($stmt && $stmt->rowCount() > 0) {
+            $selectFields .= ', ' . $col;
+        }
+    }
+    $stmt = $db->prepare("SELECT {$selectFields} FROM profiles WHERE public_slug = ? AND role IN ('lab', 'subaccount') AND is_public_profile_enabled = TRUE");
     $stmt->execute([$slug]);
     $profile = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if (!$profile) {
+        // Redirection 301 : ancien slug enregistré -> renvoyer le nouveau slug pour que le front fasse 301
+        $stmt = $db->query("SHOW TABLES LIKE 'slug_redirects'");
+        if ($stmt->rowCount() > 0) {
+            $stmt = $db->prepare('SELECT r.profile_id, p.public_slug FROM slug_redirects r JOIN profiles p ON p.id = r.profile_id WHERE r.old_slug = ? AND p.role IN (\'lab\', \'subaccount\') AND p.is_public_profile_enabled = TRUE');
+            $stmt->execute([$slug]);
+            $redirect = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($redirect && !empty($redirect['public_slug'])) {
+                echo json_encode([
+                    'success' => true,
+                    'redirect' => true,
+                    'new_slug' => $redirect['public_slug'],
+                ]);
+                exit;
+            }
+        }
         http_response_code(404);
         echo json_encode(['success' => false, 'error' => 'Profil introuvable']);
         exit;
     }
-    
-    // Déchiffrer le nom (nécessaire pour l'affichage public)
+
+    // Clés toujours présentes dans la réponse (null si colonnes absentes)
+    $profile['website_url'] = $profile['website_url'] ?? null;
+    $profile['social_links'] = $profile['social_links'] ?? null;
+    $profile['opening_hours'] = $profile['opening_hours'] ?? null;
+
     $crypto = new Crypto();
+    $name = trim($crypto->decryptField($profile['first_name_encrypted'] ?? '', $profile['first_name_dek'] ?? '') . ' ' . $crypto->decryptField($profile['last_name_encrypted'] ?? '', $profile['last_name_dek'] ?? ''));
+    if (!empty($profile['company_name_encrypted'] ?? '') && !empty($profile['company_name_dek'] ?? '')) {
+        $companyName = trim((string) $crypto->decryptField($profile['company_name_encrypted'], $profile['company_name_dek']));
+        if ($companyName !== '') {
+            $name = $companyName;
+        }
+    }
     $firstName = $crypto->decryptField($profile['first_name_encrypted'], $profile['first_name_dek']);
     $lastName = $crypto->decryptField($profile['last_name_encrypted'], $profile['last_name_dek']);
     
-    // Pour les labs, on peut récupérer les catégories de prélèvements disponibles
-    // (toutes les catégories actives de type 'blood_test')
-    $stmt = $db->prepare('
-        SELECT 
-            id,
-            name,
-            description,
-            type
-        FROM care_categories
-        WHERE type = "blood_test"
-        AND is_active = TRUE
-        ORDER BY name
-    ');
+    // Pour les labs : catégories de prélèvements (avec icône)
+    $stmt = $db->query("SHOW COLUMNS FROM care_categories LIKE 'icon'");
+    $iconCol = $stmt && $stmt->rowCount() > 0 ? ', icon' : '';
+    $stmt = $db->prepare("SELECT id, name, description, type{$iconCol} FROM care_categories WHERE type = 'blood_test' AND is_active = TRUE ORDER BY name");
     $stmt->execute();
     $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
@@ -159,25 +188,60 @@ try {
         $faq = is_string($profile['faq']) ? json_decode($profile['faq'], true) : $profile['faq'];
     }
     
-    echo json_encode([
-        'success' => true,
-        'data' => [
+    // Adresse publique : affichage (texte) + centre carte (coordonnées pour ne pas afficher l'adresse dans l'iframe)
+    $addressLabel = null;
+    $mapCenter = null;
+    if (!empty($profile['address_encrypted'] ?? '') && !empty($profile['address_dek'] ?? '')) {
+        $addressJson = $crypto->decryptField($profile['address_encrypted'], $profile['address_dek']);
+        $addressData = is_string($addressJson) ? json_decode($addressJson, true) : $addressJson;
+        if (is_array($addressData)) {
+            if (!empty($addressData['label'])) {
+                $addressLabel = trim((string) $addressData['label']);
+            }
+            if (isset($addressData['lat'], $addressData['lng'])) {
+                $mapCenter = ['lat' => (float) $addressData['lat'], 'lng' => (float) $addressData['lng']];
+            }
+        } elseif (is_string($addressJson) && trim($addressJson) !== '') {
+            $addressLabel = trim($addressJson);
+        }
+    }
+
+    $openingHours = $profile['opening_hours'] ?? null;
+    if (is_string($openingHours) && $openingHours !== '') {
+        $openingHours = json_decode($openingHours, true);
+    }
+    $socialLinks = $profile['social_links'] ?? null;
+    if (is_string($socialLinks) && $socialLinks !== '') {
+        $socialLinks = json_decode($socialLinks, true);
+    }
+    $data = [
             'id' => $profile['id'],
             'slug' => $profile['public_slug'],
-            'name' => trim($firstName . ' ' . $lastName),
+            'name' => $name,
             'first_name' => $firstName,
             'last_name' => $lastName,
             'profile_image_url' => $profile['profile_image_url'],
             'cover_image_url' => $profile['cover_image_url'],
             'biography' => $profile['biography'],
             'faq' => $faq,
+            'address' => $addressLabel,
+            'map_center' => $mapCenter,
+            'website_url' => !empty($profile['website_url']) ? $profile['website_url'] : null,
+            'opening_hours' => is_array($openingHours) ? $openingHours : null,
+            'social_links' => is_array($socialLinks) ? $socialLinks : null,
+            'min_booking_lead_time_hours' => isset($profile['min_booking_lead_time_hours']) ? (int) $profile['min_booking_lead_time_hours'] : 48,
+            'accept_rdv_saturday' => isset($profile['accept_rdv_saturday']) ? (bool) $profile['accept_rdv_saturday'] : true,
+            'accept_rdv_sunday' => isset($profile['accept_rdv_sunday']) ? (bool) $profile['accept_rdv_sunday'] : true,
             'services' => $services,
             'reviews' => [
                 'stats' => $reviewStats,
                 'items' => $reviews,
             ],
-        ],
-    ]);
+        ];
+    if (!empty($profile['city_plain'])) {
+        $data['city_plain'] = $profile['city_plain'];
+    }
+    echo json_encode(['success' => true, 'data' => $data]);
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([

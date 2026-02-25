@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
       <div>
         <p class="text-sm text-gray-600 dark:text-gray-400">{{ title }}</p>
-        <p class="text-3xl font-bold mt-2">{{ value }}</p>
+        <p class="text-3xl font-normal mt-2">{{ value }}</p>
         <p v-if="subtitle" class="text-sm text-gray-500 mt-1">{{ subtitle }}</p>
       </div>
       <div v-if="icon" class="text-4xl opacity-20">

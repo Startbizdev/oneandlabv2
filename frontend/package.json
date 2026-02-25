@@ -12,7 +12,10 @@
     "@iconify-json/lucide": "^1.2.89",
     "@nuxt/ui": "^3.3.7",
     "@tanstack/vue-table": "^8.21.3",
+    "@types/leaflet": "^1.9.21",
+    "leaflet": "^1.9.4",
     "nuxt": "^3.14.0",
+    "vue3-leaflet": "^1.0.50",
     "zod": "^3.22.4"
   },
   "devDependencies": {

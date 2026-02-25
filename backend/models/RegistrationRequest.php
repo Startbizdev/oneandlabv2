@@ -88,14 +88,19 @@ class RegistrationRequest
             $companyEnc = $c['encrypted'];
             $companyDek = $c['dek'];
         }
+        $emploi = null;
+        if ($role === 'pro' && !empty(trim((string)($data['emploi'] ?? '')))) {
+            $emploi = trim((string)$data['emploi']);
+            if (strlen($emploi) > 120) $emploi = substr($emploi, 0, 120);
+        }
 
         $sql = 'INSERT INTO registration_requests (
             id, role, status, email_hash, email_encrypted, email_dek,
             first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek,
             phone_encrypted, phone_dek, address_encrypted, address_dek,
             siret_encrypted, siret_dek, adeli_encrypted, adeli_dek, rpps_encrypted, rpps_dek,
-            company_name_encrypted, company_name_dek, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())';
+            company_name_encrypted, company_name_dek, emploi, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())';
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             $id, $role, 'pending', $emailHash,
@@ -104,7 +109,7 @@ class RegistrationRequest
             $lastEnc['encrypted'], $lastEnc['dek'],
             $phoneEnc, $phoneDek, $addrEnc, $addrDek,
             $siretEnc, $siretDek, $adeliEnc, $adeliDek, $rppsEnc, $rppsDek,
-            $companyEnc, $companyDek,
+            $companyEnc, $companyDek, $emploi,
         ]);
         return $id;
     }
@@ -116,7 +121,7 @@ class RegistrationRequest
             email_encrypted, email_dek, first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek,
             phone_encrypted, phone_dek, address_encrypted, address_dek,
             siret_encrypted, siret_dek, adeli_encrypted, adeli_dek, rpps_encrypted, rpps_dek,
-            company_name_encrypted, company_name_dek
+            company_name_encrypted, company_name_dek, emploi
             FROM registration_requests WHERE 1=1';
         $params = [];
         if ($status !== '' && in_array($status, ['pending', 'accepted', 'rejected'], true)) {
@@ -162,6 +167,7 @@ class RegistrationRequest
             'adeli' => $dec($r['adeli_encrypted'] ?? '', $r['adeli_dek'] ?? ''),
             'rpps' => $dec($r['rpps_encrypted'] ?? '', $r['rpps_dek'] ?? ''),
             'company_name' => $dec($r['company_name_encrypted'] ?? '', $r['company_name_dek'] ?? ''),
+            'emploi' => isset($r['emploi']) ? trim((string)$r['emploi']) : '',
             'created_at' => $r['created_at'],
             'reviewed_at' => $r['reviewed_at'],
             'reviewed_by' => $r['reviewed_by'],
@@ -194,6 +200,15 @@ class RegistrationRequest
         ];
         if ($req['role'] === 'lab' && !empty(trim((string)($req['company_name'] ?? '')))) {
             $createData['company_name'] = trim((string)$req['company_name']);
+        }
+        if ($req['role'] === 'pro') {
+            if (!empty(trim((string)($req['adeli'] ?? '')))) {
+                $createData['adeli'] = trim((string)$req['adeli']);
+            }
+            if (!empty(trim((string)($req['emploi'] ?? '')))) {
+                $createData['emploi'] = trim((string)$req['emploi']);
+                if (strlen($createData['emploi']) > 120) $createData['emploi'] = substr($createData['emploi'], 0, 120);
+            }
         }
         $userId = $userModel->create($createData, $actorId, 'super_admin');
         $this->db->prepare('UPDATE registration_requests SET status = ?, reviewed_at = NOW(), reviewed_by = ? WHERE id = ?')

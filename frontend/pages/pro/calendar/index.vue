@@ -1,5 +1,32 @@
 <template>
-  <CalendarPage base-path="/pro" title="Mon calendrier" />
+  <div class="space-y-6">
+    <TitleDashboard
+      title="Calendrier"
+      description="Vue d'ensemble de vos rendez-vous."
+    >
+      <template #actions>
+        <UButton
+          variant="outline"
+          color="neutral"
+          icon="i-lucide-refresh-cw"
+          :loading="loading"
+          aria-label="Actualiser"
+          @click="fetchAppointments"
+        />
+        <UButton
+          to="/pro/appointments/new"
+          color="primary"
+          icon="i-lucide-plus"
+        >
+          Nouveau rendez-vous
+        </UButton>
+      </template>
+    </TitleDashboard>
+    <CalendarPage
+      base-path="/pro"
+      hide-header-actions
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -12,4 +39,6 @@ definePageMeta({
 useHead({
   title: 'Calendrier – Professionnel',
 });
+
+const { loading, fetchAppointments } = useAppointments();
 </script>

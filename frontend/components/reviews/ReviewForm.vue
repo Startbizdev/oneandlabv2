@@ -1,7 +1,7 @@
 <template>
   <UCard>
     <template #header>
-      <h2 class="text-xl font-bold">Donnez votre avis</h2>
+      <h2 class="text-xl font-normal">Donnez votre avis</h2>
     </template>
     
     <UForm :state="form" @submit="handleSubmit" class="space-y-4">

@@ -27,6 +27,7 @@
       base-path="/admin"
       :use-date-filter="false"
       hide-header
+      :user-id-filter="(route.query.user_id as string) || ''"
     >
       <template #cardActions="{ appointment, basePath }">
         <UButton
@@ -89,7 +90,7 @@
               class="relative z-10 w-full max-w-md rounded-xl border border-default bg-default shadow-xl"
             >
               <div class="flex items-center justify-between border-b border-default px-5 py-4">
-                <h2 id="delete-modal-title" class="text-lg font-semibold text-foreground">
+                <h2 id="delete-modal-title" class="text-lg font-normal text-foreground">
                   Supprimer le rendez-vous
                 </h2>
                 <UButton
@@ -129,7 +130,8 @@ definePageMeta({
 
 import { apiFetch } from '~/utils/api';
 
-const toast = useToast();
+const route = useRoute();
+const toast = useAppToast();
 const listRef = ref<{ fetchAppointments: () => void; loading?: boolean } | null>(null);
 const isDeleteModalOpen = ref(false);
 const selectedAppointment = ref<{ id: string } | null>(null);

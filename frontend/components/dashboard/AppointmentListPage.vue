@@ -1,47 +1,46 @@
 <template>
-  <div class="space-y-6">
-    <!-- En-tête avec filtres (masqué si la page utilise TitleDashboard) -->
+  <div class="space-y-6 lg:space-y-8">
     <div v-if="!hideHeader" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 class="text-[28px] font-bold text-gray-900 dark:text-white tracking-tight">
           {{ title }}
         </h1>
-        <p v-if="subtitle" class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p v-if="subtitle" class="text-[15px] text-gray-500 dark:text-gray-400 mt-1">
           {{ subtitle }}
         </p>
       </div>
 
-      <!-- Actions d'en-tête (slot pour bouton Créer, Calendrier, etc.) -->
       <div v-if="$slots.headerActions" class="flex items-center gap-2">
         <slot name="headerActions" />
       </div>
 
-      <!-- Filtres par période (liste avec cartes) -->
-      <div v-else class="flex items-center gap-2">
-        <div class="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-1">
-          <UButton
+      <div v-else class="flex items-center">
+        <div class="inline-flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 shadow-inner">
+          <button
             v-for="tab in dateTabs"
             :key="tab.value"
-            :variant="dateFilter === tab.value ? 'solid' : 'ghost'"
-            :color="dateFilter === tab.value ? 'primary' : 'gray'"
-            size="sm"
             @click="dateFilter = tab.value"
-            class="transition-all"
+            class="px-4 py-1.5 text-[14px] font-medium rounded-lg transition-all duration-200"
+            :class="
+              dateFilter === tab.value
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            "
           >
             {{ tab.label }}
-          </UButton>
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Recherche + filtre statut (toujours visible) -->
-    <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
+    <div class="flex flex-col sm:flex-row gap-3 sm:items-center flex-wrap">
       <UInput
         v-model="searchQuery"
         placeholder="Rechercher (patient, téléphone, adresse...)"
         icon="i-lucide-search"
-        size="md"
+        size="lg"
         class="flex-1 min-w-0 max-w-md"
+        :ui="{ rounded: 'rounded-xl', icon: { color: 'text-gray-400' } }"
         clearable
       />
       <USelect
@@ -49,251 +48,208 @@
         :items="statusFilterOptions"
         value-key="value"
         placeholder="Tous les statuts"
-        size="md"
+        size="lg"
         class="w-full sm:w-48"
+        :ui="{ rounded: 'rounded-xl' }"
       />
+      <DateRangePicker
+        :start="dateRangeStart"
+        :end="dateRangeEnd"
+        placeholder="Plage de dates"
+        @update:start="dateRangeStart = $event"
+        @update:end="dateRangeEnd = $event"
+      />
+      <UButton
+        v-if="dateRangeStart || dateRangeEnd"
+        variant="ghost"
+        color="gray"
+        size="sm"
+        icon="i-lucide-x"
+        class="shrink-0 rounded-full"
+        @click="dateRangeStart = null; dateRangeEnd = null"
+      >
+        Effacer la plage
+      </UButton>
     </div>
 
-    <!-- État de chargement -->
-    <div v-if="loading" class="flex flex-col items-center justify-center py-16">
+    <div v-if="loading" class="flex flex-col items-center justify-center py-20">
       <UIcon
         name="i-lucide-loader-2"
         class="w-10 h-10 animate-spin text-primary-500 mb-4"
       />
-      <p class="text-gray-500 dark:text-gray-400">
-        Chargement des rendez-vous...
+      <p class="text-[15px] text-gray-500 dark:text-gray-400 font-medium">
+        Chargement de vos rendez-vous...
       </p>
     </div>
 
-    <!-- État vide -->
     <UEmpty
       v-else-if="!loading && appointments.length === 0"
       icon="i-lucide-calendar-x"
       :title="emptyStateTitle"
       :description="emptyStateDescription"
+      class="py-12"
     />
 
-    <!-- Grille de cartes -->
-    <div v-else class="space-y-4">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
-        <UCard
+    <div v-else class="space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 items-stretch">
+        <div
           v-for="appointment in appointments"
           :key="appointment.id"
-          class="hover:shadow-lg transition-shadow duration-200 relative h-full flex flex-col"
-          :ui="{
-            root: 'flex flex-col h-full min-h-0',
-            body: 'flex-1 flex flex-col min-h-0 p-4 overflow-hidden',
-            footer: 'mt-auto border-t border-gray-200 dark:border-gray-800 p-3 flex items-center justify-center gap-1.5 flex-shrink-0'
-          }"
+          class="bg-white dark:bg-gray-900 rounded-[24px] shadow-sm hover:shadow-md border border-gray-100 dark:border-gray-800 transition-all duration-200 flex flex-col h-full overflow-hidden relative"
         >
-          <!-- Badge de statut en haut à droite -->
-          <div class="absolute top-4 right-4 z-10">
-            <UBadge
-              :color="getStatusColor(appointment.status)"
-              variant="subtle"
-              size="sm"
-              :label="getStatusLabel(appointment.status)"
-            />
-          </div>
-
-          <div class="space-y-3 pt-1">
-            <!-- Type d'intervention (Prise de sang / Soins infirmiers) -->
-            <div class="flex items-start gap-3">
-              <UIcon
-                :name="appointment.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-stethoscope'"
-                class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Type d'intervention</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ appointment.type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers' }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Patient -->
-            <div class="flex items-start gap-3">
-              <UIcon
-                name="i-lucide-user"
-                class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Patient</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ appointment.form_data?.first_name }} {{ appointment.form_data?.last_name }}
-                </p>
-                <p v-if="appointment.form_data?.phone" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {{ appointment.form_data?.phone }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Type d'analyse / Type de soin (catégorie) -->
-            <div v-if="appointment.category_name" class="flex items-start gap-3">
-              <UIcon
-                :name="appointment.type === 'blood_test' ? 'i-lucide-flask-conical' : 'i-lucide-stethoscope'"
-                class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ appointment.type === 'blood_test' ? 'Type d\'analyse' : 'Type de soin' }}</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ appointment.category_name }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Type de prélèvement (prise de sang uniquement) -->
-            <div v-if="appointment.type === 'blood_test' && getBloodTestTypeLabel(appointment.form_data)" class="flex items-start gap-3">
-              <UIcon
-                name="i-lucide-pipette"
-                class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Prélèvement</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ getBloodTestTypeLabel(appointment.form_data) }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Date -->
-            <div class="flex items-start gap-3">
-              <UIcon
-                name="i-lucide-calendar"
-                class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Date souhaitée</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ formatDateTime(appointment.scheduled_at) }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Créneau horaire -->
-            <div class="flex items-start gap-3">
-              <UIcon
-                name="i-lucide-clock"
-                class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Créneau horaire</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ getCreneauHoraireLabel(appointment) }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Durée -->
-            <div v-if="appointment.form_data?.duration_days" class="flex items-start gap-3">
-              <UIcon
-                name="i-lucide-calendar-days"
-                class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Durée</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ getDurationLabel(appointment.form_data.duration_days) }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Fréquence -->
-            <div v-if="appointment.form_data?.frequency" class="flex items-start gap-3">
-              <UIcon
-                name="i-lucide-repeat"
-                class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Fréquence</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ getFrequencyLabel(appointment.form_data.frequency) }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Adresse -->
-            <div v-if="appointment.address" class="flex items-start gap-3">
-              <UIcon
-                name="i-lucide-map-pin"
-                class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Adresse</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
-                  {{ typeof appointment.address === 'object' && appointment.address?.label ? appointment.address.label : appointment.address }}
-                </p>
-              </div>
-            </div>
-
-            <!-- En cours -->
-            <div v-if="appointment.status === 'inProgress' && appointment.started_at" class="flex items-start gap-3">
-              <UIcon
-                name="i-lucide-play-circle"
-                class="w-5 h-5 text-primary-500 mt-0.5 flex-shrink-0"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Statut</p>
-                <p class="text-sm font-medium text-primary-600 dark:text-primary-400">
-                  Démarré à {{ formatTime(appointment.started_at) }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Notes -->
-            <div v-if="appointment.notes" class="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-              <UIcon
-                name="i-lucide-alert-circle"
-                class="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Notes</p>
-                <p class="text-sm text-amber-700 dark:text-amber-300 line-clamp-3">
-                  {{ appointment.notes }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <template #footer>
-            <div class="flex items-center justify-center gap-1.5 w-full">
-              <slot name="cardActions" :appointment="appointment" :base-path="basePath">
-                <UButton
-                  variant="soft"
-                  color="primary"
-                  size="xs"
-                  leading-icon="i-lucide-eye"
-                  :to="`${basePath}/appointments/${appointment.id}`"
+          <div class="p-5 flex-1 flex flex-col">
+            
+            <div class="flex items-start justify-between mb-5 gap-3">
+              <div class="flex items-center gap-3.5 min-w-0">
+                <div 
+                  class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                  :class="appointment.type === 'blood_test' ? 'bg-red-50 dark:bg-red-500/10 text-red-500' : 'bg-blue-50 dark:bg-blue-500/10 text-blue-500'"
                 >
-                  Détails
-                </UButton>
-              </slot>
+                  <UIcon :name="appointment.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-stethoscope'" class="w-6 h-6" />
+                </div>
+                <div class="min-w-0">
+                  <h3 class="text-[17px] font-bold text-gray-900 dark:text-white truncate">
+                    {{ appointment.form_data?.first_name }} {{ appointment.form_data?.last_name }}
+                  </h3>
+                  <p v-if="appointment.form_data?.phone" class="text-[14px] text-gray-500 dark:text-gray-400 truncate mt-0.5 flex items-center gap-1">
+                    <UIcon name="i-lucide-phone" class="w-3.5 h-3.5" />
+                    {{ appointment.form_data?.phone }}
+                  </p>
+                </div>
+              </div>
+              <UBadge
+                :color="getStatusColor(appointment.status)"
+                variant="subtle"
+                size="xs"
+                class="rounded-full px-2.5 py-1 font-medium whitespace-nowrap"
+                :label="getStatusLabel(appointment.status)"
+              />
             </div>
-          </template>
-        </UCard>
+
+            <div class="bg-gray-50/80 dark:bg-gray-800/40 rounded-2xl p-4 space-y-3.5 flex-1">
+              
+              <div class="flex items-start gap-3">
+                <UIcon :name="appointment.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-stethoscope'" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Intervention</p>
+                  <p class="text-[14px] font-medium text-gray-900 dark:text-white">
+                    {{ appointment.type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers' }}
+                    <span v-if="appointment.category_name" class="text-gray-500 font-normal"> • {{ appointment.category_name }}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div v-if="appointment.type === 'blood_test' && getBloodTestTypeLabel(appointment.form_data)" class="flex items-start gap-3">
+                <UIcon name="i-lucide-pipette" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Prélèvement</p>
+                  <p class="text-[14px] font-medium text-gray-900 dark:text-white">{{ getBloodTestTypeLabel(appointment.form_data) }}</p>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3">
+                <UIcon name="i-lucide-calendar-clock" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Date & Heure</p>
+                  <p class="text-[14px] font-medium text-gray-900 dark:text-white capitalize">
+                    {{ formatDateTime(appointment.scheduled_at) }}
+                  </p>
+                  <p class="text-[13px] text-gray-500 mt-0.5">{{ getCreneauHoraireLabel(appointment) }}</p>
+                </div>
+              </div>
+
+              <div v-if="appointment.form_data?.duration_days || appointment.form_data?.frequency" class="flex items-start gap-3">
+                <UIcon name="i-lucide-repeat" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Récurrence</p>
+                  <p v-if="appointment.form_data?.duration_days" class="text-[14px] font-medium text-gray-900 dark:text-white">
+                    {{ getDurationLabel(appointment.form_data.duration_days) }}
+                  </p>
+                  <p v-if="appointment.form_data?.frequency" class="text-[13px] text-gray-500 mt-0.5">
+                    {{ getFrequencyLabel(appointment.form_data.frequency) }}
+                  </p>
+                </div>
+              </div>
+
+              <div v-if="appointment.type === 'blood_test' && (appointment.assigned_lab_display_name || appointment.assigned_to_display_name)" class="flex items-start gap-3">
+                <UIcon name="i-lucide-user-check" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Assigné à</p>
+                  <p class="text-[14px] font-medium text-gray-900 dark:text-white">
+                    <template v-if="appointment.assigned_lab_display_name">
+                      {{ appointment.assigned_lab_role === 'subaccount' ? 'Sous-compte' : 'Labo' }} {{ appointment.assigned_lab_display_name }}
+                    </template>
+                    <template v-if="appointment.assigned_lab_display_name && appointment.assigned_to_display_name"> · </template>
+                    <template v-if="appointment.assigned_to_display_name">Préleveur {{ appointment.assigned_to_display_name }}</template>
+                  </p>
+                </div>
+              </div>
+
+              <div v-if="appointment.address" class="flex items-start gap-3">
+                <UIcon name="i-lucide-map-pin" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Adresse</p>
+                  <p class="text-[14px] font-medium text-gray-900 dark:text-white leading-snug">
+                    {{ typeof appointment.address === 'object' && appointment.address?.label ? appointment.address.label : appointment.address }}
+                  </p>
+                </div>
+              </div>
+
+              <div v-if="appointment.status === 'inProgress' && appointment.started_at" class="flex items-start gap-3 mt-2">
+                <UIcon name="i-lucide-play-circle" class="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-[13px] font-medium text-primary-600 dark:text-primary-400">
+                    Démarré à {{ formatTime(appointment.started_at) }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="appointment.notes" class="mt-4 p-3.5 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800/50">
+              <div class="flex items-start gap-2.5">
+                <UIcon name="i-lucide-alert-circle" class="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-[11px] font-bold text-amber-600/80 dark:text-amber-400/80 uppercase tracking-wider mb-1">Notes</p>
+                  <p class="text-[13px] text-amber-800 dark:text-amber-300 leading-relaxed line-clamp-3">
+                    {{ appointment.notes }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-5 pb-5 pt-0 mt-auto">
+            <slot name="cardActions" :appointment="appointment" :base-path="basePath">
+              <UButton
+                variant="solid"
+                color="gray"
+                size="md"
+                class="w-full justify-center rounded-full font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                leading-icon="i-lucide-chevron-right"
+                trailing
+                :to="`${basePath}/appointments/${appointment.id}`"
+              >
+                Voir les détails
+              </UButton>
+            </slot>
+          </div>
+        </div>
       </div>
 
-      <!-- Pagination -->
       <div
         v-if="totalPages > 1"
-        class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-200 dark:border-gray-800"
+        class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 mt-4 border-t border-gray-100 dark:border-gray-800"
       >
-        <div class="text-sm text-gray-600 dark:text-gray-400">
-          Affichage de
-          <span class="font-medium text-gray-900 dark:text-white">
-            {{ startIndex }}-{{ endIndex }}
-          </span>
-          sur
-          <span class="font-medium text-gray-900 dark:text-white">
-            {{ totalItems }}
-          </span>
-          rendez-vous
-        </div>
+        <p class="text-[14px] text-gray-500 dark:text-gray-400">
+          Affichage de <span class="font-semibold text-gray-900 dark:text-white">{{ startIndex }}-{{ endIndex }}</span> 
+          sur <span class="font-semibold text-gray-900 dark:text-white">{{ totalItems }}</span>
+        </p>
         <UPagination
           v-model="currentPage"
           :total="totalItems"
           :page-size="pageSize"
           :max="7"
+          :ui="{ wrapper: 'gap-1', rounded: 'rounded-lg' }"
           @update:model-value="handlePageChange"
         />
       </div>
@@ -315,6 +271,12 @@ const props = withDefaults(
     useDateFilter?: boolean
     /** Statuts à inclure dans l'API (ex: "confirmed,inProgress,completed,canceled,refused" pour nurse). Vide = tous. */
     statusFilterApi?: string
+    /** Filtre optionnel : n'afficher que les RDV assignés à ce préleveur (lab). */
+    assignedToPreleveurId?: string
+    /** Filtre optionnel : n'afficher que les RDV assignés à ce sous-compte / lab (assigned_lab_id). */
+    assignedToLabId?: string
+    /** Filtre optionnel (admin) : n'afficher que les RDV de cet utilisateur (user_id). */
+    userIdFilter?: string
   }>(),
   {
     title: 'Mes rendez-vous',
@@ -322,10 +284,13 @@ const props = withDefaults(
     hideHeader: false,
     useDateFilter: true,
     statusFilterApi: '',
+    assignedToPreleveurId: '',
+    assignedToLabId: '',
+    userIdFilter: '',
   }
 );
 
-const toast = useToast();
+const toast = useAppToast();
 
 const currentPage = ref(1);
 const pageSize = ref(12);
@@ -337,6 +302,8 @@ const loading = ref(false);
 const dateFilter = ref('upcoming');
 const searchQuery = ref('');
 const statusFilter = ref('all');
+const dateRangeStart = ref<string | null>(null);
+const dateRangeEnd = ref<string | null>(null);
 const processingAppointments = ref(new Set<string>());
 
 const dateTabs = [
@@ -357,11 +324,35 @@ const statusFilterOptions = [
 /** Liste brute après fetch + filtre date uniquement (sans tri ni filtre statut/recherche). */
 const baseAppointments = ref<any[]>([]);
 
-/** Liste filtrée par statut et recherche, triée du plus récent au plus ancien (created_at puis scheduled_at). */
+/** Liste filtrée par statut et recherche (et préleveur si lab), triée du plus récent au plus ancien (created_at puis scheduled_at). */
 const filteredAndSorted = computed(() => {
   let list = [...baseAppointments.value];
+  if (props.assignedToPreleveurId) {
+    list = list.filter((a: any) => a.assigned_to === props.assignedToPreleveurId);
+  }
+  if (props.assignedToLabId) {
+    list = list.filter((a: any) => a.assigned_lab_id === props.assignedToLabId);
+  }
   if (statusFilter.value && statusFilter.value !== 'all') {
     list = list.filter((a: any) => a.status === statusFilter.value);
+  }
+  if (dateRangeStart.value) {
+    const startDay = new Date(dateRangeStart.value);
+    startDay.setHours(0, 0, 0, 0);
+    const startTs = startDay.getTime();
+    list = list.filter((a: any) => {
+      const at = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
+      return at >= startTs;
+    });
+  }
+  if (dateRangeEnd.value) {
+    const endDay = new Date(dateRangeEnd.value);
+    endDay.setHours(23, 59, 59, 999);
+    const endTs = endDay.getTime();
+    list = list.filter((a: any) => {
+      const at = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
+      return at <= endTs;
+    });
   }
   const q = (searchQuery.value || '').trim().toLowerCase();
   if (q) {
@@ -429,7 +420,9 @@ function getStatusColor(status: string): 'error' | 'primary' | 'secondary' | 'su
     inProgress: 'primary',
     completed: 'success',
     canceled: 'error',
+    cancelled: 'error',
     refused: 'error',
+    expired: 'neutral',
   };
   return colors[status] || 'neutral';
 }
@@ -441,7 +434,9 @@ function getStatusLabel(status: string) {
     inProgress: 'En cours',
     completed: 'Terminé',
     canceled: 'Annulé',
+    cancelled: 'Annulé',
     refused: 'Refusé',
+    expired: 'Expiré',
   };
   return labels[status] || status;
 }
@@ -549,6 +544,9 @@ const fetchAppointments = async () => {
     if (props.statusFilterApi) {
       params.status = props.statusFilterApi;
     }
+    if (props.userIdFilter) {
+      params.user_id = props.userIdFilter;
+    }
     const queryString = new URLSearchParams(params).toString();
     const response = await apiFetch(`/appointments?${queryString}`, { method: 'GET' });
 
@@ -634,7 +632,12 @@ watch(dateFilter, () => {
   fetchAppointments();
 });
 
-watch([searchQuery, statusFilter], () => {
+watch(() => props.userIdFilter, () => {
+  currentPage.value = 1;
+  fetchAppointments();
+});
+
+watch([searchQuery, statusFilter, dateRangeStart, dateRangeEnd], () => {
   currentPage.value = 1;
   applyPagination();
 });

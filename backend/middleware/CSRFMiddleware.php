@@ -22,9 +22,8 @@ class CSRFMiddleware
             session_start();
         }
 
-        // Récupérer le token depuis le header
-        $headers = getallheaders();
-        $csrfToken = $headers['X-CSRF-Token'] ?? $headers['x-csrf-token'] ?? null;
+        // Récupérer le token depuis le header (compatible Nginx/PHP-FPM)
+        $csrfToken = self::getRequestCsrfToken();
 
         // Récupérer le token depuis la session
         $sessionToken = $_SESSION['csrf_token'] ?? null;
@@ -78,6 +77,27 @@ class CSRFMiddleware
         }
 
         return $_SESSION['csrf_token'] ?? null;
+    }
+
+    /**
+     * Récupère le token CSRF envoyé dans la requête (header X-CSRF-Token).
+     * Compatible Nginx/PHP-FPM où getallheaders() peut ne pas exposer les headers.
+     */
+    public static function getRequestCsrfToken(): ?string
+    {
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+        if ($token !== null && $token !== '') {
+            return $token;
+        }
+        if (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            foreach ($headers as $name => $value) {
+                if (strtolower($name) === 'x-csrf-token') {
+                    return is_string($value) ? $value : (string) $value;
+                }
+            }
+        }
+        return null;
     }
 }
 

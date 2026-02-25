@@ -1,24 +1,29 @@
 <template>
-  <div class="container mx-auto px-4 py-8 max-w-7xl">
-    <h1 class="text-3xl font-bold mb-6">Mes avis</h1>
-    
-    <div v-if="loading" class="text-center py-8">
-      <span class="loading loading-spinner"></span>
-    </div>
-    
-    <UEmpty
-      v-else-if="reviews.length === 0"
-      icon="i-lucide-star"
-      title="Aucun avis"
-      description="Vous n'avez pas encore laissé d'avis. Après un rendez-vous, vous pourrez partager votre expérience."
-      :actions="[
-        {
-          icon: 'i-lucide-calendar',
-          label: 'Voir mes rendez-vous',
-          to: '/patient',
-        },
-      ]"
+  <div class="space-y-6">
+    <TitleDashboard
+      title="Mes avis"
+      description="Les avis que vous avez laissés après vos rendez-vous"
     />
+
+    <div class="container mx-auto px-4 max-w-7xl">
+    <div v-if="loading" class="text-center py-8">
+      <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-primary mb-2" />
+      <p class="text-gray-500">Chargement des avis...</p>
+    </div>
+
+    <div v-else-if="reviews.length === 0" class="text-center py-12">
+      <UIcon name="i-lucide-star" class="w-16 h-16 mx-auto text-gray-300 mb-4" />
+      <h3 class="text-lg font-medium text-gray-900 mb-2">Aucun avis</h3>
+      <p class="text-gray-500 mb-6">Vous n'avez pas encore laissé d'avis. Après un rendez-vous, vous pourrez partager votre expérience.</p>
+      <UButton
+        color="primary"
+        icon="i-lucide-calendar"
+        size="xl"
+        to="/patient"
+      >
+        Voir mes rendez-vous
+      </UButton>
+    </div>
 
     <div v-else class="space-y-4">
       <UCard 
@@ -47,7 +52,7 @@
             </p>
             
             <div v-if="review.response" class="mt-3 p-3 bg-gray-50 rounded">
-              <div class="text-sm font-semibold mb-1">Réponse du professionnel :</div>
+              <div class="text-sm font-normal mb-1">Réponse du professionnel :</div>
               <p class="text-sm text-gray-700">{{ review.response }}</p>
             </div>
             
@@ -61,6 +66,7 @@
           </UBadge>
         </div>
       </UCard>
+    </div>
     </div>
   </div>
 </template>

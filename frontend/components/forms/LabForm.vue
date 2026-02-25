@@ -4,7 +4,7 @@
     <UCard v-if="!hidePersonalInfo">
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold mb-1">Informations personnelles</h3>
+          <h3 class="text-lg font-normal mb-1">Informations personnelles</h3>
           <p class="text-sm text-gray-600 mb-3">Renseignez vos coordonnées pour que nous puissions vous contacter</p>
           <p v-if="!user?.id" class="text-xs text-gray-500 mb-3 flex items-center gap-1">
             Vous avez déjà un compte ? 
@@ -110,7 +110,7 @@
     <UCard>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold mb-1">Informations du rendez-vous</h3>
+          <h3 class="text-lg font-normal mb-1">Informations du rendez-vous</h3>
           <p class="text-sm text-gray-600 mb-3">Choisissez la date et les créneaux qui vous conviennent le mieux</p>
         </div>
       
@@ -125,7 +125,14 @@
       </UFormField>
       
       <UFormField label="Date souhaitée" name="scheduled_at" required>
-        <DatePicker v-model="form.scheduled_at" placeholder="Sélectionner une date" appointment-type="lab" />
+        <DatePicker
+          v-model="form.scheduled_at"
+          placeholder="Sélectionner une date"
+          appointment-type="lab"
+          :min-lead-time-hours="minLeadTimeHours"
+          :accept-saturday="acceptSaturday !== false"
+          :accept-sunday="acceptSunday !== false"
+        />
       </UFormField>
       
       <UFormField label="Type de prélèvement" name="blood_test_type" required>
@@ -217,7 +224,7 @@
     <UCard>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold mb-1">Documents médicaux</h3>
+          <h3 class="text-lg font-normal mb-1">Documents médicaux</h3>
           <p class="text-sm text-gray-600 mb-3">Veuillez télécharger vos documents de couverture santé pour finaliser votre demande</p>
         </div>
 
@@ -225,7 +232,7 @@
         <div class="space-y-4">
           <div class="flex items-center gap-2 mb-4">
             <UIcon name="i-lucide-upload" class="w-5 h-5 text-gray-500" />
-            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <h4 class="text-sm font-normal text-gray-700 dark:text-gray-300">
               Ajouter des documents
             </h4>
           </div>
@@ -525,6 +532,12 @@ const props = defineProps<{
   modelValue: any;
   relative?: any;
   hidePersonalInfo?: boolean;
+  /** Délai min en heures pour griser les dates (fiche publique). Non défini = RDV à tous, pas de grisage. */
+  minLeadTimeHours?: number | null;
+  /** Accepter les RDV le samedi (fiche publique). Défaut true. */
+  acceptSaturday?: boolean;
+  /** Accepter les RDV le dimanche (fiche publique). Défaut true. */
+  acceptSunday?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -616,7 +629,7 @@ const handleFileSelectForType = async (event: Event, docType: string) => {
 const handleFileSelect = async (file: File, docType: string) => {
   // Vérifier la taille (10 MB max)
   if (file.size > 10 * 1024 * 1024) {
-    const toast = useToast();
+    const toast = useAppToast();
     toast.add({
       title: 'Fichier trop volumineux',
       description: 'Le fichier dépasse la limite de 10 MB autorisée.',
@@ -628,7 +641,7 @@ const handleFileSelect = async (file: File, docType: string) => {
   // Vérifier le type de fichier
   const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
   if (!allowedTypes.includes(file.type)) {
-    const toast = useToast();
+    const toast = useAppToast();
     toast.add({
       title: 'Format non accepté',
       description: 'Formats acceptés : JPG, PNG, PDF uniquement.',
@@ -748,30 +761,6 @@ watch([birthYear, birthMonth, birthDay], () => {
 
 // Watch pour form.birth_date - de form.birth_date vers les refs (pour pré-remplissage)
 watch(() => form.birth_date, (newDate, oldDate) => {
-  // #region agent log
-  if (typeof window !== 'undefined') {
-    fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'BB',
-        location: 'LabForm.vue:739',
-        message: 'Watch form.birth_date triggered',
-        data: {
-          newDate,
-          oldDate,
-          birth_year: birthYear.value,
-          birth_month: birthMonth.value,
-          birth_day: birthDay.value,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }
-  // #endregion
-  
   if (newDate && newDate !== oldDate) {
     // Parser la date et remplir les refs
     const [year, month, day] = newDate.split('-');
@@ -779,31 +768,6 @@ watch(() => form.birth_date, (newDate, oldDate) => {
       const parsedYear = parseInt(year);
       const parsedMonth = parseInt(month);
       const parsedDay = parseInt(day);
-      
-      // #region agent log
-      if (typeof window !== 'undefined') {
-        fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'CC',
-            location: 'LabForm.vue:750',
-            message: 'Parsing birth_date',
-            data: {
-              parsedYear,
-              parsedMonth,
-              parsedDay,
-              current_birth_year: birthYear.value,
-              current_birth_month: birthMonth.value,
-              current_birth_day: birthDay.value,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-      }
-      // #endregion
       
       // Ne mettre à jour que si les valeurs sont différentes pour éviter les boucles
       if (birthYear.value !== parsedYear) birthYear.value = parsedYear;
@@ -818,7 +782,10 @@ watch(() => form.birth_date, (newDate, oldDate) => {
   }
 }, { immediate: true });
 
+let isUpdating = false;
+
 // Watch modelValue corrigé :
+// immediate: true pour pré-sélectionner category_id au montage quand on arrive depuis l’étape catégories
 watch(() => props.modelValue, (newVal) => {
   if (newVal && !isUpdating) {
     isUpdating = true;
@@ -836,7 +803,7 @@ watch(() => props.modelValue, (newVal) => {
     }
     isUpdating = false;
   }
-}, { deep: true });
+}, { deep: true, immediate: true });
 
 // Valeurs par défaut pour les catégories
 const defaultCategories = [
@@ -883,22 +850,18 @@ const profileDocuments = ref<Record<string, any>>({})
 const loadProfileDocuments = async () => {
   if (!user.value?.id || props.relative) return
   
-  console.log('🔍 [LabForm] Chargement des documents du profil pour user:', user.value?.id)
   
   try {
     const response = await apiFetch('/patient-documents', {
       method: 'GET',
     })
     
-    console.log('📄 [LabForm] Réponse API documents:', response)
     
     if (response.success && response.data) {
       response.data.forEach((doc: any) => {
         profileDocuments.value[doc.document_type] = doc
-        console.log('✅ [LabForm] Document chargé:', doc.document_type, '→', doc.file_name)
       })
       
-      console.log('📦 [LabForm] Tous les documents du profil:', profileDocuments.value)
       
       // Marquer les documents du profil comme disponibles
       // (on ne peut pas pré-remplir directement les File inputs pour des raisons de sécurité)
@@ -911,11 +874,9 @@ const loadProfileDocuments = async () => {
       if (profileDocuments.value.autres_assurances) {
         form.files.autres_assurances = null // Sera rempli depuis le profil lors de la soumission
       }
-    } else {
-      console.log('⚠️ [LabForm] Aucun document ou réponse non réussie')
     }
-  } catch (error) {
-    console.error('❌ [LabForm] Erreur lors du chargement des documents du profil:', error)
+  } catch {
+    // Ignorer les erreurs de chargement des documents (optionnel)
   }
 }
 
@@ -930,29 +891,6 @@ const prefillForm = async () => {
       if (userData) {
         form.first_name = userData.first_name || '';
         form.last_name = userData.last_name || '';
-        // #region agent log
-        if (typeof window !== 'undefined') {
-          fetch('http://127.0.0.1:7242/ingest/3f73482a-700a-4695-9b7b-1e0833b5cd08', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId: 'debug-session',
-              runId: 'run1',
-              hypothesisId: 'AA',
-              location: 'LabForm.vue:863',
-              message: 'Setting birth_date from userData',
-              data: {
-                birth_date: userData.birth_date,
-                has_birth_date: !!userData.birth_date,
-                birth_year: birthYear.value,
-                birth_month: birthMonth.value,
-                birth_day: birthDay.value,
-              },
-              timestamp: Date.now(),
-            }),
-          }).catch(() => {});
-        }
-        // #endregion
         form.birth_date = userData.birth_date || '';
         form.gender = userData.gender || '';
         form.email = userData.email || '';
@@ -1093,9 +1031,7 @@ const handleSubmit = () => {
   emit('submit', formData);
 };
 
-let isUpdating = false;
-
-    // Émettre les changements en temps réel
+// Émettre les changements en temps réel
 watch(form, () => {
   if (!isUpdating) {
     isUpdating = true;

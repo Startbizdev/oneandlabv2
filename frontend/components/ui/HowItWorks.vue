@@ -8,7 +8,7 @@
       <div class="text-center mb-8 sm:mb-10 md:mb-12">
         <h2 
           v-if="title"
-          class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-3 sm:mb-4 md:mb-5"
+          class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-normal text-gray-900 dark:text-white mb-3 sm:mb-4 md:mb-5"
         >
           {{ title }}
         </h2>
@@ -42,7 +42,7 @@
             </div>
 
             <h3 
-              class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-2 sm:mb-3"
+              class="text-lg sm:text-xl md:text-2xl font-normal text-gray-900 dark:text-white mb-2 sm:mb-3"
             >
               {{ step.title }}
             </h3>

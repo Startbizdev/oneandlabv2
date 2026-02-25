@@ -11,7 +11,7 @@
             <UIcon :name="item.icon" class="w-6 h-6 text-primary-600" />
           </div>
           <div>
-            <p class="font-semibold text-gray-900 text-sm sm:text-base">{{ item.title }}</p>
+            <p class="font-medium text-gray-900 dark:text-white text-sm sm:text-base">{{ item.title }}</p>
             <p v-if="item.description" class="text-xs sm:text-sm text-gray-600 mt-0.5">{{ item.description }}</p>
           </div>
         </div>

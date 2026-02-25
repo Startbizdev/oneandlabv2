@@ -1,7 +1,11 @@
 <template>
-  <div class="container mx-auto px-4 py-8 max-w-7xl">
-    <h1 class="text-3xl font-bold mb-8">Mon profil</h1>
+  <div class="space-y-6">
+    <TitleDashboard
+      title="Mon profil"
+      description="Consultez et modifiez vos informations personnelles"
+    />
 
+    <div class="container mx-auto px-4 max-w-7xl">
     <!-- Chargement -->
     <div v-if="loading" class="text-center py-12">
       <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-primary mb-2" />
@@ -16,7 +20,7 @@
     <!-- Formulaire de profil -->
     <UCard v-else>
       <template #header>
-        <h2 class="text-xl font-bold">Informations personnelles</h2>
+        <h2 class="text-xl font-normal">Informations personnelles</h2>
       </template>
 
       <UForm :state="profileForm" @submit="saveProfile" class="space-y-6">
@@ -125,7 +129,7 @@
     <UCard class="mt-8">
       <template #header>
         <div>
-          <h2 class="text-xl font-bold">Documents médicaux</h2>
+          <h2 class="text-xl font-normal">Documents médicaux</h2>
           <p class="text-sm text-gray-500 mt-1">
             Gérez vos documents de couverture santé. Ces documents seront automatiquement utilisés lors de vos prochains rendez-vous (sauf l'ordonnance qui change à chaque fois).
           </p>
@@ -156,7 +160,7 @@
                   </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <h3 class="font-semibold text-base text-gray-900 dark:text-gray-100">Carte Vitale</h3>
+                  <h3 class="font-normal text-base text-gray-900 dark:text-gray-100">Carte Vitale</h3>
                   <UBadge color="amber" variant="subtle" size="xs" class="mt-1">
                     Obligatoire
                   </UBadge>
@@ -221,7 +225,7 @@
                   </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <h3 class="font-semibold text-base text-gray-900 dark:text-gray-100">Carte Mutuelle</h3>
+                  <h3 class="font-normal text-base text-gray-900 dark:text-gray-100">Carte Mutuelle</h3>
                   <UBadge color="amber" variant="subtle" size="xs" class="mt-1">
                     Obligatoire
                   </UBadge>
@@ -286,7 +290,7 @@
                   </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <h3 class="font-semibold text-base text-gray-900 dark:text-gray-100">Autres Assurances</h3>
+                  <h3 class="font-normal text-base text-gray-900 dark:text-gray-100">Autres Assurances</h3>
                   <UBadge color="gray" variant="subtle" size="xs" class="mt-1">
                     Optionnel
                   </UBadge>
@@ -341,6 +345,7 @@
         />
       </div>
     </UCard>
+    </div>
   </div>
 </template>
 
@@ -355,7 +360,7 @@ definePageMeta({
 })
 
 const { user, fetchCurrentUser } = useAuth()
-const toast = useToast()
+const toast = useAppToast()
 
 // État
 const loading = ref(true)
@@ -409,7 +414,7 @@ const isSameFile = (file1: File | null, file2: File | null): boolean => {
 
 // Gérer la sélection d'un fichier directement depuis le composant
 const onFileSelected = (documentType: string, file: File | null) => {
-  console.log('onFileSelected appelé:', { documentType, file: file?.name, file })
+  console.log('onFileSelected appelé:', { documentType, fileName: file?.name, file })
   
   // Ignorer si on est en train de réinitialiser après un upload réussi
   if (isResettingAfterUpload.value === documentType) {

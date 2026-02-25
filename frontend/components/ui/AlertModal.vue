@@ -46,7 +46,7 @@
               <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
                 <h3
                   id="dialog-title"
-                  class="text-base font-semibold text-gray-900"
+                  class="text-base font-normal text-gray-900"
                 >
                   {{ title }}
                 </h3>
@@ -66,7 +66,7 @@
               type="button"
               :disabled="loading || disabled"
               @click="handleConfirm"
-              class="inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-white shadow-xs sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              class="inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-normal text-white shadow-xs sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               :class="[confirmButtonClass, confirmHoverClass]"
             >
               <span v-if="loading" class="mr-2">
@@ -79,7 +79,7 @@
               type="button"
               :disabled="loading"
               @click="handleClose"
-              class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-normal text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {{ cancelLabel }}
             </button>

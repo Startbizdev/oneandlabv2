@@ -47,18 +47,18 @@ if (!$id) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // Récupérer les métadonnées d'un document
+    // Récupérer les métadonnées d'un document (LEFT JOIN : document de profil peut avoir appointment_id NULL)
     try {
         $stmt = $db->prepare('
             SELECT 
                 md.*,
-                a.patient_id,
+                a.patient_id AS apt_patient_id,
                 a.assigned_to,
                 a.assigned_nurse_id,
                 a.assigned_lab_id,
-                a.created_by
+                a.created_by AS apt_created_by
             FROM medical_documents md
-            JOIN appointments a ON md.appointment_id = a.id
+            LEFT JOIN appointments a ON md.appointment_id = a.id
             WHERE md.id = ?
         ');
         $stmt->execute([$id]);
@@ -70,16 +70,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             exit;
         }
         
-        // Vérifier les permissions
-        $hasAccess = (
-            $document['patient_id'] === $user['user_id'] ||
-            $document['assigned_nurse_id'] === $user['user_id'] ||
-            $document['assigned_lab_id'] === $user['user_id'] ||
-            $document['created_by'] === $user['user_id'] ||
-            $document['uploaded_by'] === $user['user_id'] ||
-            $user['role'] === 'super_admin'
-        );
-        
+        // Vérifier les permissions (document lié à un RDV ou document de profil)
+        $hasAccess = false;
+        if ($user['role'] === 'super_admin' || $document['uploaded_by'] === $user['user_id']) {
+            $hasAccess = true;
+        } elseif (!empty($document['appointment_id'])) {
+            $hasAccess = (
+                $document['apt_patient_id'] === $user['user_id'] ||
+                $document['assigned_nurse_id'] === $user['user_id'] ||
+                $document['assigned_lab_id'] === $user['user_id'] ||
+                $document['apt_created_by'] === $user['user_id']
+            );
+        } else {
+            $patStmt = $db->prepare('SELECT patient_id FROM patient_documents WHERE medical_document_id = ? LIMIT 1');
+            $patStmt->execute([$id]);
+            $pd = $patStmt->fetch(PDO::FETCH_ASSOC);
+            if ($pd && $pd['patient_id'] === $user['user_id']) {
+                $hasAccess = true;
+            } elseif ($pd) {
+                $createdStmt = $db->prepare('SELECT created_by FROM profiles WHERE id = ? LIMIT 1');
+                $createdStmt->execute([$pd['patient_id']]);
+                $prof = $createdStmt->fetch(PDO::FETCH_ASSOC);
+                if ($prof && ($prof['created_by'] ?? '') === $user['user_id']) {
+                    $hasAccess = true;
+                }
+            }
+        }
         if (!$hasAccess) {
             http_response_code(403);
             echo json_encode(['success' => false, 'error' => 'Accès refusé']);
@@ -88,11 +104,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         // Ne pas retourner le DEK
         unset($document['file_dek']);
-        unset($document['patient_id']);
+        unset($document['apt_patient_id']);
         unset($document['assigned_to']);
         unset($document['assigned_nurse_id']);
         unset($document['assigned_lab_id']);
-        unset($document['created_by']);
+        unset($document['apt_created_by']);
         
         echo json_encode([
             'success' => true,
@@ -110,16 +126,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Vérifier CSRF pour les requêtes modifiantes
     CSRFMiddleware::handle();
 
-    // Supprimer un document
+    // Supprimer un document (LEFT JOIN : document de profil peut avoir appointment_id NULL)
     try {
         $stmt = $db->prepare('
-            SELECT 
-                md.*,
-                a.patient_id,
-                a.assigned_nurse_id,
-                a.assigned_lab_id
+            SELECT md.*
             FROM medical_documents md
-            JOIN appointments a ON md.appointment_id = a.id
             WHERE md.id = ?
         ');
         $stmt->execute([$id]);
@@ -131,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             exit;
         }
         
-        // Seul l'auteur ou un admin peut supprimer
+        // Seul l'auteur ou un admin peut supprimer (uploaded_by suffit pour document de profil ou RDV)
         $canDelete = (
             $document['uploaded_by'] === $user['user_id'] ||
             $user['role'] === 'super_admin'

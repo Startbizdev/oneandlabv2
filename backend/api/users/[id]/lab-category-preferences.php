@@ -65,19 +65,19 @@ if (!$profile || $profile['role'] !== 'lab') {
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
         $stmt = $db->prepare('
-            SELECT lcp.id, lcp.category_id, lcp.is_enabled, cc.name, cc.description, cc.type
+            SELECT lcp.id, lcp.category_id, lcp.is_enabled, cc.name, cc.description, cc.type, cc.icon
             FROM lab_category_preferences lcp
             JOIN care_categories cc ON lcp.category_id = cc.id
-            WHERE lcp.lab_id = ? AND cc.is_active = TRUE
+            WHERE lcp.lab_id = ? AND cc.is_active = TRUE AND cc.type = \'blood_test\'
             ORDER BY cc.type, cc.name
         ');
         $stmt->execute([$labId]);
         $preferences = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $stmt = $db->prepare('
-            SELECT cc.id as category_id, cc.name, cc.description, cc.type, TRUE as is_enabled
+            SELECT cc.id as category_id, cc.name, cc.description, cc.type, cc.icon, TRUE as is_enabled
             FROM care_categories cc
-            WHERE cc.is_active = TRUE
+            WHERE cc.is_active = TRUE AND cc.type = \'blood_test\'
             AND cc.id NOT IN (SELECT category_id FROM lab_category_preferences WHERE lab_id = ?)
             ORDER BY cc.type, cc.name
         ');
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             $catId = $pref['category_id'] ?? null;
             $enabled = (bool) ($pref['is_enabled'] ?? true);
             if (!$catId) continue;
-            $stmt = $db->prepare('SELECT id FROM care_categories WHERE id = ? AND is_active = TRUE');
+            $stmt = $db->prepare('SELECT id FROM care_categories WHERE id = ? AND is_active = TRUE AND type = \'blood_test\'');
             $stmt->execute([$catId]);
             if (!$stmt->fetch()) continue;
             $stmt = $db->prepare('

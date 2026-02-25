@@ -7,7 +7,7 @@
             <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 bg-primary-500">
               <UIcon name="i-lucide-user" class="w-7 h-7 text-white" />
             </div>
-            <h1 class="text-2xl sm:text-3xl font-bold text-foreground">
+            <h1 class="text-2xl sm:text-3xl font-normal text-foreground">
               {{ step === 'form' ? 'Inscription patient' : 'Vérification' }}
             </h1>
             <p class="text-muted mt-2 text-sm sm:text-base">
@@ -78,7 +78,7 @@
         <form v-else class="space-y-5" @submit.prevent="onVerifyOTP">
           <div class="bg-primary-50/50 border border-primary-100 rounded-xl p-4 text-center">
             <p class="text-sm text-primary-700">Un code à 6 chiffres a été envoyé à</p>
-            <p class="font-semibold text-primary-900 mt-1">{{ form.email }}</p>
+            <p class="font-normal text-primary-900 mt-1">{{ form.email }}</p>
           </div>
           <UFormField name="otp">
             <div class="flex justify-center">
@@ -138,7 +138,7 @@ interface AddressSelection {
 
 const route = useRoute();
 const router = useRouter();
-const toast = useToast();
+const toast = useAppToast();
 const { verifyOTP } = useAuth();
 
 const step = ref<'form' | 'otp'>('form');

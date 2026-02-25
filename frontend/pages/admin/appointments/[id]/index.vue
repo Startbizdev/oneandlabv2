@@ -64,6 +64,18 @@
               Réassigner
             </UButton>
           </div>
+          <UButton
+            type="button"
+            color="primary"
+            variant="outline"
+            size="md"
+            class="w-full mt-2"
+            leading-icon="i-lucide-share-2"
+            :loading="shareLoading"
+            @click="shareForNurse(appointment)"
+          >
+            Partager pour les soins infirmiers
+          </UButton>
         </div>
         <div class="flex flex-col sm:flex-row gap-2">
           <UButton
@@ -74,7 +86,7 @@
             size="md"
             leading-icon="i-lucide-x-circle"
             :loading="updatingStatus"
-            @click="cancelAppointment(loadAppointment)"
+            @click="showCancelModal = true"
           >
             Annuler le rendez-vous
           </UButton>
@@ -98,7 +110,7 @@
       <div v-if="appointment" class="mb-6 space-y-4">
         <div class="flex items-center gap-2 mb-4">
           <UIcon name="i-lucide-upload" class="w-5 h-5 text-gray-500" />
-          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Ajouter des documents</h3>
+          <h3 class="text-sm font-normal text-gray-700 dark:text-gray-300">Ajouter des documents</h3>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div
@@ -182,7 +194,7 @@
         variant="naked"
       />
       <div v-else-if="documents && getOtherDocuments(documents).length > 0" class="space-y-3">
-        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Autres documents</h3>
+        <h3 class="text-sm font-normal text-gray-700 dark:text-gray-300 mb-2">Autres documents</h3>
         <div
           v-for="doc in getOtherDocuments(documents)"
           :key="doc.id"
@@ -208,7 +220,7 @@
     <template #mainExtra="{ appointment, loadAppointment }">
       <UCard v-if="statusHistory.length > 0" class="mt-6">
         <template #header>
-          <h2 class="text-xl font-bold">Historique des statuts</h2>
+          <h2 class="text-xl font-normal">Historique des statuts</h2>
         </template>
         <div class="space-y-2">
           <div
@@ -232,6 +244,12 @@
       </UCard>
     </template>
   </AppointmentDetailPage>
+
+  <CancelAppointmentModal
+    v-model:open="showCancelModal"
+    :loading="updatingStatus"
+    @confirm="onConfirmCancel"
+  />
 </template>
 
 <script setup lang="ts">
@@ -245,9 +263,11 @@ import { apiFetch } from '~/utils/api';
 
 const route = useRoute();
 const detailRef = ref<{ loadAppointment: () => Promise<void>; loadDocuments: () => Promise<void>; appointment: { value: any } } | null>(null);
-const toast = useToast();
+const toast = useAppToast();
 
 const statusHistory = ref<any[]>([]);
+const showCancelModal = ref(false);
+const shareLoading = ref(false);
 const downloadingDocuments = ref(new Set<string>());
 const uploadingTypes = ref(new Set<string>());
 const draggedOver = ref<string | null>(null);
@@ -272,6 +292,37 @@ function getOtherDocuments(documents: any[]) {
   if (!documents) return [];
   const knownTypes = uploadDocumentTypes.map((t) => t.value);
   return documents.filter((doc: any) => !doc.document_type || !knownTypes.includes(doc.document_type));
+}
+async function shareForNurse(appointment: { id: string }) {
+  if (!appointment?.id) return;
+  shareLoading.value = true;
+  try {
+    const res = await apiFetch(`/appointments/${appointment.id}/share-for-nurse`, { method: 'GET' });
+    if (!res?.success || !res?.data) {
+      toast.add({ title: 'Erreur', description: (res as any)?.error ?? 'Impossible de générer le partage.', color: 'error' });
+      return;
+    }
+    const { shareText, sharePath, shareTextAfterUrl } = res.data;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const shareUrl = origin + sharePath;
+    const textToShare = shareText + shareUrl + (shareTextAfterUrl ?? '');
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      // On ne passe que text avec le message complet (incluant le lien) : beaucoup d'apps
+      // (ex. WhatsApp) n'envoient que l'URL si on passe text + url séparément.
+      await navigator.share({
+        text: textToShare,
+      });
+      toast.add({ title: 'Partage ouvert', description: 'Choisissez l’application (ex. WhatsApp) pour envoyer le message.', color: 'success' });
+    } else {
+      await navigator.clipboard?.writeText(textToShare);
+      toast.add({ title: 'Lien copié', description: 'Le message a été copié dans le presse-papier. Collez-le dans WhatsApp ou votre groupe.', color: 'success' });
+    }
+  } catch (e: any) {
+    if (e?.name === 'AbortError') return;
+    toast.add({ title: 'Erreur', description: e?.message ?? 'Partage ou copie impossible.', color: 'error' });
+  } finally {
+    shareLoading.value = false;
+  }
 }
 function triggerFileInput(docType: string) {
   fileInputs.value[docType]?.click();
@@ -433,12 +484,12 @@ const nurseSelectPlaceholder = computed(() => {
   return 'Rechercher un infirmier...';
 });
 
+// Annulation uniquement via le bouton "Annuler le rendez-vous" (modal avec motif + commentaire)
 const statusOptions = [
   { label: 'En attente', value: 'pending' },
   { label: 'Confirmé', value: 'confirmed' },
   { label: 'En cours', value: 'inProgress' },
   { label: 'Terminé', value: 'completed' },
-  { label: 'Annulé', value: 'canceled' },
   { label: 'Expiré', value: 'expired' },
   { label: 'Refusé', value: 'refused' },
 ];
@@ -562,7 +613,7 @@ async function reassignAppointment(loadAppointment: () => Promise<void>) {
   else if (isNursing && reassignNurseId.value) body.assigned_nurse_id = reassignNurseId.value;
   if (Object.keys(body).length === 0) return;
   reassigning.value = true;
-  const toast = useToast();
+  const toast = useAppToast();
   try {
     const response = await apiFetch(`/appointments/${appointmentId.value}/reassign`, {
       method: 'POST',
@@ -581,22 +632,37 @@ async function reassignAppointment(loadAppointment: () => Promise<void>) {
   }
 }
 
-async function cancelAppointment(loadAppointment: () => Promise<void>) {
-  if (!confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ?')) return;
+async function onConfirmCancel(payload: { reason: string; comment: string; photoFile: File | null }) {
   const appointment = detailRef.value?.appointment?.value;
   if (!appointment) return;
   updatingStatus.value = true;
   try {
-    const response = await apiFetch(`/appointments/${appointment.id}`, {
-      method: 'PUT',
-      body: { status: 'canceled', note: 'Annulé par administrateur' },
-    });
-    if (response.success) {
-      await loadAppointment();
-      await loadStatusHistory();
+    let photoDocId: string | null = null;
+    if (payload.photoFile) {
+      const formData = new FormData();
+      formData.append('file', payload.photoFile);
+      formData.append('appointment_id', appointment.id);
+      formData.append('document_type', 'cancellation_photo');
+      const uploadRes = await apiFetch('/medical-documents', { method: 'POST', body: formData });
+      if (uploadRes.success && uploadRes.data?.id) photoDocId = uploadRes.data.id;
     }
-  } catch (error) {
-    console.error("Erreur lors de l'annulation:", error);
+    const body: Record<string, unknown> = {
+      status: 'canceled',
+      cancellation_reason: payload.reason,
+      cancellation_comment: payload.comment,
+    };
+    if (photoDocId) body.cancellation_photo_document_id = photoDocId;
+    const response = await apiFetch(`/appointments/${appointment.id}`, { method: 'PUT', body });
+    if (response.success) {
+      showCancelModal.value = false;
+      await detailRef.value?.loadAppointment();
+      await loadStatusHistory();
+      toast.add({ title: 'Rendez-vous annulé', description: 'L\'annulation a été enregistrée avec le motif et le commentaire.', color: 'success' });
+    } else {
+      toast.add({ title: 'Erreur', description: response.error || 'Impossible d\'annuler le rendez-vous', color: 'error' });
+    }
+  } catch (error: any) {
+    toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' });
   } finally {
     updatingStatus.value = false;
   }

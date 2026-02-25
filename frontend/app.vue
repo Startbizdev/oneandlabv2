@@ -1,5 +1,5 @@
 <template>
-  <UApp>
+  <UApp :toaster="appConfig?.toaster">
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
@@ -7,6 +7,7 @@
 </template>
 
 <script setup lang="ts">
+const appConfig = useAppConfig();
 const { initAuth } = useAuth();
 
 onMounted(async () => {

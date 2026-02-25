@@ -28,7 +28,7 @@
             name="i-lucide-image" 
             class="w-8 h-8 sm:w-9 sm:h-9 text-white drop-shadow-lg mb-2.5 sm:mb-3"
           />
-          <p class="text-xs sm:text-sm font-semibold text-white drop-shadow-md leading-snug px-3">
+          <p class="text-xs sm:text-sm font-normal text-white drop-shadow-md leading-snug px-3">
             {{ isDraggingCover ? 'Déposez l\'image ici' : 'Cliquez pour ajouter une image de couverture' }}
           </p>
         </div>
@@ -101,7 +101,7 @@
           <!-- Informations photo de profil -->
           <div class="w-full max-w-sm text-center space-y-3">
             <div class="flex items-center justify-center gap-2">
-              <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h3 class="text-base sm:text-lg font-normal text-gray-900 dark:text-gray-100">
                 {{ profileLabel }}
               </h3>
               <UButton
@@ -136,7 +136,7 @@
           <div class="flex items-start justify-between gap-4">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-2">
-                <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
+                <h3 class="text-base sm:text-lg font-normal text-gray-900 dark:text-gray-100">
                   Image de couverture
                 </h3>
                 <UButton
@@ -202,7 +202,7 @@ const emit = defineEmits<{
 const profileInput = ref<HTMLInputElement | null>(null);
 const coverInput = ref<HTMLInputElement | null>(null);
 const isDraggingCover = ref(false);
-const toast = useToast();
+const toast = useAppToast();
 
 const MAX_SIZE_MB = 5;
 

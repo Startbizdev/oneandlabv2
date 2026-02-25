@@ -30,7 +30,7 @@
         <UCard>
           <template #header>
             <div class="flex items-center justify-between gap-4">
-              <h2 class="text-lg font-semibold flex items-center gap-2">
+              <h2 class="text-lg font-normal flex items-center gap-2">
                 <UIcon name="i-lucide-calendar" class="w-5 h-5" />
                 Informations du rendez-vous
               </h2>
@@ -42,9 +42,10 @@
                   :label="getStatusLabel(appointment.status)"
                 />
                 <UBadge
-                  :color="appointment.type === 'blood_test' ? 'info' : 'success'"
+                  :color="appointment.type === 'blood_test' ? 'error' : 'info'"
                   variant="subtle"
                   size="md"
+                  :leading-icon="appointment.type === 'blood_test' ? 'i-lucide-syringe' : 'i-lucide-stethoscope'"
                   :label="getTypeLabel(appointment.type)"
                 />
               </div>
@@ -66,6 +67,9 @@
                 <p class="text-xs text-gray-500 dark:text-gray-400">Adresse complète</p>
                 <p class="text-sm font-medium text-gray-900 dark:text-white">
                   {{ typeof appointment.address === 'object' && appointment.address?.label ? appointment.address.label : appointment.address }}
+                </p>
+                <p v-if="addressComplement" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Complément : {{ addressComplement }}
                 </p>
                 <a
                   href="#"
@@ -119,40 +123,58 @@
                 <p class="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">{{ appointment.notes }}</p>
               </div>
             </div>
+            <div v-if="appointment.created_at" class="flex items-start gap-3">
+              <UIcon name="i-lucide-calendar-plus" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs text-gray-500 dark:text-gray-400">Créé le</p>
+                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDate(appointment.created_at) }}</p>
+              </div>
+            </div>
+            <div v-if="isAdmin && appointment.updated_at" class="flex items-start gap-3">
+              <UIcon name="i-lucide-pencil" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs text-gray-500 dark:text-gray-400">Modifié le</p>
+                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDate(appointment.updated_at) }}</p>
+              </div>
+            </div>
+            <!-- Annulation (motif, commentaire, photo) intégré aux infos du RDV -->
+            <template v-if="appointment.status === 'canceled' && (appointment.canceled_by || appointment.cancellation_reason)">
+              <div v-if="appointment.cancellation_reason" class="flex items-start gap-3">
+                <UIcon name="i-lucide-tag" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Motif d'annulation</p>
+                  <p class="text-sm font-medium text-gray-900 dark:text-white">{{ getCancellationReasonLabel(appointment.cancellation_reason) }}</p>
+                </div>
+              </div>
+              <div v-if="appointment.cancellation_comment" class="flex items-start gap-3">
+                <UIcon name="i-lucide-message-square" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Commentaire d'annulation</p>
+                  <p class="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">{{ appointment.cancellation_comment }}</p>
+                </div>
+              </div>
+              <div v-if="showCancellationPhoto && appointment.cancellation_photo_document_id" class="flex items-start gap-3">
+                <UIcon name="i-lucide-camera" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Photo (preuve)</p>
+                  <a
+                    :href="cancellationPhotoDownloadUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                  >
+                    Voir la photo
+                  </a>
+                </div>
+              </div>
+            </template>
           </div>
         </UCard>
 
-        <!-- Documents médicaux (slot) -->
-        <UCard v-if="$slots.documentsCard">
-          <template #header>
-            <h2 class="text-lg font-semibold flex items-center gap-2">
-              <UIcon name="i-lucide-file-text" class="w-5 h-5" />
-              Documents médicaux
-            </h2>
-          </template>
-          <slot name="documentsCard" :appointment="appointment" :documents="documents" :documents-loading="documentsLoading" :load-documents="loadDocuments" />
-        </UCard>
-
-        <!-- Contenu extra colonne principale (ex: historique statuts admin) -->
-        <slot v-if="$slots.mainExtra" name="mainExtra" :appointment="appointment" :load-appointment="loadAppointment" />
-      </div>
-
-      <!-- Sidebar -->
-      <div class="xl:col-span-1 space-y-6">
-        <UCard v-if="$slots.sidebarActions">
-          <template #header>
-            <h2 class="text-lg font-semibold flex items-center gap-2">
-              <UIcon name="i-lucide-zap" class="w-5 h-5" />
-              Actions
-            </h2>
-          </template>
-          <slot name="sidebarActions" :appointment="appointment" :load-appointment="loadAppointment" />
-        </UCard>
-
-        <!-- Informations patient -->
+        <!-- Informations patient (en dessous des infos du RDV) -->
         <UCard v-if="appointment.form_data || appointment.relative">
           <template #header>
-            <h2 class="text-lg font-semibold flex items-center gap-2">
+            <h2 class="text-lg font-normal flex items-center gap-2">
               <UIcon name="i-lucide-user" class="w-5 h-5" />
               {{ appointment.relative ? 'Informations proche' : 'Informations patient' }}
             </h2>
@@ -172,14 +194,32 @@
               <UIcon name="i-lucide-phone" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
               <div class="flex-1 min-w-0">
                 <p class="text-xs text-gray-500 dark:text-gray-400">Téléphone</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ appointment.relative?.phone || appointment.form_data?.phone }}</p>
+                <a
+                  :href="`tel:${(appointment.relative?.phone || appointment.form_data?.phone || '').replace(/\s/g, '')}`"
+                  class="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline"
+                >
+                  {{ appointment.relative?.phone || appointment.form_data?.phone }}
+                </a>
               </div>
             </div>
             <div v-if="(appointment.relative && appointment.relative.email) || appointment.form_data?.email" class="flex items-start gap-3">
               <UIcon name="i-lucide-mail" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
               <div class="flex-1 min-w-0">
                 <p class="text-xs text-gray-500 dark:text-gray-400">Email</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white break-all">{{ appointment.relative?.email || appointment.form_data?.email }}</p>
+                <a
+                  :href="`mailto:${appointment.relative?.email || appointment.form_data?.email || ''}`"
+                  class="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline break-all"
+                >
+                  {{ appointment.relative?.email || appointment.form_data?.email }}
+                </a>
+              </div>
+            </div>
+            <div v-if="patientBirthDate" class="flex items-start gap-3">
+              <UIcon name="i-lucide-cake" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs text-gray-500 dark:text-gray-400">Date de naissance</p>
+                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDateOnly(patientBirthDate) }}</p>
+                <p v-if="patientAge != null" class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ patientAge }}</p>
               </div>
             </div>
             <div v-if="$slots.patientCardActions" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
@@ -188,25 +228,34 @@
           </div>
         </UCard>
 
-        <!-- Métadonnées -->
-        <UCard>
+        <!-- Documents médicaux (slot) -->
+        <UCard v-if="$slots.documentsCard">
           <template #header>
-            <h2 class="text-lg font-semibold flex items-center gap-2">
-              <UIcon name="i-lucide-info" class="w-5 h-5" />
-              Métadonnées
+            <h2 class="text-lg font-normal flex items-center gap-2">
+              <UIcon name="i-lucide-file-text" class="w-5 h-5" />
+              Documents médicaux
             </h2>
           </template>
-          <div class="space-y-3">
-            <div v-if="appointment.created_at" class="flex items-center justify-between">
-              <span class="text-sm text-gray-500 dark:text-gray-400">Créé le</span>
-              <span class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDate(appointment.created_at) }}</span>
-            </div>
-            <div v-if="appointment.updated_at" class="flex items-center justify-between">
-              <span class="text-sm text-gray-500 dark:text-gray-400">Modifié le</span>
-              <span class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDate(appointment.updated_at) }}</span>
-            </div>
-          </div>
+          <slot name="documentsCard" :appointment="appointment" :documents="documents" :documents-loading="documentsLoading" :load-documents="loadDocuments" />
         </UCard>
+
+        <!-- Contenu extra colonne principale (ex: historique statuts admin) -->
+        <slot v-if="$slots.mainExtra" name="mainExtra" :appointment="appointment" :load-appointment="loadAppointment" />
+      </div>
+
+      <!-- Colonne de droite : Actions + Section Assignation (sections séparées) -->
+      <div class="xl:col-span-1 space-y-6">
+        <UCard v-if="$slots.sidebarActions">
+          <template #header>
+            <h2 class="text-lg font-normal flex items-center gap-2">
+              <UIcon name="i-lucide-zap" class="w-5 h-5" />
+              Actions
+            </h2>
+          </template>
+          <slot name="sidebarActions" :appointment="appointment" :load-appointment="loadAppointment" />
+        </UCard>
+        <!-- Section Assignation (colonne de droite, pas dans la carte Actions) -->
+        <slot v-if="$slots.assignationSection" name="assignationSection" :appointment="appointment" :load-appointment="loadAppointment" />
       </div>
     </div>
   </div>
@@ -214,20 +263,109 @@
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api';
+import { CANCELLATION_REASONS } from '~/config/cancellation-reasons';
 
 const props = defineProps<{ basePath: string }>();
 const route = useRoute();
-const toast = useToast();
+const toast = useAppToast();
+const { user } = useAuth();
+const config = useRuntimeConfig();
+
+// Admin, lab, subaccount : accès à la photo d'annulation ; nurse, preleveur : motif uniquement
+const showCancellationPhoto = computed(() =>
+  user.value?.role === 'super_admin' || user.value?.role === 'lab' || user.value?.role === 'subaccount',
+);
+
+const isAdmin = computed(() => user.value?.role === 'super_admin');
+
+const cancellationPhotoDownloadUrl = computed(() => {
+  const a = appointment.value;
+  if (!a?.cancellation_photo_document_id) return '';
+  const apiBase = config.public?.apiBase || '';
+  return `${apiBase}/medical-documents/${a.cancellation_photo_document_id}/download`;
+});
+
+/** Complément d'adresse (form_data ou address.complement) pour affichage dans Infos RDV */
+const addressComplement = computed(() => {
+  const a = appointment.value;
+  if (!a) return '';
+  const fromForm = a.form_data?.address_complement;
+  if (fromForm && String(fromForm).trim()) return String(fromForm).trim();
+  if (typeof a.address === 'object' && a.address?.complement && String(a.address.complement).trim()) {
+    return String(a.address.complement).trim();
+  }
+  return '';
+});
+
+function getCancellationReasonLabel(code: string) {
+  return CANCELLATION_REASONS[code] || code;
+}
 
 const appointment = ref<any>(null);
 const loading = ref(true);
 const documents = ref<any[]>([]);
 const documentsLoading = ref(false);
 
-const loadAppointment = async () => {
+// Breadcrumb : afficher le nom du patient au lieu de l'ID (lu par le layout dashboard)
+const breadcrumbDetailLabel = useState<string>('breadcrumbDetailLabel', () => '');
+watch(appointment, (a) => {
+  if (!a) {
+    breadcrumbDetailLabel.value = '';
+    return;
+  }
+  const first = a.relative?.first_name ?? a.form_data?.first_name ?? '';
+  const last = a.relative?.last_name ?? a.form_data?.last_name ?? '';
+  breadcrumbDetailLabel.value = [first, last].filter(Boolean).join(' ') || 'Détails';
+}, { immediate: true });
+onBeforeUnmount(() => {
+  breadcrumbDetailLabel.value = '';
+});
+
+const patientBirthDate = computed(() => {
+  const a = appointment.value;
+  if (!a) return null;
+  return a.relative?.birth_date || a.form_data?.birth_date || null;
+});
+
+const patientAge = computed(() => {
+  const d = patientBirthDate.value;
+  if (!d) return null;
+  try {
+    const birth = new Date(typeof d === 'string' && d.match(/^\d{4}-\d{2}-\d{2}/) ? d.slice(0, 10) : d);
+    if (Number.isNaN(birth.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    if (age < 0) return null;
+    return age === 1 ? '1 an' : `${age} ans`;
+  } catch {
+    return null;
+  }
+});
+
+/** Recharge le RDV. Si merge est fourni (ex. après réassignation), met à jour l’état local immédiatement sans refetch (réponse instantanée). */
+const loadAppointment = async (merge?: Partial<{ assigned_lab_id: string; assigned_to: string | null; assigned_nurse_id: string | null }>) => {
+  if (merge && Object.keys(merge).length > 0) {
+    if (appointment.value) {
+      Object.assign(appointment.value, merge);
+      if ('assigned_lab_id' in merge || 'assigned_to' in merge) {
+        appointment.value.assigned_nurse_id = null;
+      }
+      if ('assigned_nurse_id' in merge) {
+        appointment.value.assigned_lab_id = null;
+        appointment.value.assigned_to = null;
+      }
+    }
+    return;
+  }
   loading.value = true;
   try {
     const response = await apiFetch(`/appointments/${route.params.id}`, { method: 'GET' });
+    if (response.success && response.alreadyAccepted) {
+      await navigateTo(`${props.basePath}/appointments?alreadyAccepted=1`);
+      return;
+    }
     if (response.success && response.data) {
       appointment.value = response.data;
     } else {
@@ -268,21 +406,39 @@ function openInGoogleMaps() {
 
 function getStatusColor(status: string): 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral' {
   const map: Record<string, 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral'> = {
-    pending: 'warning', confirmed: 'info', inProgress: 'primary', completed: 'success', canceled: 'error', refused: 'error',
+    pending: 'warning',
+    confirmed: 'info',
+    inProgress: 'primary',
+    completed: 'success',
+    canceled: 'error',
+    cancelled: 'error',
+    refused: 'error',
+    expired: 'neutral',
   };
   return map[status] || 'neutral';
 }
 function getStatusLabel(s: string) {
-  const map: Record<string, string> = { pending: 'En attente', confirmed: 'Confirmé', inProgress: 'En cours', completed: 'Terminé', canceled: 'Annulé', refused: 'Refusé' };
+  const map: Record<string, string> = {
+    pending: 'En attente',
+    confirmed: 'Confirmé',
+    inProgress: 'En cours',
+    completed: 'Terminé',
+    canceled: 'Annulé',
+    cancelled: 'Annulé',
+    refused: 'Refusé',
+    expired: 'Expiré',
+  };
   return map[s] || s;
 }
 function getTypeLabel(t: string) {
   return t === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers';
 }
+const PARIS_TZ = 'Europe/Paris';
+
 function formatDateTime(d: string) {
   if (!d) return '-';
   try {
-    return new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    return new Date(d).toLocaleDateString('fr-FR', { timeZone: PARIS_TZ, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   } catch {
     return d;
   }
@@ -290,7 +446,15 @@ function formatDateTime(d: string) {
 function formatDate(d: string) {
   if (!d) return '-';
   try {
-    return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return new Date(d).toLocaleDateString('fr-FR', { timeZone: PARIS_TZ, day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return d;
+  }
+}
+function formatDateOnly(d: string) {
+  if (!d) return '-';
+  try {
+    return new Date(d).toLocaleDateString('fr-FR', { timeZone: PARIS_TZ, day: 'numeric', month: 'long', year: 'numeric' });
   } catch {
     return d;
   }

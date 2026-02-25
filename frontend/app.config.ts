@@ -1,4 +1,7 @@
 export default defineAppConfig({
+  toaster: {
+    position: 'top-right' as const,
+  },
   ui: {
     colors: {
       primary: 'blue',

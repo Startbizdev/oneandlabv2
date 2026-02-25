@@ -1,28 +1,28 @@
 <template>
-  <section class="py-16 sm:py-20" :class="backgroundClass">
+  <section class="py-12 sm:py-16" :class="backgroundClass">
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
-      <div class="text-center mb-10 sm:mb-12">
-        <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+      <div class="text-center mb-8 sm:mb-10">
+        <h2 class="text-2xl sm:text-3xl md:text-4xl font-normal text-gray-900 dark:text-white mb-3">
           {{ title }}
         </h2>
-        <p v-if="subtitle" class="text-lg text-gray-600">
+        <p v-if="subtitle" class="text-lg text-gray-600 dark:text-gray-400">
           {{ subtitle }}
         </p>
       </div>
       <UAccordion
         :items="faqItems"
         :ui="{
-          root: 'space-y-3',
+          root: 'space-y-4',
           item: {
-            base: 'border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow',
+            base: 'border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow',
             padding: 'p-0',
           },
           trigger: {
-            base: 'flex items-center justify-between w-full text-left px-5 py-4 hover:bg-gray-50/80 transition-colors font-semibold text-gray-900',
+            base: 'flex items-center justify-between w-full text-left px-5 py-4 sm:px-6 sm:py-5 hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-colors font-medium text-gray-900 dark:text-white',
             padding: 'p-0',
           },
           content: {
-            base: 'text-gray-600 leading-relaxed px-5 pb-4',
+            base: 'text-gray-600 dark:text-gray-400 leading-relaxed px-5 pb-4 sm:px-6 sm:pb-5',
             padding: 'pt-0',
           },
         }"

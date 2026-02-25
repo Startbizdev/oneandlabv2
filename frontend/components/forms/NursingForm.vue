@@ -4,7 +4,7 @@
     <UCard v-if="!hidePersonalInfo">
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold mb-1">Informations personnelles</h3>
+          <h3 class="text-lg font-normal mb-1">Informations personnelles</h3>
           <p class="text-sm text-gray-600 mb-3">Renseignez vos coordonnées pour que nous puissions vous contacter</p>
           <p v-if="!user?.id" class="text-xs text-gray-500 mb-3 flex items-center gap-1">
             Vous avez déjà un compte ? 
@@ -110,7 +110,7 @@
     <UCard>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold mb-1">Informations du rendez-vous</h3>
+          <h3 class="text-lg font-normal mb-1">Informations du rendez-vous</h3>
           <p class="text-sm text-gray-600 mb-3">Choisissez la date et les créneaux qui vous conviennent le mieux</p>
         </div>
       
@@ -213,7 +213,7 @@
     <UCard>
       <div class="space-y-4">
         <div>
-          <h3 class="text-lg font-semibold mb-1">Documents médicaux</h3>
+          <h3 class="text-lg font-normal mb-1">Documents médicaux</h3>
           <p class="text-sm text-gray-600 mb-3">Veuillez télécharger vos documents de couverture santé pour finaliser votre demande</p>
         </div>
 
@@ -221,7 +221,7 @@
         <div class="space-y-4">
           <div class="flex items-center gap-2 mb-4">
             <UIcon name="i-lucide-upload" class="w-5 h-5 text-gray-500" />
-            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <h4 class="text-sm font-normal text-gray-700 dark:text-gray-300">
               Ajouter des documents
             </h4>
           </div>
@@ -614,7 +614,7 @@ const handleFileSelectForType = async (event: Event, docType: string) => {
 const handleFileSelect = async (file: File, docType: string) => {
   // Vérifier la taille (10 MB max)
   if (file.size > 10 * 1024 * 1024) {
-    const toast = useToast();
+    const toast = useAppToast();
     toast.add({
       title: 'Fichier trop volumineux',
       description: 'Le fichier dépasse la limite de 10 MB autorisée.',
@@ -626,7 +626,7 @@ const handleFileSelect = async (file: File, docType: string) => {
   // Vérifier le type de fichier
   const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
   if (!allowedTypes.includes(file.type)) {
-    const toast = useToast();
+    const toast = useAppToast();
     toast.add({
       title: 'Format non accepté',
       description: 'Formats acceptés : JPG, PNG, PDF uniquement.',
@@ -995,7 +995,7 @@ const handleSubmit = () => {
 
 let isUpdating = false;
 
-// Watch modelValue corrigé avec parsing birth_date et gender :
+// Watch modelValue corrigé avec parsing birth_date et gender (immediate pour pré-sélectionner category_id au montage) :
 watch(() => props.modelValue, (newVal) => {
   if (newVal && !isUpdating) {
     isUpdating = true;
@@ -1013,7 +1013,7 @@ watch(() => props.modelValue, (newVal) => {
     }
     isUpdating = false;
   }
-}, { deep: true });
+}, { deep: true, immediate: true });
 
 // Émettre les changements en temps réel
 watch(form, () => {

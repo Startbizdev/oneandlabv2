@@ -39,17 +39,6 @@ if (!$id) {
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Détails d'un utilisateur
     try {
-        // Vérifier les permissions : on ne peut voir que son propre profil ou être admin
-        if ($id !== $user['user_id'] && $user['role'] !== 'super_admin') {
-            http_response_code(403);
-            echo json_encode([
-                'success' => false,
-                'error' => 'Vous ne pouvez consulter que votre propre profil',
-                'code' => 'FORBIDDEN',
-            ]);
-            exit;
-        }
-        
         $userData = $userModel->getById($id, $user['user_id'], $user['role']);
 
         if (!$userData) {
@@ -58,6 +47,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'success' => false,
                 'error' => 'Utilisateur introuvable',
                 'code' => 'NOT_FOUND',
+            ]);
+            exit;
+        }
+
+        $allowed = ($id === $user['user_id'] || $user['role'] === 'super_admin');
+        if (!$allowed && $user['role'] === 'lab') {
+            // Lab peut consulter le profil de ses préleveurs et sous-comptes (lab principal ou sous-comptes)
+            $targetLabId = $userData['lab_id'] ?? '';
+            if (in_array($userData['role'] ?? '', ['preleveur', 'subaccount'], true)) {
+                if ($targetLabId === $user['user_id']) {
+                    $allowed = true;
+                } else {
+                    $config = require __DIR__ . '/../../config/database.php';
+                    $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
+                    $pdo = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
+                    $stmtSub = $pdo->prepare("SELECT id FROM profiles WHERE lab_id = ? AND role = 'subaccount'");
+                    $stmtSub->execute([$user['user_id']]);
+                    while ($row = $stmtSub->fetch(PDO::FETCH_ASSOC)) {
+                        if (!empty($row['id']) && $row['id'] === $targetLabId) {
+                            $allowed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (!$allowed && $user['role'] === 'pro') {
+            // Pro peut consulter le profil de ses patients (created_by = pro)
+            $allowed = (($userData['role'] ?? '') === 'patient')
+                && !empty($userData['created_by']) && $userData['created_by'] === $user['user_id'];
+        }
+        if (!$allowed) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Vous ne pouvez consulter que votre propre profil ou celui des membres de votre laboratoire',
+                'code' => 'FORBIDDEN',
             ]);
             exit;
         }
@@ -93,11 +119,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     CSRFMiddleware::handle();
     $input = json_decode(file_get_contents('php://input'), true);
     
-    // Vérifier les permissions: propre profil, super_admin, ou lab modifiant son subaccount/preleveur
+    // Vérifier les permissions: propre profil, super_admin, lab modifiant son subaccount/preleveur, ou pro modifiant son patient
     $canEdit = ($id === $user['user_id']) || $user['role'] === 'super_admin';
     if (!$canEdit && $user['role'] === 'lab') {
         $targetLabId = $userModel->getLabId($id);
-        $canEdit = ($targetLabId === $user['user_id']);
+        $targetData = $userModel->getById($id, $user['user_id'], $user['role']);
+        $targetRole = $targetData['role'] ?? '';
+        if (in_array($targetRole, ['preleveur', 'subaccount'], true)) {
+            if ($targetLabId === $user['user_id']) {
+                $canEdit = true;
+            } else {
+                $config = require __DIR__ . '/../../config/database.php';
+                $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
+                $pdo = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
+                $stmtSub = $pdo->prepare("SELECT id FROM profiles WHERE lab_id = ? AND role = 'subaccount'");
+                $stmtSub->execute([$user['user_id']]);
+                while ($row = $stmtSub->fetch(PDO::FETCH_ASSOC)) {
+                    if (!empty($row['id']) && $row['id'] === $targetLabId) {
+                        $canEdit = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    if (!$canEdit && $user['role'] === 'pro') {
+        $targetData = $userModel->getById($id, $user['user_id'], $user['role']);
+        $canEdit = $targetData && (($targetData['role'] ?? '') === 'patient')
+            && !empty($targetData['created_by']) && $targetData['created_by'] === $user['user_id'];
     }
     if (!$canEdit) {
         http_response_code(403);
@@ -107,6 +156,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'code' => 'FORBIDDEN',
         ]);
         exit;
+    }
+
+    // Lab modifiant un préleveur/sous-compte : lab_id ne peut être que le lab principal ou un de ses sous-comptes
+    if ($user['role'] === 'lab' && isset($input['lab_id'])) {
+        $newLabId = !empty(trim((string)$input['lab_id'])) ? trim((string)$input['lab_id']) : null;
+        $allowedLabIds = [$user['user_id']];
+        $config = require __DIR__ . '/../../config/database.php';
+        $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
+        $pdo = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
+        $stmtSub = $pdo->prepare("SELECT id FROM profiles WHERE lab_id = ? AND role = 'subaccount'");
+        $stmtSub->execute([$user['user_id']]);
+        while ($row = $stmtSub->fetch(PDO::FETCH_ASSOC)) {
+            if (!empty($row['id'])) $allowedLabIds[] = $row['id'];
+        }
+        if ($newLabId !== null && !in_array($newLabId, $allowedLabIds, true)) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Le laboratoire assigné doit être le vôtre ou un de vos sous-comptes.',
+                'code' => 'INVALID_LAB_ID',
+            ]);
+            exit;
+        }
     }
     
     try {

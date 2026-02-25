@@ -1,8 +1,13 @@
 <template>
-  <div class="min-h-full">
+  <div class="space-y-6 min-h-full">
+    <TitleDashboard
+      title="Rendez-vous"
+      description="Rendez-vous assignés à ce sous-compte. Assignez un préleveur pour les prendre en charge."
+    />
     <AppointmentListPage
       ref="listRef"
       base-path="/subaccount"
+      hide-header
       title="Rendez-vous"
       subtitle="Rendez-vous assignés à ce sous-compte. Assignez un préleveur pour les prendre en charge."
       empty-title="Aucun rendez-vous"
@@ -32,7 +37,7 @@
     <UModal v-model="showAssignModal">
       <UCard>
         <template #header>
-          <h2 class="text-xl font-bold">Assigner un préleveur</h2>
+          <h2 class="text-xl font-normal">Assigner un préleveur</h2>
         </template>
 
         <div class="space-y-4">
@@ -47,6 +52,26 @@
         </div>
       </UCard>
     </UModal>
+
+    <!-- Modal RDV déjà accepté par un confrère -->
+    <ClientOnly>
+      <Teleport to="body">
+        <UModal v-model:open="showAlreadyAcceptedModal" :ui="{ content: 'max-w-md w-full' }">
+          <template #content>
+            <UCard class="w-full border-0">
+              <div class="p-4 text-center space-y-4">
+                <p class="text-lg text-gray-700 dark:text-gray-300">
+                  Ce RDV a déjà été accepté par un confrère 😢 D'autres arrivent !
+                </p>
+                <UButton color="primary" block @click="closeAlreadyAcceptedModal">
+                  Voir mes rendez-vous
+                </UButton>
+              </div>
+            </UCard>
+          </template>
+        </UModal>
+      </Teleport>
+    </ClientOnly>
   </div>
 </template>
 
@@ -59,10 +84,25 @@ definePageMeta({
 
 import { apiFetch } from '~/utils/api';
 
+const route = useRoute();
 const { user } = useAuth();
 const listRef = ref<{ fetchAppointments: () => void } | null>(null);
 
 const showAssignModal = ref(false);
+const showAlreadyAcceptedModal = ref(false);
+
+function closeAlreadyAcceptedModal() {
+  showAlreadyAcceptedModal.value = false;
+  navigateTo('/subaccount/appointments');
+}
+
+watch(
+  () => route.query.alreadyAccepted,
+  (val) => {
+    if (val === '1' || val === 'true') showAlreadyAcceptedModal.value = true;
+  },
+  { immediate: true },
+);
 const selectedPreleveur = ref('');
 const currentAppointment = ref<any>(null);
 const assigning = ref(false);
@@ -84,7 +124,7 @@ async function assignPreleveur() {
   if (!selectedPreleveur.value || !currentAppointment.value) return;
 
   assigning.value = true;
-  const toast = useToast();
+  const toast = useAppToast();
 
   try {
     await apiFetch(`/appointments/${currentAppointment.value.id}`, {
