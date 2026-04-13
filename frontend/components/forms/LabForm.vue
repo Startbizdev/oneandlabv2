@@ -1,5 +1,5 @@
 <template>
-  <UForm :state="form" @submit="handleSubmit" class="space-y-6">
+  <UForm :state="form" @submit.prevent="handleSubmit" class="space-y-6">
     <!-- Informations personnelles -->
     <UCard v-if="!hidePersonalInfo">
       <div class="space-y-4">
@@ -8,7 +8,7 @@
           <p class="text-sm text-gray-600 mb-3">Renseignez vos coordonnées pour que nous puissions vous contacter</p>
           <p v-if="!user?.id" class="text-xs text-gray-500 mb-3 flex items-center gap-1">
             Vous avez déjà un compte ? 
-            <NuxtLink :to="`/login?returnTo=${encodeURIComponent('/rendez-vous/nouveau' + (route.query.type ? '?type=' + route.query.type : ''))}`" class="text-primary-600 hover:text-primary-700 underline font-medium inline-flex items-center gap-1">
+            <NuxtLink :to="loginReturnHref" class="text-primary-600 hover:text-primary-700 underline font-medium inline-flex items-center gap-1">
               <UIcon name="i-lucide-log-in" class="w-3 h-3" />
               Connectez-vous
             </NuxtLink>
@@ -190,20 +190,20 @@
           <div v-if="form.availability_type === 'custom'">
             <USlider
               v-model="availabilityRange"
-              :min="8"
+              :min="6"
               :max="17"
               :step="1"
             />
             <div class="flex justify-between text-xs text-gray-500 mt-2">
-              <span>8h</span>
+              <span>6h</span>
               <span>17h</span>
             </div>
             <div class="text-xs text-gray-500 mt-4 font-medium text-center">
               Créneau sélectionné : {{ formatTime(availabilityRange[0]) }} - {{ formatTime(availabilityRange[1]) }}
               <span class="text-gray-400">({{ availabilityRange[1] - availabilityRange[0] }}h)</span>
             </div>
-            <div v-if="availabilityRange[1] - availabilityRange[0] < 2" class="text-xs text-error-500 mt-2 text-center">
-              ⚠️ L'écart minimum est de 2h
+            <div v-if="availabilityRange[1] - availabilityRange[0] < AVAILABILITY_MIN_SPAN_HOURS" class="text-xs text-error-500 mt-2 text-center">
+              ⚠️ L'écart minimum est de {{ AVAILABILITY_MIN_SPAN_HOURS }} h
             </div>
           </div>
 
@@ -278,10 +278,10 @@
                       </UBadge>
                     </div>
                     <p v-if="form.files.carte_vitale" class="text-xs text-primary-600 dark:text-primary-400 font-medium">
-                      {{ form.files.carte_vitale.name }}
+                      Document téléchargé
                     </p>
                     <p v-else-if="profileDocuments.carte_vitale" class="text-xs text-green-600 dark:text-green-400 font-medium">
-                      ✓ {{ profileDocuments.carte_vitale.file_name }} (du profil)
+                      ✓ Document téléchargé (du profil)
                     </p>
                     <p v-else class="text-xs text-gray-500 dark:text-gray-400">
                       Glisser-déposer ou cliquer
@@ -347,10 +347,10 @@
                       </UBadge>
                     </div>
                     <p v-if="form.files.carte_mutuelle" class="text-xs text-primary-600 dark:text-primary-400 font-medium">
-                      {{ form.files.carte_mutuelle.name }}
+                      Document téléchargé
                     </p>
                     <p v-else-if="profileDocuments.carte_mutuelle" class="text-xs text-green-600 dark:text-green-400 font-medium">
-                      ✓ {{ profileDocuments.carte_mutuelle.file_name }} (du profil)
+                      ✓ Document téléchargé (du profil)
                     </p>
                     <p v-else class="text-xs text-gray-500 dark:text-gray-400">
                       Glisser-déposer ou cliquer
@@ -474,10 +474,10 @@
                       Autres assurances
                     </p>
                     <p v-if="form.files.autres_assurances" class="text-xs text-primary-600 dark:text-primary-400 font-medium">
-                      {{ form.files.autres_assurances.name }}
+                      Document téléchargé
                     </p>
                     <p v-else-if="profileDocuments.autres_assurances" class="text-xs text-green-600 dark:text-green-400 font-medium">
-                      ✓ {{ profileDocuments.autres_assurances.file_name }} (du profil)
+                      ✓ Document téléchargé (du profil)
                     </p>
                     <p v-else class="text-xs text-gray-500 dark:text-gray-400">
                       Glisser-déposer ou cliquer
@@ -522,11 +522,13 @@
         </UFormField>
       </div>
     </UCard>
+
+    <slot name="footer" />
   </UForm>
 </template>
 
 <script setup lang="ts">
-import { onMounted, nextTick } from 'vue';
+import { onMounted, nextTick, computed } from 'vue';
 
 const props = defineProps<{
   modelValue: any;
@@ -548,8 +550,12 @@ const emit = defineEmits<{
 
 // Import de l'API et de l'auth
 import { apiFetch } from '~/utils/api';
+import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot';
+import { MIN_BIRTH_YEAR } from '~/constants/birth-date';
+import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 const { user } = useAuth();
 const route = useRoute();
+const loginReturnHref = computed(() => `/login?returnTo=${encodeURIComponent(route.fullPath)}`);
 
 const form = reactive({
   last_name: '',
@@ -572,7 +578,7 @@ const form = reactive({
   gender: '',
 });
 
-// Ref pour le slider de disponibilité (double poignée) - plage 8h à 17h, minimum 2h d'écart
+// Ref pour le slider de disponibilité (double poignée) - plage 6h à 17h, écart min. partagé
 const availabilityRange = ref([9, 11]);
 const previousRange = ref([9, 11]);
 
@@ -627,12 +633,11 @@ const handleFileSelectForType = async (event: Event, docType: string) => {
 };
 
 const handleFileSelect = async (file: File, docType: string) => {
-  // Vérifier la taille (10 MB max)
-  if (file.size > 10 * 1024 * 1024) {
+  if (file.size > MAX_UPLOAD_BYTES) {
     const toast = useAppToast();
     toast.add({
       title: 'Fichier trop volumineux',
-      description: 'Le fichier dépasse la limite de 10 MB autorisée.',
+      description: 'Le fichier dépasse la limite de 25 Mo autorisée.',
       color: 'error',
     });
     return;
@@ -654,7 +659,7 @@ const handleFileSelect = async (file: File, docType: string) => {
   form.files[docType] = file;
 };
 
-// Validation : garantir un écart minimum de 2h (seulement pour les disponibilités personnalisées)
+// Validation : garantir l'écart minimum (disponibilités personnalisées)
 watch(availabilityRange, (newVal) => {
   // Ne traiter que si le type de disponibilité est 'custom'
   if (form.availability_type !== 'custom') return;
@@ -662,24 +667,18 @@ watch(availabilityRange, (newVal) => {
   const [start, end] = newVal;
   const diff = end - start;
 
-  // Si l'écart est inférieur à 2h, ajuster automatiquement
-  if (diff < 2) {
+  if (diff < AVAILABILITY_MIN_SPAN_HOURS) {
     const [prevStart, prevEnd] = previousRange.value;
 
-    // Déterminer quelle poignée a été déplacée
     if (Math.abs(end - prevEnd) > Math.abs(start - prevStart)) {
-      // L'utilisateur a principalement déplacé la fin vers le début, ajuster le début
-      availabilityRange.value = [Math.max(8, end - 2), end];
+      availabilityRange.value = [Math.max(6, end - AVAILABILITY_MIN_SPAN_HOURS), end];
     } else {
-      // L'utilisateur a principalement déplacé le début vers la fin, ajuster la fin
-      availabilityRange.value = [start, Math.min(17, start + 2)];
+      availabilityRange.value = [start, Math.min(17, start + AVAILABILITY_MIN_SPAN_HOURS)];
     }
   }
 
-  // Mettre à jour la valeur précédente
   previousRange.value = [...availabilityRange.value];
 
-  // Mettre à jour la disponibilité en JSON
   updateAvailabilityData();
 }, { deep: true });
 
@@ -745,10 +744,10 @@ const monthOptions = [
   { label: 'Novembre', value: 11 },
   { label: 'Décembre', value: 12 }
 ];
-const yearOptions = Array.from({length: currentYear - 1950 + 1}, (_, i) => {
-  const year = 1950 + i;
-  return { label: year, value: year };
-});
+const yearOptions = Array.from({ length: currentYear - MIN_BIRTH_YEAR + 1 }, (_, i) => ({
+  label: String(MIN_BIRTH_YEAR + i),
+  value: MIN_BIRTH_YEAR + i,
+})).reverse();
 
 // Watch pour birth_date - des refs vers form.birth_date
 watch([birthYear, birthMonth, birthDay], () => {
@@ -828,7 +827,7 @@ const availabilityTypeOptions = [
 
 // Options pour le type de prélèvement
 const bloodTestTypeOptions = [
-  { label: 'Une seule prise de sang', value: 'single' },
+  { label: 'Une seule fois', value: 'single' },
   { label: 'Plusieurs prélèvements sur plusieurs jours', value: 'multiple' }
 ];
 
@@ -846,13 +845,23 @@ const multipleDaysOptions = [
 // Documents du profil
 const profileDocuments = ref<Record<string, any>>({})
 
-// Charger les documents du profil
+// Recharger les documents quand le proche change (ou passage moi-même <-> proche)
+watch(() => props.relative?.id, async () => {
+  if (user.value?.id) {
+    profileDocuments.value = {};
+    await loadProfileDocuments();
+  }
+}, { immediate: false });
+
+// Charger les documents du profil (patient ou proche)
 const loadProfileDocuments = async () => {
-  if (!user.value?.id || props.relative) return
-  
+  if (!user.value?.id) return
   
   try {
-    const response = await apiFetch('/patient-documents', {
+    const url = props.relative?.id
+      ? `/patient-documents?relative_id=${encodeURIComponent(props.relative.id)}`
+      : '/patient-documents'
+    const response = await apiFetch(url, {
       method: 'GET',
     })
     
@@ -936,6 +945,8 @@ const prefillForm = async () => {
         console.error('Erreur lors du chargement de l\'adresse du patient:', error);
       }
     }
+    // Charger les documents du proche
+    await loadProfileDocuments();
   } else {
     // Utiliser les données basiques du patient (fallback)
     form.first_name = user.value?.first_name || '';

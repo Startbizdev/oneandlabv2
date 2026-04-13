@@ -1,19 +1,11 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <TitleDashboard
       title="Mes patients"
       description="Gérez votre liste de patients et créez des rendez-vous pour eux."
       icon="i-lucide-users"
     >
       <template #actions>
-        <UButton
-          variant="outline"
-          color="neutral"
-          icon="i-lucide-refresh-cw"
-          :loading="loading"
-          aria-label="Actualiser"
-          @click="fetchPatients"
-        />
         <UButton
           color="primary"
           icon="i-lucide-plus"
@@ -24,14 +16,14 @@
       </template>
     </TitleDashboard>
 
-    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+    <div class="rounded-xl border border-gray-200/80 dark:border-gray-800 bg-white/90 dark:bg-gray-900/50 px-3 py-2.5 sm:px-3.5 sm:py-3 shadow-sm">
       <UInput
         v-model="searchQuery"
-        placeholder="Rechercher (nom, email, téléphone...)"
+        placeholder="Nom, email, téléphone…"
         icon="i-lucide-search"
-        size="lg"
-        class="flex-1 min-w-0 max-w-md"
-        :ui="{ rounded: 'rounded-xl', icon: { color: 'text-gray-400' } }"
+        size="md"
+        class="w-full min-w-0"
+        :ui="{ rounded: 'rounded-lg' }"
         clearable
       />
     </div>
@@ -60,81 +52,14 @@
       </template>
     </UEmpty>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 items-stretch">
-      <div
-        v-for="patient in filteredPatients"
-        :key="patient.id"
-        class="bg-white dark:bg-gray-900 rounded-[24px] shadow-sm hover:shadow-md border border-gray-100 dark:border-gray-800 transition-all duration-200 flex flex-col h-full overflow-hidden relative"
-      >
-        <div class="p-5 flex-1 flex flex-col">
-          <div class="flex items-start justify-between mb-5 gap-3">
-            <div class="flex items-center gap-3.5 min-w-0">
-              <div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-primary-50 dark:bg-primary-500/10 text-primary-500">
-                <UIcon name="i-lucide-user" class="w-6 h-6" />
-              </div>
-              <div class="min-w-0">
-                <h3 class="text-[17px] font-bold text-gray-900 dark:text-white truncate">
-                  {{ patientDisplayName(patient) }}
-                </h3>
-                <p v-if="patientAge(patient)" class="text-[14px] text-gray-500 dark:text-gray-400 truncate mt-0.5 flex items-center gap-1">
-                  <UIcon name="i-lucide-cake" class="w-3.5 h-3.5" />
-                  {{ patientAge(patient) }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-gray-50/80 dark:bg-gray-800/40 rounded-2xl p-4 space-y-3.5 flex-1">
-            <div v-if="patient.phone" class="flex items-start gap-3">
-              <UIcon name="i-lucide-phone" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Téléphone</p>
-                <p class="text-[14px] font-medium text-gray-900 dark:text-white truncate">{{ patient.phone }}</p>
-              </div>
-            </div>
-            <div v-if="patient.email" class="flex items-start gap-3">
-              <UIcon name="i-lucide-mail" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Email</p>
-                <p class="text-[14px] font-medium text-gray-900 dark:text-white truncate">{{ patient.email }}</p>
-              </div>
-            </div>
-            <div v-if="patient.birth_date" class="flex items-start gap-3">
-              <UIcon name="i-lucide-cake" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Âge</p>
-                <p class="text-[14px] font-medium text-gray-900 dark:text-white">
-                  {{ patientAge(patient) }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="px-5 pb-5 pt-0 mt-auto flex gap-3">
-          <UButton
-            variant="soft"
-            color="neutral"
-            size="md"
-            class="flex-1 justify-center font-medium"
-            leading-icon="i-lucide-user"
-            :to="`/profile?userId=${patient.id}`"
-          >
-            Fiche patient
-          </UButton>
-          <UButton
-            variant="outline"
-            color="primary"
-            size="md"
-            class="flex-1 justify-center font-medium"
-            leading-icon="i-lucide-calendar-plus"
-            :to="`/pro/appointments/new?patient_id=${patient.id}`"
-          >
-            Créer un RDV
-          </UButton>
-        </div>
-      </div>
-    </div>
+    <PatientListCompactGrid
+      v-else
+      :patients="filteredPatients"
+      base-path="/pro"
+      show-delete
+      :current-user-id="user?.id ?? null"
+      @delete="onDeletePatient"
+    />
   </div>
 </template>
 
@@ -150,7 +75,9 @@ useHead({
 });
 
 import { apiFetch } from '~/utils/api';
+import { fetchAllPatientsForDashboard } from '~/utils/fetch-all-patients';
 
+const toast = useAppToast();
 const { user } = useAuth();
 
 const patients = ref<any[]>([]);
@@ -172,36 +99,11 @@ const filteredPatients = computed(() => {
   );
 });
 
-/** Formate le nom complet */
-const patientDisplayName = (item: any) =>
-  [String(item.first_name ?? '').trim(), String(item.last_name ?? '').trim()].filter(Boolean).join(' ') || item.email || '—';
-
-/** Calcule l'âge en années */
-const patientAge = (patient: any): string => {
-  const raw = patient?.birth_date;
-  if (!raw) return '';
-  const d = new Date(typeof raw === 'string' ? raw : new Date(raw).toISOString());
-  if (isNaN(d.getTime())) return '';
-  const today = new Date();
-  let age = today.getFullYear() - d.getFullYear();
-  const m = today.getMonth() - d.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
-  if (age < 0) return '';
-  return age === 0 ? 'Moins d\'un an' : `${age} an${age > 1 ? 's' : ''}`;
-};
-
-/** Fetch des données depuis l'API */
+/** Fetch des données depuis l'API (périmètre imposé par le backend : created_by + accès pro) */
 const fetchPatients = async () => {
   loading.value = true;
   try {
-    const response = await apiFetch(`/patients?created_by=${user.value?.id}`, {
-      method: 'GET',
-    });
-    if (response?.success && response.data) {
-      patients.value = response.data;
-    } else {
-      patients.value = [];
-    }
+    patients.value = await fetchAllPatientsForDashboard(apiFetch);
   } catch (error) {
     console.error('Erreur chargement patients:', error);
     patients.value = [];
@@ -209,6 +111,37 @@ const fetchPatients = async () => {
     loading.value = false;
   }
 };
+
+async function onDeletePatient(patient: any) {
+  const name =
+    [patient?.first_name, patient?.last_name].filter(Boolean).join(' ').trim() || 'ce patient';
+  if (
+    !confirm(
+      `Supprimer ${name} de votre liste ? Cette action est définitive (si aucun rendez-vous actif n’est lié à ce patient).`,
+    )
+  ) {
+    return;
+  }
+  try {
+    const res = await apiFetch(`/patients/${patient.id}`, { method: 'DELETE' });
+    if (res?.success) {
+      toast.add({ title: 'Patient supprimé', color: 'success' });
+      await fetchPatients();
+    } else {
+      toast.add({
+        title: 'Suppression impossible',
+        description: typeof res?.error === 'string' ? res.error : undefined,
+        color: 'error',
+      });
+    }
+  } catch (e: any) {
+    toast.add({
+      title: 'Suppression impossible',
+      description: e?.message || undefined,
+      color: 'error',
+    });
+  }
+}
 
 onMounted(() => {
   fetchPatients();

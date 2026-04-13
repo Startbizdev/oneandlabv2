@@ -19,68 +19,83 @@
           size="md"
         />
         <template v-else>
-          <UButton
-            v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)"
-            type="button"
-            color="success"
-            variant="soft"
-            size="lg"
-            leading-icon="i-lucide-check-circle"
-            :loading="completing"
-            block
-            @click="completeAppointment"
-          >
-            Terminer le RDV
-          </UButton>
-          <UButton
-            v-if="['pending', 'confirmed', 'inProgress'].includes(appointment.status)"
-            type="button"
-            color="primary"
-            variant="soft"
-            size="md"
-            leading-icon="i-lucide-calendar-plus"
-            block
-            @click="openRescheduleModal(appointment)"
-          >
-            Reprendre RDV pour ce patient
-          </UButton>
-          <UButton
-            v-if="appointment.relative?.phone || appointment.form_data?.phone"
-            type="button"
-            color="info"
-            variant="soft"
-            size="md"
-            leading-icon="i-lucide-message-square"
-            block
-            @click="openSms"
-          >
-            Message
-          </UButton>
-          <UButton
-            v-if="appointment.address"
-            type="button"
-            color="warning"
-            variant="soft"
-            size="md"
-            leading-icon="i-lucide-navigation"
-            block
-            @click="openWaze"
-          >
-            Itinéraire Waze
-          </UButton>
-          <UButton
-            v-if="['pending', 'confirmed', 'inProgress'].includes(appointment.status)"
-            type="button"
-            color="error"
-            variant="soft"
-            size="md"
-            leading-icon="i-lucide-x-circle"
-            :loading="canceling"
-            block
-            @click="showCancelModal = true"
-          >
-            Annuler le rendez-vous
-          </UButton>
+          <template v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5">
+              Clôturer le rendez-vous
+            </p>
+            <UButton
+              type="button"
+              color="success"
+              variant="solid"
+              size="lg"
+              leading-icon="i-lucide-check-circle"
+              :loading="completing"
+              block
+              :on-click="() => completeAppointment(appointment, loadAppointment)"
+            >
+              Terminer le RDV
+            </UButton>
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
+              Planification
+            </p>
+            <UButton
+              type="button"
+              color="neutral"
+              variant="outline"
+              size="md"
+              leading-icon="i-lucide-calendar-plus"
+              block
+              :on-click="() => openRescheduleModal(appointment)"
+            >
+              Reprendre RDV pour ce patient
+            </UButton>
+          </template>
+          <template v-if="appointment && (appointment.relative?.phone || appointment.form_data?.phone || appointment.address)">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
+              Contact & déplacement
+            </p>
+            <UButton
+              v-if="appointment.relative?.phone || appointment.form_data?.phone"
+              type="button"
+              color="neutral"
+              variant="outline"
+              size="md"
+              leading-icon="i-lucide-message-square"
+              block
+              :on-click="() => openSms(appointment)"
+            >
+              Message
+            </UButton>
+            <UButton
+              v-if="appointment?.address"
+              type="button"
+              color="warning"
+              variant="outline"
+              size="md"
+              leading-icon="i-lucide-navigation"
+              block
+              :on-click="() => openWaze(appointment)"
+            >
+              Itinéraire Waze
+            </UButton>
+          </template>
+          <template v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
+              Annulation
+            </p>
+            <UButton
+              type="button"
+              color="error"
+              variant="outline"
+              size="md"
+              leading-icon="i-lucide-x-circle"
+              :loading="canceling"
+              block
+              :on-click="() => openCancelModal(appointment, loadAppointment)"
+            >
+              Annuler le rendez-vous
+            </UButton>
+          </template>
         </template>
       </div>
     </template>
@@ -111,26 +126,33 @@ const route = useRoute();
 const toast = useAppToast();
 const detailRef = ref<{ loadAppointment: () => Promise<void>; appointment: { value: any } } | null>(null);
 const showCancelModal = ref(false);
+const currentAppointmentForCancel = ref<any>(null);
+const currentLoadAppointmentForCancel = ref<(() => Promise<void>) | null>(null);
 const showRescheduleModal = ref(false);
 const canceling = ref(false);
 const completing = ref(false);
 const rescheduleAppointment = ref<any>(null);
 
-function completeAppointment() {
-  const appointment = detailRef.value?.appointment?.value;
-  if (!appointment) return;
+function completeAppointment(apt: any, loadAppointment: () => Promise<void>) {
+  if (!apt) return;
   completing.value = true;
-  apiFetch(`/appointments/${appointment.id}`, { method: 'PUT', body: { status: 'completed' } })
+  apiFetch(`/appointments/${apt.id}`, { method: 'PUT', body: { status: 'completed' } })
     .then((response) => {
       if (response.success) {
         toast.add({ title: 'RDV terminé', description: 'Le rendez-vous a été marqué comme terminé.', color: 'success' });
-        detailRef.value?.loadAppointment();
+        loadAppointment();
       } else {
         toast.add({ title: 'Erreur', description: response.error || 'Impossible de terminer le rendez-vous', color: 'error' });
       }
     })
     .catch((error: any) => toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' }))
     .finally(() => { completing.value = false; });
+}
+
+function openCancelModal(apt: any, loadAppointment: () => Promise<void>) {
+  currentAppointmentForCancel.value = apt;
+  currentLoadAppointmentForCancel.value = loadAppointment;
+  showCancelModal.value = true;
 }
 
 function openRescheduleModal(apt: any) {
@@ -143,21 +165,19 @@ function onRescheduleDone(newAppointmentId?: string) {
   if (newAppointmentId) {
     navigateTo(`/preleveur/appointments/${newAppointmentId}`);
   } else {
-    detailRef.value?.loadAppointment();
+    detailRef.value?.loadAppointment?.();
   }
 }
 
-function openSms() {
-  const appointment = detailRef.value?.appointment?.value;
-  const phone = appointment?.relative?.phone || appointment?.form_data?.phone;
+function openSms(apt: any) {
+  const phone = apt?.relative?.phone || apt?.form_data?.phone;
   if (!phone) return;
   window.location.href = `sms:${phone.replace(/\s/g, '')}`;
 }
 
-function openWaze() {
-  const appointment = detailRef.value?.appointment?.value;
-  if (!appointment?.address) return;
-  const address = appointment.address;
+function openWaze(apt: any) {
+  if (!apt?.address) return;
+  const address = apt.address;
   if (typeof address === 'object' && address.lat != null && address.lng != null) {
     window.open(`https://waze.com/ul?ll=${address.lat},${address.lng}&navigate=yes`, '_blank');
   } else {
@@ -167,14 +187,12 @@ function openWaze() {
 }
 
 async function onConfirmCancel(payload: { reason: string; comment: string; photoFile: File | null }) {
-  // Récupérer l'appointment : ref exposée peut être .value ou déjà déballée selon le contexte
-  const appointmentData = detailRef.value?.appointment?.value ?? detailRef.value?.appointment;
-  const loadAppointment = detailRef.value?.loadAppointment;
-  const appointmentId = appointmentData?.id ?? route.params?.id;
-  if (!appointmentId || typeof loadAppointment !== 'function') {
-    console.warn('[preleveur] onConfirmCancel early return: missing appointment id or loadAppointment', { appointmentId, hasLoadAppointment: typeof loadAppointment === 'function' });
-    return;
-  }
+  const apt = currentAppointmentForCancel.value;
+  const loadAppointment = currentLoadAppointmentForCancel.value;
+  const appointmentId = apt?.id ?? route.params?.id;
+  if (!appointmentId || typeof loadAppointment !== 'function') return;
+  currentAppointmentForCancel.value = null;
+  currentLoadAppointmentForCancel.value = null;
   canceling.value = true;
   try {
     let photoDocId: string | null = null;

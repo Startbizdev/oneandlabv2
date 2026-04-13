@@ -6,14 +6,6 @@
     >
       <template #actions>
         <UButton
-          variant="outline"
-          color="neutral"
-          icon="i-lucide-refresh-cw"
-          :loading="listRef?.loading"
-          aria-label="Actualiser"
-          @click="listRef?.fetchAppointments?.()"
-        />
-        <UButton
           to="/pro/appointments/new"
           color="primary"
           icon="i-lucide-plus"
@@ -28,20 +20,7 @@
       base-path="/pro"
       :use-date-filter="false"
       hide-header
-    >
-      <template #cardActions="{ appointment, basePath }">
-        <UButton
-          variant="soft"
-          color="primary"
-          size="xs"
-          leading-icon="i-lucide-eye"
-          :to="`${basePath}/appointments/${appointment.id}`"
-          aria-label="Voir le détail"
-        >
-          Détails
-        </UButton>
-      </template>
-    </AppointmentListPage>
+    />
   </div>
 </template>
 

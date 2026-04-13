@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <TitleDashboard title="Gestion des utilisateurs" description="Gérez les utilisateurs : nom, prénom, email, rôle et types de soins.">
       <template #actions>
-        <UButton color="primary" icon="i-lucide-plus" to="/profile?newUser=1">
+        <UButton color="primary" icon="i-lucide-plus" to="/admin/users/new">
           Créer un utilisateur
         </UButton>
       </template>
@@ -44,7 +44,7 @@
                 {{ getUserDisplayName(row.original ?? row) || '—' }}
               </p>
               <p class="text-sm text-muted truncate">
-                {{ (row.original ?? row).email || '—' }}
+                {{ (row.original ?? row).email_display || (row.original ?? row).email || '—' }}
               </p>
             </div>
           </div>
@@ -124,6 +124,23 @@
           </div>
         </template>
       </UTable>
+      <div
+        v-if="totalPages > 1"
+        class="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t border-default/50"
+      >
+        <p class="text-sm text-muted">
+          Affichage de <span class="font-medium">{{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, totalItems) }}</span>
+          sur <span class="font-medium">{{ totalItems }}</span>
+        </p>
+        <UPagination
+          v-model:page="currentPage"
+          :total="totalItems"
+          :items-per-page="pageSize"
+          :sibling-count="2"
+          show-edges
+          :ui="{ wrapper: 'gap-1', rounded: 'rounded-lg' }"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -143,6 +160,9 @@ const loading = ref(true);
 const searchQuery = ref('');
 const roleFilter = ref('all');
 const statusFilter = ref('all');
+const currentPage = ref(1);
+const pageSize = 20;
+const totalItems = ref(0);
 
 const roleOptions = [
   { label: 'Tous les rôles', value: 'all' },
@@ -195,22 +215,14 @@ const statusVal = computed(() => {
   return (typeof v === 'object' && v?.value != null) ? v.value : v;
 });
 
+/** Filtre client-side uniquement par recherche (rôle et statut sont envoyés à l'API) */
 const filteredUsers = computed(() => {
   let filtered = [...(users.value || [])];
-  if (roleVal.value && roleVal.value !== 'all') filtered = filtered.filter(u => u.role === roleVal.value);
-  if (statusVal.value && statusVal.value !== 'all') {
-    if (statusVal.value === 'banned') {
-      filtered = filtered.filter(u => u.banned_until && new Date(u.banned_until) > new Date());
-    } else if (statusVal.value === 'suspended') {
-      filtered = filtered.filter(u => isSuspended(u));
-    } else if (statusVal.value === 'active') {
-      filtered = filtered.filter(u => !u.banned_until && !isSuspended(u));
-    }
-  }
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
     filtered = filtered.filter(u =>
       u.email?.toLowerCase().includes(query) ||
+      u.email_display?.toLowerCase().includes(query) ||
       u.first_name?.toLowerCase().includes(query) ||
       u.last_name?.toLowerCase().includes(query) ||
       (u.company_name && u.company_name.toLowerCase().includes(query))
@@ -219,23 +231,44 @@ const filteredUsers = computed(() => {
   return filtered;
 });
 
+const totalPages = computed(() => Math.ceil(Math.max(0, totalItems.value) / pageSize));
+
 onMounted(async () => {
   await fetchUsers();
+});
+
+watch([roleFilter, statusFilter], () => {
+  currentPage.value = 1;
+  fetchUsers();
+});
+watch(currentPage, () => {
+  fetchUsers();
 });
 
 const fetchUsers = async () => {
   loading.value = true;
   try {
-    const response = await apiFetch('/users?limit=200', { method: 'GET' });
+    const params: Record<string, string> = {
+      page: String(currentPage.value),
+      limit: String(pageSize),
+    };
+    if (roleVal.value && roleVal.value !== 'all') params.role = roleVal.value;
+    if (statusVal.value && statusVal.value !== 'all') params.status = statusVal.value;
+    const queryString = new URLSearchParams(params).toString();
+    const response = await apiFetch(`/users?${queryString}`, { method: 'GET' });
     if (response?.success && Array.isArray(response.data)) {
       users.value = response.data;
+      const pag = response.pagination;
+      totalItems.value = pag?.total ?? response.data.length;
     } else {
       users.value = [];
+      totalItems.value = 0;
     }
   } catch (error: any) {
     console.error('Erreur lors du chargement des utilisateurs:', error);
     toast.add({ title: 'Erreur de chargement', description: error?.message, color: 'red' });
     users.value = [];
+    totalItems.value = 0;
   } finally {
     loading.value = false;
   }

@@ -19,9 +19,11 @@ export interface UsersByRole {
 export interface AppointmentsByStatus {
   pending: number;
   confirmed: number;
+  planned?: number;
   inProgress: number;
   completed: number;
   canceled: number;
+  expired?: number;
   refused?: number;
   total: number;
 }

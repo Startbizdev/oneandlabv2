@@ -1,46 +1,31 @@
 <template>
   <div v-if="appointments.length > 0" class="rounded-xl border border-default/50 bg-default overflow-hidden shadow-sm">
-    <div class="px-6 py-4 border-b border-default/50">
+    <div class="px-6 py-4 border-b border-default/50 flex items-center justify-between">
       <h2 class="text-lg font-semibold text-default flex items-center gap-2">
         <UIcon name="i-lucide-clock" class="w-5 h-5 text-amber-500" />
         Rendez-vous en attente d'acceptation
       </h2>
-    </div>
-    <div class="p-6 space-y-4">
-      <div
-        v-for="appointment in appointments"
-        :key="appointment.id"
-        class="rounded-lg border border-default/50 p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer"
-        @click="$emit('open', appointment)"
+      <UButton
+        v-if="basePath"
+        variant="ghost"
+        size="sm"
+        :to="`${basePath}/appointments`"
+        trailing-icon="i-lucide-arrow-right"
       >
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div class="flex-1 space-y-2 min-w-0">
-            <UBadge
-              :color="appointment.type === 'blood_test' ? 'blue' : 'green'"
-              variant="subtle"
-              size="sm"
-            >
-              {{ appointment.type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers' }}
-            </UBadge>
-            <div class="flex items-center gap-2 text-sm text-muted">
-              <UIcon name="i-lucide-calendar" class="w-4 h-4 flex-shrink-0" />
-              <span>{{ formatDate(appointment.scheduled_at) }}</span>
-            </div>
-            <div class="flex items-start gap-2 text-sm text-muted">
-              <UIcon name="i-lucide-map-pin" class="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <span class="truncate">{{ getAddressLabel(appointment) }}</span>
-            </div>
-          </div>
-          <UButton
-            color="primary"
-            size="sm"
-            icon="i-lucide-check"
-            class="flex-shrink-0"
-            @click.stop="$emit('open', appointment)"
-          >
-            Voir détails
-          </UButton>
-        </div>
+        Voir tout
+      </UButton>
+    </div>
+    <div class="p-3 sm:p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
+        <DashboardAppointmentCard
+          v-for="apt in appointments"
+          :key="apt.id"
+          :appointment="apt"
+          :base-path="basePath"
+          :format-date-label="formatDateLabel"
+          :mask-sensitive="true"
+          :on-action="(a) => $emit('open', a)"
+        />
       </div>
     </div>
   </div>
@@ -53,12 +38,14 @@ interface AppointmentRow {
   scheduled_at?: string;
   address?: string | { label?: string };
   status: string;
+  form_data?: any;
+  category_name?: string;
 }
 
 interface Props {
   appointments: AppointmentRow[];
-  formatDate: (date: string) => string;
-  getAddressLabel: (row: AppointmentRow) => string;
+  basePath: string;
+  formatDateLabel: (apt: AppointmentRow) => string;
 }
 
 defineProps<Props>();

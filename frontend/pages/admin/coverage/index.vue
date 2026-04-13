@@ -5,7 +5,7 @@
       description="Gérez les zones d'intervention des infirmiers : adresse de départ et rayon."
     >
       <template #actions>
-        <UButton color="primary" icon="i-lucide-plus" @click="openCreateModal">
+        <UButton color="primary" icon="i-lucide-plus" :on-click="openCreateModal">
           Créer une zone
         </UButton>
       </template>
@@ -49,14 +49,14 @@
         </template>
         <template #actions-cell="{ row }">
           <div class="flex items-center gap-2">
-            <UButton size="xs" variant="outline" leading-icon="i-lucide-pencil" @click="editZone(row.original ?? row)">
+            <UButton size="xs" variant="outline" leading-icon="i-lucide-pencil" :on-click="() => editZone(row.original ?? row)">
               Modifier
             </UButton>
             <UButton
               size="xs"
               :color="(row.original ?? row).is_active ? 'error' : 'success'"
               variant="outline"
-              @click="toggleZone(row.original ?? row)"
+              :on-click="() => toggleZone(row.original ?? row)"
             >
               {{ (row.original ?? row).is_active ? 'Désactiver' : 'Activer' }}
             </UButton>
@@ -91,7 +91,7 @@
                     {{ editingZone ? 'Modifiez le rayon et le statut.' : 'Choisissez un infirmier et définissez le rayon depuis son adresse.' }}
                   </p>
                 </div>
-                <UButton variant="ghost" color="neutral" icon="i-lucide-x" size="sm" aria-label="Fermer" @click="close()" />
+                <UButton variant="ghost" color="neutral" icon="i-lucide-x" size="sm" aria-label="Fermer" :on-click="close" />
               </div>
             </template>
             <UForm :state="zoneForm" @submit="saveZone" class="space-y-4">
@@ -114,6 +114,17 @@
                     <div class="flex flex-col py-1.5">
                       <span class="font-medium">{{ item.label }}</span>
                       <span class="text-xs text-muted">{{ item.email }}</span>
+                    </div>
+                  </template>
+                  <template #empty>
+                    <div class="py-6 px-4">
+                      <UEmpty
+                        icon="i-lucide-stethoscope"
+                        title="Aucun infirmier trouvé"
+                        description="Aucun infirmier ne correspond à votre recherche. Vérifiez les inscriptions."
+                        variant="naked"
+                        size="sm"
+                      />
                     </div>
                   </template>
                 </USelectMenu>
@@ -167,7 +178,7 @@
               </UFormField>
 
               <div class="flex justify-end gap-2 pt-4 border-t border-default">
-                <UButton variant="ghost" color="neutral" @click="close()">
+                <UButton variant="ghost" color="neutral" :on-click="close">
                   Annuler
                 </UButton>
                 <UButton type="submit" color="primary" :loading="saving" :disabled="!canSave">

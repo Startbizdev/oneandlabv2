@@ -4,18 +4,6 @@
       title="Inscriptions"
       description="Demandes d'inscription laboratoires, professionnels et infirmiers. Acceptez ou refusez les demandes."
     >
-      <template #actions>
-        <UButton
-          variant="outline"
-          color="neutral"
-          icon="i-lucide-refresh-cw"
-          :loading="loading"
-          aria-label="Actualiser"
-          @click="fetchRequests"
-        >
-          Actualiser
-        </UButton>
-      </template>
     </TitleDashboard>
 
     <div class="flex flex-col sm:flex-row gap-4">
@@ -121,7 +109,7 @@
               icon="i-lucide-check"
               :loading="acceptingId === req.id"
               :disabled="rejectingId === req.id"
-              @click="acceptRequest(req.id)"
+              :on-click="() => acceptRequest(req.id)"
             >
               Accepter
             </UButton>
@@ -133,7 +121,7 @@
               icon="i-lucide-x"
               :loading="rejectingId === req.id"
               :disabled="acceptingId === req.id"
-              @click="rejectRequest(req.id)"
+              :on-click="() => rejectRequest(req.id)"
             >
               Refuser
             </UButton>

@@ -3,11 +3,11 @@
  */
 
 export type AppointmentType = 'blood_test' | 'nursing';
-export type AppointmentStatus = 'pending' | 'confirmed' | 'inProgress' | 'completed' | 'canceled' | 'expired' | 'refused';
+export type AppointmentStatus = 'pending' | 'confirmed' | 'planned' | 'inProgress' | 'completed' | 'canceled' | 'expired' | 'refused';
 export type GenderType = 'male' | 'female' | 'other';
 export type BloodTestType = 'single' | 'multiple';
 export type AvailabilityType = 'custom' | 'all_day';
-export type FrequencyType = 'daily' | 'every_other_day' | 'twice_weekly' | 'thrice_weekly';
+export type FrequencyType = 'once_daily' | 'twice_daily' | 'thrice_daily' | 'twice_weekly' | 'thrice_weekly' | 'to_define';
 
 export interface Address {
   label: string;
@@ -55,6 +55,8 @@ export interface AppointmentFormData {
   
   // Spécifique nursing
   frequency?: FrequencyType;
+  /** Filtre dispatch : any | female | male */
+  preferred_nurse_gender?: 'any' | 'female' | 'male';
   
   // Documents
   files: Record<string, File>;
@@ -77,6 +79,10 @@ export interface AppointmentCreatePayload {
   form_data: AppointmentFormData;
   files?: Record<string, File>;
   guest_email?: string;
+  /** Partagé par un lot multi-soins (même type, créé en une fois). */
+  creation_batch_id?: string;
+  /** Nombre de RDV du lot (envoyé par le client pour regrouper les notifications). */
+  creation_batch_size?: number;
 }
 
 export interface Appointment {
@@ -90,6 +96,17 @@ export interface Appointment {
   assigned_lab_id?: string;
   category_id?: string;
   category_name?: string;
+  /** Icône care_categories.icon (préfixe lucide / medical-icon / etc.) */
+  category_icon?: string | null;
+  /** Regroupement multi-soins (même lot) */
+  creation_batch_id?: string | null;
+  /** Autres RDV du même lot (GET détail), sans le courant. */
+  batch_siblings?: Array<{
+    id: string;
+    status: string;
+    scheduled_at: string;
+    category_name?: string | null;
+  }>;
   form_type: AppointmentType;
   address: string;
   form_data?: AppointmentFormData;
@@ -105,6 +122,11 @@ export interface AppointmentFilters {
   type?: AppointmentType;
   page?: number;
   limit?: number;
+  /** Filtre côté API : rendez-vous d'un patient (pro / infirmier avec accès) */
+  patient_id?: string;
+  /** Infirmier : `nurse_tab=soins|demandes` (aligné liste RDV) */
+  nurse_tab?: 'soins' | 'demandes';
+  nurse_segment?: string;
 }
 
 

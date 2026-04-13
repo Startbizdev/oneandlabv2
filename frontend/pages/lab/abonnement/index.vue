@@ -10,7 +10,7 @@
         :variant="activeTabIndex === index ? 'solid' : 'ghost'"
         :color="activeTabIndex === index ? 'primary' : 'gray'"
         size="md"
-        @click="activeTabIndex = index"
+        :on-click="() => activeTabIndex = index"
       >
         <UIcon :name="tab.icon" class="w-4 h-4 mr-2" />
         {{ tab.label }}
@@ -32,7 +32,7 @@
                 size="lg"
                 variant="outline"
                 :loading="loadingStarter"
-                @click="startCheckout('lab_starter')"
+                :on-click="() => startCheckout('lab_starter')"
               >
                 Commencer l'essai
               </UButton>
@@ -73,7 +73,7 @@
                 size="lg"
                 color="primary"
                 :loading="loadingPro"
-                @click="startCheckout('lab_pro')"
+                :on-click="() => startCheckout('lab_pro')"
               >
                 Commencer l'essai gratuit
               </UButton>
@@ -121,7 +121,7 @@
         <p class="text-gray-600 dark:text-gray-400 mb-6">
           Vous n'avez pas encore d'abonnement actif. Choisissez l'offre Starter ou Pro dans l'onglet « Offres » pour gérer vos préleveurs et sous-comptes.
         </p>
-        <UButton variant="outline" size="lg" @click="activeTabIndex = 0">
+        <UButton variant="outline" size="lg" :on-click="() => activeTabIndex = 0">
           Voir les offres
         </UButton>
       </UCard>
@@ -158,7 +158,7 @@
             <UButton
               color="primary"
               :loading="loadingPortal"
-              @click="openPortal"
+              :on-click="openPortal"
             >
               <UIcon name="i-lucide-external-link" class="w-4 h-4 mr-2" />
               Gérer ou annuler mon abonnement

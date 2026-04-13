@@ -10,7 +10,7 @@
           Trouvez un infirmier libéral à domicile à {{ cityLabel }}. Soins et prises de sang. Réservez en ligne.
         </p>
         <UButton
-          to="/rendez-vous/nouveau"
+          :to="appointmentNewUrl"
           color="primary"
           size="xl"
           variant="solid"
@@ -77,6 +77,8 @@
 
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
+
+const { appointmentNewUrl } = useAppointmentNewUrl()
 
 const route = useRoute()
 const config = useRuntimeConfig()

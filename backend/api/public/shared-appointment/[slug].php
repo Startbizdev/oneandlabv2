@@ -67,7 +67,8 @@ $appointmentId = $row['appointment_id'];
 try {
     $stmt = $db->prepare('
         SELECT a.id, a.type, a.status, a.scheduled_at, a.category_id, a.patient_id,
-               a.address_encrypted, a.address_dek, a.form_data_encrypted, a.form_data_dek
+               a.address_encrypted, a.address_dek, a.form_data_encrypted, a.form_data_dek,
+               a.creation_batch_id
         FROM appointments a
         WHERE a.id = ? AND a.type = ?
     ');
@@ -85,35 +86,106 @@ if (!$appointment) {
     exit;
 }
 
-$categoryName = 'Soins infirmiers';
-if (!empty($appointment['category_id'])) {
-    try {
-        $catStmt = $db->prepare('SELECT name FROM care_categories WHERE id = ?');
-        $catStmt->execute([$appointment['category_id']]);
-        $cat = $catStmt->fetch(PDO::FETCH_ASSOC);
-        if ($cat && !empty($cat['name'])) {
-            $categoryName = $cat['name'];
-        }
-    } catch (PDOException $e) {
-        // ignorer si table absente
-    }
-}
-
-// Date : uniquement jour (sans heure)
-$scheduledAt = $appointment['scheduled_at'];
-$dateShort = '';
-if ($scheduledAt) {
-    try {
-        $dt = new DateTime($scheduledAt);
-        $dateShort = $dt->format('d/m/Y');
-    } catch (Exception $e) {
-        $dateShort = $scheduledAt;
-    }
-}
-
 $crypto = new Crypto();
 
-// Adresse complète (déchiffrée)
+$durationLabels = [
+    '1' => '1 jour',
+    '7' => '7 jours',
+    '10' => '10 jours',
+    '15' => '15 jours',
+    '30' => '30 jours',
+    '60+' => 'Longue durée',
+];
+
+/**
+ * @param array<string,mixed> $row
+ * @return array{appointmentId: string, categoryName: string, dateShort: string, slotLabel: string, durationLabel: string|null}
+ */
+$buildCareItem = static function (PDO $db, Crypto $crypto, array $row, array $durationLabels): array {
+    $categoryName = 'Soins infirmiers';
+    if (!empty($row['category_id'])) {
+        try {
+            $catStmt = $db->prepare('SELECT name FROM care_categories WHERE id = ?');
+            $catStmt->execute([$row['category_id']]);
+            $cat = $catStmt->fetch(PDO::FETCH_ASSOC);
+            if ($cat && !empty($cat['name'])) {
+                $categoryName = $cat['name'];
+            }
+        } catch (PDOException $e) {
+            // ignore
+        }
+    }
+    $scheduledAt = $row['scheduled_at'] ?? '';
+    $dateShort = '';
+    if ($scheduledAt) {
+        try {
+            $dateShort = (new DateTime($scheduledAt))->format('d/m/Y');
+        } catch (Exception $e) {
+            $dateShort = (string) $scheduledAt;
+        }
+    }
+    $formData = [];
+    if (!empty($row['form_data_encrypted']) && !empty($row['form_data_dek'])) {
+        try {
+            $formDataJson = $crypto->decryptField($row['form_data_encrypted'], $row['form_data_dek']);
+            $formData = json_decode($formDataJson, true) ?? [];
+        } catch (Exception $e) {
+            $formData = [];
+        }
+    }
+    $slotLabel = 'Toute la journée';
+    $availability = $formData['availability'] ?? $formData['availability_type'] ?? null;
+    if ($availability !== null) {
+        $av = is_string($availability) ? json_decode($availability, true) : $availability;
+        if (is_array($av) && isset($av['type'])) {
+            if ($av['type'] === 'custom' && !empty($av['range']) && is_array($av['range']) && count($av['range']) >= 2) {
+                $slotLabel = (int) $av['range'][0] . 'h - ' . (int) $av['range'][1] . 'h';
+            }
+        }
+    }
+    $durationLabel = '';
+    $durationDays = $formData['duration_days'] ?? '';
+    if ($durationDays === 'custom' && !empty($formData['custom_days'])) {
+        $durationLabel = $formData['custom_days'] . ' jours';
+    } elseif ($durationDays !== '') {
+        $durationLabel = $durationLabels[$durationDays] ?? $durationDays;
+    }
+
+    return [
+        'appointmentId' => (string) $row['id'],
+        'categoryName' => $categoryName,
+        'dateShort' => $dateShort,
+        'slotLabel' => $slotLabel,
+        'durationLabel' => $durationLabel !== '' ? $durationLabel : null,
+    ];
+};
+
+$batchId = $appointment['creation_batch_id'] ?? null;
+$batchPatientId = $appointment['patient_id'] ?? null;
+$careItems = [];
+
+if (!empty($batchId) && !empty($batchPatientId)) {
+    try {
+        $allStmt = $db->prepare('
+            SELECT a.id, a.scheduled_at, a.category_id, a.form_data_encrypted, a.form_data_dek
+            FROM appointments a
+            WHERE a.creation_batch_id = ? AND a.patient_id = ? AND a.type = ?
+            ORDER BY a.scheduled_at ASC
+        ');
+        $allStmt->execute([$batchId, $batchPatientId, 'nursing']);
+        while ($row = $allStmt->fetch(PDO::FETCH_ASSOC)) {
+            $careItems[] = $buildCareItem($db, $crypto, $row, $durationLabels);
+        }
+    } catch (PDOException $e) {
+        $careItems = [];
+    }
+}
+
+if ($careItems === []) {
+    $careItems[] = $buildCareItem($db, $crypto, $appointment, $durationLabels);
+}
+
+// Adresse et âge : depuis le RDV du token (identiques au lot)
 $addressFull = '';
 if (!empty($appointment['address_encrypted']) && !empty($appointment['address_dek'])) {
     try {
@@ -128,47 +200,6 @@ if (!empty($appointment['address_encrypted']) && !empty($appointment['address_de
     }
 }
 
-// form_data : créneau et durée
-$formData = [];
-if (!empty($appointment['form_data_encrypted']) && !empty($appointment['form_data_dek'])) {
-    try {
-        $formDataJson = $crypto->decryptField($appointment['form_data_encrypted'], $appointment['form_data_dek']);
-        $formData = json_decode($formDataJson, true) ?? [];
-    } catch (Exception $e) {
-        $formData = [];
-    }
-}
-
-// Créneau horaire : "Toute la journée" ou "Xh - Yh"
-$slotLabel = 'Toute la journée';
-$availability = $formData['availability'] ?? $formData['availability_type'] ?? null;
-if ($availability !== null) {
-    $av = is_string($availability) ? json_decode($availability, true) : $availability;
-    if (is_array($av) && isset($av['type'])) {
-        if ($av['type'] === 'custom' && !empty($av['range']) && is_array($av['range']) && count($av['range']) >= 2) {
-            $slotLabel = (int)$av['range'][0] . 'h - ' . (int)$av['range'][1] . 'h';
-        }
-    }
-}
-
-// Durée du soins
-$durationLabels = [
-    '1' => '1 jour',
-    '7' => '7 jours',
-    '10' => '10 jours',
-    '15' => '15 jours',
-    '30' => '30 jours',
-    '60+' => 'Longue durée',
-];
-$durationLabel = '';
-$durationDays = $formData['duration_days'] ?? '';
-if ($durationDays === 'custom' && !empty($formData['custom_days'])) {
-    $durationLabel = $formData['custom_days'] . ' jours';
-} elseif ($durationDays !== '') {
-    $durationLabel = $durationLabels[$durationDays] ?? $durationDays;
-}
-
-// Âge du patient (date de naissance) — optionnel : ne pas faire échouer si table/colonnes absentes
 $patientAge = null;
 $patientId = $appointment['patient_id'] ?? null;
 if ($patientId) {
@@ -194,18 +225,30 @@ if ($patientId) {
     }
 }
 
+$tokenIdStr = (string) $appointmentId;
+$primary = $careItems[0];
+foreach ($careItems as $it) {
+    if ($it['appointmentId'] === $tokenIdStr) {
+        $primary = $it;
+        break;
+    }
+}
+$scheduledAt = $appointment['scheduled_at'];
+
 echo json_encode([
     'success' => true,
     'data' => [
         'appointmentId' => $appointmentId,
         'type' => 'nursing',
         'status' => $appointment['status'],
-        'categoryName' => $categoryName,
+        'categoryName' => $primary['categoryName'],
         'scheduledAt' => $scheduledAt,
-        'dateShort' => $dateShort,
+        'dateShort' => $primary['dateShort'],
         'addressFull' => $addressFull ?: null,
-        'slotLabel' => $slotLabel,
-        'durationLabel' => $durationLabel ?: null,
+        'slotLabel' => $primary['slotLabel'],
+        'durationLabel' => $primary['durationLabel'],
         'patientAge' => $patientAge,
+        'careItems' => $careItems,
+        'isBatch' => count($careItems) > 1,
     ],
 ]);

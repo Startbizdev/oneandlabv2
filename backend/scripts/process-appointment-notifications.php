@@ -28,7 +28,7 @@ try {
     );
     $db = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
 
-    $stmt = $db->prepare('SELECT type, location_lat, location_lng, scheduled_at, patient_id FROM appointments WHERE id = ?');
+    $stmt = $db->prepare('SELECT type, location_lat, location_lng, scheduled_at, patient_id, created_by, created_by_role FROM appointments WHERE id = ?');
     $stmt->execute([$id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {
@@ -59,8 +59,10 @@ try {
         'patient_email' => $patientEmail,
     ];
 
+    $createdByRole = $row['created_by_role'] ?? null;
+
     $appointment = new Appointment();
-    $appointment->runPostCreateNotifications($id, $input);
+    $appointment->runPostCreateNotifications($id, $input, $createdByRole);
 } catch (Throwable $e) {
     error_log('process-appointment-notifications: ' . $e->getMessage());
     exit(1);

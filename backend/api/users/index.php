@@ -13,7 +13,7 @@ if (in_array($origin, $corsConfig['allowed_origins'], true)) {
     header('Access-Control-Allow-Origin: ' . $origin);
 }
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
 header('Access-Control-Allow-Credentials: true');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -25,11 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
-// Pro : autoriser GET uniquement pour lister lab/sublab/infirmiers (assignation RDV)
-$isProListingAssignable = ($_SERVER['REQUEST_METHOD'] === 'GET' && $user['role'] === 'pro');
+// Pro / Nurse : autoriser GET pour lister lab/sublab/infirmiers (assignation RDV)
+$isListingAssignable = ($_SERVER['REQUEST_METHOD'] === 'GET' && in_array($user['role'], ['pro', 'nurse'], true));
 $roleParam = isset($_GET['role']) ? trim((string) $_GET['role']) : null;
-if ($isProListingAssignable && in_array($roleParam, ['lab', 'subaccount', 'nurse'], true)) {
-    // Pro peut lister labos, sous-comptes et infirmiers pour assigner un RDV
+$allowedRolesForListing = ['lab', 'subaccount', 'nurse'];
+if ($isListingAssignable && in_array($roleParam, $allowedRolesForListing, true)) {
+    // Pro et nurse peuvent lister labos, sous-comptes et infirmiers pour assigner un RDV
 } else {
     $roleMiddleware = new RoleMiddleware();
     $roleMiddleware->handle($user, ['super_admin']);
@@ -45,18 +46,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $last_name = trim((string)($body['last_name'] ?? ''));
     $role = trim((string)($body['role'] ?? 'patient'));
     $phone = isset($body['phone']) ? trim((string)$body['phone']) : null;
-
-    if ($email === '' || $first_name === '' || $last_name === '') {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Email, prénom et nom sont requis.']);
-        exit;
-    }
+    $company_name = trim((string)($body['company_name'] ?? ''));
 
     $allowedRoles = ['super_admin', 'lab', 'subaccount', 'preleveur', 'nurse', 'pro', 'patient'];
     if (!in_array($role, $allowedRoles, true)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Rôle invalide.']);
         exit;
+    }
+
+    $isEntityRole = in_array($role, ['lab', 'subaccount'], true);
+    if ($email === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'L\'email est requis.']);
+        exit;
+    }
+    if ($isEntityRole) {
+        if ($company_name === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Le nom du laboratoire / de l\'entité est requis.']);
+            exit;
+        }
+        $first_name = '';
+        $last_name = $company_name;
+    } else {
+        if ($first_name === '' || $last_name === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Prénom et nom sont requis.']);
+            exit;
+        }
     }
 
     $createData = [
@@ -66,14 +84,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'role' => $role,
         'phone' => $phone ?: '',
     ];
-    if (in_array($role, ['lab', 'subaccount'], true) && !empty(trim((string)($body['company_name'] ?? '')))) {
-        $createData['company_name'] = trim((string)$body['company_name']);
+    if ($isEntityRole && $company_name !== '') {
+        $createData['company_name'] = $company_name;
     }
     if (in_array($role, ['subaccount', 'preleveur'], true) && !empty(trim((string)($body['lab_id'] ?? '')))) {
         $createData['lab_id'] = trim((string)$body['lab_id']);
     }
     try {
         $userId = $userModel->create($createData, $user['user_id'], $user['role']);
+        // Tout envoi d'email / notification doit passer par EmailQueue (flush en shutdown, après la réponse HTTP)
         echo json_encode(['success' => true, 'data' => ['id' => $userId]]);
     } catch (Exception $e) {
         http_response_code(400);
@@ -99,11 +118,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Construire les filtres
     $filters = [];
     if ($role) {
-        // Valider le rôle
         $allowedRoles = ['super_admin', 'lab', 'subaccount', 'preleveur', 'nurse', 'pro', 'patient'];
         if (in_array($role, $allowedRoles, true)) {
             $filters['role'] = $role;
         }
+    }
+    $status = $_GET['status'] ?? null;
+    if ($status && in_array($status, ['active', 'suspended', 'banned'], true)) {
+        $filters['status'] = $status;
     }
     
     // Récupérer les utilisateurs avec pagination

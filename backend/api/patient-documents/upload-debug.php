@@ -1,7 +1,15 @@
 <?php
 /**
- * Version de debug de upload.php qui log tout
+ * Version de debug de upload.php qui log tout — désactivée en production (APP_ENV=production).
  */
+require_once __DIR__ . '/../../config/database.php';
+
+if (strtolower(trim((string) ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: ''))) === 'production') {
+    http_response_code(404);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'error' => 'Not found']);
+    exit;
+}
 
 // Log de démarrage
 error_log("=== UPLOAD DEBUG START ===");
@@ -14,8 +22,6 @@ error_log("ENV loaded: BACKEND_KEK_HEX=" . (isset($_ENV['BACKEND_KEK_HEX']) ? 'S
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Crypto.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 
@@ -77,14 +83,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!isset($_FILES['file'])) {
             throw new Exception('$_FILES[file] not set');
         }
-        
+
         if ($_FILES['file']['error'] !== UPLOAD_ERR_OK) {
             throw new Exception('Upload error code: ' . $_FILES['file']['error']);
         }
-        
+
         error_log("File upload OK - Size: " . $_FILES['file']['size']);
-        
-        // Continue avec le code normal...
+
         echo json_encode([
             'success' => true,
             'debug' => [
@@ -93,16 +98,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'file_size' => $_FILES['file']['size'],
                 'document_type' => $_POST['document_type'] ?? 'N/A',
                 'env_loaded' => isset($_ENV['BACKEND_KEK_HEX']),
-            ]
+            ],
         ]);
-        
     } catch (Exception $e) {
         error_log("ERROR: " . $e->getMessage());
         http_response_code(500);
         echo json_encode([
             'success' => false,
             'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
+            'trace' => $e->getTraceAsString(),
         ]);
     }
 } else {
@@ -112,7 +116,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 error_log("=== UPLOAD DEBUG END ===");
-
-
-
-

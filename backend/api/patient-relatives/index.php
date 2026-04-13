@@ -87,7 +87,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             exit;
         }
 
-        $id = $relativeModel->create($data, $user['user_id']);
+        // Whitelist stricte : n'utiliser que les champs du proche (ne jamais toucher profiles)
+        $allowedKeys = ['first_name', 'last_name', 'relationship_type', 'gender', 'birth_date', 'email', 'phone', 'address'];
+        $safeData = array_intersect_key($data, array_flip($allowedKeys));
+
+        $id = $relativeModel->create($safeData, $user['user_id']);
 
         // Récupérer le proche créé pour le retourner
         $relative = $relativeModel->getById($id, $user['user_id']);

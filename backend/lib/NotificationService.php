@@ -146,6 +146,7 @@ class NotificationService
             EmailQueue::add('appointment_created', $appointmentData['patient_email'], [
                 'type' => $appointmentData['type'] ?? 'blood_test',
                 'scheduled_at' => $appointmentData['scheduled_at'] ?? null,
+                'form_data' => $appointmentData['form_data'] ?? null,
             ]);
         }
         
@@ -155,24 +156,409 @@ class NotificationService
     }
 
     /**
+     * Une seule notification cloche (patient + créateur + admins) lorsque plusieurs RDV
+     * sont créés dans le même lot (creation_batch_id + creation_batch_size).
+     *
+     * @param array<int,array<string,mixed>> $rows Lignes appointments avec category_name (JOIN care_categories)
+     */
+    public function notifyBatchAppointmentCreationCompleted(
+        string $batchId,
+        string $patientId,
+        array $rows,
+        array $lastAppointmentData,
+        ?string $patientDisplayNameForNurseBlood = null
+    ): void {
+        if ($rows === []) {
+            return;
+        }
+
+        $n = count($rows);
+        $ids = array_map(static fn ($r) => (string) ($r['id'] ?? ''), $rows);
+
+        $detailParts = [];
+        $batchSummaries = [];
+        foreach ($rows as $r) {
+            $cat = isset($r['category_name']) && trim((string) $r['category_name']) !== ''
+                ? trim((string) $r['category_name'])
+                : ((($r['type'] ?? '') === 'blood_test') ? 'Prise de sang' : 'Soins infirmiers');
+            $dtStr = '';
+            if (!empty($r['scheduled_at'])) {
+                try {
+                    $dtStr = (new DateTime((string) $r['scheduled_at']))->format('d/m/Y');
+                } catch (Exception $e) {
+                    $dtStr = '';
+                }
+            }
+            $detailParts[] = $dtStr !== '' ? "{$cat} le {$dtStr}" : $cat;
+            $batchSummaries[] = $dtStr !== '' ? "{$cat} — {$dtStr}" : $cat;
+        }
+
+        $titlePatient = $n > 1 ? 'Nouveaux rendez-vous créés' : 'Nouveau rendez-vous créé';
+        $messagePatient = $n > 1
+            ? "Vos {$n} rendez-vous ont été créés avec succès : " . implode(' · ', $detailParts) . '.'
+            : 'Votre rendez-vous a été créé avec succès.';
+
+        try {
+            $this->createNotification(
+                $patientId,
+                'appointment_created',
+                $titlePatient,
+                $messagePatient,
+                [
+                    'appointment_id' => $ids[0],
+                    'appointment_ids' => $ids,
+                    'creation_batch_id' => $batchId,
+                ]
+            );
+        } catch (Exception $e) {
+            error_log('notifyBatchAppointmentCreationCompleted patient: ' . $e->getMessage());
+        }
+
+        if (!empty($lastAppointmentData['patient_email'])) {
+            EmailQueue::add('appointment_created', $lastAppointmentData['patient_email'], [
+                'batch_summaries' => $batchSummaries,
+                'type' => $rows[0]['type'] ?? 'nursing',
+                'scheduled_at' => $rows[0]['scheduled_at'] ?? null,
+                'form_data' => $lastAppointmentData['form_data'] ?? null,
+            ]);
+        }
+
+        $first = $rows[0];
+        $types = array_unique(array_map(static fn ($r) => (string) ($r['type'] ?? ''), $rows));
+        $typeLabel = count($types) === 1 && ($types[0] === 'blood_test')
+            ? 'Prise de sang'
+            : (count($types) === 1 ? 'Soins infirmiers' : 'Rendez-vous');
+        $titleAdmin = $n > 1 ? 'Nouveaux rendez-vous créés' : 'Nouveau rendez-vous créé';
+        $messageAdmin = $n > 1
+            ? "{$n} nouveaux rendez-vous de type « {$typeLabel} » ont été créés et nécessitent votre attention."
+            : "Un nouveau rendez-vous de type « {$typeLabel} » a été créé et nécessite votre attention.";
+
+        try {
+            $stmt = $this->db->prepare('
+                SELECT id FROM profiles WHERE role = ? AND id IS NOT NULL
+            ');
+            $stmt->execute(['super_admin']);
+            $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($admins as $admin) {
+                try {
+                    $this->createNotification(
+                        $admin['id'],
+                        'new_appointment_created',
+                        $titleAdmin,
+                        $messageAdmin,
+                        [
+                            'appointment_id' => $ids[0],
+                            'appointment_ids' => $ids,
+                            'creation_batch_id' => $batchId,
+                            'type' => $rows[0]['type'] ?? '',
+                        ]
+                    );
+                } catch (Exception $e) {
+                    error_log('notifyBatchAppointmentCreationCompleted admin: ' . $e->getMessage());
+                }
+            }
+        } catch (Exception $e) {
+            error_log('notifyBatchAppointmentCreationCompleted admins list: ' . $e->getMessage());
+        }
+
+        $allPending = true;
+        foreach ($rows as $r) {
+            if (($r['status'] ?? '') !== 'pending') {
+                $allPending = false;
+                break;
+            }
+        }
+        $creatorRole = (string) ($first['created_by_role'] ?? '');
+        $creatorId = (string) ($first['created_by'] ?? '');
+        if (
+            !$allPending
+            || $creatorId === ''
+            || !in_array($creatorRole, ['pro', 'nurse', 'lab', 'subaccount'], true)
+        ) {
+            return;
+        }
+
+        $allBloodTest = true;
+        foreach ($rows as $r) {
+            if (($r['type'] ?? '') !== 'blood_test') {
+                $allBloodTest = false;
+                break;
+            }
+        }
+
+        if ($creatorRole === 'nurse' && $allBloodTest) {
+            $patient = trim((string) ($patientDisplayNameForNurseBlood ?? '')) !== ''
+                ? trim((string) $patientDisplayNameForNurseBlood)
+                : 'le patient';
+            require_once __DIR__ . '/../models/User.php';
+            $userModel = new User();
+            $lines = [];
+            foreach ($rows as $r) {
+                $labId = $r['assigned_lab_id'] ?? null;
+                $labName = null;
+                if (!empty($labId)) {
+                    $names = $userModel->getDisplayNamesByIds([(string) $labId]);
+                    $labName = $names[(string) $labId] ?? null;
+                }
+                $care = isset($r['category_name']) && trim((string) $r['category_name']) !== ''
+                    ? trim((string) $r['category_name'])
+                    : 'Prise de sang';
+                $when = '';
+                if (!empty($r['scheduled_at'])) {
+                    try {
+                        $when = (new DateTime((string) $r['scheduled_at']))->format('d/m/Y \à H\hi');
+                    } catch (Exception $e) {
+                        $when = '';
+                    }
+                }
+                $labPart = ($labName !== null && trim((string) $labName) !== '')
+                    ? 'Laboratoire « ' . trim((string) $labName) . ' »'
+                    : 'Un laboratoire';
+                $line = $labPart . ' : ' . $care;
+                if ($when !== '') {
+                    $line .= ' — ' . $when;
+                }
+                $lines[] = $line;
+            }
+            $message = 'Les laboratoires doivent confirmer ' . ($n > 1 ? "les {$n} rendez-vous" : 'le rendez-vous') . ' de '
+                . $patient . ' : ' . implode(' ; ', $lines) . '. Vous serez informé dès validation.';
+
+            try {
+                $this->createNotification(
+                    $creatorId,
+                    'appointment_request_sent',
+                    'Le laboratoire doit confirmer',
+                    $message,
+                    ['appointment_id' => $ids[0], 'appointment_ids' => $ids, 'creation_batch_id' => $batchId]
+                );
+            } catch (Exception $e) {
+                error_log('notifyBatchAppointmentCreationCompleted nurse blood: ' . $e->getMessage());
+            }
+
+            return;
+        }
+
+        $rdvSummaries = [];
+        foreach ($rows as $r) {
+            $aptType = (string) ($r['type'] ?? 'nursing');
+            $catName = isset($r['category_name']) && trim((string) $r['category_name']) !== ''
+                ? trim((string) $r['category_name'])
+                : (($aptType === 'blood_test') ? 'Prise de sang' : 'Soins infirmiers');
+            $datePart = '';
+            $timePart = '';
+            if (!empty($r['scheduled_at'])) {
+                try {
+                    $dt = new DateTime((string) $r['scheduled_at']);
+                    $datePart = $dt->format('d/m/Y');
+                    $timePart = $dt->format('H\hi');
+                } catch (Exception $e) {
+                    $datePart = '';
+                    $timePart = '';
+                }
+            }
+            $when = '';
+            if ($datePart !== '') {
+                $when = ' du ' . $datePart;
+                if ($timePart !== '') {
+                    $when .= ' à ' . $timePart;
+                }
+            }
+            $rdvSummaries[] = '« ' . $catName . ' »' . $when;
+        }
+
+        try {
+            if ($creatorRole !== '' && in_array($creatorRole, ['pro', 'nurse', 'lab', 'subaccount'], true)) {
+                $firstType = (string) ($first['type'] ?? 'nursing');
+                if ($firstType === 'blood_test') {
+                    $title = 'En attente du laboratoire';
+                    $message = 'Vos ' . $n . ' demande' . ($n > 1 ? 's' : '') . ' de prise de sang '
+                        . implode(', ', $rdvSummaries)
+                        . ' ' . ($n > 1 ? 'sont' : 'est') . ' en attente. Le laboratoire concerné doit confirmer chaque rendez-vous. '
+                        . 'Vous serez informé dès qu\'ils auront été validés.';
+                } else {
+                    $title = 'En attente d’un infirmier';
+                    $message = 'Vos ' . $n . ' demande' . ($n > 1 ? 's' : '') . ' de soins infirmiers '
+                        . implode(', ', $rdvSummaries)
+                        . ' ' . ($n > 1 ? 'sont' : 'est') . ' en attente. Un infirmier doit accepter chaque rendez-vous. '
+                        . 'Vous serez informé dès acceptation.';
+                }
+            } else {
+                $title = 'Demande envoyée';
+                $message = 'Vos ' . $n . ' demandes de rendez-vous (' . implode('; ', $rdvSummaries) . ') ont bien été envoyées. '
+                    . 'Vous serez informé dès qu\'un professionnel aura accepté votre demande.';
+            }
+            $this->createNotification(
+                $creatorId,
+                'appointment_request_sent',
+                $title,
+                $message,
+                ['appointment_id' => $ids[0], 'appointment_ids' => $ids, 'creation_batch_id' => $batchId]
+            );
+        } catch (Exception $e) {
+            error_log('notifyBatchAppointmentCreationCompleted creator: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Notifie le créateur (pro, infirmier, lab, sous-compte) que sa demande de RDV en attente a bien été transmise.
+     * Précise qui doit valider : laboratoire (prise de sang) ou infirmier (soins).
+     *
+     * @param string|null $creatorRole Rôle du créateur (pro, nurse, lab, subaccount) pour adapter le libellé
+     */
+    public function notifyProfessionalRequestSent(
+        string $creatorId,
+        string $appointmentId,
+        string $appointmentType,
+        string $scheduledAt,
+        ?string $categoryName = null,
+        ?string $creatorRole = null
+    ): void {
+        try {
+            $rdvSummary = $categoryName !== null && trim($categoryName) !== ''
+                ? trim($categoryName)
+                : (($appointmentType === 'blood_test') ? 'Prise de sang' : 'Soins infirmiers');
+            $datePart = '';
+            $timePart = '';
+            if ($scheduledAt !== '') {
+                try {
+                    $dt = new DateTime($scheduledAt);
+                    $datePart = $dt->format('d/m/Y');
+                    $timePart = $dt->format('H\hi');
+                } catch (Exception $e) {
+                    $datePart = '';
+                    $timePart = '';
+                }
+            }
+            $when = '';
+            if ($datePart !== '') {
+                $when = ' du ' . $datePart;
+                if ($timePart !== '') {
+                    $when .= ' à ' . $timePart;
+                }
+            }
+
+            if ($creatorRole !== null && in_array($creatorRole, ['pro', 'nurse', 'lab', 'subaccount'], true)) {
+                if ($appointmentType === 'blood_test') {
+                    $message = 'Votre demande de prise de sang « ' . $rdvSummary . ' »' . $when
+                        . ' est en attente. Le laboratoire concerné doit confirmer le rendez-vous. '
+                        . 'Vous serez informé dès qu\'il aura été validé.';
+                    $title = 'En attente du laboratoire';
+                } else {
+                    $message = 'Votre demande de soins infirmiers « ' . $rdvSummary . ' »' . $when
+                        . ' est en attente. Un infirmier doit accepter le rendez-vous. '
+                        . 'Vous serez informé dès acceptation.';
+                    $title = 'En attente d’un infirmier';
+                }
+            } else {
+                $message = 'Votre demande de rendez-vous « ' . $rdvSummary . ' »';
+                if ($datePart !== '') {
+                    $message .= ' du ' . $datePart;
+                }
+                $message .= ' a bien été envoyée. Vous serez informé dès qu\'un professionnel aura accepté votre demande.';
+                $title = 'Demande envoyée';
+            }
+
+            $this->createNotification(
+                $creatorId,
+                'appointment_request_sent',
+                $title,
+                $message,
+                ['appointment_id' => $appointmentId]
+            );
+        } catch (Exception $e) {
+            error_log('notifyProfessionalRequestSent: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Infirmier : prise de sang en attente — le laboratoire assigné (ou un labo de la zone) doit confirmer.
+     */
+    public function notifyNurseBloodTestLabAwaitingConfirmation(
+        string $nurseId,
+        string $appointmentId,
+        string $patientDisplayName,
+        string $scheduledAt,
+        ?string $labDisplayName,
+        ?string $categoryName = null
+    ): void {
+        try {
+            $care = $categoryName !== null && trim($categoryName) !== ''
+                ? trim($categoryName)
+                : 'Prise de sang';
+            $when = '';
+            if ($scheduledAt !== '') {
+                try {
+                    $dt = new DateTime($scheduledAt);
+                    $when = $dt->format('d/m/Y \à H\hi');
+                } catch (Exception $e) {
+                    $when = '';
+                }
+            }
+            $patient = trim($patientDisplayName) !== '' ? trim($patientDisplayName) : 'le patient';
+            if ($labDisplayName !== null && trim($labDisplayName) !== '') {
+                $lab = trim($labDisplayName);
+                $message = 'Le laboratoire « ' . $lab . ' » doit confirmer le rendez-vous (' . $care . ') de '
+                    . $patient;
+            } else {
+                $message = 'Un laboratoire doit confirmer le rendez-vous (' . $care . ') de ' . $patient;
+            }
+            if ($when !== '') {
+                $message .= ' prévu le ' . $when . '.';
+            } else {
+                $message .= '.';
+            }
+            $message .= ' Vous serez informé dès validation.';
+
+            $this->createNotification(
+                $nurseId,
+                'appointment_request_sent',
+                'Le laboratoire doit confirmer',
+                $message,
+                ['appointment_id' => $appointmentId]
+            );
+        } catch (Exception $e) {
+            error_log('notifyNurseBloodTestLabAwaitingConfirmation: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Notifie la confirmation d'un rendez-vous
      */
     public function notifyAppointmentConfirmed(string $appointmentId, array $appointmentData): void
     {
-        // Notification au patient
+        $care = isset($appointmentData['category_name']) && trim((string) $appointmentData['category_name']) !== ''
+            ? trim((string) $appointmentData['category_name'])
+            : ((($appointmentData['type'] ?? 'blood_test') === 'blood_test') ? 'Prise de sang' : 'Soins infirmiers');
+        $when = '';
+        if (!empty($appointmentData['scheduled_at'])) {
+            try {
+                $d = new DateTime((string) $appointmentData['scheduled_at']);
+                $when = $d->format('d/m/Y \à H\hi');
+            } catch (Exception $e) {
+                $when = '';
+            }
+        }
+        $message = 'Votre rendez-vous « ' . $care . ' » a été confirmé';
+        if ($when !== '') {
+            $message .= ' pour le ' . $when;
+        }
+        $message .= '. Retrouvez le détail et les consignes dans votre espace patient.';
+
         $this->createNotification(
             $appointmentData['patient_id'],
             'appointment_confirmed',
             'Rendez-vous confirmé',
-            'Votre rendez-vous a été confirmé',
+            $message,
             ['appointment_id' => $appointmentId]
         );
         
-        // Email confirmation au patient (async)
+        // Email confirmation au patient (async) avec lien vers détail du RDV
         if (!empty($appointmentData['patient_email'])) {
             EmailQueue::add('appointment_confirmation', $appointmentData['patient_email'], [
+                'id' => $appointmentId,
                 'scheduled_at' => $appointmentData['scheduled_at'] ?? null,
                 'type' => ($appointmentData['type'] ?? 'blood_test') === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers',
+                'form_data' => $appointmentData['form_data'] ?? null,
             ]);
         }
         
@@ -186,6 +572,322 @@ class NotificationService
             } catch (Exception $e) {
                 // Ne pas bloquer le processus si l'envoi SMS échoue
             }
+        }
+    }
+
+    /**
+     * Notifie le créateur du RDV (pro, infirmier, lab, sous-compte) que la prise en charge est confirmée.
+     */
+    public function notifyCreatorAppointmentConfirmed(
+        string $creatorId,
+        string $appointmentId,
+        string $appointmentType,
+        ?string $categoryName = null,
+        ?string $creatorRole = null,
+        ?string $scheduledAt = null
+    ): void {
+        $care = $categoryName !== null && trim($categoryName) !== ''
+            ? trim($categoryName)
+            : (($appointmentType === 'blood_test') ? 'Prise de sang' : 'Soins infirmiers');
+        $when = '';
+        if ($scheduledAt !== null && $scheduledAt !== '') {
+            try {
+                $d = new DateTime((string) $scheduledAt);
+                $when = ' prévu le ' . $d->format('d/m/Y \à H\hi');
+            } catch (Exception $e) {
+                $when = '';
+            }
+        }
+        $message = 'Votre demande « ' . $care . ' »' . $when . ' a été confirmée. Le patient a été informé.';
+        if ($creatorRole === 'nurse' || $creatorRole === 'lab' || $creatorRole === 'subaccount') {
+            $message .= ' Vous pouvez suivre le rendez-vous depuis votre espace.';
+        } else {
+            $message .= ' Le patient peut suivre le rendez-vous dans son espace.';
+        }
+        $this->createNotification(
+            $creatorId,
+            'appointment_confirmed_for_creator',
+            'Rendez-vous confirmé',
+            $message,
+            ['appointment_id' => $appointmentId]
+        );
+    }
+
+    /**
+     * Lot multisoins (nursing) : une seule notification cloche par destinataire (patient, infirmier, créateur pro/lab).
+     *
+     * @param array<int,array<string,mixed>> $batchRows lignes avec id, scheduled_at, category_name
+     */
+    public function notifyNursingBatchConfirmed(
+        string $primaryAppointmentId,
+        string $batchId,
+        string $patientId,
+        array $batchRows,
+        ?string $patientEmail,
+        ?string $patientPhone,
+        string $patientFirstName,
+        string $patientLastName,
+        ?string $assignedNurseId,
+        ?string $createdBy,
+        ?string $createdByRole,
+        ?string $actorId,
+        string $addressForMessage = ''
+    ): void {
+        $n = count($batchRows);
+        if ($n < 2) {
+            return;
+        }
+
+        $ids = [];
+        foreach ($batchRows as $r) {
+            if (!empty($r['id'])) {
+                $ids[] = (string) $r['id'];
+            }
+        }
+        if ($ids === []) {
+            return;
+        }
+
+        $lines = [];
+        $batchSummaries = [];
+        foreach ($batchRows as $r) {
+            $cat = isset($r['category_name']) && trim((string) $r['category_name']) !== ''
+                ? trim((string) $r['category_name'])
+                : 'Soins infirmiers';
+            $when = '';
+            if (!empty($r['scheduled_at'])) {
+                try {
+                    $when = (new DateTime((string) $r['scheduled_at']))->format('d/m/Y \à H\hi');
+                } catch (Exception $e) {
+                    $when = '';
+                }
+            }
+            $lines[] = $when !== '' ? '« ' . $cat . ' » le ' . $when : '« ' . $cat . ' »';
+            $batchSummaries[] = $when !== '' ? $cat . ' — ' . $when : $cat;
+        }
+        $linesJoined = implode(' · ', $lines);
+
+        $patientName = trim($patientFirstName . ' ' . $patientLastName);
+        if ($patientName === '') {
+            $patientName = 'le patient';
+        }
+
+        $dataPayload = [
+            'appointment_id' => $ids[0],
+            'appointment_ids' => $ids,
+            'creation_batch_id' => $batchId,
+        ];
+
+        // Patient
+        try {
+            $this->createNotification(
+                $patientId,
+                'appointment_confirmed',
+                'Rendez-vous confirmés',
+                "Vos {$n} rendez-vous ont été confirmés : {$linesJoined}. Retrouvez le détail dans votre espace patient.",
+                $dataPayload
+            );
+        } catch (Exception $e) {
+            error_log('notifyNursingBatchConfirmed patient: ' . $e->getMessage());
+        }
+
+        if (!empty($patientEmail)) {
+            EmailQueue::add('appointment_confirmation', $patientEmail, [
+                'id' => $primaryAppointmentId,
+                'scheduled_at' => $batchRows[0]['scheduled_at'] ?? null,
+                'type' => 'nursing',
+                'form_data' => null,
+                'batch_summaries' => $batchSummaries,
+            ]);
+        }
+
+        if (!empty($patientPhone) && $this->twilio !== null) {
+            try {
+                $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://app.oneandlab.fr';
+                $url = rtrim($baseUrl, '/') . '/patient/appointments/' . $ids[0];
+                $this->twilio->sendSMS(
+                    $patientPhone,
+                    "[CONFIRME] Vos {$n} rendez-vous sont confirmés. Détail : {$url}"
+                );
+            } catch (Exception $e) {
+                // Ne pas bloquer
+            }
+        }
+
+        // Infirmier ayant accepté le lot (une seule notif)
+        if (!empty($assignedNurseId)) {
+            $addr = trim($addressForMessage);
+            $msg = "Vous avez accepté le lot de {$n} soins pour {$patientName} : {$linesJoined}.";
+            if ($addr !== '') {
+                $msg .= ' Adresse : ' . $addr . '.';
+            }
+            try {
+                $this->createNotification(
+                    (string) $assignedNurseId,
+                    'appointment_accepted',
+                    'Lot multisoins accepté',
+                    $msg,
+                    array_merge($dataPayload, [
+                        'patient_name' => $patientName,
+                        'batch_multisoins' => true,
+                    ])
+                );
+            } catch (Exception $e) {
+                error_log('notifyNursingBatchConfirmed nurse: ' . $e->getMessage());
+            }
+        }
+
+        // Créateur (pro / infirmier / lab) — pas l’acteur qui vient d’accepter, pas le patient si c’est lui seul
+        $createdBy = $createdBy !== null ? (string) $createdBy : '';
+        $creatorRole = is_string($createdByRole) ? $createdByRole : '';
+        $actorIdStr = $actorId !== null ? (string) $actorId : '';
+        $sameAsPatient = $createdBy !== '' && (string) $patientId === $createdBy;
+
+        if (
+            $createdBy !== ''
+            && in_array($creatorRole, ['pro', 'nurse', 'lab', 'subaccount'], true)
+            && $createdBy !== $actorIdStr
+            && !$sameAsPatient
+        ) {
+            $message = "La demande de {$n} soins infirmiers a été confirmée ({$linesJoined}). Le patient a été informé.";
+            if (in_array($creatorRole, ['nurse', 'lab', 'subaccount'], true)) {
+                $message .= ' Vous pouvez suivre les rendez-vous depuis votre espace.';
+            } else {
+                $message .= ' Le patient peut suivre les rendez-vous dans son espace.';
+            }
+            try {
+                $this->createNotification(
+                    $createdBy,
+                    'appointment_confirmed_for_creator',
+                    'Rendez-vous confirmés',
+                    $message,
+                    $dataPayload
+                );
+            } catch (Exception $e) {
+                error_log('notifyNursingBatchConfirmed creator: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Infirmier ayant partagé le lien : le RDV a été accepté par un confrère (information — pas de lien cliquable vers le détail).
+     */
+    public function notifyShareLinkAppointmentTakenByColleague(
+        string $sharerNurseId,
+        string $acceptingNurseId,
+        string $appointmentId
+    ): void {
+        $first = '';
+        $last = '';
+        try {
+            require_once __DIR__ . '/../models/User.php';
+            $userModel = new User();
+            $acceptor = $userModel->getById($acceptingNurseId, 'system', 'system');
+            if ($acceptor) {
+                $first = trim((string) ($acceptor['first_name'] ?? ''));
+                $last = trim((string) ($acceptor['last_name'] ?? ''));
+            }
+        } catch (Exception $e) {
+            error_log('notifyShareLinkAppointmentTakenByColleague name: ' . $e->getMessage());
+        }
+        $name = trim($first . ' ' . $last);
+        if ($name === '') {
+            $name = 'Un confrère';
+        }
+        $message = 'Votre demande de relais a été acceptée par ' . $name . '.';
+        try {
+            $this->createNotification(
+                $sharerNurseId,
+                'share_link_appointment_taken',
+                'RDV accepté',
+                $message,
+                [
+                    'appointment_id' => $appointmentId,
+                    'accepting_nurse_id' => $acceptingNurseId,
+                    'no_navigate' => true,
+                ]
+            );
+        } catch (Exception $e) {
+            error_log('notifyShareLinkAppointmentTakenByColleague: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Lab / sous-compte / préleveur : confirmation d'une prise de sang (symétrique du message infirmier).
+     */
+    public function notifyLabBloodTestAccepted(
+        string $recipientId,
+        string $appointmentId,
+        array $appointmentData
+    ): void {
+        try {
+            $patientName = 'le patient';
+            if (!empty($appointmentData['patient_first_name']) || !empty($appointmentData['patient_last_name'])) {
+                $n = trim(($appointmentData['patient_first_name'] ?? '') . ' ' . ($appointmentData['patient_last_name'] ?? ''));
+                if ($n !== '') {
+                    $patientName = $n;
+                }
+            }
+            $care = isset($appointmentData['category_name']) && trim((string) $appointmentData['category_name']) !== ''
+                ? trim((string) $appointmentData['category_name'])
+                : 'Prise de sang';
+            $when = '';
+            if (!empty($appointmentData['scheduled_at'])) {
+                try {
+                    $d = new DateTime((string) $appointmentData['scheduled_at']);
+                    $when = $d->format('d/m/Y \à H\hi');
+                } catch (Exception $e) {
+                    $when = '';
+                }
+            }
+            $message = 'Vous avez confirmé le rendez-vous de prélèvement pour ' . $patientName . ' (« ' . $care . ' »)';
+            if ($when !== '') {
+                $message .= ' le ' . $when;
+            }
+            $message .= '.';
+
+            $this->createNotification(
+                $recipientId,
+                'appointment_accepted_lab',
+                'Rendez-vous confirmé',
+                $message,
+                ['appointment_id' => $appointmentId]
+            );
+        } catch (Exception $e) {
+            error_log('notifyLabBloodTestAccepted: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Réassignation manuelle : informe l’infirmier ou le préleveur (ou le lab ciblé) qu’un RDV lui est attribué.
+     */
+    public function notifyAppointmentReassigned(
+        string $recipientId,
+        string $appointmentId,
+        string $appointmentType,
+        string $patientDisplayName,
+        string $scheduledLabel,
+        ?string $categoryName = null
+    ): void {
+        try {
+            $kind = $appointmentType === 'blood_test' ? 'prise de sang' : 'soins infirmiers';
+            $care = ($categoryName !== null && trim($categoryName) !== '') ? trim($categoryName) : ($appointmentType === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers');
+            $patient = trim($patientDisplayName) !== '' ? trim($patientDisplayName) : 'le patient';
+            $message = 'Un rendez-vous de ' . $kind . ' (« ' . $care . ' ») pour ' . $patient;
+            if ($scheduledLabel !== '') {
+                $message .= ', prévu le ' . $scheduledLabel;
+            }
+            $message .= ', vous a été assigné. Ouvrez le détail pour le préparer.';
+
+            $this->createNotification(
+                $recipientId,
+                'appointment_reassigned',
+                'Nouveau rendez-vous assigné',
+                $message,
+                ['appointment_id' => $appointmentId]
+            );
+        } catch (Exception $e) {
+            error_log('notifyAppointmentReassigned: ' . $e->getMessage());
         }
     }
 
@@ -211,8 +913,12 @@ class NotificationService
         }
         
         if (!empty($appointmentData['scheduled_at'])) {
-            $date = new DateTime($appointmentData['scheduled_at']);
-            $scheduledAt = $date->format('d/m/Y');
+            try {
+                $date = new DateTime($appointmentData['scheduled_at']);
+                $scheduledAt = $date->format('d/m/Y \à H\hi');
+            } catch (Exception $e) {
+                $scheduledAt = '';
+            }
         }
         
         if (!empty($appointmentData['category_name'])) {
@@ -305,7 +1011,16 @@ class NotificationService
                 EmailQueue::add('appointment_canceled_patient', $appointmentData['patient_email'], [
                     'actor_display_label' => $actorDisplayLabel ?? 'Le professionnel de santé',
                     'scheduled_at' => $appointmentData['scheduled_at'] ?? null,
+                    'form_data' => $appointmentData['form_data'] ?? null,
                 ]);
+            }
+            // SMS au patient (annulation)
+            if (!empty($appointmentData['patient_phone']) && $this->twilio !== null) {
+                try {
+                    $this->twilio->sendAppointmentCanceled($appointmentData['patient_phone']);
+                } catch (Exception $e) {
+                    // Ne pas bloquer si l'envoi SMS échoue
+                }
             }
             // Notification aux admins + préleveur / lab / infirmier : "Le laboratoire NOM a annulé le RDV de PRÉNOM NOM"
             if ($actorDisplayLabel !== null && $actorDisplayLabel !== '' && $patientName !== '') {
@@ -399,6 +1114,30 @@ class NotificationService
     }
 
     /**
+     * Notifie le patient que le RDV a expiré (aucun pro disponible)
+     */
+    public function notifyAppointmentExpired(string $appointmentId, array $appointmentData): void
+    {
+        if (empty($appointmentData['patient_id'])) {
+            return;
+        }
+        $this->createNotification(
+            $appointmentData['patient_id'],
+            'appointment_expired',
+            'Aucun professionnel disponible',
+            'Désolé, aucun professionnel n’a pu confirmer ce créneau à temps. Vous pouvez choisir une autre date depuis la prise de rendez-vous.',
+            ['appointment_id' => $appointmentId]
+        );
+        if (!empty($appointmentData['patient_phone']) && $this->twilio !== null) {
+            try {
+                $this->twilio->sendAppointmentExpired($appointmentData['patient_phone']);
+            } catch (Exception $e) {
+                // Ne pas bloquer si l'envoi SMS échoue
+            }
+        }
+    }
+
+    /**
      * Notifie le refus d'un rendez-vous par l'infirmier
      */
     public function notifyAppointmentRefused(string $appointmentId, string $nurseId, array $appointmentData): void
@@ -443,7 +1182,7 @@ class NotificationService
             $patientId,
             'appointment_started',
             'Soin en cours',
-            'Votre professionnel a commencé le soin',
+            'Votre professionnel a commencé le soin pour ce rendez-vous. Vous pouvez suivre l’avancement dans le détail du rendez-vous.',
             ['appointment_id' => $appointmentId]
         );
     }
@@ -468,9 +1207,10 @@ class NotificationService
         ?string $assignedNurseId = null
     ): void {
         $patientName = trim(($patientFirstName ?? '') . ' ' . ($patientLastName ?? ''));
-        $messageToPatient = 'Votre rendez-vous est terminé. N\'oubliez pas de laisser un avis !';
+        $reviewHint = ' Laisser un avis : ouvrez cette notification pour accéder au détail du rendez-vous.';
+        $messageToPatient = 'Votre rendez-vous est terminé.' . $reviewHint;
         if ($actorDisplayLabel !== null && $actorDisplayLabel !== '') {
-            $messageToPatient = $actorDisplayLabel . ' a terminé votre rendez-vous.';
+            $messageToPatient = $actorDisplayLabel . ' a terminé votre rendez-vous.' . $reviewHint;
         }
         // Notification web au patient
         $this->createNotification(

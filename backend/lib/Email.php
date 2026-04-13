@@ -33,12 +33,16 @@ class Email
 
     /**
      * Envoie un email via SMTP
+     * @param string|null $replyToEmail Si fourni, définit Reply-To (ex. formulaire contact)
+     * @param string|null $replyToName Nom pour Reply-To
      */
     public function send(
         string $to,
         string $subject,
         string $body,
-        bool $isHTML = true
+        bool $isHTML = true,
+        ?string $replyToEmail = null,
+        ?string $replyToName = null
     ): bool {
         try {
             $mail = new PHPMailer(true);
@@ -63,7 +67,11 @@ class Email
             
             // Expéditeur
             $mail->setFrom($this->fromEmail, $this->fromName);
-            $mail->addReplyTo($this->fromEmail, $this->fromName);
+            if ($replyToEmail !== null && $replyToEmail !== '') {
+                $mail->addReplyTo($replyToEmail, $replyToName ?? $replyToEmail);
+            } else {
+                $mail->addReplyTo($this->fromEmail, $this->fromName);
+            }
             
             // Destinataire
             $mail->addAddress($to);
@@ -79,6 +87,41 @@ class Email
         } catch (Exception $e) {
             return false;
         }
+    }
+
+    /**
+     * Formate date + créneau pour les emails (format français, créneau au lieu de l'heure)
+     * @param string|null $scheduledAt ISO datetime
+     * @param array|null $formData form_data avec availability (JSON string ou array)
+     * @return string ex: "05/03/2025 – Toute la journée" ou "05/03/2025 – 9h - 11h"
+     */
+    private function formatDateAndCreneau(?string $scheduledAt, ?array $formData): string
+    {
+        $datePart = '';
+        if ($scheduledAt) {
+            try {
+                $dt = new DateTime($scheduledAt);
+                $datePart = $dt->format('d/m/Y');
+            } catch (Exception $e) {
+                $datePart = $scheduledAt;
+            }
+        }
+        $creneauPart = 'Toute la journée';
+        $availability = $formData['availability'] ?? null;
+        if ($availability) {
+            $av = is_string($availability) ? json_decode($availability, true) : $availability;
+            if (is_array($av)) {
+                if (($av['type'] ?? '') === 'all_day') {
+                    $creneauPart = 'Toute la journée';
+                } elseif (($av['type'] ?? '') === 'custom' && !empty($av['range']) && is_array($av['range']) && count($av['range']) >= 2) {
+                    $creneauPart = (int) $av['range'][0] . 'h - ' . (int) $av['range'][1] . 'h';
+                }
+            }
+        }
+        if ($datePart && $creneauPart) {
+            return $datePart . ' – ' . $creneauPart;
+        }
+        return $datePart ?: $creneauPart;
     }
 
     /**
@@ -139,15 +182,31 @@ class Email
 
     public function sendAppointmentCreated(string $to, array $p): bool
     {
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
+        if (!empty($p['batch_summaries']) && is_array($p['batch_summaries'])) {
+            $n = count($p['batch_summaries']);
+            $content = '<p>Vos ' . $n . ' rendez-vous ont bien été enregistrés.</p>';
+            foreach ($p['batch_summaries'] as $line) {
+                $content .= '<p>• ' . htmlspecialchars((string) $line) . '</p>';
+            }
+            $content .= '<p>Ils seront pris en charge par un professionnel sous peu. Vous recevrez une confirmation par email.</p>';
+            $body = $this->baseLayout($content, [
+                'title' => 'Rendez-vous enregistrés',
+                'ctaUrl' => $baseUrl . '/patient',
+                'ctaLabel' => 'Voir mes rendez-vous',
+            ]);
+
+            return $this->send($to, 'Vos rendez-vous OneAndLab ont été enregistrés', $body, true);
+        }
+
         $type = ($p['type'] ?? '') === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers';
-        $date = isset($p['scheduled_at']) ? (new DateTime($p['scheduled_at']))->format('d/m/Y à H:i') : '';
+        $dateCreneau = $this->formatDateAndCreneau($p['scheduled_at'] ?? null, $p['form_data'] ?? null);
         $content = '<p>Votre rendez-vous a bien été enregistré.</p>';
         $content .= '<p><strong>Type :</strong> ' . htmlspecialchars($type) . '</p>';
-        if ($date) {
-            $content .= '<p><strong>Date :</strong> ' . htmlspecialchars($date) . '</p>';
+        if ($dateCreneau) {
+            $content .= '<p><strong>Date et créneau :</strong> ' . htmlspecialchars($dateCreneau) . '</p>';
         }
         $content .= '<p>Il sera pris en charge par un professionnel sous peu. Vous recevrez une confirmation par email.</p>';
-        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
         $body = $this->baseLayout($content, [
             'title' => 'Rendez-vous enregistré',
             'ctaUrl' => $baseUrl . '/patient',
@@ -160,9 +219,9 @@ class Email
     {
         $actor = $p['actor_display_label'] ?? 'Le professionnel de santé';
         $content = '<p>' . htmlspecialchars($actor) . ' a annulé votre rendez-vous.</p>';
-        if (!empty($p['scheduled_at'])) {
-            $date = (new DateTime($p['scheduled_at']))->format('d/m/Y à H:i');
-            $content .= '<p><strong>Date prévue :</strong> ' . htmlspecialchars($date) . '</p>';
+        $dateCreneau = $this->formatDateAndCreneau($p['scheduled_at'] ?? null, $p['form_data'] ?? null);
+        if ($dateCreneau) {
+            $content .= '<p><strong>Date prévue :</strong> ' . htmlspecialchars($dateCreneau) . '</p>';
         }
         $content .= '<p>Vous pouvez prendre un nouveau rendez-vous à tout moment.</p>';
         $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
@@ -177,9 +236,9 @@ class Email
     public function sendNewAppointmentToPro(string $to, array $p): bool
     {
         $content = '<p>Un nouveau rendez-vous est disponible dans votre zone.</p>';
-        if (!empty($p['scheduled_at'])) {
-            $date = (new DateTime($p['scheduled_at']))->format('d/m/Y à H:i');
-            $content .= '<p><strong>Date :</strong> ' . htmlspecialchars($date) . '</p>';
+        $dateCreneau = $this->formatDateAndCreneau($p['scheduled_at'] ?? null, $p['form_data'] ?? null);
+        if ($dateCreneau) {
+            $content .= '<p><strong>Date et créneau :</strong> ' . htmlspecialchars($dateCreneau) . '</p>';
         }
         $content .= '<p>Connectez-vous à votre espace pour l\'accepter.</p>';
         $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
@@ -199,9 +258,9 @@ class Email
     public function sendAppointmentAssignedToPreleveur(string $to, array $p): bool
     {
         $content = '<p>Un rendez-vous vous a été assigné.</p>';
-        if (!empty($p['scheduled_at'])) {
-            $date = (new DateTime($p['scheduled_at']))->format('d/m/Y à H:i');
-            $content .= '<p><strong>Date :</strong> ' . htmlspecialchars($date) . '</p>';
+        $dateCreneau = $this->formatDateAndCreneau($p['scheduled_at'] ?? null, $p['form_data'] ?? null);
+        if ($dateCreneau) {
+            $content .= '<p><strong>Date et créneau :</strong> ' . htmlspecialchars($dateCreneau) . '</p>';
         }
         $content .= '<p>Consultez votre calendrier pour les détails.</p>';
         $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
@@ -294,6 +353,45 @@ class Email
     private function getAppointmentConfirmationTemplate(array $data): string
     {
         $logoUrl = $_ENV['EMAIL_LOGO_URL'] ?? ($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr') . '/images/onelogo.png';
+        if (!empty($data['batch_summaries']) && is_array($data['batch_summaries']) && count($data['batch_summaries']) > 1) {
+            $n = count($data['batch_summaries']);
+            $lines = '';
+            foreach ($data['batch_summaries'] as $line) {
+                $lines .= '<p style="margin:4px 0;">• ' . htmlspecialchars((string) $line) . '</p>';
+            }
+
+            return '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; line-height: 1.6; color: #18181b; margin: 0; padding: 0; background: #fafafa; }
+        .wrap { max-width: 480px; margin: 0 auto; padding: 40px 24px; }
+        .card { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .logo { display: block; margin-bottom: 24px; height: 32px; }
+        h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; color: #18181b; }
+        p { margin: 0 0 12px; font-size: 15px; color: #3f3f46; }
+        .info-box { background: #f4f4f5; padding: 16px; margin: 16px 0; border-radius: 8px; border-left: 4px solid #18181b; }
+        .footer { text-align: center; margin-top: 32px; font-size: 12px; color: #71717a; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <img src="' . htmlspecialchars($logoUrl) . '" alt="OneAndLab" class="logo" />
+            <h1>Vos rendez-vous sont confirmés</h1>
+            <p>Bonjour,</p>
+            <p>Vos ' . (int) $n . ' rendez-vous ont été confirmés avec succès.</p>
+            <div class="info-box">' . $lines . '</div>
+            <p>Vous recevrez un rappel 30 minutes avant chaque rendez-vous.</p>
+        </div>
+        <p class="footer">OneAndLab — Prise de sang et soins infirmiers à domicile</p>
+    </div>
+</body>
+</html>';
+        }
+
         return '<!DOCTYPE html>
 <html>
 <head>
@@ -318,8 +416,8 @@ class Email
             <p>Bonjour,</p>
             <p>Votre rendez-vous a été confirmé avec succès.</p>
             <div class="info-box">
-                <p style="margin:0;"><strong>Date et heure :</strong> ' . htmlspecialchars($data['scheduled_at'] ?? '') . '</p>
-                <p style="margin:8px 0 0 0;"><strong>Type :</strong> ' . htmlspecialchars($data['type'] ?? '') . '</p>
+                <p style="margin:0;"><strong>Date et créneau :</strong> ' . htmlspecialchars($this->formatDateAndCreneau($data['scheduled_at'] ?? null, $data['form_data'] ?? null) ?: '-') . '</p>
+                <p style="margin:8px 0 0 0;"><strong>Type :</strong> ' . htmlspecialchars(($data['type'] ?? '') === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers') . '</p>
             </div>
             <p>Vous recevrez un rappel 30 minutes avant votre rendez-vous.</p>
         </div>
@@ -370,7 +468,7 @@ class Email
             <img src="' . htmlspecialchars($logoUrl) . '" alt="OneAndLab" class="logo" />
             <h1>Votre rendez-vous est terminé</h1>
             <p>Bonjour,</p>
-            <p>Votre rendez-vous du ' . htmlspecialchars($data['scheduled_at'] ?? '') . ' est maintenant terminé.</p>
+            <p>Votre rendez-vous du ' . htmlspecialchars($this->formatDateAndCreneau($data['scheduled_at'] ?? null, $data['form_data'] ?? null) ?: '-') . ' est maintenant terminé.</p>
             <p>Nous serions ravis de connaître votre avis sur le service reçu.</p>
             <p style="text-align: center;"><a href="' . htmlspecialchars($reviewUrl) . '" class="cta">Donner mon avis</a></p>
             <p>Merci pour votre confiance.</p>
@@ -406,6 +504,48 @@ class Email
     /**
      * Envoie un email de bannissement
      */
+    /**
+     * Envoie une notification au patient : vos résultats sont prêts
+     */
+    public function sendResultsReadyToPatient(string $to, string $appointmentId): bool
+    {
+        $subject = 'Vos résultats sont disponibles — OneAndLab';
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
+        $detailUrl = $baseUrl . '/patient/appointments/' . $appointmentId;
+        $logoUrl = $_ENV['EMAIL_LOGO_URL'] ?? $baseUrl . '/images/onelogo.png';
+        $body = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; line-height: 1.6; color: #18181b; margin: 0; padding: 0; background: #fafafa; }
+        .wrap { max-width: 480px; margin: 0 auto; padding: 40px 24px; }
+        .card { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .logo { display: block; margin-bottom: 24px; height: 32px; }
+        h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; color: #18181b; }
+        p { margin: 0 0 12px; font-size: 15px; color: #3f3f46; }
+        .cta { display: inline-block; background: #18181b; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 500; font-size: 15px; }
+        .footer { text-align: center; margin-top: 32px; font-size: 12px; color: #71717a; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <img src="' . htmlspecialchars($logoUrl) . '" alt="OneAndLab" class="logo" />
+            <h1>Vos résultats sont disponibles</h1>
+            <p>Bonjour,</p>
+            <p>Les résultats de votre rendez-vous sont maintenant disponibles. Vous pouvez les consulter et les télécharger depuis votre espace patient.</p>
+            <p style="text-align: center;"><a href="' . htmlspecialchars($detailUrl) . '" class="cta">Voir mes résultats</a></p>
+            <p>Merci pour votre confiance.</p>
+        </div>
+        <p class="footer">OneAndLab — Prise de sang et soins infirmiers à domicile</p>
+    </div>
+</body>
+</html>';
+        return $this->send($to, $subject, $body, true);
+    }
+
     public function sendBanEmail(string $to, string $reason): bool
     {
         $subject = 'Bannissement de votre compte OneAndLab';

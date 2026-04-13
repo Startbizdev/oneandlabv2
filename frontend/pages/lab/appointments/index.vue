@@ -3,7 +3,13 @@
     <TitleDashboard
       title="Rendez-vous du laboratoire"
       :description="assignedToSubtitle"
-    />
+    >
+      <template #actions>
+        <UButton to="/lab/appointments/new" color="primary" icon="i-lucide-plus">
+          Créer un RDV
+        </UButton>
+      </template>
+    </TitleDashboard>
     <!-- Tag pour supprimer le filtre RDV préleveur / sous-compte (avec nom) -->
     <div v-if="hasFilterByAssignee" class="flex flex-wrap items-center gap-2">
       <button
@@ -25,19 +31,9 @@
       :use-date-filter="false"
       :assigned-to-preleveur-id="(route.query.assigned_to as string) || ''"
       :assigned-to-lab-id="(route.query.assigned_lab_id as string) || ''"
-    >
-    <template #cardActions="{ appointment, basePath }">
-      <UButton
-        variant="outline"
-        size="sm"
-        leading-icon="i-lucide-eye"
-        :to="`${basePath}/appointments/${appointment.id}`"
-        block
-      >
-        Détails
-      </UButton>
-    </template>
-  </AppointmentListPage>
+      :card-href="(a) => (pendingIncoming(a) ? null : `/lab/appointments/${a.id}`)"
+      @card-click="(a) => openAppointmentModal(a.id)"
+    />
 
   <!-- Modal RDV déjà accepté par un confrère -->
   <ClientOnly>
@@ -49,7 +45,7 @@
               <p class="text-lg text-gray-700 dark:text-gray-300">
                 Ce RDV a déjà été accepté par un confrère 😢 D'autres arrivent !
               </p>
-              <UButton color="primary" block @click="closeAlreadyAcceptedModal">
+              <UButton color="primary" block :on-click="closeAlreadyAcceptedModal">
                 Voir mes rendez-vous
               </UButton>
             </div>
@@ -69,8 +65,15 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
+import { isPendingIncomingOffer } from '~/utils/appointment-offer';
 
 const route = useRoute();
+const { user } = useAuth();
+const { openAppointmentModalById: openAppointmentModal } = useAppointmentModal();
+
+function pendingIncoming(appointment: { status?: string; created_by?: string | null }) {
+  return isPendingIncomingOffer(appointment, user.value?.id);
+}
 const showAlreadyAcceptedModal = ref(false);
 
 const filterByPreleveur = computed(() => !!(route.query.assigned_to as string)?.trim());

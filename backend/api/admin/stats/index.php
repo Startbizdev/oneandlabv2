@@ -78,9 +78,11 @@ $stmt = $db->query("SELECT status, COUNT(*) as cnt FROM appointments GROUP BY st
 $appointmentsByStatus = [
     'pending' => 0,
     'confirmed' => 0,
+    'planned' => 0,
     'inProgress' => 0,
     'completed' => 0,
     'canceled' => 0,
+    'expired' => 0,
     'refused' => 0,
 ];
 $totalAppointments = 0;

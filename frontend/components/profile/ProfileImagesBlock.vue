@@ -22,10 +22,10 @@
       </button>
       <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">{{ profileLabel }}</p>
       <div class="flex gap-1.5 mt-1">
-        <UButton variant="ghost" size="xs" icon="i-lucide-upload" @click="triggerProfileInput">
+        <UButton variant="ghost" size="xs" icon="i-lucide-upload" :on-click="triggerProfileInput">
           {{ profileImage ? 'Changer' : 'Ajouter' }}
         </UButton>
-        <UButton v-if="profileImage" variant="ghost" size="xs" color="red" icon="i-lucide-trash-2" @click="removeProfile" />
+        <UButton v-if="profileImage" variant="ghost" size="xs" color="red" icon="i-lucide-trash-2" :on-click="removeProfile" />
       </div>
     </div>
 
@@ -48,10 +48,10 @@
         </span>
       </button>
       <div class="flex gap-1.5 mt-1.5">
-        <UButton variant="ghost" size="xs" icon="i-lucide-upload" @click="triggerCoverInput">
+        <UButton variant="ghost" size="xs" icon="i-lucide-upload" :on-click="triggerCoverInput">
           {{ coverImage ? 'Changer' : 'Ajouter' }}
         </UButton>
-        <UButton v-if="coverImage" variant="ghost" size="xs" color="red" icon="i-lucide-trash-2" @click="removeCover" />
+        <UButton v-if="coverImage" variant="ghost" size="xs" color="red" icon="i-lucide-trash-2" :on-click="removeCover" />
       </div>
     </div>
 
@@ -101,6 +101,8 @@ const profileInput = ref<HTMLInputElement | null>(null)
 const coverInput = ref<HTMLInputElement | null>(null)
 const toast = useAppToast()
 const MAX_SIZE_MB = 5
+/** Taille max de la data URL après compression (évite 413 / Too Large sur PUT profil) */
+const MAX_DATAURL_BYTES = 900 * 1024
 
 const validateFile = (file: File): boolean => {
   const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
@@ -115,27 +117,95 @@ const validateFile = (file: File): boolean => {
   return true
 }
 
+/** Redimensionne et compresse une image pour rester sous une taille max (data URL). */
+function compressImageAsDataUrl(file: File, maxBytes: number, maxWidth = 1200): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let w = img.width
+      let h = img.height
+      if (w > maxWidth || h > maxWidth) {
+        if (w > h) {
+          h = Math.round((h * maxWidth) / w)
+          w = maxWidth
+        } else {
+          w = Math.round((w * maxWidth) / h)
+          h = maxWidth
+        }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        const reader = new FileReader()
+        reader.onload = (e) => resolve((e.target?.result as string) ?? '')
+        reader.readAsDataURL(file)
+        return
+      }
+      ctx.drawImage(img, 0, 0, w, h)
+      let quality = 0.85
+      let dataUrl = canvas.toDataURL('image/jpeg', quality)
+      while (dataUrl.length > maxBytes && quality > 0.2) {
+        quality -= 0.1
+        dataUrl = canvas.toDataURL('image/jpeg', quality)
+      }
+      if (dataUrl.length > maxBytes) {
+        const scale = Math.sqrt(maxBytes / dataUrl.length)
+        const w2 = Math.max(200, Math.round(w * scale))
+        const h2 = Math.max(200, Math.round(h * scale))
+        canvas.width = w2
+        canvas.height = h2
+        ctx.drawImage(img, 0, 0, w2, h2)
+        dataUrl = canvas.toDataURL('image/jpeg', 0.75)
+      }
+      resolve(dataUrl)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      const reader = new FileReader()
+      reader.onload = (e) => resolve((e.target?.result as string) ?? '')
+      reader.readAsDataURL(file)
+    }
+    img.src = url
+  })
+}
+
 const triggerProfileInput = () => profileInput.value?.click()
 const triggerCoverInput = () => coverInput.value?.click()
 
-const processProfile = (file: File) => {
+const processProfile = async (file: File) => {
   if (!validateFile(file)) return
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    emit('update:profileImage', (e.target?.result as string) ?? null)
+  try {
+    const dataUrl = await compressImageAsDataUrl(file, MAX_DATAURL_BYTES)
+    emit('update:profileImage', dataUrl || null)
     emit('profileUpload', file)
+  } catch {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      emit('update:profileImage', (e.target?.result as string) ?? null)
+      emit('profileUpload', file)
+    }
+    reader.readAsDataURL(file)
   }
-  reader.readAsDataURL(file)
 }
 
-const processCover = (file: File) => {
+const processCover = async (file: File) => {
   if (!validateFile(file)) return
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    emit('update:coverImage', (e.target?.result as string) ?? null)
+  try {
+    const dataUrl = await compressImageAsDataUrl(file, MAX_DATAURL_BYTES)
+    emit('update:coverImage', dataUrl || null)
     emit('coverUpload', file)
+  } catch {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      emit('update:coverImage', (e.target?.result as string) ?? null)
+      emit('coverUpload', file)
+    }
+    reader.readAsDataURL(file)
   }
-  reader.readAsDataURL(file)
 }
 
 const handleProfileSelect = (e: Event) => {

@@ -54,6 +54,19 @@ class User
         if (!in_array($role, self::ALLOWED_ROLES, true)) {
             throw new Exception('Rôle invalide: ' . $role . '. Rôles autorisés: ' . implode(', ', self::ALLOWED_ROLES));
         }
+
+        // Pro / infirmier / lab / sous-compte : email patient optionnel → email technique stable (même patient + même pro = même fiche, pas de doublons RDV)
+        if ($role === 'patient' && in_array($actorRole, ['pro', 'nurse', 'lab', 'subaccount'], true)) {
+            $emailRaw = isset($data['email']) ? trim((string) $data['email']) : '';
+            if ($emailRaw === '') {
+                $data['email'] = $this->buildStableDelegatedPatientEmail($actorId, $data);
+                $dupHash = hash('sha256', strtolower($data['email']));
+                $existingId = $this->findPatientIdByEmailHash($dupHash);
+                if ($existingId !== null && $this->patientDelegatedProfileMatchesProfessional($existingId, $actorId)) {
+                    return $existingId;
+                }
+            }
+        }
         
         // Chiffrer les champs PII
         $emailEncrypted = $this->crypto->encryptField($data['email']);
@@ -85,9 +98,9 @@ class User
         $insertPlaceholders = '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()';
         $insertParams = [$id, $role, $emailEncrypted['encrypted'], $emailEncrypted['dek'], $emailHash, $firstNameEncrypted['encrypted'], $firstNameEncrypted['dek'], $lastNameEncrypted['encrypted'], $lastNameEncrypted['dek'], $phoneEncrypted, $phoneDek];
 
-        // Patient créé par un pro ou super_admin : lien created_by
+        // Patient créé par un pro, nurse ou super_admin : lien created_by
         $createdBy = null;
-        if (($role === 'patient') && !empty($data['created_by']) && in_array($actorRole, ['pro', 'super_admin'], true)) {
+        if (($role === 'patient') && !empty($data['created_by']) && in_array($actorRole, ['pro', 'nurse', 'super_admin', 'lab', 'subaccount'], true)) {
             $createdBy = $data['created_by'];
         }
         if ($this->hasCreatedByColumn() && $createdBy) {
@@ -123,13 +136,33 @@ class User
             $insertParams[] = $genderEnc['encrypted'];
             $insertParams[] = $genderEnc['dek'];
         }
-        if ($role === 'patient' && !empty($data['address']) && is_array($data['address'])) {
+        // Infirmier : genre pour le dispatch (préférence patient femme/homme)
+        if ($role === 'nurse' && !empty(trim((string)($data['gender'] ?? '')))) {
+            $g = strtolower(trim((string)$data['gender']));
+            if (in_array($g, ['male', 'female', 'other'], true)) {
+                $genderEnc = $this->crypto->encryptField($g);
+                $insertFields .= ', gender_encrypted, gender_dek';
+                $insertPlaceholders .= ', ?, ?';
+                $insertParams[] = $genderEnc['encrypted'];
+                $insertParams[] = $genderEnc['dek'];
+            }
+        }
+        $rolesWithAddress = ['patient', 'nurse', 'lab', 'subaccount'];
+        if (in_array($role, $rolesWithAddress, true) && !empty($data['address']) && is_array($data['address'])) {
             $addressJson = json_encode($data['address']);
             $addressEnc = $this->crypto->encryptField($addressJson);
             $insertFields .= ', address_encrypted, address_dek';
             $insertPlaceholders .= ', ?, ?';
             $insertParams[] = $addressEnc['encrypted'];
             $insertParams[] = $addressEnc['dek'];
+            if ($this->hasCityPlainColumn()) {
+                $city = $this->extractCityFromAddress($data['address']);
+                if ($city !== null) {
+                    $insertFields .= ', city_plain';
+                    $insertPlaceholders .= ', ?';
+                    $insertParams[] = $city;
+                }
+            }
         }
         // Pro : Adeli et emploi (lors de la création depuis une demande d'inscription)
         if ($role === 'pro' && $this->hasAdeliColumn() && !empty(trim((string)($data['adeli'] ?? '')))) {
@@ -154,6 +187,14 @@ class User
         } catch (PDOException $e) {
             throw new Exception('Erreur lors de la création de l\'utilisateur: ' . $e->getMessage());
         }
+
+        if ($role === 'patient' && $this->hasPatientProfessionalAccessTable() && in_array($actorRole, ['pro', 'nurse', 'lab', 'subaccount'], true)) {
+            try {
+                $this->linkPatientProfessional($id, $actorId, null, 'created');
+            } catch (Throwable $e) {
+                error_log('PatientProfessionalAccess (created): ' . $e->getMessage());
+            }
+        }
         
         // Logger la création
         $this->logger->log(
@@ -171,6 +212,17 @@ class User
     /**
      * Récupère un utilisateur par ID (avec déchiffrement)
      */
+    /**
+     * Rôle actuel en base (le JWT ne reflète pas un changement de rôle tant que l’utilisateur ne se reconnecte pas).
+     */
+    public function getRoleById(string $id): ?string
+    {
+        $stmt = $this->db->prepare('SELECT role FROM profiles WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row && isset($row['role']) ? (string) $row['role'] : null;
+    }
+
     public function getById(string $id, string $requesterId, string $requesterRole): ?array
     {
         $stmt = $this->db->prepare('SELECT * FROM profiles WHERE id = ?');
@@ -215,7 +267,13 @@ class User
             
             if ($user['address_encrypted']) {
                 $addressJson = $this->crypto->decryptField($user['address_encrypted'], $user['address_dek']);
-                $user['address'] = json_decode($addressJson, true);
+                $decoded = json_decode($addressJson, true);
+                // Données migrées : adresse stockée en string, pas en JSON → convertir en {label: string}
+                if ($decoded === null && is_string($addressJson) && trim($addressJson) !== '') {
+                    $user['address'] = ['label' => trim($addressJson)];
+                } else {
+                    $user['address'] = $decoded;
+                }
                 $decryptedFields[] = 'address';
             } else {
                 $user['address'] = null;
@@ -317,6 +375,8 @@ class User
                 $user[$boolCol] = (bool) ($user[$boolCol] ?? false);
             }
         }
+
+        $this->appendDelegatedPatientEmailDisplay($user);
         
         return $user;
     }
@@ -326,8 +386,13 @@ class User
      */
     public function findByEmailHash(string $emailHash): ?array
     {
-        $stmt = $this->db->prepare('SELECT id, role, banned_until FROM profiles WHERE email_hash = ?');
-        $stmt->execute([$emailHash]);
+        // En cas de doublon résiduel, privilégier un compte non-patient pour l’OTP (sécurité avant contrainte UNIQUE).
+        $stmt = $this->db->prepare('
+            SELECT id, role, banned_until FROM profiles WHERE email_hash = ?
+            ORDER BY CASE WHEN role = ? THEN 1 ELSE 0 END, id ASC
+            LIMIT 1
+        ');
+        $stmt->execute([$emailHash, 'patient']);
         return $stmt->fetch() ?: null;
     }
 
@@ -433,8 +498,18 @@ class User
                 $updates[] = 'address_encrypted = ?, address_dek = ?';
                 $params[] = $addressEncrypted['encrypted'];
                 $params[] = $addressEncrypted['dek'];
+                if ($this->hasCityPlainColumn()) {
+                    $city = $this->extractCityFromAddress($data['address']);
+                    if ($city !== null) {
+                        $updates[] = 'city_plain = ?';
+                        $params[] = $city;
+                    }
+                }
             } else {
                 $updates[] = 'address_encrypted = NULL, address_dek = NULL';
+                if ($this->hasCityPlainColumn()) {
+                    $updates[] = 'city_plain = NULL';
+                }
             }
         }
         
@@ -699,14 +774,400 @@ class User
         return $hasColumn;
     }
 
+    private function hasCityPlainColumn(): bool
+    {
+        static $hasColumn = null;
+        if ($hasColumn === null) {
+            $stmt = $this->db->query("SHOW COLUMNS FROM profiles LIKE 'city_plain'");
+            $hasColumn = $stmt->rowCount() > 0;
+        }
+        return $hasColumn;
+    }
+
+    private function hasPatientProfessionalAccessTable(): bool
+    {
+        static $has = null;
+        if ($has === null) {
+            $stmt = $this->db->query("SHOW TABLES LIKE 'patient_professional_access'");
+            $has = $stmt->rowCount() > 0;
+        }
+        return $has;
+    }
+
+    /**
+     * Email technique déterministe : même pro + même identité (nom, téléphone, date de naissance) → un seul compte patient.
+     * On n’utilise pas l’email du pro comme email_hash (OTP / connexion patient resteraient ambigus).
+     */
+    private function buildStableDelegatedPatientEmail(string $professionalId, array $data): string
+    {
+        $fn = strtolower(preg_replace('/\s+/u', ' ', trim((string) ($data['first_name'] ?? ''))));
+        $ln = strtolower(preg_replace('/\s+/u', ' ', trim((string) ($data['last_name'] ?? ''))));
+        $phone = preg_replace('/\D+/', '', (string) ($data['phone'] ?? ''));
+        $birth = '';
+        $birthRaw = trim((string) ($data['birth_date'] ?? ''));
+        if ($birthRaw !== '') {
+            try {
+                $birth = (new DateTime($birthRaw))->format('Y-m-d');
+            } catch (Exception $e) {
+                $birth = strtolower($birthRaw);
+            }
+        }
+        $fingerprint = strtolower($professionalId) . '|' . $fn . '|' . $ln . '|' . $phone . '|' . $birth;
+        $h = substr(hash('sha256', $fingerprint), 0, 40);
+
+        return 'delegated-' . $h . '@patients.internal.local';
+    }
+
+    private function patientDelegatedProfileMatchesProfessional(string $patientId, string $professionalId): bool
+    {
+        if ($this->hasCreatedByColumn()) {
+            $stmt = $this->db->prepare('SELECT created_by FROM profiles WHERE id = ? AND role = ? LIMIT 1');
+            $stmt->execute([$patientId, 'patient']);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && (string) ($row['created_by'] ?? '') === (string) $professionalId) {
+                return true;
+            }
+        }
+
+        return $this->hasProfessionalAccessToPatient($professionalId, $patientId);
+    }
+
+    private function appendDelegatedPatientEmailDisplay(array &$user): void
+    {
+        $role = (string) ($user['role'] ?? '');
+        if ($role !== 'patient') {
+            return;
+        }
+        $email = (string) ($user['email'] ?? '');
+        if ($email === '' || !str_ends_with($email, '@patients.internal.local')) {
+            return;
+        }
+        $creatorId = null;
+        if (!empty($user['created_by'])) {
+            $creatorId = (string) $user['created_by'];
+        } else {
+            if (!$this->hasCreatedByColumn()) {
+                return;
+            }
+            try {
+                $stmt = $this->db->prepare('SELECT created_by FROM profiles WHERE id = ? AND role = ? LIMIT 1');
+                $stmt->execute([(string) ($user['id'] ?? ''), 'patient']);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                $creatorId = !empty($row['created_by']) ? (string) $row['created_by'] : null;
+            } catch (Exception $e) {
+                return;
+            }
+        }
+        if ($creatorId === null || $creatorId === '') {
+            $user['email_display'] = 'Patient sans email renseigné';
+
+            return;
+        }
+        try {
+            $stmt = $this->db->prepare('SELECT email_encrypted, email_dek FROM profiles WHERE id = ? LIMIT 1');
+            $stmt->execute([$creatorId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row || empty($row['email_encrypted']) || empty($row['email_dek'])) {
+                $user['email_display'] = 'Patient sans email (créé par un professionnel)';
+
+                return;
+            }
+            $proEmail = $this->crypto->decryptField($row['email_encrypted'], $row['email_dek']);
+            $user['email_display'] = 'Sans email patient — notifications / contact professionnel : ' . $proEmail;
+        } catch (Exception $e) {
+            $user['email_display'] = 'Patient sans email renseigné';
+        }
+    }
+
+    /**
+     * @return array<string, string|null>
+     */
+    private function getCreatorEmailsForDisplay(array $creatorIds): array
+    {
+        $creatorIds = array_values(array_unique(array_filter(array_map('strval', $creatorIds))));
+        if ($creatorIds === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($creatorIds), '?'));
+        $stmt = $this->db->prepare("SELECT id, email_encrypted, email_dek FROM profiles WHERE id IN ($placeholders)");
+        $stmt->execute($creatorIds);
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            try {
+                $out[(string) $row['id']] = $this->crypto->decryptField($row['email_encrypted'], $row['email_dek']);
+            } catch (Exception $e) {
+                $out[(string) $row['id']] = null;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Lien patient ↔ professionnel (liste « Mes patients » au-delà de created_by).
+     */
+    public function linkPatientProfessional(
+        string $patientId,
+        string $professionalId,
+        ?string $appointmentId,
+        string $source
+    ): void {
+        if (!$this->hasPatientProfessionalAccessTable()) {
+            return;
+        }
+        $allowed = ['created', 'appointment_accepted', 'appointment_linked', 'manual_link'];
+        if (!in_array($source, $allowed, true)) {
+            $source = 'created';
+        }
+        $linkId = $this->generateUUID();
+        try {
+            $ins = $this->db->prepare('
+                INSERT IGNORE INTO patient_professional_access (id, patient_id, professional_id, source, appointment_id, created_at)
+                VALUES (?, ?, ?, ?, ?, NOW())
+            ');
+            $ins->execute([$linkId, $patientId, $professionalId, $source, $appointmentId]);
+        } catch (PDOException $e) {
+            error_log('linkPatientProfessional: ' . $e->getMessage());
+        }
+    }
+
+    public function hasProfessionalAccessToPatient(string $requesterId, string $patientId): bool
+    {
+        if (!$this->hasPatientProfessionalAccessTable()) {
+            return false;
+        }
+        $stmt = $this->db->prepare('
+            SELECT 1 FROM patient_professional_access
+            WHERE patient_id = ? AND professional_id = ?
+            LIMIT 1
+        ');
+        $stmt->execute([$patientId, $requesterId]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * ID du profil patient pour un hash email (lookup formulaire RDV).
+     */
+    public function findPatientIdByEmailHash(string $emailHash): ?string
+    {
+        $stmt = $this->db->prepare('SELECT id FROM profiles WHERE email_hash = ? AND role = ? LIMIT 1');
+        $stmt->execute([$emailHash, 'patient']);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? (string) $row['id'] : null;
+    }
+
+    /**
+     * Met à jour l’email en clair (chiffrement + hash) — migration / correction interne.
+     */
+    private function setEmailPlainInternal(string $id, string $plainEmail): void
+    {
+        $emailEncrypted = $this->crypto->encryptField($plainEmail);
+        $emailHash = hash('sha256', strtolower($plainEmail));
+        $stmt = $this->db->prepare('
+            UPDATE profiles SET email_encrypted = ?, email_dek = ?, email_hash = ?, updated_at = NOW() WHERE id = ?
+        ');
+        $stmt->execute([
+            $emailEncrypted['encrypted'],
+            $emailEncrypted['dek'],
+            $emailHash,
+            $id,
+        ]);
+    }
+
+    /**
+     * Corrige les patients qui partagent un email_hash avec un autre profil (migration 051).
+     * Réattribue un email technique delegated-{uuid}@patients.internal.local à chaque patient concerné.
+     */
+    public function migrateDuplicateEmailHashesForPatients(): int
+    {
+        $stmt = $this->db->query('
+            SELECT email_hash
+            FROM profiles
+            GROUP BY email_hash
+            HAVING COUNT(*) > 1
+        ');
+        $dupHashes = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $totalFixed = 0;
+
+        foreach ($dupHashes as $hash) {
+            $q = $this->db->prepare('SELECT id, role FROM profiles WHERE email_hash = ?');
+            $q->execute([$hash]);
+            $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+            if (count($rows) < 2) {
+                continue;
+            }
+            foreach ($rows as $row) {
+                if ($row['role'] !== 'patient') {
+                    continue;
+                }
+                $newEmail = 'delegated-' . strtolower($row['id']) . '@patients.internal.local';
+                $this->setEmailPlainInternal((string) $row['id'], $newEmail);
+                $totalFixed++;
+            }
+        }
+
+        return $totalFixed;
+    }
+
+    /**
+     * Nombre de email_hash encore dupliqués (doit être 0 avant contrainte UNIQUE).
+     */
+    public function countDuplicateEmailHashes(): int
+    {
+        $stmt = $this->db->query('
+            SELECT COUNT(*) FROM (
+                SELECT email_hash FROM profiles GROUP BY email_hash HAVING COUNT(*) > 1
+            ) t
+        ');
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Ajoute le filtre « mes patients » : created_by OU lien patient_professional_access.
+     */
+    private function appendPatientListScopeSql(string &$sql, array &$params, array $filters): void
+    {
+        if (!$this->hasCreatedByColumn()) {
+            return;
+        }
+        $usePpa = $this->hasPatientProfessionalAccessTable();
+        if (!empty($filters['for_lab_owner_id']) && $this->hasLabIdColumn()) {
+            $labOwnerId = $filters['for_lab_owner_id'];
+            if ($usePpa) {
+                $sql .= ' AND (
+                    (created_by = ? OR created_by IN (SELECT id FROM profiles WHERE lab_id = ? AND role = ?))
+                    OR EXISTS (
+                        SELECT 1 FROM patient_professional_access ppa
+                        WHERE ppa.patient_id = profiles.id
+                        AND (
+                            ppa.professional_id = ?
+                            OR ppa.professional_id IN (SELECT id FROM profiles WHERE lab_id = ? AND role = ?)
+                        )
+                    )
+                )';
+                $params[] = $labOwnerId;
+                $params[] = $labOwnerId;
+                $params[] = 'subaccount';
+                $params[] = $labOwnerId;
+                $params[] = $labOwnerId;
+                $params[] = 'subaccount';
+            } else {
+                $sql .= ' AND (created_by = ? OR created_by IN (SELECT id FROM profiles WHERE lab_id = ? AND role = ?))';
+                $params[] = $labOwnerId;
+                $params[] = $labOwnerId;
+                $params[] = 'subaccount';
+            }
+        } elseif (!empty($filters['created_by'])) {
+            $cb = $filters['created_by'];
+            if ($usePpa) {
+                $sql .= ' AND (created_by = ? OR EXISTS (SELECT 1 FROM patient_professional_access ppa WHERE ppa.patient_id = profiles.id AND ppa.professional_id = ?))';
+                $params[] = $cb;
+                $params[] = $cb;
+            } else {
+                $sql .= ' AND created_by = ?';
+                $params[] = $cb;
+            }
+        }
+    }
+
+    /**
+     * Extrait la ville du label d'adresse (format: "rue, code postal ville" ou "rue, ville")
+     */
+    private function extractCityFromAddress($address): ?string
+    {
+        if (empty($address)) {
+            return null;
+        }
+        $label = null;
+        if (is_array($address) && !empty($address['label'])) {
+            $label = trim((string) $address['label']);
+        } elseif (is_string($address)) {
+            $decoded = json_decode($address, true);
+            $label = is_array($decoded) && !empty($decoded['label']) ? trim((string) $decoded['label']) : trim($address);
+        }
+        if (empty($label)) {
+            return null;
+        }
+        $parts = array_map('trim', explode(',', $label));
+        $parts = array_filter($parts);
+        if (empty($parts)) {
+            return null;
+        }
+        $last = end($parts);
+        if (preg_match('/^(?:France|FR)$/i', $last) && count($parts) > 1) {
+            $last = $parts[array_key_last($parts) - 1];
+        }
+        if (preg_match('/^\d{5}\s+(.+)$/', $last, $m)) {
+            return trim($m[1]);
+        }
+        return $last;
+    }
+
+    /**
+     * Récupère les noms d'affichage pour une liste d'IDs (batch, une seule requête).
+     * Retourne id => display_name (company_name pour lab/subaccount, sinon first_name + last_name).
+     */
+    public function getDisplayNamesByIds(array $ids): array
+    {
+        $ids = array_unique(array_filter($ids));
+        if (empty($ids)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = 'SELECT id, role, first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek';
+        if ($this->hasCompanyNameColumn()) {
+            $sql .= ', company_name_encrypted, company_name_dek';
+        }
+        $sql .= ' FROM profiles WHERE id IN (' . $placeholders . ')';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(array_values($ids));
+        $rows = $stmt->fetchAll();
+        $result = [];
+        foreach ($rows as $row) {
+            $name = null;
+            if (in_array($row['role'] ?? '', ['lab', 'subaccount'], true) && $this->hasCompanyNameColumn()
+                && !empty($row['company_name_encrypted'] ?? '') && !empty($row['company_name_dek'] ?? '')) {
+                try {
+                    $name = trim($this->crypto->decryptField($row['company_name_encrypted'], $row['company_name_dek']));
+                } catch (Exception $e) {
+                    $name = '';
+                }
+            }
+            if (!$name || $name === '') {
+                try {
+                    $first = !empty($row['first_name_encrypted']) && !empty($row['first_name_dek'])
+                        ? trim($this->crypto->decryptField($row['first_name_encrypted'], $row['first_name_dek'])) : '';
+                    $last = !empty($row['last_name_encrypted']) && !empty($row['last_name_dek'])
+                        ? trim($this->crypto->decryptField($row['last_name_encrypted'], $row['last_name_dek'])) : '';
+                    $name = trim($first . ' ' . $last) ?: null;
+                } catch (Exception $e) {
+                    $name = null;
+                }
+            }
+            $result[$row['id']] = $name;
+        }
+        return $result;
+    }
+
     /**
      * Récupère la liste des utilisateurs avec pagination et filtres
      */
     public function getAll(array $filters = [], int $page = 1, int $limit = 20, string $requesterId = '', string $requesterRole = ''): array
     {
-        $sql = 'SELECT id, role, created_at, updated_at, banned_until, incident_count, last_incident_at';
+        $sql = 'SELECT id, role, created_at, updated_at, banned_until, incident_count, last_incident_at,
+            email_encrypted, email_dek, first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek,
+            phone_encrypted, phone_dek';
+        if ($this->hasCompanyNameColumn()) {
+            $sql .= ', company_name_encrypted, company_name_dek';
+        }
         if ($this->hasLabIdColumn()) {
             $sql .= ', lab_id';
+        }
+        if (!empty($filters['role']) && $filters['role'] === 'patient') {
+            $sql .= ', birth_date_encrypted, birth_date_dek, gender_encrypted, gender_dek';
+        }
+        if ($this->hasCreatedByColumn()) {
+            $sql .= ', created_by';
         }
         $sql .= ' FROM profiles WHERE 1=1';
         $params = [];
@@ -722,12 +1183,18 @@ class User
             $sql .= ' AND lab_id = ?';
             $params[] = $filters['lab_id'];
         }
-        // Filtrer par created_by (patients du pro)
-        if (!empty($filters['created_by']) && $this->hasCreatedByColumn()) {
-            $sql .= ' AND created_by = ?';
-            $params[] = $filters['created_by'];
+        $this->appendPatientListScopeSql($sql, $params, $filters);
+        // Filtrer par statut (active, suspended, banned)
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'banned') {
+                $sql .= " AND banned_until > '9999-12-30'";
+            } elseif ($filters['status'] === 'suspended') {
+                $sql .= ' AND banned_until > NOW() AND banned_until < \'9999-12-31\'';
+            } elseif ($filters['status'] === 'active') {
+                $sql .= ' AND (banned_until IS NULL OR banned_until < NOW())';
+            }
         }
-        
+
         // Compter le total
         $countSql = 'SELECT COUNT(*) as total FROM profiles WHERE 1=1';
         $countParams = [];
@@ -739,11 +1206,17 @@ class User
             $countSql .= ' AND lab_id = ?';
             $countParams[] = $filters['lab_id'];
         }
-        if (!empty($filters['created_by']) && $this->hasCreatedByColumn()) {
-            $countSql .= ' AND created_by = ?';
-            $countParams[] = $filters['created_by'];
+        $this->appendPatientListScopeSql($countSql, $countParams, $filters);
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'banned') {
+                $countSql .= " AND banned_until > '9999-12-30'";
+            } elseif ($filters['status'] === 'suspended') {
+                $countSql .= ' AND banned_until > NOW() AND banned_until < \'9999-12-31\'';
+            } elseif ($filters['status'] === 'active') {
+                $countSql .= ' AND (banned_until IS NULL OR banned_until < NOW())';
+            }
         }
-        
+
         $countStmt = $this->db->prepare($countSql);
         $countStmt->execute($countParams);
         $total = (int) $countStmt->fetch()['total'];
@@ -756,30 +1229,87 @@ class User
         $stmt->execute($params);
         $users = $stmt->fetchAll();
         
-        // Déchiffrer les données pour chaque utilisateur
+        // Déchiffrer en place (éviter N+1 getById)
         $decryptedUsers = [];
-        foreach ($users as $user) {
+        foreach ($users as $u) {
             try {
-                $decrypted = $this->getById($user['id'], $requesterId, $requesterRole);
-                if ($decrypted) {
-                    $decryptedUsers[] = $decrypted;
+                $u['email'] = !empty($u['email_encrypted']) && !empty($u['email_dek'])
+                    ? $this->crypto->decryptField($u['email_encrypted'], $u['email_dek']) : '';
+                $u['first_name'] = !empty($u['first_name_encrypted']) && !empty($u['first_name_dek'])
+                    ? $this->crypto->decryptField($u['first_name_encrypted'], $u['first_name_dek']) : '';
+                $u['last_name'] = !empty($u['last_name_encrypted']) && !empty($u['last_name_dek'])
+                    ? $this->crypto->decryptField($u['last_name_encrypted'], $u['last_name_dek']) : '';
+                $u['phone'] = !empty($u['phone_encrypted']) && !empty($u['phone_dek'])
+                    ? $this->crypto->decryptField($u['phone_encrypted'], $u['phone_dek']) : null;
+                $u['company_name'] = null;
+                if ($this->hasCompanyNameColumn() && !empty($u['company_name_encrypted'] ?? '') && !empty($u['company_name_dek'] ?? '')) {
+                    $u['company_name'] = $this->crypto->decryptField($u['company_name_encrypted'], $u['company_name_dek']);
                 }
+                $u['gender'] = null;
+                $u['birth_date'] = null;
+                if (!empty($u['gender_encrypted']) && !empty($u['gender_dek'])) {
+                    $u['gender'] = $this->crypto->decryptField($u['gender_encrypted'], $u['gender_dek']);
+                }
+                if (!empty($u['birth_date_encrypted']) && !empty($u['birth_date_dek'])) {
+                    $u['birth_date'] = $this->crypto->decryptField($u['birth_date_encrypted'], $u['birth_date_dek']);
+                }
+                unset($u['email_encrypted'], $u['email_dek'], $u['first_name_encrypted'], $u['first_name_dek'],
+                    $u['last_name_encrypted'], $u['last_name_dek'], $u['phone_encrypted'], $u['phone_dek']);
+                if (isset($u['company_name_encrypted'])) unset($u['company_name_encrypted'], $u['company_name_dek']);
+                unset($u['gender_encrypted'], $u['gender_dek'], $u['birth_date_encrypted'], $u['birth_date_dek']);
+                $logFields = ['email', 'first_name', 'last_name', 'phone', 'company_name'];
+                if ($u['gender'] !== null) {
+                    $logFields[] = 'gender';
+                }
+                if ($u['birth_date'] !== null) {
+                    $logFields[] = 'birth_date';
+                }
+                $this->logger->logDecrypt($requesterId, $requesterRole, 'profile', $u['id'], array_fill_keys($logFields, true));
+                $decryptedUsers[] = $u;
             } catch (Exception $e) {
-                // En cas d'erreur de déchiffrement, retourner les données de base (clés attendues par le frontend)
                 $decryptedUsers[] = [
-                    'id' => $user['id'],
-                    'role' => $user['role'],
+                    'id' => $u['id'],
+                    'role' => $u['role'],
                     'first_name' => '',
                     'last_name' => '',
                     'email' => '',
-                    'created_at' => $user['created_at'],
-                    'updated_at' => $user['updated_at'],
-                    'banned_until' => $user['banned_until'],
-                    'incident_count' => $user['incident_count'] ?? 0,
+                    'company_name' => null,
+                    'created_at' => $u['created_at'],
+                    'updated_at' => $u['updated_at'],
+                    'banned_until' => $u['banned_until'],
+                    'incident_count' => $u['incident_count'] ?? 0,
                     'error' => 'Erreur de déchiffrement',
                 ];
             }
         }
+
+        $creatorIdsForDisplay = [];
+        foreach ($decryptedUsers as $u) {
+            if (($u['role'] ?? '') !== 'patient' || empty($u['created_by'])) {
+                continue;
+            }
+            $em = (string) ($u['email'] ?? '');
+            if ($em !== '' && str_ends_with($em, '@patients.internal.local')) {
+                $creatorIdsForDisplay[] = (string) $u['created_by'];
+            }
+        }
+        $creatorEmailsMap = $this->getCreatorEmailsForDisplay($creatorIdsForDisplay);
+        foreach ($decryptedUsers as &$u) {
+            if (($u['role'] ?? '') !== 'patient') {
+                continue;
+            }
+            $em = (string) ($u['email'] ?? '');
+            if ($em === '' || !str_ends_with($em, '@patients.internal.local') || empty($u['created_by'])) {
+                continue;
+            }
+            $proEmail = $creatorEmailsMap[(string) $u['created_by']] ?? null;
+            if ($proEmail) {
+                $u['email_display'] = 'Sans email patient — notifications / contact professionnel : ' . $proEmail;
+            } else {
+                $u['email_display'] = 'Patient sans email (créé par un professionnel)';
+            }
+        }
+        unset($u);
         
         return [
             'data' => $decryptedUsers,
@@ -860,6 +1390,61 @@ class User
         $stmt->execute([$id]);
 
         return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * Supprime un patient créé par le professionnel (pro, nurse, lab, subaccount) ou super_admin.
+     * Refuse si des rendez-vous sont encore en attente / confirmés / en cours.
+     */
+    public function deletePatientCreatedBy(string $patientId, string $actorId, string $actorRole): bool
+    {
+        if (!in_array($actorRole, ['pro', 'nurse', 'lab', 'subaccount', 'super_admin'], true)) {
+            throw new Exception('Accès refusé');
+        }
+        $stmt = $this->db->prepare('SELECT id, role, created_by FROM profiles WHERE id = ?');
+        $stmt->execute([$patientId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            throw new Exception('Patient introuvable');
+        }
+        if (($row['role'] ?? '') !== 'patient') {
+            throw new Exception('Ce compte n’est pas un patient');
+        }
+        if ($actorRole !== 'super_admin') {
+            if (($row['created_by'] ?? '') !== $actorId) {
+                throw new Exception('Vous ne pouvez supprimer que les patients que vous avez créés');
+            }
+        }
+        $cntStmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM appointments WHERE patient_id = ? AND status IN ('pending','confirmed','planned','inProgress')"
+        );
+        $cntStmt->execute([$patientId]);
+        $active = (int) $cntStmt->fetchColumn();
+        if ($active > 0) {
+            throw new Exception('Impossible de supprimer : rendez-vous en attente ou en cours pour ce patient');
+        }
+
+        $updates = [
+            ['appointment_status_updates', 'actor_id'],
+            ['appointments', 'created_by'],
+            ['medical_documents', 'uploaded_by'],
+            ['reviews', 'patient_id'],
+            ['reviews', 'reviewee_id'],
+        ];
+        foreach ($updates as [$table, $column]) {
+            try {
+                $u = $this->db->prepare("UPDATE {$table} SET {$column} = ? WHERE {$column} = ?");
+                $u->execute([$actorId, $patientId]);
+            } catch (\Throwable $e) {
+            }
+        }
+
+        $this->logger->log($actorId, $actorRole, 'delete', 'profile', $patientId, ['scope' => 'patient_created_by']);
+
+        $del = $this->db->prepare('DELETE FROM profiles WHERE id = ?');
+        $del->execute([$patientId]);
+
+        return $del->rowCount() > 0;
     }
 
     /**

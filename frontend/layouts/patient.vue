@@ -1,11 +1,14 @@
 <template>
   <div class="min-h-screen flex flex-col bg-gray-50">
-    <!-- Header patient -->
-    <header class="sticky top-0 z-50 bg-white border-b border-gray-200">
+    <!-- Header patient (non sticky sur le parcours /rendez-vous/*) -->
+    <header
+      class="z-50 overflow-visible bg-white border-b border-gray-200"
+      :class="isRendezVousFlow ? '' : 'sticky top-0'"
+    >
       <div class="container mx-auto px-4">
-        <div class="flex items-center justify-between h-16 gap-4">
-          <!-- Left: Hamburger mobile (patient) + Logo → accueil -->
-          <div class="flex items-center gap-2 shrink-0">
+        <div class="flex w-full min-w-0 items-center justify-between h-16 gap-2 sm:gap-4">
+          <!-- Left: Hamburger mobile (patient) + Logo — flex-1 sur mobile pour pousser cloche + menu à droite sans les écraser -->
+          <div class="flex min-w-0 flex-1 items-center gap-2 md:flex-initial md:shrink-0">
             <!-- Hamburger : visible uniquement sur mobile pour le patient -->
             <button
               v-if="isAuthenticated && user && user.role === 'patient'"
@@ -20,12 +23,12 @@
             <NuxtLink 
               to="/" 
               aria-label="OneAndLab - Accueil" 
-              class="flex items-center gap-2 shrink-0"
+              class="flex min-w-0 items-center gap-2 shrink-0"
             >
               <img 
                 src="/images/onelogo.png" 
                 alt="OneAndLab" 
-                class="h-8 sm:h-10 w-auto object-contain" 
+                class="h-8 sm:h-10 w-auto max-w-[min(160px,42vw)] sm:max-w-none object-contain object-left" 
                 loading="eager"
                 decoding="async"
               />
@@ -74,15 +77,15 @@
             </NuxtLink>
           </nav>
 
-          <!-- Right: Notifications + Avatar ou Bouton Connexion -->
-          <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+          <!-- Right: Notifications + Avatar — shrink-0 pour ne jamais rogner la cloche / l’avatar -->
+          <div class="flex shrink-0 items-center gap-2 sm:gap-3">
             <!-- Si connecté : Notifications + Avatar -->
             <template v-if="isAuthenticated && user">
               <!-- Notifications -->
               <div class="relative" ref="notificationsMenuRef">
                 <button
                   type="button"
-                  @click.stop="notificationsMenuOpen = !notificationsMenuOpen"
+                  @click.stop="toggleNotificationsMenu"
                   class="relative h-9 w-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
                   :aria-label="`Notifications${unreadCount > 0 ? ` (${unreadCount} non lues)` : ''}`"
                   :aria-expanded="notificationsMenuOpen"
@@ -99,7 +102,7 @@
                 <!-- Dropdown Notifications -->
                 <div
                   v-if="notificationsMenuOpen"
-                  class="absolute right-0 mt-2 w-80 rounded-lg bg-white border border-gray-200 shadow-lg z-50 py-1 max-h-96 overflow-y-auto"
+                  class="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto overflow-x-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-80 md:max-h-96"
                 >
                   <div v-if="notificationItems.length === 0 || (notificationItems.length === 1 && notificationItems[0].disabled)" class="px-4 py-3 text-sm text-gray-500 text-center">
                     Aucune notification
@@ -128,7 +131,7 @@
               <div class="relative" ref="userMenuRef">
                 <button
                   type="button"
-                  @click="userMenuOpen = !userMenuOpen"
+                  @click.stop="toggleUserMenu"
                   class="flex items-center gap-2 pl-1 pr-2 sm:pl-1.5 sm:pr-3 py-1.5 sm:py-2 rounded-xl text-gray-700 hover:bg-gray-100 transition-all duration-200 shrink-0 min-w-0 border border-transparent hover:border-gray-200"
                   :aria-label="`Menu utilisateur: ${userDisplayName}`"
                   :aria-expanded="userMenuOpen"
@@ -154,7 +157,7 @@
                 >
                   <div
                     v-if="userMenuOpen"
-                    class="absolute right-0 mt-2 w-64 rounded-xl bg-white border border-gray-200/80 shadow-xl shadow-gray-200/50 z-50 overflow-hidden"
+                    class="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto overflow-x-hidden rounded-xl border border-gray-200/80 bg-white shadow-xl shadow-gray-200/50 md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-64 md:max-h-none md:overflow-hidden"
                   >
                     <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
                       <div class="flex items-center gap-3">
@@ -314,25 +317,35 @@ const { isAuthenticated } = useAuth()
 
 // Cacher le bouton Connexion/Inscription sur la page partage RDV (/p/rdv/[token])
 const isSharedRdvPage = computed(() => route.path.startsWith('/p/rdv/'))
+/** Parcours prise de RDV : header non sticky (scroll naturel) */
+const isRendezVousFlow = computed(() => route.path.startsWith('/rendez-vous'))
 const { user, roleLabel, userMenuItems, userDisplayName } = useHeaderUserMenu()
 
 const userMenuOpen = ref(false)
 const userMenuRef = ref<HTMLElement | null>(null)
 const mobileMenuOpen = ref(false)
 
-// URL de connexion avec redirection vers la page actuelle
-const loginUrl = computed(() => {
-  const currentPath = route.path
-  const currentQuery = route.query
-  // Construire l'URL de retour avec tous les paramètres de requête
-  const returnTo = currentPath + (Object.keys(currentQuery).length > 0 ? '?' + new URLSearchParams(currentQuery as Record<string, string>).toString() : '')
-  return `/login${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`
-})
-
 // État du menu notifications
 const notificationsMenuOpen = ref(false)
 const notificationsMenuRef = ref<HTMLElement | null>(null)
 const notifications = useState<any[]>('notifications.list', () => [])
+
+function toggleNotificationsMenu() {
+  if (!notificationsMenuOpen.value) {
+    userMenuOpen.value = false
+  }
+  notificationsMenuOpen.value = !notificationsMenuOpen.value
+}
+
+function toggleUserMenu() {
+  if (!userMenuOpen.value) {
+    notificationsMenuOpen.value = false
+  }
+  userMenuOpen.value = !userMenuOpen.value
+}
+
+// URL de connexion avec redirection vers la page actuelle (path + query + hash)
+const loginUrl = computed(() => `/login?returnTo=${encodeURIComponent(route.fullPath)}`)
 
 // Handler pour les clics sur les items du menu utilisateur
 const handleUserMenuItemClick = (item: any) => {
@@ -441,15 +454,29 @@ const notificationItems = computed(() => {
   }
 
   return notifications.value.slice(0, 10).map((notif) => ({
-    label: notif.message || notif.title || 'Notification',
+    label: notif.title ? `${notif.title}${notif.message ? ` — ${notif.message}` : ''}` : (notif.message || 'Notification'),
     description: notif.created_at ? new Date(notif.created_at).toLocaleString('fr-FR') : undefined,
     isRead: !!notif.read_at,
     click: () => {
-      if (notif.appointment_id) {
-        const role = user.value?.role
-        if (role === 'patient') navigateTo(`/patient/appointments/${notif.appointment_id}`)
-        else if (role === 'nurse') navigateTo(`/nurse/appointments/${notif.appointment_id}`)
-        else if (role === 'lab' || role === 'subaccount') navigateTo(`/lab/appointments/${notif.appointment_id}`)
+      const data = typeof notif.data === 'string'
+        ? (() => { try { return JSON.parse(notif.data); } catch { return {}; } })()
+        : (notif.data || {});
+      const aptId = notif.appointment_id || data?.appointment_id;
+      if (!aptId) return;
+      const role = user.value?.role;
+      if (role === 'patient') {
+        const hash = notif.type === 'results_ready' ? '#resultats' : '';
+        navigateTo({ path: `/patient/appointments/${aptId}`, hash });
+      } else if (role === 'nurse') {
+        navigateTo(`/nurse/appointments/${aptId}`);
+      } else if (role === 'lab' || role === 'subaccount') {
+        navigateTo(`/lab/appointments/${aptId}`);
+      } else if (role === 'pro') {
+        navigateTo(`/pro/appointments/${aptId}`);
+      } else if (role === 'preleveur') {
+        navigateTo(`/preleveur/appointments/${aptId}`);
+      } else if (role === 'super_admin') {
+        navigateTo(`/admin/appointments/${aptId}`);
       }
     },
   }))

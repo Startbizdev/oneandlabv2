@@ -4,18 +4,6 @@
       title="Notifications"
       description="Envoyez des notifications dans les cloches des espaces (lab, patient, infirmier, super admin). Choisissez à qui envoyer pour du marketing ou des tests."
     >
-      <template #actions>
-        <UButton
-          variant="outline"
-          size="sm"
-          icon="i-lucide-refresh-cw"
-          :loading="loadingAudit"
-          aria-label="Actualiser l'audit"
-          @click="fetchSent"
-        >
-          Actualiser l'audit
-        </UButton>
-      </template>
     </TitleDashboard>
 
     <!-- Formulaire d'envoi -->
@@ -98,7 +86,7 @@
           >
             Envoyer la notification
           </UButton>
-          <UButton type="button" variant="ghost" @click="resetForm">
+          <UButton type="button" variant="ghost" :on-click="resetForm">
             Réinitialiser
           </UButton>
         </div>
@@ -112,7 +100,7 @@
           <UIcon name="i-lucide-history" class="w-5 h-5" />
           Audit des notifications envoyées
         </h2>
-        <UButton variant="ghost" size="sm" icon="i-lucide-refresh-cw" :loading="loadingAudit" @click="fetchSent">
+        <UButton variant="ghost" size="sm" icon="i-lucide-refresh-cw" :loading="loadingAudit" :on-click="fetchSent">
           Actualiser
         </UButton>
       </div>
@@ -147,7 +135,7 @@
               icon="i-lucide-trash-2"
               :loading="deletingCampaignId === (row.original ?? row).campaign_id"
               aria-label="Supprimer cette notification"
-              @click="confirmDeleteCampaign((row.original ?? row).campaign_id, (row.original ?? row).title)"
+              :on-click="() => confirmDeleteCampaign((row.original ?? row).campaign_id, (row.original ?? row).title)"
             >
               Supprimer
             </UButton>
@@ -209,10 +197,10 @@
         </div>
       </template>
       <template #footer>
-        <UButton variant="ghost" @click="userPickerOpen = false">
+        <UButton variant="ghost" :on-click="() => userPickerOpen = false">
           Annuler
         </UButton>
-        <UButton color="primary" @click="userPickerOpen = false">
+        <UButton color="primary" :on-click="() => userPickerOpen = false">
           Valider
         </UButton>
       </template>

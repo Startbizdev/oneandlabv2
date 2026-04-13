@@ -4,7 +4,7 @@
       title="Calendrier"
       description="Vue d'ensemble des rendez-vous du sous-compte"
     />
-    <CalendarPage base-path="/subaccount" />
+    <CalendarPage base-path="/subaccount" :show-new-appointment-button="false" />
   </div>
 </template>
 

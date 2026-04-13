@@ -10,19 +10,7 @@
       title="Mes missions assignées"
       subtitle="Prises de sang — rendez-vous qui vous sont assignés."
       :use-date-filter="false"
-    >
-      <template #cardActions="{ appointment, basePath }">
-        <UButton
-          variant="outline"
-          size="sm"
-          leading-icon="i-lucide-eye"
-          :to="`${basePath}/appointments/${appointment.id}`"
-          block
-        >
-          Détails
-        </UButton>
-      </template>
-    </AppointmentListPage>
+    />
 
     <!-- Modal RDV déjà accepté par un confrère -->
     <ClientOnly>
@@ -34,7 +22,7 @@
                 <p class="text-lg text-gray-700 dark:text-gray-300">
                   Ce RDV a déjà été accepté par un confrère 😢 D'autres arrivent !
                 </p>
-                <UButton color="primary" block @click="closeAlreadyAcceptedModal">
+                <UButton color="primary" block :on-click="closeAlreadyAcceptedModal">
                   Voir mes rendez-vous
                 </UButton>
               </div>

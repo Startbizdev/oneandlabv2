@@ -35,21 +35,8 @@
             <span class="capitalize truncate">{{ todayLabel }}</span>
           </div>
         </div>
-        <div v-if="!hideHeaderActions" class="flex items-center gap-2 shrink-0">
+        <div v-if="!hideHeaderActions && showNewAppointmentButton" class="flex items-center gap-2 shrink-0">
           <UButton
-            variant="outline"
-            color="neutral"
-            size="sm"
-            icon="i-lucide-refresh-cw"
-            :loading="loading"
-            class="flex-1 sm:flex-none"
-            @click="refresh"
-          >
-            <span class="hidden sm:inline">Actualiser</span>
-            <span class="sm:hidden">Rafraîchir</span>
-          </UButton>
-          <UButton
-            v-if="showNewAppointmentButton"
             color="primary"
             size="sm"
             icon="i-lucide-plus"
@@ -99,6 +86,7 @@
             item-status-key="status"
             :selected-day="selectedDay"
             :disable-add="!showNewAppointmentButton"
+            :mobile-list-from-today="basePath === '/nurse'"
             @item-click="viewAppointment"
             @day-click="onDayClick"
             @add-event="onAddEvent"
@@ -205,10 +193,14 @@ const props = withDefaults(
     description?: string
     showSearch?: boolean
     showTypeFilter?: boolean
-    /** Masquer les boutons Actualiser / Nouveau RDV (à utiliser quand la page utilise TitleDashboard #actions) */
+    /** Masquer le bouton Nouveau RDV (à utiliser quand la page utilise TitleDashboard #actions) */
     hideHeaderActions?: boolean
     /** Afficher le bouton Nouveau RDV (masquer pour préleveur : ne crée pas de RDV) */
     showNewAppointmentButton?: boolean
+    /** Infirmier : même filtre API que la liste RDV (`nurse_tab`) */
+    nurseTab?: 'soins' | 'demandes'
+    /** Limite de RDV chargés pour le calendrier (pagination API) */
+    calendarFetchLimit?: number
   }>(),
   {
     title: 'Calendrier',
@@ -216,6 +208,8 @@ const props = withDefaults(
     showTypeFilter: false,
     hideHeaderActions: false,
     showNewAppointmentButton: true,
+    nurseTab: 'soins',
+    calendarFetchLimit: 250,
   }
 );
 
@@ -326,7 +320,21 @@ const emptyActions = computed(() => {
   ];
 });
 
-const refresh = () => fetchAppointments();
+const NURSE_CALENDAR_STATUSES = 'pending,confirmed,inProgress,completed,canceled,refused';
+
+function fetchCalendarAppointments() {
+  if (props.basePath === '/nurse') {
+    return fetchAppointments({
+      nurse_tab: props.nurseTab,
+      status: NURSE_CALENDAR_STATUSES,
+      page: 1,
+      limit: props.calendarFetchLimit,
+    });
+  }
+  return fetchAppointments();
+}
+
+const refresh = () => fetchCalendarAppointments();
 const onDayClick = (day: { fullDate: Date | null }) => {
   selectedDay.value = day.fullDate ?? null;
 };
@@ -361,11 +369,18 @@ watch(loading, (now, prev) => {
 });
 
 onMounted(() => {
-  fetchAppointments();
+  fetchCalendarAppointments();
 });
 
+watch(
+  () => props.nurseTab,
+  () => {
+    if (props.basePath === '/nurse') fetchCalendarAppointments();
+  },
+);
+
 defineExpose({
-  fetchAppointments,
+  fetchAppointments: fetchCalendarAppointments,
   loading,
 });
 
@@ -436,6 +451,7 @@ const statusDotClass = (status: string) => {
   const map: Record<string, string> = {
     pending: 'bg-amber-500',
     confirmed: 'bg-blue-500',
+    planned: 'bg-sky-500',
     inProgress: 'bg-violet-500',
     completed: 'bg-emerald-500',
     canceled: 'bg-red-500',
@@ -450,6 +466,7 @@ const getStatusBadgeColor = (status: string): 'warning' | 'info' | 'primary' | '
   const map: Record<string, 'warning' | 'info' | 'primary' | 'success' | 'error' | 'neutral'> = {
     pending: 'warning',
     confirmed: 'info',
+    planned: 'info',
     inProgress: 'primary',
     completed: 'success',
     canceled: 'error',
@@ -463,6 +480,7 @@ const getStatusLabel = (status: string) => {
   const labels: Record<string, string> = {
     pending: 'En attente',
     confirmed: 'Confirmé',
+    planned: 'Planifié',
     inProgress: 'En cours',
     completed: 'Terminé',
     canceled: 'Annulé',

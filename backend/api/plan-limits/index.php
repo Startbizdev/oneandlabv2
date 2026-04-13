@@ -50,24 +50,43 @@ if ($role === 'nurse') {
     $sub = $stmt->fetch(PDO::FETCH_ASSOC);
     $planSlug = $sub ? ($sub['plan_slug'] ?? 'discovery') : 'discovery';
     $nurseLimits = $limitsConfig['nurse'][$planSlug] ?? $limitsConfig['nurse']['discovery'];
-    $maxAppointmentsPerMonth = $nurseLimits['max_appointments_per_month'] ?? 10;
+    // null = illimité (nurse_pro) — ne pas utiliser ?? 10 qui remplace null par 10
+    $maxAppointmentsPerMonth = array_key_exists('max_appointments_per_month', $nurseLimits)
+        ? $nurseLimits['max_appointments_per_month']
+        : ($limitsConfig['nurse']['discovery']['max_appointments_per_month'] ?? 10);
     $appointmentsCountThisMonth = 0;
     if ($maxAppointmentsPerMonth !== null) {
-        $monthStart = date('Y-m-01 00:00:00');
-        $monthEnd = date('Y-m-t 23:59:59');
+        // Mois courant en Europe/Paris (cohérent avec les utilisateurs français)
+        $tz = new DateTimeZone('Europe/Paris');
+        $now = new DateTime('now', $tz);
+        $monthStart = $now->format('Y-m-01 00:00:00');
+        $monthEnd = $now->format('Y-m-t 23:59:59');
+        // Compter les RDV acceptés ce mois : date de 1ère acceptation par l'infirmier
+        // Fallback sur scheduled_at si pas d'entrée (anciens RDV ou assignation admin)
         $stmtCount = $db->prepare('
-            SELECT COUNT(*) FROM appointments
-            WHERE assigned_nurse_id = ?
-            AND scheduled_at >= ? AND scheduled_at <= ?
-            AND status NOT IN (\'canceled\', \'refused\')
+            SELECT COUNT(*) FROM (
+                SELECT a.id FROM appointments a
+                LEFT JOIN (
+                    SELECT appointment_id, MIN(created_at) as first_accepted_at
+                    FROM appointment_status_updates
+                    WHERE status = \'confirmed\' AND actor_role = \'nurse\' AND actor_id = ?
+                    GROUP BY appointment_id
+                ) u ON u.appointment_id = a.id
+                WHERE a.assigned_nurse_id = ?
+                AND a.status NOT IN (\'canceled\', \'refused\')
+                AND (
+                    (u.first_accepted_at IS NOT NULL AND u.first_accepted_at >= ? AND u.first_accepted_at <= ?)
+                    OR (u.first_accepted_at IS NULL AND a.scheduled_at >= ? AND a.scheduled_at <= ?)
+                )
+            ) x
         ');
-        $stmtCount->execute([$userId, $monthStart, $monthEnd]);
+        $stmtCount->execute([$userId, $userId, $monthStart, $monthEnd, $monthStart, $monthEnd]);
         $appointmentsCountThisMonth = (int) $stmtCount->fetchColumn();
     }
     $data = [
         'plan_slug' => $planSlug,
         'max_radius_km' => $nurseLimits['max_radius_km'] ?? 20,
-        'max_care_types' => $nurseLimits['max_care_types'] ?? 3,
+        'max_care_types' => $nurseLimits['max_care_types'] ?? null,
         'max_appointments_per_month' => $maxAppointmentsPerMonth,
         'appointments_count_this_month' => $appointmentsCountThisMonth,
     ];

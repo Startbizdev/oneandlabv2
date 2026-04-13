@@ -2,6 +2,8 @@
  * Menu utilisateur du header selon le rôle (patient, lab, nurse, admin, etc.)
  * Partagé entre layout default, layout patient et sidebar UserMenu.
  */
+import { isTechnicalPatientEmail } from '~/utils/patient-address-rdv'
+
 export function useHeaderUserMenu() {
   const { user, logout } = useAuth()
 
@@ -98,7 +100,11 @@ export function useHeaderUserMenu() {
     if (user.value?.first_name && user.value?.last_name) {
       return `${user.value.first_name} ${user.value.last_name}`
     }
-    return user.value?.email || 'Utilisateur'
+    const em = user.value?.email
+    if (user.value?.role === 'patient' && isTechnicalPatientEmail(em)) {
+      return 'Compte patient'
+    }
+    return em || 'Utilisateur'
   })
 
   return { user, roleLabel, userMenuItems, userDisplayName }

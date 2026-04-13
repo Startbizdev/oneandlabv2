@@ -115,7 +115,7 @@ export function useLabAssignment() {
   /** Met à jour les sélections à partir du RDV (assigned_lab_id, assigned_to). */
   function syncFromAppointment(appointment: any) {
     if (!appointment || appointment.type !== 'blood_test') return
-    if (!['pending', 'confirmed', 'inProgress'].includes(appointment.status)) return
+    if (!['pending', 'confirmed', 'planned', 'inProgress'].includes(appointment.status)) return
     selectedLabId.value = appointment.assigned_lab_id || myId.value || ''
     const ato = appointment.assigned_to ?? ''
     selectedPreleveurId.value = ato ? String(ato) : PRELEVEUR_NONE_VALUE

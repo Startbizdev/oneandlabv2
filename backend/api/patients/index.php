@@ -42,9 +42,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     // Filtres de base: rôle patient
     $filters = ['role' => 'patient'];
-    
-    // Si created_by est fourni, filtrer par créateur ; pour le pro, forcer son propre id
-    if ($user['role'] === 'pro') {
+
+    // Périmètre imposé par rôle (ignore created_by en query pour éviter l'escalade)
+    if ($user['role'] === 'pro' || $user['role'] === 'nurse') {
+        $filters['created_by'] = $user['user_id'];
+    } elseif ($user['role'] === 'lab') {
+        $filters['for_lab_owner_id'] = $user['user_id'];
+    } elseif ($user['role'] === 'subaccount') {
         $filters['created_by'] = $user['user_id'];
     } elseif ($createdBy) {
         $filters['created_by'] = $createdBy;
@@ -66,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Créer un nouveau patient
-    // Seuls les pros peuvent créer des patients
-    if ($user['role'] !== 'pro' && $user['role'] !== 'super_admin') {
+    // Pros, nurses, lab, sous-comptes et super_admin
+    if (!in_array($user['role'], ['pro', 'nurse', 'super_admin', 'lab', 'subaccount'], true)) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Accès refusé']);
         exit;
@@ -75,12 +79,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     $input = json_decode(file_get_contents('php://input'), true);
     
-    // Validation des champs requis
-    $required = ['email', 'first_name', 'last_name', 'phone'];
+    $emailOptional = in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount'], true);
+    $required = ['first_name', 'last_name', 'phone'];
+    if (!$emailOptional) {
+        $required[] = 'email';
+    }
     foreach ($required as $field) {
         if (empty($input[$field])) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => "Le champ $field est requis"]);
+            exit;
+        }
+    }
+    if (!$emailOptional && empty(trim((string) ($input['email'] ?? '')))) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Le champ email est requis']);
+        exit;
+    }
+
+    $emailTrim = isset($input['email']) ? trim((string) $input['email']) : '';
+    if ($emailTrim !== '') {
+        $dupHash = hash('sha256', strtolower($emailTrim));
+        $existingId = $userModel->findPatientIdByEmailHash($dupHash);
+        if ($existingId !== null) {
+            http_response_code(409);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Un patient existe déjà avec cet email',
+                'existing_patient_id' => $existingId,
+            ]);
             exit;
         }
     }
@@ -89,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
         $birthDate = $input['birth_date'] ?? $input['date_of_birth'] ?? null;
         $patientData = [
-            'email' => $input['email'],
+            'email' => $emailTrim,
             'first_name' => $input['first_name'],
             'last_name' => $input['last_name'],
             'phone' => $input['phone'],

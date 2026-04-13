@@ -39,7 +39,7 @@
             Infirmiers
           </h3>
           <ul class="list-disc pl-5 space-y-1 mb-4">
-            <li><strong class="text-gray-700">Découverte :</strong> 0 €/mois — offre gratuite (rayon 20 km, 3 types de soins, 10 rendez-vous/mois).</li>
+            <li><strong class="text-gray-700">Découverte :</strong> 0 €/mois — offre gratuite (rayon 20 km, tous les types de soins, 10 rendez-vous/mois).</li>
             <li><strong class="text-gray-700">Pro :</strong> 29 €/mois — rayon 100 km, types de soins et rendez-vous illimités. Essai gratuit de 30 jours.</li>
           </ul>
           <h3 class="text-base font-medium text-gray-900 mt-4 mb-2">

@@ -109,7 +109,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         }
 
-        $success = $relativeModel->update($id, $data, $user['user_id']);
+        // Whitelist stricte : n'utiliser que les champs du proche (ne jamais toucher profiles)
+        $allowedKeys = ['first_name', 'last_name', 'relationship_type', 'gender', 'birth_date', 'email', 'phone', 'address'];
+        $safeData = array_intersect_key($data, array_flip($allowedKeys));
+
+        $success = $relativeModel->update($id, $safeData, $user['user_id']);
 
         if (!$success) {
             http_response_code(404);

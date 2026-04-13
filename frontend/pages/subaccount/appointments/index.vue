@@ -3,7 +3,13 @@
     <TitleDashboard
       title="Rendez-vous"
       description="Rendez-vous assignés à ce sous-compte. Assignez un préleveur pour les prendre en charge."
-    />
+    >
+      <template #actions>
+        <UButton to="/subaccount/appointments/new" color="primary" icon="i-lucide-plus">
+          Créer un RDV
+        </UButton>
+      </template>
+    </TitleDashboard>
     <AppointmentListPage
       ref="listRef"
       base-path="/subaccount"
@@ -12,19 +18,13 @@
       subtitle="Rendez-vous assignés à ce sous-compte. Assignez un préleveur pour les prendre en charge."
       empty-title="Aucun rendez-vous"
       empty-description="Aucun rendez-vous n'est assigné à ce sous-compte. Les nouveaux rendez-vous apparaîtront ici."
+      :card-href="(a) => (a.status === 'pending' ? null : `/subaccount/appointments/${a.id}`)"
+      @card-click="(a) => openAppointmentModal(a.id)"
     >
-      <template #cardActions="{ appointment, basePath }">
+      <template #cardActions="{ appointment }">
         <UButton
           variant="outline"
-          size="sm"
-          leading-icon="i-lucide-eye"
-          :to="`${basePath}/appointments/${appointment.id}`"
-        >
-          Détails
-        </UButton>
-        <UButton
-          variant="outline"
-          size="sm"
+          size="xs"
           leading-icon="i-lucide-user-plus"
           @click="openAssignModal(appointment)"
         >
@@ -46,8 +46,8 @@
           </UFormGroup>
 
           <div class="flex justify-end gap-2">
-            <UButton variant="ghost" @click="showAssignModal = false">Annuler</UButton>
-            <UButton @click="assignPreleveur" :loading="assigning">Assigner</UButton>
+            <UButton variant="ghost" :on-click="() => showAssignModal = false">Annuler</UButton>
+            <UButton :on-click="assignPreleveur" :loading="assigning">Assigner</UButton>
           </div>
         </div>
       </UCard>
@@ -63,7 +63,7 @@
                 <p class="text-lg text-gray-700 dark:text-gray-300">
                   Ce RDV a déjà été accepté par un confrère 😢 D'autres arrivent !
                 </p>
-                <UButton color="primary" block @click="closeAlreadyAcceptedModal">
+                <UButton color="primary" block :on-click="closeAlreadyAcceptedModal">
                   Voir mes rendez-vous
                 </UButton>
               </div>
@@ -83,9 +83,15 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
+import { isPendingIncomingOffer } from '~/utils/appointment-offer';
 
 const route = useRoute();
+const { openAppointmentModalById: openAppointmentModal } = useAppointmentModal();
 const { user } = useAuth();
+
+function pendingIncoming(appointment: { status?: string; created_by?: string | null }) {
+  return isPendingIncomingOffer(appointment, user.value?.id);
+}
 const listRef = ref<{ fetchAppointments: () => void } | null>(null);
 
 const showAssignModal = ref(false);

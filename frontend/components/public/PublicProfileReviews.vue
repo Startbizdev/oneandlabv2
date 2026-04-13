@@ -74,7 +74,7 @@
                 />
               </div>
               <span class="text-sm font-normal text-gray-900 dark:text-white truncate">
-                {{ review.patient_name }}
+                {{ formatReviewerNameForDisplay(review.patient_name) }}
               </span>
             </div>
             <span class="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap flex-shrink-0">
@@ -135,15 +135,7 @@
               description="Seuls les patients peuvent laisser un avis sur un professionnel, après un rendez-vous. Prenez rendez-vous à domicile pour ensuite partager votre expérience."
               variant="naked"
               size="md"
-              :actions="[
-                {
-                  label: 'Prendre rendez-vous à domicile',
-                  icon: 'i-lucide-calendar-plus',
-                  to: '/rendez-vous/nouveau',
-                  color: 'primary',
-                  block: true,
-                },
-              ]"
+              :actions="nonPatientBookingActions"
             />
           </div>
 
@@ -155,7 +147,7 @@
           <!-- Patient : aucun RDV éligible -->
           <div v-else-if="eligibleAppointments.length === 0" class="text-center py-4">
             <p class="text-gray-600 dark:text-gray-400">Vous pourrez laisser un avis après un rendez-vous terminé avec ce professionnel.</p>
-            <UButton to="/rendez-vous/nouveau" color="primary" variant="soft" class="mt-4" block>Prendre rendez-vous</UButton>
+            <UButton :to="appointmentNewUrl" color="primary" variant="soft" class="mt-4" block>Prendre rendez-vous</UButton>
           </div>
 
           <!-- Patient : formulaire avis -->
@@ -190,7 +182,7 @@
               />
             </UFormField>
             <div class="flex gap-3 pt-2">
-              <UButton type="button" variant="outline" color="neutral" block @click="reviewModalOpen = false">
+              <UButton type="button" variant="outline" color="neutral" block :on-click="() => reviewModalOpen = false">
                 Annuler
               </UButton>
               <UButton type="submit" color="primary" block :loading="submitting">
@@ -206,6 +198,7 @@
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api';
+import { formatReviewerNameForDisplay } from '~/utils/reviewer-display';
 
 interface Props {
   reviews: {
@@ -231,6 +224,17 @@ const emit = defineEmits<{ submitted: [] }>();
 
 const { isAuthenticated, user } = useAuth();
 const toast = useAppToast();
+const { appointmentNewUrl } = useAppointmentNewUrl();
+
+const nonPatientBookingActions = computed(() => [
+  {
+    label: 'Prendre rendez-vous à domicile',
+    icon: 'i-lucide-calendar-plus',
+    to: appointmentNewUrl.value,
+    color: 'primary',
+    block: true,
+  },
+]);
 
 const reviewModalOpen = ref(false);
 const eligibleLoading = ref(false);

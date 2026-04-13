@@ -5,7 +5,7 @@
       description="Consultez et gérez vos documents de santé"
     >
       <template #actions>
-        <UButton @click="showUploadModal = true" color="primary" icon="i-lucide-upload" size="sm">
+        <UButton :on-click="() => showUploadModal = true" color="primary" icon="i-lucide-upload" size="sm">
           Ajouter un document
         </UButton>
       </template>
@@ -42,10 +42,10 @@
           </div>
           
           <div class="flex gap-2">
-            <UButton size="sm" icon="i-lucide-download" @click="downloadDocument(doc)">
+            <UButton size="sm" icon="i-lucide-download" :on-click="() => downloadDocument(doc)">
               Télécharger
             </UButton>
-            <UButton size="sm" color="red" variant="ghost" icon="i-lucide-trash" @click="deleteDocument(doc)">
+            <UButton size="sm" color="red" variant="ghost" icon="i-lucide-trash" :on-click="() => deleteDocument(doc)">
               Supprimer
             </UButton>
           </div>
@@ -82,7 +82,7 @@
           </UFormGroup>
           
           <div class="flex justify-end gap-2">
-            <UButton variant="ghost" @click="showUploadModal = false">Annuler</UButton>
+            <UButton variant="ghost" :on-click="() => showUploadModal = false">Annuler</UButton>
             <UButton type="submit" :loading="uploading">Envoyer</UButton>
           </div>
         </UForm>

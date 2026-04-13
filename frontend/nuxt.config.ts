@@ -65,7 +65,7 @@ export default defineNuxtConfig({
         title: 'OneAndLab - Prise de sang et soins infirmiers à domicile',
         meta: [
           { charset: 'utf-8' },
-          { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+          { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
           { name: 'description', content: 'Plateforme de gestion de rendez-vous médicaux à domicile' },
         ],
         link: [

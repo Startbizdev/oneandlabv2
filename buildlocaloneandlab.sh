@@ -11,8 +11,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIR="$SCRIPT_DIR/frontend"
 BACKEND_DIR="$SCRIPT_DIR/backend"
 
-echo "==> Build local (production)..."
+echo "==> Nettoyage du cache (Nuxt + Vite)..."
 cd "$FRONTEND_DIR"
+rm -rf .nuxt node_modules/.vite 2>/dev/null || true
+
+echo "==> Build local (production)..."
 export NUXT_PUBLIC_API_BASE="https://app.oneandlab.fr/api"
 export NUXT_PUBLIC_SITE_URL="https://app.oneandlab.fr"
 npm run build
@@ -31,12 +34,24 @@ rsync -avz -e "ssh -o StrictHostKeyChecking=accept-new -i $SSH_KEY" \
   "$FRONTEND_DIR/" \
   "$SSH_HOST:$REMOTE_DIR/"
 
-echo "==> Envoi du backend (sauf vendor/.env)..."
+echo "==> Envoi du backend (sauf vendor/.env/uploads + scripts migration legacy)..."
 rsync -avz -e "ssh -o StrictHostKeyChecking=accept-new -i $SSH_KEY" \
   --exclude 'vendor' \
   --exclude '.env' \
+  --exclude 'uploads' \
+  --exclude 'scripts/migration' \
+  --exclude 'scripts/test-*.php' \
+  --exclude 'scripts/run-test-*.sh' \
   "$BACKEND_DIR/" \
   "$SSH_HOST:$REMOTE_BASE/backend/"
+
+echo "==> Envoi du dossier database (schémas SQL)..."
+rsync -avz -e "ssh -o StrictHostKeyChecking=accept-new -i $SSH_KEY" \
+  "$SCRIPT_DIR/database/" \
+  "$SSH_HOST:$REMOTE_BASE/database/"
+
+echo "==> Permissions uploads (www-data)..."
+ssh -i "$SSH_KEY" "$SSH_HOST" "sudo mkdir -p $REMOTE_BASE/backend/uploads/medical && sudo chown -R www-data:www-data $REMOTE_BASE/backend/uploads && sudo chmod -R 775 $REMOTE_BASE/backend/uploads"
 
 echo "==> Redémarrage PM2 sur le serveur..."
 ssh -i "$SSH_KEY" "$SSH_HOST" "cd $REMOTE_DIR && pm2 delete oneandlab-frontend 2>/dev/null || true; pm2 start .output/server/index.mjs --name oneandlab-frontend && pm2 save && pm2 status"

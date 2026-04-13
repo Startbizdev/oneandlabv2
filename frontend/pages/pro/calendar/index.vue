@@ -6,14 +6,6 @@
     >
       <template #actions>
         <UButton
-          variant="outline"
-          color="neutral"
-          icon="i-lucide-refresh-cw"
-          :loading="loading"
-          aria-label="Actualiser"
-          @click="fetchAppointments"
-        />
-        <UButton
           to="/pro/appointments/new"
           color="primary"
           icon="i-lucide-plus"

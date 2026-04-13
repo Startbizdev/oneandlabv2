@@ -1,0 +1,32 @@
+// Comptages MongoDB - à exécuter avec: mongosh oneandlab < verify-legacy-counts.mongo
+// Ou: mongosh "mongodb://localhost:27017/oneandlab" < verify-legacy-counts.mongo
+
+print("\n=== TOTAUX LEGACY (MongoDB) ===\n");
+
+const cols = ["patients", "users", "relatives", "appointments", "laboratories", "professionals", "phlebotomists"];
+print("Collections:");
+cols.forEach(c => {
+  try {
+    const n = db.getCollection(c).countDocuments();
+    print("  " + c + ": " + n);
+  } catch (e) {
+    print("  " + c + ": (collection absente ou erreur)");
+  }
+});
+
+print("\nUsers par rôle:");
+db.users.aggregate([
+  { $group: { _id: "$role", count: { $sum: 1 } } },
+  { $sort: { count: -1 } }
+]).forEach(r => {
+  print("  " + (r._id || "(vide)") + ": " + r.count);
+});
+
+print("\nPatients:");
+const withUser = db.patients.countDocuments({ userId: { $exists: true, $ne: null } });
+const withoutUser = db.patients.countDocuments({ $or: [{ userId: null }, { userId: { $exists: false } }] });
+print("  Avec userId (lié à un User): " + withUser);
+print("  Sans userId: " + withoutUser);
+print("  Total collection patients: " + db.patients.countDocuments());
+
+print("\n");

@@ -27,24 +27,32 @@ $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
 $roleMiddleware = new RoleMiddleware();
-$roleMiddleware->handle($user, ['super_admin', 'admin', 'lab', 'subaccount']);
+$roleMiddleware->handle($user, ['super_admin', 'lab', 'subaccount']);
 
 $csrfMiddleware = new CSRFMiddleware();
 $csrfMiddleware->handle();
 
-$pathParts = explode('/', trim($_SERVER['REQUEST_URI'], '/'));
-$appointmentId = $pathParts[array_search('appointments', $pathParts) + 1] ?? null;
-
+// ID du RDV : priorité au paramètre injecté par le routeur, sinon extraction depuis l'URL
+$appointmentId = $_GET['id'] ?? null;
 if (!$appointmentId) {
+    $pathParts = explode('/', trim(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '', '/'));
+    $idx = array_search('appointments', $pathParts);
+    $appointmentId = ($idx !== false && isset($pathParts[$idx + 1])) ? $pathParts[$idx + 1] : null;
+}
+
+if (!$appointmentId || $appointmentId === 'reassign') {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'ID requis']);
     exit;
 }
 
-$input = json_decode(file_get_contents('php://input'), true);
-$assignedTo = $input['assigned_to'] ?? null;
-$assignedLabId = $input['assigned_lab_id'] ?? null;
-$assignedNurseId = $input['assigned_nurse_id'] ?? null;
+$input = json_decode(file_get_contents('php://input'), true) ?: [];
+$assignedTo = isset($input['assigned_to']) ? trim((string) $input['assigned_to']) : null;
+$assignedLabId = isset($input['assigned_lab_id']) ? trim((string) $input['assigned_lab_id']) : null;
+$assignedNurseId = isset($input['assigned_nurse_id']) ? trim((string) $input['assigned_nurse_id']) : null;
+if ($assignedTo === '') $assignedTo = null;
+if ($assignedLabId === '') $assignedLabId = null;
+if ($assignedNurseId === '') $assignedNurseId = null;
 
 if (!$assignedTo && !$assignedLabId && !$assignedNurseId) {
     http_response_code(400);
@@ -58,10 +66,12 @@ $pdo = new PDO($dsn, $config['username'], $config['password'], $config['options'
 
 /** Log après envoi de la réponse pour ne pas bloquer l’utilisateur. */
 $deferredLog = null;
+/** Utilisateur à notifier (nouveau préleveur / infirmier / lab ciblé) */
+$reassignNotifyUserId = null;
 
 try {
-    // Récupérer le type et la date du rendez-vous
-    $checkStmt = $pdo->prepare('SELECT type, scheduled_at FROM appointments WHERE id = ?');
+    // Récupérer le type, la date patient et catégorie
+    $checkStmt = $pdo->prepare('SELECT type, scheduled_at, patient_id, category_id FROM appointments WHERE id = ?');
     $checkStmt->execute([$appointmentId]);
     $appointment = $checkStmt->fetch(PDO::FETCH_ASSOC);
     if (!$appointment) {
@@ -180,10 +190,13 @@ try {
         ]);
         $deferredLog = ['user' => $user, 'appointmentId' => $appointmentId, 'details' => ['assigned_lab_id' => $assignedLabId, 'assigned_to' => $ato]];
         if ($ato) {
+            $reassignNotifyUserId = $ato;
             EmailQueue::add('assigned_to_preleveur', null, [
                 'appointment_id' => $appointmentId,
                 'scheduled_at' => $appointment['scheduled_at'] ?? null,
             ], $ato);
+        } elseif ($assignedLabId !== null && $assignedLabId !== '' && (string) $assignedLabId !== (string) ($user['user_id'] ?? '')) {
+            $reassignNotifyUserId = $assignedLabId;
         }
         $responseData = ['success' => true, 'data' => ['assigned_lab_id' => $assignedLabId, 'assigned_to' => $ato]];
     } elseif ($assignedNurseId !== null) {
@@ -194,17 +207,32 @@ try {
         $sub = $stmtSub->fetch(PDO::FETCH_ASSOC);
         $planSlug = $sub ? ($sub['plan_slug'] ?? 'discovery') : 'discovery';
         $nurseLimits = $limits['nurse'][$planSlug] ?? $limits['nurse']['discovery'];
-        $maxPerMonth = $nurseLimits['max_appointments_per_month'] ?? 10;
+        $maxPerMonth = array_key_exists('max_appointments_per_month', $nurseLimits)
+            ? $nurseLimits['max_appointments_per_month']
+            : ($limits['nurse']['discovery']['max_appointments_per_month'] ?? 10);
         if ($maxPerMonth !== null) {
-            $monthStart = date('Y-m-01 00:00:00');
-            $monthEnd = date('Y-m-t 23:59:59');
+            $tz = new DateTimeZone('Europe/Paris');
+            $now = new DateTime('now', $tz);
+            $monthStart = $now->format('Y-m-01 00:00:00');
+            $monthEnd = $now->format('Y-m-t 23:59:59');
             $stmtCount = $pdo->prepare('
-                SELECT COUNT(*) FROM appointments
-                WHERE assigned_nurse_id = ?
-                AND scheduled_at >= ? AND scheduled_at <= ?
-                AND status NOT IN (\'canceled\', \'refused\')
+                SELECT COUNT(*) FROM (
+                    SELECT a.id FROM appointments a
+                    LEFT JOIN (
+                        SELECT appointment_id, MIN(created_at) as first_accepted_at
+                        FROM appointment_status_updates
+                        WHERE status = \'confirmed\' AND actor_role = \'nurse\' AND actor_id = ?
+                        GROUP BY appointment_id
+                    ) u ON u.appointment_id = a.id
+                    WHERE a.assigned_nurse_id = ?
+                    AND a.status NOT IN (\'canceled\', \'refused\')
+                    AND (
+                        (u.first_accepted_at IS NOT NULL AND u.first_accepted_at >= ? AND u.first_accepted_at <= ?)
+                        OR (u.first_accepted_at IS NULL AND a.scheduled_at >= ? AND a.scheduled_at <= ?)
+                    )
+                ) x
             ');
-            $stmtCount->execute([$assignedNurseId, $monthStart, $monthEnd]);
+            $stmtCount->execute([$assignedNurseId, $assignedNurseId, $monthStart, $monthEnd, $monthStart, $monthEnd]);
             $count = (int) $stmtCount->fetchColumn();
             if ($count >= $maxPerMonth) {
                 http_response_code(403);
@@ -224,6 +252,7 @@ try {
             ':id' => $appointmentId,
         ]);
         $deferredLog = ['user' => $user, 'appointmentId' => $appointmentId, 'details' => ['assigned_nurse_id' => $assignedNurseId]];
+        $reassignNotifyUserId = $assignedNurseId;
         $responseData = ['success' => true, 'data' => ['assigned_nurse_id' => $assignedNurseId]];
     } else {
         // Legacy: assigned_to (préleveur / sous-compte) — prise de sang uniquement
@@ -234,6 +263,7 @@ try {
             ':id' => $appointmentId,
         ]);
         $deferredLog = ['user' => $user, 'appointmentId' => $appointmentId, 'details' => ['new_assigned_to' => $assignedTo]];
+        $reassignNotifyUserId = $assignedTo;
         // Email au préleveur (async)
         EmailQueue::add('assigned_to_preleveur', null, [
             'appointment_id' => $appointmentId,
@@ -265,6 +295,51 @@ try {
             );
         } catch (Throwable $e) {
             error_log('Reassign deferred log failed: ' . $e->getMessage());
+        }
+    }
+    if (!empty($reassignNotifyUserId)) {
+        try {
+            require_once __DIR__ . '/../../../lib/NotificationService.php';
+            require_once __DIR__ . '/../../../models/User.php';
+            $ns = new NotificationService();
+            $stmtA = $pdo->prepare('SELECT type, scheduled_at, patient_id, category_id FROM appointments WHERE id = ?');
+            $stmtA->execute([$appointmentId]);
+            $rowA = $stmtA->fetch(PDO::FETCH_ASSOC);
+            $patientName = '';
+            if ($rowA && !empty($rowA['patient_id'])) {
+                $um = new User();
+                $p = $um->getById((string) $rowA['patient_id'], 'system', 'system');
+                if ($p) {
+                    $patientName = trim(($p['first_name'] ?? '') . ' ' . ($p['last_name'] ?? ''));
+                }
+            }
+            $catName = null;
+            if ($rowA && !empty($rowA['category_id'])) {
+                $cSt = $pdo->prepare('SELECT name FROM care_categories WHERE id = ? LIMIT 1');
+                $cSt->execute([$rowA['category_id']]);
+                $cr = $cSt->fetch(PDO::FETCH_ASSOC);
+                if ($cr && !empty($cr['name'])) {
+                    $catName = $cr['name'];
+                }
+            }
+            $schedLabel = '';
+            if ($rowA && !empty($rowA['scheduled_at'])) {
+                try {
+                    $schedLabel = (new DateTime($rowA['scheduled_at']))->format('d/m/Y \à H\hi');
+                } catch (Throwable $e) {
+                    $schedLabel = '';
+                }
+            }
+            $ns->notifyAppointmentReassigned(
+                (string) $reassignNotifyUserId,
+                $appointmentId,
+                (string) ($rowA['type'] ?? ''),
+                $patientName,
+                $schedLabel,
+                $catName
+            );
+        } catch (Throwable $e) {
+            error_log('Reassign notification: ' . $e->getMessage());
         }
     }
 } catch (Exception $e) {

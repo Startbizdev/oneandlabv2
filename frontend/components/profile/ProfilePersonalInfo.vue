@@ -39,8 +39,15 @@
           :required="true"
         />
 
-        <UFormField label="Email" name="email" :required="!emailReadonly">
+        <UFormField label="Email" name="email" :required="!emailReadonly && !emailOptional">
+          <div
+            v-if="emailReadonly && isPatient && isTechnicalPatientEmail(form.email)"
+            class="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 px-3 py-2.5 text-base text-gray-900 dark:text-white min-h-[4rem] whitespace-pre-wrap break-words"
+          >
+            {{ patientEmailReadonlyShown }}
+          </div>
           <UInput
+            v-else
             v-model="form.email"
             type="email"
             size="xl"
@@ -55,7 +62,17 @@
           </UInput>
           <template v-if="emailReadonly" #hint>
             <span class="text-xs text-gray-500 dark:text-gray-400">
-              L'email ne peut pas être modifié
+              <template v-if="isPatient && isTechnicalPatientEmail(form.email)">
+                Compte sans e-mail personnel : les notifications utilisent l’adresse du professionnel indiquée ci-dessus.
+              </template>
+              <template v-else>
+                L'email ne peut pas être modifié
+              </template>
+            </span>
+          </template>
+          <template v-else-if="emailOptional" #hint>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              Optionnel : si le patient n’a pas d’e-mail, les notifications peuvent utiliser votre adresse professionnelle.
             </span>
           </template>
         </UFormField>
@@ -120,17 +137,23 @@
       </UFormField>
 
       <UFormField
-        v-if="isPatient"
+        v-if="isPatient || isNurse"
         label="Genre"
         name="gender"
+        :required="isNurse"
       >
         <USelect
           v-model="form.gender"
           :items="GENDER_OPTIONS"
-          placeholder="Sélectionner votre genre (optionnel)"
+          :placeholder="isNurse ? 'Homme, femme ou autre (matching des RDV soins)' : 'Sélectionner votre genre (optionnel)'"
           size="xl"
           class="w-full"
         />
+        <template v-if="isNurse" #hint>
+          <span class="text-xs text-gray-500 dark:text-gray-400">
+            Utilisé pour proposer votre profil lorsque le patient demande une infirmière ou un infirmier.
+          </span>
+        </template>
       </UFormField>
 
       <AddressSelector
@@ -169,9 +192,10 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
+import { watch, nextTick, computed } from 'vue'
 import type { ProfileForm } from '~/types/profile'
 import { GENDER_OPTIONS } from '~/types/profile'
+import { isTechnicalPatientEmail, patientUiEmailLine } from '~/utils/patient-address-rdv'
 import { PRO_SANTE_EMPLOIS } from '~/constants/proEmploi'
 
 const proEmploiItems = [...PRO_SANTE_EMPLOIS]
@@ -184,20 +208,24 @@ interface Props {
   isSaving?: boolean
   /** Masquer les boutons Annuler / Enregistrer (sauvegarde globale en bas de page) */
   noActions?: boolean
+  /** Création patient par pro/nurse : email non obligatoire */
+  emailOptional?: boolean
 }
 
 interface Emits {
+  (e: 'update:modelValue', form: ProfileForm): void
   (e: 'save', form: ProfileForm): void
   (e: 'reset'): void
 }
 
-const props = withDefaults(defineProps<Props>(), { emailReadonly: true })
+const props = withDefaults(defineProps<Props>(), { emailReadonly: true, emailOptional: false })
 const emit = defineEmits<Emits>()
 
 const defaultForm = (): ProfileForm => ({
   first_name: '',
   last_name: '',
   email: '',
+  email_display: null,
   phone: null,
   name: '',
   rpps: '',
@@ -215,13 +243,28 @@ const form = ref<ProfileForm>({
   ...(props.modelValue && typeof props.modelValue === 'object' ? props.modelValue : {}),
 })
 
+const patientEmailReadonlyShown = computed(() =>
+  patientUiEmailLine({
+    email: form.value.email,
+    email_display: form.value.email_display ?? null,
+  }),
+)
+
+// Flag pour couper la boucle infinie : quand le parent met à jour modelValue en réponse
+// à notre emit, on ne doit pas ré-émettre update:modelValue (sinon : boucle infinie qui freeze la page)
+let _suppressEmit = false
+
 watch(() => props.modelValue, (val) => {
   if (!val || typeof val !== 'object') return
-  Object.assign(form.value, val)
+  _suppressEmit = true
+  const base = form.value != null && typeof form.value === 'object' ? form.value : defaultForm()
+  form.value = { ...base, ...val }
+  nextTick(() => { _suppressEmit = false })
 }, { deep: true })
 
 // Synchroniser les saisies vers le parent (v-model) pour que les computed côté parent soient à jour (ex. proCanSubmitCreatePatient)
 watch(() => form.value, (val) => {
+  if (_suppressEmit) return
   if (!val || typeof val !== 'object') return
   emit('update:modelValue', { ...val })
 }, { deep: true })
@@ -233,11 +276,13 @@ const isLab = computed(() => props.role === 'lab')
 const isLabOrSubaccount = computed(() => props.role === 'lab' || props.role === 'subaccount')
 
 function handleSubmit() {
-  emit('save', { ...form.value })
+  const val = form.value
+  emit('save', val != null && typeof val === 'object' ? { ...val } : defaultForm())
 }
 
 function getFormData(): ProfileForm {
-  return { ...form.value }
+  const val = form.value
+  return val != null && typeof val === 'object' ? { ...val } : defaultForm()
 }
 
 defineExpose({ getFormData })

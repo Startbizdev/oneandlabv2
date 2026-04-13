@@ -8,7 +8,7 @@
       <template #actions>
         <div class="flex items-center gap-2">
           <UButton
-            v-if="(editingUserId || newPreleveurMode || newUserMode) && user?.role === 'super_admin'"
+            v-if="(editingUserId || newPreleveurMode) && user?.role === 'super_admin'"
             variant="ghost"
             size="sm"
             to="/admin/users"
@@ -17,10 +17,10 @@
             Retour aux utilisateurs
           </UButton>
           <UButton
-            v-else-if="(newPatientMode || (editingUserId && user?.role === 'pro'))"
+            v-else-if="(newPatientMode || (editingUserId && (user?.role === 'pro' || user?.role === 'nurse' || user?.role === 'lab' || user?.role === 'subaccount')))"
             variant="ghost"
             size="sm"
-            to="/pro/patients"
+            :to="patientsListPath"
             icon="i-lucide-arrow-left"
           >
             Retour aux patients
@@ -35,7 +35,7 @@
             {{ role === 'subaccount' ? 'Retour aux sous-comptes' : 'Retour aux préleveurs' }}
           </UButton>
           <UButton
-            v-if="publicProfileForm.public_slug && !newPreleveurMode && !newUserMode && !loading"
+            v-if="publicProfileForm.public_slug && !newPreleveurMode && !loading"
             :to="publicProfileUrl"
             target="_blank"
             variant="outline"
@@ -62,101 +62,25 @@
         <p class="text-sm text-gray-500 dark:text-gray-400">Chargement de votre profil...</p>
       </div>
 
-      <!-- Admin : création d'un utilisateur (même page profil réutilisable) -->
-      <div v-else-if="newUserMode" class="max-w-2xl space-y-6">
-        <UCard>
-          <UForm id="admin-create-user-form" @submit.prevent="saveProfile()" class="space-y-6">
-            <UFormField label="Rôle" required>
-              <USelect
-                v-model="adminCreateRole"
-                :items="adminCreateRoleOptions"
-                value-key="value"
-                placeholder="Choisir un rôle"
-                size="md"
-                class="w-full"
-              />
-            </UFormField>
-            <ProfilePersonalInfo
-              ref="personalInfoRef"
-              v-model="profileForm"
-              :role="adminCreateRole"
-              :no-actions="true"
-              :email-readonly="false"
-              @save="saveProfile()"
-              @reset="() => {}"
-            />
-            <template v-if="adminCreateRole === 'subaccount' || adminCreateRole === 'preleveur'">
-              <UFormField label="Laboratoire rattaché">
-                <UInput
-                  v-model="adminLabSearchQuery"
-                  placeholder="Rechercher un laboratoire..."
-                  size="md"
-                  class="w-full"
-                  autocomplete="off"
-                />
-                <div v-if="adminLabSearchQuery.length >= 1" class="mt-2 border border-default rounded-lg max-h-48 overflow-y-auto">
-                  <button
-                    v-for="lab in adminFilteredLabs"
-                    :key="lab.id"
-                    type="button"
-                    class="w-full px-4 py-2 text-left hover:bg-muted/50 flex items-center justify-between"
-                    @click="adminSelectLab(lab)"
-                  >
-                    <span>{{ lab.company_name || lab.email || lab.id }}</span>
-                    <span v-if="adminLabId === lab.id" class="text-primary">✓</span>
-                  </button>
-                  <p v-if="adminFilteredLabs.length === 0" class="px-4 py-2 text-sm text-muted">Aucun laboratoire trouvé</p>
-                </div>
-                <p v-if="adminLabId && adminSelectedLabLabel" class="mt-1 text-sm text-muted">{{ adminSelectedLabLabel }}</p>
-              </UFormField>
-            </template>
-            <template v-if="adminCreateRole === 'nurse'">
-              <UFormField label="Adeli">
-                <UInput v-model="adminAdeli" placeholder="139012345" size="md" class="w-full" />
-              </UFormField>
-            </template>
-            <template v-if="adminCreateRole === 'nurse' || adminCreateRole === 'lab'">
-              <UFormField label="Types de soins proposés">
-                <UInput v-model="adminCareTypesSearch" placeholder="Rechercher un type de soin..." size="md" class="w-full mb-2" />
-                <div class="border border-default rounded-lg divide-y divide-default max-h-48 overflow-y-auto">
-                  <label
-                    v-for="cat in adminFilteredCareCategories"
-                    :key="cat.id"
-                    class="flex items-center justify-between gap-3 px-4 py-2 hover:bg-muted/30 cursor-pointer"
-                  >
-                    <span class="text-sm">{{ cat.name }}</span>
-                    <USwitch v-model="adminCarePreferencesMap[cat.id]" />
-                  </label>
-                </div>
-              </UFormField>
-            </template>
-            <div class="flex justify-end gap-2 pt-4">
-              <UButton variant="ghost" to="/admin/users">Annuler</UButton>
-              <UButton type="submit" form="admin-create-user-form" color="primary" :loading="saving" :disabled="!adminCanSubmitCreate">
-                Créer l'utilisateur
-              </UButton>
-            </div>
-          </UForm>
-        </UCard>
-      </div>
-
       <!-- Pro : création d'un patient (POST /patients) — colonne gauche formulaire, droite documents + bouton -->
       <div v-else-if="newPatientMode" class="w-full space-y-6">
         <div class="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:gap-8">
           <!-- Colonne gauche : formulaire (sans bouton) -->
           <UCard>
-            <UForm id="pro-create-patient-form" :state="profileForm" @submit.prevent="saveProfile()" class="space-y-6">
+            <UForm id="pro-create-patient-form" :state="profileFormSafe" @submit.prevent="saveProfile()" class="space-y-6">
               <ProfilePersonalInfo
                 ref="personalInfoRef"
-                v-model="profileForm"
+                :model-value="profileFormSafe"
+                @update:model-value="onProfileFormUpdate"
                 role="patient"
                 :no-actions="true"
                 :email-readonly="false"
+                :email-optional="user?.role === 'pro' || user?.role === 'nurse'"
                 @save="saveProfile()"
                 @reset="() => {}"
               />
               <div class="flex justify-end gap-2 pt-4">
-                <UButton variant="ghost" to="/pro/patients">Annuler</UButton>
+                <UButton variant="ghost" :to="patientsListPath">Annuler</UButton>
               </div>
             </UForm>
           </UCard>
@@ -166,6 +90,7 @@
               :documents="documents"
               :is-loading="loadingDocuments"
               :uploading-type="uploadingDocument"
+              :downloading-document-id="downloadingDocumentId"
               :error="documentError"
               @upload="handleDocumentUpload"
               @download="(id, fileName) => downloadDocument(id, fileName)"
@@ -190,7 +115,7 @@
       </div>
 
       <template v-else>
-        <!-- Grille : 100 % pour pro (propre profil), sinon 65% gauche / 35% droite -->
+        <!-- Grille : 100 % pour pro libéral (propre profil), sinon 65% gauche / 35% droite (infirmier, lab, etc.) -->
         <div
           class="grid gap-6 lg:gap-8 grid-cols-1"
           :class="{ 'lg:grid-cols-[13fr_7fr]': !isProOwnProfile }"
@@ -199,7 +124,8 @@
           <div class="space-y-6 lg:space-y-8 min-w-0">
             <ProfilePersonalInfo
               ref="personalInfoRef"
-              v-model="profileForm"
+              :model-value="profileFormSafe"
+              @update:model-value="onProfileFormUpdate"
               :role="role ?? ''"
               :no-actions="true"
               :email-readonly="!newPreleveurMode"
@@ -229,6 +155,31 @@
                   :filter-fields="['label']"
                 />
                 <p class="text-xs text-muted mt-1">Le préleveur sera assigné à votre laboratoire ou à un de vos sous-comptes.</p>
+              </UFormField>
+            </UCard>
+
+            <!-- Admin : modifier le laboratoire assigné à un préleveur (tous les labos + sous-comptes) -->
+            <UCard v-if="showAdminPreleveurLabSelector" class="overflow-hidden">
+              <template #header>
+                <div class="flex items-center gap-2">
+                  <UIcon name="i-lucide-building-2" class="w-5 h-5 text-primary" />
+                  <span class="font-semibold text-gray-900 dark:text-white">Laboratoire assigné</span>
+                </div>
+              </template>
+              <UFormField label="Rattacher ce préleveur à">
+                <USelectMenu
+                  v-model="adminPreleveurLabId"
+                  :items="adminPreleveurLabSelectItems"
+                  value-key="value"
+                  :placeholder="adminPreleveurLabLabel || 'Choisir un laboratoire ou sous-compte...'"
+                  size="md"
+                  color="primary"
+                  variant="soft"
+                  class="w-full min-w-0"
+                  :search-input="{ placeholder: 'Rechercher un labo...' }"
+                  :filter-fields="['label']"
+                />
+                <p class="text-xs text-muted mt-1">Laboratoire ou sous-compte auquel ce préleveur est rattaché.</p>
               </UFormField>
             </UCard>
 
@@ -452,10 +403,6 @@
           />
 
           <div v-else>
-            <p v-if="isNurseOnDiscovery && (categoryPreferences.filter((p: any) => p.is_enabled).length) >= (planLimits?.max_care_types ?? 3)" class="mb-3 text-sm text-amber-600 dark:text-amber-400">
-              <UIcon name="i-lucide-info" class="w-4 h-4 inline-block align-middle mr-1.5 shrink-0" aria-hidden="true" />
-              Offre Découverte : limite de {{ planLimits?.max_care_types ?? 3 }} types de soins. <NuxtLink to="/nurse/abonnement" class="underline font-medium">Passez en Pro</NuxtLink> pour en proposer davantage.
-            </p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               v-for="pref in categoryPreferences"
@@ -691,6 +638,7 @@
               :documents="documents"
               :is-loading="loadingDocuments"
               :uploading-type="uploadingDocument"
+              :downloading-document-id="downloadingDocumentId"
               :error="documentError"
               @upload="handleDocumentUpload"
               @download="(id, fileName) => downloadDocument(id, fileName)"
@@ -702,6 +650,7 @@
                 :documents="documents"
                 :is-loading="loadingDocuments"
                 :uploading-type="uploadingDocument"
+                :downloading-document-id="downloadingDocumentId"
                 :error="documentError"
                 @upload="handleDocumentUpload"
                 @download="(id, fileName) => downloadDocument(id, fileName)"
@@ -770,19 +719,19 @@
                 </div>
                 <div class="flex flex-col gap-2">
                   <template v-if="adminEditedUser?.banned_until && new Date(adminEditedUser.banned_until) > new Date()">
-                    <UButton block variant="outline" color="primary" size="md" :loading="adminModerationLoading" @click="adminUnbanUser">
+                    <UButton block variant="outline" color="primary" size="md" :loading="adminModerationLoading" :on-click="adminUnbanUser">
                       Débannir
                     </UButton>
                   </template>
                   <template v-else>
-                    <UButton block variant="outline" color="warning" size="md" :loading="adminModerationLoading" @click="adminSuspendUser(7)">
+                    <UButton block variant="outline" color="warning" size="md" :loading="adminModerationLoading" :on-click="() => adminSuspendUser(7)">
                       Suspendre 7 jours
                     </UButton>
-                    <UButton block variant="outline" color="error" size="md" :loading="adminModerationLoading" @click="adminBanUser">
+                    <UButton block variant="outline" color="error" size="md" :loading="adminModerationLoading" :on-click="adminBanUser">
                       Bannir
                     </UButton>
                   </template>
-                  <UButton block variant="outline" color="error" size="md" :loading="adminModerationLoading" @click="adminDeleteUser">
+                  <UButton block variant="outline" color="error" size="md" :loading="adminModerationLoading" :on-click="adminDeleteUser">
                     Supprimer l'utilisateur
                   </UButton>
                 </div>
@@ -878,7 +827,7 @@
                 icon="i-lucide-save"
                 :loading="saving"
                 class="w-full justify-center font-medium text-base py-4 rounded-xl"
-                @click="saveAll"
+                :on-click="saveAll"
               >
                 Enregistrer mon profil
               </UButton>
@@ -916,38 +865,48 @@ const editedUserRole = ref<string | null>(null)
 const newPreleveurMode = ref(false)
 const labSubaccountsForPreleveur = ref<any[]>([])
 const preleveurLabId = ref('')
-// Admin crée un utilisateur : ?newUser=1 → formulaire vierge, sauvegarde = POST /users
-const newUserMode = ref(false)
 // Pro crée un patient : ?newPatient=1 → formulaire vierge, sauvegarde = POST /patients
 const newPatientMode = ref(false)
-const adminCreateRole = ref('patient')
+const patientsListPath = computed(() => {
+  const r = user.value?.role
+  if (r === 'nurse') return '/nurse/patients'
+  if (r === 'pro') return '/pro/patients'
+  if (r === 'lab') return '/lab/patients'
+  if (r === 'subaccount') return '/subaccount/patients'
+  return '/pro/patients'
+})
 const effectiveUserId = computed(() => editingUserId.value || user.value?.id || '')
 const effectiveRole = computed(() => {
   if (newPreleveurMode.value) return 'preleveur'
-  if (newUserMode.value) return adminCreateRole.value
   if (newPatientMode.value) return 'patient'
   return (editingUserId.value ? editedUserRole.value : user.value?.role) ?? ''
 })
 const proCanSubmitCreatePatient = computed(() => {
   const f = profileForm.value
-  return !!(f.email?.trim() && f.first_name?.trim() && f.last_name?.trim() && f.phone?.trim())
+  const base = !!(f.first_name?.trim() && f.last_name?.trim() && f.phone?.trim())
+  if (!base) return false
+  const emailOptional =
+    user.value?.role === 'pro' ||
+    user.value?.role === 'nurse' ||
+    user.value?.role === 'lab' ||
+    user.value?.role === 'subaccount'
+  if (emailOptional) return true
+  return !!(f.email?.trim())
 })
 const profilePageTitle = computed(() => {
-  if (newUserMode.value) return 'Créer un utilisateur'
   if (newPatientMode.value) return 'Créer un patient'
   if (newPreleveurMode.value) return 'Créer un préleveur'
   if (editingUserId.value && user.value?.role === 'super_admin') return 'Profil utilisateur'
-  if (editingUserId.value && user.value?.role === 'pro') return 'Profil du patient'
+  if (editingUserId.value && (user.value?.role === 'pro' || user.value?.role === 'nurse' || user.value?.role === 'lab' || user.value?.role === 'subaccount')) return 'Profil du patient'
   if (editingUserId.value && effectiveRole.value === 'subaccount') return 'Profil du sous-compte'
   if (editingUserId.value) return 'Profil du préleveur'
   return 'Mon profil'
 })
 const profilePageDescription = computed(() => {
-  if (newUserMode.value) return 'Renseignez les informations du nouvel utilisateur selon le rôle.'
   if (newPatientMode.value) return 'Renseignez les informations du nouveau patient.'
   if (newPreleveurMode.value) return 'Renseignez les informations du nouveau préleveur.'
   if (editingUserId.value && user.value?.role === 'super_admin') return 'Consultez et modifiez les informations de cet utilisateur.'
-  if (editingUserId.value && user.value?.role === 'pro') return 'Consultez et modifiez les informations de ce patient.'
+  if (editingUserId.value && (user.value?.role === 'pro' || user.value?.role === 'nurse' || user.value?.role === 'lab' || user.value?.role === 'subaccount')) return 'Consultez et modifiez les informations de ce patient.'
   if (editingUserId.value && effectiveRole.value === 'subaccount') return 'Consultez et modifiez les informations de ce sous-compte.'
   if (editingUserId.value) return 'Consultez et modifiez les informations de ce préleveur'
   return 'Consultez et modifiez vos informations personnelles'
@@ -967,40 +926,6 @@ const isSubaccount = computed(() => role.value === 'subaccount')
 const isAdmin = computed(() => user.value?.role === 'super_admin')
 const isPreleveur = computed(() => role.value === 'preleveur')
 
-// Admin création utilisateur
-const adminCreateRoleOptions = [
-  { label: 'Patient', value: 'patient' },
-  { label: 'Professionnel', value: 'pro' },
-  { label: 'Infirmier', value: 'nurse' },
-  { label: 'Laboratoire', value: 'lab' },
-  { label: 'Sous-compte', value: 'subaccount' },
-  { label: 'Préleveur', value: 'preleveur' },
-  { label: 'Super Admin', value: 'super_admin' },
-]
-const adminLabs = ref<any[]>([])
-const adminLabSearchQuery = ref('')
-const adminLabId = ref('')
-const adminAdeli = ref('')
-const adminCareCategories = ref<any[]>([])
-const adminCarePreferencesMap = ref<Record<string, boolean>>({})
-const adminCareTypesSearch = ref('')
-const adminIsEntityRole = (r: string) => r === 'lab' || r === 'subaccount'
-const adminIsLabLinkedRole = (r: string) => r === 'subaccount' || r === 'preleveur'
-const adminFilteredLabs = computed(() => {
-  const q = adminLabSearchQuery.value.toLowerCase().trim()
-  if (!q) return adminLabs.value.slice(0, 20)
-  return adminLabs.value.filter(
-    (l) =>
-      (l.company_name && l.company_name.toLowerCase().includes(q)) ||
-      (l.email && l.email.toLowerCase().includes(q))
-  ).slice(0, 20)
-})
-const adminSelectedLabLabel = computed(() => {
-  if (!adminLabId.value) return ''
-  const lab = adminLabs.value.find((l) => l.id === adminLabId.value)
-  return lab ? (lab.company_name || lab.email || lab.id) : ''
-})
-
 const preleveurLabSelectItems = computed(() => {
   const items: { value: string; label: string }[] = []
   const myId = user.value?.id ?? ''
@@ -1018,20 +943,36 @@ const preleveurLabSelectItems = computed(() => {
 const showPreleveurLabSelector = computed(() => {
   return user.value?.role === 'lab' && ((newPreleveurMode.value || (editingUserId.value && role.value === 'preleveur')))
 })
-const adminFilteredCareCategories = computed(() => {
-  const q = adminCareTypesSearch.value.toLowerCase().trim()
-  if (!q) return adminCareCategories.value
-  return adminCareCategories.value.filter(
-    (c) => (c.name && c.name.toLowerCase().includes(q)) || (c.description && c.description.toLowerCase().includes(q))
-  )
+
+// Admin édite un préleveur : modifier le laboratoire assigné (comme le lab avec ses préleveurs)
+const adminPreleveurLabId = ref('')
+const adminLabs = ref<any[]>([])
+const showAdminPreleveurLabSelector = computed(() => isAdmin.value && !!editingUserId.value && role.value === 'preleveur')
+const adminPreleveurLabSelectItems = computed(() =>
+  adminLabs.value.map((l: any) => ({
+    value: l.id,
+    label: (l.company_name && String(l.company_name).trim()) || `${l.first_name || ''} ${l.last_name || ''}`.trim() || l.email || l.id,
+  }))
+)
+const adminPreleveurLabLabel = computed(() => {
+  if (!adminPreleveurLabId.value) return ''
+  const lab = adminLabs.value.find((l: any) => l.id === adminPreleveurLabId.value)
+  return lab ? (lab.company_name && String(lab.company_name).trim()) || lab.email || lab.id : ''
 })
-const adminCanSubmitCreate = computed(() => {
-  if (!profileForm.value.email?.trim() || !adminCreateRole.value) return false
-  if (adminIsEntityRole(adminCreateRole.value)) return !!profileForm.value.name?.trim()
-  return !!profileForm.value.first_name?.trim() && !!profileForm.value.last_name?.trim()
-})
-function adminSelectLab(lab: any) {
-  adminLabId.value = lab.id
+
+async function loadAdminCreateDependencies() {
+  try {
+    const [labRes, subRes] = await Promise.all([
+      apiFetch('/users?role=lab&limit=500', { method: 'GET' }),
+      apiFetch('/users?role=subaccount&limit=500', { method: 'GET' }),
+    ])
+    adminLabs.value = [
+      ...(labRes?.success && Array.isArray(labRes.data) ? labRes.data : []),
+      ...(subRes?.success && Array.isArray(subRes.data) ? subRes.data : []),
+    ]
+  } catch (_e) {
+    adminLabs.value = []
+  }
 }
 
 // Admin modération (voir/éditer un utilisateur)
@@ -1133,48 +1074,37 @@ const adminDeleteUser = async () => {
   }
 }
 
-const loadAdminCreateDependencies = async () => {
-  try {
-    const [labsRes, catsRes] = await Promise.all([
-      apiFetch('/users?role=lab&limit=200', { method: 'GET' }),
-      apiFetch('/categories?include_inactive=true', { method: 'GET' }),
-    ])
-    if (labsRes?.success && Array.isArray(labsRes.data)) adminLabs.value = labsRes.data
-    if (catsRes?.success && Array.isArray(catsRes.data)) {
-      adminCareCategories.value = catsRes.data
-      adminCareCategories.value.forEach((c: any) => { adminCarePreferencesMap.value[c.id] = true })
-    }
-  } catch (_e) {}
-}
 /** Rôle du profil affiché (pour afficher les bonnes sections quand admin consulte un autre user) */
 const isDisplayedProfileLab = computed(() => role.value === 'lab')
 const hasCoverageZone = computed(
-  () => isNurse.value || isSubaccount.value || (isDisplayedProfileLab.value && !newUserMode.value)
+  () => isNurse.value || isSubaccount.value || isDisplayedProfileLab.value
 )
 const hasPublicProfile = computed(() => isNurse.value || isSubaccount.value || isDisplayedProfileLab.value)
 /** Section Paramètres (profil public + disponibilité) : nurse, subaccount, lab */
 const hasSettingsCard = computed(
-  () =>
-    hasPublicProfile.value ||
-    (isDisplayedProfileLab.value && !newUserMode.value)
+  () => hasPublicProfile.value || isDisplayedProfileLab.value
 )
 /** Photo (préleveur) ; photo + couverture (nurse, subaccount, lab) */
 const hasProfilePhotoCard = computed(
-  () =>
-    (hasPublicProfile.value || isPreleveur.value || isDisplayedProfileLab.value) && !newUserMode.value
+  () => hasPublicProfile.value || isPreleveur.value || isDisplayedProfileLab.value
 )
-/** Profil pro : propre compte (pas en édition d'un patient) → colonne 100 %, bouton en bas à droite */
+/** Profil pro uniquement : propre compte → une colonne + bouton en bas (pas les infirmiers : eux ont photo, couverture, zone sur la droite). */
 const isProOwnProfile = computed(
-  () => user.value?.role === 'pro' && !editingUserId.value && !newUserMode.value && !newPatientMode.value
+  () => user.value?.role === 'pro' && !editingUserId.value && !newPatientMode.value
 )
-/** Pro en édition d'un patient : documents à droite, bouton Enregistrer en dessous */
+/** Pro/Nurse en édition d'un patient : documents à droite, bouton Enregistrer en dessous */
 const isProEditingPatient = computed(
-  () => user.value?.role === 'pro' && !!editingUserId.value && role.value === 'patient' && !newUserMode.value
-)
-/** Historique RDV : lab, subaccount, nurse, préleveur (pas patient ni pro : patient a sa liste /patient, pro réservé admin) */
-const hasAppointmentsSection = computed(
   () =>
-    (isDisplayedProfileLab.value || isSubaccount.value || isNurse.value || isPreleveur.value) && !newUserMode.value
+    (user.value?.role === 'pro' ||
+      user.value?.role === 'nurse' ||
+      user.value?.role === 'lab' ||
+      user.value?.role === 'subaccount') &&
+    !!editingUserId.value &&
+    role.value === 'patient'
+)
+/** Historique RDV : visible uniquement quand l'admin consulte le profil d'un utilisateur (pas pour nurse/lab/etc sur leur propre profil) */
+const hasAppointmentsSection = computed(
+  () => isAdmin.value && !!editingUserId.value
 )
 const profileAppointments = ref<any[]>([])
 const loadingAppointments = ref(false)
@@ -1185,11 +1115,11 @@ const appointmentDetailBasePath = computed(() => {
   if (role.value === 'subaccount') return '/subaccount/appointments'
   if (role.value === 'nurse') return '/nurse/appointments'
   if (role.value === 'preleveur') return '/preleveur/appointments'
-  if (role.value === 'pro') return '/admin/appointments'
+  if (role.value === 'pro') return '/pro/appointments'
   return '/admin/appointments'
 })
 const appointmentListPath = computed(() => {
-  const base = isAdmin.value ? '/admin/appointments' : role.value === 'patient' ? '/patient/appointments' : role.value === 'lab' ? '/lab/appointments' : role.value === 'subaccount' ? '/subaccount/appointments' : role.value === 'nurse' ? '/nurse/appointments' : role.value === 'preleveur' ? '/preleveur/appointments' : '/admin/appointments'
+  const base = isAdmin.value ? '/admin/appointments' : role.value === 'patient' ? '/patient/appointments' : role.value === 'lab' ? '/lab/appointments' : role.value === 'subaccount' ? '/subaccount/appointments' : role.value === 'nurse' ? '/nurse/appointments' : role.value === 'preleveur' ? '/preleveur/appointments' : role.value === 'pro' ? '/pro/appointments' : '/admin/appointments'
   if (isAdmin.value && editingUserId.value) return `${base}?user_id=${editingUserId.value}`
   return base
 })
@@ -1254,6 +1184,7 @@ function getAppointmentStatusColor(status: string): 'error' | 'primary' | 'succe
   const colors: Record<string, 'error' | 'primary' | 'success' | 'info' | 'warning' | 'neutral'> = {
     pending: 'warning',
     confirmed: 'info',
+    planned: 'info',
     inProgress: 'primary',
     completed: 'success',
     canceled: 'error',
@@ -1267,6 +1198,7 @@ function getAppointmentStatusLabel(status: string) {
   const labels: Record<string, string> = {
     pending: 'En attente',
     confirmed: 'Confirmé',
+    planned: 'Planifié',
     inProgress: 'En cours',
     completed: 'Terminé',
     canceled: 'Annulé',
@@ -1292,23 +1224,33 @@ const acceptRdvSunday = ref(true)
 const loading = ref(true)
 const saving = ref(false)
 
-// -- Formulaire profil --
-const profileForm = ref({
-  first_name: '',
-  last_name: '',
-  email: '',
-  phone: '',
-  name: '',
-  rpps: '',
-  siret: '',
-  adeli: '',
-  emploi: null as string | null,
-  birth_date: null as string | null,
-  gender: null as string | null,
-  address: null as any,
-  address_complement: null as string | null,
+// -- Formulaire profil (objet par défaut partagé pour éviter undefined/null avec Nuxt/ClientOnly) --
+function getDefaultProfileForm(): import('~/types/profile').ProfileForm {
+  return {
+    first_name: '',
+    last_name: '',
+    email: '',
+    email_display: null,
+    phone: '',
+    name: '',
+    rpps: '',
+    siret: '',
+    adeli: '',
+    emploi: null,
+    birth_date: null,
+    gender: null,
+    address: null,
+    address_complement: null,
+  }
+}
+const profileForm = ref<import('~/types/profile').ProfileForm>(getDefaultProfileForm())
+const initialForm = ref<import('~/types/profile').ProfileForm>({ ...profileForm.value })
+
+// En Nuxt/ClientOnly, garantir que l'enfant reçoit toujours un objet (jamais undefined) pour éviter Object.assign(target, null) côté enfant
+const profileFormSafe = computed(() => {
+  const p = profileForm.value
+  return p != null && typeof p === 'object' ? p : getDefaultProfileForm()
 })
-const initialForm = ref({ ...profileForm.value })
 
 // -- Zone de couverture --
 const coverageZone = ref<any>(null)
@@ -1407,7 +1349,7 @@ function setOtherFormation(idx: number, value: string) {
 const savingPublicProfile = ref(false)
 const savingAccepting = ref(false)
 const publicProfileSlugPrefix = computed(() =>
-  (isSubaccount.value || (isDisplayedProfileLab.value && !newUserMode.value))
+  (isSubaccount.value || isDisplayedProfileLab.value)
     ? 'oneandlab.fr/Laboratoire/'
     : 'oneandlab.fr/infirmier/'
 )
@@ -1451,7 +1393,7 @@ async function onAcceptingToggle(value: boolean) {
 const publicProfileUrl = computed(() => {
   const slug = publicProfileForm.value.public_slug
   if (!slug) return '#'
-  return (isSubaccount.value || (isDisplayedProfileLab.value && !newUserMode.value)) ? `/Laboratoire/${slug}` : `/infirmier/${slug}`
+  return (isSubaccount.value || isDisplayedProfileLab.value) ? `/Laboratoire/${slug}` : `/infirmier/${slug}`
 })
 
 const hasValidAddress = computed(() => {
@@ -1486,13 +1428,14 @@ const documentFiles = ref<Record<string, File | null>>({
   autres_assurances: null,
 })
 const uploadingDocument = ref<string | null>(null)
+const downloadingDocumentId = ref<string | null>(null)
 const isResettingAfterUpload = ref<string | null>(null)
 
 // ============================
 // Chargement des données
 // ============================
 
-// Mettre à jour l'avatar du header avec la photo affichée sur cette page (nurse, subaccount, preleveur)
+// Synchroniser la photo de profil avec l'avatar du header (layout dashboard)
 watch(
   () => (hasProfilePhotoCard.value ? publicProfileForm.value.profile_image_url : ''),
   (url) => {
@@ -1518,9 +1461,15 @@ const loadPlanLimits = async () => {
 watch(
   () => route.query.userId as string | undefined,
   (uid) => {
-    newUserMode.value = false
     newPatientMode.value = false
-    if ((user.value?.role === 'lab' || user.value?.role === 'super_admin' || user.value?.role === 'pro') && uid) {
+    if (
+      (user.value?.role === 'lab' ||
+        user.value?.role === 'super_admin' ||
+        user.value?.role === 'pro' ||
+        user.value?.role === 'nurse' ||
+        user.value?.role === 'subaccount') &&
+      uid
+    ) {
       editingUserId.value = uid
       loadProfile().then(() => {
         if (hasAppointmentsSection.value) loadProfileAppointments()
@@ -1540,46 +1489,47 @@ watch(
 onMounted(async () => {
   const uid = route.query.userId as string | undefined
   const newPreleveur = route.query.newPreleveur === '1' || route.query.newPreleveur === 'true'
-  const newUser = route.query.newUser === '1' || route.query.newUser === 'true'
-  if (user.value?.role === 'super_admin' && newUser) {
-    newUserMode.value = true
-    newPreleveurMode.value = false
-    editingUserId.value = null
-    editedUserRole.value = null
-    adminCreateRole.value = (route.query.role as string) || 'patient'
-    profileForm.value = { first_name: '', last_name: '', email: '', phone: '', name: '', rpps: '', siret: '', adeli: '', emploi: null, birth_date: null, gender: null, address: null, address_complement: null }
-    initialForm.value = { ...profileForm.value }
-    publicProfileForm.value.profile_image_url = ''
-    loading.value = false
-    await loadAdminCreateDependencies()
-  } else if (user.value?.role === 'lab' && newPreleveur) {
-    newUserMode.value = false
+  if (newPreleveur && !user.value?.role) {
+    await fetchCurrentUser()
+  }
+  if (user.value?.role === 'lab' && newPreleveur) {
     newPatientMode.value = false
     newPreleveurMode.value = true
     editingUserId.value = null
     editedUserRole.value = 'preleveur'
     preleveurLabId.value = user.value?.id ?? ''
-    profileForm.value = { first_name: '', last_name: '', email: '', phone: '', name: '', rpps: '', siret: '', adeli: '', emploi: null, birth_date: null, gender: null, address: null, address_complement: null }
+    profileForm.value = getDefaultProfileForm()
     initialForm.value = { ...profileForm.value }
     publicProfileForm.value.profile_image_url = ''
     loading.value = false
-  } else if (user.value?.role === 'pro' && (route.query.newPatient === '1' || route.query.newPatient === 'true')) {
-    newUserMode.value = false
+  } else if (
+    (user.value?.role === 'pro' ||
+      user.value?.role === 'nurse' ||
+      user.value?.role === 'lab' ||
+      user.value?.role === 'subaccount') &&
+    (route.query.newPatient === '1' || route.query.newPatient === 'true')
+  ) {
     newPreleveurMode.value = false
     newPatientMode.value = true
     editingUserId.value = null
     editedUserRole.value = null
     documents.value = {}
     pendingDocumentFiles.value = {}
-    profileForm.value = { first_name: '', last_name: '', email: '', phone: '', name: '', rpps: '', siret: '', adeli: '', emploi: null, birth_date: null, gender: null, address: null, address_complement: null }
+    profileForm.value = getDefaultProfileForm()
     initialForm.value = { ...profileForm.value }
     publicProfileForm.value.profile_image_url = ''
     loading.value = false
   } else {
-    newUserMode.value = false
     newPreleveurMode.value = false
     newPatientMode.value = false
-    if ((user.value?.role === 'lab' || user.value?.role === 'super_admin' || user.value?.role === 'pro') && uid) {
+    if (
+      (user.value?.role === 'lab' ||
+        user.value?.role === 'super_admin' ||
+        user.value?.role === 'pro' ||
+        user.value?.role === 'nurse' ||
+        user.value?.role === 'subaccount') &&
+      uid
+    ) {
       editingUserId.value = uid
     } else {
       editingUserId.value = null
@@ -1598,7 +1548,7 @@ onMounted(async () => {
     }
   }
   const promises: Promise<void>[] = []
-  if (hasCoverageZone.value && !newPreleveurMode.value && !newUserMode.value && (!editingUserId.value || isAdmin.value)) promises.push(loadCoverage())
+  if (hasCoverageZone.value && !newPreleveurMode.value && (!editingUserId.value || isAdmin.value)) promises.push(loadCoverage())
   if (isNurse.value || (isDisplayedProfileLab.value && isAdmin.value && editingUserId.value) || ((isDisplayedProfileLab.value || isSubaccount.value) && !editingUserId.value)) promises.push(loadCategoryPreferences())
   if (isPatient.value && !newPatientMode.value) promises.push(loadDocuments())
   if (hasAppointmentsSection.value) promises.push(loadProfileAppointments())
@@ -1606,11 +1556,18 @@ onMounted(async () => {
 })
 
 const loadProfile = async () => {
-  if (newPreleveurMode.value || newUserMode.value || newPatientMode.value) return
+  if (newPreleveurMode.value || newPatientMode.value) return
   loading.value = true
   try {
     let userData: any
-    if (editingUserId.value && (user.value?.role === 'lab' || user.value?.role === 'super_admin' || user.value?.role === 'pro')) {
+    if (
+      editingUserId.value &&
+      (user.value?.role === 'lab' ||
+        user.value?.role === 'super_admin' ||
+        user.value?.role === 'pro' ||
+        user.value?.role === 'nurse' ||
+        user.value?.role === 'subaccount')
+    ) {
       const res = await apiFetch(`/users/${editingUserId.value}`, { method: 'GET' })
       userData = res?.success ? res.data : null
     } else {
@@ -1636,6 +1593,7 @@ const loadProfile = async () => {
       first_name: userData.first_name || '',
       last_name: userData.last_name || '',
       email: userData.email || '',
+      email_display: (userData as { email_display?: string | null }).email_display ?? null,
       phone: userData.phone || '',
       name: userData.name || userData.company_name || '',
       rpps: userData.rpps || '',
@@ -1684,6 +1642,12 @@ const loadProfile = async () => {
       if (user.value?.role === 'lab') {
         preleveurLabId.value = userData.lab_id || user.value?.id || ''
       }
+      if (user.value?.role === 'super_admin') {
+        adminPreleveurLabId.value = userData.lab_id || ''
+        await loadAdminCreateDependencies()
+      }
+    } else if (user.value?.role === 'super_admin') {
+      adminPreleveurLabId.value = ''
     }
     if (userData.role === 'lab' || userData.role === 'subaccount') {
       const defaultHours = Object.fromEntries(DAYS.map((d) => [d.key, { start: '', end: '' }]))
@@ -1714,64 +1678,6 @@ const loadProfile = async () => {
 const saveProfile = async (fromSaveAll = false) => {
   if (!fromSaveAll) saving.value = true
   try {
-    if (newUserMode.value) {
-      const r = adminCreateRole.value
-      if (!profileForm.value.email?.trim() || !r) {
-        toast.add({ title: 'Champs requis', description: 'Email et rôle sont obligatoires.', color: 'red' })
-        return
-      }
-      if (adminIsEntityRole(r) && !profileForm.value.name?.trim()) {
-        toast.add({ title: 'Champs requis', description: 'Nom d\'entité requis pour lab/sous-compte.', color: 'red' })
-        return
-      }
-      if (!adminIsEntityRole(r) && (!profileForm.value.first_name?.trim() || !profileForm.value.last_name?.trim())) {
-        toast.add({ title: 'Champs requis', description: 'Prénom et nom sont obligatoires.', color: 'red' })
-        return
-      }
-      const addressBody = profileForm.value.address && typeof profileForm.value.address === 'object' && profileForm.value.address.label?.trim()
-        ? { label: profileForm.value.address.label.trim(), lat: profileForm.value.address.lat, lng: profileForm.value.address.lng }
-        : null
-      const body: any = {
-        email: profileForm.value.email.trim(),
-        first_name: adminIsEntityRole(r) ? '' : (profileForm.value.first_name ?? '').trim(),
-        last_name: adminIsEntityRole(r) ? (profileForm.value.name ?? '').trim() : (profileForm.value.last_name ?? '').trim(),
-        role: r,
-        phone: profileForm.value.phone?.trim() || undefined,
-      }
-      if (adminIsEntityRole(r)) body.company_name = profileForm.value.name?.trim()
-      if (adminIsLabLinkedRole(r) && adminLabId.value) body.lab_id = adminLabId.value
-      const response = await apiFetch('/users', { method: 'POST', body })
-      if (!response?.success) {
-        toast.add({ title: 'Erreur', description: (response as any)?.error || 'Impossible de créer l\'utilisateur.', color: 'red' })
-        return
-      }
-      const newId = (response as any)?.data?.id
-      if (newId) {
-        const updateBody: any = {}
-        if (addressBody) updateBody.address = addressBody
-        if (profileForm.value.gender?.trim()) updateBody.gender = profileForm.value.gender.trim()
-        if (profileForm.value.birth_date?.trim()) updateBody.birth_date = profileForm.value.birth_date.trim()
-        if (profileForm.value.rpps?.trim()) updateBody.rpps = profileForm.value.rpps.trim()
-        if (adminAdeli.value?.trim()) updateBody.adeli = adminAdeli.value.trim()
-        if (profileForm.value.siret?.trim()) updateBody.siret = profileForm.value.siret.trim()
-        if (profileForm.value.name?.trim() && adminIsEntityRole(r)) updateBody.company_name = profileForm.value.name.trim()
-        if (Object.keys(updateBody).length > 0) {
-          await apiFetch(`/users/${newId}`, { method: 'PUT', body: updateBody })
-        }
-        if (r === 'lab' && Object.keys(adminCarePreferencesMap.value).length > 0) {
-          const prefs = Object.entries(adminCarePreferencesMap.value).map(([category_id, is_enabled]) => ({ category_id, is_enabled }))
-          await apiFetch(`/users/${newId}/lab-category-preferences`, { method: 'PUT', body: { preferences: prefs } })
-        }
-        if (r === 'nurse' && Object.keys(adminCarePreferencesMap.value).length > 0) {
-          const prefs = Object.entries(adminCarePreferencesMap.value).map(([category_id, is_enabled]) => ({ category_id, is_enabled }))
-          await apiFetch(`/users/${newId}/nurse-category-preferences`, { method: 'PUT', body: { preferences: prefs } })
-        }
-      }
-      toast.add({ title: 'Utilisateur créé', color: 'green' })
-      await navigateTo(newId ? `/profile?userId=${newId}` : '/admin/users')
-      return
-    }
-
     if (newPreleveurMode.value) {
       const { first_name, last_name, email, phone } = profileForm.value
       if (!email?.trim() || !first_name?.trim() || !last_name?.trim()) {
@@ -1799,24 +1705,34 @@ const saveProfile = async (fromSaveAll = false) => {
 
     if (newPatientMode.value) {
       const { first_name, last_name, email, phone, address } = profileForm.value
-      if (!email?.trim() || !first_name?.trim() || !last_name?.trim() || !phone?.trim()) {
+      if (!first_name?.trim() || !last_name?.trim() || !phone?.trim()) {
+        toast.add({ title: 'Champs requis', description: 'Prénom, nom et téléphone sont obligatoires.', color: 'red' })
+        return
+      }
+      const emailOptional =
+        user.value?.role === 'pro' ||
+        user.value?.role === 'nurse' ||
+        user.value?.role === 'lab' ||
+        user.value?.role === 'subaccount'
+      if (!emailOptional && !email?.trim()) {
         toast.add({ title: 'Champs requis', description: 'Email, prénom, nom et téléphone sont obligatoires.', color: 'red' })
         return
       }
       const addressBody = address && typeof address === 'object' && address.label?.trim()
         ? { label: address.label.trim(), lat: address.lat, lng: address.lng }
         : null
+      const bodyPatient: Record<string, unknown> = {
+        first_name: first_name.trim(),
+        last_name: last_name.trim(),
+        phone: phone.trim(),
+        birth_date: profileForm.value.birth_date?.trim() || null,
+        gender: profileForm.value.gender?.trim() || null,
+        address: addressBody,
+      }
+      if (email?.trim()) bodyPatient.email = email.trim()
       const res = await apiFetch('/patients', {
         method: 'POST',
-        body: {
-          email: email.trim(),
-          first_name: first_name.trim(),
-          last_name: last_name.trim(),
-          phone: phone.trim(),
-          birth_date: profileForm.value.birth_date?.trim() || null,
-          gender: profileForm.value.gender?.trim() || null,
-          address: addressBody,
-        },
+        body: bodyPatient,
       })
       if (res?.success) {
         const newPatientId = (res as any).data?.id
@@ -1844,7 +1760,14 @@ const saveProfile = async (fromSaveAll = false) => {
           documents.value = {}
         }
         toast.add({ title: 'Patient créé', color: 'green' })
-        await navigateTo('/pro/patients')
+        const r = user.value?.role
+        if (newPatientId && (r === 'pro' || r === 'nurse' || r === 'lab' || r === 'subaccount')) {
+          const base =
+            r === 'pro' ? '/pro' : r === 'nurse' ? '/nurse' : r === 'lab' ? '/lab' : '/subaccount'
+          await navigateTo(`${base}/appointments/new?patient_id=${encodeURIComponent(String(newPatientId))}`)
+        } else {
+          await navigateTo(patientsListPath.value)
+        }
       } else {
         toast.add({ title: 'Erreur', description: (res as any)?.error || 'Impossible de créer le patient', color: 'red' })
       }
@@ -1853,6 +1776,16 @@ const saveProfile = async (fromSaveAll = false) => {
 
     const targetId = effectiveUserId.value
     if (!targetId) return
+
+    if (isNurse.value && !profileForm.value.gender?.trim()) {
+      toast.add({
+        title: 'Genre requis',
+        description: 'Indiquez Homme, Femme ou Autre pour le matching des rendez-vous soins.',
+        color: 'red',
+      })
+      if (!fromSaveAll) saving.value = false
+      return
+    }
 
     const body: any = {
       first_name: profileForm.value.first_name,
@@ -1864,6 +1797,7 @@ const saveProfile = async (fromSaveAll = false) => {
     if (isNurse.value) {
       body.rpps = profileForm.value.rpps
       body.is_accepting_appointments = isAcceptingAppointments.value
+      body.gender = profileForm.value.gender?.trim() || null
     }
     if (role.value === 'pro') {
       if (profileForm.value.adeli?.trim()) body.adeli = profileForm.value.adeli.trim()
@@ -1873,6 +1807,9 @@ const saveProfile = async (fromSaveAll = false) => {
       body.profile_image_url = publicProfileForm.value.profile_image_url || null
       if (user.value?.role === 'lab' && editingUserId.value && preleveurLabId.value) {
         body.lab_id = preleveurLabId.value
+      }
+      if (isAdmin.value && editingUserId.value && adminPreleveurLabId.value) {
+        body.lab_id = adminPreleveurLabId.value
       }
     }
     if (role.value === 'lab' || role.value === 'subaccount') {
@@ -1916,11 +1853,13 @@ const saveProfile = async (fromSaveAll = false) => {
     })
 
     if (response.success) {
-      toast.add({
-        title: 'Profil mis à jour',
-        description: editingUserId.value ? 'Les informations du préleveur ont été enregistrées.' : 'Vos informations ont été enregistrées avec succès.',
-        color: 'green',
-      })
+      if (!fromSaveAll) {
+        toast.add({
+          title: 'Profil mis à jour',
+          description: editingUserId.value ? 'Les informations du préleveur ont été enregistrées.' : 'Vos informations ont été enregistrées avec succès.',
+          color: 'green',
+        })
+      }
       if (!editingUserId.value) await fetchCurrentUser()
       initialForm.value = { ...profileForm.value }
     } else {
@@ -1933,14 +1872,27 @@ const saveProfile = async (fromSaveAll = false) => {
   }
 }
 
+function onProfileFormUpdate(v: import('~/types/profile').ProfileForm | null | undefined) {
+  if (v == null || typeof v !== 'object') return
+  // Ne jamais utiliser Object.assign(target, v) : en Nuxt/hydration target peut être undefined → merge immuable
+  const current = profileForm.value
+  const base = current != null && typeof current === 'object' ? current : getDefaultProfileForm()
+  profileForm.value = { ...base, ...v }
+}
+
 function onSavePersonalInfo(formData: import('~/types/profile').ProfileForm) {
-  Object.assign(profileForm.value, formData)
+  if (formData == null || typeof formData !== 'object') return
+  const base = profileForm.value != null && typeof profileForm.value === 'object' ? profileForm.value : getDefaultProfileForm()
+  profileForm.value = { ...base, ...formData }
   saveProfile()
 }
 
 async function saveAll() {
   const data = personalInfoRef.value?.getFormData?.()
-  if (data) Object.assign(profileForm.value, data)
+  if (data != null && typeof data === 'object') {
+    const base = profileForm.value != null && typeof profileForm.value === 'object' ? profileForm.value : getDefaultProfileForm()
+    profileForm.value = { ...base, ...data }
+  }
 
   saving.value = true
   try {
@@ -1956,7 +1908,8 @@ async function saveAll() {
 }
 
 const resetForm = () => {
-  profileForm.value = { ...initialForm.value }
+  const base = initialForm.value
+  profileForm.value = base != null && typeof base === 'object' ? { ...base } : getDefaultProfileForm()
 }
 
 // ============================
@@ -2003,7 +1956,9 @@ const saveCoverage = async (fromSaveAll = false) => {
       body,
     })
     if (response.success) {
-      toast.add({ title: 'Rayon enregistré', description: `Zone de ${coverageRadius.value} km mise à jour.`, color: 'green' })
+      if (!fromSaveAll) {
+        toast.add({ title: 'Rayon enregistré', description: `Zone de ${coverageRadius.value} km mise à jour.`, color: 'green' })
+      }
       await loadCoverage()
     } else {
       toast.add({ title: 'Limite de votre offre', description: response.error || "Impossible d'enregistrer", color: 'red' })
@@ -2018,7 +1973,7 @@ const saveCoverage = async (fromSaveAll = false) => {
 function generatePublicSlug() {
   const u = user.value
   const pf = profileForm.value
-  if (isSubaccount.value || (isDisplayedProfileLab.value && !newUserMode.value)) {
+  if (isSubaccount.value || isDisplayedProfileLab.value) {
     const name = (pf.name || u?.company_name || pf.first_name || u?.first_name || '').toString()
     publicProfileForm.value.public_slug = name
       .toLowerCase()
@@ -2078,12 +2033,14 @@ async function savePublicProfile(fromSaveAll = false) {
       body,
     })
     if (response.success) {
-      const enabled = publicProfileForm.value.is_public_profile_enabled
-      toast.add({
-        title: enabled ? 'Profil public activé' : 'Profil public désactivé',
-        description: enabled ? 'Votre fiche est visible sur OneAndLab.' : 'Votre fiche n’est plus visible.',
-        color: 'green',
-      })
+      if (!fromSaveAll) {
+        const enabled = publicProfileForm.value.is_public_profile_enabled
+        toast.add({
+          title: enabled ? 'Profil public activé' : 'Profil public désactivé',
+          description: enabled ? 'Votre fiche est visible sur OneAndLab.' : 'Votre fiche n’est plus visible.',
+          color: 'green',
+        })
+      }
       if (!editingUserId.value) await fetchCurrentUser()
     } else {
       toast.add({ title: 'Erreur', description: response.error || 'Impossible d\'enregistrer', color: 'red' })
@@ -2292,6 +2249,7 @@ const handleDocumentChange = async (documentType: string, file: File | null) => 
 }
 
 async function downloadDocument(documentId: string, fileName?: string) {
+  downloadingDocumentId.value = documentId
   try {
     const apiBase = useRuntimeConfig().public.apiBase || 'http://localhost:8888/api'
     const token = localStorage.getItem('auth_token')
@@ -2317,6 +2275,8 @@ async function downloadDocument(documentId: string, fileName?: string) {
     toast.add({ title: 'Téléchargement', description: 'Le document est en cours de téléchargement.', color: 'green' })
   } catch (err: any) {
     toast.add({ title: 'Erreur', description: err.message || 'Impossible de télécharger le document', color: 'red' })
+  } finally {
+    downloadingDocumentId.value = null
   }
 }
 

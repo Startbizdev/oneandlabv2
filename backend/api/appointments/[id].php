@@ -12,7 +12,7 @@ $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $corsConfig['allowed_origins'], true)) {
     header('Access-Control-Allow-Origin: ' . $origin);
 }
-header('Access-Control-Allow-Methods: GET, PUT, OPTIONS');
+header('Access-Control-Allow-Methods: GET, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
 header('Access-Control-Allow-Credentials: true');
 
@@ -26,7 +26,7 @@ $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
 // Vérifier CSRF pour les requêtes modifiantes
-if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+if ($_SERVER['REQUEST_METHOD'] === 'PUT' || $_SERVER['REQUEST_METHOD'] === 'DELETE') {
     CSRFMiddleware::handle();
 }
 
@@ -84,8 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $user['role'] === 'super_admin'
         );
         
-        // Les infirmiers ne peuvent accéder qu'aux rendez-vous de type "nursing"
-        if ($user['role'] === 'nurse' && $appointmentCheck['type'] !== 'nursing') {
+        // Infirmier : pas d'accès aux blood_test créés par d'autres (seulement nursing ou blood_test créés par lui)
+        if ($user['role'] === 'nurse' && $appointmentCheck['type'] === 'blood_test' && $appointmentCheck['created_by'] !== $user['user_id']) {
             $hasAccess = false;
         }
         
@@ -124,14 +124,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         }
         
-        // Infirmier : accès si assigné à lui OU si RDV offert (pending, dans appointment_offers)
+        // Infirmier : accès si assigné à lui OU si RDV offert (pending, dans appointment_offers) OU jeton de partage valide
         if (!$hasAccess && $user['role'] === 'nurse' && $appointmentCheck['type'] === 'nursing' &&
             $appointmentCheck['status'] === 'pending' && empty($appointmentCheck['assigned_nurse_id'])) {
             $offerStmt = $db->prepare('SELECT 1 FROM appointment_offers WHERE appointment_id = ? AND profile_id = ? LIMIT 1');
             $offerStmt->execute([$id, $user['user_id']]);
             if ($offerStmt->fetch()) {
                 $hasAccess = true;
+            } else {
+                $shareTokenGet = isset($_GET['share_token']) ? trim((string) $_GET['share_token']) : '';
+                if ($shareTokenGet !== '') {
+                    require_once __DIR__ . '/../../lib/AppointmentShareToken.php';
+                    if (AppointmentShareToken::grantsNurseShareAccess($db, $shareTokenGet, $id)) {
+                        $hasAccess = true;
+                    }
+                }
             }
+        }
+
+        // Infirmier créateur : plus d'accès au détail si un autre infirmier est assigné (refus / redispatch puis acceptation par un confrère)
+        if ($user['role'] === 'nurse' && ($appointmentCheck['type'] ?? '') === 'nursing'
+            && !empty($appointmentCheck['assigned_nurse_id'])
+            && (string) $appointmentCheck['assigned_nurse_id'] !== (string) $user['user_id']
+        ) {
+            $hasAccess = false;
         }
         
         if (!$hasAccess) {
@@ -169,7 +185,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ]);
             exit;
         }
-        
+
+        // Lien partagé : matérialiser les offres pour l’infirmier (lot + liste « Mes demandes »)
+        $shareTokenMaterialize = isset($_GET['share_token']) ? trim((string) $_GET['share_token']) : '';
+        if ($user['role'] === 'nurse' && $shareTokenMaterialize !== '') {
+            require_once __DIR__ . '/../../lib/AppointmentShareToken.php';
+            if (AppointmentShareToken::grantsNurseShareAccess($db, $shareTokenMaterialize, $id)) {
+                AppointmentShareToken::materializeOffersForNurseFromShare($db, $user['user_id'], $id);
+            }
+        }
+
         $appointment = $appointmentModel->getById($id, $user['user_id'], $user['role']);
         
         if (!$appointment) {
@@ -221,6 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     $isFullUpdate = isset($input['form_data']) || isset($input['scheduled_at']) || isset($input['address']);
 
+    $declinedOffer = false;
     try {
         // Limite 10 RDV/mois pour infirmiers en offre Découverte (avant assignation)
         if (!$isFullUpdate && isset($input['status']) && $input['status'] === 'confirmed' && $user['role'] === 'nurse') {
@@ -237,17 +263,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $planSlug = $sub ? ($sub['plan_slug'] ?? 'discovery') : 'discovery';
                 $limits = require __DIR__ . '/../../config/plan-limits.php';
                 $nurseLimits = $limits['nurse'][$planSlug] ?? $limits['nurse']['discovery'];
-                $maxPerMonth = $nurseLimits['max_appointments_per_month'] ?? 10;
+                // null = illimité (nurse_pro) — ne pas utiliser ?? 10 qui remplace null par 10
+                $maxPerMonth = array_key_exists('max_appointments_per_month', $nurseLimits)
+                    ? $nurseLimits['max_appointments_per_month']
+                    : ($limits['nurse']['discovery']['max_appointments_per_month'] ?? 10);
                 if ($maxPerMonth !== null) {
-                    $monthStart = date('Y-m-01 00:00:00');
-                    $monthEnd = date('Y-m-t 23:59:59');
+                    $tz = new DateTimeZone('Europe/Paris');
+                    $now = new DateTime('now', $tz);
+                    $monthStart = $now->format('Y-m-01 00:00:00');
+                    $monthEnd = $now->format('Y-m-t 23:59:59');
                     $stmtCount = $dbCheck->prepare('
-                        SELECT COUNT(*) FROM appointments
-                        WHERE assigned_nurse_id = ?
-                        AND scheduled_at >= ? AND scheduled_at <= ?
-                        AND status NOT IN (\'canceled\', \'refused\')
+                        SELECT COUNT(*) FROM (
+                            SELECT a.id FROM appointments a
+                            LEFT JOIN (
+                                SELECT appointment_id, MIN(created_at) as first_accepted_at
+                                FROM appointment_status_updates
+                                WHERE status = \'confirmed\' AND actor_role = \'nurse\' AND actor_id = ?
+                                GROUP BY appointment_id
+                            ) u ON u.appointment_id = a.id
+                            WHERE a.assigned_nurse_id = ?
+                            AND a.status NOT IN (\'canceled\', \'refused\')
+                            AND (
+                                (u.first_accepted_at IS NOT NULL AND u.first_accepted_at >= ? AND u.first_accepted_at <= ?)
+                                OR (u.first_accepted_at IS NULL AND a.scheduled_at >= ? AND a.scheduled_at <= ?)
+                            )
+                        ) x
                     ');
-                    $stmtCount->execute([$user['user_id'], $monthStart, $monthEnd]);
+                    $stmtCount->execute([$user['user_id'], $user['user_id'], $monthStart, $monthEnd, $monthStart, $monthEnd]);
                     $count = (int) $stmtCount->fetchColumn();
                     if ($count >= $maxPerMonth) {
                         http_response_code(403);
@@ -366,7 +408,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 }
             }
 
-            $appointmentModel->updateStatus(
+            // Infirmier : accepter un RDV « partage lien » sans être dans la zone (appointment_offers)
+            if (
+                !$isFullUpdate
+                && isset($input['status'])
+                && $input['status'] === 'confirmed'
+                && $user['role'] === 'nurse'
+            ) {
+                require_once __DIR__ . '/../../lib/AppointmentShareToken.php';
+                $configPut = require __DIR__ . '/../../config/database.php';
+                $dsnPut = sprintf(
+                    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+                    $configPut['host'],
+                    $configPut['port'],
+                    $configPut['database'],
+                    $configPut['charset']
+                );
+                $dbPut = new PDO($dsnPut, $configPut['username'], $configPut['password'], $configPut['options'] ?? []);
+                $stmtPut = $dbPut->prepare('SELECT type, status, assigned_nurse_id FROM appointments WHERE id = ?');
+                $stmtPut->execute([$id]);
+                $aptPut = $stmtPut->fetch(PDO::FETCH_ASSOC);
+                if (
+                    $aptPut
+                    && ($aptPut['type'] ?? '') === 'nursing'
+                    && ($aptPut['status'] ?? '') === 'pending'
+                    && empty($aptPut['assigned_nurse_id'])
+                ) {
+                    $offerStmtPut = $dbPut->prepare('SELECT 1 FROM appointment_offers WHERE appointment_id = ? AND profile_id = ? LIMIT 1');
+                    $offerStmtPut->execute([$id, $user['user_id']]);
+                    $hasOfferPut = $offerStmtPut->fetch() !== false;
+                    if (!$hasOfferPut) {
+                        $shareTokPut = trim((string) ($input['share_token'] ?? ''));
+                        if ($shareTokPut === '' || !AppointmentShareToken::grantsNurseShareAccess($dbPut, $shareTokPut, $id)) {
+                            http_response_code(403);
+                            echo json_encode([
+                                'success' => false,
+                                'error' => 'Ce rendez-vous ne vous est pas proposé. Utilisez le lien de partage reçu.',
+                                'code' => 'NO_OFFER_NO_TOKEN',
+                            ]);
+                            exit;
+                        }
+                    }
+                }
+            }
+
+            $statusResult = $appointmentModel->updateStatus(
                 $id,
                 $input['status'],
                 $user['user_id'],
@@ -377,6 +463,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $cancellationComment,
                 $cancellationPhotoDocumentId
             );
+            $declinedOffer = ($statusResult === 'declined_offer');
             if ($redispatch) {
                 require_once __DIR__ . '/../../lib/Logger.php';
                 $logger = new Logger();
@@ -386,7 +473,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ]);
             }
         }
-        echo json_encode(['success' => true]);
+        echo json_encode([
+            'success' => true,
+            'declined_offer' => $declinedOffer,
+        ]);
         if (function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
         } else {
@@ -400,6 +490,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'code' => 'VALIDATION_ERROR',
         ]);
     }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    // Suppression réservée au super_admin (liste admin rendez-vous)
+    if ($user['role'] !== 'super_admin') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Suppression réservée à l\'administrateur']);
+        exit;
+    }
+    require_once __DIR__ . '/../../config/database.php';
+    $config = require __DIR__ . '/../../config/database.php';
+    $dsn = sprintf(
+        'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+        $config['host'],
+        $config['port'],
+        $config['database'],
+        $config['charset']
+    );
+    $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
+    $stmt = $db->prepare('SELECT id FROM appointments WHERE id = ?');
+    $stmt->execute([$id]);
+    if (!$stmt->fetch()) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Rendez-vous introuvable']);
+        exit;
+    }
+    $del = $db->prepare('DELETE FROM appointments WHERE id = ?');
+    $del->execute([$id]);
+    echo json_encode(['success' => true]);
 } else {
     http_response_code(405);
     echo json_encode(['success' => false, 'error' => 'Méthode non autorisée']);

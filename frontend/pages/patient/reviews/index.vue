@@ -33,7 +33,7 @@
       >
         <div class="flex justify-between items-start">
           <div class="flex-1">
-            <div class="flex items-center gap-2 mb-2">
+            <div class="flex items-center gap-2 mb-2 flex-wrap">
               <div class="flex">
                 <UIcon 
                   v-for="i in 5" 
@@ -45,6 +45,24 @@
               <span class="text-sm text-gray-600">
                 pour {{ review.reviewee_name || 'Professionnel' }}
               </span>
+            </div>
+
+            <div class="text-sm text-gray-600 space-y-1 mb-2">
+              <p v-if="review.appointment_type || review.category_name">
+                <span class="font-medium text-gray-800">{{ appointmentTypeLabel(review.appointment_type) }}</span>
+                <span v-if="review.category_name"> · {{ review.category_name }}</span>
+              </p>
+              <p v-if="review.appointment_scheduled_at" class="text-xs text-gray-500">
+                Rendez-vous du {{ formatAppointmentDate(review.appointment_scheduled_at) }}
+              </p>
+              <NuxtLink
+                v-if="review.appointment_id"
+                :to="`/patient/appointments/${review.appointment_id}`"
+                class="text-xs text-primary-600 hover:underline inline-flex items-center gap-1"
+              >
+                <UIcon name="i-lucide-external-link" class="w-3.5 h-3.5" />
+                Voir le rendez-vous
+              </NuxtLink>
             </div>
             
             <p v-if="review.comment" class="text-gray-700 mb-2">
@@ -112,5 +130,22 @@ const formatDate = (date: string) => {
     day: 'numeric',
   });
 };
+
+function appointmentTypeLabel(type: string | null | undefined) {
+  if (type === 'blood_test') return 'Prise de sang';
+  if (type === 'nursing' || type === 'nurse') return 'Soins infirmiers';
+  return type ? String(type) : 'Rendez-vous';
+}
+
+function formatAppointmentDate(iso: string) {
+  return new Date(iso).toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 </script>
 

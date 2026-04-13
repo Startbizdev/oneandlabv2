@@ -7,14 +7,6 @@
     >
       <template #actions>
         <div class="flex items-center gap-2">
-          <UButton
-            variant="ghost"
-            size="sm"
-            icon="i-lucide-refresh-cw"
-            :loading="loading"
-            aria-label="Actualiser"
-            @click="fetchPreleveurs"
-          />
           <UButton color="primary" icon="i-lucide-plus" to="/profile?newPreleveur=1">
             Ajouter un préleveur
           </UButton>
@@ -50,7 +42,7 @@
         <UButton size="xs" variant="soft" color="primary" icon="i-lucide-calendar" :to="`/lab/appointments?assigned_to=${item.id}`">
           RDV
         </UButton>
-        <UButton size="xs" variant="soft" color="red" icon="i-lucide-trash-2" @click="confirmDelete(item)">
+        <UButton size="xs" variant="soft" color="red" icon="i-lucide-trash-2" :on-click="() => confirmDelete(item)">
           Supprimer
         </UButton>
       </template>
@@ -64,8 +56,8 @@
       :ui="{ content: 'max-w-md', footer: 'justify-end gap-2' }"
     >
       <template #footer="{ close }">
-        <UButton variant="ghost" @click="close()">Annuler</UButton>
-        <UButton color="red" :loading="deleting" @click="deletePreleveur">Supprimer</UButton>
+        <UButton variant="ghost" :on-click="close">Annuler</UButton>
+        <UButton color="red" :loading="deleting" :on-click="deletePreleveur">Supprimer</UButton>
       </template>
     </UModal>
   </div>

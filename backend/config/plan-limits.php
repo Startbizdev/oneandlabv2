@@ -2,7 +2,7 @@
 
 /**
  * Limites par plan d'abonnement (infirmiers et laboratoires).
- * Infirmiers : discovery = gratuit (20 km, 3 types de soins), nurse_pro = 100 km, illimité.
+ * Infirmiers : discovery = gratuit (20 km, tous types de soins), nurse_pro = 100 km, illimité.
  * Lab : free = sans abo (0 préleveurs, 0 sous-comptes), lab_starter, lab_pro.
  */
 
@@ -10,7 +10,7 @@ return [
     'nurse' => [
         'discovery' => [
             'max_radius_km' => 20,
-            'max_care_types' => 3,
+            'max_care_types' => null,
             'max_appointments_per_month' => 10,
         ],
         'nurse_pro' => [

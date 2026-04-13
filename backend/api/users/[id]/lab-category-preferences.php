@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $preferences = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $stmt = $db->prepare('
-            SELECT cc.id as category_id, cc.name, cc.description, cc.type, cc.icon, TRUE as is_enabled
+            SELECT cc.id as category_id, cc.name, cc.description, cc.type, cc.icon, FALSE as is_enabled
             FROM care_categories cc
             WHERE cc.is_active = TRUE AND cc.type = \'blood_test\'
             AND cc.id NOT IN (SELECT category_id FROM lab_category_preferences WHERE lab_id = ?)

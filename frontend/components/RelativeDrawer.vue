@@ -259,9 +259,21 @@ const handleSave = async () => {
     
     const method = props.relative ? 'PUT' : 'POST';
     
+    // Whitelist stricte : uniquement les champs du proche (jamais écraser le profil patient)
+    const payload: Record<string, unknown> = {
+      first_name: form.value.first_name,
+      last_name: form.value.last_name,
+      relationship_type: form.value.relationship_type,
+      gender: form.value.gender || undefined,
+      birth_date: form.value.birth_date || undefined,
+      email: form.value.email || undefined,
+      phone: form.value.phone || undefined,
+      address: form.value.address || undefined,
+    };
+    
     const response = await apiFetch(url, {
       method,
-      body: JSON.stringify(form.value),
+      body: payload,
     });
     
     if (response.success) {

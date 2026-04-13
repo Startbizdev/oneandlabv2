@@ -30,7 +30,7 @@
             Voir détail
           </UButton>
           <UButton type="button" variant="ghost" color="gray" :to="appointmentsBasePath" class="hidden sm:inline-flex">Annuler</UButton>
-          <UButton type="submit" color="primary" :loading="saving" icon="i-lucide-check" size="sm" @click="submit">
+          <UButton v-if="!postCreateAppointmentId" type="submit" color="primary" :loading="saving" icon="i-lucide-check" size="sm" :on-click="submit">
             {{ isCreate ? 'Créer' : 'Enregistrer' }}
           </UButton>
         </div>
@@ -53,11 +53,40 @@
         <UButton :to="appointmentsBasePath" color="gray" variant="solid">Retour à la liste</UButton>
       </div>
 
+      <!-- Après création : section ordonnance (pro uniquement) - télécharger, régénérer, enregistrer -->
+      <div v-else-if="postCreateAppointmentId && showPrescriptionAfterCreate" class="space-y-6 max-w-2xl">
+        <div class="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+          <UIcon name="i-lucide-check-circle" class="w-8 h-8 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+          <div>
+            <p class="font-medium text-emerald-800 dark:text-emerald-200">Rendez-vous créé avec succès</p>
+            <p class="text-sm text-emerald-600 dark:text-emerald-300">Modifiez le texte si besoin, régénérez le PDF ou téléchargez l'ordonnance déjà enregistrée.</p>
+          </div>
+        </div>
+        <DashboardPrescriptionSection
+          :appointment="{ id: postCreateAppointmentId }"
+          :documents="postCreateDocuments"
+          :load-documents="loadPostCreateDocuments"
+          :initial-prescription-text="prescriptionTextDuringCreate"
+        />
+        <div class="flex gap-3">
+          <UButton :to="`${appointmentsBasePath}/${postCreateAppointmentId}`" color="primary" leading-icon="i-lucide-eye">
+            Voir le détail du RDV
+          </UButton>
+          <UButton :to="appointmentsBasePath" variant="outline" color="neutral">
+            Retour à la liste
+          </UButton>
+        </div>
+      </div>
+
       <form v-else-if="isCreate || (isEdit && appointment)" @submit.prevent="submit" class="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         <div class="lg:col-span-7 space-y-6">
           
-          <section v-if="isCreate" class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <section
+            v-if="isCreate"
+            id="appointment-form-section-patient-search"
+            class="scroll-mt-28 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
+          >
             <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-search" class="w-5 h-5 text-primary-500 shrink-0" />
               Recherche Patient
@@ -72,19 +101,30 @@
                 size="lg"
                 class="w-full"
                 :loading="patientsLoading"
-                :search-input="{ placeholder: 'Rechercher...' }"
-                :filter-fields="['label']"
+                :search-input="{ placeholder: patientSelectSearchPlaceholder }"
+                :filter-fields="['label', 'searchText']"
                 icon="i-lucide-user"
               >
                 <template #label>
                   <span v-if="selectedPatientId === NEW_PATIENT_VALUE" class="text-primary-600 font-medium">✨ Nouveau patient</span>
                   <span v-else>{{ patientSelectItems.find(i => i.value === selectedPatientId)?.label }}</span>
                 </template>
+                <template #item-label="{ item }">
+                  <div class="min-w-0 flex-1 py-0.5 text-left">
+                    <p class="truncate font-medium text-gray-900 dark:text-white">{{ item.label }}</p>
+                    <p v-if="item.metaLine" class="truncate text-xs text-gray-500 dark:text-gray-400">
+                      {{ item.metaLine }}
+                    </p>
+                  </div>
+                </template>
               </USelectMenu>
             </UFormField>
           </section>
 
-          <section class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <section
+            id="appointment-form-section-identity"
+            class="scroll-mt-28 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
+          >
             <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-user-circle" class="w-5 h-5 text-primary-500 shrink-0" />
               Identité du patient
@@ -111,8 +151,11 @@
               </UFormField>
 
               <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5 pt-2 border-t border-gray-100 dark:border-gray-800">
-                 <UFormField label="Email" name="email" required>
+                 <UFormField label="Email" name="email" :required="!isProForm">
                   <UInput v-model="form.form_data.email" type="email" icon="i-lucide-mail" placeholder="email@exemple.fr" size="md" class="w-full" />
+                  <p v-if="isProForm" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Optionnel : si le patient n’a pas d’e-mail, les notifications peuvent utiliser votre adresse professionnelle.
+                  </p>
                 </UFormField>
                 <UFormField label="Téléphone" name="phone" required>
                   <UInput v-model="form.form_data.phone" type="tel" icon="i-lucide-phone" placeholder="06 12 34 56 78" size="md" class="w-full" />
@@ -121,13 +164,24 @@
             </div>
           </section>
 
-          <section class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <section
+            id="appointment-form-section-intervention"
+            class="scroll-mt-28 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
+          >
             <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-clipboard-list" class="w-5 h-5 text-primary-500 shrink-0" />
               Nature de l'intervention
             </h2>
 
-            <div class="flex rounded-lg border border-gray-200 dark:border-gray-700 p-1 mb-4">
+            <div v-if="isCreate && supportsMultiCareCreate" class="mb-4">
+              <UCheckbox
+                v-model="multiCareEnabled"
+                label="Plusieurs soins (même patient, même date et créneau)"
+                class="text-sm"
+              />
+            </div>
+
+            <div v-if="!isLabForm && !isSubaccountForm" class="flex rounded-lg border border-gray-200 dark:border-gray-700 p-1 mb-4">
               <button
                 v-for="type in serviceTypes"
                 :key="type.value"
@@ -143,7 +197,8 @@
               </button>
             </div>
 
-            <div class="space-y-4">
+            <!-- Un seul soin (comportement historique) -->
+            <div v-if="!supportsMultiCareCreate || !multiCareEnabled" class="space-y-4">
               <UFormField :label="form.type === 'blood_test' ? 'Type d\'analyse' : 'Type de soin'" name="category_id" required>
                 <USelectMenu 
                   v-model="form.form_data.category_id" 
@@ -153,7 +208,13 @@
                   placeholder="Sélectionner dans la liste..." 
                   size="md" 
                   class="w-full min-w-0"
-                />
+                  :filter-fields="['label']"
+                >
+                  <template #label>
+                    <span v-if="!form.form_data.category_id || typeof form.form_data.category_id === 'object'">Sélectionner dans la liste...</span>
+                    <span v-else>{{ categoryOptions.find(c => String(c.value) === String(form.form_data.category_id))?.label ?? 'Sélectionner dans la liste...' }}</span>
+                  </template>
+                </USelectMenu>
               </UFormField>
 
               <template v-if="form.type === 'blood_test'">
@@ -172,7 +233,7 @@
                       {{ opt.label }}
                     </button>
                   </div>
-                  <p v-if="form.form_data.blood_test_type === 'single'" class="text-xs text-gray-500 mt-1.5">Une seule prise de sang</p>
+                  <p v-if="form.form_data.blood_test_type === 'single'" class="text-xs text-gray-500 mt-1.5">Une seule fois</p>
                   <p v-else-if="form.form_data.blood_test_type === 'multiple'" class="text-xs text-gray-500 mt-1.5">Plusieurs prélèvements sur plusieurs jours</p>
                 </UFormField>
                 
@@ -195,19 +256,239 @@
 
               <template v-if="form.type === 'nursing'">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <UFormField label="Durée estimée" name="duration_days">
+                  <UFormField label="Prise en charge" name="duration_days">
                     <USelect v-model="form.form_data.duration_days" :items="nursingDurationOptions" placeholder="Sélectionner" class="w-full" />
+                    <UInput
+                      v-if="form.form_data.duration_days === 'custom'"
+                      v-model.number="form.form_data.custom_days"
+                      type="number"
+                      placeholder="Nombre de jours"
+                      class="mt-2 w-full"
+                      min="1"
+                    />
                   </UFormField>
-                  
-                  <UFormField v-if="form.form_data.duration_days && form.form_data.duration_days !== '1'" label="Fréquence de passage" name="frequency">
+                  <UFormField v-if="showNursingFreq(form.form_data.duration_days)" label="Fréquence de passage" name="frequency">
                     <USelect v-model="form.form_data.frequency" :items="frequencyOptions" placeholder="Sélectionner" class="w-full" />
                   </UFormField>
                 </div>
+                <UFormField
+                  v-if="!isNurseForm"
+                  label="Préférence pour l'infirmier"
+                  name="preferred_nurse_gender"
+                  class="mt-4"
+                >
+                  <URadioGroup
+                    v-model="form.form_data.preferred_nurse_gender"
+                    :items="preferredNurseGenderOptions"
+                    size="md"
+                    variant="list"
+                  />
+                </UFormField>
               </template>
+
+              <div v-if="categoryOptionsForCare.length" class="space-y-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                <template v-for="opt in categoryOptionsForCare" :key="opt.option_key">
+                  <UFormField v-if="opt.field_type === 'select'" :label="opt.label" :name="`care_${opt.option_key}`" :required="!!opt.is_required">
+                    <USelect
+                      v-model="form.form_data.care_options[opt.option_key]"
+                      :items="(opt.options || []).map(o => ({ label: o.label, value: o.value }))"
+                      value-key="value"
+                      placeholder="Choisir"
+                      size="md"
+                      class="w-full"
+                    />
+                  </UFormField>
+                  <UFormField v-else-if="opt.field_type === 'text'" :label="opt.label" :name="`care_${opt.option_key}`" :required="!!opt.is_required">
+                    <UInput v-model="form.form_data.care_options[opt.option_key]" placeholder="" size="md" class="w-full" />
+                  </UFormField>
+                  <UFormField v-else-if="opt.field_type === 'number'" :label="opt.label" :name="`care_${opt.option_key}`" :required="!!opt.is_required">
+                    <UInput v-model.number="form.form_data.care_options[opt.option_key]" type="number" placeholder="" size="md" class="w-full" />
+                  </UFormField>
+                </template>
+              </div>
+            </div>
+
+            <!-- Plusieurs soins : un bloc par catégorie / ligne métier -->
+            <div v-else class="space-y-6">
+              <div
+                v-for="(block, idx) in careBlocks"
+                :key="block.id"
+                class="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/30 p-4 space-y-4"
+              >
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white">
+                    Soin {{ idx + 1 }}
+                  </p>
+                  <UButton
+                    v-if="careBlocks.length > 1"
+                    type="button"
+                    size="xs"
+                    color="neutral"
+                    variant="ghost"
+                    icon="i-lucide-trash-2"
+                    @click="removeCareBlock(idx)"
+                  >
+                    Retirer
+                  </UButton>
+                </div>
+
+                <UFormField :label="form.type === 'blood_test' ? 'Type d\'analyse' : 'Type de soin'" :name="`category_id_${block.id}`" required>
+                  <USelectMenu
+                    v-model="block.category_id"
+                    :items="categoryOptions"
+                    value-key="value"
+                    searchable
+                    placeholder="Sélectionner dans la liste..."
+                    size="md"
+                    class="w-full min-w-0"
+                    :filter-fields="['label']"
+                  >
+                    <template #label>
+                      <span v-if="!block.category_id">Sélectionner dans la liste...</span>
+                      <span v-else>{{ categoryOptions.find(c => String(c.value) === String(block.category_id))?.label ?? 'Sélectionner dans la liste...' }}</span>
+                    </template>
+                  </USelectMenu>
+                </UFormField>
+
+                <template v-if="form.type === 'blood_test'">
+                  <UFormField label="Prélèvement" :name="`blood_test_type_${block.id}`">
+                    <div class="flex rounded-lg border border-gray-200 dark:border-gray-700 p-1">
+                      <button
+                        v-for="opt in bloodTestTypeOptions"
+                        :key="opt.value"
+                        type="button"
+                        class="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all"
+                        :class="block.blood_test_type === opt.value
+                          ? 'bg-primary-500 text-white shadow-sm'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+                        @click="block.blood_test_type = opt.value"
+                      >
+                        {{ opt.label }}
+                      </button>
+                    </div>
+                  </UFormField>
+                  <UFormField
+                    v-if="block.blood_test_type === 'multiple'"
+                    label="Durée du protocole"
+                    :name="`duration_days_${block.id}`"
+                  >
+                    <USelect v-model="block.duration_days" :items="multipleDaysOptions" placeholder="Choisir une durée" class="w-full" />
+                    <UInput
+                      v-if="block.duration_days === 'custom'"
+                      v-model.number="block.custom_days"
+                      type="number"
+                      placeholder="Nombre de jours précis"
+                      class="mt-2 w-full"
+                      icon="i-lucide-calendar-days"
+                    />
+                  </UFormField>
+                </template>
+
+                <template v-if="form.type === 'nursing'">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <UFormField label="Prise en charge" :name="`duration_days_${block.id}`">
+                      <USelect v-model="block.duration_days" :items="nursingDurationOptions" placeholder="Sélectionner" class="w-full" />
+                      <UInput
+                        v-if="block.duration_days === 'custom'"
+                        v-model.number="block.custom_days"
+                        type="number"
+                        placeholder="Nombre de jours"
+                        class="mt-2 w-full"
+                        min="1"
+                      />
+                    </UFormField>
+                    <UFormField v-if="showNursingFreq(block.duration_days)" label="Fréquence de passage" :name="`frequency_${block.id}`">
+                      <USelect v-model="block.frequency" :items="frequencyOptions" placeholder="Sélectionner" class="w-full" />
+                    </UFormField>
+                  </div>
+                  <UFormField
+                    v-if="!isNurseForm"
+                    label="Préférence pour l'infirmier"
+                    :name="`preferred_nurse_gender_${block.id}`"
+                    class="mt-4"
+                  >
+                    <URadioGroup
+                      v-model="block.preferred_nurse_gender"
+                      :items="preferredNurseGenderOptions"
+                      size="md"
+                      variant="list"
+                    />
+                  </UFormField>
+                </template>
+
+                <div v-if="getCareOptionsForBlock(block).length" class="space-y-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                  <template v-for="opt in getCareOptionsForBlock(block)" :key="block.id + opt.option_key">
+                    <UFormField v-if="opt.field_type === 'select'" :label="opt.label" :name="`care_${block.id}_${opt.option_key}`" :required="!!opt.is_required">
+                      <USelect
+                        v-model="block.care_options[opt.option_key]"
+                        :items="(opt.options || []).map(o => ({ label: o.label, value: o.value }))"
+                        value-key="value"
+                        placeholder="Choisir"
+                        size="md"
+                        class="w-full"
+                      />
+                    </UFormField>
+                    <UFormField v-else-if="opt.field_type === 'text'" :label="opt.label" :name="`care_${block.id}_${opt.option_key}`" :required="!!opt.is_required">
+                      <UInput v-model="block.care_options[opt.option_key]" placeholder="" size="md" class="w-full" />
+                    </UFormField>
+                    <UFormField v-else-if="opt.field_type === 'number'" :label="opt.label" :name="`care_${block.id}_${opt.option_key}`" :required="!!opt.is_required">
+                      <UInput v-model.number="block.care_options[opt.option_key]" type="number" placeholder="" size="md" class="w-full" />
+                    </UFormField>
+                  </template>
+                </div>
+              </div>
+
+              <UButton
+                type="button"
+                class="w-full justify-center"
+                variant="outline"
+                color="primary"
+                icon="i-lucide-plus"
+                @click="addCareBlock"
+              >
+                Ajouter un soin
+              </UButton>
             </div>
           </section>
 
-          <section class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <!-- Ordonnance pendant la création (pro uniquement) - à gauche au-dessus des notes -->
+          <section
+            v-if="isCreate && showPrescriptionAfterCreate"
+            class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
+          >
+            <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+              <UIcon name="i-lucide-file-text" class="w-5 h-5 text-primary-500 shrink-0" />
+              Ordonnance (optionnel)
+            </h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-4 ml-7">
+              Saisissez le contenu de l'ordonnance. Elle sera générée et enregistrée sur le RDV à la création.
+            </p>
+            <UFormField label="Prescription (médicaments, posologie, durée…)" name="prescription_during_create" class="ml-0">
+              <UTextarea
+                v-model="prescriptionTextDuringCreate"
+                placeholder="Ex: Doliprane 1000 mg - 1 cp x 3/jour pendant 5 jours..."
+                :rows="5"
+                class="font-mono text-sm w-full"
+              />
+            </UFormField>
+          </section>
+
+          <!-- Ordonnance en édition (nurse / pro) - à gauche au-dessus des notes -->
+          <section
+            v-if="isEdit && showPrescriptionAfterCreate && appointment"
+            class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
+          >
+            <DashboardPrescriptionSection
+              :appointment="appointment"
+              :documents="editModeDocuments"
+              :load-documents="loadEditModeDocuments"
+            />
+          </section>
+
+          <section
+            id="appointment-form-section-notes"
+            class="scroll-mt-28 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
+          >
             <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-file-text" class="w-5 h-5 text-primary-500 shrink-0" />
               Notes & Instructions
@@ -226,7 +507,10 @@
 
         <div class="lg:col-span-5 space-y-6">
           
-          <section class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <section
+            id="appointment-form-section-planning"
+            class="scroll-mt-28 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
+          >
             <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-calendar-clock" class="w-5 h-5 text-primary-500 shrink-0" />
               Planification
@@ -284,14 +568,15 @@
                       {{ formatTime(availabilityRange[0]) }} - {{ formatTime(availabilityRange[1]) }}
                     </span>
                   </div>
-                  <USlider v-model="availabilityRange" :min="8" :max="17" :step="1" color="primary" />
+                  <USlider v-model="availabilityRange" :min="6" :max="availabilitySliderMax" :step="1" color="primary" />
                   <div class="flex justify-between text-[10px] text-gray-400 mt-2 font-mono">
-                    <span>08:00</span>
+                    <span>06:00</span>
                     <span>12:00</span>
-                    <span>17:00</span>
+                    <span v-if="availabilitySliderMax > 17">18:00</span>
+                    <span>{{ String(availabilitySliderMax).padStart(2, '0') }}:00</span>
                   </div>
-                  <p v-if="availabilityRange[1] - availabilityRange[0] < 2" class="text-xs text-orange-500 mt-2 flex items-center gap-1">
-                    <UIcon name="i-lucide-alert-triangle" class="w-3 h-3" /> Minimum 2h d'écart recommandé
+                  <p v-if="availabilityRange[1] - availabilityRange[0] < AVAILABILITY_MIN_SPAN_HOURS" class="text-xs text-orange-500 mt-2 flex items-center gap-1">
+                    <UIcon name="i-lucide-alert-triangle" class="w-3 h-3" /> Minimum {{ AVAILABILITY_MIN_SPAN_HOURS }} h d'écart
                   </p>
                 </div>
 
@@ -306,27 +591,51 @@
             </div>
           </section>
 
-          <section v-if="form.type === 'blood_test'" class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <section
+            v-if="form.type === 'blood_test' && !isSubaccountForm && showBloodTestLabAssignSection"
+            id="appointment-form-section-assign-lab"
+            class="scroll-mt-28 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
+          >
             <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-flask-conical" class="w-5 h-5 text-primary-500 shrink-0" />
-              Assigner à un laboratoire
+              Assigner à
             </h2>
-            <UFormField label="Laboratoire" name="assigned_lab_id" help="Optionnel : assignez ce RDV à un labo pour la prise de sang.">
+            <UFormField
+              label="Laboratoire ou sous-compte"
+              name="assigned_lab_id"
+              :help="isLabForm ? 'Votre compte laboratoire ou un sous-compte qui réalisera la prise de sang.' : 'Optionnel : assignez ce RDV à un labo pour la prise de sang.'"
+            >
               <USelectMenu
                 v-model="form.assigned_lab_id"
                 :items="labSelectItems"
                 value-key="value"
-                placeholder="Rechercher un laboratoire..."
+                :placeholder="isLabForm ? 'Laboratoire ou sous-compte...' : 'Rechercher un laboratoire...'"
                 size="md"
                 class="w-full"
                 :loading="labsLoading"
-                :search-input="{ placeholder: 'Nom, email...' }"
+                :search-input="isLabForm ? { placeholder: 'Rechercher...' } : { placeholder: 'Nom, email...' }"
                 :filter-fields="['label']"
-              />
+              >
+                <template #empty>
+                  <div class="py-6 px-4">
+                    <UEmpty
+                      icon="i-lucide-building-2"
+                      title="Aucun laboratoire trouvé"
+                      description="Aucun laboratoire ne correspond à votre recherche. Laissez vide pour laisser le système assigner automatiquement."
+                      variant="naked"
+                      size="sm"
+                    />
+                  </div>
+                </template>
+              </USelectMenu>
             </UFormField>
           </section>
 
-          <section v-else-if="form.type === 'nursing'" class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <section
+            v-else-if="form.type === 'nursing'"
+            id="appointment-form-section-assign-nurse"
+            class="scroll-mt-28 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
+          >
             <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-stethoscope" class="w-5 h-5 text-primary-500 shrink-0" />
               Assigner à un infirmier
@@ -342,11 +651,26 @@
                 :loading="nursesLoading"
                 :search-input="{ placeholder: 'Nom, email...' }"
                 :filter-fields="['label']"
-              />
+              >
+                <template #empty>
+                  <div class="py-6 px-4">
+                    <UEmpty
+                      icon="i-lucide-stethoscope"
+                      title="Aucun infirmier trouvé"
+                      description="Aucun infirmier ne correspond à votre recherche. Laissez vide pour laisser le système assigner automatiquement."
+                      variant="naked"
+                      size="sm"
+                    />
+                  </div>
+                </template>
+              </USelectMenu>
             </UFormField>
           </section>
 
-          <section class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <section
+            id="appointment-form-section-address"
+            class="scroll-mt-28 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
+          >
             <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <UIcon name="i-lucide-map-pin" class="w-5 h-5 text-primary-500 shrink-0" />
               Lieu du RDV
@@ -364,7 +688,10 @@
              </div>
           </section>
 
-          <section class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <section
+            id="appointment-form-section-documents"
+            class="scroll-mt-28 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
+          >
             <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-1 flex items-center gap-2">
               <UIcon name="i-lucide-file-up" class="w-5 h-5 text-primary-500 shrink-0" />
               Documents requis
@@ -426,7 +753,7 @@
                       icon="i-lucide-download"
                       :loading="uploadingDocumentType === doc.key"
                       :disabled="!!uploadingDocumentType"
-                      @click.stop="downloadPatientDocument(patientDocuments[doc.key].medical_document_id, patientDocuments[doc.key].file_name)"
+                      :on-click="(e) => { e?.stopPropagation?.(); downloadPatientDocument(patientDocuments[doc.key].medical_document_id, patientDocuments[doc.key].file_name); }"
                     >
                       Télécharger
                     </UButton>
@@ -437,7 +764,7 @@
                       icon="i-lucide-file-up"
                       :loading="uploadingDocumentType === doc.key"
                       :disabled="!!uploadingDocumentType"
-                      @click.stop="triggerFileInput(doc.key)"
+                      :on-click="(e) => { e?.stopPropagation?.(); triggerFileInput(doc.key); }"
                     >
                       Remplacer
                     </UButton>
@@ -480,13 +807,36 @@
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api';
+import { fetchAllPatientsForDashboard } from '~/utils/fetch-all-patients';
+import { PATIENT_SELECT_SEARCH_PLACEHOLDER, buildPatientSelectRow } from '~/utils/patient-select-menu';
 import type { Address, Appointment } from '~/types/appointments';
+import { MIN_BIRTH_YEAR } from '~/constants/birth-date';
+import { NURSING_DURATION_OPTIONS, showNursingFrequency as showNursingFreq } from '~/constants/nursing-duration';
+import {
+  AVAILABILITY_MIN_SPAN_HOURS,
+  AVAILABILITY_MAX_HOUR_BLOOD_TEST,
+  AVAILABILITY_MAX_HOUR_NURSING,
+} from '~/constants/availability-slot';
+import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
+import DashboardPrescriptionSection from '~/components/dashboard/PrescriptionSection.vue';
 
 // --- TYPES & INTERFACES ---
 type ServiceType = 'blood_test' | 'nursing';
 type StatusType = 'pending' | 'confirmed' | 'inProgress' | 'completed' | 'canceled' | 'expired' | 'refused';
 
 interface SelectOption { label: string; value: string | number }
+
+/** Un « soin » en création multi-RDV (même patient, même planification). */
+interface CareBlock {
+  id: string;
+  category_id: string;
+  blood_test_type: 'single' | 'multiple';
+  duration_days: string;
+  custom_days: number | null;
+  frequency: string;
+  care_options: Record<string, string | number>;
+  preferred_nurse_gender: 'any' | 'female' | 'male';
+}
 
 // --- PROPS ---
 const props = withDefaults(
@@ -518,7 +868,7 @@ const documentTypes = [
 const genderOptions = [{ label: 'Homme', value: 'male' }, { label: 'Femme', value: 'female' }, { label: 'Autre', value: 'other' }];
 
 const statusOptions = [
-  { label: 'En attente', value: 'pending' }, { label: 'Confirmé', value: 'confirmed' }, { label: 'En cours', value: 'inProgress' },
+  { label: 'En attente', value: 'pending' }, { label: 'Confirmé', value: 'confirmed' }, { label: 'Planifié', value: 'planned' }, { label: 'En cours', value: 'inProgress' },
   { label: 'Terminé', value: 'completed' }, { label: 'Annulé', value: 'canceled' }, { label: 'Expiré', value: 'expired' }, { label: 'Refusé', value: 'refused' },
 ];
 
@@ -530,23 +880,58 @@ const monthOptions = [
   { label: 'Mai', value: 5 }, { label: 'Juin', value: 6 }, { label: 'Juillet', value: 7 }, { label: 'Août', value: 8 }, 
   { label: 'Septembre', value: 9 }, { label: 'Octobre', value: 10 }, { label: 'Novembre', value: 11 }, { label: 'Décembre', value: 12 },
 ];
-const yearOptions = Array.from({ length: currentYear - 1920 + 1 }, (_, i) => ({ label: String(1920 + i), value: 1920 + i })).reverse();
+const yearOptions = Array.from({ length: currentYear - MIN_BIRTH_YEAR + 1 }, (_, i) => ({
+  label: String(MIN_BIRTH_YEAR + i),
+  value: MIN_BIRTH_YEAR + i,
+})).reverse();
 
 const bloodTestTypeOptions = [
-  { label: 'Unique', value: 'single', description: 'Une seule prise de sang' },
+  { label: 'Unique', value: 'single', description: 'Une seule fois' },
   { label: 'Série', value: 'multiple', description: 'Plusieurs prélèvements sur plusieurs jours' },
 ];
 const multipleDaysOptions = [{ label: '2 jours', value: '2' }, { label: '3 jours', value: '3' }, { label: '5 jours', value: '5' }, { label: '7 jours', value: '7' }, { label: '10 jours', value: '10' }, { label: 'Personnalisé', value: 'custom' }];
-const nursingDurationOptions = [{ label: 'Ponctuel (1 jour)', value: '1' }, { label: 'Semaine (7 jours)', value: '7' }, { label: '15 jours', value: '15' }, { label: '1 mois', value: '30' }, { label: 'Longue durée (60+)', value: '60+' }];
-const frequencyOptions = [{ label: 'Quotidien', value: 'daily' }, { label: '1j sur 2', value: 'every_other_day' }, { label: '2x / semaine', value: 'twice_weekly' }, { label: '3x / semaine', value: 'thrice_weekly' }];
+const nursingDurationOptions = NURSING_DURATION_OPTIONS;
+const frequencyOptions = [
+  { label: '1 fois par jour', value: 'once_daily' },
+  { label: '2 fois par jour', value: 'twice_daily' },
+  { label: '3 fois par jour', value: 'thrice_daily' },
+  { label: '2 fois par semaine', value: 'twice_weekly' },
+  { label: '3 fois par semaine', value: 'thrice_weekly' },
+  { label: 'A voir avec le professionnel', value: 'to_define' },
+];
+const preferredNurseGenderOptions = [
+  { label: 'Peu importe', value: 'any' },
+  { label: 'Femme', value: 'female' },
+  { label: 'Homme', value: 'male' },
+];
 
 // --- COMPOSABLES ---
 const router = useRouter();
 const route = useRoute();
 const toast = useAppToast();
 const { user } = useAuth();
-/** Formulaire utilisé par un pro (basePath /pro) : patients via /patients, pas de labos/infirmiers */
-const isProForm = computed(() => props.basePath === '/pro');
+/** Formulaire utilisé par un pro ou nurse (basePath /pro ou /nurse) : patients via /patients */
+const isProForm = computed(() => props.basePath === '/pro' || props.basePath === '/nurse');
+/** Pro, nurse ou admin : peuvent créer des patients (POST /patients) pour les lier au RDV */
+const canCreatePatientForAppointment = computed(
+  () =>
+    props.basePath === '/pro' ||
+    props.basePath === '/nurse' ||
+    props.basePath === '/admin' ||
+    props.basePath === '/lab' ||
+    props.basePath === '/subaccount'
+);
+/** Mode nurse : uniquement soins infirmiers, type forcé */
+const isNurseForm = computed(() => props.basePath === '/nurse');
+/** Mode lab : prise de sang uniquement, choix lab ou sous-comptes */
+const isLabForm = computed(() => props.basePath === '/lab');
+/** Mode subaccount : prise de sang uniquement, assigné à ce sous-compte */
+const isSubaccountForm = computed(() => props.basePath === '/subaccount');
+
+/** Créneau horaire : jusqu'à 22h pour les soins infirmiers (tous espaces), 17h pour prises de sang. */
+const availabilitySliderMax = computed(() =>
+  form.type === 'nursing' ? AVAILABILITY_MAX_HOUR_NURSING : AVAILABILITY_MAX_HOUR_BLOOD_TEST,
+);
 
 // --- STATE ---
 const isCreate = computed(() => props.mode === 'create');
@@ -555,6 +940,14 @@ const isEdit = computed(() => props.mode === 'edit');
 const loading = ref(false);
 const saving = ref(false);
 const appointment = ref<Appointment | null>(null);
+
+/** Après création (pro uniquement) : afficher la section ordonnance au lieu de rediriger */
+const postCreateAppointmentId = ref<string | null>(null);
+const postCreateDocuments = ref<any[]>([]);
+const showPrescriptionAfterCreate = computed(() => props.basePath === '/pro');
+
+/** Texte d'ordonnance saisi pendant la création du RDV (pro) — généré et enregistré à la soumission */
+const prescriptionTextDuringCreate = ref('');
 
 // Patient Data
 const patients = ref<any[]>([]);
@@ -566,8 +959,15 @@ const loadingPatientDocuments = ref(false);
 const uploadingDocumentType = ref<string | null>(null);
 const PATIENT_DOC_TYPES = ['carte_vitale', 'carte_mutuelle', 'autres_assurances'];
 
+/** Debounce recherche patient par email (nouveau patient) */
+let emailLookupTimer: ReturnType<typeof setTimeout> | null = null;
+const emailLookupLoading = ref(false);
+const skipEmailLookupOnce = ref(false);
+
 // Form Data
 const categoryOptions = ref<SelectOption[]>([]);
+const categoriesWithOptions = ref<Array<{ id: string; name: string; options?: Array<{ option_key: string; label: string; field_type: string; options?: { value: string; label: string }[]; is_required?: boolean; sort_order?: number }> }>>([]);
+const categoryOptionsForCare = ref<Array<{ option_key: string; label: string; field_type: string; options?: { value: string; label: string }[]; is_required?: boolean; sort_order?: number }>>([]);
 const birthDay = ref<number | null>(null);
 const birthMonth = ref<number | null>(null);
 const birthYear = ref<number | null>(null);
@@ -594,22 +994,83 @@ const form = reactive({
     duration_days: '', frequency: '', notes: '',
     blood_test_type: 'single', custom_days: null as number | null, 
     availability_type: 'custom', availability: '',
+    care_options: {} as Record<string, string | number>,
+    /** Soins infirmiers : filtre dispatch (sauf espace infirmier → dérivé du profil) */
+    preferred_nurse_gender: 'any' as 'any' | 'female' | 'male',
   },
 });
+
+function makeCareBlock(): CareBlock {
+  return {
+    id:
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `b-${Date.now()}-${Math.random()}`,
+    category_id: '',
+    blood_test_type: 'single',
+    duration_days: '',
+    custom_days: null,
+    frequency: '',
+    care_options: {},
+    preferred_nurse_gender: 'any',
+  };
+}
+
+const supportsMultiCareCreate = computed(
+  () =>
+    isCreate.value &&
+    (isNurseForm.value || isLabForm.value || isSubaccountForm.value || isProForm.value),
+);
+const multiCareEnabled = ref(false);
+const careBlocks = ref<CareBlock[]>([makeCareBlock()]);
+
+function getCareOptionsForBlock(block: CareBlock) {
+  const cat = categoriesWithOptions.value.find((c) => String(c.id) === String(block.category_id));
+  if (!cat?.options || !Array.isArray(cat.options)) return [];
+  return [...cat.options].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+}
+
+function addCareBlock() {
+  careBlocks.value.push(makeCareBlock());
+}
+
+function removeCareBlock(idx: number) {
+  if (careBlocks.value.length <= 1) return;
+  careBlocks.value.splice(idx, 1);
+}
+
+function resolvedPreferredNurseGenderForBlock(block: CareBlock): 'any' | 'female' | 'male' {
+  if (!isNurseForm.value) {
+    return block.preferred_nurse_gender || 'any';
+  }
+  const g = (user.value as { gender?: string } | null)?.gender;
+  if (g === 'male') return 'male';
+  if (g === 'female') return 'female';
+  return 'any';
+}
 
 // UI State
 const draggedOver = ref<string | null>(null);
 const fileInputRefs: Record<string, HTMLInputElement | null> = {};
 
 // --- COMPUTED ---
+const showBloodTestLabAssignSection = computed(() => {
+  if (!isLabForm.value) return true;
+  return labs.value.length > 0;
+});
+
+const patientSelectSearchPlaceholder = PATIENT_SELECT_SEARCH_PLACEHOLDER;
+
 const patientSelectItems = computed(() => {
   const valid = patients.value.filter((p) => p.id != null);
   return [
-    { label: '— Nouveau patient (Saisie manuelle)', value: NEW_PATIENT_VALUE },
-    ...valid.map((p) => ({ 
-      label: `${p.last_name?.toUpperCase() || ''} ${p.first_name || ''} (${p.email})`, 
-      value: String(p.id) 
-    })),
+    {
+      label: '— Nouveau patient (saisie manuelle)',
+      value: NEW_PATIENT_VALUE,
+      searchText: 'nouveau patient création saisie manuelle',
+      metaLine: '',
+    },
+    ...valid.map((p) => buildPatientSelectRow(p, { labelStyle: 'professional' })),
   ];
 });
 
@@ -620,14 +1081,17 @@ const existingFileNames = computed(() => {
 });
 
 const labSelectItems = computed(() =>
-  labs.value.map((p) => ({
-    label: (p.company_name && String(p.company_name).trim()) || `${(p.first_name || '').trim()} ${(p.last_name || '').trim()}`.trim() || p.email || p.id,
-    value: p.id,
-  }))
+  labs.value.map((p) => {
+    const isSelf = isLabForm.value && user.value?.id && p.id === user.value.id;
+    const label = isSelf
+      ? 'Mon laboratoire'
+      : (p.company_name && String(p.company_name).trim()) || `${(p.first_name || '').trim()} ${(p.last_name || '').trim()}`.trim() || p.email_display || p.email || p.id;
+    return { label, value: p.id };
+  })
 );
 const nurseSelectItems = computed(() =>
   nurses.value.map((p) => ({
-    label: `${(p.first_name || '').trim()} ${(p.last_name || '').trim()}`.trim() || p.email || p.id,
+    label: `${(p.first_name || '').trim()} ${(p.last_name || '').trim()}`.trim() || p.email_display || p.email || p.id,
     value: p.id,
   }))
 );
@@ -643,6 +1107,7 @@ function getStatusColor(status: string): 'primary' | 'success' | 'error' | 'warn
   const map: Record<string, 'primary' | 'success' | 'error' | 'warning' | 'info' | 'neutral'> = {
     pending: 'warning',
     confirmed: 'info',
+    planned: 'info',
     inProgress: 'primary',
     completed: 'success',
     canceled: 'error',
@@ -653,7 +1118,7 @@ function getStatusColor(status: string): 'primary' | 'success' | 'error' | 'warn
 }
 function getStatusColorDot(status: string) {
   switch (status) {
-    case 'confirmed': return 'bg-green-500';
+    case 'confirmed': case 'planned': return 'bg-green-500';
     case 'completed': return 'bg-primary-500';
     case 'canceled': case 'refused': return 'bg-red-500';
     case 'pending': return 'bg-orange-500';
@@ -674,7 +1139,7 @@ function setServiceType(type: ServiceType) {
 // File Handling
 function hasDocumentForType(key: string) {
   if (form.files[key]) return true;
-  if (isEdit.value && existingFileNames.value[key]) return true;
+  if (isEdit.value && (existingFileNames.value[key] || patientDocuments.value[key])) return true;
   if (isCreate.value && selectedPatientId.value !== NEW_PATIENT_VALUE && patientDocuments.value[key]) return true;
   return false;
 }
@@ -696,8 +1161,8 @@ function handleDrop(event: DragEvent, key: string) {
   if (file) processFile(file, key);
 }
 async function processFile(file: File, key: string) {
-  if (file.size > 10 * 1024 * 1024) {
-    toast.add({ title: 'Fichier trop volumineux', description: 'Max 10 Mo', color: 'red', icon: 'i-lucide-alert-circle' });
+  if (file.size > MAX_UPLOAD_BYTES) {
+    toast.add({ title: 'Fichier trop volumineux', description: 'Max 25 Mo', color: 'red', icon: 'i-lucide-alert-circle' });
     return;
   }
   const isPatientDocType = PATIENT_DOC_TYPES.includes(key);
@@ -770,6 +1235,8 @@ async function uploadPatientDocumentToProfile(key: string, file: File) {
 /** Copie les documents du patient (fiche) vers le RDV pour que lab / infirmier / admin y aient accès. */
 async function copyPatientDocumentsToAppointment(appointmentId: string) {
   for (const key of PATIENT_DOC_TYPES) {
+    // Ne pas copier si l'admin a uploadé un nouveau fichier pour ce type
+    if (form.files[key]) continue;
     const doc = patientDocuments.value[key];
     if (!doc?.medical_document_id) continue;
     try {
@@ -788,36 +1255,178 @@ async function copyPatientDocumentsToAppointment(appointmentId: string) {
   }
 }
 
-// Form Logic
-function selectPatient(p: any) {
+/** Upload les fichiers du formulaire (form.files) vers le RDV via POST /medical-documents. */
+async function uploadFormFilesToAppointment(appointmentId: string) {
+  const fieldMapping: Record<string, string> = {
+    carte_vitale: 'carte_vitale',
+    carte_mutuelle: 'carte_mutuelle',
+    ordonnance: 'ordonnance',
+    autres_assurances: 'autres_assurances',
+  };
+  for (const [key, file] of Object.entries(form.files)) {
+    if (!file || !(file instanceof File)) continue;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('appointment_id', appointmentId);
+      formData.append('document_type', fieldMapping[key] || key);
+      await apiFetch('/medical-documents', { method: 'POST', body: formData });
+    } catch (e) {
+      console.error('Erreur upload document', key, e);
+      toast.add({ title: 'Document non enregistré', description: `Impossible d'uploader ${key}`, color: 'red', icon: 'i-lucide-alert-circle' });
+    }
+  }
+}
+
+/** Génère l'ordonnance (PDF) et l'enregistre sur le RDV quand le texte a été saisi pendant la création. */
+async function generateAndAttachPrescriptionDuringCreate(appointmentId: string): Promise<void> {
+  const text = prescriptionTextDuringCreate.value?.trim();
+  if (!text) return;
+  try {
+    const res = await apiFetch(`/appointments/${appointmentId}/generate-prescription`, {
+      method: 'POST',
+      body: { prescription_text: text },
+    });
+    if (!res?.success || !(res as any).data?.pdf_base64) {
+      toast.add({ title: 'Ordonnance', description: (res as any)?.error ?? 'Génération du PDF impossible', color: 'orange', icon: 'i-lucide-alert-circle' });
+      return;
+    }
+    const base64 = (res as any).data.pdf_base64 as string;
+    const byteChars = atob(base64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+    const formData = new FormData();
+    formData.append('file', blob, (res as any).data?.file_name || 'ordonnance.pdf');
+    formData.append('appointment_id', appointmentId);
+    formData.append('document_type', 'ordonnance');
+    await apiFetch('/medical-documents', { method: 'POST', body: formData });
+    toast.add({ title: 'Ordonnance enregistrée', description: "L'ordonnance a été générée et ajoutée au RDV.", color: 'green', icon: 'i-lucide-check-circle' });
+  } catch (e: any) {
+    toast.add({ title: 'Ordonnance', description: e?.message ?? 'Impossible de générer ou enregistrer l\'ordonnance', color: 'orange', icon: 'i-lucide-alert-circle' });
+  }
+}
+
+// Form Logic — adresse patient : objet, chaîne JSON, ou libellé seul (coords complétées via BAN)
+function parseRawPatientAddress(raw: unknown): { label: string; lat?: number; lng?: number; complement?: string } | null {
+  if (raw == null) return null;
+  if (typeof raw === 'string') {
+    const t = raw.trim();
+    if (!t) return null;
+    try {
+      const j = JSON.parse(t) as Record<string, unknown>;
+      if (j && typeof j === 'object' && !Array.isArray(j)) {
+        return {
+          label: String(j.label ?? ''),
+          lat: typeof j.lat === 'number' ? j.lat : undefined,
+          lng: typeof j.lng === 'number' ? j.lng : undefined,
+          complement: typeof j.complement === 'string' ? j.complement : undefined,
+        };
+      }
+    } catch {
+      return { label: t };
+    }
+    return { label: t };
+  }
+  if (typeof raw === 'object' && !Array.isArray(raw)) {
+    const o = raw as Record<string, unknown>;
+    return {
+      label: String(o.label ?? ''),
+      lat: typeof o.lat === 'number' ? o.lat : undefined,
+      lng: typeof o.lng === 'number' ? o.lng : undefined,
+      complement: typeof o.complement === 'string' ? o.complement : undefined,
+    };
+  }
+  return null;
+}
+
+async function applyPatientAddressToForm(p: any) {
+  const parsed = parseRawPatientAddress(p?.address);
+  if (!parsed?.label?.trim()) {
+    form.address = null;
+    return;
+  }
+  const label = parsed.label.trim();
+  let lat =
+    typeof parsed.lat === 'number' && Number.isFinite(parsed.lat) ? parsed.lat : NaN;
+  let lng =
+    typeof parsed.lng === 'number' && Number.isFinite(parsed.lng) ? parsed.lng : NaN;
+  if (!Number.isFinite(lat)) lat = parseFloat(String((parsed as any).lat ?? ''));
+  if (!Number.isFinite(lng)) lng = parseFloat(String((parsed as any).lng ?? ''));
+
+  const coordsMissing =
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    (lat === 0 && lng === 0);
+
+  if (coordsMissing && label.length >= 3) {
+    try {
+      const res = await apiFetch(`/ban/search?q=${encodeURIComponent(label)}&limit=1`, { method: 'GET' });
+      if (res?.success && Array.isArray(res.data) && res.data[0]) {
+        const first = res.data[0] as { lat?: number; lng?: number };
+        if (first.lat != null && first.lng != null) {
+          lat = Number(first.lat);
+          lng = Number(first.lng);
+        }
+      }
+    } catch {
+      /* recherche BAN optionnelle */
+    }
+  }
+
+  if (!Number.isFinite(lat)) lat = 0;
+  if (!Number.isFinite(lng)) lng = 0;
+
+  form.address = { label, lat, lng };
+}
+
+async function selectPatient(p: any) {
   selectedPatient.value = p;
   selectedPatientId.value = p?.id ?? NEW_PATIENT_VALUE;
-  
+
+  let full = p;
+  if (p?.id && (isProForm.value || isNurseForm.value || isLabForm.value || isSubaccountForm.value || props.basePath === '/admin')) {
+    try {
+      const res = await apiFetch(`/users/${encodeURIComponent(p.id)}`, { method: 'GET' });
+      if (res?.success && res.data && typeof res.data === 'object') {
+        full = { ...p, ...res.data };
+        const idx = patients.value.findIndex((x) => String(x.id) === String(p.id));
+        if (idx >= 0) {
+          patients.value[idx] = { ...patients.value[idx], ...res.data };
+        }
+      }
+    } catch {
+      /* garde les données liste */
+    }
+  }
+
   // Auto-fill
-  form.form_data.first_name = p.first_name || '';
-  form.form_data.last_name = p.last_name || '';
-  form.form_data.email = p.email || '';
-  form.form_data.phone = p.phone || '';
-  form.form_data.gender = (p.gender as any) || '';
-  form.form_data.address_complement = (p.address as any)?.complement || '';
-  
-  if (p.birth_date) {
-    const [y, m, d] = p.birth_date.split('-');
+  form.form_data.first_name = full.first_name || '';
+  form.form_data.last_name = full.last_name || '';
+  form.form_data.email = full.email || '';
+  form.form_data.phone = full.phone || '';
+  form.form_data.gender = (full.gender as any) || '';
+  const addrParsed = parseRawPatientAddress(full?.address);
+  form.form_data.address_complement = addrParsed?.complement || (full.address as any)?.complement || '';
+
+  if (full.birth_date) {
+    const [y, m, d] = String(full.birth_date).split('-');
     if (y && m && d) {
-      birthYear.value = parseInt(y);
-      birthMonth.value = parseInt(m);
-      birthDay.value = parseInt(d);
+      birthYear.value = parseInt(y, 10);
+      birthMonth.value = parseInt(m, 10);
+      birthDay.value = parseInt(d, 10);
     }
   } else {
     resetBirthDate();
   }
-
-  if (p.address) {
-    form.address = typeof p.address === 'object'
-      ? { label: p.address.label || '', lat: p.address.lat || 0, lng: p.address.lng || 0 }
-      : null;
+  if (birthYear.value && birthMonth.value && birthDay.value) {
+    form.form_data.birth_date = `${birthYear.value}-${String(birthMonth.value).padStart(2, '0')}-${String(birthDay.value).padStart(2, '0')}`;
+  } else {
+    form.form_data.birth_date = '';
   }
-  if (p?.id) loadPatientDocuments(p.id);
+
+  await applyPatientAddressToForm(full);
+  if (full?.id) loadPatientDocuments(full.id);
 }
 
 function clearPatient() {
@@ -854,6 +1463,67 @@ async function loadPatientDocuments(patientId: string) {
   }
 }
 
+/** En édition : charger les documents attachés au RDV (medical_documents avec appointment_id) pour les afficher. */
+async function loadAppointmentDocuments(appointmentId: string) {
+  if (!appointmentId) return;
+  loadingPatientDocuments.value = true;
+  try {
+    const res = await apiFetch(`/medical-documents?appointment_id=${encodeURIComponent(appointmentId)}`, { method: 'GET' });
+    if (res?.success && res.data && Array.isArray(res.data)) {
+      const map: Record<string, any> = {};
+      (res.data as any[]).forEach((doc: any) => {
+        if (doc.document_type) {
+          map[doc.document_type] = {
+            medical_document_id: doc.id,
+            file_name: doc.file_name,
+            document_type: doc.document_type,
+          };
+        }
+      });
+      patientDocuments.value = { ...patientDocuments.value, ...map };
+    }
+  } catch (e) {
+    console.error('Erreur chargement documents du RDV:', e);
+  } finally {
+    loadingPatientDocuments.value = false;
+  }
+}
+
+/** En édition (nurse/pro) : liste des documents du RDV pour la section ordonnance (tableau pour PrescriptionSection). */
+const editModeDocuments = ref<any[]>([]);
+
+async function loadEditModeDocuments() {
+  const appointmentId = appointment.value?.id;
+  if (!appointmentId) return;
+  try {
+    const res = await apiFetch(`/medical-documents?appointment_id=${encodeURIComponent(appointmentId)}`, { method: 'GET' });
+    if (res?.success && res.data && Array.isArray(res.data)) {
+      editModeDocuments.value = res.data as any[];
+    } else {
+      editModeDocuments.value = [];
+    }
+  } catch (e) {
+    console.error('Erreur chargement documents RDV (édition):', e);
+    editModeDocuments.value = [];
+  }
+}
+
+/** Après création : charger les documents du RDV pour PrescriptionSection. */
+async function loadPostCreateDocuments() {
+  if (!postCreateAppointmentId.value) return;
+  try {
+    const res = await apiFetch(`/medical-documents?appointment_id=${encodeURIComponent(postCreateAppointmentId.value)}`, { method: 'GET' });
+    if (res?.success && res.data && Array.isArray(res.data)) {
+      postCreateDocuments.value = res.data as any[];
+    } else {
+      postCreateDocuments.value = [];
+    }
+  } catch (e) {
+    console.error('Erreur chargement documents post-création:', e);
+    postCreateDocuments.value = [];
+  }
+}
+
 function resetBirthDate() {
   birthYear.value = null;
   birthMonth.value = null;
@@ -864,6 +1534,8 @@ function onTypeChange() {
   loadCategories(form.type === 'nursing' ? 'nursing' : 'blood_test');
   form.assigned_lab_id = '';
   form.assigned_nurse_id = '';
+  form.form_data.category_id = ''; // Réinitialiser pour afficher le placeholder (liste différente selon type)
+  form.form_data.care_options = {};
   if (form.type === 'blood_test') {
     form.form_data.frequency = '';
     form.form_data.blood_test_type = 'single';
@@ -871,7 +1543,22 @@ function onTypeChange() {
     form.form_data.blood_test_type = '';
     form.form_data.duration_days = '';
     form.form_data.custom_days = null;
+    form.form_data.preferred_nurse_gender = 'any';
   }
+  if (multiCareEnabled.value && supportsMultiCareCreate.value) {
+    careBlocks.value = [makeCareBlock()];
+  }
+}
+
+/** Préférence dispatch soins infirmiers : espace infirmier = genre du compte, sinon choix formulaire */
+function resolvedPreferredNurseGender(): 'any' | 'female' | 'male' {
+  if (!isNurseForm.value) {
+    return form.form_data.preferred_nurse_gender || 'any';
+  }
+  const g = (user.value as { gender?: string } | null)?.gender;
+  if (g === 'male') return 'male';
+  if (g === 'female') return 'female';
+  return 'any';
 }
 
 // API Calls
@@ -879,26 +1566,37 @@ async function loadCategories(type: 'blood_test' | 'nursing') {
   try {
     const res = await apiFetch(`/categories?type=${type}`, { method: 'GET' });
     if (res.success && Array.isArray(res.data)) {
-      categoryOptions.value = (res.data as Array<{ id: string; name: string }>).map((c) => ({ label: c.name, value: String(c.id) }));
+      const data = res.data as Array<{ id: string; name: string; options?: Array<{ option_key: string; label: string; field_type: string; options?: { value: string; label: string }[]; is_required?: boolean; sort_order?: number }> }>;
+      categoriesWithOptions.value = data;
+      categoryOptions.value = data.map((c) => ({ label: c.name, value: String(c.id) }));
     } else {
+      categoriesWithOptions.value = [];
       categoryOptions.value = [];
     }
   } catch {
+    categoriesWithOptions.value = [];
     categoryOptions.value = [];
+  }
+}
+
+function loadCategoryOptionsForCare(categoryId: string) {
+  if (!categoryId) {
+    categoryOptionsForCare.value = [];
+    return;
+  }
+  const cat = categoriesWithOptions.value.find((c) => String(c.id) === String(categoryId));
+  if (cat?.options && Array.isArray(cat.options)) {
+    categoryOptionsForCare.value = [...cat.options].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  } else {
+    categoryOptionsForCare.value = [];
   }
 }
 
 async function fetchPatients() {
   patientsLoading.value = true;
   try {
-    if (isProForm.value) {
-      const createdBy = user.value?.id ?? '';
-      const res = await apiFetch(`/patients?created_by=${encodeURIComponent(createdBy)}&limit=500`, { method: 'GET' });
-      if (res.success && Array.isArray(res.data)) {
-        patients.value = res.data as any[];
-      } else {
-        patients.value = [];
-      }
+    if (isProForm.value || isLabForm.value || isSubaccountForm.value) {
+      patients.value = await fetchAllPatientsForDashboard(apiFetch);
     } else {
       const res = await apiFetch('/users?limit=300', { method: 'GET' });
       if (res.success && Array.isArray(res.data)) {
@@ -945,12 +1643,18 @@ async function loadAppointment() {
       form.form_data.phone = fd.phone ?? '';
       form.form_data.gender = (fd.gender as any) ?? '';
       form.form_data.address_complement = fd.address_complement ?? '';
-      form.form_data.category_id = fd.category_id ?? data.category_id ?? '';
+      // Normaliser category_id : toujours une string (id). Si l'API renvoie un objet { id, name }, prendre id.
+      const rawCategoryId = fd.category_id ?? data.category_id ?? '';
+      form.form_data.category_id = (rawCategoryId && typeof rawCategoryId === 'object' && (rawCategoryId as any).id)
+        ? String((rawCategoryId as any).id)
+        : (rawCategoryId ? String(rawCategoryId) : '');
       form.form_data.duration_days = fd.duration_days ?? '';
       form.form_data.frequency = fd.frequency ?? '';
+      form.form_data.preferred_nurse_gender = (fd.preferred_nurse_gender as 'any' | 'female' | 'male') ?? 'any';
       form.form_data.notes = fd.notes ?? '';
       form.form_data.blood_test_type = fd.blood_test_type ?? 'single';
       form.form_data.custom_days = fd.custom_days ?? null;
+      form.form_data.care_options = (fd.care_options && typeof fd.care_options === 'object') ? { ...fd.care_options } : {};
       
       // Date handling
       if (fd.birth_date) {
@@ -971,17 +1675,37 @@ async function loadAppointment() {
              form.form_data.availability_type = 'all_day';
           } else if (av.type === 'custom' && Array.isArray(av.range)) {
              form.form_data.availability_type = 'custom';
-             availabilityRange.value = [av.range[0], av.range[1]];
+             const max = availabilitySliderMax.value;
+             let r0 = Number(av.range[0]);
+             let r1 = Number(av.range[1]);
+             r1 = Math.min(max, Math.max(r1, r0 + AVAILABILITY_MIN_SPAN_HOURS));
+             r0 = Math.max(6, Math.min(r0, r1 - AVAILABILITY_MIN_SPAN_HOURS));
+             availabilityRange.value = [r0, r1];
              previousAvailabilityRange.value = [...availabilityRange.value];
           }
         } catch {}
       } else if (data.scheduled_at) {
         const h = new Date(data.scheduled_at).getHours();
-        const start = Math.max(8, Math.min(15, h));
-        availabilityRange.value = [start, start + 2];
+        const start = Math.max(6, Math.min(15, h));
+        availabilityRange.value = [start, start + AVAILABILITY_MIN_SPAN_HOURS];
       }
 
       await loadCategories(appType);
+      loadCategoryOptionsForCare(form.form_data.category_id);
+
+      // Présélectionner le patient si le RDV a un patient_id
+      const pid = (data as any).patient_id;
+      if (pid && patients.value.length > 0) {
+        const p = patients.value.find((x) => String(x.id) === String(pid));
+        if (p) {
+          selectedPatient.value = p;
+          selectedPatientId.value = String(p.id);
+        }
+      }
+
+      // Charger les documents attachés au RDV pour les afficher (Télécharger / Remplacer)
+      await loadAppointmentDocuments(props.appointmentId!);
+      if (showPrescriptionAfterCreate.value) await loadEditModeDocuments();
     }
   } catch (e) {
     toast.add({ title: 'Erreur', description: 'Impossible de charger le rendez-vous', color: 'red' });
@@ -990,17 +1714,442 @@ async function loadAppointment() {
   }
 }
 
+function scrollToFormSection(sectionId: string) {
+  if (typeof document === 'undefined') return;
+  void nextTick(() => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+type ClientValidationFail = { sectionId: string; title: string; description: string };
+
+function validateIdentityAndPlanningShared(): ClientValidationFail | null {
+  if (!form.scheduled_at?.trim()) {
+    return {
+      sectionId: 'appointment-form-section-planning',
+      title: 'Date requise',
+      description: 'Indiquez la date d’intervention dans la section Planification.',
+    };
+  }
+
+  if (
+    form.form_data.availability_type === 'custom' &&
+    availabilityRange.value[1] - availabilityRange.value[0] < AVAILABILITY_MIN_SPAN_HOURS
+  ) {
+    return {
+      sectionId: 'appointment-form-section-planning',
+      title: 'Créneau trop court',
+      description: `Ajustez le créneau horaire : minimum ${AVAILABILITY_MIN_SPAN_HOURS} h d’écart entre le début et la fin.`,
+    };
+  }
+
+  if (!form.form_data.last_name?.trim()) {
+    return {
+      sectionId: 'appointment-form-section-identity',
+      title: 'Nom requis',
+      description: 'Renseignez le nom du patient.',
+    };
+  }
+  if (!form.form_data.first_name?.trim()) {
+    return {
+      sectionId: 'appointment-form-section-identity',
+      title: 'Prénom requis',
+      description: 'Renseignez le prénom du patient.',
+    };
+  }
+  if (!form.form_data.gender) {
+    return {
+      sectionId: 'appointment-form-section-identity',
+      title: 'Genre requis',
+      description: 'Sélectionnez le genre dans le formulaire.',
+    };
+  }
+  if (!birthYear.value || !birthMonth.value || !birthDay.value) {
+    return {
+      sectionId: 'appointment-form-section-identity',
+      title: 'Date de naissance requise',
+      description: 'Indiquez le jour, le mois et l’année de naissance.',
+    };
+  }
+  if (!form.form_data.phone?.trim()) {
+    return {
+      sectionId: 'appointment-form-section-identity',
+      title: 'Téléphone requis',
+      description: 'Renseignez un numéro de téléphone pour joindre le patient.',
+    };
+  }
+  const emailRequired = !isProForm.value;
+  if (emailRequired && !form.form_data.email?.trim()) {
+    return {
+      sectionId: 'appointment-form-section-identity',
+      title: 'E-mail requis',
+      description: 'Renseignez une adresse e-mail valide.',
+    };
+  }
+  return null;
+}
+
+function validateMultiCareBlocks(): ClientValidationFail | null {
+  const idErr = validateIdentityAndPlanningShared();
+  if (idErr) return idErr;
+
+  for (let i = 0; i < careBlocks.value.length; i++) {
+    const block = careBlocks.value[i];
+    const prefix = `Soin ${i + 1}`;
+    const hasCat = String(block.category_id || '').trim() !== '';
+    if (!hasCat) {
+      return {
+        sectionId: 'appointment-form-section-intervention',
+        title: 'Type d’intervention requis',
+        description: `${prefix} : choisissez une catégorie dans la liste.`,
+      };
+    }
+    const opts = getCareOptionsForBlock(block);
+    for (const opt of opts) {
+      if (!opt.is_required) continue;
+      const v = block.care_options[opt.option_key];
+      const empty =
+        v === undefined || v === null || (typeof v === 'string' && !String(v).trim());
+      if (empty) {
+        return {
+          sectionId: 'appointment-form-section-intervention',
+          title: 'Champ requis',
+          description: `${prefix} : renseignez « ${opt.label} ».`,
+        };
+      }
+    }
+
+    if (form.type === 'blood_test' && block.blood_test_type === 'multiple') {
+      if (!block.duration_days) {
+        return {
+          sectionId: 'appointment-form-section-intervention',
+          title: 'Durée du protocole',
+          description: `${prefix} : indiquez la durée du protocole de prélèvements.`,
+        };
+      }
+      if (block.duration_days === 'custom' && !block.custom_days) {
+        return {
+          sectionId: 'appointment-form-section-intervention',
+          title: 'Durée précise',
+          description: `${prefix} : indiquez le nombre de jours du protocole.`,
+        };
+      }
+    }
+
+    if (form.type === 'nursing' && block.duration_days === 'custom' && !block.custom_days) {
+      return {
+        sectionId: 'appointment-form-section-intervention',
+        title: 'Durée requise',
+        description: `${prefix} : indiquez le nombre de jours de prise en charge.`,
+      };
+    }
+
+    if (form.type === 'nursing' && showNursingFreq(block.duration_days) && !block.frequency) {
+      return {
+        sectionId: 'appointment-form-section-intervention',
+        title: 'Fréquence requise',
+        description: `${prefix} : indiquez la fréquence de passage des soins.`,
+      };
+    }
+  }
+  return null;
+}
+
+function validateAppointmentFormClient(): ClientValidationFail | null {
+  if (multiCareEnabled.value && supportsMultiCareCreate.value) {
+    return validateMultiCareBlocks();
+  }
+
+  const idErr = validateIdentityAndPlanningShared();
+  if (idErr) return idErr;
+
+  const catRaw = form.form_data.category_id;
+  const hasCategory = (() => {
+    if (catRaw == null || catRaw === '') return false;
+    if (typeof catRaw === 'object') {
+      const o = catRaw as { value?: unknown; id?: unknown };
+      const v = o.value ?? o.id;
+      return v != null && String(v).trim() !== '';
+    }
+    return String(catRaw).trim() !== '';
+  })();
+
+  if (!hasCategory) {
+    return {
+      sectionId: 'appointment-form-section-intervention',
+      title: 'Type d’intervention requis',
+      description: 'Choisissez le type d’analyse ou de soin dans la liste.',
+    };
+  }
+
+  for (const opt of categoryOptionsForCare.value) {
+    if (!opt.is_required) continue;
+    const v = form.form_data.care_options[opt.option_key];
+    const empty =
+      v === undefined || v === null || (typeof v === 'string' && !String(v).trim());
+    if (empty) {
+      return {
+        sectionId: 'appointment-form-section-intervention',
+        title: 'Champ requis',
+        description: `Renseignez « ${opt.label} » pour ce type de soin.`,
+      };
+    }
+  }
+
+  if (form.type === 'blood_test' && form.form_data.blood_test_type === 'multiple') {
+    if (!form.form_data.duration_days) {
+      return {
+        sectionId: 'appointment-form-section-intervention',
+        title: 'Durée du protocole',
+        description: 'Indiquez la durée du protocole de prélèvements.',
+      };
+    }
+    if (form.form_data.duration_days === 'custom' && !form.form_data.custom_days) {
+      return {
+        sectionId: 'appointment-form-section-intervention',
+        title: 'Durée précise',
+        description: 'Indiquez le nombre de jours du protocole.',
+      };
+    }
+  }
+
+  if (form.type === 'nursing' && form.form_data.duration_days === 'custom' && !form.form_data.custom_days) {
+    return {
+      sectionId: 'appointment-form-section-intervention',
+      title: 'Durée requise',
+      description: 'Indiquez le nombre de jours de prise en charge.',
+    };
+  }
+
+  if (form.type === 'nursing' && showNursingFreq(form.form_data.duration_days) && !form.form_data.frequency) {
+    return {
+      sectionId: 'appointment-form-section-intervention',
+      title: 'Fréquence requise',
+      description: 'Indiquez la fréquence de passage des soins.',
+    };
+  }
+
+  return null;
+}
+
+function inferSectionFromErrorMessage(msg: string): string | null {
+  const m = msg.toLowerCase();
+  if (/(scheduled|date|planification|créneau|horaire)/.test(m)) {
+    return 'appointment-form-section-planning';
+  }
+  if (/(adresse|address|lat|lng|coordonn)/.test(m)) {
+    return 'appointment-form-section-address';
+  }
+  if (/(patient|email|courriel|téléphone|phone)/.test(m)) {
+    return 'appointment-form-section-identity';
+  }
+  if (/(catégorie|category|type de soin|type d'analyse)/.test(m)) {
+    return 'appointment-form-section-intervention';
+  }
+  if (/(document|ordonnance|fichier)/.test(m)) {
+    return 'appointment-form-section-documents';
+  }
+  return null;
+}
+
+function mergeFormDataForCareBlock(
+  block: CareBlock,
+  availabilityPayload: string,
+  filesMeta: Record<string, { field: string; name: string }>,
+): Record<string, unknown> {
+  const fd: Record<string, unknown> = {
+    ...form.form_data,
+    category_id: block.category_id || undefined,
+    gender: form.form_data.gender || undefined,
+    availability: availabilityPayload,
+    files: filesMeta,
+    notes: form.form_data.notes,
+  };
+  if (form.type === 'blood_test') {
+    fd.blood_test_type = block.blood_test_type;
+    fd.custom_days = block.blood_test_type === 'multiple' ? block.custom_days : undefined;
+    fd.duration_days = block.blood_test_type === 'multiple' ? block.duration_days : undefined;
+    fd.frequency = undefined;
+    fd.preferred_nurse_gender = undefined;
+  } else {
+    fd.blood_test_type = undefined;
+    fd.duration_days = block.duration_days;
+    fd.custom_days = block.duration_days === 'custom' ? block.custom_days : undefined;
+    fd.frequency = block.frequency;
+    fd.preferred_nurse_gender = resolvedPreferredNurseGenderForBlock(block);
+  }
+  fd.care_options =
+    block.care_options && Object.keys(block.care_options).length ? { ...block.care_options } : undefined;
+  return fd;
+}
+
+async function submitMultiCareBatch(
+  scheduledAtIso: string | undefined,
+  addressPayload: { label: string; lat: number; lng: number; complement?: string },
+  availabilityPayload: string,
+  filesMeta: Record<string, { field: string; name: string }>,
+) {
+  let patientId = selectedPatient.value?.id || undefined;
+
+  const shouldCreatePatient =
+    canCreatePatientForAppointment.value &&
+    selectedPatientId.value === NEW_PATIENT_VALUE &&
+    form.form_data.first_name?.trim() &&
+    form.form_data.last_name?.trim() &&
+    form.form_data.phone?.trim() &&
+    (form.form_data.email?.trim() || isProForm.value);
+
+  if (shouldCreatePatient) {
+    const addressForPatient = form.address?.label
+      ? { ...form.address, complement: form.form_data.address_complement || undefined }
+      : undefined;
+    const bodyPatient: Record<string, unknown> = {
+      first_name: form.form_data.first_name.trim(),
+      last_name: form.form_data.last_name.trim(),
+      phone: form.form_data.phone.trim(),
+      birth_date: form.form_data.birth_date || undefined,
+      gender: form.form_data.gender || undefined,
+      address: addressForPatient,
+    };
+    const em = form.form_data.email?.trim();
+    if (em) bodyPatient.email = em;
+    const patientRes = await apiFetch('/patients', {
+      method: 'POST',
+      body: bodyPatient,
+    });
+    if (patientRes.success && (patientRes as any).data?.id) {
+      patientId = (patientRes as any).data.id;
+    }
+  }
+
+  const batchId = crypto.randomUUID();
+  const createdIds: string[] = [];
+  const failures: string[] = [];
+
+  for (let i = 0; i < careBlocks.value.length; i++) {
+    const block = careBlocks.value[i];
+    const rawFormData = mergeFormDataForCareBlock(block, availabilityPayload, filesMeta);
+    const categoryId = String(block.category_id || '').trim() || undefined;
+    const createBody: Record<string, unknown> = {
+      type: form.type,
+      form_type: form.type,
+      scheduled_at: scheduledAtIso,
+      address: addressPayload,
+      form_data: rawFormData,
+      status: 'pending',
+      patient_id: patientId,
+      category_id: categoryId,
+      creation_batch_id: batchId,
+    };
+    if (careBlocks.value.length > 1) {
+      createBody.creation_batch_size = careBlocks.value.length;
+    }
+    if (!patientId && form.form_data.email?.trim()) {
+      createBody.guest_email = form.form_data.email.trim();
+    }
+    if (form.type === 'blood_test' && form.assigned_lab_id) createBody.assigned_lab_id = form.assigned_lab_id;
+    if (form.type === 'nursing' && form.assigned_nurse_id) createBody.assigned_nurse_id = form.assigned_nurse_id;
+
+    const response = await apiFetch('/appointments', { method: 'POST', body: createBody });
+    if (response.success) {
+      const id = (response as any).data?.id as string | undefined;
+      if (id) {
+        createdIds.push(id);
+        if (selectedPatientId.value !== NEW_PATIENT_VALUE) {
+          await copyPatientDocumentsToAppointment(id);
+        }
+        const hasFormFiles = Object.keys(form.files).some((k) => form.files[k] instanceof File);
+        if (hasFormFiles) {
+          await uploadFormFilesToAppointment(id);
+        }
+      }
+    } else {
+      failures.push(`Soin ${i + 1} : ${(response as any).error || 'erreur'}`);
+    }
+  }
+
+  if (failures.length) {
+    toast.add({
+      title: createdIds.length ? 'Création partielle' : 'Erreur',
+      description: createdIds.length
+        ? `${createdIds.length} RDV créé(s). ${failures.join(' ')}`
+        : failures.join(' '),
+      color: createdIds.length ? 'warning' : 'red',
+      icon: 'i-lucide-alert-circle',
+    });
+  } else {
+    toast.add({
+      title: 'Rendez-vous créés',
+      description: `${createdIds.length} rendez-vous ont été enregistrés.`,
+      color: 'green',
+      icon: 'i-lucide-check-circle',
+    });
+  }
+
+  if (createdIds.length) {
+    if (showPrescriptionAfterCreate.value && prescriptionTextDuringCreate.value?.trim()) {
+      await generateAndAttachPrescriptionDuringCreate(createdIds[0]!);
+    }
+    await router.push(`${props.basePath}/appointments`);
+  } else {
+    throw new Error(failures.join(' ') || 'Aucun rendez-vous créé');
+  }
+}
+
 async function submit() {
   saving.value = true;
   try {
+    const clientErr = validateAppointmentFormClient();
+    if (clientErr) {
+      toast.add({
+        title: clientErr.title,
+        description: clientErr.description,
+        color: 'red',
+        icon: 'i-lucide-alert-circle',
+      });
+      scrollToFormSection(clientErr.sectionId);
+      saving.value = false;
+      return;
+    }
+
     // Prep Data
     const hour = form.form_data.availability_type === 'custom' ? Math.floor(availabilityRange.value[0]) : 9;
     const scheduledAtStr = form.scheduled_at ? `${form.scheduled_at} ${String(hour).padStart(2, '0')}:00:00` : '';
     const scheduledAtIso = scheduledAtStr ? new Date(scheduledAtStr).toISOString() : undefined;
-    
-    const addressPayload = form.address?.label 
-      ? { ...form.address, complement: form.form_data.address_complement || undefined } 
-      : undefined;
+
+    const addressPayload =
+      form.address?.label?.trim()
+        ? {
+            label: form.address.label.trim(),
+            lat: Number(form.address.lat),
+            lng: Number(form.address.lng),
+            ...(form.form_data.address_complement?.trim()
+              ? { complement: form.form_data.address_complement.trim() }
+              : {}),
+          }
+        : undefined;
+
+    if (!addressPayload) {
+      toast.add({
+        title: 'Adresse requise',
+        description:
+          'Choisissez une adresse (recherche) ou un patient dont le dossier contient une adresse. Les coordonnées sont complétées automatiquement quand c’est possible.',
+        color: 'red',
+      });
+      scrollToFormSection('appointment-form-section-address');
+      saving.value = false;
+      return;
+    }
+    if (!Number.isFinite(addressPayload.lat) || !Number.isFinite(addressPayload.lng)) {
+      toast.add({
+        title: 'Adresse incomplète',
+        description: 'Sélectionnez une adresse dans la liste de suggestions pour enregistrer la position sur la carte.',
+        color: 'red',
+      });
+      scrollToFormSection('appointment-form-section-address');
+      saving.value = false;
+      return;
+    }
 
     const filesMeta = Object.keys(form.files).reduce((acc, key) => {
       if (form.files[key]) acc[key] = { field: key, name: form.files[key].name };
@@ -1011,6 +2160,11 @@ async function submit() {
     const availabilityPayload = form.form_data.availability_type === 'custom'
       ? JSON.stringify({ type: 'custom', range: [Number(availabilityRange.value[0]), Number(availabilityRange.value[1])] })
       : JSON.stringify({ type: 'all_day' });
+
+    if (isCreate.value && multiCareEnabled.value && supportsMultiCareCreate.value) {
+      await submitMultiCareBatch(scheduledAtIso, addressPayload, availabilityPayload, filesMeta);
+      return;
+    }
 
     const basePayload = {
       type: form.type,
@@ -1023,22 +2177,61 @@ async function submit() {
         gender: form.form_data.gender || undefined,
         availability: availabilityPayload,
         files: filesMeta,
-        // Specifics cleanup
         blood_test_type: form.type === 'blood_test' ? form.form_data.blood_test_type : undefined,
-        custom_days: form.type === 'blood_test' ? form.form_data.custom_days : undefined,
+        custom_days: form.type === 'blood_test' ? form.form_data.custom_days : (form.type === 'nursing' && form.form_data.duration_days === 'custom' ? form.form_data.custom_days : undefined),
         frequency: form.type === 'nursing' ? form.form_data.frequency : undefined,
+        preferred_nurse_gender: form.type === 'nursing' ? resolvedPreferredNurseGender() : undefined,
+        care_options: form.form_data.care_options && Object.keys(form.form_data.care_options).length ? form.form_data.care_options : undefined,
       }
     };
 
     const categoryId = form.form_data.category_id || undefined;
     let response;
     if (isCreate.value) {
+      let patientId = selectedPatient.value?.id || undefined;
+
+      // Pro (ou admin) + nouveau patient : créer le patient d'abord pour qu'il apparaisse dans "Mes patients"
+      const shouldCreatePatient =
+        canCreatePatientForAppointment.value &&
+        selectedPatientId.value === NEW_PATIENT_VALUE &&
+        form.form_data.first_name?.trim() &&
+        form.form_data.last_name?.trim() &&
+        form.form_data.phone?.trim() &&
+        (form.form_data.email?.trim() || isProForm.value);
+
+      if (shouldCreatePatient) {
+        const addressForPatient = form.address?.label
+          ? { ...form.address, complement: form.form_data.address_complement || undefined }
+          : undefined;
+        const bodyPatient: Record<string, unknown> = {
+          first_name: form.form_data.first_name.trim(),
+          last_name: form.form_data.last_name.trim(),
+          phone: form.form_data.phone.trim(),
+          birth_date: form.form_data.birth_date || undefined,
+          gender: form.form_data.gender || undefined,
+          address: addressForPatient,
+        };
+        const em = form.form_data.email?.trim();
+        if (em) bodyPatient.email = em;
+        const patientRes = await apiFetch('/patients', {
+          method: 'POST',
+          body: bodyPatient,
+        });
+        if (patientRes.success && (patientRes as any).data?.id) {
+          patientId = (patientRes as any).data.id;
+        }
+      }
+
       const createBody: Record<string, unknown> = {
         ...basePayload,
         status: 'pending',
-        patient_id: selectedPatient.value?.id || undefined,
+        patient_id: patientId,
         category_id: categoryId,
       };
+      // Backend exige patient_id OU guest_email : si toujours pas de patient_id, envoyer guest_email
+      if (!patientId && form.form_data.email?.trim()) {
+        createBody.guest_email = form.form_data.email.trim();
+      }
       if (form.type === 'blood_test' && form.assigned_lab_id) createBody.assigned_lab_id = form.assigned_lab_id;
       if (form.type === 'nursing' && form.assigned_nurse_id) createBody.assigned_nurse_id = form.assigned_nurse_id;
       response = await apiFetch('/appointments', { method: 'POST', body: createBody });
@@ -1052,17 +2245,35 @@ async function submit() {
 
     if (response.success) {
       const id = (response as any).data?.id || appointment.value?.id;
-      if (isCreate.value && id && selectedPatientId.value !== NEW_PATIENT_VALUE) {
-        await copyPatientDocumentsToAppointment(id);
+      if (id) {
+        if (isCreate.value) {
+          // 1. Copier les documents du patient (fiche) vers le RDV (sauf si admin a uploadé un nouveau fichier)
+          if (selectedPatientId.value !== NEW_PATIENT_VALUE) {
+            await copyPatientDocumentsToAppointment(id);
+          }
+        }
+        // 2. Uploader les fichiers du formulaire (création ou édition : nouveau patient, remplacement, ou ajout)
+        const hasFormFiles = Object.keys(form.files).some((k) => form.files[k] instanceof File);
+        if (hasFormFiles) {
+          await uploadFormFilesToAppointment(id);
+        }
       }
       toast.add({ title: isCreate.value ? 'Rendez-vous créé' : 'Modifications enregistrées', color: 'green', icon: 'i-lucide-check-circle' });
-      if (id) await router.push(`${props.basePath}/appointments/${id}`);
+      if (id) {
+        if (isCreate.value && showPrescriptionAfterCreate.value && prescriptionTextDuringCreate.value?.trim()) {
+          await generateAndAttachPrescriptionDuringCreate(id);
+        }
+        await router.push(`${props.basePath}/appointments/${id}`);
+      }
     } else {
       throw new Error((response as any).error);
     }
 
   } catch (e: any) {
-    toast.add({ title: 'Erreur', description: e.message || 'Une erreur est survenue', color: 'red' });
+    const msg = String(e?.message || 'Une erreur est survenue');
+    toast.add({ title: 'Erreur', description: msg, color: 'red' });
+    const inferred = inferSectionFromErrorMessage(msg);
+    if (inferred) scrollToFormSection(inferred);
   } finally {
     saving.value = false;
   }
@@ -1070,14 +2281,113 @@ async function submit() {
 
 // --- WATCHERS ---
 
-watch(selectedPatientId, (id) => {
+watch(() => form.form_data.category_id, (newId, oldId) => {
+  loadCategoryOptionsForCare(newId || '');
+  if (oldId !== undefined && newId !== oldId) {
+    form.form_data.care_options = {};
+  }
+});
+
+watch(multiCareEnabled, (on) => {
+  if (!supportsMultiCareCreate.value) return;
+  if (on) {
+    careBlocks.value = [
+      {
+        ...makeCareBlock(),
+        category_id: String(form.form_data.category_id || ''),
+        blood_test_type: form.form_data.blood_test_type as 'single' | 'multiple',
+        duration_days: form.form_data.duration_days,
+        custom_days: form.form_data.custom_days,
+        frequency: form.form_data.frequency,
+        care_options: { ...form.form_data.care_options },
+        preferred_nurse_gender: form.form_data.preferred_nurse_gender as 'any' | 'female' | 'male',
+      },
+    ];
+  } else if (careBlocks.value[0]) {
+    const b = careBlocks.value[0];
+    form.form_data.category_id = b.category_id;
+    form.form_data.blood_test_type = b.blood_test_type;
+    form.form_data.duration_days = b.duration_days;
+    form.form_data.custom_days = b.custom_days;
+    form.form_data.frequency = b.frequency;
+    form.form_data.care_options = { ...b.care_options };
+    form.form_data.preferred_nurse_gender = b.preferred_nurse_gender;
+    loadCategoryOptionsForCare(form.form_data.category_id || '');
+  }
+});
+
+watch(
+  () => careBlocks.value.map((b) => b.category_id),
+  (newIds, oldIds) => {
+    if (!multiCareEnabled.value || !oldIds?.length) return;
+    newIds.forEach((id, i) => {
+      if (oldIds[i] !== id && careBlocks.value[i]) {
+        careBlocks.value[i].care_options = {};
+      }
+    });
+  },
+);
+
+watch(selectedPatientId, async (id) => {
   if (id === NEW_PATIENT_VALUE || !id) {
     clearPatient();
   } else {
     const p = patients.value.find((x) => String(x.id) === id);
-    if (p) selectPatient(p);
+    if (p) await selectPatient(p);
   }
 });
+
+async function runPatientEmailLookup(emailTrim: string) {
+  if (!isCreate.value || selectedPatientId.value !== NEW_PATIENT_VALUE) return;
+  if (!canCreatePatientForAppointment.value) return;
+  if (!(isProForm.value || isLabForm.value || isSubaccountForm.value || props.basePath === '/admin')) return;
+  emailLookupLoading.value = true;
+  try {
+    const res = await apiFetch(`/patients/lookup?email=${encodeURIComponent(emailTrim)}`, { method: 'GET' });
+    if (res?.success && (res as any).data?.id) {
+      const row = (res as any).data;
+      skipEmailLookupOnce.value = true;
+      selectedPatientId.value = String(row.id);
+      await selectPatient(row);
+      if (!patients.value.some((x) => String(x.id) === String(row.id))) {
+        patients.value = [...patients.value, row];
+      }
+      toast.add({
+        title: 'Patient existant',
+        description: 'Un compte avec cet e-mail a été trouvé — données préremplies.',
+        color: 'green',
+        icon: 'i-lucide-user-check',
+      });
+    }
+  } catch {
+    /* silencieux */
+  } finally {
+    emailLookupLoading.value = false;
+  }
+}
+
+watch(
+  () => form.form_data.email,
+  (em) => {
+    if (!isCreate.value || selectedPatientId.value !== NEW_PATIENT_VALUE) return;
+    if (!canCreatePatientForAppointment.value) return;
+    if (!(isProForm.value || isLabForm.value || isSubaccountForm.value || props.basePath === '/admin')) return;
+    if (skipEmailLookupOnce.value) {
+      skipEmailLookupOnce.value = false;
+      return;
+    }
+    if (emailLookupTimer) {
+      clearTimeout(emailLookupTimer);
+      emailLookupTimer = null;
+    }
+    const t = (em || '').trim();
+    if (!t || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return;
+    emailLookupTimer = setTimeout(() => {
+      emailLookupTimer = null;
+      runPatientEmailLookup(t);
+    }, 400);
+  }
+);
 
 watch([birthYear, birthMonth, birthDay], () => {
   if (birthYear.value && birthMonth.value && birthDay.value) {
@@ -1096,44 +2406,80 @@ watch([() => form.form_data.availability_type, availabilityRange], () => {
   }
 }, { deep: true });
 
-// Prevent Slider Collisions (Min gap 2h)
+// Écart minimum entre les deux poignées du slider
 watch(availabilityRange, (newVal) => {
   if (form.form_data.availability_type !== 'custom') return;
   const [start, end] = newVal;
-  if (end - start < 2) {
+  if (end - start < AVAILABILITY_MIN_SPAN_HOURS) {
     const [prevStart, prevEnd] = previousAvailabilityRange.value;
     if (Math.abs(end - prevEnd) > Math.abs(start - prevStart)) {
-      availabilityRange.value = [Math.max(8, end - 2), end];
+      availabilityRange.value = [Math.max(6, end - AVAILABILITY_MIN_SPAN_HOURS), end];
     } else {
-      availabilityRange.value = [start, Math.min(17, start + 2)];
+      availabilityRange.value = [start, Math.min(availabilitySliderMax.value, start + AVAILABILITY_MIN_SPAN_HOURS)];
     }
   }
   previousAvailabilityRange.value = [...availabilityRange.value];
 }, { deep: true });
 
+/** Ligne « mon laboratoire » pour le sélecteur d’assignation (complété par GET /lab/subaccounts). */
+function buildLabSelfRow(): Record<string, string> | null {
+  if (!user.value?.id) return null;
+  return {
+    id: user.value.id,
+    company_name: (user.value as any).company_name || '',
+    first_name: '',
+    last_name: '',
+    email: (user.value as any).email || '',
+  };
+}
+
 // --- LIFECYCLE ---
 onMounted(async () => {
   if (isCreate.value) {
-    loadCategories('blood_test');
+    if (isLabForm.value || isSubaccountForm.value) {
+      form.type = 'blood_test';
+      if (user.value?.id && isSubaccountForm.value) {
+        form.assigned_lab_id = user.value.id;
+      }
+    } else if (isNurseForm.value) {
+      form.type = 'nursing';
+    }
+    loadCategories(form.type === 'nursing' ? 'nursing' : 'blood_test');
+    /** Plusieurs soins (même patient, même créneau) : activé par défaut pour la création infirmier. */
+    if (isCreate.value && isNurseForm.value && supportsMultiCareCreate.value) {
+      multiCareEnabled.value = true;
+    }
     await fetchPatients();
-    const patientIdFromQuery = route.query.patient_id as string | undefined;
-    if (patientIdFromQuery && patients.value.length > 0) {
-      const p = patients.value.find((x) => String(x.id) === String(patientIdFromQuery));
-      if (p) selectPatient(p);
+    const patientIdFromQueryCreate = route.query.patient_id as string | undefined;
+    if (patientIdFromQueryCreate && patients.value.length > 0) {
+      const p = patients.value.find((x) => String(x.id) === String(patientIdFromQueryCreate));
+      if (p) await selectPatient(p);
     }
     labsLoading.value = true;
     nursesLoading.value = true;
     try {
-      const [labRes, subRes, nurseRes] = await Promise.all([
-        apiFetch('/users?role=lab&limit=500', { method: 'GET' }),
-        apiFetch('/users?role=subaccount&limit=500', { method: 'GET' }),
-        apiFetch('/users?role=nurse&limit=500', { method: 'GET' }),
-      ]);
-      labs.value = [
-        ...(labRes.success && labRes.data ? (labRes.data as any[]) : []),
-        ...(subRes.success && subRes.data ? (subRes.data as any[]) : []),
-      ];
-      nurses.value = nurseRes.success && nurseRes.data ? (nurseRes.data as any[]) : [];
+      if (isLabForm.value && user.value?.id) {
+        const subRes = await apiFetch('/lab/subaccounts?limit=100', { method: 'GET' });
+        const subs = subRes.success && subRes.data ? (subRes.data as any[]) : [];
+        const selfRow = buildLabSelfRow();
+        labs.value = selfRow ? [selfRow, ...subs] : subs;
+        form.assigned_lab_id = user.value.id;
+        nurses.value = [];
+      } else if (isSubaccountForm.value) {
+        labs.value = [];
+        nurses.value = [];
+      } else {
+        const [labRes, subRes, nurseRes] = await Promise.all([
+          apiFetch('/users?role=lab&limit=500', { method: 'GET' }),
+          apiFetch('/users?role=subaccount&limit=500', { method: 'GET' }),
+          apiFetch('/users?role=nurse&limit=500', { method: 'GET' }),
+        ]);
+        labs.value = [
+          ...(labRes.success && labRes.data ? (labRes.data as any[]) : []),
+          ...(subRes.success && subRes.data ? (subRes.data as any[]) : []),
+        ];
+        nurses.value = nurseRes.success && nurseRes.data ? (nurseRes.data as any[]) : [];
+      }
     } catch (e) {
       console.error('Erreur chargement labos/infirmiers:', e);
     } finally {
@@ -1141,20 +2487,32 @@ onMounted(async () => {
       nursesLoading.value = false;
     }
   } else if (props.appointmentId) {
+    await fetchPatients();
     await loadAppointment();
     labsLoading.value = true;
     nursesLoading.value = true;
     try {
-      const [labRes, subRes, nurseRes] = await Promise.all([
-        apiFetch('/users?role=lab&limit=500', { method: 'GET' }),
-        apiFetch('/users?role=subaccount&limit=500', { method: 'GET' }),
-        apiFetch('/users?role=nurse&limit=500', { method: 'GET' }),
-      ]);
-      labs.value = [
-        ...(labRes.success && labRes.data ? (labRes.data as any[]) : []),
-        ...(subRes.success && subRes.data ? (subRes.data as any[]) : []),
-      ];
-      nurses.value = nurseRes.success && nurseRes.data ? (nurseRes.data as any[]) : [];
+      if (isLabForm.value && user.value?.id) {
+        const subRes = await apiFetch('/lab/subaccounts?limit=100', { method: 'GET' });
+        const subs = subRes.success && subRes.data ? (subRes.data as any[]) : [];
+        const selfRow = buildLabSelfRow();
+        labs.value = selfRow ? [selfRow, ...subs] : subs;
+        nurses.value = [];
+      } else if (isSubaccountForm.value) {
+        labs.value = [];
+        nurses.value = [];
+      } else {
+        const [labRes, subRes, nurseRes] = await Promise.all([
+          apiFetch('/users?role=lab&limit=500', { method: 'GET' }),
+          apiFetch('/users?role=subaccount&limit=500', { method: 'GET' }),
+          apiFetch('/users?role=nurse&limit=500', { method: 'GET' }),
+        ]);
+        labs.value = [
+          ...(labRes.success && labRes.data ? (labRes.data as any[]) : []),
+          ...(subRes.success && subRes.data ? (subRes.data as any[]) : []),
+        ];
+        nurses.value = nurseRes.success && nurseRes.data ? (nurseRes.data as any[]) : [];
+      }
     } catch (e) {
       console.error('Erreur chargement labos/infirmiers:', e);
     } finally {

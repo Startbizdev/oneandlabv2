@@ -12,7 +12,7 @@
         Voir tout
       </UButton>
     </div>
-    <div class="p-6">
+    <div class="p-4 sm:p-6">
       <div v-if="loading" class="flex justify-center py-12">
         <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-primary" />
       </div>
@@ -23,35 +23,16 @@
           <p class="text-sm text-muted mt-1">Les rendez-vous du jour apparaîtront ici.</p>
         </div>
       </template>
-      <UTable
-        v-else
-        :data="appointments"
-        :columns="columns"
-      >
-        <template #type-data="{ row }">
-          <UBadge :color="row.type === 'blood_test' ? 'blue' : 'green'" variant="subtle" size="sm">
-            {{ row.type === 'blood_test' ? 'Prise de sang' : 'Soins' }}
-          </UBadge>
-        </template>
-        <template #scheduled_at-data="{ row }">
-          {{ formatTime(row.scheduled_at) }}
-        </template>
-        <template #address-data="{ row }">
-          <span class="text-sm text-muted truncate max-w-[200px] block" :title="getAddressLabel(row)">
-            {{ getAddressLabel(row) }}
-          </span>
-        </template>
-        <template #status-data="{ row }">
-          <UBadge :color="getStatusColor(row.status)" variant="subtle" size="sm">
-            {{ getStatusLabel(row.status) }}
-          </UBadge>
-        </template>
-        <template #actions-data="{ row }">
-          <UButton size="sm" variant="ghost" :to="`${basePath}/appointments/${row.id}`">
-            Voir
-          </UButton>
-        </template>
-      </UTable>
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <DashboardAppointmentCard
+          v-for="apt in appointments"
+          :key="apt.id"
+          :appointment="apt"
+          :base-path="basePath"
+          :format-date-label="formatDateLabel"
+          :mask-sensitive="false"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -63,25 +44,16 @@ interface AppointmentRow {
   scheduled_at?: string;
   address?: string | { label?: string };
   status: string;
+  form_data?: any;
+  category_name?: string;
 }
 
 interface Props {
   appointments: AppointmentRow[];
   loading?: boolean;
   basePath: string;
-  formatTime: (date: string) => string;
-  getAddressLabel: (row: AppointmentRow) => string;
-  getStatusColor: (status: string) => string;
-  getStatusLabel: (status: string) => string;
+  formatDateLabel: (apt: AppointmentRow) => string;
 }
 
 defineProps<Props>();
-
-const columns = [
-  { id: 'type', accessorKey: 'type', header: 'Type' },
-  { id: 'scheduled_at', accessorKey: 'scheduled_at', header: 'Heure' },
-  { id: 'address', accessorKey: 'address', header: 'Adresse' },
-  { id: 'status', accessorKey: 'status', header: 'Statut' },
-  { id: 'actions', accessorKey: 'actions', header: '' },
-];
 </script>

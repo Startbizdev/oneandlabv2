@@ -8,16 +8,6 @@
   >
     <template #actions>
       <UButton
-        variant="ghost"
-        size="sm"
-        icon="i-lucide-refresh-cw"
-        :loading="loading"
-        aria-label="Actualiser"
-        @click="fetchDashboard"
-      >
-        Actualiser
-      </UButton>
-      <UButton
         color="primary"
         variant="solid"
         size="sm"
@@ -400,6 +390,7 @@ function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     pending: 'En attente',
     confirmed: 'Confirmé',
+    planned: 'Planifié',
     inProgress: 'En cours',
     completed: 'Terminé',
     canceled: 'Annulé',
@@ -415,10 +406,12 @@ function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
     pending: 'warning',
     confirmed: 'info',
+    planned: 'info',
     inProgress: 'primary',
     completed: 'success',
     canceled: 'error',
     refused: 'neutral',
+    expired: 'neutral',
   };
   return colors[status] || 'neutral';
 }

@@ -14,7 +14,7 @@
               color="gray"
               size="xs"
               icon="i-lucide-arrow-left"
-              @click="step = 'choice'"
+              :on-click="() => step = 'choice'"
             >
               Retour
             </UButton>
@@ -130,9 +130,9 @@
                 <span class="text-[10px] text-gray-400">Heure</span>
                 <span class="text-sm font-mono text-primary-600">{{ formatTime(availabilityRange[0]) }} - {{ formatTime(availabilityRange[1]) }}</span>
               </div>
-              <USlider v-model="availabilityRange" :min="8" :max="17" :step="1" color="primary" />
+              <USlider v-model="availabilityRange" :min="6" :max="17" :step="1" color="primary" />
               <div class="flex justify-between text-[10px] text-gray-400 font-mono">
-                <span>08h</span>
+                <span>06h</span>
                 <span>17h</span>
               </div>
             </div>
@@ -159,27 +159,27 @@
         <template #footer>
           <div class="flex justify-end gap-2 w-full">
             <template v-if="step === 'choice'">
-              <UButton type="button" variant="outline" color="gray" size="md" @click="close">Annuler</UButton>
+              <UButton type="button" variant="outline" color="gray" size="md" :on-click="close">Annuler</UButton>
               <UButton
                 type="button"
                 color="primary"
                 size="md"
                 icon="i-lucide-arrow-right"
                 :disabled="!choiceMode"
-                @click="goToForm"
+                :on-click="goToForm"
               >
                 Suivant
               </UButton>
             </template>
             <template v-else-if="step === 'form'">
-              <UButton type="button" variant="outline" color="gray" size="md" @click="close">Annuler</UButton>
+              <UButton type="button" variant="outline" color="gray" size="md" :on-click="close">Annuler</UButton>
               <UButton
                 type="button"
                 color="primary"
                 size="md"
                 :loading="saving"
                 icon="i-lucide-check"
-                @click="submit"
+                :on-click="submit"
               >
                 {{ choiceMode === 'cancel_and_new' ? 'Annuler l\'ancien et créer' : 'Créer le RDV' }}
               </UButton>
@@ -194,6 +194,7 @@
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api'
+import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot'
 
 const props = defineProps<{
   modelValue: boolean
@@ -335,8 +336,8 @@ function initFormFromAppointment() {
     } catch {}
   } else if (a.scheduled_at) {
     const h = new Date(a.scheduled_at).getHours()
-    const start = Math.max(8, Math.min(15, h))
-    availabilityRange.value = [start, start + 2]
+    const start = Math.max(6, Math.min(15, h))
+    availabilityRange.value = [start, start + AVAILABILITY_MIN_SPAN_HOURS]
   }
 }
 

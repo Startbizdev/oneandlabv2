@@ -41,7 +41,7 @@
             variant="solid"
             size="sm"
             class="shadow-xl"
-            @click.stop="triggerCoverInput"
+            :on-click="(e) => { e?.stopPropagation?.(); triggerCoverInput(); }"
           >
             {{ coverImage ? 'Modifier' : 'Ajouter' }}
           </UButton>
@@ -55,7 +55,7 @@
           variant="solid"
           size="sm"
           class="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-xl"
-          @click.stop="removeCoverImage"
+          :on-click="(e) => { e?.stopPropagation?.(); removeCoverImage(); }"
         />
       </div>
 
@@ -111,7 +111,7 @@
                 variant="ghost"
                 size="xs"
                 class="flex-shrink-0"
-                @click.stop="removeProfileImage"
+                :on-click="(e) => { e?.stopPropagation?.(); removeProfileImage(); }"
               />
             </div>
             <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed px-3">
@@ -121,7 +121,7 @@
               variant="outline"
               size="sm"
               icon="i-lucide-upload"
-              @click="triggerProfileInput"
+              :on-click="triggerProfileInput"
             >
               {{ profileImage ? 'Modifier' : 'Ajouter une photo' }}
             </UButton>
@@ -146,7 +146,7 @@
                   variant="ghost"
                   size="xs"
                   class="flex-shrink-0"
-                  @click.stop="removeCoverImage"
+                  :on-click="(e) => { e?.stopPropagation?.(); removeCoverImage(); }"
                 />
               </div>
               <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">

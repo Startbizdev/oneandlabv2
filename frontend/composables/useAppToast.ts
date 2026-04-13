@@ -5,7 +5,7 @@
  * Utiliser useAppToast() partout à la place de useToast() pour éviter les doubles toasts.
  */
 const DEDUPE_MS = 700
-const DEFAULT_TIMEOUT = 4000
+const DEFAULT_TIMEOUT = 2800
 
 let lastKey = ''
 let lastTime = 0

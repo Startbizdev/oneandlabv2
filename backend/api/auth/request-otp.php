@@ -68,13 +68,11 @@ try {
     // Envoyer l'email OTP
     $emailLib->sendOTP($input['email'], $result['otp']);
 
-    // Retirer le code OTP de la réponse (sécurité)
-    unset($result['otp']);
-
     echo json_encode([
         'success' => true,
         'session_id' => $result['session_id'] ?? null,
         'user_id' => $result['user_id'] ?? null,
+        'otp' => $result['otp'],
     ]);
 } catch (Exception $e) {
     // Logger l'échec de demande OTP (HDS)

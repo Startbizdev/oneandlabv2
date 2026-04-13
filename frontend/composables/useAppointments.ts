@@ -10,6 +10,8 @@ export interface AppointmentsPagination {
   limit: number;
   total: number;
   pages: number;
+  /** True si une page suivante existe probablement (page pleine ou total > fenêtre affichée). */
+  has_more?: boolean;
 }
 
 export const useAppointments = () => {
@@ -29,6 +31,8 @@ export const useAppointments = () => {
         if (filters.type != null) params.type = String(filters.type);
         if (filters.page != null) params.page = String(filters.page);
         if (filters.limit != null) params.limit = String(filters.limit);
+        if (filters.patient_id != null && filters.patient_id !== '') params.patient_id = String(filters.patient_id);
+        if (filters.nurse_tab != null) params.nurse_tab = String(filters.nurse_tab);
       }
       const queryString = Object.keys(params).length ? '?' + new URLSearchParams(params).toString() : '';
       const response = await apiFetch<{ success: boolean; data?: Appointment[]; pagination?: AppointmentsPagination; error?: string }>(`/appointments${queryString}`, {
@@ -52,8 +56,13 @@ export const useAppointments = () => {
     }
   };
   
-  const createAppointment = async (data: AppointmentCreatePayload): Promise<{ success: boolean; data?: { id: string }; error?: string }> => {
-    loading.value = true;
+  const createAppointment = async (
+    data: AppointmentCreatePayload,
+    options?: { skipLoading?: boolean }
+  ): Promise<{ success: boolean; data?: { id: string }; error?: string }> => {
+    if (!options?.skipLoading) {
+      loading.value = true;
+    }
     error.value = null;
     
     try {
@@ -135,7 +144,9 @@ export const useAppointments = () => {
       error.value = err.message || 'Erreur réseau';
       return { success: false, error: error.value };
     } finally {
-      loading.value = false;
+      if (!options?.skipLoading) {
+        loading.value = false;
+      }
     }
   };
   
@@ -200,7 +211,78 @@ export const useAppointments = () => {
       }
     }
   };
-  
+
+  /**
+   * Crée plusieurs rendez-vous (multi-soins). Chaque RDV reçoit les mêmes documents.
+   * En cas d'échec partiel : les RDV déjà créés sont conservés, un message d'erreur est retourné.
+   */
+  const createMultipleAppointments = async (
+    payloads: AppointmentCreatePayload[]
+  ): Promise<{ success: boolean; createdIds: string[]; error?: string }> => {
+    loading.value = true;
+    error.value = null;
+    const createdIds: string[] = [];
+
+    try {
+      const types = new Set(payloads.map((p) => p.type));
+      const sameTypeMulti =
+        payloads.length > 1 &&
+        types.size === 1 &&
+        (types.has('nursing') || types.has('blood_test'));
+      const firstBatch = payloads[0]?.creation_batch_id;
+      const allShareExplicitBatch =
+        sameTypeMulti &&
+        !!firstBatch &&
+        payloads.every((p) => p.creation_batch_id === firstBatch);
+      const sharedBatch = allShareExplicitBatch
+        ? firstBatch
+        : sameTypeMulti
+          ? (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function'
+              ? globalThis.crypto.randomUUID()
+              : undefined)
+          : undefined;
+
+      const batchTotal = payloads.length;
+      const patientEmailFromPayloads = payloads.map((p) => (p as { patient_email?: string }).patient_email).find((e) => e && String(e).trim() !== '');
+
+      for (let i = 0; i < payloads.length; i++) {
+        const payload: AppointmentCreatePayload = { ...payloads[i] };
+        if (sharedBatch) {
+          payload.creation_batch_id = sharedBatch;
+          payload.creation_batch_size = batchTotal;
+          if (patientEmailFromPayloads && !(payload as { patient_email?: string }).patient_email) {
+            (payload as { patient_email?: string }).patient_email = patientEmailFromPayloads;
+          }
+        }
+        const result = await createAppointment(payload, { skipLoading: true });
+        if (result.success && result.data?.id) {
+          createdIds.push(result.data.id);
+        } else {
+          const msg = result.error || 'Erreur lors de la création';
+          return {
+            success: false,
+            createdIds,
+            error: createdIds.length > 0
+              ? `${msg} (${createdIds.length}/${payloads.length} RDV créés)`
+              : msg,
+          };
+        }
+      }
+      return { success: true, createdIds };
+    } catch (err: any) {
+      error.value = err.message || 'Erreur réseau';
+      return {
+        success: false,
+        createdIds,
+        error: createdIds.length > 0
+          ? `${err.message} (${createdIds.length}/${payloads.length} RDV créés)`
+          : err.message,
+      };
+    } finally {
+      loading.value = false;
+    }
+  };
+
   return {
     appointments,
     loading,
@@ -208,6 +290,7 @@ export const useAppointments = () => {
     pagination,
     fetchAppointments,
     createAppointment,
+    createMultipleAppointments,
   };
 };
 

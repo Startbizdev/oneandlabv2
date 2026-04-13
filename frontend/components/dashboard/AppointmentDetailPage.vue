@@ -26,153 +26,345 @@
 
     <div v-else class="grid grid-cols-1 xl:grid-cols-3 gap-6">
       <div class="xl:col-span-2 space-y-6">
-        <!-- Informations du rendez-vous -->
-        <UCard>
+        <!-- Informations du rendez-vous (une carte par soin si lot multisoins) -->
+        <AppointmentDetailRdvInfoCard
+          v-for="(appt, batchIdx) in batchAppointmentsSorted"
+          :key="appt.id"
+          :appt="appt"
+          :categories-for-detail="categoriesForDetail"
+          :is-admin="isAdmin"
+          :show-cancellation-photo="showCancellationPhoto"
+          :batch-index="batchIdx"
+          :batch-size="batchAppointmentsSorted.length"
+        />
+
+        <!-- Origine du RDV (staff / pro) -->
+        <UCard v-if="showCreatorOrigin && appointment.creator_origin">
           <template #header>
-            <div class="flex items-center justify-between gap-4">
-              <h2 class="text-lg font-normal flex items-center gap-2">
-                <UIcon name="i-lucide-calendar" class="w-5 h-5" />
-                Informations du rendez-vous
-              </h2>
-              <div class="flex items-center gap-2 flex-wrap">
-                <UBadge
-                  :color="getStatusColor(appointment.status)"
-                  variant="subtle"
-                  size="md"
-                  :label="getStatusLabel(appointment.status)"
-                />
-                <UBadge
-                  :color="appointment.type === 'blood_test' ? 'error' : 'info'"
-                  variant="subtle"
-                  size="md"
-                  :leading-icon="appointment.type === 'blood_test' ? 'i-lucide-syringe' : 'i-lucide-stethoscope'"
-                  :label="getTypeLabel(appointment.type)"
-                />
-              </div>
-            </div>
+            <h2 class="text-lg font-normal flex items-center gap-2">
+              <UIcon name="i-lucide-git-branch" class="w-5 h-5" />
+              Origine du rendez-vous
+            </h2>
           </template>
-          <div class="space-y-4">
-            <div class="flex items-start gap-3">
-              <UIcon name="i-lucide-calendar" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Date souhaitée</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ formatDateTime(appointment.scheduled_at) }}
-                </p>
-              </div>
-            </div>
-            <div v-if="appointment.address" class="flex items-start gap-3">
-              <UIcon name="i-lucide-map-pin" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Adresse complète</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ typeof appointment.address === 'object' && appointment.address?.label ? appointment.address.label : appointment.address }}
-                </p>
-                <p v-if="addressComplement" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Complément : {{ addressComplement }}
-                </p>
-                <a
-                  href="#"
-                  class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 underline mt-1 inline-flex items-center gap-1"
-                  @click.prevent="openInGoogleMaps"
-                >
-                  <UIcon name="i-lucide-external-link" class="w-3 h-3" />
-                  Voir dans la map
-                </a>
-              </div>
-            </div>
-            <div v-if="appointment.category_name" class="flex items-start gap-3">
-              <UIcon name="i-lucide-stethoscope" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Type de soin</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ appointment.category_name }}</p>
-              </div>
-            </div>
-            <div v-if="appointment.form_data?.blood_test_type" class="flex items-start gap-3">
-              <UIcon name="i-lucide-droplet" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Type de prélèvement</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ getBloodTestTypeLabel(appointment.form_data) }}</p>
-              </div>
-            </div>
-            <div v-if="appointment.form_data?.duration_days" class="flex items-start gap-3">
-              <UIcon name="i-lucide-calendar-days" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Durée</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ getDurationLabel(appointment.form_data.duration_days) }}</p>
-              </div>
-            </div>
-            <div v-if="appointment.form_data?.frequency" class="flex items-start gap-3">
-              <UIcon name="i-lucide-repeat" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Fréquence</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ getFrequencyLabel(appointment.form_data.frequency) }}</p>
-              </div>
-            </div>
-            <div v-if="appointment.form_data?.availability" class="flex items-start gap-3">
-              <UIcon name="i-lucide-clock" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Disponibilités horaires</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatAvailability(appointment.form_data.availability) }}</p>
-              </div>
-            </div>
-            <div v-if="appointment.notes" class="flex items-start gap-3">
-              <UIcon name="i-lucide-file-text" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Notes du patient</p>
-                <p class="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">{{ appointment.notes }}</p>
-              </div>
-            </div>
-            <div v-if="appointment.created_at" class="flex items-start gap-3">
-              <UIcon name="i-lucide-calendar-plus" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Créé le</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDate(appointment.created_at) }}</p>
-              </div>
-            </div>
-            <div v-if="isAdmin && appointment.updated_at" class="flex items-start gap-3">
-              <UIcon name="i-lucide-pencil" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Modifié le</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDate(appointment.updated_at) }}</p>
-              </div>
-            </div>
-            <!-- Annulation (motif, commentaire, photo) intégré aux infos du RDV -->
-            <template v-if="appointment.status === 'canceled' && (appointment.canceled_by || appointment.cancellation_reason)">
-              <div v-if="appointment.cancellation_reason" class="flex items-start gap-3">
-                <UIcon name="i-lucide-tag" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Motif d'annulation</p>
-                  <p class="text-sm font-medium text-gray-900 dark:text-white">{{ getCancellationReasonLabel(appointment.cancellation_reason) }}</p>
-                </div>
-              </div>
-              <div v-if="appointment.cancellation_comment" class="flex items-start gap-3">
-                <UIcon name="i-lucide-message-square" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Commentaire d'annulation</p>
-                  <p class="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">{{ appointment.cancellation_comment }}</p>
-                </div>
-              </div>
-              <div v-if="showCancellationPhoto && appointment.cancellation_photo_document_id" class="flex items-start gap-3">
-                <UIcon name="i-lucide-camera" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Photo (preuve)</p>
-                  <a
-                    :href="cancellationPhotoDownloadUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="text-sm text-primary-600 dark:text-primary-400 hover:underline"
-                  >
-                    Voir la photo
-                  </a>
-                </div>
-              </div>
+          <div class="space-y-3">
+            <template v-if="appointment.creator_origin.kind === 'patient_platform'">
+              <p class="text-sm text-gray-700 dark:text-gray-300">
+                {{ appointment.creator_origin.label || 'Patient OneAndLab' }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                Demande passée depuis la plateforme (patient).
+              </p>
             </template>
+            <div v-else-if="appointment.creator_origin.kind === 'nurse'">
+              <div v-if="creatorNurseOriginCompact" class="space-y-2">
+                <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                  {{ creatorNurseOriginCompactTitle }}
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                  {{ creatorNurseOriginCompactHint }}
+                </p>
+              </div>
+              <div v-else class="flex flex-wrap items-center gap-3">
+                <div
+                  class="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800"
+                >
+                  <img
+                    v-if="appointment.creator_origin.profile_image_url"
+                    :src="appointment.creator_origin.profile_image_url"
+                    :alt="appointment.creator_origin.display_name || ''"
+                    class="h-full w-full object-cover"
+                  />
+                  <div v-else class="flex h-full w-full items-center justify-center">
+                    <UIcon name="i-lucide-user" class="w-6 h-6 text-gray-400" />
+                  </div>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white">
+                    {{ appointment.creator_origin.display_name || 'Infirmier' }}
+                  </p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Saisie par un infirmier</p>
+                </div>
+                <UButton
+                  v-if="appointment.creator_origin.public_slug"
+                  size="sm"
+                  variant="outline"
+                  color="primary"
+                  class="shrink-0"
+                  @click="openCreatorSheet('nurse', appointment.creator_origin.public_slug)"
+                >
+                  Voir la fiche
+                </UButton>
+              </div>
+            </div>
+            <div v-else-if="appointment.creator_origin.kind === 'pro'">
+              <div v-if="creatorProOriginCompact" class="space-y-2.5">
+                <p class="text-sm font-medium text-gray-900 dark:text-white leading-snug">
+                  Vous avez créé ce rendez-vous en tant que professionnel de santé depuis votre espace.
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                  L’origine du dossier est votre compte pro ; les informations patient et la suite du parcours sont détaillées ci‑dessous.
+                </p>
+              </div>
+              <div
+                v-else
+                class="rounded-lg border border-default/60 bg-default/5 p-4 sm:p-5"
+              >
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+                  <div
+                    class="h-14 w-14 shrink-0 overflow-hidden rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 sm:h-12 sm:w-12"
+                  >
+                    <img
+                      v-if="appointment.creator_origin.profile_image_url"
+                      :src="appointment.creator_origin.profile_image_url"
+                      :alt="appointment.creator_origin.display_name || ''"
+                      class="h-full w-full object-cover"
+                    />
+                    <div v-else class="flex h-full w-full items-center justify-center">
+                      <UIcon name="i-lucide-stethoscope" class="w-6 h-6 text-gray-400" />
+                    </div>
+                  </div>
+                  <div class="min-w-0 flex-1 space-y-4">
+                    <header class="space-y-1">
+                      <p class="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                        Professionnel de santé
+                      </p>
+                      <p class="text-base font-semibold leading-tight text-gray-900 dark:text-white">
+                        <template v-if="appointment.creator_origin.first_name || appointment.creator_origin.last_name">
+                          {{ [appointment.creator_origin.first_name, appointment.creator_origin.last_name].filter(Boolean).join(' ') }}
+                        </template>
+                        <template v-else>
+                          {{ appointment.creator_origin.display_name || '—' }}
+                        </template>
+                      </p>
+                    </header>
+                    <dl class="space-y-3">
+                      <div class="grid grid-cols-1 gap-1 sm:grid-cols-[minmax(0,7.5rem)_1fr] sm:gap-x-4 sm:items-start">
+                        <dt class="text-xs font-medium text-muted">Profession</dt>
+                        <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">
+                          {{ appointment.creator_origin.emploi || 'Non renseigné' }}
+                        </dd>
+                      </div>
+                      <div
+                        v-if="appointment.creator_origin.phone"
+                        class="grid grid-cols-1 gap-1 sm:grid-cols-[minmax(0,7.5rem)_1fr] sm:gap-x-4 sm:items-start"
+                      >
+                        <dt class="text-xs font-medium text-muted">Téléphone</dt>
+                        <dd class="text-sm">
+                          <a
+                            :href="`tel:${String(appointment.creator_origin.phone).replace(/\s/g, '')}`"
+                            class="font-medium text-primary hover:underline break-all"
+                          >
+                            {{ appointment.creator_origin.phone }}
+                          </a>
+                        </dd>
+                      </div>
+                      <div
+                        v-if="appointment.creator_origin.adeli"
+                        class="grid grid-cols-1 gap-1 sm:grid-cols-[minmax(0,7.5rem)_1fr] sm:gap-x-4 sm:items-start"
+                      >
+                        <dt class="text-xs font-medium text-muted">N° Adeli</dt>
+                        <dd class="text-sm font-mono font-medium text-gray-800 dark:text-gray-200 tabular-nums">
+                          {{ appointment.creator_origin.adeli }}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else-if="appointment.creator_origin.kind === 'lab_team'">
+              <div v-if="creatorLabOriginCompact" class="space-y-2">
+                <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                  {{
+                    viewerIsCreator
+                      ? 'Vous avez créé ce rendez-vous depuis l’espace laboratoire (ou équipe associée).'
+                      : 'Ce rendez-vous a été créé par le même laboratoire que celui assigné.'
+                  }}
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                  {{
+                    viewerIsCreator
+                      ? 'L’origine indique une saisie côté équipe lab ; le détail ci‑dessous reprend l’assignation effective.'
+                      : 'La création et l’assignation correspondent au même établissement.'
+                  }}
+                </p>
+              </div>
+              <div v-else class="flex flex-wrap items-center gap-3">
+                <div
+                  class="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800"
+                >
+                  <img
+                    v-if="appointment.creator_origin.profile_image_url"
+                    :src="appointment.creator_origin.profile_image_url"
+                    :alt="appointment.creator_origin.display_name || ''"
+                    class="h-full w-full object-cover"
+                  />
+                  <div v-else class="flex h-full w-full items-center justify-center">
+                    <UIcon name="i-lucide-flask-conical" class="w-6 h-6 text-gray-400" />
+                  </div>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white">
+                    {{ appointment.creator_origin.display_name || 'Laboratoire' }}
+                  </p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                    {{ appointment.creator_origin.role === 'subaccount' ? 'Sous-compte laboratoire' : appointment.creator_origin.role === 'preleveur' ? 'Préleveur' : 'Laboratoire' }}
+                  </p>
+                </div>
+                <UButton
+                  v-if="appointment.creator_origin.public_slug"
+                  size="sm"
+                  variant="outline"
+                  color="primary"
+                  class="shrink-0"
+                  @click="openCreatorSheet('lab', appointment.creator_origin.public_slug)"
+                >
+                  Voir la fiche
+                </UButton>
+              </div>
+            </div>
           </div>
         </UCard>
 
-        <!-- Informations patient (en dessous des infos du RDV) -->
-        <UCard v-if="appointment.form_data || appointment.relative">
+        <!-- Professionnel ayant accepté / pris en charge le RDV -->
+        <UCard v-if="showAssignedProfessionalSection">
+          <template #header>
+            <div>
+              <h2 class="text-lg font-normal flex items-center gap-2">
+                <UIcon name="i-lucide-user-check" class="w-5 h-5" />
+                Professionnel assigné
+              </h2>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-normal">
+                Professionnel ayant accepté ou pris en charge ce rendez-vous.
+              </p>
+            </div>
+          </template>
+          <div class="space-y-6">
+            <!-- Soins infirmiers : infirmier -->
+            <div
+              v-if="isNursingType && (appointment.assigned_nurse_id || appointment.assigned_nurse_display_name)"
+              class="flex flex-wrap items-center gap-3"
+            >
+              <div class="flex-shrink-0">
+                <UserAvatar
+                  :src="assigneeNurseImageUrl"
+                  :initial="assigneeNurseInitial"
+                  alt="Infirmier"
+                  size="lg"
+                />
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">
+                  Infirmier
+                </p>
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                  {{ appointment.assigned_nurse_display_name || '—' }}
+                </p>
+              </div>
+              <UButton
+                v-if="appointment.assigned_nurse_public_slug"
+                size="sm"
+                variant="outline"
+                color="primary"
+                class="shrink-0"
+                @click="openAssigneeSheet('nurse', appointment.assigned_nurse_public_slug)"
+              >
+                Voir la fiche
+              </UButton>
+            </div>
+
+            <!-- Prise de sang : laboratoire -->
+            <div
+              v-if="appointment.type === 'blood_test' && (appointment.assigned_lab_id || appointment.assigned_lab_display_name)"
+              class="flex flex-col gap-3"
+            >
+              <div class="flex flex-wrap items-center gap-3">
+                <div class="flex-shrink-0">
+                  <UserAvatar
+                    :src="assigneeLabImageUrl"
+                    :initial="assigneeLabInitial"
+                    alt="Laboratoire"
+                    size="lg"
+                  />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">
+                    Laboratoire
+                  </p>
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                    {{ appointment.assigned_lab_display_name || '—' }}
+                  </p>
+                </div>
+                <UButton
+                  v-if="appointment.assigned_lab_public_slug"
+                  size="sm"
+                  variant="outline"
+                  color="primary"
+                  class="shrink-0"
+                  @click="openAssigneeSheet('lab', appointment.assigned_lab_public_slug)"
+                >
+                  Voir la fiche
+                </UButton>
+              </div>
+              <p
+                v-if="appointment.assigned_lab_address"
+                class="text-sm text-gray-600 dark:text-gray-400 flex items-start gap-2 pl-0 sm:pl-[3.25rem]"
+              >
+                <UIcon name="i-lucide-map-pin" class="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                <span>{{ appointment.assigned_lab_address }}</span>
+              </p>
+            </div>
+
+            <!-- Prise de sang : préleveur -->
+            <div
+              v-if="appointment.type === 'blood_test' && (appointment.assigned_to || appointment.assigned_to_display_name)"
+              class="flex flex-wrap items-start gap-4 pt-2 border-t border-default/60"
+              :class="{ 'border-t-0 pt-0': !(appointment.assigned_lab_id || appointment.assigned_lab_display_name) }"
+            >
+              <div class="flex-shrink-0">
+                <UserAvatar
+                  :src="assigneePreleveurImageUrl"
+                  :initial="assigneePreleveurInitial"
+                  alt="Préleveur"
+                  size="lg"
+                />
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">
+                  Préleveur
+                </p>
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                  {{ appointment.assigned_to_display_name || appointment.assigned_to_name || '—' }}
+                </p>
+                <p v-if="appointment.assigned_to_phone" class="text-sm mt-2">
+                  <a
+                    :href="`tel:${String(appointment.assigned_to_phone).replace(/\s/g, '')}`"
+                    class="text-primary-600 dark:text-primary-400 hover:underline"
+                  >
+                    {{ appointment.assigned_to_phone }}
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </UCard>
+
+        <ProviderPublicProfileSlideover
+          v-if="creatorSheetSlug"
+          v-model:open="creatorSheetOpen"
+          :provider-type="creatorSheetType"
+          :slug="creatorSheetSlug"
+        />
+
+        <ProviderPublicProfileSlideover
+          v-if="assigneeSheetSlug"
+          v-model:open="assigneeSheetOpen"
+          :provider-type="assigneeSheetType"
+          :slug="assigneeSheetSlug"
+        />
+
+        <!-- Informations patient (masqué si RDV annulé, sauf admin) -->
+        <UCard v-if="(appointment.form_data || appointment.relative) && (appointment.status !== 'canceled' || isAdmin)">
           <template #header>
             <h2 class="text-lg font-normal flex items-center gap-2">
               <UIcon name="i-lucide-user" class="w-5 h-5" />
@@ -202,16 +394,20 @@
                 </a>
               </div>
             </div>
-            <div v-if="(appointment.relative && appointment.relative.email) || appointment.form_data?.email" class="flex items-start gap-3">
+            <div v-if="patientContactEmailDisplay.text" class="flex items-start gap-3">
               <UIcon name="i-lucide-mail" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
               <div class="flex-1 min-w-0">
                 <p class="text-xs text-gray-500 dark:text-gray-400">Email</p>
                 <a
-                  :href="`mailto:${appointment.relative?.email || appointment.form_data?.email || ''}`"
-                  class="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline break-all"
+                  v-if="patientContactEmailDisplay.href"
+                  :href="patientContactEmailDisplay.href"
+                  class="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline break-words"
                 >
-                  {{ appointment.relative?.email || appointment.form_data?.email }}
+                  {{ patientContactEmailDisplay.text }}
                 </a>
+                <p v-else class="text-sm font-medium text-gray-900 dark:text-white break-words">
+                  {{ patientContactEmailDisplay.text }}
+                </p>
               </div>
             </div>
             <div v-if="patientBirthDate" class="flex items-start gap-3">
@@ -228,8 +424,24 @@
           </div>
         </UCard>
 
-        <!-- Documents médicaux (slot) -->
-        <UCard v-if="$slots.documentsCard">
+        <!-- Galerie photos de soins (masquée si annulé, sauf admin) -->
+        <slot
+          v-if="$slots.careGallery && (appointment.status !== 'canceled' || isAdmin)"
+          name="careGallery"
+          :appointment="appointment"
+        />
+
+        <!-- Créer une ordonnance (slot pro/nurse) -->
+        <slot
+          v-if="$slots.prescriptionSection && (appointment.status !== 'canceled' || isAdmin)"
+          name="prescriptionSection"
+          :appointment="appointment"
+          :documents="documents"
+          :load-documents="loadDocuments"
+        />
+
+        <!-- Documents médicaux (masqués si annulé, sauf admin) -->
+        <UCard v-if="$slots.documentsCard && (appointment.status !== 'canceled' || isAdmin)">
           <template #header>
             <h2 class="text-lg font-normal flex items-center gap-2">
               <UIcon name="i-lucide-file-text" class="w-5 h-5" />
@@ -262,14 +474,34 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { CANCELLATION_REASONS } from '~/config/cancellation-reasons';
+import {
+  extractEmailFromDisplayLine,
+  isTechnicalPatientEmail,
+  patientUiEmailLine,
+} from '~/utils/patient-address-rdv';
 
 const props = defineProps<{ basePath: string }>();
+const emit = defineEmits<{ (e: 'appointment-loaded', appointment: any): void }>();
 const route = useRoute();
+
+/** Jeton de partage (lien WhatsApp) : permet GET / PUT pour un confrère hors zone. */
+const shareTokenFromRoute = computed(() => {
+  const q = route.query.shareToken ?? route.query.token;
+  const v = Array.isArray(q) ? q[0] : q;
+  return typeof v === 'string' && v.length > 0 ? v : '';
+});
+
+function appointmentGetUrl(appointmentId: string) {
+  const base = `/appointments/${encodeURIComponent(String(appointmentId))}`;
+  const st = shareTokenFromRoute.value;
+  if (st) return `${base}?share_token=${encodeURIComponent(st)}`;
+  return base;
+}
 const toast = useAppToast();
 const { user } = useAuth();
-const config = useRuntimeConfig();
 
 // Admin, lab, subaccount : accès à la photo d'annulation ; nurse, preleveur : motif uniquement
 const showCancellationPhoto = computed(() =>
@@ -278,33 +510,186 @@ const showCancellationPhoto = computed(() =>
 
 const isAdmin = computed(() => user.value?.role === 'super_admin');
 
-const cancellationPhotoDownloadUrl = computed(() => {
-  const a = appointment.value;
-  if (!a?.cancellation_photo_document_id) return '';
-  const apiBase = config.public?.apiBase || '';
-  return `${apiBase}/medical-documents/${a.cancellation_photo_document_id}/download`;
-});
+const showCreatorOrigin = computed(() =>
+  ['super_admin', 'nurse', 'lab', 'subaccount', 'preleveur', 'pro'].includes(user.value?.role ?? ''),
+);
 
-/** Complément d'adresse (form_data ou address.complement) pour affichage dans Infos RDV */
-const addressComplement = computed(() => {
-  const a = appointment.value;
-  if (!a) return '';
-  const fromForm = a.form_data?.address_complement;
-  if (fromForm && String(fromForm).trim()) return String(fromForm).trim();
-  if (typeof a.address === 'object' && a.address?.complement && String(a.address.complement).trim()) {
-    return String(a.address.complement).trim();
-  }
-  return '';
-});
+const creatorSheetOpen = ref(false);
+const creatorSheetSlug = ref<string | null>(null);
+const creatorSheetType = ref<'nurse' | 'lab'>('nurse');
+
+const assigneeSheetOpen = ref(false);
+const assigneeSheetSlug = ref<string | null>(null);
+const assigneeSheetType = ref<'nurse' | 'lab'>('nurse');
+
+function openCreatorSheet(type: 'nurse' | 'lab', slug: string) {
+  creatorSheetType.value = type;
+  creatorSheetSlug.value = slug;
+  creatorSheetOpen.value = true;
+}
+
+function openAssigneeSheet(type: 'nurse' | 'lab', slug: string) {
+  assigneeSheetType.value = type;
+  assigneeSheetSlug.value = slug;
+  assigneeSheetOpen.value = true;
+}
 
 function getCancellationReasonLabel(code: string) {
   return CANCELLATION_REASONS[code] || code;
 }
 
 const appointment = ref<any>(null);
+
+/** E-mail patient / proche : masque delegated-…@patients.internal.local (utilise patient_email_display du détail RDV). */
+const patientContactEmailDisplay = computed(() => {
+  const a = appointment.value;
+  if (!a) return { text: '', href: null as string | null };
+  const raw = (a.relative?.email || a.form_data?.email || '') as string;
+  if (!String(raw).trim()) return { text: '', href: null };
+  const display = a.patient_email_display as string | undefined;
+  const text = patientUiEmailLine({ email: raw, email_display: display });
+  if (isTechnicalPatientEmail(raw) && display) {
+    const extracted = extractEmailFromDisplayLine(display);
+    return { text, href: extracted ? `mailto:${extracted}` : null };
+  }
+  if (!isTechnicalPatientEmail(raw)) {
+    return { text: raw, href: `mailto:${raw}` };
+  }
+  return { text, href: null };
+});
+
+const isNursingType = computed(() => {
+  const t = appointment.value?.type;
+  return t === 'nursing' || t === 'nurse';
+});
+
+const showAssignedProfessionalSection = computed(() => {
+  const a = appointment.value;
+  if (!a) return false;
+  if (isNursingType.value && (a.assigned_nurse_id || a.assigned_nurse_display_name)) return true;
+  if (a.type === 'blood_test' && (a.assigned_lab_id || a.assigned_lab_display_name || a.assigned_to || a.assigned_to_display_name)) {
+    return true;
+  }
+  return false;
+});
+
+/** Même utilisateur connecté que created_by (évite doublon origine / assigné). */
+const viewerIsCreator = computed(() => {
+  const a = appointment.value;
+  const u = user.value;
+  if (!a?.created_by || !u?.id) return false;
+  return String(u.id) === String(a.created_by);
+});
+
+const originNurseSameAsAssignee = computed(() => {
+  const a = appointment.value;
+  const o = a?.creator_origin;
+  if (!o || o.kind !== 'nurse' || !a?.assigned_nurse_id || !o.id) return false;
+  return String(o.id) === String(a.assigned_nurse_id);
+});
+
+const originLabSameAsAssignee = computed(() => {
+  const a = appointment.value;
+  const o = a?.creator_origin;
+  if (!o || o.kind !== 'lab_team' || !a?.assigned_lab_id || !o.id) return false;
+  return String(o.id) === String(a.assigned_lab_id);
+});
+
+const creatorNurseOriginCompact = computed(() => {
+  const a = appointment.value;
+  const o = a?.creator_origin;
+  if (!o || o.kind !== 'nurse') return false;
+  if (viewerIsCreator.value) return true;
+  if (originNurseSameAsAssignee.value) return true;
+  return false;
+});
+
+const creatorNurseOriginCompactTitle = computed(() => {
+  if (viewerIsCreator.value) {
+    return 'Vous avez créé et saisi ce rendez-vous depuis votre espace infirmier.';
+  }
+  return 'Ce rendez-vous a été saisi par le même infirmier qui l’a accepté.';
+});
+
+const creatorNurseOriginCompactHint = computed(() => {
+  if (viewerIsCreator.value) {
+    return 'Les informations ci‑dessous sur le professionnel assigné vous concernent ; l’origine indique que la saisie ne provient pas d’une demande patient seule sur la plateforme.';
+  }
+  return 'La création de la fiche et la prise en charge sont assurées par le même professionnel.';
+});
+
+const creatorLabOriginCompact = computed(() => {
+  const a = appointment.value;
+  const o = a?.creator_origin;
+  if (!o || o.kind !== 'lab_team') return false;
+  if (viewerIsCreator.value) return true;
+  if (originLabSameAsAssignee.value) return true;
+  return false;
+});
+
+const creatorProOriginCompact = computed(() => {
+  const o = appointment.value?.creator_origin;
+  if (!o || o.kind !== 'pro') return false;
+  return viewerIsCreator.value;
+});
+
+const { profileImageUrl } = useProfileImageUrl();
+
+const assigneeNurseImageUrl = computed(() => {
+  const url = appointment.value?.assigned_nurse_profile_image_url;
+  return profileImageUrl(url ?? null) ?? undefined;
+});
+const assigneeNurseInitial = computed(() => {
+  const name = appointment.value?.assigned_nurse_display_name || '';
+  return name ? name.charAt(0).toUpperCase() : 'I';
+});
+
+const assigneeLabImageUrl = computed(() => {
+  const url = appointment.value?.assigned_lab_profile_image_url;
+  return profileImageUrl(url ?? null) ?? undefined;
+});
+const assigneeLabInitial = computed(() => {
+  const name = appointment.value?.assigned_lab_display_name || '';
+  return name ? name.charAt(0).toUpperCase() : 'L';
+});
+
+const assigneePreleveurImageUrl = computed(() => {
+  const url = appointment.value?.assigned_to_profile_image_url;
+  return profileImageUrl(url ?? null) ?? undefined;
+});
+const assigneePreleveurInitial = computed(() => {
+  const name = appointment.value?.assigned_to_display_name || appointment.value?.assigned_to_name || '';
+  return name ? name.charAt(0).toUpperCase() : 'P';
+});
+
+/** Détails complets des autres RDV du même lot (GET /appointments/:id pour chaque fratrie). */
+const batchSiblingsFull = ref<any[]>([]);
 const loading = ref(true);
 const documents = ref<any[]>([]);
 const documentsLoading = ref(false);
+const categoriesForDetail = ref<Array<{ id: string; options?: Array<{ option_key: string; label: string; options?: { value: string; label: string }[] }> }>>([]);
+
+/** Tous les RDV du lot (page courante + fratries), triés par date — une carte « Informations » par entrée. */
+const batchAppointmentsSorted = computed(() => {
+  const current = appointment.value;
+  if (!current) return [];
+  const siblings = batchSiblingsFull.value;
+  if (!siblings.length) return [current];
+  const all = [current, ...siblings];
+  return [...all].sort((a, b) => {
+    const ta = new Date(a.scheduled_at || 0).getTime();
+    const tb = new Date(b.scheduled_at || 0).getTime();
+    return ta - tb;
+  });
+});
+
+const batchAppointmentIds = computed(() => {
+  const a = appointment.value;
+  if (!a?.id) return [];
+  const siblings = batchSiblingsFull.value;
+  if (!siblings.length) return [String(a.id)];
+  return [String(a.id), ...siblings.map((s: any) => String(s.id))];
+});
 
 // Breadcrumb : afficher le nom du patient au lieu de l'ID (lu par le layout dashboard)
 const breadcrumbDetailLabel = useState<string>('breadcrumbDetailLabel', () => '');
@@ -360,14 +745,43 @@ const loadAppointment = async (merge?: Partial<{ assigned_lab_id: string; assign
     return;
   }
   loading.value = true;
+  batchSiblingsFull.value = [];
   try {
-    const response = await apiFetch(`/appointments/${route.params.id}`, { method: 'GET' });
+    const response = await apiFetch(appointmentGetUrl(String(route.params.id)), { method: 'GET' });
     if (response.success && response.alreadyAccepted) {
       await navigateTo(`${props.basePath}/appointments?alreadyAccepted=1`);
       return;
     }
     if (response.success && response.data) {
       appointment.value = response.data;
+      emit('appointment-loaded', response.data);
+      const appType = (response.data.type === 'nursing' || response.data.type === 'nurse') ? 'nursing' : 'blood_test';
+      try {
+        const catRes = await apiFetch(`/categories?type=${appType}`, { method: 'GET' });
+        if (catRes.success && Array.isArray(catRes.data)) {
+          categoriesForDetail.value = catRes.data as any[];
+        } else {
+          categoriesForDetail.value = [];
+        }
+      } catch {
+        categoriesForDetail.value = [];
+      }
+
+      const sibs = response.data.batch_siblings;
+      if (Array.isArray(sibs) && sibs.length > 0) {
+        const full = await Promise.all(
+          sibs.map(async (s: { id: string }) => {
+            try {
+              const r = await apiFetch(`/appointments/${encodeURIComponent(s.id)}`, { method: 'GET' });
+              if (r.success && r.data) return r.data;
+            } catch {
+              /* ignore */
+            }
+            return null;
+          }),
+        );
+        batchSiblingsFull.value = full.filter(Boolean) as any[];
+      }
     } else {
       toast.add({ title: 'Erreur', description: response.error || 'Impossible de charger le rendez-vous', color: 'error' });
     }
@@ -378,14 +792,79 @@ const loadAppointment = async (merge?: Partial<{ assigned_lab_id: string; assign
   }
 };
 
+/** Libellé court pour badge ordonnance (lot multisoins, même patient). */
+function formatBatchRdvLabel(apt: any, index: number): string {
+  const cat = apt?.category_name || 'Soin';
+  const n = index + 1;
+  return `Soin ${n} — ${cat}`;
+}
+
 const loadDocuments = async () => {
-  if (!route.params.id) return;
+  const ids = batchAppointmentIds.value;
+  if (!ids.length) return;
   documentsLoading.value = true;
+  documents.value = [];
   try {
-    const response = await apiFetch(`/medical-documents?appointment_id=${route.params.id}`, { method: 'GET' });
-    if (response.success && response.data) {
-      documents.value = response.data;
+    const lists = await Promise.all(
+      ids.map((id) =>
+        apiFetch(`/medical-documents?appointment_id=${encodeURIComponent(id)}`, { method: 'GET' }).then((r) =>
+          r.success && Array.isArray(r.data) ? r.data : [],
+        ),
+      ),
+    );
+
+    if (ids.length <= 1) {
+      const merged: any[] = [];
+      const seen = new Set<string>();
+      for (const list of lists) {
+        for (const doc of list) {
+          const key = String((doc as any).id ?? (doc as any).medical_document_id ?? '');
+          if (key && !seen.has(key)) {
+            seen.add(key);
+            merged.push(doc);
+          }
+        }
+      }
+      merged.sort((a, b) => String(a.document_type || '').localeCompare(String(b.document_type || '')));
+      documents.value = merged;
+      return;
     }
+
+    const sortedApts = batchAppointmentsSorted.value;
+    const aptById = (id: string) => sortedApts.find((x: any) => String(x.id) === id) || appointment.value;
+
+    const merged: any[] = [];
+    const seenNonOrdoType = new Set<string>();
+
+    for (let i = 0; i < lists.length; i++) {
+      const aptId = ids[i];
+      const apt = aptById(aptId) || {};
+      const ordoLabel = formatBatchRdvLabel(apt, i);
+
+      for (const doc of lists[i]) {
+        const dt = String((doc as any).document_type || '');
+        if (dt === 'ordonnance') {
+          merged.push({
+            ...doc,
+            _batchRdvLabel: ordoLabel,
+            _batchOrd: i,
+          });
+        } else {
+          if (seenNonOrdoType.has(dt)) continue;
+          seenNonOrdoType.add(dt);
+          merged.push(doc);
+        }
+      }
+    }
+
+    merged.sort((a, b) => {
+      const ta = String(a.document_type || '');
+      const tb = String(b.document_type || '');
+      if (ta !== tb) return ta.localeCompare(tb);
+      if (ta === 'ordonnance') return ((a as any)._batchOrd ?? 0) - ((b as any)._batchOrd ?? 0);
+      return 0;
+    });
+    documents.value = merged;
   } catch (error: any) {
     console.error('Erreur chargement documents:', error);
   } finally {
@@ -393,46 +872,6 @@ const loadDocuments = async () => {
   }
 };
 
-function openInGoogleMaps() {
-  if (!appointment.value?.address) return;
-  const addr = appointment.value.address;
-  if (typeof addr === 'object' && addr.lat && addr.lng) {
-    window.open(`https://www.google.com/maps?q=${addr.lat},${addr.lng}`, '_blank');
-  } else {
-    const text = typeof addr === 'object' && addr.label ? addr.label : addr;
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(text)}`, '_blank');
-  }
-}
-
-function getStatusColor(status: string): 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral' {
-  const map: Record<string, 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral'> = {
-    pending: 'warning',
-    confirmed: 'info',
-    inProgress: 'primary',
-    completed: 'success',
-    canceled: 'error',
-    cancelled: 'error',
-    refused: 'error',
-    expired: 'neutral',
-  };
-  return map[status] || 'neutral';
-}
-function getStatusLabel(s: string) {
-  const map: Record<string, string> = {
-    pending: 'En attente',
-    confirmed: 'Confirmé',
-    inProgress: 'En cours',
-    completed: 'Terminé',
-    canceled: 'Annulé',
-    cancelled: 'Annulé',
-    refused: 'Refusé',
-    expired: 'Expiré',
-  };
-  return map[s] || s;
-}
-function getTypeLabel(t: string) {
-  return t === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers';
-}
 const PARIS_TZ = 'Europe/Paris';
 
 function formatDateTime(d: string) {
@@ -459,38 +898,15 @@ function formatDateOnly(d: string) {
     return d;
   }
 }
-function getDurationLabel(v: string) {
-  const map: Record<string, string> = { '1': '1 jour', '7': '7 jours', '10': '10 jours', '15': '15 jours', '30': '30 jours', '60+': 'Longue durée' };
-  return map[v] || v;
-}
-function getFrequencyLabel(v: string) {
-  const map: Record<string, string> = { daily: 'Chaque jour', every_other_day: '1 jour sur 2', twice_weekly: '2 fois/sem.', thrice_weekly: '3 fois/sem.' };
-  return map[v] || v;
-}
-function getBloodTestTypeLabel(fd: any) {
-  if (!fd?.blood_test_type) return '';
-  if (fd.blood_test_type === 'single') return 'Une seule prise de sang';
-  if (fd.blood_test_type === 'multiple') {
-    const label = fd.duration_days === 'custom' && fd.custom_days ? `${fd.custom_days} jours` : (fd.duration_days || '');
-    return `Plusieurs prélèvements sur ${label}`;
-  }
-  return '';
-}
-function formatAvailability(av: string) {
-  try {
-    const a = typeof av === 'string' ? JSON.parse(av) : av;
-    if (a?.type === 'all_day') return 'Toute la journée';
-    if (a?.type === 'custom' && a?.range) return `${a.range[0]}h - ${a.range[1]}h`;
-  } catch {}
-  return av;
-}
 function getRelationshipLabel(r: string) {
   const map: Record<string, string> = { child: 'Enfant', parent: 'Parent', spouse: 'Conjoint(e)', sibling: 'Frère/Sœur', other: 'Autre' };
   return map[r] || r;
 }
 
 onMounted(async () => {
-  await Promise.all([loadAppointment(), loadDocuments()]);
+  await loadAppointment();
+  // Recharger les documents une fois le RDV chargé pour utiliser appointment.id (cohérent avec le backend)
+  await loadDocuments();
 });
 
 defineExpose({ loadAppointment, loadDocuments, appointment, documents, documentsLoading });

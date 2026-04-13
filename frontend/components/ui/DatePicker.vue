@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarDate, DateFormatter } from '@internationalized/date'
+import { CalendarDate, DateFormatter, today, now, toCalendarDate, parseDate } from '@internationalized/date'
 
 const PARIS_TIMEZONE = 'Europe/Paris'
 
@@ -31,36 +31,17 @@ const df = new DateFormatter('fr-FR', {
 })
 
 // -----------------------------------------------------
-// Date actuelle en timezone Paris
-// -----------------------------------------------------
-const getNowInParis = () => {
-  return new Date(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: PARIS_TIMEZONE,
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      hour12: false
-    }).format(new Date())
-  )
-}
-
-// -----------------------------------------------------
-// Min date : uniquement si minLeadTimeHours est défini (RDV avec provider). Sinon pas de grisage (RDV à tous).
+// Min date : aujourd'hui à Paris (jours passés grisés) + optionnel minLeadTimeHours
 // -----------------------------------------------------
 const minDate = computed(() => {
   const hours = props.minLeadTimeHours
-  if (hours == null || hours === undefined)
-    return undefined
-  const h = Number(hours)
-  if (!Number.isFinite(h) || h < 0)
-    return undefined
-  const now = getNowInParis()
-  const min = new Date(now.getTime() + h * 60 * 60 * 1000)
-  return new CalendarDate(min.getFullYear(), min.getMonth() + 1, min.getDate())
+  if (hours != null && hours !== undefined) {
+    const h = Number(hours)
+    if (Number.isFinite(h) && h >= 0) {
+      return toCalendarDate(now(PARIS_TIMEZONE).add({ hours: Math.floor(h) }))
+    }
+  }
+  return today(PARIS_TIMEZONE)
 })
 
 // -----------------------------------------------------
@@ -75,13 +56,17 @@ watch(
       internalDate.value = null
       return
     }
-
-    const d = new Date(val)
-    internalDate.value = new CalendarDate(
-      d.getFullYear(),
-      d.getMonth() + 1,
-      d.getDate()
-    )
+    const s = String(val).trim()
+    try {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        internalDate.value = parseDate(s)
+        return
+      }
+      const d = new Date(s)
+      internalDate.value = new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate())
+    } catch {
+      internalDate.value = null
+    }
   },
   { immediate: true }
 )
@@ -110,11 +95,18 @@ const handleSelect = (value: CalendarDate | null) => {
 // -----------------------------------------------------
 // Affichage bouton
 // -----------------------------------------------------
-const displayValue = computed(() =>
-  props.modelValue
-    ? df.format(new Date(props.modelValue))
-    : props.placeholder || "Sélectionner une date"
-)
+const displayValue = computed(() => {
+  if (!props.modelValue) return props.placeholder || 'Sélectionner une date'
+  const s = String(props.modelValue).trim()
+  try {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      return df.format(parseDate(s).toDate(PARIS_TIMEZONE))
+    }
+    return df.format(new Date(s))
+  } catch {
+    return props.modelValue
+  }
+})
 
 const maxDate = computed(() => {
   if (props.maxYear) return new CalendarDate(props.maxYear, 12, 31)
@@ -123,8 +115,7 @@ const maxDate = computed(() => {
 
 // Désactiver samedi (6) et/ou dimanche (0) selon les paramètres du lab
 const isDateDisabled = (date: CalendarDate) => {
-  const jsDate = new Date(date.year, date.month - 1, date.day)
-  const day = jsDate.getDay()
+  const day = date.toDate(PARIS_TIMEZONE).getDay()
   if (day === 0 && props.acceptSunday === false) return true
   if (day === 6 && props.acceptSaturday === false) return true
   return false

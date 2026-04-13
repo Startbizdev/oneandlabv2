@@ -1,6 +1,9 @@
 <template>
   <!-- État de chargement -->
-  <div v-if="loading" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+  <div
+    v-if="loading"
+    :class="embedded ? 'py-12 flex items-center justify-center' : 'min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800'"
+  >
     <div class="text-center space-y-4">
       <div class="relative">
         <UIcon name="i-lucide-loader-2" class="w-12 h-12 animate-spin text-primary-500 mx-auto" />
@@ -13,8 +16,19 @@
   </div>
 
   <!-- État d'erreur : empty state marketing (infirmiers / laboratoires) -->
-  <div v-else-if="error" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-primary-950/20 px-4 py-12">
-    <div class="max-w-lg w-full text-center">
+  <div
+    v-else-if="error"
+    :class="embedded ? 'px-2 py-4' : 'min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-primary-950/20 px-4 py-12'"
+  >
+    <div v-if="embedded" class="w-full">
+      <UAlert
+        color="neutral"
+        variant="subtle"
+        :title="type === 'nurse' ? 'Profil indisponible' : 'Laboratoire indisponible'"
+        :description="error"
+      />
+    </div>
+    <div v-else class="max-w-lg w-full text-center">
       <UEmpty
         :icon="type === 'nurse' ? 'i-lucide-stethoscope' : 'i-lucide-building-2'"
         :title="type === 'nurse' ? 'Ce profil n\'est pas disponible' : 'Ce laboratoire n\'est pas disponible'"
@@ -43,7 +57,10 @@
   </div>
 
   <!-- Contenu principal (design partagé infirmier / lab) -->
-  <div v-else-if="profile" class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+  <div
+    v-else-if="profile"
+    :class="embedded ? 'bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800' : 'min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800'"
+  >
     <PublicProfileHeader
       :profile="{ ...profile, reviews: profile.reviews }"
       :is-accepting="isAccepting"
@@ -385,44 +402,6 @@
               </div>
             </UCard>
 
-            <!-- Statistiques avis -->
-            <UCard
-              v-if="profile.reviews?.stats && profile.reviews.stats.total_reviews > 0"
-              class="shadow-sm border-0 ring-1 ring-gray-200 dark:ring-gray-800"
-              :ui="{ body: { padding: 'p-6' } }"
-            >
-              <div class="space-y-4">
-                <h3 class="text-xl font-normal text-gray-900 dark:text-white flex items-center gap-2">
-                  <UIcon name="i-lucide-star" class="w-5 h-5 text-yellow-500" />
-                  Note moyenne
-                </h3>
-                <div class="flex items-baseline gap-4 pb-4 border-b border-gray-200 dark:border-gray-800">
-                  <div class="text-4xl font-normal text-gray-900 dark:text-white">
-                    {{ profile.reviews.stats.average_rating.toFixed(1) }}
-                  </div>
-                  <div class="flex-1">
-                    <div class="flex items-center gap-1 mb-2">
-                      <UIcon
-                        v-for="i in 5"
-                        :key="i"
-                        :name="i <= Math.round(profile.reviews.stats.average_rating) ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
-                        :class="[
-                          'w-5 h-5 transition-colors',
-                          i <= Math.round(profile.reviews.stats.average_rating)
-                            ? 'text-yellow-400'
-                            : 'text-gray-300 dark:text-gray-700',
-                        ]"
-                      />
-                    </div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Basé sur {{ profile.reviews.stats.total_reviews }}
-                      {{ profile.reviews.stats.total_reviews > 1 ? 'avis' : 'avis' }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </UCard>
-
             <!-- Adresse / Zone d'intervention : même design que Horaires (compact, homogène) -->
             <div class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
               <div class="px-2.5 py-1.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/50">
@@ -502,13 +481,21 @@ const props = defineProps<{
   /** Rayon en km (infirmier) pour afficher "Rayon d'intervention" */
   radiusKm?: number | null
   type: 'nurse' | 'lab'
+  /** Panneau latéral / embed : pas de plein écran ni empty state marketing */
+  embedded?: boolean
+  /** URL de partage explicite (ex. panneau profil depuis une autre page) */
+  shareUrlOverride?: string | null
 }>()
+
+const embedded = computed(() => props.embedded === true)
 
 const type = toRef(() => props.type)
 
 const route = useRoute()
 const config = useRuntimeConfig()
 const shareUrl = computed(() => {
+  const override = props.shareUrlOverride
+  if (override && String(override).trim() !== '') return String(override).trim()
   const base = (config.public as { siteUrl?: string }).siteUrl || ''
   if (base) return `${base.replace(/\/$/, '')}${route.fullPath}`
   if (typeof window !== 'undefined') return window.location.href
@@ -534,7 +521,10 @@ const acceptanceLabel = computed(() => {
   return isAccepting.value ? `${name} accepte les rendez-vous` : `${name} n'accepte pas les rendez-vous`
 })
 
+const { appointmentNewUrl } = useAppointmentNewUrl()
 const bookingUrl = computed(() => {
+  const base = appointmentNewUrl.value
+  if (base !== '/rendez-vous/nouveau') return base
   if (!props.profile?.id) return '/rendez-vous/nouveau'
   const params = new URLSearchParams({
     provider_id: props.profile.id,
