@@ -132,12 +132,16 @@
               <div class="bg-primary-50/50 border border-primary-100 rounded-xl p-4 text-center">
                 <p class="text-sm text-primary-700">Code envoyé à</p>
                 <p class="font-normal text-primary-900 mt-1">{{ email }}</p>
+                <p v-if="devOtp" class="mt-3 text-lg font-mono font-semibold text-emerald-600 bg-emerald-50 rounded-lg py-2 px-3">
+                  OTP : {{ devOtp }}
+                </p>
               </div>
 
               <UFormField name="otp">
                 <div class="flex justify-center">
                   <UPinInput
                     v-model="otpDigits"
+                    type="number"
                     :length="6"
                     :disabled="otpLoading"
                     otp
@@ -222,17 +226,28 @@ const roleRoutes: Record<string, string> = {
   patient: '/patient',
 }
 
-watch(isAuthenticated, (auth) => {
-  if (auth && user.value) {
-    router.push(roleRoutes[user.value.role] || '/patient')
-  }
-}, { immediate: true })
+/** URL interne uniquement (évite open redirect). */
+function safeReturnTo(): string | null {
+  const raw = route.query.returnTo
+  if (typeof raw !== 'string' || raw.length === 0) return null
+  if (!raw.startsWith('/') || raw.startsWith('//')) return null
+  return raw
+}
 
-onMounted(() => {
-  if (isAuthenticated.value && user.value) {
-    router.push(roleRoutes[user.value.role] || '/patient')
-  }
-})
+function redirectIfAuthenticated() {
+  if (!isAuthenticated.value || !user.value) return
+  const back = safeReturnTo()
+  const fallback = roleRoutes[user.value.role] || '/patient'
+  router.replace(back ?? fallback)
+}
+
+watch(
+  [isAuthenticated, () => user.value],
+  () => {
+    if (isAuthenticated.value && user.value) redirectIfAuthenticated()
+  },
+  { immediate: true },
+)
 
 // -- State --
 type Step = 'email' | 'role-select' | 'otp'
@@ -244,11 +259,12 @@ const resending = ref(false)
 const userId = ref('')
 const sessionId = ref('')
 const otpDigits = ref<string[]>([])
+const devOtp = ref('') // OTP affiché en dev (fourni par le backend)
 const countdown = ref(0)
 
 const otpString = computed(() => {
   if (!otpDigits.value || !Array.isArray(otpDigits.value)) return ''
-  return otpDigits.value.join('')
+  return otpDigits.value.map((x) => (x === undefined || x === null ? '' : String(x))).join('')
 })
 
 const formatCountdown = computed(() => {
@@ -383,10 +399,11 @@ async function sendOTP() {
     if (result.success && result.userId) {
       userId.value = result.userId
       sessionId.value = result.sessionId || ''
+      devOtp.value = result.otp || ''
       otpDigits.value = []
       step.value = 'otp'
       startCountdown()
-      toast.add({ title: 'Code envoyé', description: 'Vérifiez votre boîte de réception', color: 'green' })
+      toast.add({ title: 'Code envoyé', description: result.otp ? `Code: ${result.otp}` : 'Vérifiez votre boîte de réception', color: 'green' })
     } else {
       toast.add({ title: 'Erreur', description: result.error || "Impossible d'envoyer le code", color: 'red' })
     }
@@ -424,15 +441,7 @@ async function onVerifyOTP() {
     const result = await verifyOTP(userId.value, cleaned, sessionId.value)
     if (result.success) {
       toast.add({ title: 'Connexion réussie', description: 'Redirection en cours...', color: 'green' })
-      const returnTo = route.query.returnTo as string
-      setTimeout(() => {
-        if (returnTo) {
-          router.push(returnTo)
-        } else {
-          const userRole = result.user?.role || 'patient'
-          router.push(roleRoutes[userRole] || '/patient')
-        }
-      }, 500)
+      // La navigation utilise returnTo via redirectIfAuthenticated (watch isAuthenticated)
     } else {
       toast.add({ title: 'Code invalide', description: result.error || 'Le code saisi est incorrect', color: 'red' })
       otpDigits.value = []
@@ -454,9 +463,10 @@ async function resendOTP() {
     if (result.success && result.userId) {
       userId.value = result.userId
       sessionId.value = result.sessionId || ''
+      devOtp.value = result.otp || ''
       otpDigits.value = []
       startCountdown()
-      toast.add({ title: 'Code renvoyé', description: 'Un nouveau code a été envoyé', color: 'green' })
+      toast.add({ title: 'Code renvoyé', description: result.otp ? `Code: ${result.otp}` : 'Un nouveau code a été envoyé', color: 'green' })
     } else {
       toast.add({ title: 'Erreur', description: result.error || "Erreur lors de l'envoi", color: 'red' })
     }
@@ -471,6 +481,7 @@ async function resendOTP() {
 function goBackToEmail() {
   step.value = 'email'
   otpDigits.value = []
+  devOtp.value = ''
   countdown.value = 0
   if (countdownInterval) {
     clearInterval(countdownInterval)

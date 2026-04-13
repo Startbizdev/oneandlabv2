@@ -18,6 +18,7 @@ const PUBLIC_ROUTES = [
   '/auth/logout',
   '/ban/search',
   '/registration-requests',
+  '/contact',
 ];
 
 /**
@@ -146,34 +147,28 @@ export async function apiFetch(path: string, options: any = {}) {
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
       
-      // Si erreur CSRF, réinitialiser le cache et réessayer une fois
+      // Si erreur CSRF, réinitialiser le cache et réessayer une fois (sauf FormData : corps non rejouable)
       if (data.code === 'CSRF_TOKEN_MISSING' || data.code === 'CSRF_TOKEN_INVALID' || data.error === 'Token CSRF manquant') {
         csrfTokenCache = null; // Réinitialiser le cache
         // Réinitialiser aussi le cache global
         if (typeof window !== 'undefined') {
           (window as any).__csrfTokenCache = null;
         }
-        
-        // Réessayer une fois avec un nouveau token CSRF
-        if (requiresCSRF(path, method) && import.meta.client) {
+
+        if (!isFormData && requiresCSRF(path, method) && import.meta.client) {
           const newCsrfToken = await getCSRFToken(apiBase);
           if (newCsrfToken) {
             headers['X-CSRF-Token'] = newCsrfToken;
-            
-            // Réessayer la requête
+
             const retryResponse = await fetch(url, {
               method,
               headers,
-              body: isFormData
-                ? options.body
-                : options.body
-                ? JSON.stringify(options.body)
-                : null,
+              body: options.body ? JSON.stringify(options.body) : null,
               signal: controller.signal,
               mode: 'cors',
-              credentials: 'include', // Envoyer les cookies de session pour CSRF
+              credentials: 'include',
             });
-            
+
             if (retryResponse.ok) {
               const retryData = await retryResponse.json().catch(() => null);
               if (retryData) {
@@ -184,7 +179,9 @@ export async function apiFetch(path: string, options: any = {}) {
         }
       }
       
-      throw new Error(data?.error || data?.message || `Erreur serveur: ${response.status} ${response.statusText}`);
+      const err = new Error(data?.error || data?.message || `Erreur serveur: ${response.status} ${response.statusText}`) as Error & { code?: string };
+      err.code = data?.code;
+      throw err;
     }
 
     // Parser le JSON avec meilleure gestion d'erreur

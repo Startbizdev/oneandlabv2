@@ -47,17 +47,21 @@
           </UFormField>
         </div>
 
-        <!-- Email (lecture seule) -->
+        <!-- Email (lecture seule) — ne jamais afficher delegated-…@patients.internal.local -->
         <UFormField label="Email" name="email">
-          <UInput
-            :model-value="profileForm.email"
-            placeholder="Votre email"
-            size="xl"
-            class="w-full"
-            disabled
-          />
+          <div
+            class="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 px-3 py-2.5 text-base text-gray-900 dark:text-white"
+            :class="isTechnicalPatientEmail(profileForm.email) ? 'min-h-[4rem] whitespace-pre-wrap break-words' : ''"
+          >
+            {{ patientEmailShown }}
+          </div>
           <template #description>
-            L'email ne peut pas être modifié. Contactez le support pour changer votre email.
+            <span v-if="isTechnicalPatientEmail(profileForm.email)">
+              Vous n’avez pas d’adresse e-mail personnelle sur ce compte : les notifications utilisent l’adresse du professionnel de santé indiquée ci-dessus (compte créé par un infirmier, un laboratoire ou un professionnel).
+            </span>
+            <span v-else>
+              L'email ne peut pas être modifié. Contactez le support pour changer votre email.
+            </span>
           </template>
         </UFormField>
 
@@ -125,233 +129,26 @@
       </UForm>
     </UCard>
 
-    <!-- Section Documents médicaux -->
-    <UCard class="mt-8">
-      <template #header>
-        <div>
-          <h2 class="text-xl font-normal">Documents médicaux</h2>
-          <p class="text-sm text-gray-500 mt-1">
-            Gérez vos documents de couverture santé. Ces documents seront automatiquement utilisés lors de vos prochains rendez-vous (sauf l'ordonnance qui change à chaque fois).
-          </p>
-        </div>
-      </template>
-
-      <div v-if="loadingDocuments" class="text-center py-8">
-        <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-primary mb-2" />
-        <p class="text-gray-500">Chargement des documents...</p>
-      </div>
-
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- Carte Vitale -->
-        <UCard
-          class="hover:shadow-md transition-all duration-200"
-          :ui="{ 
-            body: { padding: 'p-4' },
-            ring: 'ring-1 ring-gray-200 dark:ring-gray-800',
-            shadow: 'shadow-sm'
-          }"
-        >
-          <div class="space-y-3">
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex items-start gap-3 flex-1 min-w-0">
-                <div class="flex-shrink-0">
-                  <div class="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                    <UIcon name="i-lucide-credit-card" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <h3 class="font-normal text-base text-gray-900 dark:text-gray-100">Carte Vitale</h3>
-                  <UBadge color="amber" variant="subtle" size="xs" class="mt-1">
-                    Obligatoire
-                  </UBadge>
-                </div>
-              </div>
-              <UButton
-                v-if="documents.carte_vitale"
-                variant="ghost"
-                size="xs"
-                color="primary"
-                icon="i-lucide-download"
-                @click="downloadDocument(documents.carte_vitale.medical_document_id)"
-                class="shrink-0"
-              />
-            </div>
-            
-            <div v-if="documents.carte_vitale" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
-              <div class="flex items-start gap-2">
-                <UIcon name="i-lucide-check-circle-2" class="w-5 h-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-green-900 dark:text-green-100 truncate">
-                    {{ documents.carte_vitale.file_name }}
-                  </p>
-                  <p class="text-xs text-green-700 dark:text-green-300 mt-0.5">
-                    Mis à jour : {{ formatDate(documents.carte_vitale.updated_at) }}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <UFileUpload
-              v-model="documentFiles.carte_vitale"
-              accept="image/*,application/pdf"
-              :label="documents.carte_vitale ? 'Remplacer le document' : 'Glisser-déposer ou cliquer'"
-              description="JPG, PNG, PDF (max 5MB)"
-              :compact="true"
-              @change="() => onFileSelected('carte_vitale', documentFiles.carte_vitale)"
-            />
-            
-            <div v-if="uploadingDocument === 'carte_vitale'" class="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <UIcon name="i-lucide-loader-2" class="w-4 h-4 animate-spin text-primary" />
-              <span>Enregistrement en cours...</span>
-            </div>
-          </div>
-        </UCard>
-
-        <!-- Carte Mutuelle -->
-        <UCard
-          class="hover:shadow-md transition-all duration-200"
-          :ui="{ 
-            body: { padding: 'p-4' },
-            ring: 'ring-1 ring-gray-200 dark:ring-gray-800',
-            shadow: 'shadow-sm'
-          }"
-        >
-          <div class="space-y-3">
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex items-start gap-3 flex-1 min-w-0">
-                <div class="flex-shrink-0">
-                  <div class="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
-                    <UIcon name="i-lucide-shield-check" class="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                  </div>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <h3 class="font-normal text-base text-gray-900 dark:text-gray-100">Carte Mutuelle</h3>
-                  <UBadge color="amber" variant="subtle" size="xs" class="mt-1">
-                    Obligatoire
-                  </UBadge>
-                </div>
-              </div>
-              <UButton
-                v-if="documents.carte_mutuelle"
-                variant="ghost"
-                size="xs"
-                color="primary"
-                icon="i-lucide-download"
-                @click="downloadDocument(documents.carte_mutuelle.medical_document_id)"
-                class="shrink-0"
-              />
-            </div>
-            
-            <div v-if="documents.carte_mutuelle" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
-              <div class="flex items-start gap-2">
-                <UIcon name="i-lucide-check-circle-2" class="w-5 h-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-green-900 dark:text-green-100 truncate">
-                    {{ documents.carte_mutuelle.file_name }}
-                  </p>
-                  <p class="text-xs text-green-700 dark:text-green-300 mt-0.5">
-                    Mis à jour : {{ formatDate(documents.carte_mutuelle.updated_at) }}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <UFileUpload
-              v-model="documentFiles.carte_mutuelle"
-              accept="image/*,application/pdf"
-              :label="documents.carte_mutuelle ? 'Remplacer le document' : 'Glisser-déposer ou cliquer'"
-              description="JPG, PNG, PDF (max 5MB)"
-              :compact="true"
-              @change="() => onFileSelected('carte_mutuelle', documentFiles.carte_mutuelle)"
-            />
-            
-            <div v-if="uploadingDocument === 'carte_mutuelle'" class="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <UIcon name="i-lucide-loader-2" class="w-4 h-4 animate-spin text-primary" />
-              <span>Enregistrement en cours...</span>
-            </div>
-          </div>
-        </UCard>
-
-        <!-- Autres Assurances -->
-        <UCard
-          class="hover:shadow-md transition-all duration-200"
-          :ui="{ 
-            body: { padding: 'p-4' },
-            ring: 'ring-1 ring-gray-200 dark:ring-gray-800',
-            shadow: 'shadow-sm'
-          }"
-        >
-          <div class="space-y-3">
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex items-start gap-3 flex-1 min-w-0">
-                <div class="flex-shrink-0">
-                  <div class="w-10 h-10 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
-                    <UIcon name="i-lucide-file-plus" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  </div>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <h3 class="font-normal text-base text-gray-900 dark:text-gray-100">Autres Assurances</h3>
-                  <UBadge color="gray" variant="subtle" size="xs" class="mt-1">
-                    Optionnel
-                  </UBadge>
-                </div>
-              </div>
-              <UButton
-                v-if="documents.autres_assurances"
-                variant="ghost"
-                size="xs"
-                color="primary"
-                icon="i-lucide-download"
-                @click="downloadDocument(documents.autres_assurances.medical_document_id)"
-                class="shrink-0"
-              />
-            </div>
-            
-            <div v-if="documents.autres_assurances" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
-              <div class="flex items-start gap-2">
-                <UIcon name="i-lucide-check-circle-2" class="w-5 h-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-green-900 dark:text-green-100 truncate">
-                    {{ documents.autres_assurances.file_name }}
-                  </p>
-                  <p class="text-xs text-green-700 dark:text-green-300 mt-0.5">
-                    Mis à jour : {{ formatDate(documents.autres_assurances.updated_at) }}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <UFileUpload
-              v-model="documentFiles.autres_assurances"
-              accept="image/*,application/pdf"
-              :label="documents.autres_assurances ? 'Remplacer le document' : 'Glisser-déposer ou cliquer'"
-              description="JPG, PNG, PDF (max 10MB)"
-              :compact="true"
-              @change="() => onFileSelected('autres_assurances', documentFiles.autres_assurances)"
-            />
-            
-            <div v-if="uploadingDocument === 'autres_assurances'" class="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <UIcon name="i-lucide-loader-2" class="w-4 h-4 animate-spin text-primary" />
-              <span>Enregistrement en cours...</span>
-            </div>
-          </div>
-        </UCard>
-
-        <UAlert
-          v-if="documentError"
-          color="red"
-          :title="documentError"
-          class="col-span-full mt-2"
-        />
-      </div>
-    </UCard>
+    <ProfileDocuments
+      v-if="!loading && !error"
+      class="mt-8"
+      :documents="documents"
+      :is-loading="loadingDocuments"
+      :uploading-type="uploadingDocument"
+      :downloading-document-id="downloadingDocumentId"
+      :error="documentError"
+      @upload="handleDocumentUpload"
+      @download="(id, fileName) => downloadDocument(id, fileName)"
+      @update:error="documentError = $event"
+    />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api'
-import { watch, nextTick } from 'vue'
+import type { DocumentType } from '~/types/profile'
+import { isTechnicalPatientEmail, patientUiEmailLine } from '~/utils/patient-address-rdv'
 
 definePageMeta({
   layout: 'patient',
@@ -371,19 +168,16 @@ const error = ref<string | null>(null)
 const loadingDocuments = ref(false)
 const documentError = ref<string | null>(null)
 const documents = ref<Record<string, any>>({})
-const documentFiles = ref<Record<string, File | null>>({
-  carte_vitale: null,
-  carte_mutuelle: null,
-  autres_assurances: null,
-})
 const uploadingDocument = ref<string | null>(null)
-const isResettingAfterUpload = ref<string | null>(null)
+const downloadingDocumentId = ref<string | null>(null)
 
 // Formulaire
 const profileForm = ref({
   first_name: '',
   last_name: '',
   email: '',
+  /** Libellé API si e-mail technique (delegated-…@patients.internal.local) */
+  email_display: null as string | null,
   phone: null as string | null,
   birth_date: null as string | null,
   gender: null as string | null,
@@ -394,6 +188,10 @@ const profileForm = ref({
 // Sauvegarde de l'état initial pour la réinitialisation
 const initialForm = ref({ ...profileForm.value })
 
+const patientEmailShown = computed(() =>
+  patientUiEmailLine({ email: profileForm.value.email, email_display: profileForm.value.email_display }),
+)
+
 // Options pour le genre
 const genderOptions = [
   { label: 'Homme', value: 'male' },
@@ -401,93 +199,9 @@ const genderOptions = [
   { label: 'Autre', value: 'other' },
 ]
 
-// Fonction pour comparer si deux fichiers sont identiques
-const isSameFile = (file1: File | null, file2: File | null): boolean => {
-  if (!file1 || !file2) return file1 === file2
-  // Comparer par nom, taille et date de modification
-  return (
-    file1.name === file2.name &&
-    file1.size === file2.size &&
-    file1.lastModified === file2.lastModified
-  )
+function handleDocumentUpload(documentType: DocumentType, file: File) {
+  handleDocumentChange(documentType, file)
 }
-
-// Gérer la sélection d'un fichier directement depuis le composant
-const onFileSelected = (documentType: string, file: File | null) => {
-  console.log('onFileSelected appelé:', { documentType, fileName: file?.name, file })
-  
-  // Ignorer si on est en train de réinitialiser après un upload réussi
-  if (isResettingAfterUpload.value === documentType) {
-    console.log('Réinitialisation en cours pour', documentType, '- Ignoré')
-    return
-  }
-  
-  // Ignorer si aucun fichier n'a été sélectionné
-  if (!file) {
-    console.log('Aucun fichier sélectionné pour', documentType)
-    return
-  }
-  
-  // Ignorer si un upload est déjà en cours
-  if (uploadingDocument.value === documentType) {
-    console.log('Upload déjà en cours pour', documentType, '- Ignoré')
-    return
-  }
-  
-  // Déclencher l'upload automatiquement après un court délai pour laisser le v-model se mettre à jour
-  console.log('✅ Déclenchement upload automatique pour', documentType, '- Fichier:', file.name, '(', file.size, 'bytes)')
-  nextTick(() => {
-    handleDocumentChange(documentType, file)
-  })
-}
-
-// Surveiller les changements de fichiers pour déclencher l'upload automatiquement
-watch(documentFiles, (newFiles, oldFiles) => {
-  console.log('Watch documentFiles déclenché:', { newFiles, oldFiles })
-  
-  // Pour chaque type de document
-  Object.keys(newFiles).forEach((documentType) => {
-    const newFile = newFiles[documentType]
-    const oldFile = oldFiles?.[documentType]
-    
-    const isSame = isSameFile(newFile, oldFile)
-    console.log('Vérification', documentType, ':', { 
-      newFile: newFile?.name, 
-      oldFile: oldFile?.name, 
-      uploading: uploadingDocument.value,
-      isSameFile: isSame,
-      newFileSize: newFile?.size,
-      oldFileSize: oldFile?.size
-    })
-    
-    // Ignorer si on est en train de réinitialiser après un upload réussi
-    if (isResettingAfterUpload.value === documentType) {
-      console.log('Réinitialisation après upload pour', documentType, '- Watcher ignoré')
-      return
-    }
-    
-    // Ignorer si aucun fichier n'a été sélectionné
-    if (!newFile) {
-      return
-    }
-    
-    // Ignorer si c'est le même fichier (même nom, taille et date)
-    if (isSame) {
-      console.log('Fichier identique pour', documentType, '- Upload ignoré')
-      return
-    }
-    
-    // Ignorer si un upload est déjà en cours pour ce type de document
-    if (uploadingDocument.value === documentType) {
-      console.log('Upload déjà en cours pour', documentType, '- Ignoré')
-      return
-    }
-    
-    // Déclencher l'upload pour un nouveau fichier
-    console.log('Déclenchement upload pour', documentType, '- Nouveau fichier détecté:', newFile.name)
-    handleDocumentChange(documentType, newFile)
-  })
-}, { deep: true })
 
 // Charger les données du profil
 onMounted(async () => {
@@ -518,6 +232,7 @@ const loadProfile = async () => {
       first_name: userData.first_name || '',
       last_name: userData.last_name || '',
       email: userData.email || '',
+      email_display: (userData as { email_display?: string | null }).email_display ?? null,
       phone: userData.phone || null,
       birth_date: userData.birth_date || null,
       gender: userData.gender || null,
@@ -610,33 +325,18 @@ const loadDocuments = async () => {
       method: 'GET',
     })
 
-    console.log('Réponse API complète:', JSON.stringify(response, null, 2))
-    console.log('Type de response:', typeof response)
-    console.log('response.success:', response.success)
-    console.log('response.data:', response.data)
-    console.log('response.data est un tableau?', Array.isArray(response.data))
-    console.log('response.data.length:', response.data?.length)
-    
     if (response.success) {
-      // Organiser les documents par type
       documents.value = {}
-      
       if (response.data && Array.isArray(response.data) && response.data.length > 0) {
         response.data.forEach((doc: any) => {
           if (doc.document_type) {
             documents.value[doc.document_type] = doc
           }
         })
-        console.log('Documents organisés par type:', JSON.stringify(documents.value, null, 2))
-        console.log('Nombre de documents:', response.data.length)
       } else {
-        console.log('Aucun document dans la réponse (tableau vide ou null)')
-        console.log('response.data:', response.data)
-        console.log('response.debug:', response.debug)
         documents.value = {}
       }
     } else {
-      console.log('Réponse API non réussie:', JSON.stringify(response, null, 2))
       documents.value = {}
     }
   } catch (err: any) {
@@ -648,27 +348,10 @@ const loadDocuments = async () => {
   }
 }
 
-// Gérer le changement de document
-const handleDocumentChange = async (documentType: string, file: File | null) => {
-  console.log('=== handleDocumentChange DÉBUT ===')
-  console.log('documentType:', documentType)
-  console.log('file:', file)
-  console.log('file.name:', file?.name)
-  console.log('file.size:', file?.size)
-  console.log('uploadingDocument.value:', uploadingDocument.value)
-  
-  if (!file) {
-    console.log('❌ Pas de fichier, sortie')
-    return
-  }
+async function handleDocumentChange(documentType: string, file: File | null) {
+  if (!file) return
+  if (uploadingDocument.value === documentType) return
 
-  // Éviter les uploads multiples simultanés pour le même document
-  if (uploadingDocument.value === documentType) {
-    console.log('❌ Upload déjà en cours pour', documentType)
-    return
-  }
-  
-  console.log('✅ Démarrage de l\'upload pour', documentType)
   uploadingDocument.value = documentType
   documentError.value = null
 
@@ -677,23 +360,10 @@ const handleDocumentChange = async (documentType: string, file: File | null) => 
     formData.append('file', file)
     formData.append('document_type', documentType)
 
-    console.log('=== UPLOAD START ===')
-    console.log('Fichier:', file.name, '(' + file.size + ' bytes)')
-    console.log('Type:', documentType)
-    console.log('FormData créé:', formData)
-    console.log('Envoi de la requête vers /patient-documents/upload...')
-    
-    // Utiliser apiFetch qui gère automatiquement le token CSRF et l'authentification
     const result = await apiFetch('/patient-documents/upload', {
       method: 'POST',
       body: formData,
     })
-    
-    console.log('=== UPLOAD RESPONSE ===')
-    console.log('Résultat complet:', JSON.stringify(result, null, 2))
-    console.log('result.success:', result.success)
-    console.log('result.data:', result.data)
-    console.log('result.error:', result.error)
 
     if (result.success) {
       toast.add({
@@ -701,75 +371,45 @@ const handleDocumentChange = async (documentType: string, file: File | null) => 
         description: 'Votre document a été enregistré avec succès',
         color: 'green',
       })
-
-      // Marquer qu'on est en train de réinitialiser pour éviter que le watcher se déclenche
-      isResettingAfterUpload.value = documentType
-      
-      // Réinitialiser le fichier dans le v-model pour permettre un nouvel upload
-      documentFiles.value[documentType] = null
-      
-      // Attendre un peu pour s'assurer que la base de données est à jour
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Recharger les documents
+      await new Promise((resolve) => setTimeout(resolve, 300))
       await loadDocuments()
-      
-      // Réinitialiser le flag après un court délai pour permettre au watcher de fonctionner à nouveau
-      setTimeout(() => {
-        isResettingAfterUpload.value = null
-      }, 100)
     } else {
-      throw new Error(result.error || 'Erreur lors de l\'enregistrement')
+      throw new Error((result as any).error || 'Erreur lors de l\'enregistrement')
     }
   } catch (err: any) {
-    console.error('=== UPLOAD ERROR ===')
-    console.error('Erreur complète:', err)
-    console.error('Message:', err.message)
-    console.error('Stack:', err.stack)
-    
     documentError.value = err.message || 'Erreur lors de l\'enregistrement du document'
     toast.add({
       title: 'Erreur',
       description: err.message || 'Impossible d\'enregistrer le document',
       color: 'red',
     })
-    console.error('Erreur lors de l\'enregistrement du document:', err)
   } finally {
     uploadingDocument.value = null
-    // S'assurer que le flag de réinitialisation est aussi réinitialisé en cas d'erreur
-    if (isResettingAfterUpload.value === documentType) {
-      setTimeout(() => {
-        isResettingAfterUpload.value = null
-      }, 100)
-    }
   }
 }
 
-// Télécharger un document
-const downloadDocument = async (documentId: string) => {
+async function downloadDocument(documentId: string, fileName?: string) {
+  downloadingDocumentId.value = documentId
   try {
     const apiBase = useRuntimeConfig().public.apiBase || 'http://localhost:8888/api'
     const token = localStorage.getItem('auth_token')
-    
-    const response = await fetch(`${apiBase}/medical-documents/${documentId}/download`, {
+    const url = `${apiBase}/medical-documents/${documentId}/download?t=${Date.now()}`
+    const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
     })
 
-    if (!response.ok) {
-      throw new Error('Erreur lors du téléchargement')
-    }
+    if (!response.ok) throw new Error('Erreur lors du téléchargement')
 
     const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
+    const objectUrl = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url
-    a.download = `document-${documentId}.pdf`
+    a.href = objectUrl
+    a.download = fileName && fileName.trim() ? fileName : `document-${documentId}.pdf`
     document.body.appendChild(a)
     a.click()
-    window.URL.revokeObjectURL(url)
+    window.URL.revokeObjectURL(objectUrl)
     document.body.removeChild(a)
 
     toast.add({
@@ -783,21 +423,8 @@ const downloadDocument = async (documentId: string) => {
       description: err.message || 'Impossible de télécharger le document',
       color: 'red',
     })
-  }
-}
-
-// Formater une date
-const formatDate = (dateString: string) => {
-  if (!dateString) return '-'
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    })
-  } catch {
-    return dateString
+  } finally {
+    downloadingDocumentId.value = null
   }
 }
 </script>

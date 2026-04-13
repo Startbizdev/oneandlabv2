@@ -93,6 +93,7 @@ class Validation
         $validStatuses = [
             'pending',
             'confirmed',
+            'planned',
             'inProgress',
             'completed',
             'canceled',

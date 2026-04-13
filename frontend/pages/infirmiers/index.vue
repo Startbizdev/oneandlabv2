@@ -10,7 +10,7 @@
           Trouvez un infirmier libéral à domicile pour vos soins et prises de sang. Réservez en ligne en quelques clics.
         </p>
         <UButton
-          to="/rendez-vous/nouveau"
+          :to="appointmentNewUrl"
           color="primary"
           size="xl"
           variant="solid"
@@ -53,7 +53,7 @@
             <UIcon name="i-lucide-heart-pulse" class="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
             <h2 class="text-xl font-medium text-gray-900 dark:text-white mb-2">Aucun infirmier pour le moment</h2>
             <p class="text-gray-600 dark:text-gray-400 mb-6">Les infirmiers partenaires apparaîtront ici.</p>
-            <UButton to="/rendez-vous/nouveau" color="primary" size="lg">Prendre rendez-vous</UButton>
+            <UButton :to="appointmentNewUrl" color="primary" size="lg">Prendre rendez-vous</UButton>
           </div>
 
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -101,6 +101,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
 
+const { appointmentNewUrl } = useAppointmentNewUrl()
 const config = useRuntimeConfig()
 const base = config.public.apiBase || '/api'
 const apiBase = import.meta.server && (base.startsWith('/') || !base.startsWith('http'))

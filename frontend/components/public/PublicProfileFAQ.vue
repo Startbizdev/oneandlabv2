@@ -1,13 +1,10 @@
 <template>
   <div v-if="faq && faq.length > 0" class="space-y-5">
-    <div class="flex items-center gap-3 mb-6">
-      <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30">
-        <UIcon name="i-lucide-help-circle" class="w-5 h-5 text-primary-600 dark:text-primary-400" />
-      </div>
-      <h2 class="text-xl font-normal text-gray-900 dark:text-white">Questions fréquentes</h2>
-    </div>
+    <p class="text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-500 dark:text-gray-400">
+      Questions fréquentes
+    </p>
     <div class="space-y-3">
-      <UAccordion 
+      <UAccordion
         :items="faqItems"
         :ui="{
           wrapper: 'space-y-3',
@@ -54,11 +51,9 @@ const faqItems = computed(() => {
   if (!props.faq || !Array.isArray(props.faq)) {
     return [];
   }
-  return props.faq.map(item => ({
+  return props.faq.map((item) => ({
     label: item.question,
     content: item.answer,
   }));
 });
 </script>
-
-

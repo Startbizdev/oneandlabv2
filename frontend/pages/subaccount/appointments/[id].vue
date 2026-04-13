@@ -2,47 +2,18 @@
   <div>
     <AppointmentDetailPage ref="detailRef" base-path="/subaccount">
       <template #documentsCard="{ appointment, documents, documentsLoading, loadDocuments }">
-        <div v-if="documentsLoading" class="flex items-center justify-center py-8">
-          <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-primary-500" />
-        </div>
-        <UEmpty
-          v-else-if="!documents?.length"
-          icon="i-lucide-file-x"
-          title="Aucun document"
-          description="Aucun document médical n'a été déposé pour ce rendez-vous (ex. par le patient à la prise de RDV)."
-          variant="naked"
+        <AppointmentDocumentsSection
+          :documents="documents || []"
+          :loading="documentsLoading"
+          empty-description="Aucun document médical n'a été déposé pour ce rendez-vous (ex. par le patient à la prise de RDV)."
+          :show-upload-area="canUploadDocuments(appointment)"
+          :upload-types="uploadTypesForAppointment(appointment)"
+          :can-replace="canUploadDocuments(appointment)"
+          :downloading-ids="downloadingDocIds"
+          :uploading-types="uploadingTypes"
+          @download="downloadDocument"
+          @upload="(docType, file) => { setAppointmentForUpload(appointment); uploadDocumentFile(file, docType); }"
         />
-        <div v-else class="space-y-3">
-          <p class="text-sm text-gray-500 dark:text-gray-400">
-            Documents déposés par le patient ou liés au rendez-vous.
-          </p>
-          <div
-            v-for="doc in documents"
-            :key="doc.id"
-            class="flex items-center justify-between gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50"
-          >
-            <div class="flex items-center gap-2 flex-1 min-w-0">
-              <UIcon name="i-lucide-file" class="w-4 h-4 text-gray-400 flex-shrink-0" />
-              <span class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ doc.file_name }}</span>
-              <UBadge v-if="doc.source === 'patient_profile'" color="info" variant="soft" size="xs">
-                Compte patient
-              </UBadge>
-              <UBadge v-else-if="doc.document_type" color="neutral" variant="soft" size="xs">
-                {{ getDocumentTypeLabel(doc.document_type) }}
-              </UBadge>
-            </div>
-            <UButton
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              icon="i-lucide-download"
-              :loading="downloadingDocId === doc.id"
-              :loading-auto="false"
-              aria-label="Télécharger"
-              @click="downloadDocument(doc)"
-            />
-          </div>
-        </div>
       </template>
       <template #sidebarActions="{ appointment, loadAppointment }">
         <div class="flex flex-col gap-3">
@@ -54,8 +25,8 @@
             <p class="text-sm font-medium text-gray-900 dark:text-white">
               Assignation
             </p>
-            <p v-if="currentAssignmentLabel" class="text-xs text-gray-500 dark:text-gray-400">
-              Actuel : {{ currentAssignmentLabel }}
+            <p v-if="getCurrentAssignmentLabel(appointment)" class="text-xs text-gray-500 dark:text-gray-400">
+              Actuel : {{ getCurrentAssignmentLabel(appointment) }}
             </p>
             <div class="flex flex-col gap-2">
               <USelectMenu
@@ -68,59 +39,79 @@
                 :loading="assignmentOptionsLoading"
                 :search-input="{ placeholder: 'Rechercher...' }"
                 :filter-fields="['label']"
-              />
+              >
+                <template #empty>
+                  <div class="py-6 px-4">
+                    <UEmpty
+                      icon="i-lucide-user-check"
+                      title="Aucun résultat"
+                      description="Aucun préleveur ne correspond à votre recherche."
+                      variant="naked"
+                      size="sm"
+                    />
+                  </div>
+                </template>
+              </USelectMenu>
               <UButton
                 type="button"
                 color="primary"
-                variant="soft"
+                variant="solid"
                 size="sm"
                 :loading="reassigning"
-                :disabled="!reassignValue || reassignValue === currentAssignmentValue"
+                :disabled="!reassignValue || reassignValue === getCurrentAssignmentValue(appointment)"
                 block
-                @click="applyReassign(appointment, loadAppointment)"
+                :on-click="() => applyReassign(appointment, loadAppointment)"
               >
                 Appliquer
               </UButton>
             </div>
           </div>
-          <UButton
-            v-if="appointment && appointment.status !== 'canceled' && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)"
-            type="button"
-            color="success"
-            variant="soft"
-            size="lg"
-            leading-icon="i-lucide-check-circle"
-            :loading="completing"
-            block
-            @click="completeAppointment"
-          >
-            Terminer le RDV
-          </UButton>
-          <UButton
-            v-if="appointment && appointment.status !== 'canceled' && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)"
-            type="button"
-            color="primary"
-            variant="soft"
-            size="md"
-            leading-icon="i-lucide-calendar-plus"
-            block
-            @click="openRescheduleModal(appointment)"
-          >
-            Reprendre RDV pour ce patient
-          </UButton>
-          <UButton
-            v-if="appointment && appointment.status !== 'canceled' && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)"
-            type="button"
-            color="error"
-            variant="soft"
-            size="md"
-            leading-icon="i-lucide-x-circle"
-            :loading="canceling"
-            block
-            @click="showCancelModal = true"
-          >
-            Annuler le rendez-vous
-          </UButton>
+          <template v-if="appointment && appointment.status !== 'canceled' && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5">
+              Clôturer le rendez-vous
+            </p>
+            <UButton
+              type="button"
+              color="success"
+              variant="solid"
+              size="lg"
+              leading-icon="i-lucide-check-circle"
+              :loading="completing"
+              block
+              :on-click="() => completeAppointment(appointment, loadAppointment)"
+            >
+              Terminer le RDV
+            </UButton>
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
+              Planification
+            </p>
+            <UButton
+              type="button"
+              color="neutral"
+              variant="outline"
+              size="md"
+              leading-icon="i-lucide-calendar-plus"
+              block
+              :on-click="() => openRescheduleModal(appointment)"
+            >
+              Reprendre RDV pour ce patient
+            </UButton>
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
+              Annulation
+            </p>
+            <UButton
+              type="button"
+              color="error"
+              variant="outline"
+              size="md"
+              leading-icon="i-lucide-x-circle"
+              :loading="canceling"
+              block
+              :on-click="() => openCancelModal(appointment, loadAppointment)"
+            >
+              Annuler le rendez-vous
+            </UButton>
+          </template>
         </div>
       </template>
     </AppointmentDetailPage>
@@ -145,19 +136,99 @@ definePageMeta({
   role: 'subaccount',
 });
 
+import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { apiFetch } from '~/utils/api';
+import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 
 const { user } = useAuth();
 const toast = useAppToast();
 const config = useRuntimeConfig();
-const detailRef = ref<{ loadAppointment: () => Promise<void>; appointment: { value: any } } | null>(null);
+const detailRef = ref<{
+  loadAppointment: () => Promise<void>;
+  loadDocuments?: () => Promise<void>;
+  appointment: unknown;
+} | null>(null);
 const downloadingDocId = ref<string | null>(null);
+const downloadingDocIds = computed(() => (downloadingDocId.value ? [downloadingDocId.value] : []));
+const uploadingTypes = ref(new Set<string>());
+const currentAppointmentForUpload = ref<any>(null);
+
+const uploadDocumentTypes = [
+  { value: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card', color: 'green' },
+  { value: 'carte_mutuelle', label: 'Carte Mutuelle', icon: 'i-lucide-shield', color: 'blue' },
+  { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', color: 'orange' },
+  {
+    value: 'resultats',
+    label: "Résultats d'analyses",
+    icon: 'i-lucide-flask-conical',
+    color: 'red',
+    accept: 'application/pdf',
+    hint: 'PDF uniquement • max 25 Mo',
+  },
+  { value: 'autres_assurances', label: 'Autres assurances', icon: 'i-lucide-briefcase', color: 'purple' },
+  { value: 'other', label: 'Autre document', icon: 'i-lucide-file', color: 'gray' },
+];
+
+function uploadTypesForAppointment(appointment: any) {
+  if (!appointment || appointment.type !== 'blood_test') {
+    return uploadDocumentTypes.filter((t) => t.value !== 'resultats');
+  }
+  return uploadDocumentTypes;
+}
+
+function canUploadDocuments(appointment: any) {
+  return appointment && ['confirmed', 'inProgress', 'completed'].includes(appointment?.status);
+}
+
+function setAppointmentForUpload(apt: any) {
+  currentAppointmentForUpload.value = apt;
+}
+
+async function uploadDocumentFile(file: File, docType: string) {
+  const appointment = currentAppointmentForUpload.value ?? getAppointmentFromDetailRef(detailRef);
+  if (!appointment?.id) {
+    toast.add({ title: 'Erreur', description: 'Rendez-vous introuvable. Rechargez la page si le problème persiste.', color: 'error' });
+    return;
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    toast.add({ title: 'Fichier trop volumineux', description: 'Le fichier dépasse 25 Mo.', color: 'error' });
+    return;
+  }
+  const allowed = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  if (docType === 'resultats' && file.type !== 'application/pdf') {
+    toast.add({ title: 'Format non accepté', description: 'Les résultats doivent être en PDF.', color: 'error' });
+    return;
+  }
+  if (!allowed.includes(file.type)) {
+    toast.add({ title: 'Format non accepté', description: 'Formats acceptés : JPG, PNG, PDF.', color: 'error' });
+    return;
+  }
+  uploadingTypes.value.add(docType);
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('appointment_id', appointment.id);
+    formData.append('document_type', docType);
+    const res = await apiFetch('/medical-documents', { method: 'POST', body: formData });
+    if (res?.success) {
+      toast.add({ title: 'Document uploadé', description: `${getDocumentTypeLabel(docType)} ajouté.`, color: 'success' });
+      await detailRef.value?.loadDocuments?.();
+    } else {
+      toast.add({ title: 'Erreur', description: (res as any)?.error || "Impossible d'uploader", color: 'error' });
+    }
+  } catch (e: any) {
+    toast.add({ title: 'Erreur', description: e?.message || 'Une erreur est survenue', color: 'error' });
+  } finally {
+    uploadingTypes.value.delete(docType);
+  }
+}
 
 function getDocumentTypeLabel(type: string) {
   const labels: Record<string, string> = {
     carte_vitale: 'Carte Vitale',
     carte_mutuelle: 'Carte Mutuelle',
     ordonnance: 'Ordonnance',
+    resultats: 'Résultats',
     autres_assurances: 'Autres Assurances',
     other: 'Autre',
   };
@@ -190,11 +261,11 @@ async function downloadDocument(doc: { id: string; file_name: string }) {
   }
 }
 
-// RDV pending non assigné : rediriger vers la liste avec popup accepter/refuser (comme lab / infirmiers)
+// RDV pending offert : rediriger vers la liste avec popup (pas si le sous-compte a créé le RDV)
 watch(
-  () => detailRef.value?.appointment?.value,
+  () => getAppointmentFromDetailRef(detailRef),
   (app) => {
-    if (app?.status === 'pending' && !app?.assigned_lab_id) {
+    if (app && isPendingIncomingOffer(app, user.value?.id)) {
       navigateTo(`/subaccount/appointments?openAppointment=${app.id}`);
     }
   },
@@ -203,18 +274,25 @@ watch(
 
 const showCancelModal = ref(false);
 const showRescheduleModal = ref(false);
+const currentAppointmentForCancel = ref<any>(null);
+const currentLoadAppointmentForCancel = ref<(() => Promise<void>) | null>(null);
 const completing = ref(false);
 const rescheduleAppointment = ref<any>(null);
 
-function completeAppointment() {
-  const appointment = detailRef.value?.appointment?.value;
-  if (!appointment) return;
+function openCancelModal(apt: any, loadAppointment: () => Promise<void>) {
+  currentAppointmentForCancel.value = apt;
+  currentLoadAppointmentForCancel.value = loadAppointment;
+  showCancelModal.value = true;
+}
+
+function completeAppointment(apt: any, loadAppointment: () => Promise<void>) {
+  if (!apt) return;
   completing.value = true;
-  apiFetch(`/appointments/${appointment.id}`, { method: 'PUT', body: { status: 'completed' } })
+  apiFetch(`/appointments/${apt.id}`, { method: 'PUT', body: { status: 'completed' } })
     .then((response) => {
       if (response.success) {
         toast.add({ title: 'RDV terminé', description: 'Le rendez-vous a été marqué comme terminé.', color: 'success' });
-        detailRef.value?.loadAppointment?.();
+        loadAppointment();
       } else {
         toast.add({ title: 'Erreur', description: response.error || 'Impossible de terminer le rendez-vous', color: 'error' });
       }
@@ -257,8 +335,7 @@ const assignmentSelectItems = computed(() => {
   return items;
 });
 
-const currentAssignmentLabel = computed(() => {
-  const app = detailRef.value?.appointment?.value;
+function getCurrentAssignmentLabel(app: any) {
   if (!app) return '';
   const parts: string[] = [];
   if (app.assigned_lab_display_name) {
@@ -267,15 +344,14 @@ const currentAssignmentLabel = computed(() => {
   }
   if (app.assigned_to_display_name) parts.push(`Préleveur : ${app.assigned_to_display_name}`);
   return parts.length ? parts.join(' · ') : 'Non assigné';
-});
+}
 
-const currentAssignmentValue = computed(() => {
-  const app = detailRef.value?.appointment?.value;
+function getCurrentAssignmentValue(app: any) {
   if (!app) return '';
   if (app.assigned_to) return `prel:${app.assigned_to}`;
-  if (app.assigned_lab_id) return app.assigned_lab_id === myId.value ? `sub:${app.assigned_lab_id}` : `sub:${app.assigned_lab_id}`;
+  if (app.assigned_lab_id) return `sub:${app.assigned_lab_id}`;
   return '';
-});
+}
 
 async function fetchAssignmentOptions() {
   assignmentOptionsLoading.value = true;
@@ -310,19 +386,22 @@ function applyReassign(appointment: any, loadAppointment: () => Promise<void>) {
 }
 
 watch(
-  () => detailRef.value?.appointment?.value,
+  () => getAppointmentFromDetailRef(detailRef),
   (app) => {
     if (app?.type === 'blood_test' && ['pending', 'confirmed', 'inProgress'].includes(app?.status)) {
       fetchAssignmentOptions();
-      reassignValue.value = currentAssignmentValue.value;
+      reassignValue.value = getCurrentAssignmentValue(app);
     }
   },
   { immediate: true },
 );
 
 async function onConfirmCancel(payload: { reason: string; comment: string; photoFile: File | null }) {
-  const appointment = detailRef.value?.appointment?.value;
-  if (!appointment) return;
+  const appointment = currentAppointmentForCancel.value;
+  const loadAppointment = currentLoadAppointmentForCancel.value;
+  if (!appointment || typeof loadAppointment !== 'function') return;
+  currentAppointmentForCancel.value = null;
+  currentLoadAppointmentForCancel.value = null;
   canceling.value = true;
   try {
     let photoDocId: string | null = null;
@@ -342,7 +421,7 @@ async function onConfirmCancel(payload: { reason: string; comment: string; photo
     if (photoDocId) body.cancellation_photo_document_id = photoDocId;
     const response = await apiFetch(`/appointments/${appointment.id}`, { method: 'PUT', body });
     if (response.success) {
-      await detailRef.value?.loadAppointment?.();
+      await loadAppointment();
       toast.add({ title: 'Rendez-vous annulé', description: 'L\'annulation a été enregistrée.', color: 'success' });
     } else {
       toast.add({ title: 'Erreur', description: response.error || "Impossible d'annuler le rendez-vous", color: 'error' });

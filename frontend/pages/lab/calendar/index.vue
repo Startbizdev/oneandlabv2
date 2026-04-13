@@ -4,7 +4,7 @@
       title="Calendrier"
       description="Vue d'ensemble des rendez-vous du laboratoire"
     />
-    <CalendarPage base-path="/lab" />
+    <CalendarPage base-path="/lab" :show-new-appointment-button="false" />
   </div>
 </template>
 

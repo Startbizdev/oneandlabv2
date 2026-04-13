@@ -1,5 +1,30 @@
 <template>
   <AppointmentDetailPage ref="detailRef" base-path="/pro">
+    <template #prescriptionSection="{ appointment, documents, loadDocuments }">
+      <PrescriptionSection
+        v-if="appointment && !['canceled'].includes(appointment.status)"
+        :appointment="appointment"
+        :documents="documents"
+        :load-documents="loadDocuments"
+      />
+    </template>
+    <template #documentsCard="{ appointment, documents, documentsLoading, loadDocuments }">
+      <AppointmentDocumentsSection
+        :documents="documents || []"
+        :loading="documentsLoading"
+        empty-description="Aucun document médical n'a été déposé pour ce rendez-vous."
+        :show-upload-area="canUploadDocuments(appointment)"
+        :upload-types="uploadDocumentTypes"
+        :can-replace="canUploadDocuments(appointment)"
+        :downloading-ids="downloadingDocIds"
+        :uploading-types="uploadingTypes"
+        @download="downloadDocument"
+        @upload="(docType, file) => { setAppointmentForUpload(appointment); uploadDocumentFile(file, docType); }"
+      />
+    </template>
+    <template #careGallery="{ appointment }">
+      <CarePhotoGallerySection v-if="appointment" :appointment="appointment" role="pro" />
+    </template>
     <template #sidebarActions="{ appointment, loadAppointment }">
       <div class="flex flex-col gap-3">
         <UEmpty
@@ -11,31 +36,37 @@
           size="md"
         />
         <template v-else>
-          <UButton
-            v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)"
-            type="button"
-            color="primary"
-            variant="soft"
-            size="md"
-            leading-icon="i-lucide-calendar-plus"
-            block
-            @click="openRescheduleModal(appointment)"
-          >
-            Reprendre RDV pour ce patient
-          </UButton>
-          <UButton
-            v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)"
-            type="button"
-            color="error"
-            variant="soft"
-            size="md"
-            leading-icon="i-lucide-x-circle"
-            :loading="canceling"
-            block
-            @click="showCancelModal = true"
-          >
-            Annuler le rendez-vous
-          </UButton>
+          <template v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5">
+              Planification
+            </p>
+            <UButton
+              type="button"
+              color="neutral"
+              variant="outline"
+              size="md"
+              leading-icon="i-lucide-calendar-plus"
+              block
+              :on-click="() => openRescheduleModal(appointment)"
+            >
+              Reprendre RDV pour ce patient
+            </UButton>
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
+              Annulation
+            </p>
+            <UButton
+              type="button"
+              color="error"
+              variant="outline"
+              size="md"
+              leading-icon="i-lucide-x-circle"
+              :loading="canceling"
+              block
+              :on-click="() => openCancelModal(appointment, loadAppointment)"
+            >
+              Annuler le rendez-vous
+            </UButton>
+          </template>
         </template>
       </div>
     </template>
@@ -61,14 +92,118 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
+import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
+import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 
 const route = useRoute();
 const toast = useAppToast();
-const detailRef = ref<{ loadAppointment: () => Promise<void>; appointment: { value: any } } | null>(null);
+const config = useRuntimeConfig();
+const downloadingDocId = ref<string | null>(null);
+const downloadingDocIds = computed(() => (downloadingDocId.value ? [downloadingDocId.value] : []));
+
+function getDocumentTypeLabel(type: string) {
+  const labels: Record<string, string> = {
+    carte_vitale: 'Carte Vitale',
+    carte_mutuelle: 'Carte Mutuelle',
+    ordonnance: 'Ordonnance',
+    resultats: 'Résultats',
+    autres_assurances: 'Autres Assurances',
+    other: 'Autre',
+  };
+  return labels[type] || type;
+}
+
+async function downloadDocument(doc: { id: string; file_name: string }) {
+  downloadingDocId.value = doc.id;
+  try {
+    const apiBase = config.public?.apiBase || 'http://localhost:8888/api';
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const res = await fetch(`${apiBase}/medical-documents/${doc.id}/download`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as any).error || 'Erreur lors du téléchargement');
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = doc.file_name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    toast.add({ title: 'Téléchargement', description: 'Le document est en cours de téléchargement.', color: 'success' });
+  } catch (e: any) {
+    toast.add({ title: 'Erreur', description: e?.message || 'Téléchargement impossible', color: 'error' });
+  } finally {
+    downloadingDocId.value = null;
+  }
+}
+const detailRef = ref<{ loadAppointment: () => Promise<void>; loadDocuments?: () => Promise<void>; appointment: { value: any } } | null>(null);
+const uploadingTypes = ref(new Set<string>());
+const currentAppointmentForUpload = ref<any>(null);
+
+const uploadDocumentTypes = [
+  { value: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card', color: 'green' },
+  { value: 'carte_mutuelle', label: 'Carte Mutuelle', icon: 'i-lucide-shield', color: 'blue' },
+  { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', color: 'orange' },
+  { value: 'resultats', label: 'Résultats', icon: 'i-lucide-file-check', color: 'emerald' },
+  { value: 'autres_assurances', label: 'Autres assurances', icon: 'i-lucide-briefcase', color: 'purple' },
+  { value: 'other', label: 'Autre document', icon: 'i-lucide-file', color: 'gray' },
+];
+
+function canUploadDocuments(appointment: any) {
+  return appointment && ['confirmed', 'inProgress', 'completed'].includes(appointment?.status);
+}
+
+function setAppointmentForUpload(apt: any) {
+  currentAppointmentForUpload.value = apt;
+}
+
+async function uploadDocumentFile(file: File, docType: string) {
+  const appointment = currentAppointmentForUpload.value ?? getAppointmentFromDetailRef(detailRef);
+  if (!appointment) return;
+  if (file.size > MAX_UPLOAD_BYTES) {
+    toast.add({ title: 'Fichier trop volumineux', description: 'Le fichier dépasse 25 Mo.', color: 'error' });
+    return;
+  }
+  const allowed = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  if (!allowed.includes(file.type)) {
+    toast.add({ title: 'Format non accepté', description: 'Formats acceptés : JPG, PNG, PDF.', color: 'error' });
+    return;
+  }
+  uploadingTypes.value.add(docType);
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('appointment_id', appointment.id);
+    formData.append('document_type', docType);
+    const res = await apiFetch('/medical-documents', { method: 'POST', body: formData });
+    if (res?.success) {
+      toast.add({ title: 'Document uploadé', description: `${getDocumentTypeLabel(docType)} ajouté.`, color: 'success' });
+      await detailRef.value?.loadDocuments?.();
+    } else {
+      toast.add({ title: 'Erreur', description: (res as any)?.error || "Impossible d'uploader", color: 'error' });
+    }
+  } catch (e: any) {
+    toast.add({ title: 'Erreur', description: e?.message || 'Une erreur est survenue', color: 'error' });
+  } finally {
+    uploadingTypes.value.delete(docType);
+  }
+}
+
 const showCancelModal = ref(false);
 const showRescheduleModal = ref(false);
+const currentAppointmentForCancel = ref<any>(null);
+const currentLoadAppointmentForCancel = ref<(() => Promise<void>) | null>(null);
 const canceling = ref(false);
 const rescheduleAppointment = ref<any>(null);
+
+function openCancelModal(apt: any, loadAppointment: () => Promise<void>) {
+  currentAppointmentForCancel.value = apt;
+  currentLoadAppointmentForCancel.value = loadAppointment;
+  showCancelModal.value = true;
+}
 
 function openRescheduleModal(apt: any) {
   rescheduleAppointment.value = apt ?? null;
@@ -85,10 +220,12 @@ function onRescheduleDone(newAppointmentId?: string) {
 }
 
 async function onConfirmCancel(payload: { reason: string; comment: string; photoFile: File | null }) {
-  const appointmentData = detailRef.value?.appointment?.value ?? detailRef.value?.appointment;
-  const loadAppointment = detailRef.value?.loadAppointment;
-  const appointmentId = appointmentData?.id ?? route.params?.id;
+  const apt = currentAppointmentForCancel.value;
+  const loadAppointment = currentLoadAppointmentForCancel.value;
+  const appointmentId = apt?.id ?? route.params?.id;
   if (!appointmentId || typeof loadAppointment !== 'function') return;
+  currentAppointmentForCancel.value = null;
+  currentLoadAppointmentForCancel.value = null;
   canceling.value = true;
   try {
     let photoDocId: string | null = null;

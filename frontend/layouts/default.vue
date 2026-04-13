@@ -1,15 +1,15 @@
 <template>
   <div class="min-h-screen flex flex-col">
     <!-- Header custom -->
-    <header class="sticky top-0 z-50 bg-white border-b border-gray-200">
-      <div class="container mx-auto px-3 sm:px-4">
-        <div class="flex items-center justify-between h-16 gap-2 sm:gap-3 md:gap-4">
+    <header class="sticky top-0 z-50 overflow-visible bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 pt-[env(safe-area-inset-top)]">
+      <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-8">
+        <div class="flex items-center justify-between min-h-[56px] sm:min-h-[64px] h-14 sm:h-16 gap-2 sm:gap-3 md:gap-4">
           <!-- Left: Logo + Navigation + Hamburger mobile -->
-          <div class="flex items-center gap-3 sm:gap-4 lg:gap-6 min-w-0 flex-shrink-0">
+          <div class="flex items-center gap-2 sm:gap-4 lg:gap-6 min-w-0 flex-1 lg:flex-initial">
             <!-- Bouton hamburger mobile -->
             <button
               @click="mobileMenuOpen = !mobileMenuOpen"
-              class="lg:hidden h-9 w-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors flex-shrink-0"
+              class="lg:hidden min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors flex-shrink-0 -ml-2 touch-manipulation"
               aria-label="Ouvrir le menu"
               aria-expanded="mobileMenuOpen"
             >
@@ -30,12 +30,12 @@
             <NuxtLink 
               to="/" 
               aria-label="OneAndLab" 
-              class="flex items-center gap-2 flex-shrink-0"
+              class="flex items-center gap-2 flex-shrink-0 min-w-0"
             >
               <img 
                 src="/images/onelogo.png" 
                 alt="OneAndLab" 
-                class="h-7 sm:h-8 md:h-10 w-auto object-contain" 
+                class="h-7 sm:h-8 md:h-9 lg:h-10 w-auto max-h-10 object-contain object-left" 
                 loading="eager"
                 decoding="async"
               />
@@ -56,7 +56,7 @@
                 <template #content>
                   <div class="w-[320px] p-2 bg-white rounded-xl shadow-lg">
                     <NuxtLink
-                      to="/rendez-vous/nouveau"
+                      :to="appointmentNewUrl"
                       class="flex gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
                     >
                       <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 group-hover:bg-primary-100">
@@ -205,15 +205,15 @@
           </div>
 
           <!-- Right: Actions -->
-          <div class="flex items-center gap-1.5 sm:gap-2 md:gap-3 min-w-0 flex-shrink-0">
+          <div class="flex items-center gap-1 sm:gap-2 md:gap-3 min-w-0 flex-shrink-0 justify-end">
             <!-- Menu utilisateur si connecté -->
             <template v-if="isAuthenticated && user">
               <!-- Notifications -->
               <div class="relative flex-shrink-0" ref="notificationsMenuRef">
                 <button
                   type="button"
-                  @click="notificationsMenuOpen = !notificationsMenuOpen"
-                  class="relative h-9 w-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors flex-shrink-0"
+                  @click.stop="toggleNotificationsMenu"
+                  class="relative h-11 w-11 sm:h-9 sm:w-9 min-w-[44px] min-h-[44px] sm:min-w-9 sm:min-h-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors flex-shrink-0 touch-manipulation"
                   :aria-label="`Notifications${unreadCount > 0 ? ` (${unreadCount} non lues)` : ''}`"
                   :aria-expanded="notificationsMenuOpen"
                 >
@@ -236,7 +236,7 @@
                 <!-- Dropdown Notifications -->
                 <div
                   v-if="notificationsMenuOpen"
-                  class="absolute right-0 mt-2 w-72 sm:w-80 rounded-lg bg-white border border-gray-200 shadow-lg z-50 py-1 max-h-96 overflow-y-auto"
+                  class="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+3.5rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto overflow-x-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-80 md:max-h-96"
                 >
                   <div v-if="notificationItems.length === 0 || (notificationItems.length === 1 && notificationItems[0].disabled)" class="px-4 py-3 text-sm text-gray-500 text-center">
                     Aucune notification
@@ -265,7 +265,7 @@
               <div class="relative hidden sm:block flex-shrink-0" ref="userMenuRef">
                 <button
                   type="button"
-                  @click="userMenuOpen = !userMenuOpen"
+                  @click.stop="toggleUserMenu"
                   class="flex items-center gap-2 pl-1 pr-2 sm:pl-1.5 sm:pr-3 py-1.5 sm:py-2 rounded-xl text-gray-700 hover:bg-gray-100 active:bg-gray-200 transition-all duration-200 flex-shrink-0 min-w-0 max-w-full border border-transparent hover:border-gray-200"
                   :aria-label="`Menu utilisateur: ${userDisplayName}`"
                   :aria-expanded="userMenuOpen"
@@ -304,7 +304,7 @@
                 >
                   <div
                     v-if="userMenuOpen"
-                    class="absolute right-0 mt-2 w-64 rounded-xl bg-white border border-gray-200/80 shadow-xl shadow-gray-200/50 dark:shadow-none dark:border-gray-700 z-50 overflow-hidden"
+                    class="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+3.5rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto overflow-x-hidden rounded-xl border border-gray-200/80 bg-white shadow-xl shadow-gray-200/50 dark:border-gray-700 dark:shadow-none md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-64 md:max-h-none md:overflow-hidden"
                   >
                     <!-- En-tête profil -->
                     <div class="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
@@ -347,55 +347,23 @@
               </div>
             </template>
             
-            <!-- Bouton connexion / inscription si non connecté -->
+            <!-- Lien connexion si non connecté (style Doctolib, responsive) -->
             <template v-else>
-              <UButton 
-                to="/login" 
-                variant="outline"
-                size="lg"
-                class="hidden sm:flex whitespace-nowrap flex-shrink-0"
-                aria-label="Connexion ou inscription à votre compte"
+              <NuxtLink
+                :to="loginWithReturnTo"
+                class="flex items-center gap-2 sm:gap-2.5 px-2 sm:px-3 py-2 min-h-[44px] sm:min-h-0 rounded-lg hover:bg-gray-100/80 dark:hover:bg-gray-800/50 transition-colors group touch-manipulation"
+                aria-label="Se connecter pour gérer vos rendez-vous"
               >
-                <ClientOnly>
-                  <template #default>
-                    <UIcon name="i-lucide-log-in" class="h-4 w-4 mr-2" />
-                  </template>
-                  <template #fallback>
-                    <span class="h-4 w-4 mr-2" />
-                  </template>
-                </ClientOnly>
-                Connexion / Inscription
-              </UButton>
-              
-              <!-- Bouton rendez-vous desktop -->
-              <UButton 
-                to="/rendez-vous/nouveau" 
-                color="primary"
-                size="lg"
-                class="hidden sm:flex whitespace-nowrap flex-shrink-0"
-              >
-                <ClientOnly>
-                  <template #default>
-                    <UIcon name="i-lucide-calendar-plus" class="h-4 w-4 mr-2" />
-                  </template>
-                  <template #fallback>
-                    <span class="h-4 w-4 mr-2" />
-                  </template>
-                </ClientOnly>
-                <span class="hidden lg:inline">Prendre rendez-vous</span>
-                <span class="lg:hidden">Réserver</span>
-              </UButton>
+                <UIcon name="i-lucide-user" class="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0 text-gray-700 dark:text-gray-300" />
+                <!-- Mobile: inline compact -->
+                <span class="text-xs font-medium text-gray-900 dark:text-white sm:hidden">Se connecter</span>
+                <!-- Desktop: stacked -->
+                <div class="hidden sm:flex flex-col items-start leading-tight">
+                  <span class="text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">Se connecter</span>
+                  <span class="text-[11px] text-gray-500 dark:text-gray-400">Gérer mes RDV</span>
+                </div>
+              </NuxtLink>
             </template>
-            
-            <!-- Bouton rendez-vous mobile -->
-            <UButton 
-              to="/rendez-vous/nouveau" 
-              color="primary"
-              size="sm"
-              icon="i-lucide-calendar-plus"
-              class="sm:hidden flex-shrink-0"
-              aria-label="Prendre rendez-vous"
-            />
           </div>
         </div>
       </div>
@@ -413,12 +381,12 @@
       <!-- Drawer -->
       <div
         :class="[
-          'fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] bg-white shadow-xl transform transition-transform duration-300 ease-in-out lg:hidden overflow-y-auto',
+          'fixed inset-y-0 left-0 z-50 w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-900 shadow-xl transform transition-transform duration-300 ease-in-out lg:hidden overflow-y-auto overscroll-contain',
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         ]"
       >
         <!-- Header du drawer -->
-        <div class="flex items-center justify-between px-4 h-16 border-b border-gray-200">
+        <div class="flex items-center justify-between px-4 h-14 sm:h-16 border-b border-gray-200 dark:border-gray-800">
           <NuxtLink 
             to="/" 
             @click="mobileMenuOpen = false"
@@ -510,41 +478,20 @@
             </NuxtLink>
           </nav>
           
-          <!-- Boutons si non connecté -->
-          <div v-if="!isAuthenticated" class="mt-6 space-y-3">
-            <UButton 
-              to="/login" 
-              variant="outline"
-              block
+          <!-- Connexion si non connecté (style Doctolib) -->
+          <div v-if="!isAuthenticated" class="mt-6">
+            <NuxtLink
+              :to="loginWithReturnTo"
               @click="mobileMenuOpen = false"
-              aria-label="Connexion ou inscription à votre compte"
+              class="flex items-center gap-3 w-full px-3 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
+              aria-label="Se connecter pour gérer vos rendez-vous"
             >
-              <ClientOnly>
-                <template #default>
-                  <UIcon name="i-lucide-log-in" class="h-4 w-4 mr-2" />
-                </template>
-                <template #fallback>
-                  <span class="h-4 w-4 mr-2" />
-                </template>
-              </ClientOnly>
-              Connexion / Inscription
-            </UButton>
-            <UButton 
-              to="/rendez-vous/nouveau" 
-              color="primary"
-              block
-              @click="mobileMenuOpen = false"
-            >
-              <ClientOnly>
-                <template #default>
-                  <UIcon name="i-lucide-calendar-plus" class="h-4 w-4 mr-2" />
-                </template>
-                <template #fallback>
-                  <span class="h-4 w-4 mr-2" />
-                </template>
-              </ClientOnly>
-              Prendre rendez-vous
-            </UButton>
+              <UIcon name="i-lucide-user" class="h-5 w-5 flex-shrink-0 text-gray-700 dark:text-gray-300" />
+              <div class="flex flex-col items-start leading-tight">
+                <span class="text-sm font-medium text-gray-900 dark:text-white">Se connecter</span>
+                <span class="text-[11px] text-gray-500 dark:text-gray-400">Gérer mes RDV</span>
+              </div>
+            </NuxtLink>
           </div>
         </div>
       </div>
@@ -598,7 +545,7 @@
             <ul class="space-y-2">
               <li>
                 <NuxtLink 
-                  to="/rendez-vous/nouveau?type=blood_test" 
+                  :to="`${appointmentNewUrl}${appointmentNewUrl === '/rendez-vous/nouveau' ? '?type=blood_test' : ''}`" 
                   class="text-gray-400 hover:text-white transition-colors flex items-center"
                 >
                   <UIcon name="i-lucide-droplet" class="w-4 h-4 mr-2" />
@@ -607,7 +554,7 @@
               </li>
               <li>
                 <NuxtLink 
-                  to="/rendez-vous/nouveau?type=nursing" 
+                  :to="`${appointmentNewUrl}${appointmentNewUrl === '/rendez-vous/nouveau' ? '?type=nursing' : ''}`" 
                   class="text-gray-400 hover:text-white transition-colors flex items-center"
                 >
                   <UIcon name="i-lucide-stethoscope" class="w-4 h-4 mr-2" />
@@ -616,7 +563,7 @@
               </li>
               <li>
                 <NuxtLink 
-                  to="/rendez-vous/nouveau" 
+                  :to="appointmentNewUrl" 
                   class="text-gray-400 hover:text-white transition-colors flex items-center"
                 >
                   <UIcon name="i-lucide-calendar-plus" class="w-4 h-4 mr-2" />
@@ -730,8 +677,11 @@
 import { apiFetch } from '~/utils/api'
 
 const route = useRoute()
+/** Retour après connexion vers la page en cours (ex. formulaire RDV avec query provider). */
+const loginWithReturnTo = computed(() => `/login?returnTo=${encodeURIComponent(route.fullPath)}`)
 const { isAuthenticated } = useAuth()
 const { user, roleLabel, userMenuItems, userDisplayName } = useHeaderUserMenu()
+const { appointmentNewUrl } = useAppointmentNewUrl()
 
 const mobileMenuOpen = ref(false)
 const userMenuOpen = ref(false)
@@ -740,6 +690,21 @@ const userMenuRef = ref<HTMLElement | null>(null)
 // État du menu notifications
 const notificationsMenuOpen = ref(false)
 const notificationsMenuRef = ref<HTMLElement | null>(null)
+
+/** Un seul panneau ouvert (cloche vs avatar). */
+function toggleNotificationsMenu() {
+  if (!notificationsMenuOpen.value) {
+    userMenuOpen.value = false
+  }
+  notificationsMenuOpen.value = !notificationsMenuOpen.value
+}
+
+function toggleUserMenu() {
+  if (!userMenuOpen.value) {
+    notificationsMenuOpen.value = false
+  }
+  userMenuOpen.value = !userMenuOpen.value
+}
 const notifications = useState<any[]>('notifications.list', () => [])
 
 // Handler pour les clics sur les items du menu utilisateur
@@ -855,7 +820,7 @@ const handleMenuItemClick = (item: any) => {
 // Menu mobile : liens avec labels clairs et descriptions marketing
 const mobileNavigationItems = computed(() => {
   const items: { label: string; to: string; description?: string }[] = []
-  items.push({ label: 'Prendre rendez-vous', to: '/rendez-vous/nouveau', description: 'Réserver une prise de sang ou soins à domicile' })
+  items.push({ label: 'Prendre rendez-vous', to: appointmentNewUrl.value, description: 'Réserver une prise de sang ou soins à domicile' })
   items.push({ label: 'Explorer les laboratoires', to: '/laboratoires', description: 'Les meilleurs laboratoires de France' })
   items.push({ label: 'Explorer les infirmiers', to: '/infirmiers', description: 'Trouvez un infirmier à domicile' })
   items.push({ label: 'Pour les patients', to: '/pour-les-patients', description: 'Découvrez comment prendre rendez-vous' })
@@ -899,19 +864,31 @@ const notificationItems = computed(() => {
   }
 
   return notifications.value.slice(0, 10).map((notif) => ({
-    label: notif.message || notif.title || 'Notification',
+    label: notif.title ? `${notif.title}${notif.message ? ` — ${notif.message}` : ''}` : (notif.message || 'Notification'),
     description: notif.created_at
       ? new Date(notif.created_at).toLocaleString('fr-FR')
       : undefined,
     isRead: !!notif.read_at,
     click: () => {
-      if (notif.appointment_id) {
-        const role = user.value?.role
-        if (role === 'patient') {
-          navigateTo(`/patient/appointments/${notif.appointment_id}`)
-        } else if (role === 'nurse') {
-          navigateTo(`/nurse/appointments/${notif.appointment_id}`)
-        }
+      const data = typeof notif.data === 'string'
+        ? (() => { try { return JSON.parse(notif.data); } catch { return {}; } })()
+        : (notif.data || {});
+      const aptId = notif.appointment_id || data?.appointment_id;
+      if (!aptId) return;
+      const role = user.value?.role;
+      if (role === 'patient') {
+        const hash = notif.type === 'results_ready' ? '#resultats' : '';
+        navigateTo({ path: `/patient/appointments/${aptId}`, hash });
+      } else if (role === 'nurse') {
+        navigateTo(`/nurse/appointments/${aptId}`);
+      } else if (role === 'lab' || role === 'subaccount') {
+        navigateTo(`/lab/appointments/${aptId}`);
+      } else if (role === 'pro') {
+        navigateTo(`/pro/appointments/${aptId}`);
+      } else if (role === 'preleveur') {
+        navigateTo(`/preleveur/appointments/${aptId}`);
+      } else if (role === 'super_admin') {
+        navigateTo(`/admin/appointments/${aptId}`);
       }
     },
   }))

@@ -408,18 +408,27 @@ const saveRelative = async () => {
 
   saving.value = true;
   try {
+    // Whitelist stricte : uniquement les champs du proche (jamais écraser le profil patient)
+    const payload = {
+      first_name: relativeForm.value.first_name,
+      last_name: relativeForm.value.last_name,
+      relationship_type: relativeForm.value.relationship_type,
+      gender: relativeForm.value.gender || undefined,
+      birth_date: relativeForm.value.birth_date || undefined,
+      email: relativeForm.value.email || undefined,
+      phone: relativeForm.value.phone || undefined,
+      address: relativeForm.value.address || undefined,
+    };
     let response;
     if (editingRelative.value) {
-      // Mise à jour
       response = await apiFetch(`/patient-relatives/${editingRelative.value.id}`, {
         method: 'PUT',
-        body: relativeForm.value,
+        body: payload,
       });
     } else {
-      // Création
       response = await apiFetch('/patient-relatives', {
         method: 'POST',
-        body: relativeForm.value,
+        body: payload,
       });
     }
 

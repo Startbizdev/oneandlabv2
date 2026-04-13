@@ -87,7 +87,7 @@
         :loading="reassigning"
           :disabled="!appointment || !assignment.hasChange(appointment)"
         block
-        @click="onApply"
+        :on-click="onApply"
       >
         Appliquer l’assignation
       </UButton>

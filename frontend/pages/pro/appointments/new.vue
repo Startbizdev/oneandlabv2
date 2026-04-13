@@ -1,10 +1,17 @@
 <template>
   <ClientOnly>
-    <AppointmentForm mode="create" base-path="/pro" />
+    <DashboardMultiAppointmentWizard
+      base-path="/pro"
+      selection-title="Quels soins pour ce rendez-vous ?"
+    />
     <template #fallback>
-      <div class="mb-8 flex items-center gap-2 text-muted">
-        <span class="loading loading-spinner loading-sm" />
-        <span>Chargement...</span>
+      <div
+        class="flex min-h-[min(50vh,22rem)] flex-col items-center justify-center gap-3 py-16"
+        role="status"
+        aria-live="polite"
+      >
+        <UIcon name="i-lucide-loader-2" class="h-10 w-10 animate-spin text-primary-500" aria-hidden="true" />
+        <span class="sr-only">Chargement du formulaire</span>
       </div>
     </template>
   </ClientOnly>
@@ -16,4 +23,6 @@ definePageMeta({
   middleware: ['auth', 'role'],
   role: 'pro',
 });
+
+useHead({ title: 'Nouveau rendez-vous – Professionnel' });
 </script>

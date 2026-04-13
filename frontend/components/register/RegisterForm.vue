@@ -119,8 +119,20 @@
           </UFormField>
         </template>
 
-        <!-- Nurse: RPPS -->
+        <!-- Nurse: genre + RPPS -->
         <template v-if="role === 'nurse'">
+          <UFormField label="Genre" name="gender" required class="w-full">
+            <USelect
+              v-model="form.gender"
+              :items="genderOptions"
+              placeholder="Homme, femme ou autre"
+              size="lg"
+              class="w-full"
+            />
+            <template #hint>
+              <span class="text-xs text-muted">Indispensable pour le matching avec les préférences des patients.</span>
+            </template>
+          </UFormField>
           <UFormField label="Numéro RPPS" name="rpps" required class="w-full">
             <UInput
               v-model="form.rpps"
@@ -174,6 +186,12 @@ import { PRO_SANTE_EMPLOIS } from '~/constants/proEmploi';
 
 const proEmploiItems = [...PRO_SANTE_EMPLOIS];
 
+const genderOptions = [
+  { label: 'Homme', value: 'male' },
+  { label: 'Femme', value: 'female' },
+  { label: 'Autre', value: 'other' },
+];
+
 const props = withDefaults(
   defineProps<{
     role: 'lab' | 'pro' | 'nurse';
@@ -214,6 +232,7 @@ const form = reactive({
   rpps: '',
   company_name: '',
   emploi: '' as string,
+  gender: '' as string,
 });
 
 // Pré-remplir l'email depuis l'URL (ex. /nurse/register?email=xxx après choix sur login)
@@ -232,7 +251,7 @@ const canSubmit = computed(() => {
   if (!form.email?.trim() || !form.first_name?.trim() || !form.last_name?.trim()) return false;
   if (props.role === 'lab' && !form.siret?.replace(/\s/g, '')) return false;
   if (props.role === 'pro' && (!form.adeli?.replace(/\s/g, '') || !form.emploi?.trim())) return false;
-  if (props.role === 'nurse' && !form.rpps?.replace(/\s/g, '')) return false;
+  if (props.role === 'nurse' && (!form.rpps?.replace(/\s/g, '') || !form.gender?.trim())) return false;
   return true;
 });
 
@@ -253,7 +272,10 @@ function onSubmit() {
     payload.adeli = (form.adeli || '').replace(/\s/g, '');
     if (form.emploi?.trim()) payload.emploi = form.emploi.trim();
   }
-  if (props.role === 'nurse') payload.rpps = (form.rpps || '').replace(/\s/g, '');
+  if (props.role === 'nurse') {
+    payload.rpps = (form.rpps || '').replace(/\s/g, '');
+    payload.gender = form.gender.trim();
+  }
   emit('submit', payload);
 }
 

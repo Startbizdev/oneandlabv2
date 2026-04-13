@@ -11,7 +11,7 @@
               </DialogDescription>
               <div class="flex items-start justify-between gap-4">
                 <h2 class="text-lg font-normal text-foreground">Annuler le rendez-vous</h2>
-                <UButton variant="ghost" color="neutral" icon="i-lucide-x" size="sm" aria-label="Fermer" @click="closeSlot()" />
+                <UButton type="button" variant="ghost" color="neutral" icon="i-lucide-x" size="sm" aria-label="Fermer" :on-click="() => closeSlot()" />
               </div>
             </template>
             <div class="space-y-4">
@@ -50,7 +50,7 @@
                   variant="outline"
                   size="sm"
                   leading-icon="i-lucide-camera"
-                  @click="fileInputRef?.click()"
+                  :on-click="() => fileInputRef?.click()"
                 >
                   {{ photoFile ? photoFile.name : 'Choisir une photo' }}
                 </UButton>
@@ -60,7 +60,7 @@
                   variant="ghost"
                   size="xs"
                   color="error"
-                  @click="photoFile = null"
+                  :on-click="() => (photoFile = null)"
                 >
                   Retirer
                 </UButton>
@@ -68,13 +68,13 @@
             </div>
             <template #footer>
               <div class="flex justify-end gap-2">
-                <UButton type="button" variant="ghost" color="neutral" @click="closeSlot()">Retour</UButton>
+                <UButton type="button" variant="ghost" color="neutral" :on-click="() => closeSlot()">Retour</UButton>
                 <UButton
                   type="button"
                   color="error"
                   :loading="loading"
                   :disabled="!canSubmit"
-                  @click="handleConfirm"
+                  :on-click="handleConfirm"
                 >
                   Confirmer l'annulation
                 </UButton>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { MIN_BIRTH_YEAR } from '~/constants/birth-date'
+
 const props = defineProps<{
   modelValue?: string | null
   placeholder?: string
@@ -31,10 +33,10 @@ const monthOptions = [
   { label: 'Novembre', value: 11 },
   { label: 'Décembre', value: 12 }
 ]
-const yearOptions = Array.from({length: currentYear - 1950 + 1}, (_, i) => {
-  const year = 1950 + i
-  return { label: year, value: year }
-})
+const yearOptions = Array.from({ length: currentYear - MIN_BIRTH_YEAR + 1 }, (_, i) => ({
+  label: String(MIN_BIRTH_YEAR + i),
+  value: MIN_BIRTH_YEAR + i,
+})).reverse()
 
 // Initialiser depuis modelValue au montage
 onMounted(() => {

@@ -31,12 +31,85 @@ $reviewModel = new Review();
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Liste des avis avec filtres
     $revieweeId = $_GET['reviewee_id'] ?? null;
+    $patientId = $_GET['patient_id'] ?? null;
     $appointmentId = $_GET['appointment_id'] ?? null;
     $revieweeType = $_GET['reviewee_type'] ?? null;
     $isVisible = isset($_GET['is_visible']) ? filter_var($_GET['is_visible'], FILTER_VALIDATE_BOOLEAN) : null;
     $page = (int) ($_GET['page'] ?? 1);
     $limit = (int) ($_GET['limit'] ?? 20);
-    
+
+    $role = $user['role'] ?? '';
+    $uid = $user['user_id'] ?? '';
+
+    // Autorisations : au moins un filtre, ou super_admin (liste complète modération)
+    $hasFilter = $revieweeId || $patientId || $appointmentId;
+    if (!$hasFilter && $role !== 'super_admin') {
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Paramètre requis : reviewee_id, patient_id ou appointment_id.',
+            'code' => 'FORBIDDEN',
+        ]);
+        exit;
+    }
+
+    if ($patientId && $patientId !== $uid && $role !== 'super_admin') {
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Vous ne pouvez consulter que vos propres avis.',
+            'code' => 'FORBIDDEN',
+        ]);
+        exit;
+    }
+
+    if ($revieweeId && $revieweeId !== $uid && $role !== 'super_admin') {
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Accès non autorisé à ces avis.',
+            'code' => 'FORBIDDEN',
+        ]);
+        exit;
+    }
+
+    if ($appointmentId && $role !== 'super_admin') {
+        $config = require __DIR__ . '/../../config/database.php';
+        $dsn = sprintf(
+            'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+            $config['host'],
+            $config['port'],
+            $config['database'],
+            $config['charset']
+        );
+        $db = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
+        $stmtA = $db->prepare('SELECT patient_id, assigned_nurse_id, assigned_lab_id, assigned_to FROM appointments WHERE id = ?');
+        $stmtA->execute([$appointmentId]);
+        $aptRow = $stmtA->fetch(PDO::FETCH_ASSOC);
+        if (!$aptRow) {
+            http_response_code(404);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Rendez-vous introuvable',
+                'code' => 'NOT_FOUND',
+            ]);
+            exit;
+        }
+        $allowed = ($aptRow['patient_id'] === $uid)
+            || (!empty($aptRow['assigned_nurse_id']) && $aptRow['assigned_nurse_id'] === $uid)
+            || (!empty($aptRow['assigned_lab_id']) && $aptRow['assigned_lab_id'] === $uid)
+            || (!empty($aptRow['assigned_to']) && $aptRow['assigned_to'] === $uid);
+        if (!$allowed) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Accès non autorisé à cet avis.',
+                'code' => 'FORBIDDEN',
+            ]);
+            exit;
+        }
+    }
+
     // Valider les paramètres
     if ($page < 1) {
         $page = 1;
@@ -44,11 +117,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if ($limit < 1 || $limit > 100) {
         $limit = 20;
     }
-    
+
     // Construire les filtres
     $filters = [];
     if ($revieweeId) {
         $filters['reviewee_id'] = $revieweeId;
+    }
+    if ($patientId) {
+        $filters['patient_id'] = $patientId;
     }
     if ($appointmentId) {
         $filters['appointment_id'] = $appointmentId;
@@ -59,7 +135,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if ($isVisible !== null) {
         $filters['is_visible'] = $isVisible;
     }
-    
+    if ($role === 'super_admin') {
+        $filters['include_all_visibility'] = true;
+    }
+
     // Récupérer les avis avec pagination
     $result = $reviewModel->getAll($filters, $page, $limit);
     
@@ -153,12 +232,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         $revieweeId = $input['reviewee_id'];
         $notificationModel = new Notification();
+        $rating = (int) $input['rating'];
         $notificationModel->create(
             $revieweeId,
             'new_review',
             'Nouvel avis reçu',
-            'Un patient a laissé un avis sur votre profil.',
-            ['review_id' => $id]
+            'Un patient a laissé un avis ' . $rating . '/5 sur votre profil. Consultez les détails dans votre espace avis.',
+            [
+                'review_id' => $id,
+                'appointment_id' => $input['appointment_id'],
+            ]
         );
         
         echo json_encode([

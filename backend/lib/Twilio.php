@@ -15,7 +15,7 @@ class Twilio
     {
         $this->accountSid = $_ENV['TWILIO_ACCOUNT_SID'] ?? '';
         $this->authToken = $_ENV['TWILIO_AUTH_TOKEN'] ?? '';
-        $this->fromNumber = $_ENV['TWILIO_FROM_NUMBER'] ?? '';
+        $this->fromNumber = $_ENV['TWILIO_PHONE_NUMBER'] ?? $_ENV['TWILIO_FROM_NUMBER'] ?? '';
         
         if (empty($this->accountSid) || empty($this->authToken) || empty($this->fromNumber)) {
             throw new Exception('Configuration Twilio incomplète');
@@ -87,6 +87,36 @@ class Twilio
         
         $message = "[CONFIRME] Votre rendez-vous est confirmé avec {$professionalName} le {$date}.\nVoir détails : {$url}";
         
+        try {
+            $this->sendSMS($to, $message);
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * SMS au patient : rendez-vous annulé
+     */
+    public function sendAppointmentCanceled(string $to): bool
+    {
+        $message = 'OneAndLab : Votre rendez-vous a été annulé.';
+        try {
+            $this->sendSMS($to, $message);
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * SMS au patient : RDV expiré (aucun pro disponible)
+     */
+    public function sendAppointmentExpired(string $to): bool
+    {
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://app.oneandlab.fr';
+        $rebookUrl = $baseUrl . '/rendez-vous/nouveau';
+        $message = 'OneAndLab : Désolé, aucun professionnel disponible. Vous pouvez reprendre rendez-vous : ' . $rebookUrl;
         try {
             $this->sendSMS($to, $message);
             return true;

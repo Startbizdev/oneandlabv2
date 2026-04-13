@@ -1,6 +1,6 @@
 <template>
   <div>
-    <TitleDashboard title="Réputation" icon="i-lucide-star" description="Note et avis reçus des patients" />
+    <TitleDashboard title="Mes avis" icon="i-lucide-star" description="Note et avis reçus des patients" />
     
     <div v-if="loading" class="py-8 text-center">
       <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-primary-500" />
@@ -39,40 +39,14 @@
       />
       
       <div v-else class="grid gap-4">
-        <UCard
+        <ReviewReceivedCard
           v-for="review in reviews"
           :key="review.id"
-          class="shadow-sm border-0 ring-1 ring-gray-200 dark:ring-gray-800 hover:shadow-md transition-shadow duration-200"
-          :ui="{ body: { padding: 'p-5 sm:p-6' } }"
-        >
-          <div class="space-y-4">
-            <div class="flex justify-between items-start gap-4">
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2 mb-2">
-                  <div class="flex gap-0.5">
-                    <UIcon
-                      v-for="i in 5"
-                      :key="i"
-                      :name="i <= review.rating ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
-                      class="text-yellow-400 w-5 h-5 flex-shrink-0"
-                    />
-                  </div>
-                  <span class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ review.rating }}/5</span>
-                </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Par {{ review.reviewer_name || 'Patient' }}</p>
-                <p v-if="review.comment" class="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">{{ review.comment }}</p>
-              </div>
-              <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap flex-shrink-0">{{ formatDate(review.created_at) }}</span>
-            </div>
-            <div v-if="review.response" class="pt-3 border-t border-gray-200 dark:border-gray-700">
-              <p class="text-xs font-medium uppercase tracking-wider text-primary-600 dark:text-primary-400 mb-1">Votre réponse</p>
-              <p class="text-sm text-gray-700 dark:text-gray-300 p-3 rounded-lg bg-primary-50 dark:bg-primary-900/20 border-l-4 border-primary-500 dark:border-primary-400">{{ review.response }}</p>
-            </div>
-            <div v-else class="pt-3 border-t border-gray-200 dark:border-gray-700">
-              <UButton size="sm" variant="outline" color="primary" icon="i-lucide-message-square" @click="openResponseModal(review)">Répondre</UButton>
-            </div>
-          </div>
-        </UCard>
+          :review="review"
+          appointment-detail-base="/subaccount/appointments"
+          :highlighted="isReviewHighlighted(review)"
+          @reply="openResponseModal"
+        />
       </div>
     </template>
     
@@ -92,8 +66,8 @@
             <UTextarea v-model="responseText" rows="4" placeholder="Rédigez votre réponse au patient..." />
           </UFormField>
           <div class="flex justify-end gap-2 pt-2">
-            <UButton variant="outline" color="neutral" @click="showResponseModal = false">Annuler</UButton>
-            <UButton color="primary" :loading="submitting" @click="submitResponse">Envoyer</UButton>
+            <UButton variant="outline" color="neutral" :on-click="() => showResponseModal = false">Annuler</UButton>
+            <UButton color="primary" :loading="submitting" :on-click="submitResponse">Envoyer</UButton>
           </div>
         </div>
       </UCard>
@@ -109,7 +83,9 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
+import { nextTick } from 'vue';
 
+const route = useRoute();
 const { user } = useAuth();
 const reviews = ref<any[]>([]);
 const stats = ref<{ total_reviews: number; average_rating: number } | null>(null);
@@ -120,8 +96,26 @@ const responseText = ref('');
 const submitting = ref(false);
 const toast = useAppToast();
 
+function isReviewHighlighted(review: { id: string; appointment_id?: string | null }) {
+  const qReview = route.query.review ? String(route.query.review) : '';
+  const qApt = route.query.appointment ? String(route.query.appointment) : '';
+  if (qReview && review.id === qReview) return true;
+  if (qApt && review.appointment_id === qApt) return true;
+  return false;
+}
+
+function scrollToHighlightedReview() {
+  const qReview = route.query.review ? String(route.query.review) : '';
+  const qApt = route.query.appointment ? String(route.query.appointment) : '';
+  const id = qReview || (qApt ? reviews.value.find((r: any) => r.appointment_id === qApt)?.id : '');
+  if (!id) return;
+  document.getElementById(`review-card-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 onMounted(async () => {
   await Promise.all([fetchStats(), fetchReviews()]);
+  await nextTick();
+  scrollToHighlightedReview();
 });
 
 const fetchStats = async () => {
@@ -160,10 +154,14 @@ const submitResponse = async () => {
   }
   submitting.value = true;
   try {
-    await apiFetch(`/reviews/${selectedReview.value.id}/response`, {
+    const res = await apiFetch(`/reviews/${selectedReview.value.id}/response`, {
       method: 'POST',
       body: { response: responseText.value },
-    });
+    }) as { success?: boolean; error?: string };
+    if (!res?.success) {
+      toast.add({ title: 'Erreur', description: res?.error || 'Envoi impossible', color: 'red' });
+      return;
+    }
     toast.add({ title: 'Réponse envoyée', color: 'green' });
     showResponseModal.value = false;
     await fetchReviews();
@@ -174,11 +172,4 @@ const submitResponse = async () => {
   }
 };
 
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('fr-FR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-};
 </script>

@@ -1,7 +1,28 @@
 <?php
 
+// Charger .env si appel direct (sans routeur index.php)
+$envFile = __DIR__ . '/../../../.env';
+if (file_exists($envFile) && is_readable($envFile)) {
+    $lines = @file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if ($lines !== false) {
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || strpos($line, '#') === 0 || strpos($line, '=') === false) {
+                continue;
+            }
+            [$name, $value] = explode('=', $line, 2);
+            $key = trim($name);
+            $val = trim($value);
+            if ($key !== '' && !array_key_exists($key, $_ENV)) {
+                $_ENV[$key] = $val;
+                putenv("$key=$val");
+            }
+        }
+    }
+}
+
 header('Content-Type: application/json');
-require_once __DIR__ . '/../../lib/BAN.php';
+require_once __DIR__ . '/../../lib/GoogleAddressSearch.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -40,8 +61,8 @@ try {
         throw new Exception('Paramètre q (query) requis');
     }
     
-    $ban = new BAN();
-    $results = $ban->search($query, $limit);
+    $search = new GoogleAddressSearch();
+    $results = $search->search($query, $limit);
     
     echo json_encode([
         'success' => true,

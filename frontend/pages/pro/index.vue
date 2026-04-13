@@ -56,56 +56,12 @@
             </template>
           </UEmpty>
 
-          <ul v-else class="divide-y divide-gray-100 dark:divide-gray-800">
-            <li v-for="rdv in appointments.slice(0, 6)" :key="rdv.id">
-              <NuxtLink
-                :to="`/pro/appointments/${rdv.id}`"
-                class="flex items-start gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
-              >
-                <div 
-                  class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center"
-                  :class="rdv.type === 'blood_test' ? 'bg-red-50 text-red-500 dark:bg-red-500/10' : 'bg-blue-50 text-blue-500 dark:bg-blue-500/10'"
-                >
-                  <UIcon :name="rdv.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-stethoscope'" class="w-6 h-6" />
-                </div>
-
-                <div class="flex-1 min-w-0 pt-0.5">
-                  <div class="flex items-center justify-between gap-2 mb-1">
-                    <p class="text-[16px] font-medium text-gray-900 dark:text-white truncate">
-                      {{ rdv.form_data?.first_name }} {{ rdv.form_data?.last_name }}
-                    </p>
-                    <UBadge :color="getStatusColor(rdv.status)" variant="subtle" size="xs">
-                      {{ getStatusLabel(rdv.status) }}
-                    </UBadge>
-                  </div>
-                  
-                  <p class="text-[14px] text-gray-500 dark:text-gray-400 font-medium mb-1.5 flex items-center gap-1.5">
-                    <UIcon name="i-lucide-clock" class="w-4 h-4 text-gray-400" />
-                    <span class="capitalize">{{ formatDateRdv(rdv.scheduled_at) }}</span> • {{ getCreneauHoraireLabel(rdv) }}
-                  </p>
-
-                  <div class="space-y-1">
-                    <p v-if="rdv.category_name" class="text-[13px] text-gray-500 flex items-center gap-1.5 truncate">
-                      <UIcon name="i-lucide-info" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                      <span class="truncate">{{ rdv.category_name }}</span>
-                    </p>
-                    <p v-if="addressLabel(rdv)" class="text-[13px] text-gray-500 flex items-center gap-1.5 truncate">
-                      <UIcon name="i-lucide-map-pin" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                      <span class="truncate">{{ addressLabel(rdv) }}</span>
-                    </p>
-                    <p v-if="getAssigneeLabel(rdv)" class="text-[13px] text-gray-500 flex items-center gap-1.5 truncate">
-                      <UIcon name="i-lucide-user-check" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                      <span class="truncate">{{ getAssigneeLabel(rdv) }}</span>
-                    </p>
-                  </div>
-                </div>
-
-                <div class="flex-shrink-0 flex items-center justify-center self-center pl-2">
-                  <UIcon name="i-lucide-chevron-right" class="w-5 h-5 text-gray-300 group-hover:text-gray-400 transition-colors" />
-                </div>
-              </NuxtLink>
-            </li>
-          </ul>
+          <DashboardUpcomingAppointmentsList
+            v-else
+            :appointments="appointments"
+            appointments-base-path="/pro"
+            variant="pro"
+          />
         </div>
       </section>
 
@@ -166,9 +122,9 @@
                   <p class="text-[16px] font-medium text-gray-900 dark:text-white truncate">
                     {{ patientDisplayName(patient) }}
                   </p>
-                  <p v-if="patient.email" class="text-[14px] text-gray-500 truncate mt-0.5 flex items-center gap-1.5">
-                    <UIcon name="i-lucide-mail" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                    {{ patient.email }}
+                  <p v-if="patientEmailLine(patient)" class="text-[14px] text-gray-500 mt-0.5 flex items-start gap-1.5">
+                    <UIcon name="i-lucide-mail" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                    <span class="line-clamp-2 break-words min-w-0">{{ patientEmailLine(patient) }}</span>
                   </p>
                   <p v-if="patient.phone" class="text-[13px] text-gray-500 truncate flex items-center gap-1.5">
                     <UIcon name="i-lucide-phone" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
@@ -206,6 +162,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { apiFetch } from '~/utils/api';
+import { fetchAllPatientsForDashboard } from '~/utils/fetch-all-patients';
+import { patientUiEmailLine } from '~/utils/patient-address-rdv';
+
+function patientEmailLine(p: any) {
+  return patientUiEmailLine({ email: p?.email, email_display: p?.email_display ?? null });
+}
 
 definePageMeta({
   layout: 'dashboard',
@@ -232,12 +194,7 @@ onMounted(async () => {
 // --- Fonctions Logiques ---
 async function fetchPatients() {
   try {
-    const response = await apiFetch(`/patients?created_by=${user.value?.id}&limit=500`, { method: 'GET' });
-    if (response?.success && Array.isArray(response.data)) {
-      patients.value = response.data;
-    } else {
-      patients.value = [];
-    }
+    patients.value = await fetchAllPatientsForDashboard(apiFetch);
   } catch (error) {
     console.error('Erreur chargement patients:', error);
     patients.value = [];
@@ -249,19 +206,7 @@ async function fetchPatients() {
 // -- Helpers Patients --
 const patientDisplayName = (item: any) => {
   const name = [item.first_name, item.last_name].filter(Boolean).join(' ').trim();
-  return name || item.email || 'Patient sans nom';
-};
-
-const safeDate = (v: unknown): string => {
-  if (typeof v === 'string') return v;
-  if (typeof v === 'number') return new Date(v).toISOString();
-  return '';
-};
-
-const formatDatePatient = (date: string) => {
-  if (!date) return '—';
-  const d = new Date(date);
-  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+  return name || patientEmailLine(item) || 'Patient sans nom';
 };
 
 /** Âge du patient à partir de birth_date (ex. "25 ans") */
@@ -278,74 +223,6 @@ const patientAge = (patient: any): string => {
   return age === 0 ? 'Moins d\'un an' : `${age} an${age > 1 ? 's' : ''}`;
 };
 
-// -- Helpers Rendez-vous --
-const formatDateRdv = (date: string | undefined) => {
-  if (!date) return 'Date non fixée';
-  const d = new Date(date);
-  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-};
-
-const getCreneauHoraireLabel = (rdv: any): string => {
-  const avail = typeof rdv.form_data?.availability === 'string' 
-    ? JSON.parse(rdv.form_data.availability || 'null') 
-    : rdv.form_data?.availability;
-
-  if (avail?.type === 'all_day') return 'Toute la journée';
-  if (avail?.type === 'custom' && avail.range?.length >= 2) {
-    return `${Math.floor(avail.range[0])}h00 - ${Math.floor(avail.range[1])}h00`;
-  }
-  
-  if (rdv.scheduled_at) {
-    const d = new Date(rdv.scheduled_at);
-    if (!isNaN(d.getTime())) return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  }
-  return 'Heure non précisée';
-};
-
-const addressLabel = (rdv: any): string => {
-  if (!rdv?.address) return '';
-  return typeof rdv.address === 'object' ? rdv.address.label : rdv.address;
-};
-
-const getAssigneeLabel = (rdv: any): string => {
-  if (rdv.type !== 'blood_test') return '';
-  const parts = [];
-  if (rdv.assigned_lab_display_name) {
-    parts.push(`${rdv.assigned_lab_role === 'subaccount' ? 'Sous-compte' : 'Labo'} ${rdv.assigned_lab_display_name}`);
-  }
-  if (rdv.assigned_to_display_name) {
-    parts.push(`Préleveur ${rdv.assigned_to_display_name}`);
-  }
-  return parts.join(' • ');
-};
-
-// -- Helpers Status UI (mêmes couleurs que /pro/appointments) --
-const getStatusColor = (status: string): 'error' | 'primary' | 'success' | 'info' | 'warning' | 'neutral' => {
-  const colors: Record<string, 'error' | 'primary' | 'success' | 'info' | 'warning' | 'neutral'> = {
-    pending: 'warning',
-    confirmed: 'info',
-    inProgress: 'primary',
-    completed: 'success',
-    canceled: 'error',
-    cancelled: 'error',
-    refused: 'error',
-    expired: 'neutral',
-  };
-  return colors[status] || 'neutral';
-};
-
-const getStatusLabel = (status: string) => {
-  const labels: Record<string, string> = {
-    pending: 'En attente',
-    confirmed: 'Confirmé',
-    inProgress: 'En cours',
-    completed: 'Terminé',
-    canceled: 'Annulé',
-    refused: 'Refusé',
-    expired: 'Expiré',
-  };
-  return labels[status] || status;
-};
 </script>
 
 <style scoped>

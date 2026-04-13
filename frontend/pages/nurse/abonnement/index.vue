@@ -10,7 +10,7 @@
         :variant="activeTabIndex === index ? 'solid' : 'ghost'"
         :color="activeTabIndex === index ? 'primary' : 'gray'"
         size="md"
-        @click="activeTabIndex = index"
+        :on-click="() => activeTabIndex = index"
       >
         <UIcon :name="tab.icon" class="w-4 h-4 mr-2" />
         {{ tab.label }}
@@ -47,7 +47,7 @@
             </li>
             <li class="flex items-start gap-2">
               <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Jusqu'à 3 types de soins.</span>
+              <span>Tous les types de soins.</span>
             </li>
           </ul>
         </UCard>
@@ -115,7 +115,7 @@
         <p class="text-gray-600 dark:text-gray-400 mb-6">
           Vous n'avez pas encore d'abonnement actif. Passez à l'offre Pro dans l'onglet « Offres » pour débloquer tous les avantages (rayon 100 km, rendez-vous illimités, avis, statistiques).
         </p>
-        <UButton variant="outline" size="lg" @click="activeTabIndex = 0">
+        <UButton variant="outline" size="lg" :on-click="() => activeTabIndex = 0">
           Voir les offres
         </UButton>
       </UCard>

@@ -5,7 +5,7 @@
       description="Gérez les types de soins : nom, type (prise de sang ou soins infirmiers), activation et suppression."
     >
       <template #actions>
-        <UButton color="primary" icon="i-lucide-plus" size="md" @click="openCreateModal">
+        <UButton color="primary" icon="i-lucide-plus" size="md" :on-click="openCreateModal">
           Nouvelle catégorie
         </UButton>
       </template>
@@ -22,7 +22,7 @@
           :color="typeFilter === opt.value ? 'primary' : 'neutral'"
           size="sm"
           class="rounded-lg"
-          @click="typeFilter = opt.value"
+          :on-click="() => typeFilter = opt.value"
         >
           {{ opt.label }}
         </UButton>
@@ -112,7 +112,7 @@
                 icon="i-lucide-pencil"
                 aria-label="Modifier"
                 :disabled="saving"
-                @click="editCategory(cat)"
+                :on-click="() => editCategory(cat)"
               />
               <UButton
                 size="xs"
@@ -122,7 +122,7 @@
                 aria-label="Supprimer"
                 :loading="deletingId === cat.id"
                 :disabled="togglingId === cat.id"
-                @click="confirmDelete(cat)"
+                :on-click="() => confirmDelete(cat)"
               />
             </div>
           </div>
@@ -133,9 +133,9 @@
     <!-- Modal Créer / Modifier -->
     <ClientOnly>
       <Teleport to="body">
-        <UModal v-model:open="showCreateModal" :ui="{ content: 'max-w-lg w-full' }">
+        <UModal v-model:open="showCreateModal" :ui="{ content: 'max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden' }">
           <template #content="{ close }">
-            <UCard>
+            <UCard :ui="{ root: 'flex flex-col max-h-full overflow-hidden', body: 'flex-1 min-h-0 overflow-y-auto' }">
               <template #header>
                 <div class="flex items-start justify-between gap-4">
                   <div>
@@ -146,7 +146,7 @@
                       {{ editingCategory ? 'Modifiez le nom, le type et l’icône du soin.' : 'Définissez le nom du soin, le type et l’icône affichée.' }}
                     </p>
                   </div>
-                  <UButton variant="ghost" color="neutral" icon="i-lucide-x" size="sm" aria-label="Fermer" @click="close()" />
+                  <UButton variant="ghost" color="neutral" icon="i-lucide-x" size="sm" aria-label="Fermer" :on-click="close" />
                 </div>
               </template>
               <UForm :state="categoryForm" @submit="saveCategory" class="space-y-4">
@@ -174,7 +174,7 @@
                       :variant="categoryForm.type === t.value ? 'solid' : 'outline'"
                       :color="categoryForm.type === t.value ? 'primary' : 'neutral'"
                       size="md"
-                      @click="categoryForm.type = t.value"
+                      :on-click="() => categoryForm.type = t.value"
                     >
                       {{ t.label }}
                     </UButton>
@@ -216,8 +216,74 @@
                     <span class="text-sm text-muted">{{ categoryForm.is_active ? 'Visible (actif)' : 'Masquée (inactif)' }}</span>
                   </div>
                 </UFormField>
+
+                <!-- Sous-choix (options) -->
+                <div class="space-y-3 pt-4 border-t border-default">
+                  <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium text-foreground">Sous-choix (options)</label>
+                    <UButton
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      icon="i-lucide-plus"
+                      :on-click="addCategoryOption"
+                    >
+                      Ajouter une option
+                    </UButton>
+                  </div>
+                  <p class="text-xs text-muted">
+                    Champs affichés dans la section du soin lors de la prise de rendez-vous (ex. type de plaie, localisation).
+                  </p>
+                  <div v-for="(opt, idx) in categoryForm.options" :key="idx" class="flex flex-wrap gap-2 items-start p-3 rounded-lg bg-muted/30 dark:bg-muted/20">
+                    <UInput
+                      v-model="opt.option_key"
+                      placeholder="Clé (ex. wound_type)"
+                      size="sm"
+                      class="w-32"
+                    />
+                    <UInput
+                      v-model="opt.label"
+                      placeholder="Libellé (ex. Type de plaie)"
+                      size="sm"
+                      class="flex-1 min-w-32"
+                    />
+                    <USelect
+                      v-model="opt.field_type"
+                      :items="[
+                        { label: 'Liste déroulante', value: 'select' },
+                        { label: 'Texte', value: 'text' },
+                        { label: 'Nombre', value: 'number' },
+                      ]"
+                      value-key="value"
+                      size="sm"
+                      class="w-36"
+                    />
+                    <UTextarea
+                      v-if="opt.field_type === 'select'"
+                      v-model="opt.optionsText"
+                      placeholder="Une option par ligne (ex. Simple, Complexe, Autre)"
+                      :rows="2"
+                      size="sm"
+                      class="flex-1 min-w-40"
+                    />
+                    <div class="flex items-center gap-2 shrink-0">
+                      <USwitch v-model="opt.is_required" />
+                      <span class="text-xs text-muted">Requis</span>
+                    </div>
+                    <UButton
+                      type="button"
+                      variant="ghost"
+                      color="error"
+                      size="xs"
+                      icon="i-lucide-trash-2"
+                      aria-label="Supprimer"
+                      :on-click="() => removeCategoryOption(idx)"
+                    />
+                  </div>
+                </div>
+
                 <div class="flex justify-end gap-2 pt-4 border-t border-default">
-                  <UButton variant="ghost" color="neutral" @click="close()">
+                  <UButton variant="ghost" color="neutral" :on-click="close">
                     Annuler
                   </UButton>
                   <UButton type="submit" color="primary" :loading="saving">
@@ -251,10 +317,10 @@
           </p>
           <template #footer>
             <div class="flex justify-end gap-2">
-              <UButton variant="ghost" color="neutral" @click="showDeleteModal = false">
+              <UButton variant="ghost" color="neutral" :on-click="() => showDeleteModal = false">
                 Annuler
               </UButton>
-              <UButton color="error" :loading="deletingId !== null" @click="doDelete">
+              <UButton color="error" :loading="deletingId !== null" :on-click="doDelete">
                 Supprimer
               </UButton>
             </div>
@@ -370,13 +436,57 @@ const iconSelectItems = computed(() => {
   return [...lucide, ...medical, ...health, ...covid];
 });
 
-const categoryForm = ref({
+const categoryForm = ref<{
+  name: string;
+  description: string;
+  type: string;
+  icon: string;
+  is_active: boolean;
+  options: Array<{ option_key: string; label: string; field_type: string; options?: { value: string; label: string }[]; optionsText?: string; is_required: boolean }>;
+}>({
   name: '',
   description: '',
   type: 'blood_test',
   icon: '',
   is_active: true,
+  options: [],
 });
+
+function addCategoryOption() {
+  categoryForm.value.options.push({
+    option_key: '',
+    label: '',
+    field_type: 'select',
+    options: [],
+    optionsText: '',
+    is_required: false,
+  });
+}
+
+function removeCategoryOption(idx: number) {
+  categoryForm.value.options.splice(idx, 1);
+}
+
+function optionsTextToArray(text: string): { value: string; label: string }[] {
+  if (!text || typeof text !== 'string') return [];
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const colonIdx = line.indexOf(':');
+      if (colonIdx > 0) {
+        return { value: line.slice(0, colonIdx).trim().replace(/\s+/g, '_').toLowerCase(), label: line.slice(colonIdx + 1).trim() };
+      }
+      const slug = line.replace(/\s+/g, '_').toLowerCase().replace(/[^a-z0-9_]/g, '');
+      return { value: slug || line, label: line };
+    });
+}
+
+function optionsArrayToText(opts: { value: string; label: string }[] | null | undefined): string {
+  if (!opts || !Array.isArray(opts)) return '';
+  return opts.map((o) => (o.value === o.label ? o.label : `${o.value}:${o.label}`)).join('\n');
+}
 
 const filteredCategories = computed(() => {
   if (typeFilter.value === 'all') return categories.value;
@@ -395,6 +505,7 @@ const openCreateModal = () => {
     type: 'blood_test',
     icon: '',
     is_active: true,
+    options: [],
   };
   showCreateModal.value = true;
 };
@@ -416,12 +527,21 @@ async function fetchCategories() {
 
 function editCategory(category: any) {
   editingCategory.value = category;
+  const opts = (category.options || []).map((o: any) => ({
+    option_key: o.option_key || '',
+    label: o.label || '',
+    field_type: o.field_type || 'select',
+    options: o.options || [],
+    optionsText: optionsArrayToText(o.options),
+    is_required: !!o.is_required,
+  }));
   categoryForm.value = {
     name: category.name,
     description: category.description || '',
     type: category.type,
     icon: category.icon || '',
     is_active: category.is_active,
+    options: opts.length ? opts : [],
   };
   showCreateModal.value = true;
 }
@@ -478,12 +598,24 @@ async function saveCategory() {
   }
   saving.value = true;
   try {
+    const optionsPayload = (categoryForm.value.options || [])
+      .filter((o) => o.option_key?.trim() && o.label?.trim())
+      .map((o, idx) => ({
+        option_key: o.option_key.trim(),
+        label: o.label.trim(),
+        field_type: o.field_type || 'select',
+        options: o.field_type === 'select' ? optionsTextToArray(o.optionsText || '') : undefined,
+        is_required: !!o.is_required,
+        sort_order: idx,
+      }));
+
     const body = {
       name: categoryForm.value.name.trim(),
       description: categoryForm.value.description?.trim() || '',
       type: categoryForm.value.type,
       icon: categoryForm.value.icon || null,
       is_active: !!categoryForm.value.is_active,
+      options: optionsPayload,
     };
     if (editingCategory.value) {
       const response = await apiFetch(`/categories/${editingCategory.value.id}`, { method: 'PUT', body });

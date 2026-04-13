@@ -34,6 +34,11 @@ Thumbs.db
 # Uploads (fichiers médicaux, ne pas versionner)
 uploads/
 
+# Migration legacy (données sensibles, ne pas versionner)
+data/legacy-export.json
+data/legacy-uploads/
+data/*.json
+
 
 
 

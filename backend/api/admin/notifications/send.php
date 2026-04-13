@@ -25,7 +25,7 @@ $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
 $roleMiddleware = new RoleMiddleware();
-$roleMiddleware->handle($user, ['super_admin', 'admin']);
+$roleMiddleware->handle($user, ['super_admin']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

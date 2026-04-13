@@ -65,6 +65,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             exit;
         }
 
+        // Charger les options (sous-choix)
+        $optStmt = $db->prepare('
+            SELECT option_key, label, field_type, options, is_required, sort_order
+            FROM care_category_options
+            WHERE care_category_id = ?
+            ORDER BY sort_order, id
+        ');
+        $optStmt->execute([$id]);
+        $options = [];
+        while ($row = $optStmt->fetch(PDO::FETCH_ASSOC)) {
+            $row['options'] = isset($row['options']) && $row['options'] !== null
+                ? (is_string($row['options']) ? json_decode($row['options'], true) : $row['options'])
+                : null;
+            $row['is_required'] = (bool) ($row['is_required'] ?? false);
+            $options[] = $row;
+        }
+        $category['options'] = $options;
+
         echo json_encode([
             'success' => true,
             'data' => $category,
@@ -122,18 +140,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $id
         ]);
 
+        // Remplacer les options (sous-choix) si fournies
+        if (array_key_exists('options', $data)) {
+            $db->prepare('DELETE FROM care_category_options WHERE care_category_id = ?')->execute([$id]);
+            if (!empty($data['options']) && is_array($data['options'])) {
+                $optInsert = $db->prepare('
+                    INSERT INTO care_category_options (id, care_category_id, option_key, label, field_type, options, is_required, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ');
+                $sortOrder = 0;
+                foreach ($data['options'] as $opt) {
+                    if (empty($opt['option_key']) || empty($opt['label']) || empty($opt['field_type'])) {
+                        continue;
+                    }
+                    $optId = bin2hex(random_bytes(18));
+                    $optOptions = isset($opt['options']) && is_array($opt['options'])
+                        ? json_encode($opt['options'])
+                        : (isset($opt['options']) && is_string($opt['options']) ? $opt['options'] : null);
+                    $optInsert->execute([
+                        $optId,
+                        $id,
+                        $opt['option_key'],
+                        $opt['label'],
+                        $opt['field_type'],
+                        $optOptions,
+                        !empty($opt['is_required']) ? 1 : 0,
+                        $opt['sort_order'] ?? $sortOrder++
+                    ]);
+                }
+            }
+        }
+
         $logger->log($user['user_id'], $user['role'], 'update', 'care_category', $id, $data);
+
+        $updated = [
+            'id' => $id,
+            'name' => $data['name'] ?? $existing['name'],
+            'description' => $data['description'] ?? $existing['description'],
+            'type' => $data['type'] ?? $existing['type'],
+            'icon' => array_key_exists('icon', $data) ? $data['icon'] : $existing['icon'],
+            'is_active' => (bool) $isActive,
+        ];
+        $optStmt = $db->prepare('SELECT option_key, label, field_type, options, is_required, sort_order FROM care_category_options WHERE care_category_id = ? ORDER BY sort_order, id');
+        $optStmt->execute([$id]);
+        $options = [];
+        while ($row = $optStmt->fetch(PDO::FETCH_ASSOC)) {
+            $row['options'] = isset($row['options']) && $row['options'] !== null ? (is_string($row['options']) ? json_decode($row['options'], true) : $row['options']) : null;
+            $row['is_required'] = (bool) ($row['is_required'] ?? false);
+            $options[] = $row;
+        }
+        $updated['options'] = $options;
 
         echo json_encode([
             'success' => true,
-            'data' => [
-                'id' => $id,
-                'name' => $data['name'] ?? $existing['name'],
-                'description' => $data['description'] ?? $existing['description'],
-                'type' => $data['type'] ?? $existing['type'],
-                'icon' => array_key_exists('icon', $data) ? $data['icon'] : $existing['icon'],
-                'is_active' => (bool) $isActive
-            ]
+            'data' => $updated,
         ]);
     } catch (Exception $e) {
         http_response_code(500);

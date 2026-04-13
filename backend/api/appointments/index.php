@@ -1,21 +1,36 @@
 <?php
 
 header('Content-Type: application/json');
+require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../../config/cors.php';
 
+/** Logs verbeux : désactivés si APP_ENV=production (après chargement .env par config/database.php). */
+function appointmentsVerboseLoggingEnabled(): bool
+{
+    $env = strtolower(trim((string) ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: '')));
+    return $env !== 'production';
+}
+
 // Fonction de logging
 function logAppointment($message, $data = null) {
-    $logFile = __DIR__ . '/../../logs/appointments.log';
+    if (!appointmentsVerboseLoggingEnabled()) {
+        return;
+    }
+    $logDir = __DIR__ . '/../../logs';
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0755, true);
+    }
+    $logFile = $logDir . '/appointments.log';
     $timestamp = date('Y-m-d H:i:s');
     $logMessage = "[$timestamp] $message";
     if ($data !== null) {
         $logMessage .= "\n" . print_r($data, true);
     }
     $logMessage .= "\n" . str_repeat('-', 80) . "\n";
-    file_put_contents($logFile, $logMessage, FILE_APPEND);
+    @file_put_contents($logFile, $logMessage, FILE_APPEND);
 }
 
 // CORS
@@ -69,7 +84,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $type = $_GET['type'] ?? null;
     $page = (int) ($_GET['page'] ?? 1);
     $limit = (int) ($_GET['limit'] ?? 20);
+    // Plafond large : la pagination côté client reste la référence ; évite de tronquer des listes légitimes.
+    $limit = min(max($limit, 1), 500);
     $offset = ($page - 1) * $limit;
+    $dateFrom = !empty($_GET['date_from']) ? trim((string) $_GET['date_from']) : null;
+    $dateTo = !empty($_GET['date_to']) ? trim((string) $_GET['date_to']) : null;
     
     logAppointment('Paramètres GET', [
         'status' => $status,
@@ -112,7 +131,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 pr.phone_dek as relative_phone_dek,
                 pr.relationship_type as relative_relationship_type,
                 cc.name as category_name,
-                cc.type as category_type
+                cc.type as category_type,
+                cc.icon as category_icon
             FROM appointments a
             LEFT JOIN patient_relatives pr ON a.relative_id = pr.id
             LEFT JOIN care_categories cc ON a.category_id = cc.id
@@ -124,7 +144,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             SELECT
                 a.*,
                 cc.name as category_name,
-                cc.type as category_type
+                cc.type as category_type,
+                cc.icon as category_icon
             FROM appointments a
             LEFT JOIN care_categories cc ON a.category_id = cc.id
             WHERE 1=1
@@ -148,7 +169,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $sql .= ' AND a.type = ?';
         $params[] = $type;
     }
-    
+    if ($dateFrom) {
+        $sql .= ' AND a.scheduled_at >= ?';
+        $params[] = $dateFrom;
+    }
+    if ($dateTo) {
+        $sql .= ' AND a.scheduled_at <= ?';
+        $params[] = $dateTo;
+    }
+
+    $patientIdFilter = !empty($_GET['patient_id']) ? trim((string) $_GET['patient_id']) : null;
+    if ($patientIdFilter !== null && $patientIdFilter !== '') {
+        $sql .= ' AND a.patient_id = ?';
+        $params[] = $patientIdFilter;
+    }
+
     // Filtrer selon le rôle de l'utilisateur (super_admin peut passer user_id pour voir les RDV d'un user)
     if ($user) {
         $role = $user['role'];
@@ -169,36 +204,141 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $sql .= ' AND a.patient_id = ?';
             $params[] = $userId;
         } elseif ($role === 'nurse') {
-            logAppointment('Filtrage pour infirmier', ['user_id' => $userId, 'status' => $status]);
-            $sql .= " AND a.type = 'nursing'";
-            // Assignés à moi OU offerts à moi (pending, dans appointment_offers) — même logique que les labs
-            $sql .= " AND (a.assigned_nurse_id = ? OR (a.assigned_nurse_id IS NULL AND a.status = 'pending' AND EXISTS (SELECT 1 FROM appointment_offers o WHERE o.appointment_id = a.id AND o.profile_id = ?)))";
-            $params[] = $userId;
-            $params[] = $userId;
+            $nurseTab = isset($_GET['nurse_tab']) ? trim((string) $_GET['nurse_tab']) : '';
+            $nurseSegment = isset($_GET['nurse_segment']) ? trim((string) $_GET['nurse_segment']) : '';
+            // Alias anciennes URL
+            if ($nurseSegment === 'dispatches') {
+                $nurseSegment = 'tous';
+            }
+            if ($nurseSegment === 'offres') {
+                $nurseSegment = 'en_attente';
+            }
+            if ($nurseSegment === 'tour') {
+                $nurseSegment = 'acceptes';
+            }
+            if ($nurseTab === 'demandes') {
+                $nurseSegment = 'envoyes';
+            }
+            logAppointment('Filtrage pour infirmier', ['user_id' => $userId, 'status' => $status, 'nurse_tab' => $nurseTab, 'nurse_segment' => $nurseSegment]);
 
-            // Filtrer selon les préférences de catégories de l'infirmier
-            // Si l'infirmier n'a pas de préférences, accepter tous les rendez-vous
-            // Si l'infirmier a des préférences, seulement ceux qui correspondent
-            $prefsCheckSql = 'SELECT COUNT(*) as count FROM nurse_category_preferences WHERE nurse_id = ? AND is_enabled = TRUE';
-            $prefsStmt = $db->prepare($prefsCheckSql);
-            $prefsStmt->execute([$userId]);
-            $prefsCount = $prefsStmt->fetch(PDO::FETCH_ASSOC)['count'];
-            
-            if ($prefsCount > 0) {
-                // L'infirmier a des préférences, filtrer selon celles-ci
-                $sql .= ' AND (
-                    a.category_id IS NULL OR
-                    a.category_id IN (
-                        SELECT category_id
-                        FROM nurse_category_preferences
-                        WHERE nurse_id = ? AND is_enabled = TRUE
-                    )
-                )';
+            if ($nurseSegment === 'envoyes') {
+                $sql .= " AND a.type = 'blood_test' AND a.created_by = ?";
                 $params[] = $userId;
-                logAppointment('Filtrage par préférences de catégories', ['prefs_count' => $prefsCount]);
+            } elseif ($nurseSegment === 'en_attente') {
+                $sql .= " AND a.type = 'nursing' AND a.status = 'pending' AND a.assigned_nurse_id IS NULL AND EXISTS (SELECT 1 FROM appointment_offers o2 WHERE o2.appointment_id = a.id AND o2.profile_id = ?)";
+                $params[] = $userId;
+            } elseif ($nurseSegment === 'acceptes') {
+                $sql .= " AND a.type = 'nursing' AND a.assigned_nurse_id = ? AND a.status IN ('confirmed','inProgress','planned','completed')";
+                $params[] = $userId;
+            } elseif ($nurseSegment === 'historique') {
+                $sql .= " AND a.type = 'nursing' AND a.assigned_nurse_id = ? AND a.status IN ('completed','canceled','cancelled','refused')";
+                $params[] = $userId;
+            } elseif ($nurseSegment === 'relais') {
+                // Relais : créés par l’infirmier, encore à prendre par un confrère — pas ceux qu’il a lui-même redispatchés
+                $sql .= " AND a.type = 'nursing' AND a.created_by = ? AND a.status = 'pending' AND (a.assigned_nurse_id IS NULL OR a.assigned_nurse_id <> ?)
+                    AND NOT EXISTS (
+                        SELECT 1 FROM appointment_status_updates u
+                        WHERE u.appointment_id = a.id AND u.actor_id = ? AND u.note LIKE ?
+                    )";
+                $params[] = $userId;
+                $params[] = $userId;
+                $params[] = $userId;
+                $params[] = '%redispatch%';
+            } elseif ($nurseTab === 'soins' && ($nurseSegment === '' || $nurseSegment === 'tous')) {
+                // Mes soins : assignés, offres entrantes, créations — sauf RDV remis en pool par vous (plus d’offre à vous)
+                $sql .= " AND (
+                    (a.type = 'nursing' AND (
+                        a.assigned_nurse_id = ?
+                        OR (a.assigned_nurse_id IS NULL AND a.status = 'pending' AND EXISTS (SELECT 1 FROM appointment_offers o WHERE o.appointment_id = a.id AND o.profile_id = ?))
+                        OR (
+                            a.created_by = ?
+                            AND (a.assigned_nurse_id IS NULL OR a.assigned_nurse_id = ?)
+                            AND NOT (
+                                a.status = 'pending'
+                                AND a.assigned_nurse_id IS NULL
+                                AND EXISTS (
+                                    SELECT 1 FROM appointment_status_updates u
+                                    WHERE u.appointment_id = a.id AND u.actor_id = ? AND u.note LIKE ?
+                                )
+                            )
+                        )
+                    ))
+                    OR (a.type = 'blood_test' AND a.created_by = ?)
+                )";
+                $params[] = $userId;
+                $params[] = $userId;
+                $params[] = $userId;
+                $params[] = $userId;
+                $params[] = $userId;
+                $params[] = '%redispatch%';
+                $params[] = $userId;
             } else {
-                // Pas de préférences, accepter tous les rendez-vous
-                logAppointment('Aucune préférence de catégorie, tous les rendez-vous acceptés');
+                // Défaut (aucun nurse_tab) : idem exclusion redispatch
+                $sql .= " AND (
+                    (a.type = 'nursing' AND (
+                        a.assigned_nurse_id = ?
+                        OR (a.assigned_nurse_id IS NULL AND a.status = 'pending' AND EXISTS (SELECT 1 FROM appointment_offers o WHERE o.appointment_id = a.id AND o.profile_id = ?))
+                        OR (
+                            a.created_by = ?
+                            AND (a.assigned_nurse_id IS NULL OR a.assigned_nurse_id = ?)
+                            AND NOT (
+                                a.status = 'pending'
+                                AND a.assigned_nurse_id IS NULL
+                                AND EXISTS (
+                                    SELECT 1 FROM appointment_status_updates u
+                                    WHERE u.appointment_id = a.id AND u.actor_id = ? AND u.note LIKE ?
+                                )
+                            )
+                        )
+                    ))
+                    OR (a.type = 'blood_test' AND a.created_by = ?)
+                )";
+                $params[] = $userId;
+                $params[] = $userId;
+                $params[] = $userId;
+                $params[] = $userId;
+                $params[] = $userId;
+                $params[] = '%redispatch%';
+                $params[] = $userId;
+            }
+
+            // Infirmier : n’afficher aucun RDV où cet utilisateur a redispatché (hors vue « Dispatches », supprimée)
+            $sql .= " AND NOT EXISTS (
+                SELECT 1 FROM appointment_status_updates u
+                WHERE u.appointment_id = a.id AND u.actor_id = ? AND u.note LIKE ?
+            )";
+            $params[] = $userId;
+            $params[] = '%redispatch%';
+
+            // Filtrer selon les préférences de catégories (sauf prises de sang « envoyées » = uniquement blood_test)
+            // « Mes demandes » (en_attente) : ne pas filtrer par catégorie — sinon une offre reçue (lien partage / zone) peut être invisible.
+            if ($nurseSegment !== 'envoyes' && $nurseSegment !== 'en_attente') {
+                $prefsCheckSql = 'SELECT COUNT(*) as count FROM nurse_category_preferences WHERE nurse_id = ? AND is_enabled = TRUE';
+                $prefsStmt = $db->prepare($prefsCheckSql);
+                $prefsStmt->execute([$userId]);
+                $prefsCount = $prefsStmt->fetch(PDO::FETCH_ASSOC)['count'];
+
+                if ($prefsCount > 0) {
+                    // Toujours montrer les soins créés par l’infirmier (lot bilan+pansement, etc.) même si la catégorie
+                    // n’est pas cochée dans les préférences ou si assigned_nurse_id n’est pas encore posé en base.
+                    $sql .= ' AND (
+                        a.type = \'blood_test\' OR
+                        a.category_id IS NULL OR
+                        a.category_id IN (
+                            SELECT category_id
+                            FROM nurse_category_preferences
+                            WHERE nurse_id = ? AND is_enabled = TRUE
+                        )
+                        OR (a.type = \'nursing\' AND a.assigned_nurse_id = ?)
+                        OR (a.type = \'nursing\' AND a.created_by = ? AND a.created_by_role = \'nurse\')
+                    )';
+                    $params[] = $userId;
+                    $params[] = $userId;
+                    $params[] = $userId;
+                    logAppointment('Filtrage par préférences de catégories', ['prefs_count' => $prefsCount]);
+                } else {
+                    logAppointment('Aucune préférence de catégorie, tous les rendez-vous acceptés');
+                }
             }
         } elseif ($role === 'lab') {
             // Lab : RDV assignés à l'équipe OU RDV offerts (pending) à l'équipe — prises de sang uniquement
@@ -211,10 +351,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $placeholders = implode(',', array_fill(0, count($teamIds), '?'));
             $sql .= " AND a.type = 'blood_test' AND (a.assigned_lab_id IN ($placeholders) OR (a.assigned_lab_id IS NULL AND a.status = 'pending' AND EXISTS (SELECT 1 FROM appointment_offers o WHERE o.appointment_id = a.id AND o.profile_id IN ($placeholders))))";
             $params = array_merge($params, $teamIds, $teamIds);
+
+            // Filtres optionnels (UI lab : préleveur / sous-compte) — appliqués en SQL pour que total + pagination soient corrects.
+            $fl = !empty($_GET['filter_assigned_lab_id']) ? trim((string) $_GET['filter_assigned_lab_id']) : '';
+            if ($fl !== '' && in_array($fl, $teamIds, true)) {
+                $sql .= ' AND a.assigned_lab_id = ?';
+                $params[] = $fl;
+            }
+            $fa = !empty($_GET['filter_assigned_to']) ? trim((string) $_GET['filter_assigned_to']) : '';
+            if ($fa !== '') {
+                $chkPrel = $db->prepare("SELECT 1 FROM profiles WHERE id = ? AND lab_id = ? AND role = 'preleveur' LIMIT 1");
+                $chkPrel->execute([$fa, $userId]);
+                if ($chkPrel->fetchColumn()) {
+                    $sql .= ' AND a.assigned_to = ?';
+                    $params[] = $fa;
+                }
+            }
+
+            $labCatTable = $db->query("SHOW TABLES LIKE 'lab_category_preferences'");
+            if ($labCatTable && $labCatTable->rowCount() > 0) {
+                $labCatStmt = $db->prepare('SELECT COUNT(*) FROM lab_category_preferences WHERE lab_id = ? AND is_enabled = TRUE');
+                $labCatStmt->execute([$userId]);
+                $labCatCount = (int) $labCatStmt->fetchColumn();
+                if ($labCatCount > 0) {
+                    $sql .= ' AND (
+                        a.category_id IS NULL OR
+                        a.category_id IN (
+                            SELECT category_id FROM lab_category_preferences
+                            WHERE lab_id = ? AND is_enabled = TRUE
+                        )
+                        OR a.assigned_lab_id IS NOT NULL
+                    )';
+                    $params[] = $userId;
+                }
+            }
         } elseif ($role === 'subaccount') {
             $sql .= " AND a.type = 'blood_test' AND (a.assigned_lab_id = ? OR (a.assigned_lab_id IS NULL AND a.status = 'pending' AND EXISTS (SELECT 1 FROM appointment_offers o WHERE o.appointment_id = a.id AND o.profile_id = ?)))";
             $params[] = $userId;
             $params[] = $userId;
+
+            $labIdForSub = null;
+            $subLabStmt = $db->prepare('SELECT lab_id FROM profiles WHERE id = ? LIMIT 1');
+            $subLabStmt->execute([$userId]);
+            $subLabRow = $subLabStmt->fetch(PDO::FETCH_ASSOC);
+            if ($subLabRow && !empty($subLabRow['lab_id'])) {
+                $labIdForSub = (string) $subLabRow['lab_id'];
+            }
+            $faSub = !empty($_GET['filter_assigned_to']) ? trim((string) $_GET['filter_assigned_to']) : '';
+            if ($faSub !== '' && $labIdForSub) {
+                $chkPrelSub = $db->prepare("SELECT 1 FROM profiles WHERE id = ? AND lab_id = ? AND role = 'preleveur' LIMIT 1");
+                $chkPrelSub->execute([$faSub, $labIdForSub]);
+                if ($chkPrelSub->fetchColumn()) {
+                    $sql .= ' AND a.assigned_to = ?';
+                    $params[] = $faSub;
+                }
+            }
+
+            $labCatTableSub = $db->query("SHOW TABLES LIKE 'lab_category_preferences'");
+            if ($labCatTableSub && $labCatTableSub->rowCount() > 0) {
+                $labCatStmtSub = $db->prepare('SELECT COUNT(*) FROM lab_category_preferences WHERE lab_id = ? AND is_enabled = TRUE');
+                $labCatStmtSub->execute([$userId]);
+                $labCatCountSub = (int) $labCatStmtSub->fetchColumn();
+                if ($labCatCountSub > 0) {
+                    $sql .= ' AND (
+                        a.category_id IS NULL OR
+                        a.category_id IN (
+                            SELECT category_id FROM lab_category_preferences
+                            WHERE lab_id = ? AND is_enabled = TRUE
+                        )
+                        OR a.assigned_lab_id IS NOT NULL
+                    )';
+                    $params[] = $userId;
+                }
+            }
         } elseif ($role === 'preleveur') {
             // Les préleveurs sont assignés via assigned_lab_id (ils appartiennent à un labo)
             // Pour l'instant, on utilise assigned_to comme fallback pour compatibilité
@@ -223,8 +432,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $params[] = $userId;
             $params[] = $userId;
         } elseif ($role === 'pro') {
-            // Pro : RDV créés par ce professionnel (prise en charge pour ses patients)
-            $sql .= ' AND a.created_by = ?';
+            // Pro : RDV créés par ce professionnel OU patients liés via patient_professional_access (PPA)
+            $sql .= ' AND (
+                a.created_by = ?
+                OR EXISTS (
+                    SELECT 1 FROM patient_professional_access ppa
+                    WHERE ppa.patient_id = a.patient_id AND ppa.professional_id = ?
+                )
+            )';
+            $params[] = $userId;
             $params[] = $userId;
         }
         // super_admin sans user_id voit tout (pas de filtre supplémentaire)
@@ -270,7 +486,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Récupérer les résultats avec pagination
     // Utiliser des valeurs entières directement dans la requête pour LIMIT et OFFSET
     // car certains drivers PDO ne supportent pas les placeholders pour LIMIT/OFFSET
-    $sql .= ' ORDER BY scheduled_at DESC LIMIT ' . (int)$limit . ' OFFSET ' . (int)$offset;
+    // Infirmier : trier par date de création d’abord — un lot bilan + soin a souvent des scheduled_at différents,
+    // avec ORDER BY scheduled_at seul le soin peut se retrouver loin (ou sur une autre page) alors qu’il vient d’être créé.
+    $orderBy = ' ORDER BY a.scheduled_at DESC';
+    if ($user && ($user['role'] ?? '') === 'nurse') {
+        $orderBy = ' ORDER BY a.created_at DESC, a.scheduled_at DESC';
+    }
+    $sql .= $orderBy . ' LIMIT ' . (int)$limit . ' OFFSET ' . (int)$offset;
     
     logAppointment('Exécution de la requête principale', ['sql' => $sql, 'params' => $params]);
     
@@ -345,29 +567,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         exit;
     }
     
-    // Déchiffrer les données si utilisateur authentifié
+    // Déchiffrer les données (éviter N+1 : decryptRowForList au lieu de getById)
     $decryptedAppointments = [];
-    foreach ($appointments as $appointment) {
-        if ($user) {
+    if ($user) {
+        foreach ($appointments as $appointment) {
             try {
-                $decrypted = $appointmentModel->getById($appointment['id'], $user['user_id'], $user['role']);
-                if ($decrypted) {
-                    $decryptedAppointments[] = $decrypted;
-                }
+                $decrypted = $appointmentModel->decryptRowForList($appointment, $user['user_id'], $user['role']);
+                $decryptedAppointments[] = $decrypted;
             } catch (Exception $e) {
-                // Logger l'erreur mais continuer avec les autres rendez-vous
-                error_log('Erreur lors du déchiffrement du rendez-vous ' . $appointment['id'] . ': ' . $e->getMessage());
-                // Ajouter quand même les données de base sans déchiffrement
+                error_log('Erreur déchiffrement RDV ' . $appointment['id'] . ': ' . $e->getMessage());
                 $decryptedAppointments[] = [
                     'id' => $appointment['id'],
                     'type' => $appointment['type'],
                     'status' => $appointment['status'],
                     'scheduled_at' => $appointment['scheduled_at'],
+                    'address' => null,
+                    'form_data' => [],
                     'error' => 'Erreur de déchiffrement',
                 ];
             }
-        } else {
-            // Sans authentification, retourner seulement les champs non sensibles
+        }
+        // Batch lookup des noms d'affichage (lab, nurse, préleveur)
+        $userIds = [];
+        foreach ($decryptedAppointments as $apt) {
+            if (!empty($apt['assigned_lab_id'])) $userIds[] = $apt['assigned_lab_id'];
+            if (!empty($apt['assigned_nurse_id'])) $userIds[] = $apt['assigned_nurse_id'];
+            if (!empty($apt['assigned_to'])) $userIds[] = $apt['assigned_to'];
+        }
+        if (!empty($userIds)) {
+            require_once __DIR__ . '/../../models/User.php';
+            $userModel = new User();
+            $displayNames = $userModel->getDisplayNamesByIds($userIds);
+            foreach ($decryptedAppointments as &$apt) {
+                $apt['assigned_lab_display_name'] = $displayNames[$apt['assigned_lab_id'] ?? ''] ?? null;
+                $apt['assigned_nurse_display_name'] = $displayNames[$apt['assigned_nurse_id'] ?? ''] ?? null;
+                $apt['assigned_to_display_name'] = $displayNames[$apt['assigned_to'] ?? ''] ?? null;
+            }
+            unset($apt);
+        }
+    } else {
+        foreach ($appointments as $appointment) {
             $decryptedAppointments[] = [
                 'id' => $appointment['id'],
                 'type' => $appointment['type'],
@@ -377,11 +616,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
     }
     
+    $returnedCount = count($decryptedAppointments);
+    // COUNT SQL incohérent (total=0 alors qu’il y a des lignes) : borne minimale pour l’UI.
+    $countIncoherent = ($total === 0 && $returnedCount > 0);
+    if ($countIncoherent) {
+        $total = ($page - 1) * $limit + $returnedCount;
+    }
+    $hasMore = false;
+    if ($limit > 0 && $returnedCount >= $limit) {
+        if ($countIncoherent) {
+            // Page pleine alors que le comptage global était à 0 : il peut exister d’autres pages.
+            $hasMore = true;
+        } else {
+            $hasMore = ((($page - 1) * $limit + $returnedCount) < $total);
+        }
+    }
+
     logAppointment('=== FIN GET /appointments - SUCCES ===', [
         'total' => $total,
-        'returned' => count($decryptedAppointments)
+        'returned' => $returnedCount,
+        'has_more' => $hasMore,
     ]);
     
+    $pages = $limit > 0 ? (int) ceil($total / $limit) : 0;
     echo json_encode([
         'success' => true,
         'data' => $decryptedAppointments,
@@ -389,10 +646,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'page' => $page,
             'limit' => $limit,
             'total' => (int) $total,
-            'pages' => ceil($total / $limit),
+            'pages' => $pages,
+            'has_more' => $hasMore,
         ],
     ]);
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Création d'un rendez-vous — rôles explicitement autorisés (pas de création par préleveur, etc.)
+    $allowedCreateRoles = ['patient', 'pro', 'nurse', 'lab', 'subaccount', 'super_admin'];
+    if (!in_array($user['role'], $allowedCreateRoles, true)) {
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Création de rendez-vous non autorisée pour ce rôle',
+            'code' => 'FORBIDDEN',
+        ]);
+        exit;
+    }
+
     // Création d'un rendez-vous
     $rawInput = file_get_contents('php://input');
     logAppointment('=== DEBUT POST /appointments ===', ['raw_input_length' => strlen($rawInput)]);
@@ -429,11 +699,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         logAppointment('Appel à appointmentModel->create', ['user_id' => $user['user_id'], 'role' => $user['role']]);
         $id = $appointmentModel->create($input, $user['user_id'], $user['role']);
         logAppointment('Rendez-vous créé avec succès', ['appointment_id' => $id]);
-        
-        // Synchroniser les données du formulaire avec le profil utilisateur si patient_id est présent
+
         if (!empty($input['patient_id'])) {
             require_once __DIR__ . '/../../models/User.php';
             $userModel = new User();
+            if (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount'], true)) {
+                try {
+                    $userModel->linkPatientProfessional((string) $input['patient_id'], $user['user_id'], $id, 'appointment_linked');
+                } catch (Throwable $e) {
+                    error_log('PatientProfessionalAccess (appointment_linked): ' . $e->getMessage());
+                }
+            }
             
             // Extraire les données à synchroniser depuis form_data ou directement depuis input
             $formData = $input['form_data'] ?? [];
@@ -482,25 +758,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ob_end_flush();
         }
         flush();
-        // Dispatch + notifications en arrière-plan pour éviter timeout/crash du serveur
+        // Réponse envoyée au client, on peut lancer le dispatch sans bloquer
         if (function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
         }
-        $workerScript = realpath(__DIR__ . '/../../scripts/process-appointment-notifications.php');
-        if ($workerScript && is_readable($workerScript)) {
-            $php = defined('PHP_BINARY') ? PHP_BINARY : 'php';
-            $cmd = sprintf('%s %s %s > /dev/null 2>&1 &', escapeshellcmd($php), escapeshellarg($workerScript), escapeshellarg($id));
-            if (DIRECTORY_SEPARATOR === '\\') {
-                pclose(popen('start /B ' . $cmd, 'r'));
-            } else {
-                exec($cmd);
-            }
-        } else {
-            try {
-                $appointmentModel->runPostCreateNotifications($id, $input);
-            } catch (Throwable $e) {
-                error_log('runPostCreateNotifications failed: ' . $e->getMessage());
-            }
+        // Toujours exécuter le dispatch directement : exec() échoue souvent sous PHP-FPM
+        // (PATH, disable_functions, etc.). Le client a déjà reçu la réponse.
+        try {
+            $appointmentModel->runPostCreateNotifications($id, $input, $user['role']);
+        } catch (Throwable $e) {
+            error_log('runPostCreateNotifications failed: ' . $e->getMessage());
         }
     } catch (Exception $e) {
         logAppointment('ERREUR lors de la création du rendez-vous', [

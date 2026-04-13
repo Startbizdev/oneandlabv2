@@ -52,7 +52,7 @@
         </template>
         <template #actions-data="{ row }">
           <div class="flex items-center gap-2">
-            <UButton size="sm" variant="outline" @click="viewReview(row)">
+            <UButton size="sm" variant="outline" :on-click="() => viewReview(row)">
               Détails
             </UButton>
             <UButton
@@ -126,7 +126,7 @@
                 >
                   {{ selectedReview.is_visible ? 'Masquer' : 'Afficher' }}
                 </UButton>
-                <UButton variant="ghost" @click="showDetailsModal = false">Fermer</UButton>
+                <UButton variant="ghost" :on-click="() => showDetailsModal = false">Fermer</UButton>
               </div>
             </div>
           </UCard>

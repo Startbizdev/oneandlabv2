@@ -62,17 +62,18 @@ const heroBackgroundImage = '/undraw/accueil.svg'
 // Paragraphe hero : synthèse SEO (prise de sang, soins infirmiers, à domicile, professionnels)
 const heroLead = 'Prise de sang et soins infirmiers à domicile par des professionnels qualifiés, disponibles rapidement pour votre confort et votre santé.'
 
-// CTA principal Hero : un seul gros bouton vers la prise de RDV
-const heroCTAs = [
+// CTA principal Hero : lab/subaccount/nurse → leur /new ; sinon formulaire public
+const { appointmentNewUrl } = useAppointmentNewUrl();
+const heroCTAs = computed(() => [
   {
     label: 'Prendre rendez-vous à domicile',
-    to: '/rendez-vous/nouveau',
+    to: appointmentNewUrl.value,
     color: 'primary' as const,
     size: 'xl' as const,
     variant: 'solid' as const,
     icon: 'i-lucide-calendar-plus',
   },
-];
+]);
 
 // Étapes "Comment ça marche"
 const howItWorksSteps = [

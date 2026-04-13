@@ -9,14 +9,6 @@
     >
       <template #actions>
         <UButton
-          variant="ghost"
-          size="sm"
-          icon="i-lucide-refresh-cw"
-          :loading="loading"
-          aria-label="Actualiser"
-          @click="fetchStats"
-        />
-        <UButton
           color="primary"
           variant="solid"
           icon="i-lucide-list"
@@ -297,7 +289,11 @@
                   <div class="flex-1 min-w-0">
                     <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Récurrence</p>
                     <p v-if="appointment.form_data?.duration_days" class="text-[14px] font-medium text-gray-900 dark:text-white">
-                      {{ getDurationLabel(appointment.form_data.duration_days) }}
+                      {{
+                        appointment.type === 'nursing'
+                          ? getNursingDurationLabel(appointment.form_data.duration_days, appointment.form_data.custom_days)
+                          : formatBloodTestSeriesDurationDays(appointment.form_data.duration_days, appointment.form_data.custom_days)
+                      }}
                     </p>
                     <p v-if="appointment.form_data?.frequency" class="text-[13px] text-gray-500 mt-0.5">
                       {{ getFrequencyLabel(appointment.form_data.frequency) }}
@@ -384,6 +380,8 @@ useHead({
 });
 
 import { apiFetch } from '~/utils/api';
+import { getNursingDurationLabel } from '~/constants/nursing-duration';
+import { formatBloodTestSeriesDurationDays } from '~/utils/duration-display';
 
 const loading = ref(true);
 const appointments = ref<any[]>([]);
@@ -442,6 +440,7 @@ const getStatusLabel = (status: string) => {
   const labels: Record<string, string> = {
     pending: 'En attente',
     confirmed: 'Confirmé',
+    planned: 'Planifié',
     inProgress: 'En cours',
     completed: 'Terminé',
     canceled: 'Annulé',
@@ -455,6 +454,7 @@ const getStatusBarColor = (status: string) => {
   const colors: Record<string, string> = {
     pending: 'bg-amber-500',
     confirmed: 'bg-blue-500',
+    planned: 'bg-sky-500',
     inProgress: 'bg-violet-500',
     completed: 'bg-emerald-500',
     canceled: 'bg-red-500',
@@ -468,6 +468,7 @@ function getStatusColor(status: string): 'error' | 'primary' | 'secondary' | 'su
   const colors: Record<string, 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral'> = {
     pending: 'warning',
     confirmed: 'info',
+    planned: 'info',
     inProgress: 'primary',
     completed: 'success',
     canceled: 'error',
@@ -533,23 +534,11 @@ function getCreneauHoraireLabel(appointment: any): string {
   return 'Non précisé';
 }
 
-function getDurationLabel(v: string) {
-  const labels: Record<string, string> = {
-    '1': '1 jour',
-    '7': '7 jours',
-    '10': '10 jours',
-    '15': '15 jours (ou jusqu\'à la cicatrisation)',
-    '30': '30 jours',
-    '60+': 'Longue durée (60 jours ou +)',
-  };
-  return labels[v] || v;
-}
-
 function getBloodTestTypeLabel(fd: any): string {
   if (!fd?.blood_test_type) return '';
-  if (fd.blood_test_type === 'single') return 'Une seule prise de sang';
+  if (fd.blood_test_type === 'single') return 'Une seule fois';
   if (fd.blood_test_type === 'multiple') {
-    const days = fd.duration_days === 'custom' && fd.custom_days ? `${fd.custom_days} jours` : getDurationLabel(fd.duration_days || '');
+    const days = formatBloodTestSeriesDurationDays(fd.duration_days, fd.custom_days);
     return days ? `Série sur ${days}` : 'Plusieurs prélèvements';
   }
   return '';
@@ -557,10 +546,14 @@ function getBloodTestTypeLabel(fd: any): string {
 
 function getFrequencyLabel(v: string) {
   const labels: Record<string, string> = {
-    daily: 'Chaque jour',
-    every_other_day: '1 jour sur 2',
+    once_daily: '1 fois par jour',
+    twice_daily: '2 fois par jour',
+    thrice_daily: '3 fois par jour',
     twice_weekly: '2 fois par semaine',
     thrice_weekly: '3 fois par semaine',
+    to_define: 'A voir avec le professionnel',
+    daily: '1 fois par jour',
+    every_other_day: '1 jour sur 2',
   };
   return labels[v] || v;
 }

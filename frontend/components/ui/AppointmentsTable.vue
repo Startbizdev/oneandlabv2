@@ -47,7 +47,7 @@
           <p class="font-medium text-foreground truncate">
             {{ getPatientName(row) }}
           </p>
-          <p v-if="getPatientEmail(row)" class="text-xs text-muted truncate">
+          <p v-if="getPatientEmail(row)" class="text-xs text-muted line-clamp-2 break-words">
             {{ getPatientEmail(row) }}
           </p>
         </div>
@@ -117,6 +117,8 @@
 </template>
 
 <script setup lang="ts">
+import { patientUiEmailLine } from '~/utils/patient-address-rdv';
+
 interface Props {
   rows: any[];
   columns: any[];
@@ -207,7 +209,12 @@ const getPatientName = (row: any) => {
 };
 
 const getPatientEmail = (row: any) => {
-  return row.form_data?.email || row.relative_email || '';
+  const raw = row.form_data?.email || row.relative_email || '';
+  if (!String(raw).trim()) return '';
+  return patientUiEmailLine({
+    email: raw,
+    email_display: row.patient_email_display ?? null,
+  });
 };
 
 const getAddressLabel = (row: any) => {
@@ -219,6 +226,7 @@ const getStatusColor = (status: string) => {
   const colors: Record<string, string> = {
     pending: 'yellow',
     confirmed: 'blue',
+    planned: 'sky',
     inProgress: 'purple',
     completed: 'green',
     canceled: 'red',
@@ -232,6 +240,7 @@ const getStatusLabel = (status: string) => {
   const labels: Record<string, string> = {
     pending: 'En attente',
     confirmed: 'Confirmé',
+    planned: 'Planifié',
     inProgress: 'En cours',
     completed: 'Terminé',
     canceled: 'Annulé',

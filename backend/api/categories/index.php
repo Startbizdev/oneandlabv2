@@ -33,6 +33,74 @@ $dsn = sprintf(
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
 $logger = new Logger();
 
+/**
+ * Ajoute le champ options (sous-choix) à chaque catégorie.
+ * @param PDO $db
+ * @param array $categories
+ * @return array
+ */
+function appendCategoryOptions(PDO $db, array $categories): array {
+    if (empty($categories)) {
+        return $categories;
+    }
+    $ids = array_column($categories, 'id');
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $optStmt = $db->prepare("
+        SELECT care_category_id, option_key, label, field_type, options, is_required, sort_order
+        FROM care_category_options
+        WHERE care_category_id IN ($placeholders)
+        ORDER BY care_category_id, sort_order, id
+    ");
+    $optStmt->execute($ids);
+    $optionsByCat = [];
+    while ($row = $optStmt->fetch(PDO::FETCH_ASSOC)) {
+        $cid = $row['care_category_id'];
+        unset($row['care_category_id']);
+        $row['options'] = isset($row['options']) && $row['options'] !== null
+            ? (is_string($row['options']) ? json_decode($row['options'], true) : $row['options'])
+            : null;
+        $row['is_required'] = (bool) ($row['is_required'] ?? false);
+        if (!isset($optionsByCat[$cid])) {
+            $optionsByCat[$cid] = [];
+        }
+        $optionsByCat[$cid][] = $row;
+    }
+    foreach ($categories as &$cat) {
+        $cat['options'] = $optionsByCat[$cat['id']] ?? [];
+    }
+    unset($cat);
+    return $categories;
+}
+
+/**
+ * Nombre de RDV par catégorie (pour « Les plus demandés » sur le parcours patient).
+ */
+function appendAppointmentCounts(PDO $db, array $categories): array
+{
+    if (empty($categories)) {
+        return $categories;
+    }
+    $ids = array_column($categories, 'id');
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $cntStmt = $db->prepare("
+        SELECT category_id, COUNT(*) AS appointment_count
+        FROM appointments
+        WHERE category_id IN ($placeholders)
+        GROUP BY category_id
+    ");
+    $cntStmt->execute($ids);
+    $counts = [];
+    while ($row = $cntStmt->fetch(PDO::FETCH_ASSOC)) {
+        $counts[$row['category_id']] = (int) $row['appointment_count'];
+    }
+    foreach ($categories as &$cat) {
+        $cat['appointment_count'] = $counts[$cat['id']] ?? 0;
+    }
+    unset($cat);
+
+    return $categories;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Liste des catégories (public pour patients, authentifié pour admins)
     try {
@@ -71,12 +139,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $stmt = $db->prepare($sql);
                 $stmt->execute([$providerId]);
                 $categories = $stmt->fetchAll();
+                $categories = appendCategoryOptions($db, $categories);
             } else {
                 // Lab/subaccount : toutes les catégories blood_test actives
                 $sql = 'SELECT id, name, description, type, icon, is_active, created_at FROM care_categories WHERE is_active = TRUE AND type = ? ORDER BY name ASC';
                 $stmt = $db->prepare($sql);
                 $stmt->execute(['blood_test']);
                 $categories = $stmt->fetchAll();
+                $categories = appendCategoryOptions($db, $categories);
             }
         } else {
             $sql = 'SELECT id, name, description, type, icon, is_active, created_at FROM care_categories WHERE 1=1';
@@ -97,6 +167,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $stmt->execute($params);
             $categories = $stmt->fetchAll();
         }
+
+        // Charger les options (sous-choix) pour chaque catégorie
+        $categories = appendCategoryOptions($db, $categories);
+        $categories = appendAppointmentCounts($db, $categories);
 
         echo json_encode([
             'success' => true,
@@ -154,18 +228,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $isActive
         ]);
 
+        // Insérer les options (sous-choix) si fournies
+        if (!empty($data['options']) && is_array($data['options'])) {
+            $optInsert = $db->prepare('
+                INSERT INTO care_category_options (id, care_category_id, option_key, label, field_type, options, is_required, sort_order)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ');
+            $sortOrder = 0;
+            foreach ($data['options'] as $opt) {
+                if (empty($opt['option_key']) || empty($opt['label']) || empty($opt['field_type'])) {
+                    continue;
+                }
+                $optId = bin2hex(random_bytes(18));
+                $optOptions = isset($opt['options']) && is_array($opt['options'])
+                    ? json_encode($opt['options'])
+                    : (isset($opt['options']) && is_string($opt['options']) ? $opt['options'] : null);
+                $optInsert->execute([
+                    $optId,
+                    $id,
+                    $opt['option_key'],
+                    $opt['label'],
+                    $opt['field_type'],
+                    $optOptions,
+                    !empty($opt['is_required']) ? 1 : 0,
+                    $opt['sort_order'] ?? $sortOrder++
+                ]);
+            }
+        }
+
         $logger->log($user['user_id'], $user['role'], 'create', 'care_category', $id, $data);
+
+        $created = [
+            'id' => $id,
+            'name' => $data['name'],
+            'description' => $data['description'] ?? '',
+            'type' => $data['type'],
+            'icon' => $data['icon'] ?? null,
+            'is_active' => (bool) $isActive,
+        ];
+        $created['options'] = appendCategoryOptions($db, [$created])[0]['options'] ?? [];
 
         echo json_encode([
             'success' => true,
-            'data' => [
-                'id' => $id,
-                'name' => $data['name'],
-                'description' => $data['description'] ?? '',
-                'type' => $data['type'],
-                'icon' => $data['icon'] ?? null,
-                'is_active' => (bool) $isActive
-            ]
+            'data' => $created,
         ]);
     } catch (Exception $e) {
         http_response_code(500);

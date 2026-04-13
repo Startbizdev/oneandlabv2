@@ -53,8 +53,19 @@ class AuthMiddleware
         try {
             $decoded = $this->auth->verifyJWT($token);
             $userId = $decoded['user_id'];
-            $role = $decoded['role'];
-            
+            // Toujours utiliser le rôle en base : le JWT est émis à la connexion et peut être obsolète
+            // si le profil a changé (ex. infirmier → laboratoire), ce qui provoquait des refus d’acceptation RDV incohérents avec l’UI.
+            $role = $this->user->getRoleById($userId);
+            if ($role === null) {
+                http_response_code(401);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Utilisateur introuvable',
+                    'code' => 'UNAUTHORIZED',
+                ]);
+                exit;
+            }
+
             // Vérifier si le compte est banni
             if ($this->user->isBanned($userId)) {
                 http_response_code(403);

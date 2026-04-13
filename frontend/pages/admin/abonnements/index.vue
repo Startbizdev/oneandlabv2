@@ -15,9 +15,6 @@
         placeholder="Statut"
         class="w-full sm:w-40"
       />
-      <UButton variant="outline" @click="loadSubscriptions" :loading="loading">
-        Actualiser
-      </UButton>
     </div>
 
     <div class="rounded-xl border border-default/50 bg-default shadow-sm overflow-hidden">

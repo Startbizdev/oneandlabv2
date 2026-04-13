@@ -94,15 +94,16 @@ const displayEnd = computed(() =>
 </script>
 
 <template>
-  <div class="flex items-center gap-2 flex-wrap">
-    <UPopover v-model:open="isOpenStart" :dismissible="true">
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 w-full min-w-0">
+    <UPopover v-model:open="isOpenStart" :dismissible="true" class="w-full sm:flex-1 sm:min-w-0">
       <UButton
         color="neutral"
         variant="outline"
-        icon="i-lucide-calendar"
+        icon="i-lucide-calendar-range"
         :disabled="disabled"
-        size="md"
-        class="min-w-[140px] justify-start bg-white dark:bg-white/5"
+        size="lg"
+        block
+        class="w-full justify-start bg-white dark:bg-white/5 rounded-xl"
         @click="isOpenStart = true"
       >
         {{ displayStart }}
@@ -118,15 +119,16 @@ const displayEnd = computed(() =>
         />
       </template>
     </UPopover>
-    <span class="text-muted text-sm">au</span>
-    <UPopover v-model:open="isOpenEnd" :dismissible="true">
+    <span class="hidden sm:inline text-sm text-gray-400 dark:text-gray-500 shrink-0">au</span>
+    <UPopover v-model:open="isOpenEnd" :dismissible="true" class="w-full sm:flex-1 sm:min-w-0">
       <UButton
         color="neutral"
         variant="outline"
-        icon="i-lucide-calendar"
+        icon="i-lucide-calendar-range"
         :disabled="disabled"
-        size="md"
-        class="min-w-[140px] justify-start bg-white dark:bg-white/5"
+        size="lg"
+        block
+        class="w-full justify-start bg-white dark:bg-white/5 rounded-xl"
         @click="isOpenEnd = true"
       >
         {{ displayEnd }}

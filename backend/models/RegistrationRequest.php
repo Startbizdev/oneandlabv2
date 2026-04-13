@@ -11,6 +11,9 @@ class RegistrationRequest
     private PDO $db;
     private Crypto $crypto;
 
+    /** @var list<string>|null cache SHOW COLUMNS registration_requests */
+    private ?array $registrationRequestColumns = null;
+
     public function __construct()
     {
         $config = require __DIR__ . '/../config/database.php';
@@ -23,6 +26,18 @@ class RegistrationRequest
         );
         $this->db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
         $this->crypto = new Crypto();
+    }
+
+    /** Noms de colonnes réels (prod peut être en retard sur les migrations, ex. 049 gender chiffré). */
+    private function registrationRequestColumnNames(): array
+    {
+        if ($this->registrationRequestColumns !== null) {
+            return $this->registrationRequestColumns;
+        }
+        $stmt = $this->db->query('SHOW COLUMNS FROM registration_requests');
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $this->registrationRequestColumns = array_column($rows, 'Field');
+        return $this->registrationRequestColumns;
     }
 
     private function uuid(): string
@@ -94,35 +109,71 @@ class RegistrationRequest
             if (strlen($emploi) > 120) $emploi = substr($emploi, 0, 120);
         }
 
-        $sql = 'INSERT INTO registration_requests (
-            id, role, status, email_hash, email_encrypted, email_dek,
-            first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek,
-            phone_encrypted, phone_dek, address_encrypted, address_dek,
-            siret_encrypted, siret_dek, adeli_encrypted, adeli_dek, rpps_encrypted, rpps_dek,
-            company_name_encrypted, company_name_dek, emploi, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())';
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
+        $cols = $this->registrationRequestColumnNames();
+        $hasGenderEnc = in_array('gender_encrypted', $cols, true) && in_array('gender_dek', $cols, true);
+        $hasGenderPlain = in_array('gender', $cols, true);
+
+        $genderEnc = $genderDek = null;
+        $genderPlain = null;
+        if ($role === 'nurse' && !empty(trim((string)($data['gender'] ?? '')))) {
+            $g = strtolower(trim((string)$data['gender']));
+            if (in_array($g, ['male', 'female', 'other'], true)) {
+                if ($hasGenderEnc) {
+                    $ge = $this->crypto->encryptField($g);
+                    $genderEnc = $ge['encrypted'];
+                    $genderDek = $ge['dek'];
+                } elseif ($hasGenderPlain) {
+                    $genderPlain = $g;
+                }
+            }
+        }
+
+        $fields = [
+            'id', 'role', 'status', 'email_hash', 'email_encrypted', 'email_dek',
+            'first_name_encrypted', 'first_name_dek', 'last_name_encrypted', 'last_name_dek',
+        ];
+        $placeholders = ['?', '?', '?', '?', '?', '?', '?', '?', '?', '?'];
+        $params = [
             $id, $role, 'pending', $emailHash,
             $emailEnc['encrypted'], $emailEnc['dek'],
             $firstEnc['encrypted'], $firstEnc['dek'],
             $lastEnc['encrypted'], $lastEnc['dek'],
+        ];
+        if ($hasGenderEnc) {
+            $fields[] = 'gender_encrypted';
+            $fields[] = 'gender_dek';
+            $placeholders[] = '?';
+            $placeholders[] = '?';
+            $params[] = $genderEnc;
+            $params[] = $genderDek;
+        } elseif ($hasGenderPlain) {
+            $fields[] = 'gender';
+            $placeholders[] = '?';
+            $params[] = $genderPlain;
+        }
+
+        $fields = array_merge($fields, [
+            'phone_encrypted', 'phone_dek', 'address_encrypted', 'address_dek',
+            'siret_encrypted', 'siret_dek', 'adeli_encrypted', 'adeli_dek', 'rpps_encrypted', 'rpps_dek',
+            'company_name_encrypted', 'company_name_dek', 'emploi', 'created_at',
+        ]);
+        $placeholders = array_merge($placeholders, ['?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', 'NOW()']);
+        $params = array_merge($params, [
             $phoneEnc, $phoneDek, $addrEnc, $addrDek,
             $siretEnc, $siretDek, $adeliEnc, $adeliDek, $rppsEnc, $rppsDek,
             $companyEnc, $companyDek, $emploi,
         ]);
+
+        $sql = 'INSERT INTO registration_requests (' . implode(', ', $fields) . ') VALUES (' . implode(', ', $placeholders) . ')';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
         return $id;
     }
 
-    /** Liste pour admin (déchiffrée). */
+    /** Liste pour admin (déchiffrée). SELECT * : compatible si la migration 049 (gender chiffré) n’est pas appliquée. */
     public function getAll(string $status = '', string $role = ''): array
     {
-        $sql = 'SELECT id, role, status, email_hash, created_at, reviewed_at, reviewed_by,
-            email_encrypted, email_dek, first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek,
-            phone_encrypted, phone_dek, address_encrypted, address_dek,
-            siret_encrypted, siret_dek, adeli_encrypted, adeli_dek, rpps_encrypted, rpps_dek,
-            company_name_encrypted, company_name_dek, emploi
-            FROM registration_requests WHERE 1=1';
+        $sql = 'SELECT * FROM registration_requests WHERE 1=1';
         $params = [];
         if ($status !== '' && in_array($status, ['pending', 'accepted', 'rejected'], true)) {
             $sql .= ' AND status = ?';
@@ -161,6 +212,7 @@ class RegistrationRequest
             'email' => $dec($r['email_encrypted'] ?? '', $r['email_dek'] ?? ''),
             'first_name' => $dec($r['first_name_encrypted'] ?? '', $r['first_name_dek'] ?? ''),
             'last_name' => $dec($r['last_name_encrypted'] ?? '', $r['last_name_dek'] ?? ''),
+            'gender' => $this->genderFromRow($r, $dec),
             'phone' => $dec($r['phone_encrypted'] ?? '', $r['phone_dek'] ?? ''),
             'address' => $dec($r['address_encrypted'] ?? '', $r['address_dek'] ?? ''),
             'siret' => $dec($r['siret_encrypted'] ?? '', $r['siret_dek'] ?? ''),
@@ -172,6 +224,28 @@ class RegistrationRequest
             'reviewed_at' => $r['reviewed_at'],
             'reviewed_by' => $r['reviewed_by'],
         ];
+    }
+
+    /**
+     * Genre infirmier : chiffré (049) ou colonne en clair si ajoutée manuellement sur l’ancien schéma.
+     *
+     * @param callable(string, string): string $dec
+     */
+    private function genderFromRow(array $r, callable $dec): string
+    {
+        $enc = $r['gender_encrypted'] ?? null;
+        $dek = $r['gender_dek'] ?? null;
+        if ($enc !== null && $enc !== '' && $dek !== null && $dek !== '') {
+            return $dec($enc, $dek);
+        }
+        if (isset($r['gender']) && $r['gender'] !== null && $r['gender'] !== '') {
+            $g = strtolower(trim((string) $r['gender']));
+            if (in_array($g, ['male', 'female', 'other'], true)) {
+                return $g;
+            }
+            return trim((string) $r['gender']);
+        }
+        return '';
     }
 
     public function getById(string $id): ?array
@@ -210,9 +284,33 @@ class RegistrationRequest
                 if (strlen($createData['emploi']) > 120) $createData['emploi'] = substr($createData['emploi'], 0, 120);
             }
         }
+        if (in_array($req['role'], ['lab', 'nurse'], true) && !empty($req['address'])) {
+            $addr = $req['address'];
+            if (is_string($addr)) {
+                $decoded = json_decode($addr, true);
+                $createData['address'] = is_array($decoded) ? $decoded : ['label' => $addr];
+            } elseif (is_array($addr)) {
+                $createData['address'] = $addr;
+            }
+        }
+        if ($req['role'] === 'nurse' && !empty(trim((string)($req['gender'] ?? '')))) {
+            $g = strtolower(trim((string)$req['gender']));
+            if (in_array($g, ['male', 'female', 'other'], true)) {
+                $createData['gender'] = $g;
+            }
+        }
         $userId = $userModel->create($createData, $actorId, 'super_admin');
         $this->db->prepare('UPDATE registration_requests SET status = ?, reviewed_at = NOW(), reviewed_by = ? WHERE id = ?')
             ->execute(['accepted', $actorId, $id]);
+        try {
+            require_once __DIR__ . '/Notification.php';
+            $notificationModel = new Notification();
+            if (!$notificationModel->hasWelcomeNotification($userId)) {
+                $notificationModel->createWelcomeNotification($userId, $req['role']);
+            }
+        } catch (Throwable $e) {
+            error_log('RegistrationRequest accept welcome notification: ' . $e->getMessage());
+        }
         return ['user_id' => $userId];
     }
 

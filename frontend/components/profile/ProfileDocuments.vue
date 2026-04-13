@@ -14,109 +14,19 @@
       :compact="true"
     />
 
-    <div v-else class="flex flex-col gap-3 min-w-0">
-      <div
-        v-for="config in documentConfigs"
-        :key="config.type"
-        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 p-3 min-w-0"
-      >
-        <input
-          :ref="(el) => setFileInputRef(config.type, el)"
-          type="file"
-          :accept="config.acceptedTypes.join(',')"
-          class="hidden"
-          @change="(e) => onFileChange(config.type, e)"
-        />
-
-        <div class="flex items-center gap-2.5 min-w-0">
-          <div
-            :class="['flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', iconBgClass(config.iconColor)]"
-          >
-            <UIcon :name="config.icon" class="h-4 w-4" :class="iconTextClass(config.iconColor)" />
-          </div>
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="text-[13px] font-semibold text-gray-900 dark:text-white">
-                {{ config.label }}
-              </span>
-              <UBadge
-                v-if="config.required"
-                color="amber"
-                variant="subtle"
-                size="xs"
-                class="rounded-full"
-              >
-                Obligatoire
-              </UBadge>
-              <UBadge
-                v-else
-                color="neutral"
-                variant="subtle"
-                size="xs"
-                class="rounded-full"
-              >
-                Optionnel
-              </UBadge>
-            </div>
-            <p
-              v-if="documents[config.type]"
-              class="text-[12px] text-gray-600 dark:text-gray-400 truncate mt-0.5"
-              :title="documents[config.type].file_name"
-            >
-              {{ documents[config.type].file_name }}
-            </p>
-            <p
-              v-else
-              class="text-[12px] text-gray-500 dark:text-gray-500 mt-0.5"
-            >
-              Aucun document déposé
-            </p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2 mt-3">
-          <template v-if="documents[config.type]">
-            <UButton
-              v-if="documents[config.type].medical_document_id"
-              size="xs"
-              variant="soft"
-              color="primary"
-              icon="i-lucide-download"
-              :loading="uploadingType === config.type"
-              aria-label="Télécharger"
-              class="w-full justify-center"
-              @click="emitDownload(config.type)"
-            >
-              Télécharger
-            </UButton>
-            <UButton
-              size="xs"
-              variant="outline"
-              color="neutral"
-              icon="i-lucide-refresh-cw"
-              :loading="uploadingType === config.type"
-              aria-label="Remplacer"
-              class="w-full justify-center"
-              @click="triggerFileInput(config.type)"
-            >
-              Remplacer
-            </UButton>
-          </template>
-          <UButton
-            v-else
-            size="xs"
-            color="primary"
-            icon="i-lucide-upload"
-            :loading="uploadingType === config.type"
-            aria-label="Déposer"
-            class="w-full justify-center col-span-2"
-            @click="triggerFileInput(config.type)"
-          >
-            Déposer
-          </UButton>
-        </div>
-      </div>
-    </div>
+    <AppointmentDocumentsSection
+      v-else
+      :documents="documentsList"
+      :loading="false"
+      empty-description="Aucun document de couverture enregistré."
+      :show-upload-area="true"
+      :upload-types="profileUploadTypes"
+      :can-replace="true"
+      :downloading-ids="downloadingIdsSet"
+      :uploading-types="uploadingTypesSet"
+      @download="onSectionDownload"
+      @upload="onSectionUpload"
+    />
 
     <UAlert
       v-if="error"
@@ -132,13 +42,15 @@
 
 <script setup lang="ts">
 import type { PatientDocument, DocumentType } from '~/types/profile'
-import { DOCUMENT_CONFIGS } from '~/types/profile'
+import AppointmentDocumentsSection from '~/components/dashboard/AppointmentDocumentsSection.vue'
 
 interface Props {
   documents: Record<string, PatientDocument>
   isLoading: boolean
   uploadingType: string | null
   error: string | null
+  /** Optionnel : id du document médical en cours de téléchargement (pour le spinner) */
+  downloadingDocumentId?: string | null
 }
 
 interface Emits {
@@ -147,53 +59,78 @@ interface Emits {
   (e: 'update:error', value: string | null): void
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  downloadingDocumentId: null,
+})
+
 const emit = defineEmits<Emits>()
 
-const documentConfigs = computed(() => Object.values(DOCUMENT_CONFIGS))
+const DOCUMENT_TYPES: DocumentType[] = ['carte_vitale', 'carte_mutuelle', 'autres_assurances']
 
-const fileInputRefs = ref<Record<string, HTMLInputElement | null>>({})
+/** Même grille que le détail RDV lab (sans résultats d'analyses) */
+const profileUploadTypes = [
+  {
+    value: 'carte_vitale',
+    label: 'Carte Vitale',
+    icon: 'i-lucide-credit-card',
+    color: 'green',
+    accept: 'image/*,.pdf',
+    hint: 'JPG, PNG, PDF • max 5 Mo',
+  },
+  {
+    value: 'carte_mutuelle',
+    label: 'Carte Mutuelle',
+    icon: 'i-lucide-shield',
+    color: 'blue',
+    accept: 'image/*,.pdf',
+    hint: 'JPG, PNG, PDF • max 5 Mo',
+  },
+  {
+    value: 'autres_assurances',
+    label: 'Autres assurances',
+    icon: 'i-lucide-briefcase',
+    color: 'purple',
+    accept: 'image/*,.pdf',
+    hint: 'JPG, PNG, PDF • max 25 Mo',
+  },
+] as const
 
-function iconBgClass(color: string): string {
-  const map: Record<string, string> = {
-    blue: 'bg-blue-50 dark:bg-blue-900/20',
-    purple: 'bg-purple-50 dark:bg-purple-900/20',
-    gray: 'bg-gray-100 dark:bg-gray-800/50',
+const documentsList = computed(() => {
+  const list: Array<{
+    id: string
+    document_type: string
+    file_name: string
+    source?: string
+  }> = []
+  for (const t of DOCUMENT_TYPES) {
+    const d = props.documents[t]
+    if (d?.medical_document_id) {
+      list.push({
+        id: d.medical_document_id,
+        document_type: d.document_type || t,
+        file_name: d.file_name,
+        source: 'patient_profile',
+      })
+    }
   }
-  return map[color] ?? 'bg-gray-100 dark:bg-gray-800/50'
+  return list
+})
+
+const uploadingTypesSet = computed(() => {
+  const u = props.uploadingType
+  return u ? new Set<string>([u]) : new Set<string>()
+})
+
+const downloadingIdsSet = computed(() => {
+  const id = props.downloadingDocumentId
+  return id ? new Set<string>([id]) : new Set<string>()
+})
+
+function onSectionDownload(doc: { id: string; file_name: string }) {
+  emit('download', doc.id, doc.file_name)
 }
 
-function iconTextClass(color: string): string {
-  const map: Record<string, string> = {
-    blue: 'text-blue-600 dark:text-blue-400',
-    purple: 'text-purple-600 dark:text-purple-400',
-    gray: 'text-gray-600 dark:text-gray-400',
-  }
-  return map[color] ?? 'text-gray-600 dark:text-gray-400'
-}
-
-function setFileInputRef(type: string, el: unknown) {
-  const input = Array.isArray(el) ? el[0] : el
-  fileInputRefs.value[type] = input instanceof HTMLInputElement ? input : null
-}
-
-function triggerFileInput(type: string) {
-  const input = fileInputRefs.value[type]
-  if (input) input.click()
-}
-
-function onFileChange(type: DocumentType, e: Event) {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (file) {
-    emit('upload', type, file)
-    input.value = ''
-  }
-}
-
-function emitDownload(type: string) {
-  const doc = props.documents[type]
-  if (!doc) return
-  emit('download', doc.medical_document_id, doc.file_name)
+function onSectionUpload(docType: string, file: File) {
+  emit('upload', docType as DocumentType, file)
 }
 </script>

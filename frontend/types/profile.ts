@@ -13,6 +13,8 @@ export interface ProfileForm {
   first_name: string
   last_name: string
   email: string
+  /** Renseigné par l’API pour les e-mails techniques (patient sans boîte) */
+  email_display?: string | null
   phone: string | null
   name: string
   rpps: string
@@ -63,7 +65,7 @@ export const DOCUMENT_CONFIGS: Record<DocumentType, DocumentConfig> = {
     iconColor: 'blue',
     required: true,
     acceptedTypes: ['image/*', 'application/pdf'],
-    maxSize: 5,
+    maxSize: 25,
   },
   carte_mutuelle: {
     type: 'carte_mutuelle',
@@ -72,7 +74,7 @@ export const DOCUMENT_CONFIGS: Record<DocumentType, DocumentConfig> = {
     iconColor: 'purple',
     required: true,
     acceptedTypes: ['image/*', 'application/pdf'],
-    maxSize: 5,
+    maxSize: 25,
   },
   autres_assurances: {
     type: 'autres_assurances',
@@ -81,6 +83,6 @@ export const DOCUMENT_CONFIGS: Record<DocumentType, DocumentConfig> = {
     iconColor: 'gray',
     required: false,
     acceptedTypes: ['image/*', 'application/pdf'],
-    maxSize: 10,
+    maxSize: 25,
   },
 }

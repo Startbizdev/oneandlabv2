@@ -111,6 +111,9 @@ class EmailQueue
             case 'ban':
                 $email->sendBanEmail($to, (string)($p['reason'] ?? ''));
                 break;
+            case 'results_ready':
+                $email->sendResultsReadyToPatient($to, (string)($p['appointment_id'] ?? ''));
+                break;
             default:
                 break;
         }

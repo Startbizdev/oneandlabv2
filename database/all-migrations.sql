@@ -520,6 +520,76 @@ ADD INDEX idx_profiles_created_by (created_by),
 ADD CONSTRAINT fk_profiles_created_by FOREIGN KEY (created_by) REFERENCES profiles(id) ON DELETE SET NULL;
 
 -- ============================================================================
+-- Migration 045 : Ajout du statut 'planned' (planifié) aux appointments
+-- ============================================================================
+ALTER TABLE appointments
+MODIFY COLUMN status ENUM(
+    'pending',
+    'confirmed',
+    'planned',
+    'inProgress',
+    'completed',
+    'canceled',
+    'expired',
+    'refused'
+) NOT NULL DEFAULT 'pending';
+
+-- ============================================================================
+-- Migration 047 : patient_professional_access
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS patient_professional_access (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    patient_id CHAR(36) NOT NULL,
+    professional_id CHAR(36) NOT NULL,
+    source ENUM('created', 'appointment_accepted', 'appointment_linked', 'manual_link') NOT NULL DEFAULT 'created',
+    appointment_id CHAR(36) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_ppa_patient_professional (patient_id, professional_id),
+    KEY idx_ppa_professional (professional_id),
+    KEY idx_ppa_patient (patient_id),
+    CONSTRAINT fk_ppa_patient FOREIGN KEY (patient_id) REFERENCES profiles (id) ON DELETE CASCADE,
+    CONSTRAINT fk_ppa_professional FOREIGN KEY (professional_id) REFERENCES profiles (id) ON DELETE CASCADE,
+    CONSTRAINT fk_ppa_appointment FOREIGN KEY (appointment_id) REFERENCES appointments (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- Migration 050 : Galerie photos de soins (care_photo) + commentaires
+-- ============================================================================
+ALTER TABLE medical_documents
+MODIFY COLUMN document_type ENUM(
+    'carte_vitale',
+    'carte_mutuelle',
+    'ordonnance',
+    'autres_assurances',
+    'resultats',
+    'care_photo',
+    'other'
+) DEFAULT 'other';
+
+CREATE TABLE IF NOT EXISTS appointment_care_photo_comments (
+    id CHAR(36) PRIMARY KEY,
+    medical_document_id CHAR(36) NOT NULL,
+    author_id CHAR(36) NOT NULL,
+    body TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_medical_document_id (medical_document_id),
+    INDEX idx_author_id (author_id),
+    INDEX idx_created_at (created_at),
+
+    FOREIGN KEY (medical_document_id) REFERENCES medical_documents(id) ON DELETE CASCADE,
+    FOREIGN KEY (author_id) REFERENCES profiles(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- Migration 051 : unicité email_hash (OTP / login)
+-- Prérequis : php backend/scripts/run-migration-051-fix-duplicate-email-hash.php
+-- ============================================================================
+ALTER TABLE profiles
+    DROP INDEX idx_email_hash,
+    ADD UNIQUE INDEX uq_profiles_email_hash (email_hash);
+
+-- ============================================================================
 -- FIN DES MIGRATIONS
 -- ============================================================================
 -- Pour créer les utilisateurs de test avec chiffrement, exécutez :

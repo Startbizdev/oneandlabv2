@@ -14,14 +14,14 @@
               icon="i-lucide-chevron-left"
               class="rounded-md hover:bg-background"
               aria-label="Précédent"
-              @click="navigate(-1)"
+              :on-click="() => navigate(-1)"
             />
             <UButton
               variant="ghost"
               color="neutral"
               size="xs"
               class="text-sm font-medium px-3 rounded-md hover:bg-background"
-              @click="goToToday"
+              :on-click="goToToday"
             >
               Aujourd'hui
             </UButton>
@@ -32,7 +32,7 @@
               icon="i-lucide-chevron-right"
               class="rounded-md hover:bg-background"
               aria-label="Suivant"
-              @click="navigate(1)"
+              :on-click="() => navigate(1)"
             />
           </div>
           <h2 class="text-base sm:text-xl font-normal text-foreground capitalize tracking-tight flex items-center gap-2">
@@ -60,7 +60,7 @@
             size="sm"
             color="primary"
             class="rounded-lg shadow-sm shadow-primary/20"
-            @click="$emit('add-event')"
+            :on-click="() => $emit('add-event')"
           >
             Nouveau
           </UButton>
@@ -145,29 +145,52 @@
                 </span>
               </button>
             </div>
-            <div class="flex items-center justify-between gap-2 px-3 py-2 border-t border-default bg-muted/20">
-              <span class="text-xs font-medium text-foreground truncate capitalize">{{ currentLabel }}</span>
-              <button
-                v-if="selectedDayId"
-                type="button"
-                class="text-xs font-medium text-primary shrink-0 py-1 px-2 rounded-md hover:bg-primary/10 active:bg-primary/20 transition-colors"
-                @click.stop="$emit('day-click', { fullDate: null })"
+            <div class="flex flex-col gap-1.5 px-3 py-2 border-t border-default bg-muted/20">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-medium text-foreground truncate capitalize">{{ currentLabel }}</span>
+                <button
+                  v-if="selectedDayId"
+                  type="button"
+                  class="text-xs font-medium text-primary shrink-0 py-1 px-2 rounded-md hover:bg-primary/10 active:bg-primary/20 transition-colors"
+                  @click.stop="$emit('day-click', { fullDate: null })"
+                >
+                  Réinitialiser le jour
+                </button>
+              </div>
+              <p
+                v-if="mobileListFromToday && !selectedDayId"
+                class="text-[11px] text-muted-foreground leading-snug"
               >
-                Voir tout le mois
-              </button>
+                Liste : à partir d’aujourd’hui. Touchez un jour pour le détail.
+              </p>
             </div>
           </div>
 
           <!-- Mobile : liste des RDV (filtrée par jour sélectionné) -->
           <div class="md:hidden flex-1 overflow-y-auto min-h-0 border-t border-default/50 bg-muted/5">
             <div class="p-3 space-y-4">
+              <div
+                v-if="mobileListFromToday && !selectedDayId"
+                class="flex items-center justify-between gap-2 pb-1"
+              >
+                <span class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">À venir</span>
+                <button
+                  type="button"
+                  class="text-[11px] font-medium text-primary py-1 px-2 rounded-md hover:bg-primary/10"
+                  @click="mobileShowPastMonth = !mobileShowPastMonth"
+                >
+                  {{ mobileShowPastMonth ? 'Masquer le passé' : 'Voir aussi le passé du mois' }}
+                </button>
+              </div>
               <template v-if="Object.keys(mobileListGroups).length === 0">
                 <div class="flex flex-col items-center justify-center py-8 text-center">
                   <UIcon name="i-lucide-calendar-x" class="w-10 h-10 text-muted-foreground/50 mb-2" />
                   <p class="text-sm text-muted-foreground">
-                    {{ selectedDayId ? 'Aucun rendez-vous ce jour-là' : 'Aucun rendez-vous ce mois-ci' }}
+                    {{ mobileEmptyListTitle }}
                   </p>
-                  <p v-if="selectedDayId" class="text-xs text-muted-foreground mt-1">Choisissez un autre jour ou « Voir tout le mois »</p>
+                  <p v-if="selectedDayId" class="text-xs text-muted-foreground mt-1">
+                    Choisissez un autre jour ou réinitialisez le filtre jour.
+                  </p>
                 </div>
               </template>
               <template v-else>
@@ -421,6 +444,11 @@ interface Props {
   startDate?: Date;
   selectedDay?: Date | null;
   disableAdd?: boolean;
+  /**
+   * Mobile (vue mois) : sans jour sélectionné, n’afficher que les RDV à partir d’aujourd’hui
+   * (évite de voir d’abord des jours passés du mois alors que le calendrier affiche le mois courant).
+   */
+  mobileListFromToday?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -431,6 +459,7 @@ const props = withDefaults(defineProps<Props>(), {
   startDate: () => new Date(),
   selectedDay: null,
   disableAdd: false,
+  mobileListFromToday: false,
 });
 
 const emit = defineEmits<{
@@ -444,6 +473,8 @@ const emit = defineEmits<{
 // --- STATE ---
 const currentDate = ref(new Date(props.startDate));
 const currentView = ref<'month' | 'list'>('month');
+/** Mobile + mobileListFromToday : afficher aussi les jours passés du mois dans la liste */
+const mobileShowPastMonth = ref(false);
 const weekDays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
 const views = [
@@ -530,14 +561,44 @@ const groupedItems = computed(() => {
   return groups;
 });
 
-/** Sur mobile : si un jour est sélectionné, n'afficher que les RDV de ce jour ; sinon tout le mois */
+/** Sur mobile : jour sélectionné → ce jour uniquement ; sinon mois (éventuellement à partir d’aujourd’hui) */
 const mobileListGroups = computed(() => {
   if (selectedDayId.value) {
     const id = selectedDayId.value;
     const items = groupedItems.value[id] || [];
     return items.length ? { [id]: items } : {};
   }
-  return groupedItems.value;
+  const base = groupedItems.value;
+  if (props.mobileListFromToday && !mobileShowPastMonth.value) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = formatDateId(today);
+    const filtered: Record<string, any[]> = {};
+    const keys = Object.keys(base).filter((k) => k >= todayStr).sort();
+    keys.forEach((k) => {
+      filtered[k] = base[k];
+    });
+    return filtered;
+  }
+  const ordered: Record<string, any[]> = {};
+  Object.keys(base)
+    .sort()
+    .forEach((k) => {
+      ordered[k] = base[k];
+    });
+  return ordered;
+});
+
+const mobileEmptyListTitle = computed(() => {
+  if (selectedDayId.value) return 'Aucun rendez-vous ce jour-là';
+  if (props.mobileListFromToday && !mobileShowPastMonth.value) {
+    return 'Aucun rendez-vous à venir ce mois-ci';
+  }
+  return 'Aucun rendez-vous ce mois-ci';
+});
+
+watch(selectedDayId, (id) => {
+  if (id) mobileShowPastMonth.value = false;
 });
 
 // --- METHODS ---
@@ -649,6 +710,7 @@ function getStatusBadgeColor(status: string): 'warning' | 'info' | 'primary' | '
   const map: Record<string, 'warning' | 'info' | 'primary' | 'success' | 'error' | 'neutral'> = {
     pending: 'warning',
     confirmed: 'info',
+    planned: 'info',
     inProgress: 'primary',
     completed: 'success',
     canceled: 'error',
@@ -662,6 +724,7 @@ function getStatusLabel(status: string): string {
   const map: Record<string, string> = {
     pending: 'En attente',
     confirmed: 'Confirmé',
+    planned: 'Planifié',
     inProgress: 'En cours',
     completed: 'Terminé',
     canceled: 'Annulé',

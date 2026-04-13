@@ -9,16 +9,6 @@
         >
           Nouveau rendez-vous
         </UButton>
-        <UButton
-          variant="outline"
-          color="neutral"
-          icon="i-lucide-refresh-cw"
-          :loading="listRef?.loading"
-          aria-label="Actualiser"
-          @click="listRef?.fetchAppointments?.()"
-        >
-          Actualiser
-        </UButton>
       </template>
     </TitleDashboard>
 
@@ -30,16 +20,6 @@
       :user-id-filter="(route.query.user_id as string) || ''"
     >
       <template #cardActions="{ appointment, basePath }">
-        <UButton
-          variant="soft"
-          color="primary"
-          size="xs"
-          leading-icon="i-lucide-eye"
-          :to="`${basePath}/appointments/${appointment.id}`"
-          aria-label="Voir le détail"
-        >
-          Détails
-        </UButton>
         <UButton
           variant="ghost"
           color="neutral"
@@ -84,7 +64,7 @@
             <div
               class="absolute inset-0 bg-black/50 backdrop-blur-sm"
               aria-hidden="true"
-              @click="isDeleteModalOpen = false"
+              :on-click="() => isDeleteModalOpen = false"
             />
             <div
               class="relative z-10 w-full max-w-md rounded-xl border border-default bg-default shadow-xl"
@@ -99,17 +79,17 @@
                   icon="i-lucide-x"
                   size="sm"
                   aria-label="Fermer"
-                  @click="isDeleteModalOpen = false"
+                  :on-click="() => isDeleteModalOpen = false"
                 />
               </div>
               <p class="border-b border-default px-5 py-4 text-sm text-muted">
                 Cette action est irréversible. Le rendez-vous et ses données associées seront définitivement supprimés.
               </p>
               <div class="flex justify-end gap-2 px-5 py-4">
-                <UButton color="neutral" variant="ghost" @click="isDeleteModalOpen = false">
+                <UButton color="neutral" variant="ghost" :on-click="() => isDeleteModalOpen = false">
                   Annuler
                 </UButton>
-                <UButton color="error" variant="solid" :loading="isDeleting" @click="confirmDelete">
+                <UButton color="error" variant="solid" :loading="isDeleting" :on-click="confirmDelete">
                   Supprimer
                 </UButton>
               </div>

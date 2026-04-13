@@ -100,50 +100,67 @@ class Review
 
     /**
      * Récupère la liste des avis avec pagination et filtres
+     *
+     * @param array $filters reviewee_id, patient_id, appointment_id, reviewee_type, is_visible (bool),
+     *                       include_all_visibility (bool) : si true, n'applique pas le filtre is_visible (admin)
      */
     public function getAll(array $filters = [], int $page = 1, int $limit = 20): array
     {
-        $sql = 'SELECT r.*, 
-                       p.first_name_encrypted, p.first_name_dek,
-                       p.last_name_encrypted, p.last_name_dek
+        $sql = 'SELECT r.*,
+                       patient.first_name_encrypted AS p_first_enc, patient.first_name_dek AS p_first_dek,
+                       patient.last_name_encrypted AS p_last_enc, patient.last_name_dek AS p_last_dek,
+                       rev.first_name_encrypted AS rev_first_enc, rev.first_name_dek AS rev_first_dek,
+                       rev.last_name_encrypted AS rev_last_enc, rev.last_name_dek AS rev_last_dek,
+                       rev.company_name_encrypted AS rev_company_enc, rev.company_name_dek AS rev_company_dek,
+                       a.type AS apt_type,
+                       a.scheduled_at AS apt_scheduled_at,
+                       cc.name AS category_name
                 FROM reviews r
-                LEFT JOIN profiles p ON r.patient_id = p.id
+                LEFT JOIN profiles patient ON r.patient_id = patient.id
+                LEFT JOIN profiles rev ON r.reviewee_id = rev.id
+                LEFT JOIN appointments a ON r.appointment_id = a.id
+                LEFT JOIN care_categories cc ON a.category_id = cc.id
                 WHERE 1=1';
         $params = [];
-        
-        // Filtrer par reviewee_id
+
         if (!empty($filters['reviewee_id'])) {
             $sql .= ' AND r.reviewee_id = ?';
             $params[] = $filters['reviewee_id'];
         }
-        
-        // Filtrer par appointment_id
+
+        if (!empty($filters['patient_id'])) {
+            $sql .= ' AND r.patient_id = ?';
+            $params[] = $filters['patient_id'];
+        }
+
         if (!empty($filters['appointment_id'])) {
             $sql .= ' AND r.appointment_id = ?';
             $params[] = $filters['appointment_id'];
         }
-        
-        // Filtrer par reviewee_type
+
         if (!empty($filters['reviewee_type'])) {
             $sql .= ' AND r.reviewee_type = ?';
             $params[] = $filters['reviewee_type'];
         }
-        
-        // Filtrer par is_visible (par défaut, seulement les visibles)
-        if (isset($filters['is_visible'])) {
+
+        if (!empty($filters['include_all_visibility'])) {
+            // pas de filtre is_visible
+        } elseif (isset($filters['is_visible'])) {
             $sql .= ' AND r.is_visible = ?';
             $params[] = $filters['is_visible'] ? 1 : 0;
         } else {
-            // Par défaut, seulement les avis visibles
             $sql .= ' AND r.is_visible = TRUE';
         }
-        
-        // Compter le total
+
         $countSql = 'SELECT COUNT(*) as total FROM reviews r WHERE 1=1';
         $countParams = [];
         if (!empty($filters['reviewee_id'])) {
             $countSql .= ' AND r.reviewee_id = ?';
             $countParams[] = $filters['reviewee_id'];
+        }
+        if (!empty($filters['patient_id'])) {
+            $countSql .= ' AND r.patient_id = ?';
+            $countParams[] = $filters['patient_id'];
         }
         if (!empty($filters['appointment_id'])) {
             $countSql .= ' AND r.appointment_id = ?';
@@ -153,29 +170,29 @@ class Review
             $countSql .= ' AND r.reviewee_type = ?';
             $countParams[] = $filters['reviewee_type'];
         }
-        if (isset($filters['is_visible'])) {
+        if (!empty($filters['include_all_visibility'])) {
+            // pas de filtre is_visible
+        } elseif (isset($filters['is_visible'])) {
             $countSql .= ' AND r.is_visible = ?';
             $countParams[] = $filters['is_visible'] ? 1 : 0;
         } else {
             $countSql .= ' AND r.is_visible = TRUE';
         }
-        
+
         $countStmt = $this->db->prepare($countSql);
         $countStmt->execute($countParams);
         $total = (int) $countStmt->fetch()['total'];
-        
-        // Pagination
+
         $offset = ($page - 1) * $limit;
-        $sql .= ' ORDER BY r.created_at DESC LIMIT ' . (int)$limit . ' OFFSET ' . (int)$offset;
-        
+        $sql .= ' ORDER BY r.created_at DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $reviews = $stmt->fetchAll();
-        
-        // Déchiffrer les noms des patients si disponibles
+
         require_once __DIR__ . '/../lib/Crypto.php';
         $crypto = new Crypto();
-        
+
         $decryptedReviews = [];
         foreach ($reviews as $review) {
             $decryptedReview = [
@@ -192,39 +209,69 @@ class Review
                 'created_at' => $review['created_at'],
                 'updated_at' => $review['updated_at'],
             ];
-            
-            // Déchiffrer le nom du patient si disponible
-            if (!empty($review['first_name_encrypted']) && !empty($review['first_name_dek'])) {
+
+            $patientFirst = null;
+            $patientLast = null;
+            if (!empty($review['p_first_enc']) && !empty($review['p_first_dek'])) {
                 try {
-                    $decryptedReview['patient_first_name'] = $crypto->decryptField($review['first_name_encrypted'], $review['first_name_dek']);
+                    $patientFirst = $crypto->decryptField($review['p_first_enc'], $review['p_first_dek']);
                 } catch (Exception $e) {
-                    $decryptedReview['patient_first_name'] = null;
+                    $patientFirst = null;
                 }
             }
-            
-            if (!empty($review['last_name_encrypted']) && !empty($review['last_name_dek'])) {
+            if (!empty($review['p_last_enc']) && !empty($review['p_last_dek'])) {
                 try {
-                    $decryptedReview['patient_last_name'] = $crypto->decryptField($review['last_name_encrypted'], $review['last_name_dek']);
+                    $patientLast = $crypto->decryptField($review['p_last_enc'], $review['p_last_dek']);
                 } catch (Exception $e) {
-                    $decryptedReview['patient_last_name'] = null;
+                    $patientLast = null;
                 }
             }
-            
-            // Nom affiché pour le professionnel (ex: "M. D.")
-            $first = $decryptedReview['patient_first_name'] ?? null;
-            $last = $decryptedReview['patient_last_name'] ?? null;
-            if ($first !== null && $first !== '') {
-                $decryptedReview['reviewer_name'] = substr($first, 0, 1) . '.';
-                if ($last !== null && $last !== '') {
-                    $decryptedReview['reviewer_name'] .= ' ' . substr($last, 0, 1) . '.';
+
+            $decryptedReview['patient_first_name'] = $patientFirst;
+            $decryptedReview['patient_last_name'] = $patientLast;
+
+            $parts = array_filter([trim((string) ($patientFirst ?? '')), trim((string) ($patientLast ?? ''))]);
+            $decryptedReview['reviewer_name'] = $parts !== [] ? implode(' ', $parts) : 'Patient';
+
+            $revFirst = null;
+            $revLast = null;
+            $revCompany = null;
+            if (!empty($review['rev_first_enc']) && !empty($review['rev_first_dek'])) {
+                try {
+                    $revFirst = $crypto->decryptField($review['rev_first_enc'], $review['rev_first_dek']);
+                } catch (Exception $e) {
+                    $revFirst = null;
                 }
+            }
+            if (!empty($review['rev_last_enc']) && !empty($review['rev_last_dek'])) {
+                try {
+                    $revLast = $crypto->decryptField($review['rev_last_enc'], $review['rev_last_dek']);
+                } catch (Exception $e) {
+                    $revLast = null;
+                }
+            }
+            if (!empty($review['rev_company_enc']) && !empty($review['rev_company_dek'])) {
+                try {
+                    $revCompany = $crypto->decryptField($review['rev_company_enc'], $review['rev_company_dek']);
+                } catch (Exception $e) {
+                    $revCompany = null;
+                }
+            }
+
+            if ($revCompany !== null && trim($revCompany) !== '') {
+                $decryptedReview['reviewee_name'] = trim($revCompany);
             } else {
-                $decryptedReview['reviewer_name'] = 'Patient';
+                $revParts = array_filter([trim((string) ($revFirst ?? '')), trim((string) ($revLast ?? ''))]);
+                $decryptedReview['reviewee_name'] = $revParts !== [] ? implode(' ', $revParts) : 'Professionnel';
             }
-            
+
+            $decryptedReview['appointment_type'] = !empty($review['apt_type']) ? $review['apt_type'] : null;
+            $decryptedReview['appointment_scheduled_at'] = $review['apt_scheduled_at'] ?? null;
+            $decryptedReview['category_name'] = $review['category_name'] ?? null;
+
             $decryptedReviews[] = $decryptedReview;
         }
-        
+
         return [
             'data' => $decryptedReviews,
             'total' => $total,

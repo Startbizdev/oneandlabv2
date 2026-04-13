@@ -1,5 +1,9 @@
 <template>
-  <div ref="mapEl" class="w-full rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 min-h-[220px] sm:min-h-[260px]" />
+  <!-- isolation + z-0 : les z-index internes Leaflet restent dans ce bloc (évite qu’ils gagnent sur la sidebar du layout) -->
+  <div
+    ref="mapEl"
+    class="relative z-0 isolate w-full rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 min-h-[220px] sm:min-h-[260px]"
+  />
 </template>
 
 <script setup lang="ts">

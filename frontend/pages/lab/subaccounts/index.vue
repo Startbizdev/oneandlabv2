@@ -7,15 +7,7 @@
     >
       <template #actions>
         <div class="flex items-center gap-2">
-          <UButton
-            variant="ghost"
-            size="sm"
-            icon="i-lucide-refresh-cw"
-            :loading="loading"
-            aria-label="Actualiser"
-            @click="fetchSubaccounts"
-          />
-          <UButton color="primary" icon="i-lucide-plus" @click="openCreateModal">
+          <UButton color="primary" icon="i-lucide-plus" :on-click="openCreateModal">
             Créer un sous-compte
           </UButton>
         </div>
@@ -49,7 +41,7 @@
         <UButton size="xs" variant="soft" color="primary" icon="i-lucide-calendar" :to="`/lab/appointments?assigned_lab_id=${item.id}`">
           RDV
         </UButton>
-        <UButton size="xs" variant="soft" color="red" icon="i-lucide-trash-2" @click="confirmDelete(item)">
+        <UButton size="xs" variant="soft" color="red" icon="i-lucide-trash-2" :on-click="() => confirmDelete(item)">
           Supprimer
         </UButton>
       </template>
@@ -112,8 +104,8 @@
         </UForm>
       </template>
       <template #footer="{ close }">
-        <UButton variant="ghost" @click="close()">Annuler</UButton>
-        <UButton :loading="saving" @click="saveSubaccount">
+        <UButton variant="ghost" :on-click="close">Annuler</UButton>
+        <UButton :loading="saving" :on-click="saveSubaccount">
           {{ editingSubaccount ? 'Enregistrer' : 'Créer' }}
         </UButton>
       </template>
@@ -127,8 +119,8 @@
       :ui="{ content: 'max-w-md', footer: 'justify-end gap-2' }"
     >
       <template #footer="{ close }">
-        <UButton variant="ghost" @click="close()">Annuler</UButton>
-        <UButton color="red" :loading="deleting" @click="deleteSubaccount">Supprimer</UButton>
+        <UButton variant="ghost" :on-click="close">Annuler</UButton>
+        <UButton color="red" :loading="deleting" :on-click="deleteSubaccount">Supprimer</UButton>
       </template>
     </UModal>
   </div>

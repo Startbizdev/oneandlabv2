@@ -81,6 +81,9 @@
         </template>
       </UPopover>
     </UFormField>
+    <p v-if="!disabled && !modelValue" class="text-xs text-gray-500 -mt-1">
+      Pour une adresse avec numéro, saisissez d’abord le numéro puis la rue (la base nationale ne liste pas tous les numéros d’une rue sans cette saisie).
+    </p>
 
     <!-- Complément d'adresse optionnel -->
     <UFormField 
@@ -133,7 +136,7 @@ const props = withDefaults(defineProps<Props>(), {
   name: 'address',
   required: false,
   disabled: false,
-  placeholder: 'Commencez à taper votre adresse...',
+  placeholder: 'Ex. 12 rue… ou rue + ville (numéro en premier pour affiner)',
   showDetails: true,
   showRemoveButton: true,
   showComplement: false,
@@ -153,10 +156,11 @@ const isPopoverOpen = ref(false)
 const inputContainerRef = ref<HTMLElement | null>(null)
 const popoverWidth = ref(0)
 
-// Valeur affichée dans l'input
+// Valeur affichée dans l'input (objet {label} ou string pour données migrées)
 const displayValue = computed(() => {
   if (props.modelValue) {
-    return props.modelValue.label
+    if (typeof props.modelValue === 'string') return props.modelValue
+    return props.modelValue.label ?? ''
   }
   return searchQuery.value
 })

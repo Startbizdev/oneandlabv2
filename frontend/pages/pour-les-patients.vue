@@ -67,9 +67,10 @@ useLandingSeo({
 // Image hero Unsplash - patient / réservation à domicile (différente de l'accueil)
 const heroBackgroundImage = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1920&q=80'
 
-const heroCtas = [
-  { label: 'Prendre rendez-vous à domicile', to: '/rendez-vous/nouveau', color: 'primary', variant: 'solid', size: 'xl', icon: 'i-lucide-calendar-plus' },
-]
+const { appointmentNewUrl } = useAppointmentNewUrl()
+const heroCtas = computed(() => [
+  { label: 'Prendre rendez-vous à domicile', to: appointmentNewUrl.value, color: 'primary' as const, variant: 'solid' as const, size: 'xl' as const, icon: 'i-lucide-calendar-plus' },
+])
 
 const trustItems = [
   { icon: 'i-lucide-clock', title: 'Réservation en 2 min', description: 'Formulaire simple et rapide' },
@@ -110,7 +111,7 @@ const faqItems = [
   { question: 'Les soins sont-ils remboursés ?', answer: 'Les actes réalisés à domicile par des professionnels conventionnés sont pris en charge par l\'Assurance maladie comme en cabinet. Pensez à transmettre votre carte Vitale et votre ordonnance.' },
 ]
 
-const ctaButtons = [
-  { label: 'Prendre rendez-vous à domicile', to: '/rendez-vous/nouveau', color: 'primary', size: 'xl', icon: 'i-lucide-calendar-plus' },
-]
+const ctaButtons = computed(() => [
+  { label: 'Prendre rendez-vous à domicile', to: appointmentNewUrl.value, color: 'primary' as const, size: 'xl' as const, icon: 'i-lucide-calendar-plus' },
+])
 </script>

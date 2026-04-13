@@ -1,220 +1,194 @@
 <template>
-  <AppointmentDetailPage ref="detailRef" base-path="/admin">
+  <AppointmentDetailPage ref="detailRef" base-path="/admin" @appointment-loaded="onAppointmentLoaded">
     <template #sidebarActions="{ appointment, loadAppointment }">
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium mb-2">Changer le statut</label>
-          <div class="flex gap-2">
-            <USelect v-model="newStatus" :items="statusOptions" value-key="value" placeholder="Sélectionner un statut" class="flex-1" />
-            <UButton @click="updateStatus(loadAppointment)" :loading="updatingStatus">
-              Mettre à jour
-            </UButton>
-          </div>
+          <AppointmentStatusSelect
+            :model-value="appointment.status === 'cancelled' ? 'canceled' : appointment.status"
+            :appointment-id="String(appointment.id)"
+            require-cancel-form
+            @update:model-value="(v) => (appointment.status = v)"
+            @updated="() => { loadAppointment(); loadStatusHistory(); }"
+          />
         </div>
-        <div v-if="appointment.type === 'blood_test'">
-          <label class="block text-sm font-medium mb-2">Assigner à un laboratoire</label>
+        <NurseRdvSharePanel
+          v-if="appointment.type === 'nursing' && !['completed', 'canceled', 'cancelled'].includes(String(appointment.status ?? ''))"
+          :appointment-id="String(appointment.id)"
+          @released="() => loadAppointment()"
+        />
+        <div class="space-y-2">
+          <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5">
+            Annulation ou restauration
+          </p>
           <div class="flex flex-col sm:flex-row gap-2">
-            <USelectMenu
-              v-model="reassignLabId"
-              :items="labSelectItems"
-              value-key="value"
-              :placeholder="labSelectPlaceholder"
-              size="md"
-              class="flex-1 min-w-0"
-              :loading="labsLoading"
-              :search-input="{ placeholder: 'Rechercher un labo...' }"
-              :filter-fields="['label']"
-            />
             <UButton
+              v-if="appointment.status !== 'canceled'"
               type="button"
-              color="primary"
+              color="error"
+              variant="outline"
+              size="md"
+              leading-icon="i-lucide-x-circle"
+              :loading="updatingStatus"
+              :on-click="() => openCancelModal(appointment, loadAppointment)"
+            >
+              Annuler le rendez-vous
+            </UButton>
+            <UButton
+              v-if="appointment.status === 'canceled'"
+              type="button"
+              color="success"
               variant="solid"
               size="md"
-              :loading="reassigning"
-              :disabled="!reassignLabId"
-              @click="reassignAppointment(loadAppointment)"
+              leading-icon="i-lucide-rotate-ccw"
+              :loading="updatingStatus"
+              :on-click="() => restoreAppointment(appointment, loadAppointment)"
             >
-              Réassigner
+              Restaurer le rendez-vous
             </UButton>
           </div>
-        </div>
-        <div v-else-if="appointment.type === 'nursing'">
-          <label class="block text-sm font-medium mb-2">Assigner à un infirmier</label>
-          <div class="flex flex-col sm:flex-row gap-2">
-            <USelectMenu
-              v-model="reassignNurseId"
-              :items="nurseSelectItems"
-              value-key="value"
-              :placeholder="nurseSelectPlaceholder"
-              size="md"
-              class="flex-1 min-w-0"
-              :loading="nursesLoading"
-              :search-input="{ placeholder: 'Rechercher un infirmier...' }"
-              :filter-fields="['label']"
-            />
-            <UButton
-              type="button"
-              color="primary"
-              variant="solid"
-              size="md"
-              :loading="reassigning"
-              :disabled="!reassignNurseId"
-              @click="reassignAppointment(loadAppointment)"
-            >
-              Réassigner
-            </UButton>
-          </div>
-          <UButton
-            type="button"
-            color="primary"
-            variant="outline"
-            size="md"
-            class="w-full mt-2"
-            leading-icon="i-lucide-share-2"
-            :loading="shareLoading"
-            @click="shareForNurse(appointment)"
-          >
-            Partager pour les soins infirmiers
-          </UButton>
-        </div>
-        <div class="flex flex-col sm:flex-row gap-2">
-          <UButton
-            v-if="appointment.status !== 'canceled'"
-            type="button"
-            color="error"
-            variant="solid"
-            size="md"
-            leading-icon="i-lucide-x-circle"
-            :loading="updatingStatus"
-            @click="showCancelModal = true"
-          >
-            Annuler le rendez-vous
-          </UButton>
-          <UButton
-            v-if="appointment.status === 'canceled'"
-            type="button"
-            color="success"
-            variant="solid"
-            size="md"
-            leading-icon="i-lucide-rotate-ccw"
-            :loading="updatingStatus"
-            @click="restoreAppointment(loadAppointment)"
-          >
-            Restaurer le rendez-vous
-          </UButton>
         </div>
       </div>
     </template>
 
     <template #documentsCard="{ appointment, documents, documentsLoading, loadDocuments }">
-      <div v-if="appointment" class="mb-6 space-y-4">
-        <div class="flex items-center gap-2 mb-4">
-          <UIcon name="i-lucide-upload" class="w-5 h-5 text-gray-500" />
-          <h3 class="text-sm font-normal text-gray-700 dark:text-gray-300">Ajouter des documents</h3>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div
-            v-for="docType in uploadDocumentTypes"
-            :key="docType.value"
-            class="relative group"
-            @dragover.prevent="handleDragOver(docType.value)"
-            @dragleave.prevent="handleDragLeave(docType.value)"
-            @drop.prevent="handleDrop($event, docType.value)"
-          >
-            <input
-              :ref="el => setFileInput(docType.value, el)"
-              type="file"
-              accept="image/*,.pdf"
-              class="hidden"
-              @change="handleFileSelectForType($event, docType.value)"
-            >
-            <div
-              :class="[
-                'relative p-3 rounded-lg border-2 transition-all min-h-[100px] flex flex-col',
-                draggedOver === docType.value
-                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                  : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-500',
-                uploadingTypes.has(docType.value) ? 'opacity-50 pointer-events-none' : '',
-                getDocumentsByType(documents, docType.value).length > 0 ? 'border-solid' : 'border-dashed cursor-pointer'
-              ]"
-              @click="getDocumentsByType(documents, docType.value).length === 0 && !uploadingTypes.has(docType.value) ? triggerFileInput(docType.value) : null"
-            >
-              <div class="flex items-center gap-2 mb-2">
-                <div :class="['flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0', getDocTypeBgClass(docType.color)]">
-                  <UIcon :name="docType.icon" :class="['w-4 h-4', getDocTypeIconClass(docType.color)]" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs font-medium text-gray-900 dark:text-white">{{ docType.label }}</p>
-                  <p v-if="getDocumentsByType(documents, docType.value).length === 0" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Glisser-déposer ou cliquer</p>
-                </div>
-                <UIcon v-if="uploadingTypes.has(docType.value)" name="i-lucide-loader-2" class="w-4 h-4 animate-spin text-primary-500 flex-shrink-0" />
-                <UIcon v-else-if="getDocumentsByType(documents, docType.value).length === 0" name="i-lucide-upload" class="w-4 h-4 text-gray-400 group-hover:text-primary-500 transition-colors flex-shrink-0" />
-              </div>
-              <div v-if="getDocumentsByType(documents, docType.value).length > 0" class="flex-1 space-y-1 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                <div
-                  v-for="doc in getDocumentsByType(documents, docType.value)"
-                  :key="doc.id"
-                  class="flex items-center justify-between gap-1.5 px-1.5 py-1 bg-gray-50 dark:bg-gray-800/50 rounded text-xs"
-                >
-                  <div class="flex items-center gap-1.5 flex-1 min-w-0">
-                    <UIcon :name="getFileIcon(doc.mime_type)" class="w-3 h-3 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                    <p class="font-medium text-gray-900 dark:text-white truncate text-xs">{{ doc.file_name }}</p>
-                  </div>
-                  <UButton
-                    color="neutral"
-                    variant="ghost"
-                    size="xs"
-                    icon="i-lucide-download"
-                    :loading="downloadingDocuments.has(doc.id)"
-                    :loading-auto="false"
-                    :ui="{ size: { xs: 'h-5 w-5 p-0' } }"
-                    @click.stop="downloadDocument(doc)"
-                  />
-                </div>
-              </div>
-              <div v-if="getDocumentsByType(documents, docType.value).length === 0" class="flex-1 flex items-center justify-center">
-                <p class="text-xs text-gray-400 dark:text-gray-500">Cliquez pour ajouter</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <UIcon name="i-lucide-info" class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-          <p class="text-xs text-blue-700 dark:text-blue-300">Formats acceptés : JPG, PNG, PDF • Taille maximale : 10 MB par fichier</p>
-        </div>
-      </div>
-      <div v-if="documentsLoading" class="flex items-center justify-center py-8">
-        <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-primary-500" />
-      </div>
-      <UEmpty
-        v-else-if="!documents?.length && appointment"
-        icon="i-lucide-file-x"
-        title="Aucun document"
-        description="Aucun document médical n'a été uploadé pour ce rendez-vous."
-        variant="naked"
+      <AppointmentDocumentsSection
+        :documents="documents || []"
+        :loading="documentsLoading"
+        empty-description="Aucun document médical pour ce rendez-vous."
+        :show-upload-area="!!appointment"
+        :upload-types="uploadDocumentTypes"
+        :can-replace="!!appointment"
+        :downloading-ids="downloadingDocuments"
+        :uploading-types="uploadingTypes"
+        @download="downloadDocument"
+        @upload="(docType, file) => { setAppointmentForUpload(appointment); uploadDocumentFile(file, docType); }"
       />
-      <div v-else-if="documents && getOtherDocuments(documents).length > 0" class="space-y-3">
-        <h3 class="text-sm font-normal text-gray-700 dark:text-gray-300 mb-2">Autres documents</h3>
-        <div
-          v-for="doc in getOtherDocuments(documents)"
-          :key="doc.id"
-          class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border border-gray-200 dark:border-gray-800 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-        >
-          <div class="flex items-center gap-3 flex-1 min-w-0 w-full sm:w-auto">
-            <UIcon :name="getFileIcon(doc.mime_type)" class="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap mb-1">
-                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ doc.file_name }}</p>
-                <UBadge v-if="doc.document_type" :color="getDocumentTypeBadgeColor(doc.document_type)" variant="soft" size="xs" :label="getDocumentTypeLabel(doc.document_type)" />
-              </div>
-              <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatFileSize(doc.file_size) }} • {{ formatDate(doc.created_at) }}</p>
-            </div>
+    </template>
+
+    <!-- Assignation : même système que détail lab (lab + préleveur pour prise de sang, infirmier pour soins) -->
+    <template #assignationSection="{ appointment, loadAppointment }">
+      <UCard v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)" class="overflow-hidden">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon name="i-lucide-user-cog" class="w-5 h-5 text-primary" />
+            <span class="font-semibold text-gray-900 dark:text-white">Assignation</span>
           </div>
-          <UButton color="neutral" variant="ghost" size="sm" leading-icon="i-lucide-download" :loading="downloadingDocuments.has(doc.id)" :loading-auto="false" class="w-full sm:w-auto" @click="downloadDocument(doc)">
-            Télécharger
-          </UButton>
+        </template>
+        <div class="space-y-4">
+          <template v-if="appointment.type === 'blood_test'">
+            <p class="text-sm text-gray-500 dark:text-gray-400">Laboratoire (ou sous-compte) puis optionnellement un préleveur.</p>
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Laboratoire assigné</label>
+              <USelectMenu
+                v-model="reassignLabId"
+                :items="labSelectItems"
+                value-key="value"
+                :placeholder="labSelectPlaceholder"
+                size="md"
+                class="w-full min-w-0"
+                :loading="labsLoading"
+                :search-input="{ placeholder: 'Rechercher un labo...' }"
+                :filter-fields="['label']"
+              >
+                <template #empty>
+                  <div class="py-6 px-4">
+                    <UEmpty
+                      icon="i-lucide-building-2"
+                      title="Aucun laboratoire trouvé"
+                      description="Aucun laboratoire ne correspond à votre recherche."
+                      variant="naked"
+                      size="sm"
+                    />
+                  </div>
+                </template>
+              </USelectMenu>
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Préleveur assigné</label>
+              <USelectMenu
+                v-model="reassignPreleveurId"
+                :items="preleveurSelectItems"
+                value-key="value"
+                :placeholder="reassignLabId ? 'Choisir un préleveur (optionnel)' : 'Sélectionnez d\'abord un laboratoire'"
+                size="md"
+                class="w-full min-w-0"
+                :loading="preleveursLoading"
+                :disabled="!reassignLabId"
+                :search-input="{ placeholder: 'Rechercher...' }"
+                :filter-fields="['label']"
+              >
+                <template #empty>
+                  <div class="py-6 px-4">
+                    <UEmpty
+                      icon="i-lucide-user-check"
+                      title="Aucun préleveur trouvé"
+                      description="Aucun préleveur ne correspond à votre recherche. Laissez vide si non assigné."
+                      variant="naked"
+                      size="sm"
+                    />
+                  </div>
+                </template>
+              </USelectMenu>
+            </div>
+            <UButton
+              type="button"
+              color="primary"
+              variant="soft"
+              size="md"
+              leading-icon="i-lucide-check"
+              :loading="reassigning"
+              :disabled="!reassignLabId"
+              block
+              :on-click="() => reassignAppointment(appointment, loadAppointment)"
+            >
+              Appliquer l’assignation
+            </UButton>
+          </template>
+          <template v-else-if="appointment.type === 'nursing'">
+            <p class="text-sm text-gray-500 dark:text-gray-400">Assigner ce rendez-vous à un infirmier.</p>
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Infirmier assigné</label>
+              <USelectMenu
+                v-model="reassignNurseId"
+                :items="nurseSelectItems"
+                value-key="value"
+                :placeholder="nurseSelectPlaceholder"
+                size="md"
+                class="w-full min-w-0"
+                :loading="nursesLoading"
+                :search-input="{ placeholder: 'Rechercher un infirmier...' }"
+                :filter-fields="['label']"
+              >
+                <template #empty>
+                  <div class="py-6 px-4">
+                    <UEmpty
+                      icon="i-lucide-stethoscope"
+                      title="Aucun infirmier trouvé"
+                      description="Aucun infirmier ne correspond à votre recherche."
+                      variant="naked"
+                      size="sm"
+                    />
+                  </div>
+                </template>
+              </USelectMenu>
+            </div>
+            <UButton
+              type="button"
+              color="primary"
+              variant="soft"
+              size="md"
+              leading-icon="i-lucide-check"
+              :loading="reassigning"
+              :disabled="!reassignNurseId"
+              block
+              :on-click="() => reassignAppointment(appointment, loadAppointment)"
+            >
+              Appliquer l’assignation
+            </UButton>
+          </template>
         </div>
-      </div>
+      </UCard>
     </template>
 
     <template #mainExtra="{ appointment, loadAppointment }">
@@ -260,6 +234,8 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
+import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
+import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 
 const route = useRoute();
 const detailRef = ref<{ loadAppointment: () => Promise<void>; loadDocuments: () => Promise<void>; appointment: { value: any } } | null>(null);
@@ -267,7 +243,9 @@ const toast = useAppToast();
 
 const statusHistory = ref<any[]>([]);
 const showCancelModal = ref(false);
-const shareLoading = ref(false);
+const currentAppointmentForCancel = ref<any>(null);
+const currentLoadAppointmentForCancel = ref<(() => Promise<void>) | null>(null);
+const currentAppointmentForUpload = ref<any>(null);
 const downloadingDocuments = ref(new Set<string>());
 const uploadingTypes = ref(new Set<string>());
 const draggedOver = ref<string | null>(null);
@@ -277,6 +255,7 @@ const uploadDocumentTypes = [
   { value: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card', color: 'green' },
   { value: 'carte_mutuelle', label: 'Carte Mutuelle', icon: 'i-lucide-shield', color: 'blue' },
   { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', color: 'orange' },
+  { value: 'resultats', label: 'Résultats', icon: 'i-lucide-file-check', color: 'emerald' },
   { value: 'autres_assurances', label: 'Autres assurances', icon: 'i-lucide-briefcase', color: 'purple' },
   { value: 'other', label: 'Autre document', icon: 'i-lucide-file', color: 'gray' },
 ];
@@ -292,37 +271,6 @@ function getOtherDocuments(documents: any[]) {
   if (!documents) return [];
   const knownTypes = uploadDocumentTypes.map((t) => t.value);
   return documents.filter((doc: any) => !doc.document_type || !knownTypes.includes(doc.document_type));
-}
-async function shareForNurse(appointment: { id: string }) {
-  if (!appointment?.id) return;
-  shareLoading.value = true;
-  try {
-    const res = await apiFetch(`/appointments/${appointment.id}/share-for-nurse`, { method: 'GET' });
-    if (!res?.success || !res?.data) {
-      toast.add({ title: 'Erreur', description: (res as any)?.error ?? 'Impossible de générer le partage.', color: 'error' });
-      return;
-    }
-    const { shareText, sharePath, shareTextAfterUrl } = res.data;
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const shareUrl = origin + sharePath;
-    const textToShare = shareText + shareUrl + (shareTextAfterUrl ?? '');
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      // On ne passe que text avec le message complet (incluant le lien) : beaucoup d'apps
-      // (ex. WhatsApp) n'envoient que l'URL si on passe text + url séparément.
-      await navigator.share({
-        text: textToShare,
-      });
-      toast.add({ title: 'Partage ouvert', description: 'Choisissez l’application (ex. WhatsApp) pour envoyer le message.', color: 'success' });
-    } else {
-      await navigator.clipboard?.writeText(textToShare);
-      toast.add({ title: 'Lien copié', description: 'Le message a été copié dans le presse-papier. Collez-le dans WhatsApp ou votre groupe.', color: 'success' });
-    }
-  } catch (e: any) {
-    if (e?.name === 'AbortError') return;
-    toast.add({ title: 'Erreur', description: e?.message ?? 'Partage ou copie impossible.', color: 'error' });
-  } finally {
-    shareLoading.value = false;
-  }
 }
 function triggerFileInput(docType: string) {
   fileInputs.value[docType]?.click();
@@ -346,11 +294,21 @@ async function handleFileSelectForType(event: Event, docType: string) {
     target.value = '';
   }
 }
+function setAppointmentForUpload(apt: any) {
+  currentAppointmentForUpload.value = apt;
+}
+
+function openCancelModal(apt: any, loadAppointment: () => Promise<void>) {
+  currentAppointmentForCancel.value = apt;
+  currentLoadAppointmentForCancel.value = loadAppointment;
+  showCancelModal.value = true;
+}
+
 async function uploadDocumentFile(file: File, docType: string) {
-  const appointment = detailRef.value?.appointment?.value;
+  const appointment = currentAppointmentForUpload.value ?? getAppointmentFromDetailRef(detailRef);
   if (!appointment) return;
-  if (file.size > 10 * 1024 * 1024) {
-    toast.add({ title: 'Fichier trop volumineux', description: 'Le fichier dépasse la limite de 10 MB autorisée.', color: 'error' });
+  if (file.size > MAX_UPLOAD_BYTES) {
+    toast.add({ title: 'Fichier trop volumineux', description: 'Le fichier dépasse la limite de 25 Mo autorisée.', color: 'error' });
     return;
   }
   const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
@@ -421,7 +379,7 @@ function formatFileSize(bytes: number) {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 function getDocumentTypeLabel(type: string) {
-  const labels: Record<string, string> = { carte_vitale: 'Carte Vitale', carte_mutuelle: 'Carte Mutuelle', ordonnance: 'Ordonnance', autres_assurances: 'Autres assurances', other: 'Autre' };
+  const labels: Record<string, string> = { carte_vitale: 'Carte Vitale', carte_mutuelle: 'Carte Mutuelle', ordonnance: 'Ordonnance', resultats: 'Résultats', autres_assurances: 'Autres assurances', other: 'Autre' };
   return labels[type] || 'Document';
 }
 function getDocumentTypeBadgeColor(type: string): 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral' {
@@ -431,47 +389,73 @@ function getDocumentTypeBadgeColor(type: string): 'error' | 'primary' | 'seconda
   return colors[type] || 'neutral';
 }
 function getDocTypeBgClass(color: string) {
-  const classes: Record<string, string> = { green: 'bg-green-100 dark:bg-green-900/30', blue: 'bg-blue-100 dark:bg-blue-900/30', orange: 'bg-orange-100 dark:bg-orange-900/30', purple: 'bg-purple-100 dark:bg-purple-900/30', gray: 'bg-gray-100 dark:bg-gray-900/30' };
+  const classes: Record<string, string> = { green: 'bg-green-100 dark:bg-green-900/30', blue: 'bg-blue-100 dark:bg-blue-900/30', orange: 'bg-orange-100 dark:bg-orange-900/30', purple: 'bg-purple-100 dark:bg-purple-900/30', emerald: 'bg-emerald-100 dark:bg-emerald-900/30', gray: 'bg-gray-100 dark:bg-gray-900/30' };
   return classes[color] || 'bg-gray-100 dark:bg-gray-900/30';
 }
 function getDocTypeIconClass(color: string) {
-  const classes: Record<string, string> = { green: 'text-green-600 dark:text-green-400', blue: 'text-blue-600 dark:text-blue-400', orange: 'text-orange-600 dark:text-orange-400', purple: 'text-purple-600 dark:text-purple-400', gray: 'text-gray-600 dark:text-gray-400' };
+  const classes: Record<string, string> = { green: 'text-green-600 dark:text-green-400', blue: 'text-blue-600 dark:text-blue-400', orange: 'text-orange-600 dark:text-orange-400', purple: 'text-purple-600 dark:text-purple-400', emerald: 'text-emerald-600 dark:text-emerald-400', gray: 'text-gray-600 dark:text-gray-400' };
   return classes[color] || 'text-gray-600 dark:text-gray-400';
 }
 
 const updatingStatus = ref(false);
 const reassigning = ref(false);
-const newStatus = ref('');
 const reassignLabId = ref('');
 const reassignNurseId = ref('');
+const reassignPreleveurId = ref('');
 const labs = ref<any[]>([]);
 const nurses = ref<any[]>([]);
+const preleveurs = ref<any[]>([]);
 const labsLoading = ref(false);
 const nursesLoading = ref(false);
+const preleveursLoading = ref(false);
 
 const labSelectItems = computed(() =>
   labs.value.map((p) => ({
-    label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email || p.id,
+    label: (p.company_name && String(p.company_name).trim()) || `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email || p.id,
     value: p.id,
   }))
 );
-const nurseSelectItems = computed(() =>
-  nurses.value.map((p) => ({
+const nurseSelectItems = computed(() => {
+  const items = nurses.value.map((p) => ({
     label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email || p.id,
     value: p.id,
-  }))
-);
+  }));
+  const apt = loadedAppointmentForAssign.value ?? getAppointmentFromDetailRef(detailRef);
+  const nurseId = apt?.assigned_nurse_id ? String(apt.assigned_nurse_id) : '';
+  const displayName = apt?.assigned_nurse_display_name;
+  if (nurseId && displayName && !items.some((i) => i.value === nurseId)) {
+    items.unshift({ label: displayName, value: nurseId });
+  }
+  return items;
+});
+const preleveurSelectItems = computed(() => {
+  const labId = reassignLabId.value;
+  return preleveurs.value
+    .filter((p) => !labId || String(p.lab_id || '') === String(labId))
+    .map((p) => ({
+      label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email || p.id,
+      value: p.id,
+    }));
+});
+function assignationIdAsString(val: unknown): string {
+  if (val == null || val === '') return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object' && val !== null && 'value' in val) return String((val as { value: unknown }).value);
+  return String(val);
+}
 const currentLabName = computed(() => {
-  const id = reassignLabId.value;
+  const id = assignationIdAsString(reassignLabId.value);
   if (!id) return '';
   const lab = labs.value.find((p) => p.id === id);
-  return lab ? `${(lab.first_name || '').trim()} ${(lab.last_name || '').trim()}`.trim() || lab.email || id : '';
+  if (!lab) return id;
+  return (lab.company_name && String(lab.company_name).trim()) || `${(lab.first_name || '').trim()} ${(lab.last_name || '').trim()}`.trim() || lab.email || id;
 });
 const currentNurseName = computed(() => {
-  const id = reassignNurseId.value;
+  const id = assignationIdAsString(reassignNurseId.value);
   if (!id) return '';
   const nurse = nurses.value.find((p) => p.id === id);
-  return nurse ? `${(nurse.first_name || '').trim()} ${(nurse.last_name || '').trim()}`.trim() || nurse.email || id : '';
+  const name = nurse ? `${(nurse.first_name || '').trim()} ${(nurse.last_name || '').trim()}`.trim() || nurse.email || '' : '';
+  return name || ((loadedAppointmentForAssign.value ?? getAppointmentFromDetailRef(detailRef))?.assigned_nurse_display_name ?? '');
 });
 const labSelectPlaceholder = computed(() => {
   if (labsLoading.value) return 'Chargement...';
@@ -484,51 +468,72 @@ const nurseSelectPlaceholder = computed(() => {
   return 'Rechercher un infirmier...';
 });
 
-// Annulation uniquement via le bouton "Annuler le rendez-vous" (modal avec motif + commentaire)
-const statusOptions = [
-  { label: 'En attente', value: 'pending' },
-  { label: 'Confirmé', value: 'confirmed' },
-  { label: 'En cours', value: 'inProgress' },
-  { label: 'Terminé', value: 'completed' },
-  { label: 'Expiré', value: 'expired' },
-  { label: 'Refusé', value: 'refused' },
-];
+const DEBUG_ASSIGN = true; // TODO: retirer après debug — logs console assignation admin
+function syncAssignationFromAppointment(appointment: any) {
+  if (DEBUG_ASSIGN) console.log('[Admin RDV Assignation] syncAssignationFromAppointment', appointment ? { id: appointment.id, type: appointment.type, assigned_lab_id: appointment.assigned_lab_id, assigned_to: appointment.assigned_to, assigned_nurse_id: appointment.assigned_nurse_id } : null);
+  if (!appointment) return;
+  const labId = appointment.assigned_lab_id != null ? String(appointment.assigned_lab_id) : '';
+  const toId = appointment.assigned_to != null ? String(appointment.assigned_to) : '';
+  const nurseId = appointment.assigned_nurse_id != null ? String(appointment.assigned_nurse_id) : '';
+  if (appointment.type === 'blood_test') {
+    reassignLabId.value = labId;
+    reassignPreleveurId.value = toId;
+    reassignNurseId.value = '';
+    if (DEBUG_ASSIGN) console.log('[Admin RDV Assignation] sync blood_test →', { reassignLabId: labId, reassignPreleveurId: toId });
+  } else if (appointment.type === 'nursing') {
+    reassignNurseId.value = nurseId;
+    reassignLabId.value = '';
+    reassignPreleveurId.value = '';
+    if (DEBUG_ASSIGN) console.log('[Admin RDV Assignation] sync nursing →', { reassignNurseId: nurseId });
+  }
+}
 
-watch(
-  () => detailRef.value?.appointment?.value,
-  (appointment) => {
-    if (appointment) {
-      newStatus.value = appointment.status;
-      if (appointment.type === 'blood_test') {
-        reassignLabId.value = appointment.assigned_lab_id ?? '';
-      } else if (appointment.type === 'nursing') {
-        reassignNurseId.value = appointment.assigned_nurse_id ?? '';
-      }
-    }
-  },
-  { immediate: true }
-);
+// Une seule règle : synchroniser les dropdowns d’assignation quand on a à la fois
+// le RDV (référence) et les listes (labos, infirmiers, préleveurs). Ainsi après
+// refresh ou navigation, les selects affichent le bon libellé sans nextTick ni double watch.
+const loadedAppointmentForAssign = ref<any>(null);
+const allListsLoaded = computed(() => !labsLoading.value && !nursesLoading.value && !preleveursLoading.value);
+
+function trySyncAssignation() {
+  if (!loadedAppointmentForAssign.value || !allListsLoaded.value) return;
+  if (DEBUG_ASSIGN) console.log('[Admin RDV Assignation] trySyncAssignation → sync');
+  syncAssignationFromAppointment(loadedAppointmentForAssign.value);
+}
+
+function onAppointmentLoaded(appointment: any) {
+  if (DEBUG_ASSIGN) console.log('[Admin RDV Assignation] appointment-loaded', appointment?.id);
+  loadedAppointmentForAssign.value = appointment ?? null;
+  trySyncAssignation();
+}
+
+watch(allListsLoaded, (loaded) => {
+  if (loaded) trySyncAssignation();
+}, { immediate: true });
 
 onMounted(async () => {
   loadStatusHistory();
   labsLoading.value = true;
   nursesLoading.value = true;
+  preleveursLoading.value = true;
   try {
-    const [labRes, subRes, nurseRes] = await Promise.all([
+    const [labRes, subRes, nurseRes, prelRes] = await Promise.all([
       apiFetch('/users?role=lab&limit=500', { method: 'GET' }),
       apiFetch('/users?role=subaccount&limit=500', { method: 'GET' }),
       apiFetch('/users?role=nurse&limit=500', { method: 'GET' }),
+      apiFetch('/users?role=preleveur&limit=500', { method: 'GET' }),
     ]);
     labs.value = [
       ...(labRes.success && labRes.data ? (labRes.data as any[]) : []),
       ...(subRes.success && subRes.data ? (subRes.data as any[]) : []),
     ];
     nurses.value = nurseRes.success && nurseRes.data ? (nurseRes.data as any[]) : [];
+    preleveurs.value = prelRes.success && prelRes.data ? (prelRes.data as any[]) : [];
   } catch (error) {
-    console.error('Erreur chargement labos/infirmiers:', error);
+    console.error('Erreur chargement labos/infirmiers/préleveurs:', error);
   } finally {
     labsLoading.value = false;
     nursesLoading.value = false;
+    preleveursLoading.value = false;
   }
 });
 
@@ -561,6 +566,7 @@ function getStatusColor(status: string) {
   const colors: Record<string, string> = {
     pending: 'yellow',
     confirmed: 'blue',
+    planned: 'sky',
     inProgress: 'purple',
     completed: 'green',
     canceled: 'red',
@@ -574,6 +580,7 @@ function getStatusLabel(status: string) {
   const labels: Record<string, string> = {
     pending: 'En attente',
     confirmed: 'Confirmé',
+    planned: 'Planifié',
     inProgress: 'En cours',
     completed: 'Terminé',
     canceled: 'Annulé',
@@ -583,58 +590,60 @@ function getStatusLabel(status: string) {
   return labels[status] || status;
 }
 
-async function updateStatus(loadAppointment: () => Promise<void>) {
-  const appointment = detailRef.value?.appointment?.value;
-  if (!appointment || !newStatus.value || newStatus.value === appointment.status) return;
-  updatingStatus.value = true;
-  try {
-    const response = await apiFetch(`/appointments/${appointment.id}`, {
-      method: 'PUT',
-      body: { status: newStatus.value, note: 'Changement manuel par administrateur' },
-    });
-    if (response.success) {
-      await loadAppointment();
-      await loadStatusHistory();
-    }
-  } catch (error) {
-    console.error('Erreur lors de la mise à jour:', error);
-  } finally {
-    updatingStatus.value = false;
-  }
+function toId(v: unknown): string {
+  if (v == null || v === '') return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object' && v !== null && 'value' in v) return String((v as { value: unknown }).value);
+  if (typeof v === 'object' && v !== null && 'id' in v) return String((v as { id: unknown }).id);
+  return String(v);
 }
 
-async function reassignAppointment(loadAppointment: () => Promise<void>) {
-  const appointment = detailRef.value?.appointment?.value;
-  if (!appointment) return;
+async function reassignAppointment(apt: { id: string; type?: string } | null, loadAppointment: () => Promise<void>) {
+  const appointment = apt ?? getAppointmentFromDetailRef(detailRef);
+  if (!appointment?.id) return;
   const isBloodTest = appointment.type === 'blood_test';
   const isNursing = appointment.type === 'nursing';
   const body: Record<string, string> = {};
-  if (isBloodTest && reassignLabId.value) body.assigned_lab_id = reassignLabId.value;
-  else if (isNursing && reassignNurseId.value) body.assigned_nurse_id = reassignNurseId.value;
-  if (Object.keys(body).length === 0) return;
+  const labId = toId(reassignLabId.value);
+  const preleveurId = toId(reassignPreleveurId.value);
+  const nurseId = toId(reassignNurseId.value);
+  if (isBloodTest && labId) {
+    body.assigned_lab_id = labId;
+    if (preleveurId) body.assigned_to = preleveurId;
+  } else if (isNursing && nurseId) {
+    body.assigned_nurse_id = nurseId;
+  }
+  if (Object.keys(body).length === 0) {
+    toast.add({ title: 'Sélection requise', description: 'Choisissez un laboratoire ou un infirmier selon le type de rendez-vous.', color: 'amber' });
+    return;
+  }
   reassigning.value = true;
-  const toast = useAppToast();
   try {
-    const response = await apiFetch(`/appointments/${appointmentId.value}/reassign`, {
+    const response = await apiFetch(`/appointments/${appointment.id}/reassign`, {
       method: 'POST',
       body,
     });
-    if (response.success) {
+    if (response?.success) {
       toast.add({ title: 'Rendez-vous réassigné', color: 'green' });
-      if (isBloodTest) reassignLabId.value = '';
-      if (isNursing) reassignNurseId.value = '';
       await loadAppointment();
+    } else {
+      const errMsg = (response as any)?.error ?? (response as any)?.message ?? 'Impossible de réassigner.';
+      toast.add({ title: 'Erreur', description: errMsg, color: 'red' });
     }
   } catch (error: any) {
-    toast.add({ title: 'Erreur', description: error.message, color: 'red' });
+    const errMsg = error?.message ?? (error?.data?.error ?? 'Impossible de réassigner.');
+    toast.add({ title: 'Erreur', description: errMsg, color: 'red' });
   } finally {
     reassigning.value = false;
   }
 }
 
 async function onConfirmCancel(payload: { reason: string; comment: string; photoFile: File | null }) {
-  const appointment = detailRef.value?.appointment?.value;
-  if (!appointment) return;
+  const appointment = currentAppointmentForCancel.value;
+  const loadAppointment = currentLoadAppointmentForCancel.value;
+  if (!appointment || typeof loadAppointment !== 'function') return;
+  currentAppointmentForCancel.value = null;
+  currentLoadAppointmentForCancel.value = null;
   updatingStatus.value = true;
   try {
     let photoDocId: string | null = null;
@@ -655,7 +664,7 @@ async function onConfirmCancel(payload: { reason: string; comment: string; photo
     const response = await apiFetch(`/appointments/${appointment.id}`, { method: 'PUT', body });
     if (response.success) {
       showCancelModal.value = false;
-      await detailRef.value?.loadAppointment();
+      await loadAppointment();
       await loadStatusHistory();
       toast.add({ title: 'Rendez-vous annulé', description: 'L\'annulation a été enregistrée avec le motif et le commentaire.', color: 'success' });
     } else {
@@ -668,12 +677,11 @@ async function onConfirmCancel(payload: { reason: string; comment: string; photo
   }
 }
 
-async function restoreAppointment(loadAppointment: () => Promise<void>) {
-  const appointment = detailRef.value?.appointment?.value;
-  if (!appointment) return;
+async function restoreAppointment(apt: any, loadAppointment: () => Promise<void>) {
+  if (!apt) return;
   updatingStatus.value = true;
   try {
-    const response = await apiFetch(`/appointments/${appointment.id}`, {
+    const response = await apiFetch(`/appointments/${apt.id}`, {
       method: 'PUT',
       body: { status: 'pending', note: 'Restauré par administrateur' },
     });

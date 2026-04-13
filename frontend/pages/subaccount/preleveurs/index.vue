@@ -29,7 +29,7 @@
       </template>
       
       <template #actions-data="{ row }">
-        <UButton size="sm" @click="viewPreleveur(row)">
+        <UButton size="sm" :on-click="() => viewPreleveur(row)">
           Voir calendrier
         </UButton>
       </template>

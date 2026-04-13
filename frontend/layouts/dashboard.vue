@@ -10,7 +10,8 @@
     <!-- Sidebar -->
     <aside
       :class="[
-        'flex flex-col bg-white border-r border-gray-200 w-64 fixed md:static inset-y-0 left-0 z-40 transition-transform duration-300 ease-in-out',
+        /* z-[1000] sur mobile : au-dessus des cartes Leaflet (panes ~200–700), sinon le menu passe sous la carte */
+        'flex flex-col bg-white border-r border-gray-200 w-64 fixed md:static inset-y-0 left-0 z-[1000] md:z-auto transition-transform duration-300 ease-in-out',
         mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       ]"
     >
@@ -50,6 +51,7 @@
                       : 'text-gray-700 hover:bg-primary-50 hover:text-primary-600'
                   ]"
                   :aria-current="item.active ? 'page' : undefined"
+                  :title="item.to === '/nurse/demandes' && nurseDemandesSidebarBadge > 0 ? `${nurseDemandesSidebarBadge} soin(s) à accepter` : undefined"
                 >
                   <!-- Barre latérale active -->
                   <div
@@ -67,8 +69,15 @@
                     ]"
                     aria-hidden="true"
                   />
-                  <span class="truncate flex-1 transition-opacity duration-200">
+                  <span class="truncate flex-1 min-w-0 transition-opacity duration-200">
                     {{ item.label }}
+                  </span>
+                  <span
+                    v-if="item.to === '/nurse/demandes' && nurseDemandesSidebarBadge > 0"
+                    class="shrink-0 min-h-[1.25rem] min-w-[1.25rem] px-1 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold leading-none text-white shadow-sm tabular-nums"
+                    aria-hidden="true"
+                  >
+                    {{ nurseDemandesSidebarBadge > 99 ? '99+' : nurseDemandesSidebarBadge }}
                   </span>
                 </NuxtLink>
               </li>
@@ -95,6 +104,7 @@
                       : 'text-gray-700 hover:bg-primary-50 hover:text-primary-600'
                   ]"
                   :aria-current="item.active ? 'page' : undefined"
+                  :title="item.to === '/nurse/demandes' && nurseDemandesSidebarBadge > 0 ? `${nurseDemandesSidebarBadge} soin(s) à accepter` : undefined"
                 >
                   <!-- Barre latérale active -->
                   <div
@@ -112,8 +122,15 @@
                     ]"
                     aria-hidden="true"
                   />
-                  <span class="truncate flex-1 transition-opacity duration-200">
+                  <span class="truncate flex-1 min-w-0 transition-opacity duration-200">
                     {{ item.label }}
+                  </span>
+                  <span
+                    v-if="item.to === '/nurse/demandes' && nurseDemandesSidebarBadge > 0"
+                    class="shrink-0 min-h-[1.25rem] min-w-[1.25rem] px-1 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold leading-none text-white shadow-sm tabular-nums"
+                    aria-hidden="true"
+                  >
+                    {{ nurseDemandesSidebarBadge > 99 ? '99+' : nurseDemandesSidebarBadge }}
                   </span>
                 </NuxtLink>
               </li>
@@ -128,26 +145,29 @@
       </div>
     </aside>
 
-    <!-- Overlay pour mobile -->
+    <!-- Overlay pour mobile (juste sous la sidebar, au-dessus du contenu / cartes) -->
     <div
       v-if="mobileSidebarOpen"
-      class="fixed inset-0 bg-black/50 z-30 md:hidden"
+      class="fixed inset-0 bg-black/50 z-[990] md:hidden"
       @click="mobileSidebarOpen = false"
     />
 
     <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- Header -->
-      <header class="bg-white border-b border-gray-200 px-4 md:px-6 h-[60px] flex items-center">
-        <div class="flex items-center justify-between w-full gap-4">
+      <header class="relative z-50 overflow-visible bg-white border-b border-gray-200 px-4 md:px-6 h-[60px] flex items-center">
+        <div class="flex w-full min-w-0 items-center justify-between gap-3 sm:gap-4">
           <!-- Menu mobile -->
           <button
             @click="mobileSidebarOpen = !mobileSidebarOpen"
-            class="md:hidden h-9 w-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+            class="md:hidden shrink-0 h-9 w-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
             aria-label="Ouvrir le menu"
           >
             <UIcon name="i-lucide-menu" class="h-5 w-5" />
           </button>
+
+          <!-- Mobile : occupe l’espace entre menu et actions (fil d’Ariane masqué) -->
+          <div class="min-w-0 flex-1 md:hidden" aria-hidden="true" />
 
           <!-- Breadcrumb : masqué sur mobile pour éviter chevauchement -->
           <ClientOnly>
@@ -183,29 +203,29 @@
           </ClientOnly>
 
           <!-- Actions Header -->
-          <div class="flex items-center gap-1.5 sm:gap-2">
+          <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <!-- Notifications -->
             <div class="relative" ref="notificationsMenuRef">
               <button
                 type="button"
-                @click.stop="notificationsMenuOpen = !notificationsMenuOpen"
+                @click.stop="toggleNotificationsMenu"
                 class="relative h-9 w-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
-                :aria-label="`Notifications${unreadCount > 0 ? ` (${unreadCount} non lues)` : ''}`"
+                :aria-label="`Notifications${bellBadgeCount > 0 ? ` (${bellBadgeCount} en attente)` : ''}`"
                 :aria-expanded="notificationsMenuOpen"
               >
                 <UIcon name="i-lucide-bell" class="h-5 w-5" />
                 <span
-                  v-if="unreadCount > 0"
+                  v-if="bellBadgeCount > 0"
                   class="absolute top-1 right-1 h-4 w-4 flex items-center justify-center rounded-full bg-primary-600 text-xs font-medium text-white"
                 >
-                  {{ unreadCount > 9 ? '9+' : unreadCount }}
+                  {{ bellBadgeCount > 9 ? '9+' : bellBadgeCount }}
                 </span>
               </button>
               
               <!-- Dropdown Notifications -->
               <div
                 v-if="notificationsMenuOpen"
-                class="absolute right-0 mt-2 w-80 rounded-lg bg-white border border-gray-200 shadow-lg z-50 py-1 max-h-96 overflow-y-auto"
+                class="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+3.75rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto overflow-x-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-80 md:max-h-96"
               >
                 <div v-if="notificationItems.length === 0 || (notificationItems.length === 1 && notificationItems[0].disabled)" class="px-4 py-3 text-sm text-gray-500 text-center">
                   Aucune notification
@@ -241,7 +261,7 @@
               <ClientOnly>
                 <button
                   type="button"
-                  @click="userMenuOpen = !userMenuOpen"
+                  @click.stop="toggleUserMenu"
                   class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
                   :aria-label="`Menu utilisateur: ${headerUserDisplayName}`"
                   :aria-expanded="userMenuOpen"
@@ -263,7 +283,7 @@
               <!-- Dropdown Menu -->
               <div
                 v-if="userMenuOpen"
-                class="absolute right-0 mt-2 w-56 rounded-lg bg-white border border-gray-200 shadow-lg z-50 py-1"
+                class="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+3.75rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-56 md:max-h-none"
               >
                 <template v-for="(item, index) in headerUserMenuItems" :key="index">
                   <button
@@ -316,6 +336,7 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
 import { apiFetch } from "~/utils/api";
+import { isPendingIncomingOffer } from "~/utils/appointment-offer";
 
 const { user, logout, fetchCurrentUser } = useAuth();
 const route = useRoute();
@@ -358,6 +379,21 @@ const userMenuRef = ref<HTMLElement | null>(null);
 // État du menu notifications
 const notificationsMenuOpen = ref(false);
 const notificationsMenuRef = ref<HTMLElement | null>(null);
+
+/** Un seul panneau ouvert (responsive : les deux panels fixed se superposent sinon). */
+function toggleNotificationsMenu() {
+  if (!notificationsMenuOpen.value) {
+    userMenuOpen.value = false;
+  }
+  notificationsMenuOpen.value = !notificationsMenuOpen.value;
+}
+
+function toggleUserMenu() {
+  if (!userMenuOpen.value) {
+    notificationsMenuOpen.value = false;
+  }
+  userMenuOpen.value = !userMenuOpen.value;
+}
 
 // Navigation sidebar : forcer navigation programmatique pour éviter blocage (ex. page Abonnements)
 const handleSidebarNavigate = (e: MouseEvent, to: string) => {
@@ -448,29 +484,57 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
 });
 
-// Modal pour nouveaux rendez-vous (infirmiers)
-const showAppointmentModal = ref(false);
-const selectedAppointment = ref<any>(null);
-const lastPendingCount = ref(0);
+// Modal pour nouveaux rendez-vous (infirmiers, lab, subaccount) — file d'attente FIFO
 const seenAppointmentIds = ref<Set<string>>(new Set());
+const { showAppointmentModal, selectedAppointment, openAppointmentModalById, openAppointmentModalByIdIfEligible, openAppointmentModalFromShareLink, enqueueMany, onModalClosed } = useAppointmentModal({
+  onDisplayed: (apt) => { seenAppointmentIds.value = new Set([...seenAppointmentIds.value, apt.id]); },
+});
 
-/** Ouvre la popup RDV avec un rendez-vous chargé par ID (notif ou ?openAppointment=). */
-async function openAppointmentModalById(appointmentId: string) {
-  const role = user.value?.role;
-  if (!appointmentId || !['nurse', 'lab', 'subaccount'].includes(role ?? '')) return;
-  try {
-    const detailRes = await apiFetch(`/appointments/${appointmentId}`, { method: 'GET' });
-    if (detailRes?.success && detailRes.data) {
-      selectedAppointment.value = detailRes.data;
-      showAppointmentModal.value = true;
+/** Lien partagé (WhatsApp) : ?openAppointment=&shareToken= — même modal globale que le polling, sur tout le layout infirmier. */
+const shareLinkFromUrlHandled = ref(false);
+watch(
+  () =>
+    [
+      typeof route.query.openAppointment === 'string' ? route.query.openAppointment : '',
+      typeof route.query.shareToken === 'string' ? route.query.shareToken : '',
+      user.value?.role ?? '',
+      route.path,
+    ] as const,
+  async ([openId, shareTok, role]) => {
+    if (role !== 'nurse' || !openId || !shareTok) {
+      shareLinkFromUrlHandled.value = false;
+      return;
     }
-  } catch (e) {
-    console.error('[openAppointmentModalById]', e);
-  }
-}
+    if (shareLinkFromUrlHandled.value) return;
+    shareLinkFromUrlHandled.value = true;
+    await openAppointmentModalFromShareLink(openId, shareTok);
+    const q = { ...route.query } as Record<string, string | string[] | undefined>;
+    delete q.openAppointment;
+    delete q.shareToken;
+    delete q.token;
+    await router.replace({ path: route.path, query: q });
+  },
+  { immediate: true },
+);
+
+const lastPendingCount = ref(0);
+const pendingAppointments = useState<any[]>('dashboard.pendingAppointments', () => []);
 
 const unreadCount = computed(
   () => notifications.value.filter(n => !n.read_at).length
+);
+
+/** Badge cloche : notifications non lues + RDV en attente (nurse, lab, subaccount) */
+const bellBadgeCount = computed(() => {
+  const notif = unreadCount.value;
+  const role = user.value?.role;
+  const pending = ['nurse', 'lab', 'subaccount'].includes(role ?? '') ? lastPendingCount.value : 0;
+  return notif + pending;
+});
+
+/** Pastille rouge « Mes demandes » (infirmier) : même périmètre que le polling RDV à accepter */
+const nurseDemandesSidebarBadge = computed(() =>
+  user.value?.role === 'nurse' ? lastPendingCount.value : 0,
 );
 
 const roleLabel = computed(() => {
@@ -515,8 +579,10 @@ const breadcrumbItems = computed(() => {
   const routeLabels: Record<string, { label: string; icon: string }> = {
     // Routes nurse
     "/nurse/appointments": { label: "Rendez-vous", icon: "i-lucide-calendar" },
-    "/nurse/soins": { label: "Soins actifs", icon: "i-lucide-activity" },
-    "/nurse/reviews": { label: "Réputation", icon: "i-lucide-star" },
+    "/nurse/demandes": { label: "Mes demandes", icon: "i-lucide-inbox" },
+    "/nurse/calendar": { label: "Calendrier", icon: "i-lucide-calendar-days" },
+    "/nurse/soins": { label: "Plans récurrents", icon: "i-lucide-calendar-range" },
+    "/nurse/reviews": { label: "Mes avis", icon: "i-lucide-star" },
     "/nurse/abonnement": { label: "Abonnement", icon: "i-lucide-credit-card" },
     
     // Routes admin
@@ -535,6 +601,7 @@ const breadcrumbItems = computed(() => {
     // Routes lab
     "/lab": { label: "Tableau de bord", icon: "i-lucide-layout-dashboard" },
     "/lab/appointments": { label: "Rendez-vous", icon: "i-lucide-calendar" },
+    "/lab/patients": { label: "Patients", icon: "i-lucide-users" },
     "/lab/calendar": { label: "Calendrier", icon: "i-lucide-calendar-days" },
     "/lab/stats": { label: "Statistiques", icon: "i-lucide-bar-chart" },
     "/lab/subaccounts": { label: "Sous-comptes", icon: "i-lucide-users" },
@@ -544,8 +611,9 @@ const breadcrumbItems = computed(() => {
     // Routes subaccount
     "/subaccount": { label: "Tableau de bord", icon: "i-lucide-layout-dashboard" },
     "/subaccount/appointments": { label: "Rendez-vous", icon: "i-lucide-calendar" },
+    "/subaccount/patients": { label: "Patients", icon: "i-lucide-users" },
     "/subaccount/calendar": { label: "Calendrier", icon: "i-lucide-calendar-days" },
-    "/subaccount/reviews": { label: "Réputation", icon: "i-lucide-star" },
+    "/subaccount/reviews": { label: "Mes avis", icon: "i-lucide-star" },
     "/subaccount/preleveurs": { label: "Préleveurs", icon: "i-lucide-user-check" },
     
     // Routes preleveur
@@ -557,6 +625,7 @@ const breadcrumbItems = computed(() => {
     "/pro": { label: "Tableau de bord", icon: "i-lucide-layout-dashboard" },
     "/pro/appointments": { label: "Rendez-vous", icon: "i-lucide-calendar" },
     "/pro/patients": { label: "Patients", icon: "i-lucide-users" },
+    "/pro/prescriptions": { label: "Prescriptions", icon: "i-lucide-file-pen-line" },
     "/pro/calendar": { label: "Calendrier", icon: "i-lucide-calendar-days" },
     "/pro/settings": { label: "Paramètres", icon: "i-lucide-settings" },
     
@@ -634,8 +703,12 @@ const breadcrumbItems = computed(() => {
         to: currentPath,
       });
     } else {
+      const fallbackLabel =
+        segment === "new"
+          ? "Nouveau"
+          : segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
       items.push({
-        label: segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " "),
+        label: fallbackLabel,
         icon: "i-lucide-file-text",
       });
     }
@@ -729,16 +802,28 @@ const navigationItems = computed(() => {
           label: "Rendez-vous",
           icon: "i-lucide-calendar",
           to: "/nurse/appointments",
-          active: active("/nurse/appointments"),
+          active: active("/nurse/appointments") && !p.startsWith("/nurse/demandes"),
         },
         {
-          label: "Soins actifs",
-          icon: "i-lucide-activity",
-          to: "/nurse/soins",
-          active: active("/nurse/soins"),
+          label: "Mes demandes",
+          icon: "i-lucide-inbox",
+          to: "/nurse/demandes",
+          active: p.startsWith("/nurse/demandes"),
         },
         {
-          label: "Réputation",
+          label: "Calendrier",
+          icon: "i-lucide-calendar-days",
+          to: "/nurse/calendar",
+          active: active("/nurse/calendar"),
+        },
+        {
+          label: "Patients",
+          icon: "i-lucide-users",
+          to: "/nurse/patients",
+          active: active("/nurse/patients"),
+        },
+        {
+          label: "Mes avis",
           icon: "i-lucide-star",
           to: "/nurse/reviews",
           active: active("/nurse/reviews"),
@@ -767,13 +852,19 @@ const navigationItems = computed(() => {
           active: active("/subaccount/appointments"),
         },
         {
+          label: "Patients",
+          icon: "i-lucide-users",
+          to: "/subaccount/patients",
+          active: active("/subaccount/patients"),
+        },
+        {
           label: "Calendrier",
           icon: "i-lucide-calendar-days",
           to: "/subaccount/calendar",
           active: active("/subaccount/calendar"),
         },
         {
-          label: "Réputation",
+          label: "Mes avis",
           icon: "i-lucide-star",
           to: "/subaccount/reviews",
           active: active("/subaccount/reviews"),
@@ -808,13 +899,19 @@ const navigationItems = computed(() => {
           active: active("/lab/appointments"),
         },
         {
+          label: "Patients",
+          icon: "i-lucide-users",
+          to: "/lab/patients",
+          active: active("/lab/patients"),
+        },
+        {
           label: "Calendrier",
           icon: "i-lucide-calendar-days",
           to: "/lab/calendar",
           active: active("/lab/calendar"),
         },
         {
-          label: "Réputation",
+          label: "Mes avis",
           icon: "i-lucide-star",
           to: "/lab/reviews",
           active: active("/lab/reviews"),
@@ -890,6 +987,12 @@ const navigationItems = computed(() => {
           active: active("/pro/patients"),
         },
         {
+          label: "Prescriptions",
+          icon: "i-lucide-file-pen-line",
+          to: "/pro/prescriptions",
+          active: active("/pro/prescriptions"),
+        },
+        {
           label: "Rendez-vous",
           icon: "i-lucide-calendar",
           to: "/pro/appointments",
@@ -938,39 +1041,145 @@ const headerUserMenuItems = computed(() => [
   },
 ]);
 
+const formatPendingAppointmentLabel = (a: any) => {
+  const date = a.scheduled_at ? new Date(a.scheduled_at).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+  const type = a.type === 'nursing' ? 'Soins' : a.type === 'blood_test' ? 'Prise de sang' : '';
+  const cat = a.category_name || '';
+  return `Nouveau RDV — ${date}${cat ? ` · ${cat}` : ''}${type ? ` (${type})` : ''}`.trim();
+};
+
 const notificationItems = computed(() => {
-  if (!notifications.value.length) {
-    return [
-      {
-        label: "Aucune notification",
-        disabled: true,
-      },
-    ];
+  const role = user.value?.role;
+  const items: any[] = [];
+
+  // RDV en attente (nurse, lab, subaccount) — en premier
+  if (['nurse', 'lab', 'subaccount'].includes(role ?? '')) {
+    const pending = pendingAppointments.value || [];
+    pending.slice(0, 5).forEach((a: any) => {
+      items.push({
+        label: formatPendingAppointmentLabel(a),
+        description: 'Cliquez pour accepter ou refuser',
+        icon: 'i-lucide-calendar-clock',
+        isRead: false,
+        disabled: false,
+        isPendingAppointment: true,
+        appointmentId: a.id,
+        click: async () => {
+          notificationsMenuOpen.value = false;
+          await openAppointmentModalByIdIfEligible(a.id);
+        },
+      });
+    });
   }
 
-  const role = user.value?.role;
+  // Notifications classiques
+  if (!notifications.value.length && items.length === 0) {
+    return [{ label: "Aucune notification", disabled: true }];
+  }
+
   const reviewsPath = role === 'nurse' ? '/nurse/reviews' : role === 'lab' ? '/lab/reviews' : role === 'subaccount' ? '/subaccount/reviews' : null;
-  return notifications.value.slice(0, 10).map((notif) => {
+  const pendingIds = new Set((pendingAppointments.value || []).map((a: any) => a.id));
+  notifications.value
+    .filter((n: any) => {
+      const data = typeof n.data === 'string' ? (() => { try { return JSON.parse(n.data); } catch { return {}; } })() : (n.data || {});
+      const aptId = n.appointment_id || data?.appointment_id;
+      return !aptId || !pendingIds.has(aptId); // Exclure les notifs dont le RDV est déjà dans pending
+    })
+    .slice(0, 10 - items.length)
+    .forEach((notif) => {
     const data = typeof notif.data === 'string' ? (() => { try { return JSON.parse(notif.data); } catch { return {}; } })() : (notif.data || {});
     const isNewReview = notif.type === 'new_review' || data.review_id;
-    return {
+    const isShareLinkInfo =
+      notif.type === 'share_link_appointment_taken' || data?.no_navigate === true;
+    items.push({
       label: notif.title || notif.message || "Notification",
       message: notif.title ? (notif.message || undefined) : undefined,
-      description: notif.created_at
-        ? new Date(notif.created_at).toLocaleString("fr-FR")
-        : undefined,
-      icon: notif.type === "marketing" ? "i-lucide-megaphone" : notif.type === "new_review" ? "i-lucide-star" : "i-lucide-bell",
+      description: notif.created_at ? new Date(notif.created_at).toLocaleString("fr-FR") : undefined,
+      icon:
+        notif.type === "marketing"
+          ? "i-lucide-megaphone"
+          : notif.type === "new_review"
+            ? "i-lucide-star"
+            : notif.type === "appointment_request_sent"
+              ? "i-lucide-send"
+              : notif.type === "appointment_redispatched"
+                ? "i-lucide-refresh-ccw"
+              : notif.type === "appointment_reassigned"
+                ? "i-lucide-user-plus"
+              : notif.type === "appointment_accepted_lab"
+                ? "i-lucide-flask-conical"
+              : notif.type === "new_appointment_created"
+                ? "i-lucide-calendar-plus"
+              : notif.type === "share_link_appointment_taken"
+                ? "i-lucide-user-check"
+              : notif.type === "care_gallery_photo" || notif.type === "care_gallery_comment"
+                ? "i-lucide-images"
+                : "i-lucide-bell",
       isRead: !!notif.read_at,
+      disabled: isShareLinkInfo,
       click: () => {
-        if (isNewReview && reviewsPath) navigateTo(reviewsPath);
-        else if (notif.appointment_id && ['nurse', 'lab', 'subaccount'].includes(role ?? '')) {
-          openAppointmentModalById(notif.appointment_id);
-          const appointmentsPath = role === 'nurse' ? '/nurse/appointments' : role === 'subaccount' ? '/subaccount/appointments' : '/lab/appointments';
-          navigateTo(appointmentsPath);
-        } else if (notif.appointment_id) navigateTo(`/nurse/appointments/${notif.appointment_id}`);
+        if (isShareLinkInfo) return;
+        const aptId = notif.appointment_id || data?.appointment_id;
+        if (
+          aptId &&
+          (notif.type === "care_gallery_photo" || notif.type === "care_gallery_comment") &&
+          (role === "pro" || role === "nurse")
+        ) {
+          notificationsMenuOpen.value = false;
+          const base = role === "pro" ? "/pro" : "/nurse";
+          void navigateTo({
+            path: `${base}/appointments/${aptId}`,
+            query: { careGallery: "1" },
+          });
+          return;
+        }
+        if (isNewReview && reviewsPath) {
+          notificationsMenuOpen.value = false;
+          const reviewId = data?.review_id;
+          const q =
+            reviewId != null && String(reviewId).trim() !== ""
+              ? `?review=${encodeURIComponent(String(reviewId))}`
+              : aptId
+                ? `?appointment=${encodeURIComponent(String(aptId))}`
+                : "";
+          void navigateTo(`${reviewsPath}${q}`);
+        }
+        else if (aptId && notif.type === 'appointment_request_sent') {
+          notificationsMenuOpen.value = false;
+          const base =
+            role === 'pro'
+              ? '/pro'
+              : role === 'nurse'
+                ? '/nurse'
+                : role === 'subaccount'
+                  ? '/subaccount'
+                  : role === 'lab'
+                    ? '/lab'
+                    : null;
+          if (base) void navigateTo(`${base}/appointments/${aptId}`);
+        } else if (aptId && role === 'pro') {
+          notificationsMenuOpen.value = false;
+          void navigateTo(`/pro/appointments/${aptId}`);
+        } else if (aptId && notif.type === 'appointment_redispatched' && ['nurse', 'lab', 'subaccount'].includes(role ?? '')) {
+          notificationsMenuOpen.value = false;
+          const base =
+            role === 'nurse' ? '/nurse' : role === 'subaccount' ? '/subaccount' : '/lab';
+          void navigateTo(`${base}/appointments`);
+        } else if (aptId && ['nurse', 'lab', 'subaccount'].includes(role ?? '')) {
+          notificationsMenuOpen.value = false;
+          void openAppointmentModalByIdIfEligible(aptId);
+        } else if (aptId && role === 'preleveur') {
+          notificationsMenuOpen.value = false;
+          void navigateTo(`/preleveur/appointments/${aptId}`);
+        } else if (aptId && role === 'super_admin') {
+          notificationsMenuOpen.value = false;
+          void navigateTo(`/admin/appointments/${aptId}`);
+        } else if (aptId) void navigateTo(`/patient/appointments/${aptId}`);
       },
-    };
+    });
   });
+
+  return items;
 });
 
 const { start: startPolling, stop: stopPolling } = usePolling(async () => {
@@ -995,78 +1204,62 @@ const { start: startPolling, stop: stopPolling } = usePolling(async () => {
   }
 }, 10000); // Réduire à 10 secondes pour les notifications
 
-// Détecter les nouveaux rendez-vous pour infirmiers, lab et sous-compte (popup auto)
+// Détecter les nouveaux rendez-vous pour infirmiers, lab et sous-compte (popup auto, file d'attente FIFO)
 const { start: startAppointmentPolling, stop: stopAppointmentPolling, isPolling: isAppointmentPolling } = usePolling(async () => {
   const role = user.value?.role;
-  if (!['nurse', 'lab', 'subaccount'].includes(role ?? '')) {
+  const myId = user.value?.id;
+  if (!['nurse', 'lab', 'subaccount'].includes(role ?? '') || !myId) {
     return;
   }
-  
-  const shouldOpenModal = !showAppointmentModal.value;
-  
+
   const res = await apiFetch('/appointments?status=pending&limit=100', {
     method: 'GET'
   });
-  
-  if (res?.success && res.data) {
-    const pending = res.data.filter((a: any) => {
-      if (role === 'nurse') return a.status === 'pending' && !a.assigned_nurse_id;
-      if (role === 'lab' || role === 'subaccount') return a.status === 'pending' && a.type === 'blood_test' && !a.assigned_lab_id;
-      return false;
-    });
-    
-    const newAppointments = pending.filter((a: any) => !seenAppointmentIds.value.has(a.id));
-    
-    if (newAppointments.length > 0 && shouldOpenModal) {
-      const appId = newAppointments[0].id;
-      try {
-        const detailRes = await apiFetch(`/appointments/${appId}`, { method: 'GET' });
-        if (detailRes?.success && detailRes.data) {
-          const data = detailRes.data;
-          const alreadyAcceptedByOther = role === 'nurse'
-            ? (data.assigned_nurse_id != null || data.assigned_lab_id != null)
-            : (data.assigned_lab_id != null);
-          if (alreadyAcceptedByOther) {
-            // Ne pas rouvrir la popup : déjà pris par un confrère
-            seenAppointmentIds.value.add(appId);
-          } else {
-            selectedAppointment.value = data;
-            showAppointmentModal.value = true;
-            seenAppointmentIds.value.add(appId);
-          }
-        } else {
-          console.error('[AppointmentPolling] Failed to load appointment details', detailRes);
+
+    if (res?.success && res.data) {
+      const pending = res.data.filter((a: any) => {
+        if (role === 'nurse') {
+          return (
+            a.status === 'pending' &&
+            a.type !== 'blood_test' &&
+            isPendingIncomingOffer(a, myId) &&
+            (a.assigned_nurse_id === myId || !a.assigned_nurse_id)
+          );
         }
-      } catch (error) {
-        console.error('[AppointmentPolling] Error loading appointment details', error);
-      }
+        if (role === 'lab' || role === 'subaccount')
+          return (
+            a.status === 'pending' &&
+            a.type === 'blood_test' &&
+            isPendingIncomingOffer(a, myId) &&
+            (a.assigned_lab_id === myId || !a.assigned_lab_id)
+          );
+        return false;
+      });
+
+    const newAppointments = pending.filter((a: any) => !seenAppointmentIds.value.has(a.id));
+    if (newAppointments.length > 0) {
+      await enqueueMany(newAppointments);
     }
-    
-    // Ne marquer comme vus que les rendez-vous qui ne peuvent pas être affichés (modal déjà ouverte)
-    // Les autres resteront "non vus" jusqu'à ce qu'ils soient affichés
-    if (!shouldOpenModal && newAppointments.length > 0) {
-      // Si la modal est déjà ouverte, on marque les nouveaux comme vus pour éviter les doublons
-      // mais on les gardera en mémoire pour les afficher après la fermeture de la modal
-      newAppointments.forEach((a: any) => seenAppointmentIds.value.add(a.id));
-    }
-    
+
     lastPendingCount.value = pending.length;
+    pendingAppointments.value = pending;
   }
 }, 10000);
 
+/** Déclencheur pour rafraîchir la liste RDV (nurse, lab, subaccount) après acceptation/refus dans la modal */
+const appointmentListRefreshTrigger = useState<number>('appointments.listRefreshTrigger', () => 0);
+
 const handleAppointmentAccepted = () => {
-  showAppointmentModal.value = false;
-  selectedAppointment.value = null;
-  // Vérifier s'il y a d'autres rendez-vous en attente après la fermeture
+  onModalClosed();
+  appointmentListRefreshTrigger.value++;
   setTimeout(() => {
     startAppointmentPolling();
   }, 500);
 };
 
 const handleAppointmentRefused = () => {
-  showAppointmentModal.value = false;
-  selectedAppointment.value = null;
-  // Vérifier s'il y a d'autres rendez-vous en attente après la fermeture
+  onModalClosed();
+  appointmentListRefreshTrigger.value++;
   setTimeout(() => {
     startAppointmentPolling();
   }, 500);
@@ -1081,46 +1274,45 @@ watch(
     const appointmentsPath = role === 'nurse' ? '/nurse/appointments' : role === 'subaccount' ? '/subaccount/appointments' : '/lab/appointments';
     if (curr.path !== appointmentsPath) return;
     const id = Array.isArray(curr.openAppointment) ? curr.openAppointment[0] : curr.openAppointment;
-    await openAppointmentModalById(id);
+    await openAppointmentModalByIdIfEligible(id);
     await navigateTo(appointmentsPath, { replace: true });
   },
   { immediate: true },
 );
 
-// Initialiser et ouvrir la popup auto pour nurse / lab / subaccount
+// Initialiser et ouvrir la popup auto pour nurse / lab / subaccount (file d'attente)
 let appointmentCounterInitialized = false;
 watch(() => user.value?.role, async (role) => {
   if (!['nurse', 'lab', 'subaccount'].includes(role ?? '') || appointmentCounterInitialized || !user.value) return;
   appointmentCounterInitialized = true;
   try {
+    const myId = user.value?.id;
     const res = await apiFetch('/appointments?status=pending&limit=100', { method: 'GET' });
-    if (res?.success && res.data) {
+    if (res?.success && res.data && myId) {
       const pending = res.data.filter((a: any) => {
-        if (role === 'nurse') return a.status === 'pending' && !a.assigned_nurse_id;
-        if (role === 'lab' || role === 'subaccount') return a.status === 'pending' && a.type === 'blood_test' && !a.assigned_lab_id;
+        if (role === 'nurse') {
+          return (
+            a.status === 'pending' &&
+            a.type !== 'blood_test' &&
+            isPendingIncomingOffer(a, myId) &&
+            (a.assigned_nurse_id === myId || !a.assigned_nurse_id)
+          );
+        }
+        if (role === 'lab' || role === 'subaccount')
+          return (
+            a.status === 'pending' &&
+            a.type === 'blood_test' &&
+            isPendingIncomingOffer(a, myId) &&
+            (a.assigned_lab_id === myId || !a.assigned_lab_id)
+          );
         return false;
       });
       lastPendingCount.value = pending.length;
-      if (pending.length > 0) {
-        const firstId = pending[0].id;
-        try {
-          const detailRes = await apiFetch(`/appointments/${firstId}`, { method: 'GET' });
-          if (detailRes?.success && detailRes.data) {
-            const data = detailRes.data;
-            const alreadyAcceptedByOther = role === 'nurse'
-              ? (data.assigned_nurse_id != null || data.assigned_lab_id != null)
-              : (data.assigned_lab_id != null);
-            if (!alreadyAcceptedByOther) {
-              selectedAppointment.value = data;
-              showAppointmentModal.value = true;
-            }
-            seenAppointmentIds.value.add(firstId);
-          }
-        } catch (_) {}
+      pendingAppointments.value = pending;
+      const newAppointments = pending.filter((a: any) => !seenAppointmentIds.value.has(a.id));
+      if (newAppointments.length > 0) {
+        await enqueueMany(newAppointments);
       }
-      setTimeout(() => {
-        pending.forEach((a: any) => { if (a.id !== pending[0]?.id) seenAppointmentIds.value.add(a.id); });
-      }, 5000);
     }
     startAppointmentPolling();
   } catch (_) {}

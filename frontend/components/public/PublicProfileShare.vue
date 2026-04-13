@@ -92,6 +92,11 @@ const shareMenuItems = computed(() => [
       icon: 'i-lucide-mail',
       onSelect: () => { window.location.href = `mailto:?subject=${encodeURIComponent(emailSubject.value)}&body=${encodeURIComponent(emailBody.value)}` },
     },
+    {
+      label: 'Partager sur WhatsApp',
+      icon: 'i-simple-icons-whatsapp',
+      onSelect: () => openWhatsApp(),
+    },
   ],
   [
     {
@@ -106,6 +111,11 @@ const shareMenuItems = computed(() => [
     },
   ],
 ])
+
+function openWhatsApp() {
+  const text = encodeURIComponent(smsMessage.value)
+  window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer')
+}
 
 function openShare(platform: 'facebook' | 'x') {
   const url = encodeURIComponent(props.shareUrl)

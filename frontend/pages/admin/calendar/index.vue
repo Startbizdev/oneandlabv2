@@ -3,17 +3,6 @@
     <TitleDashboard title="Calendrier" description="Vue d'ensemble de tous les rendez-vous de la plateforme.">
       <template #actions>
         <UButton
-          variant="outline"
-          color="neutral"
-          size="sm"
-          icon="i-lucide-refresh-cw"
-          :loading="loading"
-          aria-label="Actualiser"
-          @click="fetchAppointments()"
-        >
-          Actualiser
-        </UButton>
-        <UButton
           to="/admin/appointments/new"
           color="primary"
           size="sm"

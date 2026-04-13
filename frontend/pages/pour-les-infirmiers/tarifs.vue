@@ -42,7 +42,7 @@
               </li>
               <li class="flex items-start gap-2">
                 <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-                <span>Vous pouvez proposer jusqu'à 3 types de soins.</span>
+                <span>Vous pouvez proposer tous les types de soins.</span>
               </li>
             </ul>
           </UCard>

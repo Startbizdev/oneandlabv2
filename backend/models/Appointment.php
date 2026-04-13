@@ -83,14 +83,24 @@ class Appointment
         if (empty($data['address']) || !is_array($data['address'])) {
             throw new Exception('Adresse requise et doit être un tableau.');
         }
-        
-        if (empty($data['address']['label']) || empty($data['address']['lat']) || empty($data['address']['lng'])) {
+
+        $addr = $data['address'];
+        $addrLabel = isset($addr['label']) ? trim((string) $addr['label']) : '';
+        if ($addrLabel === '') {
+            throw new Exception('Adresse incomplète. Le libellé est requis.');
+        }
+
+        // Ne pas utiliser empty() sur lat/lng : empty(0) est vrai en PHP alors que 0 est une coordonnée valide.
+        if (!array_key_exists('lat', $addr) || !array_key_exists('lng', $addr)) {
             throw new Exception('Adresse incomplète. Requis: label, lat, lng.');
         }
-        
+        if (!is_numeric($addr['lat']) || !is_numeric($addr['lng'])) {
+            throw new Exception('Adresse incomplète. lat et lng doivent être numériques.');
+        }
+
         // Validation des coordonnées géographiques
-        $lat = floatval($data['address']['lat']);
-        $lng = floatval($data['address']['lng']);
+        $lat = floatval($addr['lat']);
+        $lng = floatval($addr['lng']);
         
         if (!Validation::latitude($lat)) {
             throw new Exception('Latitude invalide. Doit être entre -90 et 90.');
@@ -103,6 +113,9 @@ class Appointment
         if (empty($data['scheduled_at'])) {
             throw new Exception('Date de rendez-vous requise.');
         }
+        
+        // Fuseau métier : le front envoie des dates « locales France » sans offset (formulaire public /dashboard).
+        $tzParis = new DateTimeZone('Europe/Paris');
         
         // Convertir la date au format attendu (Y-m-d H:i:s)
         // Accepter plusieurs formats : ISO, datetime-local, ou format français
@@ -117,17 +130,23 @@ class Appointment
         ];
         
         foreach ($dateFormats as $format) {
-            $parsed = DateTime::createFromFormat($format, $data['scheduled_at']);
+            $parsed = DateTime::createFromFormat($format, $data['scheduled_at'], $tzParis);
             if ($parsed && $parsed->format($format) === $data['scheduled_at']) {
                 $scheduledDate = $parsed;
                 break;
             }
         }
         
-        // Si aucun format ne correspond, essayer avec DateTime natif (ISO 8601)
+        // Si aucun format ne correspond : instant explicite (Z / offset) ou sinon heure locale Paris (chaîne sans fuseau)
         if (!$scheduledDate) {
             try {
-                $scheduledDate = new DateTime($data['scheduled_at']);
+                $raw = (string) $data['scheduled_at'];
+                if (preg_match('/[zZ]|[+-]\d{2}:?\d{2}$/', $raw)) {
+                    $scheduledDate = new DateTime($raw);
+                    $scheduledDate->setTimezone($tzParis);
+                } else {
+                    $scheduledDate = new DateTime($raw, $tzParis);
+                }
             } catch (Exception $e) {
                 throw new Exception('Format de date invalide. Formats acceptés: Y-m-d H:i:s, Y-m-dTH:i, d/m/Y H:i');
             }
@@ -136,8 +155,8 @@ class Appointment
         // Normaliser la date au format attendu
         $data['scheduled_at'] = $scheduledDate->format('Y-m-d H:i:s');
         
-        // Vérifier que la date n'est pas dans le passé
-        $now = new DateTime();
+        // Référence « maintenant » en heure de Paris (cohérent avec les chaînes sans fuseau)
+        $now = new DateTime('now', $tzParis);
         if ($scheduledDate < $now) {
             throw new Exception('La date du rendez-vous ne peut pas être dans le passé.');
         }
@@ -167,6 +186,11 @@ class Appointment
         }
         
         $id = $this->generateUUID();
+
+        $creationBatchId = null;
+        if (!empty($data['creation_batch_id']) && Validation::uuid((string) $data['creation_batch_id'])) {
+            $creationBatchId = (string) $data['creation_batch_id'];
+        }
         
         // Chiffrer l'adresse
         $addressEncrypted = $this->crypto->encryptField($data['address']['label']);
@@ -204,6 +228,17 @@ class Appointment
             }
         }
 
+        // Lab / sous-compte sans assigned_lab_id dans le body : assigner au créateur (sinon INSERT NULL + dispatch géo envoie mail à tous les sous-comptes de la zone)
+        if (($data['type'] ?? '') === 'blood_test' && in_array($createdByRole, ['lab', 'subaccount'], true) && empty($assignedLabId)) {
+            $assignedLabId = $createdBy;
+        }
+        
+        // Nurse crée un RDV nursing : confirmé, assigné à lui-même, pas de dispatch
+        if ($createdByRole === 'nurse' && ($data['type'] ?? '') === 'nursing') {
+            $status = 'confirmed';
+            $assignedNurseId = $createdBy;
+        }
+
         // Validation paramètres lab pour RDV prise de sang (création par pro ou assignation à un lab)
         if ($data['type'] === 'blood_test') {
             $effectiveLabId = $assignedLabId;
@@ -211,13 +246,24 @@ class Appointment
                 $effectiveLabId = $createdBy;
             }
             if ($effectiveLabId) {
-                $this->validateLabAppointmentParams($effectiveLabId, $data['scheduled_at'], $scheduledDate);
+                $skipLabLeadTime = in_array($createdByRole, ['nurse', 'lab', 'subaccount'], true);
+                $this->validateLabAppointmentParams($effectiveLabId, $data['scheduled_at'], $scheduledDate, $skipLabLeadTime);
             }
+        }
+
+        // Lab / sous-compte : prise de sang assignée au créateur → confirmé (pas de file pending / popup dashboard)
+        if (
+            in_array($createdByRole, ['lab', 'subaccount'], true)
+            && ($data['type'] ?? '') === 'blood_test'
+            && !empty($assignedLabId)
+            && $assignedLabId === $createdBy
+        ) {
+            $status = 'confirmed';
         }
 
         $stmt = $this->db->prepare('
             INSERT INTO appointments (
-                id, type, status, patient_id, relative_id, created_by, created_by_role,
+                id, creation_batch_id, type, status, patient_id, relative_id, created_by, created_by_role,
                 category_id, form_type,
                 location_lat, location_lng,
                 address_encrypted, address_dek,
@@ -226,11 +272,12 @@ class Appointment
                 scheduled_at,
                 assigned_lab_id, assigned_nurse_id, assigned_to,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         ');
 
         $stmt->execute([
             $id,
+            $creationBatchId,
             $data['type'],
             $status,
             $data['patient_id'] ?? null,
@@ -269,28 +316,273 @@ class Appointment
     }
 
     /**
+     * Nom patient pour les notifications (body ou form_data chiffré en base).
+     */
+    private function extractPatientDisplayNameForNotification(string $appointmentId, array $data): string
+    {
+        $fd = $data['form_data'] ?? null;
+        if (is_array($fd)) {
+            $n = trim((string) ($fd['first_name'] ?? '') . ' ' . (string) ($fd['last_name'] ?? ''));
+            if ($n !== '') {
+                return $n;
+            }
+        }
+        try {
+            $stmt = $this->db->prepare('SELECT form_data_encrypted, form_data_dek FROM appointments WHERE id = ?');
+            $stmt->execute([$appointmentId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row || empty($row['form_data_encrypted']) || empty($row['form_data_dek'])) {
+                return 'Patient';
+            }
+            $json = $this->crypto->decryptField($row['form_data_encrypted'], $row['form_data_dek']);
+            $form = json_decode($json, true);
+            if (!is_array($form)) {
+                return 'Patient';
+            }
+            $n = trim((string) ($form['first_name'] ?? '') . ' ' . (string) ($form['last_name'] ?? ''));
+
+            return $n !== '' ? $n : 'Patient';
+        } catch (Throwable $e) {
+            return 'Patient';
+        }
+    }
+
+    /**
      * À appeler après l'envoi de la réponse HTTP (création RDV) : dispatch géo + notifications.
      * Évite le timeout côté client quand le dispatch/SMS prennent du temps.
+     * @param string|null $createdByRole Si 'nurse', pas de dispatch (RDV déjà assigné au nurse créateur)
      */
-    public function runPostCreateNotifications(string $id, array $data): void
+    public function runPostCreateNotifications(string $id, array $data, ?string $createdByRole = null): void
     {
         $lat = isset($data['address']['lat']) ? (float) $data['address']['lat'] : 0.0;
         $lng = isset($data['address']['lng']) ? (float) $data['address']['lng'] : 0.0;
-        $this->dispatchGeographic($id, $data['type'] ?? '', $lat, $lng, $data['scheduled_at'] ?? null);
+        // Prise de sang déjà assignée : pas de dispatch géo (emails « nouveau RDV » à toute la zone). Utiliser la ligne persistée si le body n’avait pas assigned_lab_id.
+        $bloodTestAssignedLabId = $data['assigned_lab_id'] ?? null;
+        if (($data['type'] ?? '') === 'blood_test' && empty($bloodTestAssignedLabId)) {
+            try {
+                $stmtLab = $this->db->prepare('SELECT assigned_lab_id FROM appointments WHERE id = ?');
+                $stmtLab->execute([$id]);
+                $rowLab = $stmtLab->fetch(PDO::FETCH_ASSOC);
+                if (!empty($rowLab['assigned_lab_id'])) {
+                    $bloodTestAssignedLabId = $rowLab['assigned_lab_id'];
+                }
+            } catch (Exception $e) {
+                // ne pas bloquer les notifications
+            }
+        }
+
+        // RDV soins depuis la fiche d'un infirmier : assigned_nurse_id est renseigné → ne pas diffuser à toute la zone
+        $nursingAssignedNurseId = $data['assigned_nurse_id'] ?? null;
+        if (($data['type'] ?? '') === 'nursing' && (empty($nursingAssignedNurseId) || trim((string) $nursingAssignedNurseId) === '')) {
+            try {
+                $stmtNurse = $this->db->prepare('SELECT assigned_nurse_id FROM appointments WHERE id = ?');
+                $stmtNurse->execute([$id]);
+                $rowNurse = $stmtNurse->fetch(PDO::FETCH_ASSOC);
+                if (!empty($rowNurse['assigned_nurse_id'])) {
+                    $nursingAssignedNurseId = $rowNurse['assigned_nurse_id'];
+                }
+            } catch (Exception $e) {
+                // ne pas bloquer les notifications
+            }
+        }
+
+        $skipDispatch = ($createdByRole === 'nurse' && ($data['type'] ?? '') === 'nursing')
+            || (($data['type'] ?? '') === 'blood_test' && !empty($bloodTestAssignedLabId))
+            || (($data['type'] ?? '') === 'nursing' && !empty($nursingAssignedNurseId));
+        if (!$skipDispatch) {
+            $this->dispatchGeographic($id, $data['type'] ?? '', $lat, $lng, $data['scheduled_at'] ?? null, $data['form_data'] ?? null);
+        }
+
+        // Notification ciblée : uniquement l'infirmier concerné (réservation depuis son profil public)
+        if (
+            ($data['type'] ?? '') === 'nursing'
+            && !empty($nursingAssignedNurseId)
+            && $createdByRole !== 'nurse'
+        ) {
+            $this->dispatchDirectedNurseOnly(
+                $id,
+                (string) $nursingAssignedNurseId,
+                $data['scheduled_at'] ?? null,
+                $data['form_data'] ?? null
+            );
+        }
+
+        $batchIdRaw = $data['creation_batch_id'] ?? null;
+        $batchSize = isset($data['creation_batch_size']) ? (int) $data['creation_batch_size'] : 0;
+        $patientIdForBatch = $data['patient_id'] ?? null;
+        $deferBatch = false;
+        $batchComplete = false;
+        if (
+            is_string($batchIdRaw)
+            && Validation::uuid($batchIdRaw)
+            && $batchSize > 1
+            && !empty($patientIdForBatch)
+        ) {
+            try {
+                $stmtCnt = $this->db->prepare('SELECT COUNT(*) FROM appointments WHERE creation_batch_id = ? AND patient_id = ?');
+                $stmtCnt->execute([$batchIdRaw, $patientIdForBatch]);
+                $cnt = (int) $stmtCnt->fetchColumn();
+                if ($cnt < $batchSize) {
+                    $deferBatch = true;
+                } elseif ($cnt === $batchSize) {
+                    $batchComplete = true;
+                }
+            } catch (Exception $e) {
+                error_log('runPostCreateNotifications batch count: ' . $e->getMessage());
+            }
+        }
+
+        if ($deferBatch) {
+            return;
+        }
+
+        if ($batchComplete && is_string($batchIdRaw)) {
+            $rows = $this->fetchBatchAppointmentRowsForNotifications($batchIdRaw, (string) $patientIdForBatch);
+            if ($rows !== []) {
+                $patientNameNurse = null;
+                foreach ($rows as $r) {
+                    if (($r['created_by_role'] ?? '') === 'nurse' && ($r['type'] ?? '') === 'blood_test') {
+                        $patientNameNurse = $this->extractPatientDisplayNameForNotification((string) $r['id'], $data);
+                        break;
+                    }
+                }
+                $this->notificationService->notifyBatchAppointmentCreationCompleted(
+                    $batchIdRaw,
+                    (string) $patientIdForBatch,
+                    $rows,
+                    $data,
+                    $patientNameNurse
+                );
+            }
+            return;
+        }
+
+        try {
+            $stmtCreator = $this->db->prepare('
+                SELECT status, type, created_by, created_by_role, scheduled_at, category_id, assigned_lab_id
+                FROM appointments WHERE id = ?
+            ');
+            $stmtCreator->execute([$id]);
+            $aptRow = $stmtCreator->fetch(PDO::FETCH_ASSOC);
+            if (
+                $aptRow
+                && ($aptRow['status'] ?? '') === 'pending'
+                && in_array($aptRow['created_by_role'] ?? '', ['pro', 'nurse', 'lab', 'subaccount'], true)
+            ) {
+                $categoryName = null;
+                if (!empty($aptRow['category_id'])) {
+                    $stmtCat = $this->db->prepare('SELECT name FROM care_categories WHERE id = ? LIMIT 1');
+                    $stmtCat->execute([$aptRow['category_id']]);
+                    $catRow = $stmtCat->fetch(PDO::FETCH_ASSOC);
+                    if ($catRow && !empty($catRow['name'])) {
+                        $categoryName = $catRow['name'];
+                    }
+                }
+                $creatorRole = (string) ($aptRow['created_by_role'] ?? '');
+                $aptType = (string) ($aptRow['type'] ?? '');
+
+                // Infirmier + prise de sang : message explicite (laboratoire + patient + date)
+                if ($creatorRole === 'nurse' && $aptType === 'blood_test') {
+                    $patientName = $this->extractPatientDisplayNameForNotification($id, $data);
+                    $labId = $data['assigned_lab_id'] ?? $aptRow['assigned_lab_id'] ?? null;
+                    $labName = null;
+                    if (!empty($labId)) {
+                        require_once __DIR__ . '/User.php';
+                        $userModel = new User();
+                        $names = $userModel->getDisplayNamesByIds([(string) $labId]);
+                        $labName = $names[(string) $labId] ?? null;
+                    }
+                    $this->notificationService->notifyNurseBloodTestLabAwaitingConfirmation(
+                        (string) $aptRow['created_by'],
+                        $id,
+                        $patientName,
+                        (string) ($aptRow['scheduled_at'] ?? ''),
+                        $labName,
+                        $categoryName
+                    );
+                } else {
+                    $this->notificationService->notifyProfessionalRequestSent(
+                        (string) $aptRow['created_by'],
+                        $id,
+                        $aptType,
+                        (string) ($aptRow['scheduled_at'] ?? ''),
+                        $categoryName,
+                        $creatorRole
+                    );
+                }
+            }
+        } catch (Exception $e) {
+            error_log('notifyProfessionalRequestSent (post-create): ' . $e->getMessage());
+        }
+
         $this->notificationService->notifyNewAppointment($id, [
             'patient_id' => $data['patient_id'] ?? null,
             'patient_email' => $data['patient_email'] ?? null,
             'type' => $data['type'] ?? null,
             'scheduled_at' => $data['scheduled_at'] ?? null,
+            'form_data' => $data['form_data'] ?? null,
         ]);
         $this->notifyAllAdmins($id, $data['type'] ?? '', $data['scheduled_at'] ?? '');
     }
 
     /**
+     * Lignes RDV d’un lot (notifications groupées après création multi).
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function fetchBatchAppointmentRowsForNotifications(string $batchId, string $patientId): array
+    {
+        try {
+            $stmt = $this->db->prepare('
+                SELECT a.id, a.status, a.type, a.scheduled_at, a.category_id, a.created_by, a.created_by_role,
+                       a.assigned_lab_id, c.name AS category_name
+                FROM appointments a
+                LEFT JOIN care_categories c ON c.id = a.category_id
+                WHERE a.creation_batch_id = ? AND a.patient_id = ?
+                ORDER BY a.scheduled_at ASC
+            ');
+            $stmt->execute([$batchId, $patientId]);
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Exception $e) {
+            error_log('fetchBatchAppointmentRowsForNotifications: ' . $e->getMessage());
+
+            return [];
+        }
+    }
+
+    /**
+     * Lignes d’un lot multisoins (nursing) pour notifications de statut (ex. confirmation groupée).
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function fetchNursingBatchRowsForStatusNotification(string $batchId, string $patientId): array
+    {
+        try {
+            $stmt = $this->db->prepare('
+                SELECT a.id, a.scheduled_at, c.name AS category_name
+                FROM appointments a
+                LEFT JOIN care_categories c ON c.id = a.category_id
+                WHERE a.creation_batch_id = ? AND a.patient_id = ? AND a.type = ?
+                ORDER BY a.scheduled_at ASC
+            ');
+            $stmt->execute([$batchId, $patientId, 'nursing']);
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Exception $e) {
+            error_log('fetchNursingBatchRowsForStatusNotification: ' . $e->getMessage());
+
+            return [];
+        }
+    }
+
+    /**
      * Valide que la date du RDV respecte les paramètres du lab (délai min, samedi, dimanche).
+     *
+     * @param bool $skipLeadTimeValidation Si true (création depuis espace infirmier / lab / sous-compte), n'applique pas le délai min. du profil lab (RDV le jour J autorisé).
      * @throws Exception si la date ne respecte pas les contraintes
      */
-    private function validateLabAppointmentParams(string $labId, string $scheduledAtIso, DateTime $scheduledDate): void
+    private function validateLabAppointmentParams(string $labId, string $scheduledAtIso, DateTime $scheduledDate, bool $skipLeadTimeValidation = false): void
     {
         try {
             $stmt = $this->db->prepare('
@@ -311,8 +603,9 @@ class Appointment
         $acceptSaturday = (bool) ($row['accept_rdv_saturday'] ?? true);
         $acceptSunday = (bool) ($row['accept_rdv_sunday'] ?? true);
 
-        $now = new DateTime();
-        if ($minHours > 0) {
+        $tzParis = new DateTimeZone('Europe/Paris');
+        $now = new DateTime('now', $tzParis);
+        if ($minHours > 0 && !$skipLeadTimeValidation) {
             $minAllowed = (clone $now)->modify("+{$minHours} hours");
             if ($scheduledDate < $minAllowed) {
                 throw new Exception("La date du rendez-vous doit être au moins {$minHours}h à l'avance par rapport à maintenant.");
@@ -347,7 +640,8 @@ class Appointment
                 pr.birth_date_encrypted as relative_birth_date_encrypted,
                 pr.birth_date_dek as relative_birth_date_dek,
                 cc.name as category_name,
-                cc.type as category_type
+                cc.type as category_type,
+                cc.icon as category_icon
             FROM appointments a
             LEFT JOIN patient_relatives pr ON a.relative_id = pr.id
             LEFT JOIN care_categories cc ON a.category_id = cc.id
@@ -450,7 +744,7 @@ class Appointment
                     $appointment['form_data_encrypted'],
                     $appointment['form_data_dek']
                 );
-                $appointment['form_data'] = json_decode($formDataJson, true);
+                $appointment['form_data'] = json_decode($formDataJson, true) ?? [];
             }
             
             // Logger le déchiffrement
@@ -481,6 +775,11 @@ class Appointment
         $appointment['assigned_to_address'] = null;
         $appointment['assigned_to_profile_image_url'] = null;
         $appointment['assigned_to_email'] = null;
+        $appointment['assigned_to_public_slug'] = null;
+        $appointment['assigned_nurse_display_name'] = null;
+        $appointment['assigned_nurse_profile_image_url'] = null;
+        $appointment['assigned_nurse_public_slug'] = null;
+        $appointment['assigned_nurse_phone'] = null;
         try {
             require_once __DIR__ . '/User.php';
             $userModel = new User();
@@ -499,6 +798,17 @@ class Appointment
                     $appointment['assigned_lab_public_slug'] = isset($labProfile['public_slug']) && trim((string)$labProfile['public_slug']) !== '' ? trim((string)$labProfile['public_slug']) : null;
                 }
             }
+            if (!empty($appointment['assigned_nurse_id'])) {
+                $nurseProfile = $userModel->getById($appointment['assigned_nurse_id'], 'system', 'system');
+                if ($nurseProfile) {
+                    $first = trim((string)($nurseProfile['first_name'] ?? ''));
+                    $last = trim((string)($nurseProfile['last_name'] ?? ''));
+                    $appointment['assigned_nurse_display_name'] = trim($first . ' ' . $last) ?: null;
+                    $appointment['assigned_nurse_profile_image_url'] = isset($nurseProfile['profile_image_url']) ? trim((string)$nurseProfile['profile_image_url']) : null;
+                    $appointment['assigned_nurse_public_slug'] = isset($nurseProfile['public_slug']) && trim((string)$nurseProfile['public_slug']) !== '' ? trim((string)$nurseProfile['public_slug']) : null;
+                    $appointment['assigned_nurse_phone'] = isset($nurseProfile['phone']) ? trim((string)$nurseProfile['phone']) : null;
+                }
+            }
             if (!empty($appointment['assigned_to'])) {
                 $preleveurProfile = $userModel->getById($appointment['assigned_to'], 'system', 'system');
                 if ($preleveurProfile) {
@@ -509,18 +819,201 @@ class Appointment
                     $appointment['assigned_to_address'] = isset($preleveurProfile['address']['label']) ? trim((string)$preleveurProfile['address']['label']) : (is_string($preleveurProfile['address'] ?? null) ? trim($preleveurProfile['address']) : null);
                     $appointment['assigned_to_profile_image_url'] = isset($preleveurProfile['profile_image_url']) ? trim((string)$preleveurProfile['profile_image_url']) : null;
                     $appointment['assigned_to_email'] = isset($preleveurProfile['email']) ? trim((string)$preleveurProfile['email']) : null;
+                    $appointment['assigned_to_public_slug'] = isset($preleveurProfile['public_slug']) && trim((string) $preleveurProfile['public_slug']) !== '' ? trim((string) $preleveurProfile['public_slug']) : null;
+                }
+            }
+
+            // Origine du RDV (créateur)
+            $appointment['creator_origin'] = null;
+            $cb = $appointment['created_by'] ?? null;
+            $cbRole = $appointment['created_by_role'] ?? null;
+            $pid = $appointment['patient_id'] ?? null;
+            if (!empty($cb) && $cbRole !== null && (string) $cbRole !== '') {
+                if ($cbRole === 'patient' || ($pid !== null && (string) $cb === (string) $pid)) {
+                    $appointment['creator_origin'] = [
+                        'kind' => 'patient_platform',
+                        'label' => 'Patient OneAndLab',
+                    ];
+                } elseif ($cbRole === 'nurse') {
+                    $cp = $userModel->getById((string) $cb, 'system', 'system');
+                    if ($cp) {
+                        $fn = trim((string) ($cp['first_name'] ?? ''));
+                        $ln = trim((string) ($cp['last_name'] ?? ''));
+                        $appointment['creator_origin'] = [
+                            'kind' => 'nurse',
+                            'id' => (string) $cb,
+                            'display_name' => trim($fn . ' ' . $ln) ?: null,
+                            'first_name' => $fn !== '' ? $fn : null,
+                            'last_name' => $ln !== '' ? $ln : null,
+                            'profile_image_url' => isset($cp['profile_image_url']) ? trim((string) $cp['profile_image_url']) : null,
+                            'public_slug' => isset($cp['public_slug']) && trim((string) $cp['public_slug']) !== '' ? trim((string) $cp['public_slug']) : null,
+                        ];
+                    }
+                } elseif ($cbRole === 'pro') {
+                    $cp = $userModel->getById((string) $cb, 'system', 'system');
+                    if ($cp) {
+                        $fn = trim((string) ($cp['first_name'] ?? ''));
+                        $ln = trim((string) ($cp['last_name'] ?? ''));
+                        $emploi = isset($cp['emploi']) ? trim((string) $cp['emploi']) : '';
+                        $appointment['creator_origin'] = [
+                            'kind' => 'pro',
+                            'id' => (string) $cb,
+                            'display_name' => trim($fn . ' ' . $ln) ?: null,
+                            'first_name' => $fn !== '' ? $fn : null,
+                            'last_name' => $ln !== '' ? $ln : null,
+                            'phone' => isset($cp['phone']) ? trim((string) $cp['phone']) : null,
+                            'adeli' => isset($cp['adeli']) ? trim((string) $cp['adeli']) : null,
+                            'emploi' => $emploi !== '' ? $emploi : null,
+                            'profile_image_url' => isset($cp['profile_image_url']) ? trim((string) $cp['profile_image_url']) : null,
+                            'public_slug' => isset($cp['public_slug']) && trim((string) $cp['public_slug']) !== '' ? trim((string) $cp['public_slug']) : null,
+                        ];
+                    }
+                } elseif (in_array($cbRole, ['lab', 'subaccount', 'preleveur'], true)) {
+                    $cp = $userModel->getById((string) $cb, 'system', 'system');
+                    if ($cp) {
+                        $company = isset($cp['company_name']) ? trim((string) $cp['company_name']) : '';
+                        $fn = trim((string) ($cp['first_name'] ?? ''));
+                        $ln = trim((string) ($cp['last_name'] ?? ''));
+                        $name = trim($fn . ' ' . $ln);
+                        $appointment['creator_origin'] = [
+                            'kind' => 'lab_team',
+                            'id' => (string) $cb,
+                            'role' => $cbRole,
+                            'display_name' => $company !== '' ? $company : ($name !== '' ? $name : null),
+                            'profile_image_url' => isset($cp['profile_image_url']) ? trim((string) $cp['profile_image_url']) : null,
+                            'public_slug' => isset($cp['public_slug']) && trim((string) $cp['public_slug']) !== '' ? trim((string) $cp['public_slug']) : null,
+                        ];
+                    }
                 }
             }
         } catch (Exception $e) {
             // Ne pas faire échouer getById si résolution des noms échoue
         }
-        
+
+        $appointment['batch_siblings'] = [];
+        $batchId = $appointment['creation_batch_id'] ?? null;
+        $batchType = $appointment['type'] ?? null;
+        if (!empty($batchId) && in_array($batchType, ['nursing', 'blood_test'], true) && !empty($appointment['patient_id'])) {
+            $sibStmt = $this->db->prepare('
+                SELECT a.id, a.status, a.scheduled_at, cc.name AS category_name
+                FROM appointments a
+                LEFT JOIN care_categories cc ON a.category_id = cc.id
+                WHERE a.creation_batch_id = ?
+                  AND a.id != ?
+                  AND a.patient_id = ?
+                  AND a.type = ?
+                ORDER BY a.scheduled_at ASC
+            ');
+            $sibStmt->execute([$batchId, $id, $appointment['patient_id'], $batchType]);
+            $sibRows = $sibStmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($sibRows as $sr) {
+                $appointment['batch_siblings'][] = [
+                    'id' => $sr['id'],
+                    'status' => $sr['status'],
+                    'scheduled_at' => $sr['scheduled_at'],
+                    'category_name' => $sr['category_name'],
+                ];
+            }
+        }
+
+        // Libellé e-mail patient (évite d’afficher delegated-…@patients.internal.local côté UI)
+        $appointment['patient_email_display'] = null;
+        if (!empty($appointment['patient_id'])) {
+            try {
+                require_once __DIR__ . '/User.php';
+                $userModelPatient = new User();
+                $patProfile = $userModelPatient->getById((string) $appointment['patient_id'], $requesterId, $requesterRole);
+                if ($patProfile && !empty($patProfile['email_display'])) {
+                    $appointment['patient_email_display'] = $patProfile['email_display'];
+                }
+            } catch (Throwable $e) {
+                // ignore
+            }
+        }
+
+        return $appointment;
+    }
+
+    /**
+     * Déchiffre une ligne de RDV pour l'affichage en liste (sans getById ni lookups User).
+     * Utilisé par l'API liste pour éviter le N+1.
+     */
+    public function decryptRowForList(array $row, string $requesterId, string $requesterRole): array
+    {
+        $appointment = $row;
+        try {
+            $appointment['address'] = $this->crypto->decryptField(
+                $appointment['address_encrypted'] ?? null,
+                $appointment['address_dek'] ?? null
+            );
+            if (!empty($appointment['form_data_encrypted']) && !empty($appointment['form_data_dek'])) {
+                $formDataJson = $this->crypto->decryptField(
+                    $appointment['form_data_encrypted'],
+                    $appointment['form_data_dek']
+                );
+                $appointment['form_data'] = json_decode($formDataJson, true) ?? [];
+            } else {
+                $appointment['form_data'] = [];
+            }
+            $this->logger->logDecrypt($requesterId, $requesterRole, 'appointment', $appointment['id'], ['address', 'form_data']);
+        } catch (Exception $e) {
+            $appointment['address'] = null;
+            $appointment['form_data'] = [];
+        }
+        unset($appointment['address_encrypted'], $appointment['address_dek'], $appointment['form_data_encrypted'], $appointment['form_data_dek']);
+
+        if (!empty($appointment['relative_id']) && !empty($appointment['relative_first_name_encrypted'] ?? null)) {
+            try {
+                $appointment['relative'] = [
+                    'id' => $appointment['relative_id'],
+                    'first_name' => $this->crypto->decryptField(
+                        $appointment['relative_first_name_encrypted'] ?? null,
+                        $appointment['relative_first_name_dek'] ?? null
+                    ),
+                    'last_name' => $this->crypto->decryptField(
+                        $appointment['relative_last_name_encrypted'] ?? null,
+                        $appointment['relative_last_name_dek'] ?? null
+                    ),
+                    'email' => null,
+                    'phone' => null,
+                    'relationship_type' => $appointment['relative_relationship_type'] ?? null,
+                    'birth_date' => null,
+                    'contact_is_parent' => false,
+                ];
+                if (!empty($appointment['relative_email_encrypted']) && !empty($appointment['relative_email_dek'])) {
+                    $appointment['relative']['email'] = $this->crypto->decryptField(
+                        $appointment['relative_email_encrypted'],
+                        $appointment['relative_email_dek']
+                    );
+                }
+                if (!empty($appointment['relative_phone_encrypted']) && !empty($appointment['relative_phone_dek'])) {
+                    $appointment['relative']['phone'] = $this->crypto->decryptField(
+                        $appointment['relative_phone_encrypted'],
+                        $appointment['relative_phone_dek']
+                    );
+                }
+            } catch (Exception $e) {
+                $appointment['relative'] = ['id' => $appointment['relative_id'], 'first_name' => '', 'last_name' => ''];
+            }
+            foreach (['relative_first_name_encrypted', 'relative_first_name_dek', 'relative_last_name_encrypted', 'relative_last_name_dek',
+                'relative_email_encrypted', 'relative_email_dek', 'relative_phone_encrypted', 'relative_phone_dek',
+                'relative_relationship_type', 'relative_birth_date_encrypted', 'relative_birth_date_dek'] as $k) {
+                unset($appointment[$k]);
+            }
+        }
+
+        $appointment['assigned_lab_display_name'] = null;
+        $appointment['assigned_nurse_display_name'] = null;
+        $appointment['assigned_to_display_name'] = null;
         return $appointment;
     }
 
     /**
      * Change le statut d'un rendez-vous
      * Pour status = canceled, optionnel : cancellation_reason, cancellation_comment, cancellation_photo_document_id
+     */
+    /**
+     * @return null si mise à jour normale, 'declined_offer' si refus d’offre (statut RDV inchangé)
      */
     public function updateStatus(
         string $id,
@@ -532,9 +1025,9 @@ class Appointment
         ?string $cancellationReason = null,
         ?string $cancellationComment = null,
         ?string $cancellationPhotoDocumentId = null
-    ): void {
+    ): ?string {
         // Récupérer le statut actuel et le type
-        $stmt = $this->db->prepare('SELECT status, type, assigned_nurse_id, assigned_lab_id, assigned_to, location_lat, location_lng, scheduled_at FROM appointments WHERE id = ?');
+        $stmt = $this->db->prepare('SELECT status, type, assigned_nurse_id, assigned_lab_id, assigned_to, location_lat, location_lng, scheduled_at, patient_id, form_data_encrypted, form_data_dek, creation_batch_id FROM appointments WHERE id = ?');
         $stmt->execute([$id]);
         $appointment = $stmt->fetch();
         
@@ -543,6 +1036,44 @@ class Appointment
         }
         
         $oldStatus = $appointment['status'];
+
+        if ($appointment['type'] === 'blood_test' && $actorRole === 'nurse' && in_array($newStatus, ['confirmed', 'refused'], true)) {
+            throw new Exception('Les demandes de prise de sang sont acceptées ou refusées par les laboratoires, pas par l\'infirmier.');
+        }
+
+        /**
+         * Refus d'une offre entrante : retirer le professionnel des propositions sans passer le RDV en "refused"
+         * (le patient reste en attente, d'autres peuvent accepter).
+         */
+        if (
+            $newStatus === 'refused'
+            && $oldStatus === 'pending'
+            && !$redispatch
+        ) {
+            $canDeclineOffer = false;
+            if ($appointment['type'] === 'nursing' && empty($appointment['assigned_nurse_id']) && $actorRole === 'nurse') {
+                $canDeclineOffer = true;
+            }
+            if (
+                $appointment['type'] === 'blood_test'
+                && empty($appointment['assigned_lab_id'])
+                && in_array($actorRole, ['lab', 'subaccount', 'preleveur'], true)
+            ) {
+                $canDeclineOffer = true;
+            }
+            if ($canDeclineOffer) {
+                $delOffer = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ? AND profile_id = ?');
+                $delOffer->execute([$id, $actorId]);
+                if ($delOffer->rowCount() === 0) {
+                    throw new Exception('Ce rendez-vous ne vous est pas proposé ou n\'est plus disponible.');
+                }
+                $this->logger->log($actorId, $actorRole, 'update', 'appointment', $id, [
+                    'action' => 'decline_offer',
+                    'appointment_status_unchanged' => 'pending',
+                ]);
+                return 'declined_offer';
+            }
+        }
         
         // Préparer la requête de mise à jour
         $updateFields = ['status = ?', 'updated_at = NOW()'];
@@ -563,14 +1094,17 @@ class Appointment
         
         // Si c'est un redispatch, on remet les assignations à NULL et on relance le dispatch
         if ($redispatch && $newStatus === 'pending') {
+            if (!in_array($oldStatus, ['confirmed', 'planned', 'inProgress'], true)) {
+                throw new Exception('Seuls les rendez-vous confirmés, planifiés ou en cours peuvent être redispatchés.');
+            }
             // Vérifier que l'infirmier/labo est bien celui assigné
             if ($appointment['type'] === 'nursing') {
-                if ($appointment['assigned_nurse_id'] !== $actorId) {
+                if ((string) $appointment['assigned_nurse_id'] !== (string) $actorId) {
                     throw new Exception('Vous ne pouvez redispatcher que les rendez-vous qui vous sont assignés');
                 }
                 $updateFields[] = 'assigned_nurse_id = NULL';
             } else if ($appointment['type'] === 'blood_test') {
-                if ($appointment['assigned_lab_id'] !== $actorId) {
+                if ((string) $appointment['assigned_lab_id'] !== (string) $actorId) {
                     throw new Exception('Vous ne pouvez redispatcher que les rendez-vous qui vous sont assignés');
                 }
                 $updateFields[] = 'assigned_lab_id = NULL';
@@ -594,13 +1128,106 @@ class Appointment
             $updateFields[] = 'completed_at = NOW()';
         }
         
-        // Ajouter l'ID à la fin des paramètres
+        // Ajouter l'ID à la fin des paramètres (WHERE)
         $params[] = $id;
-        
+
+        $atomicNurseConfirm = !$redispatch && $newStatus === 'confirmed' && $actorRole === 'nurse' && $appointment['type'] === 'nursing';
+        $atomicLabConfirm = !$redispatch && $newStatus === 'confirmed' && in_array($actorRole, ['lab', 'subaccount'], true) && $appointment['type'] === 'blood_test';
+
+        $whereSql = 'WHERE id = ?';
+        $whereParams = [$id];
+        if ($atomicNurseConfirm) {
+            if ($oldStatus !== 'pending') {
+                throw new Exception('Ce rendez-vous ne peut plus être accepté.');
+            }
+            if (!empty($appointment['assigned_nurse_id']) && (string) $appointment['assigned_nurse_id'] !== (string) $actorId) {
+                throw new Exception('Ce rendez-vous a déjà été accepté par un autre infirmier.');
+            }
+            $whereSql = 'WHERE id = ? AND status = ? AND assigned_nurse_id IS NULL';
+            $whereParams = [$id, 'pending'];
+        } elseif ($atomicLabConfirm) {
+            if ($oldStatus !== 'pending') {
+                throw new Exception('Ce rendez-vous ne peut plus être accepté.');
+            }
+            if (!empty($appointment['assigned_lab_id']) && (string) $appointment['assigned_lab_id'] !== (string) $actorId) {
+                throw new Exception('Ce rendez-vous a déjà été accepté par un autre professionnel.');
+            }
+            $whereSql = 'WHERE id = ? AND status = ? AND assigned_lab_id IS NULL';
+            $whereParams = [$id, 'pending'];
+        }
+
+        $setParams = array_slice($params, 0, -1);
+        $finalParams = array_merge($setParams, $whereParams);
+
         // Mettre à jour le statut (et potentiellement l'assignation)
-        $sql = 'UPDATE appointments SET ' . implode(', ', $updateFields) . ' WHERE id = ?';
+        $sql = 'UPDATE appointments SET ' . implode(', ', $updateFields) . ' ' . $whereSql;
         $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
+        $stmt->execute($finalParams);
+        $mainUpdateAffected = $stmt->rowCount();
+
+        if (($atomicNurseConfirm || $atomicLabConfirm) && $mainUpdateAffected === 0) {
+            throw new Exception('Ce rendez-vous n\'est plus disponible (déjà accepté par un autre professionnel).');
+        }
+
+        if ($atomicNurseConfirm && $mainUpdateAffected > 0) {
+            $delMainOffers = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ?');
+            $delMainOffers->execute([$id]);
+        }
+
+        /** @var list<string> */
+        $batchSiblingIdsConfirmed = [];
+        if ($atomicNurseConfirm && $mainUpdateAffected > 0) {
+            $batchId = $appointment['creation_batch_id'] ?? null;
+            $patientId = $appointment['patient_id'] ?? null;
+            if (!empty($batchId) && !empty($patientId)) {
+                $sibStmt = $this->db->prepare('
+                    SELECT id FROM appointments
+                    WHERE creation_batch_id = ? AND patient_id = ? AND type = ? AND id != ?
+                    AND status = ? AND (assigned_nurse_id IS NULL OR assigned_nurse_id = \'\')
+                ');
+                $sibStmt->execute([$batchId, $patientId, 'nursing', $id, 'pending']);
+                while ($sib = $sibStmt->fetch(PDO::FETCH_ASSOC)) {
+                    $sibId = (string) $sib['id'];
+                    $updSib = $this->db->prepare('
+                        UPDATE appointments SET status = ?, assigned_nurse_id = ?, updated_at = NOW()
+                        WHERE id = ? AND status = ? AND (assigned_nurse_id IS NULL OR assigned_nurse_id = \'\')
+                    ');
+                    $updSib->execute(['confirmed', $actorId, $sibId, 'pending']);
+                    if ($updSib->rowCount() > 0) {
+                        $batchSiblingIdsConfirmed[] = $sibId;
+                        $delSibOffers = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ?');
+                        $delSibOffers->execute([$sibId]);
+                        $histSibId = $this->generateUUID();
+                        $stmtHist = $this->db->prepare('
+                            INSERT INTO appointment_status_updates 
+                            (id, appointment_id, status, actor_id, actor_role, note, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, NOW())
+                        ');
+                        $stmtHist->execute([
+                            $histSibId,
+                            $sibId,
+                            'confirmed',
+                            $actorId,
+                            $actorRole,
+                            'Confirmation lot multisoins (même prise en charge)',
+                        ]);
+                        $this->logger->log(
+                            $actorId,
+                            $actorRole,
+                            'update',
+                            'appointment',
+                            $sibId,
+                            [
+                                'old_status' => 'pending',
+                                'new_status' => 'confirmed',
+                                'assigned' => true,
+                                'batch_multisoins' => true,
+                            ]
+                        );
+                    }
+                }
+            }
+        }
         
         // Enregistrer dans l'historique
         $updateId = $this->generateUUID();
@@ -627,21 +1254,137 @@ class Appointment
             ]
         );
         
-        // Si redispatch, relancer le dispatch géographique
+        // Si redispatch, relancer le dispatch géographique (exclure l'acteur des offres et notifications)
         if ($redispatch && $newStatus === 'pending') {
+            $formDataForDispatch = [];
+            if (!empty($appointment['form_data_encrypted']) && !empty($appointment['form_data_dek'])) {
+                try {
+                    $formDataJson = $this->crypto->decryptField(
+                        $appointment['form_data_encrypted'],
+                        $appointment['form_data_dek']
+                    );
+                    $formDataForDispatch = json_decode($formDataJson, true) ?? [];
+                } catch (Throwable $e) {
+                    $formDataForDispatch = [];
+                }
+            }
             $this->dispatchGeographic(
                 $id,
                 $appointment['type'],
                 (float) $appointment['location_lat'],
                 (float) $appointment['location_lng'],
-                $appointment['scheduled_at'] ?? null
+                $appointment['scheduled_at'] ?? null,
+                $formDataForDispatch,
+                $actorId
             );
+            $this->notifyActorAppointmentRedispatched($id, $appointment, $actorId, $actorRole);
+
+            // Lot multisoins : même redispatch pour les autres RDV nursing assignés au même infirmier
+            if ($appointment['type'] === 'nursing' && $actorRole === 'nurse') {
+                $batchIdRd = $appointment['creation_batch_id'] ?? null;
+                $patientIdRd = $appointment['patient_id'] ?? null;
+                if (!empty($batchIdRd) && !empty($patientIdRd)) {
+                    $sibRd = $this->db->prepare(
+                        'SELECT id, form_data_encrypted, form_data_dek, location_lat, location_lng, scheduled_at, status
+                         FROM appointments
+                         WHERE creation_batch_id = ? AND patient_id = ? AND type = ?
+                         AND id != ?
+                         AND assigned_nurse_id = ?
+                         AND status IN (\'confirmed\', \'planned\', \'inProgress\')'
+                    );
+                    $sibRd->execute([$batchIdRd, $patientIdRd, 'nursing', $id, $actorId]);
+                    while ($sibRow = $sibRd->fetch(PDO::FETCH_ASSOC)) {
+                        $sibId = (string) $sibRow['id'];
+                        $updSib = $this->db->prepare(
+                            'UPDATE appointments SET status = ?, assigned_nurse_id = NULL, updated_at = NOW()
+                             WHERE id = ? AND assigned_nurse_id = ? AND status IN (\'confirmed\', \'planned\', \'inProgress\')'
+                        );
+                        $updSib->execute(['pending', $sibId, $actorId]);
+                        if ($updSib->rowCount() === 0) {
+                            continue;
+                        }
+                        $delSib = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ?');
+                        $delSib->execute([$sibId]);
+                        $histSibRd = $this->generateUUID();
+                        $stmtHistRd = $this->db->prepare(
+                            'INSERT INTO appointment_status_updates
+                            (id, appointment_id, status, actor_id, actor_role, note, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, NOW())'
+                        );
+                        $stmtHistRd->execute([
+                            $histSibRd,
+                            $sibId,
+                            'pending',
+                            $actorId,
+                            $actorRole,
+                            'Rendez-vous redispatché par le professionnel (lot multisoins)',
+                        ]);
+                        $this->logger->log($actorId, $actorRole, 'update', 'appointment', $sibId, [
+                            'old_status' => $sibRow['status'] ?? '',
+                            'new_status' => 'pending',
+                            'redispatch' => true,
+                            'batch_multisoins' => true,
+                        ]);
+                        $formSib = [];
+                        if (!empty($sibRow['form_data_encrypted']) && !empty($sibRow['form_data_dek'])) {
+                            try {
+                                $fj = $this->crypto->decryptField(
+                                    $sibRow['form_data_encrypted'],
+                                    $sibRow['form_data_dek']
+                                );
+                                $formSib = json_decode($fj, true) ?? [];
+                            } catch (Throwable $e) {
+                                $formSib = [];
+                            }
+                        }
+                        $this->dispatchGeographic(
+                            $sibId,
+                            'nursing',
+                            (float) $sibRow['location_lat'],
+                            (float) $sibRow['location_lng'],
+                            $sibRow['scheduled_at'] ?? null,
+                            $formSib,
+                            $actorId
+                        );
+                        $this->notifyActorAppointmentRedispatched($sibId, array_merge($appointment, [
+                            'id' => $sibId,
+                            'scheduled_at' => $sibRow['scheduled_at'],
+                        ]), $actorId, $actorRole);
+                    }
+                }
+            }
         }
         
         // Envoyer notifications selon le nouveau statut (sauf pour redispatch)
         if (!$redispatch) {
             $this->sendStatusNotifications($id, $newStatus, $actorId, $actorRole);
         }
+
+        // Partage lien confrère : l’infirmier ayant repassé le RDV en attente est informé de l’acceptation + prénom/nom du confrère (cloche non liée au détail)
+        if (
+            !$redispatch
+            && $newStatus === 'confirmed'
+            && $actorRole === 'nurse'
+            && ($appointment['type'] ?? '') === 'nursing'
+        ) {
+            $this->notifyShareLinkSharerNurseIfNeeded($id, $actorId);
+        }
+
+        // Lien patient ↔ professionnel lors de l’acceptation (RDV confirmé avec patient)
+        if ($newStatus === 'confirmed' && !empty($appointment['patient_id']) && in_array($actorRole, ['nurse', 'lab', 'subaccount', 'pro'], true)) {
+            require_once __DIR__ . '/User.php';
+            try {
+                $userModel = new User();
+                $userModel->linkPatientProfessional((string) $appointment['patient_id'], $actorId, $id, 'appointment_accepted');
+                foreach ($batchSiblingIdsConfirmed as $sibApptId) {
+                    $userModel->linkPatientProfessional((string) $appointment['patient_id'], $actorId, $sibApptId, 'appointment_accepted');
+                }
+            } catch (Throwable $e) {
+                error_log('PatientProfessionalAccess (appointment_accepted): ' . $e->getMessage());
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -725,6 +1468,38 @@ class Appointment
     }
 
     /**
+     * Après acceptation par un confrère : notifier l’infirmier qui avait partagé le lien (repassage en attente).
+     */
+    private function notifyShareLinkSharerNurseIfNeeded(string $appointmentId, string $acceptingNurseId): void
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT actor_id FROM appointment_status_updates
+                 WHERE appointment_id = ? AND note LIKE ?
+                 AND actor_role = 'nurse' AND actor_id IS NOT NULL AND TRIM(actor_id) <> ''
+                 ORDER BY created_at DESC
+                 LIMIT 1"
+            );
+            $stmt->execute([$appointmentId, '%partage lien confrère%']);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row || empty($row['actor_id'])) {
+                return;
+            }
+            $sharerId = (string) $row['actor_id'];
+            if ($sharerId === (string) $acceptingNurseId) {
+                return;
+            }
+            $this->notificationService->notifyShareLinkAppointmentTakenByColleague(
+                $sharerId,
+                $acceptingNurseId,
+                $appointmentId
+            );
+        } catch (Throwable $e) {
+            error_log('notifyShareLinkSharerNurseIfNeeded: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Envoie les notifications selon le statut
      */
     private function sendStatusNotifications(string $appointmentId, string $status, ?string $actorId = null, ?string $actorRole = null): void
@@ -733,6 +1508,7 @@ class Appointment
         $stmt = $this->db->prepare('
             SELECT a.patient_id, a.type, a.assigned_to, a.assigned_nurse_id, a.assigned_lab_id,
                    a.scheduled_at, a.address_encrypted, a.address_dek, a.category_id,
+                   a.created_by, a.created_by_role, a.creation_batch_id,
                    c.name as category_name
             FROM appointments a
             LEFT JOIN care_categories c ON a.category_id = c.id
@@ -761,6 +1537,7 @@ class Appointment
         $patientFirstName = '';
         $patientLastName = '';
         $patientEmail = null;
+        $patientPhone = null;
         if ($patientId) {
             try {
                 require_once __DIR__ . '/User.php';
@@ -770,6 +1547,7 @@ class Appointment
                     $patientFirstName = $patient['first_name'] ?? '';
                     $patientLastName = $patient['last_name'] ?? '';
                     $patientEmail = $patient['email'] ?? null;
+                    $patientPhone = $patient['phone'] ?? null;
                 }
             } catch (Exception $e) {
                 // Ignorer les erreurs
@@ -784,17 +1562,73 @@ class Appointment
         
         switch ($status) {
             case 'confirmed':
+                $createdBy = $appointment['created_by'] ?? null;
+                $createdByRole = $appointment['created_by_role'] ?? null;
+                $creationBatchId = $appointment['creation_batch_id'] ?? null;
+
+                // Lot multisoins (nursing) : une seule notification cloche par rôle
+                if (
+                    ($appointment['type'] ?? '') === 'nursing'
+                    && !empty($creationBatchId)
+                    && !empty($patientId)
+                    && Validation::uuid((string) $creationBatchId)
+                ) {
+                    $batchRows = $this->fetchNursingBatchRowsForStatusNotification((string) $creationBatchId, (string) $patientId);
+                    if (count($batchRows) > 1) {
+                        $this->notificationService->notifyNursingBatchConfirmed(
+                            $appointmentId,
+                            (string) $creationBatchId,
+                            (string) $patientId,
+                            $batchRows,
+                            $patientEmail,
+                            $patientPhone,
+                            $patientFirstName,
+                            $patientLastName,
+                            $appointment['assigned_nurse_id'] ?? null,
+                            $createdBy !== null ? (string) $createdBy : null,
+                            is_string($createdByRole) ? $createdByRole : null,
+                            $actorId,
+                            $address
+                        );
+                        break;
+                    }
+                }
+
+                $samePersonCreatorAndPatient = $patientId && $createdBy
+                    && (string) $patientId === (string) $createdBy
+                    && in_array($createdByRole, ['pro', 'nurse', 'lab', 'subaccount'], true);
+
                 // Notification au patient (si patient existe) + email confirmation (async)
                 if ($patientId) {
                     $this->notificationService->notifyAppointmentConfirmed($appointmentId, [
                         'patient_id' => $patientId,
                         'patient_email' => $patientEmail,
+                        'patient_phone' => $patientPhone,
                         'id' => $appointmentId,
                         'scheduled_at' => $appointment['scheduled_at'] ?? null,
                         'type' => $appointment['type'] ?? 'blood_test',
+                        'category_name' => $appointment['category_name'] ?? null,
                     ]);
                 }
-                
+
+                // Prise de sang : confirmation côté lab / sous-compte / préleveur ayant accepté
+                if (
+                    ($appointment['type'] ?? '') === 'blood_test'
+                    && $actorId
+                    && in_array($actorRole, ['lab', 'subaccount', 'preleveur'], true)
+                ) {
+                    $this->notificationService->notifyLabBloodTestAccepted(
+                        (string) $actorId,
+                        $appointmentId,
+                        [
+                            'patient_first_name' => $patientFirstName,
+                            'patient_last_name' => $patientLastName,
+                            'scheduled_at' => $appointment['scheduled_at'] ?? null,
+                            'category_name' => $appointment['category_name'] ?? null,
+                        ]
+                    );
+                }
+
                 // Notification à l'infirmier qui a accepté
                 if (!empty($appointment['assigned_nurse_id'])) {
                     $this->notificationService->notifyNurseAcceptedAppointment(
@@ -807,6 +1641,23 @@ class Appointment
                             'address' => $address,
                             'category_name' => $appointment['category_name'] ?? 'Soins infirmiers',
                         ]
+                    );
+                }
+
+                // Créateur du RDV — pas le professionnel qui vient d’accepter ; pas de doublon si créateur = patient (compte pro)
+                if (
+                    !$samePersonCreatorAndPatient
+                    && !empty($createdBy)
+                    && in_array($createdByRole, ['pro', 'nurse', 'lab', 'subaccount'], true)
+                    && (string) $createdBy !== (string) ($actorId ?? '')
+                ) {
+                    $this->notificationService->notifyCreatorAppointmentConfirmed(
+                        (string) $createdBy,
+                        $appointmentId,
+                        (string) ($appointment['type'] ?? 'blood_test'),
+                        $appointment['category_name'] ?? null,
+                        is_string($createdByRole) ? $createdByRole : null,
+                        $appointment['scheduled_at'] ?? null
                     );
                 }
                 break;
@@ -848,6 +1699,7 @@ class Appointment
                     [
                         'patient_id' => $patientId,
                         'patient_email' => $patientEmail,
+                        'patient_phone' => $patientPhone,
                         'patient_first_name' => $patientFirstName,
                         'patient_last_name' => $patientLastName,
                         'scheduled_at' => $appointment['scheduled_at'],
@@ -862,6 +1714,15 @@ class Appointment
                     $canceledBy,
                     $actorDisplayLabel
                 );
+                break;
+
+            case 'expired':
+                if ($patientId) {
+                    $this->notificationService->notifyAppointmentExpired($appointmentId, [
+                        'patient_id' => $patientId,
+                        'patient_phone' => $patientPhone,
+                    ]);
+                }
                 break;
                 
             case 'refused':
@@ -914,12 +1775,101 @@ class Appointment
     }
 
     /**
+     * Préférence patient pour le genre de l'infirmier (form_data.public).
+     * Si female/male : seuls les infirmiers avec genre déchiffré correspondant sont proposés ; genre inconnu = exclus.
+     */
+    private function extractPreferredNurseGender(?array $formData): string
+    {
+        if ($formData === null || $formData === []) {
+            return 'any';
+        }
+        $raw = $formData['preferred_nurse_gender'] ?? 'any';
+        if (!is_string($raw)) {
+            return 'any';
+        }
+        $v = strtolower(trim($raw));
+        if (in_array($v, ['female', 'male', 'any'], true)) {
+            return $v;
+        }
+        return 'any';
+    }
+
+    /**
+     * Notification web pour l’acteur qui vient de redispatcher (confirmation sans renvoyer la popup « accepter »).
+     */
+    private function notifyActorAppointmentRedispatched(
+        string $appointmentId,
+        array $appointmentRow,
+        string $actorId,
+        string $actorRole
+    ): void {
+        try {
+            $scheduledRaw = $appointmentRow['scheduled_at'] ?? '';
+            $dtLabel = 'une date à confirmer';
+            if ($scheduledRaw !== '' && $scheduledRaw !== null) {
+                try {
+                    $dt = new DateTimeImmutable((string) $scheduledRaw);
+                    $dtLabel = $dt->format('d/m/Y \à H\hi');
+                } catch (Throwable $e) {
+                    $dtLabel = (string) $scheduledRaw;
+                }
+            }
+            $patientLabel = 'le patient';
+            $pid = $appointmentRow['patient_id'] ?? null;
+            if ($pid) {
+                require_once __DIR__ . '/User.php';
+                $um = new User();
+                $pat = $um->getById((string) $pid, 'system', 'system');
+                if ($pat) {
+                    $fn = trim((string) ($pat['first_name'] ?? ''));
+                    $ln = trim((string) ($pat['last_name'] ?? ''));
+                    $n = trim($fn . ' ' . $ln);
+                    if ($n !== '') {
+                        $patientLabel = $n;
+                    }
+                }
+            }
+            $peers = 'd\'autres professionnels de la zone';
+            if ($actorRole === 'nurse' && (($appointmentRow['type'] ?? '') === 'nursing')) {
+                $peers = 'd\'autres infirmiers';
+            } elseif (in_array($actorRole, ['lab', 'subaccount'], true) && (($appointmentRow['type'] ?? '') === 'blood_test')) {
+                $peers = 'd\'autres laboratoires';
+            }
+            $message = 'Le rendez-vous du ' . $dtLabel . ' pour ' . $patientLabel
+                . ' a été redispatché : il est de nouveau proposé à ' . $peers . '.';
+            $this->notificationService->createNotification(
+                $actorId,
+                'appointment_redispatched',
+                'Rendez-vous remis à disposition',
+                $message,
+                ['appointment_id' => $appointmentId]
+            );
+        } catch (Throwable $e) {
+            error_log('notifyActorAppointmentRedispatched: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Dispatch géographique : trouve les professionnels disponibles.
      * Pour blood_test : ne notifie que les labs qui acceptent les RDV et dont le délai min (min_booking_lead_time_hours) est respecté.
      * @param string|null $scheduledAt Date/heure du RDV (Y-m-d H:i:s) pour filtrer les labs par délai min
+     * @param string|null $excludeProfileId En redispatch : exclure ce professionnel des offres et notifications
      */
-    private function dispatchGeographic(string $appointmentId, string $type, float $lat, float $lng, ?string $scheduledAt = null): void
+    private function dispatchGeographic(string $appointmentId, string $type, float $lat, float $lng, ?string $scheduledAt = null, ?array $formData = null, ?string $excludeProfileId = null): void
     {
+        if ($excludeProfileId !== null) {
+            $delStmt = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ?');
+            $delStmt->execute([$appointmentId]);
+        }
+
+        $appointmentCategoryId = null;
+        $catStmt = $this->db->prepare('SELECT category_id FROM appointments WHERE id = ?');
+        $catStmt->execute([$appointmentId]);
+        $catRow = $catStmt->fetch(PDO::FETCH_ASSOC);
+        if ($catRow && isset($catRow['category_id']) && $catRow['category_id'] !== null && $catRow['category_id'] !== '') {
+            $appointmentCategoryId = (string) $catRow['category_id'];
+        }
+
         if ($type === 'nursing') {
             $roleFilter = 'nurse';
         } else {
@@ -930,7 +1880,8 @@ class Appointment
         if ($type === 'nursing') {
             $sql = "
                 SELECT cz.*, p.id as profile_id, p.role,
-                       p.address_encrypted, p.address_dek
+                       p.address_encrypted, p.address_dek,
+                       p.gender_encrypted, p.gender_dek
                 FROM coverage_zones cz
                 INNER JOIN profiles p ON cz.owner_id = p.id
                 WHERE cz.role = ?
@@ -1013,6 +1964,19 @@ class Appointment
                     'id' => $zone['profile_id'],
                     'role' => $zone['role'],
                 ];
+                if ($type === 'nursing') {
+                    $entry['gender'] = null;
+                    if (!empty($zone['gender_encrypted']) && !empty($zone['gender_dek'])) {
+                        try {
+                            $g = strtolower(trim((string) $this->crypto->decryptField($zone['gender_encrypted'], $zone['gender_dek'])));
+                            if (in_array($g, ['male', 'female', 'other'], true)) {
+                                $entry['gender'] = $g;
+                            }
+                        } catch (Throwable $e) {
+                            // ignore
+                        }
+                    }
+                }
                 if ($type === 'blood_test' && isset($zone['is_accepting_appointments'], $zone['min_booking_lead_time_hours'])) {
                     $entry['is_accepting_appointments'] = (bool) $zone['is_accepting_appointments'];
                     $entry['min_booking_lead_time_hours'] = (int) $zone['min_booking_lead_time_hours'];
@@ -1022,6 +1986,25 @@ class Appointment
                 }
                 $professionals[] = $entry;
             }
+        }
+
+        if ($type === 'nursing') {
+            $pref = $this->extractPreferredNurseGender($formData);
+            if ($pref === 'female' || $pref === 'male') {
+                $professionals = array_values(array_filter($professionals, function ($p) use ($pref) {
+                    $g = $p['gender'] ?? null;
+                    if ($g === null || $g === '') {
+                        return false;
+                    }
+                    return $pref === 'female' ? $g === 'female' : $g === 'male';
+                }));
+            }
+        }
+
+        if ($type === 'nursing') {
+            $professionals = array_values(array_filter($professionals, function ($p) use ($appointmentCategoryId) {
+                return $this->nurseAcceptsCategoryForDispatch((string) $p['id'], $appointmentCategoryId);
+            }));
         }
         
         // Pour blood_test sans lab assigné : exclure les labs qui n'acceptent pas les RDV, dont le délai min n'est pas respecté, ou qui n'acceptent pas samedi/dimanche
@@ -1070,6 +2053,18 @@ class Appointment
                 return true;
             }));
         }
+
+        if ($type === 'blood_test') {
+            $professionals = array_values(array_filter($professionals, function ($p) use ($appointmentCategoryId) {
+                return $this->labAcceptsCategoryForDispatch((string) $p['id'], $appointmentCategoryId);
+            }));
+        }
+        
+        if ($excludeProfileId !== null) {
+            $professionals = array_values(array_filter($professionals, function ($p) use ($excludeProfileId) {
+                return ($p['id'] ?? '') !== $excludeProfileId;
+            }));
+        }
         
         // Limiter le nombre de professionnels notifiés pour éviter surcharge/timeout (100 max)
         $professionals = array_slice($professionals, 0, 100);
@@ -1080,11 +2075,12 @@ class Appointment
         // Créer une notification web pour chaque professionnel trouvé
         foreach ($professionals as $professional) {
             try {
+                $typeLabel = $type === 'nursing' ? 'soins infirmiers' : 'prise de sang';
                 $this->notificationService->createNotification(
                     $professional['id'],
                     'new_appointment_available',
                     'Nouveau rendez-vous disponible',
-                    'Un nouveau rendez-vous est disponible dans votre zone de couverture',
+                    'Un nouveau rendez-vous de ' . $typeLabel . ' est disponible dans votre zone de couverture. Ouvrez la notification pour répondre.',
                     ['appointment_id' => $appointmentId]
                 );
                 // Email async (envoyé après la réponse HTTP)
@@ -1092,6 +2088,7 @@ class Appointment
                     'appointment_id' => $appointmentId,
                     'scheduled_at' => $scheduledAt ?? date('Y-m-d H:i:s'),
                     'role' => $type === 'nursing' ? 'nurse' : 'lab',
+                    'form_data' => $formData,
                 ], $professional['id']);
             } catch (Exception $e) {
                 // Continuer même si une notification échoue
@@ -1178,6 +2175,110 @@ class Appointment
         } catch (Exception $e) {
             // Logger l'erreur mais ne pas bloquer la création du rendez-vous
             error_log("Erreur lors de la récupération des admins: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Aligné sur GET /appointments : si l’infirmier a au moins une préf activée, seules les catégories cochées
+     * (ou sans catégorie) reçoivent offre + notif. Aucune ligne en base = pas de filtre (comportement historique).
+     */
+    private function nurseAcceptsCategoryForDispatch(string $nurseId, ?string $categoryId): bool
+    {
+        try {
+            $stmt = $this->db->prepare('SELECT COUNT(*) FROM nurse_category_preferences WHERE nurse_id = ? AND is_enabled = TRUE');
+            $stmt->execute([$nurseId]);
+            if ((int) $stmt->fetchColumn() === 0) {
+                return true;
+            }
+            if ($categoryId === null || $categoryId === '') {
+                return true;
+            }
+            $stmt = $this->db->prepare('SELECT 1 FROM nurse_category_preferences WHERE nurse_id = ? AND category_id = ? AND is_enabled = TRUE LIMIT 1');
+            $stmt->execute([$nurseId, $categoryId]);
+            return (bool) $stmt->fetchColumn();
+        } catch (Throwable $e) {
+            error_log('nurseAcceptsCategoryForDispatch: ' . $e->getMessage());
+            return true;
+        }
+    }
+
+    /**
+     * Même logique pour les labs (lab_category_preferences.lab_id = profil lab ou sous-compte selon l’UI).
+     */
+    private function labAcceptsCategoryForDispatch(string $labPrefsProfileId, ?string $categoryId): bool
+    {
+        try {
+            $chk = $this->db->query("SHOW TABLES LIKE 'lab_category_preferences'");
+            if (!$chk || $chk->rowCount() === 0) {
+                return true;
+            }
+            $stmt = $this->db->prepare('SELECT COUNT(*) FROM lab_category_preferences WHERE lab_id = ? AND is_enabled = TRUE');
+            $stmt->execute([$labPrefsProfileId]);
+            if ((int) $stmt->fetchColumn() === 0) {
+                return true;
+            }
+            if ($categoryId === null || $categoryId === '') {
+                return true;
+            }
+            $stmt = $this->db->prepare('SELECT 1 FROM lab_category_preferences WHERE lab_id = ? AND category_id = ? AND is_enabled = TRUE LIMIT 1');
+            $stmt->execute([$labPrefsProfileId, $categoryId]);
+            return (bool) $stmt->fetchColumn();
+        } catch (Throwable $e) {
+            error_log('labAcceptsCategoryForDispatch: ' . $e->getMessage());
+            return true;
+        }
+    }
+
+    /**
+     * Une seule offre + notifications (cloche, e-mail, SMS) pour un RDV soins réservé depuis le profil d'un infirmier.
+     * Évite le dispatch géographique (tous les infirmiers de la zone).
+     */
+    private function dispatchDirectedNurseOnly(
+        string $appointmentId,
+        string $nurseId,
+        ?string $scheduledAt,
+        ?array $formData
+    ): void {
+        try {
+            $stmt = $this->db->prepare('SELECT id FROM profiles WHERE id = ? AND role = ? LIMIT 1');
+            $stmt->execute([$nurseId, 'nurse']);
+            if (!$stmt->fetchColumn()) {
+                error_log('dispatchDirectedNurseOnly: profil infirmier invalide ou absent — id=' . $nurseId);
+
+                return;
+            }
+        } catch (Throwable $e) {
+            error_log('dispatchDirectedNurseOnly: ' . $e->getMessage());
+
+            return;
+        }
+
+        $professionals = [['id' => $nurseId, 'role' => 'nurse']];
+        $this->insertAppointmentOffers($appointmentId, $professionals);
+
+        foreach ($professionals as $professional) {
+            try {
+                $this->notificationService->createNotification(
+                    $professional['id'],
+                    'new_appointment_available',
+                    'Demande de rendez-vous',
+                    'Un patient a demandé un rendez-vous pour des soins infirmiers depuis votre profil. Ouvrez la notification pour répondre.',
+                    ['appointment_id' => $appointmentId]
+                );
+                EmailQueue::add('new_appointment_pro', null, [
+                    'appointment_id' => $appointmentId,
+                    'scheduled_at' => $scheduledAt ?? date('Y-m-d H:i:s'),
+                    'role' => 'nurse',
+                    'form_data' => $formData,
+                ], $professional['id']);
+            } catch (Exception $e) {
+                // Continuer même si une notification échoue
+            }
+        }
+
+        $scheduledAtStr = $scheduledAt ?? date('Y-m-d H:i:s');
+        foreach ($professionals as $professional) {
+            SmsQueue::addNewAppointment($professional['id'], $appointmentId, $scheduledAtStr);
         }
     }
 

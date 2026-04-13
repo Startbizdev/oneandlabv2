@@ -149,15 +149,21 @@ try {
                 $review['last_name_dek']
             );
         }
-        // Masquer le nom complet pour la vie privée (garder seulement initiale)
-        if (isset($review['patient_first_name'])) {
-            $review['patient_name'] = substr($review['patient_first_name'], 0, 1) . '.';
-            if (isset($review['patient_last_name'])) {
-                $review['patient_name'] .= ' ' . substr($review['patient_last_name'], 0, 1) . '.';
+        // Affichage public : prénom complet + initiale du nom (ex. « Marie D. »), sans nom de famille complet
+        $fn = isset($review['patient_first_name']) ? trim((string) $review['patient_first_name']) : '';
+        $ln = isset($review['patient_last_name']) ? trim((string) $review['patient_last_name']) : '';
+        if ($fn !== '') {
+            $review['patient_name'] = $fn;
+            if ($ln !== '') {
+                $li = function_exists('mb_substr')
+                    ? mb_strtoupper(mb_substr($ln, 0, 1, 'UTF-8'), 'UTF-8')
+                    : strtoupper(substr($ln, 0, 1));
+                $review['patient_name'] .= ' ' . $li . '.';
             }
         } else {
             $review['patient_name'] = 'Patient';
         }
+        unset($review['patient_first_name'], $review['patient_last_name']);
         unset($review['first_name_encrypted'], $review['first_name_dek']);
         unset($review['last_name_encrypted'], $review['last_name_dek']);
     }

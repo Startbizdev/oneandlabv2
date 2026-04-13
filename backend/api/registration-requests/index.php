@@ -51,6 +51,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode(['success' => false, 'error' => 'Le numéro RPPS est obligatoire pour un infirmier.']);
         exit;
     }
+    if ($role === 'nurse') {
+        $g = strtolower(trim((string)($body['gender'] ?? '')));
+        if (!in_array($g, ['male', 'female', 'other'], true)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Le genre est obligatoire (Homme, Femme ou Autre).']);
+            exit;
+        }
+    }
     try {
         $model = new RegistrationRequest();
         $id = $model->create($body);

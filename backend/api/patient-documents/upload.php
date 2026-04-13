@@ -5,9 +5,11 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/upload-limits.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Crypto.php';
 require_once __DIR__ . '/../../lib/Logger.php';
+require_once __DIR__ . '/../../models/User.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -31,7 +33,7 @@ $user = $authMiddleware->handle();
 // Vérifier CSRF
 CSRFMiddleware::handle();
 
-// Patient : ses documents ; super_admin : upload pour un patient via POST user_id ; pro : upload pour un patient qu'il a créé
+// Patient : ses documents ; super_admin : upload pour un patient via POST user_id ; pro/nurse/lab/sous-compte : patient du périmètre
 $targetPatientId = $user['user_id'];
 if ($user['role'] === 'super_admin') {
     $requestedUserId = isset($_POST['user_id']) ? trim((string) $_POST['user_id']) : null;
@@ -42,7 +44,7 @@ if ($user['role'] === 'super_admin') {
         echo json_encode(['success' => false, 'error' => 'Paramètre user_id requis pour l\'admin']);
         exit;
     }
-} elseif ($user['role'] === 'pro') {
+} elseif (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount'], true)) {
     $requestedUserId = isset($_POST['user_id']) ? trim((string) $_POST['user_id']) : null;
     if ($requestedUserId === null || $requestedUserId === '') {
         http_response_code(400);
@@ -56,6 +58,15 @@ if ($user['role'] === 'super_admin') {
     exit;
 }
 
+// Patient : optionnellement relative_id pour uploader les documents d'un proche
+$relativeId = null;
+if ($user['role'] === 'patient') {
+    $relativeId = isset($_POST['relative_id']) ? trim((string) $_POST['relative_id']) : null;
+    if ($relativeId !== null && $relativeId === '') {
+        $relativeId = null;
+    }
+}
+
 $config = require __DIR__ . '/../../config/database.php';
 $dsn = sprintf(
     'mysql:host=%s;port=%d;dbname=%s;charset=%s',
@@ -67,13 +78,34 @@ $dsn = sprintf(
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
 $crypto = new Crypto();
 $logger = new Logger();
+$userModel = new User();
 
-// Pro : vérifier que le patient a bien été créé par ce pro (created_by)
-if ($user['role'] === 'pro') {
+// Pro / nurse / lab / sous-compte : vérifier le périmètre (created_by)
+if (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount'], true)) {
     $checkStmt = $db->prepare('SELECT id, role, created_by FROM profiles WHERE id = ? LIMIT 1');
     $checkStmt->execute([$targetPatientId]);
     $profile = $checkStmt->fetch(PDO::FETCH_ASSOC);
-    if (!$profile || ($profile['role'] ?? '') !== 'patient' || ($profile['created_by'] ?? '') !== $user['user_id']) {
+    if (!$profile || ($profile['role'] ?? '') !== 'patient') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Accès refusé']);
+        exit;
+    }
+    $cb = (string) ($profile['created_by'] ?? '');
+    $ok = false;
+    if (in_array($user['role'], ['pro', 'nurse', 'subaccount'], true)) {
+        $ok = ($cb === $user['user_id']);
+    } elseif ($user['role'] === 'lab') {
+        if ($cb === $user['user_id']) {
+            $ok = true;
+        } else {
+            $creatorLabId = $userModel->getLabId($cb);
+            $ok = ($creatorLabId === $user['user_id']);
+        }
+    }
+    if (!$ok && $userModel->hasProfessionalAccessToPatient($user['user_id'], $targetPatientId)) {
+        $ok = true;
+    }
+    if (!$ok) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Accès refusé']);
         exit;
@@ -81,24 +113,27 @@ if ($user['role'] === 'pro') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Logs de débogage (dans le projet ET dans le log PHP)
-    $logFile = __DIR__ . '/../../../uploads/upload-debug.log';
-    $logDir = dirname($logFile);
-    if (!is_dir($logDir)) {
-        mkdir($logDir, 0755, true);
+    $uploadVerbose = strtolower(trim((string) ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: ''))) !== 'production';
+    $logFile = null;
+    if ($uploadVerbose) {
+        $backendDirForLog = realpath(__DIR__ . '/../../');
+        if ($backendDirForLog === false) {
+            $backendDirForLog = __DIR__ . '/../../';
+        }
+        $logFile = rtrim($backendDirForLog, DIRECTORY_SEPARATOR) . '/uploads/upload-debug.log';
+        $logDir = dirname($logFile);
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0755, true);
+        }
+        $timestamp = date('Y-m-d H:i:s');
+        $logMsg = "\n[$timestamp] === UPLOAD START ===\n";
+        $logMsg .= "User: " . $user['user_id'] . " (" . $user['role'] . ")\n";
+        $logMsg .= "FILES: " . json_encode($_FILES) . "\n";
+        $logMsg .= "POST: " . json_encode($_POST) . "\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+        error_log("=== UPLOAD START ===");
+        error_log("User: " . $user['user_id'] . " (" . $user['role'] . ")");
     }
-    
-    $timestamp = date('Y-m-d H:i:s');
-    $logMsg = "\n[$timestamp] === UPLOAD START ===\n";
-    $logMsg .= "User: " . $user['user_id'] . " (" . $user['role'] . ")\n";
-    $logMsg .= "FILES: " . json_encode($_FILES) . "\n";
-    $logMsg .= "POST: " . json_encode($_POST) . "\n";
-    file_put_contents($logFile, $logMsg, FILE_APPEND);
-    
-    error_log("=== UPLOAD START ===");
-    error_log("User: " . $user['user_id'] . " (" . $user['role'] . ")");
-    error_log("FILES: " . json_encode($_FILES));
-    error_log("POST: " . json_encode($_POST));
     
     try {
         // Vérifier si c'est un upload multipart/form-data
@@ -135,12 +170,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Validation du fichier
         $file = $_FILES['file'];
-        $maxSize = ($documentType === 'autres_assurances') ? 10 * 1024 * 1024 : 5 * 1024 * 1024; // 10MB ou 5MB
+        $maxSize = ONEANDLAB_MAX_UPLOAD_BYTES;
         $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
 
         if ($file['size'] > $maxSize) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Fichier trop volumineux']);
+            echo json_encode(['success' => false, 'error' => 'Fichier trop volumineux (max 25 Mo)']);
             exit;
         }
 
@@ -165,17 +200,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Chiffrer le fichier
         $encryptedData = $crypto->encryptFile($fileContent);
 
-        // Créer le dossier d'upload s'il n'existe pas
-        $uploadDir = __DIR__ . '/../../../uploads/medical/';
+        // Créer le dossier d'upload s'il n'existe pas (même chemin que medical-documents : backend/uploads/medical/)
+        $backendDir = realpath(__DIR__ . '/../../');
+        if ($backendDir === false) {
+            $backendDir = __DIR__ . '/../../';
+        }
+        $uploadDir = rtrim($backendDir, DIRECTORY_SEPARATOR) . '/uploads/medical/';
         if (!is_dir($uploadDir)) {
-            if (!mkdir($uploadDir, 0755, true)) {
+            if (!@mkdir($uploadDir, 0755, true)) {
                 throw new Exception('Impossible de créer le dossier d\'upload: ' . $uploadDir);
             }
         }
         
         // Vérifier que le dossier est accessible en écriture
         if (!is_writable($uploadDir)) {
-            throw new Exception('Le dossier d\'upload n\'est pas accessible en écriture: ' . $uploadDir);
+            throw new Exception('Le dossier d\'upload n\'est pas accessible en écriture: ' . $uploadDir . ' (vérifiez les permissions sur backend/uploads/medical/)');
         }
 
         // Générer un UUID v4 pour le fichier (même format que le reste du système)
@@ -237,42 +276,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('Erreur lors de la sauvegarde dans medical_documents: ' . implode(', ', $stmt->errorInfo()));
         }
 
-        // Sauvegarder dans patient_documents
-        $checkStmt = $db->prepare('
-            SELECT id FROM patient_documents 
-            WHERE patient_id = ? AND document_type = ?
-        ');
-        $checkStmt->execute([$targetPatientId, $documentType]);
-        $existingDoc = $checkStmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($existingDoc) {
-            // Mettre à jour la référence vers le nouveau document
-            $updateStmt = $db->prepare('
-                UPDATE patient_documents 
-                SET medical_document_id = ?, updated_at = NOW()
-                WHERE id = ?
+        // Sauvegarder dans patient_documents ou patient_relative_documents
+        if ($relativeId && $user['role'] === 'patient') {
+            // Documents d'un proche : vérifier que le proche appartient au patient
+            $checkRel = $db->prepare('SELECT id FROM patient_relatives WHERE id = ? AND patient_id = ?');
+            $checkRel->execute([$relativeId, $user['user_id']]);
+            if (!$checkRel->fetch()) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'error' => 'Proche introuvable ou accès refusé']);
+                exit;
+            }
+            $tableExists = $db->query("SHOW TABLES LIKE 'patient_relative_documents'")->rowCount() > 0;
+            if (!$tableExists) {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => 'Table patient_relative_documents non disponible']);
+                exit;
+            }
+            $checkStmt = $db->prepare('
+                SELECT id FROM patient_relative_documents
+                WHERE patient_id = ? AND relative_id = ? AND document_type = ?
             ');
-            $updateStmt->execute([$id, $existingDoc['id']]);
+            $checkStmt->execute([$user['user_id'], $relativeId, $documentType]);
+            $existingDoc = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            if ($existingDoc) {
+                $updateStmt = $db->prepare('
+                    UPDATE patient_relative_documents
+                    SET medical_document_id = ?, updated_at = NOW()
+                    WHERE id = ?
+                ');
+                $updateStmt->execute([$id, $existingDoc['id']]);
+            } else {
+                $data = random_bytes(16);
+                $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
+                $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
+                $prDocId = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+                $insertStmt = $db->prepare('
+                    INSERT INTO patient_relative_documents (
+                        id, patient_id, relative_id, document_type, medical_document_id, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+                ');
+                $insertResult = $insertStmt->execute([
+                    $prDocId,
+                    $user['user_id'],
+                    $relativeId,
+                    $documentType,
+                    $id
+                ]);
+                if (!$insertResult) {
+                    throw new Exception('Erreur lors de la sauvegarde dans patient_relative_documents: ' . implode(', ', $insertStmt->errorInfo()));
+                }
+            }
         } else {
-            // Créer une nouvelle entrée
-            $data = random_bytes(16);
-            $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // Version 4
-            $data[8] = chr(ord($data[8]) & 0x3f | 0x80); // Variant
-            $patientDocId = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
-            $insertStmt = $db->prepare('
-                INSERT INTO patient_documents (
-                    id, patient_id, document_type, medical_document_id, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, NOW(), NOW())
+            // Documents du patient (pour moi-même)
+            $checkStmt = $db->prepare('
+                SELECT id FROM patient_documents 
+                WHERE patient_id = ? AND document_type = ?
             ');
-            $insertResult = $insertStmt->execute([
-                $patientDocId,
-                $targetPatientId,
-                $documentType,
-                $id
-            ]);
-            
-            if (!$insertResult) {
-                throw new Exception('Erreur lors de la sauvegarde dans patient_documents: ' . implode(', ', $insertStmt->errorInfo()));
+            $checkStmt->execute([$targetPatientId, $documentType]);
+            $existingDoc = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            if ($existingDoc) {
+                $updateStmt = $db->prepare('
+                    UPDATE patient_documents 
+                    SET medical_document_id = ?, updated_at = NOW()
+                    WHERE id = ?
+                ');
+                $updateStmt->execute([$id, $existingDoc['id']]);
+            } else {
+                $data = random_bytes(16);
+                $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
+                $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
+                $patientDocId = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+                $insertStmt = $db->prepare('
+                    INSERT INTO patient_documents (
+                        id, patient_id, document_type, medical_document_id, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, NOW(), NOW())
+                ');
+                $insertResult = $insertStmt->execute([
+                    $patientDocId,
+                    $targetPatientId,
+                    $documentType,
+                    $id
+                ]);
+                if (!$insertResult) {
+                    throw new Exception('Erreur lors de la sauvegarde dans patient_documents: ' . implode(', ', $insertStmt->errorInfo()));
+                }
             }
         }
 
@@ -296,33 +383,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $logMsg = "SUCCESS: Document saved - ID: $id, File: $filePath\n";
         $logMsg .= "=== UPLOAD END ===\n";
-        file_put_contents($logFile, $logMsg, FILE_APPEND);
-        
+        if ($uploadVerbose && $logFile !== null) {
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
+        }
+
         error_log("SUCCESS: Document saved - ID: $id, File: $filePath");
         error_log("=== UPLOAD END ===");
-        
+
+        $isProd = !$uploadVerbose;
+        $payloadData = [
+            'id' => $id,
+            'document_type' => $documentType,
+            'file_name' => $fileName,
+            'file_size' => $file['size'],
+            'mime_type' => $mimeType,
+            'file_path' => $relativePath,
+        ];
+        if (!$isProd) {
+            $payloadData['debug'] = [
+                'file_exists' => file_exists($filePath),
+                'file_size_on_disk' => file_exists($filePath) ? filesize($filePath) : 0,
+                'upload_dir' => $uploadDir,
+                'patient_id' => $targetPatientId,
+                'relative_id' => $relativeId,
+            ];
+        }
+
         echo json_encode([
             'success' => true,
-            'data' => [
-                'id' => $id,
-                'document_type' => $documentType,
-                'file_name' => $fileName,
-                'file_size' => $file['size'],
-                'mime_type' => $mimeType,
-                'file_path' => $relativePath,
-                'debug' => [
-                    'file_exists' => file_exists($filePath),
-                    'file_size_on_disk' => file_exists($filePath) ? filesize($filePath) : 0,
-                    'upload_dir' => $uploadDir,
-                    'patient_id' => $targetPatientId,
-                ]
-            ],
+            'data' => $payloadData,
         ]);
     } catch (Exception $e) {
         $logMsg = "ERROR: " . $e->getMessage() . "\n";
         $logMsg .= "Trace: " . $e->getTraceAsString() . "\n";
         $logMsg .= "=== UPLOAD END (ERROR) ===\n";
-        file_put_contents($logFile, $logMsg, FILE_APPEND);
+        if ($uploadVerbose && $logFile !== null) {
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
+        }
         
         error_log("ERROR: " . $e->getMessage());
         error_log("Trace: " . $e->getTraceAsString());

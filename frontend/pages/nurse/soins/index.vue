@@ -97,7 +97,7 @@
             <div class="flex-1 min-w-0">
               <p class="text-xs text-gray-500 dark:text-gray-400">Durée</p>
               <p class="text-sm font-medium text-gray-900 dark:text-white">
-                {{ getDurationLabel(care.duration_days) }}
+                {{ getNursingDurationLabel(care.duration_days, care.custom_days) }}
               </p>
             </div>
           </div>
@@ -236,11 +236,13 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
+import { getNursingDurationLabel } from '~/constants/nursing-duration';
 
 const { appointments, loading, fetchAppointments } = useAppointments();
 const toast = useAppToast();
 
-const dateFilter = ref('today');
+// Par défaut "À venir" : les plans de soins sont souvent programmés pour les jours à venir
+const dateFilter = ref('upcoming');
 const processingAppointments = ref(new Set<string>());
 
 // Options de filtres
@@ -248,6 +250,7 @@ const dateTabs = [
   { label: "Aujourd'hui", value: 'today' },
   { label: 'À venir', value: 'upcoming' },
   { label: 'Passés', value: 'past' },
+  { label: 'Tous', value: 'all' },
 ];
 
 // Filtrer UNIQUEMENT les soins récurrents (sur plusieurs jours)
@@ -272,7 +275,7 @@ const recurringCaresByPatient = computed(() => {
                               formData.duration_days !== 'single';
       const hasRecurringFrequency = formData.frequency && 
                                    formData.frequency !== 'single' &&
-                                   ['daily', 'every_other_day', 'twice_weekly', 'thrice_weekly'].includes(formData.frequency);
+                                   ['once_daily', 'twice_daily', 'thrice_daily', 'twice_weekly', 'thrice_weekly', 'to_define', 'daily', 'every_other_day'].includes(formData.frequency);
       
       return hasMultipleDays || hasRecurringFrequency;
     })
@@ -290,7 +293,8 @@ const recurringCaresByPatient = computed(() => {
         patient_phone: formData.phone,
         patient_email: formData.email,
         duration_days: formData.duration_days || '7',
-        frequency: formData.frequency || 'daily',
+        custom_days: formData.custom_days ?? null,
+        frequency: formData.frequency || 'once_daily',
         availability: formData.availability,
         notes: formData.notes || a.notes,
       };
@@ -311,6 +315,8 @@ const recurringCaresByPatient = computed(() => {
         return appointmentDate > todayEnd;
       case 'past':
         return appointmentDate < todayStart;
+      case 'all':
+        return true;
       default:
         return true;
     }
@@ -321,7 +327,11 @@ const recurringCaresByPatient = computed(() => {
 });
 
 onMounted(() => {
-  fetchAppointments();
+  // Limite élevée + statuts actifs pour récupérer tous les plans de soins récurrents
+  fetchAppointments({
+    status: 'confirmed,inProgress',
+    limit: 1000,
+  });
 });
 
 // Watcher pour recharger quand on change de filtre
@@ -392,9 +402,13 @@ const getStatusColor = (status: string): 'error' | 'primary' | 'secondary' | 'su
   const colors: Record<string, 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral'> = {
     pending: 'warning',
     confirmed: 'info',
+    planned: 'info',
     inProgress: 'primary',
     completed: 'success',
+    canceled: 'error',
     cancelled: 'error',
+    refused: 'error',
+    expired: 'neutral',
   };
   return colors[status] || 'neutral';
 };
@@ -403,6 +417,7 @@ const getStatusLabel = (status: string) => {
   const labels: Record<string, string> = {
     pending: 'En attente',
     confirmed: 'Confirmé',
+    planned: 'Planifié',
     inProgress: 'En cours',
     completed: 'Terminé',
     canceled: 'Annulé',
@@ -413,24 +428,16 @@ const getStatusLabel = (status: string) => {
   return labels[status] || status;
 };
 
-const getDurationLabel = (duration: string) => {
-  const labels: Record<string, string> = {
-    '1': '1 jour',
-    '7': '7 jours',
-    '10': '10 jours',
-    '15': '15 jours (ou jusqu\'à la cicatrisation)',
-    '30': '30 jours',
-    '60+': 'Longue durée (60 jours ou +)',
-  };
-  return labels[duration] || duration;
-};
-
 const getFrequencyLabel = (frequency: string) => {
   const labels: Record<string, string> = {
-    daily: 'Chaque jour',
-    every_other_day: '1 jour sur 2',
+    once_daily: '1 fois par jour',
+    twice_daily: '2 fois par jour',
+    thrice_daily: '3 fois par jour',
     twice_weekly: '2 fois par semaine',
     thrice_weekly: '3 fois par semaine',
+    to_define: 'A voir avec le professionnel',
+    daily: '1 fois par jour',
+    every_other_day: '1 jour sur 2',
   };
   return labels[frequency] || frequency;
 };

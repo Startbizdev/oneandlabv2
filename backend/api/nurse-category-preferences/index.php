@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $stmt->execute([$user['user_id']]);
         $preferences = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Récupérer aussi les catégories non préférencées (avec is_enabled = true par défaut) — uniquement type nursing
+        // Catégories sans ligne en base : non activées (évite un profil « tout coché » alors que la BDD n’a qu’une ligne).
         $stmt = $db->prepare('
             SELECT
                 cc.id as category_id,
@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 cc.description,
                 cc.type,
                 cc.icon,
-                TRUE as is_enabled
+                FALSE as is_enabled
             FROM care_categories cc
             WHERE cc.is_active = TRUE AND cc.type = \'nursing\'
             AND cc.id NOT IN (
@@ -126,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             exit;
         }
 
-        // Limite types de soins selon l'abonnement (discovery = 3, nurse_pro = illimité)
+        // Limite types de soins selon l'abonnement (discovery = illimité, nurse_pro = illimité)
         if ($isEnabled) {
             $stmtSub = $db->prepare('SELECT plan_slug FROM subscriptions WHERE user_id = ? AND status IN (\'active\', \'trialing\') ORDER BY updated_at DESC LIMIT 1');
             $stmtSub->execute([$user['user_id']]);
@@ -134,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $planSlug = $sub ? ($sub['plan_slug'] ?? 'discovery') : 'discovery';
             $limits = require __DIR__ . '/../../config/plan-limits.php';
             $nurseLimits = $limits['nurse'][$planSlug] ?? $limits['nurse']['discovery'];
-            $maxCareTypes = $nurseLimits['max_care_types'] ?? 3;
+            $maxCareTypes = $nurseLimits['max_care_types'] ?? null;
             if ($maxCareTypes !== null) {
                 $stmtCount = $db->prepare('SELECT COUNT(*) FROM nurse_category_preferences WHERE nurse_id = ? AND is_enabled = 1 AND category_id != ?');
                 $stmtCount->execute([$user['user_id'], $data['category_id']]);

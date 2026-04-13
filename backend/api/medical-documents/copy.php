@@ -50,11 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sourceMedicalDocumentId = $input['source_medical_document_id'] ?? null;
         $appointmentId = $input['appointment_id'] ?? null;
         $documentType = $input['document_type'] ?? null;
-        
-        // #region agent log
-        file_put_contents('/Users/alessandro/Documents/onev2/.cursor/debug.log', json_encode(['sessionId'=>'debug-session','runId'=>'run1','hypothesisId'=>'SS','location'=>'medical-documents/copy.php:48','message'=>'Copy medical document request','data'=>['source_medical_document_id'=>$sourceMedicalDocumentId,'appointment_id'=>$appointmentId,'document_type'=>$documentType],'timestamp'=>round(microtime(true)*1000)])."\n", FILE_APPEND);
-        // #endregion
-        
+
         if (!$sourceMedicalDocumentId || !$appointmentId) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'source_medical_document_id et appointment_id requis']);
@@ -86,8 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         
-        // Rendez-vous cible
-        $stmt = $db->prepare('SELECT patient_id FROM appointments WHERE id = ?');
+        // Rendez-vous cible (inclure relative_id)
+        $stmt = $db->prepare('SELECT patient_id, relative_id FROM appointments WHERE id = ?');
         $stmt->execute([$appointmentId]);
         $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -98,14 +94,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         $appointmentPatientId = $appointment['patient_id'];
+        $appointmentRelativeId = $appointment['relative_id'] ?? null;
         $sourceDocumentPatientId = $sourceDoc['patient_id']; // NULL si document de profil (appointment_id NULL)
+        $sourceDocumentRelativeId = null;
         
-        // Document de profil : récupérer le patient_id via patient_documents
+        // Document de profil : récupérer patient_id via patient_documents ou patient_relative_documents
         if ($sourceDocumentPatientId === null) {
             $pdStmt = $db->prepare('SELECT patient_id FROM patient_documents WHERE medical_document_id = ? LIMIT 1');
             $pdStmt->execute([$sourceMedicalDocumentId]);
             $pd = $pdStmt->fetch(PDO::FETCH_ASSOC);
-            $sourceDocumentPatientId = $pd ? $pd['patient_id'] : null;
+            if ($pd) {
+                $sourceDocumentPatientId = $pd['patient_id'];
+            } else {
+                $tableExists = $db->query("SHOW TABLES LIKE 'patient_relative_documents'")->rowCount() > 0;
+                if ($tableExists) {
+                    $prdStmt = $db->prepare('SELECT patient_id, relative_id FROM patient_relative_documents WHERE medical_document_id = ? LIMIT 1');
+                    $prdStmt->execute([$sourceMedicalDocumentId]);
+                    $prd = $prdStmt->fetch(PDO::FETCH_ASSOC);
+                    if ($prd) {
+                        $sourceDocumentPatientId = $prd['patient_id'];
+                        $sourceDocumentRelativeId = $prd['relative_id'];
+                    }
+                }
+            }
         }
         
         $allowed = false;
@@ -113,6 +124,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $allowed = true;
         } elseif ($user['role'] === 'patient') {
             $allowed = ($sourceDocumentPatientId === $user['user_id'] && $appointmentPatientId === $user['user_id']);
+            if ($allowed && $sourceDocumentRelativeId !== null && $appointmentRelativeId !== null) {
+                $allowed = ($sourceDocumentRelativeId === $appointmentRelativeId);
+            } elseif ($allowed && ($sourceDocumentRelativeId !== null || $appointmentRelativeId !== null)) {
+                $allowed = ($sourceDocumentRelativeId === $appointmentRelativeId);
+            }
         } elseif ($user['role'] === 'pro') {
             // Pro : document doit appartenir au patient du RDV et le patient doit avoir été créé par ce pro
             if ($sourceDocumentPatientId && $sourceDocumentPatientId === $appointmentPatientId) {
@@ -134,6 +150,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'error' => 'Le document ne concerne pas le patient de ce rendez-vous']);
             exit;
         }
+        if ($appointmentRelativeId && $sourceDocumentRelativeId !== $appointmentRelativeId) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Le document ne concerne pas le proche de ce rendez-vous']);
+            exit;
+        }
         
         // Lire le fichier source
         // Les fichiers sont stockés dans uploads/medical/ à la racine du projet
@@ -144,10 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $sourceFilePath = $projectRoot . '/' . ltrim($sourceDoc['file_path'], '/');
         $sourceFilePath = realpath($sourceFilePath);
-        
-        // #region agent log
-        file_put_contents('/Users/alessandro/Documents/onev2/.cursor/debug.log', json_encode(['sessionId'=>'debug-session','runId'=>'run1','hypothesisId'=>'AAA','location'=>'medical-documents/copy.php:114','message'=>'Reading source file','data'=>['source_file_path_db'=>$sourceDoc['file_path'],'source_base_path'=>$sourceBasePath,'source_file_path_resolved'=>$sourceFilePath,'source_exists'=>$sourceFilePath!==false&&file_exists($sourceFilePath),'__DIR__'=>__DIR__],'timestamp'=>round(microtime(true)*1000)])."\n", FILE_APPEND);
-        // #endregion
+
         if (!file_exists($sourceFilePath)) {
             http_response_code(404);
             echo json_encode(['success' => false, 'error' => 'Fichier source introuvable']);
@@ -173,11 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }
-        
-        // #region agent log
-        file_put_contents('/Users/alessandro/Documents/onev2/.cursor/debug.log', json_encode(['sessionId'=>'debug-session','runId'=>'run1','hypothesisId'=>'BBB','location'=>'medical-documents/copy.php:129','message'=>'Setting up upload directory','data'=>['project_root'=>$projectRoot,'upload_dir'=>$uploadDir,'upload_dir_exists'=>is_dir($uploadDir),'__DIR__'=>__DIR__],'timestamp'=>round(microtime(true)*1000)])."\n", FILE_APPEND);
-        // #endregion
-        
+
         // Générer un ID unique pour le nouveau document
         $newId = bin2hex(random_bytes(16));
         $fileExtension = pathinfo($sourceDoc['file_name'], PATHINFO_EXTENSION);
@@ -193,11 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Copier le fichier chiffré (on garde le même chiffrement)
         $newFilePath = $documentDir . $fileName . '.encrypted';
         $copyResult = file_put_contents($newFilePath, $fileContent);
-        
-        // #region agent log
-        file_put_contents('/Users/alessandro/Documents/onev2/.cursor/debug.log', json_encode(['sessionId'=>'debug-session','runId'=>'run1','hypothesisId'=>'XX','location'=>'medical-documents/copy.php:147','message'=>'Copying file','data'=>['source_file'=>$sourceFilePath,'source_exists'=>file_exists($sourceFilePath),'dest_file'=>$newFilePath,'dest_dir'=>$documentDir,'dest_dir_exists'=>is_dir($documentDir),'copy_result'=>$copyResult,'file_size'=>strlen($fileContent),'upload_dir'=>$uploadDir],'timestamp'=>round(microtime(true)*1000)])."\n", FILE_APPEND);
-        // #endregion
-        
+
         if ($copyResult === false) {
             http_response_code(500);
             echo json_encode(['success' => false, 'error' => 'Erreur lors de la copie du fichier']);
@@ -211,11 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Donc le chemin relatif depuis la racine du projet devrait être backend/uploads/medical/...
         // Mais dans la base, on stocke /uploads/medical/... donc download.php doit résoudre depuis backend/
         $relativePath = '/uploads/medical/' . $newId . '/' . $fileName . '.encrypted';
-        
-        // #region agent log
-        file_put_contents('/Users/alessandro/Documents/onev2/.cursor/debug.log', json_encode(['sessionId'=>'debug-session','runId'=>'run1','hypothesisId'=>'YY','location'=>'medical-documents/copy.php:160','message'=>'File copied, storing metadata','data'=>['new_id'=>$newId,'relative_path'=>$relativePath,'full_path'=>$newFilePath,'file_exists'=>file_exists($newFilePath)],'timestamp'=>round(microtime(true)*1000)])."\n", FILE_APPEND);
-        // #endregion
-        
+
         $stmt = $db->prepare('
             INSERT INTO medical_documents (
                 id, appointment_id, uploaded_by, file_name, file_path,
@@ -235,11 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             1, // Toujours chiffré
             $sourceDoc['file_dek'], // Utiliser la même clé de déchiffrement
         ]);
-        
-        // #region agent log
-        file_put_contents('/Users/alessandro/Documents/onev2/.cursor/debug.log', json_encode(['sessionId'=>'debug-session','runId'=>'run1','hypothesisId'=>'TT','location'=>'medical-documents/copy.php:150','message'=>'Medical document copied successfully','data'=>['new_id'=>$newId,'appointment_id'=>$appointmentId,'source_id'=>$sourceMedicalDocumentId],'timestamp'=>round(microtime(true)*1000)])."\n", FILE_APPEND);
-        // #endregion
-        
+
         // Logger la copie
         $logger->log(
             $user['user_id'],

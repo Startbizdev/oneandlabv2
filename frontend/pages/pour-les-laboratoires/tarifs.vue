@@ -27,7 +27,7 @@
                   size="lg"
                   variant="outline"
                   :loading="loadingStarter"
-                  @click="startCheckout('lab_starter')"
+                  :on-click="() => startCheckout('lab_starter')"
                 >
                   Commencer l'essai
                 </UButton>
@@ -68,7 +68,7 @@
                     size="lg"
                     color="primary"
                     :loading="loadingPro"
-                    @click="startCheckout('lab_pro')"
+                    :on-click="() => startCheckout('lab_pro')"
                   >
                     Commencer l'essai gratuit
                   </UButton>

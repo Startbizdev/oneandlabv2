@@ -82,7 +82,7 @@
           </div>
           <UFormField name="otp">
             <div class="flex justify-center">
-              <UPinInput v-model="otpDigits" :length="6" :disabled="otpLoading" otp size="xl" />
+              <UPinInput v-model="otpDigits" type="number" :length="6" :disabled="otpLoading" otp size="xl" />
             </div>
           </UFormField>
           <UButton
@@ -147,7 +147,7 @@ const otpLoading = ref(false);
 const resending = ref(false);
 const userId = ref('');
 const sessionId = ref('');
-const otpDigits = ref<string[]>([]);
+const otpDigits = ref<(number | string)[]>([]);
 const countdown = ref(0);
 let countdownInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -167,7 +167,9 @@ const form = reactive({
   addressSelection: null as AddressSelection | null,
 });
 
-const otpString = computed(() => (otpDigits.value || []).join(''));
+const otpString = computed(() =>
+  (otpDigits.value || []).map((x) => (x === undefined || x === null ? '' : String(x))).join(''),
+);
 const formatCountdown = computed(() => {
   const m = Math.floor(countdown.value / 60);
   const s = countdown.value % 60;
