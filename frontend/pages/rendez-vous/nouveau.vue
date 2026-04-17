@@ -730,6 +730,7 @@ const createAppointmentDirectly = async () => {
 
     const success = payloads.length === 1 ? result.success : (result as { success: boolean; createdIds: string[] }).success;
     if (success) {
+      bookingDraftDisabled.value = true;
       clearBookingDraft();
       router.push('/patient');
     } else {
@@ -811,6 +812,7 @@ const verifyOTPAndCreate = async () => {
 
     const success = 'createdIds' in result ? result.success : result.success;
     if (success) {
+      bookingDraftDisabled.value = true;
       clearBookingDraft();
       router.push('/patient');
     } else {
@@ -825,6 +827,8 @@ const verifyOTPAndCreate = async () => {
 };
 
 const BOOKING_STATE_KEY = 'appointment_booking_state';
+/** Empêche toute re-sauvegarde du brouillon après validation finale du RDV. */
+const bookingDraftDisabled = ref(false);
 
 function clearBookingDraft() {
   if (typeof window === 'undefined') return;
@@ -846,6 +850,7 @@ function bookingStateReplacer(_key: string, value: unknown): unknown {
 // Brouillon RDV : sauvegarde continue + à la sortie de page (login, profil, etc.)
 const saveFormState = () => {
   if (typeof window === 'undefined') return;
+  if (bookingDraftDisabled.value) return;
   const hasProgress =
     step.value > 0 ||
     selectedServices.value.length > 0 ||
@@ -878,6 +883,7 @@ const saveFormState = () => {
 let bookingSaveTimer: ReturnType<typeof setTimeout> | null = null;
 function scheduleSaveFormState() {
   if (typeof window === 'undefined') return;
+  if (bookingDraftDisabled.value) return;
   if (bookingSaveTimer) clearTimeout(bookingSaveTimer);
   bookingSaveTimer = setTimeout(() => {
     bookingSaveTimer = null;
@@ -906,6 +912,10 @@ watch(
 // Sauvegarder à chaque sortie du formulaire (connexion, avatar → profil, etc.)
 onBeforeRouteLeave((to, from, next) => {
   if (from.path === '/rendez-vous/nouveau' && to.path !== from.path) {
+    if (bookingDraftDisabled.value) {
+      next();
+      return;
+    }
     rdvFormStepRef.value?.flushBookingDraftToParent?.();
     saveFormState();
   }
@@ -914,6 +924,7 @@ onBeforeRouteLeave((to, from, next) => {
 
 onBeforeUnmount(() => {
   if (typeof window === 'undefined') return;
+  if (bookingDraftDisabled.value) return;
   saveFormState();
 });
 
