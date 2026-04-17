@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
         
         $stmt = $db->prepare('
-            SELECT patient_id, assigned_nurse_id, assigned_lab_id, assigned_to, created_by, type, status, location_lat, location_lng
+            SELECT patient_id, assigned_nurse_id, assigned_lab_id, assigned_to, created_by, type, status, location_lat, location_lng, creation_batch_id
             FROM appointments
             WHERE id = ?
         ');
@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         }
         
-        // Infirmier : accès si assigné à lui OU si RDV offert (pending, dans appointment_offers) OU jeton de partage valide
+        // Infirmier : accès si assigné à lui OU si RDV offert (pending, dans appointment_offers) OU sibling de lot OU jeton de partage valide
         if (!$hasAccess && $user['role'] === 'nurse' && $appointmentCheck['type'] === 'nursing' &&
             $appointmentCheck['status'] === 'pending' && empty($appointmentCheck['assigned_nurse_id'])) {
             $offerStmt = $db->prepare('SELECT 1 FROM appointment_offers WHERE appointment_id = ? AND profile_id = ? LIMIT 1');
@@ -132,11 +132,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             if ($offerStmt->fetch()) {
                 $hasAccess = true;
             } else {
-                $shareTokenGet = isset($_GET['share_token']) ? trim((string) $_GET['share_token']) : '';
-                if ($shareTokenGet !== '') {
-                    require_once __DIR__ . '/../../lib/AppointmentShareToken.php';
-                    if (AppointmentShareToken::grantsNurseShareAccess($db, $shareTokenGet, $id)) {
+                // Accès sibling de lot : si l'infirmier a une offre pour n'importe quel RDV du même lot, il accède à tous les siblings
+                $batchIdForAccess = $appointmentCheck['creation_batch_id'] ?? null;
+                if (!empty($batchIdForAccess)) {
+                    $batchOfferStmt = $db->prepare('
+                        SELECT 1 FROM appointment_offers ao
+                        INNER JOIN appointments a ON ao.appointment_id = a.id
+                        WHERE ao.profile_id = ? AND a.creation_batch_id = ? AND a.type = \'nursing\'
+                        LIMIT 1
+                    ');
+                    $batchOfferStmt->execute([$user['user_id'], $batchIdForAccess]);
+                    if ($batchOfferStmt->fetch()) {
                         $hasAccess = true;
+                    }
+                }
+                if (!$hasAccess) {
+                    $shareTokenGet = isset($_GET['share_token']) ? trim((string) $_GET['share_token']) : '';
+                    if ($shareTokenGet !== '') {
+                        require_once __DIR__ . '/../../lib/AppointmentShareToken.php';
+                        if (AppointmentShareToken::grantsNurseShareAccess($db, $shareTokenGet, $id)) {
+                            $hasAccess = true;
+                        }
                     }
                 }
             }

@@ -490,14 +490,16 @@ async function loadBatchSiblings(fromAppt?: any) {
   const a = fromAppt ?? props.appointment
   if (!a?.batch_siblings?.length) return
   const full = await Promise.all(
-    (a.batch_siblings as { id: string }[]).map(async (s) => {
+    (a.batch_siblings as { id: string; status?: string; scheduled_at?: string; category_name?: string }[]).map(async (s) => {
       try {
         const r = await apiFetch(appointmentGetUrl(s.id))
         if (r.success && r.data) return r.data
       } catch {
         /* ignore */
       }
-      return null
+      // Fallback sur les données partielles du sibling (id, status, scheduled_at, category_name)
+      // si le GET échoue (ex. accès non encore matérialisé), pour toujours afficher la vue multi-soins
+      return s.id ? s : null
     }),
   )
   batchSiblingsFull.value = full.filter(Boolean) as any[]
