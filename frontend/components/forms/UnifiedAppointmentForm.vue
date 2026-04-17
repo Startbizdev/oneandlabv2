@@ -36,16 +36,16 @@
           />
         </UFormField>
         <UAlert
-          v-if="svc.type === 'blood_test' && bloodTestPremiumKind(svc.id)"
+          v-if="servicePremiumDayKind(svc.id)"
           color="warning"
           variant="soft"
           icon="i-lucide-calendar-clock"
           class="mt-3 rounded-xl"
-          :title="bloodTestPremiumAlertTitle(svc.id)"
+          :title="servicePremiumDayAlertTitle(svc.id)"
         >
           <template #description>
             <p class="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-              {{ bloodTestPremiumAlertDescription(svc.id) }}
+              {{ servicePremiumDayAlertDescription(svc.id) }}
             </p>
           </template>
         </UAlert>
@@ -247,18 +247,16 @@
           </p>
         </div>
         <UAlert
-          v-if="svc.type === 'blood_test' && !hasServiceDocFromProfile(svc.id, 'ordonnance')"
+          v-if="!hasServiceDocFromProfile(svc.id, 'ordonnance')"
           color="warning"
           variant="soft"
           icon="i-lucide-file-warning"
           class="mt-3 rounded-xl"
-          title="Examens sans ordonnance médicale"
+          :title="missingPrescriptionAlertTitle(svc.type)"
         >
           <template #description>
             <p class="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-              Sans prescription médicale, les actes de biologie médicale ne sont en principe pas pris en charge par l’Assurance Maladie et
-              restent intégralement à votre charge. Une participation de votre complémentaire santé n’est possible que dans le cadre
-              des garanties prévues par votre contrat.
+              {{ missingPrescriptionAlertDescription(svc.type) }}
             </p>
           </template>
         </UAlert>
@@ -839,20 +837,20 @@ function hasServiceDocFromProfile(svcId: string, docKey: string): boolean {
   return !!(getServiceFiles(svcId)[docKey] || profileDocuments.value[docKey]);
 }
 
-function bloodTestPremiumKind(svcId: string): PremiumDayKind | null {
+function servicePremiumDayKind(svcId: string): PremiumDayKind | null {
   return getBloodTestPremiumDayKind(formDataByService[svcId]?.scheduled_at);
 }
 
-function bloodTestPremiumAlertTitle(svcId: string): string {
-  const k = bloodTestPremiumKind(svcId);
+function servicePremiumDayAlertTitle(svcId: string): string {
+  const k = servicePremiumDayKind(svcId);
   if (k === 'sunday') return 'Passage à domicile un dimanche';
   if (k === 'holiday') return 'Passage à domicile un jour férié';
   if (k === 'both') return 'Passage à domicile un dimanche férié';
   return '';
 }
 
-function bloodTestPremiumAlertDescription(svcId: string): string {
-  const k = bloodTestPremiumKind(svcId);
+function servicePremiumDayAlertDescription(svcId: string): string {
+  const k = servicePremiumDayKind(svcId);
   const suite =
     'Des frais de déplacement ou une majoration peuvent s’appliquer par rapport à un créneau ouvré classique. Le détail vous sera communiqué par le laboratoire ou le professionnel avant ou lors de l’intervention.';
   if (k === 'sunday') {
@@ -865,6 +863,25 @@ function bloodTestPremiumAlertDescription(svcId: string): string {
     return `Ce jour tombe un dimanche et un jour férié : des majorations ou frais complémentaires sont possibles. ${suite}`;
   }
   return '';
+}
+
+function missingPrescriptionAlertTitle(serviceType: string): string {
+  return serviceType === 'blood_test' ? 'Examens sans ordonnance médicale' : 'Soins sans prescription médicale';
+}
+
+function missingPrescriptionAlertDescription(serviceType: string): string {
+  if (serviceType === 'blood_test') {
+    return (
+      'Sans prescription médicale, les actes de biologie médicale ne sont en principe pas pris en charge par l’Assurance Maladie et ' +
+      'restent intégralement à votre charge. Une participation de votre complémentaire santé n’est possible que dans le cadre ' +
+      'des garanties prévues par votre contrat.'
+    );
+  }
+  return (
+    'Sans prescription médicale, les actes de soins infirmiers ne sont en principe pas pris en charge par l’Assurance Maladie et ' +
+    'restent intégralement à votre charge. Une participation de votre complémentaire santé n’est possible que dans le cadre ' +
+    'des garanties prévues par votre contrat.'
+  );
 }
 
 const openFileInputMulti = (svcId: string, docType: string) => {

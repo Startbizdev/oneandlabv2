@@ -513,54 +513,48 @@ const checkIfAlreadyAccepted = async (appointment: any): Promise<any | null> => 
   acceptedBy.value = null
   if (appointment?.__modalPresetTaken) {
     isAlreadyAccepted.value = true
-    loading.value = false
     return null
   }
   isAlreadyAccepted.value = false
-  loading.value = true
-  try {
-    const res = await apiFetch(appointmentGetUrl(appointment.id))
-    /** Réponse dédiée infirmier/lab : pas de fiche détail si un confrère a déjà accepté */
-    if (res?.success && (res as any).alreadyAccepted) {
-      isAlreadyAccepted.value = true
-      return null
-    }
-    const curr = res?.data
-    if (!curr) return null
-
-    const myId = user.value?.id != null && user.value?.id !== '' ? String(user.value.id) : ''
-
-    if (props.role === 'nurse') {
-      const aid =
-        curr.assigned_nurse_id != null && curr.assigned_nurse_id !== ''
-          ? String(curr.assigned_nurse_id)
-          : ''
-      const labTaken = curr.assigned_lab_id != null && String(curr.assigned_lab_id).length > 0
-      if (labTaken || (aid && myId && aid !== myId)) {
-        isAlreadyAccepted.value = true
-        acceptedBy.value = { name: curr.assigned_nurse_name }
-      } else if (aid && myId && aid === myId && curr.status === 'confirmed') {
-        isAccepted.value = true
-      }
-    }
-
-    if (props.role === 'lab' || props.role === 'subaccount') {
-      const lid =
-        curr.assigned_lab_id != null && curr.assigned_lab_id !== ''
-          ? String(curr.assigned_lab_id)
-          : ''
-      if (lid && myId && lid !== myId) {
-        isAlreadyAccepted.value = true
-        acceptedBy.value = { name: curr.assigned_lab_name }
-      } else if (lid && myId && lid === myId && curr.status === 'confirmed') {
-        isAccepted.value = true
-      }
-    }
-
-    return curr
-  } finally {
-    loading.value = false
+  const res = await apiFetch(appointmentGetUrl(appointment.id))
+  /** Réponse dédiée infirmier/lab : pas de fiche détail si un confrère a déjà accepté */
+  if (res?.success && (res as any).alreadyAccepted) {
+    isAlreadyAccepted.value = true
+    return null
   }
+  const curr = res?.data
+  if (!curr) return null
+
+  const myId = user.value?.id != null && user.value?.id !== '' ? String(user.value.id) : ''
+
+  if (props.role === 'nurse') {
+    const aid =
+      curr.assigned_nurse_id != null && curr.assigned_nurse_id !== ''
+        ? String(curr.assigned_nurse_id)
+        : ''
+    const labTaken = curr.assigned_lab_id != null && String(curr.assigned_lab_id).length > 0
+    if (labTaken || (aid && myId && aid !== myId)) {
+      isAlreadyAccepted.value = true
+      acceptedBy.value = { name: curr.assigned_nurse_name }
+    } else if (aid && myId && aid === myId && curr.status === 'confirmed') {
+      isAccepted.value = true
+    }
+  }
+
+  if (props.role === 'lab' || props.role === 'subaccount') {
+    const lid =
+      curr.assigned_lab_id != null && curr.assigned_lab_id !== ''
+        ? String(curr.assigned_lab_id)
+        : ''
+    if (lid && myId && lid !== myId) {
+      isAlreadyAccepted.value = true
+      acceptedBy.value = { name: curr.assigned_lab_name }
+    } else if (lid && myId && lid === myId && curr.status === 'confirmed') {
+      isAccepted.value = true
+    }
+  }
+
+  return curr
 }
 
 watch(
@@ -581,8 +575,12 @@ watch(
       return
     }
     loading.value = true
-    const detail = await checkIfAlreadyAccepted(appt)
-    await loadBatchSiblings(detail ?? appt)
+    try {
+      const detail = await checkIfAlreadyAccepted(appt)
+      await loadBatchSiblings(detail ?? appt)
+    } finally {
+      loading.value = false
+    }
   },
   { immediate: true },
 )
