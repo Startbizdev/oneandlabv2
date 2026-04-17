@@ -390,7 +390,8 @@ class Appointment
             || (($data['type'] ?? '') === 'blood_test' && !empty($bloodTestAssignedLabId))
             || (($data['type'] ?? '') === 'nursing' && !empty($nursingAssignedNurseId));
         if (!$skipDispatch) {
-            $this->dispatchGeographic($id, $data['type'] ?? '', $lat, $lng, $data['scheduled_at'] ?? null, $data['form_data'] ?? null);
+            $batchIdForDispatch = is_string($data['creation_batch_id'] ?? null) && !empty($data['creation_batch_id']) ? $data['creation_batch_id'] : null;
+            $this->dispatchGeographic($id, $data['type'] ?? '', $lat, $lng, $data['scheduled_at'] ?? null, $data['form_data'] ?? null, null, $batchIdForDispatch);
         }
 
         // Notification ciblée : uniquement l'infirmier concerné (réservation depuis son profil public)
@@ -1855,7 +1856,7 @@ class Appointment
      * @param string|null $scheduledAt Date/heure du RDV (Y-m-d H:i:s) pour filtrer les labs par délai min
      * @param string|null $excludeProfileId En redispatch : exclure ce professionnel des offres et notifications
      */
-    private function dispatchGeographic(string $appointmentId, string $type, float $lat, float $lng, ?string $scheduledAt = null, ?array $formData = null, ?string $excludeProfileId = null): void
+    private function dispatchGeographic(string $appointmentId, string $type, float $lat, float $lng, ?string $scheduledAt = null, ?array $formData = null, ?string $excludeProfileId = null, ?string $creationBatchId = null): void
     {
         if ($excludeProfileId !== null) {
             $delStmt = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ?');
@@ -2072,16 +2073,38 @@ class Appointment
         // Enregistrer les offres (labs + infirmiers) pour afficher les RDV dans les listes et permettre la popup accepter/refuser
         $this->insertAppointmentOffers($appointmentId, $professionals);
         
+        // Pour un lot multi-soins : identifier les professionnels déjà notifiés pour ce lot (1 notif/lot/pro)
+        $alreadyNotifiedForBatch = [];
+        if ($creationBatchId !== null) {
+            try {
+                $batchNotifStmt = $this->db->prepare(
+                    "SELECT DISTINCT user_id FROM notifications WHERE type = 'new_appointment_available' AND data LIKE ?"
+                );
+                $batchNotifStmt->execute(['%"creation_batch_id":"' . $creationBatchId . '"%']);
+                $alreadyNotifiedForBatch = array_column($batchNotifStmt->fetchAll(PDO::FETCH_ASSOC), 'user_id');
+            } catch (Exception $e) {
+                // Ne pas bloquer le dispatch si la vérification échoue
+            }
+        }
+
         // Créer une notification web pour chaque professionnel trouvé
         foreach ($professionals as $professional) {
+            // Lot multi-soins : ne pas créer de doublon (1 notification par lot par professionnel)
+            if ($creationBatchId !== null && in_array($professional['id'], $alreadyNotifiedForBatch, true)) {
+                continue;
+            }
             try {
                 $typeLabel = $type === 'nursing' ? 'soins infirmiers' : 'prise de sang';
+                $notifData = ['appointment_id' => $appointmentId];
+                if ($creationBatchId !== null) {
+                    $notifData['creation_batch_id'] = $creationBatchId;
+                }
                 $this->notificationService->createNotification(
                     $professional['id'],
                     'new_appointment_available',
                     'Nouveau rendez-vous disponible',
                     'Un nouveau rendez-vous de ' . $typeLabel . ' est disponible dans votre zone de couverture. Ouvrez la notification pour répondre.',
-                    ['appointment_id' => $appointmentId]
+                    $notifData
                 );
                 // Email async (envoyé après la réponse HTTP)
                 EmailQueue::add('new_appointment_pro', null, [
@@ -2298,6 +2321,45 @@ class Appointment
         } catch (Throwable $e) {
             // Table peut ne pas exister si migration 040 non exécutée
             error_log('insertAppointmentOffers: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Métadonnées des options de soin (libellés + map valeur→libellé) pour emails, etc.
+     *
+     * @return array<string, array{label: string, valueLabels: array<string,string>}>
+     */
+    public function fetchCareCategoryOptionMeta(?string $categoryId): array
+    {
+        if ($categoryId === null || $categoryId === '' || !Validation::uuid($categoryId)) {
+            return [];
+        }
+        try {
+            $stmt = $this->db->prepare(
+                'SELECT option_key, label, options FROM care_category_options WHERE care_category_id = ? ORDER BY sort_order ASC'
+            );
+            $stmt->execute([$categoryId]);
+            $out = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $valueLabels = [];
+                if (!empty($row['options'])) {
+                    $decoded = json_decode((string) $row['options'], true);
+                    if (is_array($decoded)) {
+                        foreach ($decoded as $o) {
+                            if (is_array($o) && isset($o['value'], $o['label'])) {
+                                $valueLabels[(string) $o['value']] = (string) $o['label'];
+                            }
+                        }
+                    }
+                }
+                $out[(string) $row['option_key']] = [
+                    'label' => (string) $row['label'],
+                    'valueLabels' => $valueLabels,
+                ];
+            }
+            return $out;
+        } catch (Throwable $e) {
+            return [];
         }
     }
 

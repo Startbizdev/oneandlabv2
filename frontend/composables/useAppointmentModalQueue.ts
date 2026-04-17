@@ -98,6 +98,10 @@ export function useAppointmentModalQueue(options?: {
 
       if (alreadyAcceptedByOther) {
         queue.value = queue.value.slice(1)
+        if (data.batch_siblings?.length) {
+          const siblingIds = new Set((data.batch_siblings as { id: string }[]).map((s) => s.id))
+          queue.value = queue.value.filter((a: any) => !siblingIds.has(String(a.id)))
+        }
         selectedAppointment.value = data
         showAppointmentModal.value = true
         onDisplayed?.(data)
@@ -105,6 +109,13 @@ export function useAppointmentModalQueue(options?: {
       }
 
       queue.value = queue.value.slice(1)
+
+      // Lot multi-soins : retirer les siblings de la file pour éviter N modals séparées
+      if (data.batch_siblings?.length) {
+        const siblingIds = new Set((data.batch_siblings as { id: string }[]).map((s) => s.id))
+        queue.value = queue.value.filter((a: any) => !siblingIds.has(String(a.id)))
+      }
+
       selectedAppointment.value = data
       showAppointmentModal.value = true
       onDisplayed?.(data)

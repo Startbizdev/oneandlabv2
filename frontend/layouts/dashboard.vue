@@ -41,7 +41,7 @@
               <li v-for="item in navigationItems[0]" :key="item.to">
                 <NuxtLink
                   :to="item.to"
-                  @click="(e) => { mobileSidebarOpen = false; handleSidebarNavigate(e, item.to) }"
+                  @click="(e) => handleSidebarNavigate(e, item.to)"
                   :class="[
                     'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1',
@@ -51,6 +51,7 @@
                       : 'text-gray-700 hover:bg-primary-50 hover:text-primary-600'
                   ]"
                   :aria-current="item.active ? 'page' : undefined"
+                  :aria-busy="sidebarPendingTo === item.to && isSidebarCalendarLink(item.to) ? 'true' : undefined"
                   :title="item.to === '/nurse/demandes' && nurseDemandesSidebarBadge > 0 ? `${nurseDemandesSidebarBadge} soin(s) à accepter` : undefined"
                 >
                   <!-- Barre latérale active -->
@@ -60,9 +61,10 @@
                   />
                   
                   <UIcon
-                    :name="item.icon"
+                    :name="sidebarNavIcon(item)"
                     :class="[
                       'h-5 w-5 flex-shrink-0 transition-all duration-200',
+                      sidebarPendingTo === item.to && isSidebarCalendarLink(item.to) ? 'animate-spin' : '',
                       item.active
                         ? 'text-primary-600 scale-105'
                         : 'text-gray-500 group-hover:text-primary-600 group-hover:scale-105'
@@ -94,7 +96,7 @@
               <li v-for="item in navigationItems[1]" :key="item.to">
                 <NuxtLink
                   :to="item.to"
-                  @click="(e) => { mobileSidebarOpen = false; handleSidebarNavigate(e, item.to) }"
+                  @click="(e) => handleSidebarNavigate(e, item.to)"
                   :class="[
                     'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1',
@@ -104,6 +106,7 @@
                       : 'text-gray-700 hover:bg-primary-50 hover:text-primary-600'
                   ]"
                   :aria-current="item.active ? 'page' : undefined"
+                  :aria-busy="sidebarPendingTo === item.to && isSidebarCalendarLink(item.to) ? 'true' : undefined"
                   :title="item.to === '/nurse/demandes' && nurseDemandesSidebarBadge > 0 ? `${nurseDemandesSidebarBadge} soin(s) à accepter` : undefined"
                 >
                   <!-- Barre latérale active -->
@@ -113,9 +116,10 @@
                   />
                   
                   <UIcon
-                    :name="item.icon"
+                    :name="sidebarNavIcon(item)"
                     :class="[
                       'h-5 w-5 flex-shrink-0 transition-all duration-200',
+                      sidebarPendingTo === item.to && isSidebarCalendarLink(item.to) ? 'animate-spin' : '',
                       item.active
                         ? 'text-primary-600 scale-105'
                         : 'text-gray-500 group-hover:text-primary-600 group-hover:scale-105'
@@ -395,13 +399,34 @@ function toggleUserMenu() {
   userMenuOpen.value = !userMenuOpen.value;
 }
 
+/** Lien vers le calendrier : spinner dans la sidebar le temps du chargement de la page. */
+const sidebarPendingTo = ref<string | null>(null);
+
+function isSidebarCalendarLink(to: string): boolean {
+  return to.includes('/calendar');
+}
+
+function sidebarNavIcon(item: { to: string; icon: string }): string {
+  if (sidebarPendingTo.value === item.to && isSidebarCalendarLink(item.to)) {
+    return 'i-lucide-loader-2';
+  }
+  return item.icon;
+}
+
 // Navigation sidebar : forcer navigation programmatique pour éviter blocage (ex. page Abonnements)
-const handleSidebarNavigate = (e: MouseEvent, to: string) => {
+const handleSidebarNavigate = async (e: MouseEvent, to: string) => {
+  mobileSidebarOpen.value = false;
   const current = route.path.replace(/\/$/, '') || '/';
   const target = to.replace(/\/$/, '') || '/';
   if (current === target) return;
   e.preventDefault();
-  router.push(to);
+  const cal = isSidebarCalendarLink(to);
+  if (cal) sidebarPendingTo.value = to;
+  try {
+    await router.push(to);
+  } finally {
+    sidebarPendingTo.value = null;
+  }
 };
 
 // Handler pour les clics sur les items du menu utilisateur
@@ -1052,21 +1077,44 @@ const notificationItems = computed(() => {
   const role = user.value?.role;
   const items: any[] = [];
 
-  // RDV en attente (nurse, lab, subaccount) — en premier
+  // RDV en attente (nurse, lab, subaccount) — en premier, groupés par lot multi-soins
   if (['nurse', 'lab', 'subaccount'].includes(role ?? '')) {
     const pending = pendingAppointments.value || [];
-    pending.slice(0, 5).forEach((a: any) => {
+
+    // Regrouper par creation_batch_id (un seul item par lot)
+    const batchMap = new Map<string, any[]>();
+    const singles: any[] = [];
+    for (const a of pending) {
+      if (a.creation_batch_id) {
+        if (!batchMap.has(a.creation_batch_id)) batchMap.set(a.creation_batch_id, []);
+        batchMap.get(a.creation_batch_id)!.push(a);
+      } else {
+        singles.push(a);
+      }
+    }
+
+    // Construire la liste groupée (lots en premier, puis individuels)
+    const groups: { appts: any[]; isBatch: boolean }[] = [
+      ...[...batchMap.values()].map(appts => ({ appts, isBatch: true })),
+      ...singles.map(a => ({ appts: [a], isBatch: false })),
+    ];
+
+    groups.slice(0, 5).forEach(({ appts, isBatch }) => {
+      const first = appts[0];
+      const n = appts.length;
       items.push({
-        label: formatPendingAppointmentLabel(a),
-        description: 'Cliquez pour accepter ou refuser',
-        icon: 'i-lucide-calendar-clock',
+        label: isBatch && n > 1
+          ? `Nouveau lot — ${n} soins`
+          : formatPendingAppointmentLabel(first),
+        description: isBatch && n > 1 ? 'Cliquez pour accepter ou refuser le lot' : 'Cliquez pour accepter ou refuser',
+        icon: isBatch && n > 1 ? 'i-lucide-layers' : 'i-lucide-calendar-clock',
         isRead: false,
         disabled: false,
         isPendingAppointment: true,
-        appointmentId: a.id,
+        appointmentId: first.id,
         click: async () => {
           notificationsMenuOpen.value = false;
-          await openAppointmentModalByIdIfEligible(a.id);
+          await openAppointmentModalByIdIfEligible(first.id);
         },
       });
     });
@@ -1079,11 +1127,19 @@ const notificationItems = computed(() => {
 
   const reviewsPath = role === 'nurse' ? '/nurse/reviews' : role === 'lab' ? '/lab/reviews' : role === 'subaccount' ? '/subaccount/reviews' : null;
   const pendingIds = new Set((pendingAppointments.value || []).map((a: any) => a.id));
+  // Dédupliquer les notifs new_appointment_available du même lot (1 seule par creation_batch_id)
+  const seenBatchNotifIds = new Set<string>();
   notifications.value
     .filter((n: any) => {
       const data = typeof n.data === 'string' ? (() => { try { return JSON.parse(n.data); } catch { return {}; } })() : (n.data || {});
       const aptId = n.appointment_id || data?.appointment_id;
-      return !aptId || !pendingIds.has(aptId); // Exclure les notifs dont le RDV est déjà dans pending
+      if (aptId && pendingIds.has(aptId)) return false; // Exclure les notifs dont le RDV est déjà dans pending
+      // Dédupliquer les notifications new_appointment_available par lot
+      if (n.type === 'new_appointment_available' && data?.creation_batch_id) {
+        if (seenBatchNotifIds.has(data.creation_batch_id)) return false;
+        seenBatchNotifIds.add(data.creation_batch_id);
+      }
+      return true;
     })
     .slice(0, 10 - items.length)
     .forEach((notif) => {
@@ -1241,7 +1297,10 @@ const { start: startAppointmentPolling, stop: stopAppointmentPolling, isPolling:
       await enqueueMany(newAppointments);
     }
 
-    lastPendingCount.value = pending.length;
+    // Compter les lots distincts pour le badge (1 badge par lot, pas par RDV)
+    const batchIds = new Set(pending.filter((a: any) => a.creation_batch_id).map((a: any) => a.creation_batch_id));
+    const singlesCount = pending.filter((a: any) => !a.creation_batch_id).length;
+    lastPendingCount.value = batchIds.size + singlesCount;
     pendingAppointments.value = pending;
   }
 }, 10000);
@@ -1307,7 +1366,9 @@ watch(() => user.value?.role, async (role) => {
           );
         return false;
       });
-      lastPendingCount.value = pending.length;
+      const batchIdsInit = new Set(pending.filter((a: any) => a.creation_batch_id).map((a: any) => a.creation_batch_id));
+      const singlesCountInit = pending.filter((a: any) => !a.creation_batch_id).length;
+      lastPendingCount.value = batchIdsInit.size + singlesCountInit;
       pendingAppointments.value = pending;
       const newAppointments = pending.filter((a: any) => !seenAppointmentIds.value.has(a.id));
       if (newAppointments.length > 0) {
