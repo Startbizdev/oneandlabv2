@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
 require_once __DIR__ . '/../../../models/User.php';
+require_once __DIR__ . '/../../../lib/LabTeamAccess.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -65,7 +66,7 @@ $db = new PDO($dsn, $config['username'], $config['password'], $config['options']
 $crypto = new Crypto();
 
 $stmt = $db->prepare('
-    SELECT id, patient_id, type, status, assigned_nurse_id, assigned_lab_id, created_by,
+    SELECT id, patient_id, type, status, assigned_nurse_id, assigned_lab_id, assigned_to, created_by,
            form_data_encrypted, form_data_dek, address_encrypted, address_dek
     FROM appointments WHERE id = ?
 ');
@@ -89,10 +90,9 @@ $hasAccess = (
     $user['role'] === 'super_admin'
 );
 if (!$hasAccess && $appointment['type'] === 'blood_test') {
-    $teamStmt = $db->prepare("SELECT id FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
-    $teamStmt->execute([$user['user_id'], $user['user_id']]);
-    $teamIds = array_column($teamStmt->fetchAll(PDO::FETCH_ASSOC), 'id');
-    if (in_array($appointment['assigned_lab_id'] ?? '', $teamIds, true)) {
+    $teamIds = LabTeamAccess::teamMemberIds($db, $user['user_id'], $user['role'] ?? '');
+    if (in_array($appointment['assigned_lab_id'] ?? '', $teamIds, true)
+        || (!empty($appointment['assigned_to']) && in_array($appointment['assigned_to'], $teamIds, true))) {
         $hasAccess = true;
     }
 }

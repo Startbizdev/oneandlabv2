@@ -792,6 +792,17 @@ const baseAppointments = ref<any[]>([]);
 /** Liste filtrée par statut et recherche (et préleveur si lab), triée du plus récent au plus ancien (created_at puis scheduled_at). */
 const filteredAndSorted = computed(() => {
   let list = [...baseAppointments.value];
+  // Infirmier « Mes rendez-vous » (segment tous) : ne pas afficher les offres à accepter (déjà sur Mes demandes)
+  if (
+    props.basePath === '/nurse'
+    && nurseListTab.value === 'soins'
+    && nurseSegmentEffective() === 'tous'
+  ) {
+    const uid = user.value?.id;
+    list = list.filter(
+      (a: any) => !(a?.type === 'nursing' && isPendingIncomingOffer(a, uid)),
+    );
+  }
   // Lab : filtre préleveur / sous-compte appliqué côté API (filter_assigned_*) pour total + pages corrects.
   if (props.basePath !== '/lab') {
     if (props.assignedToPreleveurId) {

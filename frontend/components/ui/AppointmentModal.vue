@@ -286,7 +286,8 @@
             Refuser
           </UButton>
           <UButton
-            :class="acceptTermsChecked ? 'bg-emerald-600 hover:bg-emerald-700' : 'opacity-50 cursor-not-allowed'"
+            color="primary"
+            :class="acceptTermsChecked ? '' : 'opacity-50 cursor-not-allowed'"
             :disabled="!acceptTermsChecked"
             leading-icon="i-lucide-check"
             :loading="accepting"
@@ -343,7 +344,7 @@ const InfoField = (props: { label: string; value: string }) => {
 interface Props {
   modelValue: boolean
   appointment?: any
-  role?: 'nurse' | 'lab' | 'subaccount'
+  role?: 'nurse' | 'lab' | 'subaccount' | 'preleveur'
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -541,12 +542,23 @@ const checkIfAlreadyAccepted = async (appointment: any): Promise<any | null> => 
     }
   }
 
-  if (props.role === 'lab' || props.role === 'subaccount') {
+  if (props.role === 'lab' || props.role === 'subaccount' || props.role === 'preleveur') {
     const lid =
       curr.assigned_lab_id != null && curr.assigned_lab_id !== ''
         ? String(curr.assigned_lab_id)
         : ''
-    if (lid && myId && lid !== myId) {
+    const pid =
+      curr.assigned_to != null && curr.assigned_to !== ''
+        ? String(curr.assigned_to)
+        : ''
+    if (props.role === 'preleveur') {
+      if (pid && myId && pid !== myId) {
+        isAlreadyAccepted.value = true
+        acceptedBy.value = { name: curr.assigned_to_display_name }
+      } else if (pid && myId && pid === myId && curr.status === 'confirmed') {
+        isAccepted.value = true
+      }
+    } else if (lid && myId && lid !== myId) {
       isAlreadyAccepted.value = true
       acceptedBy.value = { name: curr.assigned_lab_name }
     } else if (lid && myId && lid === myId && curr.status === 'confirmed') {
@@ -597,12 +609,17 @@ const canAccept = computed(() => {
   if (props.role === 'lab' || props.role === 'subaccount')
     return props.appointment.assigned_lab_id === myId || !props.appointment.assigned_lab_id
 
+  if (props.role === 'preleveur')
+    return props.appointment.type === 'blood_test'
+      && (props.appointment.assigned_to === myId || !props.appointment.assigned_to)
+
   return false
 })
 
 const appointmentsListPath = computed(() => {
   if (props.role === 'nurse') return '/nurse/appointments'
   if (props.role === 'subaccount') return '/subaccount/appointments'
+  if (props.role === 'preleveur') return '/preleveur/appointments'
   return '/lab/appointments'
 })
 

@@ -32,7 +32,7 @@
               <UIcon name="i-lucide-file-text" class="w-8 h-8 text-blue-500" />
               <div>
                 <p class="font-normal">{{ doc.file_name }}</p>
-                <p class="text-sm text-gray-500">{{ doc.document_type }}</p>
+                <p class="text-sm text-gray-500">{{ documentTypeLabel(doc.document_type) }}</p>
               </div>
             </div>
           </div>
@@ -120,6 +120,23 @@ const docTypeOptions = [
   { label: 'Compte-rendu', value: 'report' },
   { label: 'Autre', value: 'other' },
 ];
+
+/** Libellés pour les types renvoyés par l’API (clés inchangées côté backend). */
+function documentTypeLabel(type: string | null | undefined): string {
+  const t = String(type || '');
+  const map: Record<string, string> = {
+    carte_vitale: 'Carte Vitale',
+    carte_mutuelle: 'Carte mutuelle',
+    ordonnance: 'Ordonnance',
+    autres_assurances: 'Autre prescription',
+    resultats: 'Résultats',
+    other: 'Autre document',
+    prescription: 'Ordonnance',
+    lab_result: 'Résultat analyse',
+    report: 'Compte-rendu',
+  };
+  return map[t] || t || '—';
+}
 
 onMounted(async () => {
   await fetchDocuments();

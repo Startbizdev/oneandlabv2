@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Logger.php';
 require_once __DIR__ . '/../../../lib/EmailQueue.php';
+require_once __DIR__ . '/../../../lib/LabTeamAccess.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -68,10 +69,12 @@ $pdo = new PDO($dsn, $config['username'], $config['password'], $config['options'
 $deferredLog = null;
 /** Utilisateur à notifier (nouveau préleveur / infirmier / lab ciblé) */
 $reassignNotifyUserId = null;
+/** Patient à notifier quand un préleveur est nouvellement assigné (évite doublon si inchangé) */
+$deferredPatientPreleveurNotify = null;
 
 try {
-    // Récupérer le type, la date patient et catégorie
-    $checkStmt = $pdo->prepare('SELECT type, scheduled_at, patient_id, category_id FROM appointments WHERE id = ?');
+    // Récupérer le type, la date patient, catégorie et assigned_to (état avant UPDATE)
+    $checkStmt = $pdo->prepare('SELECT type, scheduled_at, patient_id, category_id, assigned_to FROM appointments WHERE id = ?');
     $checkStmt->execute([$appointmentId]);
     $appointment = $checkStmt->fetch(PDO::FETCH_ASSOC);
     if (!$appointment) {
@@ -93,19 +96,8 @@ try {
             echo json_encode(['success' => false, 'error' => 'Seuls les rendez-vous prise de sang peuvent être réassignés depuis cet espace.']);
             exit;
         }
-        $effectiveLabIdForPerm = $user['user_id'];
-        if (($user['role'] ?? '') === 'subaccount') {
-            $labIdPermStmt = $pdo->prepare('SELECT lab_id FROM profiles WHERE id = ?');
-            $labIdPermStmt->execute([$user['user_id']]);
-            $labIdPermRow = $labIdPermStmt->fetch(PDO::FETCH_ASSOC);
-            if (!empty($labIdPermRow['lab_id'])) {
-                $effectiveLabIdForPerm = $labIdPermRow['lab_id'];
-            }
-        }
         if ($currentAssignedLabId !== null && $currentAssignedLabId !== $user['user_id']) {
-            $teamStmt = $pdo->prepare("SELECT id FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
-            $teamStmt->execute([$effectiveLabIdForPerm, $effectiveLabIdForPerm]);
-            $teamIds = array_column($teamStmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+            $teamIds = LabTeamAccess::teamMemberIds($pdo, $user['user_id'], $user['role'] ?? '');
             if (!in_array($currentAssignedLabId, $teamIds, true)) {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'error' => 'Vous ne pouvez réassigner que les rendez-vous de votre équipe.']);
@@ -198,6 +190,16 @@ try {
         } elseif ($assignedLabId !== null && $assignedLabId !== '' && (string) $assignedLabId !== (string) ($user['user_id'] ?? '')) {
             $reassignNotifyUserId = $assignedLabId;
         }
+        if (
+            $ato
+            && !empty($appointment['patient_id'])
+            && (string) ($appointment['assigned_to'] ?? '') !== (string) $ato
+        ) {
+            $deferredPatientPreleveurNotify = [
+                'patient_id' => (string) $appointment['patient_id'],
+                'preleveur_id' => $ato,
+            ];
+        }
         $responseData = ['success' => true, 'data' => ['assigned_lab_id' => $assignedLabId, 'assigned_to' => $ato]];
     } elseif ($assignedNurseId !== null) {
         // Limite 10 RDV/mois pour infirmier en offre Découverte
@@ -269,6 +271,16 @@ try {
             'appointment_id' => $appointmentId,
             'scheduled_at' => $appointment['scheduled_at'] ?? null,
         ], $assignedTo);
+        if (
+            $assignedTo
+            && !empty($appointment['patient_id'])
+            && (string) ($appointment['assigned_to'] ?? '') !== (string) $assignedTo
+        ) {
+            $deferredPatientPreleveurNotify = [
+                'patient_id' => (string) $appointment['patient_id'],
+                'preleveur_id' => $assignedTo,
+            ];
+        }
         $responseData = ['success' => true, 'data' => ['assigned_to' => $assignedTo]];
     }
 
@@ -297,47 +309,63 @@ try {
             error_log('Reassign deferred log failed: ' . $e->getMessage());
         }
     }
-    if (!empty($reassignNotifyUserId)) {
+    if (!empty($reassignNotifyUserId) || $deferredPatientPreleveurNotify !== null) {
         try {
             require_once __DIR__ . '/../../../lib/NotificationService.php';
             require_once __DIR__ . '/../../../models/User.php';
             $ns = new NotificationService();
-            $stmtA = $pdo->prepare('SELECT type, scheduled_at, patient_id, category_id FROM appointments WHERE id = ?');
-            $stmtA->execute([$appointmentId]);
-            $rowA = $stmtA->fetch(PDO::FETCH_ASSOC);
-            $patientName = '';
-            if ($rowA && !empty($rowA['patient_id'])) {
-                $um = new User();
-                $p = $um->getById((string) $rowA['patient_id'], 'system', 'system');
-                if ($p) {
-                    $patientName = trim(($p['first_name'] ?? '') . ' ' . ($p['last_name'] ?? ''));
+            $um = new User();
+
+            if (!empty($reassignNotifyUserId)) {
+                $stmtA = $pdo->prepare('SELECT type, scheduled_at, patient_id, category_id FROM appointments WHERE id = ?');
+                $stmtA->execute([$appointmentId]);
+                $rowA = $stmtA->fetch(PDO::FETCH_ASSOC);
+                $patientName = '';
+                if ($rowA && !empty($rowA['patient_id'])) {
+                    $p = $um->getById((string) $rowA['patient_id'], 'system', 'system');
+                    if ($p) {
+                        $patientName = trim(($p['first_name'] ?? '') . ' ' . ($p['last_name'] ?? ''));
+                    }
                 }
-            }
-            $catName = null;
-            if ($rowA && !empty($rowA['category_id'])) {
-                $cSt = $pdo->prepare('SELECT name FROM care_categories WHERE id = ? LIMIT 1');
-                $cSt->execute([$rowA['category_id']]);
-                $cr = $cSt->fetch(PDO::FETCH_ASSOC);
-                if ($cr && !empty($cr['name'])) {
-                    $catName = $cr['name'];
+                $catName = null;
+                if ($rowA && !empty($rowA['category_id'])) {
+                    $cSt = $pdo->prepare('SELECT name FROM care_categories WHERE id = ? LIMIT 1');
+                    $cSt->execute([$rowA['category_id']]);
+                    $cr = $cSt->fetch(PDO::FETCH_ASSOC);
+                    if ($cr && !empty($cr['name'])) {
+                        $catName = $cr['name'];
+                    }
                 }
-            }
-            $schedLabel = '';
-            if ($rowA && !empty($rowA['scheduled_at'])) {
-                try {
-                    $schedLabel = (new DateTime($rowA['scheduled_at']))->format('d/m/Y \à H\hi');
-                } catch (Throwable $e) {
-                    $schedLabel = '';
+                $schedLabel = '';
+                if ($rowA && !empty($rowA['scheduled_at'])) {
+                    try {
+                        $schedLabel = (new DateTime($rowA['scheduled_at']))->format('d/m/Y \à H\hi');
+                    } catch (Throwable $e) {
+                        $schedLabel = '';
+                    }
                 }
+                $ns->notifyAppointmentReassigned(
+                    (string) $reassignNotifyUserId,
+                    $appointmentId,
+                    (string) ($rowA['type'] ?? ''),
+                    $patientName,
+                    $schedLabel,
+                    $catName
+                );
             }
-            $ns->notifyAppointmentReassigned(
-                (string) $reassignNotifyUserId,
-                $appointmentId,
-                (string) ($rowA['type'] ?? ''),
-                $patientName,
-                $schedLabel,
-                $catName
-            );
+
+            if ($deferredPatientPreleveurNotify !== null) {
+                $prel = $um->getById($deferredPatientPreleveurNotify['preleveur_id'], 'system', 'system');
+                $first = $prel ? trim((string) ($prel['first_name'] ?? '')) : '';
+                $last = $prel ? trim((string) ($prel['last_name'] ?? '')) : '';
+                $full = trim($first . ' ' . $last);
+                $ns->notifyPatientPreleveurAssigned(
+                    $deferredPatientPreleveurNotify['patient_id'],
+                    $appointmentId,
+                    $deferredPatientPreleveurNotify['preleveur_id'],
+                    $full
+                );
+            }
         } catch (Throwable $e) {
             error_log('Reassign notification: ' . $e->getMessage());
         }

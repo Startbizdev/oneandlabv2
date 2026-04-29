@@ -34,19 +34,12 @@
             >
               Commencer le soin
             </UButton>
-            <UButton
-              v-if="appointment.status === 'inProgress'"
-              color="success"
-              variant="solid"
-              size="lg"
-              leading-icon="i-lucide-check-circle"
-              :loading="processing"
-              :loading-auto="false"
-              block
-              :on-click="() => completeAppointment(appointment)"
+            <p
+              v-if="['confirmed', 'inProgress'].includes(appointment.status)"
+              class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed rounded-lg bg-gray-50 dark:bg-gray-800/60 px-3 py-2.5 border border-gray-100 dark:border-gray-700/80"
             >
-              Terminer le soin
-            </UButton>
+              Le rendez-vous passera automatiquement en « terminé » le jour suivant la date prévue (clôture système).
+            </p>
             <UButton
               type="button"
               color="neutral"
@@ -200,6 +193,7 @@ definePageMeta({
   role: 'nurse',
 });
 
+import { nextTick, onMounted, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { isPendingIncomingOffer } from '~/utils/appointment-offer';
@@ -336,7 +330,7 @@ const uploadDocumentTypes = [
   { value: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card', color: 'green' },
   { value: 'carte_mutuelle', label: 'Carte Mutuelle', icon: 'i-lucide-shield', color: 'blue' },
   { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', color: 'orange' },
-  { value: 'autres_assurances', label: 'Autres assurances', icon: 'i-lucide-briefcase', color: 'purple' },
+  { value: 'autres_assurances', label: 'Autre prescription', icon: 'i-lucide-file-text', color: 'purple' },
   { value: 'other', label: 'Autre document', icon: 'i-lucide-file', color: 'gray' },
 ];
 
@@ -491,20 +485,6 @@ async function startAppointment(apt: any, loadAppointment: () => Promise<void>) 
   }
 }
 
-function completeAppointment(apt: any) {
-  if (!apt) return;
-  processing.value = true;
-  apiFetch(`/appointments/${apt.id}`, { method: 'PUT', body: { status: 'completed' } })
-    .then((response) => {
-      if (response.success) {
-        toast.add({ title: 'Soin terminé', description: 'Le soin a été terminé avec succès.', color: 'success' });
-        navigateTo('/nurse/appointments');
-      } else toast.add({ title: 'Erreur', description: response.error || 'Impossible de terminer le soin', color: 'error' });
-    })
-    .catch((error: any) => toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' }))
-    .finally(() => { processing.value = false; });
-}
-
 async function onConfirmCancel(payload: { reason: string; comment: string; photoFile: File | null }) {
   const appointment = currentAppointmentForCancel.value;
   if (!appointment) return;
@@ -600,7 +580,7 @@ function formatFileSize(bytes: number) {
 }
 
 function getDocumentTypeLabel(type: string) {
-  const labels: Record<string, string> = { carte_vitale: 'Carte Vitale', carte_mutuelle: 'Carte Mutuelle', ordonnance: 'Ordonnance', resultats: 'Résultats', autres_assurances: 'Autres assurances', other: 'Autre' };
+  const labels: Record<string, string> = { carte_vitale: 'Carte Vitale', carte_mutuelle: 'Carte Mutuelle', ordonnance: 'Ordonnance', resultats: 'Résultats', autres_assurances: 'Autre prescription', other: 'Autre' };
   return labels[type] || 'Document';
 }
 
@@ -620,4 +600,25 @@ function getDocTypeIconClass(color: string) {
   const classes: Record<string, string> = { green: 'text-green-600 dark:text-green-400', blue: 'text-blue-600 dark:text-blue-400', orange: 'text-orange-600 dark:text-orange-400', purple: 'text-purple-600 dark:text-purple-400', emerald: 'text-emerald-600 dark:text-emerald-400', gray: 'text-gray-600 dark:text-gray-400' };
   return classes[color] || 'text-gray-600 dark:text-gray-400';
 }
+
+function scrollNurseResultsIntoView() {
+  const focus = route.query.focus;
+  const docQ = route.query.doc;
+  const docId = typeof docQ === 'string' ? docQ : Array.isArray(docQ) ? docQ[0] : '';
+  if (focus !== 'resultats' && !docId) return;
+  nextTick(() => {
+    let el: HTMLElement | null = null;
+    if (docId) el = document.getElementById(`rdv-doc-${docId}`);
+    if (!el) el = document.querySelector('[data-document-type="resultats"]') as HTMLElement | null;
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+}
+
+watch(
+  () => [route.query.focus, route.query.doc, route.path] as const,
+  () => scrollNurseResultsIntoView(),
+  { flush: 'post' },
+);
+
+onMounted(() => scrollNurseResultsIntoView());
 </script>

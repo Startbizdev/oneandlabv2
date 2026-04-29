@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen bg-gray-50/50 dark:bg-gray-950/50">
-    <div class="max-w-2xl mx-auto px-4 py-8 sm:px-6">
+  <div class="bg-gray-50/50 dark:bg-gray-950/50 pb-10">
+    <div class="max-w-5xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
       <NuxtLink
         to="/patient"
         class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 mb-6"
@@ -19,32 +19,150 @@
       </div>
 
       <template v-else-if="appointment">
-        <header class="mb-8">
-          <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
-            Détails du rendez-vous
-          </h1>
-          <p v-if="isMultiBatch" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Plusieurs soins (même demande)
-          </p>
-          <div class="mt-2 flex flex-wrap items-center gap-2">
-            <span
-              class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium"
-              :class="statusBadgeClass(appointment.status)"
-            >
-              {{ getStatusLabel(appointment.status) }}
-            </span>
-            <span
-              class="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium"
-              :class="typeBadgeClass(appointment.type)"
-            >
-              <UIcon
-                :name="appointment.type === 'blood_test' ? 'i-lucide-syringe' : 'i-lucide-stethoscope'"
-                class="w-3 h-3"
-              />
-              {{ appointment.type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers' }}
-            </span>
+        <header class="mb-6 overflow-hidden rounded-3xl border border-primary-100/80 bg-white shadow-sm shadow-primary-950/5 dark:border-primary-900/40 dark:bg-gray-900/70">
+          <div class="relative px-5 py-5 sm:px-6 sm:py-6">
+            <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 via-primary-400 to-primary-300" />
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div class="min-w-0 space-y-4">
+                <div class="flex items-start gap-4">
+                  <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 ring-1 ring-primary-100 dark:bg-primary-950/50 dark:text-primary-300 dark:ring-primary-900/60">
+                    <UIcon :name="appointmentSummary.icon" class="h-6 w-6" />
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600 dark:text-primary-300">
+                      OneAndLab
+                    </p>
+                    <h1 class="mt-1 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-3xl">
+                      {{ appointmentSummary.title }}
+                    </h1>
+                    <p class="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+                      {{ appointmentSummary.typeText }}
+                      <template v-if="appointmentSummary.nextLabel">
+                        · Prochain créneau : {{ appointmentSummary.nextLabel }}
+                      </template>
+                    </p>
+                  </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusBadgeClass(appointment.status)">
+                    {{ getStatusLabel(appointment.status) }}
+                  </span>
+                  <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold" :class="typeBadgeClass(appointment.type)">
+                    <UIcon :name="appointmentIcon(appointment.type)" class="h-3.5 w-3.5" />
+                    {{ appointmentSummary.typeText }}
+                  </span>
+                  <span v-if="isMultiBatch" class="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700 ring-1 ring-primary-100 dark:bg-primary-950/40 dark:text-primary-300 dark:ring-primary-900/60">
+                    <UIcon name="i-lucide-layers" class="h-3.5 w-3.5" />
+                    {{ batchAppointmentsSorted.length }} créneaux
+                  </span>
+                </div>
+              </div>
+              <div class="grid gap-3 rounded-2xl bg-gray-50/80 p-4 text-sm dark:bg-gray-800/50 lg:w-80">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Adresse</p>
+                  <p class="mt-1 font-medium leading-snug text-gray-950 dark:text-white">
+                    {{ appointmentSummary.addressText || 'Adresse à confirmer' }}
+                  </p>
+                  <p v-if="appointmentSummary.complement" class="mt-1 text-gray-500 dark:text-gray-400">
+                    Complément : {{ appointmentSummary.complement }}
+                  </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <UButton
+                    v-if="resultatsDocuments.length > 0"
+                    color="primary"
+                    variant="soft"
+                    size="sm"
+                    icon="i-lucide-file-check"
+                    to="#resultats"
+                  >
+                    Résultats
+                  </UButton>
+                  <UButton
+                    v-if="anyCompletedWithoutReview"
+                    color="primary"
+                    size="sm"
+                    icon="i-lucide-star"
+                    @click="scrollToAvisSection"
+                  >
+                    Laisser un avis
+                  </UButton>
+                  <UButton
+                    v-if="['pending', 'confirmed', 'planned'].includes(appointment.status)"
+                    color="error"
+                    variant="outline"
+                    size="sm"
+                    icon="i-lucide-x"
+                    @click="showCancelModal = true"
+                  >
+                    Annuler
+                  </UButton>
+                </div>
+              </div>
+            </div>
           </div>
         </header>
+
+        <section
+          v-if="appointment && isCanceledAppointment(appointment.status)"
+          class="mb-6 rounded-xl border border-amber-200/90 dark:border-amber-900/50 bg-amber-50/90 dark:bg-amber-950/25 px-5 py-4 space-y-3 shadow-sm"
+        >
+          <div class="flex items-center gap-2 text-amber-900 dark:text-amber-100">
+            <UIcon name="i-lucide-info" class="w-5 h-5 shrink-0" />
+            <h2 class="text-sm font-semibold">Détail de l’annulation</h2>
+          </div>
+          <p v-if="cancellationReasonLabel" class="text-sm text-gray-800 dark:text-gray-200">
+            <span class="font-medium text-gray-900 dark:text-gray-100">Motif :</span>
+            {{ cancellationReasonLabel }}
+          </p>
+          <p
+            v-if="appointment.cancellation_comment"
+            class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed"
+          >
+            {{ appointment.cancellation_comment }}
+          </p>
+          <div v-if="cancellationPhotoObjectUrl" class="pt-1">
+            <button
+              type="button"
+              class="group block text-left rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              @click="cancellationZoomOpen = true"
+            >
+              <img
+                :src="cancellationPhotoObjectUrl"
+                alt="Pièce jointe — annulation"
+                class="max-h-52 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm group-hover:opacity-95 transition-opacity"
+              />
+            </button>
+          </div>
+        </section>
+
+        <ClientOnly>
+          <Teleport to="body">
+            <div
+              v-if="cancellationZoomOpen && cancellationPhotoObjectUrl"
+              class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Photo d’annulation"
+              @click.self="cancellationZoomOpen = false"
+            >
+              <button
+                type="button"
+                class="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 transition-colors hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                aria-label="Fermer la photo"
+                @click="cancellationZoomOpen = false"
+              >
+                <UIcon name="i-lucide-x" class="h-5 w-5" />
+              </button>
+              <img
+                :src="cancellationPhotoObjectUrl"
+                alt="Photo d’annulation — plein écran"
+                class="max-h-[90vh] w-auto max-w-full object-contain rounded-lg shadow-xl"
+                @click.stop
+              />
+            </div>
+          </Teleport>
+        </ClientOnly>
 
         <div class="space-y-8">
           <!-- RDV terminé : rappel + accès rapide à l’avis -->
@@ -73,7 +191,13 @@
                         Un retour rapide sur la qualité des soins aide les autres patients et les professionnels.
                       </template>
                       <template v-else>
-                        {{ isMultiBatch ? 'Un ou plusieurs soins sont clôturés. Les détails figurent ci-dessous.' : 'Ce rendez-vous est clôturé. Aucun avis n’est disponible (intervenant non renseigné).' }}
+                        {{
+                          isMultiBatch
+                            ? 'Un ou plusieurs soins sont clôturés. Les détails figurent ci-dessous.'
+                            : appointment?.type === 'blood_test'
+                              ? 'Ce rendez-vous est clôturé. Aucun avis n’est disponible sans laboratoire associé.'
+                              : 'Ce rendez-vous est clôturé. Aucun avis n’est disponible (intervenant non renseigné).'
+                        }}
                       </template>
                     </p>
                   </div>
@@ -105,9 +229,215 @@
             </div>
           </section>
 
+          <!-- Parcours du lot : compact, sans répéter les informations communes -->
+          <section
+            v-if="isMultiBatch"
+            class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900/60"
+          >
+            <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800 sm:px-6">
+              <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-600 dark:text-primary-300">
+                    Parcours
+                  </p>
+                  <h2 class="mt-1 text-lg font-semibold text-gray-950 dark:text-white">
+                    Vos créneaux, dans l’ordre
+                  </h2>
+                </div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  {{ batchAppointmentsSorted.length }} soins regroupés dans la même demande
+                </p>
+              </div>
+            </div>
+            <div class="divide-y divide-gray-100 dark:divide-gray-800">
+              <article
+                v-for="item in batchTimelineItems"
+                :key="item.id"
+                class="grid gap-4 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:px-6"
+              >
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary-50 text-xs font-semibold text-primary-700 ring-1 ring-primary-100 dark:bg-primary-950/50 dark:text-primary-300 dark:ring-primary-900/60">
+                      {{ item.index + 1 }}
+                    </span>
+                    <h3 class="text-sm font-semibold text-gray-950 dark:text-white">
+                      {{ item.title }}
+                    </h3>
+                    <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold" :class="statusBadgeClass(item.status)">
+                      {{ getStatusLabel(item.status) }}
+                    </span>
+                  </div>
+                  <div class="mt-3 grid gap-2 text-sm text-gray-600 dark:text-gray-300 sm:grid-cols-2">
+                    <p class="flex items-center gap-2">
+                      <UIcon name="i-lucide-calendar-days" class="h-4 w-4 text-gray-400" />
+                      {{ item.meta }}
+                    </p>
+                    <p v-if="item.duration" class="flex items-center gap-2">
+                      <UIcon name="i-lucide-clock-3" class="h-4 w-4 text-gray-400" />
+                      {{ item.duration }}
+                    </p>
+                    <p v-if="!appointmentSummary.addressSame && item.address" class="flex items-start gap-2 sm:col-span-2">
+                      <UIcon name="i-lucide-map-pin" class="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                      <span>{{ item.address }}</span>
+                    </p>
+                    <p v-if="item.addressComplement" class="flex items-start gap-2 sm:col-span-2">
+                      <UIcon name="i-lucide-info" class="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                      <span>Complément : {{ item.addressComplement }}</span>
+                    </p>
+                  </div>
+                  <div
+                    v-if="item.bannerPhase && item.bannerPhase !== 'hidden'"
+                    class="mt-3 overflow-hidden rounded-xl border px-3 py-3 shadow-sm"
+                    :class="preleveurBannerClassFor(item.bannerPhase)"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <div class="flex items-start gap-3">
+                      <div class="relative shrink-0">
+                        <span class="absolute inset-0 rounded-full opacity-40 motion-safe:animate-ping" :class="item.bannerPhase === 'arrive' ? 'bg-emerald-400' : 'bg-sky-400'" />
+                        <UserAvatar
+                          :src="profileImageUrl(item.appt?.assigned_to_profile_image_url ?? null) ?? undefined"
+                          :initial="(item.appt?.assigned_to_display_name || item.appt?.assigned_to_name || 'P').charAt(0).toUpperCase()"
+                          alt="Préleveur"
+                          size="md"
+                          class="relative ring-2 ring-white dark:ring-gray-900"
+                        />
+                        <span class="absolute -bottom-1 -right-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-white shadow-sm ring-2 ring-white dark:ring-gray-900" :class="item.bannerPhase === 'arrive' ? 'bg-emerald-500' : 'bg-sky-500'">
+                          <UIcon :name="item.bannerPhase === 'arrive' ? 'i-lucide-map-pin-check' : 'i-lucide-navigation'" class="h-3 w-3" />
+                        </span>
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-sm font-semibold leading-snug">
+                          {{ preleveurBannerTextFor(item.appt, item.bannerPhase) }}
+                        </p>
+                        <p class="mt-0.5 text-xs opacity-80">
+                          {{ preleveurBannerSubtitleFor(item.appt, item.bannerPhase) }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <!-- Équipe consolidée : un professionnel n’apparaît qu’une fois par lot -->
+          <section
+            v-if="hasCareTeamGroups"
+            class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900/60"
+          >
+            <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800 sm:px-6">
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-600 dark:text-primary-300">
+                Équipe
+              </p>
+              <h2 class="mt-1 text-lg font-semibold text-gray-950 dark:text-white">
+                Qui s’occupe de vous
+              </h2>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Les intervenants sont regroupés pour éviter les doublons sur les rendez-vous multiples.
+              </p>
+            </div>
+            <div class="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
+              <article
+                v-for="group in careTeamGroups"
+                :key="group.key"
+                class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-colors hover:border-primary-200 dark:border-gray-800 dark:bg-gray-900/70 dark:hover:border-primary-900/60"
+              >
+                <div class="p-4">
+                  <div class="flex items-start gap-4">
+                    <UserAvatar
+                      v-if="group.kind !== 'pending'"
+                      :src="profileImageUrl(group.imageUrl ?? null) ?? undefined"
+                      :initial="group.initial"
+                      :alt="group.name"
+                      size="lg"
+                      class="ring-2 ring-white dark:ring-gray-900"
+                    />
+                    <div
+                      v-else
+                      class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-500 dark:ring-gray-700"
+                    >
+                      <UIcon name="i-lucide-user-search" class="h-6 w-6" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                          {{ group.label }}
+                        </p>
+                        <span class="rounded-full bg-primary-50 px-2 py-0.5 text-[11px] font-semibold text-primary-700 ring-1 ring-primary-100 dark:bg-primary-950/45 dark:text-primary-300 dark:ring-primary-900/60">
+                          {{ group.appointmentIds.length > 1 ? `${group.appointmentIds.length} soins` : '1 soin' }}
+                        </span>
+                      </div>
+                      <p class="mt-1 truncate text-base font-semibold text-gray-950 dark:text-white">
+                        {{ group.name }}
+                      </p>
+                      <p v-if="group.address" class="mt-2 flex items-start gap-2 text-sm leading-snug text-gray-600 dark:text-gray-300">
+                        <UIcon name="i-lucide-map-pin" class="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                        <span>{{ group.address }}</span>
+                      </p>
+                      <p v-if="group.kind === 'pending'" class="mt-2 text-sm leading-snug text-gray-600 dark:text-gray-300">
+                        Vous serez notifié dès qu’un professionnel aura accepté ou été attribué à votre demande.
+                      </p>
+                      <div v-if="isMultiBatch" class="mt-3 flex flex-wrap gap-1.5">
+                        <span
+                          v-for="label in group.appointmentLabels"
+                          :key="group.key + label"
+                          class="rounded-full bg-gray-50 px-2 py-1 text-xs text-gray-600 ring-1 ring-gray-200 dark:bg-gray-800/80 dark:text-gray-300 dark:ring-gray-700"
+                        >
+                          {{ label }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  v-if="group.phone || group.publicSlug"
+                  class="flex items-center gap-1 border-t border-gray-100 bg-gray-50/70 px-2 py-2 dark:border-gray-800 dark:bg-gray-950/20"
+                >
+                  <button
+                    v-if="group.phone"
+                    type="button"
+                    class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-white hover:text-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-gray-300 dark:hover:bg-gray-900 dark:hover:text-primary-300"
+                    @click="openTel(group.phone)"
+                  >
+                    <UIcon name="i-lucide-phone" class="h-4 w-4" />
+                    Appeler
+                  </button>
+                  <button
+                    v-if="group.phone && group.kind !== 'pending'"
+                    type="button"
+                    class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-white hover:text-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-gray-300 dark:hover:bg-gray-900 dark:hover:text-primary-300"
+                    @click="openSmsToProfessional(group.phone, professionalContactKindForGroup(group), group.appointmentRef)"
+                  >
+                    <UIcon name="i-lucide-message-circle" class="h-4 w-4" />
+                    Message
+                  </button>
+                  <button
+                    v-if="group.publicSlug && group.kind === 'lab'"
+                    type="button"
+                    class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-primary-300 dark:hover:bg-primary-950/35"
+                    @click="sheetProfileAppt = group.appointmentRef; showLabProfileSheet = true"
+                  >
+                    <UIcon name="i-lucide-id-card" class="h-4 w-4" />
+                    Profil
+                  </button>
+                  <button
+                    v-if="group.publicSlug && group.kind === 'nurse'"
+                    type="button"
+                    class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-primary-300 dark:hover:bg-primary-950/35"
+                    @click="sheetProfileAppt = group.appointmentRef; showNurseProfileSheet = true"
+                  >
+                    <UIcon name="i-lucide-id-card" class="h-4 w-4" />
+                    Profil
+                  </button>
+                </div>
+              </article>
+            </div>
+          </section>
+
           <!-- Bloc principal : infos RDV (une section par soin si lot multisoins) -->
           <section
-            v-for="(appt, apIdx) in batchAppointmentsSorted"
+            v-for="(appt, apIdx) in (isMultiBatch ? [] : batchAppointmentsSorted)"
             :key="appt.id"
             class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 overflow-hidden"
           >
@@ -120,6 +450,38 @@
                   Rendez-vous
                 </template>
               </h2>
+            </div>
+            <!-- Prise de sang : préleveur en route (30 min avant) puis arrivé jusqu'à clôture -->
+            <div
+              v-if="preleveurBannerPhaseById[appt.id] && preleveurBannerPhaseById[appt.id] !== 'hidden'"
+              class="mx-5 mt-4 overflow-hidden rounded-xl border px-4 py-3 shadow-sm"
+              :class="preleveurBannerClassFor(preleveurBannerPhaseById[appt.id])"
+              role="status"
+              aria-live="polite"
+            >
+              <div class="flex items-start gap-3">
+                <div class="relative shrink-0" aria-hidden="true">
+                  <span class="absolute inset-0 rounded-full opacity-40 motion-safe:animate-ping" :class="preleveurBannerPhaseById[appt.id] === 'arrive' ? 'bg-emerald-400' : 'bg-sky-400'" />
+                  <UserAvatar
+                    :src="profileImageUrl(appt?.assigned_to_profile_image_url ?? null) ?? undefined"
+                    :initial="(appt.assigned_to_display_name || appt.assigned_to_name || 'P').charAt(0).toUpperCase()"
+                    alt="Préleveur"
+                    size="lg"
+                    class="relative ring-2 ring-white dark:ring-gray-900"
+                  />
+                  <span class="absolute -bottom-1 -right-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-white shadow-sm ring-2 ring-white dark:ring-gray-900" :class="preleveurBannerPhaseById[appt.id] === 'arrive' ? 'bg-emerald-500' : 'bg-sky-500'">
+                    <UIcon :name="preleveurBannerPhaseById[appt.id] === 'arrive' ? 'i-lucide-map-pin-check' : 'i-lucide-navigation'" class="h-3 w-3" />
+                  </span>
+                </div>
+                <div class="min-w-0 pt-0.5">
+                  <p class="text-sm font-semibold leading-snug">
+                    {{ preleveurBannerTextFor(appt, preleveurBannerPhaseById[appt.id]) }}
+                  </p>
+                  <p class="mt-0.5 text-xs opacity-80">
+                    {{ preleveurBannerSubtitleFor(appt, preleveurBannerPhaseById[appt.id]) }}
+                  </p>
+                </div>
+              </div>
             </div>
             <dl class="divide-y divide-gray-100 dark:divide-gray-800">
               <div class="flex justify-between gap-4 px-5 py-3.5">
@@ -176,7 +538,7 @@
           </section>
 
           <!-- Section Qui s'occupe de vous : par soin si lot multisoins -->
-          <template v-for="appt in batchAppointmentsSorted" :key="'who-' + appt.id">
+          <template v-for="appt in []" :key="'who-' + appt.id">
           <section
             v-if="showWhoSectionFor(appt)"
             class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 overflow-hidden"
@@ -269,6 +631,24 @@
                         </UButton>
                       </div>
                     </dl>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Labo connu, préleveur pas encore désigné -->
+              <div
+                v-if="showBloodTestPreleveurPendingMessageFor(appt)"
+                class="px-5 py-4 bg-gray-50/80 dark:bg-gray-800/30"
+              >
+                <div class="flex items-start gap-3">
+                  <UIcon name="i-lucide-user-clock" class="w-5 h-5 shrink-0 text-gray-400 mt-0.5" />
+                  <div class="min-w-0">
+                    <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">
+                      Préleveur
+                    </p>
+                    <p class="text-sm text-gray-700 dark:text-gray-300 leading-snug">
+                      Un préleveur vous sera désigné par votre laboratoire. Vous serez notifié dès qu’il sera attribué à votre rendez-vous.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -384,6 +764,68 @@
             </div>
           </section>
           </template>
+
+          <!-- RDV pour un proche : mineur + vos coordonnées titulaire -->
+          <section
+            v-if="appointment.relative && (showRelativeMinorInfoPatient || showBookingContactOnPatientPage)"
+            class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 overflow-hidden"
+          >
+            <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+              <h2 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Rendez-vous pour un proche
+              </h2>
+            </div>
+            <div class="px-5 py-4 space-y-4">
+              <div
+                v-if="showRelativeMinorInfoPatient"
+                class="rounded-lg border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/20 px-3 py-2.5"
+                role="status"
+              >
+                <p class="text-sm text-amber-950 dark:text-amber-100 leading-snug">
+                  <span class="font-medium">Personne mineure</span><template v-if="appointment.relative.age_years != null && appointment.relative.age_years !== undefined">
+                    ({{ appointment.relative.age_years }} an{{ appointment.relative.age_years === 1 ? '' : 's' }})
+                  </template>
+                  — ce rendez-vous vous a été réservé en tant que titulaire du compte ; vos coordonnées ci-dessous sont celles utilisées pour la prise en charge et les échanges avec les professionnels.
+                </p>
+              </div>
+              <div v-if="showBookingContactOnPatientPage" class="space-y-3">
+                <div>
+                  <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Votre contact (titulaire du compte)</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Coordonnées du compte ayant effectué la réservation</p>
+                </div>
+                <dl class="space-y-3">
+                  <div v-if="bookingContactFullNamePatient" class="flex justify-between gap-4">
+                    <dt class="text-sm text-gray-500 dark:text-gray-400">Nom</dt>
+                    <dd class="text-sm font-medium text-gray-900 dark:text-white text-right">{{ bookingContactFullNamePatient }}</dd>
+                  </div>
+                  <div v-if="appointment.booking_contact?.phone" class="flex justify-between gap-4">
+                    <dt class="text-sm text-gray-500 dark:text-gray-400">Téléphone</dt>
+                    <dd class="text-sm font-medium text-right">
+                      <a
+                        :href="`tel:${String(appointment.booking_contact.phone).replace(/\s/g, '')}`"
+                        class="text-primary-600 hover:underline dark:text-primary-400"
+                      >
+                        {{ appointment.booking_contact.phone }}
+                      </a>
+                    </dd>
+                  </div>
+                  <div v-if="bookingContactEmailPatient.text" class="flex justify-between gap-4">
+                    <dt class="text-sm text-gray-500 dark:text-gray-400 shrink-0">Email</dt>
+                    <dd class="text-sm font-medium text-right min-w-0">
+                      <a
+                        v-if="bookingContactEmailPatient.href"
+                        :href="bookingContactEmailPatient.href"
+                        class="text-primary-600 hover:underline dark:text-primary-400 break-all"
+                      >
+                        {{ bookingContactEmailPatient.text }}
+                      </a>
+                      <span v-else class="text-gray-900 dark:text-white break-words">{{ bookingContactEmailPatient.text }}</span>
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          </section>
 
           <!-- Détails patient (form_data) -->
           <section
@@ -714,7 +1156,12 @@
                 </div>
 
                 <p v-else class="text-sm text-gray-500 dark:text-gray-400">
-                  L’avis en ligne n’est pas disponible pour ce créneau (aucun intervenant identifié).
+                  <template v-if="appt.type === 'blood_test'">
+                    L’avis n’est pas disponible : aucun laboratoire n’est associé à ce rendez-vous.
+                  </template>
+                  <template v-else>
+                    L’avis en ligne n’est pas disponible pour ce créneau (aucun intervenant identifié).
+                  </template>
                 </p>
               </div>
             </div>
@@ -763,10 +1210,16 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, watch, onUnmounted } from 'vue';
+import { CANCELLATION_REASONS } from '~/config/cancellation-reasons';
 import { getNursingDurationLabel } from '~/constants/nursing-duration';
 import { formatBloodTestSeriesDurationDays } from '~/utils/duration-display';
-import { formDataEmailDisplayForPatientView } from '~/utils/patient-address-rdv';
+import {
+  extractEmailFromDisplayLine,
+  formDataEmailDisplayForPatientView,
+  isTechnicalPatientEmail,
+  patientUiEmailLine,
+} from '~/utils/patient-address-rdv';
 
 definePageMeta({
   layout: 'patient',
@@ -796,15 +1249,71 @@ const canceling = ref(false);
 const showCancelModal = ref(false);
 const showLabProfileSheet = ref(false);
 const showNurseProfileSheet = ref(false);
+const cancellationZoomOpen = ref(false);
+const cancellationPhotoObjectUrl = ref<string | null>(null);
 /** Profil ouvert depuis un soin du lot (slug) */
 const sheetProfileAppt = ref<any>(null);
+
+function isCanceledAppointment(status: string | undefined | null) {
+  return ['canceled', 'cancelled'].includes(String(status || ''));
+}
+
+const cancellationReasonLabel = computed(() => {
+  const k = appointment.value?.cancellation_reason;
+  if (!k || typeof k !== 'string') return '';
+  return CANCELLATION_REASONS[k] || k;
+});
+
+async function refreshCancellationPhotoBlob() {
+  if (cancellationPhotoObjectUrl.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(cancellationPhotoObjectUrl.value);
+  }
+  cancellationPhotoObjectUrl.value = null;
+  const docId = appointment.value?.cancellation_photo_document_id;
+  if (!docId || !isCanceledAppointment(appointment.value?.status)) return;
+  try {
+    const config = useRuntimeConfig();
+    const apiBase = config.public.apiBase || 'http://localhost:8888/api';
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : '';
+    const response = await fetch(
+      `${apiBase}/medical-documents/${encodeURIComponent(docId)}/download?id=${encodeURIComponent(docId)}`,
+      { method: 'GET', headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!response.ok) return;
+    const blob = await response.blob();
+    cancellationPhotoObjectUrl.value = URL.createObjectURL(blob);
+  } catch {
+    // ignore
+  }
+}
+
+watch(
+  () => [appointment.value?.cancellation_photo_document_id, appointment.value?.status] as const,
+  () => {
+    void refreshCancellationPhotoBlob();
+  },
+  { immediate: true },
+);
+
+onUnmounted(() => {
+  if (cancellationPhotoObjectUrl.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(cancellationPhotoObjectUrl.value);
+  }
+});
 const medicalDocuments = ref<any[]>([]);
 const downloadingDoc = ref<string | null>(null);
 const loadingDocuments = ref(false);
 const categoriesForDetail = ref<Array<{ id: string; options?: Array<{ option_key: string; label: string; options?: { value: string; label: string }[] }> }>>([]);
 
-const resultatsDocuments = computed(() => (medicalDocuments.value || []).filter((d: any) => d.document_type === 'resultats'));
-const otherDocuments = computed(() => (medicalDocuments.value || []).filter((d: any) => d.document_type !== 'resultats'));
+/** Rafraîchit les bandeaux « préleveur en route / arrivé » sans recharger toute la page */
+const preleveurBannerNow = ref(Date.now());
+let preleveurBannerInterval: ReturnType<typeof setInterval> | null = null;
+
+const visibleMedicalDocuments = computed(() =>
+  (medicalDocuments.value || []).filter((d: any) => d.document_type !== 'cancellation_photo'),
+);
+const resultatsDocuments = computed(() => visibleMedicalDocuments.value.filter((d: any) => d.document_type === 'resultats'));
+const otherDocuments = computed(() => visibleMedicalDocuments.value.filter((d: any) => d.document_type !== 'resultats'));
 
 const reviewForms = reactive<Record<string, { rating: number; comment: string }>>({});
 
@@ -826,9 +1335,374 @@ const batchAppointmentsSorted = computed(() => {
   });
 });
 
+type PreleveurBannerPhase = 'hidden' | 'en_route' | 'arrive';
+
+function parisDatePartsFromMs(ms: number): { ymd: string; minutes: number } | null {
+  const parts = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(ms));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const year = get('year');
+  const month = get('month');
+  const day = get('day');
+  const hour = Number(get('hour'));
+  const minute = Number(get('minute'));
+  if (!year || !month || !day || Number.isNaN(hour) || Number.isNaN(minute)) return null;
+  return { ymd: `${year}-${month}-${day}`, minutes: hour * 60 + minute };
+}
+
+function appointmentParisYmd(appt: any): string {
+  const raw = String(appt?.scheduled_at || '').trim();
+  const m = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (m?.[1]) return m[1];
+  if (!raw) return '';
+  const parts = parisDatePartsFromMs(new Date(raw).getTime());
+  return parts?.ymd ?? '';
+}
+
+function parseAvailabilityRangeForSlot(availability: unknown): [number, number] | null {
+  try {
+    const avail = typeof availability === 'string' ? JSON.parse(availability) : availability;
+    if (avail?.type === 'custom' && Array.isArray(avail.range) && avail.range.length >= 2) {
+      const start = Number(avail.range[0]);
+      const end = Number(avail.range[1]);
+      if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+        return [start * 60, end * 60];
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function appointmentFallbackSlotMinutes(appt: any): [number, number] | null {
+  const raw = String(appt?.scheduled_at || '').trim();
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+  const parts = parisDatePartsFromMs(d.getTime());
+  if (!parts) return null;
+  const start = parts.minutes;
+  const duration = Number(appt?.duration_minutes || 60);
+  return [start, start + Math.max(30, duration)];
+}
+
+function appointmentSlotMinutes(appt: any): [number, number] | null {
+  return parseAvailabilityRangeForSlot(appt?.form_data?.availability) ?? appointmentFallbackSlotMinutes(appt);
+}
+
+function formatSlotMinute(minute: number): string {
+  const h = Math.floor(minute / 60);
+  const m = minute % 60;
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
+}
+
+function preleveurSlotLabelFor(appt: any): string {
+  const slot = appointmentSlotMinutes(appt);
+  if (!slot) return appointmentTimeLabel(appt);
+  return `${formatSlotMinute(slot[0])} - ${formatSlotMinute(slot[1])}`;
+}
+
+function computePreleveurPatientBannerPhase(appt: any, nowMs: number): PreleveurBannerPhase {
+  if (!appt || appt.type !== 'blood_test') return 'hidden';
+  if (['completed', 'canceled', 'cancelled', 'expired', 'refused'].includes(String(appt.status || ''))) return 'hidden';
+  const name = (appt.assigned_to_display_name || appt.assigned_to_name || '').trim();
+  if (!name) return 'hidden';
+  const nowParis = parisDatePartsFromMs(nowMs);
+  const appointmentYmd = appointmentParisYmd(appt);
+  const slot = appointmentSlotMinutes(appt);
+  if (!nowParis || !appointmentYmd || !slot) return 'hidden';
+  if (nowParis.ymd !== appointmentYmd) return 'hidden';
+  const enRouteStartsAt = Math.max(0, slot[0] - 30);
+  if (nowParis.minutes < enRouteStartsAt) return 'hidden';
+  if (nowParis.minutes < slot[0]) return 'en_route';
+  return 'arrive';
+}
+
+const preleveurBannerPhaseById = computed(() => {
+  const nowMs = preleveurBannerNow.value;
+  const out: Record<string, PreleveurBannerPhase> = {};
+  for (const appt of batchAppointmentsSorted.value) {
+    if (appt?.id) out[String(appt.id)] = computePreleveurPatientBannerPhase(appt, nowMs);
+  }
+  return out;
+});
+
+function preleveurBannerClassFor(phase: PreleveurBannerPhase | undefined): string {
+  if (phase === 'arrive') {
+    return 'border-emerald-200/80 bg-gradient-to-r from-emerald-50 via-white to-emerald-50/60 text-emerald-950 dark:border-emerald-900/50 dark:from-emerald-950/35 dark:via-gray-900/80 dark:to-emerald-950/20 dark:text-emerald-100';
+  }
+  return 'border-sky-200/80 bg-gradient-to-r from-sky-50 via-white to-primary-50/50 text-sky-950 dark:border-sky-900/50 dark:from-sky-950/40 dark:via-gray-900/80 dark:to-primary-950/20 dark:text-sky-100';
+}
+
+function preleveurBannerTextFor(appt: any, phase: PreleveurBannerPhase | undefined) {
+  if (phase === 'en_route') {
+    const name = (appt?.assigned_to_display_name || appt?.assigned_to_name || '').trim();
+    return name ? `${name} est en route vers votre domicile.` : 'Votre préleveur est en route vers votre domicile.';
+  }
+  if (phase === 'arrive') return 'Votre préleveur est arrivé sur le créneau prévu.';
+  return '';
+}
+
+function preleveurBannerSubtitleFor(appt: any, phase: PreleveurBannerPhase | undefined): string {
+  const slot = preleveurSlotLabelFor(appt);
+  if (phase === 'en_route') return `Trajet lancé, arrivée prévue dans la fenêtre ${slot}.`;
+  if (phase === 'arrive') return `Position confirmée, passage prévu dans la fenêtre ${slot}.`;
+  return '';
+}
+
 const batchAppointmentIds = computed(() => batchAppointmentsSorted.value.map((a: any) => String(a.id)));
 
 const isMultiBatch = computed(() => batchAppointmentsSorted.value.length > 1);
+
+type ProfessionalContactKind = 'lab' | 'preleveur' | 'nurse';
+type CareTeamKind = ProfessionalContactKind | 'pending';
+
+type CareTeamGroup = {
+  key: string;
+  kind: CareTeamKind;
+  label: string;
+  name: string;
+  roleLabel: string;
+  phone?: string;
+  address?: string;
+  publicSlug?: string;
+  imageUrl?: string | null;
+  initial: string;
+  appointmentIds: string[];
+  appointmentLabels: string[];
+  appointmentRef?: any;
+};
+
+function appointmentTypeLabel(type: string | undefined | null): string {
+  return type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers';
+}
+
+function appointmentIcon(type: string | undefined | null): string {
+  return type === 'blood_test' ? 'i-lucide-syringe' : 'i-lucide-stethoscope';
+}
+
+function appointmentItemTitle(appt: any, index: number): string {
+  const base = appt?.category_name || appt?.form_data?.category_name || appointmentTypeLabel(appt?.type);
+  return isMultiBatch.value ? `${appt?.type === 'blood_test' ? 'Prélèvement' : 'Soin'} ${index + 1} · ${base}` : base;
+}
+
+function appointmentShortDate(date: string | undefined | null): string {
+  if (!date) return 'Date à confirmer';
+  try {
+    return new Date(date).toLocaleDateString('fr-FR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+  } catch {
+    return String(date);
+  }
+}
+
+function appointmentTimeLabel(appt: any): string {
+  const availability = formatAvailability(appt?.form_data?.availability);
+  if (availability) return availability;
+  if (!appt?.scheduled_at) return 'Horaire à confirmer';
+  try {
+    return new Date(appt.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return 'Horaire à confirmer';
+  }
+}
+
+function appointmentFullDateTime(appt: any): string {
+  const date = appt?.scheduled_at ? formatDate(appt.scheduled_at) : 'Date à confirmer';
+  const time = appointmentTimeLabel(appt);
+  return `${date}${time ? ` · ${time}` : ''}`;
+}
+
+function appointmentItemMeta(appt: any): string {
+  const parts = [appointmentShortDate(appt?.scheduled_at), appointmentTimeLabel(appt)].filter(Boolean);
+  return parts.join(' · ');
+}
+
+function appointmentDurationText(appt: any): string {
+  if (appt?.duration_minutes) return `${appt.duration_minutes} min`;
+  const fd = appt?.form_data || {};
+  if (fd.duration_days) {
+    return appt?.type === 'nursing'
+      ? getNursingDurationLabel(fd.duration_days, fd.custom_days)
+      : formatBloodTestSeriesDurationDays(fd.duration_days, fd.custom_days);
+  }
+  return '';
+}
+
+function sameStringSet(values: string[]): boolean {
+  const normalized = values.map((v) => String(v || '').trim()).filter(Boolean);
+  return normalized.length > 0 && new Set(normalized).size === 1;
+}
+
+const appointmentSummary = computed(() => {
+  const list = batchAppointmentsSorted.value;
+  const first = list[0] ?? appointment.value;
+  const types = list.map((a: any) => appointmentTypeLabel(a?.type));
+  const typeText = new Set(types).size === 1 ? types[0] : 'Rendez-vous mixtes';
+  const addressText = displayAddressFor(first);
+  const complement = addressComplementFor(first);
+  const addressSame = sameStringSet(list.map((a: any) => displayAddressFor(a)));
+  const nextActive = [...list]
+    .filter((a: any) => !['completed', 'canceled', 'cancelled', 'expired', 'refused'].includes(String(a?.status || '')))
+    .sort((a: any, b: any) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime())[0];
+  const next = nextActive || first;
+
+  return {
+    title: isMultiBatch.value ? `${list.length} rendez-vous dans cette demande` : 'Détail du rendez-vous',
+    typeText,
+    addressText,
+    complement,
+    addressSame,
+    nextLabel: next ? appointmentFullDateTime(next) : '',
+    status: first?.status,
+    icon: appointmentIcon(first?.type),
+  };
+});
+
+const batchTimelineItems = computed(() =>
+  batchAppointmentsSorted.value.map((appt: any, index: number) => ({
+    id: String(appt.id),
+    appt,
+    index,
+    title: appointmentItemTitle(appt, index),
+    meta: appointmentItemMeta(appt),
+    duration: appointmentDurationText(appt),
+    address: displayAddressFor(appt),
+    addressComplement: addressComplementFor(appt),
+    status: appt.status,
+    bannerPhase: preleveurBannerPhaseById.value[String(appt.id)] ?? 'hidden',
+  })),
+);
+
+const activePreleveurAlerts = computed(() =>
+  batchTimelineItems.value.filter((item) => item.bannerPhase && item.bannerPhase !== 'hidden'),
+);
+
+function upsertCareTeamGroup(groups: Map<string, CareTeamGroup>, group: Omit<CareTeamGroup, 'appointmentIds' | 'appointmentLabels'>, appt: any, index: number) {
+  const id = String(appt?.id ?? '');
+  if (!id) return;
+  const label = appointmentItemTitle(appt, index);
+  const existing = groups.get(group.key);
+  if (existing) {
+    if (!existing.appointmentIds.includes(id)) existing.appointmentIds.push(id);
+    if (!existing.appointmentLabels.includes(label)) existing.appointmentLabels.push(label);
+    return;
+  }
+  groups.set(group.key, {
+    ...group,
+    appointmentIds: [id],
+    appointmentLabels: [label],
+  });
+}
+
+const careTeamGroups = computed<CareTeamGroup[]>(() => {
+  const groups = new Map<string, CareTeamGroup>();
+  batchAppointmentsSorted.value.forEach((appt: any, index: number) => {
+    if (appt?.type === 'blood_test') {
+      if (isAssignmentPendingFor(appt)) {
+        upsertCareTeamGroup(groups, {
+          key: 'pending-blood-test',
+          kind: 'pending',
+          label: 'Laboratoire / préleveur',
+          roleLabel: 'Recherche en cours',
+          name: 'Professionnel en cours d’attribution',
+          initial: 'P',
+          appointmentRef: appt,
+        }, appt, index);
+        return;
+      }
+      if (appt.assigned_lab_id || appt.assigned_lab_display_name) {
+        const key = `lab:${appt.assigned_lab_id || appt.assigned_lab_display_name || 'unknown'}`;
+        upsertCareTeamGroup(groups, {
+          key,
+          kind: 'lab',
+          label: 'Laboratoire',
+          roleLabel: 'Laboratoire',
+          name: appt.assigned_lab_display_name || 'Laboratoire',
+          phone: appt.assigned_lab_phone,
+          address: appt.assigned_lab_address,
+          publicSlug: appt.assigned_lab_public_slug,
+          imageUrl: appt.assigned_lab_profile_image_url ?? null,
+          initial: (appt.assigned_lab_display_name || 'L').charAt(0).toUpperCase(),
+          appointmentRef: appt,
+        }, appt, index);
+      }
+      if (appt.assigned_to || appt.assigned_to_display_name) {
+        const key = `preleveur:${appt.assigned_to || appt.assigned_to_display_name || 'unknown'}`;
+        upsertCareTeamGroup(groups, {
+          key,
+          kind: 'preleveur',
+          label: 'Préleveur',
+          roleLabel: 'Préleveur',
+          name: appt.assigned_to_display_name || appt.assigned_to_name || 'Préleveur assigné',
+          phone: appt.assigned_to_phone,
+          imageUrl: appt.assigned_to_profile_image_url ?? null,
+          initial: (appt.assigned_to_display_name || appt.assigned_to_name || 'P').charAt(0).toUpperCase(),
+          appointmentRef: appt,
+        }, appt, index);
+      } else if (showBloodTestPreleveurPendingMessageFor(appt)) {
+        const key = `pending-preleveur:${appt.assigned_lab_id || 'lab'}`;
+        upsertCareTeamGroup(groups, {
+          key,
+          kind: 'pending',
+          label: 'Préleveur',
+          roleLabel: 'Préleveur à désigner',
+          name: 'Préleveur en cours d’attribution',
+          initial: 'P',
+          appointmentRef: appt,
+        }, appt, index);
+      }
+    }
+    if (appt?.type === 'nursing') {
+      if (appt.assigned_nurse_id || appt.assigned_nurse_display_name) {
+        const key = `nurse:${appt.assigned_nurse_id || appt.assigned_nurse_display_name || 'unknown'}`;
+        upsertCareTeamGroup(groups, {
+          key,
+          kind: 'nurse',
+          label: 'Infirmier',
+          roleLabel: 'Infirmier',
+          name: appt.assigned_nurse_display_name || appt.assigned_to_name || 'Infirmier assigné',
+          phone: appt.assigned_nurse_phone,
+          publicSlug: appt.assigned_nurse_public_slug,
+          imageUrl: appt.assigned_nurse_profile_image_url ?? null,
+          initial: (appt.assigned_nurse_display_name || 'I').charAt(0).toUpperCase(),
+          appointmentRef: appt,
+        }, appt, index);
+      } else if (isAssignmentPendingFor(appt)) {
+        const key = 'pending-nurse';
+        upsertCareTeamGroup(groups, {
+          key,
+          kind: 'pending',
+          label: 'Infirmier',
+          roleLabel: 'Recherche en cours',
+          name: 'Professionnel en cours d’attribution',
+          initial: 'I',
+          appointmentRef: appt,
+        }, appt, index);
+      }
+    }
+  });
+  return [...groups.values()];
+});
+
+const hasCareTeamGroups = computed(() => careTeamGroups.value.length > 0);
+
+function professionalContactKindForGroup(group: CareTeamGroup): ProfessionalContactKind {
+  if (group.kind === 'preleveur') return 'preleveur';
+  if (group.kind === 'nurse') return 'nurse';
+  return 'lab';
+}
 
 const completedAppointmentsForAvis = computed(() =>
   batchAppointmentsSorted.value.filter((a: any) => a.status === 'completed'),
@@ -839,22 +1713,28 @@ function reviewTargetNameFor(a: any): string {
   if (a.type === 'nursing') {
     return a.assigned_nurse_display_name || a.assigned_to_name || 'Infirmier(e)';
   }
-  return a.assigned_to_display_name || a.assigned_to_name || 'Préleveur(se)';
+  return (
+    a.assigned_lab_display_name ||
+    a.assigned_to_display_name ||
+    a.assigned_to_name ||
+    'Laboratoire'
+  );
 }
 
-function reviewTargetKindFor(a: any): 'nurse' | 'preleveur' {
-  return a?.type === 'nursing' ? 'nurse' : 'preleveur';
+function reviewTargetKindFor(a: any): 'nurse' | 'preleveur' | 'lab' {
+  if (a?.type === 'nursing') return 'nurse';
+  return 'lab';
 }
 
 function reviewTargetRoleLabelFor(a: any): string {
   if (!a) return '';
-  return a.type === 'nursing' ? 'Soins infirmiers' : 'Prélèvement à domicile';
+  return a.type === 'nursing' ? 'Soins infirmiers' : 'Laboratoire (prise de sang)';
 }
 
 function canLeaveReviewFor(a: any): boolean {
   if (!a || a.status !== 'completed') return false;
   if (a.type === 'nursing') return !!a.assigned_nurse_id;
-  return !!a.assigned_to;
+  return !!a.assigned_lab_id;
 }
 
 /** Phrase d’accroche quand un soin est clôturé */
@@ -939,6 +1819,20 @@ function isAssignmentPendingFor(appt: any): boolean {
   return false;
 }
 
+function isAppointmentStatusTerminalForCareTeam(status: string | undefined | null): boolean {
+  return ['canceled', 'cancelled', 'completed', 'refused', 'expired'].includes(String(status || ''));
+}
+
+/** Prise de sang : laboratoire affiché mais pas encore de préleveur (hors statuts terminaux). */
+function showBloodTestPreleveurPendingMessageFor(appt: any): boolean {
+  if (!appt || appt.type !== 'blood_test') return false;
+  if (isAssignmentPendingFor(appt)) return false;
+  if (isAppointmentStatusTerminalForCareTeam(appt.status)) return false;
+  const hasLab = !!(appt.assigned_lab_id || appt.assigned_lab_display_name);
+  const hasPrel = !!(appt.assigned_to || appt.assigned_to_display_name);
+  return hasLab && !hasPrel;
+}
+
 const hasFormData = computed(() => {
   const fd = appointment.value?.form_data;
   return fd && Object.keys(fd).length > 0;
@@ -952,6 +1846,39 @@ const formDataEmailDisplay = computed(() =>
   }),
 );
 
+const showRelativeMinorInfoPatient = computed(() => appointment.value?.relative?.is_minor === true);
+
+const showBookingContactOnPatientPage = computed(() => {
+  const a = appointment.value;
+  const bc = a?.booking_contact;
+  if (!a?.relative || !bc) return false;
+  const name = `${bc.first_name ?? ''} ${bc.last_name ?? ''}`.trim();
+  return !!(name || bc.phone || bc.email);
+});
+
+const bookingContactFullNamePatient = computed(() => {
+  const bc = appointment.value?.booking_contact;
+  if (!bc) return '';
+  return [bc.first_name, bc.last_name].filter(Boolean).join(' ').trim();
+});
+
+const bookingContactEmailPatient = computed(() => {
+  const bc = appointment.value?.booking_contact;
+  if (!bc) return { text: '', href: null as string | null };
+  const raw = (bc.email || '') as string;
+  if (!String(raw).trim()) return { text: '', href: null };
+  const display = bc.email_display as string | undefined;
+  const text = patientUiEmailLine({ email: raw, email_display: display });
+  if (isTechnicalPatientEmail(raw) && display) {
+    const extracted = extractEmailFromDisplayLine(display);
+    return { text, href: extracted ? `mailto:${extracted}` : null };
+  }
+  if (!isTechnicalPatientEmail(raw)) {
+    return { text: raw, href: `mailto:${raw}` };
+  }
+  return { text, href: null };
+});
+
 const { profileImageUrl } = useProfileImageUrl();
 
 function digitsOnlyPhone(phone: string): string {
@@ -961,8 +1888,6 @@ function digitsOnlyPhone(phone: string): string {
 function openTel(phone: string) {
   window.location.href = `tel:${digitsOnlyPhone(phone)}`;
 }
-
-type ProfessionalContactKind = 'lab' | 'preleveur' | 'nurse';
 
 function openSmsToProfessional(phone: string, _kind: ProfessionalContactKind, aptOverride?: any) {
   const apt = aptOverride ?? appointment.value;
@@ -1053,19 +1978,98 @@ function scrollToAvisSection() {
   });
 }
 
+/** Rafraîchissement périodique : statut / assignation modifiés sans recharger la page. */
+const APPOINTMENT_POLL_MS_ACTIVE = 6000;
+const APPOINTMENT_POLL_MS_QUIET = 30_000;
+let appointmentPollTimer: ReturnType<typeof setInterval> | null = null;
+let silentAppointmentRefreshInFlight = false;
+
+function currentAppointmentPollIntervalMs(): number {
+  const list = batchAppointmentsSorted.value;
+  if (!list.length) return APPOINTMENT_POLL_MS_QUIET;
+  const terminal = new Set(['canceled', 'cancelled', 'completed', 'refused', 'expired']);
+  const anyActive = list.some((a: any) => !terminal.has(String(a.status || '')));
+  return anyActive ? APPOINTMENT_POLL_MS_ACTIVE : APPOINTMENT_POLL_MS_QUIET;
+}
+
+function stopAppointmentPolling() {
+  if (appointmentPollTimer != null) {
+    clearInterval(appointmentPollTimer);
+    appointmentPollTimer = null;
+  }
+}
+
+async function refreshAppointmentSilently() {
+  if (silentAppointmentRefreshInFlight) return;
+  silentAppointmentRefreshInFlight = true;
+  try {
+    await loadAppointment({ silent: true });
+  } finally {
+    silentAppointmentRefreshInFlight = false;
+  }
+}
+
+function startAppointmentPolling() {
+  stopAppointmentPolling();
+  const ms = currentAppointmentPollIntervalMs();
+  appointmentPollTimer = setInterval(() => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    if (canceling.value) return;
+    void refreshAppointmentSilently();
+  }, ms);
+}
+
+function onAppointmentDetailVisibility() {
+  if (typeof document === 'undefined' || document.visibilityState !== 'visible') return;
+  if (canceling.value) return;
+  void refreshAppointmentSilently();
+}
+
+function onAppointmentDetailWindowFocus() {
+  if (typeof document === 'undefined' || document.visibilityState !== 'visible') return;
+  if (canceling.value) return;
+  void refreshAppointmentSilently();
+}
+
 onMounted(async () => {
   await loadAppointment();
-  await checkReviewsForBatch();
   scrollToResultatsIfHash();
   scrollToAvisIfHash();
+  startAppointmentPolling();
+  preleveurBannerInterval = setInterval(() => {
+    preleveurBannerNow.value = Date.now();
+  }, 15000);
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', onAppointmentDetailVisibility);
+    window.addEventListener('focus', onAppointmentDetailWindowFocus);
+  }
 });
+
+onUnmounted(() => {
+  stopAppointmentPolling();
+  if (preleveurBannerInterval) {
+    clearInterval(preleveurBannerInterval);
+    preleveurBannerInterval = null;
+  }
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('visibilitychange', onAppointmentDetailVisibility);
+    window.removeEventListener('focus', onAppointmentDetailWindowFocus);
+  }
+});
+
+watch(
+  () => batchAppointmentsSorted.value.map((a: any) => String(a?.status ?? '')).join(','),
+  () => {
+    if (typeof document === 'undefined') return;
+    startAppointmentPolling();
+  },
+);
 
 watch(
   () => route.params.id,
   async () => {
     batchSiblingsFull.value = [];
     await loadAppointment();
-    await checkReviewsForBatch();
   },
 );
 
@@ -1087,45 +2091,59 @@ watch(
 );
 
 
-async function loadAppointment() {
-  loading.value = true;
-  error.value = null;
-  batchSiblingsFull.value = [];
-  const response = await apiFetch(`/appointments/${route.params.id}`, { method: 'GET' });
-  if (response.success && response.data) {
-    appointment.value = response.data;
-    const appType = (response.data.type === 'nursing' || response.data.type === 'nurse') ? 'nursing' : 'blood_test';
-    try {
-      const catRes = await apiFetch(`/categories?type=${appType}`, { method: 'GET' });
-      if (catRes.success && Array.isArray(catRes.data)) {
-        categoriesForDetail.value = catRes.data as any[];
-      } else {
+async function loadAppointment(opts?: { silent?: boolean }) {
+  const silent = !!opts?.silent;
+  if (!silent) {
+    loading.value = true;
+    error.value = null;
+    batchSiblingsFull.value = [];
+  }
+  try {
+    const response = await apiFetch(`/appointments/${route.params.id}`, { method: 'GET' });
+    if (response.success && response.data) {
+      if (silent) error.value = null;
+      appointment.value = response.data;
+      const appType = (response.data.type === 'nursing' || response.data.type === 'nurse') ? 'nursing' : 'blood_test';
+      try {
+        const catRes = await apiFetch(`/categories?type=${appType}`, { method: 'GET' });
+        if (catRes.success && Array.isArray(catRes.data)) {
+          categoriesForDetail.value = catRes.data as any[];
+        } else {
+          categoriesForDetail.value = [];
+        }
+      } catch {
         categoriesForDetail.value = [];
       }
-    } catch {
-      categoriesForDetail.value = [];
-    }
 
-    const sibs = response.data.batch_siblings;
-    if (Array.isArray(sibs) && sibs.length > 0) {
-      const full = await Promise.all(
-        sibs.map(async (s: { id: string }) => {
-          try {
-            const r = await apiFetch(`/appointments/${encodeURIComponent(s.id)}`, { method: 'GET' });
-            if (r.success && r.data) return r.data;
-          } catch {
-            /* ignore */
-          }
-          return null;
-        }),
-      );
-      batchSiblingsFull.value = full.filter(Boolean) as any[];
+      const sibs = response.data.batch_siblings;
+      if (Array.isArray(sibs) && sibs.length > 0) {
+        const full = await Promise.all(
+          sibs.map(async (s: { id: string }) => {
+            try {
+              const r = await apiFetch(`/appointments/${encodeURIComponent(s.id)}`, { method: 'GET' });
+              if (r.success && r.data) return r.data;
+            } catch {
+              /* ignore */
+            }
+            return null;
+          }),
+        );
+        batchSiblingsFull.value = full.filter(Boolean) as any[];
+      } else {
+        batchSiblingsFull.value = [];
+      }
+      await loadMedicalDocuments({ silent });
+      await checkReviewsForBatch();
+    } else if (!silent) {
+      error.value = response.error || 'Erreur lors du chargement du rendez-vous';
     }
-    await loadMedicalDocuments();
-  } else {
-    error.value = response.error || 'Erreur lors du chargement du rendez-vous';
+  } catch {
+    if (!silent) {
+      error.value = 'Erreur lors du chargement du rendez-vous';
+    }
+  } finally {
+    if (!silent) loading.value = false;
   }
-  loading.value = false;
 }
 
 function formatBatchRdvLabel(apt: any, index: number): string {
@@ -1134,11 +2152,12 @@ function formatBatchRdvLabel(apt: any, index: number): string {
   return `Soin ${n} — ${cat}`;
 }
 
-async function loadMedicalDocuments() {
+async function loadMedicalDocuments(opts?: { silent?: boolean }) {
+  const silent = !!opts?.silent;
   if (!appointment.value) return;
   const ids = batchAppointmentIds.value;
   if (!ids.length) return;
-  loadingDocuments.value = true;
+  if (!silent) loadingDocuments.value = true;
   try {
     const lists = await Promise.all(
       ids.map((id) =>
@@ -1203,7 +2222,7 @@ async function loadMedicalDocuments() {
   } catch {
     medicalDocuments.value = [];
   } finally {
-    loadingDocuments.value = false;
+    if (!silent) loadingDocuments.value = false;
   }
 }
 
@@ -1319,13 +2338,21 @@ async function submitReviewForAppt(appt: any) {
   const id = String(appt.id);
   ensureReviewForm(id);
   const form = reviewForms[id];
+  if (appt.type === 'blood_test' && !appt.assigned_lab_id) {
+    toast.add({
+      title: 'Avis indisponible',
+      description: 'Aucun laboratoire n’est associé à ce rendez-vous : l’avis ne peut pas être publié.',
+      color: 'red',
+    });
+    return;
+  }
   submittingReview.value = true;
   const response = await apiFetch('/reviews', {
     method: 'POST',
     body: {
       appointment_id: appt.id,
-      reviewee_id: appt.assigned_to || appt.assigned_nurse_id,
-      reviewee_type: appt.type === 'nursing' ? 'nurse' : 'subaccount',
+      reviewee_id: appt.type === 'nursing' ? appt.assigned_nurse_id : appt.assigned_lab_id,
+      reviewee_type: appt.type === 'nursing' ? 'nurse' : 'lab',
       rating: form.rating,
       comment: form.comment,
     },
@@ -1348,8 +2375,7 @@ async function confirmCancelAppointment() {
   if (response.success) {
     showCancelModal.value = false;
     toast.add({ title: 'Rendez-vous annulé', color: 'green' });
-    await loadAppointment();
-    await checkReviewsForBatch();
+    await refreshAppointmentSilently();
   } else {
     toast.add({ title: 'Erreur', description: response.error ?? 'Impossible d\'annuler', color: 'red' });
   }

@@ -64,13 +64,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 
     if ($revieweeId && $revieweeId !== $uid && $role !== 'super_admin') {
-        http_response_code(403);
-        echo json_encode([
-            'success' => false,
-            'error' => 'Accès non autorisé à ces avis.',
-            'code' => 'FORBIDDEN',
-        ]);
-        exit;
+        $config = require __DIR__ . '/../../config/database.php';
+        $dsn = sprintf(
+            'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+            $config['host'],
+            $config['port'],
+            $config['database'],
+            $config['charset']
+        );
+        $dbAuth = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
+        $allowedAsTeamLab = false;
+        if ($role === 'subaccount') {
+            $stmtLab = $dbAuth->prepare('SELECT lab_id FROM profiles WHERE id = ?');
+            $stmtLab->execute([$uid]);
+            $labRow = $stmtLab->fetch(PDO::FETCH_ASSOC);
+            $parentLabId = $labRow['lab_id'] ?? null;
+            if ($parentLabId && (string) $revieweeId === (string) $parentLabId) {
+                $allowedAsTeamLab = true;
+            }
+        }
+        if (!$allowedAsTeamLab) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Accès non autorisé à ces avis.',
+                'code' => 'FORBIDDEN',
+            ]);
+            exit;
+        }
     }
 
     if ($appointmentId && $role !== 'super_admin') {
@@ -99,6 +120,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             || (!empty($aptRow['assigned_nurse_id']) && $aptRow['assigned_nurse_id'] === $uid)
             || (!empty($aptRow['assigned_lab_id']) && $aptRow['assigned_lab_id'] === $uid)
             || (!empty($aptRow['assigned_to']) && $aptRow['assigned_to'] === $uid);
+        if (!$allowed && $role === 'pro') {
+            require_once __DIR__ . '/../../models/User.php';
+            $userModel = new User();
+            if ($userModel->hasProfessionalAccessToPatient($uid, (string) ($aptRow['patient_id'] ?? ''))) {
+                $allowed = true;
+            }
+        }
         if (!$allowed) {
             http_response_code(403);
             echo json_encode([
@@ -194,7 +222,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         // Vérifier que le rendez-vous existe, appartient au patient, est terminé, et que le reviewee correspond
         $stmtApt = $db->prepare('
-            SELECT id, patient_id, status, type, assigned_nurse_id, assigned_lab_id, assigned_to
+            SELECT id, patient_id, status, type, assigned_nurse_id, assigned_lab_id, assigned_to,
+                   created_by, created_by_role, category_id
             FROM appointments WHERE id = ?
         ');
         $stmtApt->execute([$input['appointment_id']]);
@@ -213,6 +242,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $match = false;
         if ($revieweeType === 'nurse') {
             $match = !empty($apt['assigned_nurse_id']) && $apt['assigned_nurse_id'] === $revieweeId;
+        } elseif ($revieweeType === 'lab') {
+            $match = !empty($apt['assigned_lab_id']) && $apt['assigned_lab_id'] === $revieweeId;
         } else {
             $match = (!empty($apt['assigned_lab_id']) && $apt['assigned_lab_id'] === $revieweeId)
                 || (!empty($apt['assigned_to']) && $apt['assigned_to'] === $revieweeId);
@@ -243,6 +274,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'appointment_id' => $input['appointment_id'],
             ]
         );
+
+        $createdBy = $apt['created_by'] ?? null;
+        $createdByRole = $apt['created_by_role'] ?? null;
+        if (
+            $createdByRole === 'pro'
+            && $createdBy
+            && (string) $createdBy !== (string) $revieweeId
+        ) {
+            require_once __DIR__ . '/../../models/User.php';
+            $userModel = new User();
+            $patProf = $userModel->getById($user['user_id'], 'system', 'system');
+            $pfn = trim((string) ($patProf['first_name'] ?? ''));
+            $pln = trim((string) ($patProf['last_name'] ?? ''));
+            $patientDisplay = trim($pfn . ' ' . $pln) ?: 'Un patient';
+
+            $categoryLabel = 'le soin';
+            if (!empty($apt['category_id'])) {
+                $cStmt = $db->prepare('SELECT name FROM care_categories WHERE id = ?');
+                $cStmt->execute([$apt['category_id']]);
+                $cRow = $cStmt->fetch(PDO::FETCH_ASSOC);
+                if ($cRow && !empty($cRow['name'])) {
+                    $categoryLabel = (string) $cRow['name'];
+                }
+            }
+
+            $notificationModel->create(
+                (string) $createdBy,
+                'new_review_on_pro_patient',
+                'Nouvel avis patient',
+                $patientDisplay . ' a laissé un avis sur le soin « ' . $categoryLabel . ' ».',
+                [
+                    'review_id' => $id,
+                    'appointment_id' => $input['appointment_id'],
+                ]
+            );
+        }
         
         echo json_encode([
             'success' => true,

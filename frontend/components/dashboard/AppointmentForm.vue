@@ -862,7 +862,7 @@ const documentTypes = [
   { key: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card', iconBg: 'bg-green-100 dark:bg-green-900/30', iconColor: 'text-green-600 dark:text-green-400' },
   { key: 'carte_mutuelle', label: 'Mutuelle', icon: 'i-lucide-shield', iconBg: 'bg-blue-100 dark:bg-blue-900/30', iconColor: 'text-blue-600 dark:text-blue-400' },
   { key: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', iconBg: 'bg-orange-100 dark:bg-orange-900/30', iconColor: 'text-orange-600 dark:text-orange-400' },
-  { key: 'autres_assurances', label: 'Autre doc.', icon: 'i-lucide-folder', iconBg: 'bg-purple-100 dark:bg-purple-900/30', iconColor: 'text-purple-600 dark:text-purple-400' },
+  { key: 'autres_assurances', label: 'Autre prescription', icon: 'i-lucide-file-text', iconBg: 'bg-purple-100 dark:bg-purple-900/30', iconColor: 'text-purple-600 dark:text-purple-400' },
 ];
 
 const genderOptions = [{ label: 'Homme', value: 'male' }, { label: 'Femme', value: 'female' }, { label: 'Autre', value: 'other' }];
@@ -2090,7 +2090,7 @@ async function submitMultiCareBatch(
     if (showPrescriptionAfterCreate.value && prescriptionTextDuringCreate.value?.trim()) {
       await generateAndAttachPrescriptionDuringCreate(createdIds[0]!);
     }
-    await router.push(`${props.basePath}/appointments`);
+    await router.push(`${props.basePath}/appointments/${createdIds[0]!}`);
   } else {
     throw new Error(failures.join(' ') || 'Aucun rendez-vous créé');
   }

@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/NotificationService.php';
 require_once __DIR__ . '/../../lib/EmailQueue.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../../lib/LabTeamAccess.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -82,11 +83,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $appointment['created_by'] === $user['user_id'] ||
             $user['role'] === 'super_admin'
         );
-        // Lab / subaccount : accès si le RDV est assigné à quelqu'un de leur équipe
-        if (!$hasAccess && in_array($user['role'], ['lab', 'subaccount'], true)) {
-            $teamStmt = $db->prepare("SELECT id FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
-            $teamStmt->execute([$user['user_id'], $user['user_id']]);
-            $teamIds = array_column($teamStmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+        // Lab / sous-compte / préleveur : accès si le RDV est assigné à quelqu'un de leur équipe
+        if (!$hasAccess && in_array($user['role'], ['lab', 'subaccount', 'preleveur'], true)) {
+            $teamIds = LabTeamAccess::teamMemberIds($db, $user['user_id'], $user['role']);
             if (in_array($appointment['assigned_lab_id'], $teamIds, true) || (!empty($appointment['assigned_to']) && in_array($appointment['assigned_to'], $teamIds, true))) {
                 $hasAccess = true;
             }
@@ -193,8 +192,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         unset($d);
 
-        // Documents du compte patient (profil seul, pas déjà couverts par le RDV) pour lab/subaccount/nurse/pro/admin
-        if ($patientId && in_array($user['role'], ['lab', 'subaccount', 'nurse', 'pro', 'super_admin'], true)) {
+        // Documents du compte patient (profil seul, pas déjà couverts par le RDV) pour lab/subaccount/préleveur/nurse/pro/admin
+        if ($patientId && in_array($user['role'], ['lab', 'subaccount', 'preleveur', 'nurse', 'pro', 'super_admin'], true)) {
             $patientDocs = [];
             if ($relativeId) {
                 $tableExists = $db->query("SHOW TABLES LIKE 'patient_relative_documents'")->rowCount() > 0;
@@ -333,10 +332,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             (!empty($appointment['created_by']) && $appointment['created_by'] === $user['user_id']) ||
             $user['role'] === 'super_admin'
         );
-        if (!$hasAccess && in_array($user['role'], ['lab', 'subaccount'], true)) {
-            $teamStmt = $db->prepare("SELECT id FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
-            $teamStmt->execute([$user['user_id'], $user['user_id']]);
-            $teamIds = array_column($teamStmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+        if (!$hasAccess && in_array($user['role'], ['lab', 'subaccount', 'preleveur'], true)) {
+            $teamIds = LabTeamAccess::teamMemberIds($db, $user['user_id'], $user['role']);
             if (in_array($appointment['assigned_lab_id'] ?? '', $teamIds, true) || (!empty($appointment['assigned_to']) && in_array($appointment['assigned_to'], $teamIds, true))) {
                 $hasAccess = true;
             }
@@ -561,6 +558,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     }
                 } catch (Exception $e) {
                     error_log('Erreur notification/email résultats: ' . $e->getMessage());
+                }
+            }
+            $nurseId = $appointment['assigned_nurse_id'] ?? null;
+            if ($nurseId) {
+                try {
+                    $notificationService = new NotificationService();
+                    $patientLabel = 'Patient';
+                    if ($patientId) {
+                        $np = $db->prepare('SELECT first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek FROM profiles WHERE id = ?');
+                        $np->execute([$patientId]);
+                        $prow = $np->fetch(PDO::FETCH_ASSOC);
+                        if ($prow && !empty($prow['first_name_encrypted']) && !empty($prow['first_name_dek'])) {
+                            $fn = $crypto->decryptField($prow['first_name_encrypted'], $prow['first_name_dek']);
+                            $ln = (!empty($prow['last_name_encrypted']) && !empty($prow['last_name_dek']))
+                                ? $crypto->decryptField($prow['last_name_encrypted'], $prow['last_name_dek'])
+                                : '';
+                            $patientLabel = trim($fn . ' ' . $ln) ?: 'Patient';
+                        }
+                    }
+                    $notificationService->createNotification(
+                        $nurseId,
+                        'results_available',
+                        'Résultats disponibles',
+                        'De nouveaux résultats d’analyses sont disponibles pour le rendez-vous de ' . $patientLabel . '.',
+                        [
+                            'appointment_id' => $appointmentId,
+                            'medical_document_id' => $id,
+                        ]
+                    );
+                } catch (Exception $e) {
+                    error_log('Erreur notification infirmier résultats: ' . $e->getMessage());
                 }
             }
         }

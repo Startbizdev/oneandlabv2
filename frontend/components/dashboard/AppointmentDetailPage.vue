@@ -418,6 +418,62 @@
                 <p v-if="patientAge != null" class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ patientAge }}</p>
               </div>
             </div>
+            <div
+              v-if="appointment.relative?.is_minor === true"
+              class="rounded-lg border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/20 px-3 py-2.5"
+              role="status"
+            >
+              <p class="text-sm text-amber-950 dark:text-amber-100 leading-snug">
+                <span class="font-medium">Personne mineure</span><template v-if="appointment.relative.age_years != null && appointment.relative.age_years !== undefined">
+                  ({{ appointment.relative.age_years }} an{{ appointment.relative.age_years === 1 ? '' : 's' }})
+                </template>
+                — le rendez-vous est réservé par le titulaire du compte (contact principal ci-dessous), habilité à représenter le patient pour la prise en charge.
+              </p>
+            </div>
+            <div
+              v-if="showBookingContactBlock"
+              class="pt-4 mt-1 border-t border-gray-200 dark:border-gray-700 space-y-3"
+            >
+              <div>
+                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Contact principal</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Titulaire du compte — personne qui a pris le rendez-vous</p>
+              </div>
+              <div v-if="bookingContactFullName" class="flex items-start gap-3">
+                <UIcon name="i-lucide-user-check" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Nom complet</p>
+                  <p class="text-sm font-medium text-gray-900 dark:text-white">{{ bookingContactFullName }}</p>
+                </div>
+              </div>
+              <div v-if="appointment.booking_contact?.phone" class="flex items-start gap-3">
+                <UIcon name="i-lucide-phone" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Téléphone</p>
+                  <a
+                    :href="`tel:${String(appointment.booking_contact.phone).replace(/\s/g, '')}`"
+                    class="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline"
+                  >
+                    {{ appointment.booking_contact.phone }}
+                  </a>
+                </div>
+              </div>
+              <div v-if="bookingContactEmailDisplay.text" class="flex items-start gap-3">
+                <UIcon name="i-lucide-mail" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Email</p>
+                  <a
+                    v-if="bookingContactEmailDisplay.href"
+                    :href="bookingContactEmailDisplay.href"
+                    class="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline break-words"
+                  >
+                    {{ bookingContactEmailDisplay.text }}
+                  </a>
+                  <p v-else class="text-sm font-medium text-gray-900 dark:text-white break-words">
+                    {{ bookingContactEmailDisplay.text }}
+                  </p>
+                </div>
+              </div>
+            </div>
             <div v-if="$slots.patientCardActions" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
               <slot name="patientCardActions" :appointment="appointment" />
             </div>
@@ -547,6 +603,38 @@ const patientContactEmailDisplay = computed(() => {
   const raw = (a.relative?.email || a.form_data?.email || '') as string;
   if (!String(raw).trim()) return { text: '', href: null };
   const display = a.patient_email_display as string | undefined;
+  const text = patientUiEmailLine({ email: raw, email_display: display });
+  if (isTechnicalPatientEmail(raw) && display) {
+    const extracted = extractEmailFromDisplayLine(display);
+    return { text, href: extracted ? `mailto:${extracted}` : null };
+  }
+  if (!isTechnicalPatientEmail(raw)) {
+    return { text: raw, href: `mailto:${raw}` };
+  }
+  return { text, href: null };
+});
+
+const showBookingContactBlock = computed(() => {
+  const a = appointment.value;
+  const bc = a?.booking_contact;
+  if (!a?.relative || !bc) return false;
+  const name = `${bc.first_name ?? ''} ${bc.last_name ?? ''}`.trim();
+  return !!(name || bc.phone || bc.email);
+});
+
+const bookingContactFullName = computed(() => {
+  const bc = appointment.value?.booking_contact;
+  if (!bc) return '';
+  return [bc.first_name, bc.last_name].filter(Boolean).join(' ').trim();
+});
+
+/** E-mail du titulaire (compte) pour RDV proche — masque e-mails techniques comme pour le patient. */
+const bookingContactEmailDisplay = computed(() => {
+  const bc = appointment.value?.booking_contact;
+  if (!bc) return { text: '', href: null as string | null };
+  const raw = (bc.email || '') as string;
+  if (!String(raw).trim()) return { text: '', href: null };
+  const display = bc.email_display as string | undefined;
   const text = patientUiEmailLine({ email: raw, email_display: display });
   if (isTechnicalPatientEmail(raw) && display) {
     const extracted = extractEmailFromDisplayLine(display);

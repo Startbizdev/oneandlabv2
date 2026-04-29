@@ -6,7 +6,7 @@ export function appointmentModalAlreadyTakenPayload(appointmentId: string) {
 }
 
 /**
- * Composable partagé pour ouvrir la modal d'acceptation RDV (nurse, lab, subaccount).
+ * Composable partagé pour ouvrir la modal d'acceptation RDV (nurse, lab, subaccount, preleveur).
  * Délègue à useAppointmentModalQueue pour une seule source de vérité.
  * Utilisé par le layout dashboard et les pages liste RDV pour ouvrir la modal depuis un clic "Détails" sur un RDV pending.
  */
@@ -24,7 +24,7 @@ export function useAppointmentModal(options?: { onDisplayed?: (appointment: any)
 
   function appointmentsDetailPath(appointmentId: string): string {
     const role = user.value?.role
-    const base = role === 'nurse' ? '/nurse' : role === 'subaccount' ? '/subaccount' : '/lab'
+    const base = role === 'nurse' ? '/nurse' : role === 'subaccount' ? '/subaccount' : role === 'preleveur' ? '/preleveur' : '/lab'
     return `${base}/appointments/${appointmentId}`
   }
 
@@ -44,6 +44,12 @@ export function useAppointmentModal(options?: { onDisplayed?: (appointment: any)
       if (data.type !== 'blood_test') return false
       if (!isPendingIncomingOffer(data, myId)) return false
       const alreadyTaken = data.assigned_lab_id != null && String(data.assigned_lab_id) !== String(myId)
+      return !alreadyTaken
+    }
+    if (role === 'preleveur') {
+      if (data.type !== 'blood_test') return false
+      if (!isPendingIncomingOffer(data, myId)) return false
+      const alreadyTaken = data.assigned_to != null && String(data.assigned_to) !== String(myId)
       return !alreadyTaken
     }
     return false
@@ -69,13 +75,20 @@ export function useAppointmentModal(options?: { onDisplayed?: (appointment: any)
           : ''
       return !!(lid && lid !== my)
     }
+    if (role === 'preleveur') {
+      const pid =
+        data.assigned_to != null && data.assigned_to !== ''
+          ? String(data.assigned_to)
+          : ''
+      return !!(pid && pid !== my)
+    }
     return false
   }
 
   async function openAppointmentModalById(appointmentId: string) {
     const role = user.value?.role
     const myId = user.value?.id
-    if (!appointmentId || !['nurse', 'lab', 'subaccount'].includes(role ?? '')) return
+    if (!appointmentId || !['nurse', 'lab', 'subaccount', 'preleveur'].includes(role ?? '')) return
     try {
       const { apiFetch } = await import('~/utils/api')
       const detailRes = await apiFetch(`/appointments/${appointmentId}`, { method: 'GET' })
@@ -102,7 +115,7 @@ export function useAppointmentModal(options?: { onDisplayed?: (appointment: any)
     const role = user.value?.role
     const myId = user.value?.id
     const detailPath = appointmentsDetailPath(appointmentId)
-    if (!appointmentId || !['nurse', 'lab', 'subaccount'].includes(role ?? '') || !myId) {
+    if (!appointmentId || !['nurse', 'lab', 'subaccount', 'preleveur'].includes(role ?? '') || !myId) {
       await navigateTo(detailPath)
       return
     }

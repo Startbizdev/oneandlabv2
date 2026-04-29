@@ -30,8 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
-$roleMiddleware = new RoleMiddleware(['super_admin']);
-$roleMiddleware->handle($user['role']);
+$roleMiddleware = new RoleMiddleware();
+$roleMiddleware->handle($user, ['super_admin']);
 
 $config = require __DIR__ . '/../../config/database.php';
 $dsn = sprintf(

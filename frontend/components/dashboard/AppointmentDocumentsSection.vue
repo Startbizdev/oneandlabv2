@@ -26,6 +26,8 @@
         <div
           v-for="doc in standardDocuments"
           :key="doc.id"
+          :id="'rdv-doc-' + doc.id"
+          :data-document-type="doc.document_type"
           class="flex items-center gap-4 px-4 py-3 hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors group"
         >
           <div :class="['flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0', getDocTypeBgClass(getDocTypeColor(doc.document_type))]">
@@ -141,6 +143,8 @@
           <div
             v-for="doc in resultatsDocuments"
             :key="doc.id"
+            :id="'rdv-doc-' + doc.id"
+            :data-document-type="doc.document_type"
             class="flex items-center gap-4 px-4 py-3 hover:bg-red-100/50 dark:hover:bg-red-950/40 transition-colors group"
           >
             <div class="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 bg-red-200/90 dark:bg-red-900/45">
@@ -260,7 +264,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   carte_mutuelle: 'Carte Mutuelle',
   ordonnance: 'Ordonnance',
   resultats: 'Résultats',
-  autres_assurances: 'Autres assurances',
+  autres_assurances: 'Autre prescription',
   other: 'Autre',
 };
 
@@ -269,7 +273,7 @@ const DOC_TYPE_ICONS: Record<string, string> = {
   carte_mutuelle: 'i-lucide-shield',
   ordonnance: 'i-lucide-file-text',
   resultats: 'i-lucide-flask-conical',
-  autres_assurances: 'i-lucide-briefcase',
+  autres_assurances: 'i-lucide-file-text',
   other: 'i-lucide-file',
 };
 

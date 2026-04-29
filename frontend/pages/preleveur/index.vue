@@ -1,15 +1,18 @@
 <template>
   <div class="space-y-6">
     <TitleDashboard
-      title="Mes missions assignées"
-      description="Prises de sang — rendez-vous qui vous sont assignés."
+      title="Mes rendez-vous"
+      description="Toutes vos prises de sang — rendez-vous du laboratoire qui vous concernent."
     />
+
     <AppointmentListPage
       base-path="/preleveur"
       hide-header
-      title="Mes missions assignées"
-      subtitle="Prises de sang — rendez-vous qui vous sont assignés."
+      title="Mes rendez-vous"
+      subtitle="Liste complète de vos missions (toutes dates confondues)."
       :use-date-filter="false"
+      :card-href="(a) => (pendingIncoming(a) ? null : `/preleveur/appointments/${a.id}`)"
+      @card-click="(a) => openAppointmentModal(a.id)"
     />
 
     <!-- Modal RDV déjà accepté par un confrère -->
@@ -35,6 +38,8 @@
 </template>
 
 <script setup lang="ts">
+import { isPendingIncomingOffer } from '~/utils/appointment-offer';
+
 definePageMeta({
   layout: 'dashboard',
   middleware: ['auth', 'role'],
@@ -42,7 +47,13 @@ definePageMeta({
 });
 
 const route = useRoute();
+const { user } = useAuth();
+const { openAppointmentModalById: openAppointmentModal } = useAppointmentModal();
 const showAlreadyAcceptedModal = ref(false);
+
+function pendingIncoming(appointment: { status?: string; created_by?: string | null }) {
+  return isPendingIncomingOffer(appointment, user.value?.id);
+}
 
 function closeAlreadyAcceptedModal() {
   showAlreadyAcceptedModal.value = false;
@@ -58,6 +69,6 @@ watch(
 );
 
 useHead({
-  title: 'Mes missions – Préleveur',
+  title: 'Mes rendez-vous – Préleveur',
 });
 </script>

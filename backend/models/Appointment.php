@@ -246,7 +246,7 @@ class Appointment
                 $effectiveLabId = $createdBy;
             }
             if ($effectiveLabId) {
-                $skipLabLeadTime = in_array($createdByRole, ['nurse', 'lab', 'subaccount'], true);
+                $skipLabLeadTime = in_array($createdByRole, ['nurse', 'lab', 'subaccount', 'preleveur'], true);
                 $this->validateLabAppointmentParams($effectiveLabId, $data['scheduled_at'], $scheduledDate, $skipLabLeadTime);
             }
         }
@@ -578,6 +578,29 @@ class Appointment
     }
 
     /**
+     * @return array<int,array<string,mixed>>
+     */
+    private function fetchBloodTestBatchRowsForStatusNotification(string $batchId, string $patientId): array
+    {
+        try {
+            $stmt = $this->db->prepare('
+                SELECT a.id, a.scheduled_at, c.name AS category_name
+                FROM appointments a
+                LEFT JOIN care_categories c ON c.id = a.category_id
+                WHERE a.creation_batch_id = ? AND a.patient_id = ? AND a.type = ?
+                ORDER BY a.scheduled_at ASC
+            ');
+            $stmt->execute([$batchId, $patientId, 'blood_test']);
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Exception $e) {
+            error_log('fetchBloodTestBatchRowsForStatusNotification: ' . $e->getMessage());
+
+            return [];
+        }
+    }
+
+    /**
      * Valide que la date du RDV respecte les paramètres du lab (délai min, samedi, dimanche).
      *
      * @param bool $skipLeadTimeValidation Si true (création depuis espace infirmier / lab / sous-compte), n'applique pas le délai min. du profil lab (RDV le jour J autorisé).
@@ -618,6 +641,46 @@ class Appointment
         }
         if ($dayOfWeek === 6 && !$acceptSaturday) {
             throw new Exception('Ce laboratoire n\'accepte pas les rendez-vous le samedi.');
+        }
+    }
+
+    /**
+     * Déduit is_minor et age_years depuis birth_date du proche (Europe/Paris).
+     * N'ajoute les clés que si le calcul est fiable (date valide, pas dans le futur).
+     */
+    private function enrichRelativeMinorFromBirthDate(array &$relative): void
+    {
+        $bd = $relative['birth_date'] ?? null;
+        if ($bd === null || $bd === '') {
+            return;
+        }
+        try {
+            $tz = new DateTimeZone('Europe/Paris');
+            $today = new DateTime('now', $tz);
+            $today->setTime(0, 0, 0);
+            $birthStr = is_string($bd) ? trim($bd) : '';
+            if ($birthStr === '') {
+                return;
+            }
+            $birth = null;
+            if (preg_match('/^(\d{4}-\d{2}-\d{2})/', $birthStr, $m)) {
+                $birth = DateTime::createFromFormat('Y-m-d', $m[1], $tz);
+            }
+            if (!$birth instanceof DateTime) {
+                $birth = new DateTime($birthStr, $tz);
+            }
+            $birth->setTime(0, 0, 0);
+            if ($birth > $today) {
+                return;
+            }
+            $age = $today->diff($birth)->y;
+            if ($age < 0 || $age > 130) {
+                return;
+            }
+            $relative['age_years'] = $age;
+            $relative['is_minor'] = $age < 18;
+        } catch (Throwable $e) {
+            // Ne pas exposer is_minor si calcul non fiable
         }
     }
 
@@ -716,6 +779,8 @@ class Appointment
                     // Ignorer les erreurs de fallback, continuer avec les données du proche uniquement
                 }
             }
+
+            $this->enrichRelativeMinorFromBirthDate($appointment['relative']);
 
             // Nettoyer les champs chiffrés du proche
             unset(
@@ -917,15 +982,29 @@ class Appointment
             }
         }
 
-        // Libellé e-mail patient (évite d’afficher delegated-…@patients.internal.local côté UI)
+        // Libellé e-mail patient + contact principal (titulaire) pour RDV « pour un proche »
         $appointment['patient_email_display'] = null;
+        $appointment['booking_contact'] = null;
         if (!empty($appointment['patient_id'])) {
             try {
                 require_once __DIR__ . '/User.php';
                 $userModelPatient = new User();
                 $patProfile = $userModelPatient->getById((string) $appointment['patient_id'], $requesterId, $requesterRole);
-                if ($patProfile && !empty($patProfile['email_display'])) {
-                    $appointment['patient_email_display'] = $patProfile['email_display'];
+                if ($patProfile) {
+                    if (!empty($patProfile['email_display'])) {
+                        $appointment['patient_email_display'] = $patProfile['email_display'];
+                    }
+                    if (!empty($appointment['relative_id'])) {
+                        $fn = trim((string) ($patProfile['first_name'] ?? ''));
+                        $ln = trim((string) ($patProfile['last_name'] ?? ''));
+                        $appointment['booking_contact'] = [
+                            'first_name' => $fn !== '' ? $fn : null,
+                            'last_name' => $ln !== '' ? $ln : null,
+                            'phone' => isset($patProfile['phone']) ? trim((string) $patProfile['phone']) : null,
+                            'email' => isset($patProfile['email']) ? trim((string) $patProfile['email']) : null,
+                            'email_display' => $patProfile['email_display'] ?? null,
+                        ];
+                    }
                 }
             } catch (Throwable $e) {
                 // ignore
@@ -1123,10 +1202,31 @@ class Appointment
             $updateFields[] = 'assigned_lab_id = ?';
             $params[] = $actorId;
         }
+
+        $preleveurLabId = null;
+        if ($newStatus === 'confirmed' && $actorRole === 'preleveur' && $appointment['type'] === 'blood_test') {
+            $prelStmt = $this->db->prepare("SELECT lab_id FROM profiles WHERE id = ? AND role = 'preleveur' LIMIT 1");
+            $prelStmt->execute([$actorId]);
+            $preleveurLabId = (string) ($prelStmt->fetch(PDO::FETCH_ASSOC)['lab_id'] ?? '');
+            if ($preleveurLabId === '') {
+                throw new Exception('Préleveur sans laboratoire rattaché.');
+            }
+            $updateFields[] = 'assigned_to = ?';
+            $params[] = $actorId;
+            if (empty($appointment['assigned_lab_id'])) {
+                $updateFields[] = 'assigned_lab_id = ?';
+                $params[] = $preleveurLabId;
+            }
+            $updateFields[] = 'assigned_nurse_id = NULL';
+        }
         
         // Quand le RDV est marqué terminé, enregistrer completed_at
         if ($newStatus === 'completed') {
             $updateFields[] = 'completed_at = NOW()';
+        }
+
+        if ($newStatus === 'confirmed' && ($appointment['type'] ?? '') === 'nursing') {
+            $updateFields[] = 'nurse_share_released_at = NULL';
         }
         
         // Ajouter l'ID à la fin des paramètres (WHERE)
@@ -1134,6 +1234,7 @@ class Appointment
 
         $atomicNurseConfirm = !$redispatch && $newStatus === 'confirmed' && $actorRole === 'nurse' && $appointment['type'] === 'nursing';
         $atomicLabConfirm = !$redispatch && $newStatus === 'confirmed' && in_array($actorRole, ['lab', 'subaccount'], true) && $appointment['type'] === 'blood_test';
+        $atomicPreleveurConfirm = !$redispatch && $newStatus === 'confirmed' && $actorRole === 'preleveur' && $appointment['type'] === 'blood_test';
 
         $whereSql = 'WHERE id = ?';
         $whereParams = [$id];
@@ -1155,6 +1256,18 @@ class Appointment
             }
             $whereSql = 'WHERE id = ? AND status = ? AND assigned_lab_id IS NULL';
             $whereParams = [$id, 'pending'];
+        } elseif ($atomicPreleveurConfirm) {
+            if ($oldStatus !== 'pending') {
+                throw new Exception('Ce rendez-vous ne peut plus être accepté.');
+            }
+            if (!empty($appointment['assigned_to']) && (string) $appointment['assigned_to'] !== (string) $actorId) {
+                throw new Exception('Ce rendez-vous a déjà été accepté par un autre préleveur.');
+            }
+            if (!empty($appointment['assigned_lab_id']) && (string) $appointment['assigned_lab_id'] !== (string) $preleveurLabId) {
+                throw new Exception('Ce rendez-vous appartient à un autre laboratoire.');
+            }
+            $whereSql = 'WHERE id = ? AND status = ? AND (assigned_to IS NULL OR assigned_to = ? OR assigned_to = \'\') AND (assigned_lab_id IS NULL OR assigned_lab_id = ? OR assigned_lab_id = \'\')';
+            $whereParams = [$id, 'pending', $actorId, $preleveurLabId];
         }
 
         $setParams = array_slice($params, 0, -1);
@@ -1166,11 +1279,11 @@ class Appointment
         $stmt->execute($finalParams);
         $mainUpdateAffected = $stmt->rowCount();
 
-        if (($atomicNurseConfirm || $atomicLabConfirm) && $mainUpdateAffected === 0) {
+        if (($atomicNurseConfirm || $atomicLabConfirm || $atomicPreleveurConfirm) && $mainUpdateAffected === 0) {
             throw new Exception('Ce rendez-vous n\'est plus disponible (déjà accepté par un autre professionnel).');
         }
 
-        if ($atomicNurseConfirm && $mainUpdateAffected > 0) {
+        if (($atomicNurseConfirm || $atomicLabConfirm || $atomicPreleveurConfirm) && $mainUpdateAffected > 0) {
             $delMainOffers = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ?');
             $delMainOffers->execute([$id]);
         }
@@ -1190,7 +1303,7 @@ class Appointment
                 while ($sib = $sibStmt->fetch(PDO::FETCH_ASSOC)) {
                     $sibId = (string) $sib['id'];
                     $updSib = $this->db->prepare('
-                        UPDATE appointments SET status = ?, assigned_nurse_id = ?, updated_at = NOW()
+                        UPDATE appointments SET status = ?, assigned_nurse_id = ?, nurse_share_released_at = NULL, updated_at = NOW()
                         WHERE id = ? AND status = ? AND (assigned_nurse_id IS NULL OR assigned_nurse_id = \'\')
                     ');
                     $updSib->execute(['confirmed', $actorId, $sibId, 'pending']);
@@ -1211,6 +1324,116 @@ class Appointment
                             $actorId,
                             $actorRole,
                             'Confirmation lot multisoins (même prise en charge)',
+                        ]);
+                        $this->logger->log(
+                            $actorId,
+                            $actorRole,
+                            'update',
+                            'appointment',
+                            $sibId,
+                            [
+                                'old_status' => 'pending',
+                                'new_status' => 'confirmed',
+                                'assigned' => true,
+                                'batch_multisoins' => true,
+                            ]
+                        );
+                    }
+                }
+            }
+        }
+
+        if ($atomicLabConfirm && $mainUpdateAffected > 0) {
+            $batchId = $appointment['creation_batch_id'] ?? null;
+            $patientId = $appointment['patient_id'] ?? null;
+            if (!empty($batchId) && !empty($patientId)) {
+                $sibStmt = $this->db->prepare('
+                    SELECT id FROM appointments
+                    WHERE creation_batch_id = ? AND patient_id = ? AND type = ? AND id != ?
+                    AND status = ? AND (assigned_lab_id IS NULL OR assigned_lab_id = \'\')
+                ');
+                $sibStmt->execute([$batchId, $patientId, 'blood_test', $id, 'pending']);
+                while ($sib = $sibStmt->fetch(PDO::FETCH_ASSOC)) {
+                    $sibId = (string) $sib['id'];
+                    $updSib = $this->db->prepare('
+                        UPDATE appointments SET status = ?, assigned_lab_id = ?, updated_at = NOW()
+                        WHERE id = ? AND status = ? AND (assigned_lab_id IS NULL OR assigned_lab_id = \'\')
+                    ');
+                    $updSib->execute(['confirmed', $actorId, $sibId, 'pending']);
+                    if ($updSib->rowCount() > 0) {
+                        $batchSiblingIdsConfirmed[] = $sibId;
+                        $delSibOffers = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ?');
+                        $delSibOffers->execute([$sibId]);
+                        $histSibId = $this->generateUUID();
+                        $stmtHist = $this->db->prepare('
+                            INSERT INTO appointment_status_updates 
+                            (id, appointment_id, status, actor_id, actor_role, note, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, NOW())
+                        ');
+                        $stmtHist->execute([
+                            $histSibId,
+                            $sibId,
+                            'confirmed',
+                            $actorId,
+                            $actorRole,
+                            'Confirmation lot multisoins (même prise en charge — prise de sang)',
+                        ]);
+                        $this->logger->log(
+                            $actorId,
+                            $actorRole,
+                            'update',
+                            'appointment',
+                            $sibId,
+                            [
+                                'old_status' => 'pending',
+                                'new_status' => 'confirmed',
+                                'assigned' => true,
+                                'batch_multisoins' => true,
+                            ]
+                        );
+                    }
+                }
+            }
+        }
+
+        if ($atomicPreleveurConfirm && $mainUpdateAffected > 0) {
+            $batchId = $appointment['creation_batch_id'] ?? null;
+            $patientId = $appointment['patient_id'] ?? null;
+            if (!empty($batchId) && !empty($patientId) && !empty($preleveurLabId)) {
+                $sibStmt = $this->db->prepare('
+                    SELECT id FROM appointments
+                    WHERE creation_batch_id = ? AND patient_id = ? AND type = ? AND id != ?
+                    AND status = ?
+                    AND (assigned_to IS NULL OR assigned_to = \'\')
+                    AND (assigned_lab_id IS NULL OR assigned_lab_id = ? OR assigned_lab_id = \'\')
+                ');
+                $sibStmt->execute([$batchId, $patientId, 'blood_test', $id, 'pending', $preleveurLabId]);
+                while ($sib = $sibStmt->fetch(PDO::FETCH_ASSOC)) {
+                    $sibId = (string) $sib['id'];
+                    $updSib = $this->db->prepare('
+                        UPDATE appointments SET status = ?, assigned_lab_id = ?, assigned_to = ?, assigned_nurse_id = NULL, updated_at = NOW()
+                        WHERE id = ? AND status = ?
+                        AND (assigned_to IS NULL OR assigned_to = \'\')
+                        AND (assigned_lab_id IS NULL OR assigned_lab_id = ? OR assigned_lab_id = \'\')
+                    ');
+                    $updSib->execute(['confirmed', $preleveurLabId, $actorId, $sibId, 'pending', $preleveurLabId]);
+                    if ($updSib->rowCount() > 0) {
+                        $batchSiblingIdsConfirmed[] = $sibId;
+                        $delSibOffers = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ?');
+                        $delSibOffers->execute([$sibId]);
+                        $histSibId = $this->generateUUID();
+                        $stmtHist = $this->db->prepare('
+                            INSERT INTO appointment_status_updates 
+                            (id, appointment_id, status, actor_id, actor_role, note, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, NOW())
+                        ');
+                        $stmtHist->execute([
+                            $histSibId,
+                            $sibId,
+                            'confirmed',
+                            $actorId,
+                            $actorRole,
+                            'Confirmation lot multisoins (même prise en charge — préleveur)',
                         ]);
                         $this->logger->log(
                             $actorId,
@@ -1510,6 +1733,7 @@ class Appointment
             SELECT a.patient_id, a.type, a.assigned_to, a.assigned_nurse_id, a.assigned_lab_id,
                    a.scheduled_at, a.address_encrypted, a.address_dek, a.category_id,
                    a.created_by, a.created_by_role, a.creation_batch_id,
+                   a.cancellation_reason, a.cancellation_comment, a.cancellation_photo_document_id,
                    c.name as category_name
             FROM appointments a
             LEFT JOIN care_categories c ON a.category_id = c.id
@@ -1590,6 +1814,35 @@ class Appointment
                             is_string($createdByRole) ? $createdByRole : null,
                             $actorId,
                             $address
+                        );
+                        break;
+                    }
+                }
+
+                // Lot multisoins (blood_test) : une seule notification cloche par rôle
+                if (
+                    ($appointment['type'] ?? '') === 'blood_test'
+                    && !empty($creationBatchId)
+                    && !empty($patientId)
+                    && Validation::uuid((string) $creationBatchId)
+                    && $actorId
+                    && in_array($actorRole, ['lab', 'subaccount', 'preleveur'], true)
+                ) {
+                    $batchRowsBt = $this->fetchBloodTestBatchRowsForStatusNotification((string) $creationBatchId, (string) $patientId);
+                    if (count($batchRowsBt) > 1) {
+                        $this->notificationService->notifyBloodTestBatchConfirmed(
+                            $appointmentId,
+                            (string) $creationBatchId,
+                            (string) $patientId,
+                            $batchRowsBt,
+                            $patientEmail,
+                            $patientPhone,
+                            $patientFirstName,
+                            $patientLastName,
+                            $appointment['assigned_lab_id'] ?? null,
+                            $createdBy !== null ? (string) $createdBy : null,
+                            is_string($createdByRole) ? $createdByRole : null,
+                            $actorId
                         );
                         break;
                     }
@@ -1710,10 +1963,16 @@ class Appointment
                         'assigned_nurse_id' => $appointment['assigned_nurse_id'],
                         'assigned_lab_id' => $appointment['assigned_lab_id'] ?? null,
                         'assigned_to' => $appointment['assigned_to'] ?? null,
+                        'created_by' => $appointment['created_by'] ?? null,
+                        'created_by_role' => $appointment['created_by_role'] ?? null,
+                        'cancellation_reason' => $appointment['cancellation_reason'] ?? null,
+                        'cancellation_comment' => $appointment['cancellation_comment'] ?? null,
+                        'cancellation_photo_document_id' => $appointment['cancellation_photo_document_id'] ?? null,
                         'actor_display_label' => $actorDisplayLabel,
                     ],
                     $canceledBy,
-                    $actorDisplayLabel
+                    $actorDisplayLabel,
+                    $actorId
                 );
                 break;
 
@@ -1848,6 +2107,83 @@ class Appointment
         } catch (Throwable $e) {
             error_log('notifyActorAppointmentRedispatched: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Relance dispatchGeographic pour un RDV nursing (coordonnées et form_data en base).
+     * @param string|null $creationBatchId Passer null pour utiliser creation_batch_id du RDV.
+     */
+    public function dispatchGeographicForNursingFromStoredLocation(
+        string $appointmentId,
+        ?string $excludeProfileId = null,
+        ?string $creationBatchId = null
+    ): void {
+        $stmt = $this->db->prepare(
+            'SELECT type, location_lat, location_lng, scheduled_at, form_data_encrypted, form_data_dek, creation_batch_id
+             FROM appointments WHERE id = ?'
+        );
+        $stmt->execute([$appointmentId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row || ($row['type'] ?? '') !== 'nursing') {
+            throw new Exception('Rendez-vous soins introuvable ou type invalide');
+        }
+        $lat = $row['location_lat'] ?? null;
+        $lng = $row['location_lng'] ?? null;
+        if ($lat === null || $lng === null || $lat === '' || $lng === '') {
+            throw new Exception('Coordonnées du rendez-vous manquantes pour le dispatch');
+        }
+        $formDataForDispatch = [];
+        if (!empty($row['form_data_encrypted']) && !empty($row['form_data_dek'])) {
+            try {
+                $formDataJson = $this->crypto->decryptField(
+                    $row['form_data_encrypted'],
+                    $row['form_data_dek']
+                );
+                $formDataForDispatch = json_decode($formDataJson, true) ?? [];
+            } catch (Throwable $e) {
+                $formDataForDispatch = [];
+            }
+        }
+        $batchId = $creationBatchId ?? ($row['creation_batch_id'] ?? null);
+        $this->dispatchGeographic(
+            $appointmentId,
+            'nursing',
+            (float) $lat,
+            (float) $lng,
+            $row['scheduled_at'] ?? null,
+            $formDataForDispatch,
+            $excludeProfileId,
+            is_string($batchId) && $batchId !== '' ? $batchId : null
+        );
+    }
+
+    /**
+     * Après délai partage lien : notifie la zone comme à la création, puis retire le marqueur nurse_share_released_at.
+     */
+    public function redispatchNursingShareReleasedToZone(string $appointmentId, string $historyActorId): void
+    {
+        $this->dispatchGeographicForNursingFromStoredLocation($appointmentId, null, null);
+        $upd = $this->db->prepare(
+            "UPDATE appointments SET nurse_share_released_at = NULL, updated_at = NOW()
+             WHERE id = ? AND type = 'nursing' AND status = 'pending'
+             AND (assigned_nurse_id IS NULL OR assigned_nurse_id = '' OR TRIM(assigned_nurse_id) = '')
+             AND nurse_share_released_at IS NOT NULL"
+        );
+        $upd->execute([$appointmentId]);
+        if ($upd->rowCount() === 0) {
+            return;
+        }
+        $histId = $this->generateUUID();
+        $note = 'Diffusion zone relancée (délai après partage lien confrère)';
+        $stmtHist = $this->db->prepare('
+            INSERT INTO appointment_status_updates 
+            (id, appointment_id, status, actor_id, actor_role, note, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
+        ');
+        $stmtHist->execute([$histId, $appointmentId, 'pending', $historyActorId, 'super_admin', $note]);
+        $this->logger->log($historyActorId, 'super_admin', 'update', 'appointment', $appointmentId, [
+            'action' => 'nurse_share_redispatch_zone',
+        ]);
     }
 
     /**

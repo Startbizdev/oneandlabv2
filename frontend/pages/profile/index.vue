@@ -656,6 +656,10 @@
                 @download="(id, fileName) => downloadDocument(id, fileName)"
                 @update:error="documentError = $event"
               />
+              <PatientAppointmentHistorySection
+                v-if="showPatientProfileHistory"
+                :patient-id="effectiveUserId"
+              />
               <div class="pt-2 w-full flex-shrink-0">
                 <UButton
                   size="xl"
@@ -737,6 +741,11 @@
                 </div>
               </div>
             </UCard>
+
+            <PatientAppointmentHistorySection
+              v-if="showPatientProfileHistory"
+              :patient-id="effectiveUserId"
+            />
 
             <!-- Photo (+ couverture pour nurse/subaccount ; préleveur : photo uniquement) -->
             <UCard v-if="hasProfilePhotoCard" class="overflow-hidden">
@@ -1102,9 +1111,15 @@ const isProEditingPatient = computed(
     !!editingUserId.value &&
     role.value === 'patient'
 )
+const showPatientProfileHistory = computed(
+  () =>
+    !!editingUserId.value &&
+    role.value === 'patient' &&
+    ['super_admin', 'pro', 'nurse', 'lab', 'subaccount'].includes(user.value?.role ?? '')
+)
 /** Historique RDV : visible uniquement quand l'admin consulte le profil d'un utilisateur (pas pour nurse/lab/etc sur leur propre profil) */
 const hasAppointmentsSection = computed(
-  () => isAdmin.value && !!editingUserId.value
+  () => isAdmin.value && !!editingUserId.value && role.value !== 'patient'
 )
 const profileAppointments = ref<any[]>([])
 const loadingAppointments = ref(false)

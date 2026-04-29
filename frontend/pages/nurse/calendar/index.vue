@@ -11,7 +11,17 @@
         <UIcon name="i-lucide-layout-grid" class="w-4 h-4 text-primary-500" />
         Affichage
       </p>
-      <div class="grid grid-cols-2 gap-2 rounded-xl border border-gray-200/90 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/50 p-1">
+      <div
+        class="grid grid-cols-2 gap-2 rounded-xl border border-gray-200/90 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/50 p-1 relative"
+        :class="calendarLoading ? 'opacity-70' : ''"
+      >
+        <div
+          v-if="calendarLoading"
+          class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/50 dark:bg-gray-900/40 pointer-events-none"
+          aria-hidden="true"
+        >
+          <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-primary-600 dark:text-primary-400" />
+        </div>
         <button
           v-for="t in nurseTabOptions"
           :key="t.value"
@@ -24,6 +34,7 @@
           "
           :aria-pressed="nurseListTab === t.value"
           :aria-label="`Afficher : ${t.label}`"
+          :disabled="calendarLoading"
           @click="nurseListTab = t.value"
         >
           <UIcon :name="t.icon" class="w-4 h-4 shrink-0 opacity-90" />
@@ -33,6 +44,7 @@
     </div>
 
     <CalendarPage
+      ref="calendarPageRef"
       base-path="/nurse"
       :show-new-appointment-button="false"
       :nurse-tab="nurseListTab"
@@ -56,4 +68,10 @@ const nurseTabOptions = [
   { label: 'Bilans sanguins', value: 'demandes' as const, icon: 'i-lucide-droplet' },
 ];
 const nurseListTab = ref<'soins' | 'demandes'>('soins');
+
+const calendarPageRef = ref<{ loading?: Ref<boolean> } | null>(null);
+const calendarLoading = computed(() => {
+  const l = calendarPageRef.value?.loading;
+  return l ? unref(l) : false;
+});
 </script>

@@ -12,7 +12,8 @@
       variant="outline"
       size="sm"
       icon="i-lucide-calendar"
-      :to="`${basePath}/calendar`"
+      :loading="calendarNavLoading"
+      @click="goToCalendar"
     >
       Calendrier
     </UButton>
@@ -77,7 +78,23 @@ interface Props {
   isLab?: boolean;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   isLab: false,
 });
+
+const route = useRoute();
+const calendarNavLoading = ref(false);
+
+async function goToCalendar() {
+  const path = `${props.basePath.replace(/\/$/, '')}/calendar`;
+  const cur = route.path.replace(/\/$/, '') || '/';
+  const target = path.replace(/\/$/, '') || '/';
+  if (cur === target) return;
+  calendarNavLoading.value = true;
+  try {
+    await navigateTo(path);
+  } finally {
+    calendarNavLoading.value = false;
+  }
+}
 </script>

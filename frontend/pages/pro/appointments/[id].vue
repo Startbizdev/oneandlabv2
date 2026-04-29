@@ -25,6 +25,33 @@
     <template #careGallery="{ appointment }">
       <CarePhotoGallerySection v-if="appointment" :appointment="appointment" role="pro" />
     </template>
+    <template #mainExtra="{ appointment }">
+      <UCard
+        v-if="appointment && appointment.status === 'completed' && patientReview"
+        id="pro-patient-review-section"
+        class="scroll-mt-24"
+      >
+        <template #header>
+          <h2 class="text-lg font-normal flex items-center gap-2">
+            <UIcon name="i-lucide-star" class="w-5 h-5 text-amber-500" />
+            Avis patient
+          </h2>
+        </template>
+        <div class="space-y-3">
+          <div class="flex gap-0.5">
+            <UIcon
+              v-for="i in 5"
+              :key="i"
+              :name="i <= (patientReview.rating || 0) ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+              class="w-5 h-5 text-amber-400"
+            />
+          </div>
+          <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+            {{ patientReview.comment || 'Pas de commentaire' }}
+          </p>
+        </div>
+      </UCard>
+    </template>
     <template #sidebarActions="{ appointment, loadAppointment }">
       <div class="flex flex-col gap-3">
         <UEmpty
@@ -91,12 +118,43 @@ definePageMeta({
   role: 'pro',
 });
 
+import { nextTick, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 
 const route = useRoute();
 const toast = useAppToast();
+const patientReview = ref<Record<string, unknown> | null>(null);
+
+async function loadPatientReviewForRoute() {
+  const id = route.params?.id;
+  if (typeof id !== 'string' || !id) {
+    patientReview.value = null;
+    return;
+  }
+  try {
+    const res = await apiFetch(`/reviews?appointment_id=${encodeURIComponent(id)}`, { method: 'GET' });
+    patientReview.value = res?.success && Array.isArray(res.data) && res.data.length > 0 ? res.data[0] : null;
+  } catch {
+    patientReview.value = null;
+  }
+}
+
+watch(
+  () => [route.params.id, route.query.review] as const,
+  async () => {
+    await loadPatientReviewForRoute();
+    const r = route.query.review;
+    const highlight = r === '1' || r === 1;
+    if (highlight && patientReview.value) {
+      nextTick(() => {
+        document.getElementById('pro-patient-review-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+  },
+  { immediate: true },
+);
 const config = useRuntimeConfig();
 const downloadingDocId = ref<string | null>(null);
 const downloadingDocIds = computed(() => (downloadingDocId.value ? [downloadingDocId.value] : []));
@@ -107,7 +165,7 @@ function getDocumentTypeLabel(type: string) {
     carte_mutuelle: 'Carte Mutuelle',
     ordonnance: 'Ordonnance',
     resultats: 'Résultats',
-    autres_assurances: 'Autres Assurances',
+    autres_assurances: 'Autre prescription',
     other: 'Autre',
   };
   return labels[type] || type;
@@ -148,7 +206,7 @@ const uploadDocumentTypes = [
   { value: 'carte_mutuelle', label: 'Carte Mutuelle', icon: 'i-lucide-shield', color: 'blue' },
   { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', color: 'orange' },
   { value: 'resultats', label: 'Résultats', icon: 'i-lucide-file-check', color: 'emerald' },
-  { value: 'autres_assurances', label: 'Autres assurances', icon: 'i-lucide-briefcase', color: 'purple' },
+  { value: 'autres_assurances', label: 'Autre prescription', icon: 'i-lucide-file-text', color: 'purple' },
   { value: 'other', label: 'Autre document', icon: 'i-lucide-file', color: 'gray' },
 ];
 

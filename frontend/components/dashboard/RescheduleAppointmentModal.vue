@@ -1,200 +1,263 @@
 <template>
-  <UModal v-model:open="isOpen" :ui="{ content: 'max-w-lg w-[95vw] max-h-[90dvh] flex flex-col overflow-hidden' }">
-    <template #content>
-      <div class="overflow-y-auto min-h-0 flex-1 max-h-[85dvh] overscroll-contain">
-        <UCard class="w-full border-0">
-        <template #header>
-          <div class="flex items-center justify-between gap-2">
-            <h2 class="text-base sm:text-lg font-normal truncate">
-              Reprendre rendez-vous pour {{ patientDisplayNameForTitle }}
-            </h2>
-            <UButton
-              v-if="step === 'form'"
-              variant="ghost"
-              color="gray"
-              size="xs"
-              icon="i-lucide-arrow-left"
-              :on-click="() => step = 'choice'"
-            >
-              Retour
-            </UButton>
-          </div>
-        </template>
-
-        <!-- Étape 1 : Choix -->
-        <div v-if="step === 'choice'" class="space-y-3">
-          <p class="text-sm text-gray-600 dark:text-gray-400">
-            Choisissez comment reprendre ce rendez-vous, puis cliquez sur Suivant.
-          </p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  <Teleport to="body">
+    <div
+      v-if="isOpen"
+      class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      role="presentation"
+    >
+      <div
+        class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm motion-safe:transition-opacity"
+        aria-hidden="true"
+        @click="close"
+      />
+      <div
+        ref="dialogPanelRef"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="titleId"
+        class="relative flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-2xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-700/80 dark:bg-slate-900 sm:rounded-2xl sm:max-h-[90dvh]"
+        tabindex="-1"
+        @keydown.escape.prevent="close"
+      >
+        <div class="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:px-5 sm:py-4">
+          <h2 :id="titleId" class="min-w-0 text-base font-semibold tracking-tight text-slate-900 dark:text-white sm:text-lg">
+            Reprendre rendez-vous pour
+            <span class="text-primary-600 dark:text-primary-400">{{ patientDisplayNameForTitle }}</span>
+          </h2>
+          <div class="flex shrink-0 items-center gap-1">
             <button
+              v-if="step === 'form'"
               type="button"
-              class="p-3 rounded-lg border-2 transition-all text-left"
-              :class="choiceMode === 'cancel_and_new'
-                ? 'border-primary-500 dark:border-primary-400 bg-primary-50/50 dark:bg-primary-950/30 ring-2 ring-primary-200 dark:ring-primary-800'
-                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
-              @click="choiceMode = 'cancel_and_new'"
+              class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-slate-300 dark:hover:bg-slate-800"
+              @click="step = 'choice'"
             >
-              <UIcon name="i-lucide-rotate-ccw" class="w-6 h-6 text-primary-500 dark:text-primary-400 mb-1.5" />
-              <h3 class="text-sm font-medium text-gray-900 dark:text-white">Remplacer le RDV</h3>
-              <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Annuler l'ancien, créer le nouveau.</p>
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Retour
             </button>
             <button
               type="button"
-              class="p-3 rounded-lg border-2 transition-all text-left"
-              :class="choiceMode === 'create_only'
-                ? 'border-primary-500 dark:border-primary-400 bg-primary-50/50 dark:bg-primary-950/30 ring-2 ring-primary-200 dark:ring-primary-800'
-                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
-              @click="choiceMode = 'create_only'"
+              class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              aria-label="Fermer"
+              @click="close"
             >
-              <UIcon name="i-lucide-calendar-plus" class="w-6 h-6 text-primary-500 dark:text-primary-400 mb-1.5" />
-              <h3 class="text-sm font-medium text-gray-900 dark:text-white">Créer un nouveau RDV</h3>
-              <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">L'ancien reste inchangé.</p>
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
         </div>
 
-        <!-- Étape 2 : Formulaire -->
-        <form v-else-if="step === 'form'" class="space-y-3" @submit.prevent="submit">
-          <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 py-1">
-            <UIcon name="i-lucide-user" class="w-4 h-4 shrink-0 text-gray-500" />
-            <span>{{ patientDisplayName }}</span>
-            <span v-if="patientPhone" class="text-gray-500">· {{ patientPhone }}</span>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <UFormField label="Type de soin" name="category_id" required class="min-w-0">
-              <template #default>
-                <div class="min-h-10 flex items-stretch">
-                  <USelectMenu
-                    v-model="form.category_id"
-                    :items="categoryOptions"
-                    value-key="value"
-                    placeholder="Sélectionner..."
-                    size="md"
-                    class="w-full min-h-10 [&_button]:min-h-10"
-                  />
-                </div>
-              </template>
-            </UFormField>
-            <UFormField label="Date" name="scheduled_at" required class="min-w-0">
-              <template #default>
-                <div class="min-h-10 flex items-stretch">
-                  <DatePicker
-                    v-model="form.scheduled_at"
-                    class="w-full [&_button]:min-h-10"
-                    :appointment-type="appointment?.type === 'blood_test' ? 'lab' : 'nurse'"
-                  />
-                </div>
-              </template>
-            </UFormField>
-          </div>
-
-          <UFormField label="Adresse" name="address" required class="w-full">
-            <template #default>
-              <div class="min-h-10 flex items-stretch w-full">
-                <AddressSelector
-                  v-model="form.address"
-                  label=""
-                  :show-complement="true"
-                  :complement-value="form.address_complement"
-                  @update:complement="form.address_complement = $event"
-                  class="w-full"
-                />
-              </div>
-            </template>
-          </UFormField>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-medium text-gray-700 dark:text-gray-200">Créneau</label>
-            <div class="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 p-1 rounded-md">
+        <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5">
+          <div v-if="step === 'choice'" class="space-y-4">
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+              Choisissez comment reprendre ce rendez-vous, puis continuez.
+            </p>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 type="button"
-                class="px-2.5 py-1 text-xs font-medium rounded transition-all"
-                :class="form.availability_type === 'custom' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-white' : 'text-gray-500'"
-                @click="form.availability_type = 'custom'"
+                class="rounded-xl border-2 p-4 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                :class="choiceMode === 'cancel_and_new'
+                  ? 'border-primary-500 bg-primary-50/80 ring-2 ring-primary-200 dark:border-primary-400 dark:bg-primary-950/40 dark:ring-primary-900'
+                  : 'border-slate-200 hover:border-slate-300 dark:border-slate-600 dark:hover:border-slate-500'"
+                @click="choiceMode = 'cancel_and_new'"
               >
-                Précis
+                <svg class="mb-2 h-7 w-7 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Remplacer le RDV</h3>
+                <p class="mt-1 text-xs leading-snug text-slate-600 dark:text-slate-400">Annuler l'ancien, créer le nouveau.</p>
               </button>
               <button
                 type="button"
-                class="px-2.5 py-1 text-xs font-medium rounded transition-all"
-                :class="form.availability_type === 'all_day' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-white' : 'text-gray-500'"
-                @click="form.availability_type = 'all_day'"
+                class="rounded-xl border-2 p-4 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                :class="choiceMode === 'create_only'
+                  ? 'border-primary-500 bg-primary-50/80 ring-2 ring-primary-200 dark:border-primary-400 dark:bg-primary-950/40 dark:ring-primary-900'
+                  : 'border-slate-200 hover:border-slate-300 dark:border-slate-600 dark:hover:border-slate-500'"
+                @click="choiceMode = 'create_only'"
               >
-                Journée
+                <svg class="mb-2 h-7 w-7 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Créer un nouveau RDV</h3>
+                <p class="mt-1 text-xs leading-snug text-slate-600 dark:text-slate-400">L'ancien reste inchangé.</p>
               </button>
-            </div>
-            <div v-if="form.availability_type === 'custom'" class="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-md">
-              <div class="flex justify-between items-center mb-1">
-                <span class="text-[10px] text-gray-400">Heure</span>
-                <span class="text-sm font-mono text-primary-600">{{ formatTime(availabilityRange[0]) }} - {{ formatTime(availabilityRange[1]) }}</span>
-              </div>
-              <USlider v-model="availabilityRange" :min="6" :max="17" :step="1" color="primary" />
-              <div class="flex justify-between text-[10px] text-gray-400 font-mono">
-                <span>06h</span>
-                <span>17h</span>
-              </div>
-            </div>
-            <div v-else class="bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800 p-2 rounded-md flex items-center gap-2">
-              <UIcon name="i-lucide-sun" class="w-4 h-4 text-green-600 shrink-0" />
-              <p class="text-xs text-green-800 dark:text-green-300">Toute la journée</p>
             </div>
           </div>
 
-          <UFormField label="Note interne" name="notes">
-            <template #default>
-              <div class="min-h-10 flex items-stretch">
-                <UTextarea
-                  v-model="form.notes"
-                  placeholder="Note interne (optionnel)"
-                  :rows="1"
-                  class="w-full text-sm min-h-10 resize-none"
+          <form v-else-if="step === 'form'" class="space-y-4" @submit.prevent="submit">
+            <div class="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800/80 dark:text-slate-200">
+              <svg class="h-4 w-4 shrink-0 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span class="font-medium">{{ patientDisplayName }}</span>
+              <span v-if="patientPhone" class="text-slate-500 dark:text-slate-400">· {{ patientPhone }}</span>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="min-w-0 space-y-1.5">
+                <label :for="catSelectId" class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Type de soin</label>
+                <select
+                  :id="catSelectId"
+                  v-model="form.category_id"
+                  required
+                  class="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="" disabled>Sélectionner…</option>
+                  <option v-for="opt in categoryOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                </select>
+              </div>
+              <div class="min-w-0 space-y-1.5">
+                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Date</span>
+                <DatePicker
+                  v-model="form.scheduled_at"
+                  class="w-full [&_button]:h-11 [&_button]:min-h-[2.75rem]"
+                  :appointment-type="appointment?.type === 'blood_test' ? 'lab' : 'nurse'"
+                  popover-content-class="z-[1000]"
                 />
               </div>
-            </template>
-          </UFormField>
-        </form>
+            </div>
 
-        <template #footer>
-          <div class="flex justify-end gap-2 w-full">
+            <div class="space-y-1.5">
+              <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Adresse</span>
+              <AddressSelector
+                v-model="form.address"
+                label=""
+                :show-complement="true"
+                :complement-value="form.address_complement"
+                class="w-full"
+                @update:complement="form.address_complement = $event"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Créneau</span>
+              <div class="flex rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  :class="form.availability_type === 'custom' ? 'bg-white text-slate-900 shadow dark:bg-slate-700 dark:text-white' : 'text-slate-500 dark:text-slate-400'"
+                  @click="form.availability_type = 'custom'"
+                >
+                  Précis
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  :class="form.availability_type === 'all_day' ? 'bg-white text-slate-900 shadow dark:bg-slate-700 dark:text-white' : 'text-slate-500 dark:text-slate-400'"
+                  @click="form.availability_type = 'all_day'"
+                >
+                  Journée
+                </button>
+              </div>
+              <div v-if="form.availability_type === 'custom'" class="space-y-2 rounded-lg border border-slate-100 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                  <span>Heure de début – fin</span>
+                  <span class="font-mono text-sm font-semibold text-primary-600 dark:text-primary-400">{{ formatTime(availabilityRange[0]) }} – {{ formatTime(availabilityRange[1]) }}</span>
+                </div>
+                <div class="px-1 py-2">
+                  <USlider
+                    v-model="availabilityRange"
+                    :min="6"
+                    :max="17"
+                    :step="1"
+                    color="primary"
+                  />
+                  <div class="mt-2 flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                    <span>6h</span>
+                    <span>17h</span>
+                  </div>
+                  <p class="mt-3 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
+                    Créneau sélectionné : {{ formatTime(availabilityRange[0]) }} - {{ formatTime(availabilityRange[1]) }}
+                    <span class="text-slate-400">({{ availabilityRange[1] - availabilityRange[0] }}h)</span>
+                  </p>
+                </div>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400">Plage minimale : {{ availabilityMinHours }} h.</p>
+              </div>
+              <div
+                v-else
+                class="flex items-center gap-2 rounded-lg border border-primary-100 bg-primary-50/90 px-3 py-2 dark:border-primary-900/50 dark:bg-primary-950/30"
+              >
+                <svg class="h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <p class="text-xs font-medium text-primary-800 dark:text-primary-200">Disponibilité : toute la journée</p>
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <label :for="notesId" class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Note interne</label>
+              <textarea
+                :id="notesId"
+                v-model="form.notes"
+                rows="2"
+                placeholder="Optionnel"
+                class="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
+              />
+            </div>
+          </form>
+        </div>
+
+        <div class="shrink-0 border-t border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/80 sm:px-5">
+          <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <template v-if="step === 'choice'">
-              <UButton type="button" variant="outline" color="gray" size="md" :on-click="close">Annuler</UButton>
-              <UButton
+              <button
                 type="button"
-                color="primary"
-                size="md"
-                icon="i-lucide-arrow-right"
+                class="inline-flex h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                @click="close"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-slate-900"
                 :disabled="!choiceMode"
-                :on-click="goToForm"
+                @click="goToForm"
               >
                 Suivant
-              </UButton>
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </button>
             </template>
             <template v-else-if="step === 'form'">
-              <UButton type="button" variant="outline" color="gray" size="md" :on-click="close">Annuler</UButton>
-              <UButton
+              <button
                 type="button"
-                color="primary"
-                size="md"
-                :loading="saving"
-                icon="i-lucide-check"
-                :on-click="submit"
+                class="inline-flex h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                :disabled="saving"
+                @click="close"
               >
+                Annuler
+              </button>
+              <button
+                type="button"
+                class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 dark:focus-visible:ring-offset-slate-900"
+                :disabled="saving"
+                @click="submit"
+              >
+                <svg v-if="saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
                 {{ choiceMode === 'cancel_and_new' ? 'Annuler l\'ancien et créer' : 'Créer le RDV' }}
-              </UButton>
+              </button>
             </template>
           </div>
-        </template>
-      </UCard>
+        </div>
       </div>
-    </template>
-  </UModal>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api'
 import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot'
+
+const availabilityMinHours = AVAILABILITY_MIN_SPAN_HOURS
 
 const props = defineProps<{
   modelValue: boolean
@@ -213,22 +276,22 @@ const isOpen = computed({
   set: (v) => emit('update:modelValue', v),
 })
 
-// Log à chaque changement (modal ou patient) pour debug adresse / complément
-watch([() => props.modelValue, () => props.appointment], ([open, apt]) => {
-  console.log('[RescheduleModal] watch modelValue/appointment:', { open, hasAppointment: !!apt, id: apt?.id })
-  if (open && apt) {
-    console.log('[RescheduleModal] Ouverture modal — appointment reçu:', {
-      id: apt.id,
-      address: apt.address,
-      address_type: typeof apt.address,
-      location_lat: apt.location_lat,
-      location_lng: apt.location_lng,
-      form_data: apt.form_data,
-      form_data_address: apt.form_data?.address,
-      form_data_address_complement: apt.form_data?.address_complement,
-    })
-  }
-}, { immediate: true })
+const titleId = 'reschedule-appointment-modal-title'
+const catSelectId = 'reschedule-appointment-category'
+const notesId = 'reschedule-appointment-notes'
+
+const dialogPanelRef = ref<HTMLElement | null>(null)
+
+watch(
+  () => isOpen.value,
+  async (open) => {
+    if (!import.meta.client) return
+    if (open) {
+      await nextTick()
+      dialogPanelRef.value?.focus()
+    }
+  },
+)
 
 const toast = useAppToast()
 
@@ -237,6 +300,7 @@ const choiceMode = ref<'cancel_and_new' | 'create_only' | null>(null)
 const saving = ref(false)
 const categoryOptions = ref<{ label: string; value: string }[]>([])
 const availabilityRange = ref<[number, number]>([9, 11])
+const previousAvailabilityRange = ref<[number, number]>([9, 11])
 
 const form = reactive({
   category_id: '',
@@ -258,7 +322,6 @@ const patientDisplayName = computed(() => {
   return name
 })
 
-/** Prénom Nom pour le titre (ex. "Reprendre rendez-vous pour Jean Dupont") */
 const patientDisplayNameForTitle = computed(() => {
   const a = props.appointment
   if (!a) return ''
@@ -279,6 +342,51 @@ function formatTime(h: number) {
   return `${Math.floor(h)}h00`
 }
 
+function clampAvailabilityRange() {
+  let [a, b] = availabilityRange.value
+  a = Math.min(16, Math.max(6, Math.floor(Number(a) || 9)))
+  b = Math.min(17, Math.max(7, Math.floor(Number(b) || 11)))
+  if (b < a + AVAILABILITY_MIN_SPAN_HOURS) {
+    b = Math.min(17, a + AVAILABILITY_MIN_SPAN_HOURS)
+  }
+  if (b > 17) {
+    a = Math.max(6, b - AVAILABILITY_MIN_SPAN_HOURS)
+  }
+  availabilityRange.value = [a, b]
+  previousAvailabilityRange.value = [a, b]
+}
+
+watch(availabilityRange, (newVal) => {
+  if (form.availability_type !== 'custom') return
+  const start = Number(newVal[0])
+  const end = Number(newVal[1])
+  if (end - start < AVAILABILITY_MIN_SPAN_HOURS) {
+    const [prevStart, prevEnd] = previousAvailabilityRange.value
+    if (Math.abs(end - prevEnd) > Math.abs(start - prevStart)) {
+      availabilityRange.value = [Math.max(6, end - AVAILABILITY_MIN_SPAN_HOURS), end]
+    } else {
+      availabilityRange.value = [start, Math.min(17, start + AVAILABILITY_MIN_SPAN_HOURS)]
+    }
+    return
+  }
+  previousAvailabilityRange.value = [start, end]
+}, { deep: true })
+
+function parisDateYmd(value: Date = new Date()) {
+  return value.toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' })
+}
+
+function normalizeRescheduleDate(dateValue: string | null | undefined) {
+  const todayParis = parisDateYmd()
+  if (!dateValue) return todayParis
+  const raw = String(dateValue).trim()
+  const originalYmd = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+    ? raw
+    : parisDateYmd(new Date(raw))
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(originalYmd)) return todayParis
+  return originalYmd < todayParis ? todayParis : originalYmd
+}
+
 function goToForm() {
   if (!choiceMode.value) return
   initFormFromAppointment()
@@ -289,20 +397,9 @@ function goToForm() {
 function initFormFromAppointment() {
   const a = props.appointment
   if (!a) return
-  // Log brut pour debug adresse / complément
-  console.log('[RescheduleModal] appointment brut:', {
-    address: a.address,
-    address_type: typeof a.address,
-    location_lat: a.location_lat,
-    location_lng: a.location_lng,
-    form_data: a.form_data,
-    form_data_address: a.form_data?.address,
-    form_data_address_complement: a.form_data?.address_complement,
-  })
   form.category_id = a.form_data?.category_id || a.category_id || ''
   form.notes = a.form_data?.notes || ''
-  form.scheduled_at = a.scheduled_at ? a.scheduled_at.slice(0, 10) : ''
-  // Backend retourne address = string (label) et location_lat / location_lng séparés
+  form.scheduled_at = normalizeRescheduleDate(a.scheduled_at)
   const rawAddr = a.address
   const lat = a.location_lat != null ? Number(a.location_lat) : 0
   const lng = a.location_lng != null ? Number(a.location_lng) : 0
@@ -322,10 +419,6 @@ function initFormFromAppointment() {
     form.address = null
   }
   form.address_complement = a.form_data?.address_complement || ''
-  console.log('[RescheduleModal] après init form:', {
-    form_address: form.address,
-    form_address_complement: form.address_complement,
-  })
   form.availability_type = 'custom'
   availabilityRange.value = [9, 11]
   if (a.form_data?.availability) {
@@ -333,12 +426,15 @@ function initFormFromAppointment() {
       const av = JSON.parse(a.form_data.availability)
       if (av.type === 'all_day') form.availability_type = 'all_day'
       else if (av.range?.length === 2) availabilityRange.value = [av.range[0], av.range[1]]
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   } else if (a.scheduled_at) {
     const h = new Date(a.scheduled_at).getHours()
     const start = Math.max(6, Math.min(15, h))
     availabilityRange.value = [start, start + AVAILABILITY_MIN_SPAN_HOURS]
   }
+  clampAvailabilityRange()
 }
 
 async function loadCategories() {
@@ -362,8 +458,7 @@ function buildPayload() {
   const a = props.appointment
   if (!a) return null
   const hour = form.availability_type === 'custom' ? Math.floor(availabilityRange.value[0]) : 9
-  const scheduledStr = form.scheduled_at ? `${form.scheduled_at} ${String(hour).padStart(2, '0')}:00:00` : ''
-  const scheduledAtIso = scheduledStr ? new Date(scheduledStr).toISOString() : undefined
+  const scheduledAt = form.scheduled_at ? `${form.scheduled_at} ${String(hour).padStart(2, '0')}:00:00` : undefined
   const availabilityPayload =
     form.availability_type === 'custom'
       ? JSON.stringify({ type: 'custom', range: [availabilityRange.value[0], availabilityRange.value[1]] })
@@ -374,7 +469,7 @@ function buildPayload() {
       ? { ...form.address, complement: form.address_complement || undefined }
       : undefined
 
-  if (!addressPayload || !scheduledAtIso) return null
+  if (!addressPayload || !scheduledAt) return null
 
   const formData: Record<string, unknown> = {
     ...(a.form_data || {}),
@@ -387,7 +482,7 @@ function buildPayload() {
   const payload: Record<string, unknown> = {
     type: a.type,
     form_type: a.type,
-    scheduled_at: scheduledAtIso,
+    scheduled_at: scheduledAt,
     address: addressPayload,
     form_data: formData,
     status: 'confirmed',
@@ -398,20 +493,23 @@ function buildPayload() {
   if (!payload.patient_id && (a.form_data?.email || a.relative?.email)) {
     payload.guest_email = a.form_data?.email || a.relative?.email
   }
-  // Assigner le nouveau RDV à l'utilisateur connecté qui reprend (préleveur, lab, sous-compte, infirmier)
   const uid = user.value?.id
   const role = user.value?.role
+  const labIdFromUser = (user.value as { lab_id?: string } | null)?.lab_id
+
   if (a.type === 'nursing' && uid && role === 'nurse') {
     payload.assigned_nurse_id = uid
   } else if (a.type === 'blood_test' && uid) {
     if (role === 'preleveur') {
       payload.assigned_to = uid
+      const labId = (labIdFromUser && String(labIdFromUser)) || (a.assigned_lab_id && String(a.assigned_lab_id)) || undefined
+      if (labId) payload.assigned_lab_id = labId
+      payload.reschedule_from_appointment_id = a.id
     } else if (role === 'lab') {
       payload.assigned_lab_id = uid
     } else if (role === 'subaccount') {
-      payload.assigned_lab_id = (user.value as any)?.lab_id || uid
+      payload.assigned_lab_id = (labIdFromUser && String(labIdFromUser)) || uid
     } else {
-      // fallback: réutiliser l'ancienne assignation si pas un de ces rôles
       if (a.assigned_lab_id) payload.assigned_lab_id = a.assigned_lab_id
       if (a.assigned_to) payload.assigned_to = a.assigned_to
     }
@@ -422,9 +520,13 @@ function buildPayload() {
 async function submit() {
   const a = props.appointment
   if (!a) return
+  if (step.value === 'form' && !form.category_id) {
+    toast.add({ title: 'Catégorie requise', description: 'Veuillez sélectionner un type de soin.', color: 'error' })
+    return
+  }
   const payload = buildPayload()
   if (!payload) {
-    toast.add({ title: 'Veuillez remplir la date et l\'adresse', color: 'error' })
+    toast.add({ title: 'Champs requis', description: 'Veuillez remplir la date et l\'adresse.', color: 'error' })
     return
   }
   saving.value = true
@@ -446,10 +548,11 @@ async function submit() {
       close()
       emit('done', newId)
     } else {
-      toast.add({ title: 'Erreur', description: (createRes as any)?.error || 'Impossible de créer le rendez-vous', color: 'error' })
+      toast.add({ title: 'Erreur', description: (createRes as { error?: string })?.error || 'Impossible de créer le rendez-vous', color: 'error' })
     }
-  } catch (e: any) {
-    toast.add({ title: 'Erreur', description: e?.message || 'Une erreur est survenue', color: 'error' })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Une erreur est survenue'
+    toast.add({ title: 'Erreur', description: msg, color: 'error' })
   } finally {
     saving.value = false
   }
@@ -458,10 +561,11 @@ async function submit() {
 function close() {
   isOpen.value = false
   step.value = 'choice'
+  choiceMode.value = null
 }
 
 watch(
-  () => [props.modelValue, props.appointment],
+  () => [props.modelValue, props.appointment] as const,
   () => {
     if (props.modelValue && props.appointment) {
       step.value = 'choice'

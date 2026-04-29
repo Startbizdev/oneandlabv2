@@ -5,6 +5,8 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../models/Appointment.php';
+require_once __DIR__ . '/../../lib/LabTeamAccess.php';
+require_once __DIR__ . '/../../lib/Validation.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 /** Logs verbeux : désactivés si APP_ENV=production (après chargement .env par config/database.php). */
@@ -245,11 +247,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $params[] = $userId;
                 $params[] = '%redispatch%';
             } elseif ($nurseTab === 'soins' && ($nurseSegment === '' || $nurseSegment === 'tous')) {
-                // Mes soins : assignés, offres entrantes, créations — sauf RDV remis en pool par vous (plus d’offre à vous)
+                // Mes rendez-vous : assignés à moi + mes créations/relais — pas les offres zone (segment en_attente / page Mes demandes)
                 $sql .= " AND (
                     (a.type = 'nursing' AND (
                         a.assigned_nurse_id = ?
-                        OR (a.assigned_nurse_id IS NULL AND a.status = 'pending' AND EXISTS (SELECT 1 FROM appointment_offers o WHERE o.appointment_id = a.id AND o.profile_id = ?))
                         OR (
                             a.created_by = ?
                             AND (a.assigned_nurse_id IS NULL OR a.assigned_nurse_id = ?)
@@ -265,7 +266,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     ))
                     OR (a.type = 'blood_test' AND a.created_by = ?)
                 )";
-                $params[] = $userId;
                 $params[] = $userId;
                 $params[] = $userId;
                 $params[] = $userId;
@@ -273,11 +273,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $params[] = '%redispatch%';
                 $params[] = $userId;
             } else {
-                // Défaut (aucun nurse_tab) : idem exclusion redispatch
+                // Défaut (aucun nurse_tab) : idem « Mes soins » / tous — sans offres entrantes zone
                 $sql .= " AND (
                     (a.type = 'nursing' AND (
                         a.assigned_nurse_id = ?
-                        OR (a.assigned_nurse_id IS NULL AND a.status = 'pending' AND EXISTS (SELECT 1 FROM appointment_offers o WHERE o.appointment_id = a.id AND o.profile_id = ?))
                         OR (
                             a.created_by = ?
                             AND (a.assigned_nurse_id IS NULL OR a.assigned_nurse_id = ?)
@@ -293,7 +292,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     ))
                     OR (a.type = 'blood_test' AND a.created_by = ?)
                 )";
-                $params[] = $userId;
                 $params[] = $userId;
                 $params[] = $userId;
                 $params[] = $userId;
@@ -340,11 +338,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     logAppointment('Aucune préférence de catégorie, tous les rendez-vous acceptés');
                 }
             }
-        } elseif ($role === 'lab') {
-            // Lab : RDV assignés à l'équipe OU RDV offerts (pending) à l'équipe — prises de sang uniquement
-            $teamStmt = $db->prepare("SELECT id FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
-            $teamStmt->execute([$userId, $userId]);
-            $teamIds = array_column($teamStmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+        } elseif ($role === 'lab' || $role === 'subaccount') {
+            // Lab / sous-compte : même périmètre d'équipe (le sous-compte voit les RDV assignés au lab parent)
+            $teamIds = LabTeamAccess::teamMemberIds($db, $userId, $role);
             if (empty($teamIds)) {
                 $teamIds = [$userId];
             }
@@ -352,7 +348,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $sql .= " AND a.type = 'blood_test' AND (a.assigned_lab_id IN ($placeholders) OR (a.assigned_lab_id IS NULL AND a.status = 'pending' AND EXISTS (SELECT 1 FROM appointment_offers o WHERE o.appointment_id = a.id AND o.profile_id IN ($placeholders))))";
             $params = array_merge($params, $teamIds, $teamIds);
 
-            // Filtres optionnels (UI lab : préleveur / sous-compte) — appliqués en SQL pour que total + pagination soient corrects.
             $fl = !empty($_GET['filter_assigned_lab_id']) ? trim((string) $_GET['filter_assigned_lab_id']) : '';
             if ($fl !== '' && in_array($fl, $teamIds, true)) {
                 $sql .= ' AND a.assigned_lab_id = ?';
@@ -360,18 +355,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
             $fa = !empty($_GET['filter_assigned_to']) ? trim((string) $_GET['filter_assigned_to']) : '';
             if ($fa !== '') {
-                $chkPrel = $db->prepare("SELECT 1 FROM profiles WHERE id = ? AND lab_id = ? AND role = 'preleveur' LIMIT 1");
-                $chkPrel->execute([$fa, $userId]);
+                $chkPrel = $db->prepare("SELECT 1 FROM profiles WHERE id = ? AND lab_id IN ($placeholders) AND role = 'preleveur' LIMIT 1");
+                $chkPrel->execute(array_merge([$fa], $teamIds));
                 if ($chkPrel->fetchColumn()) {
                     $sql .= ' AND a.assigned_to = ?';
                     $params[] = $fa;
                 }
             }
 
+            $labIdForPrefs = $userId;
+            if ($role === 'subaccount') {
+                $subLabStmt = $db->prepare('SELECT lab_id FROM profiles WHERE id = ? LIMIT 1');
+                $subLabStmt->execute([$userId]);
+                $subLabRow = $subLabStmt->fetch(PDO::FETCH_ASSOC);
+                if ($subLabRow && !empty($subLabRow['lab_id'])) {
+                    $labIdForPrefs = (string) $subLabRow['lab_id'];
+                }
+            }
+
             $labCatTable = $db->query("SHOW TABLES LIKE 'lab_category_preferences'");
             if ($labCatTable && $labCatTable->rowCount() > 0) {
                 $labCatStmt = $db->prepare('SELECT COUNT(*) FROM lab_category_preferences WHERE lab_id = ? AND is_enabled = TRUE');
-                $labCatStmt->execute([$userId]);
+                $labCatStmt->execute([$labIdForPrefs]);
                 $labCatCount = (int) $labCatStmt->fetchColumn();
                 if ($labCatCount > 0) {
                     $sql .= ' AND (
@@ -382,55 +387,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         )
                         OR a.assigned_lab_id IS NOT NULL
                     )';
-                    $params[] = $userId;
-                }
-            }
-        } elseif ($role === 'subaccount') {
-            $sql .= " AND a.type = 'blood_test' AND (a.assigned_lab_id = ? OR (a.assigned_lab_id IS NULL AND a.status = 'pending' AND EXISTS (SELECT 1 FROM appointment_offers o WHERE o.appointment_id = a.id AND o.profile_id = ?)))";
-            $params[] = $userId;
-            $params[] = $userId;
-
-            $labIdForSub = null;
-            $subLabStmt = $db->prepare('SELECT lab_id FROM profiles WHERE id = ? LIMIT 1');
-            $subLabStmt->execute([$userId]);
-            $subLabRow = $subLabStmt->fetch(PDO::FETCH_ASSOC);
-            if ($subLabRow && !empty($subLabRow['lab_id'])) {
-                $labIdForSub = (string) $subLabRow['lab_id'];
-            }
-            $faSub = !empty($_GET['filter_assigned_to']) ? trim((string) $_GET['filter_assigned_to']) : '';
-            if ($faSub !== '' && $labIdForSub) {
-                $chkPrelSub = $db->prepare("SELECT 1 FROM profiles WHERE id = ? AND lab_id = ? AND role = 'preleveur' LIMIT 1");
-                $chkPrelSub->execute([$faSub, $labIdForSub]);
-                if ($chkPrelSub->fetchColumn()) {
-                    $sql .= ' AND a.assigned_to = ?';
-                    $params[] = $faSub;
-                }
-            }
-
-            $labCatTableSub = $db->query("SHOW TABLES LIKE 'lab_category_preferences'");
-            if ($labCatTableSub && $labCatTableSub->rowCount() > 0) {
-                $labCatStmtSub = $db->prepare('SELECT COUNT(*) FROM lab_category_preferences WHERE lab_id = ? AND is_enabled = TRUE');
-                $labCatStmtSub->execute([$userId]);
-                $labCatCountSub = (int) $labCatStmtSub->fetchColumn();
-                if ($labCatCountSub > 0) {
-                    $sql .= ' AND (
-                        a.category_id IS NULL OR
-                        a.category_id IN (
-                            SELECT category_id FROM lab_category_preferences
-                            WHERE lab_id = ? AND is_enabled = TRUE
-                        )
-                        OR a.assigned_lab_id IS NOT NULL
-                    )';
-                    $params[] = $userId;
+                    $params[] = $labIdForPrefs;
                 }
             }
         } elseif ($role === 'preleveur') {
-            // Les préleveurs sont assignés via assigned_lab_id (ils appartiennent à un labo)
-            // Pour l'instant, on utilise assigned_to comme fallback pour compatibilité
-            // TODO: Migrer vers assigned_lab_id uniquement
-            $sql .= ' AND (a.assigned_lab_id = ? OR a.assigned_to = ?) AND a.type = "blood_test"';
-            $params[] = $userId;
-            $params[] = $userId;
+            $prelLabStmt = $db->prepare("SELECT lab_id FROM profiles WHERE id = ? AND role = 'preleveur' LIMIT 1");
+            $prelLabStmt->execute([$userId]);
+            $prelLabId = (string) ($prelLabStmt->fetch(PDO::FETCH_ASSOC)['lab_id'] ?? '');
+            if ($prelLabId !== '') {
+                $sql .= ' AND a.type = "blood_test" AND (
+                    a.assigned_to = ?
+                    OR (
+                        a.status = "pending"
+                        AND (a.assigned_to IS NULL OR a.assigned_to = "")
+                        AND a.assigned_lab_id = ?
+                    )
+                    OR (
+                        a.status = "pending"
+                        AND EXISTS (
+                            SELECT 1 FROM appointment_offers o
+                            WHERE o.appointment_id = a.id AND o.profile_id = ?
+                        )
+                    )
+                )';
+                $params[] = $userId;
+                $params[] = $prelLabId;
+                $params[] = $userId;
+            } else {
+                $sql .= ' AND a.assigned_to = ? AND a.type = "blood_test"';
+                $params[] = $userId;
+            }
         } elseif ($role === 'pro') {
             // Pro : RDV créés par ce professionnel OU patients liés via patient_professional_access (PPA)
             $sql .= ' AND (
@@ -651,8 +637,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ],
     ]);
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Création d'un rendez-vous — rôles explicitement autorisés (pas de création par préleveur, etc.)
-    $allowedCreateRoles = ['patient', 'pro', 'nurse', 'lab', 'subaccount', 'super_admin'];
+    // Création d'un rendez-vous — préleveur : uniquement reprise RDV prise de sang (blood_test + RDV source)
+    $allowedCreateRoles = ['patient', 'pro', 'nurse', 'lab', 'subaccount', 'super_admin', 'preleveur'];
     if (!in_array($user['role'], $allowedCreateRoles, true)) {
         http_response_code(403);
         echo json_encode([
@@ -694,16 +680,111 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (empty($input['category_id']) && !empty($input['form_data']['category_id'])) {
         $input['category_id'] = $input['form_data']['category_id'];
     }
+
+    if ($user['role'] === 'preleveur') {
+        $t = isset($input['type']) ? (string) $input['type'] : '';
+        $ft = isset($input['form_type']) ? (string) $input['form_type'] : '';
+        if ($t !== 'blood_test' || $ft !== 'blood_test') {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Les préleveurs ne peuvent créer que des rendez-vous de prise de sang.',
+                'code' => 'FORBIDDEN',
+            ]);
+            exit;
+        }
+        $fromId = isset($input['reschedule_from_appointment_id']) ? trim((string) $input['reschedule_from_appointment_id']) : '';
+        if ($fromId === '' || !Validation::uuid($fromId)) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Identifiant du rendez-vous source requis pour cette action.',
+                'code' => 'VALIDATION_ERROR',
+            ]);
+            exit;
+        }
+        $configPrel = require __DIR__ . '/../../config/database.php';
+        $dsnPrel = sprintf(
+            'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+            $configPrel['host'],
+            $configPrel['port'],
+            $configPrel['database'],
+            $configPrel['charset']
+        );
+        $dbPrel = new PDO($dsnPrel, $configPrel['username'], $configPrel['password'], $configPrel['options'] ?? []);
+        $stmtSrc = $dbPrel->prepare('SELECT type, assigned_lab_id, assigned_to, patient_id FROM appointments WHERE id = ? LIMIT 1');
+        $stmtSrc->execute([$fromId]);
+        $srcApt = $stmtSrc->fetch(PDO::FETCH_ASSOC);
+        if (!$srcApt || ($srcApt['type'] ?? '') !== 'blood_test') {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Rendez-vous source introuvable ou non autorisé.',
+                'code' => 'FORBIDDEN',
+            ]);
+            exit;
+        }
+        $stmtPrelLab = $dbPrel->prepare('SELECT lab_id FROM profiles WHERE id = ? AND role = ? LIMIT 1');
+        $stmtPrelLab->execute([$user['user_id'], 'preleveur']);
+        $prelProfile = $stmtPrelLab->fetch(PDO::FETCH_ASSOC);
+        $prelLabId = $prelProfile['lab_id'] ?? null;
+        $uidPrel = (string) $user['user_id'];
+        $assignedToSrc = isset($srcApt['assigned_to']) && $srcApt['assigned_to'] !== null && $srcApt['assigned_to'] !== ''
+            ? (string) $srcApt['assigned_to'] : '';
+        $assignedLabSrc = isset($srcApt['assigned_lab_id']) && $srcApt['assigned_lab_id'] !== null && $srcApt['assigned_lab_id'] !== ''
+            ? (string) $srcApt['assigned_lab_id'] : '';
+        $allowedPrel = ($assignedToSrc !== '' && $assignedToSrc === $uidPrel)
+            || ($prelLabId !== null && $prelLabId !== '' && $assignedLabSrc !== '' && $assignedLabSrc === (string) $prelLabId);
+        if (!$allowedPrel) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Vous ne pouvez reprendre ce rendez-vous que pour un patient dont le RDV vous est attribué ou appartient à votre laboratoire.',
+                'code' => 'FORBIDDEN',
+            ]);
+            exit;
+        }
+        // Sécurité serveur : une reprise créée par un préleveur doit rester rattachée
+        // au préleveur et à son labo/sous-labo, même si le frontend n'envoie pas lab_id.
+        $effectiveAssignedLabId = $prelLabId ?: $assignedLabSrc;
+        if ($effectiveAssignedLabId === '') {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Aucun laboratoire associé au préleveur pour rattacher le nouveau rendez-vous.',
+                'code' => 'VALIDATION_ERROR',
+            ]);
+            exit;
+        }
+        $input['assigned_to'] = $uidPrel;
+        $input['assigned_lab_id'] = $effectiveAssignedLabId;
+        $input['status'] = 'confirmed';
+
+        $patientSrc = isset($srcApt['patient_id']) ? (string) $srcApt['patient_id'] : '';
+        $patientBody = isset($input['patient_id']) ? (string) $input['patient_id'] : '';
+        if ($patientSrc !== '' && $patientBody !== '' && $patientSrc !== $patientBody) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Le patient ne correspond pas au rendez-vous repris.',
+                'code' => 'VALIDATION_ERROR',
+            ]);
+            exit;
+        }
+    }
+
+    $inputForCreate = $input;
+    unset($inputForCreate['reschedule_from_appointment_id']);
     
     try {
         logAppointment('Appel à appointmentModel->create', ['user_id' => $user['user_id'], 'role' => $user['role']]);
-        $id = $appointmentModel->create($input, $user['user_id'], $user['role']);
+        $id = $appointmentModel->create($inputForCreate, $user['user_id'], $user['role']);
         logAppointment('Rendez-vous créé avec succès', ['appointment_id' => $id]);
 
         if (!empty($input['patient_id'])) {
             require_once __DIR__ . '/../../models/User.php';
             $userModel = new User();
-            if (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount'], true)) {
+            if (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'], true)) {
                 try {
                     $userModel->linkPatientProfessional((string) $input['patient_id'], $user['user_id'], $id, 'appointment_linked');
                 } catch (Throwable $e) {
@@ -765,7 +846,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // Toujours exécuter le dispatch directement : exec() échoue souvent sous PHP-FPM
         // (PATH, disable_functions, etc.). Le client a déjà reçu la réponse.
         try {
-            $appointmentModel->runPostCreateNotifications($id, $input, $user['role']);
+            $appointmentModel->runPostCreateNotifications($id, $inputForCreate, $user['role']);
         } catch (Throwable $e) {
             error_log('runPostCreateNotifications failed: ' . $e->getMessage());
         }

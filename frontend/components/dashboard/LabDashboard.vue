@@ -47,8 +47,16 @@
             :key="link.to"
             :to="link.to"
             class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted transition hover:bg-default/80 hover:text-foreground"
+            :aria-busy="quickAccessPendingTo === link.to && isQuickAccessCalendar(link.to) ? 'true' : undefined"
+            @click="(e) => onQuickAccessClick(e, link)"
           >
-            <UIcon :name="link.icon" class="h-3.5 w-3.5 shrink-0" />
+            <UIcon
+              :name="quickAccessIcon(link)"
+              :class="[
+                'h-3.5 w-3.5 shrink-0',
+                quickAccessPendingTo === link.to && isQuickAccessCalendar(link.to) ? 'animate-spin' : '',
+              ]"
+            />
             {{ link.label }}
           </NuxtLink>
         </div>
@@ -84,6 +92,31 @@ const description = computed(() =>
 const { appointments, loading, fetchAppointments } = useAppointments();
 
 const { openAppointmentModalById } = useAppointmentModal();
+
+const quickAccessPendingTo = ref<string | null>(null);
+
+function isQuickAccessCalendar(to: string): boolean {
+  return to.includes('/calendar');
+}
+
+function quickAccessIcon(link: { to: string; icon: string }): string {
+  if (quickAccessPendingTo.value === link.to && isQuickAccessCalendar(link.to)) {
+    return 'i-lucide-loader-2';
+  }
+  return link.icon;
+}
+
+async function onQuickAccessClick(e: MouseEvent, link: { to: string }) {
+  if (!isQuickAccessCalendar(link.to)) return;
+  e.preventDefault();
+  if (quickAccessPendingTo.value) return;
+  quickAccessPendingTo.value = link.to;
+  try {
+    await navigateTo(link.to);
+  } finally {
+    quickAccessPendingTo.value = null;
+  }
+}
 
 function openAppointmentById(appointment: any) {
   if (appointment?.id) openAppointmentModalById(appointment.id);

@@ -256,7 +256,7 @@ const uploadDocumentTypes = [
   { value: 'carte_mutuelle', label: 'Carte Mutuelle', icon: 'i-lucide-shield', color: 'blue' },
   { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', color: 'orange' },
   { value: 'resultats', label: 'Résultats', icon: 'i-lucide-file-check', color: 'emerald' },
-  { value: 'autres_assurances', label: 'Autres assurances', icon: 'i-lucide-briefcase', color: 'purple' },
+  { value: 'autres_assurances', label: 'Autre prescription', icon: 'i-lucide-file-text', color: 'purple' },
   { value: 'other', label: 'Autre document', icon: 'i-lucide-file', color: 'gray' },
 ];
 
@@ -379,7 +379,7 @@ function formatFileSize(bytes: number) {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 function getDocumentTypeLabel(type: string) {
-  const labels: Record<string, string> = { carte_vitale: 'Carte Vitale', carte_mutuelle: 'Carte Mutuelle', ordonnance: 'Ordonnance', resultats: 'Résultats', autres_assurances: 'Autres assurances', other: 'Autre' };
+  const labels: Record<string, string> = { carte_vitale: 'Carte Vitale', carte_mutuelle: 'Carte Mutuelle', ordonnance: 'Ordonnance', resultats: 'Résultats', autres_assurances: 'Autre prescription', other: 'Autre' };
   return labels[type] || 'Document';
 }
 function getDocumentTypeBadgeColor(type: string): 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral' {

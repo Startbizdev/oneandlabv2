@@ -1,7 +1,7 @@
 import { isPendingIncomingOffer } from '~/utils/appointment-offer'
 
 /**
- * File d'attente FIFO pour les modals RDV en attente (Lab, Sub Lab, Nurse).
+ * File d'attente FIFO pour les modals RDV en attente (Lab, Sub Lab, Préleveur, Nurse).
  * Une seule modal à la fois, les RDV s'affichent un par un.
  * Évite les doublons via displayedOrQueuedIds (polling 10s peut réinjecter le même RDV).
  */
@@ -44,7 +44,7 @@ export function useAppointmentModalQueue(options?: {
     const role = user.value?.role
     const myId = user.value?.id
 
-    if (!['nurse', 'lab', 'subaccount'].includes(role ?? '') || !myId) return
+    if (!['nurse', 'lab', 'subaccount', 'preleveur'].includes(role ?? '') || !myId) return
 
     const next = queue.value[0]
     const appId = next?.id
@@ -83,7 +83,7 @@ export function useAppointmentModalQueue(options?: {
         return
       }
       // Pas de popup « accepter / refuser » pour un RDV qu’on a créé soi-même (ni après redispatch si l’API renvoie encore la ligne)
-      if ((role === 'nurse' || role === 'lab' || role === 'subaccount') && !isPendingIncomingOffer(data, myId)) {
+      if ((role === 'nurse' || role === 'lab' || role === 'subaccount' || role === 'preleveur') && !isPendingIncomingOffer(data, myId)) {
         queue.value = queue.value.slice(1)
         await processNext()
         return
@@ -94,7 +94,9 @@ export function useAppointmentModalQueue(options?: {
           ? (data.assigned_nurse_id != null &&
               String(data.assigned_nurse_id) !== my) ||
             (data.assigned_lab_id != null && String(data.assigned_lab_id) !== '')
-          : data.assigned_lab_id != null && String(data.assigned_lab_id) !== my
+          : role === 'preleveur'
+            ? data.assigned_to != null && String(data.assigned_to) !== my
+            : data.assigned_lab_id != null && String(data.assigned_lab_id) !== my
 
       if (alreadyAcceptedByOther) {
         queue.value = queue.value.slice(1)
