@@ -426,7 +426,7 @@ function formatDocumentName(key: string) {
     carte_vitale: 'Carte Vitale',
     carte_mutuelle: 'Carte Mutuelle',
     ordonnance: 'Ordonnance médicale',
-    autres_assurances: 'Autres assurances',
+    autres_assurances: 'Autre prescription',
   };
   return names[key] || key;
 }

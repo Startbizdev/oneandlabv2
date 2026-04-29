@@ -44,7 +44,7 @@ if ($user['role'] === 'super_admin') {
         echo json_encode(['success' => false, 'error' => 'Paramètre user_id requis pour l\'admin']);
         exit;
     }
-} elseif (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount'], true)) {
+} elseif (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'], true)) {
     $requestedUserId = isset($_POST['user_id']) ? trim((string) $_POST['user_id']) : null;
     if ($requestedUserId === null || $requestedUserId === '') {
         http_response_code(400);
@@ -58,9 +58,9 @@ if ($user['role'] === 'super_admin') {
     exit;
 }
 
-// Patient : optionnellement relative_id pour uploader les documents d'un proche
+// Patient / préleveur : optionnellement relative_id pour uploader les documents d'un proche
 $relativeId = null;
-if ($user['role'] === 'patient') {
+if ($user['role'] === 'patient' || $user['role'] === 'preleveur') {
     $relativeId = isset($_POST['relative_id']) ? trim((string) $_POST['relative_id']) : null;
     if ($relativeId !== null && $relativeId === '') {
         $relativeId = null;
@@ -106,6 +106,21 @@ if (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount'], true)) {
         $ok = true;
     }
     if (!$ok) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Accès refusé']);
+        exit;
+    }
+}
+
+if ($user['role'] === 'preleveur') {
+    if ($relativeId) {
+        $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND type = ? AND assigned_to = ? AND relative_id = ? LIMIT 1');
+        $chk->execute([$targetPatientId, 'blood_test', $user['user_id'], $relativeId]);
+    } else {
+        $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND type = ? AND assigned_to = ? LIMIT 1');
+        $chk->execute([$targetPatientId, 'blood_test', $user['user_id']]);
+    }
+    if (!$chk->fetchColumn()) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Accès refusé']);
         exit;
@@ -277,10 +292,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Sauvegarder dans patient_documents ou patient_relative_documents
-        if ($relativeId && $user['role'] === 'patient') {
+        $relativeOwnerPatientId = $user['role'] === 'patient' ? $user['user_id'] : $targetPatientId;
+        if ($relativeId && ($user['role'] === 'patient' || $user['role'] === 'preleveur')) {
             // Documents d'un proche : vérifier que le proche appartient au patient
             $checkRel = $db->prepare('SELECT id FROM patient_relatives WHERE id = ? AND patient_id = ?');
-            $checkRel->execute([$relativeId, $user['user_id']]);
+            $checkRel->execute([$relativeId, $relativeOwnerPatientId]);
             if (!$checkRel->fetch()) {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'error' => 'Proche introuvable ou accès refusé']);
@@ -296,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 SELECT id FROM patient_relative_documents
                 WHERE patient_id = ? AND relative_id = ? AND document_type = ?
             ');
-            $checkStmt->execute([$user['user_id'], $relativeId, $documentType]);
+            $checkStmt->execute([$relativeOwnerPatientId, $relativeId, $documentType]);
             $existingDoc = $checkStmt->fetch(PDO::FETCH_ASSOC);
             if ($existingDoc) {
                 $updateStmt = $db->prepare('
@@ -317,7 +333,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ');
                 $insertResult = $insertStmt->execute([
                     $prDocId,
-                    $user['user_id'],
+                    $relativeOwnerPatientId,
                     $relativeId,
                     $documentType,
                     $id

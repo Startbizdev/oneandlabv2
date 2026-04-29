@@ -118,10 +118,18 @@ onMounted(async () => {
   scrollToHighlightedReview();
 });
 
+const revieweeIdForApi = computed(() => {
+  const u = user.value;
+  if (!u?.id) return '';
+  if (u.role === 'subaccount' && u.lab_id) return String(u.lab_id);
+  return String(u.id);
+});
+
 const fetchStats = async () => {
-  if (!user.value?.id) return;
+  const rid = revieweeIdForApi.value;
+  if (!rid) return;
   try {
-    const res = await apiFetch(`/reviews/stats?reviewee_id=${user.value.id}`, { method: 'GET' });
+    const res = await apiFetch(`/reviews/stats?reviewee_id=${encodeURIComponent(rid)}`, { method: 'GET' });
     if (res?.success && res.data) stats.value = res.data;
   } catch (e) {
     console.error('Erreur stats avis:', e);
@@ -131,7 +139,12 @@ const fetchStats = async () => {
 const fetchReviews = async () => {
   loading.value = true;
   try {
-    const response = await apiFetch(`/reviews?reviewee_id=${user.value?.id}&limit=100`, { method: 'GET' });
+    const rid = revieweeIdForApi.value;
+    if (!rid) {
+      reviews.value = [];
+      return;
+    }
+    const response = await apiFetch(`/reviews?reviewee_id=${encodeURIComponent(rid)}&limit=100`, { method: 'GET' });
     if (response.success && response.data) reviews.value = response.data;
   } catch (error) {
     console.error('Erreur chargement avis:', error);

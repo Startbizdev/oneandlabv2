@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../models/Appointment.php';
+require_once __DIR__ . '/../../lib/LabTeamAccess.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -89,17 +90,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $hasAccess = false;
         }
         
-        // Les préleveurs ne peuvent accéder qu'aux rendez-vous de type "blood_test" (et doivent être assignés ou lab du préleveur)
+        // Les préleveurs ne peuvent accéder qu'aux rendez-vous de type "blood_test".
         if ($user['role'] === 'preleveur' && $appointmentCheck['type'] !== 'blood_test') {
             $hasAccess = false;
         }
+
+        if (!$hasAccess && $user['role'] === 'preleveur' && $appointmentCheck['type'] === 'blood_test') {
+            $prelLabStmt = $db->prepare("SELECT lab_id FROM profiles WHERE id = ? AND role = 'preleveur' LIMIT 1");
+            $prelLabStmt->execute([$user['user_id']]);
+            $prelLabId = (string) ($prelLabStmt->fetch(PDO::FETCH_ASSOC)['lab_id'] ?? '');
+            $assignedTo = (string) ($appointmentCheck['assigned_to'] ?? '');
+            $assignedLab = (string) ($appointmentCheck['assigned_lab_id'] ?? '');
+            if ($assignedTo !== '' && $assignedTo === (string) $user['user_id']) {
+                $hasAccess = true;
+            }
+            if (
+                !$hasAccess
+                && $appointmentCheck['status'] === 'pending'
+                && $assignedTo === ''
+                && $prelLabId !== ''
+                && $assignedLab === $prelLabId
+            ) {
+                $hasAccess = true;
+            }
+            if (!$hasAccess && $appointmentCheck['status'] === 'pending') {
+                $offerStmt = $db->prepare('SELECT 1 FROM appointment_offers WHERE appointment_id = ? AND profile_id = ? LIMIT 1');
+                $offerStmt->execute([$id, $user['user_id']]);
+                if ($offerStmt->fetch()) {
+                    $hasAccess = true;
+                }
+            }
+        }
         
-        // Lab : accès si assigné à l'équipe OU si RDV offert (pending, dans appointment_offers)
-        if (!$hasAccess && $user['role'] === 'lab' && $appointmentCheck['type'] === 'blood_test') {
-            $teamStmt = $db->prepare("SELECT id FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
-            $teamStmt->execute([$user['user_id'], $user['user_id']]);
-            $teamIds = array_column($teamStmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+        // Lab / sous-compte : accès si le RDV est assigné à l'équipe (lab parent inclus pour les sous-comptes) ou offre pending
+        if (!$hasAccess && in_array($user['role'], ['lab', 'subaccount'], true) && $appointmentCheck['type'] === 'blood_test') {
+            $teamIds = LabTeamAccess::teamMemberIds($db, $user['user_id'], $user['role']);
             if (in_array($appointmentCheck['assigned_lab_id'], $teamIds, true)) {
+                $hasAccess = true;
+            }
+            if (!$hasAccess && !empty($appointmentCheck['assigned_to']) && in_array($appointmentCheck['assigned_to'], $teamIds, true)) {
                 $hasAccess = true;
             }
             if (!$hasAccess && empty($appointmentCheck['assigned_lab_id']) && $appointmentCheck['status'] === 'pending') {
@@ -111,16 +140,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         break;
                     }
                 }
-            }
-        }
-        
-        // Sous-compte : accès si assigné à lui OU si RDV offert (pending, dans appointment_offers)
-        if (!$hasAccess && $user['role'] === 'subaccount' && $appointmentCheck['type'] === 'blood_test' &&
-            empty($appointmentCheck['assigned_lab_id']) && $appointmentCheck['status'] === 'pending') {
-            $offerStmt = $db->prepare('SELECT 1 FROM appointment_offers WHERE appointment_id = ? AND profile_id = ? LIMIT 1');
-            $offerStmt->execute([$id, $user['user_id']]);
-            if ($offerStmt->fetch()) {
-                $hasAccess = true;
             }
         }
         
@@ -184,6 +203,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             if (($user['role'] === 'lab' || $user['role'] === 'subaccount') && $appointmentCheck['type'] === 'blood_test') {
                 $alreadyTaken = $appointmentCheck['status'] !== 'pending'
                     || (!empty($appointmentCheck['assigned_lab_id']) && $appointmentCheck['assigned_lab_id'] !== $user['user_id']);
+                if ($alreadyTaken) {
+                    http_response_code(200);
+                    echo json_encode([
+                        'success' => true,
+                        'alreadyAccepted' => true,
+                    ]);
+                    exit;
+                }
+            }
+            if ($user['role'] === 'preleveur' && $appointmentCheck['type'] === 'blood_test') {
+                $alreadyTaken = $appointmentCheck['status'] !== 'pending'
+                    || (!empty($appointmentCheck['assigned_to']) && $appointmentCheck['assigned_to'] !== $user['user_id']);
                 if ($alreadyTaken) {
                     http_response_code(200);
                     echo json_encode([
@@ -363,9 +394,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     $isProCreator = ($user['role'] === 'pro' && ($aptPerm['created_by'] ?? null) === $user['user_id']);
                     $isLabTeam = false;
                     if (!$isAssigned && !$isProCreator && in_array($user['role'], ['lab', 'subaccount'], true)) {
-                        $teamStmt = $dbPerm->prepare("SELECT id FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
-                        $teamStmt->execute([$user['user_id'], $user['user_id']]);
-                        $teamIds = array_column($teamStmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+                        $teamIds = LabTeamAccess::teamMemberIds($dbPerm, $user['user_id'], $user['role']);
                         $isLabTeam = in_array($aptPerm['assigned_lab_id'], $teamIds, true) || in_array($aptPerm['assigned_to'], $teamIds, true);
                     }
                     if (!$isAssigned && !$isProCreator && !$isLabTeam) {
@@ -465,6 +494,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                             exit;
                         }
                     }
+                }
+            }
+
+            if (
+                !$isFullUpdate
+                && isset($input['status'])
+                && $input['status'] === 'confirmed'
+                && $user['role'] === 'preleveur'
+            ) {
+                $configPut = require __DIR__ . '/../../config/database.php';
+                $dsnPut = sprintf(
+                    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+                    $configPut['host'],
+                    $configPut['port'],
+                    $configPut['database'],
+                    $configPut['charset']
+                );
+                $dbPut = new PDO($dsnPut, $configPut['username'], $configPut['password'], $configPut['options'] ?? []);
+                $stmtPrel = $dbPut->prepare("SELECT lab_id FROM profiles WHERE id = ? AND role = 'preleveur' LIMIT 1");
+                $stmtPrel->execute([$user['user_id']]);
+                $prelLabId = (string) ($stmtPrel->fetch(PDO::FETCH_ASSOC)['lab_id'] ?? '');
+                $stmtPut = $dbPut->prepare('SELECT type, status, assigned_lab_id, assigned_to FROM appointments WHERE id = ?');
+                $stmtPut->execute([$id]);
+                $aptPut = $stmtPut->fetch(PDO::FETCH_ASSOC);
+                if (
+                    !$aptPut
+                    || ($aptPut['type'] ?? '') !== 'blood_test'
+                    || ($aptPut['status'] ?? '') !== 'pending'
+                ) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'error' => 'Ce rendez-vous ne peut pas être repris par un préleveur.']);
+                    exit;
+                }
+                $assignedToPut = (string) ($aptPut['assigned_to'] ?? '');
+                $assignedLabPut = (string) ($aptPut['assigned_lab_id'] ?? '');
+                $offerStmtPut = $dbPut->prepare('SELECT 1 FROM appointment_offers WHERE appointment_id = ? AND profile_id = ? LIMIT 1');
+                $offerStmtPut->execute([$id, $user['user_id']]);
+                $hasOfferPut = $offerStmtPut->fetch() !== false;
+                $allowedByAssignment =
+                    ($assignedToPut !== '' && $assignedToPut === (string) $user['user_id'])
+                    || ($assignedToPut === '' && $prelLabId !== '' && $assignedLabPut === $prelLabId);
+                if (!$hasOfferPut && !$allowedByAssignment) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'error' => 'Ce rendez-vous ne vous est pas proposé ou n’appartient pas à votre laboratoire.']);
+                    exit;
                 }
             }
 

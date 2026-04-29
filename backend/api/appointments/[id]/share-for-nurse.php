@@ -154,7 +154,7 @@ if ($needsRepend) {
         $affectedTotal = 0;
         if (!empty($batchIdEarly) && !empty($batchPatientEarly) && $user['role'] === 'nurse' && count($idsToRepend) > 0) {
             $upd = $db->prepare(
-                "UPDATE appointments SET status = 'pending', assigned_nurse_id = NULL, updated_at = NOW()
+                "UPDATE appointments SET status = 'pending', assigned_nurse_id = NULL, nurse_share_released_at = NOW(), updated_at = NOW()
                  WHERE creation_batch_id = ? AND patient_id = ? AND type = 'nursing'
                  AND {$rependableWhere}"
             );
@@ -162,7 +162,7 @@ if ($needsRepend) {
             $affectedTotal = $upd->rowCount();
         } elseif (empty($batchIdEarly) && !empty($batchPatientEarly) && $anchorCreatedAt && $user['role'] === 'nurse' && count($idsToRepend) > 0) {
             $upd = $db->prepare(
-                "UPDATE appointments SET status = 'pending', assigned_nurse_id = NULL, updated_at = NOW()
+                "UPDATE appointments SET status = 'pending', assigned_nurse_id = NULL, nurse_share_released_at = NOW(), updated_at = NOW()
                  WHERE patient_id = ? AND type = 'nursing'
                  AND created_at >= DATE_SUB(?, INTERVAL 3 MINUTE)
                  AND created_at <= DATE_ADD(?, INTERVAL 3 MINUTE)
@@ -172,7 +172,7 @@ if ($needsRepend) {
             $affectedTotal = $upd->rowCount();
         } else {
             $upd = $db->prepare(
-                "UPDATE appointments SET status = 'pending', assigned_nurse_id = NULL, updated_at = NOW() WHERE id = ? AND (
+                "UPDATE appointments SET status = 'pending', assigned_nurse_id = NULL, nurse_share_released_at = NOW(), updated_at = NOW() WHERE id = ? AND (
                 (status IN ('confirmed', 'inProgress', 'planned') AND assigned_nurse_id IS NOT NULL)
                 OR (status = 'pending' AND assigned_nurse_id IS NOT NULL)
             )"

@@ -78,7 +78,7 @@ export const DOCUMENT_CONFIGS: Record<DocumentType, DocumentConfig> = {
   },
   autres_assurances: {
     type: 'autres_assurances',
-    label: 'Autres Assurances',
+    label: 'Autre prescription',
     icon: 'i-lucide-file-plus',
     iconColor: 'gray',
     required: false,

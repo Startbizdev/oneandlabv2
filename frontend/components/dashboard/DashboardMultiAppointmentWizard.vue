@@ -475,7 +475,8 @@ async function onUnifiedSubmit(payload: any) {
 
     const result = await createMultipleAppointments(payloads as any);
     if (result.success) {
-      const n = result.createdIds?.length ?? payloads.length;
+      const ids = result.createdIds ?? [];
+      const n = ids.length || payloads.length;
       toast.add({
         title: n > 1 ? 'Rendez-vous créés' : 'Rendez-vous créé',
         description: n > 1 ? `${n} rendez-vous ont été enregistrés.` : 'Le rendez-vous a été enregistré.',
@@ -484,7 +485,12 @@ async function onUnifiedSubmit(payload: any) {
       });
       const t = useState<number>('appointments.listRefreshTrigger', () => 0);
       t.value += 1;
-      await router.push(`${props.basePath}/appointments`);
+      const firstId = ids[0];
+      if (firstId) {
+        await router.push(`${props.basePath}/appointments/${firstId}`);
+      } else {
+        await router.push(`${props.basePath}/appointments`);
+      }
     } else {
       toast.add({
         title: 'Erreur',

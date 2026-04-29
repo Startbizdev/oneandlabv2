@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../../models/Appointment.php';
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
+require_once __DIR__ . '/../../../lib/LabTeamAccess.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -47,20 +48,19 @@ $dsn = sprintf(
 );
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
 
-// Sous-compte : uniquement les RDV assignés à ce sous-compte. Lab : lab + sous-comptes + préleveurs
+// Même périmètre d'équipe que les listes / documents (sous-compte : inclut le lab parent)
 $teamMembers = [];
-if ($role === 'subaccount') {
+$labIds = LabTeamAccess::teamMemberIds($db, $user['user_id'], $role);
+if (empty($labIds)) {
     $labIds = [$labId];
-} else {
-    $stmt = $db->prepare("SELECT id, role FROM profiles WHERE (id = ? OR lab_id = ?) AND role IN ('lab', 'subaccount', 'preleveur')");
-    $stmt->execute([$labId, $labId]);
+}
+if ($role === 'lab') {
+    $phTeam = implode(',', array_fill(0, count($labIds), '?'));
+    $stmt = $db->prepare("SELECT id, role FROM profiles WHERE id IN ($phTeam) AND role IN ('lab', 'subaccount', 'preleveur')");
+    $stmt->execute($labIds);
     $teamRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $labIds = array_column($teamRows, 'id');
     foreach ($teamRows as $r) {
         $teamMembers[$r['id']] = $r['role'];
-    }
-    if (empty($labIds)) {
-        $labIds = [$labId];
     }
 }
 

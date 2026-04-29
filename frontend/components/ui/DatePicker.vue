@@ -16,6 +16,8 @@ const props = defineProps<{
   acceptSaturday?: boolean
   /** Accepter les RDV le dimanche (sinon grisé). Défaut true. */
   acceptSunday?: boolean
+  /** Classe du contenu popover, utile quand le calendrier est dans une modale custom. */
+  popoverContentClass?: string
 }>()
 
 const emit = defineEmits<{
@@ -124,7 +126,11 @@ const isDateDisabled = (date: CalendarDate) => {
 
 <template>
   <!-- FIX : utiliser v-model:open -->
-  <UPopover v-model:open="isOpen" :dismissible="true">
+  <UPopover
+    v-model:open="isOpen"
+    :dismissible="true"
+    :ui="popoverContentClass ? { content: popoverContentClass } : undefined"
+  >
     <UButton
       color="neutral"
       variant="outline"

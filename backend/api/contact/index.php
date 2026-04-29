@@ -71,12 +71,14 @@ try {
     $typeLabel = $typeLabels[$contactType];
     $subject = '[OneAndLab Contact] ' . $typeLabel . ' — ' . $name;
 
-    $body = '<p><strong>Motif :</strong> ' . htmlspecialchars($typeLabel) . '</p>';
-    $body .= '<p><strong>Nom :</strong> ' . htmlspecialchars($name) . '</p>';
-    $body .= '<p><strong>Email :</strong> ' . htmlspecialchars($email) . '</p>';
-    $body .= '<p><strong>Message :</strong></p><p>' . nl2br(htmlspecialchars($message)) . '</p>';
+    $inner = '<p style="margin:0 0 12px 0;"><strong>Motif :</strong> ' . htmlspecialchars($typeLabel) . '</p>'
+        . '<p style="margin:0 0 12px 0;"><strong>Nom :</strong> ' . htmlspecialchars($name) . '</p>'
+        . '<p style="margin:0 0 12px 0;"><strong>Email :</strong> ' . htmlspecialchars($email) . '</p>'
+        . '<p style="margin:0 0 8px 0;"><strong>Message :</strong></p>'
+        . '<p style="margin:0;white-space:pre-wrap;">' . nl2br(htmlspecialchars($message)) . '</p>';
 
     $emailLib = new Email();
+    $body = $emailLib->buildStaffInquiryBody('Nouveau message — formulaire contact', $inner);
     $sent = $emailLib->send($CONTACT_TO, $subject, $body, true, $email, $name);
 
     if (!$sent) {

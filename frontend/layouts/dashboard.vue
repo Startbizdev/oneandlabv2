@@ -322,14 +322,14 @@
     </div>
   </div>
 
-  <!-- Popup de notification pour nouveaux RDV (infirmiers, lab, sous-compte) — s'ouvre automatiquement au polling -->
+  <!-- Popup de notification pour nouveaux RDV (infirmiers, lab, sous-compte, préleveur) — s'ouvre automatiquement au polling -->
   <ClientOnly>
     <Teleport to="body">
       <AppointmentModal
-        v-if="['nurse', 'lab', 'subaccount'].includes(user?.role ?? '')"
+        v-if="['nurse', 'lab', 'subaccount', 'preleveur'].includes(user?.role ?? '')"
         v-model="showAppointmentModal"
         :appointment="selectedAppointment"
-        :role="(user?.role === 'subaccount' ? 'subaccount' : user?.role === 'lab' ? 'lab' : 'nurse')"
+        :role="(user?.role === 'subaccount' ? 'subaccount' : user?.role === 'lab' ? 'lab' : user?.role === 'preleveur' ? 'preleveur' : 'nurse')"
         @accepted="handleAppointmentAccepted"
         @refused="handleAppointmentRefused"
       />
@@ -549,11 +549,11 @@ const unreadCount = computed(
   () => notifications.value.filter(n => !n.read_at).length
 );
 
-/** Badge cloche : notifications non lues + RDV en attente (nurse, lab, subaccount) */
+/** Badge cloche : notifications non lues + RDV en attente (nurse, lab, subaccount, preleveur) */
 const bellBadgeCount = computed(() => {
   const notif = unreadCount.value;
   const role = user.value?.role;
-  const pending = ['nurse', 'lab', 'subaccount'].includes(role ?? '') ? lastPendingCount.value : 0;
+  const pending = ['nurse', 'lab', 'subaccount', 'preleveur'].includes(role ?? '') ? lastPendingCount.value : 0;
   return notif + pending;
 });
 
@@ -642,7 +642,8 @@ const breadcrumbItems = computed(() => {
     "/subaccount/preleveurs": { label: "Préleveurs", icon: "i-lucide-user-check" },
     
     // Routes preleveur
-    "/preleveur": { label: "Tableau de bord", icon: "i-lucide-layout-dashboard" },
+    "/preleveur": { label: "Mes rendez-vous", icon: "i-lucide-calendar" },
+    "/preleveur/tournee": { label: "Ma tournée", icon: "i-lucide-list-ordered" },
     "/preleveur/appointments": { label: "Rendez-vous", icon: "i-lucide-calendar" },
     "/preleveur/calendar": { label: "Calendrier", icon: "i-lucide-calendar-days" },
     
@@ -977,10 +978,16 @@ const navigationItems = computed(() => {
     preleveur: [
       [
         {
-          label: "Tableau de bord",
-          icon: "i-lucide-layout-dashboard",
+          label: "Mes rendez-vous",
+          icon: "i-lucide-calendar",
           to: "/preleveur",
           active: p === "/preleveur" || p === "/preleveur/",
+        },
+        {
+          label: "Ma tournée",
+          icon: "i-lucide-list-ordered",
+          to: "/preleveur/tournee",
+          active: active("/preleveur/tournee"),
         },
         {
           label: "Calendrier",
@@ -1144,7 +1151,10 @@ const notificationItems = computed(() => {
     .slice(0, 10 - items.length)
     .forEach((notif) => {
     const data = typeof notif.data === 'string' ? (() => { try { return JSON.parse(notif.data); } catch { return {}; } })() : (notif.data || {});
-    const isNewReview = notif.type === 'new_review' || data.review_id;
+    const isNewReview =
+      notif.type === "new_review" ||
+      notif.type === "new_review_on_pro_patient" ||
+      !!data.review_id;
     const isShareLinkInfo =
       notif.type === 'share_link_appointment_taken' || data?.no_navigate === true;
     items.push({
@@ -1154,7 +1164,7 @@ const notificationItems = computed(() => {
       icon:
         notif.type === "marketing"
           ? "i-lucide-megaphone"
-          : notif.type === "new_review"
+          : notif.type === "new_review" || notif.type === "new_review_on_pro_patient"
             ? "i-lucide-star"
             : notif.type === "appointment_request_sent"
               ? "i-lucide-send"
@@ -1176,6 +1186,15 @@ const notificationItems = computed(() => {
       click: () => {
         if (isShareLinkInfo) return;
         const aptId = notif.appointment_id || data?.appointment_id;
+        if (aptId && notif.type === "results_available" && role === "nurse") {
+          notificationsMenuOpen.value = false;
+          const q: Record<string, string> = { focus: "resultats" };
+          if (data?.medical_document_id) {
+            q.doc = String(data.medical_document_id);
+          }
+          void navigateTo({ path: `/nurse/appointments/${aptId}`, query: q });
+          return;
+        }
         if (
           aptId &&
           (notif.type === "care_gallery_photo" || notif.type === "care_gallery_comment") &&
@@ -1189,7 +1208,10 @@ const notificationItems = computed(() => {
           });
           return;
         }
-        if (isNewReview && reviewsPath) {
+        if (isNewReview && role === "pro" && aptId) {
+          notificationsMenuOpen.value = false;
+          void navigateTo({ path: `/pro/appointments/${aptId}`, query: { review: "1" } });
+        } else if (isNewReview && reviewsPath) {
           notificationsMenuOpen.value = false;
           const reviewId = data?.review_id;
           const q =
@@ -1264,7 +1286,7 @@ const { start: startPolling, stop: stopPolling } = usePolling(async () => {
 const { start: startAppointmentPolling, stop: stopAppointmentPolling, isPolling: isAppointmentPolling } = usePolling(async () => {
   const role = user.value?.role;
   const myId = user.value?.id;
-  if (!['nurse', 'lab', 'subaccount'].includes(role ?? '') || !myId) {
+  if (!['nurse', 'lab', 'subaccount', 'preleveur'].includes(role ?? '') || !myId) {
     return;
   }
 
@@ -1288,6 +1310,13 @@ const { start: startAppointmentPolling, stop: stopAppointmentPolling, isPolling:
             a.type === 'blood_test' &&
             isPendingIncomingOffer(a, myId) &&
             (a.assigned_lab_id === myId || !a.assigned_lab_id)
+          );
+        if (role === 'preleveur')
+          return (
+            a.status === 'pending' &&
+            a.type === 'blood_test' &&
+            isPendingIncomingOffer(a, myId) &&
+            (a.assigned_to === myId || !a.assigned_to)
           );
         return false;
       });
@@ -1329,8 +1358,14 @@ watch(
   () => ({ path: route.path, openAppointment: route.query.openAppointment }),
   async (curr) => {
     const role = user.value?.role;
-    if (!['nurse', 'lab', 'subaccount'].includes(role ?? '') || !curr.openAppointment) return;
-    const appointmentsPath = role === 'nurse' ? '/nurse/appointments' : role === 'subaccount' ? '/subaccount/appointments' : '/lab/appointments';
+    if (!['nurse', 'lab', 'subaccount', 'preleveur'].includes(role ?? '') || !curr.openAppointment) return;
+    const appointmentsPath = role === 'nurse'
+      ? '/nurse/appointments'
+      : role === 'subaccount'
+        ? '/subaccount/appointments'
+        : role === 'preleveur'
+          ? '/preleveur'
+          : '/lab/appointments';
     if (curr.path !== appointmentsPath) return;
     const id = Array.isArray(curr.openAppointment) ? curr.openAppointment[0] : curr.openAppointment;
     await openAppointmentModalByIdIfEligible(id);
@@ -1339,10 +1374,10 @@ watch(
   { immediate: true },
 );
 
-// Initialiser et ouvrir la popup auto pour nurse / lab / subaccount (file d'attente)
+// Initialiser et ouvrir la popup auto pour nurse / lab / subaccount / preleveur (file d'attente)
 let appointmentCounterInitialized = false;
 watch(() => user.value?.role, async (role) => {
-  if (!['nurse', 'lab', 'subaccount'].includes(role ?? '') || appointmentCounterInitialized || !user.value) return;
+  if (!['nurse', 'lab', 'subaccount', 'preleveur'].includes(role ?? '') || appointmentCounterInitialized || !user.value) return;
   appointmentCounterInitialized = true;
   try {
     const myId = user.value?.id;
@@ -1363,6 +1398,13 @@ watch(() => user.value?.role, async (role) => {
             a.type === 'blood_test' &&
             isPendingIncomingOffer(a, myId) &&
             (a.assigned_lab_id === myId || !a.assigned_lab_id)
+          );
+        if (role === 'preleveur')
+          return (
+            a.status === 'pending' &&
+            a.type === 'blood_test' &&
+            isPendingIncomingOffer(a, myId) &&
+            (a.assigned_to === myId || !a.assigned_to)
           );
         return false;
       });

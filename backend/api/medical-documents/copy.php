@@ -137,6 +137,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $prof = $profStmt->fetch(PDO::FETCH_ASSOC);
                 $allowed = $prof && ($prof['created_by'] === $user['user_id']);
             }
+        } elseif ($user['role'] === 'preleveur') {
+            $aptStmt = $db->prepare('SELECT id FROM appointments WHERE id = ? AND type = ? AND assigned_to = ? AND patient_id = ? LIMIT 1');
+            $aptStmt->execute([$appointmentId, 'blood_test', $user['user_id'], $appointmentPatientId]);
+            $allowed = (bool) $aptStmt->fetchColumn();
+            if ($allowed && $sourceDocumentPatientId && $sourceDocumentPatientId === $appointmentPatientId) {
+                if ($appointmentRelativeId !== null && $appointmentRelativeId !== '' && $sourceDocumentRelativeId !== $appointmentRelativeId) {
+                    $allowed = false;
+                }
+                if (($appointmentRelativeId === null || $appointmentRelativeId === '') && $sourceDocumentRelativeId !== null && $sourceDocumentRelativeId !== '') {
+                    $allowed = false;
+                }
+            } else {
+                $allowed = false;
+            }
         }
         
         if (!$allowed) {

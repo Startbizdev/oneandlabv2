@@ -87,7 +87,7 @@ const profileUploadTypes = [
   },
   {
     value: 'autres_assurances',
-    label: 'Autres assurances',
+    label: 'Autre prescription',
     icon: 'i-lucide-briefcase',
     color: 'purple',
     accept: 'image/*,.pdf',

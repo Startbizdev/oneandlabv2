@@ -649,7 +649,12 @@ const requestOTP = async () => {
 // Construire les payloads pour chaque soin sélectionné
 function buildAppointmentPayloads(patientId: string): any[] {
   const formDataByService = formData.value?.formDataByService ?? {};
-  const isMulti = formData.value?.isMultiServices === true;
+  const isMulti = selectedServices.value.length > 1;
+  const sharedBatchId =
+    isMulti && typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID()
+      : undefined;
+  const sharedBatchSize = isMulti ? selectedServices.value.length : 0;
   const { formDataByService: _fd, selectedServices: _ss, isMultiServices: _im, ...commonForm } = formData.value ?? {};
   return selectedServices.value.map((svc) => {
     const svcData = formDataByService[svc.id] ?? {};
@@ -688,6 +693,10 @@ function buildAppointmentPayloads(patientId: string): any[] {
       form_data: baseFormData,
       files: svcData.files ?? {},
     };
+    if (sharedBatchId) {
+      payload.creation_batch_id = sharedBatchId;
+      payload.creation_batch_size = sharedBatchSize;
+    }
     if (typeof selectedRelative.value === 'string') {
       payload.relative_id = selectedRelative.value;
     }

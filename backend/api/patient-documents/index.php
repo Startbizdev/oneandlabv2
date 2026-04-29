@@ -39,7 +39,7 @@ if ($user['role'] === 'super_admin') {
         echo json_encode(['success' => false, 'error' => 'Paramètre user_id requis pour l\'admin']);
         exit;
     }
-} elseif (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount'], true)) {
+} elseif (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'], true)) {
     $requestedUserId = isset($_GET['user_id']) ? trim($_GET['user_id']) : null;
     if ($requestedUserId === null || $requestedUserId === '') {
         http_response_code(400);
@@ -97,6 +97,16 @@ if (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount'], true)) {
         $ok = true;
     }
     if (!$ok) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Accès refusé']);
+        exit;
+    }
+}
+
+if ($user['role'] === 'preleveur') {
+    $checkStmt = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND type = ? AND assigned_to = ? LIMIT 1');
+    $checkStmt->execute([$targetPatientId, 'blood_test', $user['user_id']]);
+    if (!$checkStmt->fetchColumn()) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Accès refusé']);
         exit;

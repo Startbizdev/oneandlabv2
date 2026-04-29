@@ -375,7 +375,9 @@ onMounted(() => {
 watch(
   () => props.nurseTab,
   () => {
-    if (props.basePath === '/nurse') fetchCalendarAppointments();
+    if (props.basePath !== '/nurse') return;
+    calendarReady.value = false;
+    fetchCalendarAppointments();
   },
 );
 

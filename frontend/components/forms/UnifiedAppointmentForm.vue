@@ -195,7 +195,7 @@
         </UFormField>
       </div>
 
-      <!-- Documents par soin (ordonnance, autres assurances) -->
+      <!-- Documents par soin (ordonnance, autre prescription) -->
       <div class="mt-4">
         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Documents du soin</p>
         <div class="grid grid-cols-2 gap-2">
@@ -616,7 +616,7 @@ const personalDocTypes = [
 ];
 const serviceDocTypes = [
   { key: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', iconClass: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600' },
-  { key: 'autres_assurances', label: 'Autres assurances', icon: 'i-lucide-briefcase', iconClass: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600' },
+  { key: 'autres_assurances', label: 'Autre prescription', icon: 'i-lucide-file-text', iconClass: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600' },
 ];
 
 const profileDocuments = ref<Record<string, any>>({});
@@ -832,7 +832,7 @@ function getServiceFiles(svcId: string): Record<string, File> {
   return formDataByService[svcId]?.files ?? {};
 }
 
-/** Fichier joint au RDV ou pièce déjà enregistrée sur le dossier patient (ordonnance, assurances…). */
+/** Fichier joint au RDV ou pièce déjà enregistrée sur le dossier patient (ordonnance, autre prescription…). */
 function hasServiceDocFromProfile(svcId: string, docKey: string): boolean {
   return !!(getServiceFiles(svcId)[docKey] || profileDocuments.value[docKey]);
 }

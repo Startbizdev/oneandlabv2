@@ -67,21 +67,9 @@
             </div>
           </div>
           <template v-if="appointment && appointment.status !== 'canceled' && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5">
-              Clôturer le rendez-vous
+            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed rounded-lg bg-gray-50 dark:bg-gray-800/60 px-3 py-2.5 border border-gray-100 dark:border-gray-700/80">
+              Le rendez-vous passera automatiquement en « terminé » le jour suivant la date prévue (clôture système).
             </p>
-            <UButton
-              type="button"
-              color="success"
-              variant="solid"
-              size="lg"
-              leading-icon="i-lucide-check-circle"
-              :loading="completing"
-              block
-              :on-click="() => completeAppointment(appointment, loadAppointment)"
-            >
-              Terminer le RDV
-            </UButton>
             <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
               Planification
             </p>
@@ -165,7 +153,7 @@ const uploadDocumentTypes = [
     accept: 'application/pdf',
     hint: 'PDF uniquement • max 25 Mo',
   },
-  { value: 'autres_assurances', label: 'Autres assurances', icon: 'i-lucide-briefcase', color: 'purple' },
+  { value: 'autres_assurances', label: 'Autre prescription', icon: 'i-lucide-file-text', color: 'purple' },
   { value: 'other', label: 'Autre document', icon: 'i-lucide-file', color: 'gray' },
 ];
 
@@ -229,7 +217,7 @@ function getDocumentTypeLabel(type: string) {
     carte_mutuelle: 'Carte Mutuelle',
     ordonnance: 'Ordonnance',
     resultats: 'Résultats',
-    autres_assurances: 'Autres Assurances',
+    autres_assurances: 'Autre prescription',
     other: 'Autre',
   };
   return labels[type] || type;
@@ -276,31 +264,12 @@ const showCancelModal = ref(false);
 const showRescheduleModal = ref(false);
 const currentAppointmentForCancel = ref<any>(null);
 const currentLoadAppointmentForCancel = ref<(() => Promise<void>) | null>(null);
-const completing = ref(false);
 const rescheduleAppointment = ref<any>(null);
 
 function openCancelModal(apt: any, loadAppointment: () => Promise<void>) {
   currentAppointmentForCancel.value = apt;
   currentLoadAppointmentForCancel.value = loadAppointment;
   showCancelModal.value = true;
-}
-
-function completeAppointment(apt: any, loadAppointment: () => Promise<void>) {
-  if (!apt) return;
-  completing.value = true;
-  apiFetch(`/appointments/${apt.id}`, { method: 'PUT', body: { status: 'completed' } })
-    .then((response) => {
-      if (response.success) {
-        toast.add({ title: 'RDV terminé', description: 'Le rendez-vous a été marqué comme terminé.', color: 'success' });
-        loadAppointment();
-      } else {
-        toast.add({ title: 'Erreur', description: response.error || 'Impossible de terminer le rendez-vous', color: 'error' });
-      }
-    })
-    .catch((error: any) => {
-      toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' });
-    })
-    .finally(() => { completing.value = false; });
 }
 
 function openRescheduleModal(apt: any) {

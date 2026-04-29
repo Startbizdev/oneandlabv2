@@ -433,7 +433,7 @@
               </div>
             </div>
 
-            <!-- Autres Assurances (optionnel) -->
+            <!-- Autre prescription (optionnel) -->
             <div
               class="relative group"
               @dragover.prevent="handleDragOver('autres_assurances')"
@@ -465,7 +465,7 @@
                   
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-gray-900 dark:text-white">
-                      Autres assurances
+                      Autre prescription
                     </p>
                     <p v-if="form.files.autres_assurances" class="text-xs text-primary-600 dark:text-primary-400 font-medium">
                       Document téléchargé
