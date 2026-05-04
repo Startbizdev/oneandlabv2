@@ -1,6 +1,9 @@
+import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
+
 /**
- * Regroupe les RDV d’un même lot **uniquement si même type** (plusieurs nursing ou plusieurs blood_test).
- * Un lot mixte bilan + soin (même creation_batch_id) reste **deux cartes séparées**.
+ * Regroupe les RDV d’un même lot pour les soins infirmiers.
+ * Les prises de sang (`blood_test`) ne devraient plus arriver en lot, mais les anciennes lignes
+ * non migrées sont regroupées ici comme fallback d’affichage uniquement.
  */
 
 export type AppointmentListRow =
@@ -13,13 +16,21 @@ export function groupAppointmentsByBatch(list: any[]): AppointmentListRow[] {
   for (const a of list) {
     const bid = a.creation_batch_id;
     const ty = a.type;
-    if (!bid || (ty !== 'nursing' && ty !== 'blood_test')) {
+    const canGroup = isNursingAppointment(ty) || isBloodTestAppointment(ty);
+    if (!bid || !canGroup) {
       out.push({ kind: 'single', appointment: a });
       continue;
     }
-    const key = `${ty}:${bid}`;
+    const normalizedType = isBloodTestAppointment(ty) ? 'blood_test' : 'nursing';
+    const key = `${normalizedType}:${bid}`;
     if (seen.has(key)) continue;
-    const group = list.filter((x) => x.creation_batch_id === bid && x.type === ty);
+    const group = list.filter(
+      (x) =>
+        x.creation_batch_id === bid &&
+        (normalizedType === 'blood_test'
+          ? isBloodTestAppointment(x.type)
+          : isNursingAppointment(x.type)),
+    );
     if (group.length <= 1) {
       out.push({ kind: 'single', appointment: a });
       continue;
@@ -53,7 +64,7 @@ function scheduledTs(a: any): number {
  * créés quasi simultanément (sans batch_id fiable des deux côtés).
  */
 function nurseDemandesShouldCluster(a: any, b: any): boolean {
-  if (a.type !== 'nursing' || b.type !== 'nursing') return false;
+  if (!isNursingAppointment(a.type) || !isNursingAppointment(b.type)) return false;
   const ba = a.creation_batch_id;
   const bb = b.creation_batch_id;
   if (ba && bb && ba === bb) return true;
@@ -71,7 +82,7 @@ function nurseDemandesShouldCluster(a: any, b: any): boolean {
  * Secours : deux soins sans lot en base mais même patient et créés quasi en même temps (fenêtre 2 min).
  */
 export function groupAppointmentsForNurseMesDemandes(list: any[]): AppointmentListRow[] {
-  const nursing = list.filter((x) => x.type === 'nursing');
+  const nursing = list.filter((x) => isNursingAppointment(x.type));
   const n = nursing.length;
   const parent = Array.from({ length: n }, (_, i) => i);
 
@@ -112,7 +123,7 @@ export function groupAppointmentsForNurseMesDemandes(list: any[]): AppointmentLi
 
   for (const a of list) {
     if (emitted.has(a.id)) continue;
-    if (a.type !== 'nursing') {
+    if (!isNursingAppointment(a.type)) {
       out.push({ kind: 'single', appointment: a });
       continue;
     }

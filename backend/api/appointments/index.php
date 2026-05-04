@@ -118,6 +118,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         logAppointment('ERREUR lors de la vérification de la colonne relative_id', ['error' => $e->getMessage()]);
         $hasRelativeColumn = false;
     }
+
+    try {
+        $checkMergedColumn = $db->query("
+            SELECT COUNT(*) as col_exists
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'appointments'
+            AND COLUMN_NAME = 'merged_into_appointment_id'
+        ")->fetch();
+        $hasMergedColumn = $checkMergedColumn && (int) $checkMergedColumn['col_exists'] > 0;
+    } catch (Exception $e) {
+        $hasMergedColumn = false;
+    }
     
     if ($hasRelativeColumn) {
         $sql = '
@@ -154,6 +167,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ';
     }
     $params = [];
+    if ($hasMergedColumn) {
+        $sql .= ' AND a.merged_into_appointment_id IS NULL';
+    }
     
     if ($status) {
         if (strpos($status, ',') !== false) {
@@ -227,7 +243,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $sql .= " AND a.type = 'blood_test' AND a.created_by = ?";
                 $params[] = $userId;
             } elseif ($nurseSegment === 'en_attente') {
-                $sql .= " AND a.type = 'nursing' AND a.status = 'pending' AND a.assigned_nurse_id IS NULL AND EXISTS (SELECT 1 FROM appointment_offers o2 WHERE o2.appointment_id = a.id AND o2.profile_id = ?)";
+                $sql .= " AND a.type = 'nursing' AND a.status = 'pending' AND (
+                    (
+                        a.assigned_nurse_id IS NULL
+                        AND EXISTS (SELECT 1 FROM appointment_offers o2 WHERE o2.appointment_id = a.id AND o2.profile_id = ?)
+                    )
+                    OR a.assigned_nurse_id = ?
+                )";
+                $params[] = $userId;
                 $params[] = $userId;
             } elseif ($nurseSegment === 'acceptes') {
                 $sql .= " AND a.type = 'nursing' AND a.assigned_nurse_id = ? AND a.status IN ('confirmed','inProgress','planned','completed')";
@@ -588,6 +611,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $apt['assigned_lab_display_name'] = $displayNames[$apt['assigned_lab_id'] ?? ''] ?? null;
                 $apt['assigned_nurse_display_name'] = $displayNames[$apt['assigned_nurse_id'] ?? ''] ?? null;
                 $apt['assigned_to_display_name'] = $displayNames[$apt['assigned_to'] ?? ''] ?? null;
+            }
+            unset($apt);
+        }
+        $bloodTestIds = array_values(array_filter(array_map(
+            static fn($apt) => (($apt['type'] ?? '') === 'blood_test') ? (string) ($apt['id'] ?? '') : '',
+            $decryptedAppointments
+        )));
+        if (!empty($bloodTestIds)) {
+            $itemsByAppointment = $appointmentModel->loadBloodTestItemsForAppointments($bloodTestIds);
+            foreach ($decryptedAppointments as &$apt) {
+                if (($apt['type'] ?? '') === 'blood_test') {
+                    $apt['blood_test_items'] = $itemsByAppointment[(string) $apt['id']] ?? [];
+                    if (empty($apt['blood_test_items'])) {
+                        $apt['blood_test_items'] = [[
+                            'id' => null,
+                            'appointment_id' => $apt['id'],
+                            'category_id' => $apt['category_id'] ?? null,
+                            'label' => $apt['category_name'] ?? null,
+                            'care_options' => is_array($apt['form_data']['care_options'] ?? null) ? $apt['form_data']['care_options'] : [],
+                            'source_appointment_id' => $apt['id'],
+                            'sort_order' => 0,
+                            'category_name' => $apt['category_name'] ?? null,
+                            'category_icon' => $apt['category_icon'] ?? null,
+                        ]];
+                    }
+                }
             }
             unset($apt);
         }

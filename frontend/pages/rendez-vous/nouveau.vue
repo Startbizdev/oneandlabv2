@@ -213,6 +213,7 @@ import { onBeforeRouteLeave } from 'vue-router';
 import { apiFetch } from '~/utils/api';
 import { resolveCareIconFromCategory } from '~/utils/care-icons';
 import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot';
+import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 
 definePageMeta({
   layout: 'patient',
@@ -450,7 +451,9 @@ const validateAndNextStep = async () => {
   }
   
   // Vérifier date et disponibilité par service (toujours dans formDataByService)
-  for (const svc of selectedServices.value) {
+  const unifiedBloodServices = selectedServices.value.length > 1 && selectedServices.value.every((svc) => isBloodTestAppointment(svc.type));
+  const servicesRequiringOwnSlot = unifiedBloodServices ? selectedServices.value.slice(0, 1) : selectedServices.value;
+  for (const svc of servicesRequiringOwnSlot) {
     const svcData = formData.value?.formDataByService?.[svc.id] ?? {};
     const scheduledAt = svcData.scheduled_at;
     if (!scheduledAt || (typeof scheduledAt === 'string' && scheduledAt.trim() === '')) {
@@ -480,9 +483,9 @@ const validateAndNextStep = async () => {
 
   // Validation par service (formDataByService)
   const formDataByService = formData.value?.formDataByService ?? {};
-  for (const svc of selectedServices.value) {
+  for (const svc of servicesRequiringOwnSlot) {
     const svcData = formDataByService[svc.id] ?? {};
-    if (svc.type === 'blood_test') {
+    if (isBloodTestAppointment(svc.type)) {
       if (!svcData.blood_test_type) {
         missingFields.push(`Type de prélèvement obligatoire pour ${svc.name}`);
       } else if (svcData.blood_test_type === 'multiple') {
@@ -650,12 +653,54 @@ const requestOTP = async () => {
 function buildAppointmentPayloads(patientId: string): any[] {
   const formDataByService = formData.value?.formDataByService ?? {};
   const isMulti = selectedServices.value.length > 1;
+  const isUnifiedBloodTest = isMulti && selectedServices.value.every((svc) => isBloodTestAppointment(svc.type));
   const sharedBatchId =
-    isMulti && typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function'
+    isMulti && !isUnifiedBloodTest && typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function'
       ? globalThis.crypto.randomUUID()
       : undefined;
   const sharedBatchSize = isMulti ? selectedServices.value.length : 0;
   const { formDataByService: _fd, selectedServices: _ss, isMultiServices: _im, ...commonForm } = formData.value ?? {};
+  if (isUnifiedBloodTest) {
+    const firstSvc = selectedServices.value[0];
+    const firstSvcData = formDataByService[firstSvc.id] ?? {};
+    const bloodTestItems = selectedServices.value.map((svc, index) => ({
+      category_id: svc.category_id,
+      label: svc.name,
+      care_options: formDataByService[svc.id]?.care_options ?? {},
+      sort_order: index,
+    }));
+    const baseFormData = {
+      ...commonForm,
+      address: formData.value?.address,
+      files: firstSvcData.form_data_files ?? {},
+      availability: firstSvcData.availability,
+      scheduled_at: firstSvcData.scheduled_at,
+      blood_test_type: firstSvcData.blood_test_type,
+      duration_days: firstSvcData.blood_test_type === 'multiple' ? firstSvcData.duration_days : undefined,
+      custom_days: firstSvcData.duration_days === 'custom' ? firstSvcData.custom_days : undefined,
+      notes: firstSvcData.notes || undefined,
+      care_options: firstSvcData.care_options && Object.keys(firstSvcData.care_options).length ? firstSvcData.care_options : undefined,
+      blood_test_items: bloodTestItems,
+    };
+    const payload: any = {
+      type: 'blood_test',
+      form_type: 'blood_test',
+      category_id: firstSvc.category_id,
+      patient_id: patientId,
+      address: formData.value?.address,
+      scheduled_at: firstSvcData.scheduled_at,
+      form_data: baseFormData,
+      files: firstSvcData.files ?? formData.value?.files ?? {},
+      blood_test_items: bloodTestItems,
+    };
+    if (typeof selectedRelative.value === 'string') {
+      payload.relative_id = selectedRelative.value;
+    }
+    if (isProviderBooking.value && providerId.value && providerType.value === 'lab') {
+      payload.assigned_lab_id = providerId.value;
+    }
+    return [payload];
+  }
   return selectedServices.value.map((svc) => {
     const svcData = formDataByService[svc.id] ?? {};
     const baseFormData = {
@@ -665,7 +710,7 @@ function buildAppointmentPayloads(patientId: string): any[] {
       availability: svcData.availability,
       scheduled_at: svcData.scheduled_at,
     };
-    if (svc.type === 'blood_test') {
+    if (isBloodTestAppointment(svc.type)) {
       Object.assign(baseFormData, {
         blood_test_type: svcData.blood_test_type,
         duration_days: svcData.blood_test_type === 'multiple' ? svcData.duration_days : undefined,
@@ -702,9 +747,9 @@ function buildAppointmentPayloads(patientId: string): any[] {
     }
     // Cibler le prestataire du profil pour chaque RDV concerné (pas seulement si un seul service au panier)
     if (isProviderBooking.value && providerId.value && providerType.value) {
-      if (providerType.value === 'nurse' && svc.type === 'nursing') {
+      if (providerType.value === 'nurse' && isNursingAppointment(svc.type)) {
         payload.assigned_nurse_id = providerId.value;
-      } else if (providerType.value === 'lab' && svc.type === 'blood_test') {
+      } else if (providerType.value === 'lab' && isBloodTestAppointment(svc.type)) {
         payload.assigned_lab_id = providerId.value;
       }
     }

@@ -80,7 +80,7 @@
 
       <!-- Un bloc par soin -->
       <UCard
-        v-for="(svc, idx) in selectedServices"
+        v-for="(svc, idx) in recapServices"
         :key="svc.id"
         class="mb-4 rounded-2xl border border-gray-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)]"
       >
@@ -89,24 +89,34 @@
             <div
               :class="[
                 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-                svc.type === 'blood_test'
+                isBloodTestAppointment(svc.type)
                   ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400'
                   : 'bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400',
               ]"
             >
-              <UIcon :name="svc.icon || (svc.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-heart-pulse')" class="h-5 w-5" />
+              <UIcon :name="svc.icon || (isBloodTestAppointment(svc.type) ? 'i-lucide-droplet' : 'i-lucide-heart-pulse')" class="h-5 w-5" />
             </div>
             <div class="min-w-0">
-              <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ svc.name }}</h2>
+              <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+                {{ isUnifiedBloodTest ? 'Prise de sang à domicile' : svc.name }}
+              </h2>
               <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                {{ selectedServices.length > 1 ? `Rendez-vous #${idx + 1}` : 'Rendez-vous' }}
+                {{ isUnifiedBloodTest ? `${selectedServices.length} actes regroupés en une seule visite` : (selectedServices.length > 1 ? `Rendez-vous #${idx + 1}` : 'Rendez-vous') }}
                 <span class="mx-1">·</span>
-                {{ svc.type === 'blood_test' ? 'Laboratoire' : 'Soins infirmiers' }}
+                {{ isBloodTestAppointment(svc.type) ? 'Laboratoire' : 'Soins infirmiers' }}
               </p>
             </div>
           </div>
         </template>
         <div class="divide-y divide-gray-100 dark:divide-gray-800">
+          <div v-if="isUnifiedBloodTest" class="py-4 first:pt-0">
+            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Actes inclus</p>
+            <div class="flex flex-wrap gap-2">
+              <UBadge v-for="service in selectedServices" :key="service.id" color="error" variant="subtle">
+                {{ service.name }}
+              </UBadge>
+            </div>
+          </div>
           <div
             v-if="serviceData(svc.id).scheduled_at"
             class="flex flex-col gap-0.5 py-3 first:pt-0 sm:flex-row sm:items-baseline sm:gap-4 sm:py-2.5"
@@ -114,7 +124,7 @@
             <span class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 sm:w-40 sm:shrink-0">Date souhaitée</span>
             <span class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ formatDate(serviceData(svc.id).scheduled_at) }}</span>
           </div>
-          <template v-if="svc.type === 'blood_test'">
+          <template v-if="isBloodTestAppointment(svc.type)">
             <div
               v-if="serviceData(svc.id).blood_test_type"
               class="flex flex-col gap-0.5 py-3 sm:flex-row sm:items-baseline sm:gap-4 sm:py-2.5"
@@ -257,6 +267,7 @@
 import { computed, nextTick } from 'vue';
 import { getNursingDurationLabel } from '~/constants/nursing-duration';
 import { formatBloodTestSeriesDurationDays } from '~/utils/duration-display';
+import { isBloodTestAppointment } from '~/utils/appointment-type-rules';
 
 const toast = useAppToast();
 
@@ -290,6 +301,8 @@ const emit = defineEmits<{
 }>();
 
 const consentModel = defineModel<boolean>('consent', { required: true });
+const isUnifiedBloodTest = computed(() => props.selectedServices.length > 1 && props.selectedServices.every(s => isBloodTestAppointment(s.type)));
+const recapServices = computed(() => isUnifiedBloodTest.value ? props.selectedServices.slice(0, 1) : props.selectedServices);
 
 function onPrimaryFooterClick() {
   if (props.actionsDisabled || props.submitLoading) return;
@@ -386,7 +399,7 @@ function formatDurationForService(
 ): string {
   const d = data.duration_days;
   if (!d) return '';
-  if (type === 'blood_test') {
+  if (isBloodTestAppointment(type)) {
     return formatBloodTestSeriesDurationDays(d, data.custom_days ?? null);
   }
   return getNursingDurationLabel(d, data.custom_days ?? null);

@@ -445,6 +445,10 @@ function rowStatusSummary(row: any): string {
 
 /** Type de soin (catégorie) pour affichage dans la liste */
 function typeDeSoinLabel(apt: any): string {
+  const items = Array.isArray(apt?.blood_test_items) ? apt.blood_test_items : [];
+  if (apt?.type === 'blood_test' && items.length > 1) {
+    return `${items.length} actes de prise de sang`;
+  }
   const name = apt?.category_name || apt?.form_data?.category_name;
   return name ? String(name).trim() : '';
 }

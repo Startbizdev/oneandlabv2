@@ -1,4 +1,5 @@
 import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot';
+import { isBloodTestAppointment } from '~/utils/appointment-type-rules';
 import { isTechnicalPatientEmail } from '~/utils/patient-address-rdv';
 
 export type SelectedServiceInput = {
@@ -85,7 +86,9 @@ export function validateUnifiedRdvPayload(
     };
   }
 
-  for (const svc of selectedServices) {
+  const unifiedBloodServices = selectedServices.length > 1 && selectedServices.every((svc) => isBloodTestAppointment(svc.type));
+  const servicesRequiringOwnSlot = unifiedBloodServices ? selectedServices.slice(0, 1) : selectedServices;
+  for (const svc of servicesRequiringOwnSlot) {
     const svcData = formData?.formDataByService?.[svc.id] ?? {};
     const scheduledAt = svcData.scheduled_at;
     if (!scheduledAt || (typeof scheduledAt === 'string' && scheduledAt.trim() === '')) {
@@ -128,9 +131,9 @@ export function validateUnifiedRdvPayload(
   }
 
   const formDataByService = formData?.formDataByService ?? {};
-  for (const svc of selectedServices) {
+  for (const svc of servicesRequiringOwnSlot) {
     const svcData = formDataByService[svc.id] ?? {};
-    if (svc.type === 'blood_test') {
+    if (isBloodTestAppointment(svc.type)) {
       if (!svcData.blood_test_type) {
         return {
           message: `Type de prélèvement obligatoire pour « ${svc.name} »`,
@@ -184,6 +187,46 @@ export function buildDashboardAppointmentPayloads(
 ): Record<string, unknown>[] {
   const formDataByService = formData?.formDataByService ?? {};
   const { formDataByService: _fd, selectedServices: _ss, isMultiServices: _im, ...commonForm } = formData ?? {};
+  const unifiedBloodServices = selectedServices.length > 1 && selectedServices.every((svc) => isBloodTestAppointment(svc.type));
+
+  if (unifiedBloodServices) {
+    const firstSvc = selectedServices[0];
+    const firstData = formDataByService[firstSvc.id] ?? {};
+    const bloodTestItems = selectedServices.map((svc, index) => ({
+      category_id: svc.category_id,
+      label: svc.name,
+      care_options: formDataByService[svc.id]?.care_options ?? {},
+      sort_order: index,
+    }));
+    const baseFormData: Record<string, unknown> = {
+      ...commonForm,
+      address: formData?.address,
+      files: firstData.form_data_files ?? {},
+      availability: firstData.availability,
+      scheduled_at: firstData.scheduled_at,
+      blood_test_type: firstData.blood_test_type,
+      duration_days: firstData.blood_test_type === 'multiple' ? firstData.duration_days : undefined,
+      custom_days: firstData.duration_days === 'custom' ? firstData.custom_days : undefined,
+      notes: firstData.notes || undefined,
+      care_options: firstData.care_options && Object.keys(firstData.care_options).length ? firstData.care_options : undefined,
+      blood_test_items: bloodTestItems,
+    };
+    const payload: Record<string, unknown> = {
+      type: 'blood_test',
+      form_type: 'blood_test',
+      category_id: firstSvc.category_id,
+      patient_id: patientId,
+      address: formData?.address,
+      scheduled_at: firstData.scheduled_at,
+      form_data: baseFormData,
+      files: firstData.files ?? {},
+      blood_test_items: bloodTestItems,
+    };
+    if (ctx.creatorRole === 'lab' || ctx.creatorRole === 'subaccount') {
+      payload.assigned_lab_id = ctx.creatorUserId;
+    }
+    return [payload];
+  }
 
   return selectedServices.map((svc) => {
     const svcData = formDataByService[svc.id] ?? {};
@@ -194,7 +237,7 @@ export function buildDashboardAppointmentPayloads(
       availability: svcData.availability,
       scheduled_at: svcData.scheduled_at,
     };
-    if (svc.type === 'blood_test') {
+    if (isBloodTestAppointment(svc.type)) {
       Object.assign(baseFormData, {
         blood_test_type: svcData.blood_test_type,
         duration_days: svcData.blood_test_type === 'multiple' ? svcData.duration_days : undefined,
@@ -228,10 +271,7 @@ export function buildDashboardAppointmentPayloads(
       payload.creation_batch_id = ctx.creationBatchId;
     }
 
-    if (
-      svc.type === 'blood_test' &&
-      (ctx.creatorRole === 'lab' || ctx.creatorRole === 'subaccount')
-    ) {
+    if (isBloodTestAppointment(svc.type) && (ctx.creatorRole === 'lab' || ctx.creatorRole === 'subaccount')) {
       payload.assigned_lab_id = ctx.creatorUserId;
     }
 

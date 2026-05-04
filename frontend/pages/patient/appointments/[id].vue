@@ -514,9 +514,21 @@
                 </dd>
               </div>
               <div v-if="appt.category_name || appt.form_data?.category_name" class="flex justify-between gap-4 px-5 py-3.5">
-                <dt class="text-sm text-gray-500 dark:text-gray-400">Type de soins</dt>
+                <dt class="text-sm text-gray-500 dark:text-gray-400">{{ bloodTestItemsFor(appt).length > 1 ? 'Acte principal' : 'Type de soins' }}</dt>
                 <dd class="text-sm font-medium text-gray-900 dark:text-white text-right">
                   {{ appt.category_name || appt.form_data?.category_name }}
+                </dd>
+              </div>
+              <div v-if="bloodTestItemsFor(appt).length > 1" class="px-5 py-3.5">
+                <dt class="text-sm text-gray-500 dark:text-gray-400 mb-2">Actes de prise de sang</dt>
+                <dd class="flex flex-wrap gap-1.5">
+                  <span
+                    v-for="item in bloodTestItemsFor(appt)"
+                    :key="item.id || item.category_id || item.label"
+                    class="inline-flex max-w-full rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 ring-1 ring-red-100 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-900/40"
+                  >
+                    <span class="truncate">{{ item.label || item.category_name || 'Acte' }}</span>
+                  </span>
                 </dd>
               </div>
               <div v-if="appt.form_data?.availability" class="flex justify-between gap-4 px-5 py-3.5">
@@ -1802,6 +1814,10 @@ function addressComplementFor(a: any): string {
     return String(a.address.complement).trim();
   }
   return '';
+}
+
+function bloodTestItemsFor(a: any): any[] {
+  return Array.isArray(a?.blood_test_items) ? a.blood_test_items : [];
 }
 
 function showWhoSectionFor(appt: any): boolean {

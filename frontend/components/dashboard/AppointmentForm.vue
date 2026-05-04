@@ -818,6 +818,7 @@ import {
   AVAILABILITY_MAX_HOUR_NURSING,
 } from '~/constants/availability-slot';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
+import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import DashboardPrescriptionSection from '~/components/dashboard/PrescriptionSection.vue';
 
 // --- TYPES & INTERFACES ---
@@ -930,7 +931,7 @@ const isSubaccountForm = computed(() => props.basePath === '/subaccount');
 
 /** Créneau horaire : jusqu'à 22h pour les soins infirmiers (tous espaces), 17h pour prises de sang. */
 const availabilitySliderMax = computed(() =>
-  form.type === 'nursing' ? AVAILABILITY_MAX_HOUR_NURSING : AVAILABILITY_MAX_HOUR_BLOOD_TEST,
+  isNursingAppointment(form.type) ? AVAILABILITY_MAX_HOUR_NURSING : AVAILABILITY_MAX_HOUR_BLOOD_TEST,
 );
 
 // --- STATE ---
@@ -1536,7 +1537,7 @@ function onTypeChange() {
   form.assigned_nurse_id = '';
   form.form_data.category_id = ''; // Réinitialiser pour afficher le placeholder (liste différente selon type)
   form.form_data.care_options = {};
-  if (form.type === 'blood_test') {
+  if (isBloodTestAppointment(form.type)) {
     form.form_data.frequency = '';
     form.form_data.blood_test_type = 'single';
   } else {
@@ -1819,7 +1820,7 @@ function validateMultiCareBlocks(): ClientValidationFail | null {
       }
     }
 
-    if (form.type === 'blood_test' && block.blood_test_type === 'multiple') {
+    if (isBloodTestAppointment(form.type) && block.blood_test_type === 'multiple') {
       if (!block.duration_days) {
         return {
           sectionId: 'appointment-form-section-intervention',
@@ -1836,7 +1837,7 @@ function validateMultiCareBlocks(): ClientValidationFail | null {
       }
     }
 
-    if (form.type === 'nursing' && block.duration_days === 'custom' && !block.custom_days) {
+    if (isNursingAppointment(form.type) && block.duration_days === 'custom' && !block.custom_days) {
       return {
         sectionId: 'appointment-form-section-intervention',
         title: 'Durée requise',
@@ -1844,7 +1845,7 @@ function validateMultiCareBlocks(): ClientValidationFail | null {
       };
     }
 
-    if (form.type === 'nursing' && showNursingFreq(block.duration_days) && !block.frequency) {
+    if (isNursingAppointment(form.type) && showNursingFreq(block.duration_days) && !block.frequency) {
       return {
         sectionId: 'appointment-form-section-intervention',
         title: 'Fréquence requise',
@@ -1896,7 +1897,7 @@ function validateAppointmentFormClient(): ClientValidationFail | null {
     }
   }
 
-  if (form.type === 'blood_test' && form.form_data.blood_test_type === 'multiple') {
+  if (isBloodTestAppointment(form.type) && form.form_data.blood_test_type === 'multiple') {
     if (!form.form_data.duration_days) {
       return {
         sectionId: 'appointment-form-section-intervention',
@@ -1913,7 +1914,7 @@ function validateAppointmentFormClient(): ClientValidationFail | null {
     }
   }
 
-  if (form.type === 'nursing' && form.form_data.duration_days === 'custom' && !form.form_data.custom_days) {
+  if (isNursingAppointment(form.type) && form.form_data.duration_days === 'custom' && !form.form_data.custom_days) {
     return {
       sectionId: 'appointment-form-section-intervention',
       title: 'Durée requise',
@@ -1921,7 +1922,7 @@ function validateAppointmentFormClient(): ClientValidationFail | null {
     };
   }
 
-  if (form.type === 'nursing' && showNursingFreq(form.form_data.duration_days) && !form.form_data.frequency) {
+  if (isNursingAppointment(form.type) && showNursingFreq(form.form_data.duration_days) && !form.form_data.frequency) {
     return {
       sectionId: 'appointment-form-section-intervention',
       title: 'Fréquence requise',
@@ -1965,7 +1966,7 @@ function mergeFormDataForCareBlock(
     files: filesMeta,
     notes: form.form_data.notes,
   };
-  if (form.type === 'blood_test') {
+  if (isBloodTestAppointment(form.type)) {
     fd.blood_test_type = block.blood_test_type;
     fd.custom_days = block.blood_test_type === 'multiple' ? block.custom_days : undefined;
     fd.duration_days = block.blood_test_type === 'multiple' ? block.duration_days : undefined;
@@ -2022,6 +2023,72 @@ async function submitMultiCareBatch(
     }
   }
 
+  if (isBloodTestAppointment(form.type)) {
+    const firstBlock = careBlocks.value[0];
+    if (!firstBlock) {
+      throw new Error('Aucun acte de prise de sang à créer');
+    }
+    const bloodTestItems = careBlocks.value.map((block, index) => {
+      const categoryId = String(block.category_id || '').trim();
+      const category = categoryOptions.value.find((opt) => String(opt.value) === categoryId);
+      return {
+        category_id: categoryId || undefined,
+        label: String(category?.label || `Analyse ${index + 1}`),
+        care_options:
+          block.care_options && Object.keys(block.care_options).length
+            ? { ...block.care_options }
+            : {},
+        sort_order: index,
+      };
+    });
+    const rawFormData = mergeFormDataForCareBlock(firstBlock, availabilityPayload, filesMeta);
+    rawFormData.blood_test_items = bloodTestItems;
+    const categoryId = String(firstBlock.category_id || '').trim() || undefined;
+    const createBody: Record<string, unknown> = {
+      type: 'blood_test',
+      form_type: 'blood_test',
+      scheduled_at: scheduledAtIso,
+      address: addressPayload,
+      form_data: rawFormData,
+      status: 'pending',
+      patient_id: patientId,
+      category_id: categoryId,
+      blood_test_items: bloodTestItems,
+    };
+    if (!patientId && form.form_data.email?.trim()) {
+      createBody.guest_email = form.form_data.email.trim();
+    }
+    if (form.assigned_lab_id) createBody.assigned_lab_id = form.assigned_lab_id;
+
+    const response = await apiFetch('/appointments', { method: 'POST', body: createBody });
+    if (!response.success) {
+      throw new Error((response as any).error || 'Création impossible');
+    }
+
+    const id = (response as any).data?.id as string | undefined;
+    if (!id) {
+      throw new Error('Identifiant du rendez-vous manquant');
+    }
+    if (selectedPatientId.value !== NEW_PATIENT_VALUE) {
+      await copyPatientDocumentsToAppointment(id);
+    }
+    const hasFormFiles = Object.keys(form.files).some((k) => form.files[k] instanceof File);
+    if (hasFormFiles) {
+      await uploadFormFilesToAppointment(id);
+    }
+    toast.add({
+      title: 'Rendez-vous créé',
+      description: 'Le rendez-vous a été enregistré.',
+      color: 'green',
+      icon: 'i-lucide-check-circle',
+    });
+    if (showPrescriptionAfterCreate.value && prescriptionTextDuringCreate.value?.trim()) {
+      await generateAndAttachPrescriptionDuringCreate(id);
+    }
+    await router.push(`${props.basePath}/appointments/${id}`);
+    return;
+  }
+
   const batchId = crypto.randomUUID();
   const createdIds: string[] = [];
   const failures: string[] = [];
@@ -2047,8 +2114,8 @@ async function submitMultiCareBatch(
     if (!patientId && form.form_data.email?.trim()) {
       createBody.guest_email = form.form_data.email.trim();
     }
-    if (form.type === 'blood_test' && form.assigned_lab_id) createBody.assigned_lab_id = form.assigned_lab_id;
-    if (form.type === 'nursing' && form.assigned_nurse_id) createBody.assigned_nurse_id = form.assigned_nurse_id;
+    if (isBloodTestAppointment(form.type) && form.assigned_lab_id) createBody.assigned_lab_id = form.assigned_lab_id;
+    if (isNursingAppointment(form.type) && form.assigned_nurse_id) createBody.assigned_nurse_id = form.assigned_nurse_id;
 
     const response = await apiFetch('/appointments', { method: 'POST', body: createBody });
     if (response.success) {
@@ -2177,10 +2244,10 @@ async function submit() {
         gender: form.form_data.gender || undefined,
         availability: availabilityPayload,
         files: filesMeta,
-        blood_test_type: form.type === 'blood_test' ? form.form_data.blood_test_type : undefined,
-        custom_days: form.type === 'blood_test' ? form.form_data.custom_days : (form.type === 'nursing' && form.form_data.duration_days === 'custom' ? form.form_data.custom_days : undefined),
-        frequency: form.type === 'nursing' ? form.form_data.frequency : undefined,
-        preferred_nurse_gender: form.type === 'nursing' ? resolvedPreferredNurseGender() : undefined,
+        blood_test_type: isBloodTestAppointment(form.type) ? form.form_data.blood_test_type : undefined,
+        custom_days: isBloodTestAppointment(form.type) ? form.form_data.custom_days : (isNursingAppointment(form.type) && form.form_data.duration_days === 'custom' ? form.form_data.custom_days : undefined),
+        frequency: isNursingAppointment(form.type) ? form.form_data.frequency : undefined,
+        preferred_nurse_gender: isNursingAppointment(form.type) ? resolvedPreferredNurseGender() : undefined,
         care_options: form.form_data.care_options && Object.keys(form.form_data.care_options).length ? form.form_data.care_options : undefined,
       }
     };
@@ -2232,8 +2299,8 @@ async function submit() {
       if (!patientId && form.form_data.email?.trim()) {
         createBody.guest_email = form.form_data.email.trim();
       }
-      if (form.type === 'blood_test' && form.assigned_lab_id) createBody.assigned_lab_id = form.assigned_lab_id;
-      if (form.type === 'nursing' && form.assigned_nurse_id) createBody.assigned_nurse_id = form.assigned_nurse_id;
+      if (isBloodTestAppointment(form.type) && form.assigned_lab_id) createBody.assigned_lab_id = form.assigned_lab_id;
+      if (isNursingAppointment(form.type) && form.assigned_nurse_id) createBody.assigned_nurse_id = form.assigned_nurse_id;
       response = await apiFetch('/appointments', { method: 'POST', body: createBody });
     } else {
       if (!appointment.value) return;
