@@ -57,11 +57,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         );
         $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
         
-        $stmt = $db->prepare('
-            SELECT patient_id, assigned_nurse_id, assigned_lab_id, assigned_to, created_by, type, status, location_lat, location_lng, creation_batch_id
+        try {
+            $hasMergedColumn = (bool) $db->query("
+                SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'appointments'
+                  AND COLUMN_NAME = 'merged_into_appointment_id'
+            ")->fetchColumn();
+        } catch (Throwable $e) {
+            $hasMergedColumn = false;
+        }
+        $mergedSelect = $hasMergedColumn ? ', merged_into_appointment_id' : '';
+        $stmt = $db->prepare("
+            SELECT patient_id, assigned_nurse_id, assigned_lab_id, assigned_to, created_by, type, status, location_lat, location_lng, creation_batch_id{$mergedSelect}
             FROM appointments
             WHERE id = ?
-        ');
+        ");
         $stmt->execute([$id]);
         $appointmentCheck = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -73,6 +84,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'code' => 'NOT_FOUND',
             ]);
             exit;
+        }
+
+        if (!empty($appointmentCheck['merged_into_appointment_id'])) {
+            $id = (string) $appointmentCheck['merged_into_appointment_id'];
+            $stmt->execute([$id]);
+            $appointmentCheck = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$appointmentCheck) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'error' => 'Rendez-vous introuvable', 'code' => 'NOT_FOUND']);
+                exit;
+            }
         }
         
         // Vérifier les permissions d'accès de base

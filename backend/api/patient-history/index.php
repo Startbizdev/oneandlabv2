@@ -121,6 +121,19 @@ if ($relativeId !== '') {
     $where .= ' AND a.relative_id = ?';
     $params[] = $relativeId;
 }
+try {
+    $hasMergedColumn = (bool) $db->query("
+        SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'appointments'
+          AND COLUMN_NAME = 'merged_into_appointment_id'
+    ")->fetchColumn();
+} catch (Throwable $e) {
+    $hasMergedColumn = false;
+}
+if ($hasMergedColumn) {
+    $where .= ' AND a.merged_into_appointment_id IS NULL';
+}
 
 $countStmt = $db->prepare("SELECT COUNT(*) FROM appointments a WHERE $where");
 $countStmt->execute($params);

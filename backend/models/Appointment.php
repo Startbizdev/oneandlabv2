@@ -51,6 +51,170 @@ class Appointment
         $this->notificationService = new NotificationService();
     }
 
+    private function hasColumn(string $table, string $column): bool
+    {
+        static $cache = [];
+        $key = $table . '.' . $column;
+        if (array_key_exists($key, $cache)) {
+            return $cache[$key];
+        }
+        try {
+            $stmt = $this->db->prepare('
+                SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
+            ');
+            $stmt->execute([$table, $column]);
+            $cache[$key] = ((int) $stmt->fetchColumn()) > 0;
+        } catch (Throwable $e) {
+            $cache[$key] = false;
+        }
+        return $cache[$key];
+    }
+
+    private function hasTable(string $table): bool
+    {
+        static $cache = [];
+        if (array_key_exists($table, $cache)) {
+            return $cache[$table];
+        }
+        try {
+            $stmt = $this->db->prepare('
+                SELECT COUNT(*) FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+            ');
+            $stmt->execute([$table]);
+            $cache[$table] = ((int) $stmt->fetchColumn()) > 0;
+        } catch (Throwable $e) {
+            $cache[$table] = false;
+        }
+        return $cache[$table];
+    }
+
+    private function normalizeBloodTestItems(array $data): array
+    {
+        if (($data['type'] ?? '') !== 'blood_test') {
+            return [];
+        }
+
+        $items = [];
+        $rawItems = $data['blood_test_items'] ?? ($data['form_data']['blood_test_items'] ?? null);
+        if (is_array($rawItems)) {
+            foreach ($rawItems as $idx => $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $categoryId = isset($item['category_id']) && Validation::uuid((string) $item['category_id'])
+                    ? (string) $item['category_id']
+                    : null;
+                $label = trim((string) ($item['label'] ?? $item['name'] ?? ''));
+                $careOptions = $item['care_options'] ?? [];
+                if (!is_array($careOptions)) {
+                    $careOptions = [];
+                }
+                if (!$categoryId && $label === '') {
+                    continue;
+                }
+                $items[] = [
+                    'category_id' => $categoryId,
+                    'label' => $label !== '' ? $label : null,
+                    'care_options' => $careOptions,
+                    'source_appointment_id' => null,
+                    'sort_order' => (int) ($item['sort_order'] ?? $idx),
+                ];
+            }
+        }
+
+        if (empty($items)) {
+            $careOptions = $data['form_data']['care_options'] ?? [];
+            if (!is_array($careOptions)) {
+                $careOptions = [];
+            }
+            $items[] = [
+                'category_id' => !empty($data['category_id']) ? (string) $data['category_id'] : null,
+                'label' => trim((string) ($data['form_data']['category_name'] ?? $data['form_data']['service_name'] ?? '')) ?: null,
+                'care_options' => $careOptions,
+                'source_appointment_id' => null,
+                'sort_order' => 0,
+            ];
+        }
+
+        return $items;
+    }
+
+    private function insertBloodTestItems(string $appointmentId, array $items): void
+    {
+        if (!$this->hasTable('appointment_blood_test_items') || empty($items)) {
+            return;
+        }
+        $stmt = $this->db->prepare('
+            INSERT INTO appointment_blood_test_items
+            (id, appointment_id, category_id, label, care_options, source_appointment_id, sort_order, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        ');
+        foreach ($items as $idx => $item) {
+            $stmt->execute([
+                $this->generateUUID(),
+                $appointmentId,
+                $item['category_id'] ?? null,
+                $item['label'] ?? null,
+                json_encode($item['care_options'] ?? [], JSON_UNESCAPED_UNICODE),
+                $item['source_appointment_id'] ?? null,
+                (int) ($item['sort_order'] ?? $idx),
+            ]);
+        }
+    }
+
+    private function getBloodTestItems(string $appointmentId): array
+    {
+        if (!$this->hasTable('appointment_blood_test_items')) {
+            return [];
+        }
+        $stmt = $this->db->prepare('
+            SELECT bti.id, bti.appointment_id, bti.category_id, bti.label, bti.care_options,
+                   bti.source_appointment_id, bti.sort_order, cc.name AS category_name, cc.icon AS category_icon
+            FROM appointment_blood_test_items bti
+            LEFT JOIN care_categories cc ON cc.id = bti.category_id
+            WHERE bti.appointment_id = ?
+            ORDER BY bti.sort_order ASC, bti.created_at ASC, bti.id ASC
+        ');
+        $stmt->execute([$appointmentId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$row) {
+            $decoded = json_decode((string) ($row['care_options'] ?? ''), true);
+            $row['care_options'] = is_array($decoded) ? $decoded : [];
+        }
+        unset($row);
+        return $rows;
+    }
+
+    public function loadBloodTestItemsForAppointments(array $appointmentIds): array
+    {
+        if (!$this->hasTable('appointment_blood_test_items')) {
+            return [];
+        }
+        $ids = array_values(array_unique(array_filter(array_map('strval', $appointmentIds))));
+        if (empty($ids)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare("
+            SELECT bti.id, bti.appointment_id, bti.category_id, bti.label, bti.care_options,
+                   bti.source_appointment_id, bti.sort_order, cc.name AS category_name, cc.icon AS category_icon
+            FROM appointment_blood_test_items bti
+            LEFT JOIN care_categories cc ON cc.id = bti.category_id
+            WHERE bti.appointment_id IN ($placeholders)
+            ORDER BY bti.appointment_id ASC, bti.sort_order ASC, bti.created_at ASC
+        ");
+        $stmt->execute($ids);
+        $byAppointment = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $decoded = json_decode((string) ($row['care_options'] ?? ''), true);
+            $row['care_options'] = is_array($decoded) ? $decoded : [];
+            $byAppointment[(string) $row['appointment_id']][] = $row;
+        }
+        return $byAppointment;
+    }
+
     /**
      * Crée un nouveau rendez-vous
      * 
@@ -186,9 +350,13 @@ class Appointment
         }
         
         $id = $this->generateUUID();
+        $bloodTestItems = $this->normalizeBloodTestItems($data);
+        if (($data['type'] ?? '') === 'blood_test' && empty($data['category_id']) && !empty($bloodTestItems[0]['category_id'])) {
+            $data['category_id'] = $bloodTestItems[0]['category_id'];
+        }
 
         $creationBatchId = null;
-        if (!empty($data['creation_batch_id']) && Validation::uuid((string) $data['creation_batch_id'])) {
+        if (($data['type'] ?? '') !== 'blood_test' && !empty($data['creation_batch_id']) && Validation::uuid((string) $data['creation_batch_id'])) {
             $creationBatchId = (string) $data['creation_batch_id'];
         }
         
@@ -300,6 +468,10 @@ class Appointment
             $assignedNurseId,
             $assignedTo,
         ]);
+
+        if (($data['type'] ?? '') === 'blood_test') {
+            $this->insertBloodTestItems($id, $bloodTestItems);
+        }
         
         // Logger la création
         $this->logger->log(
@@ -718,6 +890,10 @@ class Appointment
             return null;
         }
 
+        if (!empty($appointment['merged_into_appointment_id'])) {
+            return $this->getById((string) $appointment['merged_into_appointment_id'], $requesterId, $requesterRole);
+        }
+
         // Traiter les données du proche si présent
         if ($appointment['relative_id']) {
             $appointment['relative'] = [
@@ -959,7 +1135,25 @@ class Appointment
         $appointment['batch_siblings'] = [];
         $batchId = $appointment['creation_batch_id'] ?? null;
         $batchType = $appointment['type'] ?? null;
-        if (!empty($batchId) && in_array($batchType, ['nursing', 'blood_test'], true) && !empty($appointment['patient_id'])) {
+        if (($appointment['type'] ?? '') === 'blood_test') {
+            $appointment['blood_test_items'] = $this->getBloodTestItems((string) $appointment['id']);
+            if (empty($appointment['blood_test_items'])) {
+                $appointment['blood_test_items'] = [[
+                    'id' => null,
+                    'appointment_id' => $appointment['id'],
+                    'category_id' => $appointment['category_id'] ?? null,
+                    'label' => $appointment['category_name'] ?? null,
+                    'care_options' => is_array($appointment['form_data']['care_options'] ?? null) ? $appointment['form_data']['care_options'] : [],
+                    'source_appointment_id' => $appointment['id'],
+                    'sort_order' => 0,
+                    'category_name' => $appointment['category_name'] ?? null,
+                    'category_icon' => $appointment['category_icon'] ?? null,
+                ]];
+            }
+        } else {
+            $appointment['blood_test_items'] = [];
+        }
+        if (!empty($batchId) && $batchType === 'nursing' && !empty($appointment['patient_id'])) {
             $sibStmt = $this->db->prepare('
                 SELECT a.id, a.status, a.scheduled_at, cc.name AS category_name
                 FROM appointments a
@@ -1245,8 +1439,8 @@ class Appointment
             if (!empty($appointment['assigned_nurse_id']) && (string) $appointment['assigned_nurse_id'] !== (string) $actorId) {
                 throw new Exception('Ce rendez-vous a déjà été accepté par un autre infirmier.');
             }
-            $whereSql = 'WHERE id = ? AND status = ? AND assigned_nurse_id IS NULL';
-            $whereParams = [$id, 'pending'];
+            $whereSql = 'WHERE id = ? AND status = ? AND (assigned_nurse_id IS NULL OR assigned_nurse_id = ?)';
+            $whereParams = [$id, 'pending', $actorId];
         } elseif ($atomicLabConfirm) {
             if ($oldStatus !== 'pending') {
                 throw new Exception('Ce rendez-vous ne peut plus être accepté.');
@@ -1254,8 +1448,8 @@ class Appointment
             if (!empty($appointment['assigned_lab_id']) && (string) $appointment['assigned_lab_id'] !== (string) $actorId) {
                 throw new Exception('Ce rendez-vous a déjà été accepté par un autre professionnel.');
             }
-            $whereSql = 'WHERE id = ? AND status = ? AND assigned_lab_id IS NULL';
-            $whereParams = [$id, 'pending'];
+            $whereSql = 'WHERE id = ? AND status = ? AND (assigned_lab_id IS NULL OR assigned_lab_id = ?)';
+            $whereParams = [$id, 'pending', $actorId];
         } elseif ($atomicPreleveurConfirm) {
             if ($oldStatus !== 'pending') {
                 throw new Exception('Ce rendez-vous ne peut plus être accepté.');
@@ -1290,6 +1484,7 @@ class Appointment
 
         /** @var list<string> */
         $batchSiblingIdsConfirmed = [];
+        $propagateBloodTestLegacyBatch = false;
         if ($atomicNurseConfirm && $mainUpdateAffected > 0) {
             $batchId = $appointment['creation_batch_id'] ?? null;
             $patientId = $appointment['patient_id'] ?? null;
@@ -1343,7 +1538,7 @@ class Appointment
             }
         }
 
-        if ($atomicLabConfirm && $mainUpdateAffected > 0) {
+        if ($propagateBloodTestLegacyBatch && $atomicLabConfirm && $mainUpdateAffected > 0) {
             $batchId = $appointment['creation_batch_id'] ?? null;
             $patientId = $appointment['patient_id'] ?? null;
             if (!empty($batchId) && !empty($patientId)) {
@@ -1396,7 +1591,7 @@ class Appointment
             }
         }
 
-        if ($atomicPreleveurConfirm && $mainUpdateAffected > 0) {
+        if ($propagateBloodTestLegacyBatch && $atomicPreleveurConfirm && $mainUpdateAffected > 0) {
             $batchId = $appointment['creation_batch_id'] ?? null;
             $patientId = $appointment['patient_id'] ?? null;
             if (!empty($batchId) && !empty($patientId) && !empty($preleveurLabId)) {

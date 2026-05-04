@@ -164,6 +164,7 @@ import {
   PATIENT_SELECT_SEARCH_PLACEHOLDER,
   buildPatientSelectRow,
 } from '~/utils/patient-select-menu';
+import { isBloodTestAppointment } from '~/utils/appointment-type-rules';
 
 const props = withDefaults(
   defineProps<{
@@ -466,7 +467,8 @@ async function onUnifiedSubmit(payload: any) {
       }
     }
 
-    const batchId = selectedServices.value.length > 1 ? crypto.randomUUID() : undefined;
+    const unifiedBloodServices = selectedServices.value.length > 1 && selectedServices.value.every((svc) => isBloodTestAppointment(svc.type));
+    const batchId = selectedServices.value.length > 1 && !unifiedBloodServices ? crypto.randomUUID() : undefined;
     const payloads = buildDashboardAppointmentPayloads(patientId, payload, selectedServices.value, {
       creationBatchId: batchId,
       creatorRole: role,

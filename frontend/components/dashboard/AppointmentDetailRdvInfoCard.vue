@@ -77,8 +77,26 @@
         <div v-if="appt.category_name" class="flex items-start gap-3">
           <UIcon name="i-lucide-stethoscope" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
           <div class="flex-1 min-w-0">
-            <p class="text-xs text-gray-500 dark:text-gray-400">Type de soin</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ bloodTestItems.length > 1 ? 'Acte principal' : 'Type de soin' }}</p>
             <p class="text-sm font-medium text-gray-900 dark:text-white">{{ appt.category_name }}</p>
+          </div>
+        </div>
+        <div v-if="bloodTestItems.length > 1" class="flex items-start gap-3">
+          <UIcon name="i-lucide-list-checks" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
+          <div class="flex-1 min-w-0">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Actes de prise de sang</p>
+            <div class="mt-2 flex flex-wrap gap-1.5">
+              <UBadge
+                v-for="item in bloodTestItems"
+                :key="item.id || item.category_id || item.label"
+                color="error"
+                variant="subtle"
+                size="sm"
+                class="max-w-full"
+              >
+                <span class="truncate">{{ item.label || item.category_name || 'Acte' }}</span>
+              </UBadge>
+            </div>
           </div>
         </div>
         <div v-if="appt.form_data?.blood_test_type" class="flex items-start gap-3">
@@ -220,6 +238,11 @@ const cancellationPhotoDownloadUrl = computed(() => {
   if (!id) return '';
   const apiBase = config.public?.apiBase || '';
   return `${apiBase}/medical-documents/${id}/download`;
+});
+
+const bloodTestItems = computed(() => {
+  const items = props.appt?.blood_test_items;
+  return Array.isArray(items) ? items : [];
 });
 
 const PARIS_TZ = 'Europe/Paris';

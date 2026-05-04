@@ -341,6 +341,7 @@
 import type { NavigationMenuItem } from "@nuxt/ui";
 import { apiFetch } from "~/utils/api";
 import { isPendingIncomingOffer } from "~/utils/appointment-offer";
+import { isBloodTestAppointment } from "~/utils/appointment-type-rules";
 
 const { user, logout, fetchCurrentUser } = useAuth();
 const route = useRoute();
@@ -514,6 +515,18 @@ const seenAppointmentIds = ref<Set<string>>(new Set());
 const { showAppointmentModal, selectedAppointment, openAppointmentModalById, openAppointmentModalByIdIfEligible, openAppointmentModalFromShareLink, enqueueMany, onModalClosed } = useAppointmentModal({
   onDisplayed: (apt) => { seenAppointmentIds.value = new Set([...seenAppointmentIds.value, apt.id]); },
 });
+
+function dedupePendingBloodTestLegacy(appointments: any[]): any[] {
+  const seenBloodBatches = new Set<string>();
+  return appointments.filter((apt: any) => {
+    const bid = apt?.creation_batch_id;
+    if (!bid || !isBloodTestAppointment(apt?.type)) return true;
+    const key = `blood_test:${bid}`;
+    if (seenBloodBatches.has(key)) return false;
+    seenBloodBatches.add(key);
+    return true;
+  });
+}
 
 /** Lien partagé (WhatsApp) : ?openAppointment=&shareToken= — même modal globale que le polling, sur tout le layout infirmier. */
 const shareLinkFromUrlHandled = ref(false);
@@ -1299,7 +1312,7 @@ const { start: startAppointmentPolling, stop: stopAppointmentPolling, isPolling:
         if (role === 'nurse') {
           return (
             a.status === 'pending' &&
-            a.type !== 'blood_test' &&
+            !isBloodTestAppointment(a.type) &&
             isPendingIncomingOffer(a, myId) &&
             (a.assigned_nurse_id === myId || !a.assigned_nurse_id)
           );
@@ -1307,30 +1320,31 @@ const { start: startAppointmentPolling, stop: stopAppointmentPolling, isPolling:
         if (role === 'lab' || role === 'subaccount')
           return (
             a.status === 'pending' &&
-            a.type === 'blood_test' &&
+            isBloodTestAppointment(a.type) &&
             isPendingIncomingOffer(a, myId) &&
             (a.assigned_lab_id === myId || !a.assigned_lab_id)
           );
         if (role === 'preleveur')
           return (
             a.status === 'pending' &&
-            a.type === 'blood_test' &&
+            isBloodTestAppointment(a.type) &&
             isPendingIncomingOffer(a, myId) &&
             (a.assigned_to === myId || !a.assigned_to)
           );
         return false;
       });
 
-    const newAppointments = pending.filter((a: any) => !seenAppointmentIds.value.has(a.id));
+    const dedupedPending = dedupePendingBloodTestLegacy(pending);
+    const newAppointments = dedupedPending.filter((a: any) => !seenAppointmentIds.value.has(a.id));
     if (newAppointments.length > 0) {
       await enqueueMany(newAppointments);
     }
 
     // Compter les lots distincts pour le badge (1 badge par lot, pas par RDV)
-    const batchIds = new Set(pending.filter((a: any) => a.creation_batch_id).map((a: any) => a.creation_batch_id));
-    const singlesCount = pending.filter((a: any) => !a.creation_batch_id).length;
+    const batchIds = new Set(dedupedPending.filter((a: any) => a.creation_batch_id).map((a: any) => a.creation_batch_id));
+    const singlesCount = dedupedPending.filter((a: any) => !a.creation_batch_id).length;
     lastPendingCount.value = batchIds.size + singlesCount;
-    pendingAppointments.value = pending;
+    pendingAppointments.value = dedupedPending;
   }
 }, 10000);
 
@@ -1387,7 +1401,7 @@ watch(() => user.value?.role, async (role) => {
         if (role === 'nurse') {
           return (
             a.status === 'pending' &&
-            a.type !== 'blood_test' &&
+            !isBloodTestAppointment(a.type) &&
             isPendingIncomingOffer(a, myId) &&
             (a.assigned_nurse_id === myId || !a.assigned_nurse_id)
           );
@@ -1395,24 +1409,25 @@ watch(() => user.value?.role, async (role) => {
         if (role === 'lab' || role === 'subaccount')
           return (
             a.status === 'pending' &&
-            a.type === 'blood_test' &&
+            isBloodTestAppointment(a.type) &&
             isPendingIncomingOffer(a, myId) &&
             (a.assigned_lab_id === myId || !a.assigned_lab_id)
           );
         if (role === 'preleveur')
           return (
             a.status === 'pending' &&
-            a.type === 'blood_test' &&
+            isBloodTestAppointment(a.type) &&
             isPendingIncomingOffer(a, myId) &&
             (a.assigned_to === myId || !a.assigned_to)
           );
         return false;
       });
-      const batchIdsInit = new Set(pending.filter((a: any) => a.creation_batch_id).map((a: any) => a.creation_batch_id));
-      const singlesCountInit = pending.filter((a: any) => !a.creation_batch_id).length;
+      const dedupedPending = dedupePendingBloodTestLegacy(pending);
+      const batchIdsInit = new Set(dedupedPending.filter((a: any) => a.creation_batch_id).map((a: any) => a.creation_batch_id));
+      const singlesCountInit = dedupedPending.filter((a: any) => !a.creation_batch_id).length;
       lastPendingCount.value = batchIdsInit.size + singlesCountInit;
-      pendingAppointments.value = pending;
-      const newAppointments = pending.filter((a: any) => !seenAppointmentIds.value.has(a.id));
+      pendingAppointments.value = dedupedPending;
+      const newAppointments = dedupedPending.filter((a: any) => !seenAppointmentIds.value.has(a.id));
       if (newAppointments.length > 0) {
         await enqueueMany(newAppointments);
       }

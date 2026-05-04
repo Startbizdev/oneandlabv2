@@ -2,26 +2,48 @@
   <UForm :state="form" @submit.prevent="handleSubmit" class="space-y-6">
     <!-- Champs spécifiques par soin -->
     <UCard
-      v-for="(svc, idx) in selectedServices"
+      v-for="(svc, idx) in renderedServices"
       :id="`wizard-rdv-service-${svc.id}`"
       :key="svc.id"
       class="rounded-2xl border border-gray-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)]"
     >
       <template #header>
         <div class="flex items-center gap-3">
-          <div :class="['w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0', svc.type === 'blood_test' ? 'bg-red-100 dark:bg-red-900/30 text-red-600' : 'bg-primary-100 dark:bg-primary-900/30 text-primary-600']">
-            <UIcon :name="svc.icon || (svc.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-heart-pulse')" class="w-5 h-5" />
+          <div :class="['w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0', isBloodTestAppointment(svc.type) ? 'bg-red-100 dark:bg-red-900/30 text-red-600' : 'bg-primary-100 dark:bg-primary-900/30 text-primary-600']">
+            <UIcon :name="svc.icon || (isBloodTestAppointment(svc.type) ? 'i-lucide-droplet' : 'i-lucide-heart-pulse')" class="w-5 h-5" />
           </div>
           <div class="min-w-0">
-            <h3 class="text-base font-semibold text-gray-900 dark:text-white truncate">{{ svc.name }}</h3>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white truncate">
+              {{ isUnifiedBloodTest ? 'Prise de sang à domicile' : svc.name }}
+            </h3>
             <p class="text-xs text-gray-500 mt-0.5">
-              {{ selectedServices.length > 1 ? `Rendez-vous #${idx + 1}` : 'Rendez-vous' }}
+              {{ isUnifiedBloodTest ? `${selectedServices.length} actes regroupés en une seule visite` : (selectedServices.length > 1 ? `Rendez-vous #${idx + 1}` : 'Rendez-vous') }}
               <span class="mx-1">·</span>
-              {{ svc.type === 'blood_test' ? 'Laboratoire' : 'Soins infirmiers' }}
+              {{ isBloodTestAppointment(svc.type) ? 'Laboratoire' : 'Soins infirmiers' }}
             </p>
           </div>
         </div>
       </template>
+
+      <div
+        v-if="isUnifiedBloodTest"
+        class="mb-4 rounded-2xl border border-red-100 bg-red-50/60 p-4 dark:border-red-900/40 dark:bg-red-950/20"
+      >
+        <p class="text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-300">
+          Actes inclus dans cette visite
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <UBadge
+            v-for="service in selectedServices"
+            :key="service.id"
+            color="error"
+            variant="subtle"
+            class="max-w-full"
+          >
+            <span class="truncate">{{ service.name }}</span>
+          </UBadge>
+        </div>
+      </div>
 
       <!-- Date et créneaux par soin (toujours dans la carte) -->
       <div class="space-y-4 mb-4">
@@ -29,7 +51,7 @@
           <DatePicker
             v-model="formDataByService[svc.id].scheduled_at"
             placeholder="Sélectionner une date"
-            :appointment-type="svc.type === 'blood_test' ? 'lab' : 'nurse'"
+            :appointment-type="isBloodTestAppointment(svc.type) ? 'lab' : 'nurse'"
             :min-lead-time-hours="minLeadTimeHours ?? undefined"
             :accept-saturday="acceptSaturday !== false"
             :accept-sunday="acceptSunday !== false"
@@ -84,7 +106,7 @@
                     <span>12h</span>
                     <span class="hidden md:inline">15h</span>
                     <span>17h</span>
-                    <template v-if="svc.type !== 'blood_test'">
+                    <template v-if="!isBloodTestAppointment(svc.type)">
                       <span class="hidden lg:inline">20h</span>
                       <span>22h</span>
                     </template>
@@ -142,7 +164,7 @@
       </div>
 
       <!-- Champs Lab -->
-      <div v-if="svc.type === 'blood_test'" class="space-y-4">
+      <div v-if="isBloodTestAppointment(svc.type)" class="space-y-4">
         <UFormField label="Type de prélèvement" :name="`blood_test_type_${svc.id}`" required>
           <URadioGroup v-model="formDataByService[svc.id].blood_test_type" :items="bloodTestTypeOptions" size="xl" variant="list" />
         </UFormField>
@@ -182,7 +204,7 @@
           <USelect v-model="formDataByService[svc.id].frequency" :items="frequencyOptions" value-key="value" placeholder="Sélectionner" size="xl" class="w-full" />
         </UFormField>
         <UFormField
-          v-if="svc.type === 'nursing' && !hidePreferredNurseGender"
+          v-if="isNursingAppointment(svc.type) && !hidePreferredNurseGender"
           label="Préférence pour l'infirmier"
           :name="`preferred_nurse_gender_${svc.id}`"
         >
@@ -433,6 +455,7 @@ import {
 } from '~/constants/availability-slot';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { getBloodTestPremiumDayKind, type PremiumDayKind } from '~/utils/french-public-holidays';
+import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 
 const props = defineProps<{
   modelValue: any;
@@ -469,8 +492,10 @@ const { user } = useAuth();
 const route = useRoute();
 const loginReturnHref = computed(() => `/login?returnTo=${encodeURIComponent(route.fullPath)}`);
 
-const hasLabService = computed(() => props.selectedServices.some(s => s.type === 'blood_test'));
+const hasLabService = computed(() => props.selectedServices.some(s => isBloodTestAppointment(s.type)));
 const isMultiServices = computed(() => props.selectedServices.length > 1);
+const isUnifiedBloodTest = computed(() => props.selectedServices.length > 1 && props.selectedServices.every(s => isBloodTestAppointment(s.type)));
+const renderedServices = computed(() => isUnifiedBloodTest.value ? props.selectedServices.slice(0, 1) : props.selectedServices);
 
 const form = reactive({
   last_name: '',
@@ -543,12 +568,12 @@ const availabilityTypeOptions = [
 const AVAILABILITY_MIN = 6;
 
 function availabilityMaxHour(serviceType: string): number {
-  return serviceType === 'blood_test' ? AVAILABILITY_MAX_HOUR_BLOOD_TEST : AVAILABILITY_MAX_HOUR_NURSING;
+  return isBloodTestAppointment(serviceType) ? AVAILABILITY_MAX_HOUR_BLOOD_TEST : AVAILABILITY_MAX_HOUR_NURSING;
 }
 
 function availabilityPresetsFor(svc: { type: string }): ReadonlyArray<{ label: string; range: [number, number] }> {
   const max = availabilityMaxHour(svc.type);
-  if (svc.type === 'blood_test') {
+  if (isBloodTestAppointment(svc.type)) {
     return [
       { label: 'Matin', range: [8, 12] },
       { label: 'Midi', range: [11, 14] },
@@ -625,7 +650,7 @@ const loadingProfileDocuments = ref(false);
 watch(() => props.selectedServices, (svcs) => {
   svcs?.forEach(s => {
     if (!formDataByService[s.id]) {
-      const base: ServiceFormData = s.type === 'blood_test'
+      const base: ServiceFormData = isBloodTestAppointment(s.type)
         ? { blood_test_type: 'single' }
         : { duration_days: '1', preferred_nurse_gender: 'any' };
       formDataByService[s.id] = {
@@ -647,7 +672,7 @@ watch(() => props.selectedServices, (svcs) => {
       if (cur.availability_type === undefined) cur.availability_type = 'custom';
       if (cur.availabilityRange === undefined) cur.availabilityRange = [9, 11];
       if (cur.files === undefined) cur.files = {};
-      if (s.type === 'nursing' && cur.preferred_nurse_gender === undefined) cur.preferred_nurse_gender = 'any';
+      if (isNursingAppointment(s.type) && cur.preferred_nurse_gender === undefined) cur.preferred_nurse_gender = 'any';
     }
   });
 }, { immediate: true, deep: true });
@@ -866,11 +891,11 @@ function servicePremiumDayAlertDescription(svcId: string): string {
 }
 
 function missingPrescriptionAlertTitle(serviceType: string): string {
-  return serviceType === 'blood_test' ? 'Examens sans ordonnance médicale' : 'Soins sans prescription médicale';
+  return isBloodTestAppointment(serviceType) ? 'Examens sans ordonnance médicale' : 'Soins sans prescription médicale';
 }
 
 function missingPrescriptionAlertDescription(serviceType: string): string {
-  if (serviceType === 'blood_test') {
+  if (isBloodTestAppointment(serviceType)) {
     return (
       'Sans prescription médicale, les actes de biologie médicale ne sont en principe pas pris en charge par l’Assurance Maladie et ' +
       'restent intégralement à votre charge. Une participation de votre complémentaire santé n’est possible que dans le cadre ' +
@@ -1073,14 +1098,14 @@ const handleSubmit = () => {
     }
     const { files: mergedFiles, form_data_files: filesData } = buildMergedFilesForService(svc.id);
     const nursingPref =
-      svc.type === 'nursing'
+      isNursingAppointment(svc.type)
         ? props.hidePreferredNurseGender
           ? resolvedPreferredNurseGenderFromNurseAccount()
           : (data?.preferred_nurse_gender ?? 'any')
         : data?.preferred_nurse_gender;
     formDataByServiceSerialized[svc.id] = {
       ...data,
-      ...(svc.type === 'nursing' ? { preferred_nurse_gender: nursingPref } : {}),
+      ...(isNursingAppointment(svc.type) ? { preferred_nurse_gender: nursingPref } : {}),
       availability: buildAvailabilityForService(svc.id),
       scheduled_at: scheduledAt,
       files: mergedFiles,
@@ -1089,13 +1114,40 @@ const handleSubmit = () => {
     } as any;
   }
 
-  const payload = {
+  const payload: any = {
     ...form,
     address: addressWithComplement,
     selectedServices: props.selectedServices,
     formDataByService: formDataByServiceSerialized,
     isMultiServices: isMultiServices.value,
   };
+
+  if (isUnifiedBloodTest.value) {
+    const firstSvc = props.selectedServices[0];
+    const firstData = formDataByServiceSerialized[firstSvc.id];
+    const bloodTestItems = props.selectedServices.map((svc, index) => ({
+      category_id: svc.category_id,
+      label: svc.name,
+      care_options: formDataByServiceSerialized[svc.id]?.care_options ?? {},
+      sort_order: index,
+    }));
+    payload.scheduled_at = firstData.scheduled_at;
+    payload.files = firstData.files;
+    payload.form_data = {
+      ...form,
+      address: addressWithComplement,
+      scheduled_at: firstData.scheduled_at,
+      availability: firstData.availability,
+      files: firstData.form_data_files,
+      notes: firstData.notes || undefined,
+      blood_test_items: bloodTestItems,
+      care_options: firstData.care_options && Object.keys(firstData.care_options).length ? firstData.care_options : undefined,
+    };
+    (payload as any).blood_test_items = bloodTestItems;
+    emit('update:modelValue', payload);
+    emit('submit', payload);
+    return;
+  }
 
   if (isMultiServices.value) {
     emit('update:modelValue', payload);

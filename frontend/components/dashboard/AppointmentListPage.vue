@@ -277,7 +277,7 @@
                     {{ displayPatientName(row.appointments[0]) }}
                   </h3>
                   <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                    Plusieurs soins (même demande)
+                    {{ batchSubtitle(row) }}
                   </p>
                 </div>
               </div>
@@ -335,7 +335,7 @@
                     {{ displayPatientName(row.appointments[0]) }}
                   </h3>
                   <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                    Plusieurs soins — ouvrir pour répondre
+                    {{ batchOpenLabel(row) }}
                   </p>
                 </div>
               </div>
@@ -404,8 +404,8 @@
                   <h3 class="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                     {{ displayPatientName(row.appointment) }}
                   </h3>
-                  <p v-if="row.appointment.category_name" class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                    {{ row.appointment.category_name }}
+                  <p v-if="appointmentCategorySummary(row.appointment)" class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                    {{ appointmentCategorySummary(row.appointment) }}
                   </p>
                 </div>
                 <UBadge
@@ -458,8 +458,8 @@
                   <h3 class="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                     {{ displayPatientName(row.appointment) }}
                   </h3>
-                  <p v-if="row.appointment.category_name" class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                    {{ row.appointment.category_name }}
+                  <p v-if="appointmentCategorySummary(row.appointment)" class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                    {{ appointmentCategorySummary(row.appointment) }}
                   </p>
                 </div>
                 <UBadge
@@ -579,6 +579,7 @@ import {
   groupAppointmentsForNurseMesDemandes,
   type AppointmentListRow,
 } from '~/utils/appointment-batch';
+import { isBloodTestAppointment } from '~/utils/appointment-type-rules';
 import { useAppointmentModalQueue } from '~/composables/useAppointmentModalQueue';
 
 const props = withDefaults(
@@ -648,6 +649,18 @@ function resolvedCardHref(appointment: any): string | null {
 function batchPrimaryHref(row: AppointmentListRow): string | null {
   if (row.kind !== 'batch' || !row.appointments.length) return null;
   return resolvedCardHref(row.appointments[0]);
+}
+
+function isBloodTestBatch(row: AppointmentListRow): boolean {
+  return row.kind === 'batch' && row.appointments.every((apt) => isBloodTestAppointment(apt?.type));
+}
+
+function batchSubtitle(row: AppointmentListRow): string {
+  return isBloodTestBatch(row) ? 'Plusieurs analyses (même demande)' : 'Plusieurs soins (même demande)';
+}
+
+function batchOpenLabel(row: AppointmentListRow): string {
+  return isBloodTestBatch(row) ? 'Plusieurs analyses — ouvrir pour répondre' : 'Plusieurs soins — ouvrir pour répondre';
 }
 
 const toast = useAppToast();
@@ -965,6 +978,14 @@ function careCategoryIconName(apt: any): string {
     type: t,
     icon: apt?.category_icon ?? null,
   });
+}
+
+function appointmentCategorySummary(apt: any): string {
+  const items = Array.isArray(apt?.blood_test_items) ? apt.blood_test_items : [];
+  if (apt?.type === 'blood_test' && items.length > 1) {
+    return `${items.length} actes de prise de sang`;
+  }
+  return apt?.category_name || '';
 }
 
 function typeIconRingClass(apt: any): string {

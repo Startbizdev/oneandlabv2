@@ -1,4 +1,5 @@
 import { isPendingIncomingOffer } from '~/utils/appointment-offer'
+import { isBloodTestAppointment } from '~/utils/appointment-type-rules'
 
 /** Affiche immédiatement l’état « déjà pris par un confrère » (aucune donnée patient / pas d’actions accepter). */
 export function appointmentModalAlreadyTakenPayload(appointmentId: string) {
@@ -33,7 +34,7 @@ export function useAppointmentModal(options?: { onDisplayed?: (appointment: any)
     if (!data || data.status !== 'pending' || !myId) return false
     if (role === 'nurse') {
       // Les prises de sang sont acceptées par lab / sous-compte, pas par l'infirmier
-      if (data.type === 'blood_test') return false
+      if (isBloodTestAppointment(data.type)) return false
       if (!isPendingIncomingOffer(data, myId)) return false
       const alreadyTaken =
         (data.assigned_nurse_id != null && String(data.assigned_nurse_id) !== String(myId)) ||
@@ -41,13 +42,13 @@ export function useAppointmentModal(options?: { onDisplayed?: (appointment: any)
       return !alreadyTaken
     }
     if (role === 'lab' || role === 'subaccount') {
-      if (data.type !== 'blood_test') return false
+      if (!isBloodTestAppointment(data.type)) return false
       if (!isPendingIncomingOffer(data, myId)) return false
       const alreadyTaken = data.assigned_lab_id != null && String(data.assigned_lab_id) !== String(myId)
       return !alreadyTaken
     }
     if (role === 'preleveur') {
-      if (data.type !== 'blood_test') return false
+      if (!isBloodTestAppointment(data.type)) return false
       if (!isPendingIncomingOffer(data, myId)) return false
       const alreadyTaken = data.assigned_to != null && String(data.assigned_to) !== String(myId)
       return !alreadyTaken
