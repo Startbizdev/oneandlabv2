@@ -1,5 +1,6 @@
 -- Modèle unifié prise de sang : un rendez-vous blood_test porte plusieurs actes/items.
 -- Les anciens rendez-vous blood_test fusionnés restent en base et pointent vers le RDV canonique.
+-- Prérequis : 052_appointments_creation_batch_id.sql (colonne creation_batch_id + index).
 
 ALTER TABLE appointments
   ADD COLUMN merged_into_appointment_id CHAR(36) NULL DEFAULT NULL

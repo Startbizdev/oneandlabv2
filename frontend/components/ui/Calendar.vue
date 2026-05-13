@@ -211,7 +211,7 @@
                       </div>
                       <div class="flex-1 min-w-0">
                         <span class="font-normal text-foreground block truncate">{{ getPatientLabel(item) }}</span>
-                        <span class="text-xs text-muted-foreground block mt-0.5">{{ getCreneauLabel(item) }} · {{ item.type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers' }}</span>
+                        <span class="text-xs text-muted-foreground block mt-0.5">{{ getCreneauLabel(item) }} · {{ item.type === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers' }}</span>
                         <p v-if="getItemAddress(item)" class="text-xs text-muted-foreground mt-1.5 truncate flex items-center gap-1" :title="getItemAddress(item)">
                           <UIcon name="i-lucide-map-pin" class="w-3.5 h-3.5 shrink-0" />
                           {{ getItemAddress(item) }}
@@ -354,7 +354,7 @@
                     </div>
                     <div class="flex-1 min-w-0">
                       <span class="font-normal text-foreground block truncate">{{ getPatientLabel(item) }}</span>
-                      <span class="text-xs text-muted-foreground block mt-0.5">{{ getCreneauLabel(item) }} · {{ item.type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers' }}</span>
+                      <span class="text-xs text-muted-foreground block mt-0.5">{{ getCreneauLabel(item) }} · {{ item.type === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers' }}</span>
                       <p v-if="getItemAddress(item)" class="text-xs text-muted-foreground mt-1.5 truncate flex items-center gap-1" :title="getItemAddress(item)">
                         <UIcon name="i-lucide-map-pin" class="w-3.5 h-3.5 shrink-0" />
                         {{ getItemAddress(item) }}
@@ -429,6 +429,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { appointmentListAddressLine } from '~/utils/address-display';
+import { appointmentPatientDisplayName } from '~/utils/appointment-patient-display';
 
 // --- TYPES & PROPS ---
 interface CalendarItem {
@@ -649,21 +651,21 @@ function getCreneauLabel(item: any): string {
   return formatItemTime(item);
 }
 
-// Nom du patient : patient_name ou form_data first_name + last_name (aligné CalendarPage)
+// Nom du patient : helper unifié (form_data chaîne ou objet, relative, racine)
 function getPatientLabel(item: any): string {
+  const fromHelper = appointmentPatientDisplayName(item);
+  if (fromHelper) return fromHelper;
   if (item.patient_name) return item.patient_name;
-  const fn = item.form_data?.first_name ?? '';
-  const ln = item.form_data?.last_name ?? '';
-  const name = [fn, ln].filter(Boolean).join(' ').trim();
-  return name || item.title || 'Patient';
+  return item.title || 'Patient';
 }
 
 // Adresse : item.address ou form_data (street, city, etc.)
 function getItemAddress(item: any): string {
-  if (item.address && String(item.address).trim()) return String(item.address).trim();
+  const line = appointmentListAddressLine(item)?.trim();
+  if (line) return line;
   const fd = item.form_data;
   if (!fd) return '';
-  const parts = [fd.address, fd.street, fd.city, fd.postal_code, fd.city_zip].filter(Boolean);
+  const parts = [fd.street, fd.city, fd.postal_code, fd.city_zip].filter(Boolean);
   return parts.map(String).join(', ').trim() || '';
 }
 

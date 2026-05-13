@@ -1,20 +1,10 @@
 <template>
-  <div
-    class="rounded-xl border border-emerald-200/70 bg-emerald-50/40 p-3 dark:border-emerald-900/45 dark:bg-emerald-950/25"
-  >
-    <div class="mb-2.5 flex items-center gap-2">
-      <UIcon name="i-lucide-share-2" class="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-        Partager le RDV
-      </h3>
-    </div>
-
-    <div
-      v-if="previewCareItems.length > 1"
-      class="mb-2 rounded-lg border border-emerald-200/60 bg-white/60 dark:bg-gray-900/30 px-2.5 py-2 text-[11px] dark:border-emerald-900/40"
-    >
-      <p class="font-medium text-gray-800 dark:text-gray-100 mb-1">Lot multisoins ({{ previewCareItems.length }})</p>
-      <ul class="space-y-0.5 text-gray-600 dark:text-gray-400">
+  <div class="flex min-w-0 w-full flex-col gap-1.5">
+    <div v-if="previewCareItems.length > 1" class="text-[11px] text-muted leading-snug space-y-0.5 w-full">
+      <p class="font-medium text-gray-800 dark:text-gray-100">
+        Lot multisoins ({{ previewCareItems.length }})
+      </p>
+      <ul class="space-y-0.5">
         <li v-for="(it, i) in previewCareItems" :key="it.appointmentId || i" class="flex justify-between gap-2">
           <span class="min-w-0 truncate">{{ i + 1 }}. {{ it.categoryName }}</span>
           <span v-if="it.dateShort" class="shrink-0 tabular-nums text-gray-500">{{ it.dateShort }}</span>
@@ -22,60 +12,38 @@
       </ul>
     </div>
 
-    <div class="flex flex-col gap-2">
+    <UDropdownMenu
+      :items="shareMenuItems"
+      :popper="{ placement: splitRow ? 'bottom-end' : 'bottom', offsetDistance: 6 }"
+      :ui="{ width: 'w-56' }"
+    >
       <UButton
+        variant="outline"
+        color="neutral"
+        size="md"
+        leading-icon="i-lucide-share-2"
         block
-        size="lg"
-        :loading="loading && pendingAction === 'whatsapp'"
+        class="min-w-0 w-full justify-center font-medium [&_span.iconify]:size-4"
+        :loading="loading"
         :disabled="!appointmentId || loading"
-        class="justify-center font-medium"
-        :ui="{
-          base: 'bg-[#25D366] hover:bg-[#20BD5A] active:bg-[#1DA851] text-white ring-0 focus-visible:ring-2 focus-visible:ring-[#25D366]/50',
-        }"
-        leading-icon="i-simple-icons-whatsapp"
-        @click="openWhatsApp"
       >
-        WhatsApp
+        Partager
       </UButton>
-
-      <div class="grid grid-cols-2 gap-1.5">
-        <UButton
-          variant="outline"
-          color="neutral"
-          size="lg"
-          block
-          class="justify-center"
-          leading-icon="i-lucide-share"
-          :loading="loading && pendingAction === 'share'"
-          :disabled="!appointmentId || loading"
-          @click="nativeShare"
-        >
-          Partager
-        </UButton>
-        <UButton
-          variant="outline"
-          color="neutral"
-          size="lg"
-          block
-          class="justify-center"
-          leading-icon="i-lucide-copy"
-          :loading="loading && pendingAction === 'copy'"
-          :disabled="!appointmentId || loading"
-          @click="copyMessage"
-        >
-          Copier
-        </UButton>
-      </div>
-    </div>
+    </UDropdownMenu>
   </div>
 </template>
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api';
 
-const props = defineProps<{
-  appointmentId: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    appointmentId: string;
+    /** Ligne 50/50 avec Redispatcher : ancrage du menu ; sinon une seule colonne (ex. RDV en cours, admin). */
+    splitRow?: boolean;
+  }>(),
+  { splitRow: false },
+);
 
 const emit = defineEmits<{
   released: [];
@@ -83,17 +51,42 @@ const emit = defineEmits<{
 
 const toast = useAppToast();
 const loading = ref(false);
-const pendingAction = ref<'whatsapp' | 'share' | 'copy' | null>(null);
 const cachedMessage = ref<string | null>(null);
+const cachedShareUrl = ref<string | null>(null);
 const previewCareItems = ref<{ appointmentId?: string; categoryName: string; dateShort: string }[]>([]);
 
-async function buildShareMessage(): Promise<string | null> {
-  if (cachedMessage.value) return cachedMessage.value;
+/** Délai avant de recharger la fiche quand le serveur a republié le RDV : laisse le temps d’ouvrir WhatsApp / le partage sans mise à jour brutale immédiate. */
+const RELEASE_REFRESH_DELAY_MS = 750;
+
+/** Évite l’ouverture de la modal « confrère » quand l’infirmier ouvre le lien public juste après l’avoir généré (ex. aperçu WhatsApp, même session). */
+const NURSE_SHARE_JUST_SENT_KEY = 'nurse_share_just_sent';
+
+function markNurseShareJustSent(appointmentId: string) {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(
+      NURSE_SHARE_JUST_SENT_KEY,
+      JSON.stringify({ appointmentId: String(appointmentId), at: Date.now() }),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+function scheduleReleasedIfNeeded(repended: boolean) {
+  if (!repended || typeof window === 'undefined') return;
+  window.setTimeout(() => emit('released'), RELEASE_REFRESH_DELAY_MS);
+}
+
+async function buildSharePayload(): Promise<{ text: string; url: string; repended: boolean } | null> {
+  if (cachedMessage.value != null && cachedShareUrl.value != null) {
+    return { text: cachedMessage.value, url: cachedShareUrl.value, repended: false };
+  }
   const res = await apiFetch(`/appointments/${props.appointmentId}/share-for-nurse`, { method: 'GET' });
   if (!res?.success || !res?.data) {
     toast.add({
       title: 'Erreur',
-      description: (res as any)?.error ?? 'Impossible de préparer le message.',
+      description: (res as any)?.error ?? 'Impossible de préparer le partage.',
       color: 'error',
     });
     return null;
@@ -104,81 +97,147 @@ async function buildShareMessage(): Promise<string | null> {
   const shareUrl = origin + sharePath;
   const text = shareText + shareUrl + (shareTextAfterUrl ?? '');
   cachedMessage.value = text;
-  if (repended) {
-    emit('released');
+  cachedShareUrl.value = shareUrl;
+  return { text, url: shareUrl, repended: !!repended };
+}
+
+/**
+ * Mobile (Safari / WebKit surtout) : `window.open(url)` après un `await` n’est plus lié au tap —
+ * la fenêtre est bloquée sans message. On ouvre donc `about:blank` tout de suite (même tour event),
+ * puis on assigne l’URL après l’API ; si aucun onglet n’a pu s’ouvrir, navigation même onglet.
+ */
+function openPreparedWhatsAppTab(payload: { text: string; repended: boolean }, placeholder: Window | null) {
+  const url = `https://wa.me/?text=${encodeURIComponent(payload.text)}`;
+  try {
+    if (placeholder && !placeholder.closed) {
+      placeholder.location.replace(url);
+      return;
+    }
+  } catch {
+    /* ignore */
   }
-  return text;
+  const second = typeof window !== 'undefined' ? window.open(url, '_blank', 'noopener,noreferrer') : null;
+  if (!second || second.closed) {
+    window.location.href = url;
+  }
 }
 
 async function openWhatsApp() {
   loading.value = true;
-  pendingAction.value = 'whatsapp';
+  let placeholder: Window | null = null;
+  if (typeof window !== 'undefined') {
+    placeholder = window.open('about:blank', '_blank');
+  }
   try {
-    const text = await buildShareMessage();
-    if (!text) return;
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    const payload = await buildSharePayload();
+    if (!payload) {
+      try {
+        placeholder?.close();
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    markNurseShareJustSent(props.appointmentId);
+    openPreparedWhatsAppTab(payload, placeholder);
     toast.add({
       title: 'WhatsApp',
-      description: 'Si rien ne s’ouvre, vérifiez le bloqueur de pop-ups.',
+      description: payload.repended
+        ? 'Choisissez le contact dans WhatsApp. La fiche se met à jour dans un instant (le rendez-vous repasse en attente).'
+        : 'Si rien ne s’ouvre, vérifiez le bloqueur de pop-ups.',
       color: 'success',
     });
+    scheduleReleasedIfNeeded(payload.repended);
   } finally {
     loading.value = false;
-    pendingAction.value = null;
   }
 }
 
 async function nativeShare() {
   loading.value = true;
-  pendingAction.value = 'share';
+  let rependedFlag = false;
   try {
-    const text = await buildShareMessage();
-    if (!text) return;
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      await navigator.share({ text });
-      toast.add({ title: 'Partage', description: 'Choisissez l’application cible.', color: 'success' });
-    } else {
-      await navigator.clipboard?.writeText(text);
-      toast.add({
-        title: 'Presse-papiers',
-        description: 'Partage système indisponible : le message a été copié.',
-        color: 'success',
-      });
+    const payload = await buildSharePayload();
+    if (!payload) return;
+    rependedFlag = payload.repended;
+    markNurseShareJustSent(props.appointmentId);
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({ text: payload.text });
+        toast.add({ title: 'Partage', description: 'Choisissez l’application cible.', color: 'success' });
+      } else {
+        await navigator.clipboard?.writeText(payload.text);
+        toast.add({
+          title: 'Presse-papiers',
+          description: 'Partage système indisponible : le message a été copié.',
+          color: 'success',
+        });
+      }
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        toast.add({ title: 'Erreur', description: e?.message ?? 'Partage impossible.', color: 'error' });
+      }
+    } finally {
+      scheduleReleasedIfNeeded(rependedFlag);
     }
-  } catch (e: any) {
-    if (e?.name === 'AbortError') return;
-    toast.add({ title: 'Erreur', description: e?.message ?? 'Partage impossible.', color: 'error' });
   } finally {
     loading.value = false;
-    pendingAction.value = null;
   }
 }
 
-async function copyMessage() {
+async function copyShareLink() {
   loading.value = true;
-  pendingAction.value = 'copy';
   try {
-    const text = await buildShareMessage();
-    if (!text) return;
-    await navigator.clipboard?.writeText(text);
+    const payload = await buildSharePayload();
+    if (!payload) return;
+    markNurseShareJustSent(props.appointmentId);
+    await navigator.clipboard?.writeText(payload.url);
     toast.add({
-      title: 'Message copié',
-      description: 'Collez-le où vous voulez (WhatsApp, SMS, mail…).',
+      title: 'Lien copié',
+      description: 'Vous pouvez le coller où vous voulez.',
       color: 'success',
     });
+    if (payload.repended) {
+      emit('released');
+    }
   } catch (e: any) {
     toast.add({ title: 'Erreur', description: e?.message ?? 'Copie impossible.', color: 'error' });
   } finally {
     loading.value = false;
-    pendingAction.value = null;
   }
 }
+
+const shareMenuItems = computed(() => [
+  [
+    {
+      label: 'Partager sur WhatsApp',
+      icon: 'i-simple-icons-whatsapp',
+      onSelect: () => {
+        void openWhatsApp();
+      },
+    },
+    {
+      label: 'Partager le lien',
+      icon: 'i-lucide-share-2',
+      onSelect: () => {
+        void nativeShare();
+      },
+    },
+    {
+      label: 'Copier le lien',
+      icon: 'i-lucide-link',
+      onSelect: () => {
+        void copyShareLink();
+      },
+    },
+  ],
+]);
 
 watch(
   () => props.appointmentId,
   () => {
     cachedMessage.value = null;
+    cachedShareUrl.value = null;
     previewCareItems.value = [];
   },
 );

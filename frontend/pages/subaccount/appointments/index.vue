@@ -1,6 +1,7 @@
 <template>
-  <div class="space-y-6 min-h-full">
-    <TitleDashboard
+  <AppPageShell class="space-y-6 min-h-full">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       title="Rendez-vous"
       description="Rendez-vous assignés à ce sous-compte. Assignez un préleveur pour les prendre en charge."
     >
@@ -9,7 +10,8 @@
           Créer un RDV
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
     <AppointmentListPage
       ref="listRef"
       base-path="/subaccount"
@@ -72,7 +74,7 @@
         </UModal>
       </Teleport>
     </ClientOnly>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">
@@ -83,15 +85,10 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
-import { isPendingIncomingOffer } from '~/utils/appointment-offer';
 
 const route = useRoute();
 const { openAppointmentModalById: openAppointmentModal } = useAppointmentModal();
 const { user } = useAuth();
-
-function pendingIncoming(appointment: { status?: string; created_by?: string | null }) {
-  return isPendingIncomingOffer(appointment, user.value?.id);
-}
 const listRef = ref<{ fetchAppointments: () => void } | null>(null);
 
 const showAssignModal = ref(false);

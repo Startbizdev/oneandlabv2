@@ -1,9 +1,12 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
-      title="Mes avis"
-      description="Les avis que vous avez laissés après vos rendez-vous"
-    />
+  <AppPageShell class="space-y-6" header-bleed="patient">
+    <template #pageHeader>
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Mes avis"
+        description="Les avis que vous avez laissés après vos rendez-vous"
+      />
+    </template>
 
     <div class="container mx-auto px-4 max-w-7xl">
     <div v-if="loading" class="text-center py-8">
@@ -86,7 +89,7 @@
       </UCard>
     </div>
     </div>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">
@@ -132,7 +135,7 @@ const formatDate = (date: string) => {
 };
 
 function appointmentTypeLabel(type: string | null | undefined) {
-  if (type === 'blood_test') return 'Prise de sang';
+  if (type === 'blood_test') return 'Prélèvement';
   if (type === 'nursing' || type === 'nurse') return 'Soins infirmiers';
   return type ? String(type) : 'Rendez-vous';
 }

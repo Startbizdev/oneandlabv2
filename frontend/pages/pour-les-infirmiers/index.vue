@@ -1,116 +1,253 @@
 <template>
   <div>
-    <LandingHero
-      badge="Pour les infirmiers"
-      badge-icon="i-lucide-heart-pulse"
-      title="Développez votre activité à domicile"
-      subtitle="Rejoignez un réseau de patients qui recherchent des soins infirmiers à domicile"
-      description="Recevez des demandes de rendez-vous dans votre secteur. Gérez votre planning, valorisez votre profil et construisez votre réputation. Inscription simple, sans engagement."
-      :ctas="heroCtas"
-      :background-image="heroBackgroundImage"
-      overlay-class="bg-black/55"
+    <LandingMaquetteHero
+      eyebrow="Pour les infirmiers libéraux"
+      :title-lines="['Développez votre', 'activité']"
+      highlight="à domicile"
+      description="Recevez des demandes de soins à domicile via OneAndLab : planning clair, périmètre géographique maîtrisable, profil visible par les patients et gestion des rendez-vous depuis un seul espace."
+      image-src="https://images.unsplash.com/photo-1631815589968-fdb09a223b1e?w=900&h=1200&q=80&auto=format&fit=crop"
+      image-alt="Infirmière souriante en blouse"
+      image-object-class="object-[center_20%]"
+      :primary-cta="{ label: 'Rejoindre le réseau', to: '/nurse/register', icon: 'i-lucide-user-plus' }"
+      :secondary-cta="{ label: 'Voir les tarifs infirmiers', to: '/pour-les-infirmiers/tarifs' }"
+      :stats="nurseStats"
+      :quote="nurseQuote"
     />
+  <LandingMaquetteMarketingBackdrop>
 
-    <LandingTrust
+    <LandingMaquettePillarGrid
+      eyebrow="Une console qui respecte vos tournées"
+      title="Une organisation pensée pour vos tournées"
+      subtitle="Réduisez les frictions administratives tout en gardant la maîtrise sur vos créneaux et votre rayon."
+      :columns="4"
+      section-class="bg-white dark:bg-gray-950"
       :items="trustItems"
-      background-class="bg-gray-50/50"
     />
 
-    <LandingRoleBenefits
-      title="Les avantages pour les infirmiers"
-      subtitle="Une plateforme dédiée aux professionnels infirmiers libéraux."
+    <LandingMaquettePillarGrid
+      eyebrow="Avantages"
+      title="Une plateforme pensée avec les infirmiers libéraux"
+      :columns="3"
+      section-class="bg-[#F7F7FB] dark:bg-gray-900/80"
       :items="benefits"
-      background-class="bg-white"
     />
 
-    <HowItWorks
-      title="Comment rejoindre le réseau ?"
-      subtitle="En 3 étapes, intégrez OneAndLab et recevez vos premières demandes."
-      :steps="howItWorksSteps"
-      background-class="bg-gray-50"
+    <LandingMaquetteStepsCards
+      eyebrow="Pour commencer"
+      :heading-lines="['Trois étapes', 'pour être visible sur OneAndLab']"
+      intro="Complétez votre dossier : après validation, votre profil peut recevoir des demandes alignées sur votre zone et vos disponibilités."
+      section-class="bg-white dark:bg-gray-950"
+      :cards="stepCards"
     />
 
-    <Reviews
-      title="Ce que disent les infirmiers du réseau"
-      subtitle="Des IDEL qui ont rejoint OneAndLab témoignent de leur expérience."
-      :reviews="landingReviews"
-      :max-reviews="6"
-      background-class="bg-white"
-    />
+    <section class="border-y border-[#E8E8F0]/80 bg-white py-[72px] dark:border-gray-800 dark:bg-gray-950 lg:py-[100px]">
+      <div class="mx-auto max-w-[1200px] px-6 lg:px-12">
+        <Reviews
+          title="Infirmiers du réseau · retours terrain"
+          subtitle="Vies cliniques variées : zones rurales, métropoles, double activité libérale et salariée."
+          :reviews="landingReviews"
+          :max-reviews="6"
+          background-class="!bg-transparent"
+        />
+      </div>
+    </section>
 
-    <LandingFaq
-      title="Questions fréquentes"
-      subtitle="Tout ce qu’il faut savoir pour rejoindre OneAndLab en tant qu’infirmier."
+    <LandingMaquetteFaq
+      anchor-id="faq"
+      section-class="bg-[#F7F7FB] dark:bg-gray-900/70"
       :items="faqItems"
-      background-class="bg-white"
     />
 
-    <LandingCtaBlock
-      title="Prêt à recevoir vos premières demandes ?"
-      subtitle="Rejoignez des centaines d’infirmiers qui développent leur activité à domicile avec OneAndLab. Inscription gratuite, validation sous 48 h."
+    <LandingMaquetteInlineCta
+      eyebrow="Rejoindre le réseau"
+      title="Recevez des demandes de soins à domicile sur votre secteur"
+      subtitle="Inscription en ligne · équipe à votre écoute · tarifs consultables sur la page dédiée."
       :buttons="ctaButtons"
-      background-class="bg-primary-50/30"
+      outer-class="bg-[#F7F7FB] dark:bg-gray-900/70"
     />
+  </LandingMaquetteMarketingBackdrop>
   </div>
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: 'default' })
+definePageMeta({ layout: 'default' });
 
 useLandingSeo({
   title: 'Pour les infirmiers | Soins à domicile | OneAndLab',
-  description: 'Rejoignez OneAndLab en tant qu\'infirmier ou infirmière. Recevez des demandes de soins à domicile, gérez votre planning. Inscription simple et rapide.',
-  keywords: 'infirmier à domicile, infirmière libérale, plateforme infirmiers, soins à domicile, OneAndLab, IDEL',
+  description:
+    'Rejoignez OneAndLab : demandes de soins à domicile, planning, profil public et avis patients.',
+  keywords: 'infirmier domicile, IDEL OneAndLab, plateforme infirmiers, soins infirmiers à domicile',
   path: '/pour-les-infirmiers',
-})
+});
 
-// Image hero (undraw nurse – bleu OneAndLab)
-const heroBackgroundImage = '/undraw/nurse.svg'
+const nurseStats = [
+  { num: '+500', rest: ' infirmiers actifs' },
+  { num: '+2000', rest: ' demandes patients servies' },
+  { num: '4.9/5', rest: ' note moyenne sur les avis' },
+];
 
-const heroCtas = [
-  { label: 'Rejoindre le réseau infirmiers', to: '/nurse/register', color: 'primary', variant: 'solid', size: 'xl', icon: 'i-lucide-user-plus' },
-]
+const nurseQuote = {
+  text:
+    "Plateforme fluide, je capte des soins dans ma zone sans paperasse supplémentaire. Le profil rassure les nouveaux patients.",
+  author: 'Sophie M., IDEL à Lyon',
+};
 
 const trustItems = [
-  { icon: 'i-lucide-users', title: 'Patients qualifiés', description: 'Demandes dans votre secteur' },
-  { icon: 'i-lucide-calendar', title: 'Planning maîtrisé', description: 'Gérez vos créneaux' },
-  { icon: 'i-lucide-badge-check', title: 'Profil professionnel', description: 'Visible par les patients' },
-  { icon: 'i-lucide-headphones', title: 'Support dédié', description: 'Équipe à votre écoute' },
-]
+  {
+    icon: 'i-lucide-users',
+    title: 'Patients dans votre zone',
+    description: 'Demandes géolocalisées pour vous concentrer sur les trajets pertinents.',
+  },
+  {
+    icon: 'i-lucide-calendar',
+    title: 'Planning lisible',
+    description: 'Indiquez vos disponibilités et ajustez votre charge au fil des semaines.',
+  },
+  {
+    icon: 'i-lucide-badge-check',
+    title: 'Profil professionnel',
+    description: 'Mettez en avant vos compétences et votre rayon pour rassurer les patients.',
+  },
+  {
+    icon: 'i-lucide-headphones',
+    title: 'Support dédié',
+    description: 'Une équipe pour vous accompagner lors de l’installation et au quotidien.',
+  },
+];
 
 const benefits = [
-  { icon: 'i-lucide-users', title: 'Patients qualifiés', description: 'Des patients qui recherchent des soins à domicile. Vous recevez des demandes adaptées à votre zone et compétences.' },
-  { icon: 'i-lucide-calendar', title: 'Planning centralisé', description: 'Gérez vos rendez-vous, disponibilités et plages de soins depuis votre espace infirmier.' },
-  { icon: 'i-lucide-map-pin', title: 'Secteur et déplacements', description: 'Définissez vos zones d\'intervention. Les patients vous trouvent selon leur adresse.' },
-  { icon: 'i-lucide-badge-check', title: 'Profil professionnel', description: 'Page publique avec votre présentation, spécialisations et avis des patients.' },
-  { icon: 'i-lucide-star', title: 'Avis et réputation', description: 'Les patients laissent des avis. Valorisez votre expérience et construisez votre notoriété.' },
-  { icon: 'i-lucide-headphones', title: 'Support dédié', description: 'Une équipe pour vous accompagner sur l\'utilisation de la plateforme et les demandes patients.' },
-]
+  {
+    icon: 'i-lucide-map-pin',
+    title: 'Rayon paramétrable',
+    description: 'Vous définissez la zone dans laquelle vous souhaitez intervenir.',
+  },
+  {
+    icon: 'i-lucide-star',
+    title: 'Avis patients',
+    description: 'Renforcez votre visibilité grâce aux retours patients et à votre réactivité.',
+  },
+  {
+    icon: 'i-lucide-bell',
+    title: 'Notifications',
+    description: 'Restez informé des nouvelles demandes et des confirmations de rendez-vous.',
+  },
+  {
+    icon: 'i-lucide-layout-dashboard',
+    title: 'Tableau de bord',
+    description: 'Suivez vos rendez-vous et les indicateurs utiles à votre activité.',
+  },
+  {
+    icon: 'i-lucide-shield-check',
+    title: 'Données sécurisées',
+    description: 'Échanges et dossiers traités dans le respect des usages du secteur santé.',
+  },
+  {
+    icon: 'i-lucide-line-chart',
+    title: 'Pilotage',
+    description: 'Anticipez vos créneaux et votre charge selon l’historique sur la plateforme.',
+  },
+];
 
-const howItWorksSteps = [
-  { title: 'Inscrivez-vous', description: 'Remplissez le formulaire d\'inscription avec vos coordonnées et votre numéro RPPS. Envoyez votre demande en quelques minutes.', icon: 'i-lucide-file-edit' },
-  { title: 'Validation du dossier', description: 'Notre équipe vérifie votre profil et vos qualifications. Vous recevez une confirmation par email dès que votre compte est activé.', icon: 'i-lucide-shield-check' },
-  { title: 'Recevez des demandes', description: 'Les patients de votre secteur voient votre profil et peuvent vous solliciter. Acceptez les rendez-vous qui vous conviennent et gérez votre planning.', icon: 'i-lucide-bell' },
-]
+const stepCards = [
+  {
+    highlight: true,
+    icon: 'i-lucide-file-edit',
+    title: 'Inscription et dossier',
+    body: 'Créez votre compte et complétez votre dossier professionnel pour rejoindre le réseau.',
+  },
+  {
+    icon: 'i-lucide-shield-check',
+    title: 'Validation',
+    body: 'Notre équipe vérifie vos informations avant activation de votre profil.',
+  },
+  {
+    icon: 'i-lucide-bell',
+    title: 'Réception des demandes',
+    body: 'Une fois validé, vous pouvez recevoir et accepter des rendez-vous selon vos disponibilités.',
+  },
+];
 
 const landingReviews = [
-  { id: '1', patientName: 'Sophie M., IDEL Lyon', rating: 5, comment: 'J\'ai rejoint OneAndLab il y a six mois. Les demandes arrivent régulièrement dans ma zone, je gère mon planning comme je veux. L\'équipe répond vite en cas de question.', response: 'Merci Sophie pour ce retour. — Équipe OneAndLab', date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) },
-  { id: '2', patientName: 'Marc D., infirmier libéral', rating: 5, comment: 'Plateforme simple, pas de prise de tête. Les patients sont déjà qualifiés (adresse, créneau). Je complète mon activité sans surcharge.', response: 'Content que ça vous convienne Marc. — OneAndLab', date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000) },
-  { id: '3', patientName: 'Julie B., IDEL', rating: 5, comment: 'Les avis des patients apparaissent sur mon profil, ça rassure les nouveaux. Je reçois surtout des soins à domicile et des prises de sang, c\'est cohérent avec mon exercice.', response: 'Merci Julie. — Équipe', date: new Date(Date.now() - 19 * 24 * 60 * 60 * 1000) },
-  { id: '4', patientName: 'Thomas L., infirmier', rating: 5, comment: 'Inscription rapide, validation sous 48 h. Depuis je reçois des demandes dans mon secteur. Je refuse quand je ne suis pas dispo, aucun souci.', response: 'Merci Thomas pour votre confiance. — OneAndLab', date: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000) },
-  { id: '5', patientName: 'Nathalie R., IDEL', rating: 5, comment: 'Je travaille avec plusieurs plateformes. OneAndLab est celle où les rendez-vous sont les mieux préparés : ordonnance, motif, adresse claire. Gain de temps.', response: 'Merci Nathalie. — Équipe OneAndLab', date: new Date(Date.now() - 32 * 24 * 60 * 60 * 1000) },
-  { id: '6', patientName: 'Philippe F., infirmier', rating: 5, comment: 'Support réactif, tableau de bord lisible. Je recommande à mes collègues qui cherchent à compléter leur activité à domicile.', response: 'Merci Philippe. — OneAndLab', date: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000) },
-]
+  {
+    id: '1',
+    patientName: 'Sophie M., IDEL Lyon',
+    rating: 5,
+    comment: 'Interface claire pour voir mes créneaux et mes demandes sans perdre de temps.',
+    response: 'Merci Sophie — OneAndLab',
+    date: new Date(Date.now() - 5 * 86400000),
+  },
+  {
+    id: '2',
+    patientName: 'Marc D., IDEL',
+    rating: 5,
+    comment: 'Les patients arrivent avec le contexte nécessaire : ça facilite la préparation avant le déplacement.',
+    response: 'Merci Marc.',
+    date: new Date(Date.now() - 12 * 86400000),
+  },
+  {
+    id: '3',
+    patientName: 'Julie B., IDEL',
+    rating: 5,
+    comment: 'Le profil public aide à expliquer mes spécialités sans multiplier les appels.',
+    response: 'Merci Julie.',
+    date: new Date(Date.now() - 19 * 86400000),
+  },
+  {
+    id: '4',
+    patientName: 'Thomas L., IDEL rural',
+    rating: 5,
+    comment: 'Utile pour densifier mon planning sur des secteurs où je me déplace déjà.',
+    response: 'Merci Thomas.',
+    date: new Date(Date.now() - 25 * 86400000),
+  },
+  {
+    id: '5',
+    patientName: 'Nathalie R., IDEL',
+    rating: 5,
+    comment: "J'apprécie de pouvoir ajuster mon rayon quand ma charge change.",
+    response: 'Merci Nathalie.',
+    date: new Date(Date.now() - 32 * 86400000),
+  },
+  {
+    id: '6',
+    patientName: 'Philippe F., IDEL',
+    rating: 5,
+    comment: 'Bon complément pour développer mon activité libérale tout en maîtrisant mon agenda.',
+    response: 'Merci Philippe.',
+    date: new Date(Date.now() - 40 * 86400000),
+  },
+];
 
 const faqItems = [
-  { question: 'Quels documents faut-il pour s\'inscrire ?', answer: 'Vous aurez besoin de votre numéro RPPS, de vos coordonnées professionnelles et d\'une pièce d\'identité. Un justificatif d\'exercice peut être demandé pour valider votre dossier.' },
-  { question: 'Comment sont rémunérés les rendez-vous ?', answer: 'Les modalités de facturation et de rémunération vous sont présentées après validation de votre inscription. OneAndLab assure la mise en relation et le suivi des rendez-vous.' },
-  { question: 'Puis-je refuser une demande de rendez-vous ?', answer: 'Oui. Vous restez libre d\'accepter ou de refuser les demandes selon votre disponibilité et votre secteur. Aucune obligation de prise en charge.' },
-  { question: 'Comment définir ma zone d\'intervention ?', answer: 'Lors de l\'inscription et dans votre espace professionnel, vous pouvez indiquer les secteurs ou communes où vous intervenez. Les demandes vous sont proposées en fonction de cette zone.' },
-  { question: 'Y a-t-il un engagement ou des frais ?', answer: 'Les conditions d\'inscription et d\'utilisation vous sont communiquées lors de votre demande. Pas d\'engagement caché : nous privilégions la transparence.' },
-]
+  {
+    question: 'OneAndLab peut-il remplacer mon cabinet ou mon activité habituelle ?',
+    answer:
+      'Non. Il s’agit d’un canal supplémentaire pour recevoir des demandes de soins à domicile : vous restez libéral et responsable de vos actes comme d’habitude.',
+  },
+  {
+    question: 'Comment m’inscrire et quelles informations fournir ?',
+    answer:
+      'L’inscription se fait en ligne. Vous renseignez votre identité professionnelle, votre zone d’intervention et les éléments permettant de vérifier votre statut. La liste exacte des pièces est indiquée lors du parcours d’inscription.',
+  },
+  {
+    question: 'Comment définir ma zone géographique ?',
+    answer:
+      'Vous paramétrez un rayon ou une zone de couverture adaptée à vos déplacements. Vous pouvez l’ajuster selon votre charge et vos contraintes terrain.',
+  },
+  {
+    question: 'Quels sont les coûts pour les infirmiers ?',
+    answer:
+      'Une offre gratuite limitée et une offre Pro sont proposées · détail et conditions sur la page tarifs infirmiers.',
+  },
+  {
+    question: 'Puis-je refuser une demande ?',
+    answer:
+      'Oui : vous restez libre d’accepter ou de refuser selon vos disponibilités et votre exercice professionnel.',
+  },
+];
 
 const ctaButtons = [
-  { label: 'Rejoindre le réseau infirmiers', to: '/nurse/register', color: 'primary', size: 'xl', icon: 'i-lucide-user-plus' },
-]
+  { label: 'Rejoindre le réseau', to: '/nurse/register', icon: 'i-lucide-user-plus', variant: 'solid' as const },
+  { label: 'Consulter les tarifs', to: '/pour-les-infirmiers/tarifs', variant: 'outline' as const },
+];
 </script>

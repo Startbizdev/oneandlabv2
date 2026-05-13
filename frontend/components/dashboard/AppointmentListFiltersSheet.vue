@@ -14,27 +14,23 @@
         <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           Type de rendez-vous
         </p>
-        <div
-          class="flex rounded-lg border border-gray-200/90 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40 p-1 gap-0.5"
-          role="tablist"
-          aria-label="Type de rendez-vous"
-        >
+        <div class="flex flex-wrap gap-8 sm:gap-10" role="tablist" aria-label="Type de rendez-vous">
           <button
             v-for="t in nurseTabOptions"
             :key="t.value"
             type="button"
             role="tab"
-            class="flex-1 min-w-0 flex items-center justify-center gap-1.5 rounded-md py-2 px-2 text-xs font-semibold transition-colors"
+            class="inline-flex min-w-0 items-center gap-1.5 border-b-[3px] pb-1 text-left text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950"
             :class="
               nurseTab === t.value
-                ? 'bg-primary-500 text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80'
+                ? 'border-b-primary-600 text-gray-950 dark:border-b-primary-500 dark:text-white'
+                : 'border-b-transparent text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
             "
             :aria-selected="nurseTab === t.value"
             :title="t.hint"
             @click="nurseTab = t.value"
           >
-            <UIcon :name="t.icon" class="w-4 h-4 shrink-0 opacity-90" />
+            <UIcon :name="t.icon" class="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden="true" />
             <span class="truncate">{{ t.label }}</span>
           </button>
         </div>

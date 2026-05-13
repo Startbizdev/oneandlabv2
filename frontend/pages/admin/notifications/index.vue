@@ -1,10 +1,12 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+    <AppPageHeader
+      :edge-bleed="false"
       title="Notifications"
       description="Envoyez des notifications dans les cloches des espaces (lab, patient, infirmier, super admin). Choisissez à qui envoyer pour du marketing ou des tests."
-    >
-    </TitleDashboard>
+    />
+    </template>
 
     <!-- Formulaire d'envoi -->
     <UCard class="rounded-xl border border-default/50 shadow-sm">
@@ -205,7 +207,7 @@
         </UButton>
       </template>
     </USlideover>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

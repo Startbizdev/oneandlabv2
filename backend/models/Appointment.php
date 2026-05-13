@@ -90,39 +90,53 @@ class Appointment
         return $cache[$table];
     }
 
+    /**
+     * Parse le tableau brut `blood_test_items` (POST ou form_data) — même règles qu'à la création.
+     *
+     * @return list<array{category_id: ?string, label: ?string, care_options: array, sort_order: int}>
+     */
+    private function parseBloodTestItemsInputArray(?array $rawItems): array
+    {
+        if (!is_array($rawItems)) {
+            return [];
+        }
+        $items = [];
+        foreach ($rawItems as $idx => $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $categoryId = isset($item['category_id']) && Validation::uuid((string) $item['category_id'])
+                ? (string) $item['category_id']
+                : null;
+            $label = trim((string) ($item['label'] ?? $item['name'] ?? ''));
+            $careOptions = $item['care_options'] ?? [];
+            if (!is_array($careOptions)) {
+                $careOptions = [];
+            }
+            if (!$categoryId && $label === '') {
+                continue;
+            }
+
+            $items[] = [
+                'category_id' => $categoryId,
+                'label' => $label !== '' ? $label : null,
+                'care_options' => $careOptions,
+                'source_appointment_id' => null,
+                'sort_order' => (int) ($item['sort_order'] ?? $idx),
+            ];
+        }
+
+        return $items;
+    }
+
     private function normalizeBloodTestItems(array $data): array
     {
         if (($data['type'] ?? '') !== 'blood_test') {
             return [];
         }
 
-        $items = [];
         $rawItems = $data['blood_test_items'] ?? ($data['form_data']['blood_test_items'] ?? null);
-        if (is_array($rawItems)) {
-            foreach ($rawItems as $idx => $item) {
-                if (!is_array($item)) {
-                    continue;
-                }
-                $categoryId = isset($item['category_id']) && Validation::uuid((string) $item['category_id'])
-                    ? (string) $item['category_id']
-                    : null;
-                $label = trim((string) ($item['label'] ?? $item['name'] ?? ''));
-                $careOptions = $item['care_options'] ?? [];
-                if (!is_array($careOptions)) {
-                    $careOptions = [];
-                }
-                if (!$categoryId && $label === '') {
-                    continue;
-                }
-                $items[] = [
-                    'category_id' => $categoryId,
-                    'label' => $label !== '' ? $label : null,
-                    'care_options' => $careOptions,
-                    'source_appointment_id' => null,
-                    'sort_order' => (int) ($item['sort_order'] ?? $idx),
-                ];
-            }
-        }
+        $items = $this->parseBloodTestItemsInputArray(is_array($rawItems) ? $rawItems : null);
 
         if (empty($items)) {
             $careOptions = $data['form_data']['care_options'] ?? [];
@@ -143,7 +157,16 @@ class Appointment
 
     private function insertBloodTestItems(string $appointmentId, array $items): void
     {
-        if (!$this->hasTable('appointment_blood_test_items') || empty($items)) {
+        if (!$this->hasTable('appointment_blood_test_items')) {
+            if (!empty($items)) {
+                error_log(
+                    'appointment_blood_test_items: table absente ou non détectée — insert ignoré ('
+                    . count($items) . ' acte(s)) pour RDV ' . $appointmentId
+                );
+            }
+            return;
+        }
+        if (empty($items)) {
             return;
         }
         $stmt = $this->db->prepare('
@@ -171,7 +194,8 @@ class Appointment
         }
         $stmt = $this->db->prepare('
             SELECT bti.id, bti.appointment_id, bti.category_id, bti.label, bti.care_options,
-                   bti.source_appointment_id, bti.sort_order, cc.name AS category_name, cc.icon AS category_icon
+                   bti.source_appointment_id, bti.sort_order, cc.name AS category_name, cc.icon AS category_icon,
+                   cc.image_url AS category_image_url
             FROM appointment_blood_test_items bti
             LEFT JOIN care_categories cc ON cc.id = bti.category_id
             WHERE bti.appointment_id = ?
@@ -187,6 +211,226 @@ class Appointment
         return $rows;
     }
 
+    private function bloodTestItemRowDedupKey(array $row): string
+    {
+        $cid = isset($row['category_id']) ? (string) $row['category_id'] : '';
+        $lab = trim((string) ($row['label'] ?? $row['category_name'] ?? ''));
+
+        return $cid . '|' . $lab;
+    }
+
+    /**
+     * Complète category_name / icon / image_url pour des lignes issues du form (sans JOIN SQL initial).
+     *
+     * @param list<array<string,mixed>> $rows
+     * @return list<array<string,mixed>>
+     */
+    private function enrichBloodTestRowsCategoryMeta(array $rows): array
+    {
+        $need = [];
+        foreach ($rows as $r) {
+            $cid = isset($r['category_id']) ? trim((string) $r['category_id']) : '';
+            if ($cid === '' || !Validation::uuid($cid)) {
+                continue;
+            }
+            $cn = trim((string) ($r['category_name'] ?? ''));
+            if ($cn === '') {
+                $need[$cid] = true;
+            }
+        }
+        if (empty($need)) {
+            return $rows;
+        }
+        $ids = array_keys($need);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        try {
+            $stmt = $this->db->prepare("
+                SELECT id, name, icon, image_url
+                FROM care_categories
+                WHERE id IN ($placeholders)
+            ");
+            $stmt->execute($ids);
+            $meta = [];
+            while ($m = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $meta[(string) $m['id']] = $m;
+            }
+            foreach ($rows as &$r) {
+                $cid = isset($r['category_id']) ? (string) $r['category_id'] : '';
+                if ($cid === '' || trim((string) ($r['category_name'] ?? '')) !== '') {
+                    continue;
+                }
+                if (isset($meta[$cid])) {
+                    $r['category_name'] = $meta[$cid]['name'] ?? null;
+                    if (empty($r['category_icon'])) {
+                        $r['category_icon'] = $meta[$cid]['icon'] ?? null;
+                    }
+                    if (empty($r['category_image_url'])) {
+                        $r['category_image_url'] = $meta[$cid]['image_url'] ?? null;
+                    }
+                }
+            }
+            unset($r);
+        } catch (Throwable $e) {
+            // ne pas bloquer l'affichage
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Lignes d'affichage depuis form_data.blood_test_items uniquement (pas de lecture table).
+     *
+     * @param list<array{category_id: ?string, label: ?string, care_options: array, sort_order: int, source_appointment_id: null}> $parsed
+     * @return list<array<string,mixed>>
+     */
+    private function bloodTestDisplayRowsFromParsed(string $appointmentId, array $parsed): array
+    {
+        $rows = [];
+        foreach ($parsed as $p) {
+            $rows[] = [
+                'id' => null,
+                'appointment_id' => $appointmentId,
+                'category_id' => $p['category_id'] ?? null,
+                'label' => $p['label'] ?? null,
+                'care_options' => is_array($p['care_options'] ?? null) ? $p['care_options'] : [],
+                'source_appointment_id' => null,
+                'sort_order' => (int) ($p['sort_order'] ?? 0),
+                'category_name' => null,
+                'category_icon' => null,
+                'category_image_url' => null,
+            ];
+        }
+
+        return $this->enrichBloodTestRowsCategoryMeta($rows);
+    }
+
+    /**
+     * Fusionne lignes table + form : priorité à la table, puis ajoute les actes du form absents (clé category_id|label).
+     *
+     * @param list<array<string,mixed>> $tableRows
+     * @param list<array<string,mixed>> $formRows
+     * @return list<array<string,mixed>>
+     */
+    private function mergeBloodTestTableAndFormRows(array $tableRows, array $formRows): array
+    {
+        $seen = [];
+        $out = [];
+        foreach ($tableRows as $row) {
+            $k = $this->bloodTestItemRowDedupKey($row);
+            if ($k === '|') {
+                continue;
+            }
+            if (isset($seen[$k])) {
+                continue;
+            }
+            $seen[$k] = true;
+            $out[] = $row;
+        }
+        foreach ($formRows as $row) {
+            $k = $this->bloodTestItemRowDedupKey($row);
+            if ($k === '|') {
+                continue;
+            }
+            if (isset($seen[$k])) {
+                continue;
+            }
+            $seen[$k] = true;
+            $out[] = $row;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Actes prise de sang affichables : table appointment_blood_test_items + complément depuis form_data.blood_test_items
+     * (même normalisation qu'à la création). Utilisé par GET liste et GET détail.
+     *
+     * @param array<string,mixed> $appointment id, type, form_data (déchiffré), category_id, category_name, category_icon, category_image_url
+     * @param list<array<string,mixed>>|null $preloadedTableRows évite N+1 en liste
+     * @return list<array<string,mixed>>
+     */
+    public function resolveBloodTestItemsForAppointment(array $appointment, ?array $preloadedTableRows = null): array
+    {
+        if (($appointment['type'] ?? '') !== 'blood_test') {
+            return [];
+        }
+        $id = (string) ($appointment['id'] ?? '');
+        if ($id === '') {
+            return [];
+        }
+        $tableRows = $preloadedTableRows !== null ? $preloadedTableRows : $this->getBloodTestItems($id);
+        $fd = isset($appointment['form_data']) && is_array($appointment['form_data']) ? $appointment['form_data'] : [];
+        $rawForm = isset($fd['blood_test_items']) && is_array($fd['blood_test_items']) ? $fd['blood_test_items'] : null;
+        $parsedForm = $this->parseBloodTestItemsInputArray($rawForm);
+        $formRows = $this->bloodTestDisplayRowsFromParsed($id, $parsedForm);
+        $merged = $this->mergeBloodTestTableAndFormRows($tableRows, $formRows);
+        if (!empty($merged)) {
+            return $merged;
+        }
+        $care = is_array($fd['care_options'] ?? null) ? $fd['care_options'] : [];
+
+        return [[
+            'id' => null,
+            'appointment_id' => $id,
+            'category_id' => $appointment['category_id'] ?? null,
+            'label' => $appointment['category_name'] ?? null,
+            'care_options' => $care,
+            'source_appointment_id' => $id,
+            'sort_order' => 0,
+            'category_name' => $appointment['category_name'] ?? null,
+            'category_icon' => $appointment['category_icon'] ?? null,
+            'category_image_url' => $appointment['category_image_url'] ?? null,
+        ]];
+    }
+
+    /**
+     * Champs minimaux pour resolve sur plusieurs IDs (lot prise de sang).
+     *
+     * @param list<string> $appointmentIdsOrdered
+     * @return array<string, array<string,mixed>>
+     */
+    private function loadBloodTestResolveSlicesById(array $appointmentIdsOrdered): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('strval', $appointmentIdsOrdered))));
+        if (empty($ids)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare("
+            SELECT a.id, a.type, a.category_id, a.form_data_encrypted, a.form_data_dek,
+                   cc.name AS category_name, cc.icon AS category_icon, cc.image_url AS category_image_url
+            FROM appointments a
+            LEFT JOIN care_categories cc ON cc.id = a.category_id
+            WHERE a.id IN ($placeholders)
+        ");
+        $stmt->execute($ids);
+        $out = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $formData = [];
+            if (!empty($row['form_data_encrypted']) && !empty($row['form_data_dek'])) {
+                try {
+                    $json = $this->crypto->decryptField($row['form_data_encrypted'], $row['form_data_dek']);
+                    $decoded = json_decode((string) $json, true);
+                    $formData = is_array($decoded) ? $decoded : [];
+                } catch (Throwable $e) {
+                    $formData = [];
+                }
+            }
+            $aid = (string) $row['id'];
+            $out[$aid] = [
+                'id' => $aid,
+                'type' => $row['type'] ?? null,
+                'form_data' => $formData,
+                'category_id' => $row['category_id'] ?? null,
+                'category_name' => $row['category_name'] ?? null,
+                'category_icon' => $row['category_icon'] ?? null,
+                'category_image_url' => $row['category_image_url'] ?? null,
+            ];
+        }
+
+        return $out;
+    }
+
     public function loadBloodTestItemsForAppointments(array $appointmentIds): array
     {
         if (!$this->hasTable('appointment_blood_test_items')) {
@@ -199,7 +443,8 @@ class Appointment
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $stmt = $this->db->prepare("
             SELECT bti.id, bti.appointment_id, bti.category_id, bti.label, bti.care_options,
-                   bti.source_appointment_id, bti.sort_order, cc.name AS category_name, cc.icon AS category_icon
+                   bti.source_appointment_id, bti.sort_order, cc.name AS category_name, cc.icon AS category_icon,
+                   cc.image_url AS category_image_url
             FROM appointment_blood_test_items bti
             LEFT JOIN care_categories cc ON cc.id = bti.category_id
             WHERE bti.appointment_id IN ($placeholders)
@@ -213,6 +458,354 @@ class Appointment
             $byAppointment[(string) $row['appointment_id']][] = $row;
         }
         return $byAppointment;
+    }
+
+    /**
+     * Fusionne les actes prise de sang de plusieurs RDV d'un même lot (création batch),
+     * pour l'affichage « une carte / un bloc prestations » sans dépendre de batch_siblings côté client.
+     *
+     * @param list<string> $appointmentIdsOrdered IDs dans l'ordre d'affichage souhaité (ex. scheduled_at).
+     * @return list<array<string,mixed>>
+     */
+    private function mergeBloodTestItemsAcrossBatchAppointmentIds(array $appointmentIdsOrdered): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('strval', $appointmentIdsOrdered))));
+        if (empty($ids)) {
+            return [];
+        }
+        $byAppt = $this->loadBloodTestItemsForAppointments($ids);
+        $slices = $this->loadBloodTestResolveSlicesById($ids);
+        $merged = [];
+        $seen = [];
+        foreach ($ids as $bidStr) {
+            $slice = $slices[$bidStr] ?? null;
+            if (!$slice || ($slice['type'] ?? '') !== 'blood_test') {
+                continue;
+            }
+            $pre = $byAppt[$bidStr] ?? [];
+            $resolved = $this->resolveBloodTestItemsForAppointment($slice, $pre);
+            foreach ($resolved as $row) {
+                $key = $this->bloodTestItemRowDedupKey($row);
+                if ($key === '|') {
+                    continue;
+                }
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $merged[] = $row;
+            }
+        }
+
+        return $merged;
+    }
+
+    /**
+     * @return list<array{category_id: ?string, label: ?string, care_options: array, sort_order: int}>
+     */
+    private function parseNursingItemsInputArray(?array $rawItems): array
+    {
+        return $this->parseBloodTestItemsInputArray($rawItems);
+    }
+
+    private function normalizeNursingItems(array $data): array
+    {
+        if (($data['type'] ?? '') !== 'nursing') {
+            return [];
+        }
+
+        $rawItems = $data['nursing_items'] ?? ($data['form_data']['nursing_items'] ?? null);
+        $items = $this->parseNursingItemsInputArray(is_array($rawItems) ? $rawItems : null);
+
+        if (empty($items)) {
+            $careOptions = $data['form_data']['care_options'] ?? [];
+            if (!is_array($careOptions)) {
+                $careOptions = [];
+            }
+            $items[] = [
+                'category_id' => !empty($data['category_id']) ? (string) $data['category_id'] : null,
+                'label' => trim((string) ($data['form_data']['category_name'] ?? $data['form_data']['service_name'] ?? '')) ?: null,
+                'care_options' => $careOptions,
+                'source_appointment_id' => null,
+                'sort_order' => 0,
+            ];
+        }
+
+        return $items;
+    }
+
+    private function insertNursingItems(string $appointmentId, array $items): void
+    {
+        if (!$this->hasTable('appointment_nursing_items')) {
+            if (!empty($items)) {
+                error_log(
+                    'appointment_nursing_items: table absente ou non détectée — insert ignoré ('
+                    . count($items) . ' acte(s)) pour RDV ' . $appointmentId
+                );
+            }
+
+            return;
+        }
+        if (empty($items)) {
+            return;
+        }
+        $stmt = $this->db->prepare('
+            INSERT INTO appointment_nursing_items
+            (id, appointment_id, category_id, label, care_options, source_appointment_id, sort_order, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        ');
+        foreach ($items as $idx => $item) {
+            $stmt->execute([
+                $this->generateUUID(),
+                $appointmentId,
+                $item['category_id'] ?? null,
+                $item['label'] ?? null,
+                json_encode($item['care_options'] ?? [], JSON_UNESCAPED_UNICODE),
+                $item['source_appointment_id'] ?? null,
+                (int) ($item['sort_order'] ?? $idx),
+            ]);
+        }
+    }
+
+    /**
+     * @return list<array<string,mixed>>
+     */
+    private function getNursingItems(string $appointmentId): array
+    {
+        if (!$this->hasTable('appointment_nursing_items')) {
+            return [];
+        }
+        $stmt = $this->db->prepare('
+            SELECT bti.id, bti.appointment_id, bti.category_id, bti.label, bti.care_options,
+                   bti.source_appointment_id, bti.sort_order, cc.name AS category_name, cc.icon AS category_icon,
+                   cc.image_url AS category_image_url
+            FROM appointment_nursing_items bti
+            LEFT JOIN care_categories cc ON cc.id = bti.category_id
+            WHERE bti.appointment_id = ?
+            ORDER BY bti.sort_order ASC, bti.created_at ASC, bti.id ASC
+        ');
+        $stmt->execute([$appointmentId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$row) {
+            $decoded = json_decode((string) ($row['care_options'] ?? ''), true);
+            $row['care_options'] = is_array($decoded) ? $decoded : [];
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /**
+     * @param list<array{category_id: ?string, label: ?string, care_options: array, sort_order: int, source_appointment_id: null}> $parsed
+     */
+    private function nursingDisplayRowsFromParsed(string $appointmentId, array $parsed): array
+    {
+        $rows = [];
+        foreach ($parsed as $p) {
+            $rows[] = [
+                'id' => null,
+                'appointment_id' => $appointmentId,
+                'category_id' => $p['category_id'] ?? null,
+                'label' => $p['label'] ?? null,
+                'care_options' => is_array($p['care_options'] ?? null) ? $p['care_options'] : [],
+                'source_appointment_id' => null,
+                'sort_order' => (int) ($p['sort_order'] ?? 0),
+                'category_name' => null,
+                'category_icon' => null,
+                'category_image_url' => null,
+            ];
+        }
+
+        return $this->enrichBloodTestRowsCategoryMeta($rows);
+    }
+
+    /**
+     * @param list<array<string,mixed>> $tableRows
+     * @param list<array<string,mixed>> $formRows
+     * @return list<array<string,mixed>>
+     */
+    private function mergeNursingTableAndFormRows(array $tableRows, array $formRows): array
+    {
+        $seen = [];
+        $out = [];
+        foreach ($tableRows as $row) {
+            $k = $this->bloodTestItemRowDedupKey($row);
+            if ($k === '|') {
+                continue;
+            }
+            if (isset($seen[$k])) {
+                continue;
+            }
+            $seen[$k] = true;
+            $out[] = $row;
+        }
+        foreach ($formRows as $row) {
+            $k = $this->bloodTestItemRowDedupKey($row);
+            if ($k === '|') {
+                continue;
+            }
+            if (isset($seen[$k])) {
+                continue;
+            }
+            $seen[$k] = true;
+            $out[] = $row;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param array<string,mixed> $appointment
+     * @param list<array<string,mixed>>|null $preloadedTableRows
+     * @return list<array<string,mixed>>
+     */
+    public function resolveNursingItemsForAppointment(array $appointment, ?array $preloadedTableRows = null): array
+    {
+        if (($appointment['type'] ?? '') !== 'nursing') {
+            return [];
+        }
+        $id = (string) ($appointment['id'] ?? '');
+        if ($id === '') {
+            return [];
+        }
+        $tableRows = $preloadedTableRows !== null ? $preloadedTableRows : $this->getNursingItems($id);
+        $fd = isset($appointment['form_data']) && is_array($appointment['form_data']) ? $appointment['form_data'] : [];
+        $rawForm = isset($fd['nursing_items']) && is_array($fd['nursing_items']) ? $fd['nursing_items'] : null;
+        $parsedForm = $this->parseNursingItemsInputArray($rawForm);
+        $formRows = $this->nursingDisplayRowsFromParsed($id, $parsedForm);
+        $merged = $this->mergeNursingTableAndFormRows($tableRows, $formRows);
+        if (!empty($merged)) {
+            return $merged;
+        }
+        $care = is_array($fd['care_options'] ?? null) ? $fd['care_options'] : [];
+
+        return [[
+            'id' => null,
+            'appointment_id' => $id,
+            'category_id' => $appointment['category_id'] ?? null,
+            'label' => $appointment['category_name'] ?? null,
+            'care_options' => $care,
+            'source_appointment_id' => $id,
+            'sort_order' => 0,
+            'category_name' => $appointment['category_name'] ?? null,
+            'category_icon' => $appointment['category_icon'] ?? null,
+            'category_image_url' => $appointment['category_image_url'] ?? null,
+        ]];
+    }
+
+    /**
+     * @param list<string> $appointmentIdsOrdered
+     * @return array<string, array<string,mixed>>
+     */
+    private function loadNursingResolveSlicesById(array $appointmentIdsOrdered): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('strval', $appointmentIdsOrdered))));
+        if (empty($ids)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare("
+            SELECT a.id, a.type, a.category_id, a.form_data_encrypted, a.form_data_dek,
+                   cc.name AS category_name, cc.icon AS category_icon, cc.image_url AS category_image_url
+            FROM appointments a
+            LEFT JOIN care_categories cc ON cc.id = a.category_id
+            WHERE a.id IN ($placeholders)
+        ");
+        $stmt->execute($ids);
+        $out = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $formData = [];
+            if (!empty($row['form_data_encrypted']) && !empty($row['form_data_dek'])) {
+                try {
+                    $json = $this->crypto->decryptField($row['form_data_encrypted'], $row['form_data_dek']);
+                    $decoded = json_decode((string) $json, true);
+                    $formData = is_array($decoded) ? $decoded : [];
+                } catch (Throwable $e) {
+                    $formData = [];
+                }
+            }
+            $aid = (string) $row['id'];
+            $out[$aid] = [
+                'id' => $aid,
+                'type' => $row['type'] ?? null,
+                'form_data' => $formData,
+                'category_id' => $row['category_id'] ?? null,
+                'category_name' => $row['category_name'] ?? null,
+                'category_icon' => $row['category_icon'] ?? null,
+                'category_image_url' => $row['category_image_url'] ?? null,
+            ];
+        }
+
+        return $out;
+    }
+
+    public function loadNursingItemsForAppointments(array $appointmentIds): array
+    {
+        if (!$this->hasTable('appointment_nursing_items')) {
+            return [];
+        }
+        $ids = array_values(array_unique(array_filter(array_map('strval', $appointmentIds))));
+        if (empty($ids)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare("
+            SELECT bti.id, bti.appointment_id, bti.category_id, bti.label, bti.care_options,
+                   bti.source_appointment_id, bti.sort_order, cc.name AS category_name, cc.icon AS category_icon,
+                   cc.image_url AS category_image_url
+            FROM appointment_nursing_items bti
+            LEFT JOIN care_categories cc ON cc.id = bti.category_id
+            WHERE bti.appointment_id IN ($placeholders)
+            ORDER BY bti.appointment_id ASC, bti.sort_order ASC, bti.created_at ASC
+        ");
+        $stmt->execute($ids);
+        $byAppointment = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $decoded = json_decode((string) ($row['care_options'] ?? ''), true);
+            $row['care_options'] = is_array($decoded) ? $decoded : [];
+            $byAppointment[(string) $row['appointment_id']][] = $row;
+        }
+
+        return $byAppointment;
+    }
+
+    /**
+     * Agrège les lignes nursing d’un lot legacy (plusieurs RDV même creation_batch_id) pour affichage liste/détail.
+     *
+     * @param list<string> $appointmentIdsOrdered
+     * @return list<array<string,mixed>>
+     */
+    public function mergeNursingItemsAcrossBatchAppointmentIds(array $appointmentIdsOrdered): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('strval', $appointmentIdsOrdered))));
+        if (empty($ids)) {
+            return [];
+        }
+        $byAppt = $this->loadNursingItemsForAppointments($ids);
+        $slices = $this->loadNursingResolveSlicesById($ids);
+        $merged = [];
+        $seen = [];
+        foreach ($ids as $bidStr) {
+            $slice = $slices[$bidStr] ?? null;
+            if (!$slice || ($slice['type'] ?? '') !== 'nursing') {
+                continue;
+            }
+            $pre = $byAppt[$bidStr] ?? [];
+            $resolved = $this->resolveNursingItemsForAppointment($slice, $pre);
+            foreach ($resolved as $row) {
+                $key = $this->bloodTestItemRowDedupKey($row);
+                if ($key === '|') {
+                    continue;
+                }
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $merged[] = $row;
+            }
+        }
+
+        return $merged;
     }
 
     /**
@@ -322,7 +915,14 @@ class Appointment
         // Référence « maintenant » en heure de Paris (cohérent avec les chaînes sans fuseau)
         $now = new DateTime('now', $tzParis);
         if ($scheduledDate < $now) {
-            throw new Exception('La date du rendez-vous ne peut pas être dans le passé.');
+            // « Toute la journée » : le front envie souvent 00:00:00 (heure Paris) ; ce même jour à 18 h, ce timestamp
+            // est techniquement « dans le passé » mais il désigne encore le jour courant → on accepte ce cas uniquement.
+            // Un horaire explicite déjà passé (ex. 08:00 alors qu’il est 18:00) reste refusé ci-dessous.
+            $isStartOfCalendarDay = $scheduledDate->format('H:i:s') === '00:00:00';
+            $sameLocalCalendarDay = $scheduledDate->format('Y-m-d') === $now->format('Y-m-d');
+            if (!($isStartOfCalendarDay && $sameLocalCalendarDay)) {
+                throw new Exception('La date du rendez-vous ne peut pas être dans le passé.');
+            }
         }
         
         // Validation patient_id ou guest_email
@@ -351,12 +951,48 @@ class Appointment
         
         $id = $this->generateUUID();
         $bloodTestItems = $this->normalizeBloodTestItems($data);
+        if (($data['type'] ?? '') === 'blood_test') {
+            error_log(sprintf(
+                '[appointments] blood_test create normalized_items=%d table_appointment_blood_test_items=%s appointment_id=%s',
+                count($bloodTestItems),
+                $this->hasTable('appointment_blood_test_items') ? '1' : '0',
+                $id
+            ));
+        }
         if (($data['type'] ?? '') === 'blood_test' && empty($data['category_id']) && !empty($bloodTestItems[0]['category_id'])) {
             $data['category_id'] = $bloodTestItems[0]['category_id'];
         }
 
+        $nursingItems = $this->normalizeNursingItems($data);
+        if (($data['type'] ?? '') === 'nursing') {
+            error_log(sprintf(
+                '[appointments] nursing create normalized_items=%d table_appointment_nursing_items=%s',
+                count($nursingItems),
+                $this->hasTable('appointment_nursing_items') ? '1' : '0'
+            ));
+            if (!isset($data['form_data']) || !is_array($data['form_data'])) {
+                $data['form_data'] = [];
+            }
+            if (!empty($nursingItems)) {
+                $data['form_data']['nursing_items'] = array_values(array_map(static function ($it) {
+                    return [
+                        'category_id' => $it['category_id'] ?? null,
+                        'label' => $it['label'] ?? null,
+                        'care_options' => isset($it['care_options']) && is_array($it['care_options']) ? $it['care_options'] : [],
+                        'sort_order' => (int) ($it['sort_order'] ?? 0),
+                    ];
+                }, $nursingItems));
+            }
+            if (count($nursingItems) > 1 && isset($data['form_data']['care_options'])) {
+                unset($data['form_data']['care_options']);
+            }
+            if (empty($data['category_id']) && !empty($nursingItems[0]['category_id'])) {
+                $data['category_id'] = $nursingItems[0]['category_id'];
+            }
+        }
+
         $creationBatchId = null;
-        if (($data['type'] ?? '') !== 'blood_test' && !empty($data['creation_batch_id']) && Validation::uuid((string) $data['creation_batch_id'])) {
+        if (!empty($data['creation_batch_id']) && Validation::uuid((string) $data['creation_batch_id'])) {
             $creationBatchId = (string) $data['creation_batch_id'];
         }
         
@@ -471,6 +1107,9 @@ class Appointment
 
         if (($data['type'] ?? '') === 'blood_test') {
             $this->insertBloodTestItems($id, $bloodTestItems);
+        }
+        if (($data['type'] ?? '') === 'nursing') {
+            $this->insertNursingItems($id, $nursingItems);
         }
         
         // Logger la création
@@ -612,19 +1251,11 @@ class Appointment
         if ($batchComplete && is_string($batchIdRaw)) {
             $rows = $this->fetchBatchAppointmentRowsForNotifications($batchIdRaw, (string) $patientIdForBatch);
             if ($rows !== []) {
-                $patientNameNurse = null;
-                foreach ($rows as $r) {
-                    if (($r['created_by_role'] ?? '') === 'nurse' && ($r['type'] ?? '') === 'blood_test') {
-                        $patientNameNurse = $this->extractPatientDisplayNameForNotification((string) $r['id'], $data);
-                        break;
-                    }
-                }
                 $this->notificationService->notifyBatchAppointmentCreationCompleted(
                     $batchIdRaw,
                     (string) $patientIdForBatch,
                     $rows,
-                    $data,
-                    $patientNameNurse
+                    $data
                 );
             }
             return;
@@ -632,7 +1263,7 @@ class Appointment
 
         try {
             $stmtCreator = $this->db->prepare('
-                SELECT status, type, created_by, created_by_role, scheduled_at, category_id, assigned_lab_id
+                SELECT status, type, created_by, created_by_role, scheduled_at
                 FROM appointments WHERE id = ?
             ');
             $stmtCreator->execute([$id]);
@@ -642,44 +1273,21 @@ class Appointment
                 && ($aptRow['status'] ?? '') === 'pending'
                 && in_array($aptRow['created_by_role'] ?? '', ['pro', 'nurse', 'lab', 'subaccount'], true)
             ) {
-                $categoryName = null;
-                if (!empty($aptRow['category_id'])) {
-                    $stmtCat = $this->db->prepare('SELECT name FROM care_categories WHERE id = ? LIMIT 1');
-                    $stmtCat->execute([$aptRow['category_id']]);
-                    $catRow = $stmtCat->fetch(PDO::FETCH_ASSOC);
-                    if ($catRow && !empty($catRow['name'])) {
-                        $categoryName = $catRow['name'];
-                    }
-                }
                 $creatorRole = (string) ($aptRow['created_by_role'] ?? '');
                 $aptType = (string) ($aptRow['type'] ?? '');
 
-                // Infirmier + prise de sang : message explicite (laboratoire + patient + date)
+                // Infirmier + prise de sang : rappel que le laboratoire doit confirmer
                 if ($creatorRole === 'nurse' && $aptType === 'blood_test') {
-                    $patientName = $this->extractPatientDisplayNameForNotification($id, $data);
-                    $labId = $data['assigned_lab_id'] ?? $aptRow['assigned_lab_id'] ?? null;
-                    $labName = null;
-                    if (!empty($labId)) {
-                        require_once __DIR__ . '/User.php';
-                        $userModel = new User();
-                        $names = $userModel->getDisplayNamesByIds([(string) $labId]);
-                        $labName = $names[(string) $labId] ?? null;
-                    }
                     $this->notificationService->notifyNurseBloodTestLabAwaitingConfirmation(
                         (string) $aptRow['created_by'],
                         $id,
-                        $patientName,
                         (string) ($aptRow['scheduled_at'] ?? ''),
-                        $labName,
-                        $categoryName
                     );
                 } else {
                     $this->notificationService->notifyProfessionalRequestSent(
                         (string) $aptRow['created_by'],
                         $id,
                         $aptType,
-                        (string) ($aptRow['scheduled_at'] ?? ''),
-                        $categoryName,
                         $creatorRole
                     );
                 }
@@ -688,13 +1296,41 @@ class Appointment
             error_log('notifyProfessionalRequestSent (post-create): ' . $e->getMessage());
         }
 
-        $this->notificationService->notifyNewAppointment($id, [
+        $notifyPatientExtras = [];
+        if (($data['type'] ?? '') === 'nursing') {
+            try {
+                $loaded = $this->loadNursingItemsForAppointments([$id]);
+                $pre = $loaded[$id] ?? [];
+                $resolvedForNotif = $this->resolveNursingItemsForAppointment([
+                    'id' => $id,
+                    'type' => 'nursing',
+                    'category_id' => $data['category_id'] ?? null,
+                    'form_data' => is_array($data['form_data'] ?? null) ? $data['form_data'] : [],
+                ], $pre);
+                if (count($resolvedForNotif) > 1) {
+                    $parts = [];
+                    foreach ($resolvedForNotif as $rw) {
+                        $nm = trim((string) ($rw['category_name'] ?? $rw['label'] ?? ''));
+                        if ($nm !== '') {
+                            $parts[] = $nm;
+                        }
+                    }
+                    if ($parts !== []) {
+                        $notifyPatientExtras['category_name'] = implode(' · ', $parts);
+                    }
+                }
+            } catch (Throwable $e) {
+                error_log('runPostCreateNotifications nursing category summary: ' . $e->getMessage());
+            }
+        }
+
+        $this->notificationService->notifyNewAppointment($id, array_merge([
             'patient_id' => $data['patient_id'] ?? null,
             'patient_email' => $data['patient_email'] ?? null,
             'type' => $data['type'] ?? null,
             'scheduled_at' => $data['scheduled_at'] ?? null,
             'form_data' => $data['form_data'] ?? null,
-        ]);
+        ], $notifyPatientExtras));
         $this->notifyAllAdmins($id, $data['type'] ?? '', $data['scheduled_at'] ?? '');
     }
 
@@ -877,7 +1513,8 @@ class Appointment
                 pr.birth_date_dek as relative_birth_date_dek,
                 cc.name as category_name,
                 cc.type as category_type,
-                cc.icon as category_icon
+                cc.icon as category_icon,
+                cc.image_url as category_image_url
             FROM appointments a
             LEFT JOIN patient_relatives pr ON a.relative_id = pr.id
             LEFT JOIN care_categories cc ON a.category_id = cc.id
@@ -1074,7 +1711,7 @@ class Appointment
                 if ($cbRole === 'patient' || ($pid !== null && (string) $cb === (string) $pid)) {
                     $appointment['creator_origin'] = [
                         'kind' => 'patient_platform',
-                        'label' => 'Patient OneAndLab',
+                        'label' => 'oneandlab',
                     ];
                 } elseif ($cbRole === 'nurse') {
                     $cp = $userModel->getById((string) $cb, 'system', 'system');
@@ -1132,29 +1769,31 @@ class Appointment
             // Ne pas faire échouer getById si résolution des noms échoue
         }
 
+        $mergedFilter = '';
+        try {
+            $hasMergedCol = (int) $this->db->query("
+                SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'appointments'
+                  AND COLUMN_NAME = 'merged_into_appointment_id'
+            ")->fetchColumn() > 0;
+            if ($hasMergedCol) {
+                $mergedFilter = ' AND a.merged_into_appointment_id IS NULL';
+            }
+        } catch (Throwable $e) {
+            $mergedFilter = '';
+        }
+
         $appointment['batch_siblings'] = [];
         $batchId = $appointment['creation_batch_id'] ?? null;
         $batchType = $appointment['type'] ?? null;
-        if (($appointment['type'] ?? '') === 'blood_test') {
-            $appointment['blood_test_items'] = $this->getBloodTestItems((string) $appointment['id']);
-            if (empty($appointment['blood_test_items'])) {
-                $appointment['blood_test_items'] = [[
-                    'id' => null,
-                    'appointment_id' => $appointment['id'],
-                    'category_id' => $appointment['category_id'] ?? null,
-                    'label' => $appointment['category_name'] ?? null,
-                    'care_options' => is_array($appointment['form_data']['care_options'] ?? null) ? $appointment['form_data']['care_options'] : [],
-                    'source_appointment_id' => $appointment['id'],
-                    'sort_order' => 0,
-                    'category_name' => $appointment['category_name'] ?? null,
-                    'category_icon' => $appointment['category_icon'] ?? null,
-                ]];
-            }
-        } else {
-            $appointment['blood_test_items'] = [];
-        }
-        if (!empty($batchId) && $batchType === 'nursing' && !empty($appointment['patient_id'])) {
-            $sibStmt = $this->db->prepare('
+        // Lots multisoins / multi prises de sang : mêmes règles que la liste (creation_batch_id + patient + type).
+        if (
+            !empty($batchId)
+            && in_array((string) $batchType, ['nursing', 'blood_test'], true)
+            && !empty($appointment['patient_id'])
+        ) {
+            $sql = '
                 SELECT a.id, a.status, a.scheduled_at, cc.name AS category_name
                 FROM appointments a
                 LEFT JOIN care_categories cc ON a.category_id = cc.id
@@ -1162,8 +1801,10 @@ class Appointment
                   AND a.id != ?
                   AND a.patient_id = ?
                   AND a.type = ?
+                  ' . $mergedFilter . '
                 ORDER BY a.scheduled_at ASC
-            ');
+            ';
+            $sibStmt = $this->db->prepare($sql);
             $sibStmt->execute([$batchId, $id, $appointment['patient_id'], $batchType]);
             $sibRows = $sibStmt->fetchAll(PDO::FETCH_ASSOC);
             foreach ($sibRows as $sr) {
@@ -1174,6 +1815,59 @@ class Appointment
                     'category_name' => $sr['category_name'],
                 ];
             }
+        }
+        if (($appointment['type'] ?? '') === 'blood_test') {
+            $appointment['blood_test_items'] = $this->resolveBloodTestItemsForAppointment($appointment, null);
+            // Libellés prestations pour une seule carte / bloc (lot multi-RDV legacy) : tous les actes du lot.
+            $appointment['blood_test_items_display'] = $appointment['blood_test_items'];
+            if (!empty($batchId) && !empty($appointment['patient_id'])) {
+                $stmtBatchBlood = $this->db->prepare('
+                    SELECT a.id
+                    FROM appointments a
+                    WHERE a.creation_batch_id = ?
+                      AND a.patient_id = ?
+                      AND a.type = \'blood_test\'
+                      ' . $mergedFilter . '
+                    ORDER BY a.scheduled_at ASC, a.created_at ASC, a.id ASC
+                ');
+                $stmtBatchBlood->execute([$batchId, $appointment['patient_id']]);
+                $batchBloodIds = array_column($stmtBatchBlood->fetchAll(PDO::FETCH_ASSOC), 'id');
+                if (count($batchBloodIds) > 1) {
+                    $mergedDisp = $this->mergeBloodTestItemsAcrossBatchAppointmentIds($batchBloodIds);
+                    if (!empty($mergedDisp)) {
+                        $appointment['blood_test_items_display'] = $mergedDisp;
+                    }
+                }
+            }
+        } else {
+            $appointment['blood_test_items'] = [];
+        }
+
+        if (($appointment['type'] ?? '') === 'nursing') {
+            $appointment['nursing_items'] = $this->resolveNursingItemsForAppointment($appointment, null);
+            $appointment['nursing_items_display'] = $appointment['nursing_items'];
+            if (!empty($batchId) && !empty($appointment['patient_id'])) {
+                $stmtBatchNursing = $this->db->prepare('
+                    SELECT a.id
+                    FROM appointments a
+                    WHERE a.creation_batch_id = ?
+                      AND a.patient_id = ?
+                      AND a.type = \'nursing\'
+                      ' . $mergedFilter . '
+                    ORDER BY a.scheduled_at ASC, a.created_at ASC, a.id ASC
+                ');
+                $stmtBatchNursing->execute([$batchId, $appointment['patient_id']]);
+                $batchNursingIds = array_column($stmtBatchNursing->fetchAll(PDO::FETCH_ASSOC), 'id');
+                if (count($batchNursingIds) > 1) {
+                    $mergedN = $this->mergeNursingItemsAcrossBatchAppointmentIds($batchNursingIds);
+                    if (!empty($mergedN)) {
+                        $appointment['nursing_items_display'] = $mergedN;
+                    }
+                }
+            }
+        } else {
+            $appointment['nursing_items'] = [];
+            $appointment['nursing_items_display'] = [];
         }
 
         // Libellé e-mail patient + contact principal (titulaire) pour RDV « pour un proche »
@@ -1203,6 +1897,11 @@ class Appointment
             } catch (Throwable $e) {
                 // ignore
             }
+        }
+
+        // Ne pas exposer les métadonnées d’audit au portail patient (défense en profondeur)
+        if ($requesterRole === 'patient') {
+            unset($appointment['created_at'], $appointment['updated_at']);
         }
 
         return $appointment;
@@ -1279,6 +1978,9 @@ class Appointment
         $appointment['assigned_lab_display_name'] = null;
         $appointment['assigned_nurse_display_name'] = null;
         $appointment['assigned_to_display_name'] = null;
+        if ($requesterRole === 'patient') {
+            unset($appointment['created_at'], $appointment['updated_at']);
+        }
         return $appointment;
     }
 
@@ -2112,6 +2814,7 @@ class Appointment
                 break;
                 
             case 'inProgress':
+                // Statut conservé (API / admin / réactivation UI). Notif patient inchangée.
                 if ($patientId) {
                     $this->notificationService->notifyAppointmentStarted($appointmentId, $patientId);
                 }
@@ -2141,7 +2844,7 @@ class Appointment
                 
                 $appointmentType = $appointment['type'] ?? null;
                 $careTypeLabel = $appointment['category_name'] ?? (
-                    $appointmentType === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers'
+                    $appointmentType === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers'
                 );
                 $this->notificationService->notifyAppointmentCanceled(
                     $appointmentId,
@@ -2705,7 +3408,7 @@ class Appointment
             $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Type de rendez-vous en français pour le message
-            $typeLabel = $appointmentType === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers';
+            $typeLabel = $appointmentType === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers';
             
             // Créer une notification pour chaque admin
             foreach ($admins as $admin) {

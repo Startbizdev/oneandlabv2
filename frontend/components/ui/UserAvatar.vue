@@ -1,7 +1,8 @@
 <template>
   <div
     :class="[
-      'flex-shrink-0 rounded-full overflow-hidden ring-2 ring-white dark:ring-gray-900 shadow-sm flex items-center justify-center font-normal text-white bg-gradient-to-br from-primary-500 to-primary-600',
+      'flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center font-normal text-white bg-gradient-to-br from-primary-500 to-primary-600',
+      bare ? 'ring-1 ring-gray-200/90 shadow-none dark:ring-gray-600/70' : 'ring-2 ring-white shadow-sm dark:ring-gray-900',
       sizeClass,
     ]"
   >
@@ -25,6 +26,8 @@ interface Props {
   alt?: string
   /** Taille : sm (8), md (9), lg (10) en h/w Tailwind */
   size?: 'sm' | 'md' | 'lg'
+  /** Anneau léger (header toolbar / Linear–Notion), sans halo épais */
+  bare?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -32,6 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
   initial: 'U',
   alt: 'Avatar',
   size: 'md',
+  bare: false,
 })
 
 const sizeClass = computed(() => {

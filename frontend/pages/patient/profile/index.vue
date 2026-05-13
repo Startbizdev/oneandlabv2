@@ -1,9 +1,12 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
-      title="Mon profil"
-      description="Consultez et modifiez vos informations personnelles"
-    />
+  <AppPageShell class="space-y-6" header-bleed="patient">
+    <template #pageHeader>
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Mon profil"
+        description="Consultez et modifiez vos informations personnelles"
+      />
+    </template>
 
     <div class="container mx-auto px-4 max-w-7xl">
     <!-- Chargement -->
@@ -100,7 +103,6 @@
           v-model="profileForm.address"
           label="Adresse"
           name="address"
-          placeholder="Commencez à taper votre adresse..."
           :show-complement="true"
           :complement-value="profileForm.address_complement"
           @update:complement="profileForm.address_complement = $event"
@@ -142,7 +144,7 @@
       @update:error="documentError = $event"
     />
     </div>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

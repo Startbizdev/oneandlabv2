@@ -1,129 +1,183 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard title="Gestion des utilisateurs" description="Gérez les utilisateurs : nom, prénom, email, rôle et types de soins.">
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" title="Gestion des utilisateurs" description="Gérez les utilisateurs : nom, prénom, email, rôle et types de soins.">
       <template #actions>
         <UButton color="primary" icon="i-lucide-plus" to="/admin/users/new">
           Créer un utilisateur
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
-    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+    <div
+      class="flex flex-col gap-2.5 rounded-xl border border-default/90 bg-default p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:flex-row sm:flex-wrap sm:items-center"
+    >
       <UInput
         v-model="searchQuery"
-        placeholder="Rechercher par nom, prénom, email..."
-        class="flex-1"
+        placeholder="Nom, email, société…"
+        icon="i-lucide-search"
+        size="sm"
+        clearable
+        class="min-w-0 flex-1"
+        :ui="{ rounded: 'rounded-lg' }"
       />
-      <USelect
-        v-model="roleFilter"
-        :items="roleOptions"
-        value-key="value"
-        placeholder="Filtrer par rôle"
-        class="w-full sm:w-48"
-      />
-      <USelect
-        v-model="statusFilter"
-        :items="statusOptions"
-        value-key="value"
-        placeholder="Filtrer par statut"
-        class="w-full sm:w-48"
-      />
+      <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+        <USelect
+          v-model="roleFilter"
+          :items="roleOptions"
+          value-key="value"
+          placeholder="Rôle"
+          size="sm"
+          class="min-w-[10rem] flex-1 sm:flex-none sm:min-w-[11rem]"
+        />
+        <USelect
+          v-model="statusFilter"
+          :items="statusOptions"
+          value-key="value"
+          placeholder="Statut"
+          size="sm"
+          class="min-w-[10rem] flex-1 sm:flex-none sm:min-w-[11rem]"
+        />
+      </div>
     </div>
 
-    <div class="rounded-xl border border-default/50 bg-default shadow-sm overflow-hidden">
-      <UTable :data="filteredUsers" :columns="columns" :loading="loading">
-        <template #user-cell="{ row }">
-          <div class="flex items-center gap-3 py-1">
-            <UAvatar
-              :alt="getUserDisplayName(row.original ?? row)"
-              size="sm"
-              class="flex-shrink-0"
-            />
-            <div class="min-w-0">
-              <p class="font-normal text-foreground truncate">
-                {{ getUserDisplayName(row.original ?? row) || '—' }}
-              </p>
-              <p class="text-sm text-muted truncate">
-                {{ (row.original ?? row).email_display || (row.original ?? row).email || '—' }}
-              </p>
+    <div class="overflow-hidden rounded-xl border border-default/90 bg-default shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <div v-if="loading" class="divide-y divide-default">
+        <div
+          v-for="i in 8"
+          :key="i"
+          class="flex animate-pulse flex-col gap-3 p-4 sm:flex-row sm:items-center"
+        >
+          <div class="flex flex-1 gap-3">
+            <div class="h-9 w-9 shrink-0 rounded-full bg-muted/60" />
+            <div class="min-w-0 flex-1 space-y-2">
+              <div class="h-4 w-44 max-w-full rounded bg-muted/50" />
+              <div class="h-3 w-56 max-w-full rounded bg-muted/40" />
+              <div class="flex gap-2">
+                <div class="h-5 w-16 rounded-full bg-muted/50" />
+                <div class="h-5 w-20 rounded-full bg-muted/40" />
+              </div>
             </div>
           </div>
-        </template>
-        <template #role-cell="{ row }">
-          <UBadge :color="getRoleColor((row.original ?? row).role)" variant="soft" size="sm" class="font-medium">
-            {{ getRoleLabel((row.original ?? row).role) }}
-          </UBadge>
-        </template>
-        <template #care_types-cell="{ row }">
-          <div v-if="hasCareTypes((row.original ?? row).role)" class="flex flex-wrap items-center gap-1.5">
-            <template v-if="showPriseDeSang((row.original ?? row).role)">
-              <UBadge color="error" variant="soft" size="xs" leading-icon="i-lucide-syringe">
-                Prise de sang
-              </UBadge>
-            </template>
-            <template v-if="showSoinsInfirmiers((row.original ?? row).role)">
-              <UBadge color="info" variant="soft" size="xs" leading-icon="i-lucide-stethoscope">
-                Soins infirmiers
-              </UBadge>
-            </template>
+          <div
+            class="flex w-full shrink-0 flex-row items-center justify-start gap-2 sm:w-auto sm:justify-end"
+          >
+            <div class="h-7 w-[4.25rem] shrink-0 rounded-full bg-muted/50 sm:w-20" />
+            <div class="h-7 w-[4.75rem] shrink-0 rounded-full bg-muted/40" />
           </div>
-          <UBadge v-else color="neutral" variant="soft" size="xs" class="text-muted">
-            Non applicable
-          </UBadge>
-        </template>
-        <template #status-cell="{ row }">
-          <UBadge
-            v-if="(row.original ?? row).banned_until && new Date((row.original ?? row).banned_until) > new Date('9999-12-30')"
-            color="error"
-            variant="soft"
-            size="sm"
+        </div>
+      </div>
+
+      <div
+        v-else-if="filteredUsers.length === 0"
+        class="px-4 py-12 sm:py-14"
+      >
+        <UEmpty
+          icon="i-lucide-users"
+          title="Aucun utilisateur"
+          description="Aucun utilisateur ne correspond à vos critères. Modifiez les filtres ou la recherche."
+          variant="naked"
+          :actions="[
+            {
+              label: 'Réinitialiser les filtres',
+              variant: 'outline',
+              onClick: resetUserListFilters,
+            },
+          ]"
+        />
+      </div>
+
+      <div v-else class="divide-y divide-default">
+        <article
+          v-for="u in filteredUsers"
+          :key="u.id"
+          class="transition-colors hover:bg-muted/25"
+        >
+          <div
+            class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-4 sm:py-3.5"
           >
-            Banni
-          </UBadge>
-          <UBadge
-            v-else-if="isSuspended(row.original ?? row)"
-            color="warning"
-            variant="soft"
-            size="sm"
-          >
-            Suspendu
-          </UBadge>
-          <UBadge v-else color="success" variant="soft" size="sm">
-            Actif
-          </UBadge>
-        </template>
-        <template #created_at-cell="{ row }">
-          <span class="text-sm text-muted">{{ formatDateShort((row.original ?? row).created_at) }}</span>
-        </template>
-        <template #actions-cell="{ row }">
-          <div class="flex items-center justify-end gap-1.5">
-            <UButton
-              size="xs"
-              variant="ghost"
-              icon="i-lucide-eye"
-              :to="`/profile?userId=${(row.original ?? row).id}`"
+            <div class="flex min-w-0 flex-1 gap-3">
+              <UAvatar
+                :src="u.profile_image_url ?? undefined"
+                :alt="getUserDisplayName(u)"
+                size="sm"
+                class="shrink-0"
+              />
+              <div class="min-w-0 flex-1 space-y-2">
+                <div>
+                  <p class="truncate text-sm font-semibold text-foreground">
+                    {{ getUserDisplayName(u) || '—' }}
+                  </p>
+                  <p class="truncate text-xs text-muted">
+                    {{ u.email_display || u.email || '—' }}
+                  </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <UBadge :color="getRoleColor(u.role)" variant="soft" size="xs" class="font-medium shrink-0">
+                    {{ getRoleLabel(u.role) }}
+                  </UBadge>
+                  <template v-if="hasCareTypes(u.role)">
+                    <UBadge v-if="showPriseDeSang(u.role)" color="error" variant="outline" size="xs" leading-icon="i-lucide-syringe">
+                      Prélèvement
+                    </UBadge>
+                    <UBadge v-if="showSoinsInfirmiers(u.role)" color="info" variant="outline" size="xs" leading-icon="i-lucide-stethoscope">
+                      Soins infirmiers
+                    </UBadge>
+                  </template>
+                  <UBadge v-else color="neutral" variant="outline" size="xs" class="text-muted">
+                    Non applicable
+                  </UBadge>
+                  <UBadge
+                    v-if="u.banned_until && new Date(u.banned_until) > new Date('9999-12-30')"
+                    color="error"
+                    variant="outline"
+                    size="xs"
+                  >
+                    Banni
+                  </UBadge>
+                  <UBadge v-else-if="isSuspended(u)" color="warning" variant="outline" size="xs">
+                    Suspendu
+                  </UBadge>
+                  <UBadge v-else color="success" variant="outline" size="xs">
+                    Actif
+                  </UBadge>
+                </div>
+                <p class="text-[11px] tabular-nums text-muted">
+                  Inscrit le {{ u.created_at ? formatDateShort(u.created_at) : '—' }}
+                </p>
+              </div>
+            </div>
+
+            <div
+              class="flex w-full shrink-0 flex-row flex-wrap items-center justify-start gap-2 sm:w-auto sm:flex-nowrap sm:justify-end"
             >
-              Voir
-            </UButton>
-            <UDropdownMenu :items="getActionItems(row.original ?? row)">
-              <UButton size="xs" variant="ghost" trailing-icon="i-lucide-chevron-down">
-                Plus
+              <UButton
+                size="xs"
+                variant="outline"
+                color="neutral"
+                leading-icon="i-lucide-eye"
+                class="inline-flex shrink-0 rounded-full px-3 py-1.5 font-medium shadow-none whitespace-nowrap"
+                :to="`/profile?userId=${u.id}`"
+              >
+                Voir
               </UButton>
-            </UDropdownMenu>
+              <UDropdownMenu :items="getActionItems(u)">
+                <UButton
+                  size="xs"
+                  variant="outline"
+                  color="neutral"
+                  trailing-icon="i-lucide-chevron-down"
+                  class="inline-flex shrink-0 rounded-full px-3 py-1.5 font-medium shadow-none whitespace-nowrap"
+                >
+                  Plus
+                </UButton>
+              </UDropdownMenu>
+            </div>
           </div>
-        </template>
-        <template #empty>
-          <div class="py-12">
-            <UEmpty
-              icon="i-lucide-users"
-              title="Aucun utilisateur"
-              description="Aucun utilisateur ne correspond à vos critères. Modifiez les filtres."
-              :actions="[{ label: 'Réinitialiser les filtres', variant: 'outline', onClick: () => { roleFilter = 'all'; statusFilter = 'all'; searchQuery = ''; } }]"
-              variant="naked"
-            />
-          </div>
-        </template>
-      </UTable>
+        </article>
+      </div>
+
       <div
         v-if="totalPages > 1"
         class="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t border-default/50"
@@ -142,7 +196,7 @@
         />
       </div>
     </div>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">
@@ -153,6 +207,7 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
+import { labelFromAppointmentAddressField } from '~/utils/address-display';
 const toast = useAppToast();
 
 const users = ref<any[]>([]);
@@ -182,7 +237,13 @@ const statusOptions = [
   { label: 'Bannis', value: 'banned' },
 ];
 
-/** Lab, sous-compte, préleveur = Prise de sang uniquement. Infirmier = Soins infirmiers uniquement. */
+function resetUserListFilters() {
+  roleFilter.value = 'all';
+  statusFilter.value = 'all';
+  searchQuery.value = '';
+}
+
+/** Lab, sous-compte, préleveur = Prélèvement uniquement. Infirmier = Soins infirmiers uniquement. */
 const ROLES_PRISE_DE_SANG = ['lab', 'subaccount', 'preleveur'];
 const ROLES_SOINS_INFIRMIERS = ['nurse'];
 
@@ -196,16 +257,7 @@ function hasCareTypes(role: string): boolean {
   return showPriseDeSang(role) || showSoinsInfirmiers(role);
 }
 
-const columns = [
-  { id: 'user', accessorKey: 'user', header: 'Utilisateur' },
-  { id: 'role', accessorKey: 'role', header: 'Rôle' },
-  { id: 'care_types', accessorKey: 'care_types', header: 'Types de soins' },
-  { id: 'status', accessorKey: 'status', header: 'Statut' },
-  { id: 'created_at', accessorKey: 'created_at', header: 'Inscrit le' },
-  { id: 'actions', accessorKey: 'actions', header: '' },
-];
-
-// Normaliser la valeur du filtre (USelect peut retourner l'objet ou la valeur)
+/** USelect peut retourner l'objet ou la valeur */
 const roleVal = computed(() => {
   const v = roleFilter.value;
   return (typeof v === 'object' && v?.value != null) ? v.value : v;
@@ -328,11 +380,10 @@ const formatDateShort = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-/** Libellé d'adresse (objet { label } ou chaîne) */
+/** Libellé d'adresse utilisateur (objet, chaîne ou JSON stringifié) */
 function getAddressLabel(address: any): string {
-  if (!address) return '—';
-  if (typeof address === 'string') return address;
-  return address?.label || address?.address || '—';
+  const line = labelFromAppointmentAddressField(address);
+  return line || '—';
 }
 
 const getActionItems = (user: any) => {

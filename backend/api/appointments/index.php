@@ -147,7 +147,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 pr.relationship_type as relative_relationship_type,
                 cc.name as category_name,
                 cc.type as category_type,
-                cc.icon as category_icon
+                cc.icon as category_icon,
+                cc.image_url as category_image_url
             FROM appointments a
             LEFT JOIN patient_relatives pr ON a.relative_id = pr.id
             LEFT JOIN care_categories cc ON a.category_id = cc.id
@@ -160,7 +161,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 a.*,
                 cc.name as category_name,
                 cc.type as category_type,
-                cc.icon as category_icon
+                cc.icon as category_icon,
+                cc.image_url as category_image_url
             FROM appointments a
             LEFT JOIN care_categories cc ON a.category_id = cc.id
             WHERE 1=1
@@ -622,19 +624,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $itemsByAppointment = $appointmentModel->loadBloodTestItemsForAppointments($bloodTestIds);
             foreach ($decryptedAppointments as &$apt) {
                 if (($apt['type'] ?? '') === 'blood_test') {
-                    $apt['blood_test_items'] = $itemsByAppointment[(string) $apt['id']] ?? [];
-                    if (empty($apt['blood_test_items'])) {
-                        $apt['blood_test_items'] = [[
-                            'id' => null,
-                            'appointment_id' => $apt['id'],
-                            'category_id' => $apt['category_id'] ?? null,
-                            'label' => $apt['category_name'] ?? null,
-                            'care_options' => is_array($apt['form_data']['care_options'] ?? null) ? $apt['form_data']['care_options'] : [],
-                            'source_appointment_id' => $apt['id'],
-                            'sort_order' => 0,
-                            'category_name' => $apt['category_name'] ?? null,
-                            'category_icon' => $apt['category_icon'] ?? null,
-                        ]];
+                    $tid = (string) ($apt['id'] ?? '');
+                    $pre = $tid !== '' ? ($itemsByAppointment[$tid] ?? []) : [];
+                    $apt['blood_test_items'] = $appointmentModel->resolveBloodTestItemsForAppointment($apt, $pre);
+                }
+            }
+            unset($apt);
+        }
+        $nursingIds = array_values(array_filter(array_map(
+            static fn($apt) => (($apt['type'] ?? '') === 'nursing') ? (string) ($apt['id'] ?? '') : '',
+            $decryptedAppointments
+        )));
+        if (!empty($nursingIds)) {
+            $nursingByAppointment = $appointmentModel->loadNursingItemsForAppointments($nursingIds);
+            foreach ($decryptedAppointments as &$apt) {
+                if (($apt['type'] ?? '') === 'nursing') {
+                    $tid = (string) ($apt['id'] ?? '');
+                    $pre = $tid !== '' ? ($nursingByAppointment[$tid] ?? []) : [];
+                    $apt['nursing_items'] = $appointmentModel->resolveNursingItemsForAppointment($apt, $pre);
+                    $bid = $apt['creation_batch_id'] ?? null;
+                    $apt['nursing_items_display'] = $apt['nursing_items'];
+                    if (!empty($bid) && !empty($apt['patient_id'])) {
+                        try {
+                            $mergedFilter = '';
+                            try {
+                                $hasMergedCol = (int) $db->query("
+                                    SELECT COUNT(*) FROM information_schema.COLUMNS
+                                    WHERE TABLE_SCHEMA = DATABASE()
+                                      AND TABLE_NAME = 'appointments'
+                                      AND COLUMN_NAME = 'merged_into_appointment_id'
+                                ")->fetchColumn() > 0;
+                                if ($hasMergedCol) {
+                                    $mergedFilter = ' AND merged_into_appointment_id IS NULL';
+                                }
+                            } catch (Throwable $e) {
+                                $mergedFilter = '';
+                            }
+                            $stmtBatch = $db->prepare('
+                                SELECT id FROM appointments
+                                WHERE creation_batch_id = ?
+                                  AND patient_id = ?
+                                  AND type = \'nursing\'
+                                  ' . $mergedFilter . '
+                                ORDER BY scheduled_at ASC, created_at ASC, id ASC
+                            ');
+                            $stmtBatch->execute([(string) $bid, (string) $apt['patient_id']]);
+                            $batchIds = array_column($stmtBatch->fetchAll(PDO::FETCH_ASSOC), 'id');
+                            if (count($batchIds) > 1) {
+                                $mergedDisp = $appointmentModel->mergeNursingItemsAcrossBatchAppointmentIds($batchIds);
+                                if (!empty($mergedDisp)) {
+                                    $apt['nursing_items_display'] = $mergedDisp;
+                                }
+                            }
+                        } catch (Throwable $e) {
+                            error_log('liste RDV nursing_items_display batch: ' . $e->getMessage());
+                        }
                     }
                 }
             }
@@ -824,6 +868,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     $inputForCreate = $input;
     unset($inputForCreate['reschedule_from_appointment_id']);
+
+    if (($inputForCreate['type'] ?? '') === 'nursing') {
+        $ni = $inputForCreate['nursing_items'] ?? ($inputForCreate['form_data']['nursing_items'] ?? null);
+        if ($ni !== null && !is_array($ni)) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Le champ nursing_items doit être un tableau lorsqu’il est fourni.',
+                'code' => 'VALIDATION_ERROR',
+            ]);
+            exit;
+        }
+        if (is_array($ni)) {
+            foreach ($ni as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $cid = $item['category_id'] ?? null;
+                if ($cid !== null && $cid !== '' && !Validation::uuid((string) $cid)) {
+                    http_response_code(400);
+                    echo json_encode([
+                        'success' => false,
+                        'error' => 'Identifiant de catégorie invalide dans nursing_items.',
+                        'code' => 'VALIDATION_ERROR',
+                    ]);
+                    exit;
+                }
+            }
+        }
+    }
     
     try {
         logAppointment('Appel à appointmentModel->create', ['user_id' => $user['user_id'], 'role' => $user['role']]);
@@ -880,24 +954,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         }
         
-        echo json_encode([
+        $successJson = json_encode([
             'success' => true,
             'data' => ['id' => $id],
         ]);
+        if ($successJson === false) {
+            throw new Exception('Erreur encodage JSON (réponse création RDV)');
+        }
+        header('Content-Length: ' . strlen($successJson));
+        echo $successJson;
         if (ob_get_level()) {
             ob_end_flush();
         }
         flush();
-        // Réponse envoyée au client, on peut lancer le dispatch sans bloquer
+
+        $notifyAppointmentId = $id;
+        $notifyInput = $inputForCreate;
+        $notifyCreatorRole = $user['role'];
+
+        // Sous PHP-FPM, fastcgi_finish_request détache le client : le dispatch peut tourner sans timeout navigateur.
+        // Sans FastCGI :
+        // - mod_php / Apache : shutdown après réponse — OK (processus distincts par requête).
+        // - php -S : un seul worker — register_shutdown_function bloque quand même la requête suivante
+        //   tant que runPostCreateNotifications n’est pas finie (série de POST multi-RDV = overlay figé).
+        //   On délègue alors à un sous-processus CLI (script dédié).
         if (function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
-        }
-        // Toujours exécuter le dispatch directement : exec() échoue souvent sous PHP-FPM
-        // (PATH, disable_functions, etc.). Le client a déjà reçu la réponse.
-        try {
-            $appointmentModel->runPostCreateNotifications($id, $inputForCreate, $user['role']);
-        } catch (Throwable $e) {
-            error_log('runPostCreateNotifications failed: ' . $e->getMessage());
+            try {
+                $appointmentModel->runPostCreateNotifications($notifyAppointmentId, $notifyInput, $notifyCreatorRole);
+            } catch (Throwable $e) {
+                error_log('runPostCreateNotifications failed: ' . $e->getMessage());
+            }
+        } elseif (PHP_SAPI === 'cli-server') {
+            $bgScript = __DIR__ . '/../../scripts/cli-post-create-notifications.php';
+            $tmpPath = tempnam(sys_get_temp_dir(), 'one-pcn-');
+            $envelope = json_encode([
+                'id' => $notifyAppointmentId,
+                'input' => $notifyInput,
+                'role' => $notifyCreatorRole,
+            ], JSON_UNESCAPED_UNICODE);
+            $spawned = false;
+            if (is_string($bgScript) && is_file($bgScript) && $tmpPath !== false && $envelope !== false && @file_put_contents($tmpPath, $envelope) !== false) {
+                $phpBin = defined('PHP_BINARY') ? PHP_BINARY : 'php';
+                $phpExe = $phpBin !== '' && @is_executable($phpBin) ? $phpBin : 'php';
+                $cmdLine = implode(' ', [
+                    escapeshellarg($phpExe),
+                    escapeshellarg($bgScript),
+                    escapeshellarg($tmpPath),
+                ]);
+                try {
+                    if (PHP_OS_FAMILY === 'Windows') {
+                        pclose(popen('start /B "" ' . $cmdLine . ' 1>NUL 2>NUL', 'r'));
+                    } else {
+                        exec($cmdLine . ' > /dev/null 2>&1 &');
+                    }
+                    $spawned = true;
+                    logAppointment('cli-server: post-create notifications (sous-processus)', [
+                        'appointment_id' => $notifyAppointmentId,
+                    ]);
+                } catch (Throwable $e) {
+                    error_log('cli-server post-create spawn failed: ' . $e->getMessage());
+                }
+            }
+            if (!$spawned) {
+                if ($tmpPath !== false) {
+                    @unlink($tmpPath);
+                }
+                logAppointment('cli-server: fallback shutdown post-create (spawn échoué ou script absent)', [
+                    'script_exists' => is_file($bgScript),
+                ]);
+                register_shutdown_function(function () use ($appointmentModel, $notifyAppointmentId, $notifyInput, $notifyCreatorRole) {
+                    try {
+                        $appointmentModel->runPostCreateNotifications($notifyAppointmentId, $notifyInput, $notifyCreatorRole);
+                    } catch (Throwable $e) {
+                        error_log('runPostCreateNotifications failed (shutdown): ' . $e->getMessage());
+                    }
+                });
+            }
+        } else {
+            register_shutdown_function(function () use ($appointmentModel, $notifyAppointmentId, $notifyInput, $notifyCreatorRole) {
+                try {
+                    $appointmentModel->runPostCreateNotifications($notifyAppointmentId, $notifyInput, $notifyCreatorRole);
+                } catch (Throwable $e) {
+                    error_log('runPostCreateNotifications failed (shutdown): ' . $e->getMessage());
+                }
+            });
         }
     } catch (Exception $e) {
         logAppointment('ERREUR lors de la création du rendez-vous', [

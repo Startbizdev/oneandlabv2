@@ -125,7 +125,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         AND prd.patient_id = ?
                         AND prd.relative_id = ?
                     WHERE md.appointment_id = ?
-                    AND md.document_type <> \'care_photo\'
                     ORDER BY md.created_at DESC
                 ');
                 $stmt->execute([$patientId, $relativeId, $appointmentId]);
@@ -143,7 +142,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         created_at
                     FROM medical_documents
                     WHERE appointment_id = ?
-                    AND document_type <> \'care_photo\'
                     ORDER BY created_at DESC
                 ');
                 $stmt->execute([$appointmentId]);
@@ -163,7 +161,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 FROM medical_documents md
                 LEFT JOIN patient_documents pd ON pd.medical_document_id = md.id AND pd.patient_id = ?
                 WHERE md.appointment_id = ?
-                AND md.document_type <> \'care_photo\'
                 ORDER BY md.created_at DESC
             ');
             $stmt->execute([$patientId, $appointmentId]);
@@ -181,7 +178,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     created_at
                 FROM medical_documents
                 WHERE appointment_id = ?
-                AND document_type <> \'care_photo\'
                 ORDER BY created_at DESC
             ');
             $stmt->execute([$appointmentId]);
@@ -300,7 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         $appointmentId = $_POST['appointment_id'] ?? null;
         $documentType = $_POST['document_type'] ?? null;
-        $allowedTypes = ['carte_vitale', 'carte_mutuelle', 'ordonnance', 'autres_assurances', 'resultats', 'other'];
+        $allowedTypes = ['carte_vitale', 'carte_mutuelle', 'ordonnance', 'autres_assurances', 'resultats', 'other', 'cancellation_photo'];
         $documentType = in_array($documentType ?? '', $allowedTypes, true) ? $documentType : 'other';
 
         if (!$appointmentId) {

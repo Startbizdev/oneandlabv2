@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
 require_once __DIR__ . '/../../../lib/AddressDisplayFr.php';
 require_once __DIR__ . '/../../../models/User.php';
+require_once __DIR__ . '/../../../models/Appointment.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -369,11 +370,22 @@ if ($agePart !== '') {
 }
 $line1 .= " le " . $dateFormatted . $creneauPart;
 
-// Lot multisoins : tous les RDV du même creation_batch_id (même patient), y compris le courant
+// Liste des soins : lot legacy (plusieurs RDV) OU plusieurs actes sur un même RDV (`appointment_nursing_items`)
 $batchId = $appointment['creation_batch_id'] ?? null;
 $batchPatientId = $appointment['patient_id'] ?? null;
 $careLines = [];
 $careItems = [];
+
+$appointmentModelShare = new Appointment();
+$sliceForResolved = [
+    'id' => (string) $appointmentId,
+    'type' => 'nursing',
+    'category_id' => $appointment['category_id'] ?? null,
+    'category_name' => $categoryName,
+    'form_data' => $formData,
+];
+$nursingResolvedShare = $appointmentModelShare->resolveNursingItemsForAppointment($sliceForResolved, null);
+
 if (!empty($batchId) && !empty($batchPatientId)) {
     $allBatchStmt = $db->prepare('
         SELECT a.id, a.scheduled_at, a.category_id
@@ -384,29 +396,47 @@ if (!empty($batchId) && !empty($batchPatientId)) {
         ORDER BY a.scheduled_at ASC
     ');
     $allBatchStmt->execute([$batchId, $batchPatientId, 'nursing']);
-    while ($row = $allBatchStmt->fetch(PDO::FETCH_ASSOC)) {
-        $lineCat = 'Soins infirmiers';
-        if (!empty($row['category_id'])) {
-            $cst = $db->prepare('SELECT name FROM care_categories WHERE id = ?');
-            $cst->execute([$row['category_id']]);
-            $cr = $cst->fetch(PDO::FETCH_ASSOC);
-            if ($cr && !empty($cr['name'])) {
-                $lineCat = $cr['name'];
+    $batchRows = $allBatchStmt->fetchAll(PDO::FETCH_ASSOC);
+    if (count($batchRows) > 1) {
+        foreach ($batchRows as $row) {
+            $lineCat = 'Soins infirmiers';
+            if (!empty($row['category_id'])) {
+                $cst = $db->prepare('SELECT name FROM care_categories WHERE id = ?');
+                $cst->execute([$row['category_id']]);
+                $cr = $cst->fetch(PDO::FETCH_ASSOC);
+                if ($cr && !empty($cr['name'])) {
+                    $lineCat = $cr['name'];
+                }
             }
-        }
-        $lineDate = '';
-        if (!empty($row['scheduled_at'])) {
-            try {
-                $lineDate = (new DateTime($row['scheduled_at']))->format('d/m/Y');
-            } catch (Exception $e) {
-                $lineDate = (string) $row['scheduled_at'];
+            $lineDate = '';
+            if (!empty($row['scheduled_at'])) {
+                try {
+                    $lineDate = (new DateTime($row['scheduled_at']))->format('d/m/Y');
+                } catch (Exception $e) {
+                    $lineDate = (string) $row['scheduled_at'];
+                }
             }
+            $careLines[] = '• ' . $lineCat . ($lineDate !== '' ? ' — le ' . $lineDate : '');
+            $careItems[] = [
+                'appointmentId' => (string) $row['id'],
+                'categoryName' => $lineCat,
+                'dateShort' => $lineDate,
+            ];
         }
-        $careLines[] = '• ' . $lineCat . ($lineDate !== '' ? ' — le ' . $lineDate : '');
+    }
+}
+
+if (count($careItems) <= 1 && count($nursingResolvedShare) > 1) {
+    foreach ($nursingResolvedShare as $it) {
+        $nm = trim((string) ($it['category_name'] ?? $it['label'] ?? ''));
+        if ($nm === '') {
+            $nm = 'Soins infirmiers';
+        }
+        $careLines[] = '• ' . $nm;
         $careItems[] = [
-            'appointmentId' => (string) $row['id'],
-            'categoryName' => $lineCat,
-            'dateShort' => $lineDate,
+            'appointmentId' => (string) $appointmentId,
+            'categoryName' => $nm,
+            'dateShort' => $dateFormatted,
         ];
     }
 }

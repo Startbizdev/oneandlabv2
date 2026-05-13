@@ -134,7 +134,7 @@
             v-model="form.duration_days"
             :items="durationOptions"
             value-key="value"
-            placeholder="Choisir"
+            placeholder="Choisir la prise en charge"
             size="xl"
             class="w-full"
           />

@@ -96,8 +96,8 @@ export interface Appointment {
   assigned_lab_id?: string;
   category_id?: string;
   category_name?: string;
-  /** Icône care_categories.icon (préfixe lucide / medical-icon / etc.) */
-  category_icon?: string | null;
+  /** Image uploadée en admin (`care_categories.image_url`) ; prioritaire sur `category_icon`. */
+  category_image_url?: string | null;
   /** Regroupement multi-soins (même lot) */
   creation_batch_id?: string | null;
   /** Autres RDV du même lot (GET détail), sans le courant. */
@@ -107,6 +107,14 @@ export interface Appointment {
     scheduled_at: string;
     category_name?: string | null;
   }>;
+  /** Actes prélèvement sur un même RDV (GET liste / détail). */
+  blood_test_items?: Array<Record<string, unknown>>;
+  /** Lot legacy multi-RDV prise de sang : actes agrégés (GET détail). */
+  blood_test_items_display?: Array<Record<string, unknown>>;
+  /** Actes infirmiers sur un même RDV (GET liste / détail). */
+  nursing_items?: Array<Record<string, unknown>>;
+  /** Lot legacy multi-RDV soins : actes agrégés (GET détail / liste). */
+  nursing_items_display?: Array<Record<string, unknown>>;
   form_type: AppointmentType;
   address: string;
   form_data?: AppointmentFormData;

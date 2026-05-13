@@ -1,7 +1,8 @@
 <template>
   <NuxtLayout :name="user?.role === 'patient' ? 'patient' : 'dashboard'">
-    <div class="space-y-6">
-    <TitleDashboard
+    <AppPageShell class="space-y-6" :header-bleed="user?.role === 'patient' ? 'patient' : 'dashboard'">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       :title="profilePageTitle"
       :description="profilePageDescription"
     >
@@ -46,7 +47,8 @@
           </UButton>
         </div>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+    </template>
 
       <ClientOnly>
         <template #fallback>
@@ -115,13 +117,21 @@
       </div>
 
       <template v-else>
-        <!-- Grille : 100 % pour pro libéral (propre profil), sinon 65% gauche / 35% droite (infirmier, lab, etc.) -->
+        <!-- Grille : pro seul → 100 %. Édition patient avec historique → rail historique gauche | formulaire centre | docs / modération droite -->
         <div
-          class="grid gap-6 lg:gap-8 grid-cols-1"
-          :class="{ 'lg:grid-cols-[13fr_7fr]': !isProOwnProfile }"
+          class="grid grid-cols-1 gap-6 lg:gap-8"
+          :class="profilePatientLayoutGridClass"
         >
-          <!-- Colonne principale (100 % pour pro, sinon gauche) -->
-          <div class="space-y-6 lg:space-y-8 min-w-0">
+          <!-- Historique patient : colonne gauche en desktop ; après le dossier principal sur mobile -->
+          <aside
+            v-if="showPatientProfileHistory"
+            class="order-2 min-w-0 lg:order-1 lg:self-start lg:sticky lg:top-6 lg:max-h-[min(calc(100dvh-5rem),72rem)] lg:overflow-x-hidden lg:overflow-y-auto lg:overscroll-contain lg:pr-2 lg:[scrollbar-gutter:stable]"
+          >
+            <PatientAppointmentHistorySection :patient-id="effectiveUserId" />
+          </aside>
+
+          <!-- Colonne formulaire et sections principales -->
+          <div class="order-1 min-w-0 space-y-6 lg:order-2 lg:space-y-8">
             <ProfilePersonalInfo
               ref="personalInfoRef"
               :model-value="profileFormSafe"
@@ -132,6 +142,109 @@
               @save="onSavePersonalInfo"
               @reset="resetForm"
             />
+
+            <!-- Pro libéral (son propre profil) : photo, présentation, site & réseaux (sans fiche publique type infirmier) -->
+            <template v-if="isProOwnProfile">
+              <UCard class="overflow-hidden">
+                <template #header>
+                  <CardHeader
+                    icon="i-lucide-image"
+                    title="Photo de profil"
+                    description="Photo affichée sur votre compte et utile à l’identification auprès des patients."
+                  />
+                </template>
+                <ProfileImagesBlock
+                  v-model:profile-image="publicProfileForm.profile_image_url"
+                  v-model:cover-image="publicProfileForm.cover_image_url"
+                  profile-label="Photo de profil"
+                  profile-icon="i-lucide-user"
+                  :show-cover="false"
+                />
+              </UCard>
+
+              <UCard class="overflow-hidden">
+                <template #header>
+                  <div class="flex items-start gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <UIcon name="i-lucide-file-text" class="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h2 class="text-lg font-normal">Présentation</h2>
+                      <p class="text-sm text-muted mt-0.5">
+                        Quelques lignes sur votre activité ou votre cabinet (facultatif).
+                      </p>
+                    </div>
+                  </div>
+                </template>
+                <UFormField label="Texte de présentation" name="biography_pro">
+                  <UTextarea
+                    v-model="publicProfileForm.biography"
+                    :rows="5"
+                    placeholder="Ex. Médecin généraliste, consultations sur rendez-vous…"
+                    :disabled="saving"
+                    class="w-full"
+                  />
+                </UFormField>
+              </UCard>
+
+              <UCard class="overflow-hidden">
+                <template #header>
+                  <div class="flex items-start gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <UIcon name="i-lucide-globe" class="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h2 class="text-lg font-normal">Site web et réseaux</h2>
+                      <p class="text-sm text-muted mt-0.5">
+                        Liens optionnels (cabinet, LinkedIn, etc.).
+                      </p>
+                    </div>
+                  </div>
+                </template>
+                <div class="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                  <UFormField label="Site internet" name="website_url_pro" class="w-full min-w-0 sm:col-span-2">
+                    <UInput
+                      v-model="publicProfileForm.website_url"
+                      type="url"
+                      icon="i-lucide-globe"
+                      placeholder="https://…"
+                      :disabled="saving"
+                      class="w-full"
+                    />
+                  </UFormField>
+                  <UFormField label="Facebook" name="social_facebook_pro" class="w-full min-w-0">
+                    <UInput
+                      :model-value="publicProfileForm.social_links?.facebook"
+                      icon="i-simple-icons-facebook"
+                      placeholder="URL de la page"
+                      :disabled="saving"
+                      class="w-full"
+                      @update:model-value="setSocialLink('facebook', $event)"
+                    />
+                  </UFormField>
+                  <UFormField label="LinkedIn" name="social_linkedin_pro" class="w-full min-w-0">
+                    <UInput
+                      :model-value="publicProfileForm.social_links?.linkedin"
+                      icon="i-simple-icons-linkedin"
+                      placeholder="URL du profil"
+                      :disabled="saving"
+                      class="w-full"
+                      @update:model-value="setSocialLink('linkedin', $event)"
+                    />
+                  </UFormField>
+                  <UFormField label="Instagram" name="social_instagram_pro" class="w-full min-w-0 sm:col-span-2">
+                    <UInput
+                      :model-value="publicProfileForm.social_links?.instagram"
+                      icon="i-simple-icons-instagram"
+                      placeholder="URL du profil"
+                      :disabled="saving"
+                      class="w-full"
+                      @update:model-value="setSocialLink('instagram', $event)"
+                    />
+                  </UFormField>
+                </div>
+              </UCard>
+            </template>
 
             <!-- Lab : rattacher le préleveur au lab ou à un sous-compte (création + édition) -->
             <UCard v-if="showPreleveurLabSelector" class="overflow-hidden">
@@ -485,7 +598,7 @@
                       class="min-w-0 flex-1 rounded-md outline-none ring-primary/50 focus-visible:ring-2"
                     >
                       <p class="text-sm font-medium text-foreground truncate group-hover:text-primary">
-                        {{ apt.type === 'blood_test' ? 'Prise de sang' : apt.category_name || 'Soins' }}
+                        {{ apt.type === 'blood_test' ? 'Prélèvement' : apt.category_name || 'Soins' }}
                       </p>
                       <p class="text-xs text-muted truncate">
                         {{ formatAppointmentDateShort(apt.scheduled_at) }} · {{ getCreneauHoraireLabel(apt) }}
@@ -631,7 +744,10 @@
           </div>
 
           <!-- Colonne droite (35%) : documents patient (pro ou patient), modération (admin), photo, carte, bouton Enregistrer (masquée pour pro propre) -->
-          <div v-if="!isProOwnProfile" class="space-y-6 lg:space-y-6 lg:sticky lg:top-6 min-w-0 overflow-hidden flex flex-col">
+          <div
+            v-if="!isProOwnProfile"
+            class="order-3 flex min-w-0 flex-col space-y-6 overflow-hidden lg:order-3 lg:sticky lg:top-6 lg:space-y-6"
+          >
             <!-- Patient (propre profil) : documents médicaux en colonne droite -->
             <ProfileDocuments
               v-if="isPatient && !editingUserId"
@@ -656,11 +772,7 @@
                 @download="(id, fileName) => downloadDocument(id, fileName)"
                 @update:error="documentError = $event"
               />
-              <PatientAppointmentHistorySection
-                v-if="showPatientProfileHistory"
-                :patient-id="effectiveUserId"
-              />
-              <div class="pt-2 w-full flex-shrink-0">
+              <div class="pt-2 w-full shrink-0">
                 <UButton
                   size="xl"
                   color="primary"
@@ -741,11 +853,6 @@
                 </div>
               </div>
             </UCard>
-
-            <PatientAppointmentHistorySection
-              v-if="showPatientProfileHistory"
-              :patient-id="effectiveUserId"
-            />
 
             <!-- Photo (+ couverture pour nurse/subaccount ; préleveur : photo uniquement) -->
             <UCard v-if="hasProfilePhotoCard" class="overflow-hidden">
@@ -848,7 +955,7 @@
 
         </div>
       </ClientOnly>
-    </div>
+    </AppPageShell>
   </NuxtLayout>
 </template>
 
@@ -1117,6 +1224,14 @@ const showPatientProfileHistory = computed(
     role.value === 'patient' &&
     ['super_admin', 'pro', 'nurse', 'lab', 'subaccount'].includes(user.value?.role ?? '')
 )
+/** Grille du profil : 3 cols (historique | formulaire | panneau) quand historique patient, sinon 2 cols classiques */
+const profilePatientLayoutGridClass = computed(() => {
+  if (isProOwnProfile.value) return ''
+  if (showPatientProfileHistory.value) {
+    return 'lg:grid-cols-[minmax(17rem,20rem)_minmax(0,1fr)_minmax(17rem,20rem)] xl:grid-cols-[20rem_minmax(0,1fr)_20rem]'
+  }
+  return 'lg:grid-cols-[13fr_7fr]'
+})
 /** Historique RDV : visible uniquement quand l'admin consulte le profil d'un utilisateur (pas pour nurse/lab/etc sur leur propre profil) */
 const hasAppointmentsSection = computed(
   () => isAdmin.value && !!editingUserId.value && role.value !== 'patient'
@@ -1452,7 +1567,8 @@ const isResettingAfterUpload = ref<string | null>(null)
 
 // Synchroniser la photo de profil avec l'avatar du header (layout dashboard)
 watch(
-  () => (hasProfilePhotoCard.value ? publicProfileForm.value.profile_image_url : ''),
+  () =>
+    hasProfilePhotoCard.value || isProOwnProfile.value ? publicProfileForm.value.profile_image_url : '',
   (url) => {
     profileImageForHeader.value = url || null
   },
@@ -1651,6 +1767,16 @@ const loadProfile = async () => {
         publicProfileForm.value.nurse_qualifications = [...quals, 'AUTRE']
       }
     }
+    if (isProOwnProfile.value && userData.role === 'pro') {
+      publicProfileForm.value.profile_image_url = userData.profile_image_url || ''
+      publicProfileForm.value.cover_image_url = ''
+      publicProfileForm.value.biography = userData.biography || ''
+      publicProfileForm.value.website_url = userData.website_url || ''
+      publicProfileForm.value.social_links =
+        userData.social_links && typeof userData.social_links === 'object'
+          ? { facebook: '', linkedin: '', instagram: '', ...userData.social_links }
+          : { facebook: '', linkedin: '', instagram: '' }
+    }
     if (userData.role === 'preleveur') {
       publicProfileForm.value.profile_image_url = userData.profile_image_url || ''
       publicProfileForm.value.cover_image_url = ''
@@ -1817,6 +1943,13 @@ const saveProfile = async (fromSaveAll = false) => {
     if (role.value === 'pro') {
       if (profileForm.value.adeli?.trim()) body.adeli = profileForm.value.adeli.trim()
       body.emploi = profileForm.value.emploi?.trim() || null
+      if (!editingUserId.value) {
+        body.profile_image_url = publicProfileForm.value.profile_image_url || null
+        body.biography = publicProfileForm.value.biography?.trim() || null
+        body.website_url = publicProfileForm.value.website_url?.trim() || null
+        const sl = publicProfileForm.value.social_links
+        body.social_links = sl && (sl.facebook || sl.linkedin || sl.instagram) ? sl : null
+      }
     }
     if (isPreleveur.value) {
       body.profile_image_url = publicProfileForm.value.profile_image_url || null

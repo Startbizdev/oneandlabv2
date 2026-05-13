@@ -80,6 +80,16 @@ class User
             $phoneEncrypted = $phoneData['encrypted'];
             $phoneDek = $phoneData['dek'];
         }
+
+        $phoneDigitsHashInsert = null;
+        if (
+            $this->hasPhoneDigitsHashColumn()
+            && $role === 'patient'
+            && !empty($data['phone'])
+        ) {
+            $normDigits = self::normalizeFrenchPatientPhoneDigits((string) $data['phone']);
+            $phoneDigitsHashInsert = $normDigits !== null ? self::patientPhoneDigitsHash($normDigits) : null;
+        }
         
         $emailHash = hash('sha256', strtolower($data['email']));
         
@@ -97,6 +107,12 @@ class User
         $insertFields = 'id, role, email_encrypted, email_dek, email_hash, first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek, phone_encrypted, phone_dek, created_at, updated_at';
         $insertPlaceholders = '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()';
         $insertParams = [$id, $role, $emailEncrypted['encrypted'], $emailEncrypted['dek'], $emailHash, $firstNameEncrypted['encrypted'], $firstNameEncrypted['dek'], $lastNameEncrypted['encrypted'], $lastNameEncrypted['dek'], $phoneEncrypted, $phoneDek];
+
+        if ($this->hasPhoneDigitsHashColumn()) {
+            $insertFields .= ', phone_digits_hash';
+            $insertPlaceholders .= ', ?';
+            $insertParams[] = $phoneDigitsHashInsert;
+        }
 
         // Patient créé par un pro, nurse ou super_admin : lien created_by
         $createdBy = null;
@@ -382,17 +398,28 @@ class User
     }
 
     /**
-     * Trouve un utilisateur par email hash (pour authentification)
+     * Trouve un utilisateur par email hash (pour authentification).
+     * Priorité si doublons résiduels (avant contrainte UNIQUE) : staff avant patient.
      */
     public function findByEmailHash(string $emailHash): ?array
     {
-        // En cas de doublon résiduel, privilégier un compte non-patient pour l’OTP (sécurité avant contrainte UNIQUE).
         $stmt = $this->db->prepare('
             SELECT id, role, banned_until FROM profiles WHERE email_hash = ?
-            ORDER BY CASE WHEN role = ? THEN 1 ELSE 0 END, id ASC
+            ORDER BY
+                CASE WHEN role = \'patient\' THEN 1 ELSE 0 END ASC,
+                FIELD(role,
+                    \'super_admin\',
+                    \'lab\',
+                    \'subaccount\',
+                    \'preleveur\',
+                    \'nurse\',
+                    \'pro\',
+                    \'patient\'
+                ) ASC,
+                id ASC
             LIMIT 1
         ');
-        $stmt->execute([$emailHash, 'patient']);
+        $stmt->execute([$emailHash]);
         return $stmt->fetch() ?: null;
     }
 
@@ -488,6 +515,18 @@ class User
                 $params[] = $phoneEncrypted['dek'];
             } else {
                 $updates[] = 'phone_encrypted = NULL, phone_dek = NULL';
+            }
+            if ($this->hasPhoneDigitsHashColumn()) {
+                $roleNow = $this->getRoleById($id);
+                if ($roleNow === 'patient') {
+                    if (!empty($data['phone'])) {
+                        $normDigits = self::normalizeFrenchPatientPhoneDigits((string) $data['phone']);
+                        $updates[] = 'phone_digits_hash = ?';
+                        $params[] = $normDigits !== null ? self::patientPhoneDigitsHash($normDigits) : null;
+                    } else {
+                        $updates[] = 'phone_digits_hash = NULL';
+                    }
+                }
             }
         }
         
@@ -734,6 +773,16 @@ class User
         return $hasColumn;
     }
 
+    private function hasPhoneDigitsHashColumn(): bool
+    {
+        static $hasColumn = null;
+        if ($hasColumn === null) {
+            $stmt = $this->db->query("SHOW COLUMNS FROM profiles LIKE 'phone_digits_hash'");
+            $hasColumn = $stmt->rowCount() > 0;
+        }
+        return $hasColumn;
+    }
+
     private function hasSiretColumn(): bool
     {
         static $hasColumn = null;
@@ -952,6 +1001,43 @@ class User
     {
         $stmt = $this->db->prepare('SELECT id FROM profiles WHERE email_hash = ? AND role = ? LIMIT 1');
         $stmt->execute([$emailHash, 'patient']);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? (string) $row['id'] : null;
+    }
+
+    /**
+     * Normalise un téléphone FR saisi en 10 chiffres (0XXXXXXXXX) pour index / lookup.
+     */
+    public static function normalizeFrenchPatientPhoneDigits(string $phone): ?string
+    {
+        $cleaned = preg_replace('/[\s\-\.]/', '', trim($phone));
+        if (preg_match('/^\+33([1-9]\d{8})$/', $cleaned, $m)) {
+            return '0' . $m[1];
+        }
+        if (preg_match('/^(0[1-9]\d{8})$/', $cleaned, $m)) {
+            return $m[1];
+        }
+        return null;
+    }
+
+    /**
+     * Hash stocké en base (colonne phone_digits_hash) pour les patients.
+     */
+    public static function patientPhoneDigitsHash(string $digits10): ?string
+    {
+        if (strlen($digits10) !== 10) {
+            return null;
+        }
+        return hash('sha256', 'fr|' . $digits10);
+    }
+
+    public function findPatientIdByPhoneDigitsHash(string $phoneHash): ?string
+    {
+        if (!$this->hasPhoneDigitsHashColumn() || $phoneHash === '') {
+            return null;
+        }
+        $stmt = $this->db->prepare('SELECT id FROM profiles WHERE phone_digits_hash = ? AND role = ? LIMIT 1');
+        $stmt->execute([$phoneHash, 'patient']);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ? (string) $row['id'] : null;
     }

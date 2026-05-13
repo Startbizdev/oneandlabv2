@@ -1,6 +1,7 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       title="Calendrier"
       description="Vue d'ensemble de vos rendez-vous."
     >
@@ -13,12 +14,13 @@
           Nouveau rendez-vous
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
     <CalendarPage
       base-path="/pro"
       hide-header-actions
     />
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

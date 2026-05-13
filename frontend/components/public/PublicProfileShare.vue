@@ -36,7 +36,7 @@ const props = withDefaults(
 )
 
 const profileLabel = computed(() =>
-  props.profileType === 'nurse' ? 'Infirmier(e) à domicile' : 'Laboratoire - Prise de sang à domicile'
+  props.profileType === 'nurse' ? 'Infirmier(e) à domicile' : 'Laboratoire — Prélèvement à domicile'
 )
 
 /** Message court pour SMS (infos utiles + lien, ~160 caractères si possible) */

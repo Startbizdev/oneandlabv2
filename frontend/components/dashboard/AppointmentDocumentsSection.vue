@@ -1,13 +1,352 @@
 <template>
   <div class="space-y-1">
-    <!-- Loading -->
-    <div v-if="loading" class="flex items-center justify-center py-12">
-      <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-primary-500" />
+    <!-- Fiche RDV : même grille libellé / valeur que le reste de la page -->
+    <div v-if="embeddedInRdvAccordion && loading" class="divide-y divide-default">
+      <div :class="docKvRow">
+        <div :class="docKvLeadingWrap">
+          <UIcon name="i-lucide-files" :class="docKvLeadingIcon" aria-hidden="true" />
+          <div :class="docKvLabel">
+            Documents
+          </div>
+        </div>
+        <div class="flex items-center gap-2 min-w-0 text-sm text-muted">
+          <UIcon
+            name="i-lucide-loader-2"
+            class="w-5 h-5 animate-spin text-primary-500 shrink-0"
+          />
+          <span>Chargement…</span>
+        </div>
+      </div>
     </div>
 
-    <!-- Empty state (y compris si seuls des résultats existent mais sont masqués pour ce rôle) -->
+    <div
+      v-else-if="embeddedInRdvAccordion && !showStandardSection && !showResultatsSection"
+      class="divide-y divide-default"
+    >
+      <div :class="docKvRow">
+        <div :class="docKvLeadingWrap">
+          <UIcon name="i-lucide-folder-open" :class="docKvLeadingIcon" aria-hidden="true" />
+          <div :class="docKvLabel">
+            Documents
+          </div>
+        </div>
+        <div class="flex min-w-0 items-center gap-2">
+          <UIcon
+            name="i-lucide-file-down"
+            class="h-4 w-4 shrink-0 text-muted"
+            aria-hidden="true"
+          />
+          <p class="text-sm text-muted">
+            Aucun document disponible
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-else-if="embeddedInRdvAccordion && (showStandardSection || showResultatsSection)"
+      class="divide-y divide-default"
+    >
+      <template v-if="showStandardSection">
+        <div
+          v-for="doc in standardDocuments"
+          :key="doc.id"
+          :id="'rdv-doc-' + doc.id"
+          :data-document-type="doc.document_type"
+          :class="docKvRow"
+        >
+          <div :class="docKvLeadingWrap">
+            <UIcon :name="getDocTypeIcon(doc.document_type)" :class="docKvLeadingIcon" aria-hidden="true" />
+            <div :class="docKvLabel">
+              {{ getDocumentTypeLabel(doc.document_type) }}
+            </div>
+          </div>
+          <div class="min-w-0">
+            <div class="flex w-full min-w-0 flex-row flex-nowrap items-center justify-between gap-2 sm:gap-3">
+              <div class="min-w-0 flex-1 space-y-1 overflow-hidden">
+                <div v-if="doc._batchRdvLabel" class="flex flex-wrap items-center gap-2">
+                  <UBadge
+                    color="neutral"
+                    variant="subtle"
+                    size="xs"
+                    class="font-normal max-w-[min(100%,14rem)] truncate"
+                  >
+                    {{ doc._batchRdvLabel }}
+                  </UBadge>
+                </div>
+                <p
+                  v-if="doc.document_type === 'care_photo' && formatCarePhotoMeta(doc)"
+                  class="text-xs text-muted"
+                >
+                  {{ formatCarePhotoMeta(doc) }}
+                </p>
+                <div
+                  v-if="doc.source === 'patient_profile'"
+                  class="flex items-center gap-2 text-sm flex-nowrap"
+                >
+                  <template v-if="docPatientProfileDownloadAvailable(doc)">
+                    <UIcon
+                      name="i-lucide-circle-check"
+                      class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                    />
+                    <span class="text-gray-700 dark:text-gray-200">Télécharger</span>
+                  </template>
+                  <template v-else>
+                    <UIcon
+                      name="i-lucide-file-x"
+                      class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500"
+                    />
+                    <span class="text-muted">Pas disponible</span>
+                  </template>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  icon="i-lucide-download"
+                  :loading="downloadingIds?.has?.(doc.id) ?? downloadingIds?.includes?.(doc.id)"
+                  :loading-auto="false"
+                  aria-label="Télécharger"
+                  :on-click="() => $emit('download', doc)"
+                />
+                <UButton
+                  v-if="doc.document_type === 'care_photo' && carePhotoAppointmentId"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  icon="i-lucide-message-circle"
+                  aria-label="Échanges"
+                  :on-click="() => openCareDiscussion(doc)"
+                />
+                <UButton
+                  v-if="canReplace && doc.document_type !== 'care_photo'"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  icon="i-lucide-refresh-cw"
+                  :loading="uploadingTypes?.has?.(doc.document_type) ?? uploadingTypes?.includes?.(doc.document_type)"
+                  :loading-auto="false"
+                  aria-label="Remplacer"
+                  :on-click="() => triggerReplace(doc)"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <template v-if="showUploadArea && standardUploadTypesWithoutDoc.length">
+          <div
+            v-for="docType in standardUploadTypesWithoutDoc"
+            :key="docType.value"
+            :class="docKvRow"
+          >
+            <div :class="docKvLeadingWrap">
+              <UIcon :name="docType.icon || getDocTypeIcon(docType.value)" :class="docKvLeadingIcon" aria-hidden="true" />
+              <div :class="docKvLabel">
+                {{ docType.label }}
+              </div>
+            </div>
+            <div class="min-w-0">
+              <div class="flex w-full min-w-0 flex-row flex-nowrap items-center justify-end gap-2 sm:justify-between sm:gap-3">
+                <p
+                  v-if="docType.hint"
+                  class="mr-2 hidden min-w-0 flex-1 truncate text-sm text-muted sm:block"
+                >
+                  {{ docType.hint }}
+                </p>
+                <div
+                  class="shrink-0 rounded-lg sm:ml-auto"
+                  :class="
+                    draggedOver === docType.value
+                      ? 'ring-2 ring-primary-500 dark:ring-primary-400 ring-offset-2 ring-offset-gray-50 dark:ring-offset-gray-900'
+                      : ''
+                  "
+                  @dragover.prevent="setDraggedOver(docType.value)"
+                  @dragleave.prevent="setDraggedOver(null)"
+                  @drop.prevent="handleDrop($event, docType.value)"
+                >
+                  <UButton
+                    type="button"
+                    color="neutral"
+                    variant="outline"
+                    size="sm"
+                    class="min-w-[6rem] justify-center"
+                    :loading="uploadingTypes?.has?.(docType.value) ?? uploadingTypes?.includes?.(docType.value)"
+                    :loading-auto="false"
+                    :on-click="() => triggerUpload(docType.value)"
+                  >
+                    Ajouter
+                  </UButton>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <div
+          v-if="embeddedInRdvAccordion && enableCarePhotoUpload && carePhotoAppointmentId && omitCarePhotosInList !== true"
+          :class="docKvRow"
+        >
+          <div :class="docKvLeadingWrap">
+            <UIcon name="i-lucide-camera" :class="docKvLeadingIcon" aria-hidden="true" />
+            <div :class="docKvLabel">
+              Photo de soin
+            </div>
+          </div>
+          <div class="min-w-0">
+            <div class="flex w-full min-w-0 flex-row flex-nowrap items-center justify-end gap-2 sm:justify-between sm:gap-3">
+              <p class="mr-2 hidden min-w-0 flex-1 truncate text-sm text-muted sm:block">
+                Partagée avec le professionnel — JPG, PNG · max 25&nbsp;Mo
+              </p>
+              <input
+                ref="carePhotoFileInputRef"
+                type="file"
+                accept="image/jpeg,image/png,image/jpg"
+                class="hidden"
+                @change="onCarePhotoFileChange"
+              >
+              <UButton
+                type="button"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                class="min-w-[6rem] shrink-0 justify-center"
+                icon="i-lucide-camera"
+                :loading="carePhotoUploading"
+                :loading-auto="false"
+                :on-click="() => triggerCarePhotoPicker()"
+              >
+                Ajouter
+              </UButton>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <template v-if="showResultatsSection">
+        <div
+          v-for="doc in resultatsDocuments"
+          :key="doc.id"
+          :id="'rdv-doc-' + doc.id"
+          :data-document-type="doc.document_type"
+          :class="docKvRow"
+        >
+          <div :class="docKvLeadingWrap">
+            <UIcon :name="getDocTypeIcon(doc.document_type)" :class="docKvLeadingIcon" aria-hidden="true" />
+            <div :class="docKvLabel">
+              {{ getDocumentTypeLabel(doc.document_type) }}
+            </div>
+          </div>
+          <div class="min-w-0">
+            <div class="flex w-full min-w-0 flex-row flex-nowrap items-center justify-between gap-2 sm:gap-3">
+              <div class="min-w-0 flex-1 space-y-1 overflow-hidden">
+                <div
+                  v-if="doc.source === 'patient_profile'"
+                  class="flex flex-nowrap items-center gap-2 text-sm"
+                >
+                  <template v-if="docPatientProfileDownloadAvailable(doc)">
+                    <UIcon
+                      name="i-lucide-circle-check"
+                      class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                    />
+                    <span class="text-gray-700 dark:text-gray-200">Télécharger</span>
+                  </template>
+                  <template v-else>
+                    <UIcon
+                      name="i-lucide-file-x"
+                      class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500"
+                    />
+                    <span class="text-muted">Pas disponible</span>
+                  </template>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  icon="i-lucide-download"
+                  :loading="downloadingIds?.has?.(doc.id) ?? downloadingIds?.includes?.(doc.id)"
+                  :loading-auto="false"
+                  aria-label="Télécharger"
+                  :on-click="() => $emit('download', doc)"
+                />
+                <UButton
+                  v-if="canReplace"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  icon="i-lucide-refresh-cw"
+                  :loading="uploadingTypes?.has?.(doc.document_type) ?? uploadingTypes?.includes?.(doc.document_type)"
+                  :loading-auto="false"
+                  aria-label="Remplacer"
+                  :on-click="() => triggerReplace(doc)"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <template v-if="showUploadArea && resultatsUploadTypesWithoutDoc.length">
+          <div
+            v-for="docType in resultatsUploadTypesWithoutDoc"
+            :key="docType.value"
+            :class="docKvRow"
+          >
+            <div :class="docKvLeadingWrap">
+              <UIcon :name="docType.icon || getDocTypeIcon('resultats')" :class="docKvLeadingIcon" aria-hidden="true" />
+              <div :class="docKvLabel">
+                {{ docType.label }}
+              </div>
+            </div>
+            <div class="min-w-0">
+              <div class="flex w-full min-w-0 flex-row flex-nowrap items-center justify-end gap-2 sm:gap-3">
+                <div
+                  class="shrink-0 rounded-lg sm:ml-auto"
+                  :class="
+                    draggedOver === docType.value
+                      ? 'ring-2 ring-primary-500 dark:ring-primary-400 ring-offset-2 ring-offset-gray-50 dark:ring-offset-gray-900'
+                      : ''
+                  "
+                  @dragover.prevent="setDraggedOver(docType.value)"
+                  @dragleave.prevent="setDraggedOver(null)"
+                  @drop.prevent="handleDrop($event, docType.value)"
+                >
+                  <UButton
+                    type="button"
+                    color="neutral"
+                    variant="outline"
+                    size="sm"
+                    class="min-w-[6rem] justify-center"
+                    :loading="uploadingTypes?.has?.(docType.value) ?? uploadingTypes?.includes?.(docType.value)"
+                    :loading-auto="false"
+                    :on-click="() => triggerUpload(docType.value)"
+                  >
+                    Ajouter
+                  </UButton>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </template>
+    </div>
+
+    <!-- Profil / hors fiche : bandeaux et cartes -->
+    <div
+      v-else-if="!embeddedInRdvAccordion && loading"
+      class="flex items-center justify-center py-12"
+    >
+      <UIcon
+        name="i-lucide-loader-2"
+        class="w-6 h-6 animate-spin text-primary-500 shrink-0"
+      />
+    </div>
+
     <UEmpty
-      v-else-if="!showStandardSection && !showResultatsSection"
+      v-else-if="!embeddedInRdvAccordion && !showStandardSection && !showResultatsSection"
       icon="i-lucide-file-x"
       title="Aucun document"
       :description="emptyDescription"
@@ -15,10 +354,16 @@
       class="py-8"
     />
 
-    <div v-else-if="showStandardSection || showResultatsSection" class="space-y-6">
+    <div v-else-if="!embeddedInRdvAccordion && (showStandardSection || showResultatsSection)" class="space-y-6">
       <!-- Documents (les résultats d'analyse peuvent être fusionnés ici si mergeResultatsIntoDocumentsList) -->
-      <div v-if="showStandardSection" class="rounded-lg border border-gray-200/80 dark:border-gray-700/80 overflow-hidden bg-white dark:bg-gray-900/50 divide-y divide-gray-100 dark:divide-gray-800/80">
-        <div class="px-4 py-2.5 bg-gray-50/80 dark:bg-gray-800/50 border-b border-gray-200/80 dark:border-gray-700/80">
+      <div
+        v-if="showStandardSection"
+        class="rounded-lg border border-gray-200/80 dark:border-gray-700/80 overflow-hidden bg-white dark:bg-gray-900/50 divide-y divide-gray-100 dark:divide-gray-800/80"
+      >
+        <div
+          class="flex items-center gap-2 px-4 py-2.5 bg-gray-50/80 dark:bg-gray-800/50 border-b border-gray-200/80 dark:border-gray-700/80"
+        >
+          <UIcon name="i-lucide-files" :class="docKvLeadingIcon" aria-hidden="true" />
           <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Documents
           </p>
@@ -30,8 +375,8 @@
           :data-document-type="doc.document_type"
           class="flex items-center gap-4 px-4 py-3 hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors group"
         >
-          <div :class="['flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0', getDocTypeBgClass(getDocTypeColor(doc.document_type))]">
-            <UIcon :name="getDocTypeIcon(doc.document_type)" :class="['w-4 h-4', getDocTypeIconClass(getDocTypeColor(doc.document_type))]" />
+          <div :class="docCardLeadingWrap">
+            <UIcon :name="getDocTypeIcon(doc.document_type)" :class="docCardLeadingIcon" aria-hidden="true" />
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex flex-wrap items-center gap-2">
@@ -48,11 +393,33 @@
                 {{ doc._batchRdvLabel }}
               </UBadge>
             </div>
-            <p v-if="doc.source === 'patient_profile'" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Compte patient
+            <p
+              v-if="doc.document_type === 'care_photo' && formatCarePhotoMeta(doc)"
+              class="text-xs text-muted mt-0.5"
+            >
+              {{ formatCarePhotoMeta(doc) }}
             </p>
+            <div
+              v-if="doc.source === 'patient_profile'"
+              class="flex items-center gap-2 text-xs mt-0.5"
+            >
+              <template v-if="docPatientProfileDownloadAvailable(doc)">
+                <UIcon
+                  name="i-lucide-circle-check"
+                  class="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                />
+                <span class="text-gray-600 dark:text-gray-300">Télécharger</span>
+              </template>
+              <template v-else>
+                <UIcon
+                  name="i-lucide-file-x"
+                  class="w-3.5 h-3.5 shrink-0 text-gray-400 dark:text-gray-500"
+                />
+                <span class="text-gray-500 dark:text-gray-400">Pas disponible</span>
+              </template>
+            </div>
           </div>
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-1 shrink-0">
             <UButton
               color="neutral"
               variant="ghost"
@@ -64,7 +431,16 @@
               :on-click="() => $emit('download', doc)"
             />
             <UButton
-              v-if="canReplace"
+              v-if="doc.document_type === 'care_photo' && carePhotoAppointmentId"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              icon="i-lucide-message-circle"
+              aria-label="Échanges"
+              :on-click="() => openCareDiscussion(doc)"
+            />
+            <UButton
+              v-if="canReplace && doc.document_type !== 'care_photo'"
               color="neutral"
               variant="ghost"
               size="xs"
@@ -83,50 +459,87 @@
             :key="docType.value"
             class="flex items-center gap-4 px-4 py-3 border-t border-dashed border-gray-200 dark:border-gray-700/60"
           >
-            <div :class="['flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0', getDocTypeBgClass(docType.color || 'gray')]">
-              <UIcon :name="docType.icon" :class="['w-4 h-4', getDocTypeIconClass(docType.color || 'gray')]" />
+            <div :class="docCardLeadingWrap">
+              <UIcon :name="docType.icon" :class="docCardLeadingIcon" aria-hidden="true" />
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">
                 {{ docType.label }}
-              </p>
-              <p class="text-xs text-gray-400 dark:text-gray-500">
-                {{ docType.hint || 'Glisser-déposer ou cliquer pour ajouter' }}
               </p>
             </div>
             <div
-              :class="[
-                'w-24 rounded-lg border-2 border-dashed transition-all cursor-pointer h-10 flex items-center justify-center flex-shrink-0',
+              class="shrink-0 rounded-lg"
+              :class="
                 draggedOver === docType.value
-                  ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-900/20'
-                  : 'border-gray-300 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-500',
-                (uploadingTypes?.has?.(docType.value) ?? uploadingTypes?.includes?.(docType.value)) ? 'opacity-50 pointer-events-none' : ''
-              ]"
+                  ? 'ring-2 ring-primary-500 dark:ring-primary-400 ring-offset-2 ring-offset-gray-50 dark:ring-offset-gray-900'
+                  : ''
+              "
               @dragover.prevent="setDraggedOver(docType.value)"
               @dragleave.prevent="setDraggedOver(null)"
               @drop.prevent="handleDrop($event, docType.value)"
-              @click="triggerUpload(docType.value)"
             >
-              <UIcon
-                v-if="uploadingTypes?.has?.(docType.value) ?? uploadingTypes?.includes?.(docType.value)"
-                name="i-lucide-loader-2"
-                class="w-4 h-4 animate-spin text-primary-500"
-              />
-              <UIcon v-else name="i-lucide-plus" class="w-4 h-4 text-gray-400" />
+              <UButton
+                type="button"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                class="min-w-[6rem] justify-center"
+                :loading="uploadingTypes?.has?.(docType.value) ?? uploadingTypes?.includes?.(docType.value)"
+                :loading-auto="false"
+                :on-click="() => triggerUpload(docType.value)"
+              >
+                Ajouter
+              </UButton>
             </div>
           </div>
         </template>
-        <p v-if="showUploadArea && standardUploadTypes.length" class="px-4 py-2.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-100 dark:border-gray-800/80">
-          Formats : JPG, PNG, PDF • max 25 Mo
-        </p>
+
+        <div
+          v-if="!embeddedInRdvAccordion && enableCarePhotoUpload && carePhotoAppointmentId && omitCarePhotosInList !== true"
+          class="flex items-center gap-4 px-4 py-3 border-t border-dashed border-gray-200 dark:border-gray-700/60"
+        >
+          <div :class="docCardLeadingWrap">
+            <UIcon :name="getDocTypeIcon('care_photo')" :class="docCardLeadingIcon" aria-hidden="true" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 dark:text-white">
+              Photo de soin
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Partagée avec le professionnel — JPG, PNG · max 25&nbsp;Mo
+            </p>
+          </div>
+          <input
+            ref="carePhotoFileInputRef"
+            type="file"
+            accept="image/jpeg,image/png,image/jpg"
+            class="hidden"
+            @change="onCarePhotoFileChange"
+          >
+          <UButton
+            type="button"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            class="min-w-[6rem] shrink-0 justify-center"
+            icon="i-lucide-camera"
+            :loading="carePhotoUploading"
+            :loading-auto="false"
+            :on-click="() => triggerCarePhotoPicker()"
+          >
+            Ajouter
+          </UButton>
+        </div>
       </div>
 
-      <!-- Résultats d'analyses (section dédiée, mise en avant rouge) -->
+      <!-- Résultats d'analyses -->
       <div
         v-if="showResultatsSection"
         class="rounded-lg border-2 border-red-200 dark:border-red-900/60 overflow-hidden bg-red-50/40 dark:bg-red-950/30 shadow-sm"
       >
-        <div class="px-4 py-2.5 bg-red-100/90 dark:bg-red-950/50 border-b border-red-200/90 dark:border-red-900/50 flex items-center gap-2">
+        <div
+          class="px-4 py-2.5 bg-red-100/90 dark:bg-red-950/50 border-b border-red-200/90 dark:border-red-900/50 flex items-center gap-2"
+        >
           <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-red-200/90 dark:bg-red-900/50 flex-shrink-0">
             <UIcon name="i-lucide-flask-conical" class="w-4 h-4 text-red-700 dark:text-red-300" />
           </div>
@@ -147,18 +560,34 @@
             :data-document-type="doc.document_type"
             class="flex items-center gap-4 px-4 py-3 hover:bg-red-100/50 dark:hover:bg-red-950/40 transition-colors group"
           >
-            <div class="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 bg-red-200/90 dark:bg-red-900/45">
-              <UIcon name="i-lucide-flask-conical" class="w-4 h-4 text-red-700 dark:text-red-300" />
+            <div :class="docCardLeadingWrap">
+              <UIcon name="i-lucide-flask-conical" :class="docCardLeadingIcon" aria-hidden="true" />
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-red-950 dark:text-red-50">
                 {{ getDocumentTypeLabel(doc.document_type) }}
               </p>
-              <p v-if="doc.source === 'patient_profile'" class="text-xs text-red-800/80 dark:text-red-300/80 mt-0.5">
-                Compte patient
-              </p>
+              <div
+                v-if="doc.source === 'patient_profile'"
+                class="flex items-center gap-2 text-xs mt-0.5"
+              >
+                <template v-if="docPatientProfileDownloadAvailable(doc)">
+                  <UIcon
+                    name="i-lucide-circle-check"
+                    class="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                  />
+                  <span class="text-red-900/90 dark:text-red-100/90">Télécharger</span>
+                </template>
+                <template v-else>
+                  <UIcon
+                    name="i-lucide-file-x"
+                    class="w-3.5 h-3.5 shrink-0 text-red-800/50 dark:text-red-300/60"
+                  />
+                  <span class="text-red-800/80 dark:text-red-300/80">Pas disponible</span>
+                </template>
+              </div>
             </div>
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1 shrink-0">
               <UButton
                 color="neutral"
                 variant="ghost"
@@ -189,51 +618,43 @@
               :key="docType.value"
               class="flex items-center gap-4 px-4 py-3 border-t border-dashed border-red-200 dark:border-red-800/60"
             >
-              <div class="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 bg-red-200/90 dark:bg-red-900/45">
-                <UIcon :name="docType.icon || 'i-lucide-flask-conical'" class="w-4 h-4 text-red-700 dark:text-red-300" />
+              <div :class="docCardLeadingWrap">
+                <UIcon :name="docType.icon || 'i-lucide-flask-conical'" :class="docCardLeadingIcon" aria-hidden="true" />
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-red-900 dark:text-red-100">
+                <p class="text-sm font-medium text-red-950 dark:text-red-50">
                   {{ docType.label }}
-                </p>
-                <p class="text-xs text-red-800/85 dark:text-red-300/80">
-                  {{ docType.hint || 'Glisser-déposer ou cliquer pour ajouter' }}
                 </p>
               </div>
               <div
-                :class="[
-                  'w-24 rounded-lg border-2 border-dashed transition-all cursor-pointer h-10 flex items-center justify-center flex-shrink-0',
+                class="shrink-0 rounded-lg"
+                :class="
                   draggedOver === docType.value
-                    ? 'border-red-600 bg-red-100/80 dark:bg-red-900/40'
-                    : 'border-red-300 dark:border-red-700 hover:border-red-500 dark:hover:border-red-500',
-                  (uploadingTypes?.has?.(docType.value) ?? uploadingTypes?.includes?.(docType.value)) ? 'opacity-50 pointer-events-none' : ''
-                ]"
+                    ? 'ring-2 ring-red-500 dark:ring-red-400 ring-offset-2 ring-offset-gray-50 dark:ring-offset-gray-900'
+                    : ''
+                "
                 @dragover.prevent="setDraggedOver(docType.value)"
                 @dragleave.prevent="setDraggedOver(null)"
                 @drop.prevent="handleDrop($event, docType.value)"
-                @click="triggerUpload(docType.value)"
               >
-                <UIcon
-                  v-if="uploadingTypes?.has?.(docType.value) ?? uploadingTypes?.includes?.(docType.value)"
-                  name="i-lucide-loader-2"
-                  class="w-4 h-4 animate-spin text-red-600"
-                />
-                <UIcon v-else name="i-lucide-plus" class="w-4 h-4 text-red-500" />
+                <UButton
+                  type="button"
+                  color="error"
+                  variant="outline"
+                  size="sm"
+                  class="min-w-[6rem] justify-center"
+                  :loading="uploadingTypes?.has?.(docType.value) ?? uploadingTypes?.includes?.(docType.value)"
+                  :loading-auto="false"
+                  :on-click="() => triggerUpload(docType.value)"
+                >
+                  Ajouter
+                </UButton>
               </div>
             </div>
           </template>
         </div>
       </div>
     </div>
-
-    <UEmpty
-      v-else
-      icon="i-lucide-file-x"
-      title="Aucun document"
-      :description="emptyDescription"
-      variant="naked"
-      class="py-8"
-    />
 
     <!-- Hidden file inputs for upload -->
     <template v-if="showUploadArea && uploadTypes?.length">
@@ -255,16 +676,42 @@
       class="hidden"
       @change="handleReplaceFileSelect"
     >
+    <CarePhotoDiscussionModal
+      v-if="omitCarePhotosInList !== true"
+      v-model:open="careDiscussionOpen"
+      :appointment-id="carePhotoAppointmentId ?? undefined"
+      :document-id="careDiscussionDocId ?? undefined"
+      :viewer-user-id="documentsViewerId ?? undefined"
+      @comment-posted="onCarePhotoCommentPosted"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+/** Fourni par `RdvDocumentsEmbeddedProvide` sur la fiche détail RDV : grille libellé / valeur comme le reste de la page. */
+const embeddedInRdvAccordion = inject<boolean>('rdvAppointmentDocumentsEmbedded', false);
+
+/** Fiche RDV : deux colonnes dès le mobile (libellé + actions sur une ligne), puis grille KV habituelle au ≥sm. */
+const docKvRow =
+  'grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-2 gap-y-0 px-4 py-3 sm:grid-cols-[minmax(9.5rem,11rem)_minmax(0,1fr)] sm:gap-x-4 sm:px-6 sm:py-2.5';
+const docKvLabel =
+  'min-w-0 truncate text-[11px] font-semibold uppercase tracking-wide text-muted shrink leading-none sm:self-center';
+/** Icônes Lucide outline grises à gauche des libellés (fiche RDV). */
+const docKvLeadingWrap =
+  'flex min-w-0 max-w-[min(100%,11rem)] items-center gap-1.5 sm:max-w-none sm:gap-2 sm:self-center';
+const docKvLeadingIcon = 'h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500';
+/** Tuile neutre + icône grise (liste documents hors fiche RDV). */
+const docCardLeadingWrap =
+  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-gray-200/90 dark:ring-gray-700/70 bg-gray-50/90 dark:bg-gray-900/40';
+const docCardLeadingIcon = 'h-4 w-4 text-gray-500 dark:text-gray-400';
+
 const DOC_TYPE_LABELS: Record<string, string> = {
   carte_vitale: 'Carte Vitale',
   carte_mutuelle: 'Carte Mutuelle',
   ordonnance: 'Ordonnance',
   resultats: 'Résultats',
   autres_assurances: 'Autre prescription',
+  care_photo: 'Photo de soin',
   other: 'Autre',
 };
 
@@ -274,16 +721,8 @@ const DOC_TYPE_ICONS: Record<string, string> = {
   ordonnance: 'i-lucide-file-text',
   resultats: 'i-lucide-flask-conical',
   autres_assurances: 'i-lucide-file-text',
+  care_photo: 'i-lucide-camera',
   other: 'i-lucide-file',
-};
-
-const DOC_TYPE_COLORS: Record<string, string> = {
-  carte_vitale: 'green',
-  carte_mutuelle: 'blue',
-  ordonnance: 'orange',
-  resultats: 'red',
-  autres_assurances: 'purple',
-  other: 'gray',
 };
 
 const props = withDefaults(
@@ -303,6 +742,13 @@ const props = withDefaults(
      * À combiner avec showResultats=false pour l’infirmier sur prise de sang uniquement (voir page nurse).
      */
     mergeResultatsIntoDocumentsList?: boolean
+    /** RDV : id pour échanges photos de soin / upload infirmier */
+    carePhotoAppointmentId?: string | null
+    /** Infirmier : afficher la ligne d’ajout (POST care-photos) */
+    enableCarePhotoUpload?: boolean
+    carePhotoUploading?: boolean
+    /** Fiche RDV (pro/nurse) : photos de soins affichées dans une carte séparée, pas mélangées aux documents */
+    omitCarePhotosInList?: boolean
   }>(),
   {
     loading: false,
@@ -314,6 +760,10 @@ const props = withDefaults(
     uploadingTypes: () => new Set<string>(),
     showResultats: true,
     mergeResultatsIntoDocumentsList: false,
+    carePhotoAppointmentId: null,
+    enableCarePhotoUpload: false,
+    carePhotoUploading: false,
+    omitCarePhotosInList: false,
   }
 );
 
@@ -321,7 +771,12 @@ const emit = defineEmits<{
   download: [doc: any]
   replace: [doc: any]
   upload: [docType: string, file: File]
+  carePhotoUpload: [file: File]
+  carePhotoThreadUpdated: []
 }>();
+
+const { user } = useAuth();
+const documentsViewerId = computed(() => (user.value?.id != null ? String(user.value.id) : null));
 
 const draggedOver = ref<string | null>(null);
 const fileInputRefs = ref<Record<string, HTMLInputElement>>({});
@@ -336,38 +791,54 @@ function getDocumentTypeLabel(type: string) {
   return DOC_TYPE_LABELS[type] || type?.replace(/_/g, ' ') || 'Document';
 }
 
+function formatCarePhotoMeta(doc: any) {
+  if (!doc?.created_at) return '';
+  try {
+    return new Date(doc.created_at).toLocaleString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return String(doc.created_at);
+  }
+}
+
+const careDiscussionOpen = ref(false);
+const careDiscussionDocId = ref<string | null>(null);
+const carePhotoFileInputRef = ref<HTMLInputElement | null>(null);
+
+function openCareDiscussion(doc: any) {
+  if (!doc?.id || !props.carePhotoAppointmentId) return;
+  careDiscussionDocId.value = String(doc.id);
+  careDiscussionOpen.value = true;
+}
+
+function onCarePhotoCommentPosted() {
+  emit('carePhotoThreadUpdated');
+}
+
+function triggerCarePhotoPicker() {
+  carePhotoFileInputRef.value?.click();
+}
+
+function onCarePhotoFileChange(ev: Event) {
+  const target = ev.target as HTMLInputElement;
+  const file = target.files?.[0];
+  target.value = '';
+  if (file) emit('carePhotoUpload', file);
+}
+
+/** Documents issus du profil patient : indicateur visuel au lieu du libellé « Compte patient ». */
+function docPatientProfileDownloadAvailable(doc: any) {
+  if (!doc?.id) return false;
+  if (doc.file_missing === true || doc.missing_file === true) return false;
+  return true;
+}
+
 function getDocTypeIcon(type: string) {
   return DOC_TYPE_ICONS[type] || 'i-lucide-file';
-}
-
-function getDocTypeColor(type: string) {
-  return DOC_TYPE_COLORS[type] || 'gray';
-}
-
-function getDocTypeBgClass(color: string) {
-  const map: Record<string, string> = {
-    green: 'bg-green-100 dark:bg-green-900/30',
-    blue: 'bg-blue-100 dark:bg-blue-900/30',
-    orange: 'bg-orange-100 dark:bg-orange-900/30',
-    emerald: 'bg-emerald-100 dark:bg-emerald-900/30',
-    red: 'bg-red-200/90 dark:bg-red-900/45',
-    purple: 'bg-purple-100 dark:bg-purple-900/30',
-    gray: 'bg-gray-100 dark:bg-gray-800/50',
-  };
-  return map[color] || map.gray;
-}
-
-function getDocTypeIconClass(color: string) {
-  const map: Record<string, string> = {
-    green: 'text-green-600 dark:text-green-400',
-    blue: 'text-blue-600 dark:text-blue-400',
-    orange: 'text-orange-600 dark:text-orange-400',
-    emerald: 'text-emerald-600 dark:text-emerald-400',
-    red: 'text-red-700 dark:text-red-300',
-    purple: 'text-purple-600 dark:text-purple-400',
-    gray: 'text-gray-600 dark:text-gray-400',
-  };
-  return map[color] || map.gray;
 }
 
 function getDocsByType(docType: string) {
@@ -379,7 +850,7 @@ const resultatsUploadTypes = computed(() => (props.uploadTypes || []).filter((t)
 
 const standardDocuments = computed(() =>
   (props.documents || []).filter((d: any) => {
-    if (d.document_type === 'care_photo') return false;
+    if (props.omitCarePhotosInList === true && d.document_type === 'care_photo') return false;
     if (d.document_type === 'resultats') return props.mergeResultatsIntoDocumentsList === true;
     return true;
   }),
@@ -397,7 +868,9 @@ const resultatsUploadTypesWithoutDoc = computed(() => {
 
 const showStandardSection = computed(
   () =>
-    standardDocuments.value.length > 0 || (props.showUploadArea && standardUploadTypes.value.length > 0),
+    standardDocuments.value.length > 0 ||
+    (props.showUploadArea && standardUploadTypes.value.length > 0) ||
+    (props.enableCarePhotoUpload === true && props.omitCarePhotosInList !== true),
 );
 const showResultatsSection = computed(() => {
   if (props.showResultats === false) return false;

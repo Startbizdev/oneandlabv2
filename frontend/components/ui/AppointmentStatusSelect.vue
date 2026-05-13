@@ -3,12 +3,7 @@
     <select
       :value="modelValue"
       :disabled="disabled || updating"
-      :class="[
-        'rounded-full border-0 px-3 py-1.5 text-sm font-medium shadow-sm focus:ring-2 focus:ring-offset-1 cursor-pointer appearance-none bg-no-repeat pr-8 min-w-[120px] transition-colors',
-        statusTailwindClass,
-        disabled || updating ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
-      ]"
-      style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 fill=%27none%27 viewBox=%270 0 20 20%27%3E%3Cpath stroke=%27%236b7280%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%271.5%27 d=%27M6 8l4 4 4-4%27/%3E%3C/svg%3E'); background-position: right 0.5rem center; background-size: 1.25rem 1.25rem;"
+      class="min-w-[12rem] max-w-full rounded-md border border-default bg-default px-2 py-1.5 text-sm text-default disabled:cursor-not-allowed disabled:opacity-70"
       @change="onSelect($event)"
     >
       <option
@@ -102,22 +97,6 @@ const statusOptions = [
 ]
 
 const cancellationReasonOptions = CANCELLATION_REASON_OPTIONS
-
-const statusTailwindClass = computed(() => {
-  const s = props.modelValue || ''
-  const map: Record<string, string> = {
-    pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 focus:ring-amber-500',
-    confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 focus:ring-blue-500',
-    planned: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200 focus:ring-sky-500',
-    inProgress: 'bg-primary/15 text-primary dark:bg-primary/25 focus:ring-primary',
-    completed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 focus:ring-emerald-500',
-    canceled: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200 focus:ring-red-500',
-    cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200 focus:ring-red-500',
-    refused: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200 focus:ring-red-500',
-    expired: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300 focus:ring-zinc-500',
-  }
-  return map[s] || 'bg-zinc-100 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300 focus:ring-zinc-500'
-})
 
 async function updateStatus(newStatus: string, cancelPayload?: { cancellation_reason: string; cancellation_comment: string }) {
   if (!props.appointmentId) return

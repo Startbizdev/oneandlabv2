@@ -1,6 +1,7 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       title="Catégories de soins"
       description="Gérez les types de soins : nom, type (prise de sang ou soins infirmiers), activation et suppression."
     >
@@ -9,7 +10,8 @@
           Nouvelle catégorie
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
     <!-- Filtre par type -->
     <div class="flex flex-wrap items-center gap-3">
@@ -29,13 +31,15 @@
       </div>
     </div>
 
-    <!-- Grille de cartes -->
-    <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <UCard v-for="i in 6" :key="i" class="animate-pulse">
-        <div class="h-24 rounded-lg bg-default" />
-        <div class="mt-3 h-4 w-3/4 rounded bg-default" />
-        <div class="mt-2 h-3 w-1/2 rounded bg-default" />
-      </UCard>
+    <!-- Liste compacte -->
+    <div v-if="loading" class="rounded-lg border border-default divide-y divide-default overflow-hidden">
+      <div v-for="i in 8" :key="i" class="flex items-center gap-3 px-3 py-2.5 sm:px-4 animate-pulse">
+        <div class="h-9 w-9 shrink-0 rounded-md bg-muted/50" />
+        <div class="min-w-0 flex-1 space-y-1.5">
+          <div class="h-4 w-40 max-w-full rounded bg-muted/50" />
+          <div class="h-3 w-24 rounded bg-muted/40" />
+        </div>
+      </div>
     </div>
 
     <UEmpty
@@ -44,250 +48,360 @@
       title="Aucune catégorie"
       description="Aucune catégorie ne correspond au filtre. Créez une nouvelle catégorie de soin."
       :actions="[{ label: 'Créer une catégorie', variant: 'solid', onClick: openCreateModal }]"
-      class="rounded-2xl border border-default bg-default/30 py-16"
+      class="rounded-xl border border-default bg-default/30 py-12"
     />
 
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <UCard
+    <div v-else class="rounded-lg border border-default bg-default divide-y divide-default overflow-hidden">
+      <div
         v-for="cat in filteredCategories"
         :key="cat.id"
-        class="overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-800"
-        :ui="{
-          root: cat.is_active ? '' : 'opacity-75',
-          body: 'flex flex-col flex-1 min-h-0',
-          footer: 'border-t border-default pt-4 mt-auto',
-        }"
+        class="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 sm:px-4 sm:py-2 min-h-[2.75rem] transition-colors hover:bg-muted/20"
+        :class="!cat.is_active ? 'opacity-70' : ''"
       >
-        <template #header>
-          <div class="flex items-start justify-between gap-3">
-            <div class="flex items-center gap-3 min-w-0 flex-1">
-              <div
-                class="flex items-center justify-center w-11 h-11 rounded-xl shrink-0 bg-muted/60 dark:bg-muted/40 border border-default transition-colors"
+        <div class="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
+          <div
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-default bg-muted/30 dark:bg-muted/20"
+          >
+            <CareCategoryVisual
+              :image-src="categoryListImageSrc(cat)"
+              :icon-name="getIconName(cat.icon)"
+              icon-class="h-4 w-4 text-muted"
+              img-class="h-7 w-7 object-contain"
+            />
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span class="truncate text-sm font-medium text-foreground">{{ cat.name }}</span>
+              <UBadge
+                :color="cat.type === 'blood_test' ? 'error' : 'info'"
+                :leading-icon="cat.type === 'blood_test' ? 'i-lucide-syringe' : 'i-lucide-stethoscope'"
+                variant="subtle"
+                size="xs"
+                class="shrink-0"
               >
-                <UIcon
-                  :name="getIconName(cat.icon)"
-                  class="w-6 h-6 text-muted"
-                />
-              </div>
-              <div class="min-w-0 flex-1">
-                <h3 class="font-normal text-foreground truncate">
-                  {{ cat.name }}
-                </h3>
-                <UBadge
-                  :color="cat.type === 'blood_test' ? 'error' : 'info'"
-                  :leading-icon="cat.type === 'blood_test' ? 'i-lucide-syringe' : 'i-lucide-stethoscope'"
-                  variant="soft"
-                  size="xs"
-                  class="mt-1.5"
-                >
-                  {{ getTypeLabel(cat.type) }}
-                </UBadge>
-              </div>
+                {{ getTypeLabel(cat.type) }}
+              </UBadge>
             </div>
+            <p v-if="cat.description" class="truncate text-xs text-muted mt-0.5">
+              {{ cat.description }}
+            </p>
           </div>
-        </template>
+        </div>
 
-        <p v-if="cat.description" class="text-sm text-muted line-clamp-2 mb-4">
-          {{ cat.description }}
-        </p>
-        <p v-else class="text-sm text-muted italic mb-4">
-          Aucune description
-        </p>
-
-        <template #footer>
-          <div class="flex items-center justify-between gap-3 flex-wrap">
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-medium text-muted">Actif</span>
-              <USwitch
-                :model-value="!!cat.is_active"
-                :disabled="togglingId === cat.id"
-                @update:model-value="toggleCategory(cat)"
-              />
-            </div>
-            <div class="flex items-center gap-2">
-              <UButton
-                size="xs"
-                variant="ghost"
-                color="neutral"
-                icon="i-lucide-pencil"
-                aria-label="Modifier"
-                :disabled="saving"
-                :on-click="() => editCategory(cat)"
-              />
-              <UButton
-                size="xs"
-                variant="ghost"
-                color="error"
-                icon="i-lucide-trash-2"
-                aria-label="Supprimer"
-                :loading="deletingId === cat.id"
-                :disabled="togglingId === cat.id"
-                :on-click="() => confirmDelete(cat)"
-              />
-            </div>
+        <div class="flex w-full shrink-0 items-center justify-between gap-2 sm:w-auto sm:justify-end sm:pl-2">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] text-muted whitespace-nowrap">Actif</span>
+            <USwitch
+              :model-value="!!cat.is_active"
+              :disabled="togglingId === cat.id"
+              size="xs"
+              @update:model-value="toggleCategory(cat)"
+            />
           </div>
-        </template>
-      </UCard>
+          <div class="flex items-center gap-0.5">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              square
+              icon="i-lucide-pencil"
+              aria-label="Modifier"
+              :disabled="saving"
+              :on-click="() => editCategory(cat)"
+            />
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="error"
+              square
+              icon="i-lucide-trash-2"
+              aria-label="Supprimer"
+              :loading="deletingId === cat.id"
+              :disabled="togglingId === cat.id"
+              :on-click="() => confirmDelete(cat)"
+            />
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Modal Créer / Modifier -->
+    <!-- Modal Créer / Modifier : sections linéaires, scroll interne -->
     <ClientOnly>
       <Teleport to="body">
-        <UModal v-model:open="showCreateModal" :ui="{ content: 'max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden' }">
+        <UModal v-model:open="showCreateModal" :ui="{ content: 'max-w-md w-full max-h-[min(92dvh,44rem)] flex flex-col overflow-hidden sm:rounded-xl' }">
           <template #content="{ close }">
-            <UCard :ui="{ root: 'flex flex-col max-h-full overflow-hidden', body: 'flex-1 min-h-0 overflow-y-auto' }">
+            <UCard
+              :ui="{
+                root: 'flex flex-col max-h-[min(92dvh,44rem)] overflow-hidden divide-y divide-default shadow-none ring-0',
+                header: 'p-4 sm:p-4 shrink-0',
+                body: 'p-0 flex-1 flex flex-col min-h-0 overflow-hidden',
+              }"
+            >
               <template #header>
-                <div class="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 class="text-xl font-normal text-foreground">
-                      {{ editingCategory ? 'Modifier la catégorie' : 'Nouvelle catégorie de soin' }}
+                <div class="flex items-start gap-3">
+                  <div class="min-w-0 flex-1 space-y-0.5">
+                    <h2 class="text-base font-semibold tracking-tight text-foreground leading-snug">
+                      {{ editingCategory ? 'Modifier la catégorie' : 'Nouvelle catégorie' }}
                     </h2>
-                    <p class="text-sm text-muted mt-1">
-                      {{ editingCategory ? 'Modifiez le nom, le type et l’icône du soin.' : 'Définissez le nom du soin, le type et l’icône affichée.' }}
+                    <p class="text-xs text-muted leading-relaxed">
+                      {{ editingCategory ? 'Nom, type, apparence (icône / image), options du formulaire RDV.' : 'Remplissez chaque bloc — le type définit où le soin apparaît.' }}
                     </p>
                   </div>
-                  <UButton variant="ghost" color="neutral" icon="i-lucide-x" size="sm" aria-label="Fermer" :on-click="close" />
+                  <UButton variant="ghost" color="neutral" icon="i-lucide-x" size="xs" square class="shrink-0" aria-label="Fermer" :on-click="close" />
                 </div>
               </template>
-              <UForm :state="categoryForm" @submit="saveCategory" class="space-y-4">
-                <UFormField label="Nom du soin" name="name" required class="w-full">
-                  <UInput
-                    v-model="categoryForm.name"
-                    placeholder="Ex. Bilan sanguin, Pansement..."
-                    size="md"
-                    class="w-full"
-                  />
-                </UFormField>
-                <UFormField label="Description (optionnel)" name="description" class="w-full">
-                  <UTextarea
-                    v-model="categoryForm.description"
-                    placeholder="Courte description du soin"
-                    :rows="2"
-                    class="w-full"
-                  />
-                </UFormField>
-                <UFormField label="Type de soin" name="type" required class="w-full">
-                  <div class="flex gap-2 flex-wrap w-full">
-                    <UButton
-                      v-for="t in typeOptionsForm"
-                      :key="t.value"
-                      :variant="categoryForm.type === t.value ? 'solid' : 'outline'"
-                      :color="categoryForm.type === t.value ? 'primary' : 'neutral'"
-                      size="md"
-                      :on-click="() => categoryForm.type = t.value"
-                    >
-                      {{ t.label }}
-                    </UButton>
-                  </div>
-                </UFormField>
-                <UFormField label="Icône du soin" name="icon" class="w-full">
-                  <USelectMenu
-                    v-model="categoryForm.icon"
-                    :items="iconSelectItems"
-                    value-key="value"
-                    :search-input="{ placeholder: 'Rechercher une icône médicale...' }"
-                    :filter-fields="['label']"
-                    placeholder="Choisir une icône (Lucide ou Medical)"
-                    size="md"
-                    class="w-full"
-                  >
-                    <template #leading>
-                      <UIcon
-                        :name="categoryForm.icon ? getIconName(categoryForm.icon) : 'i-lucide-search'"
-                        :class="categoryForm.icon ? 'w-4 h-4 text-primary-500' : 'w-4 h-4 text-muted'"
+              <UForm :state="categoryForm" class="flex flex-1 flex-col min-h-0" @submit="saveCategory">
+                <div class="flex-1 overflow-y-auto overflow-x-hidden">
+                  <!-- ① Texte catalogue -->
+                  <div class="px-4 py-3 space-y-3 sm:px-4 border-b border-default">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Nom & description</p>
+                    <UFormField label="Nom du soin" name="name" required class="w-full">
+                      <UInput
+                        v-model="categoryForm.name"
+                        placeholder="Ex. Bilan sanguin, pansement…"
+                        size="sm"
+                        class="w-full"
                       />
-                    </template>
-                    <template #item="{ item }">
-                      <div class="flex items-center gap-3 py-1.5">
-                        <div class="flex items-center justify-center w-8 h-8 rounded bg-default">
-                          <UIcon :name="getIconName(item.value)" class="w-4 h-4 text-muted" />
-                        </div>
-                        <span class="font-medium">{{ item.label }}</span>
-                      </div>
-                    </template>
-                  </USelectMenu>
-                  <template #hint>
-                    <span class="text-xs text-muted">Icône affichée dans la liste et sur les rendez-vous.</span>
-                  </template>
-                </UFormField>
-                <UFormField label="Statut" name="is_active" class="w-full">
-                  <div class="flex items-center gap-3">
-                    <USwitch v-model="categoryForm.is_active" />
-                    <span class="text-sm text-muted">{{ categoryForm.is_active ? 'Visible (actif)' : 'Masquée (inactif)' }}</span>
-                  </div>
-                </UFormField>
-
-                <!-- Sous-choix (options) -->
-                <div class="space-y-3 pt-4 border-t border-default">
-                  <div class="flex items-center justify-between">
-                    <label class="text-sm font-medium text-foreground">Sous-choix (options)</label>
-                    <UButton
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      icon="i-lucide-plus"
-                      :on-click="addCategoryOption"
+                    </UFormField>
+                    <UFormField
+                      label="Description"
+                      name="description"
+                      description="Facultatif, affichée si renseignée."
+                      class="w-full"
+                      :ui="{ description: 'text-[11px] text-muted leading-snug' }"
                     >
-                      Ajouter une option
-                    </UButton>
+                      <UTextarea
+                        v-model="categoryForm.description"
+                        placeholder="Une phrase qui aide le patient à choisir"
+                        :rows="2"
+                        autoresize
+                        :maxrows="4"
+                        class="w-full"
+                        size="sm"
+                      />
+                    </UFormField>
                   </div>
-                  <p class="text-xs text-muted">
-                    Champs affichés dans la section du soin lors de la prise de rendez-vous (ex. type de plaie, localisation).
-                  </p>
-                  <div v-for="(opt, idx) in categoryForm.options" :key="idx" class="flex flex-wrap gap-2 items-start p-3 rounded-lg bg-muted/30 dark:bg-muted/20">
-                    <UInput
-                      v-model="opt.option_key"
-                      placeholder="Clé (ex. wound_type)"
-                      size="sm"
-                      class="w-32"
-                    />
-                    <UInput
-                      v-model="opt.label"
-                      placeholder="Libellé (ex. Type de plaie)"
-                      size="sm"
-                      class="flex-1 min-w-32"
-                    />
-                    <USelect
-                      v-model="opt.field_type"
-                      :items="[
-                        { label: 'Liste déroulante', value: 'select' },
-                        { label: 'Texte', value: 'text' },
-                        { label: 'Nombre', value: 'number' },
-                      ]"
-                      value-key="value"
-                      size="sm"
-                      class="w-36"
-                    />
-                    <UTextarea
-                      v-if="opt.field_type === 'select'"
-                      v-model="opt.optionsText"
-                      placeholder="Une option par ligne (ex. Simple, Complexe, Autre)"
-                      :rows="2"
-                      size="sm"
-                      class="flex-1 min-w-40"
-                    />
-                    <div class="flex items-center gap-2 shrink-0">
-                      <USwitch v-model="opt.is_required" />
-                      <span class="text-xs text-muted">Requis</span>
+
+                  <!-- ② Type -->
+                  <div class="px-4 py-3 space-y-2.5 sm:px-4 border-b border-default">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Type</p>
+                    <UFormField label="Nature du rendez-vous" name="type" required class="w-full" :ui="{ label: 'text-xs font-medium text-muted' }">
+                      <div class="flex flex-wrap gap-1.5">
+                        <UButton
+                          v-for="t in typeOptionsForm"
+                          :key="t.value"
+                          type="button"
+                          :variant="categoryForm.type === t.value ? 'solid' : 'outline'"
+                          :color="categoryForm.type === t.value ? 'primary' : 'neutral'"
+                          size="sm"
+                          class="rounded-lg px-3"
+                          :on-click="() => (categoryForm.type = t.value)"
+                        >
+                          {{ t.label }}
+                        </UButton>
+                      </div>
+                    </UFormField>
+                  </div>
+
+                  <!-- ③ Apparence -->
+                  <div class="px-4 py-3 space-y-3 sm:px-4 border-b border-default">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Apparence</p>
+                    <UFormField
+                      name="icon"
+                      label="Icône (sans image)"
+                      description="Utilisée partout tant qu’aucune image maison."
+                      class="w-full"
+                      :ui="{ label: 'text-xs font-medium text-muted', description: 'text-[11px] text-muted leading-snug' }"
+                    >
+                      <USelectMenu
+                        v-model="categoryForm.icon"
+                        :items="iconSelectItems"
+                        value-key="value"
+                        :search-input="{ placeholder: 'Rechercher une icône…' }"
+                        :filter-fields="['label']"
+                        placeholder="Icône Lucide ou Medical…"
+                        size="sm"
+                        class="w-full"
+                      >
+                        <template #leading>
+                          <UIcon
+                            :name="categoryForm.icon ? getIconName(categoryForm.icon) : 'i-lucide-sparkles'"
+                            :class="categoryForm.icon ? 'w-4 h-4 text-primary-500' : 'w-4 h-4 text-muted'"
+                          />
+                        </template>
+                        <template #item="{ item }">
+                          <div class="flex items-center gap-2.5 py-1">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/50">
+                              <UIcon :name="getIconName(item.value)" class="w-4 h-4 text-muted" />
+                            </div>
+                            <span class="text-sm font-medium">{{ item.label }}</span>
+                          </div>
+                        </template>
+                      </USelectMenu>
+                    </UFormField>
+
+                    <UFormField
+                      label="Image personnalisée"
+                      name="category_image"
+                      description="JPEG, PNG, WebP ou GIF · max 2 Mo — prime sur l’icône."
+                      class="w-full"
+                      :ui="{
+                        label: 'text-xs font-medium text-muted',
+                        description: 'text-[11px] text-muted leading-snug',
+                      }"
+                    >
+                      <div class="flex items-start gap-3">
+                        <input
+                          ref="categoryImageInputRef"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          class="hidden"
+                          @change="onCategoryImageFileChange"
+                        />
+                        <div
+                          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-default bg-muted/30 dark:bg-muted/20"
+                        >
+                          <CareCategoryVisual
+                            :image-src="modalCategoryImageSrc"
+                            :icon-name="getIconName(categoryForm.icon)"
+                            icon-class="h-6 w-6 text-muted"
+                            img-class="h-9 w-9 object-contain"
+                          />
+                        </div>
+                        <div class="flex min-w-0 flex-1 flex-wrap gap-2">
+                          <UButton
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            color="neutral"
+                            icon="i-lucide-image-plus"
+                            :on-click="() => categoryImageInputRef?.click()"
+                          >
+                            Choisir
+                          </UButton>
+                          <UButton
+                            v-if="pendingImageFile || editingCategory?.image_url"
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            color="error"
+                            icon="i-lucide-trash-2"
+                            :disabled="uploadingImage"
+                            :on-click="removeCategoryImageAction"
+                          >
+                            Retirer
+                          </UButton>
+                        </div>
+                      </div>
+                    </UFormField>
+                  </div>
+
+                  <!-- ④ Statut -->
+                  <div class="px-4 py-3 sm:px-4 border-b border-default">
+                    <div class="flex items-center justify-between gap-4">
+                      <div class="min-w-0 space-y-0.5">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Statut</p>
+                        <p class="text-xs text-muted">Visible dans les listes si actif.</p>
+                      </div>
+                      <div class="flex shrink-0 items-center gap-2">
+                        <USwitch v-model="categoryForm.is_active" size="sm" />
+                        <span class="text-xs font-medium text-foreground">{{ categoryForm.is_active ? 'Actif' : 'Inactif' }}</span>
+                      </div>
                     </div>
-                    <UButton
-                      type="button"
-                      variant="ghost"
-                      color="error"
-                      size="xs"
-                      icon="i-lucide-trash-2"
-                      aria-label="Supprimer"
-                      :on-click="() => removeCategoryOption(idx)"
-                    />
+                  </div>
+
+                  <!-- ⑤ Options formulaire RDV -->
+                  <div class="px-4 py-3 space-y-2.5 sm:px-4">
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0 space-y-1">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Champs lors du RDV</p>
+                        <p class="text-xs text-muted leading-relaxed">
+                          Options affichées sous ce soin (ex. type de plaie).
+                        </p>
+                      </div>
+                      <UButton
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        icon="i-lucide-plus"
+                        class="shrink-0"
+                        :on-click="addCategoryOption"
+                      >
+                        Ajouter
+                      </UButton>
+                    </div>
+
+                    <ul v-if="categoryForm.options.length" class="space-y-0 divide-y divide-default rounded-lg border border-default overflow-hidden" role="list">
+                      <li
+                        v-for="(opt, idx) in categoryForm.options"
+                        :key="idx"
+                        class="bg-muted/20 dark:bg-muted/10 px-3 py-2.5 space-y-2"
+                      >
+                        <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
+                          <span class="text-[11px] font-mono tabular-nums text-muted w-6 shrink-0">{{ idx + 1 }}.</span>
+                          <UInput
+                            v-model="opt.option_key"
+                            placeholder="clé_technique"
+                            size="sm"
+                            class="w-[9.25rem] min-w-[7rem]"
+                          />
+                          <UInput
+                            v-model="opt.label"
+                            placeholder="Libellé affiché"
+                            size="sm"
+                            class="min-w-[10rem] flex-1"
+                          />
+                          <UButton
+                            type="button"
+                            variant="ghost"
+                            color="error"
+                            size="xs"
+                            square
+                            icon="i-lucide-trash-2"
+                            aria-label="Supprimer l’option"
+                            class="ml-auto sm:ml-0"
+                            :on-click="() => removeCategoryOption(idx)"
+                          />
+                        </div>
+                        <div class="flex flex-wrap items-start gap-2 pl-0 sm:pl-8">
+                          <USelect
+                            v-model="opt.field_type"
+                            :items="[
+                              { label: 'Liste', value: 'select' },
+                              { label: 'Texte', value: 'text' },
+                              { label: 'Nombre', value: 'number' },
+                            ]"
+                            value-key="value"
+                            size="sm"
+                            class="w-[7.75rem]"
+                          />
+                          <div class="flex items-center gap-1.5">
+                            <USwitch v-model="opt.is_required" size="xs" />
+                            <span class="text-[11px] text-muted whitespace-nowrap">Obligatoire</span>
+                          </div>
+                        </div>
+                        <UTextarea
+                          v-if="opt.field_type === 'select'"
+                          v-model="opt.optionsText"
+                          placeholder="Une valeur par ligne"
+                          :rows="2"
+                          size="sm"
+                          class="w-full sm:max-w-none"
+                        />
+                      </li>
+                    </ul>
+                    <p v-else class="rounded-lg border border-dashed border-default px-3 py-3 text-center text-xs text-muted">
+                      Aucune option — le patient verra uniquement le libellé du soin.
+                    </p>
                   </div>
                 </div>
 
-                <div class="flex justify-end gap-2 pt-4 border-t border-default">
-                  <UButton variant="ghost" color="neutral" :on-click="close">
+                <div class="flex shrink-0 items-center justify-end gap-2 bg-default px-4 py-3 sm:px-4">
+                  <UButton variant="ghost" color="neutral" size="sm" :on-click="close">
                     Annuler
                   </UButton>
-                  <UButton type="submit" color="primary" :loading="saving">
-                    {{ editingCategory ? 'Enregistrer' : 'Créer la catégorie' }}
+                  <UButton type="submit" color="primary" size="sm" :loading="saving || uploadingImage">
+                    {{ editingCategory ? 'Enregistrer' : 'Créer' }}
                   </UButton>
                 </div>
               </UForm>
@@ -328,7 +442,7 @@
         </UCard>
       </template>
     </UModal>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">
@@ -339,6 +453,7 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
+import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
 const toast = useAppToast();
 
 const categories = ref<any[]>([]);
@@ -352,14 +467,21 @@ const showDeleteModal = ref(false);
 const editingCategory = ref<any>(null);
 const categoryToDelete = ref<any>(null);
 
+const categoryImageInputRef = ref<HTMLInputElement | null>(null);
+const pendingImageFile = ref<File | null>(null);
+const pendingImageObjectUrl = ref<string | null>(null);
+const uploadingImage = ref(false);
+
+const config = useRuntimeConfig();
+
 const typeOptionsFilter = [
   { label: 'Toutes', value: 'all' },
-  { label: 'Prise de sang', value: 'blood_test' },
+  { label: 'Prélèvement', value: 'blood_test' },
   { label: 'Soins infirmiers', value: 'nursing' },
 ];
 
 const typeOptionsForm = [
-  { label: 'Prise de sang', value: 'blood_test' },
+  { label: 'Prélèvement', value: 'blood_test' },
   { label: 'Soins infirmiers', value: 'nursing' },
 ];
 
@@ -493,12 +615,93 @@ const filteredCategories = computed(() => {
   return categories.value.filter((c) => c.type === typeFilter.value);
 });
 
+function revokePendingImagePreview() {
+  if (pendingImageObjectUrl.value) {
+    URL.revokeObjectURL(pendingImageObjectUrl.value);
+    pendingImageObjectUrl.value = null;
+  }
+}
+
+onUnmounted(() => {
+  revokePendingImagePreview();
+});
+
+function categoryListImageSrc(cat: any): string | null {
+  return resolveCareCategoryImageSrc(cat?.image_url ?? null, config.public.apiBase);
+}
+
+const modalCategoryImageSrc = computed(() => {
+  if (pendingImageObjectUrl.value) return pendingImageObjectUrl.value;
+  return resolveCareCategoryImageSrc(editingCategory.value?.image_url ?? null, config.public.apiBase);
+});
+
+function onCategoryImageFileChange(e: Event) {
+  const el = e.target as HTMLInputElement;
+  const file = el.files?.[0];
+  el.value = '';
+  if (!file) return;
+  revokePendingImagePreview();
+  pendingImageFile.value = file;
+  pendingImageObjectUrl.value = URL.createObjectURL(file);
+}
+
+function clearSelectedCategoryImageFile() {
+  pendingImageFile.value = null;
+  revokePendingImagePreview();
+}
+
+async function removeStoredCategoryImage() {
+  if (!editingCategory.value?.id) return;
+  try {
+    const response = await apiFetch(`/categories/${editingCategory.value.id}`, {
+      method: 'PUT',
+      body: { image_url: '' },
+    });
+    if (response.success) {
+      toast.add({ title: 'Image supprimée', color: 'green' });
+      editingCategory.value = { ...editingCategory.value, image_url: null };
+      await fetchCategories();
+    } else {
+      toast.add({ title: 'Erreur', description: response.error, color: 'red' });
+    }
+  } catch (error: any) {
+    toast.add({ title: 'Erreur', description: error.message, color: 'red' });
+  }
+}
+
+async function removeCategoryImageAction() {
+  if (pendingImageFile.value) {
+    clearSelectedCategoryImageFile();
+    return;
+  }
+  await removeStoredCategoryImage();
+}
+
+async function uploadPendingCategoryImage(categoryId: string) {
+  const file = pendingImageFile.value;
+  if (!file || !categoryId) return;
+  uploadingImage.value = true;
+  try {
+    const fd = new FormData();
+    fd.append('category_id', categoryId);
+    fd.append('file', file);
+    const response = await apiFetch('/categories/upload-image', { method: 'POST', body: fd });
+    if (!response.success) {
+      throw new Error(response.error || 'Échec upload');
+    }
+    clearSelectedCategoryImageFile();
+  } finally {
+    uploadingImage.value = false;
+  }
+}
+
 function getTypeLabel(type: string) {
-  return type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers';
+  return type === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers';
 }
 
 const openCreateModal = () => {
   editingCategory.value = null;
+  clearSelectedCategoryImageFile();
   categoryForm.value = {
     name: '',
     description: '',
@@ -527,6 +730,7 @@ async function fetchCategories() {
 
 function editCategory(category: any) {
   editingCategory.value = category;
+  clearSelectedCategoryImageFile();
   const opts = (category.options || []).map((o: any) => ({
     option_key: o.option_key || '',
     label: o.label || '',
@@ -618,9 +822,26 @@ async function saveCategory() {
       options: optionsPayload,
     };
     if (editingCategory.value) {
-      const response = await apiFetch(`/categories/${editingCategory.value.id}`, { method: 'PUT', body });
+      const catId = editingCategory.value.id as string;
+      const response = await apiFetch(`/categories/${catId}`, { method: 'PUT', body });
       if (response.success) {
-        toast.add({ title: 'Catégorie modifiée', color: 'green' });
+        let imageWarn = '';
+        if (pendingImageFile.value) {
+          try {
+            await uploadPendingCategoryImage(catId);
+          } catch (e: any) {
+            imageWarn = e.message || 'erreur';
+          }
+        }
+        if (imageWarn) {
+          toast.add({
+            title: 'Catégorie modifiée',
+            description: 'Image non enregistrée : ' + imageWarn,
+            color: 'amber',
+          });
+        } else {
+          toast.add({ title: 'Catégorie modifiée', color: 'green' });
+        }
         showCreateModal.value = false;
         editingCategory.value = null;
         await fetchCategories();
@@ -630,7 +851,24 @@ async function saveCategory() {
     } else {
       const response = await apiFetch('/categories', { method: 'POST', body });
       if (response.success) {
-        toast.add({ title: 'Catégorie créée', color: 'green' });
+        const newId = response.data?.id as string | undefined;
+        let imageWarn = '';
+        if (newId && pendingImageFile.value) {
+          try {
+            await uploadPendingCategoryImage(newId);
+          } catch (e: any) {
+            imageWarn = e.message || 'erreur';
+          }
+        }
+        if (imageWarn) {
+          toast.add({
+            title: 'Catégorie créée',
+            description: 'Image non enregistrée : ' + imageWarn,
+            color: 'amber',
+          });
+        } else {
+          toast.add({ title: 'Catégorie créée', color: 'green' });
+        }
         showCreateModal.value = false;
         await fetchCategories();
       } else {

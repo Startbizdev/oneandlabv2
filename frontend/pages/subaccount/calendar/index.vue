@@ -1,11 +1,14 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
-      title="Calendrier"
-      description="Vue d'ensemble des rendez-vous du sous-compte"
-    />
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Calendrier"
+        description="Vue d'ensemble des rendez-vous du sous-compte"
+      />
+    </template>
     <CalendarPage base-path="/subaccount" :show-new-appointment-button="false" />
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

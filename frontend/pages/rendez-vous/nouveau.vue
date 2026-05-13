@@ -13,8 +13,10 @@
       :loading="categoriesLoading"
       :provider-name="providerName"
       :initial-care-filter-tab="careSelectionInitialFilterTab"
+      :form-data-by-service="(formData.formDataByService ?? {}) as Record<string, BookingServiceFormSlice | undefined>"
       @continue="confirmStep0AndNext"
       @quick-add-service="mergeQuickServiceIntoBooking"
+      @remove-service-from-cart="removeServiceFromCareSelection"
     />
 
     <RendezVousFormStep
@@ -492,6 +494,16 @@ function mergeQuickServiceIntoBooking(payload: { service: SelectedServiceInput; 
     priorSelectedServices: existing,
     priorFormDataByService: priorFd,
   });
+}
+
+function removeServiceFromCareSelection(serviceId: string) {
+  selectedServices.value = selectedServices.value.filter((s) => s.id !== serviceId);
+  const by = formData.value.formDataByService as Record<string, BookingServiceFormSlice | undefined> | undefined;
+  if (by && by[serviceId]) {
+    const next = { ...by };
+    delete next[serviceId];
+    formData.value.formDataByService = next;
+  }
 }
 
 async function loadCareCategories() {

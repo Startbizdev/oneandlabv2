@@ -1,41 +1,51 @@
 <template>
-  <div class="min-h-screen bg-gray-50/70 pb-10 dark:bg-gray-950/60">
-    <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 md:py-10">
-      <!-- En-tête SaaS -->
-      <header class="mb-6 overflow-hidden rounded-3xl border border-primary-100/80 bg-white shadow-sm shadow-primary-950/5 dark:border-primary-900/40 dark:bg-gray-900/70 sm:mb-8">
-        <div class="relative px-5 py-5 sm:px-6 sm:py-6">
-          <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 via-primary-400 to-primary-300" />
-          <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-            <div class="min-w-0">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600 dark:text-primary-300">
-                Espace patient
-              </p>
-              <h1 class="mt-2 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-3xl">
-                Mes rendez-vous
-              </h1>
-              <p class="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                Retrouvez vos soins à venir, votre historique et les demandes groupées au même endroit.
-              </p>
+  <div class="min-h-screen bg-app-canvas pb-8 dark:bg-gray-950">
+    <div class="mx-auto max-w-6xl px-0 py-4 sm:px-6 sm:py-8 lg:px-8">
+      <!-- En-tête : sans carte -->
+      <div
+        role="banner"
+        class="mb-6 min-w-0 rounded-none border-0 bg-transparent p-0 shadow-none ring-0 sm:mb-8"
+      >
+        <div class="flex w-full min-w-0 flex-col gap-5 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+          <div class="min-w-0 sm:flex-1 sm:pr-2">
+            <h1 class="text-xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-2xl">
+              Bienvenue<template v-if="showPersonalizedPatientWelcome">{{ patientWelcomeName }}</template>&nbsp;👋
+            </h1>
+            <p class="mt-1.5 max-w-lg text-sm leading-relaxed text-gray-500 dark:text-gray-400 sm:mt-2">
+              Vos rendez-vous et vos prochaines étapes, réunis ici.
+            </p>
+            <!-- Illustration : mobile uniquement, sous le sous-titre -->
+            <div class="mt-4 block sm:hidden">
+              <img
+                src="/images/espacepatientimage.png"
+                alt=""
+                class="w-full rounded-2xl object-cover shadow-sm ring-1 ring-gray-200/70 dark:ring-gray-800/80"
+                width="1672"
+                height="941"
+                loading="lazy"
+                decoding="async"
+              />
             </div>
-            <NuxtLink
-              to="/rendez-vous/nouveau"
-              class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-primary-950/10 transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600 dark:focus:ring-offset-gray-900 sm:w-auto"
-            >
-              <UIcon name="i-lucide-plus" class="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>Nouveau rendez-vous</span>
-            </NuxtLink>
           </div>
+          <NuxtLink
+            v-if="!loading && !error && appointments.length > 0"
+            to="/rendez-vous/nouveau"
+            class="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600 dark:focus:ring-offset-gray-900 sm:w-auto sm:self-start sm:whitespace-nowrap sm:py-2"
+          >
+            <UIcon name="i-lucide-calendar-plus" class="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span class="text-center sm:text-left">Nouveau rendez-vous</span>
+          </NuxtLink>
         </div>
-      </header>
+      </div>
 
-      <!-- Filtres : onglets + recherche -->
+      <!-- Filtres : sans encadré -->
       <div
         v-if="!loading && !error && appointments.length > 0"
-        class="mb-6 rounded-2xl border border-gray-200 bg-white/95 p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900/70 sm:p-4"
+        class="mb-7"
       >
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-7">
           <div
-            class="inline-flex rounded-xl bg-gray-100 p-1 ring-1 ring-gray-200/80 dark:bg-gray-950/40 dark:ring-gray-800"
+            class="flex w-full shrink-0 gap-8 sm:w-auto"
             role="tablist"
             aria-label="Filtrer les rendez-vous"
           >
@@ -43,55 +53,35 @@
               type="button"
               role="tab"
               :aria-selected="listTab === 'upcoming'"
-              class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 sm:min-w-32"
+              class="inline-flex items-center gap-1.5 border-b-[3px] pb-1 text-left text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950"
               :class="
                 listTab === 'upcoming'
-                  ? 'bg-white text-primary-700 shadow-sm ring-1 ring-gray-200/80 dark:bg-gray-900 dark:text-primary-300 dark:ring-gray-700'
-                  : 'text-gray-600 hover:text-gray-950 dark:text-gray-400 dark:hover:text-white'
+                  ? 'border-b-primary-600 text-gray-950 dark:border-b-primary-500 dark:text-white'
+                  : 'border-b-transparent text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
               "
               @click="listTab = 'upcoming'"
             >
-              <UIcon name="i-lucide-calendar-clock" class="h-4 w-4" />
-              À venir
-              <span class="rounded-full bg-primary-50 px-1.5 py-0.5 text-[11px] text-primary-700 dark:bg-primary-950/60 dark:text-primary-300">{{ upcomingAppointmentsCount }}</span>
+              <UIcon name="i-lucide-calendar-clock" class="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden="true" />
+              Prochains rendez-vous
             </button>
             <button
               type="button"
               role="tab"
               :aria-selected="listTab === 'past'"
-              class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 sm:min-w-32"
+              class="inline-flex items-center gap-1.5 border-b-[3px] pb-1 text-left text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950"
               :class="
                 listTab === 'past'
-                  ? 'bg-white text-primary-700 shadow-sm ring-1 ring-gray-200/80 dark:bg-gray-900 dark:text-primary-300 dark:ring-gray-700'
-                  : 'text-gray-600 hover:text-gray-950 dark:text-gray-400 dark:hover:text-white'
+                  ? 'border-b-primary-600 text-gray-950 dark:border-b-primary-500 dark:text-white'
+                  : 'border-b-transparent text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
               "
               @click="listTab = 'past'"
             >
-              <UIcon name="i-lucide-history" class="h-4 w-4" />
-              Passés
-              <span class="rounded-full bg-gray-50 px-1.5 py-0.5 text-[11px] text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{ pastAppointmentsCount }}</span>
+              <UIcon name="i-lucide-history" class="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden="true" />
+              Rendez-vous passés
             </button>
           </div>
-          <div class="relative min-w-0 flex-1 lg:max-w-md">
-            <UInput
-              v-model="searchQuery"
-              placeholder="Rechercher date, adresse, statut, intervenant..."
-              icon="i-lucide-search"
-              size="lg"
-              class="w-full"
-              aria-label="Recherche dans la liste des rendez-vous"
-            />
-            <UButton
-              v-if="searchQuery"
-              type="button"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              icon="i-lucide-x"
-              class="absolute right-1 top-1/2 -translate-y-1/2 rounded-md"
-              aria-label="Effacer la recherche"
-              @click="searchQuery = ''"
-            />
+          <div class="hidden min-w-0 w-full md:block md:max-w-sm">
+            <PatientRdvListSearchField />
           </div>
         </div>
       </div>
@@ -161,7 +151,7 @@
             Aucun résultat pour « {{ searchQuery.trim() }} ». Essayez d’autres mots ou effacez la recherche.
           </template>
           <template v-else-if="listTab === 'upcoming'">
-            Vous n’avez pas de rendez-vous à venir. Les rendez-vous terminés ou passés sont dans l’onglet « Passés ».
+            Vous n’avez pas de rendez-vous à venir. L’historique se trouve sous « Rendez-vous passés ».
           </template>
           <template v-else>
             Aucun rendez-vous dans l’historique pour l’instant.
@@ -179,135 +169,53 @@
         </UButton>
       </section>
 
-      <!-- Liste des rendez-vous -->
+      <!-- Liste des rendez-vous : cartes alignées `AppointmentListCard` / `DashboardCardShell` (dashboard pro) -->
       <template v-else>
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2" role="list">
-          <article
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list">
+          <div
             v-for="row in displayRows"
             :key="row.kind === 'batch' ? row.key : row.appointment.id"
-            class="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-md dark:border-gray-800 dark:bg-gray-900/70 dark:hover:border-primary-900/60"
             role="listitem"
+            class="min-h-0 h-full"
           >
-            <NuxtLink
-              :to="rowHref(row)"
-              class="flex h-full flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset"
-            >
-              <template v-if="row.kind === 'batch'">
-                <div class="border-b border-gray-100 bg-gradient-to-br from-primary-50/80 to-white p-4 dark:border-gray-800 dark:from-primary-950/25 dark:to-gray-900 sm:p-5">
-                  <div class="flex items-start gap-3">
-                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1 ring-inset" :class="typeIconRingClass(rowPrimaryAppointment(row))">
-                      <UIcon :name="appointmentIcon(rowPrimaryAppointment(row))" class="h-5 w-5" aria-hidden="true" />
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <div class="flex flex-wrap items-center gap-2">
-                        <span class="rounded-full bg-primary-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary-800 dark:bg-primary-950/70 dark:text-primary-200">
-                          Lot
-                        </span>
-                        <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold" :class="statusBadgeClass(rowPrimaryAppointment(row)?.status)">
-                          {{ rowStatusSummary(row) }}
-                        </span>
-                      </div>
-                      <h2 class="mt-2 text-base font-semibold leading-tight text-gray-950 dark:text-white">
-                        {{ batchTitle(row) }}
-                      </h2>
-                      <p v-if="patientLabel(rowPrimaryAppointment(row))" class="mt-1 truncate text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                        Pour : {{ patientLabel(rowPrimaryAppointment(row)) }}
-                      </p>
-                    </div>
-                    <UIcon name="i-lucide-chevron-right" class="mt-1 h-5 w-5 shrink-0 text-gray-300 transition-colors group-hover:text-primary-500 dark:text-gray-600 dark:group-hover:text-primary-400" />
+            <DashboardCardShell class="h-full">
+              <NuxtLink
+                :to="rowHref(row)"
+                class="flex h-full min-h-0 flex-col gap-2 px-4 py-2.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset sm:gap-2.5 sm:px-5 sm:py-3"
+              >
+                <template v-if="row.kind === 'batch' && isBloodTestOnlyBatchRow(row)">
+                  <PatientRdvListRow
+                    variant="full"
+                    :appointment="mergeBloodBatchAppointmentsForListDisplay(sortedPatientBatchRow(row))"
+                    :categories="careCategoriesList"
+                  />
+                </template>
+                <template v-else-if="row.kind === 'batch' && isNursingOnlyBatchRow(row)">
+                  <PatientRdvListRow
+                    variant="full"
+                    :appointment="mergeNursingBatchAppointmentsForListDisplay(sortedPatientBatchRow(row))"
+                    :categories="careCategoriesList"
+                  />
+                </template>
+                <template v-else-if="row.kind === 'batch'">
+                  <div class="space-y-2">
+                    <PatientRdvListRow
+                      v-for="apt in sortedPatientBatchRow(row)"
+                      :key="apt.id"
+                      variant="batch"
+                      :appointment="apt"
+                      :categories="careCategoriesList"
+                      :blood-test-batch-peer-total="patientBloodBatchPeerTotal(row)"
+                      :blood-test-batch-peer-index="patientBloodBatchPeerIndex(row, apt)"
+                      :nursing-batch-peer-total="patientNursingBatchPeerTotal(row)"
+                      :nursing-batch-peer-index="patientNursingBatchPeerIndex(row, apt)"
+                    />
                   </div>
-                  <p class="mt-4 flex items-start gap-2 text-sm leading-snug text-gray-600 dark:text-gray-300">
-                    <UIcon name="i-lucide-map-pin" class="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
-                    <span class="line-clamp-2">{{ displayAddress(rowPrimaryAppointment(row)) }}</span>
-                  </p>
-                </div>
-                <div class="space-y-3 p-4 sm:p-5">
-                  <div
-                    v-for="(apt, index) in row.appointments"
-                    :key="apt.id"
-                    class="relative rounded-xl border border-gray-100 bg-gray-50/70 p-3 dark:border-gray-800 dark:bg-gray-800/35"
-                  >
-                    <div class="flex items-start justify-between gap-3">
-                      <div class="min-w-0">
-                        <p class="text-xs font-semibold text-gray-950 dark:text-white">
-                          {{ index + 1 }}. {{ appointmentCardTitle(apt) }}
-                        </p>
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          {{ formatDateShort(apt.scheduled_at) }} · {{ getCreneauHoraireLabel(apt) }}
-                        </p>
-                      </div>
-                      <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold" :class="statusBadgeClass(apt.status)">
-                        {{ getStatusLabel(apt.status) }}
-                      </span>
-                    </div>
-                  </div>
-                  <div v-if="rowCareTeamLines(row).length" class="flex flex-wrap gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
-                    <span
-                      v-for="(line, idx) in rowCareTeamLines(row)"
-                      :key="idx"
-                      class="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs text-gray-600 ring-1 ring-gray-200 dark:bg-gray-900/80 dark:text-gray-300 dark:ring-gray-700"
-                    >
-                      <UIcon :name="line.icon" class="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden="true" />
-                      <span class="truncate">{{ line.label }} {{ line.name }}</span>
-                    </span>
-                  </div>
-                </div>
-              </template>
-
-              <template v-else>
-                <div class="flex flex-1 flex-col p-4 sm:p-5">
-                  <div class="flex items-start gap-3">
-                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1 ring-inset" :class="typeIconRingClass(row.appointment)">
-                      <UIcon :name="appointmentIcon(row.appointment)" class="h-5 w-5" aria-hidden="true" />
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <p v-if="patientLabel(row.appointment)" class="truncate text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                        Pour : {{ patientLabel(row.appointment) }}
-                      </p>
-                      <h2 class="mt-1 text-base font-semibold leading-tight text-gray-950 transition-colors group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-300">
-                        {{ appointmentCardTitle(row.appointment) }}
-                      </h2>
-                      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        {{ appointmentTypeLabel(row.appointment) }}
-                      </p>
-                    </div>
-                    <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold" :class="statusBadgeClass(row.appointment.status)">
-                      {{ getStatusLabel(row.appointment.status) }}
-                    </span>
-                  </div>
-
-                  <div class="mt-4 grid gap-2 rounded-2xl bg-gray-50/80 p-3 text-sm dark:bg-gray-800/40">
-                    <p class="flex items-center gap-2 text-gray-700 dark:text-gray-200">
-                      <UIcon name="i-lucide-calendar-days" class="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
-                      <span class="font-medium">{{ formatDateShort(row.appointment.scheduled_at) }}</span>
-                      <span class="text-gray-400">·</span>
-                      <span class="text-gray-600 dark:text-gray-400">{{ getCreneauHoraireLabel(row.appointment) }}</span>
-                    </p>
-                    <p class="flex items-start gap-2 text-gray-600 dark:text-gray-300">
-                      <UIcon name="i-lucide-map-pin" class="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
-                      <span class="line-clamp-2">{{ displayAddress(row.appointment) }}</span>
-                    </p>
-                  </div>
-
-                  <div v-if="careTeamLines(row.appointment).length" class="mt-4 flex flex-wrap gap-2">
-                    <span
-                      v-for="(line, idx) in careTeamLines(row.appointment)"
-                      :key="idx"
-                      class="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs text-primary-700 ring-1 ring-primary-100 dark:bg-primary-950/35 dark:text-primary-300 dark:ring-primary-900/60"
-                    >
-                      <UIcon :name="line.icon" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      <span class="truncate">{{ line.label }} {{ line.name }}</span>
-                    </span>
-                  </div>
-
-                  <div class="mt-auto flex items-center justify-between pt-5 text-sm font-semibold text-primary-600 dark:text-primary-400">
-                    <span>Voir le détail</span>
-                    <UIcon name="i-lucide-arrow-right" class="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-                  </div>
-                </div>
-              </template>
-            </NuxtLink>
-          </article>
+                </template>
+                <PatientRdvListRow v-else variant="full" :appointment="row.appointment" :categories="careCategoriesList" />
+              </NuxtLink>
+            </DashboardCardShell>
+          </div>
         </div>
       </template>
     </div>
@@ -315,7 +223,29 @@
 </template>
 
 <script setup lang="ts">
-import { groupAppointmentsByBatch } from '~/utils/appointment-batch';
+import { apiFetch } from '~/utils/api';
+import type { CareCategoryRowMinimal } from '~/utils/care-icons';
+import {
+  groupAppointmentsByBatch,
+  isBloodTestOnlyBatchRow,
+  isNursingOnlyBatchRow,
+  mergeBloodBatchAppointmentsForListDisplay,
+  mergeNursingBatchAppointmentsForListDisplay,
+  type AppointmentListRow,
+} from '~/utils/appointment-batch';
+import {
+  MULTI_BLOOD_TEST_ITEMS_CARD_LABEL,
+  MULTI_NURSING_ITEMS_CARD_LABEL,
+  isBloodTestAppointment,
+  isNursingAppointment,
+} from '~/utils/appointment-type-rules';
+import {
+  patientRdvAddressLine,
+  patientRdvFormatDateShort as formatDateShort,
+  patientRdvGetStatusLabel as getStatusLabel,
+  patientRdvPatientHeadline,
+  patientRdvTypeDeSoinLabel as typeDeSoinLabel,
+} from '~/utils/patient-rdv-list-display';
 
 definePageMeta({
   layout: 'patient',
@@ -324,13 +254,46 @@ definePageMeta({
 });
 
 const route = useRoute();
+const { user } = useAuth();
 const { appointments, loading, error, fetchAppointments } = useAppointments();
+
+/** Évite mismatch SSR/client : le prénom n’est disponible qu’après hydration auth côté client. */
+const showPersonalizedPatientWelcome = ref(false);
+
+/** Aligné sur `/rendez-vous/nouveau` : icônes + pastilles HSL par catégorie */
+const careCategoriesList = ref<CareCategoryRowMinimal[]>([]);
+
+async function loadPatientCareCategories() {
+  try {
+    const response = await apiFetch('/categories', { method: 'GET' });
+    if (response?.success && Array.isArray(response.data) && response.data.length > 0) {
+      careCategoriesList.value = response.data as CareCategoryRowMinimal[];
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+const patientWelcomeName = computed(() => {
+  const raw = user.value?.first_name;
+  if (raw == null || String(raw).trim() === '') return '';
+  return `, ${capitalizeWords(String(raw).trim())}`;
+});
 
 /** Charge assez de RDV pour filtrage + recherche côté client */
 const PATIENT_LIST_LIMIT = 150;
 
 const listTab = ref<'upcoming' | 'past'>('upcoming');
-const searchQuery = ref('');
+const { searchQuery, filtersSectionActive } = usePatientRdvListSearch();
+
+watch(
+  [loading, error, () => (appointments.value || []).length],
+  () => {
+    filtersSectionActive.value =
+      !loading.value && !error.value && (appointments.value || []).length > 0;
+  },
+  { immediate: true },
+);
 
 const TERMINAL_STATUSES = new Set(['completed', 'canceled', 'cancelled', 'refused', 'expired']);
 
@@ -363,14 +326,45 @@ function appointmentSearchHaystack(apt: any): string {
   const parts: string[] = [];
   parts.push(patientLabel(apt));
   parts.push(displayAddress(apt));
-  parts.push(typeDeSoinLabel(apt));
-  parts.push(apt?.type === 'blood_test' ? 'prise de sang prélèvement' : 'soins infirmiers');
+  const batchBloodPeers = bloodTestBatchPeerCountInCurrentTab(apt);
+  const batchNursingPeers = nursingBatchPeerCountInCurrentTab(apt);
+  parts.push(
+    typeDeSoinLabel(apt, {
+      bloodTestBatchPeerTotal: batchBloodPeers > 1 ? batchBloodPeers : undefined,
+      bloodTestBatchPeerIndex: 0,
+      nursingBatchPeerTotal: batchNursingPeers > 1 ? batchNursingPeers : undefined,
+      nursingBatchPeerIndex: 0,
+    }),
+  );
+  if (batchBloodPeers > 1) {
+    parts.push(MULTI_BLOOD_TEST_ITEMS_CARD_LABEL);
+  }
+  if (batchNursingPeers > 1) {
+    parts.push(MULTI_NURSING_ITEMS_CARD_LABEL);
+  }
+  parts.push(apt?.type === 'blood_test' ? 'prélèvement' : 'soins infirmiers');
   parts.push(getStatusLabel(apt?.status));
   parts.push(formatDateShort(apt?.scheduled_at || ''));
   careTeamLines(apt).forEach((l) => {
     parts.push(l.label, l.name);
   });
   return stripDiacritics(parts.filter(Boolean).join(' ').toLowerCase());
+}
+
+function bloodTestBatchPeerCountInCurrentTab(apt: any): number {
+  if (!apt?.creation_batch_id || !isBloodTestAppointment(apt.type)) return 0;
+  const bid = String(apt.creation_batch_id);
+  return tabFilteredAppointments.value.filter(
+    (x) => String(x.creation_batch_id) === bid && isBloodTestAppointment(x.type),
+  ).length;
+}
+
+function nursingBatchPeerCountInCurrentTab(apt: any): number {
+  if (!apt?.creation_batch_id || !isNursingAppointment(apt.type)) return 0;
+  const bid = String(apt.creation_batch_id);
+  return tabFilteredAppointments.value.filter(
+    (x) => String(x.creation_batch_id) === bid && isNursingAppointment(x.type),
+  ).length;
 }
 
 function stripDiacritics(s: string): string {
@@ -388,19 +382,40 @@ const filteredAppointments = computed(() => {
 /** Lots multi-soins : une carte par lot (comme liste infirmier) */
 const displayRows = computed(() => groupAppointmentsByBatch(filteredAppointments.value));
 
-const upcomingAppointmentsCount = computed(() => (appointments.value || []).filter(isUpcomingAppointment).length);
-const pastAppointmentsCount = computed(() => (appointments.value || []).filter((a: any) => !isUpcomingAppointment(a)).length);
-
-function appointmentTypeLabel(apt: any): string {
-  return apt?.type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers';
+/** Même ordre que `AppointmentListCard` (date croissante). */
+function sortedPatientBatchRow(row: { kind: string; appointments: any[] }) {
+  return [...row.appointments].sort(
+    (a, b) =>
+      new Date(a.scheduled_at || a.created_at || 0).getTime() -
+      new Date(b.scheduled_at || b.created_at || 0).getTime(),
+  );
 }
 
-function appointmentIcon(apt: any): string {
-  return apt?.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-stethoscope';
+/** Lot patient : plusieurs RDV « prise de sang » même réservation (`creation_batch_id`). */
+function patientBloodBatchPeerTotal(row: AppointmentListRow): number {
+  if (row.kind !== 'batch') return 0;
+  if (!row.appointments?.length) return 0;
+  const allBlood = row.appointments.every((a) => isBloodTestAppointment(a?.type));
+  return allBlood ? row.appointments.length : 0;
 }
 
-function rowAppointments(row: any): any[] {
-  return row?.kind === 'batch' ? row.appointments || [] : row?.appointment ? [row.appointment] : [];
+function patientBloodBatchPeerIndex(row: AppointmentListRow, apt: any): number {
+  if (row.kind !== 'batch') return 0;
+  const i = sortedPatientBatchRow(row).findIndex((x) => String(x.id) === String(apt?.id));
+  return Math.max(0, i);
+}
+
+function patientNursingBatchPeerTotal(row: AppointmentListRow): number {
+  if (row.kind !== 'batch') return 0;
+  if (!row.appointments?.length) return 0;
+  const allNursing = row.appointments.every((a) => isNursingAppointment(a?.type));
+  return allNursing ? row.appointments.length : 0;
+}
+
+function patientNursingBatchPeerIndex(row: AppointmentListRow, apt: any): number {
+  if (row.kind !== 'batch') return 0;
+  const i = sortedPatientBatchRow(row).findIndex((x) => String(x.id) === String(apt?.id));
+  return Math.max(0, i);
 }
 
 function rowPrimaryAppointment(row: any): any {
@@ -412,47 +427,6 @@ function rowHref(row: any): string {
   return `/patient/appointments/${apt?.id}`;
 }
 
-function batchTitle(row: any): string {
-  const count = rowAppointments(row).length;
-  return `${count} ${count > 1 ? 'soins coordonnés' : 'soin coordonné'}`;
-}
-
-function appointmentCardTitle(apt: any): string {
-  return typeDeSoinLabel(apt) || appointmentTypeLabel(apt);
-}
-
-function rowCareTeamLines(row: any): { icon: string; label: string; name: string }[] {
-  const seen = new Set<string>();
-  const lines: { icon: string; label: string; name: string }[] = [];
-  for (const apt of rowAppointments(row)) {
-    for (const line of careTeamLines(apt)) {
-      const key = `${line.label}:${line.name}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      lines.push(line);
-    }
-  }
-  return lines;
-}
-
-function rowStatusSummary(row: any): string {
-  const statuses = rowAppointments(row).map((apt) => getStatusLabel(apt?.status)).filter(Boolean);
-  const unique = [...new Set(statuses)];
-  if (unique.length === 0) return 'Statut à confirmer';
-  if (unique.length === 1) return unique[0];
-  return `${unique.length} statuts`;
-}
-
-/** Type de soin (catégorie) pour affichage dans la liste */
-function typeDeSoinLabel(apt: any): string {
-  const items = Array.isArray(apt?.blood_test_items) ? apt.blood_test_items : [];
-  if (apt?.type === 'blood_test' && items.length > 1) {
-    return `${items.length} actes de prise de sang`;
-  }
-  const name = apt?.category_name || apt?.form_data?.category_name;
-  return name ? String(name).trim() : '';
-}
-
 /** Majuscule en début de chaque mot (ex: "jean-paul" → "Jean-Paul") */
 function capitalizeWords(str: string): string {
   if (!str) return '';
@@ -462,88 +436,14 @@ function capitalizeWords(str: string): string {
     .join(' ');
 }
 
-/** Pour l’affichage : jour avec majuscule (ex: "Lun. 24 févr. 2026") */
-function formatDateShort(dateString: string) {
-  if (!dateString) return '—';
-  const formatted = new Date(dateString).toLocaleDateString('fr-FR', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-  return capitalizeFirst(formatted);
-}
-
-function capitalizeFirst(str: string): string {
-  if (!str || str.length === 0) return str;
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-/** Libellé "Prénom Nom" du patient ou du proche concerné par le RDV (majuscules) */
+/** Libellé patient / proche (recherche + cartes) */
 function patientLabel(apt: any): string {
-  const fromForm =
-    apt?.form_data?.first_name != null || apt?.form_data?.last_name != null
-      ? [apt.form_data.first_name, apt.form_data.last_name].filter(Boolean).map((s: string) => String(s).trim()).join(' ')
-      : '';
-  if (fromForm) return capitalizeWords(fromForm);
-  const rel = apt?.relative;
-  if (rel?.first_name != null || rel?.last_name != null) {
-    const parts = [rel.first_name, rel.last_name].filter(Boolean).map((s: string) => String(s).trim());
-    return capitalizeWords(parts.join(' '));
-  }
-  return '';
+  return patientRdvPatientHeadline(apt);
 }
 
 function displayAddress(apt: any) {
-  const a = apt?.address;
-  if (!a) return '—';
-  if (typeof a === 'object' && a?.label) return a.label;
-  return String(a);
-}
-
-function typeIconRingClass(apt: any): string {
-  if (apt?.type === 'blood_test') {
-    return 'bg-red-50 text-red-600 ring-red-200/80 dark:bg-red-950/40 dark:text-red-400 dark:ring-red-900/50';
-  }
-  return 'bg-sky-50 text-sky-600 ring-sky-200/80 dark:bg-sky-950/40 dark:text-sky-400 dark:ring-sky-900/50';
-}
-
-function formatAvailability(availability: string | object | null | undefined): string {
-  if (availability == null) return '';
-  try {
-    let avail: any = availability;
-    if (typeof availability === 'string') {
-      const trimmed = availability.trim();
-      if (!trimmed) return '';
-      avail = JSON.parse(trimmed);
-    }
-    if (!avail || typeof avail !== 'object') return '';
-    if (avail.type === 'all_day') return 'Toute la journée';
-    if (avail.type === 'custom' && Array.isArray(avail.range) && avail.range.length >= 2) {
-      const start = Math.floor(Number(avail.range[0]));
-      const end = Math.floor(Number(avail.range[1]));
-      if (Number.isNaN(start) || Number.isNaN(end)) return '';
-      return `${start}h00 - ${end}h00`;
-    }
-  } catch {
-    // ignore
-  }
-  return '';
-}
-
-function getCreneauHoraireLabel(appointment: any): string {
-  const availability = appointment.form_data?.availability;
-  const formatted = formatAvailability(availability);
-  if (formatted) return formatted;
-  if (appointment.scheduled_at) {
-    try {
-      const d = new Date(appointment.scheduled_at);
-      return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      // ignore
-    }
-  }
-  return 'Non précisé';
+  const line = patientRdvAddressLine(apt);
+  return line ? line : '—';
 }
 
 /** Retourne les lignes "Qui s'occupe" : labo + préleveur (les deux si présents), ou infirmier */
@@ -577,44 +477,14 @@ function careTeamLines(apt: any): { icon: string; label: string; name: string }[
   return lines;
 }
 
-function statusBadgeClass(status: string) {
-  const map: Record<string, string> = {
-    pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
-    confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
-    planned: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200',
-    in_progress: 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200',
-    inProgress: 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200',
-    completed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
-    cancelled: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-    canceled: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-    expired: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-    refused: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
-  };
-  return map[status] || 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
-}
-
-function getStatusLabel(status: string | undefined | null) {
-  const labels: Record<string, string> = {
-    pending: 'En attente',
-    confirmed: 'Confirmé',
-    planned: 'Planifié',
-    in_progress: 'En cours',
-    inProgress: 'En cours',
-    completed: 'Terminé',
-    cancelled: 'Annulé',
-    canceled: 'Annulé',
-    expired: 'Expiré',
-    refused: 'Refusé',
-  };
-  return labels[status ?? ''] ?? status ?? '—';
-}
-
 function refreshPatientAppointments() {
   fetchAppointments({ page: 1, limit: PATIENT_LIST_LIMIT });
 }
 
 onMounted(() => {
+  showPersonalizedPatientWelcome.value = true;
   refreshPatientAppointments();
+  loadPatientCareCategories();
 });
 
 onActivated(() => {

@@ -247,6 +247,16 @@ export const useAuth = () => {
       
       // Charger le token
       token.value = storedToken;
+
+      // Hydrater tout de suite depuis le cache pour éviter un flash UI "invité"
+      // (layouts qui testent `isAuthenticated && user` pendant l’appel /auth/me).
+      if (storedUser) {
+        try {
+          user.value = JSON.parse(storedUser);
+        } catch {
+          localStorage.removeItem('auth_user');
+        }
+      }
       
       // Toujours vérifier que le token est valide en appelant l'API
       // Si on a un token mais pas d'infos utilisateur complètes, les récupérer

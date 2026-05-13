@@ -170,17 +170,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         
-        // Lire le fichier source
-        // Les fichiers sont stockés dans uploads/medical/ à la racine du projet
-        // __DIR__ est backend/api/medical-documents, donc on remonte jusqu'à la racine du projet
-        $projectRoot = realpath(__DIR__ . '/../../../../');
-        if ($projectRoot === false) {
-            $projectRoot = __DIR__ . '/../../../../';
+        // Fichiers réels : backend/uploads/medical/… (identique à medical-documents/index.php)
+        $backendDir = realpath(__DIR__ . '/../../');
+        if ($backendDir === false) {
+            $backendDir = __DIR__ . '/../../';
         }
-        $sourceFilePath = $projectRoot . '/' . ltrim($sourceDoc['file_path'], '/');
-        $sourceFilePath = realpath($sourceFilePath);
+        $filePathFromDb = ltrim((string) ($sourceDoc['file_path'] ?? ''), '/');
+        $sourceFilePath = rtrim($backendDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filePathFromDb;
+        $resolvedSrc = realpath($sourceFilePath);
+        if ($resolvedSrc !== false) {
+            $sourceFilePath = $resolvedSrc;
+        }
 
-        if (!file_exists($sourceFilePath)) {
+        if (!is_file($sourceFilePath)) {
             http_response_code(404);
             echo json_encode(['success' => false, 'error' => 'Fichier source introuvable']);
             exit;
@@ -193,15 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         
-        // Créer un nouveau dossier pour le document copié
-        // Les fichiers sont stockés dans uploads/medical/ à la racine du projet
-        // __DIR__ est backend/api/medical-documents, donc on remonte jusqu'à la racine du projet
-        // backend/api/medical-documents -> backend/api -> backend -> racine
-        $projectRoot = realpath(__DIR__ . '/../../../../');
-        if ($projectRoot === false) {
-            $projectRoot = __DIR__ . '/../../../../';
-        }
-        $uploadDir = $projectRoot . '/uploads/medical/';
+        $uploadDir = rtrim($backendDir, DIRECTORY_SEPARATOR) . '/uploads/medical/';
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }
@@ -271,7 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]
         );
         
-        echo json_encode([
+        $payloadJson = json_encode([
             'success' => true,
             'data' => [
                 'id' => $newId,
@@ -280,6 +274,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'mime_type' => $sourceDoc['mime_type'],
             ],
         ]);
+        if ($payloadJson === false) {
+            throw new Exception('Erreur encodage JSON (réponse copie document)');
+        }
+        header('Content-Length: ' . strlen($payloadJson));
+        echo $payloadJson;
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode([

@@ -1,9 +1,12 @@
 <template>
-  <div class="space-y-8">
-    <TitleDashboard
-      title="Ordonnances"
-      description="Documents générés ou enregistrés pour vos patients, liés à un rendez-vous."
-    />
+  <AppPageShell class="space-y-8">
+    <template #pageHeader>
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Ordonnances"
+        description="Documents générés ou enregistrés pour vos patients, liés à un rendez-vous."
+      />
+    </template>
 
     <UCard class="overflow-hidden ring-1 ring-default/60">
       <template #header>
@@ -184,6 +187,9 @@
                 </p>
               </div>
             </template>
+            <template #empty="{ searchTerm }">
+              <PatientSelectMenuEmpty :search-term="searchTerm" :suggest-new-patient-option="false" />
+            </template>
           </USelectMenu>
         </UFormField>
         <UFormField v-if="selectedPatientId" label="Rendez-vous" name="appointment">
@@ -211,7 +217,7 @@
         />
       </div>
     </UCard>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

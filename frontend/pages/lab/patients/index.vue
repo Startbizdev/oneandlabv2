@@ -1,55 +1,58 @@
 <template>
-  <div class="space-y-4">
-    <TitleDashboard
+  <AppPageShell class="space-y-4">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       title="Mes patients"
       description="Patients du laboratoire et des sous-comptes (liste et prises de sang)."
-      icon="i-lucide-users"
     >
       <template #actions>
         <UButton color="primary" icon="i-lucide-plus" to="/lab/patients/new">
           Ajouter un patient
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
-    <div class="rounded-xl border border-gray-200/80 dark:border-gray-800 bg-white/90 dark:bg-gray-900/50 px-3 py-2.5 sm:px-3.5 sm:py-3 shadow-sm">
-      <UInput
-        v-model="searchQuery"
-        placeholder="Nom, email, téléphone…"
-        icon="i-lucide-search"
-        size="md"
-        class="w-full min-w-0"
-        :ui="{ rounded: 'rounded-lg' }"
-        clearable
+    <div class="space-y-4 sm:space-y-5">
+      <div class="rounded-xl border border-gray-200/80 dark:border-gray-800 bg-white/90 dark:bg-gray-900/50 px-3 py-2.5 sm:px-3.5 sm:py-3 shadow-sm">
+        <UInput
+          v-model="searchQuery"
+          placeholder="Nom, email, téléphone…"
+          icon="i-lucide-search"
+          size="md"
+          class="w-full min-w-0"
+          :ui="{ rounded: 'rounded-lg' }"
+          clearable
+        />
+      </div>
+
+      <div v-if="loading" class="flex flex-col items-center justify-center py-20">
+        <UIcon name="i-lucide-loader-2" class="w-10 h-10 animate-spin text-primary-500 mb-4" />
+        <p class="text-[15px] text-gray-500 dark:text-gray-400 font-medium">Chargement de la liste...</p>
+      </div>
+
+      <UEmpty
+        v-else-if="!loading && filteredPatients.length === 0"
+        icon="i-lucide-users"
+        title="Aucun patient trouvé"
+        description="Aucun résultat pour votre recherche ou ajoutez votre premier patient."
+        class="py-12"
+      >
+        <template #actions>
+          <UButton to="/lab/patients/new" color="primary" icon="i-lucide-plus">Ajouter un patient</UButton>
+        </template>
+      </UEmpty>
+
+      <PatientListCompactGrid
+        v-else
+        :patients="filteredPatients"
+        base-path="/lab"
+        show-delete
+        :current-user-id="user?.id ?? null"
+        @delete="onDeletePatient"
       />
     </div>
-
-    <div v-if="loading" class="flex flex-col items-center justify-center py-20">
-      <UIcon name="i-lucide-loader-2" class="w-10 h-10 animate-spin text-primary-500 mb-4" />
-      <p class="text-[15px] text-gray-500 dark:text-gray-400 font-medium">Chargement de la liste...</p>
-    </div>
-
-    <UEmpty
-      v-else-if="!loading && filteredPatients.length === 0"
-      icon="i-lucide-users"
-      title="Aucun patient trouvé"
-      description="Aucun résultat pour votre recherche ou ajoutez votre premier patient."
-      class="py-12"
-    >
-      <template #actions>
-        <UButton to="/lab/patients/new" color="primary" icon="i-lucide-plus">Ajouter un patient</UButton>
-      </template>
-    </UEmpty>
-
-    <PatientListCompactGrid
-      v-else
-      :patients="filteredPatients"
-      base-path="/lab"
-      show-delete
-      :current-user-id="user?.id ?? null"
-      @delete="onDeletePatient"
-    />
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

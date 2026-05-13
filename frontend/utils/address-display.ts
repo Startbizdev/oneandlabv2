@@ -1,3 +1,32 @@
+import { parseRawPatientAddress } from '~/utils/patient-address-rdv';
+
+/**
+ * Libellé d’affichage pour un champ adresse brut (objet API, chaîne libre ou JSON stringifié).
+ */
+export function labelFromAppointmentAddressField(raw: unknown): string {
+  const p = parseRawPatientAddress(raw);
+  return (p?.label ?? '').trim();
+}
+
+function formDataAddressStreet(raw: unknown): string {
+  if (raw == null) return '';
+  if (typeof raw === 'object' && !Array.isArray(raw) && raw !== null) {
+    const s = (raw as { street?: string }).street;
+    return typeof s === 'string' ? s.trim() : '';
+  }
+  if (typeof raw === 'string') {
+    const t = raw.trim();
+    if (!t.startsWith('{')) return '';
+    try {
+      const j = JSON.parse(t) as { street?: string };
+      return typeof j.street === 'string' ? j.street.trim() : '';
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
+
 /**
  * Affichage court avec arrondissement pour Paris (75xxx) à partir d'une ligne d'adresse libre.
  */
@@ -89,8 +118,49 @@ export function mergeStreetIntoAddressDisplayLine(primary: string, street: strin
 
 type AppointmentLikeForAddress = {
   address?: string | { label?: string } | null;
-  form_data?: { address?: string | { label?: string; street?: string } | null } | null;
+  form_data?: {
+    address?: string | { label?: string; street?: string; postcode?: string; city?: string } | null;
+  } | null;
 };
+
+function extractFrenchPostcodeFromLine(line: string): string | null {
+  const m = /\b(\d{5})\b/.exec(line);
+  return m ? m[1]! : null;
+}
+
+function formDataAddressPostcodeCity(fd: unknown): { postcode: string; city: string } | null {
+  if (fd == null || typeof fd !== 'object' || Array.isArray(fd)) return null;
+  const o = fd as { postcode?: unknown; city?: unknown };
+  const raw = o.postcode;
+  const pc = typeof raw === 'string' ? raw.replace(/\s/g, '').trim() : '';
+  if (!/^\d{5}$/.test(pc)) return null;
+  const city = typeof o.city === 'string' ? o.city.trim() : '';
+  return { postcode: pc, city };
+}
+
+/**
+ * Libellé d’arrondissement à partir du code postal (Paris, Lyon, Marseille uniquement ; plages CP officielles).
+ */
+export function frenchArrondissementLabelFromPostcode(postcode: string): string | null {
+  const pc = (postcode || '').replace(/\D/g, '').slice(0, 5);
+  if (pc.length !== 5) return null;
+  if (pc.startsWith('75')) {
+    const n = parseInt(pc.slice(3, 5), 10);
+    if (n >= 1 && n <= 20) return n === 1 ? '1er arrondissement' : `${n}e arrondissement`;
+    return null;
+  }
+  if (pc >= '69001' && pc <= '69009') {
+    const n = parseInt(pc.slice(3, 5), 10);
+    if (n >= 1 && n <= 9) return n === 1 ? '1er arrondissement' : `${n}e arrondissement`;
+    return null;
+  }
+  if (pc >= '13001' && pc <= '13016') {
+    const n = parseInt(pc.slice(3, 5), 10);
+    if (n >= 1 && n <= 16) return n === 1 ? '1er arrondissement' : `${n}e arrondissement`;
+    return null;
+  }
+  return null;
+}
 
 /**
  * Ligne d’adresse pour listes (infirmier « Mes demandes », etc.) : `address` déchiffrée + enrichissement `form_data.address.street`.
@@ -99,24 +169,31 @@ export function appointmentListAddressLine(apt: AppointmentLikeForAddress | null
   if (!apt) return '';
 
   const fdAddr = apt.form_data?.address;
-  const streetFromForm =
-    fdAddr && typeof fdAddr === 'object' && typeof (fdAddr as { street?: string }).street === 'string'
-      ? (fdAddr as { street: string }).street.trim()
-      : '';
+  const streetFromForm = formDataAddressStreet(fdAddr);
 
-  let primary = '';
-  const root = apt.address;
-  if (typeof root === 'string') primary = root.trim();
-  else if (root && typeof root === 'object' && typeof (root as { label?: string }).label === 'string') {
-    primary = String((root as { label: string }).label).trim();
-  }
-
-  if (!primary && fdAddr) {
-    if (typeof fdAddr === 'string') primary = fdAddr.trim();
-    else if (typeof fdAddr === 'object' && typeof (fdAddr as { label?: string }).label === 'string') {
-      primary = String((fdAddr as { label: string }).label).trim();
-    }
-  }
+  let primary = labelFromAppointmentAddressField(apt.address);
+  if (!primary) primary = labelFromAppointmentAddressField(fdAddr);
 
   return mergeStreetIntoAddressDisplayLine(primary, streetFromForm);
+}
+
+/**
+ * Ligne d’adresse pour la fiche RDV : liste + code postal/ville issus de `form_data.address` si absents du libellé.
+ * On n’ajoute pas « 1er / 7e arrondissement » après le CP : à Paris, Lyon et Marseille le code postal (75007, 13007…)
+ * identifie déjà l’arrondissement et le répéter alourdit l’affichage.
+ */
+export function appointmentDetailAddressLine(apt: AppointmentLikeForAddress | null | undefined): string {
+  let line = appointmentListAddressLine(apt).trim();
+  if (!line) return '';
+
+  let pc = extractFrenchPostcodeFromLine(line);
+  const fdMeta = formDataAddressPostcodeCity(apt?.form_data?.address);
+  if (!pc && fdMeta) {
+    pc = fdMeta.postcode;
+    const city = fdMeta.city;
+    const alreadyHasCity = city ? line.includes(city) : true;
+    line = `${line}, ${pc}${!alreadyHasCity && city ? ` ${city}` : ''}`;
+  }
+
+  return line;
 }

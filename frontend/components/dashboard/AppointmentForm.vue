@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-full bg-gray-50/50 dark:bg-gray-950 pb-20">
+  <div class="min-h-full bg-app-canvas/50 dark:bg-gray-950 pb-20">
     <!-- Header séparateur collé en haut sans marge (comme admin/users) -->
     <div class="-mx-4 -mt-4 md:-mx-6 md:-mt-6 mb-6 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
       <div class="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -116,6 +116,9 @@
                       {{ item.metaLine }}
                     </p>
                   </div>
+                </template>
+                <template #empty="{ searchTerm }">
+                  <PatientSelectMenuEmpty :search-term="searchTerm" />
                 </template>
               </USelectMenu>
             </UFormField>
@@ -282,7 +285,18 @@
                     :items="preferredNurseGenderOptions"
                     size="md"
                     variant="list"
-                  />
+                  >
+                    <template #label="{ item }">
+                      <span class="inline-flex items-center gap-2">
+                        <UIcon
+                          :name="iconForPreferredNurseGenderPreference(item.value)"
+                          class="size-4 shrink-0 text-gray-500 dark:text-gray-400"
+                          aria-hidden="true"
+                        />
+                        <span>{{ item.label }}</span>
+                      </span>
+                    </template>
+                  </URadioGroup>
                 </UFormField>
               </template>
 
@@ -293,13 +307,34 @@
                       v-model="form.form_data.care_options[opt.option_key]"
                       :items="(opt.options || []).map(o => ({ label: o.label, value: o.value }))"
                       value-key="value"
-                      placeholder="Choisir"
+                      placeholder="Choisissez une option"
                       size="md"
                       class="w-full"
+                      @update:model-value="(v: unknown) => clearAutreDetailUnlessSelected(form.form_data.care_options, opt.option_key, v)"
+                    />
+                  </UFormField>
+                  <UFormField
+                    v-if="opt.field_type === 'select' && categorySelectHasAutreOption(opt) && isAutreSelectValue(form.form_data.care_options[opt.option_key])"
+                    label="Précisez"
+                    :name="`care_${careAutreDetailKey(opt.option_key)}`"
+                    required
+                  >
+                    <CareAutreDetailInput
+                      v-model="form.form_data.care_options[careAutreDetailKey(opt.option_key)]"
+                      :category-name="careCategoryNameSingleForm"
+                      :category-type="form.type"
+                      placeholder="Tapez ou choisissez une suggestion"
+                      size="md"
                     />
                   </UFormField>
                   <UFormField v-else-if="opt.field_type === 'text'" :label="opt.label" :name="`care_${opt.option_key}`" :required="!!opt.is_required">
-                    <UInput v-model="form.form_data.care_options[opt.option_key]" placeholder="" size="md" class="w-full" />
+                    <CareAutreDetailInput
+                      v-model="form.form_data.care_options[opt.option_key]"
+                      :category-name="careCategoryNameSingleForm"
+                      :category-type="form.type"
+                      placeholder="Tapez ou choisissez une suggestion"
+                      size="md"
+                    />
                   </UFormField>
                   <UFormField v-else-if="opt.field_type === 'number'" :label="opt.label" :name="`care_${opt.option_key}`" :required="!!opt.is_required">
                     <UInput v-model.number="form.form_data.care_options[opt.option_key]" type="number" placeholder="" size="md" class="w-full" />
@@ -412,7 +447,18 @@
                       :items="preferredNurseGenderOptions"
                       size="md"
                       variant="list"
-                    />
+                    >
+                      <template #label="{ item }">
+                        <span class="inline-flex items-center gap-2">
+                          <UIcon
+                            :name="iconForPreferredNurseGenderPreference(item.value)"
+                            class="size-4 shrink-0 text-gray-500 dark:text-gray-400"
+                            aria-hidden="true"
+                          />
+                          <span>{{ item.label }}</span>
+                        </span>
+                      </template>
+                    </URadioGroup>
                   </UFormField>
                 </template>
 
@@ -423,13 +469,34 @@
                         v-model="block.care_options[opt.option_key]"
                         :items="(opt.options || []).map(o => ({ label: o.label, value: o.value }))"
                         value-key="value"
-                        placeholder="Choisir"
+                        placeholder="Choisissez une option"
                         size="md"
                         class="w-full"
+                        @update:model-value="(v: unknown) => clearAutreDetailUnlessSelected(block.care_options, opt.option_key, v)"
+                      />
+                    </UFormField>
+                    <UFormField
+                      v-if="opt.field_type === 'select' && categorySelectHasAutreOption(opt) && isAutreSelectValue(block.care_options[opt.option_key])"
+                      label="Précisez"
+                      :name="`care_${block.id}_${careAutreDetailKey(opt.option_key)}`"
+                      required
+                    >
+                      <CareAutreDetailInput
+                        v-model="block.care_options[careAutreDetailKey(opt.option_key)]"
+                        :category-name="careCategoryNameForBlock(block)"
+                        :category-type="form.type"
+                        placeholder="Tapez ou choisissez une suggestion"
+                        size="md"
                       />
                     </UFormField>
                     <UFormField v-else-if="opt.field_type === 'text'" :label="opt.label" :name="`care_${block.id}_${opt.option_key}`" :required="!!opt.is_required">
-                      <UInput v-model="block.care_options[opt.option_key]" placeholder="" size="md" class="w-full" />
+                      <CareAutreDetailInput
+                        v-model="block.care_options[opt.option_key]"
+                        :category-name="careCategoryNameForBlock(block)"
+                        :category-type="form.type"
+                        placeholder="Tapez ou choisissez une suggestion"
+                        size="md"
+                      />
                     </UFormField>
                     <UFormField v-else-if="opt.field_type === 'number'" :label="opt.label" :name="`care_${block.id}_${opt.option_key}`" :required="!!opt.is_required">
                       <UInput v-model.number="block.care_options[opt.option_key]" type="number" placeholder="" size="md" class="w-full" />
@@ -603,7 +670,7 @@
             <UFormField
               label="Laboratoire ou sous-compte"
               name="assigned_lab_id"
-              :help="isLabForm ? 'Votre compte laboratoire ou un sous-compte qui réalisera la prise de sang.' : 'Optionnel : assignez ce RDV à un labo pour la prise de sang.'"
+              :help="isLabForm ? 'Votre compte laboratoire ou un sous-compte qui réalisera le prélèvement.' : 'Optionnel : assignez ce RDV à un labo pour le prélèvement.'"
             >
               <USelectMenu
                 v-model="form.assigned_lab_id"
@@ -818,7 +885,12 @@ import {
   AVAILABILITY_MAX_HOUR_NURSING,
 } from '~/constants/availability-slot';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
-import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
+import { isBloodTestAppointment, isNursingAppointment, iconForPreferredNurseGenderPreference } from '~/utils/appointment-type-rules';
+import {
+  careAutreDetailKey,
+  categorySelectHasAutreOption,
+  isAutreSelectValue,
+} from '~/utils/care-category-autre-detail';
 import DashboardPrescriptionSection from '~/components/dashboard/PrescriptionSection.vue';
 
 // --- TYPES & INTERFACES ---
@@ -855,7 +927,7 @@ const appointmentsBasePath = computed(() => `${props.basePath}/appointments`);
 const NEW_PATIENT_VALUE = '__new_patient__';
 
 const serviceTypes = [
-  { value: 'blood_test', label: 'Prise de sang', description: 'Prélèvements à domicile', icon: 'i-lucide-droplet' },
+  { value: 'blood_test', label: 'Prélèvement', description: 'À domicile', icon: 'i-lucide-droplet' },
   { value: 'nursing', label: 'Soins infirmiers', description: 'Pansements, injections...', icon: 'i-lucide-stethoscope' },
 ];
 
@@ -1029,6 +1101,41 @@ function getCareOptionsForBlock(block: CareBlock) {
   const cat = categoriesWithOptions.value.find((c) => String(c.id) === String(block.category_id));
   if (!cat?.options || !Array.isArray(cat.options)) return [];
   return [...cat.options].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+}
+
+function clearAutreDetailUnlessSelected(
+  co: Record<string, string | number>,
+  optionKey: string,
+  value: unknown,
+): void {
+  if (isAutreSelectValue(value)) return;
+  const dk = careAutreDetailKey(optionKey);
+  if (co[dk] !== undefined && co[dk] !== '') co[dk] = '';
+}
+
+function resolvedCategoryId(raw: unknown): string {
+  if (raw == null || raw === '') return '';
+  if (typeof raw === 'object' && raw !== null) {
+    const o = raw as { value?: unknown; id?: unknown };
+    const v = o.value ?? o.id;
+    if (v != null && String(v).trim() !== '') return String(v);
+    return '';
+  }
+  return String(raw).trim();
+}
+
+const careCategoryNameSingleForm = computed(() => {
+  const id = resolvedCategoryId(form.form_data.category_id);
+  if (!id) return '';
+  const row = categoryOptions.value.find((c) => String(c.value) === id);
+  return row?.label ?? '';
+});
+
+function careCategoryNameForBlock(block: CareBlock): string {
+  const id = String(block.category_id || '').trim();
+  if (!id) return '';
+  const row = categoryOptions.value.find((c) => String(c.value) === id);
+  return row?.label ?? '';
 }
 
 function addCareBlock() {
@@ -1819,6 +1926,19 @@ function validateMultiCareBlocks(): ClientValidationFail | null {
         };
       }
     }
+    for (const opt of opts) {
+      if (opt.field_type !== 'select' || !categorySelectHasAutreOption(opt)) continue;
+      if (!isAutreSelectValue(block.care_options[opt.option_key])) continue;
+      const dk = careAutreDetailKey(opt.option_key);
+      const d = block.care_options[dk];
+      if (d === '' || d == null || String(d).trim() === '') {
+        return {
+          sectionId: 'appointment-form-section-intervention',
+          title: 'Précision requise',
+          description: `${prefix} : précisez « ${opt.label} » (choix Autre).`,
+        };
+      }
+    }
 
     if (isBloodTestAppointment(form.type) && block.blood_test_type === 'multiple') {
       if (!block.duration_days) {
@@ -1893,6 +2013,20 @@ function validateAppointmentFormClient(): ClientValidationFail | null {
         sectionId: 'appointment-form-section-intervention',
         title: 'Champ requis',
         description: `Renseignez « ${opt.label} » pour ce type de soin.`,
+      };
+    }
+  }
+
+  for (const opt of categoryOptionsForCare.value) {
+    if (opt.field_type !== 'select' || !categorySelectHasAutreOption(opt)) continue;
+    if (!isAutreSelectValue(form.form_data.care_options[opt.option_key])) continue;
+    const dk = careAutreDetailKey(opt.option_key);
+    const d = form.form_data.care_options[dk];
+    if (d === '' || d == null || String(d).trim() === '') {
+      return {
+        sectionId: 'appointment-form-section-intervention',
+        title: 'Précision requise',
+        description: `Précisez « ${opt.label} » (choix Autre).`,
       };
     }
   }
@@ -2026,7 +2160,7 @@ async function submitMultiCareBatch(
   if (isBloodTestAppointment(form.type)) {
     const firstBlock = careBlocks.value[0];
     if (!firstBlock) {
-      throw new Error('Aucun acte de prise de sang à créer');
+      throw new Error('Aucun acte de prélèvement à créer');
     }
     const bloodTestItems = careBlocks.value.map((block, index) => {
       const categoryId = String(block.category_id || '').trim();
@@ -2157,7 +2291,11 @@ async function submitMultiCareBatch(
     if (showPrescriptionAfterCreate.value && prescriptionTextDuringCreate.value?.trim()) {
       await generateAndAttachPrescriptionDuringCreate(createdIds[0]!);
     }
-    await router.push(`${props.basePath}/appointments/${createdIds[0]!}`);
+    const dest =
+      createdIds.length > 1
+        ? `${props.basePath}/appointments`
+        : `${props.basePath}/appointments/${createdIds[0]!}`;
+    await router.push(dest);
   } else {
     throw new Error(failures.join(' ') || 'Aucun rendez-vous créé');
   }
@@ -2407,7 +2545,7 @@ watch(selectedPatientId, async (id) => {
 async function runPatientEmailLookup(emailTrim: string) {
   if (!isCreate.value || selectedPatientId.value !== NEW_PATIENT_VALUE) return;
   if (!canCreatePatientForAppointment.value) return;
-  if (!(isProForm.value || isLabForm.value || isSubaccountForm.value || props.basePath === '/admin')) return;
+  if (!(isProForm.value || isNurseForm.value || isLabForm.value || isSubaccountForm.value || props.basePath === '/admin')) return;
   emailLookupLoading.value = true;
   try {
     const res = await apiFetch(`/patients/lookup?email=${encodeURIComponent(emailTrim)}`, { method: 'GET' });
@@ -2438,7 +2576,7 @@ watch(
   (em) => {
     if (!isCreate.value || selectedPatientId.value !== NEW_PATIENT_VALUE) return;
     if (!canCreatePatientForAppointment.value) return;
-    if (!(isProForm.value || isLabForm.value || isSubaccountForm.value || props.basePath === '/admin')) return;
+    if (!(isProForm.value || isNurseForm.value || isLabForm.value || isSubaccountForm.value || props.basePath === '/admin')) return;
     if (skipEmailLookupOnce.value) {
       skipEmailLookupOnce.value = false;
       return;

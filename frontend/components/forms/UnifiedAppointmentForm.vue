@@ -204,10 +204,31 @@
                   placeholder="Choisissez une option"
                   size="xl"
                   class="w-full"
+                  @update:model-value="(v: unknown) => clearAutreDetailUnlessSelected(formDataByService[ns.id].care_options!, opt.option_key, v)"
+                />
+              </UFormField>
+              <UFormField
+                v-if="opt.field_type === 'select' && categorySelectHasAutreOption(opt) && isAutreSelectValue(formDataByService[ns.id].care_options![opt.option_key])"
+                label="Précisez"
+                :name="`care_${ns.id}_${careAutreDetailKey(opt.option_key)}`"
+                required
+              >
+                <CareAutreDetailInput
+                  v-model="formDataByService[ns.id].care_options![careAutreDetailKey(opt.option_key)]"
+                  :category-name="ns.name"
+                  :category-type="ns.type"
+                  placeholder="Tapez ou choisissez une suggestion"
+                  size="xl"
                 />
               </UFormField>
               <UFormField v-else-if="opt.field_type === 'text'" :label="opt.label" :name="`care_${ns.id}_${opt.option_key}`" :required="!!opt.is_required">
-                <UInput v-model="formDataByService[ns.id].care_options![opt.option_key]" placeholder="" size="xl" class="w-full" />
+                <CareAutreDetailInput
+                  v-model="formDataByService[ns.id].care_options![opt.option_key]"
+                  :category-name="ns.name"
+                  :category-type="ns.type"
+                  placeholder="Tapez ou choisissez une suggestion"
+                  size="xl"
+                />
               </UFormField>
               <UFormField v-else-if="opt.field_type === 'number'" :label="opt.label" :name="`care_${ns.id}_${opt.option_key}`" :required="!!opt.is_required">
                 <UInput v-model.number="formDataByService[ns.id].care_options![opt.option_key]" type="number" placeholder="" size="xl" class="w-full" />
@@ -226,10 +247,31 @@
               placeholder="Choisissez une option"
               size="xl"
               class="w-full"
+              @update:model-value="(v: unknown) => clearAutreDetailUnlessSelected(formDataByService[svc.id].care_options!, opt.option_key, v)"
+            />
+          </UFormField>
+          <UFormField
+            v-if="opt.field_type === 'select' && categorySelectHasAutreOption(opt) && isAutreSelectValue(formDataByService[svc.id].care_options![opt.option_key])"
+            label="Précisez"
+            :name="`care_${svc.id}_${careAutreDetailKey(opt.option_key)}`"
+            required
+          >
+            <CareAutreDetailInput
+              v-model="formDataByService[svc.id].care_options![careAutreDetailKey(opt.option_key)]"
+              :category-name="svc.name"
+              :category-type="svc.type"
+              placeholder="Tapez ou choisissez une suggestion"
+              size="xl"
             />
           </UFormField>
           <UFormField v-else-if="opt.field_type === 'text'" :label="opt.label" :name="`care_${svc.id}_${opt.option_key}`" :required="!!opt.is_required">
-            <UInput v-model="formDataByService[svc.id].care_options![opt.option_key]" placeholder="" size="xl" class="w-full" />
+            <CareAutreDetailInput
+              v-model="formDataByService[svc.id].care_options![opt.option_key]"
+              :category-name="svc.name"
+              :category-type="svc.type"
+              placeholder="Tapez ou choisissez une suggestion"
+              size="xl"
+            />
           </UFormField>
           <UFormField v-else-if="opt.field_type === 'number'" :label="opt.label" :name="`care_${svc.id}_${opt.option_key}`" :required="!!opt.is_required">
             <UInput v-model.number="formDataByService[svc.id].care_options![opt.option_key]" type="number" placeholder="" size="xl" class="w-full" />
@@ -755,6 +797,12 @@ import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { getBloodTestPremiumDayKind, type PremiumDayKind } from '~/utils/french-public-holidays';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
+import {
+  careAutreDetailKey,
+  categorySelectHasAutreOption,
+  isAutreSelectValue,
+  stripOrphanAutreDetailKeys,
+} from '~/utils/care-category-autre-detail';
 import { servicesRequiringOwnSlots } from '~/utils/dashboard-unified-rdv';
 
 const props = defineProps<{
@@ -797,6 +845,8 @@ const props = defineProps<{
   bookingWizardSection?: 'all' | 'slot-datetime' | 'documents' | 'personal';
   /** Représentant du lot courant (id service) quand `bookingWizardSection === 'slot-datetime'`. */
   activeSlotServiceId?: string | null;
+  /** Représentant du lot courant quand `bookingWizardSection === 'documents'` (une carte / une étape à la fois). */
+  activeDocumentsServiceId?: string | null;
   /** Parcours `/rendez-vous/nouveau` : onglet Horaire VIP + paiement Stripe (blood only, pas wizards pro). */
   patientBookingUrgencyStripe?: boolean;
 }>();
@@ -1291,6 +1341,33 @@ function getCategoryOptions(categoryId: string | null | undefined) {
   return opts.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 }
 
+function clearAutreDetailUnlessSelected(
+  co: Record<string, string | number>,
+  optionKey: string,
+  value: unknown,
+): void {
+  if (isAutreSelectValue(value)) return;
+  const dk = careAutreDetailKey(optionKey);
+  if (co[dk] !== undefined && co[dk] !== '') co[dk] = '';
+}
+
+function unifiedFormCareAutreValidationError(): string | null {
+  for (const svc of props.selectedServices) {
+    const co = formDataByService[svc.id]?.care_options;
+    if (!co) continue;
+    for (const opt of getCategoryOptions(svc.category_id)) {
+      if (opt.field_type !== 'select' || !categorySelectHasAutreOption(opt)) continue;
+      if (!isAutreSelectValue(co[opt.option_key])) continue;
+      const dk = careAutreDetailKey(opt.option_key);
+      const d = co[dk];
+      if (d === '' || d == null || String(d).trim() === '') {
+        return `« ${opt.label} » : précisez votre choix (Autre) — ${svc.name}`;
+      }
+    }
+  }
+  return null;
+}
+
 function getServiceFiles(svcId: string): Record<string, File> {
   return formDataByService[svcId]?.files ?? {};
 }
@@ -1580,6 +1657,16 @@ const handleSubmit = () => {
 };
 
 function commitBookingSubmit() {
+  const autreErr = unifiedFormCareAutreValidationError();
+  if (autreErr) {
+    useAppToast().add({
+      title: autreErr,
+      color: 'error',
+      icon: 'i-lucide-alert-circle',
+    });
+    return;
+  }
+
   const addressWithComplement = form.address ? { ...form.address, complement: form.address_complement || null } : null;
 
   const formDataByServiceSerialized: Record<string, ServiceFormData & { availability?: string; form_data_files?: Record<string, any> }> = {};
@@ -1621,6 +1708,12 @@ function commitBookingSubmit() {
               minute: typeof data?.urgentMinute === 'number' ? data.urgentMinute : 0,
             }
         : undefined;
+    const coSrc = data?.care_options;
+    let careOptSerialized: Record<string, string | number> | undefined;
+    if (coSrc && Object.keys(coSrc).length) {
+      careOptSerialized = { ...coSrc };
+      stripOrphanAutreDetailKeys(careOptSerialized);
+    }
     formDataByServiceSerialized[svc.id] = {
       ...data,
       ...(patientUrgentMeta ? { patient_urgency: patientUrgentMeta } : {}),
@@ -1629,7 +1722,7 @@ function commitBookingSubmit() {
       scheduled_at: scheduledAt,
       files: mergedFiles,
       form_data_files: filesData,
-      care_options: data?.care_options && Object.keys(data.care_options || {}).length ? data.care_options : undefined,
+      care_options: careOptSerialized && Object.keys(careOptSerialized).length ? careOptSerialized : undefined,
     } as any;
   }
 

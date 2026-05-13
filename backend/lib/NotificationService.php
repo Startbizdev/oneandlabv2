@@ -111,12 +111,12 @@ class NotificationService
                             $careType = $result['category_name'];
                         } else if (!empty($appointmentData['type'])) {
                             // Fallback sur le type si category_name n'est pas disponible
-                            $careType = $appointmentData['type'] === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers';
+                            $careType = $appointmentData['type'] === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers';
                         }
                     } catch (Exception $e) {
                         // En cas d'erreur, utiliser le type comme fallback
                         if (!empty($appointmentData['type'])) {
-                            $careType = $appointmentData['type'] === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers';
+                            $careType = $appointmentData['type'] === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers';
                         }
                     }
                 }
@@ -173,8 +173,7 @@ class NotificationService
         string $batchId,
         string $patientId,
         array $rows,
-        array $lastAppointmentData,
-        ?string $patientDisplayNameForNurseBlood = null
+        array $lastAppointmentData
     ): void {
         if ($rows === []) {
             return;
@@ -183,12 +182,11 @@ class NotificationService
         $n = count($rows);
         $ids = array_map(static fn ($r) => (string) ($r['id'] ?? ''), $rows);
 
-        $detailParts = [];
         $batchSummaries = [];
         foreach ($rows as $r) {
             $cat = isset($r['category_name']) && trim((string) $r['category_name']) !== ''
                 ? trim((string) $r['category_name'])
-                : ((($r['type'] ?? '') === 'blood_test') ? 'Prise de sang' : 'Soins infirmiers');
+                : ((($r['type'] ?? '') === 'blood_test') ? 'Prélèvement' : 'Soins infirmiers');
             $dtStr = '';
             if (!empty($r['scheduled_at'])) {
                 try {
@@ -197,14 +195,13 @@ class NotificationService
                     $dtStr = '';
                 }
             }
-            $detailParts[] = $dtStr !== '' ? "{$cat} le {$dtStr}" : $cat;
-            $batchSummaries[] = $dtStr !== '' ? "{$cat} — {$dtStr}" : $cat;
+            $batchSummaries[] = $dtStr !== '' ? "{$cat} · {$dtStr}" : $cat;
         }
 
         $titlePatient = $n > 1 ? 'Nouveaux rendez-vous créés' : 'Nouveau rendez-vous créé';
         $messagePatient = $n > 1
-            ? "Vos {$n} rendez-vous ont été créés avec succès : " . implode(' · ', $detailParts) . '.'
-            : 'Votre rendez-vous a été créé avec succès.';
+            ? "Vos {$n} rendez-vous sont enregistrés. Ouvrez votre espace pour le détail."
+            : 'Votre rendez-vous est enregistré.';
 
         try {
             $this->createNotification(
@@ -234,12 +231,12 @@ class NotificationService
         $first = $rows[0];
         $types = array_unique(array_map(static fn ($r) => (string) ($r['type'] ?? ''), $rows));
         $typeLabel = count($types) === 1 && ($types[0] === 'blood_test')
-            ? 'Prise de sang'
+            ? 'Prélèvement'
             : (count($types) === 1 ? 'Soins infirmiers' : 'Rendez-vous');
-        $titleAdmin = $n > 1 ? 'Nouveaux rendez-vous créés' : 'Nouveau rendez-vous créé';
+        $titleAdmin = $n > 1 ? 'Nouveaux RDV' : 'Nouveau RDV';
         $messageAdmin = $n > 1
-            ? "{$n} nouveaux rendez-vous de type « {$typeLabel} » ont été créés et nécessitent votre attention."
-            : "Un nouveau rendez-vous de type « {$typeLabel} » a été créé et nécessite votre attention.";
+            ? "{$n} RDV ({$typeLabel}) à traiter."
+            : "1 RDV ({$typeLabel}) à traiter.";
 
         try {
             $stmt = $this->db->prepare('
@@ -295,41 +292,9 @@ class NotificationService
         }
 
         if ($creatorRole === 'nurse' && $allBloodTest) {
-            $patient = trim((string) ($patientDisplayNameForNurseBlood ?? '')) !== ''
-                ? trim((string) $patientDisplayNameForNurseBlood)
-                : 'le patient';
-            require_once __DIR__ . '/../models/User.php';
-            $userModel = new User();
-            $lines = [];
-            foreach ($rows as $r) {
-                $labId = $r['assigned_lab_id'] ?? null;
-                $labName = null;
-                if (!empty($labId)) {
-                    $names = $userModel->getDisplayNamesByIds([(string) $labId]);
-                    $labName = $names[(string) $labId] ?? null;
-                }
-                $care = isset($r['category_name']) && trim((string) $r['category_name']) !== ''
-                    ? trim((string) $r['category_name'])
-                    : 'Prise de sang';
-                $when = '';
-                if (!empty($r['scheduled_at'])) {
-                    try {
-                        $when = (new DateTime((string) $r['scheduled_at']))->format('d/m/Y \à H\hi');
-                    } catch (Exception $e) {
-                        $when = '';
-                    }
-                }
-                $labPart = ($labName !== null && trim((string) $labName) !== '')
-                    ? 'Laboratoire « ' . trim((string) $labName) . ' »'
-                    : 'Un laboratoire';
-                $line = $labPart . ' : ' . $care;
-                if ($when !== '') {
-                    $line .= ' — ' . $when;
-                }
-                $lines[] = $line;
-            }
-            $message = 'Les laboratoires doivent confirmer ' . ($n > 1 ? "les {$n} rendez-vous" : 'le rendez-vous') . ' de '
-                . $patient . ' : ' . implode(' ; ', $lines) . '. Vous serez informé dès validation.';
+            $message = $n > 1
+                ? 'En attente laboratoire · ' . $n . ' rendez-vous. Vous serez informé dès validation.'
+                : 'En attente laboratoire. Vous serez informé dès validation.';
 
             try {
                 $this->createNotification(
@@ -346,54 +311,19 @@ class NotificationService
             return;
         }
 
-        $rdvSummaries = [];
-        foreach ($rows as $r) {
-            $aptType = (string) ($r['type'] ?? 'nursing');
-            $catName = isset($r['category_name']) && trim((string) $r['category_name']) !== ''
-                ? trim((string) $r['category_name'])
-                : (($aptType === 'blood_test') ? 'Prise de sang' : 'Soins infirmiers');
-            $datePart = '';
-            $timePart = '';
-            if (!empty($r['scheduled_at'])) {
-                try {
-                    $dt = new DateTime((string) $r['scheduled_at']);
-                    $datePart = $dt->format('d/m/Y');
-                    $timePart = $dt->format('H\hi');
-                } catch (Exception $e) {
-                    $datePart = '';
-                    $timePart = '';
-                }
-            }
-            $when = '';
-            if ($datePart !== '') {
-                $when = ' du ' . $datePart;
-                if ($timePart !== '') {
-                    $when .= ' à ' . $timePart;
-                }
-            }
-            $rdvSummaries[] = '« ' . $catName . ' »' . $when;
-        }
-
         try {
             if ($creatorRole !== '' && in_array($creatorRole, ['pro', 'nurse', 'lab', 'subaccount'], true)) {
                 $firstType = (string) ($first['type'] ?? 'nursing');
                 if ($firstType === 'blood_test') {
                     $title = 'En attente du laboratoire';
-                    $message = 'Vos ' . $n . ' demande' . ($n > 1 ? 's' : '') . ' de prise de sang '
-                        . implode(', ', $rdvSummaries)
-                        . ' ' . ($n > 1 ? 'sont' : 'est') . ' en attente. Le laboratoire concerné doit confirmer chaque rendez-vous. '
-                        . 'Vous serez informé dès qu\'ils auront été validés.';
+                    $message = 'Vos demandes de prise de sang (' . $n . ') sont en attente de confirmation.';
                 } else {
                     $title = 'En attente d’un infirmier';
-                    $message = 'Vos ' . $n . ' demande' . ($n > 1 ? 's' : '') . ' de soins infirmiers '
-                        . implode(', ', $rdvSummaries)
-                        . ' ' . ($n > 1 ? 'sont' : 'est') . ' en attente. Un infirmier doit accepter chaque rendez-vous. '
-                        . 'Vous serez informé dès acceptation.';
+                    $message = 'Vos demandes de soins (' . $n . ') sont en attente d’acceptation.';
                 }
             } else {
                 $title = 'Demande envoyée';
-                $message = 'Vos ' . $n . ' demandes de rendez-vous (' . implode('; ', $rdvSummaries) . ') ont bien été envoyées. '
-                    . 'Vous serez informé dès qu\'un professionnel aura accepté votre demande.';
+                $message = 'Vos ' . $n . ' demandes ont été envoyées. Vous serez informé dès acceptation.';
             }
             $this->createNotification(
                 $creatorId,
@@ -417,53 +347,20 @@ class NotificationService
         string $creatorId,
         string $appointmentId,
         string $appointmentType,
-        string $scheduledAt,
-        ?string $categoryName = null,
         ?string $creatorRole = null
     ): void {
         try {
-            $rdvSummary = $categoryName !== null && trim($categoryName) !== ''
-                ? trim($categoryName)
-                : (($appointmentType === 'blood_test') ? 'Prise de sang' : 'Soins infirmiers');
-            $datePart = '';
-            $timePart = '';
-            if ($scheduledAt !== '') {
-                try {
-                    $dt = new DateTime($scheduledAt);
-                    $datePart = $dt->format('d/m/Y');
-                    $timePart = $dt->format('H\hi');
-                } catch (Exception $e) {
-                    $datePart = '';
-                    $timePart = '';
-                }
-            }
-            $when = '';
-            if ($datePart !== '') {
-                $when = ' du ' . $datePart;
-                if ($timePart !== '') {
-                    $when .= ' à ' . $timePart;
-                }
-            }
-
             if ($creatorRole !== null && in_array($creatorRole, ['pro', 'nurse', 'lab', 'subaccount'], true)) {
                 if ($appointmentType === 'blood_test') {
-                    $message = 'Votre demande de prise de sang « ' . $rdvSummary . ' »' . $when
-                        . ' est en attente. Le laboratoire concerné doit confirmer le rendez-vous. '
-                        . 'Vous serez informé dès qu\'il aura été validé.';
                     $title = 'En attente du laboratoire';
+                    $message = 'Demande transmise. Confirmation laboratoire sous peu. Vous serez notifié.';
                 } else {
-                    $message = 'Votre demande de soins infirmiers « ' . $rdvSummary . ' »' . $when
-                        . ' est en attente. Un infirmier doit accepter le rendez-vous. '
-                        . 'Vous serez informé dès acceptation.';
                     $title = 'En attente d’un infirmier';
+                    $message = 'Demande transmise. En attente d’acceptation. Vous serez notifié.';
                 }
             } else {
-                $message = 'Votre demande de rendez-vous « ' . $rdvSummary . ' »';
-                if ($datePart !== '') {
-                    $message .= ' du ' . $datePart;
-                }
-                $message .= ' a bien été envoyée. Vous serez informé dès qu\'un professionnel aura accepté votre demande.';
                 $title = 'Demande envoyée';
+                $message = 'Demande enregistrée. Vous serez notifié dès acceptation.';
             }
 
             $this->createNotification(
@@ -484,15 +381,9 @@ class NotificationService
     public function notifyNurseBloodTestLabAwaitingConfirmation(
         string $nurseId,
         string $appointmentId,
-        string $patientDisplayName,
-        string $scheduledAt,
-        ?string $labDisplayName,
-        ?string $categoryName = null
+        string $scheduledAt
     ): void {
         try {
-            $care = $categoryName !== null && trim($categoryName) !== ''
-                ? trim($categoryName)
-                : 'Prise de sang';
             $when = '';
             if ($scheduledAt !== '') {
                 try {
@@ -502,20 +393,9 @@ class NotificationService
                     $when = '';
                 }
             }
-            $patient = trim($patientDisplayName) !== '' ? trim($patientDisplayName) : 'le patient';
-            if ($labDisplayName !== null && trim($labDisplayName) !== '') {
-                $lab = trim($labDisplayName);
-                $message = 'Le laboratoire « ' . $lab . ' » doit confirmer le rendez-vous (' . $care . ') de '
-                    . $patient;
-            } else {
-                $message = 'Un laboratoire doit confirmer le rendez-vous (' . $care . ') de ' . $patient;
-            }
-            if ($when !== '') {
-                $message .= ' prévu le ' . $when . '.';
-            } else {
-                $message .= '.';
-            }
-            $message .= ' Vous serez informé dès validation.';
+            $message = $when !== ''
+                ? 'En attente laboratoire · ' . $when
+                : 'En attente de confirmation par le laboratoire.';
 
             $this->createNotification(
                 $nurseId,
@@ -536,7 +416,7 @@ class NotificationService
     {
         $care = isset($appointmentData['category_name']) && trim((string) $appointmentData['category_name']) !== ''
             ? trim((string) $appointmentData['category_name'])
-            : ((($appointmentData['type'] ?? 'blood_test') === 'blood_test') ? 'Prise de sang' : 'Soins infirmiers');
+            : ((($appointmentData['type'] ?? 'blood_test') === 'blood_test') ? 'Prélèvement' : 'Soins infirmiers');
         $when = '';
         if (!empty($appointmentData['scheduled_at'])) {
             try {
@@ -546,11 +426,9 @@ class NotificationService
                 $when = '';
             }
         }
-        $message = 'Votre rendez-vous « ' . $care . ' » a été confirmé';
-        if ($when !== '') {
-            $message .= ' pour le ' . $when;
-        }
-        $message .= '. Retrouvez le détail et les consignes dans votre espace patient.';
+        $message = $when !== ''
+            ? 'Confirmé le ' . $when . '. Détail dans votre espace.'
+            : 'Rendez-vous confirmé. Détail dans votre espace.';
 
         $this->createNotification(
             $appointmentData['patient_id'],
@@ -596,7 +474,7 @@ class NotificationService
     ): void {
         $care = $categoryName !== null && trim($categoryName) !== ''
             ? trim($categoryName)
-            : (($appointmentType === 'blood_test') ? 'Prise de sang' : 'Soins infirmiers');
+            : (($appointmentType === 'blood_test') ? 'Prélèvement' : 'Soins infirmiers');
         $when = '';
         if ($scheduledAt !== null && $scheduledAt !== '') {
             try {
@@ -606,12 +484,9 @@ class NotificationService
                 $when = '';
             }
         }
-        $message = 'Votre demande « ' . $care . ' »' . $when . ' a été confirmée. Le patient a été informé.';
-        if ($creatorRole === 'nurse' || $creatorRole === 'lab' || $creatorRole === 'subaccount') {
-            $message .= ' Vous pouvez suivre le rendez-vous depuis votre espace.';
-        } else {
-            $message .= ' Le patient peut suivre le rendez-vous dans son espace.';
-        }
+        $message = in_array($creatorRole, ['nurse', 'lab', 'subaccount'], true)
+            ? 'Demande confirmée. Suivez le RDV dans votre espace.'
+            : 'Demande confirmée. Patient informé.';
         $this->createNotification(
             $creatorId,
             'appointment_confirmed_for_creator',
@@ -656,7 +531,6 @@ class NotificationService
             return;
         }
 
-        $lines = [];
         $batchSummaries = [];
         foreach ($batchRows as $r) {
             $cat = isset($r['category_name']) && trim((string) $r['category_name']) !== ''
@@ -670,10 +544,8 @@ class NotificationService
                     $when = '';
                 }
             }
-            $lines[] = $when !== '' ? '« ' . $cat . ' » le ' . $when : '« ' . $cat . ' »';
-            $batchSummaries[] = $when !== '' ? $cat . ' — ' . $when : $cat;
+            $batchSummaries[] = $when !== '' ? $cat . ' · ' . $when : $cat;
         }
-        $linesJoined = implode(' · ', $lines);
 
         $patientName = trim($patientFirstName . ' ' . $patientLastName);
         if ($patientName === '') {
@@ -692,7 +564,7 @@ class NotificationService
                 $patientId,
                 'appointment_confirmed',
                 'Rendez-vous confirmés',
-                "Vos {$n} rendez-vous ont été confirmés : {$linesJoined}. Retrouvez le détail dans votre espace patient.",
+                "Vos {$n} rendez-vous sont confirmés. Ouvrez votre espace patient pour le détail.",
                 $dataPayload
             );
         } catch (Exception $e) {
@@ -724,11 +596,7 @@ class NotificationService
 
         // Infirmier ayant accepté le lot (une seule notif)
         if (!empty($assignedNurseId)) {
-            $addr = trim($addressForMessage);
-            $msg = "Vous avez accepté le lot de {$n} soins pour {$patientName} : {$linesJoined}.";
-            if ($addr !== '') {
-                $msg .= ' Adresse : ' . $addr . '.';
-            }
+            $msg = "Lot de {$n} soins accepté pour {$patientName}.";
             try {
                 $this->createNotification(
                     (string) $assignedNurseId,
@@ -757,12 +625,9 @@ class NotificationService
             && $createdBy !== $actorIdStr
             && !$sameAsPatient
         ) {
-            $message = "La demande de {$n} soins infirmiers a été confirmée ({$linesJoined}). Le patient a été informé.";
-            if (in_array($creatorRole, ['nurse', 'lab', 'subaccount'], true)) {
-                $message .= ' Vous pouvez suivre les rendez-vous depuis votre espace.';
-            } else {
-                $message .= ' Le patient peut suivre les rendez-vous dans son espace.';
-            }
+            $message = in_array($creatorRole, ['nurse', 'lab', 'subaccount'], true)
+                ? "Lot de {$n} soins confirmé. Suivez dans votre espace."
+                : "Lot de {$n} soins confirmé. Patient informé.";
             try {
                 $this->createNotification(
                     $createdBy,
@@ -811,12 +676,11 @@ class NotificationService
             return;
         }
 
-        $lines = [];
         $batchSummaries = [];
         foreach ($batchRows as $r) {
             $cat = isset($r['category_name']) && trim((string) $r['category_name']) !== ''
                 ? trim((string) $r['category_name'])
-                : 'Prise de sang';
+                : 'Prélèvement';
             $when = '';
             if (!empty($r['scheduled_at'])) {
                 try {
@@ -825,10 +689,8 @@ class NotificationService
                     $when = '';
                 }
             }
-            $lines[] = $when !== '' ? '« ' . $cat . ' » le ' . $when : '« ' . $cat . ' »';
-            $batchSummaries[] = $when !== '' ? $cat . ' — ' . $when : $cat;
+            $batchSummaries[] = $when !== '' ? $cat . ' · ' . $when : $cat;
         }
-        $linesJoined = implode(' · ', $lines);
 
         $patientName = trim($patientFirstName . ' ' . $patientLastName);
         if ($patientName === '') {
@@ -846,7 +708,7 @@ class NotificationService
                 $patientId,
                 'appointment_confirmed',
                 'Rendez-vous confirmés',
-                "Vos {$n} rendez-vous de prélèvement ont été confirmés : {$linesJoined}. Retrouvez le détail dans votre espace patient.",
+                "Vos {$n} prélèvements sont confirmés. Ouvrez votre espace patient pour le détail.",
                 $dataPayload
             );
         } catch (Exception $e) {
@@ -877,7 +739,7 @@ class NotificationService
         }
 
         if (!empty($assignedLabId)) {
-            $msg = "Vous avez accepté le lot de {$n} prises de sang pour {$patientName} : {$linesJoined}.";
+            $msg = "Lot de {$n} prélèvements accepté pour {$patientName}.";
             try {
                 $this->createNotification(
                     (string) $assignedLabId,
@@ -905,7 +767,7 @@ class NotificationService
             && $createdBy !== $actorIdStr
             && !$sameAsPatient
         ) {
-            $message = "La demande de {$n} prises de sang a été confirmée ({$linesJoined}). Le patient a été informé.";
+            $message = "Lot de {$n} prélèvements confirmé. Le patient a été informé.";
             if (in_array($creatorRole, ['nurse', 'lab', 'subaccount'], true)) {
                 $message .= ' Vous pouvez suivre les rendez-vous depuis votre espace.';
             } else {
@@ -986,7 +848,7 @@ class NotificationService
             }
             $care = isset($appointmentData['category_name']) && trim((string) $appointmentData['category_name']) !== ''
                 ? trim((string) $appointmentData['category_name'])
-                : 'Prise de sang';
+                : 'Prélèvement';
             $when = '';
             if (!empty($appointmentData['scheduled_at'])) {
                 try {
@@ -1027,7 +889,7 @@ class NotificationService
     ): void {
         try {
             $kind = $appointmentType === 'blood_test' ? 'prise de sang' : 'soins infirmiers';
-            $care = ($categoryName !== null && trim($categoryName) !== '') ? trim($categoryName) : ($appointmentType === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers');
+            $care = ($categoryName !== null && trim($categoryName) !== '') ? trim($categoryName) : ($appointmentType === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers');
             $patient = trim($patientDisplayName) !== '' ? trim($patientDisplayName) : 'le patient';
             $message = 'Un rendez-vous de ' . $kind . ' (« ' . $care . ' ») pour ' . $patient;
             if ($scheduledLabel !== '') {
@@ -1166,7 +1028,7 @@ class NotificationService
         
         $careType = $appointmentData['category_name'] ?? (
             (isset($appointmentData['type']) && $appointmentData['type'] === 'blood_test')
-            ? 'Prise de sang'
+            ? 'Prélèvement'
             : 'Soins infirmiers'
         );
         $address = $appointmentData['address'] ?? '';
@@ -1484,7 +1346,7 @@ class NotificationService
                 EmailQueue::add('review_invitation', $patient['email'], [
                     'appointment_id' => $appointmentId,
                     'scheduled_at' => $appointment['scheduled_at'],
-                    'type' => $appointment['type'] === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers',
+                    'type' => $appointment['type'] === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers',
                 ]);
             }
         } catch (Exception $e) {

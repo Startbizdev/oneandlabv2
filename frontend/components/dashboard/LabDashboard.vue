@@ -23,6 +23,7 @@
       :appointments="todayAppointments"
       :loading="loading"
       :base-path="basePath"
+      :categories="careCategoriesForCards"
       :format-date-label="() => 'Aujourd\'hui'"
     />
 
@@ -30,6 +31,7 @@
     <DashboardPendingAppointments
       :appointments="pendingAppointments"
       :base-path="basePath"
+      :categories="careCategoriesForCards"
       :format-date-label="(apt) => formatDateOnly(apt.scheduled_at)"
       @open="openAppointmentById"
     />
@@ -67,6 +69,7 @@
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api';
+import type { CareCategoryRowMinimal } from '~/utils/care-icons';
 
 type DashboardMode = 'lab' | 'subaccount';
 
@@ -90,6 +93,19 @@ const description = computed(() =>
 );
 
 const { appointments, loading, fetchAppointments } = useAppointments();
+
+const careCategoriesForCards = ref<CareCategoryRowMinimal[]>([]);
+
+async function loadCareCategoriesForDashboardCards() {
+  try {
+    const response = await apiFetch('/categories', { method: 'GET' });
+    if (response?.success && Array.isArray(response.data) && response.data.length > 0) {
+      careCategoriesForCards.value = response.data as CareCategoryRowMinimal[];
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 const { openAppointmentModalById } = useAppointmentModal();
 
@@ -247,6 +263,7 @@ async function fetchLabStats() {
 onMounted(() => {
   fetchAppointments({ limit: 200 });
   fetchLabStats();
+  void loadCareCategoriesForDashboardCards();
 });
 
 const refresh = async () => {

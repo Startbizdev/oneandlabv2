@@ -39,7 +39,7 @@ test.describe('Flux patient - Documents (Charle Barth)', () => {
     await expect(page).toHaveURL(/rendez-vous/);
 
     // 2. Sélectionner une catégorie (prise de sang)
-    const bloodTestButton = page.getByRole('button', { name: /prise de sang|droplet/i }).first();
+    const bloodTestButton = page.getByRole('button', { name: /Prélèvement|prise de sang|droplet/i }).first();
     await bloodTestButton.click();
 
     // 3. Attendre le formulaire (étape 1)
@@ -161,7 +161,7 @@ test.describe('Flux patient - Documents (Charle Barth)', () => {
         // 18. Reprendre un RDV
         await page.goto('/rendez-vous/nouveau');
         await page.waitForTimeout(1000);
-        const bloodBtn = page.getByRole('button', { name: /prise de sang|droplet/i }).first();
+        const bloodBtn = page.getByRole('button', { name: /Prélèvement|prise de sang|droplet/i }).first();
         await bloodBtn.click();
         await page.waitForTimeout(2000);
 

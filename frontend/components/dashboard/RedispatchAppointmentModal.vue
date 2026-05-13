@@ -70,7 +70,7 @@
                   leading-icon="i-lucide-refresh-ccw"
                   :on-click="handleConfirm"
                 >
-                  Redispatcher
+                  Je ne peux pas faire ce RDV
                 </UButton>
               </div>
             </template>

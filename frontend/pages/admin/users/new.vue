@@ -139,7 +139,6 @@
               <AddressSelector
                 v-model="form.address"
                 label="Adresse"
-                placeholder="Commencez à taper une adresse..."
                 :show-complement="roleStr === 'patient'"
                 :complement-value="form.address_complement"
                 @update:complement="form.address_complement = $event"

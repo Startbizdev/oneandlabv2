@@ -1,6 +1,6 @@
 <template>
   <div>
-    <AppointmentDetailPage ref="detailRef" base-path="/subaccount">
+    <AppointmentDetailPage ref="detailRef" base-path="/subaccount" :show-sidebar-actions-card="standardSidebarActionsCardVisible">
       <template #documentsCard="{ appointment, documents, documentsLoading, loadDocuments }">
         <AppointmentDocumentsSection
           :documents="documents || []"
@@ -16,91 +16,84 @@
         />
       </template>
       <template #sidebarActions="{ appointment, loadAppointment }">
-        <div class="flex flex-col gap-3">
-          <!-- Assignation optionnelle : préleveur ou garder le RDV sur le sous-compte -->
-          <div
-            v-if="appointment && appointment.type === 'blood_test' && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)"
-            class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2"
-          >
-            <p class="text-sm font-medium text-gray-900 dark:text-white">
-              Assignation
-            </p>
-            <p v-if="getCurrentAssignmentLabel(appointment)" class="text-xs text-gray-500 dark:text-gray-400">
-              Actuel : {{ getCurrentAssignmentLabel(appointment) }}
-            </p>
-            <div class="flex flex-col gap-2">
-              <USelectMenu
-                v-model="reassignValue"
-                :items="assignmentSelectItems"
-                value-key="value"
-                placeholder="Assigner à..."
-                size="md"
-                class="w-full min-w-0"
-                :loading="assignmentOptionsLoading"
-                :search-input="{ placeholder: 'Rechercher...' }"
-                :filter-fields="['label']"
-              >
-                <template #empty>
-                  <div class="py-6 px-4">
-                    <UEmpty
-                      icon="i-lucide-user-check"
-                      title="Aucun résultat"
-                      description="Aucun préleveur ne correspond à votre recherche."
-                      variant="naked"
-                      size="sm"
-                    />
-                  </div>
-                </template>
-              </USelectMenu>
+        <AppointmentDetailSidebarTerminalShell :status="appointment?.status">
+          <div class="flex flex-col gap-3">
+            <!-- Assignation optionnelle : préleveur ou garder le RDV sur le sous-compte -->
+            <div
+              v-if="appointment && appointment.type === 'blood_test' && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)"
+              class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2"
+            >
+              <p class="text-sm font-medium text-gray-900 dark:text-white">
+                Assignation
+              </p>
+              <p v-if="getCurrentAssignmentLabel(appointment)" class="text-xs text-gray-500 dark:text-gray-400">
+                Actuel : {{ getCurrentAssignmentLabel(appointment) }}
+              </p>
+              <div class="flex flex-col gap-2">
+                <USelectMenu
+                  v-model="reassignValue"
+                  :items="assignmentSelectItems"
+                  value-key="value"
+                  placeholder="Assigner à..."
+                  size="md"
+                  class="w-full min-w-0"
+                  :loading="assignmentOptionsLoading"
+                  :search-input="{ placeholder: 'Rechercher...' }"
+                  :filter-fields="['label']"
+                >
+                  <template #empty>
+                    <div class="py-6 px-4">
+                      <UEmpty
+                        icon="i-lucide-user-check"
+                        title="Aucun résultat"
+                        description="Aucun préleveur ne correspond à votre recherche."
+                        variant="naked"
+                        size="sm"
+                      />
+                    </div>
+                  </template>
+                </USelectMenu>
+                <UButton
+                  type="button"
+                  color="primary"
+                  variant="solid"
+                  size="sm"
+                  :loading="reassigning"
+                  :disabled="!reassignValue || reassignValue === getCurrentAssignmentValue(appointment)"
+                  block
+                  :on-click="() => applyReassign(appointment, loadAppointment)"
+                >
+                  Appliquer
+                </UButton>
+              </div>
+            </div>
+            <template v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)">
               <UButton
                 type="button"
-                color="primary"
-                variant="solid"
-                size="sm"
-                :loading="reassigning"
-                :disabled="!reassignValue || reassignValue === getCurrentAssignmentValue(appointment)"
+                color="neutral"
+                variant="outline"
+                size="md"
+                leading-icon="i-lucide-calendar-plus"
                 block
-                :on-click="() => applyReassign(appointment, loadAppointment)"
+                :on-click="() => openRescheduleModal(appointment)"
               >
-                Appliquer
+                Reprendre RDV pour ce patient
               </UButton>
-            </div>
+              <UButton
+                type="button"
+                color="error"
+                variant="outline"
+                size="md"
+                leading-icon="i-lucide-x-circle"
+                :loading="canceling"
+                block
+                :on-click="() => openCancelModal(appointment, loadAppointment)"
+              >
+                Annuler le rendez-vous
+              </UButton>
+            </template>
           </div>
-          <template v-if="appointment && appointment.status !== 'canceled' && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)">
-            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed rounded-lg bg-gray-50 dark:bg-gray-800/60 px-3 py-2.5 border border-gray-100 dark:border-gray-700/80">
-              Le rendez-vous passera automatiquement en « terminé » le jour suivant la date prévue (clôture système).
-            </p>
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
-              Planification
-            </p>
-            <UButton
-              type="button"
-              color="neutral"
-              variant="outline"
-              size="md"
-              leading-icon="i-lucide-calendar-plus"
-              block
-              :on-click="() => openRescheduleModal(appointment)"
-            >
-              Reprendre RDV pour ce patient
-            </UButton>
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
-              Annulation
-            </p>
-            <UButton
-              type="button"
-              color="error"
-              variant="outline"
-              size="md"
-              leading-icon="i-lucide-x-circle"
-              :loading="canceling"
-              block
-              :on-click="() => openCancelModal(appointment, loadAppointment)"
-            >
-              Annuler le rendez-vous
-            </UButton>
-          </template>
-        </div>
+        </AppointmentDetailSidebarTerminalShell>
       </template>
     </AppointmentDetailPage>
 
@@ -127,6 +120,11 @@ definePageMeta({
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { apiFetch } from '~/utils/api';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
+import {
+  canUploadLabResultatsForAppointmentStatus,
+  canUploadMedicalDocumentsForAppointmentStatus,
+} from '~/utils/appointment-documents-upload';
+import { standardAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
 
 const { user } = useAuth();
 const toast = useAppToast();
@@ -136,6 +134,9 @@ const detailRef = ref<{
   loadDocuments?: () => Promise<void>;
   appointment: unknown;
 } | null>(null);
+const standardSidebarActionsCardVisible = computed(() =>
+  standardAppointmentSidebarCardVisible(getAppointmentFromDetailRef(detailRef)),
+);
 const downloadingDocId = ref<string | null>(null);
 const downloadingDocIds = computed(() => (downloadingDocId.value ? [downloadingDocId.value] : []));
 const uploadingTypes = ref(new Set<string>());
@@ -158,14 +159,17 @@ const uploadDocumentTypes = [
 ];
 
 function uploadTypesForAppointment(appointment: any) {
+  let list = uploadDocumentTypes;
   if (!appointment || appointment.type !== 'blood_test') {
-    return uploadDocumentTypes.filter((t) => t.value !== 'resultats');
+    list = list.filter((t) => t.value !== 'resultats');
+  } else if (!canUploadLabResultatsForAppointmentStatus(appointment.status)) {
+    list = list.filter((t) => t.value !== 'resultats');
   }
-  return uploadDocumentTypes;
+  return list;
 }
 
 function canUploadDocuments(appointment: any) {
-  return appointment && ['confirmed', 'inProgress', 'completed'].includes(appointment?.status);
+  return !!appointment && canUploadMedicalDocumentsForAppointmentStatus(appointment.status);
 }
 
 function setAppointmentForUpload(apt: any) {

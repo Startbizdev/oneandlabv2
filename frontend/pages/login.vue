@@ -1,143 +1,124 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50/60 via-white to-blue-50/40 p-4">
-    <!-- Background decorative elements -->
-    <div class="fixed inset-0 overflow-hidden pointer-events-none">
-      <div class="absolute -top-40 -right-40 w-80 h-80 bg-primary-100/30 rounded-full blur-3xl" />
-      <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-100/30 rounded-full blur-3xl" />
-    </div>
-
-    <div class="w-full max-w-md relative z-10">
-      <!-- Logo -->
-      <div class="flex justify-center mb-8">
-        <NuxtLink to="/" class="inline-block">
+  <div
+    class="flex min-h-screen flex-col bg-app-canvas dark:bg-gray-950 px-4 pb-10 pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-6 sm:pb-12 sm:pt-10"
+  >
+    <div class="mx-auto flex w-full max-w-[380px] flex-1 flex-col justify-center">
+      <!-- Logo + lien discret -->
+      <div class="mb-8 flex flex-col items-center gap-4">
+        <NuxtLink to="/" class="transition-opacity hover:opacity-90" aria-label="OneAndLab — Accueil">
           <img
             src="/images/onelogo.png"
-            alt="OneAndLab"
-            class="h-10 object-contain"
+            alt=""
+            class="h-7 w-auto max-w-[120px] object-contain sm:h-8 sm:max-w-[132px] dark:opacity-95"
             loading="eager"
           />
         </NuxtLink>
+        <NuxtLink
+          to="/"
+          class="text-[11px] font-medium text-gray-500 transition-colors hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          ← Retour au site
+        </NuxtLink>
       </div>
 
-      <!-- Card principale -->
-      <div class="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
-        <!-- Header -->
-        <div class="px-8 pt-8 pb-4 text-center">
-          <div
-            class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-5 transition-all duration-500"
-            :class="stepHeaderConfig.bgClass"
-          >
-            <Transition name="icon-swap" mode="out-in">
-              <UIcon
-                :key="stepHeaderConfig.icon"
-                :name="stepHeaderConfig.icon"
-                class="w-7 h-7 text-white"
-              />
-            </Transition>
-          </div>
+      <!-- Carte -->
+      <div
+        class="rounded-xl border border-gray-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-gray-800 dark:bg-gray-950 dark:shadow-none"
+      >
+        <!-- En-tête compact -->
+        <div class="border-b border-gray-100 px-5 pb-4 pt-5 dark:border-gray-800">
           <Transition name="fade-slide" mode="out-in">
             <div :key="step">
-              <h1 class="text-2xl font-normal text-gray-900">
+              <h1 class="text-[15px] font-semibold tracking-tight text-gray-900 dark:text-gray-100">
                 {{ stepHeaderConfig.title }}
               </h1>
-              <p class="text-sm text-gray-500 mt-2 leading-relaxed">
+              <p
+                v-if="stepHeaderConfig.subtitle"
+                class="mt-1 text-[13px] leading-snug text-gray-500 dark:text-gray-400"
+              >
                 {{ stepHeaderConfig.subtitle }}
               </p>
             </div>
           </Transition>
         </div>
 
-        <!-- Body -->
-        <div class="px-8 pb-8">
+        <div class="px-5 py-5">
           <Transition name="fade-slide" mode="out-in">
-            <!-- STEP 1: Email -->
-            <form v-if="step === 'email'" key="email" @submit.prevent="onCheckEmail" class="space-y-5">
-              <UFormField label="Adresse email" name="email">
+            <!-- Email -->
+            <form v-if="step === 'email'" key="email" class="space-y-4" @submit.prevent="onCheckEmail">
+              <UFormField label="Email" name="email" class="[&_[data-slot=label]]:text-xs [&_[data-slot=label]]:font-medium [&_[data-slot=label]]:text-gray-600 dark:[&_[data-slot=label]]:text-gray-400">
                 <UInput
                   v-model="email"
                   type="email"
-                  placeholder="votre@email.com"
-                  size="xl"
+                  placeholder="vous@exemple.fr"
+                  size="md"
                   class="w-full"
                   :disabled="loading"
                   autofocus
                   autocomplete="email"
-                >
-                  <template #leading>
-                    <UIcon name="i-lucide-mail" class="w-5 h-5 text-gray-400" />
-                  </template>
-                </UInput>
+                  variant="outline"
+                />
               </UFormField>
 
               <UButton
                 type="submit"
                 block
-                size="xl"
+                size="md"
                 :loading="loading"
                 :disabled="!email.trim()"
-                class="w-full font-medium"
+                class="font-medium"
               >
                 Continuer
-                <template #trailing>
-                  <UIcon name="i-lucide-arrow-right" class="w-4 h-4" />
-                </template>
               </UButton>
             </form>
 
-            <!-- STEP 2: Choix du rôle (compte introuvable) -->
-            <div v-else-if="step === 'role-select'" key="role-select" class="space-y-5">
-              <p class="text-sm font-medium text-gray-700">Je m'inscris en tant que :</p>
-
-              <div class="grid grid-cols-1 gap-3">
-                <button
-                  v-for="option in roleOptions"
-                  :key="option.role"
-                  type="button"
-                  @click="onRoleSelect(option.role)"
-                  :disabled="loading"
-                  class="group relative flex items-center gap-4 p-4 rounded-xl border-2 border-gray-100 bg-white hover:border-primary-300 hover:bg-primary-50/30 transition-all duration-200 text-left focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 active:scale-[0.98]"
+            <!-- Choix rôle -->
+            <div v-else-if="step === 'role-select'" key="role-select" class="space-y-2">
+              <p class="sr-only">Choix du type de compte pour l'inscription</p>
+              <button
+                v-for="option in roleOptions"
+                :key="option.role"
+                type="button"
+                :title="option.description"
+                :disabled="loading"
+                class="flex w-full items-center gap-3 rounded-lg border border-gray-200/90 bg-white px-3 py-2.5 text-left transition-colors hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-800 dark:bg-gray-950 dark:hover:border-gray-700 dark:hover:bg-gray-900/50"
+                @click="onRoleSelect(option.role)"
+              >
+                <span
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                  aria-hidden="true"
                 >
-                  <div
-                    class="flex items-center justify-center w-12 h-12 rounded-xl transition-colors duration-200"
-                    :class="option.bgClass"
-                  >
-                    <UIcon :name="option.icon" class="w-6 h-6 text-white" />
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="font-normal text-gray-900 text-sm">{{ option.label }}</p>
-                    <p class="text-xs text-gray-500 mt-0.5">{{ option.description }}</p>
-                  </div>
-                  <UIcon
-                    name="i-lucide-chevron-right"
-                    class="w-5 h-5 text-gray-300 group-hover:text-primary-500 transition-colors shrink-0"
-                  />
-                </button>
-              </div>
+                  <UIcon :name="option.icon" class="h-4 w-4" />
+                </span>
+                <span class="min-w-0 flex-1 text-[13px] font-medium text-gray-900 dark:text-gray-100">{{
+                  option.label
+                }}</span>
+                <UIcon name="i-lucide-chevron-right" class="h-4 w-4 shrink-0 text-gray-400" />
+              </button>
 
               <button
                 type="button"
+                class="mt-4 w-full py-2 text-center text-[12px] font-medium text-gray-500 transition-colors hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
                 @click="goBackToEmail"
-                class="w-full flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors py-2"
               >
-                <UIcon name="i-lucide-arrow-left" class="w-4 h-4" />
-                Modifier l'email
+                Modifier l’email
               </button>
             </div>
 
-            <!-- STEP 3: Création patient (auto-create + OTP envoyé) -->
-            <!-- On redirige directement vers l'OTP step après création -->
-
-            <!-- STEP OTP: Code de vérification -->
-            <form v-else-if="step === 'otp'" key="otp" @submit.prevent="onVerifyOTP" class="space-y-5">
-              <div class="bg-primary-50/50 border border-primary-100 rounded-xl p-4 text-center">
-                <p class="text-sm text-primary-700">Code envoyé à</p>
-                <p class="font-normal text-primary-900 mt-1">{{ email }}</p>
-                <p v-if="devOtp" class="mt-3 text-lg font-mono font-semibold text-emerald-600 bg-emerald-50 rounded-lg py-2 px-3">
-                  OTP : {{ devOtp }}
-                </p>
+            <!-- OTP -->
+            <form v-else-if="step === 'otp'" key="otp" class="space-y-5" @submit.prevent="onVerifyOTP">
+              <p class="text-center text-[12px] text-gray-500 dark:text-gray-400">
+                Envoyé à
+                <span class="font-medium text-gray-800 dark:text-gray-200">{{ email }}</span>
+              </p>
+              <div
+                v-if="devOtp"
+                class="rounded-md border border-dashed border-emerald-200 bg-emerald-50/80 px-3 py-2 text-center font-mono text-sm font-medium text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-200"
+              >
+                Dev · {{ devOtp }}
               </div>
 
-              <UFormField name="otp">
+              <UFormField name="otp" class="[&_[data-slot=label]]:sr-only" label="Code">
                 <div class="flex justify-center">
                   <UPinInput
                     v-model="otpDigits"
@@ -145,7 +126,7 @@
                     :length="6"
                     :disabled="otpLoading"
                     otp
-                    size="xl"
+                    size="lg"
                   />
                 </div>
               </UFormField>
@@ -153,40 +134,37 @@
               <UButton
                 type="submit"
                 block
-                size="xl"
+                size="md"
                 :loading="otpLoading"
                 :disabled="otpString.length !== 6"
-                class="w-full font-medium"
+                class="font-medium"
               >
-                <UIcon name="i-lucide-shield-check" class="w-5 h-5 mr-2" />
-                Valider le code
+                Valider
               </UButton>
 
-              <!-- Actions secondaires -->
-              <div class="flex items-center justify-between pt-1">
+              <div class="flex items-center justify-between gap-3 pt-1">
                 <button
                   type="button"
                   :disabled="loading || otpLoading"
+                  class="text-[12px] font-medium text-gray-500 transition-colors hover:text-gray-800 disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-200"
                   @click="goBackToEmail"
-                  class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
                 >
-                  <UIcon name="i-lucide-arrow-left" class="w-4 h-4" />
-                  Modifier l'email
+                  Autre email
                 </button>
-
                 <button
                   type="button"
                   :disabled="countdown > 0 || resending"
+                  class="text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                  :class="
+                    countdown > 0
+                      ? 'text-gray-400 dark:text-gray-500'
+                      : 'text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300'
+                  "
                   @click="resendOTP"
-                  class="flex items-center gap-1.5 text-sm transition-colors"
-                  :class="countdown > 0 ? 'text-gray-400 cursor-not-allowed' : 'text-primary-600 hover:text-primary-700'"
                 >
-                  <UIcon
-                    name="i-lucide-refresh-cw"
-                    class="w-4 h-4"
-                    :class="{ 'animate-spin': resending }"
-                  />
-                  {{ resending ? 'Envoi...' : countdown > 0 ? `Renvoyer (${formatCountdown})` : 'Renvoyer le code' }}
+                  {{
+                    resending ? 'Envoi…' : countdown > 0 ? `Renvoyer (${formatCountdown})` : 'Renvoyer le code'
+                  }}
                 </button>
               </div>
             </form>
@@ -194,9 +172,8 @@
         </div>
       </div>
 
-      <!-- Footer -->
-      <p class="text-center text-xs text-gray-400 mt-6">
-        &copy; {{ new Date().getFullYear() }} OneAndLab. Tous droits réservés.
+      <p class="mt-8 text-center text-[11px] text-gray-400 dark:text-gray-500">
+        © {{ new Date().getFullYear() }} OneAndLab
       </p>
     </div>
   </div>
@@ -204,6 +181,7 @@
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api'
+import { resolvePostLoginPath } from '~/utils/postLoginRedirect'
 
 definePageMeta({
   layout: false,
@@ -214,31 +192,10 @@ const router = useRouter()
 const route = useRoute()
 const toast = useAppToast()
 
-// -- Redirect si déjà connecté --
-const roleRoutes: Record<string, string> = {
-  super_admin: '/admin',
-  admin: '/admin',
-  lab: '/lab',
-  subaccount: '/subaccount',
-  nurse: '/nurse/appointments',
-  preleveur: '/preleveur',
-  pro: '/pro',
-  patient: '/patient',
-}
-
-/** URL interne uniquement (évite open redirect). */
-function safeReturnTo(): string | null {
-  const raw = route.query.returnTo
-  if (typeof raw !== 'string' || raw.length === 0) return null
-  if (!raw.startsWith('/') || raw.startsWith('//')) return null
-  return raw
-}
-
 function redirectIfAuthenticated() {
   if (!isAuthenticated.value || !user.value) return
-  const back = safeReturnTo()
-  const fallback = roleRoutes[user.value.role] || '/patient'
-  router.replace(back ?? fallback)
+  const target = resolvePostLoginPath(route.query.returnTo, user.value.role)
+  router.replace(target)
 }
 
 watch(
@@ -278,30 +235,26 @@ const roleOptions = [
   {
     role: 'patient',
     label: 'Patient',
-    description: 'Je souhaite prendre rendez-vous pour des soins',
+    description: 'Prendre rendez-vous pour des soins à domicile',
     icon: 'i-lucide-user',
-    bgClass: 'bg-primary-500',
   },
   {
     role: 'nurse',
-    label: 'Infirmier / Infirmière',
-    description: 'Je suis professionnel de santé infirmier',
+    label: 'Infirmier · Infirmière',
+    description: 'Professionnel de santé infirmier',
     icon: 'i-lucide-heart-pulse',
-    bgClass: 'bg-emerald-500',
   },
   {
     role: 'lab',
     label: 'Laboratoire',
-    description: 'Je représente un laboratoire d\'analyses',
+    description: 'Laboratoire d’analyses médicales',
     icon: 'i-lucide-building-2',
-    bgClass: 'bg-blue-500',
   },
   {
     role: 'pro',
-    label: 'Professionnel de santé',
-    description: 'Médecin, kinésithérapeute, autre professionnel',
+    label: 'Autre professionnel de santé',
+    description: 'Médecin, kinésithérapeute, etc.',
     icon: 'i-lucide-stethoscope',
-    bgClass: 'bg-amber-500',
   },
 ]
 
@@ -310,31 +263,23 @@ const stepHeaderConfig = computed(() => {
   switch (step.value) {
     case 'email':
       return {
-        icon: 'i-lucide-log-in',
-        title: 'Connexion ou inscription',
-        subtitle: 'Entrez votre email. Si un compte existe, vous recevrez un code. Sinon, vous pourrez créer un compte.',
-        bgClass: 'bg-primary-500',
+        title: 'Connexion',
+        subtitle: 'Code à usage unique par email.',
       }
     case 'role-select':
       return {
-        icon: 'i-lucide-user-plus',
-        title: 'Aucun compte avec cet email',
-        subtitle: 'Choisissez votre profil pour accéder au formulaire d’inscription adapté.',
-        bgClass: 'bg-amber-500',
+        title: 'Créer un compte',
+        subtitle: 'Choisissez votre espace.',
       }
     case 'otp':
       return {
-        icon: 'i-lucide-shield-check',
-        title: 'Code de vérification',
-        subtitle: 'Saisissez le code à 6 chiffres envoyé à votre adresse pour finaliser la connexion.',
-        bgClass: 'bg-emerald-500',
+        title: 'Vérification',
+        subtitle: '',
       }
     default:
       return {
-        icon: 'i-lucide-log-in',
-        title: 'Connexion ou inscription',
+        title: 'Connexion',
         subtitle: '',
-        bgClass: 'bg-primary-500',
       }
   }
 })
@@ -440,8 +385,9 @@ async function onVerifyOTP() {
   try {
     const result = await verifyOTP(userId.value, cleaned, sessionId.value)
     if (result.success) {
-      toast.add({ title: 'Connexion réussie', description: 'Redirection en cours...', color: 'green' })
-      // La navigation utilise returnTo via redirectIfAuthenticated (watch isAuthenticated)
+      await nextTick()
+      const target = resolvePostLoginPath(route.query.returnTo, user.value?.role)
+      await router.replace(target)
     } else {
       toast.add({ title: 'Code invalide', description: result.error || 'Le code saisi est incorrect', color: 'red' })
       otpDigits.value = []
@@ -493,27 +439,14 @@ function goBackToEmail() {
 <style scoped>
 .fade-slide-enter-active,
 .fade-slide-leave-active {
-  transition: all 0.3s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 .fade-slide-enter-from {
   opacity: 0;
-  transform: translateY(12px);
+  transform: translateY(6px);
 }
 .fade-slide-leave-to {
   opacity: 0;
-  transform: translateY(-12px);
-}
-
-.icon-swap-enter-active,
-.icon-swap-leave-active {
-  transition: all 0.25s ease;
-}
-.icon-swap-enter-from {
-  opacity: 0;
-  transform: scale(0.8);
-}
-.icon-swap-leave-to {
-  opacity: 0;
-  transform: scale(0.8);
+  transform: translateY(-6px);
 }
 </style>

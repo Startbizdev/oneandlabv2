@@ -1,11 +1,11 @@
 <template>
-  <div class="space-y-8">
-    <TitleDashboard
+  <AppPageShell class="space-y-8">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       :title="isLabView ? 'Statistiques — Vue équipe' : 'Statistiques'"
       :description="isLabView
         ? `Prises de sang — lab + ${teamSummary?.subaccounts ?? 0} sous-compte(s) + ${teamSummary?.preleveurs ?? 0} préleveur(s). Tous les RDV et stats de l'équipe.`
         : 'Prises de sang — laboratoire et sous-comptes.'"
-      icon="i-lucide-bar-chart-3"
     >
       <template #actions>
         <UButton
@@ -17,7 +17,8 @@
           Voir les rendez-vous
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
     <!-- Loading -->
     <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
@@ -259,7 +260,7 @@
                   <div class="flex-1 min-w-0">
                     <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Intervention</p>
                     <p class="text-[14px] font-medium text-gray-900 dark:text-white">
-                      Prise de sang
+                      Prélèvement
                       <span v-if="appointment.category_name" class="text-gray-500 font-normal"> • {{ appointment.category_name }}</span>
                     </p>
                   </div>
@@ -365,7 +366,7 @@
         </div>
       </div>
     </template>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

@@ -16,7 +16,7 @@
                     wizardBookingHeaderIntro ? '' : 'hidden sm:block',
                   ]"
                 >
-                  {{ wizardBookingPageTitle }}
+                  {{ wizardBookingPageHeading }}
                 </h1>
                 <p
                   v-if="showGuestPersonalLoginHintUnderTitle"
@@ -46,7 +46,7 @@
                 ]"
               >
                 <h1 class="text-lg font-semibold tracking-tight text-gray-900 dark:text-white sm:text-xl">
-                  {{ wizardBookingPageTitle }}
+                  {{ wizardBookingPageHeading }}
                 </h1>
                 <p
                   v-if="showGuestPersonalLoginHintUnderTitle"
@@ -62,30 +62,6 @@
                   </NuxtLink>
                 </p>
               </header>
-
-              <div
-                v-if="wizardBookingHeaderIntro"
-                class="mb-4 px-4 sm:px-0 sm:mb-5"
-              >
-                <div class="flex flex-wrap gap-2">
-                  <UBadge
-                    v-for="line in wizardBookingHeaderIntro.lines"
-                    :key="line.id"
-                    color="neutral"
-                    variant="subtle"
-                    size="sm"
-                    class="inline-flex max-w-full items-center gap-2 border-0 font-semibold shadow-none ring-1 ring-black/5 py-1 pl-1.5 pr-2.5 dark:ring-white/10"
-                  >
-                    <CareCategoryVisual
-                      :image-src="line.imageSrc"
-                      :icon-name="line.iconName"
-                      img-class="h-5 w-5 shrink-0 object-contain"
-                      icon-class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400"
-                    />
-                    <span class="truncate text-gray-900 dark:text-gray-100">{{ line.name }}</span>
-                  </UBadge>
-                </div>
-              </div>
 
               <UAlert
                 v-if="validationError"
@@ -429,9 +405,9 @@
 </template>
 
 <script setup lang="ts">
-import CareCategoryVisual from '~/components/ui/CareCategoryVisual.vue';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
+import { joinFrenchAndList } from '~/utils/join-french-list';
 
 const props = withDefaults(
   defineProps<{
@@ -541,11 +517,6 @@ function lowerFirstLetter(s: string): string {
   return t.charAt(0).toLowerCase() + t.slice(1);
 }
 
-/** Retire un tiret cadratin / tiret en tête si présent (anciennes versions / données). */
-function stripLeadingDash(s: string): string {
-  return String(s).trim().replace(/^[\u2014\u2013\-]\s*/, '');
-}
-
 /** Une carte créneaux / documents : même titre et pastilles que l’étape date (sans fusionner plusieurs lots). */
 function buildWizardSegmentIntro(activeServiceId: string | null) {
   if (!activeServiceId) return null;
@@ -608,26 +579,27 @@ const wizardBookingHeaderIntro = computed(() => {
   return null;
 });
 
-/** Étape créneau ou documents : complément dans le H1. */
+/** Libellés des soins du lot courant — concaténés dans le H1 (ex. après un tiret cadratin). */
+const wizardBookingCareTypesLine = computed(() => {
+  const intro = wizardBookingHeaderIntro.value;
+  if (!intro?.lines?.length) return '';
+  return joinFrenchAndList(intro.lines.map((l) => l.name));
+});
+
 const wizardBookingPageTitle = computed(() => {
   const sec = effectiveBookingWizardSection.value;
   if (sec === 'personal') return 'Informations personnelles';
-
-  const intro = wizardBookingHeaderIntro.value;
-
-  if (sec === 'documents') {
-    if (!intro) return 'Documents de votre rendez-vous';
-    const suffix = lowerFirstLetter(stripLeadingDash(intro.title));
-    return `Documents de votre rendez-vous ${suffix}`;
-  }
-
-  if (sec === 'slot-datetime') {
-    if (!intro) return 'Date de votre rendez-vous';
-    const suffix = lowerFirstLetter(stripLeadingDash(intro.title));
-    return `Date de votre rendez-vous ${suffix}`;
-  }
-
+  if (sec === 'documents') return 'Documents de votre rendez-vous';
+  if (sec === 'slot-datetime') return 'Date de votre rendez-vous';
   return 'Date de votre rendez-vous';
+});
+
+/** Titre affiché : base + soins dans le même `<h1>` lorsque pertinent. */
+const wizardBookingPageHeading = computed(() => {
+  const base = wizardBookingPageTitle.value;
+  const care = wizardBookingCareTypesLine.value;
+  if (!care) return base;
+  return `${base} — ${care}`;
 });
 
 const emit = defineEmits<{

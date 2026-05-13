@@ -30,6 +30,7 @@ Thumbs.db
 # Database
 *.sqlite
 *.db
+data/mysql-dumps/
 
 # Uploads (fichiers médicaux, ne pas versionner)
 uploads/

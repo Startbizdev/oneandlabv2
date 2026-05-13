@@ -22,7 +22,8 @@ $payload = file_get_contents('php://input');
 $sigHeader = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
 
 require_once __DIR__ . '/../../vendor/autoload.php';
-\Stripe\Stripe::setApiKey($stripeConfig['secret_key']);
+require_once __DIR__ . '/../../lib/PatientUrgencyConfig.php';
+require_once __DIR__ . '/../../lib/PatientBookingDraftExecutor.php';
 
 try {
     $event = \Stripe\Webhook::constructEvent($payload, $sigHeader, $webhookSecret);
@@ -42,6 +43,120 @@ $pdo = new PDO($dsn, $config['username'], $config['password'], $config['options'
 
 $type = $event->type;
 $object = $event->data->object;
+
+if ($type === 'checkout.session.completed') {
+    /** @var \Stripe\Checkout\Session $object */
+    $session = $object;
+    $paymentMode = (string) ($session->mode ?? '');
+    $metaPayload = [];
+    try {
+        if (!empty($session->metadata)) {
+            $decoded = json_decode(json_encode($session->metadata), true);
+            $metaPayload = is_array($decoded) ? $decoded : [];
+        }
+    } catch (Throwable $e) {
+        error_log('Stripe webhook checkout metadata decode: ' . $e->getMessage());
+        $metaPayload = [];
+    }
+    if (
+        $paymentMode === 'payment'
+        && ($metaPayload['checkout_kind'] ?? '') === PatientUrgencyConfig::CHECKOUT_METADATA_KIND
+    ) {
+        $draftId = (string) ($metaPayload['draft_id'] ?? '');
+        $uidMeta = (string) ($metaPayload['user_id'] ?? '');
+        if ($draftId === '' || $uidMeta === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Draft metadata invalide']);
+            exit;
+        }
+        $payStatus = (string) ($session->payment_status ?? '');
+        $amountTotal = (int) ($session->amount_total ?? 0);
+        if ($payStatus !== 'paid' || $amountTotal < PatientUrgencyConfig::URGENCY_AMOUNT_CENTS) {
+            echo json_encode(['received' => true, 'ignored' => true, 'reason' => 'payment_incomplete']);
+            exit;
+        }
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare('SELECT * FROM patient_booking_drafts WHERE id = ? FOR UPDATE');
+            $stmt->execute([$draftId]);
+            $draft = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$draft) {
+                $pdo->rollBack();
+                http_response_code(404);
+                echo json_encode(['success' => false, 'error' => 'Draft inexistant']);
+                exit;
+            }
+            if (($draft['stripe_checkout_session_id'] ?? '') !== (string) $session->id) {
+                $pdo->rollBack();
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'session_id discordant']);
+                exit;
+            }
+            if (($draft['user_id'] ?? '') !== $uidMeta) {
+                $pdo->rollBack();
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'user discordant']);
+                exit;
+            }
+            if (($draft['status'] ?? '') === 'completed') {
+                $pdo->commit();
+                echo json_encode(['received' => true]);
+                exit;
+            }
+            if (($draft['status'] ?? '') !== 'pending_payment' && ($draft['status'] ?? '') !== 'paid_processing') {
+                $pdo->rollBack();
+                echo json_encode(['received' => true, 'skipped' => true]);
+                exit;
+            }
+            if (($draft['status'] ?? '') === 'pending_payment') {
+                $u = $pdo->prepare('UPDATE patient_booking_drafts SET status = ? WHERE id = ? AND status = ?');
+                $u->execute(['paid_processing', $draftId, 'pending_payment']);
+                if ($u->rowCount() === 0) {
+                    $pdo->rollBack();
+                    echo json_encode(['received' => true, 'skipped' => true]);
+                    exit;
+                }
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('patient_booking_draft_lock: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'lock_failed']);
+            exit;
+        }
+
+        try {
+            $createdIds = PatientBookingDraftExecutor::run($pdo, $draft + ['stripe_checkout_session_id' => (string) $session->id]);
+            $pdo->prepare(
+                'UPDATE patient_booking_drafts SET status = ?, completed_at = NOW(), created_appointment_ids_json = ?, error_message = NULL WHERE id = ?'
+            )->execute(['completed', json_encode($createdIds), $draftId]);
+            $dir = dirname(__DIR__, 2) . '/storage/patient-booking-drafts/' . $draft['storage_subdir'];
+            if (is_dir($dir)) {
+                foreach (glob($dir . '/*') ?: [] as $f) {
+                    @unlink($f);
+                }
+                @rmdir($dir);
+            }
+            echo json_encode(['received' => true]);
+            exit;
+        } catch (Throwable $e) {
+            error_log('patient_booking_draft_finalize: ' . $e->getMessage());
+            $pdo->prepare('UPDATE patient_booking_drafts SET status = ?, error_message = ? WHERE id = ?')->execute([
+                'failed',
+                substr((string) $e->getMessage(), 0, 2000),
+                $draftId,
+            ]);
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'finalize_failed']);
+            exit;
+        }
+    }
+    echo json_encode(['received' => true]);
+    exit;
+}
 
 if ($type === 'customer.subscription.deleted') {
     $subId = $object->id;

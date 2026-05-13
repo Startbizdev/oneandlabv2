@@ -1,80 +1,86 @@
 <template>
-  <div
-    class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-3 items-stretch"
-  >
-    <div
-      v-for="patient in patients"
-      :key="patient.id"
-      class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200/90 dark:border-gray-800 shadow-sm hover:shadow-md hover:border-primary-200/60 dark:hover:border-primary-900/40 transition-all duration-200 flex flex-col h-full overflow-hidden min-h-0"
-    >
-      <div class="p-3.5 sm:p-4 flex-1 flex flex-col gap-2.5 min-w-0">
-        <div class="flex items-start gap-2.5 min-w-0">
-          <div
-            class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ring-1 ring-inset bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 ring-primary-200/60 dark:ring-primary-900/50"
-          >
-            <UIcon name="i-lucide-user" class="w-5 h-5" />
-          </div>
-          <div class="min-w-0 flex-1">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight">
-              {{ displayName(patient) }}
-            </h3>
-            <p
-              v-if="ageLabel(patient)"
-              class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate flex items-center gap-1"
+  <div class="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <DashboardCardShell v-for="patient in patients" :key="patient.id">
+      <div class="relative min-h-0">
+        <NuxtLink
+          v-if="patient.id"
+          :to="profileHref(patient)"
+          class="block min-w-0 cursor-pointer rounded-xl outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/35 dark:focus-visible:ring-primary/40"
+          :aria-label="`Voir le profil de ${displayName(patient)}`"
+        >
+          <div class="flex min-w-0 flex-col gap-3 p-4 pr-12 sm:p-5 sm:pr-14">
+            <div class="min-w-0">
+              <p class="text-[15px] font-semibold leading-snug text-gray-900 dark:text-white">
+                {{ displayName(patient) }}
+              </p>
+              <p
+                v-if="ageLabel(patient)"
+                class="mt-1.5 flex items-center gap-1 text-[11px] font-medium leading-snug text-gray-500 dark:text-gray-400"
+              >
+                <UIcon name="i-lucide-cake" class="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden="true" />
+                {{ ageLabel(patient) }}
+              </p>
+            </div>
+
+            <div
+              v-if="patient.phone || patientEmailLine(patient)"
+              class="space-y-1.5 rounded-lg bg-gray-50/80 px-2.5 py-2 ring-1 ring-inset ring-gray-100 dark:bg-white/[0.03] dark:ring-white/[0.08]"
             >
-              <UIcon name="i-lucide-cake" class="w-3 h-3 shrink-0 opacity-80" />
-              {{ ageLabel(patient) }}
+              <div
+                v-if="patient.phone"
+                class="flex items-start gap-1.5 text-[12px] font-semibold text-gray-700 dark:text-gray-200"
+              >
+                <UIcon
+                  name="i-lucide-phone"
+                  class="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary-500 dark:text-primary-400"
+                  aria-hidden="true"
+                />
+                <span class="break-words">{{ patient.phone }}</span>
+              </div>
+              <div
+                v-if="patientEmailLine(patient)"
+                class="flex items-start gap-1.5 text-[12px] font-semibold text-gray-700 dark:text-gray-200"
+              >
+                <UIcon
+                  name="i-lucide-mail"
+                  class="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary-500 dark:text-primary-400"
+                  aria-hidden="true"
+                />
+                <span class="line-clamp-2 break-words">{{ patientEmailLine(patient) }}</span>
+              </div>
+            </div>
+          </div>
+        </NuxtLink>
+        <div
+          v-else
+          class="flex min-w-0 flex-col gap-3 p-4 pr-12 sm:p-5 sm:pr-14"
+        >
+          <div class="min-w-0">
+            <p class="text-[15px] font-semibold leading-snug text-gray-900 dark:text-white">
+              {{ displayName(patient) }}
             </p>
           </div>
         </div>
 
-        <div class="space-y-1.5 text-xs text-gray-600 dark:text-gray-300 min-w-0">
-          <p v-if="patient.phone" class="flex items-start gap-1.5 min-w-0">
-            <UIcon name="i-lucide-phone" class="w-3.5 h-3.5 shrink-0 text-gray-400 mt-px" />
-            <span class="truncate font-medium">{{ patient.phone }}</span>
-          </p>
-          <p v-if="patientEmailLine(patient)" class="flex items-start gap-1.5 min-w-0">
-            <UIcon name="i-lucide-mail" class="w-3.5 h-3.5 shrink-0 text-gray-400 mt-px" />
-            <span class="line-clamp-2 break-words">{{ patientEmailLine(patient) }}</span>
-          </p>
+        <div class="absolute right-2 top-2 z-10 sm:right-3 sm:top-3">
+          <UDropdownMenu
+            :items="patientMenuItems(patient)"
+            :popper="{ placement: 'bottom-end', offsetDistance: 6 }"
+            :ui="{ width: 'w-56' }"
+          >
+            <UButton
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              icon="i-lucide-ellipsis-vertical"
+              class="h-8 w-8 shrink-0 justify-center p-0 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+              aria-label="Actions pour ce patient"
+              @click.stop
+            />
+          </UDropdownMenu>
         </div>
       </div>
-
-      <div
-        class="px-3.5 sm:px-4 pb-3.5 sm:pb-4 pt-3 mt-auto flex flex-wrap gap-2 border-t border-gray-100 dark:border-gray-800/90"
-      >
-        <UButton
-          variant="soft"
-          color="neutral"
-          size="xs"
-          class="flex-1 min-w-[7rem] justify-center font-medium"
-          leading-icon="i-lucide-user"
-          :to="`/profile?userId=${patient.id}`"
-        >
-          Fiche
-        </UButton>
-        <UButton
-          variant="outline"
-          color="primary"
-          size="xs"
-          class="flex-1 min-w-[7rem] justify-center font-medium"
-          leading-icon="i-lucide-calendar-plus"
-          :to="`${basePath}/appointments/new?patient_id=${patient.id}`"
-        >
-          RDV
-        </UButton>
-        <UButton
-          v-if="showDelete && canDeletePatient(patient)"
-          variant="ghost"
-          color="error"
-          size="xs"
-          class="shrink-0"
-          icon="i-lucide-trash-2"
-          aria-label="Supprimer le patient"
-          @click="emit('delete', patient)"
-        />
-      </div>
-    </div>
+    </DashboardCardShell>
   </div>
 </template>
 
@@ -108,8 +114,42 @@ function canDeletePatient(patient: any): boolean {
   return String(patient.created_by) === String(props.currentUserId);
 }
 
+function profileHref(patient: any): string {
+  return `/profile?userId=${encodeURIComponent(String(patient?.id ?? ''))}`;
+}
+
+function patientMenuItems(patient: any) {
+  const bp = props.basePath;
+  const main = [
+    {
+      label: 'Créer un rendez-vous',
+      icon: 'i-lucide-calendar-plus',
+      onSelect: () => navigateTo(`${bp}/appointments/new?patient_id=${patient.id}`),
+    },
+    {
+      label: 'Voir les détails',
+      icon: 'i-lucide-user',
+      onSelect: () => navigateTo(`/profile?userId=${patient.id}`),
+    },
+  ];
+  const groups: any[][] = [main];
+  if (props.showDelete && canDeletePatient(patient)) {
+    groups.push([
+      {
+        label: 'Supprimer',
+        icon: 'i-lucide-trash-2',
+        color: 'error' as const,
+        onSelect: () => emit('delete', patient),
+      },
+    ]);
+  }
+  return groups;
+}
+
 function displayName(item: any): string {
-  const name = [String(item.first_name ?? '').trim(), String(item.last_name ?? '').trim()].filter(Boolean).join(' ');
+  const name = [String(item.first_name ?? '').trim(), String(item.last_name ?? '').trim()]
+    .filter(Boolean)
+    .join(' ');
   if (name) return name;
   const line = patientEmailLine(item);
   if (line) return line;

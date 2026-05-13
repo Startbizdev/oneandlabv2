@@ -2,10 +2,26 @@
  * Composable pour le polling des notifications
  */
 
-export const usePolling = (callback: () => Promise<void>, interval = 30000) => {
+export type UsePollingOptions = {
+  /** Si true, le tick est ignoré (ex. création RDV : évite la contention avec le backend). */
+  shouldSkip?: () => boolean;
+};
+
+export const usePolling = (
+  callback: () => Promise<void>,
+  interval = 30000,
+  options?: UsePollingOptions,
+) => {
   let intervalId: NodeJS.Timeout | null = null;
   const isPolling = ref(false);
   const instanceId = Math.random().toString(36).substring(7);
+
+  const tick = () => {
+    if (options?.shouldSkip?.()) {
+      return Promise.resolve();
+    }
+    return callback();
+  };
   
   const start = () => {
     // Si déjà en cours, ne pas redémarrer
@@ -18,13 +34,13 @@ export const usePolling = (callback: () => Promise<void>, interval = 30000) => {
     isPolling.value = true;
     
     // Exécuter immédiatement
-    callback().catch(err => {
+    tick().catch(err => {
       console.error(`[Polling:${instanceId}] Error in callback:`, err);
     });
     
     // Puis toutes les X secondes
     intervalId = setInterval(() => {
-      callback().catch(err => {
+      tick().catch(err => {
         console.error(`[Polling:${instanceId}] Error in callback:`, err);
       });
     }, interval);

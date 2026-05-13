@@ -1,6 +1,12 @@
 <template>
-  <div>
-    <TitleDashboard title="Mon abonnement" description="Consultez les offres et gérez votre abonnement OneAndLab" />
+  <AppPageShell>
+    <template #pageHeader>
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Mon abonnement"
+        description="Consultez les offres et gérez votre abonnement OneAndLab"
+      />
+    </template>
 
     <!-- Onglets : index 0 = Offres, 1 = Mon abonnement -->
     <div class="flex gap-2 mb-6">
@@ -167,7 +173,7 @@
         </template>
       </UCard>
     </div>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

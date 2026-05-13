@@ -43,33 +43,43 @@ function appendCategoryOptions(PDO $db, array $categories): array {
     if (empty($categories)) {
         return $categories;
     }
-    $ids = array_column($categories, 'id');
-    $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $optStmt = $db->prepare("
-        SELECT care_category_id, option_key, label, field_type, options, is_required, sort_order
-        FROM care_category_options
-        WHERE care_category_id IN ($placeholders)
-        ORDER BY care_category_id, sort_order, id
-    ");
-    $optStmt->execute($ids);
-    $optionsByCat = [];
-    while ($row = $optStmt->fetch(PDO::FETCH_ASSOC)) {
-        $cid = $row['care_category_id'];
-        unset($row['care_category_id']);
-        $row['options'] = isset($row['options']) && $row['options'] !== null
-            ? (is_string($row['options']) ? json_decode($row['options'], true) : $row['options'])
-            : null;
-        $row['is_required'] = (bool) ($row['is_required'] ?? false);
-        if (!isset($optionsByCat[$cid])) {
-            $optionsByCat[$cid] = [];
+    try {
+        $ids = array_column($categories, 'id');
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $optStmt = $db->prepare("
+            SELECT care_category_id, option_key, label, field_type, options, is_required, sort_order
+            FROM care_category_options
+            WHERE care_category_id IN ($placeholders)
+            ORDER BY care_category_id, sort_order, id
+        ");
+        $optStmt->execute($ids);
+        $optionsByCat = [];
+        while ($row = $optStmt->fetch(PDO::FETCH_ASSOC)) {
+            $cid = $row['care_category_id'];
+            unset($row['care_category_id']);
+            $row['options'] = isset($row['options']) && $row['options'] !== null
+                ? (is_string($row['options']) ? json_decode($row['options'], true) : $row['options'])
+                : null;
+            $row['is_required'] = (bool) ($row['is_required'] ?? false);
+            if (!isset($optionsByCat[$cid])) {
+                $optionsByCat[$cid] = [];
+            }
+            $optionsByCat[$cid][] = $row;
         }
-        $optionsByCat[$cid][] = $row;
+        foreach ($categories as &$cat) {
+            $cat['options'] = $optionsByCat[$cat['id']] ?? [];
+        }
+        unset($cat);
+        return $categories;
+    } catch (Throwable $e) {
+        // BDD sans migration `care_category_options` (ou erreur ponctuelle) : ne pas faire échouer toute la liste.
+        error_log('appendCategoryOptions: ' . $e->getMessage());
+        foreach ($categories as &$cat) {
+            $cat['options'] = [];
+        }
+        unset($cat);
+        return $categories;
     }
-    foreach ($categories as &$cat) {
-        $cat['options'] = $optionsByCat[$cat['id']] ?? [];
-    }
-    unset($cat);
-    return $categories;
 }
 
 /**
@@ -101,6 +111,25 @@ function appendAppointmentCounts(PDO $db, array $categories): array
     return $categories;
 }
 
+/** Fragment SQL , cc.icon , cc.image_url selon colonnes présentes */
+function care_categories_column_fragment(PDO $db, string $tableAlias = ''): string {
+    $frag = '';
+    $pre = $tableAlias !== '' ? $tableAlias . '.' : '';
+    $st = $db->query("SHOW COLUMNS FROM care_categories LIKE 'icon'");
+    if ($st && $st->rowCount() > 0) {
+        $frag .= ', ' . $pre . 'icon';
+    }
+    $st = $db->query("SHOW COLUMNS FROM care_categories LIKE 'image_url'");
+    if ($st && $st->rowCount() > 0) {
+        $frag .= ', ' . $pre . 'image_url';
+    }
+    $st = $db->query("SHOW COLUMNS FROM care_categories LIKE 'catalog_group'");
+    if ($st && $st->rowCount() > 0) {
+        $frag .= ', ' . $pre . 'catalog_group';
+    }
+    return $frag;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Liste des catégories (public pour patients, authentifié pour admins)
     try {
@@ -124,10 +153,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
             if ($providerRow && $providerRow['role'] === 'nurse') {
                 // Infirmier : catégories nursing activées via nurse_category_preferences
-                $iconColStmt = $db->query("SHOW COLUMNS FROM care_categories LIKE 'icon'");
-                $iconCol = $iconColStmt && $iconColStmt->rowCount() > 0 ? ', cc.icon' : '';
+                $ccf = care_categories_column_fragment($db, 'cc');
                 $sql = "
-                    SELECT cc.id, cc.name, cc.description, cc.type{$iconCol}, cc.is_active, cc.created_at
+                    SELECT cc.id, cc.name, cc.description, cc.type{$ccf}, cc.is_active, cc.created_at
                     FROM care_categories cc
                     LEFT JOIN nurse_category_preferences ncp
                         ON cc.id = ncp.category_id AND ncp.nurse_id = ?
@@ -142,14 +170,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $categories = appendCategoryOptions($db, $categories);
             } else {
                 // Lab/subaccount : toutes les catégories blood_test actives
-                $sql = 'SELECT id, name, description, type, icon, is_active, created_at FROM care_categories WHERE is_active = TRUE AND type = ? ORDER BY name ASC';
+                $ccf = care_categories_column_fragment($db, '');
+                $sql = 'SELECT id, name, description, type' . $ccf . ', is_active, created_at FROM care_categories WHERE is_active = TRUE AND type = ? ORDER BY name ASC';
                 $stmt = $db->prepare($sql);
                 $stmt->execute(['blood_test']);
                 $categories = $stmt->fetchAll();
                 $categories = appendCategoryOptions($db, $categories);
             }
         } else {
-            $sql = 'SELECT id, name, description, type, icon, is_active, created_at FROM care_categories WHERE 1=1';
+            $ccf = care_categories_column_fragment($db, '');
+            $sql = 'SELECT id, name, description, type' . $ccf . ', is_active, created_at FROM care_categories WHERE 1=1';
             $params = [];
 
             if (!$includeInactive || !$user) {
@@ -214,19 +244,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $isActive = ($v === true || $v === 1 || $v === '1') ? 1 : 0;
         }
 
-        $stmt = $db->prepare('
-            INSERT INTO care_categories (id, name, description, type, icon, is_active)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ');
+        $hasIcon = $db->query("SHOW COLUMNS FROM care_categories LIKE 'icon'")->rowCount() > 0;
+        $hasImg = $db->query("SHOW COLUMNS FROM care_categories LIKE 'image_url'")->rowCount() > 0;
 
-        $stmt->execute([
-            $id,
-            $data['name'],
-            $data['description'] ?? '',
-            $data['type'],
-            $data['icon'] ?? null,
-            $isActive
-        ]);
+        $cols = ['id', 'name', 'description', 'type'];
+        $vals = [$id, $data['name'], $data['description'] ?? '', $data['type']];
+        if ($hasIcon) {
+            $cols[] = 'icon';
+            $vals[] = $data['icon'] ?? null;
+        }
+        if ($hasImg) {
+            $cols[] = 'image_url';
+            $vals[] = $data['image_url'] ?? null;
+        }
+        $cols[] = 'is_active';
+        $vals[] = $isActive;
+
+        $placeholders = implode(',', array_fill(0, count($cols), '?'));
+        $stmt = $db->prepare('INSERT INTO care_categories (' . implode(',', $cols) . ') VALUES (' . $placeholders . ')');
+        $stmt->execute($vals);
 
         // Insérer les options (sous-choix) si fournies
         if (!empty($data['options']) && is_array($data['options'])) {
@@ -264,6 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'description' => $data['description'] ?? '',
             'type' => $data['type'],
             'icon' => $data['icon'] ?? null,
+            'image_url' => $hasImg ? ($data['image_url'] ?? null) : null,
             'is_active' => (bool) $isActive,
         ];
         $created['options'] = appendCategoryOptions($db, [$created])[0]['options'] ?? [];

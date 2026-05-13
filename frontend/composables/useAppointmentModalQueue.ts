@@ -1,5 +1,5 @@
-import { isPendingIncomingOffer } from '~/utils/appointment-offer'
-import { isBloodTestAppointment } from '~/utils/appointment-type-rules'
+import { isPendingIncomingOffer } from '~/utils/appointment-offer';
+import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules'
 
 /**
  * File d'attente FIFO pour les modals RDV en attente (Lab, Sub Lab, Préleveur, Nurse).
@@ -19,16 +19,40 @@ export function useAppointmentModalQueue(options?: {
 
   const onDisplayed = options?.onDisplayed
 
-  function bloodTestBatchKey(appointment: any): string | null {
+  /** Lot prise de sang ou soins infirmiers (plusieurs lignes même `creation_batch_id`). */
+  function appointmentBatchGroupKey(appointment: any): string | null {
     const bid = appointment?.creation_batch_id
-    if (!bid || !isBloodTestAppointment(appointment?.type)) return null
-    return `blood_test:${bid}`
+    if (!bid) return null
+    if (isBloodTestAppointment(appointment?.type)) return `blood_test:${bid}`
+    if (isNursingAppointment(appointment?.type)) return `nursing:${bid}`
+    return null
+  }
+
+  /** IDs du lot renvoyés par GET détail (ligne + batch_siblings). La liste pending peut omettre creation_batch_id → sans ça, N entrées pour un même lot et N modales. */
+  function lotIdsFromDetailPayload(data: any): Set<string> {
+    const ids = new Set<string>()
+    if (data?.id) ids.add(String(data.id))
+    const sibs = data?.batch_siblings
+    if (Array.isArray(sibs)) {
+      for (const s of sibs) {
+        if (s?.id) ids.add(String(s.id))
+      }
+    }
+    return ids
+  }
+
+  /** Retire de la file tous les RDV du même lot que le détail fraîchement chargé. */
+  function purgeQueueForSameLotAsDetail(data: any) {
+    const lotIds = lotIdsFromDetailPayload(data)
+    if (lotIds.size === 0) return
+    queue.value = queue.value.filter((a: any) => !a?.id || !lotIds.has(String(a.id)))
   }
 
   async function enqueueOne(appointment: any) {
     const id = appointment?.id
     if (!id || displayedOrQueuedIds.value.has(id)) return
-    const batchKey = bloodTestBatchKey(appointment)
+    if (showAppointmentModal.value && String(selectedAppointment.value?.id) === String(id)) return
+    const batchKey = appointmentBatchGroupKey(appointment)
     if (batchKey && displayedOrQueuedBatchKeys.value.has(batchKey)) return
     displayedOrQueuedIds.value = new Set([...displayedOrQueuedIds.value, id])
     if (batchKey) displayedOrQueuedBatchKeys.value = new Set([...displayedOrQueuedBatchKeys.value, batchKey])
@@ -41,9 +65,14 @@ export function useAppointmentModalQueue(options?: {
     const ids = displayedOrQueuedIds.value
     const batchKeys = displayedOrQueuedBatchKeys.value
     const localBatchKeys = new Set<string>()
+    const displayedId =
+      showAppointmentModal.value && selectedAppointment.value?.id
+        ? String(selectedAppointment.value.id)
+        : ''
     const toAdd = appointments.filter((a: any) => {
       if (!a?.id || ids.has(a.id)) return false
-      const batchKey = bloodTestBatchKey(a)
+      if (displayedId && String(a.id) === displayedId) return false
+      const batchKey = appointmentBatchGroupKey(a)
       if (!batchKey) return true
       if (batchKeys.has(batchKey) || localBatchKeys.has(batchKey)) return false
       localBatchKeys.add(batchKey)
@@ -52,7 +81,7 @@ export function useAppointmentModalQueue(options?: {
     if (toAdd.length === 0) return
     const newIds = new Set([...ids, ...toAdd.map((a: any) => a.id)])
     displayedOrQueuedIds.value = newIds
-    const addedBatchKeys = toAdd.map((a: any) => bloodTestBatchKey(a)).filter(Boolean) as string[]
+    const addedBatchKeys = toAdd.map((a: any) => appointmentBatchGroupKey(a)).filter(Boolean) as string[]
     const newBatchKeys = new Set([...batchKeys, ...addedBatchKeys])
     displayedOrQueuedBatchKeys.value = newBatchKeys
     queue.value = [...queue.value, ...toAdd]
@@ -92,8 +121,7 @@ export function useAppointmentModalQueue(options?: {
           const toast = useAppToast()
           toast.add({
             title: 'Rendez-vous annulé',
-            description:
-              'Le patient a annulé ce rendez-vous. Il n’est plus disponible pour acceptation.',
+            description: 'Plus disponible à l’acceptation.',
             color: 'neutral',
           })
         }
@@ -123,13 +151,10 @@ export function useAppointmentModalQueue(options?: {
 
       if (alreadyAcceptedByOther) {
         queue.value = queue.value.slice(1)
-        const currentBloodBatchKey = bloodTestBatchKey(data)
-        if (currentBloodBatchKey) {
-          queue.value = queue.value.filter((a: any) => bloodTestBatchKey(a) !== currentBloodBatchKey)
-        }
-        if (data.batch_siblings?.length) {
-          const siblingIds = new Set((data.batch_siblings as { id: string }[]).map((s) => s.id))
-          queue.value = queue.value.filter((a: any) => !siblingIds.has(String(a.id)))
+        purgeQueueForSameLotAsDetail(data)
+        const currentLotKey = appointmentBatchGroupKey(data)
+        if (currentLotKey) {
+          queue.value = queue.value.filter((a: any) => appointmentBatchGroupKey(a) !== currentLotKey)
         }
         selectedAppointment.value = data
         showAppointmentModal.value = true
@@ -138,16 +163,11 @@ export function useAppointmentModalQueue(options?: {
       }
 
       queue.value = queue.value.slice(1)
+      purgeQueueForSameLotAsDetail(data)
 
-      const currentBloodBatchKey = bloodTestBatchKey(data)
-      if (currentBloodBatchKey) {
-        queue.value = queue.value.filter((a: any) => bloodTestBatchKey(a) !== currentBloodBatchKey)
-      }
-
-      // Lot multi-soins : retirer les siblings de la file pour éviter N modals séparées
-      if (data.batch_siblings?.length) {
-        const siblingIds = new Set((data.batch_siblings as { id: string }[]).map((s) => s.id))
-        queue.value = queue.value.filter((a: any) => !siblingIds.has(String(a.id)))
+      const currentLotKey = appointmentBatchGroupKey(data)
+      if (currentLotKey) {
+        queue.value = queue.value.filter((a: any) => appointmentBatchGroupKey(a) !== currentLotKey)
       }
 
       selectedAppointment.value = data

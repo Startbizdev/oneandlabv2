@@ -54,7 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 cc.name,
                 cc.description,
                 cc.type,
-                cc.icon
+                cc.icon,
+                cc.image_url
             FROM nurse_category_preferences ncp
             JOIN care_categories cc ON ncp.category_id = cc.id
             WHERE ncp.nurse_id = ? AND cc.is_active = TRUE AND cc.type = \'nursing\'
@@ -71,6 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 cc.description,
                 cc.type,
                 cc.icon,
+                cc.image_url,
                 FALSE as is_enabled
             FROM care_categories cc
             WHERE cc.is_active = TRUE AND cc.type = \'nursing\'

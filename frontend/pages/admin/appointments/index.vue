@@ -1,6 +1,7 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard title="Rendez-vous" description="Gérez tous les rendez-vous de la plateforme. Recherchez, filtrez et modifiez en un clic.">
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" title="Rendez-vous" description="Gérez tous les rendez-vous de la plateforme. Recherchez, filtrez et modifiez en un clic.">
       <template #actions>
         <UButton
           to="/admin/appointments/new"
@@ -10,7 +11,8 @@
           Nouveau rendez-vous
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
     <AppointmentListPage
       ref="listRef"
@@ -21,9 +23,10 @@
     >
       <template #cardActions="{ appointment, basePath }">
         <UButton
-          variant="ghost"
+          variant="outline"
           color="neutral"
-          size="xs"
+          size="sm"
+          class="w-full min-h-9 justify-center shadow-none font-medium sm:min-h-10 sm:flex-1"
           leading-icon="i-lucide-pencil"
           :to="`${basePath}/appointments/${appointment.id}/edit`"
           aria-label="Éditer"
@@ -31,9 +34,10 @@
           Éditer
         </UButton>
         <UButton
-          variant="ghost"
+          variant="outline"
           color="error"
-          size="xs"
+          size="sm"
+          class="w-full min-h-9 justify-center shadow-none font-medium sm:min-h-10 sm:flex-1"
           leading-icon="i-lucide-trash-2"
           aria-label="Supprimer"
           @click="openDeleteModal(appointment)"
@@ -98,7 +102,7 @@
         </Transition>
       </Teleport>
     </ClientOnly>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

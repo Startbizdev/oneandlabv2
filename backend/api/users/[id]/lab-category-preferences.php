@@ -65,7 +65,7 @@ if (!$profile || $profile['role'] !== 'lab') {
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
         $stmt = $db->prepare('
-            SELECT lcp.id, lcp.category_id, lcp.is_enabled, cc.name, cc.description, cc.type, cc.icon
+            SELECT lcp.id, lcp.category_id, lcp.is_enabled, cc.name, cc.description, cc.type, cc.icon, cc.image_url
             FROM lab_category_preferences lcp
             JOIN care_categories cc ON lcp.category_id = cc.id
             WHERE lcp.lab_id = ? AND cc.is_active = TRUE AND cc.type = \'blood_test\'
@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $preferences = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $stmt = $db->prepare('
-            SELECT cc.id as category_id, cc.name, cc.description, cc.type, cc.icon, FALSE as is_enabled
+            SELECT cc.id as category_id, cc.name, cc.description, cc.type, cc.icon, cc.image_url, FALSE as is_enabled
             FROM care_categories cc
             WHERE cc.is_active = TRUE AND cc.type = \'blood_test\'
             AND cc.id NOT IN (SELECT category_id FROM lab_category_preferences WHERE lab_id = ?)

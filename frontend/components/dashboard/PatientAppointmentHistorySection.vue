@@ -1,5 +1,5 @@
 <template>
-  <UCard class="overflow-hidden">
+  <UCard class="h-full min-h-0 overflow-hidden">
     <template #header>
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div class="min-w-0">
@@ -41,9 +41,9 @@
         <article
           v-for="item in appointments"
           :key="item.id"
-          class="p-4 transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-800/35"
+          class="p-3.5 transition-colors sm:p-4 hover:bg-gray-50/80 dark:hover:bg-gray-800/35"
         >
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div class="flex flex-col gap-4">
             <div class="min-w-0 flex-1 space-y-3">
               <div class="flex flex-wrap items-center gap-2">
                 <UBadge :color="typeColor(item.type)" variant="subtle" size="sm">
@@ -67,12 +67,12 @@
               </div>
 
               <div v-if="careTeamLabel(item)" class="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-300">
-                <UIcon name="i-lucide-user-round-check" class="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" />
-                <span class="min-w-0 truncate">{{ careTeamLabel(item) }}</span>
+                <UIcon name="i-lucide-user-round-check" class="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                <span class="min-w-0 break-words leading-snug">{{ careTeamLabel(item) }}</span>
               </div>
             </div>
 
-            <div class="w-full lg:w-72">
+            <div class="w-full min-w-0">
               <div
                 v-if="item.resultats.length"
                 class="rounded-2xl border border-red-100 bg-red-50/70 p-3 dark:border-red-900/50 dark:bg-red-950/25"
@@ -127,15 +127,16 @@
         </article>
       </div>
 
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p class="text-xs text-gray-500 dark:text-gray-400">
+      <div class="flex flex-col gap-3 border-t border-gray-100 pt-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between sm:pt-3">
+        <p class="text-center text-xs text-gray-500 dark:text-gray-400 sm:text-left">
           Page {{ pagination.page }} sur {{ totalPages }}
         </p>
-        <div class="flex items-center gap-2">
+        <div class="flex w-full items-stretch justify-center gap-2 sm:w-auto sm:justify-end sm:items-center">
           <UButton
             color="neutral"
             variant="outline"
             size="sm"
+            class="min-h-10 flex-1 sm:min-h-0 sm:flex-initial"
             icon="i-lucide-chevron-left"
             :disabled="pagination.page <= 1 || loading"
             @click="goToPage(pagination.page - 1)"
@@ -146,6 +147,7 @@
             color="neutral"
             variant="outline"
             size="sm"
+            class="min-h-10 flex-1 sm:min-h-0 sm:flex-initial"
             trailing-icon="i-lucide-chevron-right"
             :disabled="pagination.page >= totalPages || loading"
             @click="goToPage(pagination.page + 1)"
@@ -281,7 +283,7 @@ async function downloadResult(doc: HistoryDocument) {
 }
 
 function typeLabel(type?: string) {
-  if (type === 'blood_test') return 'Prise de sang';
+  if (type === 'blood_test') return 'Prélèvement';
   if (type === 'nursing' || type === 'nurse') return 'Soin infirmier';
   return 'Rendez-vous';
 }

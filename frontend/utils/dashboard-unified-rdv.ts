@@ -1,5 +1,5 @@
 import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot';
-import { isBloodTestAppointment } from '~/utils/appointment-type-rules';
+import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import { isTechnicalPatientEmail } from '~/utils/patient-address-rdv';
 
 export type SelectedServiceInput = {
@@ -8,7 +8,62 @@ export type SelectedServiceInput = {
   name: string;
   category_id: string | null;
   icon?: string;
+  /** `care_categories.image_url` — image uploadée admin (remplace l’icône). */
+  category_image_url?: string | null;
 };
+
+/** Actes prélèvement dans le panier (ordre conservé). */
+export function bloodServicesInSelection(selectedServices: SelectedServiceInput[]): SelectedServiceInput[] {
+  return selectedServices.filter((svc) => isBloodTestAppointment(svc.type));
+}
+
+/** Plusieurs soins infirmiers (même créneau métier) → un seul RDV + `nursing_items`. */
+export function nursingServicesInSelection(selectedServices: SelectedServiceInput[]): SelectedServiceInput[] {
+  return selectedServices.filter((svc) => isNursingAppointment(svc.type));
+}
+
+export function shouldMergeNursingServices(selectedServices: SelectedServiceInput[]): boolean {
+  return nursingServicesInSelection(selectedServices).length > 1;
+}
+
+/** Plusieurs prélèvements → une seule carte + un seul RDV côté lab (avec `blood_test_items`). */
+export function shouldMergeBloodServices(selectedServices: SelectedServiceInput[]): boolean {
+  return bloodServicesInSelection(selectedServices).length > 1;
+}
+
+/**
+ * Services qui ont une carte « créneau » dans le formulaire unifié
+ * (si plusieurs prélèvements : le premier dans l’ordre du panier représente le lot ;
+ * idem plusieurs soins infirmiers → une carte commune).
+ * Ordre stable pour l’UI et la validation : **tous les soins infirmiers d’abord**, puis la carte prélèvement
+ * (évite l’alternance type soins / lab / soins qui désorientait au multi-actes).
+ */
+export function servicesRequiringOwnSlots(selectedServices: SelectedServiceInput[]): SelectedServiceInput[] {
+  const blood = bloodServicesInSelection(selectedServices);
+  const nursing = nursingServicesInSelection(selectedServices);
+  let merged = [...selectedServices];
+  if (blood.length > 1) {
+    const firstBloodId = blood[0].id;
+    merged = merged.filter((s) => !isBloodTestAppointment(s.type) || s.id === firstBloodId);
+  }
+  if (nursing.length > 1) {
+    const firstNursingId = nursing[0].id;
+    merged = merged.filter(
+      (s) => isBloodTestAppointment(s.type) || !isNursingAppointment(s.type) || s.id === firstNursingId,
+    );
+  }
+  const nursingRows = merged.filter((s) => !isBloodTestAppointment(s.type));
+  const bloodRows = merged.filter((s) => isBloodTestAppointment(s.type));
+  return [...nursingRows, ...bloodRows];
+}
+
+/** Nombre de POST /appointments après fusion prélèvements + fusion soins infirmiers. */
+export function countGroupedAppointmentPayloads(selectedServices: SelectedServiceInput[]): number {
+  const nBlood = bloodServicesInSelection(selectedServices).length;
+  const nNursing = nursingServicesInSelection(selectedServices).length;
+  const other = selectedServices.length - nBlood - nNursing;
+  return other + Math.min(1, nBlood) + Math.min(1, nNursing);
+}
 
 /** Erreur de validation avec ancrage scroll (wizard pro / dashboard). */
 export type UnifiedRdvValidationError = {
@@ -86,8 +141,7 @@ export function validateUnifiedRdvPayload(
     };
   }
 
-  const unifiedBloodServices = selectedServices.length > 1 && selectedServices.every((svc) => isBloodTestAppointment(svc.type));
-  const servicesRequiringOwnSlot = unifiedBloodServices ? selectedServices.slice(0, 1) : selectedServices;
+  const servicesRequiringOwnSlot = servicesRequiringOwnSlots(selectedServices);
   for (const svc of servicesRequiringOwnSlot) {
     const svcData = formData?.formDataByService?.[svc.id] ?? {};
     const scheduledAt = svcData.scheduled_at;
@@ -173,6 +227,169 @@ export function validateUnifiedRdvPayload(
   return null;
 }
 
+type DashboardPayloadCtx = {
+  creationBatchId?: string;
+  creatorRole: string;
+  creatorUserId: string;
+};
+
+function dashboardSingleServicePayload(
+  patientId: string,
+  svc: SelectedServiceInput,
+  formData: Record<string, any>,
+  formDataByService: Record<string, any>,
+  commonForm: Record<string, unknown>,
+  ctx: DashboardPayloadCtx,
+): Record<string, unknown> {
+  const svcData = formDataByService[svc.id] ?? {};
+  const baseFormData: Record<string, unknown> = {
+    ...commonForm,
+    address: formData?.address,
+    files: svcData.form_data_files ?? {},
+    availability: svcData.availability,
+    scheduled_at: svcData.scheduled_at,
+  };
+  if (isBloodTestAppointment(svc.type)) {
+    Object.assign(baseFormData, {
+      blood_test_type: svcData.blood_test_type,
+      duration_days: svcData.blood_test_type === 'multiple' ? svcData.duration_days : undefined,
+      custom_days: svcData.duration_days === 'custom' ? svcData.custom_days : undefined,
+    });
+  } else {
+    Object.assign(baseFormData, {
+      duration_days: svcData.duration_days,
+      frequency: svcData.frequency,
+      custom_days: svcData.duration_days === 'custom' ? svcData.custom_days : undefined,
+      preferred_nurse_gender: svcData.preferred_nurse_gender ?? 'any',
+    });
+  }
+  baseFormData.notes = svcData.notes || undefined;
+  if (svcData.care_options && Object.keys(svcData.care_options).length) {
+    baseFormData.care_options = svcData.care_options;
+  }
+
+  const payload: Record<string, unknown> = {
+    type: svc.type,
+    form_type: svc.type,
+    category_id: svc.category_id,
+    patient_id: patientId,
+    address: formData?.address,
+    scheduled_at: svcData.scheduled_at,
+    form_data: baseFormData,
+    files: svcData.files ?? {},
+  };
+
+  if (ctx.creationBatchId) {
+    payload.creation_batch_id = ctx.creationBatchId;
+  }
+
+  if (isBloodTestAppointment(svc.type) && (ctx.creatorRole === 'lab' || ctx.creatorRole === 'subaccount')) {
+    payload.assigned_lab_id = ctx.creatorUserId;
+  }
+
+  return payload;
+}
+
+function dashboardMergedBloodPayload(
+  patientId: string,
+  bloodServices: SelectedServiceInput[],
+  formData: Record<string, any>,
+  formDataByService: Record<string, any>,
+  commonForm: Record<string, unknown>,
+  ctx: DashboardPayloadCtx,
+): Record<string, unknown> {
+  const firstSvc = bloodServices[0];
+  const firstData = formDataByService[firstSvc.id] ?? {};
+  const bloodTestItems = bloodServices.map((svc, index) => ({
+    category_id: svc.category_id,
+    label: svc.name,
+    care_options: formDataByService[svc.id]?.care_options ?? {},
+    sort_order: index,
+  }));
+  const baseFormData: Record<string, unknown> = {
+    ...commonForm,
+    address: formData?.address,
+    files: firstData.form_data_files ?? {},
+    availability: firstData.availability,
+    scheduled_at: firstData.scheduled_at,
+    blood_test_type: firstData.blood_test_type,
+    duration_days: firstData.blood_test_type === 'multiple' ? firstData.duration_days : undefined,
+    custom_days: firstData.duration_days === 'custom' ? firstData.custom_days : undefined,
+    notes: firstData.notes || undefined,
+    care_options: firstData.care_options && Object.keys(firstData.care_options).length ? firstData.care_options : undefined,
+    blood_test_items: bloodTestItems,
+  };
+  const payload: Record<string, unknown> = {
+    type: 'blood_test',
+    form_type: 'blood_test',
+    category_id: firstSvc.category_id,
+    patient_id: patientId,
+    address: formData?.address,
+    scheduled_at: firstData.scheduled_at,
+    form_data: baseFormData,
+    files: firstData.files ?? {},
+    blood_test_items: bloodTestItems,
+  };
+  if (ctx.creationBatchId) {
+    payload.creation_batch_id = ctx.creationBatchId;
+  }
+  if (ctx.creatorRole === 'lab' || ctx.creatorRole === 'subaccount') {
+    payload.assigned_lab_id = ctx.creatorUserId;
+  }
+  return payload;
+}
+
+function dashboardMergedNursingPayload(
+  patientId: string,
+  nursingServices: SelectedServiceInput[],
+  formData: Record<string, any>,
+  formDataByService: Record<string, any>,
+  commonForm: Record<string, unknown>,
+  ctx: DashboardPayloadCtx,
+): Record<string, unknown> {
+  const firstSvc = nursingServices[0];
+  const firstData = formDataByService[firstSvc.id] ?? {};
+  const nursingItems = nursingServices.map((svc, index) => ({
+    category_id: svc.category_id,
+    label: svc.name,
+    care_options: formDataByService[svc.id]?.care_options ?? {},
+    sort_order: index,
+  }));
+  const baseFormData: Record<string, unknown> = {
+    ...commonForm,
+    address: formData?.address,
+    files: firstData.form_data_files ?? {},
+    availability: firstData.availability,
+    scheduled_at: firstData.scheduled_at,
+    duration_days: firstData.duration_days,
+    frequency: firstData.frequency,
+    custom_days: firstData.duration_days === 'custom' ? firstData.custom_days : undefined,
+    preferred_nurse_gender: firstData.preferred_nurse_gender ?? 'any',
+    notes: firstData.notes || undefined,
+    nursing_items: nursingItems,
+  };
+  if (nursingItems.length > 1) {
+    delete baseFormData.care_options;
+  } else if (firstData.care_options && Object.keys(firstData.care_options).length) {
+    baseFormData.care_options = firstData.care_options;
+  }
+  const payload: Record<string, unknown> = {
+    type: 'nursing',
+    form_type: 'nursing',
+    category_id: firstSvc.category_id,
+    patient_id: patientId,
+    address: formData?.address,
+    scheduled_at: firstData.scheduled_at,
+    form_data: baseFormData,
+    files: firstData.files ?? {},
+    nursing_items: nursingItems,
+  };
+  if (ctx.creationBatchId) {
+    payload.creation_batch_id = ctx.creationBatchId;
+  }
+  return payload;
+}
+
 export function buildDashboardAppointmentPayloads(
   patientId: string,
   formData: Record<string, any>,
@@ -187,94 +404,40 @@ export function buildDashboardAppointmentPayloads(
 ): Record<string, unknown>[] {
   const formDataByService = formData?.formDataByService ?? {};
   const { formDataByService: _fd, selectedServices: _ss, isMultiServices: _im, ...commonForm } = formData ?? {};
-  const unifiedBloodServices = selectedServices.length > 1 && selectedServices.every((svc) => isBloodTestAppointment(svc.type));
+  const bloodList = bloodServicesInSelection(selectedServices);
+  const nursingList = nursingServicesInSelection(selectedServices);
+  const mergeBlood = shouldMergeBloodServices(selectedServices);
+  const mergeNursing = shouldMergeNursingServices(selectedServices);
 
-  if (unifiedBloodServices) {
-    const firstSvc = selectedServices[0];
-    const firstData = formDataByService[firstSvc.id] ?? {};
-    const bloodTestItems = selectedServices.map((svc, index) => ({
-      category_id: svc.category_id,
-      label: svc.name,
-      care_options: formDataByService[svc.id]?.care_options ?? {},
-      sort_order: index,
-    }));
-    const baseFormData: Record<string, unknown> = {
-      ...commonForm,
-      address: formData?.address,
-      files: firstData.form_data_files ?? {},
-      availability: firstData.availability,
-      scheduled_at: firstData.scheduled_at,
-      blood_test_type: firstData.blood_test_type,
-      duration_days: firstData.blood_test_type === 'multiple' ? firstData.duration_days : undefined,
-      custom_days: firstData.duration_days === 'custom' ? firstData.custom_days : undefined,
-      notes: firstData.notes || undefined,
-      care_options: firstData.care_options && Object.keys(firstData.care_options).length ? firstData.care_options : undefined,
-      blood_test_items: bloodTestItems,
-    };
-    const payload: Record<string, unknown> = {
-      type: 'blood_test',
-      form_type: 'blood_test',
-      category_id: firstSvc.category_id,
-      patient_id: patientId,
-      address: formData?.address,
-      scheduled_at: firstData.scheduled_at,
-      form_data: baseFormData,
-      files: firstData.files ?? {},
-      blood_test_items: bloodTestItems,
-    };
-    if (ctx.creatorRole === 'lab' || ctx.creatorRole === 'subaccount') {
-      payload.assigned_lab_id = ctx.creatorUserId;
-    }
-    return [payload];
+  if (!mergeBlood && !mergeNursing) {
+    return selectedServices.map((svc) =>
+      dashboardSingleServicePayload(patientId, svc, formData, formDataByService, commonForm, ctx),
+    );
   }
 
-  return selectedServices.map((svc) => {
-    const svcData = formDataByService[svc.id] ?? {};
-    const baseFormData: Record<string, unknown> = {
-      ...commonForm,
-      address: formData?.address,
-      files: svcData.form_data_files ?? {},
-      availability: svcData.availability,
-      scheduled_at: svcData.scheduled_at,
-    };
+  const out: Record<string, unknown>[] = [];
+  let bloodEmitted = false;
+  let nursingEmitted = false;
+  for (const svc of selectedServices) {
     if (isBloodTestAppointment(svc.type)) {
-      Object.assign(baseFormData, {
-        blood_test_type: svcData.blood_test_type,
-        duration_days: svcData.blood_test_type === 'multiple' ? svcData.duration_days : undefined,
-        custom_days: svcData.duration_days === 'custom' ? svcData.custom_days : undefined,
-      });
+      if (!mergeBlood) {
+        out.push(dashboardSingleServicePayload(patientId, svc, formData, formDataByService, commonForm, ctx));
+      } else if (!bloodEmitted) {
+        out.push(dashboardMergedBloodPayload(patientId, bloodList, formData, formDataByService, commonForm, ctx));
+        bloodEmitted = true;
+      }
+    } else if (isNursingAppointment(svc.type)) {
+      if (!mergeNursing) {
+        out.push(dashboardSingleServicePayload(patientId, svc, formData, formDataByService, commonForm, ctx));
+      } else if (!nursingEmitted) {
+        out.push(
+          dashboardMergedNursingPayload(patientId, nursingList, formData, formDataByService, commonForm, ctx),
+        );
+        nursingEmitted = true;
+      }
     } else {
-      Object.assign(baseFormData, {
-        duration_days: svcData.duration_days,
-        frequency: svcData.frequency,
-        custom_days: svcData.duration_days === 'custom' ? svcData.custom_days : undefined,
-        preferred_nurse_gender: svcData.preferred_nurse_gender ?? 'any',
-      });
+      out.push(dashboardSingleServicePayload(patientId, svc, formData, formDataByService, commonForm, ctx));
     }
-    baseFormData.notes = svcData.notes || undefined;
-    if (svcData.care_options && Object.keys(svcData.care_options).length) {
-      baseFormData.care_options = svcData.care_options;
-    }
-
-    const payload: Record<string, unknown> = {
-      type: svc.type,
-      form_type: svc.type,
-      category_id: svc.category_id,
-      patient_id: patientId,
-      address: formData?.address,
-      scheduled_at: svcData.scheduled_at,
-      form_data: baseFormData,
-      files: svcData.files ?? {},
-    };
-
-    if (ctx.creationBatchId) {
-      payload.creation_batch_id = ctx.creationBatchId;
-    }
-
-    if (isBloodTestAppointment(svc.type) && (ctx.creatorRole === 'lab' || ctx.creatorRole === 'subaccount')) {
-      payload.assigned_lab_id = ctx.creatorUserId;
-    }
-
-    return payload;
-  });
+  }
+  return out;
 }

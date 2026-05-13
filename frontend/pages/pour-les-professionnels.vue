@@ -1,116 +1,245 @@
 <template>
   <div>
-    <LandingHero
-      badge="Pour les professionnels de santé"
-      badge-icon="i-lucide-stethoscope"
-      title="Orientez vos patients vers des soins à domicile"
-      subtitle="Médecins, kinés, professionnels : collaborez avec OneAndLab"
-      description="Référencez vos patients sur la plateforme pour une prise de sang ou des soins infirmiers à domicile. Ils réserveront en quelques clics. Vous gardez la main sur le suivi et la coordination."
-      :ctas="heroCtas"
-      :background-image="heroBackgroundImage"
-      overlay-class="bg-black/55"
+    <LandingMaquetteHero
+      eyebrow="Pour les professionnels de santé"
+      :title-lines="['Orientez vos patients', 'vers le']"
+      highlight="domicile"
+      description="Référencez vos patients sur OneAndLab pour une prise de sang ou des soins infirmiers à domicile : ils réservent en quelques clics avec leur ordonnance et vous conservez une vision utile pour le suivi."
+      image-src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=900&h=1200&q=80&auto=format&fit=crop"
+      image-alt="Médecin avec stéthoscope, en blouse blanche"
+      image-object-class="object-[center_20%]"
+      :primary-cta="{ label: 'Rejoindre en tant que professionnel', to: '/pro/register', icon: 'i-lucide-stethoscope' }"
+      :secondary-cta="{ label: 'Parcours patients', to: '/pour-les-patients' }"
+      :stats="proStats"
+      :quote="proQuote"
     />
+  <LandingMaquetteMarketingBackdrop>
 
-    <LandingTrust
+    <LandingMaquettePillarGrid
+      eyebrow="Synthèse"
+      title="Un relais simple entre votre prescription et la chaîne terrain"
+      subtitle="Une expérience sobre pour vous concentrer sur le fond médical, pas sur l’outil."
+      :columns="4"
+      section-class="bg-white dark:bg-gray-950"
       :items="trustItems"
-      background-class="bg-gray-50/50"
     />
 
-    <LandingRoleBenefits
-      title="Les avantages pour les professionnels"
-      subtitle="Un outil pour orienter vos patients vers des soins à domicile."
+    <LandingMaquettePillarGrid
+      eyebrow="Avantages"
+      title="Une plateforme pensée avec les cabinets et réseaux de santé"
+      subtitle="Référencer vos patients sans multiplier les emails ni les relances téléphoniques inutiles."
+      :columns="3"
+      section-class="bg-[#F7F7FB] dark:bg-gray-900/80"
       :items="benefits"
-      background-class="bg-white"
     />
 
-    <HowItWorks
-      title="Comment utiliser OneAndLab ?"
-      subtitle="En 3 étapes, orientez vos patients vers des soins à domicile."
-      :steps="howItWorksSteps"
-      background-class="bg-gray-50"
+    <LandingMaquetteStepsCards
+      eyebrow="Feuille de route express"
+      :heading-lines="['Trois étapes', 'pour vos patients qui restent au domicile']"
+      intro="Une fois votre dossier validé depuis votre inscription professionnelle, vos patients retrouvent un tunnel patient identique quel que soit le médical prescripteur."
+      section-class="bg-white dark:bg-gray-950"
+      :cards="stepCards"
     />
 
-    <Reviews
-      title="Ce que disent les professionnels de santé"
-      subtitle="Médecins et professionnels qui orientent leurs patients vers OneAndLab."
-      :reviews="landingReviews"
-      :max-reviews="6"
-      background-class="bg-white"
-    />
+    <section class="border-y border-[#E8E8F0]/80 bg-white py-[72px] dark:border-gray-800 dark:bg-gray-950 lg:py-[100px]">
+      <div class="mx-auto max-w-[1200px] px-6 lg:px-12">
+        <Reviews
+          title="Professionnels parlent du parcours avec OneAndLab"
+          subtitle="Une sélection parmi médecins, kinés et autres professionnels utilisant ou recommandant le flux domiciliaire aux patients qui ne peuvent plus voyager jusqu’à la biologie ou l’IDEL au cabinet fixe."
+          :reviews="landingReviews"
+          :max-reviews="6"
+          background-class="!bg-transparent"
+        />
+      </div>
+    </section>
 
-    <LandingFaq
-      title="Questions fréquentes"
-      subtitle="Tout ce qu’il faut savoir en tant que professionnel de santé."
-      :items="faqItems"
-      background-class="bg-white"
-    />
+    <LandingMaquetteFaq anchor-id="faq" section-class="bg-[#F7F7FB] dark:bg-gray-900/70" :items="faqItems" />
 
-    <LandingCtaBlock
-      title="Orientez vos patients vers des soins à domicile"
-      subtitle="Médecins, kinés, professionnels : inscrivez-vous gratuitement. Créez des rendez-vous pour vos patients et suivez les soins à domicile en un clic."
+    <LandingMaquetteInlineCta
+      eyebrow="Prêt à ouvrir un compte professionnel santé OneAndLab"
+      title="Orientez désormais les patients depuis une interface commune infirmiers + laboratoires"
+      subtitle="Inscription décrite étape par étape : notre équipe vous aide si votre situation professionnelle sort des dossiers habituels (conventionnement, doubles activités, etc.)."
       :buttons="ctaButtons"
-      background-class="bg-primary-50/30"
+      outer-class="bg-[#F7F7FB] dark:bg-gray-900/70"
     />
+  </LandingMaquetteMarketingBackdrop>
   </div>
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: 'default' })
+definePageMeta({ layout: 'default' });
 
 useLandingSeo({
   title: 'Pour les professionnels de santé | OneAndLab',
-  description: 'Médecins, kinésithérapeutes, professionnels de santé : prescrivez des soins à domicile pour vos patients. Inscription professionnel OneAndLab.',
-  keywords: 'médecin prescription domicile, kiné à domicile, professionnel de santé, soins à domicile, OneAndLab, prescription prise de sang',
+  description:
+    'Médecins, kinésithérapeutes et professionnels de santé : prescrivez le domicile via OneAndLab.',
+  keywords:
+    'médecin prescription domicile, kiné à domicile, professionnel santé OneAndLab, prescription prélèvement',
   path: '/pour-les-professionnels',
-})
+});
 
-// Image hero (undraw pro – bleu OneAndLab)
-const heroBackgroundImage = '/undraw/pro.svg'
+const proStats = [
+  { num: 'Adeli vérifié', rest: ' à l’inscription' },
+  { num: 'Espace dédié', rest: ' aux orientations patients' },
+  { num: 'RGPD', rest: ' données santé maîtrisées' },
+];
 
-const heroCtas = [
-  { label: 'Rejoindre en tant que professionnel', to: '/pro/register', color: 'primary', variant: 'solid', size: 'xl', icon: 'i-lucide-stethoscope' },
-]
+const proQuote = {
+  text:
+    "J'oriente mes patients âgés ou à mobilité réduite vers OneAndLab pour les prises de sang. Ils sont ravis, plus besoin de les accompagner au labo.",
+  author: 'Dr. Pierre M., médecin généraliste',
+};
 
 const trustItems = [
-  { icon: 'i-lucide-users', title: 'Orientation patients', description: 'Référencez en un clic' },
-  { icon: 'i-lucide-calendar', title: 'Création de RDV', description: 'Pour vos patients' },
-  { icon: 'i-lucide-file-text', title: 'Suivi des soins', description: 'Historique et documents' },
-  { icon: 'i-lucide-shield', title: 'Données sécurisées', description: 'Conformité santé' },
-]
+  { icon: 'i-lucide-users', title: 'Orientation patient', description: 'Un lien clair à communiquer après la consultation.' },
+  { icon: 'i-lucide-calendar', title: 'Création de rendez-vous', description: 'Vous pouvez initier la demande depuis votre espace pro.' },
+  { icon: 'i-lucide-file-text', title: 'Suivi des soins', description: 'Vision utile sur les rendez-vous et documents partagés lorsque le patient est lié à votre compte.' },
+  { icon: 'i-lucide-shield', title: 'Traitement des données', description: 'Chaîne orientée conformité RGPD et exigences du secteur santé.' },
+];
 
 const benefits = [
-  { icon: 'i-lucide-users', title: 'Orienter vos patients', description: 'Référencez vos patients sur OneAndLab pour une prise de sang ou des soins infirmiers à domicile. Ils réserveront en quelques clics.' },
-  { icon: 'i-lucide-calendar', title: 'Création de rendez-vous', description: 'Créez des demandes de rendez-vous pour vos patients. Choisissez le type de soin et les préférences de créneau.' },
-  { icon: 'i-lucide-file-text', title: 'Suivi des soins', description: 'Consultez l’historique des rendez-vous de vos patients et les documents associés si besoin.' },
-  { icon: 'i-lucide-badge-check', title: 'Profil professionnel', description: 'Page avec votre présentation et numéro Adeli. Les patients et partenaires vous identifient facilement.' },
-  { icon: 'i-lucide-shield', title: 'Sécurité et conformité', description: 'Données de santé traitées de manière sécurisée. Conformité avec les exigences du secteur santé.' },
-  { icon: 'i-lucide-handshake', title: 'Réseau de partenaires', description: 'Travaillez avec des infirmiers et laboratoires partenaires OneAndLab pour des soins à domicile de qualité.' },
-]
+  {
+    icon: 'i-lucide-users',
+    title: 'Orienter vos patients',
+    description:
+      'Référencez le parcours pour une prise de sang ou des soins infirmiers à domicile : le patient complète en autonomie après votre orientation.',
+  },
+  {
+    icon: 'i-lucide-calendar',
+    title: 'Création de rendez-vous',
+    description:
+      'Depuis votre espace, vous pouvez initier une demande en indiquant le type de soin et les préférences de créneau pour le patient.',
+  },
+  {
+    icon: 'i-lucide-file-text',
+    title: 'Suivi des soins',
+    description:
+      "Consultez l'historique lorsque le patient est rattaché à votre compte · utile pour vos bilans de suivi lorsque la structure l'autorise réglementairement.",
+  },
+  {
+    icon: 'i-lucide-badge-check',
+    title: 'Profil professionnel',
+    description:
+      'Adeli, spécialités : les patients identifient votre rôle prescripteur lorsqu’ils suivent votre lien OneAndLab.',
+  },
+  {
+    icon: 'i-lucide-shield',
+    title: 'Confidentialité renforcée',
+    description:
+      'Données de santé chiffrées en transit et au repos sur infrastructure adaptée aux usages médicaux français.',
+  },
+  {
+    icon: 'i-lucide-handshake',
+    title: 'Réseau partenaires',
+    description:
+      'Accès à une base d’infirmiers et de laboratoires partenaires intervenant chez le patient sur des actes courants.',
+  },
+];
 
-const howItWorksSteps = [
-  { title: 'Inscrivez-vous', description: 'Renseignez vos coordonnées professionnelles et votre numéro Adeli. Votre demande est transmise à notre équipe pour validation.', icon: 'i-lucide-file-edit' },
-  { title: 'Accédez à votre espace', description: 'Une fois votre compte activé, vous pouvez créer des rendez-vous pour vos patients et consulter le suivi des soins à domicile.', icon: 'i-lucide-layout-dashboard' },
-  { title: 'Orientez vos patients', description: 'Indiquez à vos patients qu’ils peuvent réserver sur OneAndLab (prise de sang ou soins infirmiers). Ils remplissent le formulaire et un professionnel les contacte.', icon: 'i-lucide-user-check' },
-]
+const stepCards = [
+  {
+    highlight: true,
+    icon: 'i-lucide-file-edit',
+    title: 'Inscrivez-vous',
+    body: 'Renseignez vos informations professionnelles et votre numéro Adeli pour que notre équipe valide votre dossier.',
+  },
+  {
+    icon: 'i-lucide-layout-dashboard',
+    title: 'Accédez à votre espace',
+    body: 'Après validation : création de demandes et vision utile pour vos patients orientés via OneAndLab.',
+  },
+  {
+    icon: 'i-lucide-user-check',
+    title: 'Orientez vos patients',
+    body: 'Indiquez à vos patients qu’ils peuvent réserver sur OneAndLab : prise de sang ou soins infirmiers à domicile selon prescription.',
+  },
+];
 
 const landingReviews = [
-  { id: '1', patientName: 'Dr. Pierre M., médecin généraliste', rating: 5, comment: 'J\'oriente mes patients âgés ou à mobilité réduite vers OneAndLab pour les prises de sang. Ils sont ravis, plus besoin de les accompagner au labo. Gain de temps pour tout le monde.', response: 'Merci Docteur pour votre confiance. — OneAndLab', date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000) },
-  { id: '2', patientName: 'Marie L., kinésithérapeute', rating: 5, comment: 'Plusieurs de mes patients ont des soins infirmiers à domicile. Je leur recommande OneAndLab pour la prise de sang et les pansements. Coordination simple, suivi visible.', response: 'Merci Marie. — Équipe OneAndLab', date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
-  { id: '3', patientName: 'Dr. Sophie R., médecin', rating: 5, comment: 'Inscription rapide, interface claire. Je crée parfois le RDV moi-même pour des patients qui ne sont pas à l\'aise avec internet. Très pratique.', response: 'Content que ça vous convienne. — OneAndLab', date: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000) },
-  { id: '4', patientName: 'Thomas B., infirmier coordinateur', rating: 5, comment: 'On utilise OneAndLab pour orienter nos patients vers des soins à domicile quand on ne peut pas nous-mêmes. Réseau fiable, retours patients positifs.', response: 'Merci Thomas. — Équipe', date: new Date(Date.now() - 27 * 24 * 60 * 60 * 1000) },
-  { id: '5', patientName: 'Dr. Isabelle F., généraliste', rating: 5, comment: 'Mes patients en ALD ou avec difficultés de déplacement utilisent OneAndLab depuis que je leur ai présenté. Moins d\'absentéisme aux bilans.', response: 'Merci pour ce retour. — OneAndLab', date: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000) },
-  { id: '6', patientName: 'Nathalie D., médecin', rating: 5, comment: 'Simple, sécurisé, conforme. Je recommande à mes confrères qui cherchent une solution pour les soins à domicile de leurs patients.', response: 'Merci Nathalie. — OneAndLab', date: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000) },
-]
+  {
+    id: '1',
+    patientName: 'Dr. Pierre M., médecin généraliste',
+    rating: 5,
+    comment:
+      "J'oriente mes patients âgés ou à mobilité réduite vers OneAndLab pour les prises de sang. Ils sont ravis, plus besoin de les accompagner au labo.",
+    response: 'Merci Docteur pour votre confiance. — OneAndLab',
+    date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: '2',
+    patientName: 'Marie L., kinésithérapeute',
+    rating: 5,
+    comment:
+      'Plusieurs de mes patients ont des soins infirmiers à domicile : je leur recommande OneAndLab pour la coordination simple.',
+    response: 'Merci Marie. — Équipe OneAndLab',
+    date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: '3',
+    patientName: 'Dr. Sophie R., médecin',
+    rating: 5,
+    comment:
+      'Inscription rapide, interface claire. Pour certains patients, je prépare moi-même le rendez-vous depuis mon espace et ils reçoivent la confirmation automatiquement.',
+    response: 'Content que cette utilisation puisse fonctionner ainsi. — OneAndLab',
+    date: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: '4',
+    patientName: 'Thomas B., infirmier coordinateur',
+    rating: 5,
+    comment:
+      'Nous orientons vers OneAndLab pour des soins à domicile quand notre équipe ne peut intervenir nous-même sur la zone géographique',
+    response: 'Merci Thomas.',
+    date: new Date(Date.now() - 27 * 86400000),
+  },
+  {
+    id: '5',
+    patientName: 'Dr. Isabelle F., généraliste',
+    rating: 5,
+    comment: 'Réduction forte des trajets perdus lorsque plusieurs examens peuvent passer par un unique passage infirmier',
+    response: 'Merci Docteur',
+    date: new Date(Date.now() - 35 * 86400000),
+  },
+  {
+    id: '6',
+    patientName: 'Nathalie D., médecin',
+    rating: 5,
+    comment: 'Simple, orienté confidentialité, je la recommande à mes confrères ayant des patients en mobilité très réduite',
+    response: 'Merci Nathalie',
+    date: new Date(Date.now() - 42 * 86400000),
+  },
+];
 
 const faqItems = [
-  { question: 'Qu’est-ce qu’OneAndLab pour un professionnel ?', answer: 'OneAndLab est une plateforme de mise en relation entre patients et professionnels (infirmiers, laboratoires) pour des soins à domicile. En tant que médecin, kiné ou autre professionnel, vous pouvez y référer vos patients pour une prise de sang ou des soins infirmiers à domicile, et suivre les rendez-vous si besoin.' },
-  { question: 'Dois-je payer pour inscrire mes patients ?', answer: 'Les conditions d’utilisation pour les professionnels de santé vous sont communiquées lors de l’inscription. L’objectif est de faciliter l’orientation de vos patients sans surcoût ni complexité pour vous.' },
-  { question: 'Comment créer un rendez-vous pour un patient ?', answer: 'Depuis votre espace professionnel, vous pouvez créer une demande de rendez-vous en indiquant les coordonnées du patient, le type de soin et les préférences de créneau. Le patient peut aussi réserver lui-même en mentionnant votre nom si besoin.' },
-  { question: 'Les données de mes patients sont-elles protégées ?', answer: 'Oui. Les données de santé sont traitées de manière sécurisée et conforme au RGPD et aux bonnes pratiques du secteur. Seules les informations nécessaires à la prise de rendez-vous et au suivi sont utilisées.' },
-  { question: 'Qui réalise les soins à domicile ?', answer: 'Les soins sont réalisés par des infirmiers et laboratoires partenaires OneAndLab, vérifiés et à jour de leurs qualifications. Vous gardez un rôle de prescription et d’orientation ; la réalisation technique est assurée par ces professionnels.' },
-]
+  {
+    question: 'Qu’est-ce qu’OneAndLab pour un professionnel ?',
+    answer:
+      'Une plateforme qui met en relation patients et professionnels terrain (infirmiers, laboratoires) pour des soins à domicile. Vous orientez ou initiez la demande ; la réalisation technique est assurée par ces professionnels.',
+  },
+  {
+    question: 'Dois-je payer pour inscrire mes patients ?',
+    answer:
+      'Les conditions pour les professionnels vous sont communiquées lors de l’inscription : l’objectif est de faciliter l’orientation sans complexité inutile.',
+  },
+  {
+    question: 'Comment créer un rendez-vous pour un patient ?',
+    answer:
+      'Depuis votre espace pro, vous pouvez créer une demande en indiquant type de soin et préférences de créneaux. Le patient peut aussi réserver seul après votre indication.',
+  },
+  {
+    question: 'Les données de mes patients sont-elles protégées ?',
+    answer:
+      'Oui · traitées selon RGPD et bonnes pratiques du secteur santé français : données limitées aux besoins de la réservation ou du suivi convenu avec le patient.',
+  },
+  {
+    question: 'Qui réalise les soins à domicile ?',
+    answer:
+      'Ce sont nos partenaires infirmiers ou laboratoires : vous restez médecin prescripteur lorsque votre acte officiel précède leur intervention.',
+  },
+];
 
 const ctaButtons = [
-  { label: 'Rejoindre en tant que professionnel', to: '/pro/register', color: 'primary', size: 'xl', icon: 'i-lucide-stethoscope' },
-]
+  { label: 'Rejoindre en tant que professionnel', to: '/pro/register', icon: 'i-lucide-stethoscope', variant: 'solid' as const },
+  { label: 'Contact équipe onboarding', to: '/contact', variant: 'outline' as const },
+];
 </script>

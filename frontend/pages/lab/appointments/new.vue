@@ -3,7 +3,7 @@
     <DashboardMultiAppointmentWizard
       base-path="/lab"
       :restrict-category-types="['blood_test']"
-      selection-title="Quels examens pour ce rendez-vous ?"
+      selection-title="Quel prélèvement pour ce rendez-vous ?"
     />
     <template #fallback>
       <div

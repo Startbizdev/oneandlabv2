@@ -1,7 +1,10 @@
 <template>
   <div
-    class="-mx-4 -mt-4 md:-mx-6 md:-mt-6 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800"
-    :class="compact ? 'mb-4' : 'mb-6'"
+    class="bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800"
+    :class="[
+      edgeBleed ? '-mx-4 -mt-4 md:-mx-6 md:-mt-6' : '',
+      compact ? 'mb-4' : 'mb-6',
+    ]"
   >
     <div
       class="px-4 md:px-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4"
@@ -76,11 +79,17 @@ interface Props {
   actions?: Action[];
   /** Moins de padding / titre plus petit (listes denses) */
   compact?: boolean;
+  /**
+   * `true` : marges négatives pour sortir du conteneur (ex. dans le layout sans `#pageHeader`).
+   * `false` : bandeau pleine largeur du parent (ex. dans `AppPageShell` `#pageHeader`).
+   */
+  edgeBleed?: boolean;
 }
 
 withDefaults(defineProps<Props>(), {
   badgeColor: 'primary',
   compact: false,
+  edgeBleed: true,
 });
 </script>
 

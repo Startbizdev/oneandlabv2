@@ -1,11 +1,11 @@
 <template>
-  <div class="space-y-2 lg:space-y-3">
-    <div v-if="!hideHeader" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+  <div :class="listPageRootStackClass">
+    <div v-if="!hideHeader" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
       <div>
         <h1 class="text-xl sm:text-2xl lg:text-[28px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
           {{ title }}
         </h1>
-        <p v-if="subtitle" class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+        <p v-if="subtitle" class="text-sm text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
           {{ subtitle }}
         </p>
       </div>
@@ -15,15 +15,15 @@
       </div>
     </div>
 
-    <!-- Barre unique : onglets infirmier + recherche + période + filtres (tout le reste dans le sheet) -->
+    <!-- Barre unique infirmier : recherche + actions + filtres ; période dans le drawer ; Mes soins / Bilans sous la carte -->
     <div
-      class="rounded-xl border border-gray-200/80 dark:border-gray-800 bg-white/90 dark:bg-gray-900/50 p-2 sm:p-2.5 shadow-sm"
-      :class="basePath === '/nurse' ? '' : 'space-y-2'"
+      class="rounded-xl border border-gray-200/80 dark:border-gray-800 bg-white/90 dark:bg-gray-900/50 p-2.5 sm:p-3 shadow-sm"
+      :class="basePath === '/nurse' ? '' : 'space-y-2.5'"
     >
       <!-- Infirmier : recherche à gauche, une ligne ; scroll horizontal si besoin (pas de troncature des libellés) -->
       <div
         v-if="basePath === '/nurse'"
-        class="flex flex-nowrap items-center gap-2 min-w-0 overflow-x-auto overscroll-x-contain scrollbar-thin pb-0.5 -mx-0.5 px-0.5 touch-pan-x"
+        class="flex flex-nowrap items-center gap-2.5 min-w-0 overflow-x-auto overscroll-x-contain scrollbar-thin pb-0.5 -mx-0.5 px-0.5 touch-pan-x"
       >
         <UInput
           v-model="searchQuery"
@@ -34,31 +34,6 @@
           :ui="{ rounded: 'rounded-lg' }"
           clearable
         />
-        <div
-          v-if="nurseLockedSegment !== 'en_attente'"
-          class="inline-flex shrink-0 rounded-lg border border-gray-100/90 dark:border-gray-800/80 bg-gray-50/60 dark:bg-gray-950/30 p-0.5 gap-0.5"
-          role="tablist"
-          aria-label="Type de rendez-vous"
-        >
-          <button
-            v-for="t in nurseTabOptions"
-            :key="t.value"
-            type="button"
-            role="tab"
-            class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md py-1.5 px-2 sm:px-2.5 text-[11px] font-semibold whitespace-nowrap transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-            :class="
-              nurseListTab === t.value
-                ? 'bg-white dark:bg-gray-900 text-primary-600 dark:text-primary-400 shadow-sm ring-1 ring-gray-200/80 dark:ring-gray-700'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-white/70 dark:hover:bg-gray-900/50'
-            "
-            :aria-selected="nurseListTab === t.value"
-            :title="t.hint"
-            @click="nurseListTab = t.value"
-          >
-            <UIcon :name="t.icon" class="w-3 h-3 shrink-0 opacity-90" />
-            <span>{{ t.label }}</span>
-          </button>
-        </div>
         <div v-if="nurseLockedSegment == null" class="flex items-center gap-1 shrink-0">
           <UButton
             v-if="nurseListTab === 'soins' && nurseSegment !== 'en_attente'"
@@ -69,7 +44,7 @@
             icon="i-lucide-inbox"
             class="shrink-0 whitespace-nowrap"
             aria-label="Filtrer les demandes à accepter ou refuser"
-            title="Afficher uniquement les soins où vous êtes proposé(e) — à accepter ou refuser."
+            title="Afficher uniquement les soins où vous êtes proposé(e) · à accepter ou refuser."
             @click="nurseSegment = 'en_attente'"
           >
             À accepter
@@ -89,29 +64,6 @@
             Tout afficher
           </UButton>
         </div>
-        <div
-          v-if="useDateFilter"
-          class="flex items-center gap-1 shrink-0"
-          role="tablist"
-          aria-label="Période affichée"
-        >
-          <button
-            v-for="tab in dateTabs"
-            :key="tab.value"
-            type="button"
-            role="tab"
-            class="shrink-0 whitespace-nowrap rounded-md px-2 sm:px-2.5 py-1 text-[11px] font-semibold transition-colors border"
-            :class="
-              dateFilter === tab.value
-                ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40 text-primary-800 dark:text-primary-200'
-                : 'border-gray-200/80 dark:border-gray-700 bg-gray-50/90 dark:bg-gray-800/60 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-            "
-            :aria-selected="dateFilter === tab.value"
-            @click="dateFilter = tab.value"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
         <div class="flex items-center gap-1.5 shrink-0 ml-auto">
           <UButton
             v-if="nurseListTab === 'soins' && nurseLockedSegment == null"
@@ -120,7 +72,7 @@
             variant="soft"
             size="sm"
             class="shrink-0 whitespace-nowrap text-[11px] font-medium px-2 sm:px-2.5"
-            :title="`${activeNurseSegmentShortLabel} — Ouvrir les filtres pour changer de vue`"
+            :title="`${activeNurseSegmentShortLabel} · Ouvrir les filtres pour changer de vue`"
             @click="filtersSheetOpen = true"
           >
             {{ activeNurseSegmentShortLabel }}
@@ -148,10 +100,10 @@
         </div>
       </div>
 
-      <!-- Autres rôles : recherche + période + filtres (inchangé) -->
+      <!-- Autres rôles : recherche + filtres (période dans le drawer) -->
       <div
         v-else
-        class="flex flex-col gap-2 md:flex-row md:items-center md:gap-2 min-w-0"
+        class="flex flex-col gap-2.5 md:flex-row md:items-center md:gap-3 min-w-0"
       >
         <UInput
           v-model="searchQuery"
@@ -162,29 +114,6 @@
           :ui="{ rounded: 'rounded-lg' }"
           clearable
         />
-        <div
-          v-if="useDateFilter"
-          class="flex items-center gap-1 overflow-x-auto pb-0.5 md:pb-0 -mx-0.5 px-0.5 scrollbar-thin md:shrink-0"
-          role="tablist"
-          aria-label="Période affichée"
-        >
-          <button
-            v-for="tab in dateTabs"
-            :key="tab.value"
-            type="button"
-            role="tab"
-            class="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors border"
-            :class="
-              dateFilter === tab.value
-                ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40 text-primary-800 dark:text-primary-200'
-                : 'border-gray-200/80 dark:border-gray-700 bg-gray-50/90 dark:bg-gray-800/60 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-            "
-            :aria-selected="dateFilter === tab.value"
-            @click="dateFilter = tab.value"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
         <div class="flex items-center gap-1.5 shrink-0 md:ml-auto">
           <UButton
             type="button"
@@ -207,6 +136,35 @@
             />
           </UButton>
         </div>
+      </div>
+    </div>
+
+    <!-- Infirmier : Mes soins / Bilans sanguins sous la barre filtres — soulignement actif (comme /patient) -->
+    <div
+      v-if="basePath === '/nurse' && nurseLockedSegment !== 'en_attente'"
+      class="min-w-0"
+      role="tablist"
+      aria-label="Type de rendez-vous"
+    >
+      <div class="flex flex-wrap gap-8 sm:gap-10">
+        <button
+          v-for="t in nurseTabOptions"
+          :key="t.value"
+          type="button"
+          role="tab"
+          class="inline-flex items-center gap-1.5 border-b-[3px] pb-1 text-left text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950"
+          :class="
+            nurseListTab === t.value
+              ? 'border-b-primary-600 text-gray-950 dark:border-b-primary-500 dark:text-white'
+              : 'border-b-transparent text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+          "
+          :aria-selected="nurseListTab === t.value"
+          :title="t.hint"
+          @click="nurseListTab = t.value"
+        >
+          <UIcon :name="t.icon" class="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden="true" />
+          {{ t.label }}
+        </button>
       </div>
     </div>
 
@@ -241,300 +199,32 @@
       class="py-12"
     />
 
-    <div v-else class="space-y-4">
-      <div
-        class="grid items-stretch"
-        :class="
-          nurseCompactCards
-            ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-2.5'
-            : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3'
-        "
-      >
-        <template v-for="row in displayRows" :key="row.kind === 'single' ? row.appointment.id : row.key">
-          <!-- Lot multi-soins : une carte, plusieurs lignes -->
-          <div
-            v-if="row.kind === 'batch'"
-            class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200/90 dark:border-gray-800 shadow-sm hover:shadow-md hover:border-primary-200/60 dark:hover:border-primary-900/40 transition-all duration-200 flex flex-col h-full overflow-hidden relative"
-          >
-            <NuxtLink
-              v-if="batchPrimaryHref(row)"
-              :to="batchPrimaryHref(row)!"
-              :aria-label="`Voir le détail du lot — ${displayPatientName(row.appointments[0])}`"
-              :class="['group relative flex flex-1 flex-col min-w-0 text-left rounded-t-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset', nurseCardBodyClass]"
-            >
-              <div class="flex items-start gap-2.5 min-w-0 pr-6">
-                <div
-                  class="rounded-xl flex items-center justify-center flex-shrink-0 ring-1 ring-inset"
-                  :class="[typeIconRingClass(row.appointments[0]), nurseCompactCards ? 'w-8 h-8' : 'w-10 h-10']"
-                >
-                  <UIcon
-                    :name="careCategoryIconName(row.appointments[0])"
-                    :class="nurseCompactCards ? 'w-4 h-4' : 'w-5 h-5'"
-                  />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <h3 class="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                    {{ displayPatientName(row.appointments[0]) }}
-                  </h3>
-                  <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                    {{ batchSubtitle(row) }}
-                  </p>
-                </div>
-              </div>
-              <p v-if="displayAddress(row.appointments[0])" class="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 leading-snug flex items-start gap-1.5 min-w-0">
-                <UIcon name="i-lucide-map-pin" class="w-3.5 h-3.5 shrink-0 text-gray-400 mt-0.5" />
-                <span>{{ displayAddress(row.appointments[0]) }}</span>
-              </p>
-              <div class="space-y-2.5 pt-2">
-                <div
-                  v-for="apt in row.appointments"
-                  :key="apt.id"
-                  class="flex flex-col gap-0.5"
-                >
-                  <div class="flex items-start justify-between gap-2">
-                    <span class="text-xs font-medium text-gray-800 dark:text-gray-100">{{ apt.category_name || '—' }}</span>
-                    <UBadge
-                      :color="getStatusColor(apt.status)"
-                      variant="subtle"
-                      size="xs"
-                      class="shrink-0 rounded-md px-1.5 py-0.5 font-medium"
-                      :label="getStatusLabel(apt.status)"
-                    />
-                  </div>
-                  <div class="text-[11px] text-gray-600 dark:text-gray-400">
-                    <span class="font-medium capitalize">{{ formatDateCompact(apt.scheduled_at) }}</span>
-                    <span class="text-gray-400 dark:text-gray-500"> · </span>
-                    <span>{{ getCreneauHoraireLabel(apt) }}</span>
-                  </div>
-                </div>
-              </div>
-              <UIcon
-                name="i-lucide-chevron-right"
-                class="pointer-events-none absolute right-3 top-4 w-4 h-4 text-gray-300 transition-colors group-hover:text-primary-500 dark:text-gray-600 dark:group-hover:text-primary-400"
-                aria-hidden="true"
-              />
-            </NuxtLink>
-            <button
-              v-else
-              type="button"
-              :class="['group relative flex flex-1 flex-col min-w-0 text-left rounded-t-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset cursor-pointer', nurseCardBodyClass]"
-              @click="emit('cardClick', row.appointments[0])"
-            >
-              <div class="flex items-start gap-2.5 min-w-0 pr-6">
-                <div
-                  class="rounded-xl flex items-center justify-center flex-shrink-0 ring-1 ring-inset"
-                  :class="[typeIconRingClass(row.appointments[0]), nurseCompactCards ? 'w-8 h-8' : 'w-10 h-10']"
-                >
-                  <UIcon
-                    :name="careCategoryIconName(row.appointments[0])"
-                    :class="nurseCompactCards ? 'w-4 h-4' : 'w-5 h-5'"
-                  />
-                </div>
-                <div class="min-w-0 flex-1 text-left">
-                  <h3 class="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                    {{ displayPatientName(row.appointments[0]) }}
-                  </h3>
-                  <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                    {{ batchOpenLabel(row) }}
-                  </p>
-                </div>
-              </div>
-            </button>
-            <div
-              v-if="batchHasOfferActions(row)"
-              class="border-t border-gray-100 dark:border-gray-800/80 px-2 py-2 space-y-2"
-              @click.stop
-            >
-              <p class="text-[11px] font-medium text-gray-600 dark:text-gray-400">
-                Lot multisoins — une seule réponse pour tous les soins
-              </p>
-              <label class="flex items-start gap-2 cursor-pointer text-[11px] text-gray-600 dark:text-gray-400 leading-snug">
-                <USwitch
-                  :model-value="acceptTermsForNurseOffer[batchOfferTermsKey(row)] ?? false"
-                  class="shrink-0 mt-0.5"
-                  @update:model-value="(v: boolean) => (acceptTermsForNurseOffer[batchOfferTermsKey(row)] = v)"
-                />
-                <span>En acceptant, je confirme la prise en charge et le respect du secret médical.</span>
-              </label>
-              <div class="flex flex-wrap gap-2">
-                <UButton
-                  color="error"
-                  variant="outline"
-                  size="xs"
-                  :loading="isOfferProcessing(batchOfferTermsKey(row), 'refuse')"
-                  @click="nurseRefuseOfferBatch(row)"
-                >
-                  Refuser
-                </UButton>
-                <UButton
-                  color="primary"
-                  size="xs"
-                  :disabled="!acceptTermsForNurseOffer[batchOfferTermsKey(row)]"
-                  :loading="isOfferProcessing(batchOfferTermsKey(row), 'accept')"
-                  @click="nurseAcceptOfferBatch(row)"
-                >
-                  Accepter
-                </UButton>
-              </div>
-            </div>
-          </div>
-
-          <!-- Carte simple -->
-          <div
-            v-else
-            class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200/90 dark:border-gray-800 shadow-sm hover:shadow-md hover:border-primary-200/60 dark:hover:border-primary-900/40 transition-all duration-200 flex flex-col h-full overflow-hidden relative"
-          >
-            <NuxtLink
-              v-if="resolvedCardHref(row.appointment)"
-              :to="resolvedCardHref(row.appointment)!"
-              :aria-label="`Voir le détail — ${displayPatientName(row.appointment)}`"
-              :class="['group relative flex flex-1 flex-col min-w-0 text-left rounded-t-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset', nurseCardBodyClass]"
-            >
-              <div class="flex items-start gap-2.5 min-w-0 pr-6">
-                <div
-                  class="rounded-xl flex items-center justify-center flex-shrink-0 ring-1 ring-inset"
-                  :class="[typeIconRingClass(row.appointment), nurseCompactCards ? 'w-8 h-8' : 'w-10 h-10']"
-                >
-                  <UIcon
-                    :name="careCategoryIconName(row.appointment)"
-                    :class="nurseCompactCards ? 'w-4 h-4' : 'w-5 h-5'"
-                  />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <h3 class="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                    {{ displayPatientName(row.appointment) }}
-                  </h3>
-                  <p v-if="appointmentCategorySummary(row.appointment)" class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                    {{ appointmentCategorySummary(row.appointment) }}
-                  </p>
-                </div>
-                <UBadge
-                  :color="getStatusColor(row.appointment.status)"
-                  variant="subtle"
-                  size="xs"
-                  class="shrink-0 rounded-md px-1.5 py-0.5 font-medium"
-                  :label="getStatusLabel(row.appointment.status)"
-                />
-              </div>
-
-              <p v-if="displayAddress(row.appointment)" class="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 leading-snug flex items-start gap-1.5 min-w-0">
-                <UIcon name="i-lucide-map-pin" class="w-3.5 h-3.5 shrink-0 text-gray-400 mt-0.5" />
-                <span>{{ displayAddress(row.appointment) }}</span>
-              </p>
-
-              <div class="text-xs text-gray-700 dark:text-gray-200 leading-snug">
-                <span class="font-medium capitalize">{{ formatDateCompact(row.appointment.scheduled_at) }}</span>
-                <span class="text-gray-400 dark:text-gray-500"> · </span>
-                <span class="text-gray-600 dark:text-gray-400">{{ getCreneauHoraireLabel(row.appointment) }}</span>
-              </div>
-              <p v-if="row.appointment.status === 'inProgress' && row.appointment.started_at" class="text-[11px] font-medium text-primary-600 dark:text-primary-400">
-                Démarré {{ formatTime(row.appointment.started_at) }}
-              </p>
-              <UIcon
-                name="i-lucide-chevron-right"
-                class="pointer-events-none absolute right-3 top-4 w-4 h-4 text-gray-300 transition-colors group-hover:text-primary-500 dark:text-gray-600 dark:group-hover:text-primary-400"
-                aria-hidden="true"
-              />
-            </NuxtLink>
-
-            <button
-              v-else
-              type="button"
-              :aria-label="`Ouvrir — ${displayPatientName(row.appointment)}`"
-              :class="['group relative flex flex-1 flex-col min-w-0 text-left rounded-t-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset cursor-pointer', nurseCardBodyClass]"
-              @click="emit('cardClick', row.appointment)"
-            >
-              <div class="flex items-start gap-2.5 min-w-0 pr-6">
-                <div
-                  class="rounded-xl flex items-center justify-center flex-shrink-0 ring-1 ring-inset"
-                  :class="[typeIconRingClass(row.appointment), nurseCompactCards ? 'w-8 h-8' : 'w-10 h-10']"
-                >
-                  <UIcon
-                    :name="careCategoryIconName(row.appointment)"
-                    :class="nurseCompactCards ? 'w-4 h-4' : 'w-5 h-5'"
-                  />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <h3 class="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                    {{ displayPatientName(row.appointment) }}
-                  </h3>
-                  <p v-if="appointmentCategorySummary(row.appointment)" class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                    {{ appointmentCategorySummary(row.appointment) }}
-                  </p>
-                </div>
-                <UBadge
-                  :color="getStatusColor(row.appointment.status)"
-                  variant="subtle"
-                  size="xs"
-                  class="shrink-0 rounded-md px-1.5 py-0.5 font-medium"
-                  :label="getStatusLabel(row.appointment.status)"
-                />
-              </div>
-
-              <p v-if="displayAddress(row.appointment)" class="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 leading-snug flex items-start gap-1.5 min-w-0">
-                <UIcon name="i-lucide-map-pin" class="w-3.5 h-3.5 shrink-0 text-gray-400 mt-0.5" />
-                <span>{{ displayAddress(row.appointment) }}</span>
-              </p>
-
-              <div class="text-xs text-gray-700 dark:text-gray-200 leading-snug">
-                <span class="font-medium capitalize">{{ formatDateCompact(row.appointment.scheduled_at) }}</span>
-                <span class="text-gray-400 dark:text-gray-500"> · </span>
-                <span class="text-gray-600 dark:text-gray-400">{{ getCreneauHoraireLabel(row.appointment) }}</span>
-              </div>
-              <p v-if="row.appointment.status === 'inProgress' && row.appointment.started_at" class="text-[11px] font-medium text-primary-600 dark:text-primary-400">
-                Démarré {{ formatTime(row.appointment.started_at) }}
-              </p>
-              <UIcon
-                name="i-lucide-chevron-right"
-                class="pointer-events-none absolute right-3 top-4 w-4 h-4 text-gray-300 transition-colors group-hover:text-primary-500 dark:text-gray-600 dark:group-hover:text-primary-400"
-                aria-hidden="true"
-              />
-            </button>
-
-            <div
-              v-if="showNurseOfferCardActions(row.appointment)"
-              class="border-t border-gray-100 dark:border-gray-800/80 px-2 py-2 space-y-2"
-              @click.stop
-            >
-              <label class="flex items-start gap-2 cursor-pointer text-[11px] text-gray-600 dark:text-gray-400 leading-snug">
-                <USwitch
-                  :model-value="acceptTermsForNurseOffer[row.appointment.id] ?? false"
-                  class="shrink-0 mt-0.5"
-                  @update:model-value="(v: boolean) => (acceptTermsForNurseOffer[row.appointment.id] = v)"
-                />
-                <span>En acceptant, je confirme la prise en charge et le respect du secret médical.</span>
-              </label>
-              <div class="flex flex-wrap gap-2">
-                <UButton
-                  color="error"
-                  variant="outline"
-                  size="xs"
-                  :loading="isOfferProcessing(row.appointment.id, 'refuse')"
-                  @click="nurseRefuseOffer(row.appointment)"
-                >
-                  Refuser
-                </UButton>
-                <UButton
-                  color="primary"
-                  size="xs"
-                  :disabled="!acceptTermsForNurseOffer[row.appointment.id]"
-                  :loading="isOfferProcessing(row.appointment.id, 'accept')"
-                  @click="nurseAcceptOffer(row.appointment)"
-                >
-                  Accepter
-                </UButton>
-              </div>
-            </div>
-
-            <div
-              v-if="$slots.cardActions"
-              class="flex flex-wrap items-center gap-1.5 border-t border-gray-100 dark:border-gray-800/80 px-2 py-1.5"
-              @click.stop
-            >
-              <slot name="cardActions" :appointment="row.appointment" :base-path="basePath" />
-            </div>
-          </div>
-        </template>
+    <div v-else :class="listResultsSectionClass">
+      <div class="grid items-stretch" :class="appointmentGridClass">
+        <AppointmentListCard
+          v-for="row in displayRows"
+          :key="row.kind === 'single' ? row.appointment.id : row.key"
+          :row="row"
+          :base-path="basePath"
+          :nurse-card-body-class="nurseCardBodyClass"
+          :resolve-card-href="resolvedCardHref"
+          :display-patient-name="displayPatientName"
+          :display-address="displayAddress"
+          :batch-offer-footer="row.kind === 'batch' && batchHasOfferActions(row)"
+          :single-offer-footer="row.kind === 'single' && showNurseOfferCardActions(row.appointment)"
+          :offer-loading-accept="isOfferProcessing(offerTermsKey(row), 'accept')"
+          :offer-loading-refuse="isOfferProcessing(offerTermsKey(row), 'refuse')"
+          :categories="careCategoriesList"
+          @card-click="emit('cardClick', $event)"
+          @accept-batch="openAcceptOfferConfirmBatch(row)"
+          @refuse-batch="nurseRefuseOfferBatch(row)"
+          @accept-offer="openAcceptOfferConfirmSingle(row.appointment)"
+          @refuse-offer="nurseRefuseOffer(row.appointment)"
+        >
+          <template v-if="slots.cardActions" #cardActions="slotProps">
+            <slot name="cardActions" v-bind="slotProps" />
+          </template>
+        </AppointmentListCard>
       </div>
 
       <div
@@ -555,14 +245,60 @@
         />
       </div>
     </div>
+
+    <ClientOnly>
+      <Teleport to="body">
+        <UModal
+          v-model:open="acceptConfirmOpen"
+          :ui="{ content: 'max-w-sm w-[calc(100vw-1.5rem)] rounded-xl shadow-lg border border-gray-200/80 dark:border-gray-800' }"
+        >
+          <template #content>
+            <div class="p-4 sm:p-5">
+              <div class="flex items-start gap-3">
+                <div
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950/50 dark:text-primary-400"
+                  aria-hidden="true"
+                >
+                  <UIcon name="i-lucide-handshake" class="h-4 w-4" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-[14px] leading-relaxed text-gray-600 dark:text-gray-400">
+                    <span class="font-semibold text-gray-900 dark:text-white">{{ acceptConfirmCopy.lead }}</span>{{ acceptConfirmCopy.tail }}
+                  </p>
+                </div>
+              </div>
+              <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <UButton
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  class="justify-center sm:min-w-[6rem]"
+                  :disabled="acceptConfirmSubmitting"
+                  @click="closeAcceptOfferConfirm"
+                >
+                  Annuler
+                </UButton>
+                <UButton
+                  color="primary"
+                  size="sm"
+                  class="justify-center sm:min-w-[8rem] font-semibold"
+                  :loading="acceptConfirmSubmitting"
+                  @click="confirmAcceptOfferPending"
+                >
+                  Confirmer l’acceptation
+                </UButton>
+              </div>
+            </div>
+          </template>
+        </UModal>
+      </Teleport>
+    </ClientOnly>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive } from 'vue';
+import { computed, reactive, useSlots, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
-import { getNursingDurationLabel } from '~/constants/nursing-duration';
-import { formatBloodTestSeriesDurationDays } from '~/utils/duration-display';
 import { appointmentListAddressLine } from '~/utils/address-display';
 import { isPendingIncomingOffer } from '~/utils/appointment-offer';
 import {
@@ -573,21 +309,32 @@ import {
   type NurseListTab,
   type NurseSegment,
 } from '~/constants/nurse-appointments-filters';
-import { resolveCareIconFromCategory } from '~/utils/care-icons';
+import {
+  NURSE_APPOINTMENT_LIST_CARD_BODY,
+  NURSE_APPOINTMENT_LIST_GRID_COLS,
+  NURSE_APPOINTMENT_LIST_GRID_GAP,
+  NURSE_APPOINTMENT_LIST_PAGE_STACK,
+  NURSE_APPOINTMENT_LIST_RESULTS_STACK,
+} from '~/constants/nurse-appointment-list-ui';
 import {
   groupAppointmentsByBatch,
   groupAppointmentsForNurseMesDemandes,
   type AppointmentListRow,
 } from '~/utils/appointment-batch';
-import { isBloodTestAppointment } from '~/utils/appointment-type-rules';
 import { useAppointmentModalQueue } from '~/composables/useAppointmentModalQueue';
+import {
+  appointmentPatientDisplayName,
+  appointmentPatientSearchTextLower,
+  normalizeAppointmentFormData,
+} from '~/utils/appointment-patient-display';
+import type { CareCategoryRowMinimal } from '~/utils/care-icons';
 
 const props = withDefaults(
   defineProps<{
     basePath: string
     title?: string
     subtitle?: string
-    /** Masque l'en-tête (titre + actions) pour utiliser TitleDashboard sur la page parente. */
+    /** Masque l'en-tête interne (titre + actions) : à fournir sur la page via `AppPageHeader` (souvent avec `hide-header`). */
     hideHeader?: boolean
     /** Si true, utilise les filtres date (À venir / Passés) et fetch nurse-style. Sinon fetch tous et filtre côté client par search/status si besoin. */
     useDateFilter?: boolean
@@ -628,6 +375,8 @@ const emit = defineEmits<{
   cardClick: [appointment: any]
 }>();
 
+const slots = useSlots();
+
 function nurseSegmentEffective(): NurseSegment {
   return (props.nurseLockedSegment ?? nurseSegment.value) as NurseSegment;
 }
@@ -646,21 +395,8 @@ function resolvedCardHref(appointment: any): string | null {
   return `${props.basePath}/appointments/${appointment.id}`;
 }
 
-function batchPrimaryHref(row: AppointmentListRow): string | null {
-  if (row.kind !== 'batch' || !row.appointments.length) return null;
-  return resolvedCardHref(row.appointments[0]);
-}
-
-function isBloodTestBatch(row: AppointmentListRow): boolean {
-  return row.kind === 'batch' && row.appointments.every((apt) => isBloodTestAppointment(apt?.type));
-}
-
-function batchSubtitle(row: AppointmentListRow): string {
-  return isBloodTestBatch(row) ? 'Plusieurs analyses (même demande)' : 'Plusieurs soins (même demande)';
-}
-
-function batchOpenLabel(row: AppointmentListRow): string {
-  return isBloodTestBatch(row) ? 'Plusieurs analyses — ouvrir pour répondre' : 'Plusieurs soins — ouvrir pour répondre';
+function offerTermsKey(row: AppointmentListRow): string {
+  return row.kind === 'batch' ? row.key : row.appointment.id;
 }
 
 const toast = useAppToast();
@@ -669,15 +405,51 @@ const route = useRoute();
 const router = useRouter();
 const { shareTokenForAccept } = useAppointmentModalQueue();
 
+const careCategoriesList = ref<CareCategoryRowMinimal[]>([]);
+
+async function loadCareCategoriesForAppointmentList() {
+  try {
+    const response = await apiFetch('/categories', { method: 'GET' });
+    if (response?.success && Array.isArray(response.data) && response.data.length > 0) {
+      careCategoriesList.value = response.data as CareCategoryRowMinimal[];
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Filtres infirmier (liste + URL) — utilisés seulement si basePath === /nurse */
 const nurseListTab = ref<NurseListTab>('soins');
 const nurseSegment = ref<NurseSegment>('tous');
 const nurseTabOptions = NURSE_TAB_OPTIONS;
 const nurseSegmentOptions = NURSE_SEGMENT_OPTIONS;
 
-const nurseCardBodyClass = computed(() =>
-  props.nurseCompactCards ? 'gap-1.5 p-2.5 sm:p-3' : 'gap-2 p-3.5 sm:p-4',
+const listPageRootStackClass = computed(() =>
+  props.basePath === '/nurse' ? NURSE_APPOINTMENT_LIST_PAGE_STACK : 'space-y-3 lg:space-y-4',
 );
+
+const listResultsSectionClass = computed(() =>
+  props.basePath === '/nurse' ? NURSE_APPOINTMENT_LIST_RESULTS_STACK : 'space-y-5',
+);
+
+/** Corps carte : même rythme que cartes patient (`gap-2 px-4 py-2.5 …`) ; variant compact légèrement resserrée. */
+const nurseCardBodyClass = computed(() => {
+  if (props.basePath === '/nurse') return NURSE_APPOINTMENT_LIST_CARD_BODY;
+  return props.nurseCompactCards
+    ? 'gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5'
+    : 'gap-2 px-4 py-2.5 sm:px-5 sm:py-3';
+});
+
+/** Grille liste RDV : `/nurse` suit `nurse-appointment-list-ui.ts` (colonnes + gap alignés Mes demandes / Mes RDV). */
+const appointmentGridClass = computed(() => {
+  if (props.basePath === '/nurse') {
+    return `${NURSE_APPOINTMENT_LIST_GRID_COLS} ${NURSE_APPOINTMENT_LIST_GRID_GAP}`;
+  }
+  if (props.nurseCompactCards) {
+    return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-3.5';
+  }
+  return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4';
+});
 
 /** Libellé court de la vue (chip + sheet) */
 const activeNurseSegmentShortLabel = computed(() => {
@@ -755,8 +527,79 @@ const showPaginationBar = computed(
 );
 
 const loading = ref(false);
-/** Cases à cocher « prise en charge » pour accepter une offre depuis la liste infirmier. */
-const acceptTermsForNurseOffer = reactive<Record<string, boolean>>({});
+
+type AcceptOfferConfirmPending =
+  | { mode: 'single'; apt: any }
+  | { mode: 'batch'; row: Extract<AppointmentListRow, { kind: 'batch' }> };
+
+const acceptConfirmOpen = ref(false);
+const acceptConfirmPending = ref<AcceptOfferConfirmPending | null>(null);
+const acceptConfirmSubmitting = ref(false);
+
+watch(acceptConfirmOpen, (open) => {
+  if (!open && !acceptConfirmSubmitting.value) {
+    acceptConfirmPending.value = null;
+  }
+});
+
+const acceptConfirmCopy = computed(() => {
+  const p = acceptConfirmPending.value;
+  if (!p) {
+    return { lead: '', tail: '' };
+  }
+  const engagement =
+    ' En confirmant, vous vous engagez à assurer la prestation aux créneaux prévus, sous votre responsabilité professionnelle et dans le respect du secret médical.';
+  if (p.mode === 'single') {
+    return {
+      lead: 'Accepter ce rendez-vous.',
+      tail: engagement,
+    };
+  }
+  const offered = p.row.appointments.filter((a) => showNurseOfferCardActions(a));
+  const n = Math.max(1, offered.length);
+  const plural = n > 1;
+  return {
+    lead: plural ? `Accepter ces ${n} rendez-vous.` : 'Accepter ce rendez-vous.',
+    tail: plural
+      ? ` En confirmant, vous vous engagez à réaliser chaque soin aux dates prévues, sous votre responsabilité professionnelle et dans le respect du secret médical.`
+      : engagement,
+  };
+});
+
+function openAcceptOfferConfirmSingle(apt: any) {
+  acceptConfirmPending.value = { mode: 'single', apt };
+  acceptConfirmOpen.value = true;
+}
+
+function openAcceptOfferConfirmBatch(row: Extract<AppointmentListRow, { kind: 'batch' }>) {
+  acceptConfirmPending.value = { mode: 'batch', row };
+  acceptConfirmOpen.value = true;
+}
+
+function closeAcceptOfferConfirm() {
+  if (acceptConfirmSubmitting.value) return;
+  acceptConfirmOpen.value = false;
+  acceptConfirmPending.value = null;
+}
+
+async function confirmAcceptOfferPending() {
+  const p = acceptConfirmPending.value;
+  if (!p || acceptConfirmSubmitting.value) return;
+  acceptConfirmSubmitting.value = true;
+  try {
+    const ok =
+      p.mode === 'single'
+        ? await nurseAcceptOffer(p.apt)
+        : await nurseAcceptOfferBatch(p.row);
+    if (ok) {
+      acceptConfirmOpen.value = false;
+      acceptConfirmPending.value = null;
+    }
+  } finally {
+    acceptConfirmSubmitting.value = false;
+  }
+}
+
 const displayRows = computed(() =>
   props.basePath === '/nurse' && props.nurseLockedSegment === 'en_attente'
     ? groupAppointmentsForNurseMesDemandes(filteredAndSorted.value)
@@ -769,11 +612,12 @@ const statusFilter = ref('all');
 const dateRangeStart = ref<string | null>(null);
 const dateRangeEnd = ref<string | null>(null);
 
-/** Badge sur « Filtres » : statut ≠ tous et/ou plage de dates (+ vue infirmier). */
+/** Badge sur « Filtres » : statut ≠ tous, plage dates, période ≠ à venir (drawer), vue infirmier. */
 const extraFiltersCount = computed(() => {
   let n = 0;
   if (statusFilter.value && statusFilter.value !== 'all') n += 1;
   if (dateRangeStart.value || dateRangeEnd.value) n += 1;
+  if (props.useDateFilter && dateFilter.value !== 'upcoming') n += 1;
   if (props.basePath === '/nurse' && !props.nurseLockedSegment) {
     if (nurseListTab.value === 'demandes') n += 1;
     else if (nurseSegment.value !== 'tous') n += 1;
@@ -849,16 +693,13 @@ const filteredAndSorted = computed(() => {
   const q = (searchQuery.value || '').trim().toLowerCase();
   if (q) {
     list = list.filter((a: any) => {
-      const firstName = (a.form_data?.first_name || '').toLowerCase();
-      const lastName = (a.form_data?.last_name || '').toLowerCase();
-      const phone = (a.form_data?.phone || '').replace(/\s/g, '');
+      const fd = normalizeAppointmentFormData(a.form_data) ?? {};
+      const phone = String(fd.phone ?? '').replace(/\s/g, '');
       const address = typeof a.address === 'string' ? a.address.toLowerCase() : (a.address?.label || '').toLowerCase();
       const searchPhone = q.replace(/\s/g, '');
+      const nameBlob = appointmentPatientSearchTextLower(a);
       return (
-        firstName.includes(q) ||
-        lastName.includes(q) ||
-        `${firstName} ${lastName}`.trim().includes(q) ||
-        `${lastName} ${firstName}`.trim().includes(q) ||
+        nameBlob.includes(q) ||
         phone.includes(searchPhone) ||
         address.includes(q)
       );
@@ -890,6 +731,10 @@ const emptyStateTitle = computed(() => {
   if (props.nurseLockedSegment === 'en_attente' && baseAppointments.value.length === 0) {
     return 'Aucune demande en attente';
   }
+  // Admin / lab : pas de filtre période côté API — éviter « à venir » alors que la requête charge tout
+  if (!props.useDateFilter) {
+    return 'Aucun rendez-vous';
+  }
   const filterLabel = dateTabs.find((o) => o.value === dateFilter.value)?.label || '';
   return `Aucun rendez-vous ${filterLabel.toLowerCase()}`;
 });
@@ -901,6 +746,12 @@ const emptyStateDescription = computed(() => {
   if (props.nurseLockedSegment === 'en_attente' && baseAppointments.value.length === 0) {
     return 'Les nouvelles propositions de soins apparaîtront ici. La liste se met à jour automatiquement.';
   }
+  if (!props.useDateFilter) {
+    if (props.basePath === '/admin') {
+      return 'Soit aucun RDV en base, soit un filtre restreint la liste (statut, dates dans Filtres, recherche). Vérifiez aussi l’URL : un paramètre user_id limite la vue au périmètre de cet utilisateur.';
+    }
+    return 'Aucun RDV ne correspond aux critères (recherche, statut, plage de dates dans Filtres).';
+  }
   switch (dateFilter.value) {
     case 'upcoming':
       return "Aucun rendez-vous à venir. Ils apparaîtront ici une fois créés ou acceptés.";
@@ -910,175 +761,6 @@ const emptyStateDescription = computed(() => {
       return 'Aucun rendez-vous trouvé.';
   }
 });
-
-function getStatusColor(status: string): 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral' {
-  const colors: Record<string, 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral'> = {
-    pending: 'warning',
-    confirmed: 'info',
-    planned: 'info',
-    inProgress: 'primary',
-    completed: 'success',
-    canceled: 'error',
-    cancelled: 'error',
-    refused: 'error',
-    expired: 'neutral',
-  };
-  return colors[status] || 'neutral';
-}
-
-function getStatusLabel(status: string) {
-  const labels: Record<string, string> = {
-    pending: 'En attente',
-    confirmed: 'Confirmé',
-    planned: 'Planifié',
-    inProgress: 'En cours',
-    completed: 'Terminé',
-    canceled: 'Annulé',
-    cancelled: 'Annulé',
-    refused: 'Refusé',
-    expired: 'Expiré',
-  };
-  return labels[status] || status;
-}
-
-function formatDateTime(date: string) {
-  if (!date) return '-';
-  try {
-    const d = new Date(date);
-    return d.toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return date;
-  }
-}
-
-/** Date courte pour cartes compactes (liste RDV). */
-function formatDateCompact(date: string | undefined) {
-  if (!date) return '—';
-  try {
-    const d = new Date(date);
-    return d.toLocaleDateString('fr-FR', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  } catch {
-    return '—';
-  }
-}
-
-function careCategoryIconName(apt: any): string {
-  const t = apt?.type === 'blood_test' ? 'blood_test' : 'nursing';
-  return resolveCareIconFromCategory({
-    type: t,
-    icon: apt?.category_icon ?? null,
-  });
-}
-
-function appointmentCategorySummary(apt: any): string {
-  const items = Array.isArray(apt?.blood_test_items) ? apt.blood_test_items : [];
-  if (apt?.type === 'blood_test' && items.length > 1) {
-    return `${items.length} actes de prise de sang`;
-  }
-  return apt?.category_name || '';
-}
-
-function typeIconRingClass(apt: any): string {
-  if (apt?.type === 'blood_test') {
-    return 'bg-red-50 text-red-600 ring-red-200/80 dark:bg-red-950/40 dark:text-red-400 dark:ring-red-900/50';
-  }
-  return 'bg-sky-50 text-sky-600 ring-sky-200/80 dark:bg-sky-950/40 dark:text-sky-400 dark:ring-sky-900/50';
-}
-
-function getDurationLabel(v: string, customDays?: number | null): string {
-  if (v === 'custom' && customDays != null) return `${customDays} jours`;
-  if (v === 'custom') return 'Durée personnalisée';
-  const labels: Record<string, string> = {
-    '1': '1 jour',
-    '7': '7 jours',
-    '10': '10 jours',
-    '15': '15 jours (ou jusqu\'à la cicatrisation)',
-    '30': '30 jours',
-    '60+': 'Longue durée (60 jours ou +)',
-  };
-  return labels[v] || v;
-}
-
-function getBloodTestTypeLabel(fd: any): string {
-  if (!fd?.blood_test_type) return '';
-  if (fd.blood_test_type === 'single') return 'Une seule fois';
-  if (fd.blood_test_type === 'multiple') {
-    const days = formatBloodTestSeriesDurationDays(fd.duration_days, fd.custom_days);
-    return days ? `Série sur ${days}` : 'Plusieurs prélèvements';
-  }
-  return '';
-}
-
-function getFrequencyLabel(v: string) {
-  const labels: Record<string, string> = {
-    once_daily: '1 fois par jour',
-    twice_daily: '2 fois par jour',
-    thrice_daily: '3 fois par jour',
-    twice_weekly: '2 fois par semaine',
-    thrice_weekly: '3 fois par semaine',
-    to_define: 'A voir avec le professionnel',
-    daily: '1 fois par jour',
-    every_other_day: '1 jour sur 2',
-  };
-  return labels[v] || v;
-}
-
-function formatTime(date: string) {
-  return new Date(date).toLocaleTimeString('fr-FR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatAvailability(availability: string | object | null | undefined): string {
-  if (availability == null) return '';
-  try {
-    let avail: any = availability;
-    if (typeof availability === 'string') {
-      const trimmed = availability.trim();
-      if (!trimmed) return '';
-      avail = JSON.parse(trimmed);
-    }
-    if (!avail || typeof avail !== 'object') return '';
-    if (avail.type === 'all_day') {
-      return 'Toute la journée';
-    }
-    if (avail.type === 'custom' && Array.isArray(avail.range) && avail.range.length >= 2) {
-      const start = Math.floor(Number(avail.range[0]));
-      const end = Math.floor(Number(avail.range[1]));
-      if (Number.isNaN(start) || Number.isNaN(end)) return '';
-      return `${start}h00 - ${end}h00`;
-    }
-  } catch {
-    // ignore
-  }
-  return '';
-}
-
-function getCreneauHoraireLabel(appointment: any): string {
-  const availability = appointment.form_data?.availability;
-  const formatted = formatAvailability(availability);
-  if (formatted) return formatted;
-  if (appointment.scheduled_at) {
-    try {
-      const d = new Date(appointment.scheduled_at);
-      return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      // ignore
-    }
-  }
-  return 'Non précisé';
-}
 
 const fetchAppointments = async (silent = false) => {
   if (!silent) loading.value = true;
@@ -1172,9 +854,11 @@ const fetchAppointments = async (silent = false) => {
 const shouldPollList = computed(() =>
   ['/nurse', '/lab', '/subaccount'].some((p) => props.basePath.startsWith(p))
 );
+const { holdCount } = useBookingApiHold();
 const { start: startListPolling } = usePolling(
   () => fetchAppointments(true),
-  15000
+  15000,
+  { shouldSkip: () => holdCount.value > 0 },
 );
 
 /** Rafraîchir immédiatement quand la modal accepte/refuse (trigger du layout) */
@@ -1188,10 +872,6 @@ function showNurseOfferCardActions(apt: any): boolean {
   if (nurseSegmentEffective() !== 'en_attente') return false;
   if (apt?.type !== 'nursing') return false;
   return isPendingIncomingOffer(apt, user.value?.id);
-}
-
-function batchOfferTermsKey(row: Extract<AppointmentListRow, { kind: 'batch' }>): string {
-  return row.key;
 }
 
 function batchHasOfferActions(row: AppointmentListRow): boolean {
@@ -1213,29 +893,19 @@ function firstBatchAppointmentForDetail(row: Extract<AppointmentListRow, { kind:
   )[0]!;
 }
 
-async function nurseAcceptOfferBatch(row: Extract<AppointmentListRow, { kind: 'batch' }>) {
-  const termsKey = batchOfferTermsKey(row);
+async function nurseAcceptOfferBatch(row: Extract<AppointmentListRow, { kind: 'batch' }>): Promise<boolean> {
+  const termsKey = offerTermsKey(row);
   const apts = row.appointments.filter((a) => showNurseOfferCardActions(a));
-  if (apts.length === 0) return;
+  if (apts.length === 0) return false;
   /** Fiche `/nurse/appointments/:id` : GET charge le RDV + les frères de lot (`batch_siblings`) — même URL pour tout le lot. */
   const detailTarget = firstBatchAppointmentForDetail(row);
-
-  if (!acceptTermsForNurseOffer[termsKey]) {
-    toast.add({
-      title: 'Conditions requises',
-      description: 'Activez la prise en charge et la confidentialité du patient pour accepter.',
-      color: 'warning',
-    });
-    return;
-  }
 
   const sharedBid = row.appointments[0]?.creation_batch_id;
   const allSameBackendBatch =
     !!sharedBid && row.appointments.every((a) => a.creation_batch_id === sharedBid);
 
   if (allSameBackendBatch && row.appointments.length > 1) {
-    await nurseAcceptOffer(detailTarget, { termsKey, isBatch: true });
-    return;
+    return await nurseAcceptOffer(detailTarget, { termsKey, isBatch: true });
   }
 
   processingOfferAction[termsKey] = 'accept';
@@ -1262,18 +932,19 @@ async function nurseAcceptOfferBatch(row: Extract<AppointmentListRow, { kind: 'b
           description: (res as any).error || `Impossible d’accepter le rendez-vous ${i + 1}/${aptsChrono.length}.`,
           color: 'red',
         });
-        return;
+        return false;
       }
     }
     if (shareTok) shareTokenForAccept.value = null;
     toast.add({
       title: 'Demandes acceptées',
-      description: `${aptsChrono.length} soin(s) pris en charge — la fiche liste l’ensemble du lot.`,
+      description: `${aptsChrono.length} soin(s) pris en charge · la fiche liste l’ensemble du lot.`,
       color: 'green',
     });
     listRefreshTrigger.value++;
     await navigateTo(`/nurse/appointments/${detailTarget.id}`);
     void fetchAppointments(true);
+    return true;
   } catch (err: any) {
     if (err?.code === 'PLAN_LIMIT' || (err?.message && /limite|offre Découverte/i.test(String(err.message)))) {
       toast.add({
@@ -1284,13 +955,14 @@ async function nurseAcceptOfferBatch(row: Extract<AppointmentListRow, { kind: 'b
     } else {
       toast.add({ title: 'Erreur', description: err?.message || 'Impossible d’accepter', color: 'red' });
     }
+    return false;
   } finally {
     delete processingOfferAction[termsKey];
   }
 }
 
 async function nurseRefuseOfferBatch(row: Extract<AppointmentListRow, { kind: 'batch' }>) {
-  const termsKey = batchOfferTermsKey(row);
+  const termsKey = offerTermsKey(row);
   const apts = row.appointments.filter((a) => showNurseOfferCardActions(a));
   if (apts.length === 0) return;
   processingOfferAction[termsKey] = 'refuse';
@@ -1327,16 +999,8 @@ async function nurseRefuseOfferBatch(row: Extract<AppointmentListRow, { kind: 'b
 async function nurseAcceptOffer(
   apt: any,
   opts?: { termsKey?: string; isBatch?: boolean },
-) {
+): Promise<boolean> {
   const termsKey = opts?.termsKey ?? apt.id;
-  if (!acceptTermsForNurseOffer[termsKey]) {
-    toast.add({
-      title: 'Conditions requises',
-      description: 'Activez la prise en charge et la confidentialité du patient pour accepter.',
-      color: 'warning',
-    });
-    return;
-  }
   processingOfferAction[termsKey] = 'accept';
   try {
     const shareTok =
@@ -1357,7 +1021,14 @@ async function nurseAcceptOffer(
       listRefreshTrigger.value++;
       await navigateTo(`/nurse/appointments/${apt.id}`);
       void fetchAppointments(true);
+      return true;
     }
+    toast.add({
+      title: 'Erreur',
+      description: (res as any).error || 'Impossible d’accepter ce rendez-vous.',
+      color: 'red',
+    });
+    return false;
   } catch (err: any) {
     if (err?.code === 'PLAN_LIMIT' || (err?.message && /limite|offre Découverte/i.test(String(err.message)))) {
       toast.add({
@@ -1368,6 +1039,7 @@ async function nurseAcceptOffer(
     } else {
       toast.add({ title: 'Erreur', description: err?.message || 'Impossible d’accepter', color: 'red' });
     }
+    return false;
   } finally {
     delete processingOfferAction[termsKey];
   }
@@ -1426,7 +1098,11 @@ function canStart(appointment: any) {
 
 /** Pour nurse, lab, subaccount : masquer les données sensibles pour les offres pending reçues (pas si le viewer est le créateur). */
 function shouldMaskSensitive(apt: any): boolean {
-  return shouldPollList.value && isPendingIncomingOffer(apt, user.value?.id);
+  const uid = user.value?.id;
+  if (uid == null || uid === '') {
+    return false;
+  }
+  return shouldPollList.value && isPendingIncomingOffer(apt, uid);
 }
 
 function maskString(val: string, visibleStart = 1, visibleEnd = 0): string {
@@ -1439,47 +1115,21 @@ function maskString(val: string, visibleStart = 1, visibleEnd = 0): string {
   return start + mid + end;
 }
 
-function maskEmail(email: string): string {
-  if (!email || typeof email !== 'string') return '••••••@••••••';
-  const at = email.indexOf('@');
-  if (at <= 0) return '••••••@••••••';
-  const local = email.slice(0, at);
-  const domain = email.slice(at + 1);
-  const localMasked = local.length > 2 ? local.slice(0, 2) + '•••' : '•••';
-  const dot = domain.lastIndexOf('.');
-  const domainMasked = dot > 0 ? '••••••' + domain.slice(dot) : '••••••';
-  return localMasked + '@' + domainMasked;
-}
-
-function maskPhone(phone: string): string {
-  if (!phone || typeof phone !== 'string') return '••••••••••';
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length < 4) return '••••••••••';
-  return digits.slice(0, 2) + '••••••' + digits.slice(-2);
-}
-
 function displayPatientName(apt: any): string {
-  if (!apt?.form_data) return '—';
+  if (!apt) return '·';
+  const full = appointmentPatientDisplayName(apt);
+  if (!full) return '·';
   if (shouldMaskSensitive(apt)) {
-    const fn = maskString(apt.form_data.first_name || '', 1, 0);
-    const ln = maskString(apt.form_data.last_name || '', 1, 0);
-    return `${fn} ${ln}`.trim() || '••••••';
+    const parts = full.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '••••••';
+    if (parts.length === 1) return maskString(parts[0], 1, 0);
+    return `${maskString(parts[0], 1, 0)} ${maskString(parts[parts.length - 1], 1, 0)}`.trim() || '••••••';
   }
-  return [apt.form_data.first_name, apt.form_data.last_name].filter(Boolean).join(' ').trim() || '—';
-}
-
-function displayPhone(apt: any): string {
-  if (!apt?.form_data?.phone) return '';
-  return shouldMaskSensitive(apt) ? maskPhone(apt.form_data.phone) : apt.form_data.phone;
+  return full;
 }
 
 function displayAddress(apt: any): string {
   return appointmentListAddressLine(apt);
-}
-
-function displayNotes(apt: any): string {
-  if (!apt?.notes) return '';
-  return shouldMaskSensitive(apt) ? '' : apt.notes;
 }
 
 function isOfferProcessing(id: string, action: 'accept' | 'refuse'): boolean {
@@ -1512,6 +1162,7 @@ watch(searchQuery, () => {
 
 onMounted(() => {
   fetchAppointments();
+  loadCareCategoriesForAppointmentList();
   if (shouldPollList.value) startListPolling();
 });
 

@@ -1,9 +1,9 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       title="Sous-comptes"
       description="Gérez les sous-comptes qui gèrent les rendez-vous pour votre laboratoire."
-      icon="i-lucide-user-cog"
     >
       <template #actions>
         <div class="flex items-center gap-2">
@@ -12,7 +12,8 @@
           </UButton>
         </div>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
     <TeamMemberListPage
       :items="subaccounts"
@@ -123,7 +124,7 @@
         <UButton color="red" :loading="deleting" :on-click="deleteSubaccount">Supprimer</UButton>
       </template>
     </UModal>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

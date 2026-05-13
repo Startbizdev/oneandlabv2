@@ -56,7 +56,7 @@
                         size="xs"
                         leading-icon="i-lucide-syringe"
                       >
-                        Prise de sang
+                        Prélèvement
                       </UBadge>
                       <UBadge
                         v-else
@@ -102,38 +102,53 @@
               </h2>
               <UButton variant="ghost" size="xs" to="/admin/users">Voir tout</UButton>
             </div>
-            <div class="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 md:gap-4 md:p-5 lg:grid-cols-4">
-              <NuxtLink
-                v-for="u in data.lastUsers"
-                :key="u.id"
-                to="/admin/users"
-                class="flex flex-col gap-1.5 rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2.5 transition hover:border-primary/30 hover:bg-gray-100/80 dark:border-gray-800 dark:bg-gray-800/50 dark:hover:border-primary/40 dark:hover:bg-gray-800/80"
-              >
-                <div class="flex items-center gap-2">
-                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-normal text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+            <ul class="divide-y divide-gray-200 dark:divide-gray-800" role="list">
+              <li v-for="u in data.lastUsers" :key="u.id">
+                <NuxtLink
+                  to="/admin/users"
+                  class="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50/90 md:gap-4 md:px-5 dark:hover:bg-gray-800/50"
+                >
+                  <div
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                  >
                     {{ getUserInitials(u) }}
                   </div>
                   <div class="min-w-0 flex-1">
-                    <div class="truncate text-sm font-medium text-gray-900 dark:text-white">
+                    <p class="truncate text-sm font-medium text-gray-900 dark:text-white">
                       {{ [u.first_name, u.last_name].filter(Boolean).join(' ') || '—' }}
-                    </div>
-                    <div class="truncate text-xs text-gray-500 dark:text-gray-400">{{ u.email || '—' }}</div>
+                    </p>
+                    <p class="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">
+                      {{ u.email || '—' }}
+                    </p>
+                    <p class="mt-1 text-xs tabular-nums text-gray-400 sm:hidden dark:text-gray-500">
+                      {{ u.created_at ? formatDateShort(u.created_at) : '—' }}
+                    </p>
                   </div>
-                </div>
-                <div class="flex flex-wrap items-center justify-between gap-1">
-                  <UBadge :color="getRoleBadgeColor(u.role)" variant="soft" size="xs">
-                    {{ getRoleLabel(u.role) }}
-                  </UBadge>
-                  <span class="text-xs text-gray-400 dark:text-gray-500">{{ u.created_at ? formatDateShort(u.created_at) : '—' }}</span>
-                </div>
-              </NuxtLink>
-              <div
+                  <div class="flex shrink-0 items-center gap-2 sm:gap-3">
+                    <UBadge :color="getRoleBadgeColor(u.role)" variant="soft" size="xs" class="tabular-nums">
+                      {{ getRoleLabel(u.role) }}
+                    </UBadge>
+                    <time
+                      class="hidden whitespace-nowrap text-xs text-gray-400 tabular-nums sm:inline-block dark:text-gray-500"
+                      :datetime="u.created_at || undefined"
+                    >
+                      {{ u.created_at ? formatDateShort(u.created_at) : '—' }}
+                    </time>
+                    <UIcon
+                      name="i-lucide-chevron-right"
+                      class="h-4 w-4 shrink-0 text-gray-300 opacity-0 transition group-hover:opacity-100 dark:text-gray-600"
+                      aria-hidden="true"
+                    />
+                  </div>
+                </NuxtLink>
+              </li>
+              <li
                 v-if="data.lastUsers.length === 0"
-                class="col-span-2 py-8 text-center text-xs text-gray-500 dark:text-gray-400 md:col-span-3 lg:col-span-4"
+                class="px-4 py-10 text-center text-xs text-gray-500 dark:text-gray-400 md:px-5"
               >
                 Aucun utilisateur récent.
-              </div>
-            </div>
+              </li>
+            </ul>
           </section>
 
           <!-- Temps réel -->

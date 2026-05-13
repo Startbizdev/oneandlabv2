@@ -1,6 +1,9 @@
 <template>
   <ClientOnly>
-    <AppointmentForm mode="create" />
+    <DashboardMultiAppointmentWizard
+      base-path="/admin"
+      selection-title="Quels actes pour ce rendez-vous ?"
+    />
     <template #fallback>
       <div
         class="flex min-h-[min(50vh,22rem)] flex-col items-center justify-center gap-3 py-16"
@@ -20,4 +23,6 @@ definePageMeta({
   middleware: ['auth', 'role'],
   role: ['super_admin'],
 });
+
+useHead({ title: 'Nouveau rendez-vous – Administration' });
 </script>

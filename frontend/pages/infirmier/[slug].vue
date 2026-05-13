@@ -43,7 +43,7 @@ const defaultNurseFaq = [
     answer: 'Vous pouvez réserver directement sur OneAndLab en choisissant le créneau qui vous convient. L\'infirmier intervient dans sa zone d\'intervention.',
   },
   {
-    question: 'Prise de sang à domicile : c’est remboursé ?',
+    question: 'Prélèvement à domicile : c’est remboursé ?',
     answer: 'Les actes infirmiers à domicile prescrits par un médecin sont pris en charge par l\'Assurance maladie. Le remboursement dépend de votre convention avec l\'infirmier et de votre couverture complémentaire.',
   },
 ];
