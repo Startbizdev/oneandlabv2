@@ -1,6 +1,7 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       title="Rendez-vous"
       description="Liste de vos rendez-vous. Créez un rendez-vous pour un patient."
     >
@@ -13,7 +14,8 @@
           Nouveau rendez-vous
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
     <AppointmentListPage
       ref="listRef"
@@ -21,7 +23,7 @@
       :use-date-filter="false"
       hide-header
     />
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

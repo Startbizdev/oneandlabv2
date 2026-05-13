@@ -19,7 +19,12 @@
           <span
             class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-50 dark:border-gray-600 dark:bg-gray-800"
           >
-            <UIcon :name="specIcon(spec)" class="h-4 w-4 text-gray-600 dark:text-gray-400" />
+            <CareCategoryVisual
+              :image-src="specImageSrc(spec)"
+              :icon-name="specIcon(spec)"
+              icon-class="h-4 w-4 text-gray-600 dark:text-gray-400"
+              img-class="h-4 w-4 object-contain"
+            />
           </span>
           <div class="min-w-0 flex-1">
             <span class="text-sm font-medium leading-snug text-gray-900 dark:text-white break-words">{{
@@ -39,6 +44,8 @@
 </template>
 
 <script setup lang="ts">
+import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
+
 interface Spec {
   id: string;
   name: string;
@@ -46,6 +53,8 @@ interface Spec {
   type?: string;
   /** Icône Nuxt UI (ex: i-lucide-stethoscope) ou nom Lucide (ex: stethoscope) */
   icon?: string | null;
+  /** Image uploadée en admin (prioritaire sur icon). */
+  image_url?: string | null;
 }
 
 interface Props {
@@ -62,6 +71,12 @@ const props = withDefaults(defineProps<Props>(), {
   icon: 'i-lucide-stethoscope',
   narrowPanel: false,
 });
+
+const config = useRuntimeConfig();
+
+function specImageSrc(spec: Spec): string | null {
+  return resolveCareCategoryImageSrc(spec.image_url ?? null, config.public.apiBase);
+}
 
 /** Convertit l’icône stockée en admin (care_categories.icon) en nom UIcon. */
 function specIcon(spec: Spec): string {

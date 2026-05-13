@@ -12,11 +12,11 @@
         Voir tout
       </UButton>
     </div>
-    <div class="p-4 sm:p-6">
+    <div class="p-3 sm:p-4">
       <div v-if="loading" class="flex justify-center py-12">
         <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-primary" />
       </div>
-      <template v-else-if="appointments.length === 0">
+      <template v-else-if="displayAppointments.length === 0">
         <div class="text-center py-10">
           <UIcon name="i-lucide-calendar" class="w-12 h-12 text-muted mx-auto mb-3" />
           <p class="font-medium text-default">Aucun rendez-vous aujourd'hui</p>
@@ -25,10 +25,11 @@
       </template>
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <DashboardAppointmentCard
-          v-for="apt in appointments"
+          v-for="apt in displayAppointments"
           :key="apt.id"
           :appointment="apt"
           :base-path="basePath"
+          :categories="categories"
           :format-date-label="formatDateLabel"
           :mask-sensitive="false"
         />
@@ -38,6 +39,10 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+import { mergeBatchRowsForDashboardList } from '~/utils/appointment-batch';
+import type { CareCategoryRowMinimal } from '~/utils/care-icons';
+
 interface AppointmentRow {
   id: string;
   type: string;
@@ -53,7 +58,10 @@ interface Props {
   loading?: boolean;
   basePath: string;
   formatDateLabel: (apt: AppointmentRow) => string;
+  categories?: CareCategoryRowMinimal[];
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
+
+const displayAppointments = computed(() => mergeBatchRowsForDashboardList(props.appointments as any[]));
 </script>

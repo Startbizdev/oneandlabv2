@@ -56,7 +56,6 @@
           <AddressSelector
             v-model="form.addressSelection"
             label="Adresse"
-            placeholder="Recherchez votre adresse..."
             :required="false"
             class="w-full"
             @update:model-value="onAddressSelect"
@@ -263,7 +262,6 @@ async function onVerifyOTP() {
   try {
     const result = await verifyOTP(userId.value, cleaned, sessionId.value);
     if (result?.success) {
-      toast.add({ title: 'Connexion réussie', description: 'Redirection...', color: 'green' });
       await navigateTo('/patient');
     } else {
       toast.add({ title: 'Code invalide', description: result?.error ?? 'Code incorrect', color: 'red' });

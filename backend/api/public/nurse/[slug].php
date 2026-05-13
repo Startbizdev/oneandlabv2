@@ -95,8 +95,12 @@ try {
     // Récupérer les spécialisations (catégories activées, avec icône)
     $stmt = $db->query("SHOW COLUMNS FROM care_categories LIKE 'icon'");
     $iconCol = $stmt && $stmt->rowCount() > 0 ? ', cc.icon' : '';
+    $stmtImg = $db->query("SHOW COLUMNS FROM care_categories LIKE 'image_url'");
+    $imageUrlCol = $stmtImg && $stmtImg->rowCount() > 0 ? ', cc.image_url' : '';
+    $stmtCg = $db->query("SHOW COLUMNS FROM care_categories LIKE 'catalog_group'");
+    $catalogGroupCol = $stmtCg && $stmtCg->rowCount() > 0 ? ', cc.catalog_group' : '';
     $stmt = $db->prepare("
-        SELECT cc.id, cc.name, cc.description, cc.type{$iconCol}
+        SELECT cc.id, cc.name, cc.description, cc.type{$iconCol}{$imageUrlCol}{$catalogGroupCol}
         FROM care_categories cc
         LEFT JOIN nurse_category_preferences ncp
             ON cc.id = ncp.category_id AND ncp.nurse_id = ?

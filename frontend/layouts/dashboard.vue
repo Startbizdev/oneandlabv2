@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-screen bg-gray-50">
+  <div class="flex flex-col h-screen bg-app-canvas dark:bg-gray-950">
     <ClientOnly>
       <SubscriptionBanner />
       <template #fallback>
@@ -10,76 +10,73 @@
     <!-- Sidebar -->
     <aside
       :class="[
-        /* z-[1000] sur mobile : au-dessus des cartes Leaflet (panes ~200–700), sinon le menu passe sous la carte */
-        'flex flex-col bg-white border-r border-gray-200 w-64 fixed md:static inset-y-0 left-0 z-[1000] md:z-auto transition-transform duration-300 ease-in-out',
+        /* Largeur rail fixe : min/max + shrink-0 + overflow-x évite que le flex ou le contenu « élargisse » la colonne (bug flex min-width:auto). */
+        'flex flex-col bg-white border-r border-gray-200 w-[7.25rem] min-w-[7.25rem] max-w-[7.25rem] shrink-0 overflow-x-hidden fixed md:static inset-y-0 left-0 z-[1000] md:z-auto transition-transform duration-300 ease-in-out',
         mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       ]"
     >
       <!-- Header Sidebar -->
-      <div class="flex items-center justify-center w-full px-4 h-[60px] border-b border-gray-200">
+      <div class="flex h-[60px] w-full items-center justify-center border-b border-gray-200 px-2">
         <NuxtLink
           to="/"
-          class="flex items-center justify-center w-full transition-all duration-200 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 rounded-lg"
+          class="rounded-lg px-2 py-1.5 text-center transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:hover:bg-gray-900/60 dark:focus-visible:ring-offset-gray-950"
           aria-label="Retour à l'accueil"
         >
-          <img
-            src="/images/onelogo.png"
-            alt="OneAndLab"
-            class="h-9 mx-auto object-contain transition-all duration-300 ease-in-out drop-shadow-sm"
-            loading="eager"
-            decoding="async"
-          />
+          <span class="text-xl font-black tracking-tight leading-none text-gray-900 dark:text-white tabular-nums sm:text-[22px]">
+            O<span class="text-primary-600 dark:text-primary-400">&</span>L
+          </span>
         </NuxtLink>
       </div>
 
       <!-- Navigation -->
       <div class="flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll">
-        <!-- Navigation principale -->
+        <!-- Navigation principale : icône au-dessus, libellé souligné si actif (rail étroit) -->
         <ClientOnly>
-          <nav class="flex-1 px-3 py-4" aria-label="Navigation principale">
-            <ul class="flex flex-col gap-1">
+          <nav class="flex-1 px-2 py-3" aria-label="Navigation principale">
+            <ul class="flex flex-col gap-0.5">
               <li v-for="item in navigationItems[0]" :key="item.to">
                 <NuxtLink
                   :to="item.to"
                   @click="(e) => handleSidebarNavigate(e, item.to)"
                   :class="[
-                    'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1',
+                    'group relative flex flex-col items-center gap-1.5 rounded-lg px-1 py-2.5 text-center transition-colors duration-200 ease-in-out',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-950',
                     'active:scale-[0.98]',
-                    item.active
-                      ? 'bg-primary-50 text-primary-600 shadow-sm'
-                      : 'text-gray-700 hover:bg-primary-50 hover:text-primary-600'
+                    item.active ? '' : 'hover:bg-gray-50 dark:hover:bg-gray-900/60',
                   ]"
                   :aria-current="item.active ? 'page' : undefined"
                   :aria-busy="sidebarPendingTo === item.to && isSidebarCalendarLink(item.to) ? 'true' : undefined"
                   :title="item.to === '/nurse/demandes' && nurseDemandesSidebarBadge > 0 ? `${nurseDemandesSidebarBadge} soin(s) à accepter` : undefined"
                 >
-                  <!-- Barre latérale active -->
-                  <div
-                    v-if="item.active"
-                    class="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary-600 transition-all duration-200"
-                  />
-                  
-                  <UIcon
-                    :name="sidebarNavIcon(item)"
-                    :class="[
-                      'h-5 w-5 flex-shrink-0 transition-all duration-200',
-                      sidebarPendingTo === item.to && isSidebarCalendarLink(item.to) ? 'animate-spin' : '',
-                      item.active
-                        ? 'text-primary-600 scale-105'
-                        : 'text-gray-500 group-hover:text-primary-600 group-hover:scale-105'
-                    ]"
-                    aria-hidden="true"
-                  />
-                  <span class="truncate flex-1 min-w-0 transition-opacity duration-200">
-                    {{ item.label }}
+                  <span class="relative inline-flex shrink-0">
+                    <UIcon
+                      :name="sidebarNavIcon(item)"
+                      :class="[
+                        'h-5 w-5 transition-colors duration-200',
+                        sidebarPendingTo === item.to && isSidebarCalendarLink(item.to) ? 'animate-spin' : '',
+                        item.active
+                          ? 'text-primary-600 dark:text-primary-400'
+                          : 'text-gray-500 group-hover:text-primary-600 dark:text-gray-400 dark:group-hover:text-primary-400',
+                      ]"
+                      aria-hidden="true"
+                    />
+                    <span
+                      v-if="item.to === '/nurse/demandes' && nurseDemandesSidebarBadge > 0"
+                      class="absolute -right-2 -top-1 flex min-h-[1rem] min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-0.5 text-[9px] font-bold leading-none text-white shadow-sm tabular-nums"
+                      aria-hidden="true"
+                    >
+                      {{ nurseDemandesSidebarBadge > 99 ? '99+' : nurseDemandesSidebarBadge }}
+                    </span>
                   </span>
                   <span
-                    v-if="item.to === '/nurse/demandes' && nurseDemandesSidebarBadge > 0"
-                    class="shrink-0 min-h-[1.25rem] min-w-[1.25rem] px-1 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold leading-none text-white shadow-sm tabular-nums"
-                    aria-hidden="true"
+                    class="max-w-full break-words border-b-[3px] pb-0.5 text-[10px] font-semibold leading-snug transition-colors duration-200 sm:text-[11px]"
+                    :class="
+                      item.active
+                        ? 'border-primary-600 text-gray-900 dark:border-primary-400 dark:text-white'
+                        : 'border-transparent text-gray-600 group-hover:border-primary-600/35 group-hover:text-primary-700 dark:text-gray-400 dark:group-hover:border-primary-400/40 dark:group-hover:text-primary-300'
+                    "
                   >
-                    {{ nurseDemandesSidebarBadge > 99 ? '99+' : nurseDemandesSidebarBadge }}
+                    {{ item.label }}
                   </span>
                 </NuxtLink>
               </li>
@@ -89,60 +86,61 @@
           <!-- Navigation secondaire -->
           <nav
             v-if="navigationItems[1]?.length"
-            class="border-t border-gray-200 px-3 py-4"
+            class="border-t border-gray-200 px-2 py-3"
             aria-label="Navigation secondaire"
           >
-            <ul class="flex flex-col gap-1">
+            <ul class="flex flex-col gap-0.5">
               <li v-for="item in navigationItems[1]" :key="item.to">
                 <NuxtLink
                   :to="item.to"
                   @click="(e) => handleSidebarNavigate(e, item.to)"
                   :class="[
-                    'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1',
+                    'group relative flex flex-col items-center gap-1.5 rounded-lg px-1 py-2.5 text-center transition-colors duration-200 ease-in-out',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-950',
                     'active:scale-[0.98]',
-                    item.active
-                      ? 'bg-primary-50 text-primary-600 shadow-sm'
-                      : 'text-gray-700 hover:bg-primary-50 hover:text-primary-600'
+                    item.active ? '' : 'hover:bg-gray-50 dark:hover:bg-gray-900/60',
                   ]"
                   :aria-current="item.active ? 'page' : undefined"
                   :aria-busy="sidebarPendingTo === item.to && isSidebarCalendarLink(item.to) ? 'true' : undefined"
                   :title="item.to === '/nurse/demandes' && nurseDemandesSidebarBadge > 0 ? `${nurseDemandesSidebarBadge} soin(s) à accepter` : undefined"
                 >
-                  <!-- Barre latérale active -->
-                  <div
-                    v-if="item.active"
-                    class="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary-600 transition-all duration-200"
-                  />
-                  
-                  <UIcon
-                    :name="sidebarNavIcon(item)"
-                    :class="[
-                      'h-5 w-5 flex-shrink-0 transition-all duration-200',
-                      sidebarPendingTo === item.to && isSidebarCalendarLink(item.to) ? 'animate-spin' : '',
-                      item.active
-                        ? 'text-primary-600 scale-105'
-                        : 'text-gray-500 group-hover:text-primary-600 group-hover:scale-105'
-                    ]"
-                    aria-hidden="true"
-                  />
-                  <span class="truncate flex-1 min-w-0 transition-opacity duration-200">
-                    {{ item.label }}
+                  <span class="relative inline-flex shrink-0">
+                    <UIcon
+                      :name="sidebarNavIcon(item)"
+                      :class="[
+                        'h-5 w-5 transition-colors duration-200',
+                        sidebarPendingTo === item.to && isSidebarCalendarLink(item.to) ? 'animate-spin' : '',
+                        item.active
+                          ? 'text-primary-600 dark:text-primary-400'
+                          : 'text-gray-500 group-hover:text-primary-600 dark:text-gray-400 dark:group-hover:text-primary-400',
+                      ]"
+                      aria-hidden="true"
+                    />
+                    <span
+                      v-if="item.to === '/nurse/demandes' && nurseDemandesSidebarBadge > 0"
+                      class="absolute -right-2 -top-1 flex min-h-[1rem] min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-0.5 text-[9px] font-bold leading-none text-white shadow-sm tabular-nums"
+                      aria-hidden="true"
+                    >
+                      {{ nurseDemandesSidebarBadge > 99 ? '99+' : nurseDemandesSidebarBadge }}
+                    </span>
                   </span>
                   <span
-                    v-if="item.to === '/nurse/demandes' && nurseDemandesSidebarBadge > 0"
-                    class="shrink-0 min-h-[1.25rem] min-w-[1.25rem] px-1 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold leading-none text-white shadow-sm tabular-nums"
-                    aria-hidden="true"
+                    class="max-w-full break-words border-b-[3px] pb-0.5 text-[10px] font-semibold leading-snug transition-colors duration-200 sm:text-[11px]"
+                    :class="
+                      item.active
+                        ? 'border-primary-600 text-gray-900 dark:border-primary-400 dark:text-white'
+                        : 'border-transparent text-gray-600 group-hover:border-primary-600/35 group-hover:text-primary-700 dark:text-gray-400 dark:group-hover:border-primary-400/40 dark:group-hover:text-primary-300'
+                    "
                   >
-                    {{ nurseDemandesSidebarBadge > 99 ? '99+' : nurseDemandesSidebarBadge }}
+                    {{ item.label }}
                   </span>
                 </NuxtLink>
               </li>
             </ul>
           </nav>
           <template #fallback>
-            <nav class="flex-1 px-3 py-4" aria-label="Navigation principale">
-              <div class="h-8 w-full bg-gray-100 rounded animate-pulse"></div>
+            <nav class="flex-1 px-2 py-3" aria-label="Navigation principale">
+              <div class="mx-auto h-8 w-12 rounded bg-gray-100 animate-pulse dark:bg-gray-800" />
             </nav>
           </template>
         </ClientOnly>
@@ -156,11 +154,11 @@
       @click="mobileSidebarOpen = false"
     />
 
-    <!-- Main Content -->
-    <div class="flex-1 flex flex-col overflow-hidden">
-      <!-- Header -->
-      <header class="relative z-50 overflow-visible bg-white border-b border-gray-200 px-4 md:px-6 h-[60px] flex items-center">
-        <div class="flex w-full min-w-0 items-center justify-between gap-3 sm:gap-4">
+    <!-- Zone principale : header et page dans le même flux scroll (pas de bandeau « collé » au-dessus) -->
+    <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <main class="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-canvas dark:bg-gray-950">
+        <header class="relative z-50 shrink-0 overflow-visible bg-white border-b border-gray-200 px-4 md:px-6 h-[60px] flex items-center">
+          <div class="flex w-full min-w-0 items-center justify-between gap-3 sm:gap-4">
           <!-- Menu mobile -->
           <button
             @click="mobileSidebarOpen = !mobileSidebarOpen"
@@ -209,18 +207,18 @@
           <!-- Actions Header -->
           <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <!-- Notifications -->
-            <div class="relative" ref="notificationsMenuRef">
+            <div class="relative z-10 shrink-0" ref="notificationsMenuRef">
               <button
                 type="button"
                 @click.stop="toggleNotificationsMenu"
-                class="relative h-9 w-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+                class="relative flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 active:bg-gray-200 sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9 touch-manipulation"
                 :aria-label="`Notifications${bellBadgeCount > 0 ? ` (${bellBadgeCount} en attente)` : ''}`"
                 :aria-expanded="notificationsMenuOpen"
               >
                 <UIcon name="i-lucide-bell" class="h-5 w-5" />
                 <span
                   v-if="bellBadgeCount > 0"
-                  class="absolute top-1 right-1 h-4 w-4 flex items-center justify-center rounded-full bg-primary-600 text-xs font-medium text-white"
+                  class="absolute top-1 right-1 inline-grid min-h-4 min-w-4 place-items-center rounded-full bg-red-500 px-[3px] text-center text-[10px] font-semibold tabular-nums leading-[10px] text-white shadow-sm box-border"
                 >
                   {{ bellBadgeCount > 9 ? '9+' : bellBadgeCount }}
                 </span>
@@ -260,13 +258,13 @@
               </div>
             </div>
 
-            <!-- User Menu -->
-            <div class="relative" ref="userMenuRef">
+            <!-- User Menu (même gabarit que la cloche) -->
+            <div class="relative z-10 shrink-0" ref="userMenuRef">
               <ClientOnly>
                 <button
                   type="button"
                   @click.stop="toggleUserMenu"
-                  class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                  class="relative flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 active:bg-gray-200 sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9 touch-manipulation"
                   :aria-label="`Menu utilisateur: ${headerUserDisplayName}`"
                   :aria-expanded="userMenuOpen"
                 >
@@ -274,13 +272,12 @@
                     :src="headerAvatarSrc"
                     :initial="headerAvatarInitial"
                     :alt="headerUserDisplayName"
-                    size="md"
+                    size="sm"
+                    bare
                   />
-                  <span class="text-sm font-medium">{{ headerUserDisplayName }}</span>
-                  <UIcon name="i-lucide-chevron-down" class="h-4 w-4 transition-transform" :class="{ 'rotate-180': userMenuOpen }" />
                 </button>
                 <template #fallback>
-                  <div class="h-8 w-24 bg-gray-100 rounded animate-pulse"></div>
+                  <div class="h-9 w-9 rounded-lg bg-gray-100 animate-pulse shrink-0" />
                 </template>
               </ClientOnly>
               
@@ -303,20 +300,12 @@
               </div>
             </div>
           </div>
-        </div>
-      </header>
+          </div>
+        </header>
 
-      <!-- Content -->
-      <main class="flex-1 overflow-y-auto bg-gray-50 min-h-0 flex flex-col">
-        <div class="flex-1 p-4 md:p-6">
+        <div class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:px-6 md:py-6">
           <slot />
         </div>
-        <!-- Footer -->
-        <footer class="flex-shrink-0 bg-white border-t border-gray-200 px-4 md:px-6 py-3">
-          <div class="flex items-center justify-center text-sm text-gray-500">
-            <p>&copy; {{ new Date().getFullYear() }} OneAndLab. Tous droits réservés.</p>
-          </div>
-        </footer>
       </main>
     </div>
     </div>
@@ -342,10 +331,14 @@ import type { NavigationMenuItem } from "@nuxt/ui";
 import { apiFetch } from "~/utils/api";
 import { isPendingIncomingOffer } from "~/utils/appointment-offer";
 import { isBloodTestAppointment } from "~/utils/appointment-type-rules";
+import { formatBellNotificationLines, sanitizeNotificationText } from "~/utils/notification-display";
 
 const { user, logout, fetchCurrentUser } = useAuth();
 const route = useRoute();
 const router = useRouter();
+const { holdCount } = useBookingApiHold();
+const skipPollDuringBooking = () => holdCount.value > 0;
+
 const notifications = useState<any[]>("notifications.list", () => []);
 
 // S'assurer que les infos utilisateur sont complètes (une seule fois pour éviter boucle infinie)
@@ -414,15 +407,19 @@ function sidebarNavIcon(item: { to: string; icon: string }): string {
   return item.icon;
 }
 
-// Navigation sidebar : forcer navigation programmatique pour éviter blocage (ex. page Abonnements)
+// Navigation sidebar : en général laisser NuxtLink faire le travail.
+// Intervention uniquement pour le calendrier (spinner le temps du chargement) — évite preventDefault systématique
+// qui peut bloquer les clics après certaines pages (ex. /admin/abonnements) si router.push échoue sans fallback.
 const handleSidebarNavigate = async (e: MouseEvent, to: string) => {
   mobileSidebarOpen.value = false;
+  if (!isSidebarCalendarLink(to)) {
+    return;
+  }
   const current = route.path.replace(/\/$/, '') || '/';
   const target = to.replace(/\/$/, '') || '/';
   if (current === target) return;
   e.preventDefault();
-  const cal = isSidebarCalendarLink(to);
-  if (cal) sidebarPendingTo.value = to;
+  sidebarPendingTo.value = to;
   try {
     await router.push(to);
   } finally {
@@ -680,19 +677,15 @@ const breadcrumbItems = computed(() => {
   // Construire le breadcrumb en analysant le chemin
   const pathSegments = path.split("/").filter(Boolean);
   
-  // super_admin utilise /admin comme base
+  // super_admin utilise /admin comme base ; infirmier : accueil = liste RDV
   let roleBasePath = `/${role || ""}`;
   if (role === 'super_admin') {
     roleBasePath = '/admin';
   }
-  if (role === 'nurse' && path === '/nurse') {
-    // Rediriger vers appointments dans le breadcrumb
-    items.push({
-      label: "Rendez-vous",
-      icon: "i-lucide-calendar",
-      to: "/nurse/appointments",
-    });
-  } else if (role && routeLabels[roleBasePath]) {
+  if (role === 'nurse') {
+    roleBasePath = '/nurse/appointments';
+  }
+  if (role && routeLabels[roleBasePath]) {
     items.push({
       label: routeLabels[roleBasePath].label,
       icon: routeLabels[roleBasePath].icon,
@@ -759,7 +752,12 @@ const breadcrumbItems = computed(() => {
 const navigationItems = computed(() => {
   const role = user.value?.role;
   const p = route.path;
-  const active = (x: string) => p.startsWith(x);
+  const active = (base: string) => {
+    const norm = (s: string) => s.replace(/\/+$/, '') || '/';
+    const path = norm(p);
+    const b = norm(base);
+    return path === b || path.startsWith(`${b}/`);
+  };
   // "Mon profil" actif uniquement sur son propre profil (pas en édition préleveur/sous-compte)
   const isOwnProfilePage = p === "/profile" && !route.query.userId && route.query.newPreleveur !== "1" && route.query.newPreleveur !== "true";
 
@@ -1088,9 +1086,10 @@ const headerUserMenuItems = computed(() => [
 
 const formatPendingAppointmentLabel = (a: any) => {
   const date = a.scheduled_at ? new Date(a.scheduled_at).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
-  const type = a.type === 'nursing' ? 'Soins' : a.type === 'blood_test' ? 'Prise de sang' : '';
+  const type = a.type === 'nursing' ? 'Soins' : a.type === 'blood_test' ? 'Prélèvement' : '';
   const cat = a.category_name || '';
-  return `Nouveau RDV — ${date}${cat ? ` · ${cat}` : ''}${type ? ` (${type})` : ''}`.trim();
+  const bits = ['Nouveau RDV', date, cat || null, type ? `(${type})` : null].filter((x): x is string => !!x && x.length > 0);
+  return bits.join(', ');
 };
 
 const notificationItems = computed(() => {
@@ -1123,10 +1122,10 @@ const notificationItems = computed(() => {
       const first = appts[0];
       const n = appts.length;
       items.push({
-        label: isBatch && n > 1
-          ? `Nouveau lot — ${n} soins`
-          : formatPendingAppointmentLabel(first),
-        description: isBatch && n > 1 ? 'Cliquez pour accepter ou refuser le lot' : 'Cliquez pour accepter ou refuser',
+        label: sanitizeNotificationText(
+          isBatch && n > 1 ? `Lot · ${n} soins` : formatPendingAppointmentLabel(first),
+        ),
+        description: undefined,
         icon: isBatch && n > 1 ? 'i-lucide-layers' : 'i-lucide-calendar-clock',
         isRead: false,
         disabled: false,
@@ -1170,9 +1169,13 @@ const notificationItems = computed(() => {
       !!data.review_id;
     const isShareLinkInfo =
       notif.type === 'share_link_appointment_taken' || data?.no_navigate === true;
+    const { label: notifLabel, message: notifMessage } = formatBellNotificationLines(
+      notif.title,
+      notif.message,
+    );
     items.push({
-      label: notif.title || notif.message || "Notification",
-      message: notif.title ? (notif.message || undefined) : undefined,
+      label: notifLabel,
+      message: notifMessage,
       description: notif.created_at ? new Date(notif.created_at).toLocaleString("fr-FR") : undefined,
       icon:
         notif.type === "marketing"
@@ -1215,9 +1218,13 @@ const notificationItems = computed(() => {
         ) {
           notificationsMenuOpen.value = false;
           const base = role === "pro" ? "/pro" : "/nurse";
+          const pid = data?.photo_id != null && String(data.photo_id).trim() !== "" ? String(data.photo_id) : null;
           void navigateTo({
             path: `${base}/appointments/${aptId}`,
-            query: { careGallery: "1" },
+            query: {
+              careGallery: "1",
+              ...(pid ? { carePhoto: pid } : {}),
+            },
           });
           return;
         }
@@ -1273,27 +1280,41 @@ const notificationItems = computed(() => {
   return items;
 });
 
-const { start: startPolling, stop: stopPolling } = usePolling(async () => {
-  console.log('[NotificationPolling] Fetching notifications...');
-  try {
-    const res = await apiFetch("/notifications?limit=10", { method: "GET" });
-    if (res && res.success) {
-      const oldCount = notifications.value.filter(n => !n.read_at).length;
-      const newCount = res.data.filter((n: any) => !n.read_at).length;
-      
-      // Forcer la réactivité en créant un nouveau tableau
-      notifications.value = [...res.data];
-      
-      console.log('[NotificationPolling] Updated notifications', {
-        total: res.data.length,
-        oldUnread: oldCount,
-        newUnread: newCount,
-      });
-    }
-  } catch (error) {
-    console.error('[NotificationPolling] Error:', error);
+/** Même requête que la page « Mes demandes » infirmier ; sans ces paramètres l’API renvoie le périmètre « Mes rendez-vous » et omet les offres entrantes (pastille sidebar à 0). */
+function appointmentsPendingOffersUrl(role: string | undefined): string {
+  const qs = new URLSearchParams({ status: 'pending', limit: '100' });
+  if (role === 'nurse') {
+    qs.set('nurse_tab', 'soins');
+    qs.set('nurse_segment', 'en_attente');
   }
-}, 10000); // Réduire à 10 secondes pour les notifications
+  return `/appointments?${qs.toString()}`;
+}
+
+const { start: startPolling, stop: stopPolling } = usePolling(
+  async () => {
+    console.log('[NotificationPolling] Fetching notifications...');
+    try {
+      const res = await apiFetch("/notifications?limit=10", { method: "GET" });
+      if (res && res.success) {
+        const oldCount = notifications.value.filter(n => !n.read_at).length;
+        const newCount = res.data.filter((n: any) => !n.read_at).length;
+
+        // Forcer la réactivité en créant un nouveau tableau
+        notifications.value = [...res.data];
+
+        console.log('[NotificationPolling] Updated notifications', {
+          total: res.data.length,
+          oldUnread: oldCount,
+          newUnread: newCount,
+        });
+      }
+    } catch (error) {
+      console.error('[NotificationPolling] Error:', error);
+    }
+  },
+  10000,
+  { shouldSkip: skipPollDuringBooking },
+); // Réduire à 10 secondes pour les notifications
 
 // Détecter les nouveaux rendez-vous pour infirmiers, lab et sous-compte (popup auto, file d'attente FIFO)
 const { start: startAppointmentPolling, stop: stopAppointmentPolling, isPolling: isAppointmentPolling } = usePolling(async () => {
@@ -1303,7 +1324,7 @@ const { start: startAppointmentPolling, stop: stopAppointmentPolling, isPolling:
     return;
   }
 
-  const res = await apiFetch('/appointments?status=pending&limit=100', {
+  const res = await apiFetch(appointmentsPendingOffersUrl(role), {
     method: 'GET'
   });
 
@@ -1346,7 +1367,7 @@ const { start: startAppointmentPolling, stop: stopAppointmentPolling, isPolling:
     lastPendingCount.value = batchIds.size + singlesCount;
     pendingAppointments.value = dedupedPending;
   }
-}, 10000);
+}, 10000, { shouldSkip: skipPollDuringBooking });
 
 /** Déclencheur pour rafraîchir la liste RDV (nurse, lab, subaccount) après acceptation/refus dans la modal */
 const appointmentListRefreshTrigger = useState<number>('appointments.listRefreshTrigger', () => 0);
@@ -1395,7 +1416,7 @@ watch(() => user.value?.role, async (role) => {
   appointmentCounterInitialized = true;
   try {
     const myId = user.value?.id;
-    const res = await apiFetch('/appointments?status=pending&limit=100', { method: 'GET' });
+    const res = await apiFetch(appointmentsPendingOffersUrl(role), { method: 'GET' });
     if (res?.success && res.data && myId) {
       const pending = res.data.filter((a: any) => {
         if (role === 'nurse') {

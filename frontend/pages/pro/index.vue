@@ -1,6 +1,7 @@
 <template>
-  <div class="pro-dashboard-page space-y-6 lg:space-y-8">
-    <TitleDashboard
+  <AppPageShell class="pro-dashboard-page space-y-6 lg:space-y-8">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       title="Tableau de bord"
       description="Vue d'ensemble de vos rendez-vous et patients"
     >
@@ -14,7 +15,8 @@
           Nouveau rendez-vous
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
       
@@ -156,7 +158,7 @@
       </section>
 
     </div>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

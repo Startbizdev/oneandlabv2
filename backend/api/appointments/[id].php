@@ -67,9 +67,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         } catch (Throwable $e) {
             $hasMergedColumn = false;
         }
+        try {
+            $hasCreationBatchColumn = (bool) $db->query("
+                SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'appointments'
+                  AND COLUMN_NAME = 'creation_batch_id'
+            ")->fetchColumn();
+        } catch (Throwable $e) {
+            $hasCreationBatchColumn = false;
+        }
         $mergedSelect = $hasMergedColumn ? ', merged_into_appointment_id' : '';
+        $creationBatchSelect = $hasCreationBatchColumn ? ', creation_batch_id' : '';
         $stmt = $db->prepare("
-            SELECT patient_id, assigned_nurse_id, assigned_lab_id, assigned_to, created_by, type, status, location_lat, location_lng, creation_batch_id{$mergedSelect}
+            SELECT patient_id, assigned_nurse_id, assigned_lab_id, assigned_to, created_by, type, status, location_lat, location_lng{$creationBatchSelect}{$mergedSelect}
             FROM appointments
             WHERE id = ?
         ");
@@ -174,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $hasAccess = true;
             } else {
                 // Accès sibling de lot : si l'infirmier a une offre pour n'importe quel RDV du même lot, il accède à tous les siblings
-                $batchIdForAccess = $appointmentCheck['creation_batch_id'] ?? null;
+                $batchIdForAccess = $hasCreationBatchColumn ? ($appointmentCheck['creation_batch_id'] ?? null) : null;
                 if (!empty($batchIdForAccess)) {
                     $batchOfferStmt = $db->prepare('
                         SELECT 1 FROM appointment_offers ao

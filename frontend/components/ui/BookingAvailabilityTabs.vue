@@ -53,7 +53,7 @@ const tabs = computed(() => {
     {
       id: 'urgent',
       label: 'Horaire VIP',
-      icon: 'i-lucide-star',
+      icon: 'i-lucide-sparkles',
     },
   ];
 });
@@ -129,8 +129,52 @@ function updateRange(raw: [number, number]) {
 }
 
 const tabsGridClass = computed(() =>
-  showUrgent.value ? 'grid grid-cols-3 gap-1 sm:gap-1.5' : 'grid grid-cols-2 gap-1.5 sm:gap-2',
+  showUrgent.value ? 'grid grid-cols-3 gap-1.5 sm:gap-2' : 'grid grid-cols-2 gap-1.5 sm:gap-2',
 );
+
+function isVipTab(tab: { id: string }) {
+  return tab.id === 'urgent';
+}
+
+function tabButtonClass(tab: { id: string }) {
+  const on = availabilityType.value === tab.id;
+  const focusBase = 'focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-gray-900';
+  if (isVipTab(tab)) {
+    const focusVip = `${focusBase} focus-visible:ring-amber-500/55`;
+    if (on) {
+      return [
+        'vip-tab vip-tab--active cursor-pointer text-[#1c0e02] shadow-[0_0_26px_-5px_rgba(217,119,6,0.65)] ring-2 ring-amber-600/90 dark:text-amber-50',
+        'dark:shadow-[0_0_32px_-4px_rgba(250,204,21,0.45)] dark:ring-amber-400/80',
+        focusVip,
+      ];
+    }
+    return [
+      'vip-tab vip-tab--idle cursor-pointer text-[#1c0e02] ring-2 ring-amber-600/55 hover:ring-amber-500/80 dark:text-amber-50',
+      'dark:ring-amber-500/70 dark:hover:ring-amber-300/85',
+      focusVip,
+    ];
+  }
+  const focusSky = `${focusBase} focus-visible:ring-sky-500/45`;
+  if (on) {
+    return [
+      'z-[1] cursor-pointer border-2 border-sky-400 bg-sky-50 text-sky-950 shadow-[0_2px_8px_-2px_rgba(14,165,233,0.28)] outline-none dark:border-sky-500 dark:bg-sky-950/55 dark:text-sky-50 dark:shadow-[0_4px_14px_-4px_rgba(14,165,233,0.35)]',
+      'hover:bg-sky-50 dark:hover:bg-sky-950/65 active:scale-[0.98]',
+      focusSky,
+    ];
+  }
+  return [
+    'z-0 cursor-pointer border border-gray-300/95 bg-white text-gray-800 shadow-sm outline-none dark:border-gray-600 dark:bg-gray-800/95 dark:text-gray-100 dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]',
+    'hover:border-gray-400 hover:bg-gray-50/95 hover:shadow-md active:scale-[0.98] dark:hover:border-gray-500 dark:hover:bg-gray-800 dark:hover:shadow-md',
+    focusSky,
+  ];
+}
+
+function tabIconClass(tab: { id: string }) {
+  if (isVipTab(tab)) {
+    return 'relative z-[1] size-5 shrink-0 drop-shadow-sm sm:size-[1.35rem]';
+  }
+  return 'relative z-[1] size-5 shrink-0 text-current opacity-90 transition-[color,opacity] sm:size-6';
+}
 </script>
 
 <template>
@@ -149,21 +193,26 @@ const tabsGridClass = computed(() =>
           role="tab"
           :aria-selected="availabilityType === tab.id"
           :disabled="disabled"
-          class="group relative flex min-h-[2.75rem] min-w-0 flex-row items-center justify-center gap-1 rounded-xl px-1.5 py-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-100 disabled:pointer-events-none disabled:opacity-45 dark:focus-visible:ring-offset-gray-900 sm:min-h-[3rem] sm:gap-2 sm:rounded-[0.8125rem] sm:px-2 sm:py-2.5"
-          :class="
-            availabilityType === tab.id
-              ? 'z-[1] bg-sky-50 text-sky-950 shadow-[0_1px_3px_rgba(14,165,233,0.14)] outline outline-1 outline-sky-300/75 dark:bg-sky-950/40 dark:text-sky-50 dark:shadow-[0_2px_8px_-2px_rgba(14,165,233,0.2)] dark:outline-sky-500/35'
-              : 'z-0 text-gray-600 hover:bg-white/75 hover:text-gray-900 active:bg-white/90 dark:text-gray-400 dark:hover:bg-gray-800/80 dark:hover:text-gray-50 dark:active:bg-gray-800'
-          "
+          class="group relative flex min-h-[4.75rem] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1.5 py-2.5 transition-[color,box-shadow,background,transform,border-color] duration-200 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-45 sm:min-h-[5.25rem] sm:gap-1.5 sm:px-2 sm:py-3"
+          :class="tabButtonClass(tab)"
           @click="setTab(tab.id)"
         >
-          <UIcon
-            :name="tab.icon"
-            class="size-4 shrink-0 transition-[color] sm:size-[1.125rem]"
-            aria-hidden="true"
-          />
           <span
-            class="max-w-full text-left text-[10px] font-semibold leading-tight sm:text-[11px] sm:leading-snug md:text-sm"
+            v-if="isVipTab(tab)"
+            class="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
+            aria-hidden="true"
+          >
+            <span class="vip-shine-beam" />
+            <span class="vip-shimmer-bg" />
+          </span>
+          <UIcon :name="tab.icon" :class="tabIconClass(tab)" aria-hidden="true" />
+          <span
+            :class="[
+              'relative z-[1] max-w-[11rem] px-0.5 text-center font-bold leading-snug tracking-tight sm:max-w-none',
+              isVipTab(tab)
+                ? 'text-[11px] text-[#1c0e02] drop-shadow-[0_1px_0_rgba(255,250,235,0.35)] dark:text-amber-50 sm:text-xs'
+                : 'text-[11px] text-current sm:text-[13px]',
+            ]"
           >
             {{ tab.label }}
           </span>
@@ -335,3 +384,146 @@ const tabsGridClass = computed(() =>
     </Transition>
   </div>
 </template>
+
+<style scoped>
+/* Horaire VIP : fond doré + reflet animé (respect prefers-reduced-motion) */
+.vip-tab {
+  position: relative;
+  overflow: hidden;
+}
+
+.vip-tab--idle {
+  background: linear-gradient(155deg, #fde047 0%, #facc15 18%, #eab308 42%, #ca8a04 68%, #b45309 92%);
+  box-shadow:
+    inset 0 2px 3px rgba(255, 253, 230, 0.85),
+    inset 0 -2px 4px rgba(146, 64, 14, 0.28),
+    0 2px 6px rgba(180, 83, 9, 0.22);
+}
+
+.dark .vip-tab--idle {
+  background: linear-gradient(150deg, #713f12 0%, #a16207 38%, #ca8a04 68%, #eab308 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(254, 243, 199, 0.22),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.45),
+    0 0 22px -6px rgba(250, 204, 21, 0.35);
+}
+
+.vip-tab--active {
+  background: linear-gradient(142deg, #ffef9e 0%, #fde047 16%, #fbbf24 38%, #f59e0b 58%, #d97706 78%, #92400e 100%);
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.72),
+    inset 0 -2px 5px rgba(120, 53, 15, 0.35),
+    0 0 28px -4px rgba(245, 158, 11, 0.55);
+}
+
+.dark .vip-tab--active {
+  background: linear-gradient(142deg, #78350f 0%, #92400e 22%, #b45309 48%, #d97706 72%, #f59e0b 92%, #fbbf24 100%);
+  box-shadow:
+    inset 0 2px 2px rgba(255, 251, 235, 0.18),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.5),
+    0 0 36px -3px rgba(251, 191, 36, 0.42);
+}
+
+.vip-shimmer-bg {
+  position: absolute;
+  inset: -40% -60%;
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(255, 253, 240, 0.22) 48%,
+    rgba(255, 255, 255, 0.38) 50%,
+    rgba(255, 248, 220, 0.2) 52%,
+    transparent 62%,
+    transparent 100%
+  );
+  animation: vip-shimmer-pan 4.5s ease-in-out infinite;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.dark .vip-shimmer-bg {
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(254, 240, 138, 0.12) 48%,
+    rgba(253, 224, 71, 0.2) 50%,
+    rgba(254, 243, 199, 0.1) 52%,
+    transparent 62%,
+    transparent 100%
+  );
+  opacity: 0.85;
+}
+
+.vip-shine-beam {
+  position: absolute;
+  top: -60%;
+  left: -30%;
+  height: 220%;
+  width: 42%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0) 38%,
+    rgba(255, 255, 255, 0.75) 50%,
+    rgba(255, 255, 255, 0) 62%,
+    transparent
+  );
+  filter: blur(0.5px);
+  animation: vip-beam-sweep 2.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+.dark .vip-shine-beam {
+  background: linear-gradient(
+    100deg,
+    transparent,
+    transparent 38%,
+    rgba(255, 251, 235, 0.45) 50%,
+    transparent 62%,
+    transparent
+  );
+}
+
+.vip-tab--active .vip-shine-beam {
+  animation-duration: 2.15s;
+}
+
+@keyframes vip-beam-sweep {
+  0% {
+    transform: translateX(-20%) skewX(-14deg);
+  }
+  100% {
+    transform: translateX(340%) skewX(-14deg);
+  }
+}
+
+@keyframes vip-shimmer-pan {
+  0%,
+  100% {
+    transform: translateX(-6%) translateY(2%);
+    opacity: 0.72;
+  }
+  50% {
+    transform: translateX(6%) translateY(-2%);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vip-shine-beam,
+  .vip-shimmer-bg {
+    animation: none !important;
+  }
+
+  .vip-shimmer-bg {
+    opacity: 0.35;
+  }
+
+  .vip-shine-beam {
+    opacity: 0;
+  }
+}
+</style>

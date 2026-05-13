@@ -1,7 +1,12 @@
 // utils/api.ts
 
+import { bookingDbg } from '~/utils/booking-celebration-debug';
+
 // Cache pour le token CSRF
 let csrfTokenCache: string | null = null;
+
+/** Une seule requête réseau CSRF à la fois : évite la tempête quand plusieurs POST partent en parallèle. */
+let csrfTokenInFlight: Promise<string | null> | null = null;
 
 // Récupérer le token depuis le cache global si disponible (initialisé par le plugin)
 if (typeof window !== 'undefined' && (window as any).__csrfTokenCache) {
@@ -21,38 +26,68 @@ const PUBLIC_ROUTES = [
   '/contact',
 ];
 
-/**
- * Récupère le token CSRF depuis le serveur
- */
-async function getCSRFToken(apiBase: string): Promise<string | null> {
-  // Si on a déjà un token en cache, le retourner
-  if (csrfTokenCache) {
-    return csrfTokenCache;
+async function fetchCsrfTokenFromNetwork(apiBase: string): Promise<string | null> {
+  if (import.meta.dev && import.meta.client) {
+    bookingDbg('getCSRFToken: requête réseau (pas de cache)');
   }
 
   try {
-    const response = await fetch(`${apiBase}/auth/csrf-token`, {
-      method: 'GET',
-      mode: 'cors',
-      credentials: 'include', // Envoyer les cookies de session pour CSRF
-    });
+    const controller = new AbortController();
+    const csrfTimeoutMs = 15000;
+    const timeoutId = setTimeout(() => controller.abort(), csrfTimeoutMs);
+    try {
+      const response = await fetch(`${apiBase}/auth/csrf-token`, {
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'include',
+        signal: controller.signal,
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.success && data.data?.csrf_token) {
-        csrfTokenCache = data.data.csrf_token;
-        // Synchroniser avec le cache global
-        if (typeof window !== 'undefined') {
-          (window as any).__csrfTokenCache = csrfTokenCache;
-        }
-        return csrfTokenCache;
+      if (import.meta.dev && import.meta.client) {
+        bookingDbg('getCSRFToken: réponse HTTP', { ok: response.ok, status: response.status });
       }
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data?.csrf_token) {
+          csrfTokenCache = data.data.csrf_token;
+          if (typeof window !== 'undefined') {
+            (window as any).__csrfTokenCache = csrfTokenCache;
+          }
+          return csrfTokenCache;
+        }
+      }
+    } finally {
+      clearTimeout(timeoutId);
     }
-  } catch (error) {
+  } catch {
     // Ignorer les erreurs CSRF
   }
 
   return null;
+}
+
+/**
+ * Récupère le token CSRF (cache → une seule requête partagée si vide).
+ */
+async function getCSRFToken(apiBase: string): Promise<string | null> {
+  if (csrfTokenCache) {
+    return csrfTokenCache;
+  }
+  if (!csrfTokenInFlight) {
+    csrfTokenInFlight = fetchCsrfTokenFromNetwork(apiBase).finally(() => {
+      csrfTokenInFlight = null;
+    });
+  }
+  return csrfTokenInFlight;
+}
+
+/** Précharge le CSRF après login / avant série de POST (optionnel, UX plus fluide). */
+export async function preloadCsrfToken(): Promise<void> {
+  if (!import.meta.client) {
+    return;
+  }
+  await getCSRFToken(resolveApiBase());
 }
 
 /**
@@ -69,26 +104,88 @@ function requiresCSRF(path: string, method: string): boolean {
   return !PUBLIC_ROUTES.some(route => normalizedPath.startsWith(route));
 }
 
-export async function apiFetch(path: string, options: any = {}) {
-  // Récupérer l'URL de base de la configuration Nuxt
-  // Essayer plusieurs méthodes pour obtenir la configuration
+function resolveApiBase(): string {
   let apiBase = 'http://localhost:8888/api';
-  
   if (import.meta.client) {
-    // Méthode 1: Via window.__NUXT__ (disponible après le chargement initial de Nuxt)
     if ((window as any).__NUXT__?.config?.public?.apiBase) {
       apiBase = (window as any).__NUXT__.config.public.apiBase;
-    }
-    // Méthode 2: Via variable d'environnement si définie
-    else if (import.meta.env?.NUXT_PUBLIC_API_BASE) {
+    } else if (import.meta.env?.NUXT_PUBLIC_API_BASE) {
       apiBase = import.meta.env.NUXT_PUBLIC_API_BASE;
     }
   }
+  return apiBase;
+}
+
+/**
+ * GET binaire (ex. /medical-documents/:id/download) avec le même Bearer que apiFetch.
+ * Les liens <a href> n’envoient pas Authorization — utiliser cette fonction + blob / ouverture onglet.
+ */
+export async function apiFetchBlob(
+  path: string,
+  options: { timeout?: number } = {},
+): Promise<{ blob: Blob; filenameHint: string | null }> {
+  if (!import.meta.client) {
+    throw new Error('apiFetchBlob est réservé au client');
+  }
+  const apiBase = resolveApiBase();
+  const url = `${apiBase}${path.startsWith('/') ? path : '/' + path}`;
+  const authToken = localStorage.getItem('auth_token');
+  const headers: Record<string, string> = {};
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+  const timeoutMs = options.timeout ?? 120000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      credentials: 'include',
+      signal: controller.signal,
+      mode: 'cors',
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      const err = new Error((data as any)?.error || (data as any)?.message || `Erreur ${response.status}`) as Error & {
+        code?: string;
+      };
+      err.code = (data as any)?.code;
+      throw err;
+    }
+    const cd = response.headers.get('Content-Disposition');
+    let filenameHint: string | null = null;
+    if (cd) {
+      const m = /filename\*?=(?:UTF-8'')?["']?([^"'\s;]+)/i.exec(cd);
+      if (m?.[1]) {
+        try {
+          filenameHint = decodeURIComponent(m[1].replace(/\+/g, ' '));
+        } catch {
+          filenameHint = m[1];
+        }
+      }
+    }
+    const blob = await response.blob();
+    return { blob, filenameHint };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export async function apiFetch(path: string, options: any = {}) {
+  // Récupérer l'URL de base de la configuration Nuxt
+  let apiBase = resolveApiBase();
   
   const url = `${apiBase}${path.startsWith('/') ? path : '/' + path}`;
   const isFormData = options.body instanceof FormData;
   // Utiliser GET par défaut si pas de body, sinon POST
   const method = options.method || (options.body ? 'POST' : 'GET');
+
+  const normalizedPath = path.startsWith('/') ? path : '/' + path;
+  const dbgApptCreate =
+    import.meta.dev && import.meta.client && normalizedPath === '/appointments' && method.toUpperCase() === 'POST';
+
+  const timeoutMs = options.timeout ?? 60000;
 
   // Récupérer le token d'authentification depuis localStorage
   let authToken: string | null = null;
@@ -121,13 +218,18 @@ export async function apiFetch(path: string, options: any = {}) {
     }
   }
 
-  // Timeout configurable (certaines routes lab/stats peuvent être lentes)
-  const timeoutMs = options.timeout ?? 60000; // 60 s par défaut
+  if (dbgApptCreate) {
+    bookingDbg('apiFetch POST /appointments: avant fetch()', {
+      timeoutMs,
+      hasCsrfHeader: Boolean(headers['X-CSRF-Token']),
+      hasBearer: Boolean(authToken),
+    });
+  }
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    
+    try {
     const response = await fetch(url, {
       method,
       headers,
@@ -140,8 +242,13 @@ export async function apiFetch(path: string, options: any = {}) {
       mode: 'cors',
       credentials: 'include', // Envoyer les cookies de session pour CSRF
     });
-    
-    clearTimeout(timeoutId);
+
+    if (dbgApptCreate) {
+      bookingDbg('apiFetch POST /appointments: réponse HTTP', {
+        ok: response.ok,
+        status: response.status,
+      });
+    }
 
     // Vérifier si la réponse est valide avant de parser le JSON
     if (!response.ok) {
@@ -181,12 +288,22 @@ export async function apiFetch(path: string, options: any = {}) {
       
       const err = new Error(data?.error || data?.message || `Erreur serveur: ${response.status} ${response.statusText}`) as Error & { code?: string };
       err.code = data?.code;
+      if (dbgApptCreate) {
+        bookingDbg('apiFetch POST /appointments: HTTP erreur', {
+          status: response.status,
+          code: data?.code,
+          error: data?.error ?? data?.message,
+        });
+      }
       throw err;
     }
 
     // Parser le JSON avec meilleure gestion d'erreur
     let data;
     try {
+      if (dbgApptCreate) {
+        bookingDbg('apiFetch POST /appointments: lecture corps + parse JSON…');
+      }
       const text = await response.text();
       if (!text || text.trim() === '') {
         throw new Error('Réponse vide du serveur (aucune donnée)');
@@ -208,9 +325,28 @@ export async function apiFetch(path: string, options: any = {}) {
       throw new Error('Réponse vide du serveur (données null)');
     }
 
+    if (dbgApptCreate) {
+      const d = data as { success?: boolean; data?: { id?: string }; error?: string; message?: string; code?: string };
+      bookingDbg('apiFetch POST /appointments: terminé', {
+        success: Boolean(d.success),
+        id: d?.data?.id ?? null,
+        error: d.success === false ? (d.error ?? d.message ?? null) : null,
+        code: d.code ?? null,
+      });
+    }
+
     return data;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
   } catch (error: any) {
+    if (dbgApptCreate) {
+      bookingDbg('apiFetch POST /appointments: erreur / annulation', {
+        name: error?.name,
+        message: error?.message != null ? String(error.message).slice(0, 200) : '',
+      });
+    }
     // Extraire le message d'erreur de différentes façons possibles
     let errorMessage = "";
     if (typeof error === "string") {

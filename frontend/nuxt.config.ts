@@ -62,17 +62,21 @@ export default defineNuxtConfig({
   
     app: {
       head: {
-        title: 'OneAndLab - Prise de sang et soins infirmiers à domicile',
+        title: 'OneAndLab - Prélèvement et soins infirmiers à domicile',
         meta: [
           { charset: 'utf-8' },
-          { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
+          {
+            name: 'viewport',
+            content:
+              'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover',
+          },
           { name: 'description', content: 'Plateforme de gestion de rendez-vous médicaux à domicile' },
         ],
         link: [
           { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
           { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
           { rel: 'preconnect', href: 'https://api.iconify.design', crossorigin: '' },
-          { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap' },
+          { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,300..900;1,300..900&display=swap' },
         ],
       },
     },

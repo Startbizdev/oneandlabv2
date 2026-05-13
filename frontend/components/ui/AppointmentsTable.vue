@@ -78,7 +78,7 @@
         <div class="flex items-center gap-2">
           <UIcon :name="row.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-heart-pulse'" :class="row.type === 'blood_test' ? 'text-blue-500' : 'text-green-500'" class="w-4 h-4" />
           <UBadge :color="row.type === 'blood_test' ? 'blue' : 'green'" variant="subtle" size="sm">
-            {{ row.type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers' }}
+            {{ row.type === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers' }}
           </UBadge>
         </div>
       </template>
@@ -118,6 +118,7 @@
 
 <script setup lang="ts">
 import { patientUiEmailLine } from '~/utils/patient-address-rdv';
+import { appointmentListAddressLine } from '~/utils/address-display';
 
 interface Props {
   rows: any[];
@@ -185,7 +186,7 @@ const statusOptions = [
 
 const typeOptions = [
   { label: 'Tous', value: 'all' },
-  { label: 'Prise de sang', value: 'blood_test' },
+  { label: 'Prélèvement', value: 'blood_test' },
   { label: 'Soins infirmiers', value: 'nursing' },
 ];
 
@@ -218,8 +219,8 @@ const getPatientEmail = (row: any) => {
 };
 
 const getAddressLabel = (row: any) => {
-  const addr = row.address;
-  return typeof addr === 'string' ? addr : addr?.label || '—';
+  const line = appointmentListAddressLine(row)?.trim();
+  return line || '—';
 };
 
 const getStatusColor = (status: string) => {

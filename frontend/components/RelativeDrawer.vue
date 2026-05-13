@@ -84,7 +84,6 @@
             v-model="form.address"
             label="Adresse"
             name="address"
-            placeholder="Commencez à taper votre adresse..."
           />
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">

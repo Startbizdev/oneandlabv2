@@ -1,6 +1,7 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard title="Calendrier" description="Vue d'ensemble de tous les rendez-vous de la plateforme.">
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" title="Calendrier" description="Vue d'ensemble de tous les rendez-vous de la plateforme.">
       <template #actions>
         <UButton
           to="/admin/appointments/new"
@@ -11,7 +12,8 @@
           Nouveau rendez-vous
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
     <CalendarPage
       base-path="/admin"
@@ -19,7 +21,7 @@
       :show-type-filter="true"
       hide-header-actions
     />
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

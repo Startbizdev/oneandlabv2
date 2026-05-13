@@ -1,7 +1,8 @@
 <?php
 
 /**
- * GET /patients/lookup?email=... — recherche exacte d’un patient par email (pro, nurse, lab, subaccount).
+ * GET /patients/lookup?email=... OU ?phone=... — recherche exacte d’un patient (pro, nurse, lab, subaccount).
+ * Envoyer uniquement email ou téléphone (pas les deux).
  */
 
 header('Content-Type: application/json');
@@ -48,15 +49,50 @@ if (!RateLimit::allow('patients_lookup', $lookupKey, 60, 60)) {
 }
 
 $email = isset($_GET['email']) ? trim((string) $_GET['email']) : '';
-if ($email === '' || !Validation::email($email)) {
+$phoneRaw = isset($_GET['phone']) ? trim((string) $_GET['phone']) : '';
+
+if ($email !== '' && $phoneRaw !== '') {
     http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Paramètre email invalide']);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Envoyez soit le paramètre email, soit le paramètre phone (pas les deux).',
+    ]);
     exit;
 }
 
 $userModel = new User();
-$hash = hash('sha256', strtolower($email));
-$patientId = $userModel->findPatientIdByEmailHash($hash);
+$patientId = null;
+
+if ($email !== '') {
+    if (!Validation::email($email)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Paramètre email invalide']);
+        exit;
+    }
+    $hash = hash('sha256', strtolower($email));
+    $patientId = $userModel->findPatientIdByEmailHash($hash);
+} elseif ($phoneRaw !== '') {
+    if (!Validation::phone($phoneRaw)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Paramètre téléphone invalide']);
+        exit;
+    }
+    $normDigits = User::normalizeFrenchPatientPhoneDigits($phoneRaw);
+    if ($normDigits === null) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Impossible de normaliser le téléphone']);
+        exit;
+    }
+    $digitsHash = User::patientPhoneDigitsHash($normDigits);
+    $patientId = $digitsHash !== null ? $userModel->findPatientIdByPhoneDigitsHash($digitsHash) : null;
+} else {
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Paramètre manquant : email ou phone',
+    ]);
+    exit;
+}
 
 if (!$patientId) {
     echo json_encode(['success' => true, 'data' => null]);

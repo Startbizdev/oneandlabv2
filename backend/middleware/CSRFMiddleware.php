@@ -49,6 +49,12 @@ class CSRFMiddleware
             ]);
             exit;
         }
+
+        // Libère le verrou fichier de session PHP le plus tôt possible : les POST longs ou enchaînés
+        // (ex. multi-RDV) ne bloquent plus les requêtes parallèles sur le même cookie de session.
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
     }
 
     /**

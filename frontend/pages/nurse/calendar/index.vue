@@ -1,16 +1,15 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
-      title="Calendrier"
-      description="Vue d'ensemble de vos rendez-vous"
-    />
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Calendrier"
+        description="Vue d'ensemble de vos rendez-vous"
+      />
+    </template>
 
     <!-- Onglets compacts (mobile + desktop) : alignés liste RDV infirmier -->
     <div class="w-full">
-      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
-        <UIcon name="i-lucide-layout-grid" class="w-4 h-4 text-primary-500" />
-        Affichage
-      </p>
       <div
         class="grid grid-cols-2 gap-2 rounded-xl border border-gray-200/90 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/50 p-1 relative"
         :class="calendarLoading ? 'opacity-70' : ''"
@@ -49,7 +48,7 @@
       :show-new-appointment-button="false"
       :nurse-tab="nurseListTab"
     />
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

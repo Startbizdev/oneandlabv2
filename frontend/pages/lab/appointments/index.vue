@@ -1,6 +1,7 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       title="Rendez-vous du laboratoire"
       :description="assignedToSubtitle"
     >
@@ -9,7 +10,8 @@
           Créer un RDV
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
     <!-- Tag pour supprimer le filtre RDV préleveur / sous-compte (avec nom) -->
     <div v-if="hasFilterByAssignee" class="flex flex-wrap items-center gap-2">
       <button
@@ -54,7 +56,7 @@
       </UModal>
     </Teleport>
   </ClientOnly>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

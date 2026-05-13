@@ -13,14 +13,20 @@
           />
         </div>
         <NurseRdvSharePanel
-          v-if="appointment.type === 'nursing' && !['completed', 'canceled', 'cancelled'].includes(String(appointment.status ?? ''))"
+          v-if="appointment.type === 'nursing' && !appointmentCanceledOrCompleted(appointment.status)"
           :appointment-id="String(appointment.id)"
           @released="() => loadAppointment()"
         />
+        <UAlert
+          v-else-if="appointment.type === 'nursing' && isAppointmentCanceledStatus(appointment.status)"
+          color="neutral"
+          variant="subtle"
+          icon="i-lucide-share-2"
+          title="Partage indisponible"
+          description="Le bouton « Partager » (WhatsApp, lien) sert à proposer un soin encore actif à un confrère. Pour un rendez-vous annulé, le partage n’est plus proposé."
+          class="rounded-xl text-left"
+        />
         <div class="space-y-2">
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5">
-            Annulation ou restauration
-          </p>
           <div class="flex flex-col sm:flex-row gap-2">
             <UButton
               v-if="appointment.status !== 'canceled'"
@@ -56,9 +62,9 @@
         :documents="documents || []"
         :loading="documentsLoading"
         empty-description="Aucun document médical pour ce rendez-vous."
-        :show-upload-area="!!appointment"
+        :show-upload-area="!!appointment && canUploadMedicalDocumentsForAppointmentStatus(appointment.status)"
         :upload-types="uploadDocumentTypes"
-        :can-replace="!!appointment"
+        :can-replace="!!appointment && canUploadMedicalDocumentsForAppointmentStatus(appointment.status)"
         :downloading-ids="downloadingDocuments"
         :uploading-types="uploadingTypes"
         @download="downloadDocument"
@@ -236,10 +242,21 @@ definePageMeta({
 import { apiFetch } from '~/utils/api';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
+import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
 
 const route = useRoute();
 const detailRef = ref<{ loadAppointment: () => Promise<void>; loadDocuments: () => Promise<void>; appointment: { value: any } } | null>(null);
 const toast = useAppToast();
+
+function isAppointmentCanceledStatus(status: unknown) {
+  const s = String(status ?? '').toLowerCase();
+  return s === 'canceled' || s === 'cancelled';
+}
+
+function appointmentCanceledOrCompleted(status: unknown) {
+  const s = String(status ?? '').toLowerCase();
+  return s === 'completed' || s === 'canceled' || s === 'cancelled';
+}
 
 const statusHistory = ref<any[]>([]);
 const showCancelModal = ref(false);

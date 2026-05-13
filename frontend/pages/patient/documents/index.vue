@@ -1,6 +1,7 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
+  <AppPageShell class="space-y-6" header-bleed="patient">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       title="Mes documents médicaux"
       description="Consultez et gérez vos documents de santé"
     >
@@ -9,7 +10,8 @@
           Ajouter un document
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
     <div class="container mx-auto px-4 max-w-7xl">
     <div v-if="loading" class="py-12 text-center">
@@ -89,7 +91,7 @@
       </UCard>
     </UModal>
     </div>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

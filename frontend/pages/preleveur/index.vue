@@ -1,9 +1,12 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
-      title="Mes rendez-vous"
-      description="Toutes vos prises de sang — rendez-vous du laboratoire qui vous concernent."
-    />
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Mes rendez-vous"
+        description="Toutes vos prises de sang — rendez-vous du laboratoire qui vous concernent."
+      />
+    </template>
 
     <AppointmentListPage
       base-path="/preleveur"
@@ -34,7 +37,7 @@
         </UModal>
       </Teleport>
     </ClientOnly>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

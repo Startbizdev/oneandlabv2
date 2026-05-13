@@ -123,7 +123,8 @@ try {
                 }
             }
         }
-        if (!$hasAccess && !empty($document['apt_patient_id']) && $user['role'] === 'pro' && ($document['document_type'] ?? '') === 'resultats') {
+        // Professionnel de santé lié au patient : tous les documents du RDV (ordonnances, preuve d’annulation, etc.)
+        if (!$hasAccess && !empty($document['apt_patient_id']) && $user['role'] === 'pro') {
             $userModel = new User();
             if ($userModel->hasProfessionalAccessToPatient($user['user_id'], $document['apt_patient_id'])) {
                 $hasAccess = true;

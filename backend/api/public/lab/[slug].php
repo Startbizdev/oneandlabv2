@@ -124,7 +124,11 @@ try {
     // Pour les labs : catégories de prélèvements (avec icône)
     $stmt = $db->query("SHOW COLUMNS FROM care_categories LIKE 'icon'");
     $iconCol = $stmt && $stmt->rowCount() > 0 ? ', icon' : '';
-    $stmt = $db->prepare("SELECT id, name, description, type{$iconCol} FROM care_categories WHERE type = 'blood_test' AND is_active = TRUE ORDER BY name");
+    $stmtImg = $db->query("SHOW COLUMNS FROM care_categories LIKE 'image_url'");
+    $imageUrlCol = $stmtImg && $stmtImg->rowCount() > 0 ? ', image_url' : '';
+    $stmtCg = $db->query("SHOW COLUMNS FROM care_categories LIKE 'catalog_group'");
+    $catalogGroupCol = $stmtCg && $stmtCg->rowCount() > 0 ? ', catalog_group' : '';
+    $stmt = $db->prepare("SELECT id, name, description, type{$iconCol}{$imageUrlCol}{$catalogGroupCol} FROM care_categories WHERE type = 'blood_test' AND is_active = TRUE ORDER BY name");
     $stmt->execute();
     $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
     

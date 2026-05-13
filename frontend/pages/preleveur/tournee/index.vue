@@ -1,66 +1,90 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
-      title="Ma tournée"
-      :description="tourneeDescription"
-    />
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+      <AppPageHeader :edge-bleed="false" title="Ma tournée" :description="tourneeDescription" />
+    </template>
 
-    <div class="rounded-xl border border-gray-200/80 dark:border-gray-800 bg-white/90 dark:bg-gray-900/50 p-4 shadow-sm">
-      <p class="text-sm font-medium text-gray-900 dark:text-white">
-        Ordre du jour
+    <!-- Navigation jour (même barre avec / sans RDV) -->
+    <div
+      class="flex items-center justify-between gap-2 rounded-xl border border-gray-200/80 bg-white/90 px-2 py-2 shadow-sm dark:border-gray-800 dark:bg-gray-900/50 sm:px-3"
+    >
+      <UButton
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        class="shrink-0"
+        icon="i-lucide-chevron-left"
+        aria-label="Jour précédent"
+        :disabled="tourneeLoading || dayOffset <= TOURNEE_OFFSET_MIN"
+        @click="shiftDay(-1)"
+      />
+      <p class="min-w-0 flex-1 truncate text-center text-sm font-semibold capitalize text-gray-900 dark:text-white">
+        {{ selectedDayNavLabel }}
       </p>
-      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        Uniquement les prises de sang d’aujourd’hui où vous êtes désigné comme préleveur, triées par date et créneau horaire pour enchaîner les visites.
-      </p>
+      <UButton
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        class="shrink-0"
+        icon="i-lucide-chevron-right"
+        aria-label="Jour suivant"
+        :disabled="tourneeLoading || dayOffset >= TOURNEE_OFFSET_MAX"
+        @click="shiftDay(1)"
+      />
     </div>
 
     <div v-if="tourneeLoading" class="flex flex-col items-center justify-center py-16">
-      <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-primary-500 mb-3" />
-      <p class="text-sm text-gray-500">Chargement de la tournée…</p>
+      <UIcon name="i-lucide-loader-2" class="mb-3 h-8 w-8 animate-spin text-primary-500" />
+      <p class="text-sm text-gray-500 dark:text-gray-400">Chargement de la tournée…</p>
     </div>
     <UEmpty
       v-else-if="tourneeSorted.length === 0"
       icon="i-lucide-calendar-off"
-      title="Aucun rendez-vous aujourd’hui"
-      description="Vous n’avez pas de prise de sang assignée à votre nom pour cette journée."
+      :title="emptyTitle"
+      :description="emptyDescription"
       variant="naked"
       class="py-10"
     />
-    <ul v-else class="rounded-xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900/50 overflow-hidden">
+    <ul
+      v-else
+      class="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900/50"
+    >
       <li v-for="(rdv, index) in tourneeSorted" :key="rdv.id">
         <NuxtLink
           :to="`/preleveur/appointments/${rdv.id}`"
-          class="flex flex-wrap items-stretch gap-3 px-3 py-3.5 sm:px-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+          class="flex flex-wrap items-stretch gap-3 px-3 py-3.5 transition-colors sm:px-4"
+          :class="tourneeRowLinkClass(rdv)"
         >
           <div
-            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 text-sm font-bold tabular-nums ring-1 ring-primary-200/80 dark:ring-primary-800/60"
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold tabular-nums ring-1"
+            :class="tourneeStepBadgeClass(rdv)"
             :aria-label="`Étape ${index + 1}`"
           >
             {{ index + 1 }}
           </div>
           <div class="min-w-0 flex-1 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
-              <span class="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
+              <span class="text-sm font-semibold tabular-nums text-gray-900 dark:text-white">
                 {{ formatCreneau(rdv) }}
               </span>
               <UBadge :color="tourneeStatusColor(rdv.status)" variant="subtle" size="xs">
                 {{ tourneeStatusLabel(rdv.status) }}
               </UBadge>
             </div>
-            <p v-if="tourneePatientLine(rdv)" class="text-xs text-gray-600 dark:text-gray-400 truncate">
+            <p v-if="tourneePatientLine(rdv)" class="truncate text-xs text-gray-600 dark:text-gray-400">
               {{ tourneePatientLine(rdv) }}
             </p>
-            <p v-if="tourneeAddressLine(rdv)" class="text-xs text-gray-500 dark:text-gray-500 truncate">
+            <p v-if="tourneeAddressLine(rdv)" class="truncate text-xs text-gray-500 dark:text-gray-500">
               {{ tourneeAddressLine(rdv) }}
             </p>
           </div>
           <div class="flex shrink-0 items-center self-center">
-            <UIcon name="i-lucide-chevron-right" class="w-5 h-5 text-gray-300 dark:text-gray-600" />
+            <UIcon name="i-lucide-chevron-right" class="h-5 w-5 text-gray-300 dark:text-gray-600" />
           </div>
         </NuxtLink>
       </li>
     </ul>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">
@@ -71,14 +95,27 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
+import { isAppointmentSlotEndedForPreleveurTournee } from '~/utils/appointment-datetime-fr';
 
 const { user } = useAuth();
 const tourneeLoading = ref(false);
 const tourneeRaw = ref<any[]>([]);
 
+/** Décalage par rapport à aujourd’hui (fuseau local navigateur) pour la plage API. */
+const dayOffset = ref(0);
+const TOURNEE_OFFSET_MIN = -90;
+const TOURNEE_OFFSET_MAX = 90;
+
+function baseDateForOffset(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + dayOffset.value);
+  return d;
+}
+
 const tourneeDescription = computed(() => {
   try {
-    const d = new Date();
+    const d = baseDateForOffset();
     return d.toLocaleDateString('fr-FR', {
       weekday: 'long',
       day: 'numeric',
@@ -86,18 +123,42 @@ const tourneeDescription = computed(() => {
       year: 'numeric',
     });
   } catch {
-    return 'Aujourd’hui';
+    return 'Tournée';
   }
 });
+
+const selectedDayNavLabel = computed(() => {
+  try {
+    const d = baseDateForOffset();
+    return d.toLocaleDateString('fr-FR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return '';
+  }
+});
+
+const emptyTitle = computed(() => {
+  if (dayOffset.value === 0) return 'Aucun rendez-vous ce jour-là';
+  return 'Aucune tournée prévue';
+});
+
+const emptyDescription = computed(() =>
+  dayOffset.value === 0
+    ? 'Vous n’avez pas de prélèvement assigné à votre nom pour cette journée.'
+    : 'Aucun prélèvement ne vous est attribué pour la date affichée. Utilisez les flèches pour consulter les jours suivants ou précédents.',
+);
 
 function pad2(n: number) {
   return String(n).padStart(2, '0');
 }
 
-function todayDateRangeParams() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
+function dateRangeParamsForSelectedDay() {
+  const start = baseDateForOffset();
+  const end = new Date(start);
   end.setHours(23, 59, 59, 999);
   return {
     date_from: `${start.getFullYear()}-${pad2(start.getMonth() + 1)}-${pad2(start.getDate())} ${pad2(start.getHours())}:${pad2(start.getMinutes())}:${pad2(start.getSeconds())}`,
@@ -109,7 +170,7 @@ async function loadTournee() {
   if (!user.value?.id) return;
   tourneeLoading.value = true;
   try {
-    const { date_from, date_to } = todayDateRangeParams();
+    const { date_from, date_to } = dateRangeParamsForSelectedDay();
     const params = new URLSearchParams({
       page: '1',
       limit: '500',
@@ -117,7 +178,9 @@ async function loadTournee() {
       date_from,
       date_to,
     });
-    const response = await apiFetch<{ success: boolean; data?: any[]; error?: string }>(`/appointments?${params.toString()}`, { method: 'GET' });
+    const response = await apiFetch<{ success: boolean; data?: any[]; error?: string }>(`/appointments?${params.toString()}`, {
+      method: 'GET',
+    });
     if (response.success && response.data) {
       const mine = String(user.value.id);
       tourneeRaw.value = response.data.filter((a: any) => a && String(a.assigned_to ?? '') === mine);
@@ -131,6 +194,13 @@ async function loadTournee() {
   }
 }
 
+function shiftDay(delta: number) {
+  const next = dayOffset.value + delta;
+  if (next < TOURNEE_OFFSET_MIN || next > TOURNEE_OFFSET_MAX) return;
+  dayOffset.value = next;
+  void loadTournee();
+}
+
 const tourneeSorted = computed(() => {
   const list = [...tourneeRaw.value];
   list.sort((a, b) => {
@@ -141,6 +211,24 @@ const tourneeSorted = computed(() => {
   });
   return list;
 });
+
+function tourneeCreneauTermine(rdv: any): boolean {
+  return isAppointmentSlotEndedForPreleveurTournee(rdv);
+}
+
+function tourneeRowLinkClass(rdv: any) {
+  if (tourneeCreneauTermine(rdv)) {
+    return 'bg-emerald-50/95 hover:bg-emerald-100/90 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/55';
+  }
+  return 'hover:bg-gray-50 dark:hover:bg-gray-800/50';
+}
+
+function tourneeStepBadgeClass(rdv: any) {
+  if (tourneeCreneauTermine(rdv)) {
+    return 'bg-emerald-100 text-emerald-800 ring-emerald-300/80 dark:bg-emerald-900/50 dark:text-emerald-200 dark:ring-emerald-800/70';
+  }
+  return 'bg-primary-50 text-primary-700 ring-primary-200/80 dark:bg-primary-950/50 dark:text-primary-300 dark:ring-primary-800/60';
+}
 
 onMounted(() => {
   void loadTournee();

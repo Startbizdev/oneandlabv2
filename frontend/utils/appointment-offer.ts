@@ -4,7 +4,7 @@
  */
 export function isPendingIncomingOffer(
   apt: { status?: string; created_by?: string | null },
-  viewerUserId: string | null | undefined
+  viewerUserId: string | null | undefined,
 ): boolean {
   if (apt?.status !== 'pending') return false;
   if (viewerUserId == null || viewerUserId === '') return true;

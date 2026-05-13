@@ -1,7 +1,13 @@
 <template>
-  <div>
-    <TitleDashboard title="Mes avis" icon="i-lucide-star" description="Note et avis reçus des patients" />
-    
+  <AppPageShell>
+    <template #pageHeader>
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Mes avis"
+        description="Note et avis reçus des patients"
+      />
+    </template>
+
     <div v-if="loading" class="py-8 text-center">
       <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-primary-500" />
     </div>
@@ -84,7 +90,7 @@
         </UCard>
       </template>
     </UModal>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

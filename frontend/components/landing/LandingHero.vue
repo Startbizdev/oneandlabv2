@@ -15,7 +15,7 @@
         <rect width="100%" height="100%" fill="url(#hero-dots)" />
       </svg>
       <div class="absolute inset-0 bg-[linear-gradient(to_bottom_right,var(--color-primary-50)_0%,transparent_50%)] opacity-60" />
-      <div class="absolute top-0 right-0 w-1/2 h-3/4 bg-gradient-to-bl from-gray-50/80 to-transparent" />
+      <div class="absolute top-0 right-0 w-1/2 h-3/4 bg-gradient-to-bl from-[#f4f6f0]/80 to-transparent" />
     </div>
 
     <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
@@ -72,7 +72,7 @@
 
           <!-- Lien connexion : discret -->
           <p v-if="showLoginLink" class="mt-6 text-sm text-gray-500">
-            Déjà un compte —
+            Déjà un compte ·
             <NuxtLink
               to="/login"
               class="font-medium text-primary-600 hover:text-primary-700"

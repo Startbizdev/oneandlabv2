@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { CalendarDate, DateFormatter, today, now, toCalendarDate, parseDate } from '@internationalized/date'
-
-const PARIS_TIMEZONE = 'Europe/Paris'
+import { CalendarDate, DateFormatter, parseDate } from '@internationalized/date'
+import {
+  PARIS_TZ,
+  bookingMinCalendarDate,
+  isBookingDateUnavailable,
+} from '~/utils/booking-date-constraints'
 
 const props = defineProps<{
   modelValue?: string | null
@@ -29,22 +32,13 @@ const emit = defineEmits<{
 // -----------------------------------------------------
 const df = new DateFormatter('fr-FR', {
   dateStyle: 'medium',
-  timeZone: PARIS_TIMEZONE
+  timeZone: PARIS_TZ,
 })
 
 // -----------------------------------------------------
 // Min date : aujourd'hui à Paris (jours passés grisés) + optionnel minLeadTimeHours
 // -----------------------------------------------------
-const minDate = computed(() => {
-  const hours = props.minLeadTimeHours
-  if (hours != null && hours !== undefined) {
-    const h = Number(hours)
-    if (Number.isFinite(h) && h >= 0) {
-      return toCalendarDate(now(PARIS_TIMEZONE).add({ hours: Math.floor(h) }))
-    }
-  }
-  return today(PARIS_TIMEZONE)
-})
+const minDate = computed(() => bookingMinCalendarDate(props.minLeadTimeHours))
 
 // -----------------------------------------------------
 // Internal Date pour UCalendar
@@ -102,7 +96,7 @@ const displayValue = computed(() => {
   const s = String(props.modelValue).trim()
   try {
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-      return df.format(parseDate(s).toDate(PARIS_TIMEZONE))
+      return df.format(parseDate(s).toDate(PARIS_TZ))
     }
     return df.format(new Date(s))
   } catch {
@@ -116,12 +110,11 @@ const maxDate = computed(() => {
 })
 
 // Désactiver samedi (6) et/ou dimanche (0) selon les paramètres du lab
-const isDateDisabled = (date: CalendarDate) => {
-  const day = date.toDate(PARIS_TIMEZONE).getDay()
-  if (day === 0 && props.acceptSunday === false) return true
-  if (day === 6 && props.acceptSaturday === false) return true
-  return false
-}
+const isDateDisabled = (date: CalendarDate) =>
+  isBookingDateUnavailable(date, {
+    acceptSaturday: props.acceptSaturday,
+    acceptSunday: props.acceptSunday,
+  })
 </script>
 
 <template>

@@ -1,17 +1,25 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard title="Abonnements" description="Liste des abonnements infirmiers et laboratoires." />
+  <AppPageShell max-width="7xl" class="space-y-6">
+    <template #pageHeader>
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Abonnements"
+        description="Liste des abonnements infirmiers et laboratoires."
+      />
+    </template>
 
     <div class="flex flex-col sm:flex-row sm:items-center gap-4">
       <USelect
         v-model="roleFilter"
         :items="roleOptions"
+        value-key="value"
         placeholder="Rôle"
         class="w-full sm:w-40"
       />
       <USelect
         v-model="statusFilter"
         :items="statusOptions"
+        value-key="value"
         placeholder="Statut"
         class="w-full sm:w-40"
       />
@@ -51,7 +59,7 @@
         </template>
       </UTable>
     </div>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">
@@ -59,17 +67,17 @@ definePageMeta({ layout: 'dashboard', middleware: ['auth', 'role'], role: ['supe
 
 const loading = ref(true)
 const subscriptions = ref<any[]>([])
-const roleFilter = ref('')
-const statusFilter = ref('')
+const roleFilter = ref('all')
+const statusFilter = ref('all')
 
 const roleOptions = [
-  { label: 'Tous les rôles', value: '' },
+  { label: 'Tous les rôles', value: 'all' },
   { label: 'Infirmier', value: 'nurse' },
   { label: 'Laboratoire', value: 'lab' },
 ]
 
 const statusOptions = [
-  { label: 'Tous les statuts', value: '' },
+  { label: 'Tous les statuts', value: 'all' },
   { label: 'Actif', value: 'active' },
   { label: 'En essai', value: 'trialing' },
   { label: 'Annulé', value: 'canceled' },
@@ -126,8 +134,8 @@ async function loadSubscriptions() {
   loading.value = true
   try {
     const params = new URLSearchParams()
-    if (roleFilter.value) params.set('role', roleFilter.value)
-    if (statusFilter.value) params.set('status', statusFilter.value)
+    if (roleFilter.value && roleFilter.value !== 'all') params.set('role', roleFilter.value)
+    if (statusFilter.value && statusFilter.value !== 'all') params.set('status', statusFilter.value)
     const res = await apiFetch(`/admin/subscriptions?${params.toString()}`, { method: 'GET' })
     if (res?.success) subscriptions.value = res.data ?? []
     else subscriptions.value = []

@@ -157,7 +157,7 @@
                     {{ getPatientLabel(apt) }}
                   </p>
                   <p class="text-sm text-muted mt-0.5">
-                    {{ apt.type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers' }}
+                    {{ apt.type === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers' }}
                   </p>
                   <p v-if="displayAddress(apt)" class="text-xs text-muted mt-1 truncate" :title="displayAddress(apt)">
                     {{ displayAddress(apt) }}
@@ -174,18 +174,22 @@
       </Transition>
     </div>
 
+    <!-- État vide global : hors mobile — le Calendar gère déjà le message sous le mini-grille (< md). -->
     <UEmpty
       v-if="calendarReady && !loading && filteredAppointments.length === 0"
       icon="i-lucide-calendar-x"
       title="Aucun rendez-vous"
       :description="emptyDescription"
       :actions="emptyActions"
-      class="mt-8"
+      class="mt-8 hidden md:block"
     />
   </div>
 </template>
 
 <script setup lang="ts">
+import { appointmentListAddressLine } from '~/utils/address-display';
+import { appointmentPatientDisplayName } from '~/utils/appointment-patient-display';
+
 const props = withDefaults(
   defineProps<{
     basePath: string
@@ -193,7 +197,7 @@ const props = withDefaults(
     description?: string
     showSearch?: boolean
     showTypeFilter?: boolean
-    /** Masquer le bouton Nouveau RDV (à utiliser quand la page utilise TitleDashboard #actions) */
+    /** Masquer le bouton « Nouveau RDV » du calendrier (à utiliser quand la page parente expose déjà le CTA dans `AppPageHeader` #actions). */
     hideHeaderActions?: boolean
     /** Afficher le bouton Nouveau RDV (masquer pour préleveur : ne crée pas de RDV) */
     showNewAppointmentButton?: boolean
@@ -234,7 +238,7 @@ const statusOptions = [
 
 const typeOptions = [
   { label: 'Tous les types', value: 'all' },
-  { label: 'Prise de sang', value: 'blood_test' },
+  { label: 'Prélèvement', value: 'blood_test' },
   { label: 'Soins infirmiers', value: 'nursing' },
 ];
 
@@ -390,13 +394,12 @@ const viewAppointment = (appointment: any) => {
   navigateTo(`${props.basePath}/appointments/${appointment.id}`);
 };
 
-// Nom du patient (form_data ou patient_name)
+// Nom du patient (form_data, relative, racine, patient_name — aligné listes / fiche)
 function getPatientLabel(apt: any): string {
+  const fromHelper = appointmentPatientDisplayName(apt);
+  if (fromHelper) return fromHelper;
   if (apt.patient_name) return apt.patient_name;
-  const fn = apt.form_data?.first_name ?? '';
-  const ln = apt.form_data?.last_name ?? '';
-  const name = [fn, ln].filter(Boolean).join(' ').trim();
-  return name || 'Patient';
+  return 'Patient';
 }
 
 // Créneau : TLJ, Xh - Yh, ou HH:MM (aligné AppointmentListPage)
@@ -431,9 +434,8 @@ function getCreneauLabel(apt: any): string {
 }
 
 const displayAddress = (apt: any) => {
-  const a = apt.address ?? apt.form_data?.address;
-  if (!a) return null;
-  return typeof a === 'string' ? a : (a.label ?? a.address ?? null);
+  const line = appointmentListAddressLine(apt)?.trim();
+  return line || null;
 };
 
 const statusBadgeClass = (status: string) => {

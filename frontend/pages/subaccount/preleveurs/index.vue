@@ -1,7 +1,9 @@
 <template>
-  <div>
-    <TitleDashboard title="Gestion des préleveurs" icon="i-lucide-users" />
-    
+  <AppPageShell>
+    <template #pageHeader>
+      <AppPageHeader :edge-bleed="false" title="Gestion des préleveurs" />
+    </template>
+
     <div class="mb-4">
       <UInput v-model="searchQuery" placeholder="Rechercher par email, nom..." class="flex-1" />
     </div>
@@ -34,7 +36,7 @@
         </UButton>
       </template>
     </UTable>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

@@ -26,6 +26,10 @@ if (file_exists($envFile) && !getenv('STRIPE_SECRET_KEY')) {
 return [
     'secret_key' => $_ENV['STRIPE_SECRET_KEY'] ?? '',
     'webhook_secret' => $_ENV['STRIPE_WEBHOOK_SECRET'] ?? '',
+    /** URL frontend (emails / redirects). */
+    'frontend_url' => rtrim((string) ($_ENV['FRONTEND_URL'] ?? ''), '/') ?: '',
+    /** Price Stripe optionnel paiement ponctuel urgence RDV patient (sinon price_data codé à 890 cts). */
+    'patient_urgency_price_id' => (string) ($_ENV['STRIPE_PRICE_PATIENT_URGENCY'] ?? ''),
     'prices' => [
         'nurse_pro' => $_ENV['STRIPE_PRICE_NURSE_PRO'] ?? '',
         'lab_starter' => $_ENV['STRIPE_PRICE_LAB_STARTER'] ?? '',

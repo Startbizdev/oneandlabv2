@@ -1,11 +1,14 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
-      title="Mon calendrier"
-      description="Vue d'ensemble de vos rendez-vous"
-    />
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Mon calendrier"
+        description="Vue d'ensemble de vos rendez-vous"
+      />
+    </template>
     <CalendarPage base-path="/preleveur" :show-new-appointment-button="false" />
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

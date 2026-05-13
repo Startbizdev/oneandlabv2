@@ -1,5 +1,5 @@
 <template>
-  <div v-if="appointments.length > 0" class="rounded-xl border border-default/50 bg-default overflow-hidden shadow-sm">
+  <div v-if="displayAppointments.length > 0" class="rounded-xl border border-default/50 bg-default overflow-hidden shadow-sm">
     <div class="px-6 py-4 border-b border-default/50 flex items-center justify-between">
       <h2 class="text-lg font-semibold text-default flex items-center gap-2">
         <UIcon name="i-lucide-clock" class="w-5 h-5 text-amber-500" />
@@ -16,12 +16,13 @@
       </UButton>
     </div>
     <div class="p-3 sm:p-4">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <DashboardAppointmentCard
-          v-for="apt in appointments"
+          v-for="apt in displayAppointments"
           :key="apt.id"
           :appointment="apt"
           :base-path="basePath"
+          :categories="categories"
           :format-date-label="formatDateLabel"
           :mask-sensitive="true"
           :on-action="(a) => $emit('open', a)"
@@ -32,6 +33,10 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+import { mergeBatchRowsForDashboardList } from '~/utils/appointment-batch';
+import type { CareCategoryRowMinimal } from '~/utils/care-icons';
+
 interface AppointmentRow {
   id: string;
   type: string;
@@ -46,9 +51,12 @@ interface Props {
   appointments: AppointmentRow[];
   basePath: string;
   formatDateLabel: (apt: AppointmentRow) => string;
+  categories?: CareCategoryRowMinimal[];
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
+
+const displayAppointments = computed(() => mergeBatchRowsForDashboardList(props.appointments as any[]));
 
 defineEmits<{
   open: [appointment: AppointmentRow];

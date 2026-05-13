@@ -1,6 +1,7 @@
 <template>
-  <div class="space-y-3">
-    <TitleDashboard title="Mes rendez-vous" compact>
+  <AppPageShell class="space-y-3">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" title="Mes rendez-vous" compact>
       <template #description>
         <span class="text-sm text-gray-500 dark:text-gray-400">
           Gérez vos rendez-vous.
@@ -15,61 +16,68 @@
           Créer un RDV
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
-    <!-- Quota offre Découverte : une ligne compacte -->
-    <div
+    <!-- Quota offre Découverte — une ligne compacte, style carte RDV -->
+    <section
       v-if="showDiscoveryQuota"
-      class="rounded-lg border border-amber-200/90 dark:border-amber-800/80 bg-gradient-to-r from-amber-50/90 to-white/95 dark:from-amber-950/30 dark:to-gray-900/80 shadow-sm"
+      class="mb-5 shrink-0 overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02)] dark:border-gray-800 dark:bg-gray-950"
     >
-      <div class="flex flex-wrap items-center gap-2 p-2 sm:p-2.5 sm:gap-3">
-        <div
-          class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/55 text-amber-700 dark:text-amber-300"
-          aria-hidden="true"
-        >
-          <UIcon name="i-lucide-gauge" class="w-3.5 h-3.5" />
-        </div>
-        <div class="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+      <div class="flex flex-wrap items-center gap-x-2 gap-y-2 p-3 sm:gap-x-3 sm:gap-y-2 sm:px-4 sm:py-2.5">
+        <div class="flex min-w-0 shrink-0 flex-wrap items-center gap-x-2 gap-y-1">
           <span class="text-xs font-semibold text-gray-900 dark:text-white">Offre Découverte</span>
           <UBadge
             v-if="discoveryQuotaFull"
             color="warning"
             variant="subtle"
             size="xs"
-            class="rounded font-medium"
+            class="font-black uppercase tracking-tighter"
           >
             Quota atteint
           </UBadge>
-          <span v-else class="text-[10px] font-medium uppercase tracking-wide text-amber-700/90 dark:text-amber-400/90">
+          <span
+            v-else
+            class="text-[10px] font-bold uppercase tracking-widest text-primary-600/90 dark:text-primary-400/90"
+          >
             Ce mois-ci
           </span>
+        </div>
+
+        <div
+          class="flex min-h-5 min-w-0 flex-1 basis-[10rem] items-center gap-2 rounded-lg bg-gray-50/80 px-2.5 py-1.5 ring-1 ring-inset ring-gray-100 dark:bg-white/[0.03] dark:ring-white/[0.08]"
+          title="Compteur remis le 1er du mois. L’offre Pro supprime la limite."
+        >
           <div
-            class="h-1 min-w-[4rem] flex-1 max-w-[140px] overflow-hidden rounded-full bg-amber-100/90 dark:bg-amber-950/50"
+            class="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-gray-200/90 dark:bg-gray-800/90"
             role="progressbar"
             :aria-valuenow="discoveryUsed"
             :aria-valuemax="discoveryMax"
             aria-label="Rendez-vous utilisés sur le quota mensuel"
           >
             <div
-              class="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-600 dark:from-amber-500 dark:to-amber-400 transition-[width] duration-300 ease-out"
+              class="h-full rounded-full bg-gradient-to-r from-primary-500 to-primary-600 transition-[width] duration-300 ease-out dark:from-primary-400 dark:to-primary-500"
               :style="{ width: `${discoveryQuotaPercent}%` }"
             />
           </div>
-          <span class="shrink-0 text-[11px] font-semibold tabular-nums text-amber-950 dark:text-amber-100">
+          <span class="shrink-0 text-[11px] font-bold tabular-nums text-gray-900 dark:text-gray-100">
             {{ discoveryUsed }}/{{ discoveryMax }}
           </span>
         </div>
+
         <UButton
           to="/nurse/abonnement"
           color="primary"
+          variant="outline"
           size="xs"
-          class="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold"
-          title="Compteur remis le 1er du mois. L’offre Pro supprime la limite."
+          icon="i-lucide-sparkles"
+          class="w-full shrink-0 justify-center sm:w-auto sm:rounded-lg sm:px-3 sm:py-1.5 sm:text-[11px] sm:font-semibold"
+          title="Compteur remis le 1er du mois. L’offre PRO supprime la limite."
         >
-          Passer en Pro
+          Passer en PRO
         </UButton>
       </div>
-    </div>
+    </section>
 
     <AppointmentListPage
       ref="listRef"
@@ -78,6 +86,7 @@
       title="Mes rendez-vous"
       subtitle="Gérez vos rendez-vous"
       nurse-locked-segment="tous"
+      nurse-compact-cards
       :status-filter-api="'pending,confirmed,inProgress,planned,completed,canceled,refused'"
       @card-click="(a) => openAppointmentModal(a.id)"
     />
@@ -101,7 +110,7 @@
       </UModal>
     </Teleport>
   </ClientOnly>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

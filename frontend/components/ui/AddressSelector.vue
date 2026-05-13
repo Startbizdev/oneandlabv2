@@ -81,9 +81,6 @@
         </template>
       </UPopover>
     </UFormField>
-    <p v-if="!disabled && !modelValue" class="text-xs text-gray-500 -mt-1">
-      Pour une adresse avec numéro, saisissez d’abord le numéro puis la rue (la base nationale ne liste pas tous les numéros d’une rue sans cette saisie).
-    </p>
 
     <!-- Complément d'adresse optionnel -->
     <UFormField 
@@ -136,7 +133,7 @@ const props = withDefaults(defineProps<Props>(), {
   name: 'address',
   required: false,
   disabled: false,
-  placeholder: 'Ex. 12 rue… ou rue + ville (numéro en premier pour affiner)',
+  placeholder: 'Rechercher une adresse',
   showDetails: true,
   showRemoveButton: true,
   showComplement: false,

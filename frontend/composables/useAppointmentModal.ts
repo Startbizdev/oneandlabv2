@@ -1,3 +1,4 @@
+import { nextTick } from 'vue'
 import { isPendingIncomingOffer } from '~/utils/appointment-offer'
 import { isBloodTestAppointment } from '~/utils/appointment-type-rules'
 
@@ -65,6 +66,10 @@ export function useAppointmentModal(options?: { onDisplayed?: (appointment: any)
         data.assigned_nurse_id != null && data.assigned_nurse_id !== ''
           ? String(data.assigned_nurse_id)
           : ''
+      // Prise de sang : seul un autre infirmier « prend » l’offre ; le labo assigné est le déroulé normal.
+      if (isBloodTestAppointment(data.type)) {
+        return !!(nid && nid !== my)
+      }
       if (nid && nid !== my) return true
       if (data.assigned_lab_id != null && String(data.assigned_lab_id) !== '') return true
       return false
@@ -89,25 +94,36 @@ export function useAppointmentModal(options?: { onDisplayed?: (appointment: any)
   async function openAppointmentModalById(appointmentId: string) {
     const role = user.value?.role
     const myId = user.value?.id
+    const detailPath = appointmentsDetailPath(appointmentId)
     if (!appointmentId || !['nurse', 'lab', 'subaccount', 'preleveur'].includes(role ?? '')) return
     try {
       const { apiFetch } = await import('~/utils/api')
       const detailRes = await apiFetch(`/appointments/${appointmentId}`, { method: 'GET' })
-      if (!detailRes?.success) return
+      if (!detailRes?.success) {
+        await navigateTo(detailPath)
+        return
+      }
       if ((detailRes as { alreadyAccepted?: boolean }).alreadyAccepted) {
         openDirectly(appointmentModalAlreadyTakenPayload(appointmentId))
         return
       }
       const data = detailRes.data
-      if (data && canOpenAcceptModal(data, role, myId)) {
+      if (!data) {
+        await navigateTo(detailPath)
+        return
+      }
+      if (canOpenAcceptModal(data, role, myId)) {
         openDirectly(data)
         return
       }
-      if (data && isTakenByOther(data, role, myId)) {
+      if (isTakenByOther(data, role, myId)) {
         openDirectly({ ...data, __modalPresetTaken: true as const })
+        return
       }
+      await navigateTo(detailPath)
     } catch (e) {
       console.error('[useAppointmentModal] openAppointmentModalById', e)
+      await navigateTo(detailPath)
     }
   }
 
@@ -176,6 +192,7 @@ export function useAppointmentModal(options?: { onDisplayed?: (appointment: any)
       }
       const data = detailRes.data
       if (data) {
+        await nextTick()
         openDirectly(data)
         // GET /appointments/:id?share_token= a matérialisé les offres côté API : rafraîchir « Mes demandes »
         const listRefreshTrigger = useState<number>('appointments.listRefreshTrigger', () => 0)

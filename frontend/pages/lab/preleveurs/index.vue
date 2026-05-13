@@ -1,9 +1,9 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       title="Préleveurs"
       description="Gérez les préleveurs qui effectuent les prélèvements à domicile."
-      icon="i-lucide-user-check"
     >
       <template #actions>
         <div class="flex items-center gap-2">
@@ -12,7 +12,8 @@
           </UButton>
         </div>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
     <TeamMemberListPage
       :items="preleveurs"
@@ -60,7 +61,7 @@
         <UButton color="red" :loading="deleting" :on-click="deletePreleveur">Supprimer</UButton>
       </template>
     </UModal>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

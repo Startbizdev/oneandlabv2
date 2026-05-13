@@ -93,7 +93,7 @@ defineEmits<{
 }>()
 
 function appointmentTypeLabel(type: string | null | undefined) {
-  if (type === 'blood_test') return 'Prise de sang'
+  if (type === 'blood_test') return 'Prélèvement'
   if (type === 'nursing' || type === 'nurse') return 'Soins infirmiers'
   return type ? String(type) : 'Rendez-vous'
 }

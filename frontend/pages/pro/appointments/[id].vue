@@ -1,5 +1,5 @@
 <template>
-  <AppointmentDetailPage ref="detailRef" base-path="/pro">
+  <AppointmentDetailPage ref="detailRef" base-path="/pro" :show-sidebar-actions-card="standardSidebarActionsCardVisible">
     <template #prescriptionSection="{ appointment, documents, loadDocuments }">
       <PrescriptionSection
         v-if="appointment && !['canceled'].includes(appointment.status)"
@@ -8,6 +8,19 @@
         :load-documents="loadDocuments"
       />
     </template>
+    <template #carePhotosCard="{ appointment, documents, documentsLoading, loadDocuments }">
+      <RdvCarePhotosSection
+        v-if="appointment && isCarePhotoGalleryContext(appointment)"
+        :appointment="appointment as Record<string, unknown>"
+        :documents="documents || []"
+        :documents-loading="documentsLoading"
+        :enable-care-photo-upload="false"
+        @download="downloadDocument"
+        @care-photo-thread-updated="() => loadDocuments()"
+        @load-documents-needed="loadDocuments"
+      />
+    </template>
+
     <template #documentsCard="{ appointment, documents, documentsLoading, loadDocuments }">
       <AppointmentDocumentsSection
         :documents="documents || []"
@@ -18,12 +31,12 @@
         :can-replace="canUploadDocuments(appointment)"
         :downloading-ids="downloadingDocIds"
         :uploading-types="uploadingTypes"
+        :care-photo-appointment-id="appointment?.id ?? null"
+        :omit-care-photos-in-list="true"
         @download="downloadDocument"
         @upload="(docType, file) => { setAppointmentForUpload(appointment); uploadDocumentFile(file, docType); }"
+        @care-photo-thread-updated="() => loadDocuments()"
       />
-    </template>
-    <template #careGallery="{ appointment }">
-      <CarePhotoGallerySection v-if="appointment" :appointment="appointment" role="pro" />
     </template>
     <template #mainExtra="{ appointment }">
       <UCard
@@ -53,20 +66,9 @@
       </UCard>
     </template>
     <template #sidebarActions="{ appointment, loadAppointment }">
-      <div class="flex flex-col gap-3">
-        <UEmpty
-          v-if="appointment && appointment.status === 'canceled'"
-          icon="i-lucide-calendar-x"
-          title="Rendez-vous annulé"
-          description="Ce rendez-vous a été annulé. Vous pouvez créer un nouveau RDV pour ce patient depuis la liste."
-          variant="naked"
-          size="md"
-        />
-        <template v-else>
+      <AppointmentDetailSidebarTerminalShell :status="appointment?.status">
+        <div class="flex flex-col gap-3">
           <template v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5">
-              Planification
-            </p>
             <UButton
               type="button"
               color="neutral"
@@ -78,9 +80,6 @@
             >
               Reprendre RDV pour ce patient
             </UButton>
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
-              Annulation
-            </p>
             <UButton
               type="button"
               color="error"
@@ -94,8 +93,8 @@
               Annuler le rendez-vous
             </UButton>
           </template>
-        </template>
-      </div>
+        </div>
+      </AppointmentDetailSidebarTerminalShell>
     </template>
   </AppointmentDetailPage>
 
@@ -118,10 +117,13 @@ definePageMeta({
   role: 'pro',
 });
 
-import { nextTick, watch } from 'vue';
+import { nextTick, watch, computed } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
+import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
+import { standardAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
+import { isCarePhotoGalleryContext } from '~/utils/care-photo-gallery-context';
 
 const route = useRoute();
 const toast = useAppToast();
@@ -198,6 +200,10 @@ async function downloadDocument(doc: { id: string; file_name: string }) {
   }
 }
 const detailRef = ref<{ loadAppointment: () => Promise<void>; loadDocuments?: () => Promise<void>; appointment: { value: any } } | null>(null);
+
+const standardSidebarActionsCardVisible = computed(() =>
+  standardAppointmentSidebarCardVisible(getAppointmentFromDetailRef(detailRef)),
+);
 const uploadingTypes = ref(new Set<string>());
 const currentAppointmentForUpload = ref<any>(null);
 
@@ -211,7 +217,7 @@ const uploadDocumentTypes = [
 ];
 
 function canUploadDocuments(appointment: any) {
-  return appointment && ['confirmed', 'inProgress', 'completed'].includes(appointment?.status);
+  return !!appointment && canUploadMedicalDocumentsForAppointmentStatus(appointment.status);
 }
 
 function setAppointmentForUpload(apt: any) {

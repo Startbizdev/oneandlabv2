@@ -1,16 +1,5 @@
 <template>
-  <div class="space-y-6">
-    <UButton
-      :to="`${basePath}/appointments`"
-      color="neutral"
-      variant="ghost"
-      size="md"
-      leading-icon="i-lucide-arrow-left"
-      class="mb-4"
-    >
-      Retour à la liste
-    </UButton>
-
+  <div class="space-y-6 rdv-no-mobile-zoom">
     <div v-if="loading" class="flex flex-col items-center justify-center py-16">
       <UIcon name="i-lucide-loader-2" class="w-10 h-10 animate-spin text-primary-500 mb-4" />
       <p class="text-gray-500 dark:text-gray-400">Chargement des détails...</p>
@@ -24,327 +13,235 @@
       variant="outline"
     />
 
-    <div v-else class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-      <div class="xl:col-span-2 space-y-6">
-        <!-- Informations du rendez-vous (une carte par soin si lot multisoins) -->
-        <AppointmentDetailRdvInfoCard
-          v-for="(appt, batchIdx) in batchAppointmentsSorted"
-          :key="appt.id"
-          :appt="appt"
-          :categories-for-detail="categoriesForDetail"
-          :is-admin="isAdmin"
-          :show-cancellation-photo="showCancellationPhoto"
-          :batch-index="batchIdx"
-          :batch-size="batchAppointmentsSorted.length"
-        />
+    <div v-else class="space-y-6">
+      <div class="mb-4 flex w-full min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+        <UButton
+          :to="backListPath"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          leading-icon="i-lucide-arrow-left"
+          class="w-fit shrink-0"
+        >
+          Retour à la liste
+        </UButton>
+        <div
+          v-if="appointment && !batchIsMulti"
+          class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5"
+        >
+          <PatientUrgencyBadge :appointment="appointment" />
+          <UBadge
+            :color="appointmentDetailBadgeStatusColor(appointment.status)"
+            variant="subtle"
+            size="sm"
+            :label="appointmentDetailBadgeStatusLabel(appointment.status)"
+          />
+          <UBadge
+            :color="appointment.type === 'blood_test' ? 'error' : 'info'"
+            variant="subtle"
+            size="sm"
+            :leading-icon="appointment.type === 'blood_test' ? 'i-lucide-syringe' : 'i-lucide-stethoscope'"
+            :label="appointmentDetailBadgeTypeLabel(appointment.type)"
+          />
+        </div>
+      </div>
 
-        <!-- Origine du RDV (staff / pro) -->
-        <UCard v-if="showCreatorOrigin && appointment.creator_origin">
-          <template #header>
-            <h2 class="text-lg font-normal flex items-center gap-2">
-              <UIcon name="i-lucide-git-branch" class="w-5 h-5" />
-              Origine du rendez-vous
-            </h2>
+      <div :class="['grid grid-cols-1 gap-6', hasRightColumn ? 'xl:grid-cols-3' : 'xl:grid-cols-1']">
+        <div
+          :class="[
+            'order-2 space-y-6 xl:order-none',
+            hasRightColumn ? 'xl:col-span-2' : 'xl:col-span-3',
+          ]"
+        >
+        <!-- Une carte fusionnée (tableau unique) si lot multi-RDV ; sinon une carte par soin -->
+        <template v-if="!batchIsMulti">
+          <template v-for="(appt, batchIdx) in batchAppointmentsSorted" :key="appt.id">
+            <AppointmentDetailRdvInfoCard
+              :appt="appt"
+              :categories-for-detail="categoriesForDetail"
+              :is-admin="isAdmin"
+              :show-cancellation-photo="showCancellationPhoto"
+              :hide-map-actions="isPatientPortal"
+              :hide-address-block="isPatientPortal"
+              :hide-audit-dates="isPatientPortal"
+            >
+              <template v-if="batchIdx === 0 && !isPatientPortal" #infoExtras>
+                <AppointmentDetailRdvPatientKvSection :appointment="appointment" :is-admin="isAdmin">
+                  <template v-if="$slots.patientCardActions" #actions>
+                    <slot name="patientCardActions" :appointment="appointment" />
+                  </template>
+                </AppointmentDetailRdvPatientKvSection>
+              </template>
+              <template v-if="batchIdx === 0 && isPatientPortal && $slots.patientPortalFooter" #footerExtras>
+                <slot
+                  name="patientPortalFooter"
+                  :appointment="appointment"
+                  :load-appointment="loadAppointment"
+                  :kv-row="detailKvRow"
+                  :kv-label="detailKvLabel"
+                />
+              </template>
+              <template v-if="batchIdx === 0 && showAssignedProfessionalSection" #assignee>
+                <AppointmentDetailRdvAssigneeOriginKvSection
+                  :appointment="appointment"
+                  :is-nursing-type="isNursingType"
+                  :show-assigned-professional-section="showAssignedProfessionalSection"
+                  :show-creator-origin="false"
+                  :hide-nurse-assignee-if-self="viewerIsAssignedNurse"
+                  :hide-lab-assignee-if-self="viewerIsAssignedLabEntity"
+                  :hide-preleveur-assignee-if-self="viewerIsAssignedPreleveur"
+                  :patient-platform-origin-display="patientPlatformOriginDisplay"
+                  :creator-nurse-origin-compact="creatorNurseOriginCompact"
+                  :creator-nurse-origin-compact-title="creatorNurseOriginCompactTitle"
+                  :creator-lab-origin-compact="creatorLabOriginCompact"
+                  :creator-pro-origin-compact="creatorProOriginCompact"
+                  :viewer-is-creator="viewerIsCreator"
+                  :open-assignee-sheet="openAssigneeSheet"
+                  :open-creator-sheet="openCreatorSheet"
+                />
+              </template>
+              <template v-if="batchIdx === 0 && showCreatorOrigin" #creatorOrigin>
+                <AppointmentDetailRdvAssigneeOriginKvSection
+                  :appointment="appointment"
+                  :is-nursing-type="isNursingType"
+                  :show-assigned-professional-section="false"
+                  :show-creator-origin="showCreatorOrigin"
+                  :hide-nurse-assignee-if-self="viewerIsAssignedNurse"
+                  :hide-lab-assignee-if-self="viewerIsAssignedLabEntity"
+                  :hide-preleveur-assignee-if-self="viewerIsAssignedPreleveur"
+                  :patient-platform-origin-display="patientPlatformOriginDisplay"
+                  :creator-nurse-origin-compact="creatorNurseOriginCompact"
+                  :creator-nurse-origin-compact-title="creatorNurseOriginCompactTitle"
+                  :creator-lab-origin-compact="creatorLabOriginCompact"
+                  :creator-pro-origin-compact="creatorProOriginCompact"
+                  :viewer-is-creator="viewerIsCreator"
+                  :open-assignee-sheet="openAssigneeSheet"
+                  :open-creator-sheet="openCreatorSheet"
+                />
+              </template>
+            </AppointmentDetailRdvInfoCard>
           </template>
-          <div class="space-y-3">
-            <template v-if="appointment.creator_origin.kind === 'patient_platform'">
-              <p class="text-sm text-gray-700 dark:text-gray-300">
-                {{ appointment.creator_origin.label || 'Patient OneAndLab' }}
-              </p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">
-                Demande passée depuis la plateforme (patient).
-              </p>
-            </template>
-            <div v-else-if="appointment.creator_origin.kind === 'nurse'">
-              <div v-if="creatorNurseOriginCompact" class="space-y-2">
-                <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {{ creatorNurseOriginCompactTitle }}
-                </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                  {{ creatorNurseOriginCompactHint }}
-                </p>
-              </div>
-              <div v-else class="flex flex-wrap items-center gap-3">
-                <div
-                  class="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800"
-                >
-                  <img
-                    v-if="appointment.creator_origin.profile_image_url"
-                    :src="appointment.creator_origin.profile_image_url"
-                    :alt="appointment.creator_origin.display_name || ''"
-                    class="h-full w-full object-cover"
-                  />
-                  <div v-else class="flex h-full w-full items-center justify-center">
-                    <UIcon name="i-lucide-user" class="w-6 h-6 text-gray-400" />
+        </template>
+
+        <UCard
+          v-else
+          class="overflow-hidden"
+          :ui="{ body: 'p-0 sm:p-0' }"
+        >
+          <div class="space-y-4">
+            <div class="divide-y divide-default">
+              <AppointmentDetailRdvPatientKvSection v-if="!isPatientPortal" :appointment="appointment" :is-admin="isAdmin">
+                <template v-if="$slots.patientCardActions" #actions>
+                  <slot name="patientCardActions" :appointment="appointment" />
+                </template>
+              </AppointmentDetailRdvPatientKvSection>
+              <AppointmentDetailRdvFieldRows
+                v-if="!isPatientPortal && (appointment.form_data || appointment.relative)"
+                :appt="appointment"
+                :categories-for-detail="categoriesForDetail"
+                :is-admin="isAdmin"
+                variant="address-only"
+              />
+              <template v-for="(appt, batchIdx) in batchAppointmentsSorted" :key="'merged-' + appt.id">
+                <div :class="detailKvRow">
+                  <div :class="detailKvLabel">
+                    {{
+                      mergedHomogeneousBloodBatch
+                        ? `Prélèvement #${batchIdx + 1}`
+                        : mergedHomogeneousNursingBatch
+                          ? `Soins prévus #${batchIdx + 1}`
+                          : `Rendez-vous #${batchIdx + 1}`
+                    }}
+                  </div>
+                  <div class="flex min-w-0 flex-wrap items-center justify-start gap-1.5">
+                    <PatientUrgencyBadge :appointment="appt" />
+                    <UBadge
+                      :color="appointmentDetailBadgeStatusColor(appt.status)"
+                      variant="subtle"
+                      size="sm"
+                      :label="appointmentDetailBadgeStatusLabel(appt.status)"
+                    />
+                    <UBadge
+                      :color="appt.type === 'blood_test' ? 'error' : 'info'"
+                      variant="subtle"
+                      size="sm"
+                      :leading-icon="appt.type === 'blood_test' ? 'i-lucide-syringe' : 'i-lucide-stethoscope'"
+                      :label="appointmentDetailBadgeTypeLabel(appt.type)"
+                    />
                   </div>
                 </div>
-                <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-gray-900 dark:text-white">
-                    {{ appointment.creator_origin.display_name || 'Infirmier' }}
-                  </p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Saisie par un infirmier</p>
-                </div>
-                <UButton
-                  v-if="appointment.creator_origin.public_slug"
-                  size="sm"
-                  variant="outline"
-                  color="primary"
-                  class="shrink-0"
-                  @click="openCreatorSheet('nurse', appointment.creator_origin.public_slug)"
+                <div
+                  v-if="isAppointmentStatusCanceled(appt.status)"
+                  class="bg-neutral-50/95 px-4 py-3 sm:px-6 dark:bg-neutral-900/40"
+                  role="status"
                 >
-                  Voir la fiche
-                </UButton>
-              </div>
-            </div>
-            <div v-else-if="appointment.creator_origin.kind === 'pro'">
-              <div v-if="creatorProOriginCompact" class="space-y-2.5">
-                <p class="text-sm font-medium text-gray-900 dark:text-white leading-snug">
-                  Vous avez créé ce rendez-vous en tant que professionnel de santé depuis votre espace.
-                </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                  L’origine du dossier est votre compte pro ; les informations patient et la suite du parcours sont détaillées ci‑dessous.
+                  <div class="flex items-center gap-3">
+                    <UIcon
+                      name="i-lucide-calendar-x"
+                      class="size-5 shrink-0 text-neutral-500 dark:text-neutral-400"
+                      aria-hidden="true"
+                    />
+                    <div class="min-w-0 space-y-1">
+                      <p class="text-sm font-semibold leading-snug text-gray-900 dark:text-gray-100">
+                        Ce rendez-vous a été annulé.
+                      </p>
+                      <p v-if="cancellationMotifLineForAppt(appt)" class="text-xs leading-relaxed text-muted">
+                        {{ cancellationMotifLineForAppt(appt) }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <AppointmentDetailRdvFieldRows
+                  :appt="appt"
+                  :categories-for-detail="categoriesForDetail"
+                  :is-admin="isAdmin"
+                  :hide-map-actions="isPatientPortal"
+                  variant="details-only"
+                />
+              </template>
+              <AppointmentDetailRdvAssigneeOriginKvSection
+                :appointment="appointment"
+                :is-nursing-type="isNursingType"
+                :show-assigned-professional-section="showAssignedProfessionalSection"
+                :show-creator-origin="showCreatorOrigin"
+                :hide-nurse-assignee-if-self="viewerIsAssignedNurse"
+                :hide-lab-assignee-if-self="viewerIsAssignedLabEntity"
+                :hide-preleveur-assignee-if-self="viewerIsAssignedPreleveur"
+                :patient-platform-origin-display="patientPlatformOriginDisplay"
+                :creator-nurse-origin-compact="creatorNurseOriginCompact"
+                :creator-nurse-origin-compact-title="creatorNurseOriginCompactTitle"
+                :creator-lab-origin-compact="creatorLabOriginCompact"
+                :creator-pro-origin-compact="creatorProOriginCompact"
+                :viewer-is-creator="viewerIsCreator"
+                :open-assignee-sheet="openAssigneeSheet"
+                :open-creator-sheet="openCreatorSheet"
+              />
+              <div
+                v-if="appointment.created_at && !isPatientPortal"
+                :class="detailKvRow"
+              >
+                <div :class="detailKvLabel">Créé le</div>
+                <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">
+                  {{ formatDate(appointment.created_at) }}
                 </p>
               </div>
               <div
-                v-else
-                class="rounded-lg border border-default/60 bg-default/5 p-4 sm:p-5"
+                v-if="isAdmin && appointment.updated_at"
+                :class="detailKvRow"
               >
-                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
-                  <div
-                    class="h-14 w-14 shrink-0 overflow-hidden rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 sm:h-12 sm:w-12"
-                  >
-                    <img
-                      v-if="appointment.creator_origin.profile_image_url"
-                      :src="appointment.creator_origin.profile_image_url"
-                      :alt="appointment.creator_origin.display_name || ''"
-                      class="h-full w-full object-cover"
-                    />
-                    <div v-else class="flex h-full w-full items-center justify-center">
-                      <UIcon name="i-lucide-stethoscope" class="w-6 h-6 text-gray-400" />
-                    </div>
-                  </div>
-                  <div class="min-w-0 flex-1 space-y-4">
-                    <header class="space-y-1">
-                      <p class="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                        Professionnel de santé
-                      </p>
-                      <p class="text-base font-semibold leading-tight text-gray-900 dark:text-white">
-                        <template v-if="appointment.creator_origin.first_name || appointment.creator_origin.last_name">
-                          {{ [appointment.creator_origin.first_name, appointment.creator_origin.last_name].filter(Boolean).join(' ') }}
-                        </template>
-                        <template v-else>
-                          {{ appointment.creator_origin.display_name || '—' }}
-                        </template>
-                      </p>
-                    </header>
-                    <dl class="space-y-3">
-                      <div class="grid grid-cols-1 gap-1 sm:grid-cols-[minmax(0,7.5rem)_1fr] sm:gap-x-4 sm:items-start">
-                        <dt class="text-xs font-medium text-muted">Profession</dt>
-                        <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">
-                          {{ appointment.creator_origin.emploi || 'Non renseigné' }}
-                        </dd>
-                      </div>
-                      <div
-                        v-if="appointment.creator_origin.phone"
-                        class="grid grid-cols-1 gap-1 sm:grid-cols-[minmax(0,7.5rem)_1fr] sm:gap-x-4 sm:items-start"
-                      >
-                        <dt class="text-xs font-medium text-muted">Téléphone</dt>
-                        <dd class="text-sm">
-                          <a
-                            :href="`tel:${String(appointment.creator_origin.phone).replace(/\s/g, '')}`"
-                            class="font-medium text-primary hover:underline break-all"
-                          >
-                            {{ appointment.creator_origin.phone }}
-                          </a>
-                        </dd>
-                      </div>
-                      <div
-                        v-if="appointment.creator_origin.adeli"
-                        class="grid grid-cols-1 gap-1 sm:grid-cols-[minmax(0,7.5rem)_1fr] sm:gap-x-4 sm:items-start"
-                      >
-                        <dt class="text-xs font-medium text-muted">N° Adeli</dt>
-                        <dd class="text-sm font-mono font-medium text-gray-800 dark:text-gray-200 tabular-nums">
-                          {{ appointment.creator_origin.adeli }}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div v-else-if="appointment.creator_origin.kind === 'lab_team'">
-              <div v-if="creatorLabOriginCompact" class="space-y-2">
-                <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {{
-                    viewerIsCreator
-                      ? 'Vous avez créé ce rendez-vous depuis l’espace laboratoire (ou équipe associée).'
-                      : 'Ce rendez-vous a été créé par le même laboratoire que celui assigné.'
-                  }}
-                </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                  {{
-                    viewerIsCreator
-                      ? 'L’origine indique une saisie côté équipe lab ; le détail ci‑dessous reprend l’assignation effective.'
-                      : 'La création et l’assignation correspondent au même établissement.'
-                  }}
+                <div :class="detailKvLabel">Modifié le</div>
+                <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">
+                  {{ formatDate(appointment.updated_at) }}
                 </p>
               </div>
-              <div v-else class="flex flex-wrap items-center gap-3">
-                <div
-                  class="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800"
-                >
-                  <img
-                    v-if="appointment.creator_origin.profile_image_url"
-                    :src="appointment.creator_origin.profile_image_url"
-                    :alt="appointment.creator_origin.display_name || ''"
-                    class="h-full w-full object-cover"
-                  />
-                  <div v-else class="flex h-full w-full items-center justify-center">
-                    <UIcon name="i-lucide-flask-conical" class="w-6 h-6 text-gray-400" />
-                  </div>
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-gray-900 dark:text-white">
-                    {{ appointment.creator_origin.display_name || 'Laboratoire' }}
-                  </p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                    {{ appointment.creator_origin.role === 'subaccount' ? 'Sous-compte laboratoire' : appointment.creator_origin.role === 'preleveur' ? 'Préleveur' : 'Laboratoire' }}
-                  </p>
-                </div>
-                <UButton
-                  v-if="appointment.creator_origin.public_slug"
-                  size="sm"
-                  variant="outline"
-                  color="primary"
-                  class="shrink-0"
-                  @click="openCreatorSheet('lab', appointment.creator_origin.public_slug)"
-                >
-                  Voir la fiche
-                </UButton>
-              </div>
-            </div>
-          </div>
-        </UCard>
-
-        <!-- Professionnel ayant accepté / pris en charge le RDV -->
-        <UCard v-if="showAssignedProfessionalSection">
-          <template #header>
-            <div>
-              <h2 class="text-lg font-normal flex items-center gap-2">
-                <UIcon name="i-lucide-user-check" class="w-5 h-5" />
-                Professionnel assigné
-              </h2>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-normal">
-                Professionnel ayant accepté ou pris en charge ce rendez-vous.
-              </p>
-            </div>
-          </template>
-          <div class="space-y-6">
-            <!-- Soins infirmiers : infirmier -->
-            <div
-              v-if="isNursingType && (appointment.assigned_nurse_id || appointment.assigned_nurse_display_name)"
-              class="flex flex-wrap items-center gap-3"
-            >
-              <div class="flex-shrink-0">
-                <UserAvatar
-                  :src="assigneeNurseImageUrl"
-                  :initial="assigneeNurseInitial"
-                  alt="Infirmier"
-                  size="lg"
-                />
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">
-                  Infirmier
-                </p>
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                  {{ appointment.assigned_nurse_display_name || '—' }}
-                </p>
-              </div>
-              <UButton
-                v-if="appointment.assigned_nurse_public_slug"
-                size="sm"
-                variant="outline"
-                color="primary"
-                class="shrink-0"
-                @click="openAssigneeSheet('nurse', appointment.assigned_nurse_public_slug)"
-              >
-                Voir la fiche
-              </UButton>
-            </div>
-
-            <!-- Prise de sang : laboratoire -->
-            <div
-              v-if="appointment.type === 'blood_test' && (appointment.assigned_lab_id || appointment.assigned_lab_display_name)"
-              class="flex flex-col gap-3"
-            >
-              <div class="flex flex-wrap items-center gap-3">
-                <div class="flex-shrink-0">
-                  <UserAvatar
-                    :src="assigneeLabImageUrl"
-                    :initial="assigneeLabInitial"
-                    alt="Laboratoire"
-                    size="lg"
-                  />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">
-                    Laboratoire
-                  </p>
-                  <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                    {{ appointment.assigned_lab_display_name || '—' }}
-                  </p>
-                </div>
-                <UButton
-                  v-if="appointment.assigned_lab_public_slug"
-                  size="sm"
-                  variant="outline"
-                  color="primary"
-                  class="shrink-0"
-                  @click="openAssigneeSheet('lab', appointment.assigned_lab_public_slug)"
-                >
-                  Voir la fiche
-                </UButton>
-              </div>
-              <p
-                v-if="appointment.assigned_lab_address"
-                class="text-sm text-gray-600 dark:text-gray-400 flex items-start gap-2 pl-0 sm:pl-[3.25rem]"
-              >
-                <UIcon name="i-lucide-map-pin" class="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                <span>{{ appointment.assigned_lab_address }}</span>
-              </p>
-            </div>
-
-            <!-- Prise de sang : préleveur -->
-            <div
-              v-if="appointment.type === 'blood_test' && (appointment.assigned_to || appointment.assigned_to_display_name)"
-              class="flex flex-wrap items-start gap-4 pt-2 border-t border-default/60"
-              :class="{ 'border-t-0 pt-0': !(appointment.assigned_lab_id || appointment.assigned_lab_display_name) }"
-            >
-              <div class="flex-shrink-0">
-                <UserAvatar
-                  :src="assigneePreleveurImageUrl"
-                  :initial="assigneePreleveurInitial"
-                  alt="Préleveur"
-                  size="lg"
-                />
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">
-                  Préleveur
-                </p>
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                  {{ appointment.assigned_to_display_name || appointment.assigned_to_name || '—' }}
-                </p>
-                <p v-if="appointment.assigned_to_phone" class="text-sm mt-2">
-                  <a
-                    :href="`tel:${String(appointment.assigned_to_phone).replace(/\s/g, '')}`"
-                    class="text-primary-600 dark:text-primary-400 hover:underline"
-                  >
-                    {{ appointment.assigned_to_phone }}
-                  </a>
-                </p>
-              </div>
+              <slot
+                v-if="isPatientPortal && $slots.patientPortalFooter"
+                name="patientPortalFooter"
+                :appointment="appointment"
+                :load-appointment="loadAppointment"
+                :kv-row="detailKvRow"
+                :kv-label="detailKvLabel"
+              />
             </div>
           </div>
         </UCard>
@@ -363,185 +260,89 @@
           :slug="assigneeSheetSlug"
         />
 
-        <!-- Informations patient (masqué si RDV annulé, sauf admin) -->
-        <UCard v-if="(appointment.form_data || appointment.relative) && (appointment.status !== 'canceled' || isAdmin)">
-          <template #header>
-            <h2 class="text-lg font-normal flex items-center gap-2">
-              <UIcon name="i-lucide-user" class="w-5 h-5" />
-              {{ appointment.relative ? 'Informations proche' : 'Informations patient' }}
-            </h2>
-          </template>
-          <div class="space-y-4">
-            <div class="flex items-start gap-3">
-              <UIcon name="i-lucide-user-circle" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Nom complet</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ appointment.relative ? `${appointment.relative.first_name} ${appointment.relative.last_name}` : `${appointment.form_data?.first_name} ${appointment.form_data?.last_name}` }}
-                </p>
-                <p v-if="appointment.relative" class="text-xs text-gray-500 dark:text-gray-400 mt-1">Lien: {{ getRelationshipLabel(appointment.relative.relationship_type) }}</p>
-              </div>
-            </div>
-            <div v-if="(appointment.relative && appointment.relative.phone) || appointment.form_data?.phone" class="flex items-start gap-3">
-              <UIcon name="i-lucide-phone" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Téléphone</p>
-                <a
-                  :href="`tel:${(appointment.relative?.phone || appointment.form_data?.phone || '').replace(/\s/g, '')}`"
-                  class="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline"
-                >
-                  {{ appointment.relative?.phone || appointment.form_data?.phone }}
-                </a>
-              </div>
-            </div>
-            <div v-if="patientContactEmailDisplay.text" class="flex items-start gap-3">
-              <UIcon name="i-lucide-mail" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Email</p>
-                <a
-                  v-if="patientContactEmailDisplay.href"
-                  :href="patientContactEmailDisplay.href"
-                  class="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline break-words"
-                >
-                  {{ patientContactEmailDisplay.text }}
-                </a>
-                <p v-else class="text-sm font-medium text-gray-900 dark:text-white break-words">
-                  {{ patientContactEmailDisplay.text }}
-                </p>
-              </div>
-            </div>
-            <div v-if="patientBirthDate" class="flex items-start gap-3">
-              <UIcon name="i-lucide-cake" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Date de naissance</p>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDateOnly(patientBirthDate) }}</p>
-                <p v-if="patientAge != null" class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ patientAge }}</p>
-              </div>
-            </div>
-            <div
-              v-if="appointment.relative?.is_minor === true"
-              class="rounded-lg border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/20 px-3 py-2.5"
-              role="status"
-            >
-              <p class="text-sm text-amber-950 dark:text-amber-100 leading-snug">
-                <span class="font-medium">Personne mineure</span><template v-if="appointment.relative.age_years != null && appointment.relative.age_years !== undefined">
-                  ({{ appointment.relative.age_years }} an{{ appointment.relative.age_years === 1 ? '' : 's' }})
-                </template>
-                — le rendez-vous est réservé par le titulaire du compte (contact principal ci-dessous), habilité à représenter le patient pour la prise en charge.
-              </p>
-            </div>
-            <div
-              v-if="showBookingContactBlock"
-              class="pt-4 mt-1 border-t border-gray-200 dark:border-gray-700 space-y-3"
-            >
-              <div>
-                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Contact principal</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Titulaire du compte — personne qui a pris le rendez-vous</p>
-              </div>
-              <div v-if="bookingContactFullName" class="flex items-start gap-3">
-                <UIcon name="i-lucide-user-check" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Nom complet</p>
-                  <p class="text-sm font-medium text-gray-900 dark:text-white">{{ bookingContactFullName }}</p>
-                </div>
-              </div>
-              <div v-if="appointment.booking_contact?.phone" class="flex items-start gap-3">
-                <UIcon name="i-lucide-phone" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Téléphone</p>
-                  <a
-                    :href="`tel:${String(appointment.booking_contact.phone).replace(/\s/g, '')}`"
-                    class="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline"
-                  >
-                    {{ appointment.booking_contact.phone }}
-                  </a>
-                </div>
-              </div>
-              <div v-if="bookingContactEmailDisplay.text" class="flex items-start gap-3">
-                <UIcon name="i-lucide-mail" class="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Email</p>
-                  <a
-                    v-if="bookingContactEmailDisplay.href"
-                    :href="bookingContactEmailDisplay.href"
-                    class="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline break-words"
-                  >
-                    {{ bookingContactEmailDisplay.text }}
-                  </a>
-                  <p v-else class="text-sm font-medium text-gray-900 dark:text-white break-words">
-                    {{ bookingContactEmailDisplay.text }}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div v-if="$slots.patientCardActions" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
-              <slot name="patientCardActions" :appointment="appointment" />
-            </div>
-          </div>
-        </UCard>
-
-        <!-- Galerie photos de soins (masquée si annulé, sauf admin) -->
-        <slot
-          v-if="$slots.careGallery && (appointment.status !== 'canceled' || isAdmin)"
-          name="careGallery"
-          :appointment="appointment"
-        />
-
         <!-- Créer une ordonnance (slot pro/nurse) -->
         <slot
-          v-if="$slots.prescriptionSection && (appointment.status !== 'canceled' || isAdmin)"
+          v-if="$slots.prescriptionSection"
           name="prescriptionSection"
           :appointment="appointment"
           :documents="documents"
           :load-documents="loadDocuments"
         />
 
-        <!-- Documents médicaux (masqués si annulé, sauf admin) -->
-        <UCard v-if="$slots.documentsCard && (appointment.status !== 'canceled' || isAdmin)">
-          <template #header>
-            <h2 class="text-lg font-normal flex items-center gap-2">
-              <UIcon name="i-lucide-file-text" class="w-5 h-5" />
-              Documents médicaux
-            </h2>
-          </template>
-          <slot name="documentsCard" :appointment="appointment" :documents="documents" :documents-loading="documentsLoading" :load-documents="loadDocuments" />
-        </UCard>
-
         <!-- Contenu extra colonne principale (ex: historique statuts admin) -->
         <slot v-if="$slots.mainExtra" name="mainExtra" :appointment="appointment" :load-appointment="loadAppointment" />
+
+        <!-- Photos de soins (slot pro/nurse ; la carte est portée par le composant enfant) -->
+        <RdvDocumentsEmbeddedProvide v-if="$slots.carePhotosCard">
+          <slot
+            name="carePhotosCard"
+            :appointment="appointment"
+            :documents="documents"
+            :documents-loading="documentsLoading"
+            :load-documents="loadDocuments"
+          />
+        </RdvDocumentsEmbeddedProvide>
+
+        <!-- Documents : même chrome et liste type tableau que le bloc informations RDV -->
+        <UCard
+          v-if="$slots.documentsCard"
+          class="overflow-hidden"
+          :ui="{ body: 'p-0 sm:p-0' }"
+        >
+          <RdvDocumentsEmbeddedProvide>
+            <slot
+              name="documentsCard"
+              :appointment="appointment"
+              :documents="documents"
+              :documents-loading="documentsLoading"
+              :load-documents="loadDocuments"
+            />
+          </RdvDocumentsEmbeddedProvide>
+        </UCard>
       </div>
 
-      <!-- Colonne de droite : Actions + Section Assignation (sections séparées) -->
-      <div class="xl:col-span-1 space-y-6">
-        <UCard v-if="$slots.sidebarActions">
-          <template #header>
-            <h2 class="text-lg font-normal flex items-center gap-2">
-              <UIcon name="i-lucide-zap" class="w-5 h-5" />
-              Actions
-            </h2>
-          </template>
+      <!-- Colonne de droite (masquée si pas d’Actions ni d’assignation — ex. portail patient). -->
+      <div v-if="hasRightColumn" class="order-1 space-y-6 xl:order-none xl:col-span-1">
+        <UCard
+          v-if="slots.sidebarActions && showSidebarActionsCard"
+          class="overflow-hidden"
+          :ui="{ body: 'p-4 sm:p-4' }"
+        >
           <slot name="sidebarActions" :appointment="appointment" :load-appointment="loadAppointment" />
         </UCard>
         <!-- Section Assignation (colonne de droite, pas dans la carte Actions) -->
         <slot v-if="$slots.assignationSection" name="assignationSection" :appointment="appointment" :load-appointment="loadAppointment" />
       </div>
     </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { CANCELLATION_REASONS } from '~/config/cancellation-reasons';
-import {
-  extractEmailFromDisplayLine,
-  isTechnicalPatientEmail,
-  patientUiEmailLine,
-} from '~/utils/patient-address-rdv';
 
-const props = defineProps<{ basePath: string }>();
+const props = withDefaults(
+  defineProps<{
+    basePath: string;
+    /** false = pas de carte « Actions » (évite un cadre vide quand le slot ne rend rien). */
+    showSidebarActionsCard?: boolean;
+  }>(),
+  { showSidebarActionsCard: true },
+);
 const emit = defineEmits<{ (e: 'appointment-loaded', appointment: any): void }>();
+const slots = useSlots();
 const route = useRoute();
+const router = useRouter();
+
+const isPatientPortal = computed(() => props.basePath === '/patient');
+/** Colonne droite : Actions et/ou assignation (toute la colonne masquée si aucun des deux). */
+const hasRightColumn = computed(
+  () =>
+    !!slots.assignationSection ||
+    (!!slots.sidebarActions && props.showSidebarActionsCard !== false),
+);
 
 /** Jeton de partage (lien WhatsApp) : permet GET / PUT pour un confrère hors zone. */
 const shareTokenFromRoute = computed(() => {
@@ -559,9 +360,61 @@ function appointmentGetUrl(appointmentId: string) {
 const toast = useAppToast();
 const { user } = useAuth();
 
-// Admin, lab, subaccount : accès à la photo d'annulation ; nurse, preleveur : motif uniquement
+const backListPath = computed(() =>
+  props.basePath === '/patient' ? '/patient' : `${props.basePath}/appointments`,
+);
+
+/** Grille libellé / valeur (alignée sur la liste fiche RDV). */
+const detailKvRow =
+  'grid grid-cols-1 gap-x-4 gap-y-1 px-4 py-3 sm:px-6 sm:grid-cols-[minmax(9.5rem,11rem)_minmax(0,1fr)] sm:items-start sm:py-2.5';
+const detailKvRowCenter =
+  'grid grid-cols-1 gap-x-4 gap-y-1 px-4 py-3 sm:px-6 sm:grid-cols-[minmax(9.5rem,11rem)_minmax(0,1fr)] sm:items-center sm:py-2.5';
+const detailKvLabel = 'text-[11px] font-semibold uppercase tracking-wide text-muted shrink-0 pt-0.5';
+const detailKvLabelTight = 'text-[11px] font-semibold uppercase tracking-wide text-muted shrink-0';
+
+/** Badges statut / type : barre au-dessus de la grille (à droite du bouton Retour). */
+function appointmentDetailBadgeStatusColor(
+  status: string,
+): 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral' {
+  const map: Record<string, 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral'> = {
+    pending: 'warning',
+    confirmed: 'info',
+    planned: 'info',
+    inProgress: 'primary',
+    completed: 'success',
+    canceled: 'error',
+    cancelled: 'error',
+    refused: 'error',
+    expired: 'neutral',
+  };
+  return map[status] || 'neutral';
+}
+
+function appointmentDetailBadgeStatusLabel(s: string) {
+  const map: Record<string, string> = {
+    pending: 'En attente',
+    confirmed: 'Confirmé',
+    planned: 'Planifié',
+    inProgress: 'En cours',
+    completed: 'Terminé',
+    canceled: 'Annulé',
+    cancelled: 'Annulé',
+    refused: 'Refusé',
+    expired: 'Expiré',
+  };
+  return map[s] || s;
+}
+
+function appointmentDetailBadgeTypeLabel(t: string) {
+  return t === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers';
+}
+
+// Admin, lab, subaccount, patient : accès à la photo d'annulation ; nurse, préleveur : motif uniquement
 const showCancellationPhoto = computed(() =>
-  user.value?.role === 'super_admin' || user.value?.role === 'lab' || user.value?.role === 'subaccount',
+  user.value?.role === 'super_admin' ||
+  user.value?.role === 'lab' ||
+  user.value?.role === 'subaccount' ||
+  user.value?.role === 'patient',
 );
 
 const isAdmin = computed(() => user.value?.role === 'super_admin');
@@ -569,6 +422,18 @@ const isAdmin = computed(() => user.value?.role === 'super_admin');
 const showCreatorOrigin = computed(() =>
   ['super_admin', 'nurse', 'lab', 'subaccount', 'preleveur', 'pro'].includes(user.value?.role ?? ''),
 );
+
+/** Plateforme patient : sans préfixe « Patient » ; marque OneAndLab affichée en oneandlab. */
+const patientPlatformOriginDisplay = computed(() => {
+  const l = appointment.value?.creator_origin?.label;
+  const s = String(l ?? '')
+    .trim()
+    .replace(/^patient\s+/i, '')
+    .trim();
+  const compact = s.replace(/\s+/g, '').toLowerCase();
+  if (!compact || compact === 'oneandlab') return 'oneandlab';
+  return s;
+});
 
 const creatorSheetOpen = ref(false);
 const creatorSheetSlug = ref<string | null>(null);
@@ -590,60 +455,40 @@ function openAssigneeSheet(type: 'nurse' | 'lab', slug: string) {
   assigneeSheetOpen.value = true;
 }
 
-function getCancellationReasonLabel(code: string) {
-  return CANCELLATION_REASONS[code] || code;
+function isAppointmentStatusCanceled(status: unknown): boolean {
+  const s = String(status ?? '').toLowerCase();
+  return s === 'canceled' || s === 'cancelled';
+}
+
+function cancellationMotifLineForAppt(appt: any): string {
+  const code = appt?.cancellation_reason;
+  if (!code || typeof code !== 'string') return '';
+  const label = CANCELLATION_REASONS[code] || code;
+  return `Motif : ${label}`;
 }
 
 const appointment = ref<any>(null);
 
-/** E-mail patient / proche : masque delegated-…@patients.internal.local (utilise patient_email_display du détail RDV). */
-const patientContactEmailDisplay = computed(() => {
+/** Infirmier / labo / préleveur assigné = utilisateur connecté : masquer la ligne redondante. */
+const viewerIsAssignedNurse = computed(() => {
   const a = appointment.value;
-  if (!a) return { text: '', href: null as string | null };
-  const raw = (a.relative?.email || a.form_data?.email || '') as string;
-  if (!String(raw).trim()) return { text: '', href: null };
-  const display = a.patient_email_display as string | undefined;
-  const text = patientUiEmailLine({ email: raw, email_display: display });
-  if (isTechnicalPatientEmail(raw) && display) {
-    const extracted = extractEmailFromDisplayLine(display);
-    return { text, href: extracted ? `mailto:${extracted}` : null };
-  }
-  if (!isTechnicalPatientEmail(raw)) {
-    return { text: raw, href: `mailto:${raw}` };
-  }
-  return { text, href: null };
+  const u = user.value;
+  if (!a?.assigned_nurse_id || !u?.id) return false;
+  return String(u.id) === String(a.assigned_nurse_id);
 });
 
-const showBookingContactBlock = computed(() => {
+const viewerIsAssignedLabEntity = computed(() => {
   const a = appointment.value;
-  const bc = a?.booking_contact;
-  if (!a?.relative || !bc) return false;
-  const name = `${bc.first_name ?? ''} ${bc.last_name ?? ''}`.trim();
-  return !!(name || bc.phone || bc.email);
+  const u = user.value;
+  if (!a?.assigned_lab_id || !u?.id) return false;
+  return String(u.id) === String(a.assigned_lab_id);
 });
 
-const bookingContactFullName = computed(() => {
-  const bc = appointment.value?.booking_contact;
-  if (!bc) return '';
-  return [bc.first_name, bc.last_name].filter(Boolean).join(' ').trim();
-});
-
-/** E-mail du titulaire (compte) pour RDV proche — masque e-mails techniques comme pour le patient. */
-const bookingContactEmailDisplay = computed(() => {
-  const bc = appointment.value?.booking_contact;
-  if (!bc) return { text: '', href: null as string | null };
-  const raw = (bc.email || '') as string;
-  if (!String(raw).trim()) return { text: '', href: null };
-  const display = bc.email_display as string | undefined;
-  const text = patientUiEmailLine({ email: raw, email_display: display });
-  if (isTechnicalPatientEmail(raw) && display) {
-    const extracted = extractEmailFromDisplayLine(display);
-    return { text, href: extracted ? `mailto:${extracted}` : null };
-  }
-  if (!isTechnicalPatientEmail(raw)) {
-    return { text: raw, href: `mailto:${raw}` };
-  }
-  return { text, href: null };
+const viewerIsAssignedPreleveur = computed(() => {
+  const a = appointment.value;
+  const u = user.value;
+  if (!a?.assigned_to || !u?.id) return false;
+  return String(u.id) === String(a.assigned_to);
 });
 
 const isNursingType = computed(() => {
@@ -694,16 +539,9 @@ const creatorNurseOriginCompact = computed(() => {
 
 const creatorNurseOriginCompactTitle = computed(() => {
   if (viewerIsCreator.value) {
-    return 'Vous avez créé et saisi ce rendez-vous depuis votre espace infirmier.';
+    return 'Créé par vous-même';
   }
   return 'Ce rendez-vous a été saisi par le même infirmier qui l’a accepté.';
-});
-
-const creatorNurseOriginCompactHint = computed(() => {
-  if (viewerIsCreator.value) {
-    return 'Les informations ci‑dessous sur le professionnel assigné vous concernent ; l’origine indique que la saisie ne provient pas d’une demande patient seule sur la plateforme.';
-  }
-  return 'La création de la fiche et la prise en charge sont assurées par le même professionnel.';
 });
 
 const creatorLabOriginCompact = computed(() => {
@@ -719,35 +557,6 @@ const creatorProOriginCompact = computed(() => {
   const o = appointment.value?.creator_origin;
   if (!o || o.kind !== 'pro') return false;
   return viewerIsCreator.value;
-});
-
-const { profileImageUrl } = useProfileImageUrl();
-
-const assigneeNurseImageUrl = computed(() => {
-  const url = appointment.value?.assigned_nurse_profile_image_url;
-  return profileImageUrl(url ?? null) ?? undefined;
-});
-const assigneeNurseInitial = computed(() => {
-  const name = appointment.value?.assigned_nurse_display_name || '';
-  return name ? name.charAt(0).toUpperCase() : 'I';
-});
-
-const assigneeLabImageUrl = computed(() => {
-  const url = appointment.value?.assigned_lab_profile_image_url;
-  return profileImageUrl(url ?? null) ?? undefined;
-});
-const assigneeLabInitial = computed(() => {
-  const name = appointment.value?.assigned_lab_display_name || '';
-  return name ? name.charAt(0).toUpperCase() : 'L';
-});
-
-const assigneePreleveurImageUrl = computed(() => {
-  const url = appointment.value?.assigned_to_profile_image_url;
-  return profileImageUrl(url ?? null) ?? undefined;
-});
-const assigneePreleveurInitial = computed(() => {
-  const name = appointment.value?.assigned_to_display_name || appointment.value?.assigned_to_name || '';
-  return name ? name.charAt(0).toUpperCase() : 'P';
 });
 
 /** Détails complets des autres RDV du même lot (GET /appointments/:id pour chaque fratrie). */
@@ -770,6 +579,25 @@ const batchAppointmentsSorted = computed(() => {
     return ta - tb;
   });
 });
+
+/** Lot multi-soins : une seule carte tableau partagée (sinon une carte par RDV). */
+const batchIsMulti = computed(() => batchAppointmentsSorted.value.length > 1);
+
+/** Lot tout prélèvement : titres uniformes (#) patient + pro/admin/nurse/lab. */
+const mergedHomogeneousBloodBatch = computed(
+  () =>
+    batchIsMulti.value &&
+    batchAppointmentsSorted.value.length > 0 &&
+    batchAppointmentsSorted.value.every((a: any) => a.type === 'blood_test'),
+);
+
+/** Lot tout soins infirmiers : titres uniformes (#) tous espaces. */
+const mergedHomogeneousNursingBatch = computed(
+  () =>
+    batchIsMulti.value &&
+    batchAppointmentsSorted.value.length > 0 &&
+    batchAppointmentsSorted.value.every((a: any) => a.type === 'nursing' || a.type === 'nurse'),
+);
 
 const batchAppointmentIds = computed(() => {
   const a = appointment.value;
@@ -794,31 +622,18 @@ onBeforeUnmount(() => {
   breadcrumbDetailLabel.value = '';
 });
 
-const patientBirthDate = computed(() => {
-  const a = appointment.value;
-  if (!a) return null;
-  return a.relative?.birth_date || a.form_data?.birth_date || null;
-});
+/**
+ * Recharge le RDV.
+ * - `merge` : mise à jour locale (réassignation) sans refetch.
+ * - `options.silent` : pas de spinner ni toasts (ex. polling).
+ */
+let appointmentLoadGeneration = 0;
 
-const patientAge = computed(() => {
-  const d = patientBirthDate.value;
-  if (!d) return null;
-  try {
-    const birth = new Date(typeof d === 'string' && d.match(/^\d{4}-\d{2}-\d{2}/) ? d.slice(0, 10) : d);
-    if (Number.isNaN(birth.getTime())) return null;
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-    if (age < 0) return null;
-    return age === 1 ? '1 an' : `${age} ans`;
-  } catch {
-    return null;
-  }
-});
-
-/** Recharge le RDV. Si merge est fourni (ex. après réassignation), met à jour l’état local immédiatement sans refetch (réponse instantanée). */
-const loadAppointment = async (merge?: Partial<{ assigned_lab_id: string; assigned_to: string | null; assigned_nurse_id: string | null }>) => {
+const loadAppointment = async (
+  merge?: Partial<{ assigned_lab_id: string; assigned_to: string | null; assigned_nurse_id: string | null }>,
+  options?: { silent?: boolean },
+) => {
+  const silent = !!options?.silent;
   if (merge && Object.keys(merge).length > 0) {
     if (appointment.value) {
       Object.assign(appointment.value, merge);
@@ -832,12 +647,16 @@ const loadAppointment = async (merge?: Partial<{ assigned_lab_id: string; assign
     }
     return;
   }
-  loading.value = true;
-  batchSiblingsFull.value = [];
+  if (!silent) loading.value = true;
+  const gen = ++appointmentLoadGeneration;
   try {
     const response = await apiFetch(appointmentGetUrl(String(route.params.id)), { method: 'GET' });
     if (response.success && response.alreadyAccepted) {
-      await navigateTo(`${props.basePath}/appointments?alreadyAccepted=1`);
+      const dest =
+        props.basePath === '/patient'
+          ? `${props.basePath}?alreadyAccepted=1`
+          : `${props.basePath}/appointments?alreadyAccepted=1`;
+      await navigateTo(dest);
       return;
     }
     if (response.success && response.data) {
@@ -868,23 +687,33 @@ const loadAppointment = async (merge?: Partial<{ assigned_lab_id: string; assign
             return null;
           }),
         );
+        if (gen !== appointmentLoadGeneration) {
+          return;
+        }
         batchSiblingsFull.value = full.filter(Boolean) as any[];
+      } else if (gen === appointmentLoadGeneration) {
+        batchSiblingsFull.value = [];
       }
-    } else {
+    } else if (!silent) {
       toast.add({ title: 'Erreur', description: response.error || 'Impossible de charger le rendez-vous', color: 'error' });
     }
   } catch (error: any) {
-    toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' });
+    if (!silent) {
+      toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' });
+    }
   } finally {
-    loading.value = false;
+    if (!silent) loading.value = false;
   }
 };
 
-/** Libellé court pour badge ordonnance (lot multisoins, même patient). */
+/** Libellé court pour badge ordonnance / document (homogène avec la fiche). */
 function formatBatchRdvLabel(apt: any, index: number): string {
-  const cat = apt?.category_name || 'Soin';
   const n = index + 1;
-  return `Soin ${n} — ${cat}`;
+  if (apt?.type === 'blood_test') {
+    return `Prélèvement #${n}`;
+  }
+  const cat = apt?.category_name || 'Soin';
+  return `Soins prévus #${n} · ${cat}`;
 }
 
 const loadDocuments = async () => {
@@ -913,7 +742,11 @@ const loadDocuments = async () => {
           }
         }
       }
-      merged.sort((a, b) => String(a.document_type || '').localeCompare(String(b.document_type || '')));
+      merged.sort((a, b) => {
+        const t = String(a.document_type || '').localeCompare(String(b.document_type || ''));
+        if (t !== 0) return t;
+        return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+      });
       documents.value = merged;
       return;
     }
@@ -937,6 +770,12 @@ const loadDocuments = async () => {
             _batchRdvLabel: ordoLabel,
             _batchOrd: i,
           });
+        } else if (dt === 'care_photo') {
+          merged.push({
+            ...doc,
+            _batchRdvLabel: sortedApts.length > 1 ? ordoLabel : undefined,
+            _batchOrd: i,
+          });
         } else {
           if (seenNonOrdoType.has(dt)) continue;
           seenNonOrdoType.add(dt);
@@ -949,7 +788,11 @@ const loadDocuments = async () => {
       const ta = String(a.document_type || '');
       const tb = String(b.document_type || '');
       if (ta !== tb) return ta.localeCompare(tb);
-      if (ta === 'ordonnance') return ((a as any)._batchOrd ?? 0) - ((b as any)._batchOrd ?? 0);
+      if (ta === 'ordonnance' || ta === 'care_photo') {
+        const o = ((a as any)._batchOrd ?? 0) - ((b as any)._batchOrd ?? 0);
+        if (o !== 0) return o;
+        return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+      }
       return 0;
     });
     documents.value = merged;
@@ -978,18 +821,6 @@ function formatDate(d: string) {
     return d;
   }
 }
-function formatDateOnly(d: string) {
-  if (!d) return '-';
-  try {
-    return new Date(d).toLocaleDateString('fr-FR', { timeZone: PARIS_TZ, day: 'numeric', month: 'long', year: 'numeric' });
-  } catch {
-    return d;
-  }
-}
-function getRelationshipLabel(r: string) {
-  const map: Record<string, string> = { child: 'Enfant', parent: 'Parent', spouse: 'Conjoint(e)', sibling: 'Frère/Sœur', other: 'Autre' };
-  return map[r] || r;
-}
 
 onMounted(async () => {
   await loadAppointment();
@@ -997,5 +828,61 @@ onMounted(async () => {
   await loadDocuments();
 });
 
-defineExpose({ loadAppointment, loadDocuments, appointment, documents, documentsLoading });
+watch(
+  () => route.params.id,
+  async (newId, oldId) => {
+    const n = newId != null ? String(newId) : '';
+    const o = oldId != null ? String(oldId) : '';
+    if (!n || n === o) return;
+    batchSiblingsFull.value = [];
+    await loadAppointment();
+    await loadDocuments();
+  },
+);
+
+/** Notification galerie : scroll vers la carte « Photos de soins » (rdv-care-photo-* ou rdv-doc-*). */
+watch(
+  () => ({
+    q: route.query.careGallery,
+    carePhoto: route.query.carePhoto,
+    careIds: documents.value
+      .filter((d) => d.document_type === 'care_photo')
+      .map((d) => String((d as { id?: string }).id || ''))
+      .join(','),
+    docLoading: documentsLoading.value,
+    aptLoading: loading.value,
+  }),
+  async ({ q, carePhoto, careIds, docLoading, aptLoading }) => {
+    if (q !== '1' && q !== 'true') return;
+    if (aptLoading || docLoading) return;
+    const list = careIds
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (list.length === 0) return;
+
+    const fromQuery =
+      typeof carePhoto === 'string'
+        ? carePhoto.trim()
+        : Array.isArray(carePhoto)
+          ? String(carePhoto[0] || '').trim()
+          : '';
+    const targetId =
+      fromQuery && list.includes(fromQuery) ? fromQuery : list[0];
+
+    await nextTick();
+    const byCare =
+      document.getElementById(`rdv-care-photo-${targetId}`) ||
+      document.getElementById('rdv-care-photos-section');
+    const byDoc = document.getElementById(`rdv-doc-${targetId}`);
+    (byCare || byDoc)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    const rest = { ...route.query } as Record<string, unknown>;
+    delete rest.careGallery;
+    delete rest.carePhoto;
+    void router.replace({ path: route.path, query: rest as Record<string, string | string[] | undefined> });
+  },
+);
+
+defineExpose({ loadAppointment, loadDocuments, appointment, documents, documentsLoading, loading, batchAppointmentsSorted });
 </script>

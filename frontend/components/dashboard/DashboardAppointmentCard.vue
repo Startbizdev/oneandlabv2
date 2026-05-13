@@ -1,72 +1,103 @@
 <template>
   <div
-    class="group rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-200 overflow-hidden flex flex-col"
+    class="group flex h-full flex-col gap-0 overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all duration-200 hover:border-primary-500/30 hover:shadow-md dark:border-gray-800 dark:bg-gray-950"
     :class="{ 'cursor-pointer': !!onAction }"
     @click="onAction ? onAction(appointment) : undefined"
   >
-    <div class="p-3.5 sm:p-4 flex-1 flex flex-col min-w-0">
-      <!-- Header: avatar + nom + statut -->
-      <div class="flex items-start justify-between gap-2 mb-3">
-        <div class="flex items-center gap-2.5 min-w-0">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col px-4 py-2.5 sm:px-5 sm:py-3">
+      <!-- Nom + statut -->
+      <div class="mb-2 flex items-start justify-between gap-2 pr-1">
+        <div class="flex min-w-0 items-center gap-2.5">
           <div
-            class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ring-1 ring-inset"
-            :class="appointment.type === 'blood_test'
-              ? 'bg-red-50 text-red-600 ring-red-200/80 dark:bg-red-950/40 dark:text-red-400 dark:ring-red-900/50'
-              : 'bg-sky-50 text-sky-600 ring-sky-200/80 dark:bg-sky-950/40 dark:text-sky-400 dark:ring-sky-900/50'"
+            class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-gray-200/80 bg-white dark:border-gray-700 dark:bg-gray-950"
+            :class="
+              appointment.type === 'blood_test'
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-sky-600 dark:text-sky-400'
+            "
           >
-            <UIcon :name="careCategoryIconName(appointment)" class="w-4 h-4" />
+            <CareCategoryVisual
+              :image-src="headerCareBadge.imageSrc"
+              :icon-name="headerCareBadge.iconName"
+              icon-class="h-3.5 w-3.5 shrink-0"
+              img-class="h-5 w-5 object-contain"
+            />
           </div>
           <div class="min-w-0">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white truncate">
+            <h3 class="truncate text-sm font-semibold leading-snug text-gray-900 dark:text-white">
               {{ displayPatientName(appointment) }}
             </h3>
-            <p v-if="displayPhone(appointment)" class="text-xs text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
-              <UIcon name="i-lucide-phone" class="w-3 h-3 flex-shrink-0" />
+            <p v-if="displayPhone(appointment)" class="mt-0.5 flex items-center gap-1 truncate text-[11px] text-gray-500 dark:text-gray-400">
+              <UIcon name="i-lucide-phone" class="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />
               {{ displayPhone(appointment) }}
             </p>
           </div>
         </div>
-        <UBadge
-          :color="getStatusColor(appointment.status)"
-          variant="subtle"
-          size="xs"
-          class="rounded-full px-2 py-0.5 font-medium whitespace-nowrap flex-shrink-0"
-          :label="getStatusLabel(appointment.status)"
-        />
+        <div class="flex shrink-0 flex-wrap items-start justify-end gap-1.5">
+          <PatientUrgencyBadge :appointment="appointment" />
+          <UBadge
+            :color="getStatusColor(appointment.status)"
+            variant="subtle"
+            size="sm"
+            class="shrink-0 px-2 py-0.5 text-[11px] font-semibold leading-tight tracking-tight"
+            :label="getStatusLabel(appointment.status)"
+          />
+        </div>
       </div>
 
-      <!-- Corps compact -->
-      <div class="space-y-2 text-xs">
-        <!-- Intervention + catégorie -->
-        <div class="flex items-start gap-2">
-          <UIcon :name="careCategoryIconName(appointment)" class="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
-          <div class="min-w-0 flex-1">
-            <span class="font-medium text-gray-900 dark:text-white">
-              {{ appointment.type === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers' }}
-            </span>
-            <span v-if="appointment.category_name" class="text-gray-500"> • {{ appointment.category_name }}</span>
-          </div>
-        </div>
+      <!-- Date / créneau : bandeau pleine largeur -->
+      <header class="-mx-4 border-b border-gray-200/90 px-4 pb-2 dark:border-gray-800 sm:-mx-5 sm:px-5">
+        <p class="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] leading-snug text-gray-900 dark:text-gray-100">
+          <span class="inline-flex shrink-0 items-center gap-1 font-semibold tabular-nums leading-none">
+            <UIcon
+              name="i-solar:calendar-linear"
+              class="h-[15px] w-[15px] shrink-0 text-gray-500 dark:text-gray-400"
+              aria-hidden="true"
+            />
+            <span class="capitalize">{{ formatDateLabel(appointment) }}</span>
+          </span>
+          <span v-if="getCreneauHoraireLabel(appointment)" class="shrink-0 text-gray-300 dark:text-gray-600" aria-hidden="true">·</span>
+          <span
+            v-if="getCreneauHoraireLabel(appointment)"
+            class="inline-flex min-w-0 items-center gap-1 font-medium tabular-nums leading-none text-gray-600 dark:text-gray-400"
+          >
+            <UIcon name="i-solar:clock-circle-linear" class="h-[15px] w-[15px] shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            <span class="min-w-0">{{ getCreneauHoraireLabel(appointment) }}</span>
+          </span>
+        </p>
+      </header>
 
-        <!-- Prélèvement (blood_test) -->
+      <!-- Prestations (aligné liste patient : une ligne + vignette par analyse / soin) -->
+      <ul class="min-w-0 space-y-px pb-1 pt-2" role="list">
+        <li
+          v-for="(line, idx) in catalogLines"
+          :key="`${line.category_id ?? 'noid'}-${idx}-${line.label}`"
+          class="flex min-w-0 items-center gap-2 py-0.5 first:pt-0 last:pb-0"
+        >
+          <div class="flex h-7 w-7 shrink-0 items-center justify-center self-center" aria-hidden="true">
+            <CareCategoryVisual
+              :image-src="catalogLineBadge(line).imageSrc"
+              :icon-name="catalogLineBadge(line).iconName"
+              img-class="h-6 w-6 rounded object-contain"
+              icon-class="h-3.5 w-3.5 shrink-0 text-gray-600 dark:text-gray-400"
+            />
+          </div>
+          <p class="min-w-0 flex-1 text-[13px] font-medium leading-snug text-gray-800 dark:text-gray-200 line-clamp-2">
+            {{ line.label }}
+          </p>
+        </li>
+      </ul>
+
+      <div class="space-y-1.5 pb-1 text-xs">
         <div v-if="appointment.type === 'blood_test' && getBloodTestTypeLabel(appointment.form_data)" class="flex items-start gap-2">
-          <UIcon name="i-lucide-pipette" class="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
-          <span class="text-gray-700 dark:text-gray-300">{{ getBloodTestTypeLabel(appointment.form_data) }}</span>
-        </div>
-
-        <!-- Date & créneau (pas d'heure, uniquement créneau ou toute la journée) -->
-        <div class="flex items-start gap-2">
-          <UIcon name="i-lucide-calendar-clock" class="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
-          <div class="min-w-0">
-            <span class="font-medium text-gray-900 dark:text-white capitalize">{{ formatDateLabel(appointment) }}</span>
-            <span v-if="getCreneauHoraireLabel(appointment)" class="text-gray-500"> — {{ getCreneauHoraireLabel(appointment) }}</span>
-          </div>
+          <UIcon name="i-lucide-pipette" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+          <span class="leading-snug text-gray-700 dark:text-gray-300">{{ getBloodTestTypeLabel(appointment.form_data) }}</span>
         </div>
       </div>
     </div>
 
-    <!-- Action centrée, mini -->
-    <div class="px-3.5 sm:px-4 pb-3.5 sm:pb-4 pt-0 flex justify-center">
+    <!-- Action -->
+    <div class="flex justify-center border-t border-gray-100 px-4 py-2.5 dark:border-gray-800 sm:px-5">
       <slot name="action" :appointment="appointment" :base-path="basePath">
         <UButton
           v-if="onAction"
@@ -93,13 +124,24 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { formatBloodTestSeriesDurationDays } from '~/utils/duration-display';
-import { resolveCareIconFromCategory } from '~/utils/care-icons';
+import {
+  buildCategoryAccentMapForList,
+  careListBadgeForCatalogItem,
+  resolveCareCategoryImageSrc,
+  resolveCareIconFromCategory,
+  type CareCategoryRowMinimal,
+} from '~/utils/care-icons';
+import { appointmentPatientDisplayName } from '~/utils/appointment-patient-display';
+import { formatAvailabilityDisplayFr } from '~/utils/appointment-datetime-fr';
+import {
+  patientRdvCatalogDisplayLines,
+  type PatientRdvCatalogLine,
+} from '~/utils/patient-rdv-list-display';
 
-function careCategoryIconName(apt: any): string {
-  const t = apt?.type === 'blood_test' ? 'blood_test' : 'nursing';
-  return resolveCareIconFromCategory({ type: t, icon: apt?.category_icon ?? null });
-}
+const config = useRuntimeConfig();
+
 const props = withDefaults(
   defineProps<{
     appointment: any;
@@ -110,9 +152,37 @@ const props = withDefaults(
     formatDateLabel: (apt: any) => string;
     /** Masquer les données sensibles (patient, tél, adresse) tant que RDV pending */
     maskSensitive?: boolean;
+    /** Catalogue `/categories` — icônes / images officielles par id (optionnel). */
+    categories?: CareCategoryRowMinimal[];
   }>(),
-  { maskSensitive: false }
+  { maskSensitive: false, categories: () => [] },
 );
+
+const categoryAccentMap = computed(() => buildCategoryAccentMapForList(props.categories ?? []));
+
+const catalogLines = computed(() => patientRdvCatalogDisplayLines(props.appointment));
+
+function catalogLineBadge(line: PatientRdvCatalogLine) {
+  return careListBadgeForCatalogItem(
+    props.appointment?.type,
+    { category_id: line.category_id, category_image_url: line.category_image_url },
+    props.categories ?? [],
+    categoryAccentMap.value,
+    config.public.apiBase,
+  );
+}
+
+const headerCareBadge = computed(() => {
+  const lines = catalogLines.value;
+  if (lines.length > 0) return catalogLineBadge(lines[0]);
+  const t = props.appointment?.type === 'blood_test' ? 'blood_test' : 'nursing';
+  return {
+    iconName: resolveCareIconFromCategory({ type: t, icon: props.appointment?.category_icon ?? null }),
+    iconColor: '',
+    tileBg: '',
+    imageSrc: resolveCareCategoryImageSrc(props.appointment?.category_image_url ?? null, config.public.apiBase),
+  };
+});
 
 function getStatusColor(status: string): 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral' {
   const colors: Record<string, 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral'> = {
@@ -162,13 +232,16 @@ function maskPhone(phone: string): string {
 }
 
 function displayPatientName(apt: any): string {
-  if (!apt?.form_data) return '—';
+  if (!apt) return '—';
+  const full = appointmentPatientDisplayName(apt);
+  if (!full) return '—';
   if (props.maskSensitive) {
-    const fn = maskString(apt.form_data.first_name || '', 1, 0);
-    const ln = maskString(apt.form_data.last_name || '', 1, 0);
-    return `${fn} ${ln}`.trim() || '••••••';
+    const parts = full.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '••••••';
+    if (parts.length === 1) return maskString(parts[0], 1, 0);
+    return `${maskString(parts[0], 1, 0)} ${maskString(parts[parts.length - 1], 1, 0)}`.trim() || '••••••';
   }
-  return [apt.form_data.first_name, apt.form_data.last_name].filter(Boolean).join(' ').trim() || '—';
+  return full;
 }
 
 function displayPhone(apt: any): string {
@@ -200,33 +273,8 @@ function getBloodTestTypeLabel(fd: any): string {
   return '';
 }
 
-function formatAvailability(availability: string | object | null | undefined): string {
-  if (availability == null) return '';
-  try {
-    let avail: any = availability;
-    if (typeof availability === 'string') {
-      const trimmed = availability.trim();
-      if (!trimmed) return '';
-      avail = JSON.parse(trimmed);
-    }
-    if (!avail || typeof avail !== 'object') return '';
-    if (avail.type === 'all_day') return 'Toute la journée';
-    if (avail.type === 'custom' && Array.isArray(avail.range) && avail.range.length >= 2) {
-      const start = Math.floor(Number(avail.range[0]));
-      const end = Math.floor(Number(avail.range[1]));
-      if (!Number.isNaN(start) && !Number.isNaN(end)) return `${start}h00 - ${end}h00`;
-    }
-  } catch {
-    // ignore
-  }
-  return '';
-}
-
-/** Créneau horaire uniquement (Toute la journée ou 9h-11h), pas d'heure précise */
+/** Créneau affiché sur la carte (créneau demandé ou heure du RDV). */
 function getCreneauHoraireLabel(appointment: any): string {
-  const availability = appointment.form_data?.availability;
-  const formatted = formatAvailability(availability);
-  if (formatted) return formatted;
-  return ''; // Pas de fallback sur l'heure : on a des créneaux, pas des heures
+  return formatAvailabilityDisplayFr(appointment.form_data?.availability, appointment.scheduled_at);
 }
 </script>

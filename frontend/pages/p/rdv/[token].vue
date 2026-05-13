@@ -239,6 +239,22 @@ useHead(() => {
   };
 });
 
+/** Couplé à `NurseRdvSharePanel` : l’auteur du partage ne doit pas être basculé vers la modal confrère s’il ouvre le lien tout de suite. */
+const NURSE_SHARE_JUST_SENT_KEY = 'nurse_share_just_sent';
+
+function readNurseShareJustSent(): { appointmentId: string; at: number } | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(NURSE_SHARE_JUST_SENT_KEY);
+    if (!raw) return null;
+    const j = JSON.parse(raw) as { appointmentId?: string; at?: number };
+    if (!j?.appointmentId || typeof j.at !== 'number') return null;
+    return { appointmentId: String(j.appointmentId), at: j.at };
+  } catch {
+    return null;
+  }
+}
+
 async function fetchSharedAppointment() {
   if (!token.value) {
     error.value = 'Lien invalide';
@@ -261,18 +277,35 @@ async function fetchSharedAppointment() {
 
 watch(
   [isAuthenticated, user, data],
-  () => {
-    if (isAuthenticated.value && user.value?.role === 'nurse' && data.value?.appointmentId) {
-      navigateTo({
-        path: '/nurse/demandes',
-        query: {
-          shareToken: token.value,
-          openAppointment: data.value.appointmentId,
-        },
-      });
+  async () => {
+    if (!isAuthenticated.value || user.value?.role !== 'nurse' || !data.value?.appointmentId) return;
+
+    const suppress = readNurseShareJustSent();
+    const fresh =
+      suppress &&
+      suppress.appointmentId === String(data.value.appointmentId) &&
+      Date.now() - suppress.at < 180_000;
+
+    if (fresh) {
+      try {
+        sessionStorage.removeItem(NURSE_SHARE_JUST_SENT_KEY);
+      } catch {
+        /* ignore */
+      }
+      /* Ne pas ouvrir la modal confrère ; le RDV peut être republié — la fiche détail n’est pas forcée. */
+      await navigateTo({ path: '/nurse/appointments', replace: true });
+      return;
     }
+
+    await navigateTo({
+      path: '/nurse/demandes',
+      query: {
+        shareToken: token.value,
+        openAppointment: data.value.appointmentId,
+      },
+    });
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 onMounted(() => {

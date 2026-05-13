@@ -9,7 +9,7 @@
   <ul v-else class="divide-y divide-gray-100 dark:divide-gray-800">
     <li v-for="group in groupedUpcoming" :key="group.key">
       <div
-        class="flex flex-col gap-2.5 p-2.5 sm:flex-row sm:items-start sm:gap-3 sm:p-3"
+        class="flex flex-col gap-3 p-3 sm:flex-row sm:items-start sm:gap-4 sm:p-4"
       >
         <div
           class="mx-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset sm:mx-0"
@@ -33,11 +33,11 @@
             </UBadge>
           </div>
 
-          <ul class="space-y-0.5">
+          <ul class="space-y-1">
             <li v-for="rdv in group.appointments" :key="rdv.id">
               <NuxtLink
                 :to="`${appointmentsBasePath}/appointments/${rdv.id}`"
-                class="group/line flex flex-wrap items-start justify-between gap-x-3 gap-y-2 rounded-lg px-2 py-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                class="group/line flex flex-wrap items-start justify-between gap-x-3 gap-y-2 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
               >
                 <div class="min-w-0 flex-1 space-y-1.5">
                   <div class="flex flex-wrap items-center gap-1.5">
@@ -101,6 +101,9 @@
 </template>
 
 <script setup lang="ts">
+import { appointmentListAddressLine } from '~/utils/address-display'
+import { appointmentPatientDisplayName, appointmentPatientSearchTextLower } from '~/utils/appointment-patient-display'
+
 const props = withDefaults(
   defineProps<{
     appointments: any[]
@@ -130,21 +133,13 @@ function isUpcomingAppointment(apt: any): boolean {
 
 function patientGroupKey(apt: any): string {
   if (apt.patient_id) return `pid:${apt.patient_id}`
-  const fn = String(apt.form_data?.first_name ?? '')
-    .trim()
-    .toLowerCase()
-  const ln = String(apt.form_data?.last_name ?? '')
-    .trim()
-    .toLowerCase()
-  if (fn || ln) return `name:${fn}|${ln}`
+  const blob = appointmentPatientSearchTextLower(apt)
+  if (blob) return `name:${blob}`
   return `id:${apt.id}`
 }
 
 function patientNameFromApt(apt: any): string {
-  const fn = String(apt.form_data?.first_name ?? '').trim()
-  const ln = String(apt.form_data?.last_name ?? '').trim()
-  const n = `${fn} ${ln}`.trim()
-  return n || 'Patient'
+  return appointmentPatientDisplayName(apt) || 'Patient'
 }
 
 function compareScheduled(a: any, b: any): number {
@@ -204,7 +199,7 @@ function groupAvatarClass(group: { appointments: any[] }): string {
 }
 
 function typeLabel(apt: any): string {
-  return isBloodTest(apt) ? 'Prise de sang' : 'Soins infirmiers'
+  return isBloodTest(apt) ? 'Prélèvement' : 'Soins infirmiers'
 }
 
 function typeBadgeColor(apt: any): 'error' | 'info' {
@@ -244,10 +239,7 @@ const getCreneauHoraireLabel = (rdv: any): string => {
   return 'Heure non précisée'
 }
 
-const addressLabel = (rdv: any): string => {
-  if (!rdv?.address) return ''
-  return typeof rdv.address === 'object' ? rdv.address.label : rdv.address
-}
+const addressLabel = (rdv: any): string => appointmentListAddressLine(rdv)?.trim() ?? ''
 
 const getAssigneeLabel = (rdv: any): string => {
   if (rdv.type !== 'blood_test') return ''

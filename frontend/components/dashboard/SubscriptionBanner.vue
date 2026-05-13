@@ -1,18 +1,24 @@
 <template>
   <div
     v-if="visible"
-    class="w-full flex items-center justify-center gap-2 px-3 py-1.5 bg-slate-800 text-white text-xs font-medium shadow-sm"
+    class="w-full flex flex-col items-stretch gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-center sm:gap-3 sm:py-1.5 bg-slate-800 text-white text-xs font-medium shadow-sm"
   >
-    <span class="shrink-0" aria-hidden="true">🚀</span>
-    <span class="text-center truncate max-w-2xl">
-      {{ role === 'nurse' ? 'Passez en Pro pour étendre votre rayon, débloquer tous les soins et gérer vos rendez-vous sans limite.' : 'Passez à un abonnement pour ajouter des préleveurs et sous-comptes.' }}
-    </span>
+    <div class="flex items-start justify-center gap-2 text-center sm:max-w-2xl sm:items-center sm:min-w-0">
+      <span class="shrink-0 pt-0.5 sm:pt-0" aria-hidden="true">🚀</span>
+      <span class="min-w-0 flex-1 text-[11px] leading-snug sm:text-xs">
+        {{
+          role === 'nurse'
+            ? 'Passez en Pro pour étendre votre rayon, débloquer tous les soins et gérer vos rendez-vous sans limite.'
+            : 'Passez à un abonnement pour ajouter des préleveurs et sous-comptes.'
+        }}
+      </span>
+    </div>
     <NuxtLink
       :to="role === 'nurse' ? '/nurse/abonnement' : '/lab/abonnement'"
-      class="shrink-0 inline-flex items-center gap-1 rounded bg-white text-slate-800 px-2 py-1 text-xs font-semibold hover:bg-slate-100 transition-colors"
+      class="inline-flex shrink-0 items-center justify-center gap-1 rounded bg-white px-2 py-1.5 text-xs font-semibold text-slate-800 transition-colors hover:bg-slate-100 sm:inline-flex sm:py-1"
     >
       Voir les offres
-      <UIcon name="i-lucide-arrow-right" class="w-3.5 h-3.5" />
+      <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5 shrink-0" />
     </NuxtLink>
   </div>
 </template>

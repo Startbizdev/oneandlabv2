@@ -1,5 +1,5 @@
 <template>
-  <AppointmentDetailPage ref="detailRef" base-path="/lab">
+  <AppointmentDetailPage ref="detailRef" base-path="/lab" :show-sidebar-actions-card="standardSidebarActionsCardVisible">
     <template #documentsCard="{ appointment, documents, documentsLoading, loadDocuments }">
       <AppointmentDocumentsSection
         :documents="documents || []"
@@ -15,62 +15,35 @@
       />
     </template>
     <template #sidebarActions="{ appointment, loadAppointment }">
-      <div class="flex flex-col gap-3">
-        <UEmpty
-          v-if="appointment && appointment.status === 'canceled'"
-          icon="i-lucide-calendar-x"
-          title="Rendez-vous annulé"
-          description="Ce rendez-vous a été annulé. Aucune action disponible."
-          variant="naked"
-          size="md"
-        />
-        <UEmpty
-          v-else-if="appointment && appointment.status === 'completed'"
-          icon="i-lucide-check-circle"
-          title="Rendez-vous terminé"
-          description="Ce rendez-vous a été marqué comme terminé. Le patient pourra laisser un avis."
-          variant="naked"
-          size="md"
-        />
-        <template v-else>
-          <div class="flex flex-col gap-3">
-            <template v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)">
-              <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed rounded-lg bg-gray-50 dark:bg-gray-800/60 px-3 py-2.5 border border-gray-100 dark:border-gray-700/80">
-                Le rendez-vous passera automatiquement en « terminé » le jour suivant la date prévue (clôture système).
-              </p>
-              <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
-                Planification
-              </p>
-              <UButton
-                type="button"
-                color="neutral"
-                variant="outline"
-                size="md"
-                leading-icon="i-lucide-calendar-plus"
-                block
-                :on-click="() => openRescheduleModal(appointment)"
-              >
-                Reprendre RDV pour ce patient
-              </UButton>
-              <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
-                Annulation
-              </p>
-              <UButton
-                type="button"
-                color="error"
-                variant="outline"
-                size="md"
-                leading-icon="i-lucide-x-circle"
-                :loading="canceling"
-                block
-                :on-click="() => openCancelModal(appointment, loadAppointment)"
-              >
-                Annuler le rendez-vous
-              </UButton>
-            </template>
-          </div>
-        </template>
-      </div>
+      <AppointmentDetailSidebarTerminalShell :status="appointment?.status">
+        <div class="flex flex-col gap-3">
+          <template v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)">
+            <UButton
+              type="button"
+              color="neutral"
+              variant="outline"
+              size="md"
+              leading-icon="i-lucide-calendar-plus"
+              block
+              :on-click="() => openRescheduleModal(appointment)"
+            >
+              Reprendre RDV pour ce patient
+            </UButton>
+            <UButton
+              type="button"
+              color="error"
+              variant="outline"
+              size="md"
+              leading-icon="i-lucide-x-circle"
+              :loading="canceling"
+              block
+              :on-click="() => openCancelModal(appointment, loadAppointment)"
+            >
+              Annuler le rendez-vous
+            </UButton>
+          </template>
+        </div>
+      </AppointmentDetailSidebarTerminalShell>
     </template>
     <!-- Section Assignation : composant réutilisable lab/sous-compte + préleveur -->
     <template #assignationSection="{ appointment, loadAppointment }">
@@ -105,12 +78,20 @@ import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailR
 import { apiFetch } from '~/utils/api';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { isPendingIncomingOffer } from '~/utils/appointment-offer';
+import { standardAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
+import {
+  canUploadLabResultatsForAppointmentStatus,
+  canUploadMedicalDocumentsForAppointmentStatus,
+} from '~/utils/appointment-documents-upload';
 
 const toast = useAppToast();
 const { user } = useAuth();
 const config = useRuntimeConfig();
 const route = useRoute();
 const detailRef = ref<{ loadAppointment: () => Promise<void>; loadDocuments?: () => Promise<void>; appointment: unknown } | null>(null);
+const standardSidebarActionsCardVisible = computed(() =>
+  standardAppointmentSidebarCardVisible(getAppointmentFromDetailRef(detailRef)),
+);
 const showCancelModal = ref(false);
 const downloadingDocId = ref<string | null>(null);
 const downloadingDocIds = computed(() => (downloadingDocId.value ? [downloadingDocId.value] : []));
@@ -134,14 +115,17 @@ const uploadDocumentTypes = [
 ];
 
 function uploadTypesForAppointment(appointment: any) {
+  let list = uploadDocumentTypes;
   if (!appointment || appointment.type !== 'blood_test') {
-    return uploadDocumentTypes.filter((t) => t.value !== 'resultats');
+    list = list.filter((t) => t.value !== 'resultats');
+  } else if (!canUploadLabResultatsForAppointmentStatus(appointment.status)) {
+    list = list.filter((t) => t.value !== 'resultats');
   }
-  return uploadDocumentTypes;
+  return list;
 }
 
 function canUploadDocuments(appointment: any) {
-  return appointment && ['confirmed', 'inProgress', 'completed'].includes(appointment?.status);
+  return !!appointment && canUploadMedicalDocumentsForAppointmentStatus(appointment.status);
 }
 
 function setAppointmentForUpload(apt: any) {

@@ -1,14 +1,123 @@
-import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
+import {
+  isBloodTestAppointment,
+  isNursingAppointment,
+} from '~/utils/appointment-type-rules';
 
 /**
- * Regroupe les RDV d’un même lot pour les soins infirmiers.
- * Les prises de sang (`blood_test`) ne devraient plus arriver en lot, mais les anciennes lignes
- * non migrées sont regroupées ici comme fallback d’affichage uniquement.
+ * Regroupe les RDV d’un même lot (`creation_batch_id`) : soins infirmiers et prises de sang
+ * (plusieurs créneaux / prélèvements réservés en une fois).
  */
 
 export type AppointmentListRow =
   | { kind: 'single'; appointment: any }
   | { kind: 'batch'; appointments: any[]; key: string };
+
+/** Lot = uniquement des RDV prise de sang (plusieurs lignes → une carte liste, détail via le 1er id). */
+export function isBloodTestOnlyBatchRow(row: AppointmentListRow): boolean {
+  if (row.kind !== 'batch') return false;
+  return row.appointments.every((a) => isBloodTestAppointment(a?.type));
+}
+
+/** Lot = uniquement des RDV soins infirmiers (`creation_batch_id` historique). */
+export function isNursingOnlyBatchRow(row: AppointmentListRow): boolean {
+  if (row.kind !== 'batch') return false;
+  return row.appointments.every((a) => isNursingAppointment(a?.type));
+}
+
+function sortAppointmentsBySchedule(appointments: any[]): any[] {
+  return [...appointments].sort(
+    (a, b) =>
+      new Date(a.scheduled_at || a.created_at || 0).getTime() -
+      new Date(b.scheduled_at || b.created_at || 0).getTime(),
+  );
+}
+
+/**
+ * Fusionne plusieurs RDV `blood_test` d’un même lot pour l’affichage (une carte, prestations réunies).
+ */
+export function mergeBloodBatchAppointmentsForListDisplay(appointments: any[]): any {
+  const sorted = sortAppointmentsBySchedule(appointments);
+  const primary = sorted[0];
+  const mergedItems: any[] = [];
+  const seen = new Set<string>();
+  for (const apt of sorted) {
+    const raw = Array.isArray(apt?.blood_test_items) ? apt.blood_test_items : [];
+    if (raw.length > 0) {
+      for (const it of raw) {
+        const label = String(it?.label ?? it?.category_name ?? '').trim();
+        const cid = it?.category_id != null ? String(it.category_id) : '';
+        const key = `${cid}|${label}`;
+        if (label === '' && cid === '') continue;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        mergedItems.push(it);
+      }
+    } else {
+      const label = String(apt?.category_name ?? apt?.form_data?.category_name ?? '').trim();
+      const cid = apt?.category_id != null ? String(apt.category_id) : '';
+      const key = `${cid}|${label}`;
+      if (label === '' && cid === '') continue;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      mergedItems.push({
+        label: label || null,
+        category_id: cid || null,
+        category_name: apt?.category_name ?? null,
+        category_image_url: apt?.category_image_url ?? null,
+      });
+    }
+  }
+  return {
+    ...primary,
+    blood_test_items: mergedItems.length > 0 ? mergedItems : primary.blood_test_items,
+  };
+}
+
+/**
+ * Fusionne plusieurs RDV `nursing` d’un même lot (legacy) pour l’affichage liste (badges / titre unique).
+ */
+export function mergeNursingBatchAppointmentsForListDisplay(appointments: any[]): any {
+  const sorted = sortAppointmentsBySchedule(appointments);
+  const primary = sorted[0];
+  const mergedItems: any[] = [];
+  const seen = new Set<string>();
+  for (const apt of sorted) {
+    const raw = Array.isArray(apt?.nursing_items_display)
+      ? apt.nursing_items_display
+      : Array.isArray(apt?.nursing_items)
+        ? apt.nursing_items
+        : [];
+    if (raw.length > 0) {
+      for (const it of raw) {
+        const label = String(it?.label ?? it?.category_name ?? '').trim();
+        const cid = it?.category_id != null ? String(it.category_id) : '';
+        const key = `${cid}|${label}`;
+        if (label === '' && cid === '') continue;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        mergedItems.push(it);
+      }
+    } else {
+      const label = String(apt?.category_name ?? apt?.form_data?.category_name ?? '').trim();
+      const cid = apt?.category_id != null ? String(apt.category_id) : '';
+      const key = `${cid}|${label}`;
+      if (label === '' && cid === '') continue;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      mergedItems.push({
+        label: label || null,
+        category_id: cid || null,
+        category_name: apt?.category_name ?? null,
+        category_image_url: apt?.category_image_url ?? null,
+      });
+    }
+  }
+  return {
+    ...primary,
+    nursing_items: mergedItems.length > 0 ? mergedItems : primary.nursing_items,
+    nursing_items_display: mergedItems.length > 0 ? mergedItems : primary.nursing_items_display,
+  };
+}
 
 export function groupAppointmentsByBatch(list: any[]): AppointmentListRow[] {
   const out: AppointmentListRow[] = [];
@@ -144,6 +253,31 @@ export function groupAppointmentsForNurseMesDemandes(list: any[]): AppointmentLi
           .join(',')}`;
     out.push({ kind: 'batch', appointments: cluster, key });
     cluster.forEach((x) => emitted.add(x.id));
+  }
+  return out;
+}
+
+/**
+ * Une entrée par carte widget dashboard : lots blood / nursing fusionnés (comme liste plein écran).
+ */
+export function mergeBatchRowsForDashboardList(source: any[]): any[] {
+  const rows = groupAppointmentsByBatch(source);
+  const out: any[] = [];
+  for (const row of rows) {
+    if (row.kind === 'single') {
+      out.push(row.appointment);
+      continue;
+    }
+    const sorted = sortAppointmentsBySchedule(row.appointments);
+    if (isBloodTestOnlyBatchRow(row)) {
+      out.push(mergeBloodBatchAppointmentsForListDisplay(sorted));
+    } else if (isNursingOnlyBatchRow(row)) {
+      out.push(mergeNursingBatchAppointmentsForListDisplay(sorted));
+    } else {
+      for (const a of sorted) {
+        out.push(a);
+      }
+    }
   }
   return out;
 }

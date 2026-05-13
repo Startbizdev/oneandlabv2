@@ -1,6 +1,12 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard title="Gestion des avis" description="Modérez les avis laissés par les patients sur les professionnels." />
+  <AppPageShell max-width="7xl" class="space-y-6">
+    <template #pageHeader>
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Gestion des avis"
+        description="Modérez les avis laissés par les patients sur les professionnels."
+      />
+    </template>
 
     <div class="flex flex-col sm:flex-row sm:items-center gap-4">
       <UInput
@@ -133,7 +139,7 @@
         </UModal>
       </Teleport>
     </ClientOnly>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

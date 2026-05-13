@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Logger.php';
+require_once __DIR__ . '/../../lib/CareCategoryImage.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -42,6 +43,11 @@ $dsn = sprintf(
 );
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
 $logger = new Logger();
+
+$backendRoot = realpath(__DIR__ . '/../..');
+if ($backendRoot === false) {
+    $backendRoot = __DIR__ . '/../..';
+}
 
 // Extraire l'ID depuis l'URL
 $id = $_GET['id'] ?? null;
@@ -125,20 +131,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $isActive = ($v === true || $v === 1 || $v === '1') ? 1 : 0;
         }
 
-        $stmt = $db->prepare('
-            UPDATE care_categories
-            SET name = ?, description = ?, type = ?, icon = ?, is_active = ?
-            WHERE id = ?
-        ');
+        $hasImgCol = $db->query("SHOW COLUMNS FROM care_categories LIKE 'image_url'")->rowCount() > 0;
+        $imageUrl = $existing['image_url'] ?? null;
+        if ($hasImgCol && array_key_exists('image_url', $data)) {
+            $vImg = $data['image_url'];
+            if ($vImg === null || $vImg === '') {
+                CareCategoryImage::deleteAllForCategory($backendRoot, $id);
+                $imageUrl = null;
+            } else {
+                $imageUrl = is_string($vImg) ? trim($vImg) : null;
+            }
+        }
 
-        $stmt->execute([
-            $data['name'] ?? $existing['name'],
-            $data['description'] ?? $existing['description'],
-            $data['type'] ?? $existing['type'],
-            array_key_exists('icon', $data) ? $data['icon'] : $existing['icon'],
-            $isActive,
-            $id
-        ]);
+        if ($hasImgCol) {
+            $stmt = $db->prepare('
+                UPDATE care_categories
+                SET name = ?, description = ?, type = ?, icon = ?, image_url = ?, is_active = ?
+                WHERE id = ?
+            ');
+            $stmt->execute([
+                $data['name'] ?? $existing['name'],
+                $data['description'] ?? $existing['description'],
+                $data['type'] ?? $existing['type'],
+                array_key_exists('icon', $data) ? $data['icon'] : $existing['icon'],
+                $imageUrl,
+                $isActive,
+                $id,
+            ]);
+        } else {
+            $stmt = $db->prepare('
+                UPDATE care_categories
+                SET name = ?, description = ?, type = ?, icon = ?, is_active = ?
+                WHERE id = ?
+            ');
+            $stmt->execute([
+                $data['name'] ?? $existing['name'],
+                $data['description'] ?? $existing['description'],
+                $data['type'] ?? $existing['type'],
+                array_key_exists('icon', $data) ? $data['icon'] : $existing['icon'],
+                $isActive,
+                $id,
+            ]);
+        }
 
         // Remplacer les options (sous-choix) si fournies
         if (array_key_exists('options', $data)) {
@@ -181,6 +215,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'icon' => array_key_exists('icon', $data) ? $data['icon'] : $existing['icon'],
             'is_active' => (bool) $isActive,
         ];
+        if ($hasImgCol) {
+            $updated['image_url'] = $imageUrl;
+        }
         $optStmt = $db->prepare('SELECT option_key, label, field_type, options, is_required, sort_order FROM care_category_options WHERE care_category_id = ? ORDER BY sort_order, id');
         $optStmt->execute([$id]);
         $options = [];
@@ -218,6 +255,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             echo json_encode(['success' => false, 'error' => 'Catégorie introuvable']);
             exit;
         }
+
+        CareCategoryImage::deleteAllForCategory($backendRoot, $id);
 
         $stmt = $db->prepare('DELETE FROM care_categories WHERE id = ?');
         $stmt->execute([$id]);

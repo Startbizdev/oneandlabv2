@@ -217,6 +217,18 @@ foreach ($users as $user) {
     }
 }
 
+// Si un email seed existe déjà avec un autre rôle (ex. inscription patient avant création du super_admin),
+// l’INSERT ci-dessus échoue et le compte reste incorrect — on réaligne le rôle attendu.
+echo "\n🔧 Alignement des rôles sur les comptes seed @oneandlab.fr...\n";
+foreach ($users as $user) {
+    $hash = hash('sha256', strtolower($user['email']));
+    $stmt = $pdo->prepare('UPDATE profiles SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE email_hash = ? AND role <> ?');
+    $stmt->execute([$user['role'], $hash, $user['role']]);
+    if ($stmt->rowCount() > 0) {
+        echo "  ✓ Rôle corrigé pour {$user['email']} → {$user['role']}\n";
+    }
+}
+
 echo "\n✅ Setup terminé avec succès!\n";
 echo "\n📧 Comptes créés:\n";
 foreach ($users as $user) {

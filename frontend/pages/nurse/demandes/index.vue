@@ -1,12 +1,14 @@
 <template>
-  <div class="space-y-3">
-    <TitleDashboard title="Mes demandes" compact>
+  <AppPageShell class="space-y-3">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" title="Mes demandes" compact>
       <template #description>
         <span class="text-sm text-gray-500 dark:text-gray-400">
           Soins à accepter ou refuser — mise à jour automatique.
         </span>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
     <AppointmentListPage
       ref="listRef"
@@ -19,7 +21,7 @@
       :status-filter-api="'pending'"
       @card-click="(a) => openAppointmentModal(a.id)"
     />
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

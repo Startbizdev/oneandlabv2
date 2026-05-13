@@ -1,5 +1,5 @@
 <template>
-  <UApp :toaster="appConfig?.toaster">
+  <UApp :toaster="appConfig?.toaster" :locale="nuxtUiFr">
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
@@ -7,6 +7,8 @@
 </template>
 
 <script setup lang="ts">
+import { fr as nuxtUiFr } from '@nuxt/ui/locale';
+
 const appConfig = useAppConfig();
 const { initAuth } = useAuth();
 

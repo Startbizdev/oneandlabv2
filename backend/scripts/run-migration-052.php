@@ -2,8 +2,10 @@
 <?php
 
 /**
- * Exécute la migration 052 (creation_batch_id sur appointments)
- * Usage: depuis backend/ → php scripts/run-migration-052.php
+ * Ajoute creation_batch_id + index sur appointments (migration 052).
+ * Idempotent : vérifie information_schema avant ALTER / CREATE INDEX.
+ *
+ * Usage : depuis backend/ → php scripts/run-migration-052.php
  */
 
 $baseDir = dirname(__DIR__);
@@ -54,31 +56,43 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     ]);
 
-    $migrationFile = $baseDir . '/../database/migrations/052_appointments_creation_batch_id.sql';
-    if (!file_exists($migrationFile)) {
-        $migrationFile = __DIR__ . '/../../database/migrations/052_appointments_creation_batch_id.sql';
+    $dbName = $config['database'];
+
+    $colCount = (int) $pdo->query(
+        "SELECT COUNT(*) FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = " . $pdo->quote($dbName) . "
+           AND TABLE_NAME = 'appointments'
+           AND COLUMN_NAME = 'creation_batch_id'"
+    )->fetchColumn();
+
+    if ($colCount === 0) {
+        $pdo->exec(
+            "ALTER TABLE appointments
+             ADD COLUMN creation_batch_id CHAR(36) NULL DEFAULT NULL
+             COMMENT 'UUID partagé par un lot de créations' AFTER id"
+        );
+        echo "✅ Colonne creation_batch_id ajoutée.\n";
+    } else {
+        echo "ℹ️  Colonne creation_batch_id déjà présente.\n";
     }
-    if (!file_exists($migrationFile)) {
-        throw new RuntimeException('Fichier migration 052 introuvable');
+
+    $idxCount = (int) $pdo->query(
+        "SELECT COUNT(*) FROM information_schema.STATISTICS
+         WHERE TABLE_SCHEMA = " . $pdo->quote($dbName) . "
+           AND TABLE_NAME = 'appointments'
+           AND INDEX_NAME = 'idx_appointments_creation_batch_id'"
+    )->fetchColumn();
+
+    if ($idxCount === 0) {
+        $pdo->exec('CREATE INDEX idx_appointments_creation_batch_id ON appointments (creation_batch_id)');
+        echo "✅ Index idx_appointments_creation_batch_id créé.\n";
+    } else {
+        echo "ℹ️  Index idx_appointments_creation_batch_id déjà présent.\n";
     }
-    $sql = file_get_contents($migrationFile);
-    // Ignorer les lignes de commentaire ; PDO : une instruction par exec
-    $lines = explode("\n", $sql);
-    $withoutComments = array_filter($lines, static function ($line) {
-        return !preg_match('/^\s*--/', $line);
-    });
-    $sqlClean = trim(implode("\n", $withoutComments));
-    foreach (array_filter(array_map('trim', explode(';', $sqlClean))) as $stmt) {
-        $pdo->exec($stmt);
-    }
-    echo "✅ Migration 052 exécutée avec succès.\n";
+
+    echo "✅ Terminé. Exécutez ensuite la migration 055 si besoin (merged_into + appointment_blood_test_items).\n";
     exit(0);
 } catch (PDOException $e) {
-    $msg = $e->getMessage();
-    if (stripos($msg, 'Duplicate column') !== false || stripos($msg, 'already exists') !== false) {
-        echo "ℹ️  Colonne ou index déjà présent — rien à faire.\n";
-        exit(0);
-    }
-    fwrite(STDERR, '❌ Erreur: ' . $msg . "\n");
+    fwrite(STDERR, '❌ Erreur: ' . $e->getMessage() . "\n");
     exit(1);
 }

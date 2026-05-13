@@ -1,6 +1,7 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
+  <AppPageShell class="space-y-6" header-bleed="patient">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       title="Mes proches"
       description="Gérez les proches pour lesquels vous prenez des rendez-vous"
     >
@@ -14,7 +15,8 @@
           Ajouter un proche
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
     <div class="container mx-auto px-4 max-w-7xl">
     <!-- Liste des proches -->
@@ -246,7 +248,6 @@
               v-model="relativeForm.address"
               label="Adresse"
               name="address"
-              placeholder="Commencez à taper votre adresse..."
             />
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -313,7 +314,7 @@
       @confirm="confirmDelete"
     />
     </div>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

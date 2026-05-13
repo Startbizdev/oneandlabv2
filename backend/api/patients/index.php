@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     $input = json_decode(file_get_contents('php://input'), true);
     
-    $emailOptional = in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount'], true);
+    $emailOptional = in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'super_admin'], true);
     $required = ['first_name', 'last_name', 'phone'];
     if (!$emailOptional) {
         $required[] = 'email';

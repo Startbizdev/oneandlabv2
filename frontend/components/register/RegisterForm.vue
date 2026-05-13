@@ -150,7 +150,6 @@
         <AddressSelector
           v-model="form.addressSelection"
           label="Adresse"
-          placeholder="Recherchez votre adresse..."
           :required="false"
           class="w-full"
           @update:model-value="onAddressSelect"

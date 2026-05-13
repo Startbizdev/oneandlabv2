@@ -1,5 +1,5 @@
 <template>
-  <AppointmentDetailPage ref="detailRef" base-path="/preleveur">
+  <AppointmentDetailPage ref="detailRef" base-path="/preleveur" :show-sidebar-actions-card="standardSidebarActionsCardVisible">
     <template #documentsCard="{ appointment, documents, documentsLoading, loadDocuments }">
       <AppointmentDocumentsSection
         :documents="documents || []"
@@ -17,31 +17,9 @@
       />
     </template>
     <template #sidebarActions="{ appointment, loadAppointment }">
-      <div class="flex flex-col gap-3">
-        <UEmpty
-          v-if="appointment && appointment.status === 'canceled'"
-          icon="i-lucide-calendar-x"
-          title="Rendez-vous annulé"
-          description="Ce rendez-vous a été annulé. Aucune action disponible."
-          variant="naked"
-          size="md"
-        />
-        <UEmpty
-          v-else-if="appointment && appointment.status === 'completed'"
-          icon="i-lucide-check-circle"
-          title="Rendez-vous terminé"
-          description="Ce rendez-vous a été marqué comme terminé. Le patient pourra laisser un avis."
-          variant="naked"
-          size="md"
-        />
-        <template v-else>
+      <AppointmentDetailSidebarTerminalShell :status="appointment?.status">
+        <div class="flex flex-col gap-3">
           <template v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)">
-            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed rounded-lg bg-gray-50 dark:bg-gray-800/60 px-3 py-2.5 border border-gray-100 dark:border-gray-700/80">
-              Le rendez-vous passera automatiquement en « terminé » le jour suivant la date prévue (clôture système).
-            </p>
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
-              Planification
-            </p>
             <UButton
               type="button"
               color="neutral"
@@ -53,40 +31,32 @@
             >
               Reprendre RDV pour ce patient
             </UButton>
-          </template>
-          <template v-if="appointment && (appointment.relative?.phone || appointment.form_data?.phone || appointment.address)">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
-              Contact & déplacement
-            </p>
-            <UButton
-              v-if="appointment.relative?.phone || appointment.form_data?.phone"
-              type="button"
-              color="neutral"
-              variant="outline"
-              size="md"
-              leading-icon="i-lucide-message-square"
-              block
-              :on-click="() => openSms(appointment)"
-            >
-              Message
-            </UButton>
-            <UButton
-              v-if="appointment?.address"
-              type="button"
-              color="warning"
-              variant="outline"
-              size="md"
-              leading-icon="i-lucide-navigation"
-              block
-              :on-click="() => openWaze(appointment)"
-            >
-              Itinéraire Waze
-            </UButton>
-          </template>
-          <template v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 px-0.5 pt-1">
-              Annulation
-            </p>
+            <template v-if="appointment.relative?.phone || appointment.form_data?.phone || appointment.address">
+              <UButton
+                v-if="appointment.relative?.phone || appointment.form_data?.phone"
+                type="button"
+                color="neutral"
+                variant="outline"
+                size="md"
+                leading-icon="i-lucide-message-square"
+                block
+                :on-click="() => openSms(appointment)"
+              >
+                Message
+              </UButton>
+              <UButton
+                v-if="appointment?.address"
+                type="button"
+                color="warning"
+                variant="outline"
+                size="md"
+                leading-icon="i-lucide-navigation"
+                block
+                :on-click="() => openWaze(appointment)"
+              >
+                Itinéraire Waze
+              </UButton>
+            </template>
             <UButton
               type="button"
               color="error"
@@ -100,8 +70,8 @@
               Annuler le rendez-vous
             </UButton>
           </template>
-        </template>
-      </div>
+        </div>
+      </AppointmentDetailSidebarTerminalShell>
     </template>
   </AppointmentDetailPage>
 
@@ -126,13 +96,18 @@ definePageMeta({
 
 import { apiFetch } from '~/utils/api';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
+import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { isPendingIncomingOffer } from '~/utils/appointment-offer';
+import { standardAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
 
 const route = useRoute();
 const toast = useAppToast();
 const { user } = useAuth();
 const detailRef = ref<{ loadAppointment: () => Promise<void>; appointment: { value: any } } | null>(null);
+const standardSidebarActionsCardVisible = computed(() =>
+  standardAppointmentSidebarCardVisible(getAppointmentFromDetailRef(detailRef)),
+);
 const showCancelModal = ref(false);
 const currentAppointmentForCancel = ref<any>(null);
 const currentLoadAppointmentForCancel = ref<(() => Promise<void>) | null>(null);
@@ -166,7 +141,7 @@ function setAppointmentForUpload(apt: any) {
 }
 
 function canUploadDocuments(appointment: any) {
-  return appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status);
+  return !!appointment && canUploadMedicalDocumentsForAppointmentStatus(appointment.status);
 }
 
 function getDocumentTypeLabel(type: string) {

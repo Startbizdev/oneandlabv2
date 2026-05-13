@@ -1,6 +1,7 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       title="Zones de couverture"
       description="Gérez les zones d'intervention des infirmiers : adresse de départ et rayon."
     >
@@ -9,7 +10,8 @@
           Créer une zone
         </UButton>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
     <div class="flex flex-col sm:flex-row sm:items-center gap-4">
       <USelect
@@ -191,7 +193,7 @@
         </UModal>
       </Teleport>
     </ClientOnly>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

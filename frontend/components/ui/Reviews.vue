@@ -190,7 +190,7 @@ const props = withDefaults(defineProps<Props>(), {
   subtitle: 'Découvrez les avis de nos patients sur nos professionnels de santé',
   reviews: () => [],
   maxReviews: 6,
-  backgroundClass: 'bg-gray-50 dark:bg-gray-950',
+  backgroundClass: 'bg-app-canvas dark:bg-gray-950',
 })
 
 const trackRef = ref<HTMLElement | null>(null)

@@ -126,7 +126,7 @@
           <div class="rounded-3xl bg-gray-50/50 p-6 ring-1 ring-gray-100 dark:bg-gray-900/30 dark:ring-gray-800">
             <PublicProfileServices
               :specializations="servicesToShow"
-              :title="type === 'nurse' ? 'Expertises & Soins' : 'Examens disponibles'"
+              :title="type === 'nurse' ? 'Expertises & Soins' : 'Prélèvements disponibles'"
               :icon="type === 'nurse' ? 'i-lucide-heart-pulse' : 'i-lucide-test-tube-2'"
               narrow-panel
             />
@@ -303,6 +303,7 @@ const servicesToShow = computed(() => {
     description: s.description,
     type: 'blood_test',
     icon: s.icon ?? 'i-lucide-microscope',
+    image_url: s.image_url ?? null,
   }));
 });
 

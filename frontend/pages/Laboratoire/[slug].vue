@@ -26,7 +26,7 @@ const error = ref<string | null>(null);
 // FAQ par défaut pour les laboratoires (généraliste, SEO, sans horaires ni infos non disponibles)
 const defaultLabFaq = [
   {
-    question: 'Prise de sang à domicile : comment ça marche ?',
+    question: 'Prélèvement à domicile : comment ça marche ?',
     answer: 'Le laboratoire envoie un professionnel à votre domicile pour effectuer le prélèvement. Vous présentez votre ordonnance et votre carte Vitale. Les tubes sont acheminés au laboratoire pour analyse ; les résultats sont transmis à votre médecin et à vous selon les modalités du labo.',
   },
   {
@@ -42,7 +42,7 @@ const defaultLabFaq = [
     answer: 'Sur OneAndLab, choisissez le laboratoire proposant les prélèvements à domicile dans votre secteur et réservez un créneau. Le laboratoire confirme l’intervention dans sa zone.',
   },
   {
-    question: 'Prise de sang à domicile : remboursement ?',
+    question: 'Prélèvement à domicile : remboursement ?',
     answer: 'Les analyses prescrites par un médecin sont prises en charge par l\'Assurance maladie. Le déplacement à domicile peut être facturé selon les conditions du laboratoire et votre mutuelle.',
   },
 ];
@@ -57,14 +57,14 @@ const metaLocation = computed(() => {
   return (p.address || p.city_plain || '').toString().trim() || '';
 });
 
-// Meta tags dynamiques (SEO : Nom laboratoire - Prise de sang à domicile - Ville CODE)
+// Meta tags dynamiques (SEO : Nom laboratoire - Prélèvement à domicile - Ville CODE)
 useHead({
   title: computed(() => {
     if (!profile.value) return 'Profil laboratoire | OneAndLab';
     const name = profile.value.name || 'Laboratoire';
     const loc = metaLocation.value;
-    if (loc) return `${name} - Prise de sang à domicile - ${loc} | OneAndLab`;
-    return `${name} - Prise de sang à domicile | OneAndLab`;
+    if (loc) return `${name} - Prélèvement à domicile - ${loc} | OneAndLab`;
+    return `${name} - Prélèvement à domicile | OneAndLab`;
   }),
   meta: [
     {
@@ -75,8 +75,8 @@ useHead({
         const loc = metaLocation.value;
         const bio = profile.value.biography ? profile.value.biography.substring(0, 140) : '';
         if (bio) return bio;
-        if (loc) return `${name} - Prise de sang à domicile à ${loc}. Prélèvements, analyses. OneAndLab.`;
-        return `${name} - Prise de sang à domicile. Prélèvements, analyses. OneAndLab.`;
+        if (loc) return `${name} - Prélèvement à domicile à ${loc}. Prélèvements, analyses. OneAndLab.`;
+        return `${name} - Prélèvement à domicile. Prélèvements, analyses. OneAndLab.`;
       }),
     },
     {
@@ -96,14 +96,14 @@ useHead({
         if (!profile.value) return 'Profil laboratoire';
         const name = profile.value.name || 'Laboratoire';
         const loc = metaLocation.value;
-        return loc ? `${name} - Prise de sang à domicile - ${loc}` : `${name} - Prise de sang à domicile`;
+        return loc ? `${name} - Prélèvement à domicile - ${loc}` : `${name} - Prélèvement à domicile`;
       }),
     },
     {
       property: 'og:description',
       content: computed(() => {
         if (!profile.value) return 'Profil laboratoire sur OneAndLab';
-        return profile.value.biography?.substring(0, 200) || `Laboratoire ${profile.value.name} - Prise de sang à domicile`;
+        return profile.value.biography?.substring(0, 200) || `Laboratoire ${profile.value.name} - Prélèvement à domicile`;
       }),
     },
     {

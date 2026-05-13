@@ -2,147 +2,113 @@
   <AppointmentDetailPage
     ref="detailRef"
     base-path="/nurse"
+    :show-sidebar-actions-card="nurseSidebarActionsCardVisible"
   >
     <template #sidebarActions="{ appointment, loadAppointment }">
-      <div class="flex flex-col">
-        <UEmpty
-          v-if="appointment.status === 'canceled'"
-          icon="i-lucide-calendar-x"
-          title="Rendez-vous annulé"
-          description="Ce rendez-vous a été annulé. Aucune action disponible."
-          variant="naked"
-          size="md"
-        />
-        <div
-          v-else
-          class="flex flex-col divide-y divide-gray-100 dark:divide-gray-800"
-        >
+      <AppointmentDetailSidebarTerminalShell :status="appointment.status">
+        <template #after>
+          <UAlert
+            v-if="isAppointmentCanceled(appointment.status) && appointment.type === 'nursing'"
+            color="neutral"
+            variant="subtle"
+            icon="i-lucide-share-2"
+            title="Partage indisponible"
+            description="Le bouton « Partager » (WhatsApp, lien) sert à proposer un soin encore actif à un confrère. Pour un rendez-vous annulé, le partage n’est plus proposé."
+            class="rounded-xl text-left"
+          />
+        </template>
+        <div class="flex flex-col gap-2">
           <div
             v-if="['confirmed', 'inProgress'].includes(appointment.status)"
-            class="space-y-2 pb-3"
+            class="grid grid-cols-2 gap-2 md:grid-cols-1 [&>*:only-child]:col-span-2 md:[&>*:only-child]:col-span-1"
           >
             <UButton
-              v-if="appointment.status === 'confirmed'"
+              type="button"
               color="primary"
               variant="solid"
-              size="lg"
-              leading-icon="i-lucide-play"
-              :loading="processing"
-              :loading-auto="false"
-              block
-              :on-click="() => startAppointment(appointment, loadAppointment)"
-            >
-              Commencer le soin
-            </UButton>
-            <p
-              v-if="['confirmed', 'inProgress'].includes(appointment.status)"
-              class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed rounded-lg bg-gray-50 dark:bg-gray-800/60 px-3 py-2.5 border border-gray-100 dark:border-gray-700/80"
-            >
-              Le rendez-vous passera automatiquement en « terminé » le jour suivant la date prévue (clôture système).
-            </p>
-            <UButton
-              type="button"
-              color="neutral"
-              variant="outline"
-              size="lg"
+              size="md"
               leading-icon="i-lucide-calendar-plus"
-              block
+              class="flex-1 min-w-0 justify-center"
               :on-click="() => openRescheduleModal(appointment)"
             >
               Reprendre le RDV
             </UButton>
-          </div>
-
-          <div
-            v-if="appointment.status !== 'canceled' && (appointment.relative?.phone || appointment.form_data?.phone || appointment.address)"
-            class="space-y-2 py-3"
-          >
-            <div
-              class="grid gap-2 justify-items-stretch"
-              :class="contactGridClass(appointment)"
-            >
-              <UButton
-                v-if="appointment.relative?.phone || appointment.form_data?.phone"
-                type="button"
-                color="neutral"
-                variant="soft"
-                size="lg"
-                leading-icon="i-lucide-phone"
-                class="min-w-0 w-full justify-center"
-                :on-click="() => callPatient(appointment)"
-              >
-                Appeler
-              </UButton>
-              <UButton
-                v-if="appointment.relative?.phone || appointment.form_data?.phone"
-                type="button"
-                color="neutral"
-                variant="soft"
-                size="lg"
-                leading-icon="i-lucide-message-square"
-                class="min-w-0 w-full justify-center"
-                :on-click="() => sendSMS(appointment)"
-              >
-                SMS
-              </UButton>
-              <UButton
-                v-if="appointment.address"
-                type="button"
-                color="neutral"
-                variant="soft"
-                size="lg"
-                leading-icon="i-lucide-navigation"
-                class="min-w-0 w-full justify-center"
-                :on-click="() => openInWaze(appointment)"
-              >
-                Waze
-              </UButton>
-            </div>
-          </div>
-
-          <div
-            v-if="appointment.type === 'nursing' && appointment.status !== 'completed'"
-            class="py-3"
-          >
-            <NurseRdvSharePanel
-              :appointment-id="String(appointment.id)"
-              @released="() => loadAppointment()"
-            />
-          </div>
-
-          <div
-            v-if="appointment.status === 'confirmed'"
-            class="space-y-2 pt-3"
-          >
             <UButton
+              v-if="appointment.status === 'confirmed'"
               color="error"
-              variant="solid"
-              size="lg"
+              variant="outline"
+              size="md"
               leading-icon="i-lucide-x-circle"
+              class="flex-1 min-w-0 justify-center"
               :loading="processing"
               :loading-auto="false"
-              block
-              class="justify-center"
               :on-click="() => openCancelModal(appointment, loadAppointment)"
             >
-              Annuler le rendez-vous
+              Annuler
             </UButton>
+          </div>
+
+          <UButton
+            v-if="appointment.status === 'confirmed' && appointment.type !== 'nursing' && !isBloodTestAppointment(appointment.type)"
+            color="neutral"
+            variant="outline"
+            size="md"
+            leading-icon="i-lucide-refresh-ccw"
+            :loading="processing"
+            :loading-auto="false"
+            block
+            class="justify-center font-medium"
+            :on-click="() => openRedispatchModal(appointment, loadAppointment)"
+          >
+            Redispatcher
+          </UButton>
+
+          <div
+            v-if="appointment.type === 'nursing' && appointment.status !== 'completed' && !isAppointmentCanceled(appointment.status)"
+            class="min-w-0"
+            :class="
+              appointment.status === 'confirmed'
+                ? 'grid grid-cols-2 gap-2 md:grid-cols-1 [&>*:only-child]:col-span-2 md:[&>*:only-child]:col-span-1'
+                : 'w-full'
+            "
+          >
             <UButton
-              color="primary"
-              variant="solid"
-              size="lg"
+              v-if="appointment.status === 'confirmed'"
+              type="button"
+              color="neutral"
+              variant="outline"
+              size="md"
               leading-icon="i-lucide-refresh-ccw"
               :loading="processing"
               :loading-auto="false"
-              block
-              class="justify-center"
+              class="min-w-0 w-full justify-center font-medium [&_span.iconify]:size-4"
               :on-click="() => openRedispatchModal(appointment, loadAppointment)"
             >
               Redispatcher
             </UButton>
+            <NurseRdvSharePanel
+              :appointment-id="String(appointment.id)"
+              :split-row="appointment.status === 'confirmed'"
+              @released="() => loadAppointment()"
+            />
           </div>
         </div>
-      </div>
+      </AppointmentDetailSidebarTerminalShell>
+    </template>
+
+    <template #carePhotosCard="{ appointment, documents, documentsLoading, loadDocuments }">
+      <RdvCarePhotosSection
+        v-if="appointment && isCarePhotoGalleryContext(appointment)"
+        :appointment="appointment as Record<string, unknown>"
+        :documents="documents || []"
+        :documents-loading="documentsLoading"
+        :enable-care-photo-upload="canNurseUploadCarePhotos(appointment)"
+        :care-photo-uploading="carePhotoUploading"
+        @download="downloadDocument"
+        @care-photo-upload="uploadCarePhotoFile"
+        @care-photo-thread-updated="() => loadDocuments()"
+        @load-documents-needed="loadDocuments"
+      />
     </template>
 
     <template #documentsCard="{ appointment, documents, documentsLoading, loadDocuments }">
@@ -157,13 +123,15 @@
         :can-replace="canUploadDocuments(appointment)"
         :downloading-ids="downloadingDocuments"
         :uploading-types="uploadingTypes"
+        :care-photo-appointment-id="appointment?.id ?? null"
+        :enable-care-photo-upload="canNurseUploadCarePhotos(appointment)"
+        :care-photo-uploading="carePhotoUploading"
+        :omit-care-photos-in-list="true"
         @download="downloadDocument"
         @upload="(docType, file) => { setAppointmentForUpload(appointment); uploadDocumentFile(file, docType); }"
+        @care-photo-upload="uploadCarePhotoFile"
+        @care-photo-thread-updated="() => loadDocuments()"
       />
-    </template>
-
-    <template #careGallery="{ appointment }">
-      <CarePhotoGallerySection v-if="appointment" :appointment="appointment" role="nurse" />
     </template>
 
   </AppointmentDetailPage>
@@ -193,17 +161,29 @@ definePageMeta({
   role: 'nurse',
 });
 
-import { nextTick, onMounted, watch } from 'vue';
+import { computed, nextTick, onMounted, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
+import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
 import { isPendingIncomingOffer } from '~/utils/appointment-offer';
-import { formatAppointmentWhenForSms } from '~/utils/appointment-datetime-fr';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
+import { nurseAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
+import { isBloodTestAppointment } from '~/utils/appointment-type-rules';
+import { isCarePhotoGalleryContext } from '~/utils/care-photo-gallery-context';
 
 const toast = useAppToast();
 const { user } = useAuth();
 const route = useRoute();
+
+function isAppointmentCanceled(status: unknown) {
+  const s = String(status ?? '').toLowerCase();
+  return s === 'canceled' || s === 'cancelled';
+}
 const detailRef = ref<{ loadAppointment: () => Promise<void>; loadDocuments: () => Promise<void>; appointment: { value: any } } | null>(null);
+
+const nurseSidebarActionsCardVisible = computed(() =>
+  nurseAppointmentSidebarCardVisible(getAppointmentFromDetailRef(detailRef)),
+);
 
 const shareTokenQuery = computed(() => {
   const q = route.query.shareToken ?? route.query.token;
@@ -251,15 +231,6 @@ watch(
   },
   { immediate: true },
 );
-
-function contactGridClass(apt: any) {
-  const hasPhone = !!(apt.relative?.phone || apt.form_data?.phone);
-  const hasAddr = !!apt.address;
-  const n = (hasPhone ? 2 : 0) + (hasAddr ? 1 : 0);
-  if (n <= 1) return 'grid-cols-1';
-  if (n === 2) return 'grid-cols-2';
-  return 'grid-cols-3';
-}
 
 const processing = ref(false);
 const showCancelModal = ref(false);
@@ -319,6 +290,7 @@ function onRescheduleDone(newAppointmentId?: string) {
 }
 const downloadingDocuments = ref(new Set<string>());
 const uploadingTypes = ref(new Set<string>());
+const carePhotoUploading = ref(false);
 const draggedOver = ref<string | null>(null);
 const fileInputs = ref<Record<string, HTMLInputElement>>({});
 
@@ -335,7 +307,56 @@ const uploadDocumentTypes = [
 ];
 
 function canUploadDocuments(appointment: any) {
-  return appointment && ['confirmed', 'inProgress'].includes(appointment.status);
+  return !!appointment && canUploadMedicalDocumentsForAppointmentStatus(appointment.status);
+}
+
+/** Même règle métier que l’API care-photos : infirmier assigné uniquement. */
+function canNurseUploadCarePhotos(apt: any) {
+  if (!apt || !isCarePhotoGalleryContext(apt)) return false;
+  if (!['confirmed', 'inProgress'].includes(apt.status)) return false;
+  const uid = user.value?.id;
+  if (!uid || !apt.assigned_nurse_id) return false;
+  return String(apt.assigned_nurse_id) === String(uid);
+}
+
+async function uploadCarePhotoFile(file: File) {
+  const appointment = getAppointmentFromDetailRef(detailRef);
+  if (!appointment?.id) return;
+  const allowed = ['image/jpeg', 'image/png', 'image/jpg'];
+  if (!allowed.includes(file.type)) {
+    toast.add({ title: 'Format', description: 'Utilisez une image JPG ou PNG.', color: 'warning' });
+    return;
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    toast.add({ title: 'Fichier trop volumineux', description: 'Le fichier dépasse la limite de 25 Mo.', color: 'error' });
+    return;
+  }
+  carePhotoUploading.value = true;
+  try {
+    const config = useRuntimeConfig();
+    const apiBase = config.public?.apiBase || '';
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const csrf = (typeof window !== 'undefined' && (window as any).__csrfTokenCache) || '';
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (csrf) headers['X-CSRF-Token'] = csrf;
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${apiBase}/appointments/${appointment.id}/care-photos`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      headers,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || 'Upload échoué');
+    toast.add({ title: 'Photo ajoutée', color: 'success' });
+    await detailRef.value?.loadDocuments();
+  } catch (e: any) {
+    toast.add({ title: 'Upload', description: e?.message || 'Erreur', color: 'error' });
+  } finally {
+    carePhotoUploading.value = false;
+  }
 }
 
 function getDocumentsByType(documents: any[], docType: string) {
@@ -433,55 +454,6 @@ async function downloadDocument(doc: any) {
     toast.add({ title: 'Erreur', description: error.message || 'Impossible de télécharger le document', color: 'error' });
   } finally {
     downloadingDocuments.value.delete(doc.id);
-  }
-}
-
-function openInWaze(apt: any) {
-  if (!apt?.address) return;
-  const address = apt.address;
-  if (typeof address === 'object' && address.lat && address.lng) {
-    window.open(`https://waze.com/ul?ll=${address.lat},${address.lng}&navigate=yes`, '_blank');
-  } else {
-    const text = typeof address === 'object' && address.label ? address.label : address;
-    window.open(`https://waze.com/ul?q=${encodeURIComponent(text)}&navigate=yes`, '_blank');
-  }
-}
-
-function callPatient(apt: any) {
-  const phone = apt?.relative?.phone || apt?.form_data?.phone;
-  if (!phone) return;
-  window.location.href = `tel:${phone.replace(/\s/g, '')}`;
-}
-
-function sendSMS(apt: any) {
-  const phone = apt?.relative?.phone || apt?.form_data?.phone;
-  if (!phone) return;
-  const scheduledDate = formatAppointmentWhenForSms(apt);
-  const address = typeof apt?.address === 'object' && apt?.address?.label ? apt.address.label : apt?.address || '';
-  const firstName = apt?.form_data?.first_name || '';
-  const whenLine = scheduledDate
-    ? `Vous avez un rendez-vous le ${scheduledDate}.`
-    : 'Rendez-vous (date à confirmer dans votre espace).';
-  const message = encodeURIComponent(
-    `Bonjour ${firstName},\n\n${whenLine}\nAdresse : ${address}\n\nCordialement`
-  );
-  window.location.href = `sms:${phone.replace(/\s/g, '')}?body=${message}`;
-}
-
-async function startAppointment(apt: any, loadAppointment: () => Promise<void>) {
-  if (!apt) return;
-  processing.value = true;
-  try {
-    const response = await apiFetch(`/appointments/${apt.id}`, { method: 'PUT', body: { status: 'inProgress' } });
-    if (response.success) {
-      toast.add({ title: 'Soin démarré', description: 'Le soin a été démarré avec succès.', color: 'success' });
-      await loadAppointment();
-      await detailRef.value?.loadDocuments();
-    } else toast.add({ title: 'Erreur', description: response.error || 'Impossible de démarrer le soin', color: 'error' });
-  } catch (error: any) {
-    toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' });
-  } finally {
-    processing.value = false;
   }
 }
 

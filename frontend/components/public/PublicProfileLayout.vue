@@ -614,6 +614,7 @@ const servicesToShow = computed(() => {
       description: s.description,
       type: 'blood_test',
       icon: s.icon ?? null,
+      image_url: s.image_url ?? null,
     }))
   }
   return []

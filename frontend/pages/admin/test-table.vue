@@ -1,13 +1,19 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard title="Test Table" description="Page de test du composant tableau" />
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Test Table"
+        description="Page de test du composant tableau"
+      />
+    </template>
 
     <UTable :data="testData" :columns="columns">
       <template #actions-data="{ row }">
         <UButton size="sm">Voir</UButton>
       </template>
     </UTable>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">

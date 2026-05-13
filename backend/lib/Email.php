@@ -250,7 +250,7 @@ class Email
 </tr>
 <tr>
 <td style="padding:20px 12px 8px 12px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;font-size:12px;line-height:1.5;color:' . $muted . ';">
-OneAndLab — Prise de sang et soins infirmiers à domicile
+OneAndLab — Prélèvement et soins infirmiers à domicile
 </td>
 </tr>
 </table>
@@ -361,7 +361,7 @@ OneAndLab — Prise de sang et soins infirmiers à domicile
             return $this->send($to, 'Vos rendez-vous OneAndLab ont été enregistrés', $body, true);
         }
 
-        $type = ($p['type'] ?? '') === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers';
+        $type = ($p['type'] ?? '') === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers';
         $dateCreneau = $this->formatDateAndCreneau($p['scheduled_at'] ?? null, $p['form_data'] ?? null);
         $content = '<p style="margin:0 0 14px 0;">Votre rendez-vous a bien été enregistré.</p>';
         $content .= '<p style="margin:0 0 10px 0;"><strong>Type :</strong> ' . htmlspecialchars($type) . '</p>';
@@ -860,7 +860,7 @@ OneAndLab — Prise de sang et soins infirmiers à domicile
         if ($summaryBlock === '' && $full === null) {
             $fd = is_array($data['form_data'] ?? null) ? $data['form_data'] : [];
             $infoInner = '<p style="margin:0;"><strong>Date et créneau :</strong> ' . $this->escapeHtml($this->formatDateAndCreneau($data['scheduled_at'] ?? null, $fd) ?: '-') . '</p>'
-                . '<p style="margin:8px 0 0 0;"><strong>Type :</strong> ' . $this->escapeHtml($typeRaw === 'blood_test' ? 'Prise de sang' : 'Soins infirmiers') . '</p>';
+                . '<p style="margin:8px 0 0 0;"><strong>Type :</strong> ' . $this->escapeHtml($typeRaw === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers') . '</p>';
             $summaryBlock = $this->emailInfoBox($infoInner);
         }
 

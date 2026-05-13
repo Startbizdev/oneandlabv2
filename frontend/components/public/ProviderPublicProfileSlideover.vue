@@ -6,7 +6,7 @@
     :ui="slideoverUi"
   >
     <template #content="{ close }">
-      <div class="relative flex h-full flex-col overflow-hidden bg-gray-50/90 backdrop-blur-xl dark:bg-gray-950/90">
+      <div class="relative flex h-full flex-col overflow-hidden bg-app-canvas/90 backdrop-blur-xl dark:bg-gray-950/90">
         
         <div class="absolute right-4 top-4 z-50">
           <UButton

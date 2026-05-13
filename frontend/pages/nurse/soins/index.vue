@@ -1,6 +1,7 @@
 <template>
-  <div class="space-y-6">
-    <TitleDashboard
+  <AppPageShell class="space-y-6">
+    <template #pageHeader>
+    <AppPageHeader :edge-bleed="false" 
       title="Plans de soins actifs"
       description="Gérez vos soins récurrents sur plusieurs jours"
     >
@@ -21,7 +22,8 @@
           </div>
         </div>
       </template>
-    </TitleDashboard>
+    </AppPageHeader>
+  </template>
 
     <div v-if="loading" class="text-center py-12">
       <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-primary-500 mb-2" />
@@ -190,8 +192,8 @@
         <!-- Actions dans le footer -->
         <template #footer>
           <div class="flex gap-2">
-            <UButton 
-              v-if="care.status === 'inProgress'"
+            <UButton
+              v-if="care.status === 'inProgress' || care.status === 'confirmed'"
               color="success"
               size="sm"
               leading-icon="i-lucide-check-circle"
@@ -200,17 +202,6 @@
               block
             >
               Terminer
-            </UButton>
-            <UButton
-              v-else-if="care.status === 'confirmed' && canStart(care)"
-              color="primary"
-              size="sm"
-              leading-icon="i-lucide-play"
-              @click="startAppointment(care.id)"
-              :loading="processingAppointments.has(care.id)"
-              block
-            >
-              Commencer
             </UButton>
             <UButton
               variant="outline"
@@ -225,7 +216,7 @@
         </template>
       </UCard>
     </div>
-  </div>
+  </AppPageShell>
 </template>
 
 <script setup lang="ts">
@@ -467,45 +458,6 @@ const formatAvailability = (availability: string) => {
     return availability;
   }
   return availability;
-};
-
-const canStart = (appointment: any) => {
-  const now = new Date();
-  const scheduled = new Date(appointment.scheduled_at);
-  const diffMinutes = (scheduled.getTime() - now.getTime()) / (1000 * 60);
-  return diffMinutes <= 30 && appointment.status === 'confirmed';
-};
-
-const startAppointment = async (id: string) => {
-  processingAppointments.value.add(id);
-  try {
-    const response = await apiFetch(`/appointments/${id}`, {
-      method: 'PUT',
-      body: { status: 'inProgress' },
-    });
-    if (response.success) {
-      toast.add({
-        title: 'Soin démarré',
-        description: 'Le soin a été démarré avec succès.',
-        color: 'blue',
-      });
-      await fetchAppointments();
-    } else {
-      toast.add({
-        title: 'Erreur',
-        description: response.error || 'Impossible de démarrer le soin',
-        color: 'red',
-      });
-    }
-  } catch (error: any) {
-    toast.add({
-      title: 'Erreur',
-      description: error.message || 'Une erreur est survenue',
-      color: 'red',
-    });
-  } finally {
-    processingAppointments.value.delete(id);
-  }
 };
 
 const completeAppointment = async (id: string) => {

@@ -1,3 +1,5 @@
+import { ROLE_HOME_PATHS } from '~/utils/postLoginRedirect'
+
 export default defineNuxtRouteMiddleware((to) => {
   const { user, token } = useAuth();
 
@@ -37,18 +39,7 @@ export default defineNuxtRouteMiddleware((to) => {
   if (typeof requiredRole === 'string') {
     if (user.value.role !== requiredRole) {
       // Rediriger vers le dashboard approprié selon le rôle de l'utilisateur
-      const roleRoutes: Record<string, string> = {
-        super_admin: '/admin',
-        admin: '/admin',
-        lab: '/lab',
-        subaccount: '/subaccount',
-        nurse: '/nurse/appointments',
-        preleveur: '/preleveur',
-        pro: '/pro',
-        patient: '/patient',
-      };
-      
-      const defaultRoute = roleRoutes[user.value.role] || '/patient';
+      const defaultRoute = ROLE_HOME_PATHS[user.value.role] || '/patient'
       return navigateTo(defaultRoute);
     }
     return;
@@ -58,18 +49,7 @@ export default defineNuxtRouteMiddleware((to) => {
   if (Array.isArray(requiredRole)) {
     if (!requiredRole.includes(user.value.role)) {
       // Rediriger vers le dashboard approprié selon le rôle de l'utilisateur
-      const roleRoutes: Record<string, string> = {
-        super_admin: '/admin',
-        admin: '/admin',
-        lab: '/lab',
-        subaccount: '/subaccount',
-        nurse: '/nurse/appointments',
-        preleveur: '/preleveur',
-        pro: '/pro',
-        patient: '/patient',
-      };
-      
-      const defaultRoute = roleRoutes[user.value.role] || '/patient';
+      const defaultRoute = ROLE_HOME_PATHS[user.value.role] || '/patient'
       return navigateTo(defaultRoute);
     }
     return;
