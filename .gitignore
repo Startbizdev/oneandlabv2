@@ -32,8 +32,8 @@ Thumbs.db
 *.db
 data/mysql-dumps/
 
-# Uploads (fichiers médicaux, ne pas versionner)
-uploads/
+# Uploads backend (fichiers médicaux sur disque — pas le code mobile src/lib/uploads/)
+/uploads/
 
 # Migration legacy (données sensibles, ne pas versionner)
 data/legacy-export.json
