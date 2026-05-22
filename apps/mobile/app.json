@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Cary",
+    "slug": "cary-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "cary",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/logo-cary.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF",
+      "imageWidth": 240
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cary.mobile",
+      "infoPlist": {
+        "CFBundleDisplayName": "Cary",
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "Cary a besoin d’accéder à vos photos pour joindre des documents médicaux à vos rendez-vous.",
+        "NSCameraUsageDescription": "Cary peut utiliser l’appareil photo pour joindre des documents à vos rendez-vous.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.cary.mobile",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#1CC7B5"
+        }
+      ],
+      "expo-image-picker",
+      "expo-document-picker"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}

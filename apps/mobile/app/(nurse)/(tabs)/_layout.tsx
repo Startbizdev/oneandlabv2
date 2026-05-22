@@ -1,0 +1,89 @@
+import { Tabs } from 'expo-router';
+import { Calendar, CalendarDays, ClipboardList, LayoutGrid, Users } from 'lucide-react-native';
+import { TabBar } from '@/components/navigation/TabBar';
+import { TabBarIconBadge } from '@/components/navigation/TabBarIconBadge';
+import { tabHeaderTitle } from '@/navigation/HeaderTitle';
+import { tabScreenOptions } from '@/navigation/screen-options';
+import { useNurseDemandesBadgeCount } from '@/features/nurse/hooks/use-nurse-demandes-badge';
+import { colors } from '@/theme';
+
+function isFocused(color: string) {
+  return color === colors.primary;
+}
+
+export default function NurseTabsLayout() {
+  const { count: demandesBadge } = useNurseDemandesBadgeCount(true);
+
+  return (
+    <Tabs
+      tabBar={(props) => <TabBar {...props} />}
+      screenOptions={{
+        ...tabScreenOptions(),
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textTertiary,
+      }}
+    >
+      <Tabs.Screen
+        name="appointments"
+        options={{
+          title: 'Rendez-vous',
+          headerTitle: tabHeaderTitle('Rendez-vous', CalendarDays),
+          tabBarLabel: 'RDV',
+          tabBarIcon: ({ color, size }) => (
+            <CalendarDays color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="demandes"
+        options={{
+          title: 'Mes demandes',
+          headerTitle: tabHeaderTitle('Mes demandes', ClipboardList),
+          tabBarLabel: 'Demandes',
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIconBadge
+              Icon={ClipboardList}
+              color={color}
+              size={size}
+              strokeWidth={isFocused(color) ? 2.5 : 1.75}
+              badge={demandesBadge}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          title: 'Calendrier',
+          headerTitle: tabHeaderTitle('Calendrier', Calendar),
+          tabBarLabel: 'Calendrier',
+          tabBarIcon: ({ color, size }) => (
+            <Calendar color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="patients"
+        options={{
+          title: 'Patients',
+          headerTitle: tabHeaderTitle('Patients', Users),
+          tabBarLabel: 'Patients',
+          tabBarIcon: ({ color, size }) => (
+            <Users color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="more"
+        options={{
+          title: 'Plus',
+          headerTitle: tabHeaderTitle('Plus', LayoutGrid),
+          tabBarLabel: 'Plus',
+          tabBarIcon: ({ color, size }) => (
+            <LayoutGrid color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
+          ),
+        }}
+      />
+    </Tabs>
+  );
+}
