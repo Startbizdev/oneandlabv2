@@ -15,8 +15,7 @@
       "distribution": "store",
       "ios": {
         "autoIncrement": true
-      },
-      "installCommand": "cd ../.. && npm install"
+      }
     }
   },
   "submit": {

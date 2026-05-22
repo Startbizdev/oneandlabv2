@@ -4,6 +4,7 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
+    "eas-build-pre-install": "cd ../.. && npm install",
     "start": "expo start",
     "start:clean": "expo start -c",
     "clean:all": "bash scripts/clean-all.sh",
