@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { MessageSquare, User } from 'lucide-react-native';
+import { MessageSquare } from 'lucide-react-native';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import type { Review } from '@/features/reviews/types';
 import {
@@ -37,9 +38,12 @@ export function ReviewReceivedCard({ review, onReply }: Props) {
     <View style={[styles.card, elevation.xs]}>
       <View style={styles.topRow}>
         <View style={styles.authorRow}>
-          <View style={styles.avatar}>
-            <User size={16} color={colors.primary} strokeWidth={2} />
-          </View>
+          <ProfileAvatar
+            profileImageUrl={null}
+            seed={name}
+            size={36}
+            style={styles.avatar}
+          />
           <View style={styles.authorText}>
             <Text style={styles.authorName}>{name}</Text>
             {aptMeta || aptDate ? (

@@ -1,32 +1,21 @@
-import { Linking } from 'react-native';
+import { useState, type ReactNode } from 'react';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
-import { UserCircle } from 'lucide-react-native';
+import { AssigneeProfileRow } from '../AssigneeProfileRow';
+import { ProviderPublicProfileSheet } from '../ProviderPublicProfileSheet';
 import { hasAssigneeContent } from '../RdvAssigneeSection';
-import { DetailPersonBlock } from '../layout/DetailPersonBlock';
 import { DetailSection } from '../layout/DetailSection';
+import { appointmentAssigneeGender } from '../../utils/patient-appointment-display';
+import {
+  creatorOriginName,
+  creatorOriginTitle,
+  type CreatorOrigin,
+} from '../../utils/provider-public-profile';
 
 type AptExt = Appointment & Record<string, unknown>;
 
-function phoneActions(phone?: string) {
-  const tel = String(phone ?? '').trim().replace(/\s/g, '');
-  if (!tel) return [];
-  return [
-    {
-      key: 'phone',
-      label: 'Appeler',
-      icon: 'phone' as const,
-      onPress: () => void Linking.openURL(`tel:${tel}`),
-    },
-    {
-      key: 'sms',
-      label: 'Message',
-      icon: 'message' as const,
-      onPress: () => void Linking.openURL(`sms:${tel}`),
-    },
-  ];
-}
+type SheetTarget = { type: 'nurse' | 'lab'; slug: string; title: string } | null;
 
 interface Props {
   apt: Appointment;
@@ -35,6 +24,7 @@ interface Props {
 export function PatientAssigneeRows({ apt }: Props) {
   const user = useAuthStore((s) => s.user);
   const ext = apt as AptExt;
+  const [sheet, setSheet] = useState<SheetTarget>(null);
 
   if (!hasAssigneeContent(apt, 'patient')) return null;
 
@@ -46,28 +36,40 @@ export function PatientAssigneeRows({ apt }: Props) {
   const hidePreleveur =
     user?.role === 'preleveur' && String(ext.assigned_to ?? '') === String(user?.id ?? '');
 
-  const blocks: React.ReactNode[] = [];
+  const blocks: ReactNode[] = [];
+  const openSheet = (type: 'nurse' | 'lab', slug: string, title: string) =>
+    setSheet({ type, slug, title });
 
   const nurseName = String(ext.assigned_nurse_display_name ?? '').trim();
   if (isNursingAppointment(apt.type) && !hideNurse && (nurseName || ext.assigned_nurse_id)) {
+    const slug = String(ext.assigned_nurse_public_slug ?? '').trim();
     blocks.push(
-      <DetailPersonBlock
+      <AssigneeProfileRow
         key="nurse"
         title="Infirmier(e)"
         name={nurseName || 'Assigné'}
-        actions={phoneActions(String(ext.assigned_nurse_phone ?? ''))}
+        profileImageUrl={String(ext.assigned_nurse_profile_image_url ?? '') || null}
+        gender={appointmentAssigneeGender(apt, 'nurse')}
+        phone={String(ext.assigned_nurse_phone ?? '')}
+        publicSlug={slug || null}
+        onViewProfile={slug ? () => openSheet('nurse', slug, nurseName || 'Infirmier') : undefined}
       />,
     );
   }
 
   const labName = String(ext.assigned_lab_display_name ?? '').trim();
   if (isBloodTestAppointment(apt.type) && !hideLab && (labName || ext.assigned_lab_id)) {
+    const slug = String(ext.assigned_lab_public_slug ?? '').trim();
     blocks.push(
-      <DetailPersonBlock
+      <AssigneeProfileRow
         key="lab"
         title="Laboratoire"
         name={labName || 'Assigné'}
-        actions={phoneActions(String(ext.assigned_lab_phone ?? ''))}
+        profileImageUrl={String(ext.assigned_lab_profile_image_url ?? '') || null}
+        gender={appointmentAssigneeGender(apt, 'lab')}
+        phone={String(ext.assigned_lab_phone ?? '')}
+        publicSlug={slug || null}
+        onViewProfile={slug ? () => openSheet('lab', slug, labName || 'Laboratoire') : undefined}
       />,
     );
   }
@@ -79,29 +81,68 @@ export function PatientAssigneeRows({ apt }: Props) {
     (preleveurName || ext.assigned_to)
   ) {
     blocks.push(
-      <DetailPersonBlock
+      <AssigneeProfileRow
         key="prel"
         title="Préleveur"
         name={preleveurName || 'Assigné'}
-        actions={phoneActions(
-          String(ext.assigned_preleveur_phone ?? ext.assigned_to_phone ?? ''),
-        )}
+        profileImageUrl={String(ext.assigned_to_profile_image_url ?? '') || null}
+        gender={appointmentAssigneeGender(apt, 'preleveur')}
+        phone={String(ext.assigned_preleveur_phone ?? ext.assigned_to_phone ?? '')}
       />,
     );
   }
 
-  const platformOrigin = String(ext.patient_platform_origin_display ?? '').trim();
-  if (platformOrigin) {
+  const creator = ext.creator_origin as CreatorOrigin | undefined;
+  if (creator?.kind) {
+    const name = creatorOriginName(creator);
+    const title = creatorOriginTitle(creator);
+    const slug = creator.public_slug?.trim();
+    const providerType = creator.kind === 'lab_team' ? 'lab' : creator.kind === 'nurse' ? 'nurse' : null;
     blocks.push(
-      <DetailPersonBlock key="origin" title="Origine" name={platformOrigin} />,
+      <AssigneeProfileRow
+        key="creator"
+        title={title}
+        name={name}
+        profileImageUrl={creator.profile_image_url}
+        phone={creator.phone}
+        subtitle={
+          creator.kind === 'nurse'
+            ? 'Saisie par un infirmier'
+            : creator.kind === 'pro'
+              ? creator.emploi?.trim() || undefined
+              : undefined
+        }
+        publicSlug={slug || null}
+        onViewProfile={
+          slug && providerType
+            ? () => openSheet(providerType, slug, name)
+            : undefined
+        }
+      />,
     );
+  } else {
+    const platformOrigin = String(ext.patient_platform_origin_display ?? '').trim();
+    if (platformOrigin) {
+      blocks.push(
+        <AssigneeProfileRow key="origin" title="Origine" name={platformOrigin} />,
+      );
+    }
   }
 
   if (!blocks.length) return null;
 
   return (
-    <DetailSection title="Intervenants" Icon={UserCircle}>
-      {blocks}
-    </DetailSection>
+    <>
+      <DetailSection>{blocks}</DetailSection>
+      {sheet ? (
+        <ProviderPublicProfileSheet
+          visible
+          onClose={() => setSheet(null)}
+          providerType={sheet.type}
+          slug={sheet.slug}
+          title={sheet.title}
+        />
+      ) : null}
+    </>
   );
 }

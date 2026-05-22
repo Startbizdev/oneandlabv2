@@ -6,3 +6,4 @@ export * from './colors';
 export * from './dashboard-unified-rdv';
 export * from './appointment-cancellation';
 export * from './birth-date';
+export * from './care-category-emoji';

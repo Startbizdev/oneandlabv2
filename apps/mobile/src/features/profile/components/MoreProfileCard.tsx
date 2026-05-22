@@ -1,4 +1,4 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,14 +6,10 @@ import { ChevronRight } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '@/store/auth-store';
 import { fetchUser } from '@/features/profile/api/profile.service';
-import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { queryKeys } from '@/lib/query-keys';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
-
-function initials(first?: string, last?: string) {
-  return ((first?.[0] ?? '') + (last?.[0] ?? '')).toUpperCase() || '?';
-}
 
 interface Props {
   roleLabel: string;
@@ -42,11 +38,9 @@ export function MoreProfileCard({ roleLabel, onPress, subtitle, delay = 80 }: Pr
     user?.profile_image_url ??
     user?.avatar ??
     null;
-  const avatarUri = resolveProfileImageUrl(rawImage);
-
   const name =
     `${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim() || 'Mon compte';
-  const init = initials(user?.first_name, user?.last_name);
+  const avatarSeed = user?.id ?? name;
 
   return (
     <Animated.View entering={FadeInDown.delay(delay).duration(400).springify()}>
@@ -67,15 +61,13 @@ export function MoreProfileCard({ roleLabel, onPress, subtitle, delay = 80 }: Pr
         >
           <View style={styles.accent} />
           <View style={styles.row}>
-            <View style={styles.avatarRing}>
-              {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-              ) : (
-                <View style={styles.avatarFallback}>
-                  <Text style={styles.avatarInitials}>{init}</Text>
-                </View>
-              )}
-            </View>
+            <ProfileAvatar
+              profileImageUrl={rawImage}
+              seed={avatarSeed}
+              gender={profileQ.data?.gender}
+              size={56}
+              style={styles.avatarRing}
+            />
 
             <View style={styles.info}>
               <Text style={styles.name} numberOfLines={1}>
@@ -148,22 +140,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
     flexShrink: 0,
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarFallback: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primaryLight,
-  },
-  avatarInitials: {
-    fontFamily: fontFamily.extraBold,
-    fontSize: fontSize.lg,
-    color: colors.primary,
-    letterSpacing: 0.5,
   },
   info: {
     flex: 1,

@@ -67,6 +67,8 @@ export interface Appointment {
   assigned_lab_id?: string;
   category_id?: string;
   category_name?: string;
+  /** Emoji ou nom d’icône Lucide (`care_categories.icon`). */
+  category_icon?: string | null;
   category_image_url?: string | null;
   creation_batch_id?: string | null;
   created_by?: string | null;

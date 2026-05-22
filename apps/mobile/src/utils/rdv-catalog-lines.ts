@@ -1,55 +1,104 @@
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { careEmojiForLabel } from '@/utils/care-category-display';
 
 export type RdvCatalogLine = {
   category_id: string | null;
   label: string;
+  /** Emoji affiché dans les mini-tags liste RDV. */
+  emoji: string;
+  category_image_url?: string | null;
+  care_options?: Record<string, string | number>;
 };
+
+type ItemRow = {
+  label?: string;
+  category_name?: string;
+  category_id?: string;
+  category_icon?: string | null;
+  category_image_url?: string | null;
+  care_options?: Record<string, unknown>;
+};
+
+type AptWithIcon = Appointment & { category_icon?: string | null };
+
+function mapCareOptions(raw: unknown): Record<string, string | number> | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const out: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (v === '' || v === undefined || v === null) continue;
+    if (typeof v === 'string' || typeof v === 'number') out[k] = v;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function mapItem(it: ItemRow, fallbackLabel: string, apt: Appointment): RdvCatalogLine {
+  const label = String(it?.label ?? it?.category_name ?? fallbackLabel).trim() || fallbackLabel;
+  const categoryId = it?.category_id != null ? String(it.category_id) : null;
+  const ext = apt as AptWithIcon;
+  const icon =
+    it?.category_icon != null && String(it.category_icon).trim() !== ''
+      ? String(it.category_icon)
+      : categoryId && String(categoryId) === String(apt.category_id)
+        ? ext.category_icon ?? null
+        : ext.category_icon ?? null;
+
+  return {
+    category_id: categoryId,
+    label,
+    emoji: careEmojiForLabel(label, apt.type, { categoryId, categoryIcon: icon }),
+    category_image_url: it?.category_image_url ?? apt.category_image_url ?? null,
+    care_options: mapCareOptions(it?.care_options),
+  };
+}
 
 /** Lignes catalogue pour carte liste (aligné `patientRdvCatalogDisplayLines` web). */
 export function rdvCatalogDisplayLines(apt: Appointment): RdvCatalogLine[] {
-  if (!apt) return [{ category_id: null, label: 'Rendez-vous' }];
+  if (!apt) {
+    return [{ category_id: null, label: 'Rendez-vous', emoji: '📋' }];
+  }
   const t = apt.type;
   if (isBloodTestAppointment(t)) {
     const ext = apt as Appointment & {
-      blood_test_items?: Array<{ label?: string; category_name?: string; category_id?: string }>;
-      blood_test_items_display?: Array<{ label?: string; category_name?: string; category_id?: string }>;
+      blood_test_items?: ItemRow[];
+      blood_test_items_display?: ItemRow[];
     };
     const raw =
       ext.blood_test_items_display?.length
         ? ext.blood_test_items_display
         : ext.blood_test_items ?? [];
     if (raw.length > 0) {
-      return raw.map((it) => ({
-        category_id: it?.category_id != null ? String(it.category_id) : null,
-        label:
-          String(it?.label ?? it?.category_name ?? apt.category_name ?? 'Analyse').trim() ||
-          'Analyse',
-      }));
+      return raw.map((it) => mapItem(it, apt.category_name ?? 'Analyse', apt));
     }
   }
   if (isNursingAppointment(t)) {
     const ext = apt as Appointment & {
-      nursing_items?: Array<{ label?: string; category_name?: string; category_id?: string }>;
-      nursing_items_display?: Array<{ label?: string; category_name?: string; category_id?: string }>;
+      nursing_items?: ItemRow[];
+      nursing_items_display?: ItemRow[];
     };
     const raw =
       ext.nursing_items_display?.length
         ? ext.nursing_items_display
         : ext.nursing_items ?? [];
     if (raw.length > 0) {
-      return raw.map((it) => ({
-        category_id: it?.category_id != null ? String(it.category_id) : null,
-        label: String(it?.label ?? it?.category_name ?? '').trim() || 'Soin',
-      }));
+      return raw.map((it) => mapItem(it, 'Soin', apt));
     }
   }
   const catId = apt.category_id != null ? String(apt.category_id) : null;
   const label = String(apt.category_name ?? '').trim();
+  const fd = (apt.form_data ?? {}) as Record<string, unknown>;
+  const singleLabel = label || (isBloodTestAppointment(t) ? 'Prélèvement' : 'Soin');
+  const ext = apt as AptWithIcon;
   return [
     {
       category_id: catId,
-      label: label || (isBloodTestAppointment(t) ? 'Prélèvement' : 'Soin'),
+      label: singleLabel,
+      emoji: careEmojiForLabel(singleLabel, t, {
+        categoryId: catId,
+        categoryIcon: ext.category_icon ?? null,
+      }),
+      category_image_url: apt.category_image_url ?? null,
+      care_options: mapCareOptions(fd.care_options),
     },
   ];
 }

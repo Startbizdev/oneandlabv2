@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { History } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { AppointmentCard } from '@/features/appointments/components/AppointmentCard';
 import { fetchAppointmentsPaginated } from '@/features/appointments/api/appointments.service';
 import { useAppointmentDetail } from '@/features/appointments/hooks/use-appointment-detail';
@@ -48,6 +49,7 @@ export function PatientAppointmentHistoryScreen() {
       });
     },
     enabled: Boolean(id && primary),
+    staleTime: 60_000,
   });
 
   const allItems = historyQ.data ?? [];
@@ -65,6 +67,34 @@ export function PatientAppointmentHistoryScreen() {
     return 'Vos rendez-vous passés';
   }, [relativeId, primary]);
 
+  const ListFooter = useMemo(
+    () =>
+      allItems.length > PAGE_SIZE ? (
+        <PatientPaginationBar
+          page={page}
+          pages={pages}
+          total={allItems.length}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => Math.min(pages, p + 1))}
+        />
+      ) : null,
+    [allItems.length, page, pages],
+  );
+
+  if (detailQ.isPending && !primary) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.intro}>
+          <Text style={styles.introTitle}>Historique</Text>
+          <Text style={styles.introSub}>Chargement…</Text>
+        </View>
+        <View style={styles.loading}>
+          <SkeletonGroup count={4} height={88} gap={10} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.intro}>
@@ -72,54 +102,31 @@ export function PatientAppointmentHistoryScreen() {
         <Text style={styles.introSub}>{subtitle}</Text>
       </View>
 
-      {historyQ.isLoading ? (
-        <View style={styles.loading}>
-          <SkeletonGroup count={4} height={88} gap={10} />
-        </View>
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => item.id}
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={historyQ.isRefetching}
-              onRefresh={() => void historyQ.refetch()}
-              tintColor={colors.primary}
-            />
-          }
-          renderItem={({ item, index }) => (
-            <AppointmentCard
-              appointment={item}
-              index={index}
-              onPress={() => router.push(`/(patient)/appointment/${item.id}` as never)}
-            />
-          )}
-          ItemSeparatorComponent={() => <View style={styles.sep} />}
-          ListEmptyComponent={
-            <EmptyState
-              Icon={History}
-              title="Aucun historique"
-              description="Vous n'avez pas encore d'autres rendez-vous passés pour ce dossier."
-            />
-          }
-          ListFooterComponent={
-            allItems.length > 0 ? (
-              <View style={styles.footer}>
-                <PatientPaginationBar
-                  page={page}
-                  pages={pages}
-                  total={allItems.length}
-                  onPrev={() => setPage((p) => Math.max(1, p - 1))}
-                  onNext={() => setPage((p) => Math.min(pages, p + 1))}
-                />
-              </View>
-            ) : null
-          }
-        />
-      )}
+      <QueryFlatList
+        query={historyQ}
+        items={items}
+        keyExtractor={(item) => item.id}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        skeletonHeight={88}
+        ListFooterComponent={ListFooter}
+        renderItem={({ item, index }) => (
+          <AppointmentCard
+            appointment={item}
+            index={index}
+            onPress={() => router.push(`/(patient)/appointment/${item.id}` as never)}
+          />
+        )}
+        ItemSeparatorComponent={() => <View style={styles.sep} />}
+        ListEmptyComponent={
+          <EmptyState
+            Icon={History}
+            title="Aucun historique"
+            description="Les rendez-vous passés apparaîtront ici."
+          />
+        }
+      />
     </View>
   );
 }
@@ -134,17 +141,18 @@ const styles = StyleSheet.create({
   },
   introTitle: {
     fontFamily: fontFamily.bold,
-    fontSize: fontSize.lg,
+    fontSize: fontSize.xl,
     color: colors.textPrimary,
   },
   introSub: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: colors.textSecondary,
-    lineHeight: fontSize.sm * 1.45,
   },
-  loading: { paddingHorizontal: spacing[4] },
-  list: { paddingHorizontal: spacing[4], paddingBottom: spacing[10], flexGrow: 1 },
+  list: {
+    paddingHorizontal: spacing[4],
+    paddingBottom: spacing[8],
+  },
   sep: { height: spacing[2] },
-  footer: { marginTop: spacing[4] },
+  loading: { paddingHorizontal: spacing[4], flex: 1 },
 });

@@ -1,15 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CalendarDays } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
-import {
-  groupAppointmentsByBatch,
-  type AppointmentListRow,
-} from '@/utils/appointment-batch';
+import type { AppointmentListRow } from '@/utils/appointment-batch';
+import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { useAppointmentsList } from '@/features/appointments/hooks/use-appointments-list';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
@@ -67,7 +65,8 @@ export function RoleFilteredAppointmentsListScreen({ role, detailPathPrefix }: P
   const [status, setStatus] = useState<ProStatusFilter | PreleveurStatusFilter>('all');
   const [search, setSearch] = useState('');
 
-  const { data, isLoading, refetch, isRefetching } = useAppointmentsList({ limit: 100 });
+  const query = useAppointmentsList({ limit: 100 });
+  const { data, refetch } = query;
 
   const filtered = useMemo(() => {
     let list = data ?? [];
@@ -80,9 +79,12 @@ export function RoleFilteredAppointmentsListScreen({ role, detailPathPrefix }: P
     return list;
   }, [data, role, status, search]);
 
+  const sortDirection =
+    status === 'done' ? ('past' as const) : ('upcoming' as const);
+
   const displayRows = useMemo(
-    () => groupAppointmentsByBatch(filtered),
-    [filtered],
+    () => buildAppointmentDisplayRows(filtered, { direction: sortDirection }),
+    [filtered, sortDirection],
   );
 
   useAppForegroundRefetch(() => { void refetch(); });
@@ -92,6 +94,7 @@ export function RoleFilteredAppointmentsListScreen({ role, detailPathPrefix }: P
       <AppointmentListRowCard
         row={row}
         index={index}
+        role={role}
         onPress={(apt) => {
           router.push(`${detailPathPrefix}/${apt.id}` as never);
         }}
@@ -102,47 +105,38 @@ export function RoleFilteredAppointmentsListScreen({ role, detailPathPrefix }: P
 
   return (
     <View style={styles.container}>
-      <AppointmentsListFilterBar
-        search={search}
-        onSearchChange={setSearch}
-        segmentTabs={statusOptions}
-        segmentTab={status}
-        onSegmentTabChange={setStatus}
+      <QueryFlatList
+        query={query}
+        items={displayRows}
+        header={
+          <AppointmentsListFilterBar
+            search={search}
+            onSearchChange={setSearch}
+            segmentTabs={statusOptions}
+            segmentTab={status}
+            onSegmentTabChange={setStatus}
+          />
+        }
+        renderItem={renderItem}
+        keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          <EmptyState
+            Icon={CalendarDays}
+            title="Aucun rendez-vous"
+            description="Modifiez les filtres pour élargir la liste."
+          />
+        }
       />
-
-      {isLoading ? (
-        <View style={styles.skeleton}>
-          <SkeletonGroup count={4} height={108} gap={12} />
-        </View>
-      ) : (
-        <FlatList
-          data={displayRows}
-          renderItem={renderItem}
-          keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
-          }
-          ListEmptyComponent={
-            <EmptyState
-              Icon={CalendarDays}
-              title="Aucun rendez-vous"
-              description="Modifiez les filtres pour élargir la liste."
-            />
-          }
-        />
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  skeleton: { paddingHorizontal: spacing[4] },
   listContent: {
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[8],
-    flexGrow: 1,
   },
 });

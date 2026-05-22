@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { isNursingAppointment, isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
@@ -12,11 +13,9 @@ import { CancelAppointmentSheet } from '../detail/components/blocks/CancelAppoin
 import { OfferActions } from '../detail/components/OfferActions';
 import { PrescriptionSection } from '../detail/components/PrescriptionSection';
 import { ProPatientReviewSection } from '../detail/components/ProPatientReviewSection';
-import { RdvUnifiedInfoCard } from '../detail/components/RdvUnifiedInfoCard';
 import { StaffPatientKvSection } from '../detail/components/StaffPatientKvSection';
 import { PatientAssigneeRows } from '../detail/components/patient/PatientAssigneeRows';
 import { RdvAppointmentInfoSection } from '../detail/components/layout/RdvAppointmentInfoSection';
-import { RdvLotSummaryBanner } from '../detail/components/layout/RdvLotSummaryBanner';
 import { DetailSegmentBar } from '../detail/components/layout/DetailSegmentBar';
 import { RdvDetailShareFooter } from '../detail/components/layout/RdvDetailShareFooter';
 import { DetailTerminalBanner } from '../detail/components/layout/DetailTerminalBanner';
@@ -101,6 +100,10 @@ export function AppointmentDetailScreen({ role }: Props) {
     !!user?.id &&
     isPendingIncomingOffer(primary, user.id);
 
+  const pullRefresh = useManualRefresh(async () => {
+    s.refreshAll();
+  });
+
   if (s.isLoading || !s.apt || !primary) {
     return (
       <View style={styles.loading}>
@@ -118,10 +121,6 @@ export function AppointmentDetailScreen({ role }: Props) {
   }
 
   const { batchSorted, isMultiBatch, canceled } = s;
-  const lotExpectedCount =
-    batchSorted.length > 1
-      ? batchSorted.length
-      : 1 + (primary.batch_siblings?.length ?? 0);
   const editPath = config.canReschedule && id ? reschedulePathForRole(role, id) : null;
   const showPrescription =
     role === 'pro' && config.showPrescriptionBlock && !isAppointmentCanceled(primary.status);
@@ -138,8 +137,8 @@ export function AppointmentDetailScreen({ role }: Props) {
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
           <RefreshControl
-            refreshing={s.isRefreshing}
-            onRefresh={s.refreshAll}
+            refreshing={pullRefresh.refreshing}
+            onRefresh={pullRefresh.onRefresh}
             tintColor={colors.primary}
           />
         }
@@ -148,13 +147,6 @@ export function AppointmentDetailScreen({ role }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
-          {isMultiBatch ? (
-            <RdvLotSummaryBanner
-              batch={batchSorted}
-              expectedCount={lotExpectedCount}
-            />
-          ) : null}
-
           {terminal ? <DetailTerminalBanner terminal={terminal} /> : null}
 
           {config.showOfferBlock && isPendingIncomingOffer(primary, user?.id) ? (
@@ -174,21 +166,10 @@ export function AppointmentDetailScreen({ role }: Props) {
                   apt={primary}
                   viewer={user}
                   edgeToEdge
-                  omitCareFields={isMultiBatch}
+                  batch={isMultiBatch ? batchSorted : undefined}
                   onAddressPress={() => openWazeForAppointment(primary)}
                 />
               </View>
-              {isMultiBatch ? (
-                <RdvUnifiedInfoCard
-                  batch={batchSorted}
-                  primary={primary}
-                  isMultiBatch
-                  role={role}
-                  viewer={user}
-                  showPatientRows={false}
-                  embedded
-                />
-              ) : null}
               <StaffPatientKvSection apt={primary} />
               <PatientAssigneeRows apt={primary} />
               {showPrescription ? (
@@ -219,7 +200,7 @@ export function AppointmentDetailScreen({ role }: Props) {
 
               {showShareFooter ? (
                 <RdvDetailShareFooter
-                  shareText={s.shareQ.data?.shareText}
+                  shareData={s.shareQ.data ?? undefined}
                   loading={s.shareQ.isLoading}
                 />
               ) : null}

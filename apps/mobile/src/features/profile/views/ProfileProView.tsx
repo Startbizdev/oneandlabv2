@@ -123,6 +123,7 @@ export function ProfileProView() {
           lastName={lastName}
           email={user?.email}
           role="pro"
+          gender={q.data?.gender}
           profileImageUrl={profileUrl}
           coverImageUrl={coverUrl}
           showCover

@@ -13,6 +13,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
             retry: 2,
             staleTime: 30_000,
             networkMode: 'offlineFirst',
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: true,
           },
           mutations: {
             retry: 1,

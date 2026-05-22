@@ -45,6 +45,35 @@ export function beneficiaryDisplayName(apt: Appointment): string {
   return patientDisplayName(apt) || '—';
 }
 
+/** Genre du bénéficiaire (proche, formulaire RDV ou profil patient). */
+export function appointmentBeneficiaryGender(apt: Appointment): string | null {
+  const ext = apt as AptExt;
+  const rel = ext.relative?.gender;
+  if (rel) return String(rel).trim() || null;
+  const fd = (apt.form_data ?? {}) as Record<string, unknown>;
+  const fromForm = fd.gender ?? fd.beneficiary_gender;
+  if (fromForm) return String(fromForm).trim() || null;
+  const fromApi = (apt as Record<string, unknown>).beneficiary_gender;
+  if (fromApi) return String(fromApi).trim() || null;
+  return null;
+}
+
+/** Genre de l’assigné (infirmier, labo, préleveur) si exposé par l’API. */
+export function appointmentAssigneeGender(
+  apt: Appointment,
+  kind: 'nurse' | 'lab' | 'preleveur',
+): string | null {
+  const ext = apt as Record<string, unknown>;
+  const key =
+    kind === 'nurse'
+      ? 'assigned_nurse_gender'
+      : kind === 'lab'
+        ? 'assigned_lab_gender'
+        : 'assigned_to_gender';
+  const g = ext[key];
+  return g ? String(g).trim() || null : null;
+}
+
 /** Titre navigation : nom du patient (pas le soin). */
 export function appointmentPatientHeaderTitle(
   apt: Appointment | undefined,
@@ -52,7 +81,7 @@ export function appointmentPatientHeaderTitle(
 ): string {
   if (!apt) return 'Rendez-vous';
   const name = beneficiaryDisplayName(apt);
-  if (batchCount > 1) return `${name} · Lot (${batchCount})`;
+  void batchCount;
   return name;
 }
 

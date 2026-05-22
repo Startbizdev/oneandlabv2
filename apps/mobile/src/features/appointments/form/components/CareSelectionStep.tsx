@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Check, Plus } from 'lucide-react-native';
-import type { SelectedServiceInput } from '@oneandlab/shared-utils';
+import { careCategoryEmojiForCategory, type SelectedServiceInput } from '@oneandlab/shared-utils';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 import type { BookingServiceFormSlice } from '../utils/booking-service-form-slice';
 import {
@@ -14,8 +14,11 @@ import { BookingActionBar } from './BookingActionBar';
 import { CareCategoryFilterBar } from './CareCategoryFilterBar';
 import { CareServiceQuickOptionsSheet } from './CareServiceQuickOptionsSheet';
 import { SelectedServicesDetailSheet } from './SelectedServicesDetailSheet';
-import { colors, radius, spacing } from '@/theme';
+import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+
+const EMOJI_TILE = 40;
+const ACTION_SIZE = 32;
 
 interface Props {
   nursingCategories: CareCategory[];
@@ -39,31 +42,51 @@ function CareRow({
   selected: boolean;
   onPress: () => void;
 }) {
+  const emoji =
+    careCategoryEmojiForCategory({ name: cat.name, icon: cat.icon, type: cat.type }) || '➕';
+
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.row, selected && styles.rowSelected]}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={
+        selected ? `${cat.label}, ajouté — appuyer pour retirer` : `Ajouter ${cat.label}`
+      }
+      style={({ pressed }) => [styles.listItem, pressed && styles.listItemPressed]}
     >
-      <View style={styles.rowMain}>
-        <Text style={styles.rowLabel}>{cat.label}</Text>
-        {cat.description ? (
-          <Text style={styles.rowDesc} numberOfLines={2}>
-            {cat.description}
+      <View
+        style={[
+          styles.card,
+          elevation.sm,
+          selected ? styles.cardSelected : styles.cardDefault,
+        ]}
+      >
+        <View style={[styles.emojiTile, selected && styles.emojiTileSelected]}>
+          <Text style={styles.emoji} accessibilityElementsHidden>
+            {emoji}
           </Text>
-        ) : null}
-      </View>
-      <View style={[styles.addChip, selected && styles.addChipSelected]}>
-        {selected ? (
-          <>
-            <Check size={12} color={colors.primaryDark} strokeWidth={2.5} />
-            <Text style={[styles.addChipText, styles.addChipTextSelected]}>Ajouté</Text>
-          </>
-        ) : (
-          <>
-            <Plus size={12} color={colors.primary} strokeWidth={2.5} />
-            <Text style={styles.addChipText}>Ajouter</Text>
-          </>
-        )}
+        </View>
+
+        <Text
+          style={[styles.label, selected && styles.labelSelected]}
+          numberOfLines={1}
+        >
+          {cat.label}
+        </Text>
+
+        <View
+          style={[
+            styles.actionBtn,
+            selected ? styles.actionBtnSelected : styles.actionBtnDefault,
+          ]}
+        >
+          {selected ? (
+            <Check size={15} color={colors.primaryDark} strokeWidth={2.5} />
+          ) : (
+            <Plus size={15} color={colors.primary} strokeWidth={2.5} />
+          )}
+        </View>
       </View>
     </Pressable>
   );
@@ -84,7 +107,6 @@ export function CareSelectionStep({
   const [modalCat, setModalCat] = useState<CareCategory | null>(null);
   const [modalOnlyOpts, setModalOnlyOpts] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
-  /** `all` = aucun segment actif, liste complète (pas de puce « Tous »). */
   const [filterTab, setFilterTab] = useState('all');
 
   const resetFilterAfterAdd = useCallback(() => {
@@ -215,7 +237,7 @@ export function CareSelectionStep({
           style={styles.list}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={ListSeparator}
         />
       </ScreenActionLayout>
 
@@ -244,11 +266,15 @@ export function CareSelectionStep({
   );
 }
 
+function ListSeparator() {
+  return <View style={styles.separator} />;
+}
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     minHeight: 0,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceAlt,
   },
   list: {
     flex: 1,
@@ -267,7 +293,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize['2xs'],
     color: colors.textTertiary,
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
   separator: {
@@ -278,55 +304,85 @@ const styles = StyleSheet.create({
     fontSize: fontSize['2xs'],
     color: colors.textSecondary,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
+    marginTop: spacing[0.5],
   },
-  row: {
+  listItem: {
+    width: '100%',
+  },
+  listItemPressed: {
+    opacity: 0.94,
+  },
+  card: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[3],
-    padding: spacing[3],
+    minHeight: 52,
+    paddingVertical: spacing[2.5],
+    paddingLeft: spacing[2.5],
+    paddingRight: spacing[2],
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
     backgroundColor: colors.surface,
   },
-  rowSelected: {
-    borderColor: colors.primary,
+  cardDefault: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderLight,
+  },
+  cardSelected: {
+    borderWidth: 1,
+    borderColor: colors.primaryMid,
     backgroundColor: colors.primaryLight,
   },
-  rowMain: { flex: 1, gap: 2, minWidth: 0 },
-  rowLabel: {
+  emojiTile: {
+    width: EMOJI_TILE,
+    height: EMOJI_TILE,
+    marginRight: spacing[3],
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderLight,
+    flexShrink: 0,
+  },
+  emojiTileSelected: {
+    backgroundColor: colors.surface,
+    borderColor: colors.primaryMid,
+  },
+  emoji: {
+    fontSize: 22,
+    lineHeight: 26,
+    textAlign: 'center',
+  },
+  label: {
+    flex: 1,
+    flexShrink: 1,
+    marginRight: spacing[2],
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
     color: colors.textPrimary,
   },
-  rowDesc: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
+  labelSelected: {
+    color: colors.primaryDark,
   },
-  addChip: {
-    flexDirection: 'row',
+  actionBtn: {
+    width: ACTION_SIZE,
+    height: ACTION_SIZE,
+    borderRadius: ACTION_SIZE / 2,
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing[2],
-    paddingVertical: 6,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.primaryMid,
-    backgroundColor: colors.primaryLight,
+    justifyContent: 'center',
     flexShrink: 0,
   },
-  addChipSelected: {
+  actionBtnDefault: {
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.primaryMid,
+  },
+  actionBtnSelected: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
     borderColor: colors.primary,
-    backgroundColor: colors.primaryMid,
   },
-  addChipText: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.primary,
-  },
-  addChipTextSelected: { color: colors.primaryDark },
   emptyList: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,

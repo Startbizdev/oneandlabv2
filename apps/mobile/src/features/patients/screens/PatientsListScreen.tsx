@@ -27,14 +27,11 @@ import { CreatePatientModal } from '../components/CreatePatientModal';
 import { useAuthStore } from '@/store/auth-store';
 import { patientListSubtitle, patientRecordEmailLine } from '../utils/patient-contact-display';
 import { colors, spacing } from '@/theme';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function displayName(p: PatientRow) {
   return `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || 'Patient';
-}
-
-function initials(p: PatientRow) {
-  return ((p.first_name?.[0] ?? '') + (p.last_name?.[0] ?? '')).toUpperCase() || '?';
 }
 
 interface Props {
@@ -135,9 +132,13 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
           delayLongPress={400}
         >
           <View style={styles.row}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials(item)}</Text>
-            </View>
+            <ProfileAvatar
+              profileImageUrl={(item as PatientRow & { profile_image_url?: string }).profile_image_url}
+              seed={item.id ?? displayName(item)}
+              gender={item.gender}
+              size={44}
+              style={styles.avatar}
+            />
             <View style={styles.info}>
               <Text style={styles.name} numberOfLines={1}>
                 {displayName(item)}
@@ -240,17 +241,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontFamily: fontFamily.bold,
-    fontSize: 13,
-    color: colors.primary,
+    flexShrink: 0,
   },
   info: {
     flex: 1,

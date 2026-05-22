@@ -81,10 +81,10 @@ export const colors = {
   borderFocus: brand.primary,
   borderError: palette.red[500],
 
-  // Text
+  // Text (secondary/tertiary assombris pour une meilleure lisibilité)
   textPrimary: palette.slate[900],
-  textSecondary: palette.slate[500],
-  textTertiary: palette.slate[400],
+  textSecondary: palette.slate[600],
+  textTertiary: palette.slate[500],
   textInverse: palette.white,
   textLink: brand.primary,
 

@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,7 +10,9 @@ import { markNotificationRead } from '@/features/notifications/api/notifications
 import { useNotificationPolling } from '@/features/notifications/hooks/use-notification-polling';
 import type { AppNotification } from '@/features/notifications/api/notifications.service';
 import { useAuthStore } from '@/store/auth-store';
+import { resolveNotificationNavigation } from '../utils/notification-navigation';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -45,7 +47,8 @@ const NotifCard = React.memo(function NotifCard({ item, index, onPress }: NotifC
 
 export function NotificationsScreen() {
   const router = useRouter();
-  const { data, refetch, isRefetching } = useNotificationPolling();
+  const query = useNotificationPolling();
+  const { data } = query;
   const qc = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
 
@@ -57,11 +60,12 @@ export function NotificationsScreen() {
   const onPress = useCallback(
     (n: AppNotification) => {
       if (!n.read_at) markRead.mutate(n.id);
-      if (n.appointment_id) {
-        if (role === 'nurse') router.push(`/(nurse)/appointment/${n.appointment_id}`);
-        else if (role === 'preleveur') router.push(`/(preleveur)/appointment/${n.appointment_id}`);
-        else if (role === 'pro') router.push(`/(pro)/appointment/${n.appointment_id}`);
-        else if (role === 'patient') router.push(`/(patient)/appointment/${n.appointment_id}`);
+      const target = resolveNotificationNavigation(n, role);
+      if (target.kind === 'route') {
+        router.push({
+          pathname: target.pathname,
+          params: target.params,
+        } as never);
       }
     },
     [role, router, markRead],
@@ -69,8 +73,9 @@ export function NotificationsScreen() {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={data ?? []}
+      <QueryFlatList
+        query={query}
+        items={data ?? []}
         renderItem={({ item, index }) => (
           <NotifCard item={item} index={index} onPress={() => onPress(item)} />
         )}
@@ -78,7 +83,6 @@ export function NotificationsScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
         ListEmptyComponent={
           <EmptyState
             Icon={Bell}

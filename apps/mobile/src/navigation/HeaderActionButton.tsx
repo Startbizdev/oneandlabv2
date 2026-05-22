@@ -17,7 +17,11 @@ const CONFIG: Record<
   { Icon: LucideIcon; label: string; accessibilityLabel: string }
 > = {
   add: { Icon: Plus, label: 'Nouveau', accessibilityLabel: 'Nouveau rendez-vous' },
-  book: { Icon: CalendarPlus, label: 'Réserver', accessibilityLabel: 'Réserver un rendez-vous' },
+  book: {
+    Icon: CalendarPlus,
+    label: 'Prendre un rendez-vous',
+    accessibilityLabel: 'Prendre un rendez-vous',
+  },
   'add-person': { Icon: UserPlus, label: 'Ajouter', accessibilityLabel: 'Ajouter un patient' },
 };
 

@@ -1,13 +1,18 @@
 import {
+  Keyboard,
   Modal,
+  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
   type ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  KeyboardAwareScrollView,
+  KeyboardStickyView,
+} from 'react-native-keyboard-controller';
 import { ChevronLeft } from 'lucide-react-native';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -25,10 +30,13 @@ interface Props {
   disableScroll?: boolean;
   /** Fermer en tapant au-dessus du panneau (zone transparente). */
   dismissOnBackdropPress?: boolean;
+  /** Ajuste le contenu quand le clavier est ouvert (défaut true). */
+  keyboardAware?: boolean;
 }
 
 /**
  * Bottom sheet — sans overlay sombre ; ombre portée en haut du panneau.
+ * Clavier : KeyboardAwareScrollView + KeyboardStickyView (react-native-keyboard-controller).
  */
 export function SheetModal({
   visible,
@@ -41,19 +49,65 @@ export function SheetModal({
   contentStyle,
   disableScroll = false,
   dismissOnBackdropPress = true,
+  keyboardAware = true,
 }: Props) {
+  const insets = useSafeAreaInsets();
+  const bottomOffset = footer ? 12 : Math.max(insets.bottom, spacing[2]);
+
+  const close = () => {
+    Keyboard.dismiss();
+    onClose();
+  };
+
+  const body = disableScroll ? (
+    <View style={[styles.body, styles.bodyStatic, contentStyle]}>{children}</View>
+  ) : keyboardAware ? (
+    <KeyboardAwareScrollView
+      style={styles.scroll}
+      contentContainerStyle={[styles.body, contentStyle]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      bounces={false}
+      bottomOffset={bottomOffset}
+    >
+      {children}
+    </KeyboardAwareScrollView>
+  ) : (
+    <KeyboardAwareScrollView
+      style={styles.scroll}
+      contentContainerStyle={[styles.body, contentStyle]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      bounces={false}
+      enabled={false}
+    >
+      {children}
+    </KeyboardAwareScrollView>
+  );
+
+  const footerNode = footer ? (
+    keyboardAware ? (
+      <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+        <View style={styles.footer}>{footer}</View>
+      </KeyboardStickyView>
+    ) : (
+      <View style={styles.footer}>{footer}</View>
+    )
+  ) : null;
+
   return (
     <Modal
       visible={visible}
       transparent
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={close}
+      statusBarTranslucent={Platform.OS === 'android'}
     >
       <View style={styles.root}>
         {dismissOnBackdropPress ? (
           <Pressable
             style={styles.dismissArea}
-            onPress={onClose}
+            onPress={close}
             accessibilityRole="button"
             accessibilityLabel="Fermer"
           />
@@ -68,7 +122,12 @@ export function SheetModal({
 
               <View style={styles.header}>
                 {onBack ? (
-                  <Pressable onPress={onBack} hitSlop={12} style={styles.backBtn} accessibilityLabel="Retour">
+                  <Pressable
+                    onPress={onBack}
+                    hitSlop={12}
+                    style={styles.backBtn}
+                    accessibilityLabel="Retour"
+                  >
                     <ChevronLeft size={22} color={colors.primary} strokeWidth={2.5} />
                   </Pressable>
                 ) : null}
@@ -78,21 +137,8 @@ export function SheetModal({
                 </View>
               </View>
 
-              {disableScroll ? (
-                <View style={[styles.body, styles.bodyStatic, contentStyle]}>{children}</View>
-              ) : (
-                <ScrollView
-                  style={styles.scroll}
-                  contentContainerStyle={[styles.body, contentStyle]}
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  bounces={false}
-                >
-                  {children}
-                </ScrollView>
-              )}
-
-              {footer ? <View style={styles.footer}>{footer}</View> : null}
+              {body}
+              {footerNode}
             </View>
           </SafeAreaView>
         </View>
