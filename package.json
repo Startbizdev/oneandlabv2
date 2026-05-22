@@ -1,0 +1,19 @@
+{
+  "name": "oneandlab",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "frontend"
+  ],
+  "scripts": {
+    "web:dev": "npm run dev --workspace=oneandlab-frontend",
+    "web:build": "npm run build --workspace=oneandlab-frontend",
+    "mobile:dev": "npm run start --workspace=@oneandlab/mobile",
+    "mobile:ios": "npm run ios --workspace=@oneandlab/mobile",
+    "mobile:android": "npm run android --workspace=@oneandlab/mobile",
+    "typecheck:shared": "npm run typecheck --workspaces --if-present",
+    "mobile:typecheck": "npm run typecheck --workspace=@oneandlab/mobile"
+  }
+}

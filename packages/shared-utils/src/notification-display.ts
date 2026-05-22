@@ -1,0 +1,42 @@
+/**
+ * source: frontend/utils/notification-display.ts
+ */
+export function sanitizeNotificationText(input: string | null | undefined): string {
+  if (input == null || typeof input !== 'string') return '';
+  return input
+    .replace(/\u2014/g, '·')
+    .replace(/\u2013/g, '·')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function truncateForNotificationTitle(s: string, maxLen = 54): string {
+  const t = sanitizeNotificationText(s);
+  if (t.length <= maxLen) return t;
+  return `${t.slice(0, maxLen - 1).trimEnd()}…`;
+}
+
+export function truncateForNotificationBody(s: string, maxLen = 140): string | undefined {
+  const t = sanitizeNotificationText(s);
+  if (!t) return undefined;
+  if (t.length <= maxLen) return t;
+  return `${t.slice(0, maxLen - 1).trimEnd()}…`;
+}
+
+export function formatBellNotificationLines(
+  title: string | null | undefined,
+  message: string | null | undefined,
+): { label: string; message?: string } {
+  const hasTitle = Boolean(title?.trim());
+  const hasMessage = Boolean(message?.trim());
+  const rawLabel = hasTitle ? String(title) : hasMessage ? String(message) : 'Notification';
+  const label = truncateForNotificationTitle(sanitizeNotificationText(rawLabel));
+
+  const tSan = hasTitle ? sanitizeNotificationText(title) : '';
+  const mSan = hasMessage ? sanitizeNotificationText(message) : '';
+  let secondary: string | undefined;
+  if (hasTitle && hasMessage && mSan !== tSan) {
+    secondary = truncateForNotificationBody(mSan);
+  }
+  return { label, message: secondary };
+}
