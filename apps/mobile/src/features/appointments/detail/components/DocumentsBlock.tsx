@@ -6,14 +6,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import {
-  CreditCard,
-  Download,
-  FileText,
-  FlaskConical,
-  Shield,
-  Camera,
-} from 'lucide-react-native';
+import { CreditCard, FileText, FlaskConical, Shield, Camera } from 'lucide-react-native';
+import { DocumentDownloadButton } from '@/features/documents/components/DocumentDownloadButton';
+import { useDownloadedDocumentIds } from '@/features/documents/hooks/use-downloaded-document-ids';
 import type { LucideIcon } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -42,6 +37,7 @@ interface Props {
   docs: MedicalDocumentRow[];
   loading?: boolean;
   omitCarePhotos?: boolean;
+  appointmentId?: string;
 }
 
 function DocIcon({ type }: { type: string }) {
@@ -56,10 +52,12 @@ function DocIcon({ type }: { type: string }) {
 function DocumentRow({
   doc,
   downloading,
+  downloaded,
   onDownload,
 }: {
   doc: MedicalDocumentRow;
   downloading: boolean;
+  downloaded: boolean;
   onDownload: (doc: MedicalDocumentRow) => void;
 }) {
   const label = getDocumentTypeLabel(doc.document_type);
@@ -76,31 +74,28 @@ function DocumentRow({
           </Text>
         ) : null}
       </View>
-      <Pressable
+      <DocumentDownloadButton
+        downloaded={downloaded}
+        downloading={downloading}
         onPress={() => onDownload(doc)}
-        disabled={downloading}
-        hitSlop={8}
-        style={({ pressed }) => [
-          styles.downloadBtn,
-          pressed && styles.downloadBtnPressed,
-          downloading && styles.downloadBtnDisabled,
-        ]}
-        accessibilityRole="button"
         accessibilityLabel={`Télécharger ${label}`}
-      >
-        {downloading ? (
-          <ActivityIndicator size="small" color={colors.primary} />
-        ) : (
-          <Download size={18} color={colors.primary} strokeWidth={2.25} />
-        )}
-      </Pressable>
+      />
     </View>
   );
 }
 
-export function DocumentsBlock({ docs, loading, omitCarePhotos = true }: Props) {
+export function DocumentsBlock({
+  docs,
+  loading,
+  omitCarePhotos = true,
+  appointmentId,
+}: Props) {
   const { show: toast } = useToast();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const scopeKey = appointmentId
+    ? `apt:${appointmentId}`
+    : `docs:${docs.map((d) => d.id).join(',')}`;
+  const { isDownloaded, markDownloaded } = useDownloadedDocumentIds(scopeKey);
 
   const list = filterListDocuments(docs, { omitCarePhotos });
 
@@ -110,12 +105,13 @@ export function DocumentsBlock({ docs, loading, omitCarePhotos = true }: Props) 
       const res = await downloadMedicalDocument(doc.id, doc.file_name);
       setDownloadingId(null);
       if (res.ok) {
+        await markDownloaded(doc.id);
         toast('Document prêt à enregistrer', { type: 'success' });
       } else {
         toast(res.error ?? 'Téléchargement impossible', { type: 'error' });
       }
     },
-    [toast],
+    [toast, markDownloaded],
   );
 
   if (loading) {
@@ -142,6 +138,7 @@ export function DocumentsBlock({ docs, loading, omitCarePhotos = true }: Props) 
           <DocumentRow
             doc={d}
             downloading={downloadingId === d.id}
+            downloaded={isDownloaded(d.id)}
             onDownload={handleDownload}
           />
         </View>

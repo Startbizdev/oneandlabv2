@@ -30,13 +30,7 @@ type ReviewRow = {
   comment?: string;
 };
 
-function canLeaveReview(appt: Appointment): boolean {
-  if (appt.status !== 'completed') return false;
-  const t = String(appt.type ?? '');
-  if (t === 'nursing' || t === 'nurse') return !!appt.assigned_nurse_id;
-  if (t === 'blood_test') return !!(appt.assigned_lab_id || appt.assigned_to);
-  return false;
-}
+import { canLeaveReview } from '@/utils/can-leave-review';
 
 function revieweeType(appt: Appointment): string {
   const t = String(appt.type ?? '');

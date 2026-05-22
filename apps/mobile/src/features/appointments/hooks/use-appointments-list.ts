@@ -11,5 +11,8 @@ export function useAppointmentsList(filters: AppointmentListFilters) {
       if (!res.success) throw new Error(res.error ?? 'Erreur chargement RDV');
       return res.data ?? [];
     },
+    staleTime: 45_000,
+    /** Refetch silencieux : la liste reste affichée (voir QueryFlatList). */
+    refetchOnMount: 'always',
   });
 }

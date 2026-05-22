@@ -1,16 +1,25 @@
+import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Share2 } from 'lucide-react-native';
+import type { ShareForNurseData } from '../../api/appointment-detail.service';
+import { buildNurseShareMessage } from '../../utils/nurse-share-message';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
+  shareData?: ShareForNurseData | null;
+  /** Message déjà assemblé (prioritaire sur shareData). */
   shareText?: string;
   loading?: boolean;
 }
 
 /** Partage RDV — CTA gradient (identité Cary). */
-export function RdvDetailShareFooter({ shareText, loading }: Props) {
+export function RdvDetailShareFooter({ shareData, shareText: shareTextProp, loading }: Props) {
+  const shareText = useMemo(
+    () => shareTextProp?.trim() || buildNurseShareMessage(shareData),
+    [shareData, shareTextProp],
+  );
   const disabled = loading || !shareText;
 
   return (

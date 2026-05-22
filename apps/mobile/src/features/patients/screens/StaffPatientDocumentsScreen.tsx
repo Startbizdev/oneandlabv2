@@ -10,7 +10,9 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CreditCard, Download, FileText, Shield } from 'lucide-react-native';
+import { CreditCard, FileText, Shield } from 'lucide-react-native';
+import { DocumentDownloadButton } from '@/features/documents/components/DocumentDownloadButton';
+import { useDownloadedDocumentIds } from '@/features/documents/hooks/use-downloaded-document-ids';
 import type { LucideIcon } from 'lucide-react-native';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
@@ -96,12 +98,14 @@ function SavedDocumentRow({
   label,
   sub,
   downloading,
+  downloaded,
   onDownload,
 }: {
   icon: LucideIcon;
   label: string;
   sub: string;
   downloading: boolean;
+  downloaded: boolean;
   onDownload: () => void;
 }) {
   return (
@@ -115,18 +119,12 @@ function SavedDocumentRow({
           {sub}
         </Text>
       </View>
-      <Pressable
+      <DocumentDownloadButton
+        downloaded={downloaded}
+        downloading={downloading}
         onPress={onDownload}
-        disabled={downloading}
-        style={styles.downloadBtn}
         accessibilityLabel={`Télécharger ${label}`}
-      >
-        {downloading ? (
-          <ActivityIndicator size="small" color={colors.primary} />
-        ) : (
-          <Download size={18} color={colors.primary} strokeWidth={2.25} />
-        )}
-      </Pressable>
+      />
     </View>
   );
 }
@@ -138,6 +136,7 @@ export function StaffPatientDocumentsScreen() {
   const [page, setPage] = useState(1);
   const [uploading, setUploading] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const { isDownloaded, markDownloaded } = useDownloadedDocumentIds(`patient:${id ?? ''}`);
 
   const profileQ = useQuery({
     queryKey: queryKeys.profile.user(id ?? ''),
@@ -177,7 +176,12 @@ export function StaffPatientDocumentsScreen() {
   );
 
   const existingTypes = useMemo(
-    () => new Set(allDocs.map((d) => d.document_type).filter(Boolean)),
+    () =>
+      new Set(
+        allDocs
+          .map((d) => d.document_type)
+          .filter((t): t is string => typeof t === 'string' && t.length > 0),
+      ),
     [allDocs],
   );
 
@@ -208,10 +212,12 @@ export function StaffPatientDocumentsScreen() {
       setDownloadingId(medicalDocId);
       const res = await downloadMedicalDocument(medicalDocId, fileName);
       setDownloadingId(null);
-      if (res.ok) toast('Document prêt à enregistrer', { type: 'success' });
-      else toast(res.error ?? 'Téléchargement impossible', { type: 'error' });
+      if (res.ok) {
+        await markDownloaded(medicalDocId);
+        toast('Document prêt à enregistrer', { type: 'success' });
+      } else toast(res.error ?? 'Téléchargement impossible', { type: 'error' });
     },
-    [toast],
+    [toast, markDownloaded],
   );
 
   if (docsQ.isLoading && !docsQ.data) {
@@ -275,6 +281,7 @@ export function StaffPatientDocumentsScreen() {
                 label={label}
                 sub={sub}
                 downloading={downloadingId === medicalId}
+                downloaded={isDownloaded(medicalId)}
                 onDownload={() => void handleDownload(medicalId, item.file_name)}
               />
             );

@@ -95,6 +95,7 @@ export function ProfilePreleveurView() {
           lastName={lastName}
           email={user?.email}
           role="preleveur"
+          gender={q.data?.gender}
           profileImageUrl={profileUrl}
           onEditPhotos={() => setPhotosOpen(true)}
         />

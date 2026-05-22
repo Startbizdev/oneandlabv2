@@ -1,25 +1,27 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, Clock, Layers, X } from 'lucide-react-native';
+import { Check, X } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
-import { formatAppointmentDateTime } from '@/utils/appointment-datetime-fr';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { NurseOfferConfirmSheet } from '@/features/nurse/components/NurseOfferConfirmSheet';
 import {
   acceptOfferBatch,
   refuseOfferBatch,
 } from '@/features/nurse/utils/offer-appointment-workflow';
-import { beneficiaryDisplayName } from '@/features/appointments/detail/utils/patient-appointment-display';
+import { useAppointmentBatch } from '../hooks/use-appointment-batch';
 import { batchLotSummaryLabel } from '@/utils/appointment-batch';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { useOfferQueueStore } from '../../store/offer-queue-store';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { OfferAppointmentPreviewBody } from './offer/OfferAppointmentPreviewBody';
+import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -52,6 +54,8 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const { batchSorted, isMultiBatch, siblingsLoading } = useAppointmentBatch(selected);
+
   const row = useMemo(
     () => (selected ? rowFromAppointment(selected) : null),
     [selected],
@@ -63,9 +67,23 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
   }, [row]);
 
   const lotLabel = useMemo(() => {
-    if (!row || row.kind !== 'batch') return '';
-    return batchLotSummaryLabel(row.appointments);
-  }, [row]);
+    if (!selected || !isMultiBatch) return '';
+    return batchLotSummaryLabel(batchSorted);
+  }, [batchSorted, isMultiBatch, selected]);
+
+  const subtitle = useMemo(() => {
+    if (isMultiBatch && batchSorted.length > 1) {
+      return `${batchSorted.length} soins dans ce lot — une seule acceptation pour tout le lot.`;
+    }
+    return 'Acceptez rapidement avant qu’un autre professionnel ne le prenne.';
+  }, [batchSorted.length, isMultiBatch]);
+
+  const dismissLater = useCallback(() => {
+    closeModal();
+    if (user?.role && user.id) {
+      void processNext(user.role, user.id);
+    }
+  }, [closeModal, processNext, user?.id, user?.role]);
 
   const finishAndNext = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
@@ -136,88 +154,53 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
 
   if (!visible || !selected || !row) return null;
 
-  const patientName = beneficiaryDisplayName(selected);
-  const fd = selected.form_data as Record<string, unknown> | undefined;
+  const footer = (
+    <View style={styles.footer}>
+      <Button
+        title={batchCount > 1 ? `Accepter (${batchCount} soins)` : 'Accepter'}
+        loading={loading}
+        leftIcon={<Check size={16} color={colors.textInverse} strokeWidth={2.5} />}
+        onPress={() => setConfirmOpen(true)}
+        fullWidth
+        size="lg"
+      />
+      <Button
+        title={batchCount > 1 ? 'Refuser le lot' : 'Refuser'}
+        variant="outline"
+        loading={loading}
+        leftIcon={<X size={16} color={colors.error} strokeWidth={2} />}
+        onPress={() => void handleRefuse()}
+        fullWidth
+      />
+      <Pressable onPress={dismissLater} style={styles.laterBtn} disabled={loading}>
+        <Text style={styles.laterText}>Plus tard</Text>
+      </Pressable>
+    </View>
+  );
 
   return (
     <>
-      <Modal visible transparent animationType="slide">
-        <View style={styles.root}>
-          <Pressable
-            style={styles.dismissArea}
-            onPress={() => {
-              closeModal();
-              if (user?.role && user.id) {
-                void processNext(user.role, user.id);
-              }
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Fermer"
-          />
-          <View style={[styles.sheet, elevation.sheetTop]}>
-            <View style={styles.handleWrap}>
-              <View style={styles.handle} />
-            </View>
-
-            <Text style={styles.sheetTitle}>Nouvelle demande</Text>
-            <Text style={styles.patientName}>{patientName}</Text>
-
-            {lotLabel ? (
-              <View style={styles.lotRow}>
-                <Layers size={14} color={colors.primary} strokeWidth={2.25} />
-                <Text style={styles.lotLabel}>{lotLabel}</Text>
-              </View>
-            ) : null}
-
-            <View style={styles.timeRow}>
-              <Clock size={14} color={colors.primary} strokeWidth={2} />
-              <Text style={styles.timeLabel}>
-                {formatAppointmentDateTime(
-                  selected.scheduled_at,
-                  (fd?.availability as Parameters<typeof formatAppointmentDateTime>[1]) ??
-                    undefined,
-                )}
-              </Text>
-            </View>
-
-            {selected.category_name ? (
-              <Text style={styles.category}>{selected.category_name}</Text>
-            ) : null}
-
-            <View style={styles.actions}>
-              <Button
-                title={batchCount > 1 ? `Accepter (${batchCount} soins)` : 'Accepter'}
-                loading={loading}
-                leftIcon={<Check size={16} color={colors.textInverse} strokeWidth={2.5} />}
-                onPress={() => setConfirmOpen(true)}
-                fullWidth
-                size="lg"
-              />
-              <Button
-                title={batchCount > 1 ? 'Refuser le lot' : 'Refuser'}
-                variant="outline"
-                loading={loading}
-                leftIcon={<X size={16} color={colors.error} strokeWidth={2} />}
-                onPress={() => void handleRefuse()}
-                fullWidth
-              />
-            </View>
-
-            <Pressable
-              onPress={() => {
-                closeModal();
-                if (user?.role && user.id) {
-                  void processNext(user.role, user.id);
-                }
-              }}
-              style={styles.laterBtn}
-              disabled={loading}
-            >
-              <Text style={styles.laterText}>Plus tard</Text>
-            </Pressable>
+      <BottomSheet
+        visible={visible}
+        onClose={dismissLater}
+        title="Nouveau rendez-vous"
+        subtitle={subtitle}
+        footer={footer}
+      >
+        {lotLabel && !isMultiBatch ? (
+          <View style={styles.lotPill}>
+            <Text style={styles.lotPillText}>{lotLabel}</Text>
           </View>
-        </View>
-      </Modal>
+        ) : null}
+        {siblingsLoading ? (
+          <View style={styles.loading}>
+            <Skeleton height={120} borderRadius={16} />
+            <Skeleton height={80} borderRadius={16} />
+          </View>
+        ) : (
+          <OfferAppointmentPreviewBody primary={selected} batch={batchSorted} />
+        )}
+      </BottomSheet>
 
       <NurseOfferConfirmSheet
         visible={confirmOpen}
@@ -234,70 +217,24 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'transparent',
+  lotPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.primaryMid,
+    marginBottom: spacing[2],
   },
-  dismissArea: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius['3xl'],
-    borderTopRightRadius: radius['3xl'],
-    overflow: 'visible',
-    padding: spacing[5],
-    paddingBottom: spacing[8],
-    gap: spacing[3],
-  },
-  handleWrap: { alignItems: 'center', marginBottom: spacing[1] },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: radius.full,
-    backgroundColor: colors.border,
-  },
-  sheetTitle: {
-    fontFamily: fontFamily.extraBold,
-    fontSize: fontSize['2xl'],
-    color: colors.textPrimary,
-    letterSpacing: -0.6,
-  },
-  patientName: {
+  lotPillText: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.lg,
-    color: colors.textPrimary,
-  },
-  lotRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
-  lotLabel: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     color: colors.primary,
   },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
-  timeLabel: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSize.base,
-    color: colors.primary,
-    textTransform: 'capitalize',
-  },
-  category: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
-  actions: { gap: spacing[2], marginTop: spacing[1] },
-  laterBtn: { alignItems: 'center', paddingVertical: spacing[2] },
+  loading: { gap: spacing[2] },
+  footer: { gap: spacing[2] },
+  laterBtn: { alignItems: 'center', paddingVertical: spacing[1] },
   laterText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,

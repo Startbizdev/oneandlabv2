@@ -34,6 +34,7 @@ export function useBookingWizard(opts: {
   role: string;
   basePath: string;
   initialPatientId?: string;
+  initialRelativeId?: string;
 }) {
   const { show: toast } = useToast();
   const router = useRouter();
@@ -43,7 +44,9 @@ export function useBookingWizard(opts: {
   const [step, setStep] = useState(0);
   const [wizardIndex, setWizardIndex] = useState(0);
   const [consent, setConsent] = useState(false);
-  const [selectedRelativeId, setSelectedRelativeId] = useState<string | null>(null);
+  const [selectedRelativeId, setSelectedRelativeId] = useState<string | null>(
+    opts.initialRelativeId ?? null,
+  );
   const [validationError, setValidationError] = useState('');
   const [filesByService, setFilesByService] = useState<
     Record<string, Record<string, DocumentFileRef | undefined>>

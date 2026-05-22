@@ -1,5 +1,6 @@
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import '../global.css';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -69,11 +70,13 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <NetworkProvider>
-        <AppProviders>
-          <RootLayoutInner />
-        </AppProviders>
-      </NetworkProvider>
+      <KeyboardProvider>
+        <NetworkProvider>
+          <AppProviders>
+            <RootLayoutInner />
+          </AppProviders>
+        </NetworkProvider>
+      </KeyboardProvider>
     </ErrorBoundary>
   );
 }

@@ -14,6 +14,7 @@ module.exports = {
     android: {
       ...appJson.expo.android,
       usesCleartextTraffic: true,
+      softwareKeyboardLayoutMode: 'resize',
     },
     plugins: ['expo-font'],
   },

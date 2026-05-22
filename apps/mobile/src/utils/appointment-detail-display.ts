@@ -3,6 +3,8 @@ import 'dayjs/locale/fr';
 import { CANCELLATION_REASONS } from '@oneandlab/shared-constants';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import type { CareCategory } from '@/features/categories/api/categories.service';
+import { formatCareOptionRows } from '@/features/appointments/form/utils/selected-service-detail-lines';
 import { appointmentAddressLine } from './appointment-display';
 import { formatScheduledDateWithAvailabilityLineFr } from './appointment-datetime-fr';
 
@@ -151,7 +153,7 @@ function filterItemsForAppt(appt: Appointment, items: Array<Record<string, unkno
   return items;
 }
 
-function getNursingItems(appt: Appointment): Array<Record<string, unknown>> {
+export function getAppointmentNursingItems(appt: Appointment): Array<Record<string, unknown>> {
   const ext = appt as Appointment & { nursing_items?: unknown; nursing_items_display?: unknown };
   const raw = ext.nursing_items_display ?? ext.nursing_items;
   const items = Array.isArray(raw) ? (raw as Array<Record<string, unknown>>) : [];
@@ -160,10 +162,10 @@ function getNursingItems(appt: Appointment): Array<Record<string, unknown>> {
 }
 
 export function appointmentHasMultipleCareLines(appt: Appointment): boolean {
-  return getNursingItems(appt).length > 1 || getBloodItems(appt).length > 1;
+  return getAppointmentNursingItems(appt).length > 1 || getAppointmentBloodItems(appt).length > 1;
 }
 
-function getBloodItems(appt: Appointment): Array<Record<string, unknown>> {
+export function getAppointmentBloodItems(appt: Appointment): Array<Record<string, unknown>> {
   const ext = appt as Appointment & { blood_test_items?: unknown };
   const raw = ext.blood_test_items;
   const items = Array.isArray(raw) ? (raw as Array<Record<string, unknown>>) : [];
@@ -171,8 +173,75 @@ function getBloodItems(appt: Appointment): Array<Record<string, unknown>> {
   return filterItemsForAppt(appt, items);
 }
 
-function itemLabel(item: Record<string, unknown>): string {
+export function nursingItemDisplayLabel(item: Record<string, unknown>): string {
   return String(item.label ?? item.category_name ?? '—').trim() || '—';
+}
+
+export function parseItemCareOptions(co: unknown): Record<string, string | number> {
+  if (!co || typeof co !== 'object') return {};
+  const out: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(co as Record<string, unknown>)) {
+    if (v === null || v === undefined || v === '') continue;
+    if (typeof v === 'string' || typeof v === 'number') out[k] = v;
+    else if (typeof v === 'boolean') out[k] = v ? 1 : 0;
+  }
+  return out;
+}
+
+function categoryForItem(
+  item: Record<string, unknown>,
+  categories: CareCategory[],
+): CareCategory | undefined {
+  const id = item.category_id != null ? String(item.category_id) : '';
+  return id ? categories.find((c) => String(c.id) === id) : undefined;
+}
+
+/** Options catalogue par acte / form_data (localisation, type de soin, etc.). */
+export function buildAppointmentCareOptionKvRows(
+  apt: Appointment,
+  categories: CareCategory[],
+  opts: { excludeKeys?: Set<string> } = {},
+): DetailKvRow[] {
+  const rows: DetailKvRow[] = [];
+  const exclude = opts.excludeKeys ?? new Set<string>();
+  let anyItemOptions = false;
+
+  for (const item of getAppointmentNursingItems(apt)) {
+    const co = parseItemCareOptions(item.care_options);
+    if (Object.keys(co).length > 0) anyItemOptions = true;
+    const filtered: Record<string, string | number> = {};
+    for (const [k, v] of Object.entries(co)) {
+      if (!exclude.has(k)) filtered[k] = v;
+    }
+    for (const row of formatCareOptionRows(categoryForItem(item, categories), filtered)) {
+      rows.push({ label: row.label, value: row.value });
+    }
+  }
+
+  for (const item of getAppointmentBloodItems(apt)) {
+    const co = parseItemCareOptions(item.care_options);
+    if (Object.keys(co).length > 0) anyItemOptions = true;
+    const filtered: Record<string, string | number> = {};
+    for (const [k, v] of Object.entries(co)) {
+      if (!exclude.has(k)) filtered[k] = v;
+    }
+    for (const row of formatCareOptionRows(categoryForItem(item, categories), filtered)) {
+      rows.push({ label: row.label, value: row.value });
+    }
+  }
+
+  if (!anyItemOptions && isNursingAppointment(apt.type)) {
+    const fd = (apt.form_data ?? {}) as Record<string, unknown>;
+    const co = parseItemCareOptions(fd.care_options);
+    const cat = apt.category_id
+      ? categories.find((c) => String(c.id) === String(apt.category_id))
+      : undefined;
+    for (const row of formatCareOptionRows(cat, co)) {
+      rows.push({ label: row.label, value: row.value });
+    }
+  }
+
+  return rows;
 }
 
 export function getAddressComplement(apt: Appointment): string {
@@ -207,6 +276,13 @@ export function buildAppointmentDetailKvRows(
     /** Masque « Soins prévus » / type de soin si identique au titre de l’écran */
     titleContext?: string | null;
     hideCreatedAt?: boolean;
+    /** Lot multi-RDV : durée, fréquence, préférence, type prélèvement (affichés une fois au pied) */
+    hideLotWideFields?: boolean;
+    hideNotes?: boolean;
+    /** Catalogue soins : libellés d’options (localisation, type, etc.) */
+    categories?: CareCategory[];
+    /** Lot : ne pas répéter les options identiques sur chaque acte */
+    excludeCareOptionKeys?: Set<string>;
   } = {},
 ): DetailKvRow[] {
   const rows: DetailKvRow[] = [];
@@ -226,8 +302,8 @@ export function buildAppointmentDetailKvRows(
     if (dateLine) rows.push({ label: 'Date & heure', value: dateLine, strikethrough: strike });
   }
 
-  const nursingItems = getNursingItems(apt);
-  const bloodItems = getBloodItems(apt);
+  const nursingItems = getAppointmentNursingItems(apt);
+  const bloodItems = getAppointmentBloodItems(apt);
 
   const titleNorm = (opts.titleContext ?? '').trim().toLowerCase();
   const careLabel = (value: string) => {
@@ -243,37 +319,18 @@ export function buildAppointmentDetailKvRows(
   };
 
   if (isBloodTestAppointment(apt.type) && bloodItems.length === 1) {
-    careLabel(itemLabel(bloodItems[0]));
+    careLabel(nursingItemDisplayLabel(bloodItems[0]));
   } else if (isNursingAppointment(apt.type) && nursingItems.length === 1) {
-    careLabel(itemLabel(nursingItems[0]));
+    careLabel(nursingItemDisplayLabel(nursingItems[0]));
   } else if (apt.category_name && nursingItems.length <= 1 && bloodItems.length <= 1) {
     careLabel(apt.category_name);
-  }
-
-  if (isBloodTestAppointment(apt.type)) {
-    const bt = getBloodTestTypeLabel(fd);
-    if (bt) rows.push({ label: 'Type prélèvement', value: bt });
-  }
-
-  if (isNursingAppointment(apt.type)) {
-    const dur = getNursingDurationLabel(String(fd.duration_days ?? ''), fd.custom_days as number | null);
-    if (dur) rows.push({ label: 'Type de prise en charge', value: dur });
-    const freq = fd.frequency != null && fd.frequency !== '' ? getFrequencyLabel(String(fd.frequency)) : '';
-    if (freq) rows.push({ label: 'Fréquence', value: freq });
-    const pref = getPreferredNurseGenderLabel(String(fd.preferred_nurse_gender ?? ''));
-    if (pref && fd.preferred_nurse_gender && fd.preferred_nurse_gender !== 'any') {
-      rows.push({ label: 'Préférence infirmier', value: pref });
-    }
-  } else if (fd.duration_days) {
-    const dur = formatBloodTestSeriesDurationDays(String(fd.duration_days), fd.custom_days as number | null);
-    if (dur) rows.push({ label: 'Durée', value: dur });
   }
 
   nursingItems.forEach((item, idx) => {
     if (nursingItems.length > 1) {
       rows.push({
         label: `Soins prévus #${idx + 1}`,
-        value: itemLabel(item),
+        value: nursingItemDisplayLabel(item),
       });
     }
   });
@@ -282,13 +339,44 @@ export function buildAppointmentDetailKvRows(
     if (bloodItems.length > 1) {
       rows.push({
         label: `Prestations #${idx + 1}`,
-        value: itemLabel(item),
+        value: nursingItemDisplayLabel(item),
       });
     }
   });
 
-  const notes = getAppointmentNotes(apt);
-  if (notes) rows.push({ label: 'Message', value: notes });
+  if (opts.categories?.length) {
+    rows.push(
+      ...buildAppointmentCareOptionKvRows(apt, opts.categories, {
+        excludeKeys: opts.excludeCareOptionKeys,
+      }),
+    );
+  }
+
+  if (!opts.hideLotWideFields) {
+    if (isBloodTestAppointment(apt.type)) {
+      const bt = getBloodTestTypeLabel(fd);
+      if (bt) rows.push({ label: 'Type prélèvement', value: bt });
+    }
+
+    if (isNursingAppointment(apt.type)) {
+      const dur = getNursingDurationLabel(String(fd.duration_days ?? ''), fd.custom_days as number | null);
+      if (dur) rows.push({ label: 'Type de prise en charge', value: dur });
+      const freq = fd.frequency != null && fd.frequency !== '' ? getFrequencyLabel(String(fd.frequency)) : '';
+      if (freq) rows.push({ label: 'Fréquence', value: freq });
+      const pref = getPreferredNurseGenderLabel(String(fd.preferred_nurse_gender ?? ''));
+      if (pref && fd.preferred_nurse_gender && fd.preferred_nurse_gender !== 'any') {
+        rows.push({ label: 'Préférence infirmier', value: pref });
+      }
+    } else if (fd.duration_days) {
+      const dur = formatBloodTestSeriesDurationDays(String(fd.duration_days), fd.custom_days as number | null);
+      if (dur) rows.push({ label: 'Durée', value: dur });
+    }
+  }
+
+  if (!opts.hideNotes) {
+    const notes = getAppointmentNotes(apt);
+    if (notes) rows.push({ label: 'Message', value: notes });
+  }
 
   const ext = apt as unknown as Record<string, unknown>;
   if (!opts.hideCreatedAt && ext.created_at) {

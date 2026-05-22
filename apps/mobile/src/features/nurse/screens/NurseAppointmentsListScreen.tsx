@@ -1,18 +1,16 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CalendarPlus } from 'lucide-react-native';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { QueryFlatList } from '@/components/ui/QueryFlatList';
+import { BookAppointmentCta } from '@/features/nurse/components/BookAppointmentCta';
 import { PlanLimitsBanner } from '@/features/nurse/components/PlanLimitsBanner';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
-import {
-  groupAppointmentsByBatch,
-  groupAppointmentsForNurseMesDemandes,
-  type AppointmentListRow,
-} from '@/utils/appointment-batch';
+import type { AppointmentListRow } from '@/utils/appointment-batch';
+import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { useAppointmentsList } from '@/features/appointments/hooks/use-appointments-list';
@@ -20,9 +18,6 @@ import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-st
 import { useAppointmentsCacheSyncOnFocus } from '@/features/appointments/hooks/use-appointments-cache-sync';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { useAuthStore } from '@/store/auth-store';
-import { updateAppointment } from '@/features/appointments/api/appointments.service';
-import { useToast } from '@/providers/ToastProvider';
-import { handleApiError } from '@/lib/errors/handle-api-error';
 import {
   NURSE_SEGMENT_OPTIONS,
   NURSE_TAB_OPTIONS,
@@ -50,21 +45,22 @@ function matchesSearch(apt: Appointment, q: string): boolean {
 export function NurseAppointmentsListScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const { show: toast } = useToast();
 
   const [tab, setTab] = useState<NurseListTab>('soins');
   const [segment, setSegment] = useState<NurseSegment>('tous');
   const [search, setSearch] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [draftTab, setDraftTab] = useState<NurseListTab>('soins');
   const [draftSegment, setDraftSegment] = useState<NurseSegment>('tous');
 
   const apiSegment = segment === 'tous' ? undefined : normalizeNurseSegment(segment);
 
-  const { data, isLoading, refetch, isRefetching } = useAppointmentsList({
+  const query = useAppointmentsList({
     nurse_tab: tab,
     nurse_segment: apiSegment,
     limit: 100,
   });
+  const { data, refetch } = query;
 
   const filtered = useMemo(() => {
     const list = data ?? [];
@@ -72,90 +68,59 @@ export function NurseAppointmentsListScreen() {
     return list;
   }, [data, search]);
 
-  const displayRows = useMemo((): AppointmentListRow[] => {
-    if (tab === 'soins' && segment === 'en_attente') {
-      return groupAppointmentsForNurseMesDemandes(filtered);
-    }
-    return groupAppointmentsByBatch(filtered);
-  }, [filtered, tab, segment]);
+  const displayRows = useMemo(
+    (): AppointmentListRow[] =>
+      buildAppointmentDisplayRows(filtered, {
+        direction: 'upcoming',
+        groupMode:
+          tab === 'soins' && segment === 'en_attente' ? 'nurse-demandes' : 'batch',
+      }),
+    [filtered, tab, segment],
+  );
 
   useAppointmentsCacheSyncOnFocus();
-  useAppForegroundRefetch(() => { void refetch(); });
+  useAppForegroundRefetch(() => {
+    void refetch();
+  });
 
   const openSheet = useCallback(() => {
+    setDraftTab(tab);
     setDraftSegment(segment);
     setSheetOpen(true);
-  }, [segment]);
+  }, [segment, tab]);
 
   const applyFilters = useCallback(() => {
+    setTab(draftTab);
     setSegment(draftSegment);
     setSheetOpen(false);
-  }, [draftSegment]);
+  }, [draftSegment, draftTab]);
 
   const resetFilters = useCallback(() => {
+    setDraftTab('soins');
     setDraftSegment('tous');
+    setTab('soins');
     setSegment('tous');
     setSheetOpen(false);
   }, []);
 
   const filterChips = useMemo(() => {
     const chips: Array<{ key: string; label: string; onRemove: () => void }> = [];
+    if (tab !== 'soins') {
+      const tabLabel = NURSE_TAB_OPTIONS.find((t) => t.value === tab)?.label ?? tab;
+      chips.push({
+        key: 'tab',
+        label: tabLabel,
+        onRemove: () => setTab('soins'),
+      });
+    }
     if (segment !== 'tous') {
       const label = NURSE_SEGMENT_OPTIONS.find((s) => s.value === segment)?.label ?? segment;
       chips.push({ key: 'segment', label, onRemove: () => setSegment('tous') });
     }
     return chips;
-  }, [segment]);
+  }, [segment, tab]);
 
-  const advancedCount = segment !== 'tous' ? 1 : 0;
-
-  const handleOffer = useCallback(
-    async (id: string, status: 'confirmed' | 'refused') => {
-      try {
-        const res = await updateAppointment(id, { status });
-        if (!res.success) throw new Error(res.error ?? 'Échec');
-        toast(status === 'confirmed' ? 'RDV accepté !' : 'RDV refusé', {
-          type: status === 'confirmed' ? 'success' : 'info',
-        });
-        await refetch();
-      } catch (e) {
-        handleApiError(e, toast, 'offerAction');
-      }
-    },
-    [refetch, toast],
-  );
-
-  const handleOfferBatch = useCallback(
-    async (row: AppointmentListRow, status: 'confirmed' | 'refused') => {
-      const apts =
-        row.kind === 'batch' ? row.appointments : [row.appointment];
-      let ok = 0;
-      for (const apt of apts) {
-        if (
-          segment === 'en_attente' &&
-          apt.status === 'pending' &&
-          isPendingIncomingOffer(apt, user?.id)
-        ) {
-          const res = await updateAppointment(apt.id, { status });
-          if (res.success) ok += 1;
-        }
-      }
-      if (ok > 0) {
-        toast(
-          status === 'confirmed'
-            ? ok > 1
-              ? `Lot accepté (${ok} soins)`
-              : 'RDV accepté !'
-            : ok > 1
-              ? `Lot refusé (${ok} soins)`
-              : 'RDV refusé',
-          { type: status === 'confirmed' ? 'success' : 'info' },
-        );
-        await refetch();
-      }
-    },
-    [refetch, segment, toast, user?.id],
-  );
+  const advancedCount = (tab !== 'soins' ? 1 : 0) + (segment !== 'tous' ? 1 : 0);
 
   const renderItem = useCallback(
     ({ item: row, index }: { item: AppointmentListRow; index: number }) => {
@@ -172,7 +137,7 @@ export function NurseAppointmentsListScreen() {
         <AppointmentListRowCard
           row={row}
           index={index}
-          role="nurse"
+          role={isOffer ? 'demande' : 'nurse'}
           viewerId={user?.id}
           onPress={(apt) => {
             if (isOffer && user?.id) {
@@ -181,32 +146,16 @@ export function NurseAppointmentsListScreen() {
               router.push(`/(nurse)/appointment/${apt.id}` as never);
             }
           }}
-          showOfferActions={isOffer}
-          onAccept={
-            isOffer
-              ? () =>
-                  void (row.kind === 'batch'
-                    ? handleOfferBatch(row, 'confirmed')
-                    : handleOffer(row.appointment.id, 'confirmed'))
-              : undefined
-          }
-          onRefuse={
-            isOffer
-              ? () =>
-                  void (row.kind === 'batch'
-                    ? handleOfferBatch(row, 'refused')
-                    : handleOffer(row.appointment.id, 'refused'))
-              : undefined
-          }
         />
       );
     },
-    [router, segment, user?.id, handleOffer, handleOfferBatch],
+    [router, segment, user?.id],
   );
 
   const ListHeader = useCallback(
     () => (
       <View style={styles.listHeader}>
+        <BookAppointmentCta />
         <PlanLimitsBanner />
       </View>
     ),
@@ -215,47 +164,34 @@ export function NurseAppointmentsListScreen() {
 
   return (
     <View style={styles.container}>
-      <AppointmentsListFilterBar
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Nom, téléphone, adresse…"
-        segmentTabs={NURSE_TAB_OPTIONS.map((t) => ({ value: t.value, label: t.label }))}
-        segmentTab={tab}
-        onSegmentTabChange={setTab}
-        onOpenFilters={openSheet}
-        advancedFilterCount={advancedCount}
-        chips={filterChips}
+      <QueryFlatList
+        query={query}
+        items={displayRows}
+        header={
+          <AppointmentsListFilterBar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Nom, téléphone, adresse…"
+            onOpenFilters={openSheet}
+            advancedFilterCount={advancedCount}
+            chips={filterChips}
+          />
+        }
+        renderItem={renderItem}
+        keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
+        ListHeaderComponent={ListHeader}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        skeletonHeight={116}
+        ListEmptyComponent={
+          <EmptyState
+            title="Aucun rendez-vous"
+            description="Modifiez les filtres ou créez un nouveau RDV."
+            Icon={CalendarPlus}
+          />
+        }
       />
-
-      {isLoading ? (
-        <View style={styles.skeleton}>
-          <SkeletonGroup count={4} height={108} gap={12} />
-        </View>
-      ) : (
-        <FlatList
-          data={displayRows}
-          renderItem={renderItem}
-          keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
-          ListHeaderComponent={ListHeader}
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
-              tintColor={colors.primary}
-            />
-          }
-          ListEmptyComponent={
-            <EmptyState
-              title="Aucun rendez-vous"
-              description="Modifiez les filtres ou créez un nouveau RDV."
-              Icon={CalendarPlus}
-            />
-          }
-        />
-      )}
 
       <AppointmentsFilterSheet
         visible={sheetOpen}
@@ -264,9 +200,13 @@ export function NurseAppointmentsListScreen() {
         search=""
         onSearchChange={() => {}}
         showSearch={false}
+        tabs={NURSE_TAB_OPTIONS}
+        tab={draftTab}
+        onTabChange={setDraftTab}
         segments={NURSE_SEGMENT_OPTIONS}
         segment={draftSegment}
         onSegmentChange={setDraftSegment}
+        segmentSectionLabel="Statut"
         onApply={applyFilters}
         onReset={resetFilters}
       />
@@ -276,10 +216,6 @@ export function NurseAppointmentsListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  skeleton: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-  },
   listContent: {
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[8],

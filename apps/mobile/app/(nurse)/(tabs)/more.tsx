@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -15,9 +16,13 @@ import {
   CreditCard,
   LogOut,
   Scale,
+  Share2,
   Star,
   User,
 } from 'lucide-react-native';
+import { webAppUrl } from '@/config/env';
+import { fetchUser } from '@/features/profile/api/profile.service';
+import { queryKeys } from '@/lib/query-keys';
 import type { LucideIcon } from 'lucide-react-native';
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-unread-count';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
@@ -73,8 +78,34 @@ function MenuItem({ icon: Icon, label, onPress, badge, destructive, iconColor, i
 
 export default function NurseMore() {
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.clearSession);
   const unread = useUnreadNotificationsCount();
+
+  const profileQ = useQuery({
+    queryKey: queryKeys.profile.user(user?.id ?? ''),
+    queryFn: async () => (await fetchUser(user!.id)).data,
+    enabled: !!user?.id,
+  });
+
+  const publicSlug = profileQ.data?.public_slug?.trim() ?? '';
+  const publicProfileEnabled =
+    profileQ.data?.is_public_profile_enabled !== false &&
+    profileQ.data?.is_public_profile_enabled !== 0;
+
+  const sharePublicProfile = async () => {
+    if (!publicSlug || !publicProfileEnabled) {
+      Alert.alert(
+        'Profil public indisponible',
+        'Activez votre profil public et définissez un lien dans Mon profil pour partager votre fiche.',
+      );
+      return;
+    }
+    const url = webAppUrl(`/infirmier/${publicSlug}`);
+    const message =
+      `Voici mon profil Cary — si vous souhaitez prendre rendez-vous, cliquez sur le lien : ${url}`;
+    await Share.share({ message, url });
+  };
 
   const nav = (href: string) => router.push(href as never);
 
@@ -109,6 +140,14 @@ export default function NurseMore() {
           <Animated.Text style={styles.sectionTitle}>Professionnel</Animated.Text>
           <View style={[styles.sectionCard, elevation.xs]}>
             <MenuItem icon={User} label="Mon profil" onPress={() => nav('/profile')} />
+            <View style={styles.divider} />
+            <MenuItem
+              icon={Share2}
+              label="Partager mon profil"
+              onPress={() => void sharePublicProfile()}
+              iconColor="#0D9488"
+              iconBg="#F0FDFA"
+            />
             <View style={styles.divider} />
             <MenuItem
               icon={Star}

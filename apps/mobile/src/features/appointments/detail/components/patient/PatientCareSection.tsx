@@ -3,10 +3,12 @@ import { Stethoscope } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { StatusBadge } from '@/components/ui/Badge';
+import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
 import {
   buildAppointmentDetailKvRows,
   isAppointmentCanceled,
 } from '@/utils/appointment-detail-display';
+import type { CareCategory } from '@/features/categories/api/categories.service';
 import { RdvCancellationBanner } from '../RdvCancellationBanner';
 import {
   PatientListCard,
@@ -22,10 +24,19 @@ function actTitle(appt: Appointment, index: number): string {
   return `Acte #${index + 1}`;
 }
 
-function KvRows({ apt, last }: { apt: Appointment; last?: boolean }) {
+function KvRows({
+  apt,
+  last,
+  categories,
+}: {
+  apt: Appointment;
+  last?: boolean;
+  categories?: CareCategory[];
+}) {
   const rows = buildAppointmentDetailKvRows(apt, {
     hideAddress: false,
     hideScheduledDate: true,
+    categories,
   }).filter((r) => r.value);
 
   if (!rows.length) return null;
@@ -54,6 +65,9 @@ interface Props {
 }
 
 export function PatientCareSection({ batch, isMultiBatch }: Props) {
+  const categoriesQ = useAppointmentCareCategories();
+  const categories = categoriesQ.data;
+
   if (!isMultiBatch) {
     const apt = batch[0];
     if (!apt) return null;
@@ -61,7 +75,7 @@ export function PatientCareSection({ batch, isMultiBatch }: Props) {
       <View style={styles.wrap}>
         <RdvCancellationBanner apt={apt} />
         <PatientListCard title="Détails du soin" Icon={Stethoscope}>
-          <KvRows apt={apt} last />
+          <KvRows apt={apt} last categories={categories} />
         </PatientListCard>
       </View>
     );
@@ -83,7 +97,7 @@ export function PatientCareSection({ batch, isMultiBatch }: Props) {
               <RdvCancellationBanner apt={appt} compact />
             </View>
           ) : null}
-          <KvRows apt={appt} last={idx === batch.length - 1} />
+          <KvRows apt={appt} last={idx === batch.length - 1} categories={categories} />
         </View>
       ))}
     </PatientListCard>

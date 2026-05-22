@@ -35,11 +35,20 @@ interface Props {
 }
 
 export function BookingWizardScreen({ mode, role, basePath }: Props) {
-  const { patient_id: patientIdParam } = useLocalSearchParams<{ patient_id?: string }>();
+  const { patient_id: patientIdParam, relative_id: relativeIdParam } = useLocalSearchParams<{
+    patient_id?: string;
+    relative_id?: string;
+  }>();
   const user = useAuthStore((s) => s.user);
   const [relativeSheetOpen, setRelativeSheetOpen] = useState(false);
 
-  const bw = useBookingWizard({ mode, role, basePath, initialPatientId: patientIdParam });
+  const bw = useBookingWizard({
+    mode,
+    role,
+    basePath,
+    initialPatientId: patientIdParam,
+    initialRelativeId: relativeIdParam,
+  });
   const w = bw.wizard;
 
   useBookingWizardHeader({

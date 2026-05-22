@@ -1,51 +1,76 @@
-import React, { useCallback } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import {
+  Alert,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Heart, Users } from 'lucide-react-native';
+import { Heart, Plus, Users } from 'lucide-react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { PatientRelativeFormSheet } from '@/features/patient-relatives/components/PatientRelativeFormSheet';
 import {
+  createPatientRelative,
   deletePatientRelative,
   fetchPatientRelatives,
+  relativeRelationshipType,
   type PatientRelative,
 } from '@/features/patient-relatives/api/patient-relatives.service';
+import { relationshipLabel } from '@/features/patient-relatives/constants/relationship-types';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
 import { colors, elevation, radius, spacing } from '@/theme';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function displayName(r: PatientRelative) {
   return `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim() || r.id;
 }
 
-function initials(r: PatientRelative) {
-  const f = r.first_name?.[0] ?? '';
-  const l = r.last_name?.[0] ?? '';
-  return (f + l).toUpperCase() || '?';
-}
-
 interface RelativeCardProps {
   item: PatientRelative;
   index: number;
+  onPress: () => void;
   onLongPress: () => void;
 }
 
-const RelativeCard = React.memo(function RelativeCard({ item, index, onLongPress }: RelativeCardProps) {
+const RelativeCard = React.memo(function RelativeCard({
+  item,
+  index,
+  onPress,
+  onLongPress,
+}: RelativeCardProps) {
+  const rel = relationshipLabel(relativeRelationshipType(item)) || item.relationship;
   return (
     <Animated.View entering={FadeInDown.delay(index * 50).duration(300).springify()}>
-      <Pressable onLongPress={onLongPress} style={[styles.card, elevation.xs]}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials(item)}</Text>
-        </View>
+      <Pressable onPress={onPress} onLongPress={onLongPress} style={[styles.card, elevation.xs]}>
+        <ProfileAvatar
+          profileImageUrl={null}
+          seed={item.id ?? displayName(item)}
+          gender={item.gender}
+          size={48}
+          style={styles.avatar}
+        />
         <View style={styles.info}>
           <Text style={styles.name}>{displayName(item)}</Text>
-          {item.relationship ? (
+          {rel ? (
             <View style={styles.relationPill}>
               <Heart size={10} color={colors.error} strokeWidth={2.5} fill={colors.error} />
-              <Text style={styles.relationText}>{item.relationship}</Text>
+              <Text style={styles.relationText}>{rel}</Text>
             </View>
+          ) : null}
+          {item.phone ? <Text style={styles.meta}>{item.phone}</Text> : null}
+          {item.email ? (
+            <Text style={styles.meta} numberOfLines={1}>
+              {item.email}
+            </Text>
           ) : null}
           {item.birth_date ? (
             <Text style={styles.birth}>Né(e) le {formatBirthDateFr(item.birth_date)}</Text>
@@ -57,8 +82,10 @@ const RelativeCard = React.memo(function RelativeCard({ item, index, onLongPress
 });
 
 export function PatientRelativesScreen() {
+  const router = useRouter();
   const { show: toast } = useToast();
   const qc = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['patient-relatives'],
@@ -67,6 +94,16 @@ export function PatientRelativesScreen() {
       if (!res.success) throw new Error(res.error);
       return res.data ?? [];
     },
+  });
+
+  const createMut = useMutation({
+    mutationFn: createPatientRelative,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['patient-relatives'] });
+      setCreateOpen(false);
+      toast('Proche ajouté', { type: 'success' });
+    },
+    onError: (e) => handleApiError(e, toast, 'createRelative'),
   });
 
   const removeMut = useMutation({
@@ -90,16 +127,14 @@ export function PatientRelativesScreen() {
 
   const renderItem = useCallback(
     ({ item, index }: { item: PatientRelative; index: number }) => (
-      <RelativeCard item={item} index={index} onLongPress={() => onDelete(item)} />
+      <RelativeCard
+        item={item}
+        index={index}
+        onPress={() => router.push(`/(patient)/relatives/${item.id}` as never)}
+        onLongPress={() => onDelete(item)}
+      />
     ),
-    [onDelete],
-  );
-
-  const ListHeader = useCallback(
-    () => (
-      <Text style={styles.subtitle}>Maintenez appuyé sur une carte pour supprimer</Text>
-    ),
-    [],
+    [onDelete, router],
   );
 
   return (
@@ -114,7 +149,11 @@ export function PatientRelativesScreen() {
           data={data ?? []}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          ListHeaderComponent={ListHeader}
+          ListHeaderComponent={
+            <Text style={styles.subtitle}>
+              Touchez une carte pour modifier · appui long pour supprimer
+            </Text>
+          }
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={styles.list}
           ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
@@ -123,11 +162,26 @@ export function PatientRelativesScreen() {
             <EmptyState
               Icon={Users}
               title="Aucun proche"
-              description="Ajoutez un proche depuis le site web pour prendre rendez-vous en son nom."
+              description="Ajoutez un proche pour prendre rendez-vous en son nom."
             />
           }
         />
       )}
+
+      <Pressable
+        onPress={() => setCreateOpen(true)}
+        style={[styles.fab, elevation.md]}
+        accessibilityLabel="Ajouter un proche"
+      >
+        <Plus size={22} color="#fff" strokeWidth={2.5} />
+      </Pressable>
+
+      <PatientRelativeFormSheet
+        visible={createOpen}
+        onClose={() => setCreateOpen(false)}
+        saving={createMut.isPending}
+        onSubmit={(body) => createMut.mutate(body)}
+      />
     </View>
   );
 }
@@ -147,7 +201,7 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
-    paddingBottom: spacing[4],
+    paddingBottom: spacing[24],
     flexGrow: 1,
   },
   card: {
@@ -169,12 +223,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  avatarText: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.sm,
-    color: colors.error,
-    letterSpacing: 0.5,
-  },
   info: { flex: 1, gap: spacing[1] },
   name: {
     fontFamily: fontFamily.semiBold,
@@ -191,11 +239,26 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
     color: colors.textSecondary,
-    textTransform: 'capitalize',
+  },
+  meta: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
   },
   birth: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: colors.textTertiary,
+  },
+  fab: {
+    position: 'absolute',
+    right: spacing[4],
+    bottom: spacing[6],
+    width: 52,
+    height: 52,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

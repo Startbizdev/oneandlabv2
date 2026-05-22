@@ -1,16 +1,14 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CalendarDays } from 'lucide-react-native';
 import dayjs from 'dayjs';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
-import {
-  groupAppointmentsByBatch,
-  type AppointmentListRow,
-} from '@/utils/appointment-batch';
+import type { AppointmentListRow } from '@/utils/appointment-batch';
+import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { useAppointmentsList } from '@/features/appointments/hooks/use-appointments-list';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
@@ -42,20 +40,23 @@ export function PatientAppointmentsListScreen() {
   const [tab, setTab] = useState<PatientListTab>('upcoming');
   const [search, setSearch] = useState('');
 
-  const { data, isLoading, refetch, isRefetching } = useAppointmentsList({ limit: 100 });
+  const query = useAppointmentsList({ limit: 100 });
+  const { data, refetch } = query;
 
   const filtered = useMemo(() => {
     let list = data ?? [];
     list = list.filter((a) => (tab === 'upcoming' ? isUpcoming(a) : !isUpcoming(a)));
     if (search.trim()) list = list.filter((a) => matchesSearch(a, search));
-    return list.sort((a, b) => {
-      const da = a.scheduled_at ? dayjs(a.scheduled_at).valueOf() : 0;
-      const db = b.scheduled_at ? dayjs(b.scheduled_at).valueOf() : 0;
-      return tab === 'upcoming' ? da - db : db - da;
-    });
+    return list;
   }, [data, tab, search]);
 
-  const displayRows = useMemo(() => groupAppointmentsByBatch(filtered), [filtered]);
+  const displayRows = useMemo(
+    () =>
+      buildAppointmentDisplayRows(filtered, {
+        direction: tab === 'upcoming' ? 'upcoming' : 'past',
+      }),
+    [filtered, tab],
+  );
 
   useAppForegroundRefetch(() => { void refetch(); });
 
@@ -64,6 +65,7 @@ export function PatientAppointmentsListScreen() {
       <AppointmentListRowCard
         row={row}
         index={index}
+        role="patient"
         onPress={(apt) => router.push(`/(patient)/appointment/${apt.id}` as never)}
       />
     ),
@@ -72,48 +74,39 @@ export function PatientAppointmentsListScreen() {
 
   return (
     <View style={styles.container}>
-      <AppointmentsListFilterBar
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Soin, adresse, nom…"
-        segmentTabs={PATIENT_TAB_OPTIONS}
-        segmentTab={tab}
-        onSegmentTabChange={setTab}
+      <QueryFlatList
+        query={query}
+        items={displayRows}
+        header={
+          <AppointmentsListFilterBar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Soin, adresse, nom…"
+            segmentTabs={PATIENT_TAB_OPTIONS}
+            segmentTab={tab}
+            onSegmentTabChange={setTab}
+          />
+        }
+        renderItem={renderItem}
+        keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          <EmptyState
+            Icon={CalendarDays}
+            title={tab === 'upcoming' ? 'Aucun rendez-vous à venir' : 'Aucun rendez-vous passé'}
+            description="Réservez un nouveau rendez-vous depuis l’onglet Réserver."
+          />
+        }
       />
-
-      {isLoading ? (
-        <View style={styles.skeleton}>
-          <SkeletonGroup count={4} height={108} gap={12} />
-        </View>
-      ) : (
-        <FlatList
-          data={displayRows}
-          renderItem={renderItem}
-          keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
-          }
-          ListEmptyComponent={
-            <EmptyState
-              Icon={CalendarDays}
-              title={tab === 'upcoming' ? 'Aucun rendez-vous à venir' : 'Aucun rendez-vous passé'}
-              description="Réservez un nouveau rendez-vous depuis l’onglet Réserver."
-            />
-          }
-        />
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  skeleton: { paddingHorizontal: spacing[4] },
   listContent: {
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[8],
-    flexGrow: 1,
   },
 });

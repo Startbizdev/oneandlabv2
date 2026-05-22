@@ -14,6 +14,7 @@ export type MedicalDocumentMeta = {
   appointment_id?: string;
   document_type?: string;
   user_id?: string;
+  relative_id?: string;
 };
 
 function guessMime(fileName: string): string {
@@ -43,6 +44,7 @@ export async function buildMedicalDocumentForm(
   if (meta.appointment_id) fd.append('appointment_id', meta.appointment_id);
   if (meta.document_type) fd.append('document_type', meta.document_type);
   if (meta.user_id) fd.append('user_id', meta.user_id);
+  if (meta.relative_id) fd.append('relative_id', meta.relative_id);
 
   return fd;
 }

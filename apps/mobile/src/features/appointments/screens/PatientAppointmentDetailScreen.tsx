@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import {
   RefreshControl,
   ScrollView,
@@ -21,13 +22,13 @@ import {
 } from '../detail/components/patient/PatientEngagementSections';
 import { RdvCancellationBanner } from '../detail/components/RdvCancellationBanner';
 import { RdvAppointmentInfoSection } from '../detail/components/layout/RdvAppointmentInfoSection';
-import { RdvLotSummaryBanner } from '../detail/components/layout/RdvLotSummaryBanner';
 import { DetailSegmentBar } from '../detail/components/layout/DetailSegmentBar';
 import { DetailTerminalBanner } from '../detail/components/layout/DetailTerminalBanner';
 import { filterListDocuments } from '../detail/utils/document-labels';
 import { fetchAppointmentsPaginated } from '../api/appointments.service';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
+import { batchHasReviewableAppointment } from '@/utils/can-leave-review';
 import type { Appointment } from '@oneandlab/shared-types';
 import { colors, spacing } from '@/theme';
 
@@ -79,16 +80,25 @@ export function PatientAppointmentDetailScreen() {
     [s.allDocuments],
   );
 
-  const segments = useMemo(
-    () => [
-      { id: 'infos' as const, label: 'Informations' },
-      { id: 'documents' as const, label: 'Documents', badge: documentsCount || undefined },
-      { id: 'avis' as const, label: 'Avis' },
-    ],
-    [documentsCount],
+  const showReviewsTab = useMemo(
+    () => batchHasReviewableAppointment(s.batchSorted),
+    [s.batchSorted],
   );
 
+  const segments = useMemo((): { id: SegmentId; label: string; badge?: number }[] => {
+    const base: { id: SegmentId; label: string; badge?: number }[] = [
+      { id: 'infos', label: 'Informations' },
+      { id: 'documents', label: 'Documents', badge: documentsCount || undefined },
+    ];
+    if (showReviewsTab) base.push({ id: 'avis', label: 'Avis' });
+    return base;
+  }, [documentsCount, showReviewsTab]);
+
   const activeSegment = segments.some((x) => x.id === segment) ? segment : 'infos';
+
+  const pullRefresh = useManualRefresh(async () => {
+    s.refreshAll();
+  });
 
   if (s.isLoading || !s.apt || !primary) {
     return (
@@ -99,10 +109,6 @@ export function PatientAppointmentDetailScreen() {
   }
 
   const { batchSorted, isMultiBatch, canceled, cancellableForPatient } = s;
-  const lotExpectedCount =
-    batchSorted.length > 1
-      ? batchSorted.length
-      : 1 + (primary.batch_siblings?.length ?? 0);
   const terminal = getAppointmentSidebarTerminalEmpty(primary.status);
 
   return (
@@ -113,8 +119,8 @@ export function PatientAppointmentDetailScreen() {
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
           <RefreshControl
-            refreshing={s.isRefreshing}
-            onRefresh={s.refreshAll}
+            refreshing={pullRefresh.refreshing}
+            onRefresh={pullRefresh.onRefresh}
             tintColor={colors.primary}
           />
         }
@@ -123,13 +129,6 @@ export function PatientAppointmentDetailScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
-          {isMultiBatch ? (
-            <RdvLotSummaryBanner
-              batch={batchSorted}
-              expectedCount={lotExpectedCount}
-            />
-          ) : null}
-
           {terminal ? <DetailTerminalBanner terminal={terminal} /> : null}
 
           <PatientPreleveurAlerts batch={batchSorted} />
@@ -159,7 +158,7 @@ export function PatientAppointmentDetailScreen() {
                   apt={primary}
                   viewer={user}
                   edgeToEdge
-                  omitCareFields={isMultiBatch}
+                  batch={isMultiBatch ? batchSorted : undefined}
                 />
               </View>
               <PatientRdvUnifiedCard
@@ -167,7 +166,7 @@ export function PatientAppointmentDetailScreen() {
                 batch={batchSorted}
                 isMultiBatch={isMultiBatch}
                 viewer={user}
-                hideCareDetails={!isMultiBatch}
+                hideCareDetails
                 canceled={canceled}
                 cancelCount={cancellableForPatient.length}
                 onCancel={() => setCancelOpen(true)}

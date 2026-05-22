@@ -31,7 +31,8 @@ function genderLabel(v: string | undefined): string {
   return 'Indifférent';
 }
 
-function formatCareOptionRows(
+/** Lignes « Type : … » pour liste RDV / panier (aligné web AppointmentListCard + options catalogue). */
+export function formatCareOptionRows(
   cat: CareCategory | undefined,
   co: Record<string, string | number> | undefined,
 ): Array<{ label: string; value: string }> {

@@ -28,12 +28,9 @@ import {
   patientBirthLine,
   patientGenderLabel,
 } from '../utils/patient-profile-display';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
-
-function initials(first?: string, last?: string) {
-  return ((first?.[0] ?? '') + (last?.[0] ?? '')).toUpperCase() || '?';
-}
 
 interface Props {
   rolePrefix?: '/(nurse)' | '/(pro)';
@@ -216,9 +213,13 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
         }
       >
         <View style={styles.hero}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials(p.first_name, p.last_name)}</Text>
-          </View>
+          <ProfileAvatar
+            profileImageUrl={(p as { profile_image_url?: string | null }).profile_image_url}
+            seed={p.id ?? name}
+            gender={p.gender}
+            size={56}
+            style={styles.avatar}
+          />
           <View style={styles.heroText}>
             <Text style={styles.heroName}>{name}</Text>
             {age != null ? <Text style={styles.heroMeta}>{age} ans</Text> : null}
@@ -323,11 +324,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-  },
-  avatarText: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.base,
-    color: colors.primary,
   },
   heroText: {
     flex: 1,

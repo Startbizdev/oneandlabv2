@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
@@ -12,7 +13,7 @@ import {
   uploadPatientProfileDocument,
   type PatientProfileUploadType,
 } from '../api/patient-profile.service';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -105,127 +106,60 @@ export function CreatePatientModal({ visible, onClose, onCreated }: Props) {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.root}>
-        <Pressable
-          style={styles.dismissArea}
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel="Fermer"
-        />
-        <View style={[styles.sheet, elevation.sheetTop]}>
-          <View style={styles.handleWrap}>
-            <View style={styles.handle} />
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title="Nouveau patient"
+      footer={
+        <View style={styles.actions}>
+          <View style={styles.actionBtn}>
+            <Button title="Annuler" variant="outline" onPress={onClose} fullWidth />
           </View>
-
-          <Text style={styles.title}>Nouveau patient</Text>
-
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.fields}>
-              <Input
-                label="Prénom"
-                value={firstName}
-                onChangeText={setFirstName}
-                autoCapitalize="words"
-              />
-              <Input
-                label="Nom"
-                value={lastName}
-                onChangeText={setLastName}
-                autoCapitalize="words"
-              />
-              <Input
-                label="Téléphone"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-              <Input
-                label="Email (optionnel)"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-
-              <AddressAutocomplete
-                label="Adresse (optionnel)"
-                value={address}
-                complement={addressComplement}
-                onChange={setAddress}
-                onComplementChange={setAddressComplement}
-              />
-            </View>
-
-            <WizardDocumentFields
-              title="Documents (optionnel)"
-              subtitle="Carte Vitale, mutuelle…"
-              fields={PERSONAL_DOC_FIELDS}
-              files={personalFiles}
-              onChange={(key, file) =>
-                setPersonalFiles((prev) => ({ ...prev, [key]: file }))
-              }
-            />
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          </ScrollView>
-
-          <View style={styles.actions}>
-            <View style={styles.actionBtn}>
-              <Button title="Annuler" variant="outline" onPress={onClose} fullWidth />
-            </View>
-            <View style={styles.actionBtn}>
-              <Button title="Créer" loading={loading} onPress={() => void submit()} fullWidth />
-            </View>
+          <View style={styles.actionBtn}>
+            <Button title="Créer" loading={loading} onPress={() => void submit()} fullWidth />
           </View>
         </View>
+      }
+    >
+      <View style={styles.fields}>
+        <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
+        <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
+        <Input
+          label="Téléphone"
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+        />
+        <Input
+          label="Email (optionnel)"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <AddressAutocomplete
+          label="Adresse (optionnel)"
+          value={address}
+          complement={addressComplement}
+          onChange={setAddress}
+          onComplementChange={setAddressComplement}
+        />
       </View>
-    </Modal>
+
+      <WizardDocumentFields
+        title="Documents (optionnel)"
+        subtitle="Carte Vitale, mutuelle…"
+        fields={PERSONAL_DOC_FIELDS}
+        files={personalFiles}
+        onChange={(key, file) => setPersonalFiles((prev) => ({ ...prev, [key]: file }))}
+      />
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'transparent',
-  },
-  dismissArea: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius['3xl'],
-    borderTopRightRadius: radius['3xl'],
-    padding: spacing[5],
-    paddingBottom: spacing[8],
-    gap: spacing[4],
-    overflow: 'visible',
-  },
-  handleWrap: {
-    alignItems: 'center',
-    marginBottom: spacing[1],
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: radius.full,
-    backgroundColor: colors.border,
-  },
-  title: {
-    fontFamily: fontFamily.extraBold,
-    fontSize: fontSize['2xl'],
-    color: colors.textPrimary,
-    letterSpacing: -0.6,
-  },
-  scroll: { maxHeight: 480 },
-  scrollContent: { gap: spacing[4], paddingBottom: spacing[2] },
   fields: { gap: spacing[3] },
   errorText: {
     fontFamily: fontFamily.medium,

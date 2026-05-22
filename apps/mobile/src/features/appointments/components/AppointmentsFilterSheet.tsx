@@ -100,7 +100,7 @@ export function AppointmentsFilterSheet<
 
       {tabs && tab && onTabChange ? (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Type</Text>
+          <Text style={styles.sectionLabel}>Affichage</Text>
           <View style={styles.tabRow}>
             {tabs.map((t) => {
               const active = tab === t.value;

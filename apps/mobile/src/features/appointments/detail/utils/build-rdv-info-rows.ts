@@ -1,10 +1,21 @@
 import { Linking } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
+import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { careEmojiForAppointment } from '@/utils/care-category-display';
+import type { CareCategory } from '@/features/categories/api/categories.service';
 import {
   appointmentHasMultipleCareLines,
   buildAppointmentDetailKvRows,
+  getAppointmentNursingItems,
   isAppointmentCanceled,
+  nursingItemDisplayLabel,
 } from '@/utils/appointment-detail-display';
+import {
+  buildBatchLotCommonKvRows,
+  buildBatchPerActKvRows,
+  collectLotNursingItems,
+  nursingSharedOptionKeys,
+} from '@/utils/batch-appointment-detail-display';
 import { formatAvailabilityDisplayFr, formatFrenchWeekdayDate } from '@/utils/appointment-datetime-fr';
 import { appointmentAddressLine } from '@/utils/appointment-display';
 import dayjs from 'dayjs';
@@ -24,15 +35,29 @@ import type { ContactAction } from '../components/layout/ContactActionBar';
 dayjs.locale('fr');
 
 export type RdvInfoRow =
-  | { kind: 'field'; label: string; value: string; strikethrough?: boolean }
+  | { kind: 'field'; label: string; value: string; emoji?: string; strikethrough?: boolean }
   | { kind: 'identity'; firstName: string; lastName: string }
   | { kind: 'actions'; actions: ContactAction[] }
   | { kind: 'address'; value: string };
 
 export type BuildRdvInfoRowsOptions = {
-  /** Lot multi-RDV : soins listés dans « Actes du lot », pas ici. */
+  /** @deprecated Les soins lot passent par `batch`. */
   omitCareFields?: boolean;
+  /** Actes liés (même créneau) : soins dans cette carte, sans date/statut répétés. */
+  batch?: Appointment[];
+  /** Catalogue pour libellés d’options soin (localisation, type, etc.). */
+  categories?: CareCategory[];
 };
+
+const SKIP_CARE_KV_LABELS = new Set([
+  'Soins prévus',
+  'Prestations',
+  'Type de soin',
+  'Message',
+  'Créé le',
+  'Modifié le',
+  'Date & heure',
+]);
 
 const CARE_ITEM_LABEL_RE = /^(Soins prévus|Prestations) #(\d+)$/;
 const CARE_META_LABELS = new Set([
@@ -71,7 +96,7 @@ function contactActions(phone: string, emailHref: string | null): ContactAction[
   return actions;
 }
 
-function buildCareRows(apt: Appointment): RdvInfoRow[] {
+function buildCareRows(apt: Appointment, categories?: CareCategory[]): RdvInfoRow[] {
   const multipleCare = appointmentHasMultipleCareLines(apt);
   const careName = (apt.category_name ?? '').trim();
 
@@ -80,6 +105,7 @@ function buildCareRows(apt: Appointment): RdvInfoRow[] {
     hideScheduledDate: true,
     hideCreatedAt: true,
     titleContext: multipleCare ? null : careName,
+    categories,
   }).filter((r) => {
     const skip = new Set([
       'Soins prévus',
@@ -105,9 +131,7 @@ function buildCareRows(apt: Appointment): RdvInfoRow[] {
       meta.push({ label: r.label, value: r.value });
       continue;
     }
-    if (!multipleCare) {
-      meta.push({ label: r.label, value: r.value });
-    }
+    meta.push({ label: r.label, value: r.value });
   }
 
   items.sort((a, b) => a.num - b.num);
@@ -122,7 +146,12 @@ function buildCareRows(apt: Appointment): RdvInfoRow[] {
   const rows: RdvInfoRow[] = [];
 
   if (!multipleCare && careName && items.length === 0) {
-    rows.push({ kind: 'field', label: 'Soin', value: careName });
+    rows.push({
+      kind: 'field',
+      label: 'Soin',
+      value: careName,
+      emoji: careEmojiForAppointment(apt, careName, categories),
+    });
   }
 
   for (const m of meta) {
@@ -134,9 +163,80 @@ function buildCareRows(apt: Appointment): RdvInfoRow[] {
       kind: 'field',
       label: `${itemLabelPrefix} #${item.num}`,
       value: item.value,
+      emoji: careEmojiForAppointment(apt, item.value, categories),
     });
   }
 
+  return rows;
+}
+
+function kvToInfoRows(rows: { label: string; value: string; strikethrough?: boolean }[]): RdvInfoRow[] {
+  return rows
+    .filter((r) => r.value?.trim())
+    .map((r) => ({
+      kind: 'field' as const,
+      label: r.label,
+      value: r.value,
+      strikethrough: r.strikethrough,
+    }));
+}
+
+/** Soins d’un lot : libellés par acte + options, puis champs communs (aligné fiche web). */
+function buildBatchCareRows(
+  primary: Appointment,
+  batch: Appointment[],
+  categories?: CareCategory[],
+): RdvInfoRow[] {
+  if (batch.length <= 1) {
+    return buildCareRows(primary, categories);
+  }
+
+  const rows: RdvInfoRow[] = [];
+  const lotItems = collectLotNursingItems(primary, batch);
+  const sharedKeys = categories?.length
+    ? nursingSharedOptionKeys(lotItems, categories)
+    : new Set<string>();
+  const isBlood = isBloodTestAppointment(primary.type);
+  const isNursing = isNursingAppointment(primary.type);
+  const itemPrefix = isBlood ? 'Prestations' : 'Soins prévus';
+
+  batch.forEach((appt, idx) => {
+    const nursingItems = getAppointmentNursingItems(appt);
+    const careName =
+      nursingItems.length > 0
+        ? nursingItemDisplayLabel(nursingItems[0]!)
+        : String(appt.category_name ?? '').trim();
+    if (careName) {
+      rows.push({
+        kind: 'field',
+        label: batch.length > 1 ? `${itemPrefix} #${idx + 1}` : isNursing ? 'Soin' : 'Prestation',
+        value: careName,
+        emoji: careEmojiForAppointment(appt, careName, categories, appt.category_id),
+      });
+    }
+
+    if (categories?.length) {
+      const perAct = buildBatchPerActKvRows(appt, categories, sharedKeys, {
+        showSchedule: false,
+        titleContext: null,
+      });
+      for (const r of perAct) {
+        if (SKIP_CARE_KV_LABELS.has(r.label)) continue;
+        if (CARE_META_LABELS.has(r.label)) continue;
+        if (CARE_ITEM_LABEL_RE.test(r.label)) continue;
+        rows.push({
+          kind: 'field',
+          label: r.label,
+          value: r.value,
+          strikethrough: r.strikethrough,
+        });
+      }
+    }
+  });
+
+  if (categories?.length) {
+    rows.push(...kvToInfoRows(buildBatchLotCommonKvRows(primary, batch, categories)));
+  }
   return rows;
 }
 
@@ -168,11 +268,14 @@ function buildRdvRows(apt: Appointment, viewer?: AuthUser | null): RdvInfoRow[] 
   const birth = beneficiaryBirthLine(apt);
   if (birth) rows.push({ kind: 'field', label: 'Date de naissance', value: birth });
 
+  const hideEmailForPatient = viewer?.role === 'patient';
   const email = patientContactEmail(apt, viewer ?? undefined);
-  if (email.text) rows.push({ kind: 'field', label: 'E-mail', value: email.text });
+  if (!hideEmailForPatient && email.text) {
+    rows.push({ kind: 'field', label: 'E-mail', value: email.text });
+  }
 
   const phone = patientPhone(apt);
-  const actions = contactActions(phone, email.href);
+  const actions = contactActions(phone, hideEmailForPatient ? null : email.href);
   if (actions.length) rows.push({ kind: 'actions', actions });
 
   if (showBookingContactBlock(apt)) {
@@ -209,7 +312,14 @@ export function buildRdvInfoContent(
   options: BuildRdvInfoRowsOptions = {},
 ): { rows: RdvInfoRow[] } {
   const rdv = buildRdvRows(apt, viewer);
-  const care = options.omitCareFields ? [] : buildCareRows(apt);
+  const batch = options.batch?.filter(Boolean);
+  const isLot = (batch?.length ?? 0) > 1;
+  const care =
+    options.omitCareFields && !isLot
+      ? []
+      : isLot && batch
+        ? buildBatchCareRows(apt, batch, options.categories)
+        : buildCareRows(apt, options.categories);
   return { rows: insertCareAfterDateSlot(rdv, care) };
 }
 

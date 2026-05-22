@@ -1,6 +1,7 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, User } from 'lucide-react-native';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -12,15 +13,12 @@ const ROLE_LABEL: Record<string, string> = {
   patient: 'Patient',
 };
 
-function initials(first?: string, last?: string) {
-  return ((first?.[0] ?? '') + (last?.[0] ?? '')).toUpperCase() || '?';
-}
-
 interface Props {
   firstName: string;
   lastName: string;
   email?: string;
   role?: string;
+  gender?: string | null;
   profileImageUrl?: string | null;
   coverImageUrl?: string | null;
   showCover?: boolean;
@@ -32,13 +30,13 @@ export function ProfileHero({
   lastName,
   email,
   role,
+  gender,
   profileImageUrl,
   coverImageUrl,
   showCover = false,
   onEditPhotos,
 }: Props) {
   const name = `${firstName} ${lastName}`.trim() || 'Mon profil';
-  const avatarSrc = resolveProfileImageUrl(profileImageUrl);
   const coverSrc = resolveProfileImageUrl(coverImageUrl);
 
   return (
@@ -69,15 +67,13 @@ export function ProfileHero({
           style={styles.avatarOuter}
           accessibilityLabel="Modifier les photos de profil"
         >
-          <View style={styles.avatarClip}>
-            {avatarSrc ? (
-              <Image source={{ uri: avatarSrc }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Text style={styles.avatarInitials}>{initials(firstName, lastName)}</Text>
-              </View>
-            )}
-          </View>
+          <ProfileAvatar
+            profileImageUrl={profileImageUrl}
+            seed={name}
+            gender={gender}
+            size={AVATAR}
+            style={styles.avatarClip}
+          />
           <View style={styles.cameraBadge}>
             <Camera size={15} color={colors.textInverse} strokeWidth={2.5} />
           </View>
@@ -136,20 +132,6 @@ const styles = StyleSheet.create({
     borderColor: colors.surface,
     overflow: 'hidden',
     backgroundColor: colors.primaryLight,
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarFallback: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    fontFamily: fontFamily.extraBold,
-    fontSize: fontSize['2xl'],
-    color: colors.primary,
   },
   cameraBadge: {
     position: 'absolute',

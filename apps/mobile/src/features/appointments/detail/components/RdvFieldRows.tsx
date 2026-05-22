@@ -1,5 +1,6 @@
 import type { Appointment } from '@oneandlab/shared-types';
 import { buildAppointmentDetailKvRows } from '@/utils/appointment-detail-display';
+import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
 import { RdvKvCard } from './RdvKvCard';
 
 interface Props {
@@ -17,6 +18,11 @@ export function RdvFieldRows({
   hideScheduledDate,
 }: Props) {
   const hideAddress = hideAddressProp ?? role !== 'patient';
-  const rows = buildAppointmentDetailKvRows(apt, { hideAddress, hideScheduledDate });
+  const categoriesQ = useAppointmentCareCategories();
+  const rows = buildAppointmentDetailKvRows(apt, {
+    hideAddress,
+    hideScheduledDate,
+    categories: categoriesQ.data,
+  });
   return <RdvKvCard rows={rows} />;
 }

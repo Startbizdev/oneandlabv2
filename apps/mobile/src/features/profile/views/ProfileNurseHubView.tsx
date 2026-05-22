@@ -110,6 +110,7 @@ export function ProfileNurseHubView() {
           lastName={user?.last_name ?? ''}
           email={user?.email}
           role="nurse"
+          gender={profileQ.data?.gender}
           profileImageUrl={profileUrl ?? user?.profile_image_url}
           coverImageUrl={coverUrl}
           showCover

@@ -121,6 +121,7 @@ export function DetailDocumentsSection({
         docs={filteredDocs}
         loading={loading}
         omitCarePhotos={omitCarePhotos}
+        appointmentId={appointmentId}
       />
       {canUpload ? (
         <View style={styles.uploadZone}>

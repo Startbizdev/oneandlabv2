@@ -1,51 +1,22 @@
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Phone, MessageSquare } from 'lucide-react-native';
+import { useState, type ReactNode } from 'react';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
 import { Card } from '@/components/ui/Card';
+import { AssigneeProfileRow } from './AssigneeProfileRow';
+import { ProviderPublicProfileSheet } from './ProviderPublicProfileSheet';
+import { appointmentAssigneeGender } from '../utils/patient-appointment-display';
+import {
+  creatorOriginName,
+  creatorOriginTitle,
+  type CreatorOrigin,
+} from '../utils/provider-public-profile';
 import { colors, spacing } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { StyleSheet } from 'react-native';
 
 type AptExt = Appointment & Record<string, unknown>;
 
-function ContactActions({ phone }: { phone?: string }) {
-  if (!phone?.trim()) return null;
-  const tel = phone.trim();
-  return (
-    <View style={styles.actions}>
-      <Pressable onPress={() => void Linking.openURL(`tel:${tel}`)} style={styles.chip}>
-        <Phone size={14} color={colors.primary} strokeWidth={2} />
-        <Text style={styles.chipText}>Appeler</Text>
-      </Pressable>
-      <Pressable onPress={() => void Linking.openURL(`sms:${tel}`)} style={styles.chip}>
-        <MessageSquare size={14} color={colors.primary} strokeWidth={2} />
-        <Text style={styles.chipText}>Message</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function AssigneeRow({
-  label,
-  name,
-  phone,
-  bordered,
-}: {
-  label: string;
-  name: string;
-  phone?: string;
-  bordered: boolean;
-}) {
-  if (!name.trim()) return null;
-  return (
-    <View style={[styles.block, bordered && styles.blockBorder]}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.name}>{name}</Text>
-      <ContactActions phone={phone} />
-    </View>
-  );
-}
+type SheetTarget = { type: 'nurse' | 'lab'; slug: string; title: string } | null;
 
 export function hasAssigneeContent(apt: Appointment, role: string): boolean {
   const user = useAuthStore.getState().user;
@@ -63,9 +34,7 @@ export function hasAssigneeContent(apt: Appointment, role: string): boolean {
   const nurseName = String(ext.assigned_nurse_display_name ?? '').trim();
   const labName = String(ext.assigned_lab_display_name ?? '').trim();
   const preleveurName = String(ext.assigned_to_display_name ?? '').trim();
-  const creatorName = String(
-    ext.creator_display_name ?? ext.created_by_display_name ?? ext.creator_name ?? '',
-  ).trim();
+  const creator = ext.creator_origin as CreatorOrigin | undefined;
   const platformOrigin = String(ext.patient_platform_origin_display ?? '').trim();
 
   const showNurse =
@@ -76,16 +45,17 @@ export function hasAssigneeContent(apt: Appointment, role: string): boolean {
     isBloodTestAppointment(apt.type) &&
     !hidePreleveur &&
     (preleveurName || ext.assigned_to);
-  const showCreator = !isPatient && creatorName && role !== 'patient';
-  const showPlatform = isPatient && platformOrigin;
+  const showCreatorOrigin = Boolean(creator?.kind);
+  const showPlatform = isPatient && platformOrigin && !creator?.kind;
 
-  return Boolean(showNurse || showLab || showPreleveur || showCreator || showPlatform);
+  return Boolean(showNurse || showLab || showPreleveur || showCreatorOrigin || showPlatform);
 }
 
 export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: string }) {
   const user = useAuthStore((s) => s.user);
   const ext = apt as AptExt;
   const isPatient = role === 'patient';
+  const [sheet, setSheet] = useState<SheetTarget>(null);
 
   const hideNurse =
     user?.role === 'nurse' && String(ext.assigned_nurse_id ?? '') === String(user.id ?? '');
@@ -98,10 +68,7 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
   const nurseName = String(ext.assigned_nurse_display_name ?? '').trim();
   const labName = String(ext.assigned_lab_display_name ?? '').trim();
   const preleveurName = String(ext.assigned_to_display_name ?? '').trim();
-  const creatorName = String(
-    ext.creator_display_name ?? ext.created_by_display_name ?? ext.creator_name ?? '',
-  ).trim();
-  const creatorRole = String(ext.creator_role ?? ext.created_by_role ?? '').trim();
+  const creator = ext.creator_origin as CreatorOrigin | undefined;
   const platformOrigin = String(ext.patient_platform_origin_display ?? '').trim();
 
   const showNurse =
@@ -112,110 +79,112 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
     isBloodTestAppointment(apt.type) &&
     !hidePreleveur &&
     (preleveurName || ext.assigned_to);
-  const showCreator = !isPatient && creatorName && role !== 'patient';
-  const showPlatform = isPatient && platformOrigin;
+  const showCreatorOrigin = Boolean(creator?.kind) && !isPatient;
+  const showPlatform = isPatient && platformOrigin && !creator?.kind;
 
-  if (!showNurse && !showLab && !showPreleveur && !showCreator && !showPlatform) {
+  if (!showNurse && !showLab && !showPreleveur && !showCreatorOrigin && !showPlatform) {
     return null;
   }
 
-  let bordered = false;
-  const withBorder = () => {
-    const b = bordered;
-    bordered = true;
-    return b;
-  };
+  const openSheet = (type: 'nurse' | 'lab', slug: string, title: string) =>
+    setSheet({ type, slug, title });
+
+  const rows: ReactNode[] = [];
+
+  if (showNurse) {
+    const slug = String(ext.assigned_nurse_public_slug ?? '').trim();
+    rows.push(
+      <AssigneeProfileRow
+        key="nurse"
+        title="Infirmier(e)"
+        name={nurseName || 'Assigné'}
+        profileImageUrl={String(ext.assigned_nurse_profile_image_url ?? '') || null}
+        gender={appointmentAssigneeGender(apt, 'nurse')}
+        phone={String(ext.assigned_nurse_phone ?? '')}
+        publicSlug={slug || null}
+        onViewProfile={slug ? () => openSheet('nurse', slug, nurseName || 'Infirmier') : undefined}
+      />,
+    );
+  }
+  if (showLab) {
+    const slug = String(ext.assigned_lab_public_slug ?? '').trim();
+    rows.push(
+      <AssigneeProfileRow
+        key="lab"
+        title="Laboratoire"
+        name={labName || 'Assigné'}
+        profileImageUrl={String(ext.assigned_lab_profile_image_url ?? '') || null}
+        gender={appointmentAssigneeGender(apt, 'lab')}
+        phone={String(ext.assigned_lab_phone ?? '')}
+        publicSlug={slug || null}
+        onViewProfile={slug ? () => openSheet('lab', slug, labName || 'Laboratoire') : undefined}
+      />,
+    );
+  }
+  if (showPreleveur) {
+    rows.push(
+      <AssigneeProfileRow
+        key="prel"
+        title="Préleveur"
+        name={preleveurName || 'Assigné'}
+        profileImageUrl={String(ext.assigned_to_profile_image_url ?? '') || null}
+        gender={appointmentAssigneeGender(apt, 'preleveur')}
+        phone={String(ext.assigned_preleveur_phone ?? ext.assigned_to_phone ?? '')}
+      />,
+    );
+  }
+  if (showCreatorOrigin && creator) {
+    const name = creatorOriginName(creator);
+    const title = creatorOriginTitle(creator);
+    const slug = creator.public_slug?.trim();
+    const providerType =
+      creator.kind === 'lab_team' ? 'lab' : creator.kind === 'nurse' ? 'nurse' : null;
+    rows.push(
+      <AssigneeProfileRow
+        key="creator"
+        title={title}
+        name={name}
+        profileImageUrl={creator.profile_image_url}
+        phone={creator.phone}
+        subtitle={
+          creator.kind === 'pro'
+            ? [creator.emploi, creator.adeli ? `Adeli ${creator.adeli}` : ''].filter(Boolean).join(' · ') ||
+              undefined
+            : creator.kind === 'nurse'
+              ? 'Saisie par un infirmier'
+              : undefined
+        }
+        publicSlug={slug || null}
+        onViewProfile={
+          slug && providerType ? () => openSheet(providerType, slug, name) : undefined
+        }
+      />,
+    );
+  }
+  if (showPlatform) {
+    rows.push(<AssigneeProfileRow key="platform" title="Origine" name={platformOrigin} />);
+  }
 
   return (
-    <Card shadow="sm" padding="none">
-      {showNurse ? (
-        <AssigneeRow
-          label="Infirmier(e)"
-          name={nurseName || 'Assigné'}
-          phone={String(ext.assigned_nurse_phone ?? '')}
-          bordered={withBorder()}
+    <>
+      <Card shadow="sm" padding="md" style={styles.card}>
+        {rows}
+      </Card>
+      {sheet ? (
+        <ProviderPublicProfileSheet
+          visible
+          onClose={() => setSheet(null)}
+          providerType={sheet.type}
+          slug={sheet.slug}
+          title={sheet.title}
         />
       ) : null}
-      {showLab ? (
-        <AssigneeRow
-          label="Laboratoire"
-          name={labName || 'Assigné'}
-          phone={String(ext.assigned_lab_phone ?? '')}
-          bordered={withBorder()}
-        />
-      ) : null}
-      {showPreleveur ? (
-        <AssigneeRow
-          label="Préleveur"
-          name={preleveurName || 'Assigné'}
-          phone={String(ext.assigned_preleveur_phone ?? ext.assigned_to_phone ?? '')}
-          bordered={withBorder()}
-        />
-      ) : null}
-      {showCreator ? (
-        <View style={[styles.block, withBorder() && styles.blockBorder]}>
-          <Text style={styles.rowLabel}>Créé par</Text>
-          <Text style={styles.name}>{creatorName}</Text>
-          {creatorRole ? <Text style={styles.sub}>{creatorRole}</Text> : null}
-        </View>
-      ) : null}
-      {showPlatform ? (
-        <View style={[styles.block, withBorder() && styles.blockBorder]}>
-          <Text style={styles.rowLabel}>Origine</Text>
-          <Text style={styles.name}>{platformOrigin}</Text>
-        </View>
-      ) : null}
-    </Card>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  block: {
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    gap: spacing[1],
-  },
-  blockBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
-  },
-  rowLabel: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  name: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.base,
-    color: colors.textPrimary,
-  },
-  sub: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
-  },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
-    marginTop: spacing[2],
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[1.5],
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  chipText: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xs,
-    color: colors.textPrimary,
+  card: {
+    gap: spacing[3],
   },
 });

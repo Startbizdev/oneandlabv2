@@ -1,12 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -16,7 +9,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { fetchAppointments } from '@/features/appointments/api/appointments.service';
 import { StatusBadge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import type { Appointment } from '@oneandlab/shared-types';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
 import { colors, elevation, radius, spacing } from '@/theme';
@@ -53,7 +46,8 @@ const StopCard = React.memo(function StopCard({ item, index, onPress }: StopCard
 
   return (
     <Animated.View entering={FadeInDown.delay(index * 50).duration(300).springify()}>
-      <Pressable onPress={onPress} style={[styles.stopCard, elevation.xs]}>
+      <Pressable onPress={onPress} style={[styles.stopCardShell, elevation.md]}>
+        <View style={styles.stopCard}>
         <View style={styles.stopIndex}>
           <Text style={styles.stopIndexText}>{index + 1}</Text>
         </View>
@@ -72,6 +66,7 @@ const StopCard = React.memo(function StopCard({ item, index, onPress }: StopCard
           </View>
         </View>
         <StatusBadge status={item.status} />
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -84,7 +79,7 @@ export function TourneeScreen() {
 
   const { date_from, date_to } = useMemo(() => dateRangeForOffset(dayOffset), [dayOffset]);
 
-  const { data, isLoading, refetch, isRefetching } = useQuery({
+  const query = useQuery({
     queryKey: ['tournee', dayOffset, userId],
     queryFn: async () => {
       const res = await fetchAppointments({ limit: 500, type: 'blood_test', page: 1, date_from, date_to });
@@ -92,7 +87,10 @@ export function TourneeScreen() {
       return (res.data ?? []).filter((a) => String(a.assigned_to ?? '') === String(userId));
     },
     enabled: Boolean(userId),
+    staleTime: 30_000,
   });
+
+  const { data } = query;
 
   const sorted = useMemo(
     () => [...(data ?? [])].sort((a, b) => dayjs(a.scheduled_at).valueOf() - dayjs(b.scheduled_at).valueOf()),
@@ -150,29 +148,22 @@ export function TourneeScreen() {
         </Pressable>
       </Animated.View>
 
-      {isLoading ? (
-        <View style={styles.skeletons}>
-          <Skeleton height={80} borderRadius={radius.xl} />
-          <Skeleton height={80} borderRadius={radius.xl} />
-          <Skeleton height={80} borderRadius={radius.xl} />
-        </View>
-      ) : (
-        <FlatList
-          data={sorted}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.list}
-          ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
-          ListEmptyComponent={
-            <EmptyState
-              title="Aucun arrêt prévu"
-              description="Aucun prélèvement assigné pour cette date."
-            />
-          }
-        />
-      )}
+      <QueryFlatList
+        query={query}
+        items={sorted}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.list}
+        ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
+        skeletonHeight={80}
+        ListEmptyComponent={
+          <EmptyState
+            title="Aucun arrêt prévu"
+            description="Aucun prélèvement assigné pour cette date."
+          />
+        }
+      />
     </View>
   );
 }
@@ -227,14 +218,13 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     color: colors.textTertiary,
   },
-  skeletons: {
-    paddingHorizontal: spacing[4],
-    gap: spacing[2],
-  },
   list: {
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[10],
     flexGrow: 1,
+  },
+  stopCardShell: {
+    borderRadius: radius.xl,
   },
   stopCard: {
     flexDirection: 'row',
@@ -245,6 +235,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
     padding: spacing[4],
+    overflow: 'hidden',
   },
   stopIndex: {
     width: 40,

@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Mail } from 'lucide-react-native';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { Input } from '@/components/ui/Input';
@@ -11,19 +13,23 @@ import type { AddressPayload } from '@/features/appointments/form/types';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { ProfileDocumentsSection } from '@/features/profile/components/ProfileDocumentsSection';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
+import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
-import { fetchUser, updateUser } from '@/features/profile/api/profile.service';
+import { fetchUser, updateProfileImages, updateUser } from '@/features/profile/api/profile.service';
 import { parseProfileAddress } from '@/features/profile/utils/parse-profile-address';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
+import { patientUiEmailLine } from '@/utils/patient-email-display';
 import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function ProfilePatientView() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
+  const clearSession = useAuthStore((s) => s.clearSession);
   const { show: toast } = useToast();
   const qc = useQueryClient();
 
@@ -34,6 +40,8 @@ export function ProfilePatientView() {
   const [gender, setGender] = useState('');
   const [address, setAddress] = useState<AddressPayload | null>(null);
   const [addressComplement, setAddressComplement] = useState('');
+  const [photosOpen, setPhotosOpen] = useState(false);
+  const [profileUrl, setProfileUrl] = useState<string | null>(null);
 
   const q = useQuery({
     queryKey: queryKeys.profile.user(user?.id ?? ''),
@@ -49,10 +57,16 @@ export function ProfilePatientView() {
     setPhone(d.phone ?? '');
     setBirthDate(d.birth_date ?? '');
     setGender(d.gender ?? '');
+    setProfileUrl(d.profile_image_url ?? null);
     const parsed = parseProfileAddress(d.address);
     setAddress(parsed);
     setAddressComplement(parsed?.complement ?? '');
   }, [q.data]);
+
+  const emailShown = patientUiEmailLine({
+    email: user?.email,
+    email_display: (q.data as { email_display?: string | null } | undefined)?.email_display,
+  });
 
   const save = useMutation({
     mutationFn: () => {
@@ -81,6 +95,30 @@ export function ProfilePatientView() {
     onError: (e) => handleApiError(e, toast, 'updateUser'),
   });
 
+  const savePhotos = useMutation({
+    mutationFn: (url: string | null) =>
+      updateProfileImages(user!.id, { profile_image_url: url, cover_image_url: null }),
+    onSuccess: async () => {
+      await fetchMe();
+      void qc.invalidateQueries({ queryKey: queryKeys.profile.user(user!.id) });
+      toast('Photo enregistrée', { type: 'success' });
+    },
+    onError: (e) => handleApiError(e, toast, 'profile-images'),
+  });
+
+  const onChangeProfilePhoto = useCallback(
+    (url: string | null) => {
+      setProfileUrl(url);
+      savePhotos.mutate(url);
+    },
+    [savePhotos],
+  );
+
+  const logout = useCallback(async () => {
+    await clearSession();
+    router.replace('/(auth)/login' as never);
+  }, [clearSession, router]);
+
   if (q.isLoading) {
     return (
       <View style={styles.loading}>
@@ -91,52 +129,78 @@ export function ProfilePatientView() {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.scroll}
-      contentInsetAdjustmentBehavior="automatic"
-      keyboardShouldPersistTaps="handled"
-    >
-      <ProfileHero
-        firstName={firstName}
-        lastName={lastName}
-        email={user?.email}
-        role="patient"
-        profileImageUrl={q.data?.profile_image_url}
-      />
-
-      <ProfileSection title="Informations personnelles" Icon={FileText}>
-        <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
-        <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
-        <View>
-          <Text style={styles.fieldLabel}>Email</Text>
-          <View style={styles.emailRow}>
-            <Mail size={16} color={colors.textTertiary} strokeWidth={2} />
-            <Text style={styles.emailText}>{user?.email ?? '—'}</Text>
-          </View>
-          <Text style={styles.fieldHint}>L'email ne peut pas être modifié depuis l'application.</Text>
-        </View>
-        <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-        <BirthDatePicker value={birthDate} onChange={setBirthDate} />
-        <GenderSelect value={gender} onChange={setGender} />
-        <AddressAutocomplete
-          value={address}
-          complement={addressComplement}
-          onChange={setAddress}
-          onComplementChange={setAddressComplement}
-          label="Adresse"
+    <>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        contentInsetAdjustmentBehavior="automatic"
+        keyboardShouldPersistTaps="handled"
+      >
+        <ProfileHero
+          firstName={firstName}
+          lastName={lastName}
+          email={emailShown || undefined}
+          role="patient"
+          gender={gender || q.data?.gender}
+          profileImageUrl={profileUrl}
+          onEditPhotos={() => setPhotosOpen(true)}
         />
-      </ProfileSection>
 
-      <ProfileDocumentsSection />
+        <ProfileSection title="Informations personnelles" Icon={FileText}>
+          <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
+          <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
+          {emailShown ? (
+            <View>
+              <Text style={styles.fieldLabel}>Email</Text>
+              <View style={styles.emailRow}>
+                <Mail size={16} color={colors.textTertiary} strokeWidth={2} />
+                <Text style={styles.emailText}>{emailShown}</Text>
+              </View>
+              <Text style={styles.fieldHint}>
+                L'email ne peut pas être modifié depuis l'application.
+              </Text>
+            </View>
+          ) : null}
+          <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+          <BirthDatePicker value={birthDate} onChange={setBirthDate} />
+          <GenderSelect value={gender} onChange={setGender} />
+          <AddressAutocomplete
+            value={address}
+            complement={addressComplement}
+            onChange={setAddress}
+            onComplementChange={setAddressComplement}
+            label="Adresse"
+          />
+        </ProfileSection>
 
-      <Button
-        title="Enregistrer mon profil"
-        loading={save.isPending}
-        onPress={() => save.mutate()}
-        fullWidth
-        size="lg"
-      />
-    </ScrollView>
+        <ProfileDocumentsSection />
+
+        <Button
+          title="Enregistrer mon profil"
+          loading={save.isPending}
+          onPress={() => save.mutate()}
+          fullWidth
+          size="lg"
+        />
+
+        <Button
+          title="Déconnexion"
+          variant="outline"
+          onPress={() => void logout()}
+          fullWidth
+          size="lg"
+          style={styles.logoutBtn}
+        />
+      </ScrollView>
+
+      <BottomSheet visible={photosOpen} onClose={() => setPhotosOpen(false)} title="Photo de profil">
+        <ProfilePhotosSheetContent
+          profileImageUrl={profileUrl}
+          showCover={false}
+          saving={savePhotos.isPending}
+          onChangeProfile={onChangeProfilePhoto}
+        />
+      </BottomSheet>
+    </>
   );
 }
 
@@ -170,5 +234,8 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: colors.textSecondary,
+  },
+  logoutBtn: {
+    borderColor: colors.error,
   },
 });

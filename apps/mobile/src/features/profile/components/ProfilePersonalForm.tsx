@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
@@ -9,14 +9,10 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { fetchUser, updateUser } from '../api/profile.service';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
-
-function initials(first?: string, last?: string) {
-  return ((first?.[0] ?? '') + (last?.[0] ?? '')).toUpperCase() || '?';
-}
 
 interface Props {
   /** Afficher le bouton Enregistrer sous le formulaire */
@@ -56,24 +52,16 @@ export function ProfilePersonalForm({ showSaveButton = true }: Props) {
   return (
     <>
       <Animated.View entering={FadeInDown.duration(280).springify()} style={styles.avatarSection}>
-        <View style={styles.avatar}>
-          {resolveProfileImageUrl(
+        <ProfileAvatar
+          profileImageUrl={
             (q.data as { profile_image_url?: string | null } | undefined)?.profile_image_url ??
-              user?.profile_image_url,
-          ) ? (
-            <Image
-              source={{
-                uri: resolveProfileImageUrl(
-                  (q.data as { profile_image_url?: string | null })?.profile_image_url ??
-                    user?.profile_image_url,
-                )!,
-              }}
-              style={styles.avatarImage}
-            />
-          ) : (
-            <Text style={styles.avatarText}>{initials(firstName, lastName)}</Text>
-          )}
-        </View>
+            user?.profile_image_url
+          }
+          seed={user?.id ?? `${firstName} ${lastName}`}
+          gender={(q.data as { gender?: string | null } | undefined)?.gender}
+          size={64}
+          style={styles.avatar}
+        />
         <View style={styles.avatarInfo}>
           <Text style={styles.avatarName}>
             {firstName || lastName ? `${firstName} ${lastName}`.trim() : 'Votre profil'}
@@ -143,23 +131,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing[2],
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarText: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.xl,
-    color: colors.primary,
-    letterSpacing: 1,
+    borderWidth: 2,
+    borderColor: colors.borderLight,
   },
   avatarInfo: { flex: 1, gap: 2 },
   avatarName: {

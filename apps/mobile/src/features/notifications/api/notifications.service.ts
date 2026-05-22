@@ -7,6 +7,8 @@ export interface AppNotification {
   read_at?: string | null;
   appointment_id?: string;
   created_at?: string;
+  type?: string;
+  data?: Record<string, unknown> | string;
 }
 
 export async function fetchNotifications(limit = 10) {

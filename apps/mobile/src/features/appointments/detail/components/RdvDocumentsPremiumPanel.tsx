@@ -10,13 +10,14 @@ import { pickMedicalDocumentFile } from '@/lib/uploads/pick-medical-document';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   CreditCard,
-  Download,
   FileText,
   FileUp,
   FlaskConical,
   Plus,
   Shield,
 } from 'lucide-react-native';
+import { DocumentDownloadButton } from '@/features/documents/components/DocumentDownloadButton';
+import { useDownloadedDocumentIds } from '@/features/documents/hooks/use-downloaded-document-ids';
 import type { LucideIcon } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
@@ -88,11 +89,13 @@ function uploadTypesForRole(role: string, apt: Appointment): readonly string[] {
 function DocRow({
   doc,
   downloading,
+  downloaded,
   onDownload,
   bordered,
 }: {
   doc: MedicalDocumentRow;
   downloading: boolean;
+  downloaded: boolean;
   onDownload: (d: MedicalDocumentRow) => void;
   bordered: boolean;
 }) {
@@ -114,18 +117,12 @@ function DocRow({
           {sub}
         </Text>
       </View>
-      <Pressable
+      <DocumentDownloadButton
+        downloaded={downloaded}
+        downloading={downloading}
         onPress={() => onDownload(doc)}
-        disabled={downloading}
-        style={styles.downloadBtn}
         accessibilityLabel={`Télécharger ${label}`}
-      >
-        {downloading ? (
-          <ActivityIndicator size="small" color={colors.primary} />
-        ) : (
-          <Download size={18} color={colors.primary} strokeWidth={2.25} />
-        )}
-      </Pressable>
+      />
     </View>
   );
 }
@@ -143,6 +140,7 @@ export function RdvDocumentsPremiumPanel({
   const qc = useQueryClient();
   const [uploading, setUploading] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const { isDownloaded, markDownloaded } = useDownloadedDocumentIds(`apt:${appointmentId}`);
 
   const canUpload = canUploadMedicalDocumentsForAppointmentStatus(apt.status);
   const uploadTypes = useMemo(() => uploadTypesForRole(role, apt), [role, apt]);
@@ -226,10 +224,12 @@ export function RdvDocumentsPremiumPanel({
       setDownloadingId(doc.id);
       const res = await downloadMedicalDocument(doc.id, doc.file_name);
       setDownloadingId(null);
-      if (res.ok) toast('Document prêt à enregistrer', { type: 'success' });
-      else toast(res.error ?? 'Téléchargement impossible', { type: 'error' });
+      if (res.ok) {
+        await markDownloaded(doc.id);
+        toast('Document prêt à enregistrer', { type: 'success' });
+      } else toast(res.error ?? 'Téléchargement impossible', { type: 'error' });
     },
-    [toast],
+    [toast, markDownloaded],
   );
 
   const cardTitle = embedded ? undefined : 'Documents';
@@ -261,6 +261,7 @@ export function RdvDocumentsPremiumPanel({
             key={d.id}
             doc={d}
             downloading={downloadingId === d.id}
+            downloaded={isDownloaded(d.id)}
             onDownload={(doc) => void handleDownload(doc)}
             bordered={i > 0}
           />
