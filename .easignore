@@ -1,0 +1,7 @@
+# Réduit l’archive EAS (monorepo) — garder apps/mobile + packages/
+backend/
+frontend/
+/uploads/
+data/
+*.log
+.DS_Store
