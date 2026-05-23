@@ -51,7 +51,8 @@ export function buildPatientContactButtons(
   apt: Appointment,
   viewer?: AuthUser | null,
 ): PatientContactButton[] {
-  const hideEmailForPatient = viewer?.role === 'patient';
+  if (viewer?.role === 'patient') return [];
+
   const email = patientContactEmail(apt, viewer ?? undefined);
   const tel = normalizePhone(patientPhone(apt));
   const buttons: PatientContactButton[] = [];
@@ -73,7 +74,7 @@ export function buildPatientContactButtons(
     });
   }
 
-  if (!hideEmailForPatient && email.href) {
+  if (email.href) {
     buttons.push({
       key: 'email',
       label: 'E-mail',
