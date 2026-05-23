@@ -4,6 +4,7 @@ import { useFocusEffect, useNavigation } from 'expo-router';
 import { ScanFace } from 'lucide-react-native';
 import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
+import { loadAuthSession } from '@/lib/auth-storage';
 import {
   disableBiometricLogin,
   enableBiometricLogin,
@@ -52,14 +53,23 @@ export function ProfileSecurityScreen() {
   }, [label, navigation]);
 
   const onToggle = async (next: boolean) => {
-    if (!user?.id || !token || !hardwareReady) return;
+    if (!user?.id || !hardwareReady) return;
+
+    const sessionToken = token ?? (await loadAuthSession()).token;
+    if (!sessionToken) {
+      toast('Session expirée', {
+        message: 'Reconnectez-vous pour activer la biométrie.',
+        type: 'error',
+      });
+      return;
+    }
 
     setBusy(true);
     try {
       if (next) {
-        const result = await enableBiometricLogin(token, user);
+        const result = await enableBiometricLogin(sessionToken, user);
         if (!result.ok) {
-          if (!result.cancelled && result.message) {
+          if (result.message) {
             toast('Activation impossible', { message: result.message, type: 'error' });
           }
           await refresh();

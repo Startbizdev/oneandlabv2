@@ -162,7 +162,7 @@ export function NurseAppointmentsListScreen() {
   const ListHeader = useCallback(
     () => (
       <View style={styles.listHeader}>
-        <BookAppointmentCta />
+        <BookAppointmentCta href="/(nurse)/appointments/new" />
         <PlanLimitsBanner />
       </View>
     ),

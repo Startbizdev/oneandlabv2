@@ -156,7 +156,22 @@ export type BiometricEnableResult =
   | { ok: true }
   | { ok: false; cancelled?: boolean; message?: string };
 
-async function promptBiometric(message: string): Promise<boolean> {
+type PromptBiometricResult =
+  | { success: true }
+  | { success: false; cancelled: boolean; message?: string };
+
+/** Android Class 3 (empreinte) vs Class 2 (face 2D) — voir expo-local-authentication. */
+async function resolveBiometricsSecurityLevel(): Promise<'weak' | 'strong'> {
+  if (Platform.OS !== 'android') return 'strong';
+  const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+  if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+    return 'strong';
+  }
+  return 'weak';
+}
+
+async function promptBiometric(message: string): Promise<PromptBiometricResult> {
+  const biometricsSecurityLevel = await resolveBiometricsSecurityLevel();
   const auth = await LocalAuthentication.authenticateAsync({
     promptMessage: message,
     cancelLabel: 'Annuler',
@@ -165,13 +180,32 @@ async function promptBiometric(message: string): Promise<boolean> {
     fallbackLabel: '',
     ...(Platform.OS === 'android'
       ? {
-          biometricsSecurityLevel: 'strong' as const,
+          biometricsSecurityLevel,
           requireConfirmation: false,
           promptSubtitle: message,
         }
       : {}),
   });
-  return auth.success;
+
+  if (auth.success) return { success: true };
+
+  const cancelled =
+    auth.error === 'user_cancel' ||
+    auth.error === 'app_cancel' ||
+    auth.error === 'system_cancel';
+
+  const messageByError: Record<string, string> = {
+    not_enrolled: 'Biométrie non configurée sur cet appareil.',
+    lockout: 'Trop de tentatives. Réessayez plus tard.',
+    passcode_not_set: 'Configurez un code appareil dans les réglages.',
+    unavailable: 'Biométrie indisponible sur cet appareil.',
+  };
+
+  return {
+    success: false,
+    cancelled,
+    message: auth.error ? messageByError[auth.error] : undefined,
+  };
 }
 
 /**
@@ -191,8 +225,12 @@ export async function enableBiometricLogin(
 
   const label = await getBiometricLabel();
   const confirmed = await promptBiometric(`Activer ${label}`);
-  if (!confirmed) {
-    return { ok: false, cancelled: true };
+  if (!confirmed.success) {
+    return {
+      ok: false,
+      cancelled: confirmed.cancelled,
+      message: confirmed.cancelled ? undefined : confirmed.message ?? 'Authentification biométrique échouée.',
+    };
   }
 
   try {
@@ -221,7 +259,7 @@ export async function loginWithBiometric(): Promise<{ token: string; user: AuthU
 
   const label = await getBiometricLabel();
   const confirmed = await promptBiometric(`Connexion ${label}`);
-  if (!confirmed) return null;
+  if (!confirmed.success) return null;
 
   try {
     const [[, token], [, userJson]] = await AsyncStorage.multiGet([TOKEN_KEY, USER_KEY]);

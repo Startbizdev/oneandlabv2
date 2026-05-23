@@ -13,6 +13,7 @@ import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import type { Appointment } from '@oneandlab/shared-types';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
+import { appointmentAddressLine } from '@/utils/appointment-display';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -38,11 +39,10 @@ const StopCard = React.memo(function StopCard({ item, index, onPress }: StopCard
   const fd = item.form_data as {
     first_name?: string;
     last_name?: string;
-    address?: string;
     availability?: unknown;
   } | undefined;
   const name = fd?.first_name && fd?.last_name ? `${fd.first_name} ${fd.last_name}` : 'Patient';
-  const address = fd?.address;
+  const address = appointmentAddressLine(item);
   const timeLabel = formatAvailabilityDisplayFr(fd?.availability, item.scheduled_at);
 
   return (

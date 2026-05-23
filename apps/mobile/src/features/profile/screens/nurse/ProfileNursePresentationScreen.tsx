@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/Input';
 import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
 import { fetchUser, updateUser } from '@/features/profile/api/profile.service';
+import { generateNursePublicSlug } from '@/features/profile/utils/generate-public-slug';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
@@ -60,6 +61,7 @@ export function ProfileNursePresentationScreen() {
     mutationFn: (body: {
       is_public_profile_enabled?: boolean;
       is_accepting_appointments?: boolean;
+      public_slug?: string;
     }) => updateUser(user!.id, body),
     onSuccess: async () => {
       await fetchMe();
@@ -108,7 +110,19 @@ export function ProfileNursePresentationScreen() {
           hint={publicEnabled ? 'Visible sur Cary' : 'Non visible sur Cary'}
           value={publicEnabled}
           busy={busyToggle?.is_public_profile_enabled !== undefined}
-          onValueChange={(v) => saveToggle.mutate({ is_public_profile_enabled: v })}
+          onValueChange={(v) => {
+            const payload: {
+              is_public_profile_enabled: boolean;
+              public_slug?: string;
+            } = { is_public_profile_enabled: v };
+            if (v && !q.data?.public_slug?.trim()) {
+              payload.public_slug = generateNursePublicSlug(
+                q.data?.first_name ?? user?.first_name,
+                q.data?.last_name ?? user?.last_name,
+              );
+            }
+            saveToggle.mutate(payload);
+          }}
         />
         <View style={styles.divider} />
         <ProfileToggleRow

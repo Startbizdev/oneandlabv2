@@ -29,7 +29,11 @@ export function useAppointmentBatch(primary: Appointment | null | undefined) {
     })),
   });
 
-  const siblingsLoading = siblingQueries.some((q) => q.isLoading);
+  const siblingsLoading = siblingQueries.some((q) => q.isLoading || q.isFetching);
+
+  const siblingDataKey = siblingQueries
+    .map((q, i) => `${siblingIds[i] ?? ''}:${q.dataUpdatedAt ?? 0}:${q.data?.id ?? ''}`)
+    .join('|');
 
   const batchSorted = useMemo(() => {
     if (!primary) return [] as Appointment[];
@@ -38,7 +42,7 @@ export function useAppointmentBatch(primary: Appointment | null | undefined) {
       .filter((a): a is Appointment => a != null);
     if (loaded.length === 0) return [primary];
     return [primary, ...loaded].sort(sortByScheduled);
-  }, [primary, siblingQueries]);
+  }, [primary, siblingDataKey]);
 
   const isMultiBatch = useMemo(() => {
     if (!primary) return false;
