@@ -10,9 +10,11 @@ import {
   saveAuthSession,
   saveAuthUser,
 } from '@/lib/auth-storage';
+import { prefetchAppointmentsForUser } from '@/features/appointments/lib/prefetch-appointments';
 import {
   disableBiometricLogin,
   getBiometricStoredUserId,
+  normalizeBiometricUserId,
   refreshBiometricCredentials,
 } from '@/lib/biometric-auth';
 
@@ -33,13 +35,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setSession: async (token, user) => {
     const storedUserId = await getBiometricStoredUserId();
-    if (storedUserId && storedUserId !== user.id) {
+    if (
+      storedUserId &&
+      normalizeBiometricUserId(storedUserId) !== normalizeBiometricUserId(user.id)
+    ) {
       await disableBiometricLogin();
     }
     await saveAuthSession(token, user);
     setAuthToken(token);
     set({ token, user });
     clearCsrfCache();
+    prefetchAppointmentsForUser(user.role);
     void refreshBiometricCredentials(token, user);
   },
 
@@ -61,7 +67,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       setAuthToken(token);
       set({ token, user, isHydrated: true });
       if (token) {
+        prefetchAppointmentsForUser(user?.role);
         const fresh = await get().fetchMe();
+        if (fresh) prefetchAppointmentsForUser(fresh.role);
         if (!fresh) await get().clearSession();
       }
     } catch {

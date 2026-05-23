@@ -16,6 +16,10 @@ const STORAGE_KEYS = [ENABLED_KEY, USER_ID_KEY, TOKEN_KEY, USER_KEY] as const;
 
 let legacyMigrationDone = false;
 
+export function normalizeBiometricUserId(userId: string | number | null | undefined): string {
+  return String(userId ?? '').trim();
+}
+
 function compactUser(user: AuthUser): AuthUser {
   return {
     id: user.id,
@@ -33,28 +37,49 @@ async function migrateLegacySecureStoreOnce(): Promise<void> {
   try {
     const legacyEnabled = await SecureStore.getItemAsync(ENABLED_KEY);
     if (legacyEnabled !== '1') {
-      await Promise.all(LEGACY_SECURE_KEYS.map((k) => SecureStore.deleteItemAsync(k).catch(() => undefined)));
+      await Promise.all(
+        LEGACY_SECURE_KEYS.map((k) => SecureStore.deleteItemAsync(k).catch(() => undefined)),
+      );
       return;
     }
 
-    const [legacyToken, legacyUserJson, legacyUserId] = await Promise.all([
-      SecureStore.getItemAsync(TOKEN_KEY).catch(() => null),
-      SecureStore.getItemAsync(USER_KEY).catch(() => null),
-      SecureStore.getItemAsync(USER_ID_KEY).catch(() => null),
-    ]);
+    const legacyUserId = await SecureStore.getItemAsync(USER_ID_KEY).catch(() => null);
+    let legacyToken = await SecureStore.getItemAsync(TOKEN_KEY).catch(() => null);
+    let legacyUserJson = await SecureStore.getItemAsync(USER_KEY).catch(() => null);
 
-    if (legacyToken && legacyUserJson && legacyUserId) {
-      await AsyncStorage.multiSet([
-        [TOKEN_KEY, legacyToken],
-        [USER_KEY, legacyUserJson],
-        [USER_ID_KEY, legacyUserId],
-        [ENABLED_KEY, '1'],
-      ]);
+    if (!legacyToken || !legacyUserJson) {
+      const label = await getBiometricLabel();
+      legacyToken =
+        (await SecureStore.getItemAsync(TOKEN_KEY, {
+          requireAuthentication: true,
+          authenticationPrompt: `Confirmer ${label}`,
+        }).catch(() => null)) ?? legacyToken;
+      legacyUserJson =
+        (await SecureStore.getItemAsync(USER_KEY, {
+          requireAuthentication: true,
+          authenticationPrompt: `Confirmer ${label}`,
+        }).catch(() => null)) ?? legacyUserJson;
     }
 
-    await Promise.all(LEGACY_SECURE_KEYS.map((k) => SecureStore.deleteItemAsync(k).catch(() => undefined)));
+    if (legacyUserId) {
+      const entries: [string, string][] = [
+        [ENABLED_KEY, '1'],
+        [USER_ID_KEY, normalizeBiometricUserId(legacyUserId)],
+      ];
+      if (legacyToken && legacyUserJson) {
+        entries.push([TOKEN_KEY, legacyToken], [USER_KEY, legacyUserJson]);
+      }
+      await AsyncStorage.multiSet(entries);
+    }
+
+    const saved = await AsyncStorage.getItem(ENABLED_KEY);
+    if (saved === '1') {
+      await Promise.all(
+        LEGACY_SECURE_KEYS.map((k) => SecureStore.deleteItemAsync(k).catch(() => undefined)),
+      );
+    }
   } catch {
-    await Promise.all(LEGACY_SECURE_KEYS.map((k) => SecureStore.deleteItemAsync(k).catch(() => undefined)));
+    /* conserver le legacy si la migration échoue */
   }
 }
 
@@ -99,7 +124,7 @@ export async function getBiometricStoredUserId(): Promise<string | null> {
 export async function isBiometricEnabledForUser(userId: string): Promise<boolean> {
   if (!(await isBiometricLoginEnabled())) return false;
   const storedUserId = await getBiometricStoredUserId();
-  return storedUserId === userId;
+  return normalizeBiometricUserId(storedUserId) === normalizeBiometricUserId(userId);
 }
 
 export async function getBiometricSettingsForUser(userId: string): Promise<{
@@ -175,7 +200,7 @@ export async function enableBiometricLogin(
     await AsyncStorage.multiSet([
       [TOKEN_KEY, token],
       [USER_KEY, JSON.stringify(compactUser(user))],
-      [USER_ID_KEY, user.id],
+      [USER_ID_KEY, normalizeBiometricUserId(user.id)],
       [ENABLED_KEY, '1'],
     ]);
 

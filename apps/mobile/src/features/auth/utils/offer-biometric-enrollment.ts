@@ -12,6 +12,7 @@ export async function offerBiometricEnrollment(
   token: string,
   user: AuthUser,
   onDone: () => void,
+  onError?: (message: string) => void,
 ): Promise<void> {
   if (await isBiometricEnabledForUser(user.id)) {
     onDone();
@@ -34,8 +35,14 @@ export async function offerBiometricEnrollment(
         onPress: () => {
           void (async () => {
             const result = await enableBiometricLogin(token, user);
-            if (result.ok) onDone();
-            else onDone();
+            if (result.ok) {
+              onDone();
+              return;
+            }
+            if (!result.cancelled && result.message) {
+              onError?.(result.message);
+            }
+            onDone();
           })();
         },
       },

@@ -5,6 +5,7 @@ import { TabBarIconBadge } from '@/components/navigation/TabBarIconBadge';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { tabScreenOptions } from '@/navigation/screen-options';
 import { useNurseDemandesBadgeCount } from '@/features/nurse/hooks/use-nurse-demandes-badge';
+import { useAuthStore } from '@/store/auth-store';
 import { colors } from '@/theme';
 
 function isFocused(color: string) {
@@ -12,7 +13,8 @@ function isFocused(color: string) {
 }
 
 export default function NurseTabsLayout() {
-  const { count: demandesBadge } = useNurseDemandesBadgeCount(true);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
+  const { count: demandesBadge } = useNurseDemandesBadgeCount(isHydrated);
 
   return (
     <Tabs

@@ -112,7 +112,10 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onStepChange }: Props) {
         return;
       }
       const sessionUser = (me ?? user) as AuthUser;
-      offerBiometricEnrollment(token, sessionUser, onSuccess);
+      const freshToken = useAuthStore.getState().token ?? token;
+      void offerBiometricEnrollment(freshToken, sessionUser, onSuccess, (message) => {
+        toast('Activation impossible', { message, type: 'error' });
+      });
     } catch (e) {
       const msg = (e as Error).message;
       if (!msg.includes("n'a pas accès")) {
