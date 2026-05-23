@@ -1,7 +1,7 @@
 import React, { type ReactElement, type ReactNode } from 'react';
 import { FlatList, type FlatListProps, RefreshControl, StyleSheet, View } from 'react-native';
 import type { UseQueryResult } from '@tanstack/react-query';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useQueryListUi } from '@/lib/hooks/use-query-list-ui';
 import { colors, spacing } from '@/theme';
@@ -42,7 +42,7 @@ export function QueryFlatList<T, Item>({
       <View style={styles.root}>
         {header}
         <View style={styles.skeleton}>
-          <SkeletonGroup count={skeletonCount} height={skeletonHeight} gap={skeletonGap} />
+          <SkeletonList count={skeletonCount} itemHeight={skeletonHeight} gap={skeletonGap} />
         </View>
       </View>
     );

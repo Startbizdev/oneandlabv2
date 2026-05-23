@@ -95,7 +95,7 @@ export function AppointmentFormScreen(props: Props) {
         onPick={(key, file) =>
           f.setValues((prev) => ({
             ...prev,
-            files: { ...prev.files, [key]: file },
+            files: { ...(prev.files ?? {}), [key]: file },
           }))
         }
       />

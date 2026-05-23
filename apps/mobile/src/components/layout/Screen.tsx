@@ -1,13 +1,7 @@
 import React, { type ReactNode } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  View,
-  StyleSheet,
-  type ScrollViewProps,
-  type ViewStyle,
-} from 'react-native';
+import { View, StyleSheet, type ScrollViewProps, type ViewStyle } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { KeyboardScrollView } from './KeyboardScrollView';
 import { colors, spacing } from '@/theme';
 
 /**
@@ -47,31 +41,30 @@ export function Screen({
   if ('scroll' in rest && rest.scroll) {
     const { contentStyle, scrollProps, keyboardAvoiding = true } = rest as ScrollScreenProps;
 
-    const scrollView = (
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={[styles.scrollContent, contentStyle]}
-        {...scrollProps}
-      >
-        {children}
-      </ScrollView>
-    );
+    if (keyboardAvoiding) {
+      return (
+        <View style={[styles.flex, bg, style]}>
+          <KeyboardScrollView
+            style={styles.flex}
+            contentContainerStyle={[styles.scrollContent, contentStyle]}
+            {...scrollProps}
+          >
+            {children}
+          </KeyboardScrollView>
+        </View>
+      );
+    }
 
     return (
       <View style={[styles.flex, bg, style]}>
-        {keyboardAvoiding ? (
-          <KeyboardAvoidingView
-            style={styles.flex}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={0}
-          >
-            {scrollView}
-          </KeyboardAvoidingView>
-        ) : (
-          scrollView
-        )}
+        <KeyboardScrollView
+          enabled={false}
+          style={styles.flex}
+          contentContainerStyle={[styles.scrollContent, contentStyle]}
+          {...scrollProps}
+        >
+          {children}
+        </KeyboardScrollView>
       </View>
     );
   }
@@ -85,10 +78,7 @@ export function Screen({
   return (
     <View style={[styles.flex, bg, style]}>
       {keyboardAvoiding ? (
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
+        <KeyboardAvoidingView style={styles.flex} behavior="padding">
           {content}
         </KeyboardAvoidingView>
       ) : (

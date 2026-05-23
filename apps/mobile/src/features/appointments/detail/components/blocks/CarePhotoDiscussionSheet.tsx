@@ -11,14 +11,21 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import { MessageSquare, Send } from 'lucide-react-native';
+import { Info, Maximize2, MessageSquare, Send } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { queryKeys } from '@/lib/query-keys';
 import {
   fetchCarePhotos,
   postCarePhotoComment,
   type CarePhotoRow,
 } from '../../api/appointment-detail.service';
+import {
+  carePhotoComposerPlaceholder,
+  carePhotoDiscussionHint,
+} from '../../utils/care-photo-copy';
+import type { AppointmentDetailRole } from '../../utils/appointment-detail-role-config';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -35,6 +42,7 @@ interface Props {
   appointmentId: string;
   photoId: string | null;
   viewerUserId?: string;
+  viewerRole?: AppointmentDetailRole | string;
   /** Si false, lecture seule (repli : can_comment API). */
   canComment?: boolean;
 }
@@ -69,6 +77,7 @@ export function CarePhotoDiscussionSheet({
   appointmentId,
   photoId,
   viewerUserId,
+  viewerRole = 'nurse',
   canComment: canCommentProp,
 }: Props) {
   const { show: toast } = useToast();
@@ -76,6 +85,7 @@ export function CarePhotoDiscussionSheet({
   const [draft, setDraft] = useState('');
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const threadQ = useQuery({
     queryKey: ['appointments', 'care-photos', appointmentId] as const,
@@ -103,10 +113,13 @@ export function CarePhotoDiscussionSheet({
   }, [photo?.comments]);
 
   const subtitle = photo?.created_at ? formatShortDate(photo.created_at) : undefined;
+  const discussionHint = carePhotoDiscussionHint(viewerRole);
+  const composerPlaceholder = carePhotoComposerPlaceholder(viewerRole);
 
   useEffect(() => {
     if (!visible || !photoId) {
       setPreviewUri(null);
+      setLightboxOpen(false);
       return;
     }
     let cancelled = false;
@@ -123,7 +136,10 @@ export function CarePhotoDiscussionSheet({
   }, [visible, photoId]);
 
   useEffect(() => {
-    if (!visible) setDraft('');
+    if (!visible) {
+      setDraft('');
+      setLightboxOpen(false);
+    }
   }, [visible]);
 
   const sendMut = useMutation({
@@ -147,11 +163,15 @@ export function CarePhotoDiscussionSheet({
     [viewerUserId],
   );
 
+  const openLightbox = useCallback(() => {
+    if (!previewLoading && previewUri) setLightboxOpen(true);
+  }, [previewLoading, previewUri]);
+
   const composer = canComment ? (
     <View style={styles.composer}>
       <TextInput
         style={styles.input}
-        placeholder="Votre message…"
+        placeholder={composerPlaceholder}
         placeholderTextColor={colors.textTertiary}
         value={draft}
         onChangeText={setDraft}
@@ -173,71 +193,146 @@ export function CarePhotoDiscussionSheet({
   ) : null;
 
   return (
-    <BottomSheet
-      visible={visible}
-      onClose={onClose}
-      title="Photo — échanges"
-      subtitle={subtitle}
-      headerIcon={<MessageSquare size={20} color={colors.primary} strokeWidth={2} />}
-      footer={composer}
-    >
-      <View style={styles.previewWrap}>
-        {previewLoading ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : previewUri ? (
-          <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="cover" />
+    <>
+      <BottomSheet
+        visible={visible}
+        onClose={onClose}
+        title="Photo — échanges"
+        subtitle={subtitle}
+        headerIcon={<MessageSquare size={20} color={colors.primary} strokeWidth={2} />}
+        footer={composer}
+      >
+        <View style={styles.hintCard}>
+          <Info size={15} color={colors.primaryDark} strokeWidth={2.25} />
+          <Text style={styles.hintText}>{discussionHint}</Text>
+        </View>
+
+        <View style={styles.previewWrap}>
+          <Pressable
+            onPress={openLightbox}
+            disabled={previewLoading || !previewUri}
+            style={({ pressed }) => [
+              styles.previewBtn,
+              pressed && previewUri ? styles.previewBtnPressed : null,
+              (!previewUri || previewLoading) && styles.previewBtnDisabled,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Agrandir la photo"
+          >
+            {previewLoading ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : previewUri ? (
+              <>
+                <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="cover" />
+                <View style={styles.zoomBadge}>
+                  <Maximize2 size={12} color={colors.textInverse} strokeWidth={2.5} />
+                  <Text style={styles.zoomBadgeText}>Agrandir</Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.previewPlaceholder}>
+                <Text style={styles.previewPlaceholderText}>Aperçu indisponible</Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
+
+        {threadQ.isLoading ? (
+          <SkeletonList count={3} itemHeight={64} gap={spacing[2]} />
+        ) : orderedComments.length === 0 ? (
+          <Text style={styles.empty}>Aucun message pour l’instant.</Text>
         ) : (
-          <View style={styles.previewPlaceholder}>
-            <Text style={styles.previewPlaceholderText}>Aperçu indisponible</Text>
+          <View style={styles.thread}>
+            {orderedComments.map((c) => {
+              const mine = isMine(c.author_id);
+              return (
+                <View
+                  key={c.id}
+                  style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
+                >
+                  <View style={styles.bubbleMeta}>
+                    <Text style={[styles.author, mine && styles.authorMine]}>{c.author_name}</Text>
+                    <Text style={[styles.time, mine && styles.timeMine]}>
+                      {formatShortDate(c.created_at)}
+                    </Text>
+                  </View>
+                  <Text style={[styles.body, mine && styles.bodyMine]}>{c.body}</Text>
+                </View>
+              );
+            })}
           </View>
         )}
-      </View>
+      </BottomSheet>
 
-      {threadQ.isLoading ? (
-        <ActivityIndicator color={colors.primary} style={styles.loader} />
-      ) : orderedComments.length === 0 ? (
-        <Text style={styles.empty}>Aucun message pour l’instant.</Text>
-      ) : (
-        <View style={styles.thread}>
-          {orderedComments.map((c) => {
-            const mine = isMine(c.author_id);
-            return (
-              <View
-                key={c.id}
-                style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
-              >
-                <View style={styles.bubbleMeta}>
-                  <Text style={[styles.author, mine && styles.authorMine]}>{c.author_name}</Text>
-                  <Text style={[styles.time, mine && styles.timeMine]}>
-                    {formatShortDate(c.created_at)}
-                  </Text>
-                </View>
-                <Text style={[styles.body, mine && styles.bodyMine]}>{c.body}</Text>
-              </View>
-            );
-          })}
-        </View>
-      )}
-    </BottomSheet>
+      <FullscreenImageViewer
+        visible={lightboxOpen}
+        uri={previewUri}
+        onClose={() => setLightboxOpen(false)}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  hintCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing[2],
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2.5],
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.primaryMid,
+    marginBottom: spacing[2],
+  },
+  hintText: {
+    flex: 1,
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+    lineHeight: fontSize.xs * 1.45,
+  },
   previewWrap: {
     alignItems: 'center',
     paddingVertical: spacing[2],
   },
-  preview: {
-    width: 160,
-    height: 160,
+  previewBtn: {
+    width: 200,
+    height: 200,
     borderRadius: radius.xl,
+    overflow: 'hidden',
     backgroundColor: colors.surfaceAlt,
   },
+  previewBtnPressed: {
+    opacity: 0.92,
+  },
+  previewBtnDisabled: {
+    opacity: 0.7,
+  },
+  preview: {
+    width: '100%',
+    height: '100%',
+  },
+  zoomBadge: {
+    position: 'absolute',
+    bottom: spacing[2],
+    right: spacing[2],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing[2],
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  },
+  zoomBadgeText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: 10,
+    color: colors.textInverse,
+  },
   previewPlaceholder: {
-    width: 160,
-    height: 160,
-    borderRadius: radius.xl,
-    backgroundColor: colors.surfaceAlt,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -246,7 +341,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     color: colors.textTertiary,
   },
-  loader: { marginVertical: spacing[4] },
   empty: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,

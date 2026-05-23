@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CalendarDays } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
@@ -17,6 +16,7 @@ import {
   type PreleveurStatusFilter,
   type ProStatusFilter,
 } from '@/constants/appointments-list-filters';
+import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { colors, spacing } from '@/theme';
 
 const PENDING = new Set(['pending', 'assigned', 'offered']);
@@ -123,7 +123,9 @@ export function RoleFilteredAppointmentsListScreen({ role, detailPathPrefix }: P
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            Icon={CalendarDays}
+            imageSource={EMPTY_RDV_IMAGE}
+            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
             title="Aucun rendez-vous"
             description="Modifiez les filtres pour élargir la liste."
           />

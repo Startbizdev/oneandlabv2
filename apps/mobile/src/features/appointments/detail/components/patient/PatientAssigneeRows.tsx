@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useState, type ReactElement, type ReactNode } from 'react';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
@@ -9,7 +9,10 @@ import { DetailSection } from '../layout/DetailSection';
 import { appointmentAssigneeGender } from '../../utils/patient-appointment-display';
 import {
   creatorOriginName,
+  creatorOriginSubtitle,
   creatorOriginTitle,
+  isPatientPlatformOrigin,
+  platformOriginDisplayName,
   type CreatorOrigin,
 } from '../../utils/provider-public-profile';
 
@@ -98,20 +101,16 @@ export function PatientAssigneeRows({ apt }: Props) {
     const title = creatorOriginTitle(creator);
     const slug = creator.public_slug?.trim();
     const providerType = creator.kind === 'lab_team' ? 'lab' : creator.kind === 'nurse' ? 'nurse' : null;
+  const platformOrigin = isPatientPlatformOrigin(creator);
     blocks.push(
       <AssigneeProfileRow
         key="creator"
         title={title}
         name={name}
-        profileImageUrl={creator.profile_image_url}
+        profileImageUrl={platformOrigin ? null : creator.profile_image_url}
+        brandLogo={platformOrigin ? 'cary' : undefined}
         phone={creator.phone}
-        subtitle={
-          creator.kind === 'nurse'
-            ? 'Saisie par un infirmier'
-            : creator.kind === 'pro'
-              ? creator.emploi?.trim() || undefined
-              : undefined
-        }
+        subtitle={creatorOriginSubtitle(creator)}
         publicSlug={slug || null}
         onViewProfile={
           slug && providerType
@@ -121,10 +120,16 @@ export function PatientAssigneeRows({ apt }: Props) {
       />,
     );
   } else {
-    const platformOrigin = String(ext.patient_platform_origin_display ?? '').trim();
-    if (platformOrigin) {
+    const rawPlatform = String(ext.patient_platform_origin_display ?? '').trim();
+    if (rawPlatform) {
       blocks.push(
-        <AssigneeProfileRow key="origin" title="Origine" name={platformOrigin} />,
+        <AssigneeProfileRow
+          key="origin"
+          title="Origine"
+          name={platformOriginDisplayName(rawPlatform)}
+          brandLogo="cary"
+          subtitle="Ce rendez-vous a été pris en direct par le patient"
+        />,
       );
     }
   }
@@ -133,7 +138,15 @@ export function PatientAssigneeRows({ apt }: Props) {
 
   return (
     <>
-      <DetailSection>{blocks}</DetailSection>
+      <DetailSection>
+        {blocks.map((block, index) =>
+          isValidElement(block)
+            ? cloneElement(block as ReactElement<{ showDivider?: boolean }>, {
+                showDivider: index < blocks.length - 1,
+              })
+            : block,
+        )}
+      </DetailSection>
       {sheet ? (
         <ProviderPublicProfileSheet
           visible

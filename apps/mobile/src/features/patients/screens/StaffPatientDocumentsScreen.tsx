@@ -19,7 +19,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { pickMedicalDocumentFile } from '@/lib/uploads/pick-medical-document';
 import { downloadMedicalDocument } from '@/lib/downloads/download-medical-document';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { patientFolderHeaderTitle } from '@/navigation/PatientFolderHeaderTitle';
 import { ProfileStackBackButton } from '@/navigation/ProfileStackBackButton';
@@ -225,7 +225,7 @@ export function StaffPatientDocumentsScreen() {
       <>
         <Stack.Screen options={screenOptions} />
         <View style={styles.loading}>
-          <SkeletonGroup count={4} height={72} gap={10} />
+          <SkeletonList count={4} itemHeight={72} gap={10} />
         </View>
       </>
     );

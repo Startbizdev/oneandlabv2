@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { History } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { AppointmentCard } from '@/features/appointments/components/AppointmentCard';
 import { fetchAppointmentsPaginated } from '@/features/appointments/api/appointments.service';
@@ -89,7 +89,7 @@ export function PatientAppointmentHistoryScreen() {
           <Text style={styles.introSub}>Chargement…</Text>
         </View>
         <View style={styles.loading}>
-          <SkeletonGroup count={4} height={88} gap={10} />
+          <SkeletonList count={4} itemHeight={88} gap={10} />
         </View>
       </View>
     );
@@ -121,7 +121,9 @@ export function PatientAppointmentHistoryScreen() {
         ItemSeparatorComponent={() => <View style={styles.sep} />}
         ListEmptyComponent={
           <EmptyState
-            Icon={History}
+            imageSource={EMPTY_RDV_IMAGE}
+            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
             title="Aucun historique"
             description="Les rendez-vous passés apparaîtront ici."
           />

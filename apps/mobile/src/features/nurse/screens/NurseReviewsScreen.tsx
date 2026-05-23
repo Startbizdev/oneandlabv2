@@ -7,7 +7,7 @@ import { api } from '@/api/client';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { ReviewFilterChips } from '@/features/reviews/components/ReviewFilterChips';
@@ -102,7 +102,7 @@ export function NurseReviewsScreen() {
     <View style={styles.container}>
       {reviewsQ.isLoading ? (
         <View style={styles.loading}>
-          <SkeletonGroup count={4} height={120} gap={12} />
+          <SkeletonList count={4} itemHeight={120} gap={12} />
         </View>
       ) : (
         <FlatList

@@ -1,7 +1,12 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
+import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { colors, spacing } from '@/theme';
+
+const FOOTER_HEIGHT = 48 + spacing[3] + spacing[3];
 
 interface Props {
   children: ReactNode;
@@ -11,7 +16,7 @@ interface Props {
   hideSave?: boolean;
 }
 
-/** Écran secondaire profil : contenu scrollable + bouton Enregistrer optionnel. */
+/** Écran secondaire profil : contenu scrollable + bouton Enregistrer au-dessus du clavier. */
 export function ProfileSubScreenLayout({
   children,
   saveTitle = 'Enregistrer',
@@ -19,20 +24,27 @@ export function ProfileSubScreenLayout({
   saving,
   hideSave,
 }: Props) {
+  const { bottom } = useSafeAreaInsets();
+  const footerInset = Math.max(bottom, spacing[2]);
+  const showFooter = !hideSave && !!onSave;
+
   return (
     <View style={styles.root}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        contentInsetAdjustmentBehavior="automatic"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          showFooter && { paddingBottom: FOOTER_HEIGHT + footerInset + spacing[4] },
+        ]}
+        bottomOffset={showFooter ? FOOTER_HEIGHT + footerInset : footerInset}
       >
         {children}
-      </ScrollView>
-      {!hideSave && onSave ? (
-        <View style={styles.footer}>
-          <Button title={saveTitle} loading={saving} onPress={onSave} fullWidth size="lg" />
-        </View>
+      </KeyboardScrollView>
+      {showFooter ? (
+        <KeyboardStickyView offset={{ closed: 0, opened: footerInset }}>
+          <View style={styles.footer}>
+            <Button title={saveTitle} loading={saving} onPress={onSave} fullWidth size="lg" />
+          </View>
+        </KeyboardStickyView>
       ) : null}
     </View>
   );

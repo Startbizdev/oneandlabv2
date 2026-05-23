@@ -10,11 +10,13 @@ interface Props {
   children: ReactNode;
   /** Sans carte (contenu directement sur fond écran) */
   plain?: boolean;
+  /** Liste dense (lignes contact / assignés). */
+  compact?: boolean;
 }
 
-export function DetailSection({ title, Icon, children, plain }: Props) {
+export function DetailSection({ title, Icon, children, plain, compact }: Props) {
   return (
-    <View style={[styles.wrap, plain && styles.plain]}>
+    <View style={[styles.wrap, plain && styles.plain, compact && styles.compact]}>
       {title ? (
         <View style={styles.head}>
           {Icon ? (
@@ -25,7 +27,7 @@ export function DetailSection({ title, Icon, children, plain }: Props) {
           <Text style={styles.title}>{title}</Text>
         </View>
       ) : null}
-      <View style={styles.body}>{children}</View>
+      <View style={[styles.body, compact && styles.bodyCompact]}>{children}</View>
     </View>
   );
 }
@@ -43,6 +45,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 0,
     padding: 0,
+  },
+  compact: {
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
+    gap: 0,
+  },
+  bodyCompact: {
+    gap: 0,
   },
   head: {
     flexDirection: 'row',

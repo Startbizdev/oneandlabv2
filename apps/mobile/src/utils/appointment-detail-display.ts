@@ -1,11 +1,11 @@
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import { CANCELLATION_REASONS } from '@oneandlab/shared-constants';
+import { CANCELLATION_REASONS, isCareAutreDetailKey } from '@oneandlab/shared-constants';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 import { formatCareOptionRows } from '@/features/appointments/form/utils/selected-service-detail-lines';
-import { appointmentAddressLine } from './appointment-display';
+import { appointmentAddressLine } from './appointment-address';
 import { formatScheduledDateWithAvailabilityLineFr } from './appointment-datetime-fr';
 
 dayjs.locale('fr');
@@ -188,12 +188,105 @@ export function parseItemCareOptions(co: unknown): Record<string, string | numbe
   return out;
 }
 
+const PER_ACT_NURSING_META_KEYS = new Set(['_duration_days', '_frequency', '_custom_days']);
+
 function categoryForItem(
   item: Record<string, unknown>,
   categories: CareCategory[],
 ): CareCategory | undefined {
   const id = item.category_id != null ? String(item.category_id) : '';
   return id ? categories.find((c) => String(c.id) === id) : undefined;
+}
+
+export function nursingItemMetaDurationLabel(item: Record<string, unknown>): string {
+  const o = parseItemCareOptions(item.care_options);
+  const d = o._duration_days;
+  if (d == null || d === '') return '';
+  const cu = o._custom_days;
+  const customNum =
+    typeof cu === 'number' && !Number.isNaN(cu)
+      ? cu
+      : cu != null && String(cu).trim() !== ''
+        ? Number(cu)
+        : null;
+  return getNursingDurationLabel(String(d), Number.isNaN(customNum as number) ? null : customNum);
+}
+
+export function nursingItemMetaFrequencyLabel(item: Record<string, unknown>): string {
+  const o = parseItemCareOptions(item.care_options);
+  const f = o._frequency;
+  if (f == null || f === '') return '';
+  return getFrequencyLabel(String(f));
+}
+
+export function nursingItemCareOptionTypeValue(
+  item: Record<string, unknown>,
+): string | number | null {
+  const v = parseItemCareOptions(item.care_options).type;
+  if (v == null || v === '') return null;
+  return v;
+}
+
+/** Évite de répéter le type quand une seule entrée reflète déjà form_data.care_options.type. */
+export function shouldShowNursingItemTypeRow(
+  item: Record<string, unknown>,
+  nursingItems: Array<Record<string, unknown>>,
+  apt: Appointment,
+): boolean {
+  const iv = nursingItemCareOptionTypeValue(item);
+  if (iv == null) return false;
+  if (nursingItems.length > 1) return true;
+  const raw = (apt.form_data as Record<string, unknown> | undefined)?.care_options;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return true;
+  const rv = (raw as Record<string, unknown>).type;
+  if (rv == null || rv === '') return true;
+  return String(iv) !== String(rv);
+}
+
+export function buildNursingItemTypeKvRow(
+  item: Record<string, unknown>,
+  categories: CareCategory[],
+): DetailKvRow | null {
+  const typeVal = nursingItemCareOptionTypeValue(item);
+  if (typeVal == null) return null;
+  const rows = formatCareOptionRows(categoryForItem(item, categories), { type: typeVal });
+  const row = rows.find((r) => r.value?.trim());
+  return row ? { label: row.label, value: row.value } : null;
+}
+
+/** Options catalogue propres à l’acte (hors type, méta _duration_days, options communes). */
+export function buildNursingItemPerActOptionKvRows(
+  item: Record<string, unknown>,
+  categories: CareCategory[],
+  excludeKeys: Set<string> = new Set(),
+): DetailKvRow[] {
+  const co = parseItemCareOptions(item.care_options);
+  const filtered: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(co)) {
+    if (k === 'type' || PER_ACT_NURSING_META_KEYS.has(k) || excludeKeys.has(k) || isCareAutreDetailKey(k)) {
+      continue;
+    }
+    filtered[k] = v;
+  }
+  return formatCareOptionRows(categoryForItem(item, categories), filtered).map((r) => ({
+    label: r.label,
+    value: r.value,
+  }));
+}
+
+export function buildNursingAppointmentFormMetaKvRows(apt: Appointment): DetailKvRow[] {
+  const fd = (apt.form_data ?? {}) as Record<string, unknown>;
+  const rows: DetailKvRow[] = [];
+  const dur = getNursingDurationLabel(String(fd.duration_days ?? ''), fd.custom_days as number | null);
+  if (dur) rows.push({ label: 'Type de prise en charge', value: dur });
+  const freq =
+    fd.frequency != null && fd.frequency !== '' ? getFrequencyLabel(String(fd.frequency)) : '';
+  if (freq) rows.push({ label: 'Fréquence', value: freq });
+  const pref = getPreferredNurseGenderLabel(String(fd.preferred_nurse_gender ?? ''));
+  if (pref && fd.preferred_nurse_gender && fd.preferred_nurse_gender !== 'any') {
+    rows.push({ label: 'Préférence infirmier', value: pref });
+  }
+  return rows;
 }
 
 /** Options catalogue par acte / form_data (localisation, type de soin, etc.). */

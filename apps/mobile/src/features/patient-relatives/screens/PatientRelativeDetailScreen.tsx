@@ -10,7 +10,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { PatientRelativeDocumentsSection } from '../components/PatientRelativeDocumentsSection';
 import {
   deletePatientRelative,
@@ -80,10 +80,7 @@ export function PatientRelativeDetailScreen() {
     return (
       <>
         <Stack.Screen options={{ title: 'Proche' }} />
-        <View style={styles.loading}>
-          <Skeleton height={120} borderRadius={16} />
-          <Skeleton height={200} borderRadius={16} />
-        </View>
+        <SkeletonProfileScreen cards={2} />
       </>
     );
   }

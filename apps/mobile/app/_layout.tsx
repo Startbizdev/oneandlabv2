@@ -4,8 +4,9 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import '../global.css';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import {
   Nunito_400Regular,
@@ -25,6 +26,8 @@ import { NetworkProvider } from '@/providers/NetworkProvider';
 import { usePushTokenRegistration } from '@/features/notifications/hooks/use-push-token-registration';
 import { colors } from '@/theme';
 
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
 function RootLayoutInner() {
   const hydrate = useAuthStore((s) => s.hydrate);
 
@@ -38,7 +41,7 @@ function RootLayoutInner() {
   usePushTokenRegistration();
 
   return (
-    <>
+    <View style={styles.root}>
       <StatusBar style="dark" backgroundColor={colors.background} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { flex: 1, backgroundColor: colors.background } }}>
         <Stack.Screen name="index" />
@@ -50,9 +53,13 @@ function RootLayoutInner() {
         <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
       </Stack>
-    </>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -64,8 +71,14 @@ export default function RootLayout() {
     Nunito_900Black,
   });
 
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded]);
+
   if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+    return null;
   }
 
   return (

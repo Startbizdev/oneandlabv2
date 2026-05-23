@@ -4,6 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useLocalSearchParams } from 'expo-router';
 import { useBookingWizardHeader } from '../hooks/useBookingWizardHeader';
 import { Plus } from 'lucide-react-native';
+import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { FormScreen } from '@/components/layout/FormScreen';
 import { BookingActionBar } from '../components/BookingActionBar';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
@@ -17,7 +18,8 @@ import { FormDocumentsSection } from '../components/FormDocumentsSection';
 import { WizardDocumentFields } from '../components/WizardDocumentFields';
 import { WizardPatientDocumentsPanel } from '../components/WizardPatientDocumentsPanel';
 import { PERSONAL_DOC_FIELDS } from '../constants/appointment-document-fields';
-import { NEW_PATIENT_ID } from '../types';
+import { GenderSelect } from '@/features/auth/components/GenderSelect';
+import { normalizePatientGender } from '@/utils/patient-gender';
 import { BookingWizardProgress } from '../components/BookingWizardProgress';
 import { BookingWizardSegmentContext } from '../components/BookingWizardSegmentContext';
 import { BookingWizardPreviousRecaps } from '../components/BookingWizardPreviousRecaps';
@@ -230,6 +232,15 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
                     <Text style={styles.addRelativeText}>Proche</Text>
                   </Pressable>
                 </View>
+                {bw.selectedRelativeId ? (
+                  <View style={styles.selfCard}>
+                    <Text style={styles.selfName}>
+                      {[w.form.watch('first_name'), w.form.watch('last_name')].filter(Boolean).join(' ') ||
+                        'Proche'}
+                    </Text>
+                    <Text style={styles.selfEmail}>Rendez-vous pour un proche</Text>
+                  </View>
+                ) : null}
                 {!bw.selectedRelativeId && user ? (
                   <View style={styles.selfCard}>
                     <Text style={styles.selfName}>
@@ -238,6 +249,17 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
                     <Text style={styles.selfEmail}>{user.email}</Text>
                   </View>
                 ) : null}
+                <View style={styles.identityBlock}>
+                  <GenderSelect
+                    label="Genre"
+                    value={normalizePatientGender(w.form.watch('gender'))}
+                    onChange={(v) => w.form.setValue('gender', v)}
+                  />
+                  <BirthDatePicker
+                    value={w.form.watch('birth_date')}
+                    onChange={(v) => w.form.setValue('birth_date', v)}
+                  />
+                </View>
               </>
             ) : (
               <>
@@ -329,7 +351,10 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
       <RelativeQuickAddSheet
         visible={relativeSheetOpen}
         onClose={() => setRelativeSheetOpen(false)}
-        onCreated={(id) => bw.setSelectedRelativeId(id)}
+        onCreated={(id, created) => {
+          bw.setSelectedRelativeId(id);
+          if (created) void bw.applyRelativeToForm(id, created);
+        }}
       />
     </View>
   );
@@ -428,6 +453,32 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textSecondary,
   },
+  identityBlock: { gap: spacing[3] },
+  fieldLabel: {
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  genderRow: { gap: spacing[2] },
+  genderPills: { flexDirection: 'row', gap: spacing[2] },
+  genderPill: {
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  genderPillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  genderPillText: {
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  genderPillTextActive: { color: colors.textInverse },
   consentRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',

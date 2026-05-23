@@ -1,16 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Shield } from 'lucide-react-native';
+import { FormScreen } from '@/components/layout/FormScreen';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -29,6 +21,7 @@ import { showAppNotAccessibleAlert } from '@/lib/auth/mobile-access';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
+import { offerBiometricEnrollment } from '@/features/auth/utils/offer-biometric-enrollment';
 import { registerHeaderTitle } from '@/navigation/RegisterHeaderTitle';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -168,7 +161,8 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
         showAppNotAccessibleAlert(r);
         return;
       }
-      router.replace(getRoleHome(r));
+      const sessionUser = (me ?? user) as Parameters<typeof setSession>[1];
+      offerBiometricEnrollment(token, sessionUser, () => router.replace(getRoleHome(r)));
     } catch (e) {
       toast('Erreur', { message: (e as Error).message, type: 'error' });
       setOtp('');
@@ -179,34 +173,24 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
 
   if (step === 'otp' && role === 'patient') {
     return (
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Input
-            ref={otpRef}
-            label="Code à 6 chiffres"
-            value={otp}
-            onChangeText={setOtp}
-            keyboardType="number-pad"
-            maxLength={6}
-            placeholder="000000"
-          />
-          <Button title="Valider le code" loading={loading} onPress={onVerifyOtp} fullWidth size="lg" />
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <FormScreen contentContainerStyle={styles.content}>
+        <Input
+          ref={otpRef}
+          label="Code à 6 chiffres"
+          value={otp}
+          onChangeText={setOtp}
+          keyboardType="number-pad"
+          maxLength={6}
+          placeholder="000000"
+        />
+        <Button title="Valider le code" loading={loading} onPress={onVerifyOtp} fullWidth size="lg" />
+      </FormScreen>
     );
   }
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.form}>
+    <FormScreen contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.form}>
           <Input
             label="Email"
             value={email}
@@ -306,13 +290,11 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
             </Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </FormScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
   content: {
     padding: spacing[4],
     paddingBottom: spacing[10],

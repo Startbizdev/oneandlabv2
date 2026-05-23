@@ -1,5 +1,10 @@
 import { AVAILABILITY_MIN_SPAN_HOURS } from '@oneandlab/shared-constants';
-import { isBloodTestAppointment, isNursingAppointment, type SelectedServiceInput } from '@oneandlab/shared-utils';
+import {
+  isBloodTestAppointment,
+  isNursingAppointment,
+  validateUnifiedRdvPayload,
+  type SelectedServiceInput,
+} from '@oneandlab/shared-utils';
 
 export function validateBookingWizardSubstep(
   section: 'slot-datetime' | 'documents' | 'personal',
@@ -12,6 +17,9 @@ export function validateBookingWizardSubstep(
     patientMode?: 'existing' | 'new';
     selectedPatientId?: string;
     consent?: boolean;
+    patientFormData?: Record<string, unknown>;
+    selectedServices?: SelectedServiceInput[];
+    patientEmailOptional?: boolean;
   },
 ): string[] {
   const missing: string[] = [];
@@ -40,6 +48,17 @@ export function validateBookingWizardSubstep(
     }
     if (opts.mode === 'dashboard' && opts.patientMode === 'existing' && !opts.selectedPatientId) {
       missing.push('Veuillez sélectionner un patient dans la liste.');
+    }
+    if (opts.patientFormData && opts.selectedServices?.length) {
+      const payloadErr = validateUnifiedRdvPayload(
+        {
+          ...opts.patientFormData,
+          formDataByService: opts.formDataByService,
+        },
+        opts.selectedServices,
+        { patientEmailOptional: opts.patientEmailOptional },
+      );
+      if (payloadErr?.message) missing.push(payloadErr.message);
     }
   }
 

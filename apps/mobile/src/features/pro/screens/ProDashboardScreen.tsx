@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Activity, CalendarCheck, Clock } from 'lucide-react-native';
 import dayjs from 'dayjs';
 import { api } from '@/api/client';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { SkeletonDashboardStats } from '@/components/ui/skeletons';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -74,11 +74,7 @@ export function ProDashboardScreen() {
 
         {/* Stats grid */}
         {statsQ.isLoading ? (
-          <View style={styles.statsGrid}>
-            <Skeleton height={110} style={{ flex: 1 }} borderRadius={radius.xl} />
-            <Skeleton height={110} style={{ flex: 1 }} borderRadius={radius.xl} />
-            <Skeleton height={110} style={{ flex: 1 }} borderRadius={radius.xl} />
-          </View>
+          <SkeletonDashboardStats />
         ) : (
           <View style={styles.statsGrid}>
             <StatCard

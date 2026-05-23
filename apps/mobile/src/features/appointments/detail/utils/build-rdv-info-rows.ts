@@ -1,18 +1,28 @@
-import { Linking } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { careEmojiForAppointment } from '@/utils/care-category-display';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 import {
-  appointmentHasMultipleCareLines,
-  buildAppointmentDetailKvRows,
+  buildAppointmentCareOptionKvRows,
+  buildNursingAppointmentFormMetaKvRows,
+  buildNursingItemPerActOptionKvRows,
+  buildNursingItemTypeKvRow,
+  getAppointmentBloodItems,
   getAppointmentNursingItems,
+  getBloodTestTypeLabel,
+  getNursingDurationLabel,
+  getFrequencyLabel,
+  getPreferredNurseGenderLabel,
   isAppointmentCanceled,
   nursingItemDisplayLabel,
+  nursingItemMetaDurationLabel,
+  nursingItemMetaFrequencyLabel,
+  shouldShowNursingItemTypeRow,
 } from '@/utils/appointment-detail-display';
 import {
   buildBatchLotCommonKvRows,
   buildBatchPerActKvRows,
+  buildNursingSharedIdenticalKvRows,
   collectLotNursingItems,
   nursingSharedOptionKeys,
 } from '@/utils/batch-appointment-detail-display';
@@ -26,18 +36,14 @@ import {
   beneficiaryLastName,
   bookingContactFullName,
   patientContactEmail,
-  patientPhone,
   relationshipLine,
   showBookingContactBlock,
 } from './patient-appointment-display';
-import type { ContactAction } from '../components/layout/ContactActionBar';
-
 dayjs.locale('fr');
 
 export type RdvInfoRow =
   | { kind: 'field'; label: string; value: string; emoji?: string; strikethrough?: boolean }
   | { kind: 'identity'; firstName: string; lastName: string }
-  | { kind: 'actions'; actions: ContactAction[] }
   | { kind: 'address'; value: string };
 
 export type BuildRdvInfoRowsOptions = {
@@ -66,105 +72,155 @@ const CARE_META_LABELS = new Set([
   'Préférence infirmier',
   'Type prélèvement',
   'Durée',
+  'Prise en charge',
 ]);
 
-function contactActions(phone: string, emailHref: string | null): ContactAction[] {
-  const actions: ContactAction[] = [];
-  const tel = phone.replace(/\s/g, '');
-  if (tel) {
-    actions.push({
-      key: 'phone',
-      label: 'Appeler',
-      icon: 'phone',
-      onPress: () => void Linking.openURL(`tel:${tel}`),
-    });
-    actions.push({
-      key: 'sms',
-      label: 'Message',
-      icon: 'message',
-      onPress: () => void Linking.openURL(`sms:${tel}`),
-    });
+function pushCareField(
+  rows: RdvInfoRow[],
+  label: string,
+  value: string,
+  emoji?: string,
+): void {
+  if (!value.trim()) return;
+  rows.push({ kind: 'field', label, value, emoji });
+}
+
+function pushKvRows(rows: RdvInfoRow[], kv: { label: string; value: string; strikethrough?: boolean }[]): void {
+  rows.push(...kvToInfoRows(kv));
+}
+
+/** Prise en charge / fréquence communes au RDV, affichées après le 1er acte si absentes sur l’acte. */
+function appendSharedNursingFormMetaAfterItem(
+  rows: RdvInfoRow[],
+  apt: Appointment,
+  itemIndex: number,
+  itemHasDuration: boolean,
+  itemHasFrequency: boolean,
+): void {
+  if (itemIndex !== 0) return;
+  const fd = (apt.form_data ?? {}) as Record<string, unknown>;
+  if (!itemHasDuration) {
+    const dur = getNursingDurationLabel(String(fd.duration_days ?? ''), fd.custom_days as number | null);
+    if (dur) pushCareField(rows, 'Type de prise en charge', dur);
   }
-  if (emailHref) {
-    actions.push({
-      key: 'email',
-      label: 'E-mail',
-      icon: 'email',
-      onPress: () => void Linking.openURL(emailHref),
-    });
+  if (!itemHasFrequency) {
+    const freq =
+      fd.frequency != null && fd.frequency !== '' ? getFrequencyLabel(String(fd.frequency)) : '';
+    if (freq) pushCareField(rows, 'Fréquence', freq);
   }
-  return actions;
+}
+
+function buildNursingItemGroupRows(
+  apt: Appointment,
+  item: Record<string, unknown>,
+  idx: number,
+  total: number,
+  categories: CareCategory[] | undefined,
+  sharedKeys: Set<string>,
+): RdvInfoRow[] {
+  const rows: RdvInfoRow[] = [];
+  const itemLabel = nursingItemDisplayLabel(item);
+  const fieldLabel = total > 1 ? `Soins prévus #${idx + 1}` : 'Soin';
+
+  pushCareField(
+    rows,
+    fieldLabel,
+    itemLabel,
+    careEmojiForAppointment(apt, itemLabel, categories, item.category_id as string | undefined),
+  );
+
+  if (categories?.length) {
+    if (shouldShowNursingItemTypeRow(item, getAppointmentNursingItems(apt), apt)) {
+      const typeRow = buildNursingItemTypeKvRow(item, categories);
+      if (typeRow) pushCareField(rows, typeRow.label, typeRow.value);
+    }
+    pushKvRows(rows, buildNursingItemPerActOptionKvRows(item, categories, sharedKeys));
+  }
+
+  const itemDur = nursingItemMetaDurationLabel(item);
+  if (itemDur) pushCareField(rows, 'Prise en charge', itemDur);
+
+  const itemFreq = nursingItemMetaFrequencyLabel(item);
+  if (itemFreq) pushCareField(rows, 'Fréquence', itemFreq);
+
+  appendSharedNursingFormMetaAfterItem(rows, apt, idx, Boolean(itemDur), Boolean(itemFreq));
+
+  return rows;
+}
+
+function buildBloodItemGroupRows(
+  apt: Appointment,
+  item: Record<string, unknown>,
+  idx: number,
+  total: number,
+  categories: CareCategory[] | undefined,
+): RdvInfoRow[] {
+  const rows: RdvInfoRow[] = [];
+  const itemLabel = nursingItemDisplayLabel(item);
+  const fieldLabel = total > 1 ? `Prestations #${idx + 1}` : 'Prestation';
+
+  pushCareField(
+    rows,
+    fieldLabel,
+    itemLabel,
+    careEmojiForAppointment(apt, itemLabel, categories, item.category_id as string | undefined),
+  );
+
+  if (categories?.length) {
+    pushKvRows(rows, buildNursingItemPerActOptionKvRows(item, categories));
+  }
+
+  return rows;
 }
 
 function buildCareRows(apt: Appointment, categories?: CareCategory[]): RdvInfoRow[] {
-  const multipleCare = appointmentHasMultipleCareLines(apt);
-  const careName = (apt.category_name ?? '').trim();
-
-  const extra = buildAppointmentDetailKvRows(apt, {
-    hideAddress: true,
-    hideScheduledDate: true,
-    hideCreatedAt: true,
-    titleContext: multipleCare ? null : careName,
-    categories,
-  }).filter((r) => {
-    const skip = new Set([
-      'Soins prévus',
-      'Prestations',
-      'Type de soin',
-      'Message',
-      'Créé le',
-      'Modifié le',
-    ]);
-    return r.value && !skip.has(r.label);
-  });
-
-  const meta: { label: string; value: string }[] = [];
-  const items: { num: number; value: string }[] = [];
-
-  for (const r of extra) {
-    const careMatch = r.label.match(CARE_ITEM_LABEL_RE);
-    if (careMatch) {
-      items.push({ num: Number(careMatch[2]), value: r.value });
-      continue;
-    }
-    if (CARE_META_LABELS.has(r.label)) {
-      meta.push({ label: r.label, value: r.value });
-      continue;
-    }
-    meta.push({ label: r.label, value: r.value });
-  }
-
-  items.sort((a, b) => a.num - b.num);
-
-  const hasCare =
-    meta.length > 0 || items.length > 0 || (careName.length > 0 && !multipleCare);
-  if (!hasCare) return [];
-
-  const hasPrestations = extra.some((e) => e.label.startsWith('Prestations'));
-  const itemLabelPrefix = hasPrestations ? 'Prestations' : 'Soins prévus';
-
   const rows: RdvInfoRow[] = [];
+  const nursingItems = getAppointmentNursingItems(apt);
+  const bloodItems = getAppointmentBloodItems(apt);
+  const careName = (apt.category_name ?? '').trim();
+  const fd = (apt.form_data ?? {}) as Record<string, unknown>;
 
-  if (!multipleCare && careName && items.length === 0) {
-    rows.push({
-      kind: 'field',
-      label: 'Soin',
-      value: careName,
-      emoji: careEmojiForAppointment(apt, careName, categories),
-    });
+  if (isNursingAppointment(apt.type) && nursingItems.length > 0) {
+    const sharedKeys =
+      categories?.length && nursingItems.length > 1
+        ? nursingSharedOptionKeys(nursingItems, categories)
+        : new Set<string>();
+
+    for (let idx = 0; idx < nursingItems.length; idx++) {
+      rows.push(
+        ...buildNursingItemGroupRows(apt, nursingItems[idx]!, idx, nursingItems.length, categories, sharedKeys),
+      );
+    }
+
+    if (categories?.length && sharedKeys.size > 0) {
+      pushKvRows(rows, buildNursingSharedIdenticalKvRows(nursingItems, categories));
+    }
+
+    const pref = getPreferredNurseGenderLabel(String(fd.preferred_nurse_gender ?? ''));
+    if (pref && fd.preferred_nurse_gender && fd.preferred_nurse_gender !== 'any') {
+      pushCareField(rows, 'Préférence infirmier', pref);
+    }
+
+    return rows;
   }
 
-  for (const m of meta) {
-    rows.push({ kind: 'field', label: m.label, value: m.value });
+  if (isBloodTestAppointment(apt.type) && bloodItems.length > 0) {
+    for (let idx = 0; idx < bloodItems.length; idx++) {
+      rows.push(...buildBloodItemGroupRows(apt, bloodItems[idx]!, idx, bloodItems.length, categories));
+    }
+
+    const bt = getBloodTestTypeLabel(fd);
+    if (bt) pushCareField(rows, 'Type prélèvement', bt);
+
+    return rows;
   }
 
-  for (const item of items) {
-    rows.push({
-      kind: 'field',
-      label: `${itemLabelPrefix} #${item.num}`,
-      value: item.value,
-      emoji: careEmojiForAppointment(apt, item.value, categories),
-    });
+  if (careName) {
+    pushCareField(rows, 'Soin', careName, careEmojiForAppointment(apt, careName, categories));
+    if (categories?.length) {
+      pushKvRows(rows, buildAppointmentCareOptionKvRows(apt, categories));
+    }
+    pushKvRows(rows, buildNursingAppointmentFormMetaKvRows(apt));
   }
 
   return rows;
@@ -268,15 +324,11 @@ function buildRdvRows(apt: Appointment, viewer?: AuthUser | null): RdvInfoRow[] 
   const birth = beneficiaryBirthLine(apt);
   if (birth) rows.push({ kind: 'field', label: 'Date de naissance', value: birth });
 
-  const hideEmailForPatient = viewer?.role === 'patient';
+  const showEmailField = viewer?.role === 'patient';
   const email = patientContactEmail(apt, viewer ?? undefined);
-  if (!hideEmailForPatient && email.text) {
+  if (showEmailField && email.text) {
     rows.push({ kind: 'field', label: 'E-mail', value: email.text });
   }
-
-  const phone = patientPhone(apt);
-  const actions = contactActions(phone, hideEmailForPatient ? null : email.href);
-  if (actions.length) rows.push({ kind: 'actions', actions });
 
   if (showBookingContactBlock(apt)) {
     const bookerName = bookingContactFullName(apt);
@@ -306,20 +358,32 @@ function insertCareAfterDateSlot(rdv: RdvInfoRow[], care: RdvInfoRow[]): RdvInfo
 }
 
 /** Toutes les lignes dans la même carte (marges identiques). */
+export function buildRdvBaseRows(
+  apt: Appointment,
+  viewer?: AuthUser | null,
+): RdvInfoRow[] {
+  return buildRdvRows(apt, viewer);
+}
+
+export function buildRdvCareRows(
+  apt: Appointment,
+  options: BuildRdvInfoRowsOptions = {},
+): RdvInfoRow[] {
+  const batch = options.batch?.filter(Boolean);
+  const isLot = (batch?.length ?? 0) > 1;
+  if (options.omitCareFields && !isLot) return [];
+  return isLot && batch
+    ? buildBatchCareRows(apt, batch, options.categories)
+    : buildCareRows(apt, options.categories);
+}
+
 export function buildRdvInfoContent(
   apt: Appointment,
   viewer?: AuthUser | null,
   options: BuildRdvInfoRowsOptions = {},
 ): { rows: RdvInfoRow[] } {
   const rdv = buildRdvRows(apt, viewer);
-  const batch = options.batch?.filter(Boolean);
-  const isLot = (batch?.length ?? 0) > 1;
-  const care =
-    options.omitCareFields && !isLot
-      ? []
-      : isLot && batch
-        ? buildBatchCareRows(apt, batch, options.categories)
-        : buildCareRows(apt, options.categories);
+  const care = buildRdvCareRows(apt, options);
   return { rows: insertCareAfterDateSlot(rdv, care) };
 }
 

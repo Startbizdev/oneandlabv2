@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CalendarDays } from 'lucide-react-native';
 import type { AppointmentListFilters } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
@@ -12,6 +11,7 @@ import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { useAppointmentsList } from '../hooks/use-appointments-list';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
+import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { colors, spacing } from '@/theme';
 
 interface Props {
@@ -79,7 +79,9 @@ export function AppointmentListScreen({
           <EmptyState
             title="Aucun rendez-vous"
             description="Votre liste est vide pour le moment."
-            Icon={CalendarDays}
+            imageSource={EMPTY_RDV_IMAGE}
+            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
           />
         }
       />

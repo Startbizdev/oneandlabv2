@@ -1,18 +1,6 @@
-import { StyleSheet, View } from 'react-native';
 import { StatusBadge } from '@/components/ui/Badge';
-import { spacing } from '@/theme';
 
-/** Même badge que les cartes liste RDV, avec marge à droite dans le header. */
+/** Badge statut informatif (non cliquable). */
 export function RdvDetailHeaderStatus({ status }: { status: string }) {
-  return (
-    <View style={styles.wrap}>
-      <StatusBadge status={status} size="sm" />
-    </View>
-  );
+  return <StatusBadge status={status} size="sm" />;
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    marginRight: spacing[3],
-  },
-});

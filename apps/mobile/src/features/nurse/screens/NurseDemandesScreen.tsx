@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Inbox } from 'lucide-react-native';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
@@ -13,6 +12,7 @@ import { NURSE_DEMANDES_LIST_FILTERS } from '@/features/nurse/hooks/use-nurse-de
 import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-store';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { useAuthStore } from '@/store/auth-store';
+import { EMPTY_DEMANDE_IMAGE, EMPTY_DEMANDE_IMAGE_HEIGHT, EMPTY_DEMANDE_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { colors, spacing } from '@/theme';
 
 export function NurseDemandesScreen() {
@@ -86,7 +86,9 @@ export function NurseDemandesScreen() {
           <EmptyState
             title="Aucune demande en attente"
             description="Les nouvelles propositions de soins apparaîtront ici. La liste se met à jour automatiquement."
-            Icon={Inbox}
+            imageSource={EMPTY_DEMANDE_IMAGE}
+            imageWidth={EMPTY_DEMANDE_IMAGE_WIDTH}
+            imageHeight={EMPTY_DEMANDE_IMAGE_HEIGHT}
           />
         }
       />

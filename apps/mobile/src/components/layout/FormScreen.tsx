@@ -1,6 +1,8 @@
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import type { ScrollViewProps } from 'react-native';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardScrollView } from './KeyboardScrollView';
 import { ScreenActionLayout } from './ScreenActionLayout';
 import { colors, spacing } from '@/theme';
 
@@ -13,7 +15,7 @@ interface Props extends ScrollViewProps {
   footer?: React.ReactNode;
 }
 
-/** Formulaire scrollable avec barre d'action optionnelle en bas. */
+/** Formulaire scrollable avec barre d'action optionnelle au-dessus du clavier. */
 export function FormScreen({
   children,
   contentContainerStyle,
@@ -23,32 +25,34 @@ export function FormScreen({
   ...scrollProps
 }: Props) {
   const { bottom } = useSafeAreaInsets();
+  const footerInset = Math.max(bottom, spacing[2]);
   const footerPad = footer
-    ? FORM_ACTION_BAR_HEIGHT + Math.max(bottom, spacing[2]) + spacing[2]
+    ? FORM_ACTION_BAR_HEIGHT + footerInset + spacing[2]
     : 0;
 
   return (
-    <ScreenActionLayout footer={footer} style={[styles.container, { backgroundColor }, style]}>
-      <KeyboardAvoidingView
-        style={styles.body}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
+    <ScreenActionLayout
+      footer={
+        footer ? (
+          <KeyboardStickyView offset={{ closed: 0, opened: footerInset }}>
+            {footer}
+          </KeyboardStickyView>
+        ) : undefined
+      }
+      style={[styles.container, { backgroundColor }, style]}
+    >
+      <KeyboardScrollView
+        style={styles.scroll}
+        bottomOffset={footer ? FORM_ACTION_BAR_HEIGHT + footerInset : footerInset}
+        contentContainerStyle={[
+          styles.content,
+          footerPad > 0 && { paddingBottom: footerPad },
+          contentContainerStyle,
+        ]}
+        {...scrollProps}
       >
-        <ScrollView
-          style={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={[
-            styles.content,
-            footerPad > 0 && { paddingBottom: footerPad },
-            contentContainerStyle,
-          ]}
-          showsVerticalScrollIndicator={false}
-          {...scrollProps}
-        >
-          {children}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        {children}
+      </KeyboardScrollView>
     </ScreenActionLayout>
   );
 }
@@ -58,10 +62,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
     backgroundColor: colors.background,
-  },
-  body: {
-    flex: 1,
-    minHeight: 0,
   },
   scroll: {
     flex: 1,

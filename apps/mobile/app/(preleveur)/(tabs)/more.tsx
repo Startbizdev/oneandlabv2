@@ -1,7 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
-import { Bell, LogOut, Scale, User } from 'lucide-react-native';
+import { Bell, LogOut, Scale, ScanFace, User } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { useHeaderBellBadgeCount } from '@/navigation/use-header-bell-badge';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
@@ -50,6 +50,13 @@ export default function PreleveurMore() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(120).duration(280).springify()} style={[styles.section, elevation.xs]}>
+          <View style={styles.menuItem}>
+            <View style={[styles.menuIcon, { backgroundColor: '#F0FDFA' }]}>
+              <ScanFace size={18} color="#0D9488" strokeWidth={2} />
+            </View>
+            <Button title="Face ID" variant="ghost" onPress={() => router.push('/profile/security' as never)} />
+          </View>
+          <View style={styles.divider} />
           <View style={styles.menuItem}>
             <View style={[styles.menuIcon, { backgroundColor: '#F1F5F9' }]}>
               <Scale size={18} color="#64748B" strokeWidth={2} />

@@ -91,13 +91,10 @@ export function useAppointmentDetailScreen(
     const displayStatus = primary
       ? effectiveAppointmentStatus(primary, { role, viewerId })
       : undefined;
+    const status = displayStatus ?? primary?.status;
     navigation.setOptions({
       headerTitle: primary
-        ? () =>
-            createElement(RdvDetailNavTitle, {
-              title,
-              status: displayStatus ?? primary.status,
-            })
+        ? () => createElement(RdvDetailNavTitle, { title, status })
         : title,
       headerRight: undefined,
       headerTitleAlign: 'left',
@@ -128,6 +125,7 @@ export function useAppointmentDetailScreen(
     docsLoading,
     shareQ,
     isLoading: detailQ.isPending && detailQ.data === undefined,
+    siblingsLoading,
     isRefreshing,
     refreshAll,
   };

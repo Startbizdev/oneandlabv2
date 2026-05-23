@@ -17,6 +17,7 @@ import {
   LogOut,
   Scale,
   Share2,
+  ScanFace,
   Star,
   User,
 } from 'lucide-react-native';
@@ -176,6 +177,14 @@ export default function NurseMore() {
               label="Notifications"
               onPress={() => router.push(getNotificationsPath('nurse'))}
               badge={unread}
+            />
+            <View style={styles.divider} />
+            <MenuItem
+              icon={ScanFace}
+              label="Face ID"
+              onPress={() => nav('/profile/security')}
+              iconColor="#0D9488"
+              iconBg="#F0FDFA"
             />
             <View style={styles.divider} />
             <MenuItem

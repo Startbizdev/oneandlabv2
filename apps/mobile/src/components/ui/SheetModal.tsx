@@ -1,21 +1,33 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type ViewStyle,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  KeyboardAwareScrollView,
-  KeyboardStickyView,
-} from 'react-native-keyboard-controller';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { ChevronLeft } from 'lucide-react-native';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { colors, elevation, radius, spacing, animation } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+
+/** Seuil de glissement (px) ou vélocité pour fermer. */
+const DISMISS_DRAG = 72;
+const DISMISS_VELOCITY = 720;
 
 interface Props {
   visible: boolean;
@@ -32,11 +44,13 @@ interface Props {
   dismissOnBackdropPress?: boolean;
   /** Ajuste le contenu quand le clavier est ouvert (défaut true). */
   keyboardAware?: boolean;
+  /** Glisser vers le bas pour fermer (défaut true). */
+  enableSwipeToDismiss?: boolean;
 }
 
 /**
- * Bottom sheet — sans overlay sombre ; ombre portée en haut du panneau.
- * Clavier : KeyboardAwareScrollView + KeyboardStickyView (react-native-keyboard-controller).
+ * Bottom sheet — animations 100 % Reanimated (Modal sans animation native).
+ * Une seule source de vérité : translateY. Évite le double slide qui saccade à la fermeture.
  */
 export function SheetModal({
   visible,
@@ -50,64 +64,148 @@ export function SheetModal({
   disableScroll = false,
   dismissOnBackdropPress = true,
   keyboardAware = true,
+  enableSwipeToDismiss = true,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const bottomOffset = footer ? 12 : Math.max(insets.bottom, spacing[2]);
+  const { height: windowHeight } = useWindowDimensions();
+  /** Hauteur figée à l’ouverture — évite un flash si le clavier redimensionne la fenêtre. */
+  const travelHeightRef = useRef(windowHeight);
 
-  const close = () => {
-    Keyboard.dismiss();
-    onClose();
-  };
+  const [modalShown, setModalShown] = useState(visible);
+  const isClosingRef = useRef(false);
+  const modalShownRef = useRef(modalShown);
+  modalShownRef.current = modalShown;
+  const translateY = useSharedValue(windowHeight);
+  const dragStartY = useSharedValue(0);
+
+  const finishDismiss = useCallback(
+    (notifyParent: boolean) => {
+      isClosingRef.current = false;
+      setModalShown(false);
+      translateY.value = travelHeightRef.current;
+      if (notifyParent) onClose();
+    },
+    [onClose, translateY],
+  );
+
+  const runDismissAnimation = useCallback(
+    (notifyParent = true) => {
+      if (isClosingRef.current) return;
+      isClosingRef.current = true;
+      Keyboard.dismiss();
+      translateY.value = withTiming(
+        travelHeightRef.current,
+        { duration: animation.timing.base },
+        (finished) => {
+          if (finished) runOnJS(finishDismiss)(notifyParent);
+        },
+      );
+    },
+    [finishDismiss, translateY],
+  );
+
+  const openSheet = useCallback(() => {
+    isClosingRef.current = false;
+    travelHeightRef.current = windowHeight;
+    setModalShown(true);
+    translateY.value = windowHeight;
+    translateY.value = withSpring(0, animation.spring.snappy);
+  }, [translateY, windowHeight]);
+
+  useEffect(() => {
+    if (visible) {
+      openSheet();
+    } else if (modalShownRef.current && !isClosingRef.current) {
+      runDismissAnimation(false);
+    }
+  }, [visible, openSheet, runDismissAnimation]);
+
+  const panGesture = Gesture.Pan()
+    .enabled(enableSwipeToDismiss)
+    .activeOffsetY(6)
+    .failOffsetX([-24, 24])
+    .onStart(() => {
+      dragStartY.value = translateY.value;
+    })
+    .onUpdate((e) => {
+      translateY.value = Math.max(0, dragStartY.value + e.translationY);
+    })
+    .onEnd((e) => {
+      if (translateY.value > DISMISS_DRAG || e.velocityY > DISMISS_VELOCITY) {
+        runOnJS(runDismissAnimation)(true);
+      } else {
+        translateY.value = withSpring(0, animation.spring.snappy);
+      }
+    });
+
+  const sheetAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
 
   const body = disableScroll ? (
     <View style={[styles.body, styles.bodyStatic, contentStyle]}>{children}</View>
-  ) : keyboardAware ? (
-    <KeyboardAwareScrollView
-      style={styles.scroll}
-      contentContainerStyle={[styles.body, contentStyle]}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-      bounces={false}
-      bottomOffset={bottomOffset}
-    >
-      {children}
-    </KeyboardAwareScrollView>
   ) : (
-    <KeyboardAwareScrollView
+    <ScrollView
       style={styles.scroll}
       contentContainerStyle={[styles.body, contentStyle]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       bounces={false}
-      enabled={false}
+      keyboardDismissMode="interactive"
     >
       {children}
-    </KeyboardAwareScrollView>
+    </ScrollView>
   );
 
-  const footerNode = footer ? (
-    keyboardAware ? (
-      <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
-        <View style={styles.footer}>{footer}</View>
-      </KeyboardStickyView>
-    ) : (
-      <View style={styles.footer}>{footer}</View>
-    )
-  ) : null;
+  const footerNode = footer ? <View style={styles.footer}>{footer}</View> : null;
+
+  const panel = (
+    <SafeAreaView edges={['bottom']} style={styles.panel}>
+      <View style={styles.column}>
+        <GestureDetector gesture={panGesture}>
+          <View
+            style={styles.dragZone}
+            accessibilityLabel="Glisser vers le bas pour fermer"
+          >
+            <View style={styles.handle} />
+            <View style={styles.header}>
+              {onBack ? (
+                <Pressable
+                  onPress={onBack}
+                  hitSlop={12}
+                  style={styles.backBtn}
+                  accessibilityLabel="Retour"
+                >
+                  <ChevronLeft size={22} color={colors.primary} strokeWidth={2.5} />
+                </Pressable>
+              ) : null}
+              <View style={styles.headerText}>
+                <Text style={styles.title}>{title}</Text>
+                {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+              </View>
+            </View>
+          </View>
+        </GestureDetector>
+
+        {body}
+        {footerNode}
+      </View>
+    </SafeAreaView>
+  );
 
   return (
     <Modal
-      visible={visible}
+      visible={modalShown}
       transparent
-      animationType="slide"
-      onRequestClose={close}
+      animationType="none"
+      onRequestClose={() => runDismissAnimation(true)}
       statusBarTranslucent={Platform.OS === 'android'}
     >
       <View style={styles.root}>
         {dismissOnBackdropPress ? (
           <Pressable
             style={styles.dismissArea}
-            onPress={close}
+            onPress={() => runDismissAnimation(true)}
             accessibilityRole="button"
             accessibilityLabel="Fermer"
           />
@@ -115,33 +213,15 @@ export function SheetModal({
           <View style={styles.dismissArea} />
         )}
 
-        <View style={[styles.sheet, elevation.sheetTop]}>
-          <SafeAreaView edges={['bottom']} style={styles.panel}>
-            <View style={styles.column}>
-              <View style={styles.handle} />
-
-              <View style={styles.header}>
-                {onBack ? (
-                  <Pressable
-                    onPress={onBack}
-                    hitSlop={12}
-                    style={styles.backBtn}
-                    accessibilityLabel="Retour"
-                  >
-                    <ChevronLeft size={22} color={colors.primary} strokeWidth={2.5} />
-                  </Pressable>
-                ) : null}
-                <View style={styles.headerText}>
-                  <Text style={styles.title}>{title}</Text>
-                  {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-                </View>
-              </View>
-
-              {body}
-              {footerNode}
-            </View>
-          </SafeAreaView>
-        </View>
+        <Animated.View style={[styles.sheet, elevation.sheetTop, sheetAnimStyle]}>
+          {keyboardAware ? (
+            <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+              {panel}
+            </KeyboardStickyView>
+          ) : (
+            panel
+          )}
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -176,15 +256,17 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     maxHeight: '100%',
   },
+  dragZone: {
+    flexShrink: 0,
+  },
   handle: {
     alignSelf: 'center',
-    width: 36,
-    height: 4,
-    borderRadius: 2,
+    width: 40,
+    height: 5,
+    borderRadius: 3,
     backgroundColor: colors.border,
     marginTop: spacing[2],
     marginBottom: spacing[2],
-    flexShrink: 0,
   },
   header: {
     flexDirection: 'row',
@@ -194,7 +276,6 @@ const styles = StyleSheet.create({
     gap: spacing[2],
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.borderLight,
-    flexShrink: 0,
   },
   backBtn: {
     width: 40,

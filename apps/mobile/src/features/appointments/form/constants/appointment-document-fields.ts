@@ -19,6 +19,11 @@ export const PERSONAL_DOC_FIELDS: AppointmentDocFieldDef[] = [
   { key: 'carte_mutuelle', label: 'Carte mutuelle', optional: true },
 ];
 
+/** Documents dossier patient réutilisables sur un nouveau RDV (pas ordonnance / autre prescription). */
+export const PROFILE_PREFILL_DOC_KEYS = new Set<AppointmentDocFieldKey>(
+  PERSONAL_DOC_FIELDS.map((f) => f.key),
+);
+
 /** Ordonnance + complément — étape « Documents » (tous rôles). */
 export const SERVICE_DOC_FIELDS: AppointmentDocFieldDef[] = [
   {

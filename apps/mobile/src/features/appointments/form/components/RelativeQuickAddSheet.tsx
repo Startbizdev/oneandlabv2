@@ -1,27 +1,25 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
-import { createPatientRelative } from '@/features/patient-relatives/api/patient-relatives.service';
+import {
+  createPatientRelative,
+  type PatientRelative,
+} from '@/features/patient-relatives/api/patient-relatives.service';
+import { GenderSelect } from '@/features/auth/components/GenderSelect';
+import { RELATIONSHIP_OPTIONS } from '@/features/patient-relatives/constants/relationship-types';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { colors, spacing } from '@/theme';
-
-const RELATIONSHIPS = [
-  'Conjoint(e)',
-  'Enfant',
-  'Parent',
-  'Frère / Sœur',
-  'Autre proche',
-] as const;
+import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onCreated: (id: string) => void;
+  onCreated: (id: string, relative?: PatientRelative) => void;
 }
 
 export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
@@ -29,14 +27,14 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
   const qc = useQueryClient();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [relationship, setRelationship] = useState<string>(RELATIONSHIPS[0]);
+  const [relationshipType, setRelationshipType] = useState('child');
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState('');
 
   const reset = () => {
     setFirstName('');
     setLastName('');
-    setRelationship(RELATIONSHIPS[0]);
+    setRelationshipType('child');
     setBirthDate('');
     setGender('');
   };
@@ -46,21 +44,24 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
       if (!firstName.trim() || !lastName.trim()) {
         throw new Error('Prénom et nom obligatoires');
       }
+      if (!gender.trim()) {
+        throw new Error('Le genre est obligatoire');
+      }
       const res = await createPatientRelative({
         first_name: firstName.trim(),
         last_name: lastName.trim(),
-        relationship_type: relationship,
+        relationship_type: relationshipType,
         birth_date: birthDate || undefined,
         gender: gender || undefined,
       });
       if (!res.success || !res.data?.id) throw new Error(res.error ?? 'Création impossible');
-      return res.data.id;
+      return res.data;
     },
-    onSuccess: (id) => {
+    onSuccess: (relative) => {
       toast('Proche ajouté', { type: 'success' });
       void qc.invalidateQueries({ queryKey: ['patient-relatives'] });
       reset();
-      onCreated(id);
+      onCreated(relative.id, relative);
       onClose();
     },
     onError: (e) => handleApiError(e, toast, 'createRelative'),
@@ -86,13 +87,24 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
       <View style={styles.fields}>
         <Input label="Prénom" value={firstName} onChangeText={setFirstName} />
         <Input label="Nom" value={lastName} onChangeText={setLastName} />
-        <Input
-          label="Lien de parenté"
-          value={relationship}
-          onChangeText={setRelationship}
-          placeholder={RELATIONSHIPS[0]}
-        />
-        <Input label="Genre (M/F)" value={gender} onChangeText={setGender} />
+        <View>
+          <Text style={styles.label}>Lien de parenté</Text>
+          <View style={styles.pills}>
+            {RELATIONSHIP_OPTIONS.map((o) => {
+              const active = relationshipType === o.value;
+              return (
+                <Pressable
+                  key={o.value}
+                  onPress={() => setRelationshipType(o.value)}
+                  style={[styles.pill, active && styles.pillActive]}
+                >
+                  <Text style={[styles.pillText, active && styles.pillTextActive]}>{o.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+        <GenderSelect value={gender} onChange={setGender} />
         <BirthDatePicker value={birthDate} onChange={setBirthDate} />
       </View>
     </BottomSheet>
@@ -101,4 +113,32 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
 
 const styles = StyleSheet.create({
   fields: { gap: spacing[3] },
+  label: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.sm,
+    color: colors.textPrimary,
+    marginBottom: spacing[2],
+  },
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
+  pill: {
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  pillActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  pillText: {
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  pillTextActive: {
+    color: colors.primary,
+    fontFamily: fontFamily.semiBold,
+  },
 });

@@ -6,6 +6,7 @@ import {
   HeartPulse,
   MapPin,
   Settings,
+  ScanFace,
   User,
 } from 'lucide-react-native';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
@@ -40,6 +41,13 @@ export default function ProfileLayout() {
         options={{
           title: 'Informations personnelles',
           headerTitle: tabHeaderTitle('Informations personnelles', User),
+        }}
+      />
+      <Stack.Screen
+        name="security"
+        options={{
+          title: 'Face ID',
+          headerTitle: tabHeaderTitle('Face ID', ScanFace),
         }}
       />
       <Stack.Screen

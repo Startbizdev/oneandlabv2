@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
+import { BiometricLoginButton } from '@/features/auth/components/BiometricLoginButton';
 import { LoginBottomSheet } from '@/features/auth/components/LoginBottomSheet';
 import { RegisterBottomSheet } from '@/features/auth/components/RegisterBottomSheet';
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
@@ -54,14 +55,12 @@ export function WelcomeScreen() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.main}>
           <View style={styles.hero}>
-            <View style={styles.logoFrame}>
-              <Image
-                source={LOGO}
-                style={styles.logo}
-                resizeMode="contain"
-                accessibilityLabel="Cary"
-              />
-            </View>
+            <Image
+              source={LOGO}
+              style={styles.logo}
+              resizeMode="contain"
+              accessibilityLabel="Cary"
+            />
 
             <Text style={styles.tagline}>
               le soin, chez vous{' '}
@@ -73,7 +72,8 @@ export function WelcomeScreen() {
 
           <View style={styles.footer}>
             <View style={[styles.actionsCard, elevation.sm]}>
-              <Button title="Connexion" size="lg" fullWidth onPress={() => setLoginOpen(true)} />
+              <BiometricLoginButton onSuccess={onLoginSuccess} />
+              <Button title="Connexion par email" size="lg" fullWidth onPress={() => setLoginOpen(true)} />
               <Button
                 title="Créer un compte"
                 variant="outline"
@@ -157,14 +157,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: spacing[8],
     gap: spacing[5],
-  },
-  logoFrame: {
-    paddingHorizontal: spacing[6],
-    paddingVertical: spacing[5],
-    borderRadius: radius['2xl'],
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    borderWidth: 1,
-    borderColor: 'rgba(28, 199, 181, 0.12)',
   },
   logo: {
     width: 220,

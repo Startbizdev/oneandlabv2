@@ -1,25 +1,32 @@
 import type { ReactNode } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import { CalendarDays, Clock, Layers, MapPin } from 'lucide-react-native';
+import { CalendarDays, Clock, Layers, Mail, MapPin, MessageCircle, Phone } from 'lucide-react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { StatusBadge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { formatAvailabilityDisplayFr, formatFrenchWeekdayDate } from '@/utils/appointment-datetime-fr';
 import { formatAppointmentCreatedAtMeta } from '@/utils/appointment-detail-display';
 import { appointmentAddressLine } from '@/utils/appointment-display';
+import { buildPatientContactButtons } from '@/utils/contact-actions';
 import {
   beneficiaryBirthLine,
   beneficiaryDisplayName,
   patientContactEmail,
-  patientPhone,
 } from '../../utils/patient-appointment-display';
-import { ContactActionBar, type ContactAction } from './ContactActionBar';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
+
+const CONTACT_ICONS = {
+  phone: Phone,
+  message: MessageCircle,
+  email: Mail,
+} as const;
 
 interface Props {
   primary: Appointment;
@@ -60,32 +67,10 @@ export function RdvDetailHero({
   const address = appointmentAddressLine(primary);
   const createdMeta = formatAppointmentCreatedAtMeta(primary);
   const email = patientContactEmail(primary, viewer ?? undefined);
-  const phone = patientPhone(primary);
-
-  const contactActions: ContactAction[] = [];
-  const tel = phone.replace(/\s/g, '');
-  if (tel) {
-    contactActions.push({
-      key: 'phone',
-      label: 'Appeler',
-      icon: 'phone',
-      onPress: () => void Linking.openURL(`tel:${tel}`),
-    });
-    contactActions.push({
-      key: 'sms',
-      label: 'Message',
-      icon: 'message',
-      onPress: () => void Linking.openURL(`sms:${tel}`),
-    });
-  }
-  if (email.href) {
-    contactActions.push({
-      key: 'email',
-      label: 'E-mail',
-      icon: 'email',
-      onPress: () => void Linking.openURL(email.href!),
-    });
-  }
+  const contactButtons = useMemo(
+    () => buildPatientContactButtons(primary, viewer),
+    [primary, viewer],
+  );
 
   return (
     <View style={styles.wrap}>
@@ -131,7 +116,25 @@ export function RdvDetailHero({
           {email.text ? (
             <Text style={[styles.patientSub, !email.href && styles.muted]}>{email.text}</Text>
           ) : null}
-          {contactActions.length > 0 ? <ContactActionBar actions={contactActions} /> : null}
+          {contactButtons.length > 0 ? (
+            <View style={styles.buttonRow}>
+              {contactButtons.map((btn) => {
+                const Icon = CONTACT_ICONS[btn.icon];
+                return (
+                  <View key={btn.key} style={styles.buttonCell}>
+                    <Button
+                      title={btn.label}
+                      size="sm"
+                      variant="primary"
+                      leftIcon={<Icon size={14} color={colors.textInverse} strokeWidth={2.5} />}
+                      onPress={btn.onPress}
+                      style={{ backgroundColor: btn.color, width: '100%' }}
+                    />
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -228,6 +231,15 @@ const styles = StyleSheet.create({
   },
   muted: {
     color: colors.textTertiary,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing[1.5],
+    marginTop: spacing[1],
+  },
+  buttonCell: {
+    flex: 1,
+    minWidth: 0,
   },
   addressRow: {
     flexDirection: 'row',

@@ -1,6 +1,5 @@
-import { HeaderBackButton } from '@react-navigation/elements';
 import { useRouter } from 'expo-router';
-import { colors } from '@/theme';
+import { HeaderBackButton } from '@/navigation/HeaderBackButton';
 
 /** Retour vers l’écran précédent (ex. Plus → /profile). */
 export function ProfileStackBackButton() {
@@ -8,11 +7,5 @@ export function ProfileStackBackButton() {
 
   if (!router.canGoBack()) return null;
 
-  return (
-    <HeaderBackButton
-      tintColor={colors.primary}
-      onPress={() => router.back()}
-      accessibilityLabel="Retour"
-    />
-  );
+  return <HeaderBackButton onPress={() => router.back()} />;
 }

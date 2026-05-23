@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { History } from 'lucide-react-native';
 import { queryKeys } from '@/lib/query-keys';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { AppointmentCard } from '@/features/appointments/components/AppointmentCard';
 import { PatientPaginationBar } from '@/features/appointments/detail/components/patient/PatientPaginationBar';
 import { fetchPatientHistory, fetchPatientProfile } from '../api/patient-profile.service';
@@ -57,7 +57,7 @@ export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
 
       {historyQ.isLoading ? (
         <View style={styles.loading}>
-          <SkeletonGroup count={4} height={88} gap={10} />
+          <SkeletonList count={4} itemHeight={88} gap={10} />
         </View>
       ) : (
         <FlatList
@@ -83,7 +83,9 @@ export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
           ItemSeparatorComponent={() => <View style={styles.sep} />}
           ListEmptyComponent={
             <EmptyState
-              Icon={History}
+              imageSource={EMPTY_RDV_IMAGE}
+              imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+              imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
               title="Aucun historique"
               description="Aucun rendez-vous enregistré pour ce patient."
             />

@@ -8,7 +8,7 @@ export function buildSingleAppointmentPayload(
   status: string = 'pending',
 ): Record<string, unknown> {
   const availability = buildAvailabilityPayload(values.availability_type, values.availability_range);
-  const filesMeta = Object.entries(values.files).reduce(
+  const filesMeta = Object.entries(values.files ?? {}).reduce(
     (acc, [key, f]) => {
       if (f) acc[key] = { field: key, name: f.name };
       return acc;
@@ -51,7 +51,7 @@ export function buildSingleAppointmentPayload(
     status,
     patient_id: patientId,
     category_id: values.category_id || undefined,
-    files: values.files,
+    files: values.files ?? {},
   };
 
   if (!patientId && values.email?.trim()) {

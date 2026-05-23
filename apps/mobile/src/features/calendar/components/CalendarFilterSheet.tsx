@@ -1,5 +1,9 @@
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
 import {
+  NURSE_TAB_OPTIONS,
+  type NurseListTab,
+} from '@/constants/appointments-list-filters';
+import {
   CALENDAR_STATUS_OPTIONS,
   CALENDAR_TYPE_OPTIONS,
   type CalendarStatusFilter,
@@ -15,6 +19,10 @@ interface Props {
   onTypeChange: (v: CalendarTypeFilter) => void;
   onApply: () => void;
   onReset: () => void;
+  /** Calendrier infirmier : Mes soins / Bilans dans la modal (comme liste RDV). */
+  nurseCalendar?: boolean;
+  nurseTab?: NurseListTab;
+  onNurseTabChange?: (v: NurseListTab) => void;
 }
 
 export function CalendarFilterSheet({
@@ -26,6 +34,9 @@ export function CalendarFilterSheet({
   onTypeChange,
   onApply,
   onReset,
+  nurseCalendar = false,
+  nurseTab = 'soins',
+  onNurseTabChange,
 }: Props) {
   return (
     <AppointmentsFilterSheet
@@ -35,6 +46,9 @@ export function CalendarFilterSheet({
       search=""
       onSearchChange={() => {}}
       showSearch={false}
+      tabs={nurseCalendar ? NURSE_TAB_OPTIONS : undefined}
+      tab={nurseCalendar ? nurseTab : undefined}
+      onTabChange={nurseCalendar ? onNurseTabChange : undefined}
       segments={CALENDAR_STATUS_OPTIONS}
       segment={status}
       onSegmentChange={onStatusChange}

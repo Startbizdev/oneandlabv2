@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, MapPin } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton, SkeletonList } from '@/components/ui/skeletons';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import type { AddressPayload } from '@/features/appointments/form/types';
 import { CoverageMapLive } from '@/features/profile/components/CoverageMapLive';
@@ -162,7 +162,7 @@ export function ProfileCoverageEditor({
     return (
       <View style={{ gap: spacing[3] }}>
         <Skeleton height={220} borderRadius={radius.xl} />
-        <Skeleton height={120} borderRadius={radius.xl} />
+        <SkeletonList count={1} itemHeight={120} gap={spacing[3]} />
       </View>
     );
   }

@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CalendarDays } from 'lucide-react-native';
 import dayjs from 'dayjs';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -13,6 +12,7 @@ import { AppointmentsListFilterBar } from '@/features/appointments/components/Ap
 import { useAppointmentsList } from '@/features/appointments/hooks/use-appointments-list';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { PATIENT_TAB_OPTIONS, type PatientListTab } from '@/constants/appointments-list-filters';
+import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { colors, spacing } from '@/theme';
 
 const DONE = new Set(['completed', 'canceled', 'cancelled', 'refused']);
@@ -93,7 +93,9 @@ export function PatientAppointmentsListScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState
-            Icon={CalendarDays}
+            imageSource={EMPTY_RDV_IMAGE}
+            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
             title={tab === 'upcoming' ? 'Aucun rendez-vous à venir' : 'Aucun rendez-vous passé'}
             description="Réservez un nouveau rendez-vous depuis l’onglet Réserver."
           />

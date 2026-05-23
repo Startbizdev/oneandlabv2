@@ -37,7 +37,7 @@ import {
 } from '@/utils/document-display-name';
 import { PatientPaginationBar } from '../detail/components/patient/PatientPaginationBar';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -198,7 +198,7 @@ export function PatientAppointmentDocumentsScreen() {
   if (docsQ.isLoading && !docsQ.data) {
     return (
       <View style={styles.loading}>
-        <SkeletonGroup count={4} height={72} gap={10} />
+        <SkeletonList count={4} itemHeight={72} gap={10} />
       </View>
     );
   }

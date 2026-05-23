@@ -29,7 +29,7 @@ import {
   canUploadLabResultatsForAppointmentStatus,
   canUploadMedicalDocumentsForAppointmentStatus,
 } from '@/utils/appointment-documents-upload';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { SkeletonList } from '@/components/ui/skeletons';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
 import {
   filterListDocuments,
@@ -238,8 +238,7 @@ export function RdvDocumentsPremiumPanel({
     return (
       <PatientListCard title={cardTitle} Icon={embedded ? undefined : FileText}>
         <View style={styles.skeletonPad}>
-          <Skeleton height={44} borderRadius={radius.lg} />
-          <Skeleton height={44} borderRadius={radius.lg} />
+          <SkeletonList count={2} itemHeight={44} gap={spacing[2]} />
         </View>
       </PatientListCard>
     );

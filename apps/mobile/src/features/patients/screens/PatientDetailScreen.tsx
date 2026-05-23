@@ -9,11 +9,12 @@ import {
   FolderOpen,
   Mail,
   MapPin,
+  MessageCircle,
   Phone,
   User,
 } from 'lucide-react-native';
 import { queryKeys } from '@/lib/query-keys';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { Skeleton, SkeletonList, SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/Button';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { fetchPatientDocuments, fetchPatientHistory, fetchPatientProfile } from '../api/patient-profile.service';
@@ -22,7 +23,7 @@ import { deletePatient } from '../api/patients.service';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { resolvePatientContactEmail } from '@/utils/patient-email-display';
-import { ContactActionBar } from '@/features/appointments/detail/components/layout/ContactActionBar';
+import type { PatientContactButton } from '@/utils/contact-actions';
 import {
   patientAddressLines,
   patientBirthLine,
@@ -108,9 +109,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
     return (
       <>
         <Stack.Screen options={{ title: 'Patient' }} />
-        <View style={styles.loading}>
-          <SkeletonGroup count={3} height={56} gap={8} />
-        </View>
+        <SkeletonProfileScreen cards={2} />
       </>
     );
   }
@@ -151,12 +150,13 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
     secondary?: string;
   }[];
 
-  const contactActions = [
+  const contactButtons: PatientContactButton[] = [
     tel
       ? {
           key: 'phone',
           label: 'Appeler',
-          icon: 'phone' as const,
+          icon: 'phone',
+          color: colors.success,
           onPress: () => void Linking.openURL(`tel:${tel}`),
         }
       : null,
@@ -164,7 +164,8 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
       ? {
           key: 'sms',
           label: 'Message',
-          icon: 'message' as const,
+          icon: 'message',
+          color: colors.primary,
           onPress: () => void Linking.openURL(`sms:${tel}`),
         }
       : null,
@@ -172,11 +173,12 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
       ? {
           key: 'email',
           label: 'E-mail',
-          icon: 'email' as const,
+          icon: 'email',
+          color: colors.gradientEnd,
           onPress: () => void Linking.openURL(email.href!),
         }
       : null,
-  ].filter(Boolean) as Parameters<typeof ContactActionBar>[0]['actions'];
+  ].filter(Boolean) as PatientContactButton[];
 
   const docsSubtitle =
     docCount === 0
@@ -243,8 +245,25 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
           </View>
         ) : null}
 
-        {contactActions.length > 0 ? (
-          <ContactActionBar actions={contactActions} />
+        {contactButtons.length > 0 ? (
+          <View style={styles.buttonRow}>
+            {contactButtons.map((btn) => {
+              const Icon =
+                btn.icon === 'phone' ? Phone : btn.icon === 'message' ? MessageCircle : Mail;
+              return (
+                <View key={btn.key} style={styles.buttonCell}>
+                  <Button
+                    title={btn.label}
+                    size="sm"
+                    variant="primary"
+                    leftIcon={<Icon size={14} color={colors.textInverse} strokeWidth={2.5} />}
+                    onPress={btn.onPress}
+                    style={{ backgroundColor: btn.color, width: '100%' }}
+                  />
+                </View>
+              );
+            })}
+          </View>
         ) : null}
 
         <View style={styles.card}>
@@ -410,5 +429,13 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.borderLight,
     marginLeft: spacing[4] + 40 + spacing[3],
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing[1.5],
+  },
+  buttonCell: {
+    flex: 1,
+    minWidth: 0,
   },
 });

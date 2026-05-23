@@ -1,4 +1,5 @@
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -7,22 +8,32 @@ interface Props {
   hint: string;
   value: boolean;
   busy?: boolean;
+  disabled?: boolean;
   onValueChange: (v: boolean) => void;
 }
 
-export function ProfileToggleRow({ label, hint, value, busy, onValueChange }: Props) {
+export function ProfileToggleRow({
+  label,
+  hint,
+  value,
+  busy,
+  disabled,
+  onValueChange,
+}: Props) {
+  const inactive = busy || disabled;
+
   return (
-    <View style={[styles.row, value && styles.rowOn, busy && styles.rowBusy]}>
+    <View style={[styles.row, value && !disabled && styles.rowOn, inactive && styles.rowBusy]}>
       <View style={styles.rowText}>
         <Text style={styles.rowLabel}>{label}</Text>
-        <Text style={[styles.rowHint, value ? styles.rowHintOn : undefined]}>{hint}</Text>
+        <Text style={[styles.rowHint, value && !disabled ? styles.rowHintOn : undefined]}>
+          {hint}
+        </Text>
       </View>
-      <Switch
+      <ToggleSwitch
         value={value}
-        disabled={busy}
+        disabled={inactive}
         onValueChange={onValueChange}
-        trackColor={{ false: colors.border, true: colors.primaryMid }}
-        thumbColor={value ? colors.primary : colors.textTertiary}
       />
     </View>
   );
@@ -32,7 +43,8 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    alignSelf: 'stretch',
+    width: '100%',
     gap: spacing[3],
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[2],
@@ -42,7 +54,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
   rowBusy: { opacity: 0.55 },
-  rowText: { flex: 1, gap: 2 },
+  rowText: { flex: 1, flexShrink: 1, minWidth: 0, gap: 2 },
   rowLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useState, type ReactElement, type ReactNode } from 'react';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
@@ -8,7 +8,9 @@ import { ProviderPublicProfileSheet } from './ProviderPublicProfileSheet';
 import { appointmentAssigneeGender } from '../utils/patient-appointment-display';
 import {
   creatorOriginName,
+  creatorOriginSubtitle,
   creatorOriginTitle,
+  isPatientPlatformOrigin,
   type CreatorOrigin,
 } from '../utils/provider-public-profile';
 import { colors, spacing } from '@/theme';
@@ -137,6 +139,7 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
     const name = creatorOriginName(creator);
     const title = creatorOriginTitle(creator);
     const slug = creator.public_slug?.trim();
+    const platformOrigin = isPatientPlatformOrigin(creator);
     const providerType =
       creator.kind === 'lab_team' ? 'lab' : creator.kind === 'nurse' ? 'nurse' : null;
     rows.push(
@@ -144,16 +147,10 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
         key="creator"
         title={title}
         name={name}
-        profileImageUrl={creator.profile_image_url}
+        profileImageUrl={platformOrigin ? null : creator.profile_image_url}
+        brandLogo={platformOrigin ? 'cary' : undefined}
         phone={creator.phone}
-        subtitle={
-          creator.kind === 'pro'
-            ? [creator.emploi, creator.adeli ? `Adeli ${creator.adeli}` : ''].filter(Boolean).join(' · ') ||
-              undefined
-            : creator.kind === 'nurse'
-              ? 'Saisie par un infirmier'
-              : undefined
-        }
+        subtitle={creatorOriginSubtitle(creator)}
         publicSlug={slug || null}
         onViewProfile={
           slug && providerType ? () => openSheet(providerType, slug, name) : undefined
@@ -168,7 +165,13 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
   return (
     <>
       <Card shadow="sm" padding="md" style={styles.card}>
-        {rows}
+        {rows.map((row, index) =>
+          isValidElement(row)
+            ? cloneElement(row as ReactElement<{ showDivider?: boolean }>, {
+                showDivider: index < rows.length - 1,
+              })
+            : row,
+        )}
       </Card>
       {sheet ? (
         <ProviderPublicProfileSheet
@@ -185,6 +188,6 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
 
 const styles = StyleSheet.create({
   card: {
-    gap: spacing[3],
+    gap: spacing[2],
   },
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Image, type ImageSourcePropType, View, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import type { LucideIcon } from 'lucide-react-native';
 import { colors, radius, spacing } from '@/theme';
@@ -10,14 +10,40 @@ interface EmptyStateProps {
   title: string;
   description?: string;
   Icon?: LucideIcon;
+  /** Illustration sans cadre (prioritaire sur Icon). */
+  imageSource?: ImageSourcePropType;
+  imageWidth?: number;
+  imageHeight?: number;
   actionLabel?: string;
   onAction?: () => void;
 }
 
-function EmptyStateComponent({ title, description, Icon, actionLabel, onAction }: EmptyStateProps) {
+function EmptyStateComponent({
+  title,
+  description,
+  Icon,
+  imageSource,
+  imageWidth = 220,
+  imageHeight,
+  actionLabel,
+  onAction,
+}: EmptyStateProps) {
   return (
     <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.container}>
-      {Icon ? (
+      {imageSource ? (
+        <Image
+          source={imageSource}
+          style={[
+            styles.image,
+            {
+              width: imageWidth,
+              height: imageHeight ?? imageWidth * 0.92,
+            },
+          ]}
+          resizeMode="contain"
+          accessibilityRole="image"
+        />
+      ) : Icon ? (
         <View style={styles.iconWrap}>
           <Icon size={28} color={colors.textTertiary} strokeWidth={1.5} />
         </View>
@@ -47,6 +73,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[12],
     paddingHorizontal: spacing[6],
     gap: spacing[3],
+  },
+  image: {
+    marginBottom: spacing[2],
   },
   iconWrap: {
     width: 64,

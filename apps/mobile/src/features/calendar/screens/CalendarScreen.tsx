@@ -7,7 +7,8 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { FadeInDown, runOnJS } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import dayjs from 'dayjs';
@@ -21,6 +22,7 @@ import { CalendarFilterSheet } from '@/features/calendar/components/CalendarFilt
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { DayAppointmentsSheet } from '@/components/ui/DayAppointmentsSheet';
+import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import {
   CALENDAR_STATUS_OPTIONS,
   CALENDAR_TYPE_OPTIONS,
@@ -69,6 +71,7 @@ export function CalendarScreen({ baseFilters, detailPathPrefix, nurseCalendar = 
   const [search, setSearch] = useState('');
   const [draftStatus, setDraftStatus] = useState<CalendarStatusFilter>('');
   const [draftType, setDraftType] = useState<CalendarTypeFilter>('');
+  const [draftNurseTab, setDraftNurseTab] = useState<NurseListTab>('soins');
 
   const rangeFrom = cursor.startOf('month').format('YYYY-MM-DD');
   const rangeTo = cursor.endOf('month').format('YYYY-MM-DD');
@@ -127,6 +130,10 @@ export function CalendarScreen({ baseFilters, detailPathPrefix, nurseCalendar = 
 
   const filterChips = useMemo(() => {
     const chips: Array<{ key: string; label: string; onRemove: () => void }> = [];
+    if (nurseCalendar && nurseTab !== 'soins') {
+      const tabLabel = NURSE_TAB_OPTIONS.find((t) => t.value === nurseTab)?.label ?? nurseTab;
+      chips.push({ key: 'tab', label: tabLabel, onRemove: () => setNurseTab('soins') });
+    }
     if (statusFilter) {
       const label = CALENDAR_STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label ?? statusFilter;
       chips.push({ key: 'status', label, onRemove: () => setStatusFilter('') });
@@ -136,29 +143,59 @@ export function CalendarScreen({ baseFilters, detailPathPrefix, nurseCalendar = 
       chips.push({ key: 'type', label, onRemove: () => setTypeFilter('') });
     }
     return chips;
-  }, [statusFilter, typeFilter]);
+  }, [nurseCalendar, nurseTab, statusFilter, typeFilter]);
 
-  const advancedCount = (statusFilter ? 1 : 0) + (typeFilter ? 1 : 0);
+  const advancedCount =
+    (nurseCalendar && nurseTab !== 'soins' ? 1 : 0) +
+    (statusFilter ? 1 : 0) +
+    (typeFilter ? 1 : 0);
 
   const openFilterSheet = useCallback(() => {
     setDraftStatus(statusFilter);
     setDraftType(typeFilter);
+    setDraftNurseTab(nurseTab);
     setFilterSheetOpen(true);
-  }, [statusFilter, typeFilter]);
+  }, [nurseTab, statusFilter, typeFilter]);
 
   const applyFilters = useCallback(() => {
     setStatusFilter(draftStatus);
     setTypeFilter(draftType);
+    if (nurseCalendar) setNurseTab(draftNurseTab);
     setFilterSheetOpen(false);
-  }, [draftStatus, draftType]);
+  }, [draftNurseTab, draftStatus, draftType, nurseCalendar]);
 
   const resetFilters = useCallback(() => {
     setDraftStatus('');
     setDraftType('');
+    setDraftNurseTab('soins');
     setStatusFilter('');
     setTypeFilter('');
+    if (nurseCalendar) setNurseTab('soins');
     setFilterSheetOpen(false);
+  }, [nurseCalendar]);
+
+  const goPrevMonth = useCallback(() => {
+    setCursor((c) => c.subtract(1, 'month'));
   }, []);
+
+  const goNextMonth = useCallback(() => {
+    setCursor((c) => c.add(1, 'month'));
+  }, []);
+
+  const monthSwipeGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-24, 24])
+        .failOffsetY([-18, 18])
+        .onEnd((e) => {
+          if (e.translationX < -48) {
+            runOnJS(goNextMonth)();
+          } else if (e.translationX > 48) {
+            runOnJS(goPrevMonth)();
+          }
+        }),
+    [goNextMonth, goPrevMonth],
+  );
 
   const openDaySheet = useCallback((dayKey: string) => {
     setSelectedDay(dayKey);
@@ -199,87 +236,87 @@ export function CalendarScreen({ baseFilters, detailPathPrefix, nurseCalendar = 
             searchPlaceholder="Patient, soin…"
             segmentTabs={
               nurseCalendar
-                ? NURSE_TAB_OPTIONS.map((t) => ({ value: t.value, label: t.label }))
-                : CALENDAR_STATUS_OPTIONS
+                ? undefined
+                : CALENDAR_STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))
             }
-            segmentTab={nurseCalendar ? nurseTab : statusFilter}
-            onSegmentTabChange={(v) => {
-              if (nurseCalendar) setNurseTab(v as NurseListTab);
-              else setStatusFilter(v as CalendarStatusFilter);
-            }}
+            segmentTab={nurseCalendar ? undefined : statusFilter}
+            onSegmentTabChange={
+              nurseCalendar ? undefined : (v) => setStatusFilter(v as CalendarStatusFilter)
+            }
             onOpenFilters={openFilterSheet}
             advancedFilterCount={advancedCount}
             chips={filterChips}
           />
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(40).duration(280).springify()} style={[styles.monthNav, elevation.xs]}>
-          <Pressable
-            onPress={() => setCursor((c) => c.subtract(1, 'month'))}
-            style={styles.navBtn}
-            hitSlop={8}
-          >
-            <ChevronLeft size={18} color={colors.primary} strokeWidth={2.5} />
-          </Pressable>
-          <Text style={styles.monthLabel}>{cursor.format('MMMM YYYY')}</Text>
-          <Pressable
-            onPress={() => setCursor((c) => c.add(1, 'month'))}
-            style={styles.navBtn}
-            hitSlop={8}
-          >
-            <ChevronRight size={18} color={colors.primary} strokeWidth={2.5} />
-          </Pressable>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(60).duration(280).springify()} style={styles.weekRow}>
-          {WEEKDAYS.map((d, i) => (
-            <View key={i} style={[styles.weekCell, { width: cellSize }]}>
-              <Text style={styles.weekLabel}>{d}</Text>
-            </View>
-          ))}
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(100).duration(280).springify()} style={styles.grid}>
-          {cells.map((day, idx) => {
-            if (!day) return <View key={`empty-${idx}`} style={{ width: cellSize, height: cellSize + 8 }} />;
-            const key = day.format('YYYY-MM-DD');
-            const count = byDay.get(key)?.length ?? 0;
-            const isSelected = key === selectedDay;
-            const isToday = key === today;
-            return (
-              <Pressable
-                key={key}
-                onPress={() => openDaySheet(key)}
-                style={[
-                  styles.dayCell,
-                  { width: cellSize, height: cellSize + 8 },
-                  isSelected && styles.dayCellSelected,
-                  !isSelected && isToday && styles.dayCellToday,
-                  !isSelected && count > 0 && styles.dayCellHasEvents,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.dayNum,
-                    isSelected && styles.dayNumSelected,
-                    !isSelected && isToday && styles.dayNumToday,
-                  ]}
-                >
-                  {day.format('D')}
-                </Text>
-                {count > 0 ? (
-                  <View style={styles.dotRow}>
-                    {Array.from({ length: Math.min(count, 3) }).map((_, di) => (
-                      <View key={di} style={[styles.dot, isSelected && styles.dotWhite]} />
-                    ))}
-                  </View>
-                ) : (
-                  <View style={styles.dotPlaceholder} />
-                )}
+        <GestureDetector gesture={monthSwipeGesture}>
+          <Animated.View style={styles.calendarSwipeArea}>
+            <Animated.View
+              entering={FadeInDown.delay(40).duration(280).springify()}
+              style={[styles.monthNav, elevation.xs]}
+            >
+              <Pressable onPress={goPrevMonth} style={styles.navBtn} hitSlop={8}>
+                <ChevronLeft size={18} color={colors.primary} strokeWidth={2.5} />
               </Pressable>
-            );
-          })}
-        </Animated.View>
+              <Text style={styles.monthLabel}>{cursor.format('MMMM YYYY')}</Text>
+              <Pressable onPress={goNextMonth} style={styles.navBtn} hitSlop={8}>
+                <ChevronRight size={18} color={colors.primary} strokeWidth={2.5} />
+              </Pressable>
+            </Animated.View>
+
+            <Animated.View entering={FadeInDown.delay(60).duration(280).springify()} style={styles.weekRow}>
+              {WEEKDAYS.map((d, i) => (
+                <View key={i} style={[styles.weekCell, { width: cellSize }]}>
+                  <Text style={styles.weekLabel}>{d}</Text>
+                </View>
+              ))}
+            </Animated.View>
+
+            <Animated.View entering={FadeInDown.delay(100).duration(280).springify()} style={styles.grid}>
+              {cells.map((day, idx) => {
+                if (!day) {
+                  return <View key={`empty-${idx}`} style={{ width: cellSize, height: cellSize + 8 }} />;
+                }
+                const key = day.format('YYYY-MM-DD');
+                const count = byDay.get(key)?.length ?? 0;
+                const isSelected = key === selectedDay;
+                const isToday = key === today;
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() => openDaySheet(key)}
+                    style={[
+                      styles.dayCell,
+                      { width: cellSize, height: cellSize + 8 },
+                      isSelected && styles.dayCellSelected,
+                      !isSelected && isToday && styles.dayCellToday,
+                      !isSelected && count > 0 && styles.dayCellHasEvents,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.dayNum,
+                        isSelected && styles.dayNumSelected,
+                        !isSelected && isToday && styles.dayNumToday,
+                      ]}
+                    >
+                      {day.format('D')}
+                    </Text>
+                    {count > 0 ? (
+                      <View style={styles.dotRow}>
+                        {Array.from({ length: Math.min(count, 3) }).map((_, di) => (
+                          <View key={di} style={[styles.dot, isSelected && styles.dotWhite]} />
+                        ))}
+                      </View>
+                    ) : (
+                      <View style={styles.dotPlaceholder} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </Animated.View>
+          </Animated.View>
+        </GestureDetector>
 
         <Animated.View entering={FadeInDown.delay(160).duration(280).springify()}>
           <Pressable onPress={() => openDaySheet(selectedDay)} style={styles.daySummary}>
@@ -300,7 +337,14 @@ export function CalendarScreen({ baseFilters, detailPathPrefix, nurseCalendar = 
         keyExtractor={(item) => item.id}
         renderItem={renderDayItem}
         onClose={closeSheet}
-        empty={<EmptyState title="Aucun rendez-vous" />}
+        empty={
+          <EmptyState
+            title="Aucun rendez-vous"
+            imageSource={EMPTY_RDV_IMAGE}
+            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
+          />
+        }
       />
 
       <CalendarFilterSheet
@@ -312,6 +356,9 @@ export function CalendarScreen({ baseFilters, detailPathPrefix, nurseCalendar = 
         onTypeChange={setDraftType}
         onApply={applyFilters}
         onReset={resetFilters}
+        nurseCalendar={nurseCalendar}
+        nurseTab={draftNurseTab}
+        onNurseTabChange={setDraftNurseTab}
       />
     </View>
   );
@@ -324,6 +371,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
     paddingBottom: spacing[10],
+    gap: spacing[3],
+  },
+  calendarSwipeArea: {
     gap: spacing[3],
   },
   monthNav: {
