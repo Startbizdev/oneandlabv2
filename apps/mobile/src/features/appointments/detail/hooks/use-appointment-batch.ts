@@ -24,6 +24,8 @@ export function useAppointmentBatch(primary: Appointment | null | undefined) {
         return res.data;
       },
       enabled: Boolean(sid),
+      staleTime: 0,
+      refetchOnMount: 'always',
     })),
   });
 

@@ -126,7 +126,7 @@ export function RdvAppointmentInfoSection({
   const categories = categoriesQ.data;
   const catalogReady = categoriesQ.isFetched;
 
-  const baseRows = useMemo(() => buildRdvBaseRows(apt, viewer), [apt, viewer]);
+  const baseRows = useMemo(() => buildRdvBaseRows(apt, viewer, batch), [apt, viewer, batch]);
 
   const careRows = useMemo(() => {
     const multiBatch = (batch?.length ?? 0) > 1;

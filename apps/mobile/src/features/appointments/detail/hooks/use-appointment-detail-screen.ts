@@ -34,7 +34,9 @@ export function useAppointmentDetailScreen(
   const { batchSorted, isMultiBatch, batchIds, siblingsLoading, refetchSiblings } =
     useAppointmentBatch(apt);
 
-  const primary = batchSorted[0] ?? apt;
+  /** RDV ouvert (URL) — ne pas remplacer par le 1er du lot trié chronologiquement. */
+  const primary =
+    apt ?? batchSorted.find((a) => String(a.id) === String(id)) ?? batchSorted[0];
   const shareQ = useShareForNurse(id, config.showShareBlock);
 
   const docQueries = useQueries({

@@ -296,13 +296,24 @@ function buildBatchCareRows(
   return rows;
 }
 
-function buildRdvRows(apt: Appointment, viewer?: AuthUser | null): RdvInfoRow[] {
+function resolveAppointmentAddress(apt: Appointment, batch?: Appointment[]): string {
+  const direct = appointmentAddressLine(apt);
+  if (direct) return direct;
+  for (const sibling of batch ?? []) {
+    if (String(sibling.id) === String(apt.id)) continue;
+    const line = appointmentAddressLine(sibling);
+    if (line) return line;
+  }
+  return '';
+}
+
+function buildRdvRows(apt: Appointment, viewer?: AuthUser | null, batch?: Appointment[]): RdvInfoRow[] {
   const rows: RdvInfoRow[] = [];
   const fd = (apt.form_data ?? {}) as Record<string, unknown>;
   const canceled = isAppointmentCanceled(apt.status);
   const strike = canceled;
 
-  const addr = appointmentAddressLine(apt);
+  const addr = resolveAppointmentAddress(apt, batch);
   if (addr) rows.push({ kind: 'address', value: addr });
 
   const datePart = formatFrenchWeekdayDate(apt.scheduled_at);
@@ -361,8 +372,9 @@ function insertCareAfterDateSlot(rdv: RdvInfoRow[], care: RdvInfoRow[]): RdvInfo
 export function buildRdvBaseRows(
   apt: Appointment,
   viewer?: AuthUser | null,
+  batch?: Appointment[],
 ): RdvInfoRow[] {
-  return buildRdvRows(apt, viewer);
+  return buildRdvRows(apt, viewer, batch);
 }
 
 export function buildRdvCareRows(
