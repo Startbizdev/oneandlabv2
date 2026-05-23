@@ -10,9 +10,10 @@ import { useAuthStore } from '@/store/auth-store';
 /** Push désactivé dans Expo Go (SDK 53+) — nécessite un development build. */
 export function usePushTokenRegistration() {
   const token = useAuthStore((s) => s.token);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
 
   useEffect(() => {
-    if (!token) return;
+    if (!isHydrated || !token) return;
     if (Constants.appOwnership === 'expo') return;
     if (!Device.isDevice) return;
 
@@ -24,5 +25,5 @@ export function usePushTokenRegistration() {
         /* push non critique */
       }
     })();
-  }, [token]);
+  }, [token, isHydrated]);
 }

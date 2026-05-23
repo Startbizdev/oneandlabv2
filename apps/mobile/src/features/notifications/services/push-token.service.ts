@@ -1,8 +1,41 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { api } from '@/api/client';
+
+export type PushPermissionStatus = 'granted' | 'denied' | 'undetermined';
+
+export async function getPushPermissionStatus(): Promise<PushPermissionStatus> {
+  if (!Device.isDevice) return 'denied';
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status === 'granted') return 'granted';
+  if (status === 'denied') return 'denied';
+  return 'undetermined';
+}
+
+export async function requestPushNotificationPermission(): Promise<PushPermissionStatus> {
+  if (!Device.isDevice) return 'denied';
+
+  const current = await getPushPermissionStatus();
+  if (current === 'granted') return 'granted';
+
+  const { status } = await Notifications.requestPermissionsAsync({
+    ios: {
+      allowAlert: true,
+      allowBadge: true,
+      allowSound: true,
+    },
+  });
+
+  if (status === 'granted') return 'granted';
+  if (status === 'denied') return 'denied';
+  return 'undetermined';
+}
+
+export function openNotificationSettings(): void {
+  void Linking.openSettings();
+}
 
 export async function registerPushTokenWithBackend(expoPushToken: string): Promise<void> {
   const res = await api.post('/notifications/device-token', {
@@ -25,13 +58,8 @@ export async function unregisterPushTokenWithBackend(expoPushToken: string): Pro
 export async function obtainExpoPushToken(): Promise<string | null> {
   if (!Device.isDevice) return null;
 
-  const { status: existing } = await Notifications.getPermissionsAsync();
-  let finalStatus = existing;
-  if (existing !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-  if (finalStatus !== 'granted') return null;
+  const permission = await requestPushNotificationPermission();
+  if (permission !== 'granted') return null;
 
   const projectId =
     Constants.expoConfig?.extra?.eas?.projectId ??
