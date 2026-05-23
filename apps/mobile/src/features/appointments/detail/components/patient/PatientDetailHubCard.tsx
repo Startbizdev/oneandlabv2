@@ -1,96 +1,44 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { FileText, History } from 'lucide-react-native';
-import type { LucideIcon } from 'lucide-react-native';
+import { ChevronRight, FileText } from 'lucide-react-native';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-function HubRow({
-  Icon,
-  title,
-  subtitle,
-  badge,
-  onPress,
-  topBorder,
-}: {
-  Icon: LucideIcon;
-  title: string;
-  subtitle: string;
-  badge?: string;
-  onPress: () => void;
-  topBorder?: boolean;
-}) {
-  return (
-    <Pressable onPress={onPress}>
-      <View style={[styles.row, topBorder && styles.rowBorder]}>
-        <View style={styles.iconWrap}>
-          <Icon size={18} color={colors.primary} strokeWidth={2} />
-        </View>
-        <View style={styles.rowBody}>
-          <Text style={styles.rowTitle}>{title}</Text>
-          <Text style={styles.rowSub}>{subtitle}</Text>
-        </View>
-        {badge ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{badge}</Text>
-          </View>
-        ) : null}
-        <Text style={styles.chevron}>›</Text>
-      </View>
-    </Pressable>
-  );
-}
-
 interface Props {
   documentsCount: number;
-  historyCount?: number;
   onDocuments: () => void;
-  onHistory: () => void;
 }
 
-export function PatientDetailHubCard({
-  documentsCount,
-  historyCount,
-  onDocuments,
-  onHistory,
-}: Props) {
+export function PatientDetailHubCard({ documentsCount, onDocuments }: Props) {
   return (
-    <View style={styles.card}>
-      <HubRow
-        Icon={FileText}
-        title="Documents"
-        subtitle="Pièces jointes, dépôt et téléchargement"
-        badge={documentsCount > 0 ? String(documentsCount) : undefined}
-        onPress={onDocuments}
-      />
-      <HubRow
-        Icon={History}
-        title="Historique"
-        subtitle="Vos rendez-vous passés pour ce dossier"
-        badge={historyCount != null && historyCount > 0 ? String(historyCount) : undefined}
-        onPress={onHistory}
-        topBorder
-      />
-    </View>
+    <Pressable onPress={onDocuments} style={styles.card}>
+      <View style={styles.iconWrap}>
+        <FileText size={18} color={colors.primary} strokeWidth={2} />
+      </View>
+      <View style={styles.body}>
+        <Text style={styles.title}>Documents</Text>
+        <Text style={styles.subtitle}>Pièces jointes et ordonnances</Text>
+      </View>
+      {documentsCount > 0 ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{documentsCount}</Text>
+        </View>
+      ) : null}
+      <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  rowBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3.5],
+    gap: spacing[3],
   },
   iconWrap: {
     width: 36,
@@ -99,19 +47,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  rowBody: {
+  body: {
     flex: 1,
     minWidth: 0,
-    marginRight: 8,
   },
-  rowTitle: {
+  title: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
     color: colors.textPrimary,
   },
-  rowSub: {
+  subtitle: {
     marginTop: 2,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
@@ -125,16 +71,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
   },
   badgeText: {
     fontFamily: fontFamily.bold,
     fontSize: 11,
     color: colors.textInverse,
-  },
-  chevron: {
-    fontSize: 22,
-    lineHeight: 24,
-    color: colors.textTertiary,
   },
 });

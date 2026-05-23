@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Mail } from 'lucide-react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
@@ -12,8 +11,6 @@ import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import type { AddressPayload } from '@/features/appointments/form/types';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
-import { ProfileDocumentsSection } from '@/features/profile/components/ProfileDocumentsSection';
-import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
@@ -28,11 +25,8 @@ import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function ProfilePatientView() {
-  const router = useRouter();
-  const biometricLabel = useBiometricLabel('Biométrie');
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
-  const clearSession = useAuthStore((s) => s.clearSession);
   const { show: toast } = useToast();
   const qc = useQueryClient();
 
@@ -117,11 +111,6 @@ export function ProfilePatientView() {
     [savePhotos],
   );
 
-  const logout = useCallback(async () => {
-    await clearSession();
-    router.replace('/(auth)/login' as never);
-  }, [clearSession, router]);
-
   if (q.isLoading) {
     return <SkeletonProfileScreen cards={2} />;
   }
@@ -166,31 +155,12 @@ export function ProfilePatientView() {
           />
         </ProfileSection>
 
-        <ProfileDocumentsSection />
-
         <Button
           title="Enregistrer mon profil"
           loading={save.isPending}
           onPress={() => save.mutate()}
           fullWidth
           size="lg"
-        />
-
-        <Button
-          title={biometricLabel}
-          variant="outline"
-          onPress={() => router.push('/profile/security' as never)}
-          fullWidth
-          size="lg"
-        />
-
-        <Button
-          title="Déconnexion"
-          variant="outline"
-          onPress={() => void logout()}
-          fullWidth
-          size="lg"
-          style={styles.logoutBtn}
         />
       </KeyboardScrollView>
 
@@ -208,7 +178,6 @@ export function ProfilePatientView() {
 
 const styles = StyleSheet.create({
   scroll: { padding: spacing[4], gap: spacing[4], paddingBottom: spacing[12] },
-  loading: { padding: spacing[4], gap: spacing[3] },
   fieldLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
@@ -236,8 +205,5 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: colors.textSecondary,
-  },
-  logoutBtn: {
-    borderColor: colors.error,
   },
 });

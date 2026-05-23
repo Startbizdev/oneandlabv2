@@ -20,7 +20,6 @@ import { DetailSegmentBar } from '../detail/components/layout/DetailSegmentBar';
 import { DetailTerminalBanner } from '../detail/components/layout/DetailTerminalBanner';
 import { isCarePhotoGalleryContext } from '../detail/utils/care-photo-rules';
 import { reschedulePathForRole } from '../detail/utils/appointment-detail-role-config';
-import { openWazeForAppointment } from '../detail/utils/open-waze';
 import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-store';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
@@ -160,7 +159,7 @@ export function AppointmentDetailScreen({ role }: Props) {
                   edgeToEdge
                   batch={isMultiBatch ? batchSorted : undefined}
                   batchLoading={s.siblingsLoading}
-                  onAddressPress={() => openWazeForAppointment(primary)}
+                  showMapActions={role !== 'patient'}
                 />
               </View>
               <StaffPatientKvSection apt={primary} />

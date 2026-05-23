@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { Stethoscope, MessageSquare } from 'lucide-react-native';
+import { MessageSquare } from 'lucide-react-native';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import type { Review } from '@/features/reviews/types';
 import {
@@ -33,9 +34,13 @@ export function ReviewGivenCard({ review }: Props) {
   return (
     <View style={[styles.card, elevation.xs]}>
       <View style={styles.header}>
-        <View style={styles.proBadge}>
-          <Stethoscope size={16} color={colors.primary} strokeWidth={2} />
-        </View>
+        <ProfileAvatar
+          profileImageUrl={review.reviewee_profile_image_url}
+          seed={review.reviewee_id ?? proName}
+          gender={review.reviewee_gender}
+          size={40}
+          style={styles.proAvatar}
+        />
         <View style={styles.headerText}>
           <Text style={styles.proLabel}>Pour</Text>
           <Text style={styles.proName} numberOfLines={1}>
@@ -92,13 +97,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[2],
   },
-  proBadge: {
+  proAvatar: {
     width: 40,
     height: 40,
     borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
+    flexShrink: 0,
   },
   headerText: { flex: 1, minWidth: 0 },
   proLabel: {

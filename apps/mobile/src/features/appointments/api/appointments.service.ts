@@ -14,6 +14,7 @@ export function buildAppointmentsQuery(filters: AppointmentListFilters): string 
   if (filters.date_from) qs.set('date_from', filters.date_from);
   if (filters.date_to) qs.set('date_to', filters.date_to);
   if (filters.assigned_only) qs.set('assigned_only', '1');
+  if (filters.patient_period) qs.set('patient_period', filters.patient_period);
   return `/appointments?${qs.toString()}`;
 }
 
@@ -33,6 +34,9 @@ export async function fetchAppointmentsPaginated(
   filters: AppointmentListFilters,
 ): Promise<{ appointments: Appointment[]; pagination: AppointmentsPagination }> {
   const res = await api.get<Appointment[]>(buildAppointmentsQuery(filters));
+  if (!res.success) {
+    throw new Error(res.error ?? 'Erreur chargement RDV');
+  }
   const p = res.pagination as
     | {
         page?: number;

@@ -1,0 +1,40 @@
+<?php
+
+header('Content-Type: application/json');
+
+$corsConfig = require __DIR__ . '/../../config/cors.php';
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $corsConfig['allowed_origins'], true)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+}
+header('Access-Control-Allow-Methods: PUT, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
+header('Access-Control-Allow-Credentials: true');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
+require_once __DIR__ . '/../../models/Notification.php';
+
+$authMiddleware = new AuthMiddleware();
+$user = $authMiddleware->handle();
+
+if ($_SERVER['REQUEST_METHOD'] !== 'PUT') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Méthode non autorisée']);
+    exit;
+}
+
+CSRFMiddleware::handle();
+
+$notificationModel = new Notification();
+$count = $notificationModel->markAllAsRead($user['user_id']);
+
+echo json_encode([
+    'success' => true,
+    'data' => ['marked' => $count],
+]);

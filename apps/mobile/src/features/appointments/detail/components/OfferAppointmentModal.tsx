@@ -59,12 +59,11 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
   const [prepComplete, setPrepComplete] = useState(false);
 
   useEffect(() => {
-    if (!visible) {
+    if (!visible && !preparing) {
       setTermsAccepted(false);
-      setPreparing(false);
       setPrepComplete(false);
     }
-  }, [visible]);
+  }, [visible, preparing]);
 
   const { batchSorted, isMultiBatch, siblingsLoading } = useAppointmentBatch(selected);
 
@@ -198,14 +197,8 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
     }
   }, [batchCount, closeModal, detailPathPrefix, router, selected?.id, toast, user?.id, user?.role]);
 
-  if (!visible || !selected || !row) {
-    return (
-      <OfferAcceptPreparationOverlay
-        visible={preparing}
-        complete={prepComplete}
-        onFinish={() => void onPrepFinish()}
-      />
-    );
+  if (!preparing && (!visible || !selected || !row)) {
+    return null;
   }
 
   const footer = (
@@ -234,37 +227,39 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
 
   return (
     <>
+      {!preparing ? (
+        <BottomSheet
+          visible={visible}
+          onClose={dismissLater}
+          title="Nouveau rendez-vous"
+          subtitle={subtitle}
+          footer={footer}
+        >
+          {lotLabel && !isMultiBatch ? (
+            <View style={styles.lotPill}>
+              <Text style={styles.lotPillText}>{lotLabel}</Text>
+            </View>
+          ) : null}
+          {siblingsLoading ? (
+            <View style={styles.loading}>
+              <SkeletonList count={2} itemHeight={100} gap={12} />
+            </View>
+          ) : (
+            <OfferAppointmentPreviewBody primary={selected!} batch={batchSorted} />
+          )}
+          <View style={styles.termsRow}>
+            <ToggleSwitch value={termsAccepted} onValueChange={setTermsAccepted} />
+            <Text style={styles.termsText}>
+              J’accepte la prise en charge et m’engage à respecter la confidentialité du patient.
+            </Text>
+          </View>
+        </BottomSheet>
+      ) : null}
       <OfferAcceptPreparationOverlay
         visible={preparing}
         complete={prepComplete}
         onFinish={() => void onPrepFinish()}
       />
-      <BottomSheet
-        visible={visible && !preparing}
-        onClose={dismissLater}
-        title="Nouveau rendez-vous"
-        subtitle={subtitle}
-        footer={footer}
-      >
-        {lotLabel && !isMultiBatch ? (
-          <View style={styles.lotPill}>
-            <Text style={styles.lotPillText}>{lotLabel}</Text>
-          </View>
-        ) : null}
-        {siblingsLoading ? (
-          <View style={styles.loading}>
-            <SkeletonList count={2} itemHeight={100} gap={12} />
-          </View>
-        ) : (
-          <OfferAppointmentPreviewBody primary={selected} batch={batchSorted} />
-        )}
-        <View style={styles.termsRow}>
-          <ToggleSwitch value={termsAccepted} onValueChange={setTermsAccepted} />
-          <Text style={styles.termsText}>
-            J’accepte la prise en charge et m’engage à respecter la confidentialité du patient.
-          </Text>
-        </View>
-      </BottomSheet>
     </>
   );
 }

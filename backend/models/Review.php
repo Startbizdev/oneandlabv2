@@ -112,6 +112,7 @@ class Review
                        rev.first_name_encrypted AS rev_first_enc, rev.first_name_dek AS rev_first_dek,
                        rev.last_name_encrypted AS rev_last_enc, rev.last_name_dek AS rev_last_dek,
                        rev.company_name_encrypted AS rev_company_enc, rev.company_name_dek AS rev_company_dek,
+                       rev.profile_image_url AS reviewee_profile_image_url,
                        a.type AS apt_type,
                        a.scheduled_at AS apt_scheduled_at,
                        cc.name AS category_name
@@ -265,11 +266,42 @@ class Review
                 $decryptedReview['reviewee_name'] = $revParts !== [] ? implode(' ', $revParts) : 'Professionnel';
             }
 
+            $decryptedReview['reviewee_profile_image_url'] = !empty($review['reviewee_profile_image_url'])
+                ? trim((string) $review['reviewee_profile_image_url'])
+                : null;
+
             $decryptedReview['appointment_type'] = !empty($review['apt_type']) ? $review['apt_type'] : null;
             $decryptedReview['appointment_scheduled_at'] = $review['apt_scheduled_at'] ?? null;
             $decryptedReview['category_name'] = $review['category_name'] ?? null;
 
             $decryptedReviews[] = $decryptedReview;
+        }
+
+        if (!empty($decryptedReviews)) {
+            require_once __DIR__ . '/User.php';
+            $userModel = new User();
+            $revieweeIds = [];
+            foreach ($decryptedReviews as $row) {
+                if (!empty($row['reviewee_id'])) {
+                    $revieweeIds[] = (string) $row['reviewee_id'];
+                }
+            }
+            $profileImages = $userModel->getProfileImageUrlsByIds($revieweeIds);
+            $genders = $userModel->getGendersByIds($revieweeIds);
+            foreach ($decryptedReviews as &$row) {
+                $rid = (string) ($row['reviewee_id'] ?? '');
+                if ($rid === '') {
+                    continue;
+                }
+                $img = $profileImages[$rid] ?? null;
+                if ($img !== null && $img !== '') {
+                    $row['reviewee_profile_image_url'] = $img;
+                }
+                if (!empty($genders[$rid])) {
+                    $row['reviewee_gender'] = $genders[$rid];
+                }
+            }
+            unset($row);
         }
 
         return [

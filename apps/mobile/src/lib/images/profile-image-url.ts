@@ -17,6 +17,10 @@ export function resolveProfileImageUrl(url: string | null | undefined): string |
     const base = getApiBase().replace(/\/api\/?$/, '');
     return `${base}${trimmed}`;
   }
+  if (trimmed.startsWith('api/')) {
+    const base = getApiBase().replace(/\/$/, '');
+    return `${base}/${trimmed}`;
+  }
   const base = getApiBase().replace(/\/$/, '');
   return `${base}/${trimmed}`;
 }

@@ -8,13 +8,12 @@ import {
 } from 'react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth-store';
 import { SkeletonPatientAppointmentDetail } from '@/components/ui/skeletons';
 import { useAppointmentDetailScreen } from '../detail/hooks/use-appointment-detail-screen';
 import { CancelAppointmentSheet } from '../detail/components/blocks/CancelAppointmentSheet';
-import { PatientRdvUnifiedCard } from '../detail/components/patient/PatientRdvUnifiedCard';
 import { PatientAssigneeRows } from '../detail/components/patient/PatientAssigneeRows';
+import { PatientDetailActions } from '../detail/components/patient/PatientDetailActions';
 import { PatientDetailHubCard } from '../detail/components/patient/PatientDetailHubCard';
 import { RdvDocumentsPremiumPanel } from '../detail/components/RdvDocumentsPremiumPanel';
 import {
@@ -26,14 +25,10 @@ import { RdvAppointmentInfoSection } from '../detail/components/layout/RdvAppoin
 import { DetailSegmentBar } from '../detail/components/layout/DetailSegmentBar';
 import { DetailTerminalBanner } from '../detail/components/layout/DetailTerminalBanner';
 import { filterListDocuments } from '../detail/utils/document-labels';
-import { fetchAppointmentsPaginated } from '../api/appointments.service';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
 import { batchHasReviewableAppointment } from '@/utils/can-leave-review';
-import type { Appointment } from '@oneandlab/shared-types';
 import { colors, spacing } from '@/theme';
-
-const PAST_STATUSES = 'completed,canceled,cancelled,refused,expired';
 
 type SegmentId = 'infos' | 'documents' | 'avis';
 
@@ -49,28 +44,6 @@ export function PatientAppointmentDetailScreen() {
   const s = useAppointmentDetailScreen('patient', id);
 
   const primary = s.primary;
-  const relativeId = (primary as Appointment & { relative_id?: string } | undefined)?.relative_id ?? null;
-
-  const historyCountQ = useQuery({
-    queryKey: ['patient', 'history-count', id, relativeId] as const,
-    queryFn: async () => {
-      const { appointments } = await fetchAppointmentsPaginated({
-        page: 1,
-        limit: 120,
-        status: PAST_STATUSES,
-      });
-      let list = appointments.filter((a) => a.id !== id);
-      if (relativeId) {
-        list = list.filter(
-          (a) =>
-            String((a as Appointment & { relative_id?: string }).relative_id ?? '') ===
-            relativeId,
-        );
-      }
-      return list.length;
-    },
-    enabled: Boolean(id && primary),
-  });
 
   const documentsCount = useMemo(
     () =>
@@ -160,23 +133,19 @@ export function PatientAppointmentDetailScreen() {
                 />
               </View>
               <PatientAssigneeRows apt={primary} />
-              <PatientRdvUnifiedCard
-                primary={primary}
-                batch={batchSorted}
-                isMultiBatch={isMultiBatch}
-                viewer={user}
-                hideCareDetails
-                canceled={canceled}
-                cancelCount={cancellableForPatient.length}
-                onCancel={() => setCancelOpen(true)}
-                onScrollToReviews={() => setSegment('avis')}
-              />
               <PatientDetailHubCard
                 documentsCount={documentsCount}
-                historyCount={historyCountQ.data}
                 onDocuments={() => router.push(`/(patient)/appointment/${id}/documents` as never)}
-                onHistory={() => router.push(`/(patient)/appointment/${id}/history` as never)}
               />
+              <View style={styles.edgeBleed}>
+                <PatientDetailActions
+                  batch={batchSorted}
+                  canceled={canceled}
+                  cancelCount={cancellableForPatient.length}
+                  onCancel={() => setCancelOpen(true)}
+                  onScrollToReviews={() => setSegment('avis')}
+                />
+              </View>
             </View>
           ) : null}
 

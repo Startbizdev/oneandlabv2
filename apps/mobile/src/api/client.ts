@@ -90,6 +90,14 @@ export async function apiRequest<T = unknown>(
       }
       throw new Error(data.error ?? data.message ?? `Erreur ${err.response.status}`);
     }
+    if (axios.isAxiosError(err) && err.response) {
+      const status = err.response.status;
+      throw new Error(
+        status === 500
+          ? 'Erreur serveur (500). Le chargement est peut-être trop volumineux — réessayez.'
+          : `Erreur ${status}`,
+      );
+    }
     if (axios.isAxiosError(err)) {
       if (!err.response) {
         const base = getApiBase();

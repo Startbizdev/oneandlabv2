@@ -5,5 +5,5 @@ export const NURSE_DEMANDES_LIST_FILTERS: AppointmentListFilters = {
   status: 'pending',
   nurse_tab: 'soins',
   nurse_segment: 'en_attente',
-  limit: 100,
+  limit: 20,
 };

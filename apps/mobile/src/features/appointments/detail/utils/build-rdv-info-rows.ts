@@ -27,7 +27,6 @@ import {
   nursingSharedOptionKeys,
 } from '@/utils/batch-appointment-detail-display';
 import { formatAvailabilityDisplayFr, formatFrenchWeekdayDate } from '@/utils/appointment-datetime-fr';
-import { appointmentAddressLine } from '@/utils/appointment-display';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import {
@@ -39,11 +38,12 @@ import {
   relationshipLine,
   showBookingContactBlock,
 } from './patient-appointment-display';
+import { isAppointmentForRelative } from '@/utils/patient-appointment-list';
 dayjs.locale('fr');
 
 export type RdvInfoRow =
   | { kind: 'field'; label: string; value: string; emoji?: string; strikethrough?: boolean }
-  | { kind: 'identity'; firstName: string; lastName: string }
+  | { kind: 'identity'; firstName: string; lastName: string; identityLabel?: string }
   | { kind: 'address'; value: string };
 
 export type BuildRdvInfoRowsOptions = {
@@ -296,25 +296,11 @@ function buildBatchCareRows(
   return rows;
 }
 
-function resolveAppointmentAddress(apt: Appointment, batch?: Appointment[]): string {
-  const direct = appointmentAddressLine(apt);
-  if (direct) return direct;
-  for (const sibling of batch ?? []) {
-    if (String(sibling.id) === String(apt.id)) continue;
-    const line = appointmentAddressLine(sibling);
-    if (line) return line;
-  }
-  return '';
-}
-
-function buildRdvRows(apt: Appointment, viewer?: AuthUser | null, batch?: Appointment[]): RdvInfoRow[] {
+function buildRdvRows(apt: Appointment, viewer?: AuthUser | null, _batch?: Appointment[]): RdvInfoRow[] {
   const rows: RdvInfoRow[] = [];
   const fd = (apt.form_data ?? {}) as Record<string, unknown>;
   const canceled = isAppointmentCanceled(apt.status);
   const strike = canceled;
-
-  const addr = resolveAppointmentAddress(apt, batch);
-  if (addr) rows.push({ kind: 'address', value: addr });
 
   const datePart = formatFrenchWeekdayDate(apt.scheduled_at);
   const slot = formatAvailabilityDisplayFr(fd.availability, apt.scheduled_at);
@@ -325,26 +311,36 @@ function buildRdvRows(apt: Appointment, viewer?: AuthUser | null, batch?: Appoin
 
   const first = beneficiaryFirstName(apt);
   const last = beneficiaryLastName(apt);
-  if (first || last) {
-    rows.push({ kind: 'identity', firstName: first || '—', lastName: last || '—' });
+  const isPatientViewer = viewer?.role === 'patient';
+  const forRelative = isAppointmentForRelative(apt);
+
+  if ((!isPatientViewer || forRelative) && (first || last)) {
+    rows.push({
+      kind: 'identity',
+      firstName: first || '—',
+      lastName: last || '—',
+      identityLabel: isPatientViewer && forRelative ? 'Pour qui' : 'Patient',
+    });
   }
 
-  const relLine = relationshipLine(apt);
-  if (relLine) rows.push({ kind: 'field', label: 'Lien', value: relLine });
+  if (!isPatientViewer) {
+    const relLine = relationshipLine(apt);
+    if (relLine) rows.push({ kind: 'field', label: 'Lien', value: relLine });
 
-  const birth = beneficiaryBirthLine(apt);
-  if (birth) rows.push({ kind: 'field', label: 'Date de naissance', value: birth });
+    const birth = beneficiaryBirthLine(apt);
+    if (birth) rows.push({ kind: 'field', label: 'Date de naissance', value: birth });
 
-  const showEmailField = viewer?.role === 'patient';
-  const email = patientContactEmail(apt, viewer ?? undefined);
-  if (showEmailField && email.text) {
-    rows.push({ kind: 'field', label: 'E-mail', value: email.text });
-  }
+    const showEmailField = viewer?.role === 'patient';
+    const email = patientContactEmail(apt, viewer ?? undefined);
+    if (showEmailField && email.text) {
+      rows.push({ kind: 'field', label: 'E-mail', value: email.text });
+    }
 
-  if (showBookingContactBlock(apt)) {
-    const bookerName = bookingContactFullName(apt);
-    if (bookerName) {
-      rows.push({ kind: 'field', label: 'Rendez-vous pris par', value: bookerName });
+    if (showBookingContactBlock(apt)) {
+      const bookerName = bookingContactFullName(apt);
+      if (bookerName) {
+        rows.push({ kind: 'field', label: 'Rendez-vous pris par', value: bookerName });
+      }
     }
   }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   StyleSheet,
@@ -7,8 +7,8 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { avatarDisplaySeed } from '@/lib/images/dicebear-personas-url';
-import { resolveAvatarImageUrl } from '@/lib/images/profile-image-url';
+import { avatarDisplaySeed, personasAvatarUrl } from '@/lib/images/dicebear-personas-url';
+import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
 import { colors } from '@/theme';
 
 interface Props {
@@ -30,8 +30,18 @@ function ProfileAvatarComponent({
   style,
   imageStyle,
 }: Props) {
+  const [photoFailed, setPhotoFailed] = useState(false);
   const displaySeed = avatarDisplaySeed(seed ?? 'cary-user');
-  const uri = resolveAvatarImageUrl(profileImageUrl, displaySeed, size * 2, gender);
+  const photoUri = useMemo(() => resolveProfileImageUrl(profileImageUrl), [profileImageUrl]);
+
+  useEffect(() => {
+    setPhotoFailed(false);
+  }, [profileImageUrl]);
+  const fallbackUri = useMemo(
+    () => personasAvatarUrl(displaySeed, size * 2, gender),
+    [displaySeed, gender, size],
+  );
+  const uri = photoUri && !photoFailed ? photoUri : fallbackUri;
   const radius = size / 2;
 
   return (
@@ -51,6 +61,9 @@ function ProfileAvatarComponent({
         source={{ uri }}
         style={[{ width: size, height: size }, imageStyle]}
         resizeMode="cover"
+        onError={() => {
+          if (photoUri && !photoFailed) setPhotoFailed(true);
+        }}
       />
     </View>
   );

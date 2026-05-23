@@ -1,13 +1,16 @@
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { QueryFlatList } from '@/components/ui/QueryFlatList';
+import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
-import { fetchAppointments } from '@/features/appointments/api/appointments.service';
+import {
+  flattenInfiniteAppointments,
+  useInfiniteAppointmentsList,
+} from '@/features/appointments/hooks/use-infinite-appointments-list';
+import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { useAuthStore } from '@/store/auth-store';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
@@ -47,29 +50,22 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix }: Props) {
   const userId = useAuthStore((s) => s.user?.id);
   const [search, setSearch] = useState('');
 
-  const query = useQuery({
-    queryKey: ['preleveur-rdv-assigned', userId],
-    queryFn: async () => {
-      const res = await fetchAppointments({
-        limit: 500,
-        type: 'blood_test',
-        assigned_only: true,
-        status: 'confirmed,in_progress,on_the_way',
-      });
-      if (!res.success) throw new Error(res.error ?? 'Erreur chargement RDV');
-      return (res.data ?? []).filter((a) => isAssignedConfirmed(a, userId));
-    },
-    enabled: Boolean(userId),
-    staleTime: 30_000,
+  const query = useInfiniteAppointmentsList({
+    limit: APPOINTMENTS_LIST_PAGE_SIZE,
+    type: 'blood_test',
+    assigned_only: true,
+    status: 'confirmed,in_progress,on_the_way',
   });
 
   const { refetch } = query;
 
   const displayRows = useMemo(() => {
-    let list = query.data ?? [];
+    let list = flattenInfiniteAppointments(query.data?.pages).filter((a) =>
+      isAssignedConfirmed(a, userId),
+    );
     if (search.trim()) list = list.filter((a) => matchesSearch(a, search));
     return buildAppointmentDisplayRows(list, { direction: 'upcoming' });
-  }, [query.data, search]);
+  }, [query.data?.pages, search, userId]);
 
   useAppForegroundRefetch(() => {
     void refetch();
@@ -91,14 +87,17 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix }: Props) {
 
   return (
     <View style={styles.container}>
-      <QueryFlatList
+      <InfiniteQueryFlatList
         query={query}
         items={displayRows}
         header={
           <AppointmentsListFilterBar
             search={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Nom, soin, adresse…"
+            searchPlaceholder="Nom, adresse, soin…"
+            onOpenFilters={() => {}}
+            advancedFilterCount={0}
+            chips={[]}
           />
         }
         renderItem={renderItem}
@@ -108,13 +107,15 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix }: Props) {
         showsVerticalScrollIndicator={false}
         skeletonHeight={116}
         ListEmptyComponent={
-          <EmptyState
-            imageSource={EMPTY_RDV_IMAGE}
-            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-            title="Aucun rendez-vous"
-            description="Vos prélèvements confirmés apparaîtront ici."
-          />
+          !query.isPending ? (
+            <EmptyState
+              imageSource={EMPTY_RDV_IMAGE}
+              imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+              imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
+              title="Aucun rendez-vous"
+              description="Vos missions confirmées apparaîtront ici."
+            />
+          ) : null
         }
       />
     </View>

@@ -170,14 +170,21 @@ async function resolveBiometricsSecurityLevel(): Promise<'weak' | 'strong'> {
   return 'weak';
 }
 
-async function promptBiometric(message: string): Promise<PromptBiometricResult> {
+type PromptBiometricOptions = {
+  /** Activation initiale : autoriser le code appareil si la biométrie échoue (iOS surtout). */
+  allowDeviceFallback?: boolean;
+};
+
+async function promptBiometric(
+  message: string,
+  options: PromptBiometricOptions = {},
+): Promise<PromptBiometricResult> {
+  const allowDeviceFallback = options.allowDeviceFallback ?? false;
   const biometricsSecurityLevel = await resolveBiometricsSecurityLevel();
   const auth = await LocalAuthentication.authenticateAsync({
     promptMessage: message,
     cancelLabel: 'Annuler',
-    // Biométrie uniquement (Face ID / empreinte) — pas le code appareil.
-    disableDeviceFallback: true,
-    fallbackLabel: '',
+    disableDeviceFallback: !allowDeviceFallback,
     ...(Platform.OS === 'android'
       ? {
           biometricsSecurityLevel,
@@ -199,6 +206,7 @@ async function promptBiometric(message: string): Promise<PromptBiometricResult> 
     lockout: 'Trop de tentatives. Réessayez plus tard.',
     passcode_not_set: 'Configurez un code appareil dans les réglages.',
     unavailable: 'Biométrie indisponible sur cet appareil.',
+    authentication_failed: 'Authentification refusée. Réessayez ou utilisez le code appareil.',
   };
 
   return {
@@ -224,7 +232,9 @@ export async function enableBiometricLogin(
   }
 
   const label = await getBiometricLabel();
-  const confirmed = await promptBiometric(`Activer ${label}`);
+  const confirmed = await promptBiometric(`Activer ${label}`, {
+    allowDeviceFallback: Platform.OS === 'ios',
+  });
   if (!confirmed.success) {
     return {
       ok: false,

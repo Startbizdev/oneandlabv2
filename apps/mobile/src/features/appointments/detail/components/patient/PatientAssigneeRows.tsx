@@ -96,7 +96,8 @@ export function PatientAssigneeRows({ apt }: Props) {
   }
 
   const creator = ext.creator_origin as CreatorOrigin | undefined;
-  if (creator?.kind) {
+  const hideOriginForPatient = user?.role === 'patient';
+  if (!hideOriginForPatient && creator?.kind) {
     const name = creatorOriginName(creator);
     const title = creatorOriginTitle(creator);
     const slug = creator.public_slug?.trim();
@@ -119,7 +120,7 @@ export function PatientAssigneeRows({ apt }: Props) {
         }
       />,
     );
-  } else {
+  } else if (!hideOriginForPatient) {
     const rawPlatform = String(ext.patient_platform_origin_display ?? '').trim();
     if (rawPlatform) {
       blocks.push(

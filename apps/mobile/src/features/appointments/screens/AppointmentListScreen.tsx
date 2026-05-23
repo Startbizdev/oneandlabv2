@@ -3,13 +3,17 @@ import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { AppointmentListFilters } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { QueryFlatList } from '@/components/ui/QueryFlatList';
+import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
 import { PlanLimitsBanner } from '@/features/nurse/components/PlanLimitsBanner';
+import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
 import { useAuthStore } from '@/store/auth-store';
 import { AppointmentListRowCard } from '../components/AppointmentListRowCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
-import { useAppointmentsList } from '../hooks/use-appointments-list';
+import {
+  flattenInfiniteAppointments,
+  useInfiniteAppointmentsList,
+} from '../hooks/use-infinite-appointments-list';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { colors, spacing } from '@/theme';
@@ -26,16 +30,23 @@ export function AppointmentListScreen({
 }: Props) {
   const router = useRouter();
   const role = useAuthStore((s) => s.user?.role);
-  const query = useAppointmentsList(filters);
-  const { data, refetch } = query;
+  const listFilters = useMemo(
+    () => ({ ...filters, limit: filters.limit ?? APPOINTMENTS_LIST_PAGE_SIZE }),
+    [filters],
+  );
+  const query = useInfiniteAppointmentsList(listFilters);
+  const { refetch } = query;
 
   useAppForegroundRefetch(() => {
     void refetch();
   });
 
   const displayRows = useMemo(
-    () => buildAppointmentDisplayRows(data ?? [], { direction: 'upcoming' }),
-    [data],
+    () =>
+      buildAppointmentDisplayRows(flattenInfiniteAppointments(query.data?.pages), {
+        direction: 'upcoming',
+      }),
+    [query.data?.pages],
   );
 
   const cardRole =
@@ -66,7 +77,7 @@ export function AppointmentListScreen({
 
   return (
     <View style={styles.container}>
-      <QueryFlatList
+      <InfiniteQueryFlatList
         query={query}
         items={displayRows}
         renderItem={renderItem}
@@ -76,13 +87,15 @@ export function AppointmentListScreen({
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          <EmptyState
-            title="Aucun rendez-vous"
-            description="Votre liste est vide pour le moment."
-            imageSource={EMPTY_RDV_IMAGE}
-            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-          />
+          !query.isPending ? (
+            <EmptyState
+              title="Aucun rendez-vous"
+              description="Votre liste est vide pour le moment."
+              imageSource={EMPTY_RDV_IMAGE}
+              imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+              imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
+            />
+          ) : null
         }
       />
     </View>

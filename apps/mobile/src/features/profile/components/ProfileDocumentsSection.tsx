@@ -11,7 +11,7 @@ export function ProfileDocumentsSection() {
       <Animated.View entering={FadeInDown.delay(240).duration(280).springify()}>
         <Text style={styles.sectionTitle}>Documents médicaux</Text>
         <Text style={styles.sectionHint}>
-          Carte Vitale, mutuelle, ordonnance — nécessaires pour vos rendez-vous.
+        Carte Vitale, mutuelle et autres assurances — l’ordonnance se gère sur chaque rendez-vous.
         </Text>
       </Animated.View>
       <ProfileDocumentsEmbedded />

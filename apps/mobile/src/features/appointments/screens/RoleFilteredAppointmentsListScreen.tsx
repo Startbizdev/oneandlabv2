@@ -4,14 +4,18 @@ import { useRouter } from 'expo-router';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { QueryFlatList } from '@/components/ui/QueryFlatList';
+import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
 import { AppointmentsBookCta } from '@/features/appointments/components/AppointmentsBookCta';
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
-import { useAppointmentsList } from '@/features/appointments/hooks/use-appointments-list';
+import {
+  flattenInfiniteAppointments,
+  useInfiniteAppointmentsList,
+} from '@/features/appointments/hooks/use-infinite-appointments-list';
+import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { useAuthStore } from '@/store/auth-store';
 import { appointmentAddressLine } from '@/utils/appointment-display';
@@ -89,17 +93,21 @@ export function RoleFilteredAppointmentsListScreen({
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const listFilters = useMemo(() => {
-    if (role !== 'preleveur') return { limit: 100 };
-    const base = { limit: 500, type: 'blood_test' as const };
-    // Tous / confirmées / terminées : missions assignées uniquement (aligné Tournée + web « Mes missions »).
+    const base = { limit: APPOINTMENTS_LIST_PAGE_SIZE };
+    if (role !== 'preleveur') return base;
+    const prel = { ...base, type: 'blood_test' as const };
     if (status !== 'pending') {
-      return { ...base, assigned_only: true as const };
+      return { ...prel, assigned_only: true as const };
     }
-    return base;
+    return prel;
   }, [role, status]);
 
-  const query = useAppointmentsList(listFilters);
-  const { data, refetch } = query;
+  const query = useInfiniteAppointmentsList(listFilters);
+  const data = useMemo(
+    () => flattenInfiniteAppointments(query.data?.pages),
+    [query.data?.pages],
+  );
+  const { refetch } = query;
 
   const filtered = useMemo(() => {
     let list = data ?? [];
@@ -175,7 +183,7 @@ export function RoleFilteredAppointmentsListScreen({
 
   return (
     <View style={styles.container}>
-      <QueryFlatList
+      <InfiniteQueryFlatList
         query={query}
         items={displayRows}
         header={
