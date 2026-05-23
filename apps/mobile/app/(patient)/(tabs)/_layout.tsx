@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { CalendarDays, CalendarPlus, Heart, Star, User } from 'lucide-react-native';
+import { CalendarDays, CalendarPlus, Heart, LayoutGrid, Star } from 'lucide-react-native';
 import { TabBar } from '@/components/navigation/TabBar';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { tabScreenOptions } from '@/navigation/screen-options';
@@ -64,13 +64,13 @@ export default function PatientTabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="more"
         options={{
-          title: 'Mon profil',
-          headerTitle: tabHeaderTitle('Mon profil', User),
-          tabBarLabel: 'Profil',
+          title: 'Plus',
+          headerTitle: tabHeaderTitle('Plus', LayoutGrid),
+          tabBarLabel: 'Plus',
           tabBarIcon: ({ color, size }) => (
-            <User color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
+            <LayoutGrid color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
           ),
         }}
       />

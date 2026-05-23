@@ -19,7 +19,11 @@ const POLL_ACTIVE_MS = 6000;
 const POLL_QUIET_MS = 30_000;
 
 function patientCanCancelStatus(status: unknown): boolean {
-  return ['pending', 'confirmed', 'planned'].includes(String(status ?? ''));
+  const s = String(status ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/-/g, '_');
+  return ['pending', 'confirmed', 'planned', 'in_progress', 'inprogress'].includes(s);
 }
 
 export function useAppointmentDetailScreen(

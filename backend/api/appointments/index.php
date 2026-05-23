@@ -16,6 +16,49 @@ function appointmentsVerboseLoggingEnabled(): bool
     return $env !== 'production';
 }
 
+/** Journalise toujours les erreurs (prod incluse) — appointments-error.log */
+function logAppointmentError(string $message, $data = null): void
+{
+    $logDir = __DIR__ . '/../../logs';
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0755, true);
+    }
+    $logFile = $logDir . '/appointments-error.log';
+    $timestamp = date('Y-m-d H:i:s');
+    $logMessage = "[$timestamp] $message";
+    if ($data !== null) {
+        $logMessage .= "\n" . print_r($data, true);
+    }
+    $logMessage .= "\n" . str_repeat('-', 80) . "\n";
+    @file_put_contents($logFile, $logMessage, FILE_APPEND);
+}
+
+/** Allège le payload liste (form_data complet × centaines de RDV → OOM PHP-FPM 128M). */
+function trimAppointmentPayloadForList(array $appointment): array
+{
+    if (!empty($appointment['form_data']) && is_array($appointment['form_data'])) {
+        $fd = $appointment['form_data'];
+        $keep = [
+            'first_name', 'last_name', 'gender', 'beneficiary_gender', 'birth_date',
+            'email', 'phone', 'address', 'address_label', 'address_complement', 'availability',
+            'availability_start', 'availability_end', 'availability_type',
+        ];
+        $trimmed = [];
+        foreach ($keep as $key) {
+            if (array_key_exists($key, $fd)) {
+                $trimmed[$key] = $fd[$key];
+            }
+        }
+        $appointment['form_data'] = $trimmed;
+    }
+    foreach (array_keys($appointment) as $key) {
+        if (is_string($key) && (str_ends_with($key, '_encrypted') || str_ends_with($key, '_dek'))) {
+            unset($appointment[$key]);
+        }
+    }
+    return $appointment;
+}
+
 // Fonction de logging
 function logAppointment($message, $data = null) {
     if (!appointmentsVerboseLoggingEnabled()) {
@@ -79,6 +122,8 @@ $dsn = sprintf(
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    @ini_set('memory_limit', '512M');
+
     logAppointment('=== DEBUT GET /appointments ===');
     
     // Liste des rendez-vous avec filtres
@@ -86,9 +131,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $type = $_GET['type'] ?? null;
     $page = (int) ($_GET['page'] ?? 1);
     $limit = (int) ($_GET['limit'] ?? 20);
-    // Plafond large : la pagination côté client reste la référence ; évite de tronquer des listes légitimes.
-    $limit = min(max($limit, 1), 500);
+    // Pagination mobile : 20 par page ; plafond 50 pour éviter les abus.
+    $limit = min(max($limit, 1), 50);
     $offset = ($page - 1) * $limit;
+    $patientPeriod = isset($_GET['patient_period']) ? trim((string) $_GET['patient_period']) : null;
+    if ($patientPeriod !== null && !in_array($patientPeriod, ['upcoming', 'past'], true)) {
+        $patientPeriod = null;
+    }
     $dateFrom = !empty($_GET['date_from']) ? trim((string) $_GET['date_from']) : null;
     $dateTo = !empty($_GET['date_to']) ? trim((string) $_GET['date_to']) : null;
     
@@ -119,6 +168,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $hasRelativeColumn = false;
     }
 
+    $hasPatientRelativesTable = false;
+    try {
+        $checkRelativesTable = $db->query("
+            SELECT COUNT(*) as tbl_exists
+            FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'patient_relatives'
+        ")->fetch();
+        $hasPatientRelativesTable = $checkRelativesTable && (int) $checkRelativesTable['tbl_exists'] > 0;
+        logAppointment('Table patient_relatives existe?', ['exists' => $hasPatientRelativesTable]);
+    } catch (Exception $e) {
+        logAppointment('ERREUR lors de la vérification de patient_relatives', ['error' => $e->getMessage()]);
+        $hasPatientRelativesTable = false;
+    }
+
+    $useRelativeJoin = $hasRelativeColumn && $hasPatientRelativesTable;
+
     try {
         $checkMergedColumn = $db->query("
             SELECT COUNT(*) as col_exists
@@ -132,7 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $hasMergedColumn = false;
     }
     
-    if ($hasRelativeColumn) {
+    if ($useRelativeJoin) {
         $sql = '
             SELECT
                 a.*,
@@ -221,8 +287,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
 
         if ($role === 'patient') {
-            $sql .= ' AND a.patient_id = ?';
-            $params[] = $userId;
+            if ($useRelativeJoin) {
+                // JOIN pr déjà présent : évite EXISTS (casse le COUNT via preg_replace).
+                $sql .= ' AND (a.patient_id = ? OR pr.patient_id = ?)';
+                $params[] = $userId;
+                $params[] = $userId;
+            } else {
+                $sql .= ' AND a.patient_id = ?';
+                $params[] = $userId;
+            }
+            $terminalStatuses = ['completed', 'canceled', 'cancelled', 'refused', 'expired'];
+            if ($patientPeriod === 'upcoming') {
+                $terminalPh = implode(',', array_fill(0, count($terminalStatuses), '?'));
+                $sql .= " AND a.status NOT IN ($terminalPh)";
+                $params = array_merge($params, $terminalStatuses);
+                $parisStart = new DateTime('today', new DateTimeZone('Europe/Paris'));
+                $parisStart->setTimezone(new DateTimeZone('UTC'));
+                $sql .= ' AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?)';
+                $params[] = $parisStart->format('Y-m-d H:i:s');
+            } elseif ($patientPeriod === 'past') {
+                $terminalPh = implode(',', array_fill(0, count($terminalStatuses), '?'));
+                $parisStart = new DateTime('today', new DateTimeZone('Europe/Paris'));
+                $parisStart->setTimezone(new DateTimeZone('UTC'));
+                $sql .= " AND (a.status IN ($terminalPh) OR (a.scheduled_at IS NOT NULL AND a.scheduled_at < ?))";
+                $params = array_merge($params, $terminalStatuses);
+                $params[] = $parisStart->format('Y-m-d H:i:s');
+            }
         } elseif ($role === 'nurse') {
             $nurseTab = isset($_GET['nurse_tab']) ? trim((string) $_GET['nurse_tab']) : '';
             $nurseSegment = isset($_GET['nurse_segment']) ? trim((string) $_GET['nurse_segment']) : '';
@@ -470,12 +560,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     // Utiliser une approche plus simple : remplacer SELECT ... FROM par SELECT COUNT(*)
     $countSql = $sql;
-    if ($hasRelativeColumn) {
-        // Remplacer la partie SELECT par COUNT(DISTINCT a.id)
-        $countSql = preg_replace('/SELECT[\s\S]*?FROM/', 'SELECT COUNT(DISTINCT a.id) as total FROM', $countSql);
+    if ($useRelativeJoin) {
+        // Limite à 1 remplacement : ne pas toucher aux SELECT … FROM des sous-requêtes EXISTS.
+        $countSql = preg_replace(
+            '/SELECT[\s\S]*?FROM/i',
+            'SELECT COUNT(DISTINCT a.id) as total FROM',
+            $countSql,
+            1
+        );
     } else {
-        // Remplacer la partie SELECT par COUNT(*)
-        $countSql = preg_replace('/SELECT[\s\S]*?FROM/', 'SELECT COUNT(*) as total FROM', $countSql);
+        $countSql = preg_replace(
+            '/SELECT[\s\S]*?FROM/i',
+            'SELECT COUNT(*) as total FROM',
+            $countSql,
+            1
+        );
     }
     // Retirer ORDER BY et LIMIT si présents
     $countSql = preg_replace('/\s+ORDER BY[\s\S]*$/i', '', $countSql);
@@ -509,6 +608,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $orderBy = ' ORDER BY a.scheduled_at DESC';
     if ($user && ($user['role'] ?? '') === 'nurse') {
         $orderBy = ' ORDER BY a.created_at DESC, a.scheduled_at DESC';
+    } elseif ($user && ($user['role'] ?? '') === 'patient') {
+        $orderBy = ($patientPeriod === 'past')
+            ? ' ORDER BY a.scheduled_at DESC'
+            : ' ORDER BY a.scheduled_at ASC';
     } elseif ($user && ($user['role'] ?? '') === 'preleveur') {
         $assignedOnlyOrder = !empty($_GET['assigned_only'])
             && in_array(strtolower(trim((string) $_GET['assigned_only'])), ['1', 'true', 'yes'], true);
@@ -568,6 +671,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'params' => $params,
             'trace' => $e->getTraceAsString()
         ]);
+        logAppointmentError('PDO liste RDV', [
+            'error' => $errorMessage,
+            'role' => $user['role'] ?? null,
+            'limit' => $limit,
+            'page' => $page,
+        ]);
         
         // Retourner plus de détails en mode développement
         $response = [
@@ -600,7 +709,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         foreach ($appointments as $appointment) {
             try {
                 $decrypted = $appointmentModel->decryptRowForList($appointment, $user['user_id'], $user['role']);
-                $decryptedAppointments[] = $decrypted;
+                $decryptedAppointments[] = trimAppointmentPayloadForList($decrypted);
             } catch (Exception $e) {
                 error_log('Erreur déchiffrement RDV ' . $appointment['id'] . ': ' . $e->getMessage());
                 $decryptedAppointments[] = [
@@ -675,6 +784,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         )));
         if (!empty($nursingIds)) {
             $nursingByAppointment = $appointmentModel->loadNursingItemsForAppointments($nursingIds);
+            $nursingBatchMergedFilter = '';
+            if ($hasMergedColumn) {
+                $nursingBatchMergedFilter = ' AND merged_into_appointment_id IS NULL';
+            }
+            $nursingBatchIdsCache = [];
+            $nursingBatchStmt = $db->prepare('
+                SELECT id FROM appointments
+                WHERE creation_batch_id = ?
+                  AND patient_id = ?
+                  AND type = \'nursing\'
+                  ' . $nursingBatchMergedFilter . '
+                ORDER BY scheduled_at ASC, created_at ASC, id ASC
+            ');
             foreach ($decryptedAppointments as &$apt) {
                 if (($apt['type'] ?? '') === 'nursing') {
                     $tid = (string) ($apt['id'] ?? '');
@@ -684,30 +806,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     $apt['nursing_items_display'] = $apt['nursing_items'];
                     if (!empty($bid) && !empty($apt['patient_id'])) {
                         try {
-                            $mergedFilter = '';
-                            try {
-                                $hasMergedCol = (int) $db->query("
-                                    SELECT COUNT(*) FROM information_schema.COLUMNS
-                                    WHERE TABLE_SCHEMA = DATABASE()
-                                      AND TABLE_NAME = 'appointments'
-                                      AND COLUMN_NAME = 'merged_into_appointment_id'
-                                ")->fetchColumn() > 0;
-                                if ($hasMergedCol) {
-                                    $mergedFilter = ' AND merged_into_appointment_id IS NULL';
-                                }
-                            } catch (Throwable $e) {
-                                $mergedFilter = '';
+                            $batchKey = (string) $bid . '|' . (string) $apt['patient_id'];
+                            if (!array_key_exists($batchKey, $nursingBatchIdsCache)) {
+                                $nursingBatchStmt->execute([(string) $bid, (string) $apt['patient_id']]);
+                                $nursingBatchIdsCache[$batchKey] = array_column(
+                                    $nursingBatchStmt->fetchAll(PDO::FETCH_ASSOC),
+                                    'id'
+                                );
                             }
-                            $stmtBatch = $db->prepare('
-                                SELECT id FROM appointments
-                                WHERE creation_batch_id = ?
-                                  AND patient_id = ?
-                                  AND type = \'nursing\'
-                                  ' . $mergedFilter . '
-                                ORDER BY scheduled_at ASC, created_at ASC, id ASC
-                            ');
-                            $stmtBatch->execute([(string) $bid, (string) $apt['patient_id']]);
-                            $batchIds = array_column($stmtBatch->fetchAll(PDO::FETCH_ASSOC), 'id');
+                            $batchIds = $nursingBatchIdsCache[$batchKey];
                             if (count($batchIds) > 1) {
                                 $mergedDisp = $appointmentModel->mergeNursingItemsAcrossBatchAppointmentIds($batchIds);
                                 if (!empty($mergedDisp)) {
@@ -756,7 +863,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     ]);
     
     $pages = $limit > 0 ? (int) ceil($total / $limit) : 0;
-    echo json_encode([
+    $payload = [
         'success' => true,
         'data' => $decryptedAppointments,
         'pagination' => [
@@ -766,7 +873,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'pages' => $pages,
             'has_more' => $hasMore,
         ],
-    ]);
+    ];
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+    if ($json === false) {
+        logAppointmentError('json_encode liste RDV échoué', [
+            'error' => json_last_error_msg(),
+            'returned' => $returnedCount,
+            'role' => $user['role'] ?? null,
+            'memory_peak_mb' => round(memory_get_peak_usage(true) / 1048576, 1),
+        ]);
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Réponse trop volumineuse. Réessayez avec une pagination plus petite.',
+            'code' => 'PAYLOAD_TOO_LARGE',
+        ]);
+        exit;
+    }
+    echo $json;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Création d'un rendez-vous — préleveur : uniquement reprise RDV prise de sang (blood_test + RDV source)
     $allowedCreateRoles = ['patient', 'pro', 'nurse', 'lab', 'subaccount', 'super_admin', 'preleveur'];

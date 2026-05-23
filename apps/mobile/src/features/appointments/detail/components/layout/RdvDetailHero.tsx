@@ -145,9 +145,7 @@ export function RdvDetailHero({
           style={styles.addressRow}
         >
           <MapPin size={13} color={colors.primary} strokeWidth={2} />
-          <Text style={styles.addressText} numberOfLines={2}>
-            {address}
-          </Text>
+          <Text style={styles.addressText}>{address}</Text>
         </Pressable>
       ) : null}
 
@@ -248,6 +246,8 @@ const styles = StyleSheet.create({
   },
   addressText: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: colors.textSecondary,

@@ -1,29 +1,32 @@
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import dayjs from 'dayjs';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { QueryFlatList } from '@/components/ui/QueryFlatList';
+import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
 import { AppointmentsBookCta } from '@/features/appointments/components/AppointmentsBookCta';
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
-import { useAppointmentsList } from '@/features/appointments/hooks/use-appointments-list';
+import {
+  flattenInfiniteAppointments,
+  useInfiniteAppointmentsList,
+} from '@/features/appointments/hooks/use-infinite-appointments-list';
+import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
+import { useAuthStore } from '@/store/auth-store';
 import { PATIENT_TAB_OPTIONS, type PatientListTab } from '@/constants/appointments-list-filters';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { colors, spacing } from '@/theme';
-
-const DONE = new Set(['completed', 'canceled', 'cancelled', 'refused']);
 
 function matchesSearch(apt: Appointment, q: string): boolean {
   const s = q.toLowerCase().trim();
   if (!s) return true;
   const fd = apt.form_data as Record<string, unknown> | undefined;
-  const name = `${fd?.first_name ?? ''} ${fd?.last_name ?? ''}`.toLowerCase();
+  const rel = apt.relative as { first_name?: string; last_name?: string } | undefined;
+  const name = `${fd?.first_name ?? rel?.first_name ?? ''} ${fd?.last_name ?? rel?.last_name ?? ''}`.toLowerCase();
   return (
     name.includes(s) ||
     (apt.category_name ?? '').toLowerCase().includes(s) ||
@@ -31,28 +34,34 @@ function matchesSearch(apt: Appointment, q: string): boolean {
   );
 }
 
-function isUpcoming(apt: Appointment): boolean {
-  if (DONE.has(String(apt.status ?? '').toLowerCase())) return false;
-  if (!apt.scheduled_at) return true;
-  return dayjs(apt.scheduled_at).isAfter(dayjs().subtract(1, 'day'));
-}
-
 export function PatientAppointmentsListScreen() {
   const router = useRouter();
+  const userId = useAuthStore((s) => s.user?.id);
   const [tab, setTab] = useState<PatientListTab>('upcoming');
   const [draftTab, setDraftTab] = useState<PatientListTab>('upcoming');
   const [search, setSearch] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const query = useAppointmentsList({ limit: 100 });
-  const { data, refetch } = query;
+  const listFilters = useMemo(
+    () => ({
+      limit: APPOINTMENTS_LIST_PAGE_SIZE,
+      patient_period: tab === 'upcoming' ? ('upcoming' as const) : ('past' as const),
+    }),
+    [tab],
+  );
+
+  const query = useInfiniteAppointmentsList(listFilters);
+  const { refetch } = query;
+
+  const appointments = useMemo(
+    () => flattenInfiniteAppointments(query.data?.pages),
+    [query.data?.pages],
+  );
 
   const filtered = useMemo(() => {
-    let list = data ?? [];
-    list = list.filter((a) => (tab === 'upcoming' ? isUpcoming(a) : !isUpcoming(a)));
-    if (search.trim()) list = list.filter((a) => matchesSearch(a, search));
-    return list;
-  }, [data, tab, search]);
+    if (!search.trim()) return appointments;
+    return appointments.filter((a) => matchesSearch(a, search));
+  }, [appointments, search]);
 
   const displayRows = useMemo(
     () =>
@@ -113,36 +122,53 @@ export function PatientAppointmentsListScreen() {
 
   return (
     <View style={styles.container}>
-      <QueryFlatList
-        query={query}
-        items={displayRows}
-        header={
-          <AppointmentsListFilterBar
-            search={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Soin, adresse, nom…"
-            onOpenFilters={openSheet}
-            advancedFilterCount={advancedCount}
-            chips={filterChips}
-          />
-        }
-        renderItem={renderItem}
-        keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
-        ListHeaderComponent={ListHeader}
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        skeletonHeight={116}
-        ListEmptyComponent={
+      {query.isError ? (
+        <View style={styles.errorWrap}>
           <EmptyState
-            imageSource={EMPTY_RDV_IMAGE}
-            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-            title={tab === 'upcoming' ? 'Aucun rendez-vous à venir' : 'Aucun rendez-vous passé'}
-            description="Réservez un nouveau rendez-vous avec le bouton ci-dessus."
+            title="Impossible de charger vos rendez-vous"
+            description={
+              query.error instanceof Error
+                ? query.error.message
+                : 'Vérifiez votre connexion et réessayez.'
+            }
+            actionLabel="Réessayer"
+            onAction={() => void refetch()}
           />
-        }
-      />
+        </View>
+      ) : (
+        <InfiniteQueryFlatList
+          query={query}
+          items={displayRows}
+          header={
+            <AppointmentsListFilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Soin, adresse, nom…"
+              onOpenFilters={openSheet}
+              advancedFilterCount={advancedCount}
+              chips={filterChips}
+            />
+          }
+          renderItem={renderItem}
+          keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
+          ListHeaderComponent={ListHeader}
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          skeletonHeight={116}
+          ListEmptyComponent={
+            !query.isPending ? (
+              <EmptyState
+                imageSource={EMPTY_RDV_IMAGE}
+                imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+                imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
+                title={tab === 'upcoming' ? 'Aucun rendez-vous à venir' : 'Aucun rendez-vous passé'}
+                description="Réservez un nouveau rendez-vous avec le bouton ci-dessus."
+              />
+            ) : null
+          }
+        />
+      )}
 
       <AppointmentsFilterSheet
         visible={sheetOpen}
@@ -164,6 +190,11 @@ export function PatientAppointmentsListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  errorWrap: {
+    flex: 1,
+    paddingHorizontal: spacing[4],
+    justifyContent: 'center',
+  },
   listContent: {
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[8],

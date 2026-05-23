@@ -3,17 +3,28 @@ import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import type { Appointment } from '@oneandlab/shared-types';
 import { Star } from 'lucide-react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { api } from '@/api/client';
+import {
+  flattenInfiniteAppointments,
+  useInfiniteAppointmentsList,
+} from '@/features/appointments/hooks/use-infinite-appointments-list';
+import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { ReviewGivenCard } from '@/features/reviews/components/ReviewGivenCard';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import type { Review } from '@/features/reviews/types';
+import { enrichReviewsWithAppointmentProfiles } from '@/features/reviews/utils/enrich-reviews-with-profiles';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+
+const PATIENT_APPOINTMENTS_FILTERS = {
+  limit: APPOINTMENTS_LIST_PAGE_SIZE,
+} as const;
 
 function PatientReviewsSummary({ reviews }: { reviews: Review[] }) {
   if (reviews.length === 0) return null;
@@ -77,7 +88,7 @@ export function PatientReviewsScreen() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
 
-  const { data, isLoading, refetch, isRefetching } = useQuery({
+  const reviewsQ = useQuery({
     queryKey: queryKeys.reviews.patientList(userId ?? ''),
     queryFn: async () => {
       const res = await api.get<Review[]>(`/reviews?patient_id=${encodeURIComponent(userId!)}&limit=100`);
@@ -87,8 +98,24 @@ export function PatientReviewsScreen() {
     enabled: !!userId,
   });
 
-  const reviews = data ?? [];
+  const appointmentsQ = useInfiniteAppointmentsList(PATIENT_APPOINTMENTS_FILTERS);
+  const appointmentPages = useMemo(
+    () => flattenInfiniteAppointments(appointmentsQ.data?.pages),
+    [appointmentsQ.data?.pages],
+  );
+
+  const reviews = useMemo(
+    () => enrichReviewsWithAppointmentProfiles(reviewsQ.data ?? [], appointmentPages),
+    [reviewsQ.data, appointmentPages],
+  );
   const listData = useMemo(() => reviews, [reviews]);
+  const isLoading = reviewsQ.isLoading;
+  const isRefetching = reviewsQ.isRefetching || appointmentsQ.isRefetching;
+
+  const refetch = () => {
+    void reviewsQ.refetch();
+    void appointmentsQ.refetch();
+  };
 
   const ListHeader = () => (
     <View style={styles.headerBlock}>

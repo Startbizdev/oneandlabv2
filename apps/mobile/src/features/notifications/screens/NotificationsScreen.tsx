@@ -1,63 +1,114 @@
-import React, { useCallback } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { useRouter } from 'expo-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useCallback, useMemo } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { Bell } from 'lucide-react-native';
-import { formatBellNotificationLines } from '@oneandlab/shared-utils';
+import { NOTIFICATION_POLL_INTERVAL_MS } from '@oneandlab/shared-constants';
 import { queryKeys } from '@/lib/query-keys';
-import { markNotificationRead } from '@/features/notifications/api/notifications.service';
-import { useNotificationPolling } from '@/features/notifications/hooks/use-notification-polling';
-import type { AppNotification } from '@/features/notifications/api/notifications.service';
+import {
+  fetchNotificationsPage,
+  markAllNotificationsRead,
+  markNotificationRead,
+  NOTIFICATIONS_PAGE_SIZE,
+  type AppNotification,
+} from '@/features/notifications/api/notifications.service';
+import { NotificationsFeed } from '@/features/notifications/components/NotificationsFeed';
+import { NotificationsReadAllAction } from '@/features/notifications/components/NotificationsReadAllAction';
 import { useAuthStore } from '@/store/auth-store';
 import { resolveNotificationNavigation } from '../utils/notification-navigation';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { QueryFlatList } from '@/components/ui/QueryFlatList';
-import { colors, elevation, radius, spacing } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { colors, spacing } from '@/theme';
 
-interface NotifCardProps {
-  item: AppNotification;
-  index: number;
-  onPress: () => void;
-}
-
-const NotifCard = React.memo(function NotifCard({ item, index, onPress }: NotifCardProps) {
-  const { label, message } = formatBellNotificationLines(item.title, item.message);
-  const isUnread = !item.read_at;
-
-  return (
-    <Animated.View entering={FadeInDown.delay(index * 40).duration(280).springify()}>
-      <Pressable
-        onPress={onPress}
-        style={[styles.card, elevation.xs, isUnread && styles.cardUnread]}
-      >
-        {isUnread && <View style={styles.unreadDot} />}
-        <View style={[styles.iconWrap, isUnread && styles.iconWrapUnread]}>
-          <Bell size={16} color={isUnread ? colors.primary : colors.textTertiary} strokeWidth={2} />
-        </View>
-        <View style={styles.notifContent}>
-          <Text style={[styles.notifLabel, isUnread && styles.notifLabelUnread]}>{label}</Text>
-          {message ? <Text style={styles.notifMessage}>{message}</Text> : null}
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-});
+const FEED_QUERY_KEY = queryKeys.notifications.feed(NOTIFICATIONS_PAGE_SIZE);
 
 export function NotificationsScreen() {
   const router = useRouter();
-  const query = useNotificationPolling();
-  const { data } = query;
   const qc = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
+  const token = useAuthStore((s) => s.token);
+
+  const feedQ = useInfiniteQuery({
+    queryKey: FEED_QUERY_KEY,
+    queryFn: async ({ pageParam = 0 }) => {
+      const page = await fetchNotificationsPage(NOTIFICATIONS_PAGE_SIZE, pageParam);
+      return {
+        ...page,
+        nextOffset: page.pagination.has_more
+          ? pageParam + NOTIFICATIONS_PAGE_SIZE
+          : undefined,
+      };
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextOffset,
+    enabled: Boolean(token),
+    refetchInterval: NOTIFICATION_POLL_INTERVAL_MS,
+  });
+
+  const items = useMemo(
+    () => feedQ.data?.pages.flatMap((p) => p.items) ?? [],
+    [feedQ.data?.pages],
+  );
+
+  const hasUnread = items.some((n) => !n.read_at);
+  const hasMore = Boolean(feedQ.hasNextPage);
+
+  const invalidateFeed = useCallback(() => {
+    void qc.invalidateQueries({ queryKey: FEED_QUERY_KEY });
+    void qc.invalidateQueries({ queryKey: queryKeys.notifications.unread });
+  }, [qc]);
 
   const markRead = useMutation({
     mutationFn: markNotificationRead,
-    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.notifications.list(10) }),
+    onSuccess: invalidateFeed,
   });
 
-  const onPress = useCallback(
+  const markAllRead = useMutation({
+    mutationFn: async () => {
+      const res = await markAllNotificationsRead();
+      if (res.success) return res.data?.marked ?? 0;
+      const unread = items.filter((n) => !n.read_at);
+      if (unread.length === 0) return 0;
+      await Promise.all(unread.map((n) => markNotificationRead(n.id)));
+      return unread.length;
+    },
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: FEED_QUERY_KEY });
+      const prev = qc.getQueryData(FEED_QUERY_KEY);
+      qc.setQueryData(FEED_QUERY_KEY, (old: typeof feedQ.data) => {
+        if (!old) return old;
+        const now = new Date().toISOString();
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            items: page.items.map((n) => ({ ...n, read_at: n.read_at ?? now })),
+          })),
+        };
+      });
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(FEED_QUERY_KEY, ctx.prev);
+    },
+    onSettled: invalidateFeed,
+  });
+
+  const headerRight = useCallback(
+    () =>
+      hasUnread ? (
+        <NotificationsReadAllAction
+          onPress={() => markAllRead.mutate()}
+          loading={markAllRead.isPending}
+        />
+      ) : null,
+    [hasUnread, markAllRead],
+  );
+
+  const onPressItem = useCallback(
     (n: AppNotification) => {
       if (!n.read_at) markRead.mutate(n.id);
       const target = resolveNotificationNavigation(n, role);
@@ -68,91 +119,65 @@ export function NotificationsScreen() {
         } as never);
       }
     },
-    [role, router, markRead],
+    [markRead, role, router],
   );
 
+  const loadMore = useCallback(() => {
+    if (feedQ.hasNextPage && !feedQ.isFetchingNextPage) {
+      void feedQ.fetchNextPage();
+    }
+  }, [feedQ]);
+
   return (
-    <View style={styles.container}>
-      <QueryFlatList
-        query={query}
-        items={data ?? []}
-        renderItem={({ item, index }) => (
-          <NotifCard item={item} index={index} onPress={() => onPress(item)} />
-        )}
-        keyExtractor={(item: AppNotification) => item.id}
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.list}
-        ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
-        ListEmptyComponent={
-          <EmptyState
-            Icon={Bell}
-            title="Aucune notification"
-            description="Vos notifications apparaîtront ici."
-          />
-        }
+    <>
+      <Stack.Screen
+        options={{
+          title: 'Notifications',
+          headerRight,
+        }}
       />
-    </View>
+      <View style={styles.container}>
+        {feedQ.isLoading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : items.length === 0 ? (
+          <View style={[styles.centered, styles.emptyPad]}>
+            <EmptyState
+              Icon={Bell}
+              title="Aucune notification"
+              description="Vos alertes rendez-vous et activité apparaîtront ici."
+            />
+          </View>
+        ) : (
+          <NotificationsFeed
+            items={items}
+            hasUnread={hasUnread}
+            hasMore={hasMore}
+            refreshing={feedQ.isRefetching && !feedQ.isFetchingNextPage}
+            loadingMore={feedQ.isFetchingNextPage}
+            onRefresh={() => void feedQ.refetch()}
+            onPressItem={onPressItem}
+            onLoadMore={loadMore}
+            pageSize={NOTIFICATIONS_PAGE_SIZE}
+          />
+        )}
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  list: {
-    padding: spacing[4],
-    paddingBottom: spacing[10],
-    flexGrow: 1,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[3],
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    padding: spacing[4],
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  cardUnread: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primaryMid,
-  },
-  unreadDot: {
-    position: 'absolute',
-    top: spacing[4],
-    right: spacing[4],
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-  iconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceAlt,
+  centered: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
   },
-  iconWrapUnread: {
-    backgroundColor: colors.primaryMid,
-  },
-  notifContent: { flex: 1, gap: 3 },
-  notifLabel: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.base,
-    color: colors.textPrimary,
-    lineHeight: fontSize.base * 1.4,
-  },
-  notifLabelUnread: {
-    color: colors.primaryDark,
-  },
-  notifMessage: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: fontSize.sm * 1.5,
+  emptyPad: {
+    paddingHorizontal: spacing[4],
   },
 });

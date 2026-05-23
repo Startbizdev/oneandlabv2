@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { QueryFlatList } from '@/components/ui/QueryFlatList';
+import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
 import { BookAppointmentCta } from '@/features/nurse/components/BookAppointmentCta';
 import { PlanLimitsBanner } from '@/features/nurse/components/PlanLimitsBanner';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
@@ -12,7 +12,11 @@ import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
-import { useAppointmentsList } from '@/features/appointments/hooks/use-appointments-list';
+import {
+  flattenInfiniteAppointments,
+  useInfiniteAppointmentsList,
+} from '@/features/appointments/hooks/use-infinite-appointments-list';
+import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
 import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-store';
 import { useAppointmentsCacheSyncOnFocus } from '@/features/appointments/hooks/use-appointments-cache-sync';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
@@ -62,12 +66,16 @@ export function NurseAppointmentsListScreen() {
 
   const apiSegment = segment === 'tous' ? undefined : normalizeNurseSegment(segment);
 
-  const query = useAppointmentsList({
+  const query = useInfiniteAppointmentsList({
     nurse_tab: tab,
     nurse_segment: apiSegment,
-    limit: 100,
+    limit: APPOINTMENTS_LIST_PAGE_SIZE,
   });
-  const { data, refetch } = query;
+  const data = useMemo(
+    () => flattenInfiniteAppointments(query.data?.pages),
+    [query.data?.pages],
+  );
+  const { refetch } = query;
 
   const filtered = useMemo(() => {
     const list = data ?? [];
@@ -177,7 +185,7 @@ export function NurseAppointmentsListScreen() {
 
   return (
     <View style={styles.container}>
-      <QueryFlatList
+      <InfiniteQueryFlatList
         query={query}
         items={displayRows}
         header={

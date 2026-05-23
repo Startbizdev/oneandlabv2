@@ -2,10 +2,8 @@
 
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
-require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 
-// CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $corsConfig['allowed_origins'], true)) {
@@ -20,44 +18,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Authentification
 $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
-$config = require __DIR__ . '/../../config/database.php';
-$dsn = sprintf(
-    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
-    $config['host'],
-    $config['port'],
-    $config['database'],
-    $config['charset']
-);
-$db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
-
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // Récupérer toutes les notifications (lues et non lues), limitées à 10
-    $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
-    $limit = max(1, min(50, $limit)); // Entre 1 et 50
-    
-    $stmt = $db->prepare('
-        SELECT id, type, title, message, data, created_at, read_at
-        FROM notifications
-        WHERE user_id = ?
-        ORDER BY created_at DESC
-        LIMIT ?
-    ');
-    $stmt->execute([$user['user_id'], $limit]);
-    $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    echo json_encode([
-        'success' => true,
-        'data' => $notifications,
-    ]);
-} else {
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);
     echo json_encode(['success' => false, 'error' => 'Méthode non autorisée']);
+    exit;
 }
 
+require_once __DIR__ . '/../../models/Notification.php';
 
+$limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 10;
+$limit = max(1, min(50, $limit));
+$offset = isset($_GET['offset']) ? max(0, (int) $_GET['offset']) : 0;
 
+$notificationModel = new Notification();
+$fetchLimit = $limit + 1;
+$rows = $notificationModel->getByUser($user['user_id'], $fetchLimit, $offset);
 
+$hasMore = count($rows) > $limit;
+if ($hasMore) {
+    array_pop($rows);
+}
+
+echo json_encode([
+    'success' => true,
+    'data' => $rows,
+    'pagination' => [
+        'limit' => $limit,
+        'offset' => $offset,
+        'has_more' => $hasMore,
+    ],
+]);

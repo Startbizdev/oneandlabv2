@@ -2,51 +2,51 @@ import React, { useCallback } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { MapPin, ExternalLink } from 'lucide-react-native';
+import type { Appointment } from '@oneandlab/shared-types';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import {
+  resolveAppointmentDetailAddressLine,
+  resolveAppointmentMapCoords,
+} from '../utils/appointment-address-display';
 import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function AddressCard({
-  address,
+  apt,
   wazePreferred,
 }: {
-  address: string;
+  apt: Appointment;
   wazePreferred?: boolean;
 }) {
-  const label = address.startsWith('{')
-    ? ((JSON.parse(address) as { label?: string }).label ?? address)
-    : address;
+  const label = resolveAppointmentDetailAddressLine(apt);
+  const coords = resolveAppointmentMapCoords(apt);
 
   const openMaps = useCallback(() => {
-    try {
-      const parsed = JSON.parse(address) as { lat?: number; lng?: number; label?: string };
-      if (wazePreferred) {
-        if (parsed.lat != null && parsed.lng != null) {
-          void Linking.openURL(
-            `https://waze.com/ul?ll=${parsed.lat},${parsed.lng}&navigate=yes`,
-          );
-          return;
-        }
-        const q = parsed.label ?? label;
-        void Linking.openURL(`https://waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`);
-        return;
-      }
-      if (parsed.lat && parsed.lng) {
-        void Linking.openURL(`https://www.google.com/maps?q=${parsed.lat},${parsed.lng}`);
-        return;
-      }
-      if (parsed.label) {
+    if (wazePreferred) {
+      if (coords) {
         void Linking.openURL(
-          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parsed.label)}`,
+          `https://waze.com/ul?ll=${coords.lat},${coords.lng}&navigate=yes`,
         );
+        return;
       }
-    } catch {
+      if (label) {
+        void Linking.openURL(`https://waze.com/ul?q=${encodeURIComponent(label)}&navigate=yes`);
+      }
+      return;
+    }
+    if (coords) {
+      void Linking.openURL(`https://www.google.com/maps?q=${coords.lat},${coords.lng}`);
+      return;
+    }
+    if (label) {
       void Linking.openURL(
-        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`,
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(label)}`,
       );
     }
-  }, [address, label, wazePreferred]);
+  }, [coords, label, wazePreferred]);
+
+  if (!label) return null;
 
   return (
     <Card shadow="sm" padding="md">
@@ -54,9 +54,7 @@ export function AddressCard({
         <View style={styles.iconWrap}>
           <MapPin size={16} color={colors.primary} strokeWidth={2} />
         </View>
-        <Animated.Text style={styles.addressText} numberOfLines={3}>
-          {label}
-        </Animated.Text>
+        <Animated.Text style={styles.addressText}>{label}</Animated.Text>
       </View>
       <View style={styles.action}>
         <Button
@@ -83,6 +81,8 @@ const styles = StyleSheet.create({
   },
   addressText: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.base,
     color: colors.textPrimary,

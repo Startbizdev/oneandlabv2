@@ -1,9 +1,15 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useQuery } from '@tanstack/react-query';
 import { Check, CreditCard, FileText, Upload } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import {
+  fetchProfileDocuments,
+  mapProfileDocumentsByType,
+} from '@/features/patients/api/patient-profile.service';
 import { buildMedicalDocumentForm, uploadFormData } from '@/lib/uploads/upload-file';
+import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { useAuthStore } from '@/store/auth-store';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -31,9 +37,9 @@ const DOC_TYPES: DocType[] = [
     icon: <CreditCard size={20} color={colors.success} strokeWidth={2} />,
   },
   {
-    key: 'ordonnance',
-    label: 'Ordonnance',
-    hint: 'Prescription médicale',
+    key: 'autres_assurances',
+    label: 'Autres assurances',
+    hint: 'Attestation ou complément d’assurance',
     icon: <FileText size={20} color={colors.warning} strokeWidth={2} />,
   },
 ];
@@ -43,6 +49,18 @@ function ProfileDocumentsContent({ showSubtitle }: { showSubtitle?: boolean }) {
   const { show: toast } = useToast();
   const [uploaded, setUploaded] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
+
+  const docsQ = useQuery({
+    queryKey: queryKeys.documents.patient(user?.id ?? ''),
+    queryFn: async () => {
+      const res = await fetchProfileDocuments({ userId: user!.id });
+      if (!res.success) throw new Error(res.error ?? 'Erreur chargement documents');
+      return mapProfileDocumentsByType(res.data);
+    },
+    enabled: Boolean(user?.id),
+  });
+
+  const hasDoc = (type: string) => Boolean(uploaded[type] || docsQ.data?.[type]);
 
   async function upload(type: string) {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'] });
@@ -56,6 +74,7 @@ function ProfileDocumentsContent({ showSubtitle }: { showSubtitle?: boolean }) {
       );
       await uploadFormData('/patient-documents/upload', fd);
       setUploaded((prev) => ({ ...prev, [type]: true }));
+      void docsQ.refetch();
       toast('Document envoyé', { type: 'success' });
     } catch (e) {
       handleApiError(e, toast, 'patient-documents/upload');
@@ -67,7 +86,7 @@ function ProfileDocumentsContent({ showSubtitle }: { showSubtitle?: boolean }) {
   return (
     <View style={styles.contentBlock}>
       {showSubtitle ? (
-        <Text style={styles.subtitle}>Importez vos documents médicaux sécurisés</Text>
+        <Text style={styles.subtitle}>Carte Vitale, mutuelle et autres assurances — l’ordonnance se gère sur chaque rendez-vous.</Text>
       ) : null}
 
       <View style={styles.docList}>
@@ -83,7 +102,7 @@ function ProfileDocumentsContent({ showSubtitle }: { showSubtitle?: boolean }) {
                   <Text style={styles.docLabel}>{doc.label}</Text>
                   <Text style={styles.docHint}>{doc.hint}</Text>
                 </View>
-                {uploaded[doc.key] ? (
+                {hasDoc(doc.key) ? (
                   <View style={styles.checkBadge}>
                     <Check size={14} color={colors.success} strokeWidth={2.5} />
                   </View>
@@ -91,12 +110,12 @@ function ProfileDocumentsContent({ showSubtitle }: { showSubtitle?: boolean }) {
               </View>
               <Pressable
                 onPress={() => upload(doc.key)}
-                style={[styles.uploadBtn, uploaded[doc.key] && styles.uploadBtnDone]}
+                style={[styles.uploadBtn, hasDoc(doc.key) && styles.uploadBtnDone]}
                 disabled={loading[doc.key]}
               >
-                <Upload size={14} color={uploaded[doc.key] ? colors.success : colors.primary} strokeWidth={2.5} />
-                <Text style={[styles.uploadLabel, uploaded[doc.key] && styles.uploadLabelDone]}>
-                  {loading[doc.key] ? 'Envoi…' : uploaded[doc.key] ? 'Remplacer' : 'Importer'}
+                <Upload size={14} color={hasDoc(doc.key) ? colors.success : colors.primary} strokeWidth={2.5} />
+                <Text style={[styles.uploadLabel, hasDoc(doc.key) && styles.uploadLabelDone]}>
+                  {loading[doc.key] ? 'Envoi…' : hasDoc(doc.key) ? 'Remplacer' : 'Importer'}
                 </Text>
               </Pressable>
             </Animated.View>

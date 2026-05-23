@@ -7,12 +7,14 @@ export const queryKeys = {
   appointments: {
     all: ['appointments'] as const,
     list: (filters: AppointmentListFilters) => ['appointments', 'list', filters] as const,
+    infinite: (filters: AppointmentListFilters) => ['appointments', 'infinite', filters] as const,
     detail: (id: string) => ['appointments', 'detail', id] as const,
     pendingOffers: (role: string) => ['appointments', 'pending-offers', role] as const,
     history: (id: string) => ['appointments', 'history', id] as const,
   },
   notifications: {
     list: (limit?: number) => ['notifications', 'list', limit ?? 10] as const,
+    feed: (pageSize: number) => ['notifications', 'feed', pageSize] as const,
     unread: ['notifications', 'unread'] as const,
   },
   patients: {
