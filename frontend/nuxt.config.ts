@@ -13,7 +13,7 @@ export default defineNuxtConfig({
       public: {
         // En dev : /api pour passer par le proxy Nitro (évite CORS / connexion refusée)
         apiBase: process.env.NUXT_PUBLIC_API_BASE || (process.env.NODE_ENV === 'development' ? '/api' : 'http://localhost:8888/api'),
-        siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://oneandlab.com',
+        siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://cary.fr',
       },
     },
 
@@ -62,7 +62,7 @@ export default defineNuxtConfig({
   
     app: {
       head: {
-        title: 'OneAndLab - Prélèvement et soins infirmiers à domicile',
+        title: 'Cary - Prélèvement et soins infirmiers à domicile',
         meta: [
           { charset: 'utf-8' },
           {
@@ -70,9 +70,15 @@ export default defineNuxtConfig({
             content:
               'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover',
           },
-          { name: 'description', content: 'Plateforme de gestion de rendez-vous médicaux à domicile' },
+          { name: 'description', content: 'Plateforme Cary : rendez-vous médicaux et soins à domicile' },
         ],
         link: [
+          { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
+          { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' },
+          { rel: 'shortcut icon', href: '/favicon.ico' },
+          { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+          { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/android-chrome-192x192.png' },
+          { rel: 'icon', type: 'image/png', sizes: '512x512', href: '/android-chrome-512x512.png' },
           { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
           { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
           { rel: 'preconnect', href: 'https://api.iconify.design', crossorigin: '' },

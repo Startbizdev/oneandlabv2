@@ -4,7 +4,7 @@
       eyebrow="Pour les professionnels de santé"
       :title-lines="['Orientez vos patients', 'vers le']"
       highlight="domicile"
-      description="Référencez vos patients sur OneAndLab pour une prise de sang ou des soins infirmiers à domicile : ils réservent en quelques clics avec leur ordonnance et vous conservez une vision utile pour le suivi."
+      description="Référencez vos patients sur Cary pour une prise de sang ou des soins infirmiers à domicile : ils réservent en quelques clics avec leur ordonnance et vous conservez une vision utile pour le suivi."
       image-src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=900&h=1200&q=80&auto=format&fit=crop"
       image-alt="Médecin avec stéthoscope, en blouse blanche"
       image-object-class="object-[center_20%]"
@@ -44,7 +44,7 @@
     <section class="border-y border-[#E8E8F0]/80 bg-white py-[72px] dark:border-gray-800 dark:bg-gray-950 lg:py-[100px]">
       <div class="mx-auto max-w-[1200px] px-6 lg:px-12">
         <Reviews
-          title="Professionnels parlent du parcours avec OneAndLab"
+          title="Professionnels parlent du parcours avec Cary"
           subtitle="Une sélection parmi médecins, kinés et autres professionnels utilisant ou recommandant le flux domiciliaire aux patients qui ne peuvent plus voyager jusqu’à la biologie ou l’IDEL au cabinet fixe."
           :reviews="landingReviews"
           :max-reviews="6"
@@ -56,7 +56,7 @@
     <LandingMaquetteFaq anchor-id="faq" section-class="bg-[#F7F7FB] dark:bg-gray-900/70" :items="faqItems" />
 
     <LandingMaquetteInlineCta
-      eyebrow="Prêt à ouvrir un compte professionnel santé OneAndLab"
+      eyebrow="Prêt à ouvrir un compte professionnel santé Cary"
       title="Orientez désormais les patients depuis une interface commune infirmiers + laboratoires"
       subtitle="Inscription décrite étape par étape : notre équipe vous aide si votre situation professionnelle sort des dossiers habituels (conventionnement, doubles activités, etc.)."
       :buttons="ctaButtons"
@@ -70,11 +70,11 @@
 definePageMeta({ layout: 'default' });
 
 useLandingSeo({
-  title: 'Pour les professionnels de santé | OneAndLab',
+  title: 'Pour les professionnels de santé | Cary',
   description:
-    'Médecins, kinésithérapeutes et professionnels de santé : prescrivez le domicile via OneAndLab.',
+    'Médecins, kinésithérapeutes et professionnels de santé : prescrivez le domicile via Cary.',
   keywords:
-    'médecin prescription domicile, kiné à domicile, professionnel santé OneAndLab, prescription prélèvement',
+    'médecin prescription domicile, kiné à domicile, professionnel santé Cary, prescription prélèvement',
   path: '/pour-les-professionnels',
 });
 
@@ -86,7 +86,7 @@ const proStats = [
 
 const proQuote = {
   text:
-    "J'oriente mes patients âgés ou à mobilité réduite vers OneAndLab pour les prises de sang. Ils sont ravis, plus besoin de les accompagner au labo.",
+    "J'oriente mes patients âgés ou à mobilité réduite vers Cary pour les prises de sang. Ils sont ravis, plus besoin de les accompagner au labo.",
   author: 'Dr. Pierre M., médecin généraliste',
 };
 
@@ -120,7 +120,7 @@ const benefits = [
     icon: 'i-lucide-badge-check',
     title: 'Profil professionnel',
     description:
-      'Adeli, spécialités : les patients identifient votre rôle prescripteur lorsqu’ils suivent votre lien OneAndLab.',
+      'Adeli, spécialités : les patients identifient votre rôle prescripteur lorsqu’ils suivent votre lien Cary.',
   },
   {
     icon: 'i-lucide-shield',
@@ -146,12 +146,12 @@ const stepCards = [
   {
     icon: 'i-lucide-layout-dashboard',
     title: 'Accédez à votre espace',
-    body: 'Après validation : création de demandes et vision utile pour vos patients orientés via OneAndLab.',
+    body: 'Après validation : création de demandes et vision utile pour vos patients orientés via Cary.',
   },
   {
     icon: 'i-lucide-user-check',
     title: 'Orientez vos patients',
-    body: 'Indiquez à vos patients qu’ils peuvent réserver sur OneAndLab : prise de sang ou soins infirmiers à domicile selon prescription.',
+    body: 'Indiquez à vos patients qu’ils peuvent réserver sur Cary : prise de sang ou soins infirmiers à domicile selon prescription.',
   },
 ];
 
@@ -161,8 +161,8 @@ const landingReviews = [
     patientName: 'Dr. Pierre M., médecin généraliste',
     rating: 5,
     comment:
-      "J'oriente mes patients âgés ou à mobilité réduite vers OneAndLab pour les prises de sang. Ils sont ravis, plus besoin de les accompagner au labo.",
-    response: 'Merci Docteur pour votre confiance. — OneAndLab',
+      "J'oriente mes patients âgés ou à mobilité réduite vers Cary pour les prises de sang. Ils sont ravis, plus besoin de les accompagner au labo.",
+    response: 'Merci Docteur pour votre confiance. — Cary',
     date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
   },
   {
@@ -170,8 +170,8 @@ const landingReviews = [
     patientName: 'Marie L., kinésithérapeute',
     rating: 5,
     comment:
-      'Plusieurs de mes patients ont des soins infirmiers à domicile : je leur recommande OneAndLab pour la coordination simple.',
-    response: 'Merci Marie. — Équipe OneAndLab',
+      'Plusieurs de mes patients ont des soins infirmiers à domicile : je leur recommande Cary pour la coordination simple.',
+    response: 'Merci Marie. — Équipe Cary',
     date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
   },
   {
@@ -180,7 +180,7 @@ const landingReviews = [
     rating: 5,
     comment:
       'Inscription rapide, interface claire. Pour certains patients, je prépare moi-même le rendez-vous depuis mon espace et ils reçoivent la confirmation automatiquement.',
-    response: 'Content que cette utilisation puisse fonctionner ainsi. — OneAndLab',
+    response: 'Content que cette utilisation puisse fonctionner ainsi. — Cary',
     date: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
   },
   {
@@ -188,7 +188,7 @@ const landingReviews = [
     patientName: 'Thomas B., infirmier coordinateur',
     rating: 5,
     comment:
-      'Nous orientons vers OneAndLab pour des soins à domicile quand notre équipe ne peut intervenir nous-même sur la zone géographique',
+      'Nous orientons vers Cary pour des soins à domicile quand notre équipe ne peut intervenir nous-même sur la zone géographique',
     response: 'Merci Thomas.',
     date: new Date(Date.now() - 27 * 86400000),
   },
@@ -212,7 +212,7 @@ const landingReviews = [
 
 const faqItems = [
   {
-    question: 'Qu’est-ce qu’OneAndLab pour un professionnel ?',
+    question: 'Qu’est-ce qu’Cary pour un professionnel ?',
     answer:
       'Une plateforme qui met en relation patients et professionnels terrain (infirmiers, laboratoires) pour des soins à domicile. Vous orientez ou initiez la demande ; la réalisation technique est assurée par ces professionnels.',
   },

@@ -11,7 +11,7 @@ $path = trim(str_replace('/api', '', $uri), '/');
 if (empty($path)) {
     echo json_encode([
         'success' => true,
-        'message' => 'API OneAndLab V2',
+        'message' => 'API Cary V2',
         'version' => '2.0',
         'endpoints' => [
             'auth' => '/api/auth',

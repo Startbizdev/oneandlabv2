@@ -20,6 +20,7 @@
                 >
                   <CareCategoryVisual
                     v-if="category"
+                    :emoji="headerEmoji"
                     :image-src="headerImageSrc"
                     :icon-name="headerIconName"
                     img-class="block max-h-full max-w-full min-h-0 min-w-0 object-contain"
@@ -196,6 +197,7 @@ import {
   isBloodTestAppointment,
   isNursingAppointment,
 } from '~/utils/appointment-type-rules';
+import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils';
 import { resolveCareCategoryImageSrc, resolveCareIconFromCategory, defaultColorClassForCategory } from '~/utils/care-icons';
 import {
   careAutreDetailKey,
@@ -255,9 +257,17 @@ watch(
   },
 );
 
-const headerImageSrc = computed(() =>
-  props.category ? resolveCareCategoryImageSrc(props.category.image_url ?? null, config.public.apiBase as string) : null,
-);
+const headerEmoji = computed(() => {
+  const c = props.category;
+  if (!c) return '';
+  return careCategoryEmojiForCategory({ name: c.name, icon: c.icon, type: c.type });
+});
+
+const headerImageSrc = computed(() => {
+  const c = props.category;
+  if (!c || isCareCategoryEmoji(c.icon)) return null;
+  return resolveCareCategoryImageSrc(c.image_url ?? null, config.public.apiBase as string);
+});
 
 const headerIconName = computed(() => {
   const c = props.category;

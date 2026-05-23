@@ -25,7 +25,7 @@
             1. Éditeur du site
           </h2>
           <p class="mb-2">
-            <strong class="text-gray-900">OneAndLab</strong> est exploité par :
+            <strong class="text-gray-900">Cary</strong> est exploité par :
           </p>
           <ul class="list-none space-y-1 text-gray-600">
             <li><strong class="text-gray-700">Dénomination :</strong> ZENFACT</li>
@@ -38,7 +38,7 @@
             <li><strong class="text-gray-700">Activité (NAF) :</strong> 82.11Z – Services administratifs combinés de bureau</li>
           </ul>
           <p class="mt-4">
-            Exploitation de la plateforme OneAndLab (mise en relation patients / professionnels de santé / laboratoires), hébergement et traitement de données de santé conformes HDS, médiation et coordination dans le secteur de la santé.
+            Exploitation de la plateforme Cary (mise en relation patients / professionnels de santé / laboratoires), hébergement et traitement de données de santé conformes HDS, médiation et coordination dans le secteur de la santé.
           </p>
         </section>
 
@@ -48,7 +48,7 @@
             2. Objet du site
           </h2>
           <p>
-            Le site OneAndLab (« le Site ») est une plateforme en ligne destinée à mettre en relation des patients et des professionnels de santé (laboratoires partenaires, infirmiers) pour la réalisation de prélèvements sanguins et de soins infirmiers à domicile. Notre mission est de simplifier l'accès à des services de santé de qualité tout en offrant une expérience utilisateur optimisée.
+            Le site Cary (« le Site ») est une plateforme en ligne destinée à mettre en relation des patients et des professionnels de santé (laboratoires partenaires, infirmiers) pour la réalisation de prélèvements sanguins et de soins infirmiers à domicile. Notre mission est de simplifier l'accès à des services de santé de qualité tout en offrant une expérience utilisateur optimisée.
           </p>
         </section>
 
@@ -73,7 +73,7 @@
             4. Propriété intellectuelle
           </h2>
           <p>
-            L'ensemble des contenus du Site (textes, images, logos, graphismes, vidéos, icônes, etc.) sont la propriété exclusive de OneAndLab ou de ses partenaires. Toute reproduction, représentation, modification ou exploitation, partielle ou totale, sans autorisation écrite préalable est interdite. Toute infraction est passible de poursuites judiciaires.
+            L'ensemble des contenus du Site (textes, images, logos, graphismes, vidéos, icônes, etc.) sont la propriété exclusive de Cary ou de ses partenaires. Toute reproduction, représentation, modification ou exploitation, partielle ou totale, sans autorisation écrite préalable est interdite. Toute infraction est passible de poursuites judiciaires.
           </p>
         </section>
 
@@ -83,7 +83,7 @@
             5. Inscription des professionnels
           </h2>
           <p class="mb-3">
-            Les laboratoires et infirmiers souhaitant proposer leurs services via OneAndLab doivent créer un compte professionnel et fournir les documents requis pour valider leur inscription (agrément, autorisations, informations administratives). Ils s'engagent à respecter les normes professionnelles, déontologiques et les règles de confidentialité des données des patients.
+            Les laboratoires et infirmiers souhaitant proposer leurs services via Cary doivent créer un compte professionnel et fournir les documents requis pour valider leur inscription (agrément, autorisations, informations administratives). Ils s'engagent à respecter les normes professionnelles, déontologiques et les règles de confidentialité des données des patients.
           </p>
         </section>
 
@@ -93,7 +93,7 @@
             6. Protection des données personnelles
           </h2>
           <p>
-            OneAndLab, en tant que responsable du traitement, s'engage à garantir la confidentialité et la sécurité des données personnelles collectées via le Site. Pour en savoir plus, consultez notre
+            Cary, en tant que responsable du traitement, s'engage à garantir la confidentialité et la sécurité des données personnelles collectées via le Site. Pour en savoir plus, consultez notre
             <NuxtLink to="/politique-confidentialite" class="text-primary-600 hover:underline font-medium">
               politique de confidentialité
             </NuxtLink>.
@@ -106,7 +106,7 @@
             7. Responsabilités
           </h2>
           <p class="mb-3">
-            OneAndLab s'efforce de fournir des informations exactes et à jour. La société ne saurait toutefois être tenue responsable :
+            Cary s'efforce de fournir des informations exactes et à jour. La société ne saurait toutefois être tenue responsable :
           </p>
           <ul class="list-disc pl-5 space-y-2">
             <li>des relations contractuelles ou litiges entre patients et professionnels ;</li>
@@ -153,9 +153,9 @@
 definePageMeta({ layout: 'default' })
 
 useHead({
-  title: 'Mentions légales — OneAndLab',
+  title: 'Mentions légales — Cary',
   meta: [
-    { name: 'description', content: 'Mentions légales du site OneAndLab : éditeur, hébergeur, protection des données, contact.' },
+    { name: 'description', content: 'Mentions légales du site Cary : éditeur, hébergeur, protection des données, contact.' },
   ],
 })
 </script>

@@ -14,7 +14,7 @@
           Conditions générales de vente
         </h1>
         <p class="mt-2 text-sm text-gray-500">
-          Abonnements professionnels OneAndLab — Dernière mise à jour : février 2025
+          Abonnements professionnels Cary — Dernière mise à jour : février 2025
         </p>
       </header>
 
@@ -24,7 +24,7 @@
             1. Objet et champ d’application
           </h2>
           <p>
-            Les présentes Conditions Générales de Vente (CGV) s’appliquent aux abonnements souscrits sur la plateforme OneAndLab (le « Site »), exploité par <strong class="text-gray-700">ZENFACT</strong> (SAS, 230 B avenue Corot, 13014 Marseille), pour les offres destinées aux <strong class="text-gray-700">infirmiers libéraux</strong> et aux <strong class="text-gray-700">laboratoires d’analyses</strong>. Elles régissent l’accès aux services et fonctionnalités liés à chaque formule d’abonnement (Découverte, Pro pour les infirmiers ; Starter, Pro pour les laboratoires). En souscrivant à un abonnement payant, le professionnel accepte sans réserve les présentes CGV.
+            Les présentes Conditions Générales de Vente (CGV) s’appliquent aux abonnements souscrits sur la plateforme Cary (le « Site »), exploité par <strong class="text-gray-700">ZENFACT</strong> (SAS, 230 B avenue Corot, 13014 Marseille), pour les offres destinées aux <strong class="text-gray-700">infirmiers libéraux</strong> et aux <strong class="text-gray-700">laboratoires d’analyses</strong>. Elles régissent l’accès aux services et fonctionnalités liés à chaque formule d’abonnement (Découverte, Pro pour les infirmiers ; Starter, Pro pour les laboratoires). En souscrivant à un abonnement payant, le professionnel accepte sans réserve les présentes CGV.
           </p>
         </section>
 
@@ -33,7 +33,7 @@
             2. Offres et tarifs
           </h2>
           <p class="mb-4">
-            Les tarifs sont indiqués en euros TTC. OneAndLab se réserve le droit de modifier les prix en appliquant les tarifs en vigueur au moment du renouvellement ; les abonnés en cours sont informés dans les conditions prévues par la loi.
+            Les tarifs sont indiqués en euros TTC. Cary se réserve le droit de modifier les prix en appliquant les tarifs en vigueur au moment du renouvellement ; les abonnés en cours sont informés dans les conditions prévues par la loi.
           </p>
           <h3 class="text-base font-medium text-gray-900 mt-6 mb-2">
             Infirmiers
@@ -66,7 +66,7 @@
             4. Durée, renouvellement et essai gratuit
           </h2>
           <p class="mb-3">
-            L’abonnement est souscrit pour une durée d’un mois, renouvelée tacitement par période mensuelle, sauf résiliation par l’abonné ou par OneAndLab dans les conditions des présentes CGV.
+            L’abonnement est souscrit pour une durée d’un mois, renouvelée tacitement par période mensuelle, sauf résiliation par l’abonné ou par Cary dans les conditions des présentes CGV.
           </p>
           <p class="mb-3">
             Lorsqu’un <strong class="text-gray-700">essai gratuit de 30 jours</strong> est proposé, aucune somme n’est débitée pendant cette période. À l’issue des 30 jours, l’abonnement est renouvelé automatiquement au tarif en vigueur et le paiement est prélevé, sauf résiliation avant la fin de l’essai. L’abonné peut annuler l’abonnement ou désactiver le renouvellement automatique à tout moment depuis son espace personnel ou via le portail client de paiement (Stripe).
@@ -78,7 +78,7 @@
             5. Paiement
           </h2>
           <p class="mb-3">
-            Les paiements sont traités par notre partenaire sécurisé <strong class="text-gray-700">Stripe</strong> (cartes bancaires, moyens de paiement proposés sur la page de souscription). Les montants sont prélevés au début de chaque période d’abonnement. En cas d’échec de paiement, OneAndLab peut suspendre l’accès aux services après mise en demeure restée infructueuse. Les factures sont disponibles dans l’espace abonné et/ou envoyées par email. Les frais bancaires éventuels restent à la charge du client.
+            Les paiements sont traités par notre partenaire sécurisé <strong class="text-gray-700">Stripe</strong> (cartes bancaires, moyens de paiement proposés sur la page de souscription). Les montants sont prélevés au début de chaque période d’abonnement. En cas d’échec de paiement, Cary peut suspendre l’accès aux services après mise en demeure restée infructueuse. Les factures sont disponibles dans l’espace abonné et/ou envoyées par email. Les frais bancaires éventuels restent à la charge du client.
           </p>
         </section>
 
@@ -96,7 +96,7 @@
             7. Résiliation et remboursement
           </h2>
           <p class="mb-3">
-            L’abonné peut résilier son abonnement à tout moment ; la résiliation prend effet à l’échéance de la période en cours. Aucun remboursement partiel ou prorata temporis n’est accordé pour la période déjà facturée, sauf disposition légale impérative ou décision exceptionnelle de OneAndLab. En cas de résiliation par OneAndLab pour manquement du client (non-paiement, violation des conditions d’utilisation), l’accès peut être interrompu sans remboursement.
+            L’abonné peut résilier son abonnement à tout moment ; la résiliation prend effet à l’échéance de la période en cours. Aucun remboursement partiel ou prorata temporis n’est accordé pour la période déjà facturée, sauf disposition légale impérative ou décision exceptionnelle de Cary. En cas de résiliation par Cary pour manquement du client (non-paiement, violation des conditions d’utilisation), l’accès peut être interrompu sans remboursement.
           </p>
         </section>
 
@@ -105,7 +105,7 @@
             8. Obligations du professionnel
           </h2>
           <p>
-            Le professionnel s’engage à fournir des informations exactes, à respecter la réglementation de sa profession et les règles d’utilisation du Site. Il est seul responsable des actes réalisés dans le cadre de son activité (prélèvements, soins) ; OneAndLab agit comme intermédiaire de mise en relation et de gestion des rendez-vous, sans se substituer au professionnel de santé dans l’exercice de son art.
+            Le professionnel s’engage à fournir des informations exactes, à respecter la réglementation de sa profession et les règles d’utilisation du Site. Il est seul responsable des actes réalisés dans le cadre de son activité (prélèvements, soins) ; Cary agit comme intermédiaire de mise en relation et de gestion des rendez-vous, sans se substituer au professionnel de santé dans l’exercice de son art.
           </p>
         </section>
 
@@ -148,9 +148,9 @@
 definePageMeta({ layout: 'default' })
 
 useHead({
-  title: 'Conditions générales de vente — OneAndLab',
+  title: 'Conditions générales de vente — Cary',
   meta: [
-    { name: 'description', content: 'CGV des abonnements professionnels OneAndLab : infirmiers et laboratoires, tarifs, paiement Stripe, résiliation.' },
+    { name: 'description', content: 'CGV des abonnements professionnels Cary : infirmiers et laboratoires, tarifs, paiement Stripe, résiliation.' },
   ],
 })
 </script>

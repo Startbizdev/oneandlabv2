@@ -6,7 +6,7 @@
         role="pro"
         :initial-email="(route.query.email as string) ?? ''"
         title="Inscription Professionnel de santé"
-        subtitle="Rejoignez OneAndLab en tant que professionnel de santé."
+        subtitle="Rejoignez Cary en tant que professionnel de santé."
         header-icon="i-lucide-stethoscope"
         header-icon-bg="bg-amber-600"
         submit-label="Envoyer ma demande d'inscription"

@@ -54,7 +54,7 @@
       </div>
 
       <!-- Après création : section ordonnance (pro uniquement) - télécharger, régénérer, enregistrer -->
-      <div v-else-if="postCreateAppointmentId && showPrescriptionAfterCreate" class="space-y-6 max-w-2xl">
+      <div v-else-if="postCreateAppointmentId && showPrescriptionAfterCreate && showPrescriptionDocumentsForSelectedCare" class="space-y-6 max-w-2xl">
         <div class="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
           <UIcon name="i-lucide-check-circle" class="w-8 h-8 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
           <div>
@@ -520,7 +520,7 @@
 
           <!-- Ordonnance pendant la création (pro uniquement) - à gauche au-dessus des notes -->
           <section
-            v-if="isCreate && showPrescriptionAfterCreate"
+            v-if="isCreate && showPrescriptionAfterCreate && showPrescriptionDocumentsForSelectedCare"
             class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
           >
             <h2 class="text-lg font-normal text-gray-900 dark:text-white mb-2 flex items-center gap-2">
@@ -542,7 +542,7 @@
 
           <!-- Ordonnance en édition (nurse / pro) - à gauche au-dessus des notes -->
           <section
-            v-if="isEdit && showPrescriptionAfterCreate && appointment"
+            v-if="isEdit && showPrescriptionAfterCreate && appointment && showPrescriptionDocumentsForSelectedCare"
             class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
           >
             <DashboardPrescriptionSection
@@ -773,7 +773,7 @@
             
             <div class="space-y-3">
               <div 
-                v-for="doc in documentTypes" 
+                v-for="doc in appointmentDocumentTypes" 
                 :key="doc.key" 
                 class="group relative"
                 @dragover.prevent="draggedOver = doc.key" 
@@ -892,6 +892,7 @@ import {
   isAutreSelectValue,
 } from '~/utils/care-category-autre-detail';
 import DashboardPrescriptionSection from '~/components/dashboard/PrescriptionSection.vue';
+import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
 
 // --- TYPES & INTERFACES ---
 type ServiceType = 'blood_test' | 'nursing';
@@ -1039,7 +1040,21 @@ const skipEmailLookupOnce = ref(false);
 
 // Form Data
 const categoryOptions = ref<SelectOption[]>([]);
-const categoriesWithOptions = ref<Array<{ id: string; name: string; options?: Array<{ option_key: string; label: string; field_type: string; options?: { value: string; label: string }[]; is_required?: boolean; sort_order?: number }> }>>([]);
+const categoriesWithOptions = ref<
+  Array<{
+    id: string;
+    name: string;
+    skip_prescription_documents?: boolean;
+    options?: Array<{
+      option_key: string;
+      label: string;
+      field_type: string;
+      options?: { value: string; label: string }[];
+      is_required?: boolean;
+      sort_order?: number;
+    }>;
+  }>
+>([]);
 const categoryOptionsForCare = ref<Array<{ option_key: string; label: string; field_type: string; options?: { value: string; label: string }[]; is_required?: boolean; sort_order?: number }>>([]);
 const birthDay = ref<number | null>(null);
 const birthMonth = ref<number | null>(null);
@@ -1203,6 +1218,32 @@ const nurseSelectItems = computed(() =>
     value: p.id,
   }))
 );
+
+/** Ordonnance + autre prescription : affichés si au moins un soin sélectionné ne masque pas ces documents. */
+function categorySkipsPrescriptionDocuments(categoryId: string): boolean {
+  const cat = categoriesWithOptions.value.find((c) => String(c.id) === String(categoryId));
+  return normalizeCategorySkipPrescriptionDocuments(cat?.skip_prescription_documents);
+}
+
+const showPrescriptionDocumentsForSelectedCare = computed(() => {
+  const ids: string[] = [];
+  if (isCreate.value && multiCareEnabled.value && supportsMultiCareCreate.value) {
+    for (const b of careBlocks.value) {
+      const id = String(b.category_id || '').trim();
+      if (id) ids.push(id);
+    }
+  } else {
+    const id = resolvedCategoryId(form.form_data.category_id);
+    if (id) ids.push(id);
+  }
+  if (ids.length === 0) return true;
+  return ids.some((id) => !categorySkipsPrescriptionDocuments(id));
+});
+
+const appointmentDocumentTypes = computed(() => {
+  if (showPrescriptionDocumentsForSelectedCare.value) return documentTypes;
+  return documentTypes.filter((d) => d.key !== 'ordonnance' && d.key !== 'autres_assurances');
+});
 
 // --- METHODS ---
 
@@ -2216,7 +2257,7 @@ async function submitMultiCareBatch(
       color: 'green',
       icon: 'i-lucide-check-circle',
     });
-    if (showPrescriptionAfterCreate.value && prescriptionTextDuringCreate.value?.trim()) {
+    if (showPrescriptionAfterCreate.value && showPrescriptionDocumentsForSelectedCare.value && prescriptionTextDuringCreate.value?.trim()) {
       await generateAndAttachPrescriptionDuringCreate(id);
     }
     await router.push(`${props.basePath}/appointments/${id}`);
@@ -2288,7 +2329,11 @@ async function submitMultiCareBatch(
   }
 
   if (createdIds.length) {
-    if (showPrescriptionAfterCreate.value && prescriptionTextDuringCreate.value?.trim()) {
+    if (
+      showPrescriptionAfterCreate.value &&
+      showPrescriptionDocumentsForSelectedCare.value &&
+      prescriptionTextDuringCreate.value?.trim()
+    ) {
       await generateAndAttachPrescriptionDuringCreate(createdIds[0]!);
     }
     const dest =

@@ -17,6 +17,7 @@
             "
           >
             <CareCategoryVisual
+              :emoji="headerCareBadge.emoji"
               :image-src="headerCareBadge.imageSrc"
               :icon-name="headerCareBadge.iconName"
               icon-class="h-3.5 w-3.5 shrink-0"
@@ -76,6 +77,7 @@
         >
           <div class="flex h-7 w-7 shrink-0 items-center justify-center self-center" aria-hidden="true">
             <CareCategoryVisual
+              :emoji="catalogLineBadge(line).emoji"
               :image-src="catalogLineBadge(line).imageSrc"
               :icon-name="catalogLineBadge(line).iconName"
               img-class="h-6 w-6 rounded object-contain"

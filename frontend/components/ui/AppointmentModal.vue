@@ -150,9 +150,9 @@
                 {{ addressLineFor(batchAppointmentsSorted[0]) }}
               </p>
             </div>
-            <div v-if="batchAppointmentsSorted[0]?.notes" class="px-3 py-2.5 sm:px-4 border-t border-gray-100 dark:border-gray-800">
-              <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Notes</p>
-              <p class="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">{{ batchAppointmentsSorted[0].notes }}</p>
+            <div v-if="hasAppointmentNotes(batchAppointmentsSorted[0])" class="px-3 py-2.5 sm:px-4 border-t border-gray-100 dark:border-gray-800">
+              <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Message</p>
+              <p class="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">{{ getAppointmentNotes(batchAppointmentsSorted[0]) }}</p>
             </div>
           </div>
         </template>
@@ -216,9 +216,9 @@
                   <p class="text-sm text-gray-900 dark:text-gray-100 mt-0.5 leading-snug">{{ addressLineFor(appt) }}</p>
                 </div>
               </div>
-              <div v-if="appt.notes" class="px-3 py-3 sm:px-4 bg-gray-50/60 dark:bg-gray-900/40">
-                <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Notes patient</p>
-                <p class="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">{{ appt.notes }}</p>
+              <div v-if="hasAppointmentNotes(appt)" class="px-3 py-3 sm:px-4 bg-gray-50/60 dark:bg-gray-900/40">
+                <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Message</p>
+                <p class="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">{{ getAppointmentNotes(appt) }}</p>
               </div>
             </div>
           </template>
@@ -326,6 +326,7 @@ import { formatBloodTestSeriesDurationDays } from '~/utils/duration-display'
 import { patientUiEmailLine } from '~/utils/patient-address-rdv'
 import { formatAvailabilityDisplayFr } from '~/utils/appointment-datetime-fr'
 import { appointmentPatientDisplayName } from '~/utils/appointment-patient-display'
+import { getAppointmentNotes, hasAppointmentNotes } from '~/utils/appointment-notes'
 import { ref, computed, watch, nextTick, h } from 'vue'
 import { DialogTitle, DialogDescription } from 'reka-ui'
 

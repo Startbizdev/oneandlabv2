@@ -20,8 +20,21 @@
       <UAlert color="red" :title="error" />
     </div>
 
+    <UCard v-else-if="!loading && !error" class="overflow-hidden mb-6">
+      <template #header>
+        <h2 class="text-xl font-normal">Photo de profil</h2>
+        <p class="text-sm text-muted mt-0.5">Photo affichée sur votre compte Cary</p>
+      </template>
+      <ProfileImagesBlock
+        v-model:profile-image="profileForm.profile_image_url"
+        profile-label="Photo de profil"
+        profile-icon="i-lucide-user"
+        :show-cover="false"
+      />
+    </UCard>
+
     <!-- Formulaire de profil -->
-    <UCard v-else>
+    <UCard v-if="!loading && !error">
       <template #header>
         <h2 class="text-xl font-normal">Informations personnelles</h2>
       </template>
@@ -177,6 +190,7 @@ const downloadingDocumentId = ref<string | null>(null)
 const profileForm = ref({
   first_name: '',
   last_name: '',
+  profile_image_url: '' as string,
   email: '',
   /** Libellé API si e-mail technique (delegated-…@patients.internal.local) */
   email_display: null as string | null,
@@ -233,6 +247,7 @@ const loadProfile = async () => {
     profileForm.value = {
       first_name: userData.first_name || '',
       last_name: userData.last_name || '',
+      profile_image_url: userData.profile_image_url || '',
       email: userData.email || '',
       email_display: (userData as { email_display?: string | null }).email_display ?? null,
       phone: userData.phone || null,
@@ -266,6 +281,7 @@ const saveProfile = async () => {
     const updateData: any = {
       first_name: profileForm.value.first_name,
       last_name: profileForm.value.last_name,
+      profile_image_url: profileForm.value.profile_image_url || null,
     }
 
     // Ajouter les champs optionnels (même s'ils sont null pour permettre de les effacer)

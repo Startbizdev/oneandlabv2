@@ -46,8 +46,8 @@ export default function ProfileLayout() {
       <Stack.Screen
         name="security"
         options={{
-          title: 'Face ID',
-          headerTitle: tabHeaderTitle('Face ID', ScanFace),
+          title: 'Biométrie',
+          headerTitle: tabHeaderTitle('Biométrie', ScanFace),
         }}
       />
       <Stack.Screen

@@ -5,9 +5,9 @@
       :title-lines="['Prélèvements', 'à domicile']"
       highlight="pilotés"
       description="Recevez les demandes de prélèvement à domicile, gérez vos préleveurs, assignez les tournées et suivez votre activité. Une solution pensée pour développer vos prélèvements à domicile tout en restant pilotable au quotidien."
-      image-src="https://images.unsplash.com/photo-1582719188393-bb71ca45dbb9?w=900&h=1200&q=80&auto=format&fit=crop"
-      image-alt="Préleveur en laboratoire avec un échantillon sanguin"
-      image-object-class="object-[center_30%]"
+      image-src="https://images.unsplash.com/photo-1579154341184-22069e4614d2?w=900&h=1200&q=80&auto=format&fit=crop"
+      image-alt="Tubes à essai en laboratoire d'analyses médicales"
+      image-object-class="object-[center_40%]"
       :primary-cta="{ label: 'Inscrire mon laboratoire', to: '/lab/register', icon: 'i-lucide-building-2' }"
       :secondary-cta="{ label: 'Voir les tarifs laboratoires', to: '/pour-les-laboratoires/tarifs' }"
       :stats="labStats"
@@ -45,7 +45,7 @@
       <div class="mx-auto max-w-[1200px] px-6 lg:px-12">
         <Reviews
           title="Ce que disent les laboratoires partenaires"
-          subtitle="Laboratoires qui proposent la prise de sang à domicile avec OneAndLab."
+          subtitle="Laboratoires qui proposent la prise de sang à domicile avec Cary."
           :reviews="landingReviews"
           :max-reviews="6"
           background-class="!bg-transparent"
@@ -62,7 +62,7 @@
     <LandingMaquetteInlineCta
       eyebrow="Prêt à vous lancer ?"
       title="Développez vos prélèvements à domicile"
-      subtitle="Rejoignez les laboratoires qui utilisent OneAndLab : mise en place guidée, préleveurs et tournées depuis un seul espace."
+      subtitle="Rejoignez les laboratoires qui utilisent Cary : mise en place guidée, préleveurs et tournées depuis un seul espace."
       :buttons="ctaButtons"
       outer-class="bg-[#F7F7FB] dark:bg-gray-900/70"
     />
@@ -74,11 +74,11 @@
 definePageMeta({ layout: 'default' });
 
 useLandingSeo({
-  title: 'Pour les laboratoires | Prélèvement à domicile | OneAndLab',
+  title: 'Pour les laboratoires | Prélèvement à domicile | Cary',
   description:
-    "Laboratoires d'analyses : proposez des prises de sang à domicile avec OneAndLab. Gérez les demandes et vos préleveurs.",
+    "Laboratoires d'analyses : proposez des prises de sang à domicile avec Cary. Gérez les demandes et vos préleveurs.",
   keywords:
-    'laboratoire à domicile, prise de sang à domicile, préleveur, plateforme laboratoire, OneAndLab, analyses à domicile',
+    'laboratoire à domicile, prise de sang à domicile, préleveur, plateforme laboratoire, Cary, analyses à domicile',
   path: '/pour-les-laboratoires',
 });
 
@@ -165,8 +165,8 @@ const landingReviews = [
     patientName: 'Dr. Laurent G., Labo BioSanté',
     rating: 5,
     comment:
-      'On a intégré OneAndLab pour les prélèvements à domicile. Les demandes arrivent bien géolocalisées, on assigne à nos préleveurs en un clic. Gain de temps énorme.',
-    response: 'Merci pour votre retour. — Équipe OneAndLab',
+      'On a intégré Cary pour les prélèvements à domicile. Les demandes arrivent bien géolocalisées, on assigne à nos préleveurs en un clic. Gain de temps énorme.',
+    response: 'Merci pour votre retour. — Équipe Cary',
     date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
   },
   {
@@ -175,7 +175,7 @@ const landingReviews = [
     rating: 5,
     comment:
       'Tableau de bord clair, suivi des tournées en temps réel. Les patients sont prévenus par SMS, moins de no-show. On a augmenté notre volume à domicile.',
-    response: 'Content que la plateforme vous aide. — OneAndLab',
+    response: 'Content que la plateforme vous aide. — Cary',
     date: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),
   },
   {
@@ -193,7 +193,7 @@ const landingReviews = [
     rating: 5,
     comment:
       'Les statistiques nous aident à anticiper les pics. On a pu recruter un préleveur à mi-temps grâce à la croissance du volume domicile.',
-    response: 'Ravi que les stats vous servent. — OneAndLab',
+    response: 'Ravi que les stats vous servent. — Cary',
     date: new Date(Date.now() - 24 * 24 * 60 * 60 * 1000),
   },
   {
@@ -202,7 +202,7 @@ const landingReviews = [
     rating: 5,
     comment:
       'Traçabilité nickel : qui a fait quoi, quand. Les patients laissent des avis, ça rassure. On est satisfaits du partenariat.',
-    response: 'Merci Olivier. — OneAndLab',
+    response: 'Merci Olivier. — Cary',
     date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
   },
   {
@@ -210,7 +210,7 @@ const landingReviews = [
     patientName: 'Catherine V., labo partenaire',
     rating: 5,
     comment:
-      "Support réactif, évolutions régulières. On recommande OneAndLab à d'autres laboratoires qui hésitent à se lancer en domicile.",
+      "Support réactif, évolutions régulières. On recommande Cary à d'autres laboratoires qui hésitent à se lancer en domicile.",
     response: 'Merci Catherine pour la recommandation. — Équipe',
     date: new Date(Date.now() - 38 * 24 * 60 * 60 * 1000),
   },

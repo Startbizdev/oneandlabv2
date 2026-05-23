@@ -83,7 +83,7 @@ class PrescriptionPdf
     <div class="prescription">{$prescriptionHtml}</div>
 
     <div class="footer">
-        <p>Document généré le {$date} — OneAndLab — Hébergement des données de santé conforme HDS</p>
+        <p>Document généré le {$date} — Cary — Hébergement des données de santé conforme HDS</p>
     </div>
 </body>
 </html>

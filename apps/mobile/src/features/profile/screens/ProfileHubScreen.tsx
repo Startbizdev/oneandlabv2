@@ -24,6 +24,7 @@ import {
   ScanFace,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
+import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
 import { useAuthStore } from '@/store/auth-store';
 import { getNotificationsPath } from '@/navigation/notifications-route';
@@ -78,6 +79,7 @@ function getSections(
   role: string | undefined,
   router: ReturnType<typeof useRouter>,
   logout: () => Promise<void>,
+  biometricLabel: string,
 ): MenuSection[] {
   const navigate = (href: string) => router.push(href as never);
   const logoutAndRedirect = async () => {
@@ -95,7 +97,7 @@ function getSections(
       },
       {
         icon: ScanFace,
-        label: 'Face ID',
+        label: biometricLabel,
         onPress: () => navigate('/profile/security'),
         iconColor: '#0D9488',
         iconBg: '#F0FDFA',
@@ -203,10 +205,11 @@ function getSections(
 
 export function ProfileHubScreen() {
   const router = useRouter();
+  const biometricLabel = useBiometricLabel('Biométrie');
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.clearSession);
 
-  const sections = getSections(user?.role, router, logout);
+  const sections = getSections(user?.role, router, logout, biometricLabel);
 
   const roleLabel: Record<string, string> = {
     nurse: 'Infirmier(ère)',
@@ -309,7 +312,7 @@ const styles = StyleSheet.create({
   },
   itemDivider: {
     height: 1,
+    alignSelf: 'stretch',
     backgroundColor: colors.borderLight,
-    marginLeft: spacing[4] + 36 + spacing[3],
   },
 });

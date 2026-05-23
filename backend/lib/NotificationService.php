@@ -5,6 +5,7 @@ require_once __DIR__ . '/Email.php';
 require_once __DIR__ . '/EmailQueue.php';
 require_once __DIR__ . '/Twilio.php';
 require_once __DIR__ . '/Crypto.php';
+require_once __DIR__ . '/NotificationMessageFormatter.php';
 
 /**
  * Service de gestion des notifications
@@ -73,8 +74,32 @@ class NotificationService
             $message,
             $data ? json_encode($data) : null,
         ]);
+
+        $this->sendPushForNotification($userId, $type, $title, $message, $data);
         
         return $id;
+    }
+
+    /**
+     * Push système mobile (Expo) — ne bloque pas si indisponible.
+     *
+     * @param array<string, mixed>|null $data
+     */
+    private function sendPushForNotification(
+        string $userId,
+        string $type,
+        string $title,
+        string $message,
+        ?array $data
+    ): void {
+        try {
+            require_once __DIR__ . '/PushDeviceTokenService.php';
+            require_once __DIR__ . '/ExpoPushService.php';
+            $push = new ExpoPushService(new PushDeviceTokenService($this->db));
+            $push->sendToUser($userId, $title, $message, $data, $type);
+        } catch (Throwable $e) {
+            error_log('sendPushForNotification: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -121,25 +146,18 @@ class NotificationService
                     }
                 }
                 
-                $scheduledAt = '';
-                if (!empty($appointmentData['scheduled_at'])) {
-                    $date = new DateTime($appointmentData['scheduled_at']);
-                    $scheduledAt = $date->format('d/m/Y');
-                }
-                
-                $message = 'Votre rendez-vous a été créé avec succès';
-                if ($careType) {
-                    $message .= " ({$careType})";
-                }
-                if ($scheduledAt) {
-                    $message .= " du {$scheduledAt}";
-                }
-                $message .= ".";
-                
+                $formData = $appointmentData['form_data'] ?? null;
+                $when = NotificationMessageFormatter::whenShort($formData, $appointmentData['scheduled_at'] ?? null);
+                $message = NotificationMessageFormatter::joinParts([
+                    'RDV enregistré',
+                    $careType ?: null,
+                    $when ?: null,
+                ]);
+
                 $this->createNotification(
                     $appointmentData['patient_id'],
                     'appointment_created',
-                    'Nouveau rendez-vous créé',
+                    'RDV créé',
                     $message,
                     ['appointment_id' => $appointmentId]
                 );
@@ -187,21 +205,15 @@ class NotificationService
             $cat = isset($r['category_name']) && trim((string) $r['category_name']) !== ''
                 ? trim((string) $r['category_name'])
                 : ((($r['type'] ?? '') === 'blood_test') ? 'Prélèvement' : 'Soins infirmiers');
-            $dtStr = '';
-            if (!empty($r['scheduled_at'])) {
-                try {
-                    $dtStr = (new DateTime((string) $r['scheduled_at']))->format('d/m/Y');
-                } catch (Exception $e) {
-                    $dtStr = '';
-                }
-            }
-            $batchSummaries[] = $dtStr !== '' ? "{$cat} · {$dtStr}" : $cat;
+            $fd = isset($r['form_data']) && is_array($r['form_data']) ? $r['form_data'] : null;
+            $when = NotificationMessageFormatter::whenShort($fd, $r['scheduled_at'] ?? null);
+            $batchSummaries[] = $when !== '' ? "{$cat} · {$when}" : $cat;
         }
 
         $titlePatient = $n > 1 ? 'Nouveaux rendez-vous créés' : 'Nouveau rendez-vous créé';
         $messagePatient = $n > 1
-            ? "Vos {$n} rendez-vous sont enregistrés. Ouvrez votre espace pour le détail."
-            : 'Votre rendez-vous est enregistré.';
+            ? "{$n} RDV enregistrés."
+            : 'RDV enregistré.';
 
         try {
             $this->createNotification(
@@ -352,15 +364,15 @@ class NotificationService
         try {
             if ($creatorRole !== null && in_array($creatorRole, ['pro', 'nurse', 'lab', 'subaccount'], true)) {
                 if ($appointmentType === 'blood_test') {
-                    $title = 'En attente du laboratoire';
-                    $message = 'Demande transmise. Confirmation laboratoire sous peu. Vous serez notifié.';
+                    $title = 'En attente labo';
+                    $message = 'Demande envoyée au laboratoire.';
                 } else {
-                    $title = 'En attente d’un infirmier';
-                    $message = 'Demande transmise. En attente d’acceptation. Vous serez notifié.';
+                    $title = 'En attente infirmier';
+                    $message = 'Demande envoyée aux infirmiers.';
                 }
             } else {
                 $title = 'Demande envoyée';
-                $message = 'Demande enregistrée. Vous serez notifié dès acceptation.';
+                $message = 'On vous prévient dès qu’il y a une réponse.';
             }
 
             $this->createNotification(
@@ -384,23 +396,12 @@ class NotificationService
         string $scheduledAt
     ): void {
         try {
-            $when = '';
-            if ($scheduledAt !== '') {
-                try {
-                    $dt = new DateTime($scheduledAt);
-                    $when = $dt->format('d/m/Y \à H\hi');
-                } catch (Exception $e) {
-                    $when = '';
-                }
-            }
-            $message = $when !== ''
-                ? 'En attente laboratoire · ' . $when
-                : 'En attente de confirmation par le laboratoire.';
+            $message = 'En attente de confirmation labo.';
 
             $this->createNotification(
                 $nurseId,
                 'appointment_request_sent',
-                'Le laboratoire doit confirmer',
+                'En attente labo',
                 $message,
                 ['appointment_id' => $appointmentId]
             );
@@ -414,26 +415,14 @@ class NotificationService
      */
     public function notifyAppointmentConfirmed(string $appointmentId, array $appointmentData): void
     {
-        $care = isset($appointmentData['category_name']) && trim((string) $appointmentData['category_name']) !== ''
-            ? trim((string) $appointmentData['category_name'])
-            : ((($appointmentData['type'] ?? 'blood_test') === 'blood_test') ? 'Prélèvement' : 'Soins infirmiers');
-        $when = '';
-        if (!empty($appointmentData['scheduled_at'])) {
-            try {
-                $d = new DateTime((string) $appointmentData['scheduled_at']);
-                $when = $d->format('d/m/Y \à H\hi');
-            } catch (Exception $e) {
-                $when = '';
-            }
-        }
-        $message = $when !== ''
-            ? 'Confirmé le ' . $when . '. Détail dans votre espace.'
-            : 'Rendez-vous confirmé. Détail dans votre espace.';
+        $formData = $appointmentData['form_data'] ?? null;
+        $when = NotificationMessageFormatter::whenShort($formData, $appointmentData['scheduled_at'] ?? null);
+        $message = $when !== '' ? 'Confirmé · ' . $when : 'C’est confirmé.';
 
         $this->createNotification(
             $appointmentData['patient_id'],
             'appointment_confirmed',
-            'Rendez-vous confirmé',
+            'RDV confirmé',
             $message,
             ['appointment_id' => $appointmentId]
         );
@@ -472,25 +461,13 @@ class NotificationService
         ?string $creatorRole = null,
         ?string $scheduledAt = null
     ): void {
-        $care = $categoryName !== null && trim($categoryName) !== ''
-            ? trim($categoryName)
-            : (($appointmentType === 'blood_test') ? 'Prélèvement' : 'Soins infirmiers');
-        $when = '';
-        if ($scheduledAt !== null && $scheduledAt !== '') {
-            try {
-                $d = new DateTime((string) $scheduledAt);
-                $when = ' prévu le ' . $d->format('d/m/Y \à H\hi');
-            } catch (Exception $e) {
-                $when = '';
-            }
-        }
         $message = in_array($creatorRole, ['nurse', 'lab', 'subaccount'], true)
-            ? 'Demande confirmée. Suivez le RDV dans votre espace.'
-            : 'Demande confirmée. Patient informé.';
+            ? 'Demande confirmée.'
+            : 'Demande confirmée · patient prévenu.';
         $this->createNotification(
             $creatorId,
             'appointment_confirmed_for_creator',
-            'Rendez-vous confirmé',
+            'RDV confirmé',
             $message,
             ['appointment_id' => $appointmentId]
         );
@@ -536,14 +513,8 @@ class NotificationService
             $cat = isset($r['category_name']) && trim((string) $r['category_name']) !== ''
                 ? trim((string) $r['category_name'])
                 : 'Soins infirmiers';
-            $when = '';
-            if (!empty($r['scheduled_at'])) {
-                try {
-                    $when = (new DateTime((string) $r['scheduled_at']))->format('d/m/Y \à H\hi');
-                } catch (Exception $e) {
-                    $when = '';
-                }
-            }
+            $fd = isset($r['form_data']) && is_array($r['form_data']) ? $r['form_data'] : null;
+            $when = NotificationMessageFormatter::whenShort($fd, $r['scheduled_at'] ?? null);
             $batchSummaries[] = $when !== '' ? $cat . ' · ' . $when : $cat;
         }
 
@@ -564,7 +535,7 @@ class NotificationService
                 $patientId,
                 'appointment_confirmed',
                 'Rendez-vous confirmés',
-                "Vos {$n} rendez-vous sont confirmés. Ouvrez votre espace patient pour le détail.",
+                "{$n} RDV confirmés.",
                 $dataPayload
             );
         } catch (Exception $e) {
@@ -596,7 +567,7 @@ class NotificationService
 
         // Infirmier ayant accepté le lot (une seule notif)
         if (!empty($assignedNurseId)) {
-            $msg = "Lot de {$n} soins accepté pour {$patientName}.";
+            $msg = "Lot {$n} soins · {$patientName}.";
             try {
                 $this->createNotification(
                     (string) $assignedNurseId,
@@ -626,8 +597,8 @@ class NotificationService
             && !$sameAsPatient
         ) {
             $message = in_array($creatorRole, ['nurse', 'lab', 'subaccount'], true)
-                ? "Lot de {$n} soins confirmé. Suivez dans votre espace."
-                : "Lot de {$n} soins confirmé. Patient informé.";
+                ? "Lot {$n} soins confirmé."
+                : "Lot {$n} soins confirmé · patient prévenu.";
             try {
                 $this->createNotification(
                     $createdBy,
@@ -681,14 +652,8 @@ class NotificationService
             $cat = isset($r['category_name']) && trim((string) $r['category_name']) !== ''
                 ? trim((string) $r['category_name'])
                 : 'Prélèvement';
-            $when = '';
-            if (!empty($r['scheduled_at'])) {
-                try {
-                    $when = (new DateTime((string) $r['scheduled_at']))->format('d/m/Y \à H\hi');
-                } catch (Exception $e) {
-                    $when = '';
-                }
-            }
+            $fd = isset($r['form_data']) && is_array($r['form_data']) ? $r['form_data'] : null;
+            $when = NotificationMessageFormatter::whenShort($fd, $r['scheduled_at'] ?? null);
             $batchSummaries[] = $when !== '' ? $cat . ' · ' . $when : $cat;
         }
 
@@ -708,7 +673,7 @@ class NotificationService
                 $patientId,
                 'appointment_confirmed',
                 'Rendez-vous confirmés',
-                "Vos {$n} prélèvements sont confirmés. Ouvrez votre espace patient pour le détail.",
+                "{$n} prélèvements confirmés.",
                 $dataPayload
             );
         } catch (Exception $e) {
@@ -739,7 +704,7 @@ class NotificationService
         }
 
         if (!empty($assignedLabId)) {
-            $msg = "Lot de {$n} prélèvements accepté pour {$patientName}.";
+            $msg = "Lot {$n} prélèvements · {$patientName}.";
             try {
                 $this->createNotification(
                     (string) $assignedLabId,
@@ -767,12 +732,9 @@ class NotificationService
             && $createdBy !== $actorIdStr
             && !$sameAsPatient
         ) {
-            $message = "Lot de {$n} prélèvements confirmé. Le patient a été informé.";
-            if (in_array($creatorRole, ['nurse', 'lab', 'subaccount'], true)) {
-                $message .= ' Vous pouvez suivre les rendez-vous depuis votre espace.';
-            } else {
-                $message .= ' Le patient peut suivre les rendez-vous dans son espace.';
-            }
+            $message = in_array($creatorRole, ['nurse', 'lab', 'subaccount'], true)
+                ? "Lot {$n} prélèvements confirmé."
+                : "Lot {$n} prélèvements confirmé · patient prévenu.";
             try {
                 $this->createNotification(
                     $createdBy,
@@ -849,25 +811,21 @@ class NotificationService
             $care = isset($appointmentData['category_name']) && trim((string) $appointmentData['category_name']) !== ''
                 ? trim((string) $appointmentData['category_name'])
                 : 'Prélèvement';
-            $when = '';
-            if (!empty($appointmentData['scheduled_at'])) {
-                try {
-                    $d = new DateTime((string) $appointmentData['scheduled_at']);
-                    $when = $d->format('d/m/Y \à H\hi');
-                } catch (Exception $e) {
-                    $when = '';
-                }
-            }
-            $message = 'Vous avez confirmé le rendez-vous de prélèvement pour ' . $patientName . ' (« ' . $care . ' »)';
-            if ($when !== '') {
-                $message .= ' le ' . $when;
-            }
-            $message .= '.';
+            $when = NotificationMessageFormatter::whenShort(
+                $appointmentData['form_data'] ?? null,
+                $appointmentData['scheduled_at'] ?? null
+            );
+            $message = NotificationMessageFormatter::joinParts([
+                'Prélèvement confirmé',
+                $patientName !== 'le patient' ? $patientName : null,
+                $care,
+                $when ?: null,
+            ]);
 
             $this->createNotification(
                 $recipientId,
                 'appointment_accepted_lab',
-                'Rendez-vous confirmé',
+                'RDV confirmé',
                 $message,
                 ['appointment_id' => $appointmentId]
             );
@@ -888,19 +846,19 @@ class NotificationService
         ?string $categoryName = null
     ): void {
         try {
-            $kind = $appointmentType === 'blood_test' ? 'prise de sang' : 'soins infirmiers';
-            $care = ($categoryName !== null && trim($categoryName) !== '') ? trim($categoryName) : ($appointmentType === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers');
-            $patient = trim($patientDisplayName) !== '' ? trim($patientDisplayName) : 'le patient';
-            $message = 'Un rendez-vous de ' . $kind . ' (« ' . $care . ' ») pour ' . $patient;
-            if ($scheduledLabel !== '') {
-                $message .= ', prévu le ' . $scheduledLabel;
-            }
-            $message .= ', vous a été assigné. Ouvrez le détail pour le préparer.';
+            $care = NotificationMessageFormatter::careShortLabel($categoryName, $appointmentType);
+            $patient = trim($patientDisplayName) !== '' ? trim($patientDisplayName) : 'Patient';
+            $message = NotificationMessageFormatter::joinParts([
+                'RDV assigné',
+                $patient,
+                $care,
+                $scheduledLabel !== '' ? $scheduledLabel : null,
+            ]);
 
             $this->createNotification(
                 $recipientId,
                 'appointment_reassigned',
-                'Nouveau rendez-vous assigné',
+                'RDV assigné',
                 $message,
                 ['appointment_id' => $appointmentId]
             );
@@ -924,7 +882,7 @@ class NotificationService
                 $name = 'Votre préleveur';
             }
             $title = 'Préleveur désigné';
-            $message = $name . ' a été désigné pour votre prise de sang. Consultez le détail du rendez-vous.';
+            $message = $name . ' prend en charge votre prélèvement.';
 
             $this->createNotification(
                 $patientId,
@@ -943,55 +901,36 @@ class NotificationService
      */
     public function notifyNurseAcceptedAppointment(string $appointmentId, string $nurseId, array $appointmentData): void
     {
-        // Récupérer les infos du patient pour le message
-        $patientName = 'Un patient';
+        $patientName = NotificationMessageFormatter::patientDisplayName(
+            $appointmentData['patient_first_name'] ?? null,
+            $appointmentData['patient_last_name'] ?? null
+        );
+        $careType = NotificationMessageFormatter::careShortLabel(
+            $appointmentData['category_name'] ?? null,
+            $appointmentData['type'] ?? 'nursing'
+        );
+        $when = NotificationMessageFormatter::whenShort(
+            $appointmentData['form_data'] ?? null,
+            $appointmentData['scheduled_at'] ?? null
+        );
+        $message = NotificationMessageFormatter::joinParts([
+            'RDV accepté',
+            $patientName,
+            $careType,
+            $when ?: null,
+        ]);
+
         $address = '';
-        $scheduledAt = '';
-        $careType = '';
-        
-        if (!empty($appointmentData['patient_first_name']) && !empty($appointmentData['patient_last_name'])) {
-            $patientName = $appointmentData['patient_first_name'] . ' ' . $appointmentData['patient_last_name'];
-        }
-        
         if (!empty($appointmentData['address'])) {
-            $address = is_array($appointmentData['address']) 
+            $address = is_array($appointmentData['address'])
                 ? ($appointmentData['address']['label'] ?? '')
-                : $appointmentData['address'];
+                : (string) $appointmentData['address'];
         }
-        
-        if (!empty($appointmentData['scheduled_at'])) {
-            try {
-                $date = new DateTime($appointmentData['scheduled_at']);
-                $scheduledAt = $date->format('d/m/Y \à H\hi');
-            } catch (Exception $e) {
-                $scheduledAt = '';
-            }
-        }
-        
-        if (!empty($appointmentData['category_name'])) {
-            $careType = $appointmentData['category_name'];
-        } else {
-            $careType = 'Soins infirmiers';
-        }
-        
-        // Construire le message détaillé
-        $message = "Vous avez accepté le rendez-vous de {$patientName}";
-        if ($careType) {
-            $message .= " ({$careType})";
-        }
-        if ($scheduledAt) {
-            $message .= " prévu le {$scheduledAt}";
-        }
-        if ($address) {
-            $message .= " à {$address}";
-        }
-        $message .= ".";
-        
-        // Notification web pour l'infirmier
+
         $this->createNotification(
             $nurseId,
             'appointment_accepted',
-            'Rendez-vous accepté',
+            'RDV accepté',
             $message,
             [
                 'appointment_id' => $appointmentId,
@@ -1020,28 +959,26 @@ class NotificationService
             $patientName = trim($appointmentData['patient_first_name'] . ' ' . $appointmentData['patient_last_name']);
         }
         
-        $scheduledAt = '';
-        if (!empty($appointmentData['scheduled_at'])) {
-            $date = new DateTime($appointmentData['scheduled_at']);
-            $scheduledAt = $date->format('d/m/Y');
-        }
-        
-        $careType = $appointmentData['category_name'] ?? (
-            (isset($appointmentData['type']) && $appointmentData['type'] === 'blood_test')
-            ? 'Prélèvement'
-            : 'Soins infirmiers'
+        $when = NotificationMessageFormatter::whenShort(
+            $appointmentData['form_data'] ?? null,
+            $appointmentData['scheduled_at'] ?? null
+        );
+        $careType = NotificationMessageFormatter::careShortLabel(
+            $appointmentData['category_name'] ?? null,
+            $appointmentData['type'] ?? null
         );
         $address = $appointmentData['address'] ?? '';
         
         // Notification au patient (si annulé par un professionnel : lab, sous-compte, préleveur, infirmier)
         if ($canceledBy === 'nurse' && !empty($appointmentData['patient_id'])) {
-            $message = "Votre rendez-vous";
             if ($actorDisplayLabel !== null && $actorDisplayLabel !== '') {
-                $message = $actorDisplayLabel . ' a annulé votre rendez-vous.';
+                $message = $actorDisplayLabel . ' a annulé votre RDV.';
             } else {
-                if ($careType) $message .= " ({$careType})";
-                if ($scheduledAt) $message .= " du {$scheduledAt}";
-                $message .= " a été annulé par le professionnel de santé.";
+                $message = NotificationMessageFormatter::joinParts([
+                    'RDV annulé',
+                    $careType,
+                    $when ?: null,
+                ]);
             }
             
             $patientNotifData = [
@@ -1056,7 +993,7 @@ class NotificationService
             $this->createNotification(
                 $appointmentData['patient_id'],
                 'appointment_canceled',
-                'Rendez-vous annulé',
+                'RDV annulé',
                 $message,
                 $patientNotifData
             );
@@ -1135,15 +1072,16 @@ class NotificationService
         
         // Notification au patient qu'il a annulé son RDV (confirmation)
         if ($canceledBy === 'patient' && !empty($appointmentData['patient_id'])) {
-            $message = "Vous avez annulé votre rendez-vous";
-            if ($careType) $message .= " ({$careType})";
-            if ($scheduledAt) $message .= " du {$scheduledAt}";
-            $message .= ".";
-            
+            $message = NotificationMessageFormatter::joinParts([
+                'Annulation enregistrée',
+                $careType,
+                $when ?: null,
+            ]);
+
             $this->createNotification(
                 $appointmentData['patient_id'],
                 'appointment_canceled_confirmation',
-                'Rendez-vous annulé',
+                'RDV annulé',
                 $message,
                 [
                     'appointment_id' => $appointmentId,
@@ -1154,15 +1092,17 @@ class NotificationService
         
         // Notification à l'infirmier (si annulé par le patient)
         if ($canceledBy === 'patient' && !empty($appointmentData['assigned_nurse_id'])) {
-            $message = "Le rendez-vous de {$patientName}";
-            if ($careType) $message .= " ({$careType})";
-            if ($scheduledAt) $message .= " prévu le {$scheduledAt}";
-            $message .= " a été annulé par le patient.";
-            
+            $message = NotificationMessageFormatter::joinParts([
+                'Annulé par le patient',
+                $patientName !== '' ? $patientName : null,
+                $careType,
+                $when ?: null,
+            ]);
+
             $this->createNotification(
                 $appointmentData['assigned_nurse_id'],
                 'appointment_canceled',
-                'Rendez-vous annulé par le patient',
+                'RDV annulé',
                 $message,
                 [
                     'appointment_id' => $appointmentId,
@@ -1174,30 +1114,34 @@ class NotificationService
         
         // Notification au lab / préleveur (si annulé par le patient — RDV prise de sang)
         if ($canceledBy === 'patient') {
-            $messageLab = "Le rendez-vous de {$patientName}";
-            if ($careType) $messageLab .= " ({$careType})";
-            if ($scheduledAt) $messageLab .= " prévu le {$scheduledAt}";
-            $messageLab .= " a été annulé par le patient.";
+            $messageLab = NotificationMessageFormatter::joinParts([
+                'Annulé par le patient',
+                $patientName !== '' ? $patientName : null,
+                $careType,
+                $when ?: null,
+            ]);
             $dataLab = ['appointment_id' => $appointmentId, 'patient_name' => $patientName, 'canceled_by' => $canceledBy];
             if (!empty($appointmentData['assigned_lab_id'])) {
-                $this->createNotification($appointmentData['assigned_lab_id'], 'appointment_canceled', 'Rendez-vous annulé par le patient', $messageLab, $dataLab);
+                $this->createNotification($appointmentData['assigned_lab_id'], 'appointment_canceled', 'RDV annulé', $messageLab, $dataLab);
             }
             if (!empty($appointmentData['assigned_to'])) {
-                $this->createNotification($appointmentData['assigned_to'], 'appointment_canceled', 'Rendez-vous annulé par le patient', $messageLab, $dataLab);
+                $this->createNotification($appointmentData['assigned_to'], 'appointment_canceled', 'RDV annulé', $messageLab, $dataLab);
             }
         }
         
         // Notification à l'infirmier qu'il a annulé le RDV (confirmation)
         if ($canceledBy === 'nurse' && !empty($appointmentData['assigned_nurse_id'])) {
-            $message = "Vous avez annulé le rendez-vous de {$patientName}";
-            if ($careType) $message .= " ({$careType})";
-            if ($scheduledAt) $message .= " prévu le {$scheduledAt}";
-            $message .= ".";
-            
+            $message = NotificationMessageFormatter::joinParts([
+                'Annulation enregistrée',
+                $patientName !== '' ? $patientName : null,
+                $careType,
+                $when ?: null,
+            ]);
+
             $this->createNotification(
                 $appointmentData['assigned_nurse_id'],
                 'appointment_canceled_confirmation',
-                'Rendez-vous annulé',
+                'RDV annulé',
                 $message,
                 [
                     'appointment_id' => $appointmentId,
@@ -1219,8 +1163,8 @@ class NotificationService
         $this->createNotification(
             $appointmentData['patient_id'],
             'appointment_expired',
-            'Aucun professionnel disponible',
-            'Désolé, aucun professionnel n’a pu confirmer ce créneau à temps. Vous pouvez choisir une autre date depuis la prise de rendez-vous.',
+            'Créneau expiré',
+            'Aucun pro n’a confirmé à temps. Choisissez une autre date.',
             ['appointment_id' => $appointmentId]
         );
         if (!empty($appointmentData['patient_phone']) && $this->twilio !== null) {
@@ -1242,24 +1186,25 @@ class NotificationService
             $patientName = $appointmentData['patient_first_name'] . ' ' . $appointmentData['patient_last_name'];
         }
         
-        $scheduledAt = '';
-        if (!empty($appointmentData['scheduled_at'])) {
-            $date = new DateTime($appointmentData['scheduled_at']);
-            $scheduledAt = $date->format('d/m/Y');
-        }
-        
-        $careType = $appointmentData['category_name'] ?? 'Soins infirmiers';
-        
-        // Notification de confirmation pour l'infirmier
-        $message = "Vous avez refusé le rendez-vous de {$patientName}";
-        if ($careType) $message .= " ({$careType})";
-        if ($scheduledAt) $message .= " prévu le {$scheduledAt}";
-        $message .= ". Le rendez-vous sera proposé à un autre professionnel.";
-        
+        $careType = NotificationMessageFormatter::careShortLabel(
+            $appointmentData['category_name'] ?? null,
+            $appointmentData['type'] ?? 'nursing'
+        );
+        $when = NotificationMessageFormatter::whenShort(
+            $appointmentData['form_data'] ?? null,
+            $appointmentData['scheduled_at'] ?? null
+        );
+        $message = NotificationMessageFormatter::joinParts([
+            'RDV refusé',
+            $patientName !== '' ? $patientName : null,
+            $careType,
+            $when ?: null,
+        ]);
+
         $this->createNotification(
             $nurseId,
             'appointment_refused',
-            'Rendez-vous refusé',
+            'RDV refusé',
             $message,
             [
                 'appointment_id' => $appointmentId,
@@ -1277,7 +1222,7 @@ class NotificationService
             $patientId,
             'appointment_started',
             'Soin en cours',
-            'Votre professionnel a commencé le soin pour ce rendez-vous. Vous pouvez suivre l’avancement dans le détail du rendez-vous.',
+            'Votre professionnel a commencé le soin.',
             ['appointment_id' => $appointmentId]
         );
     }
@@ -1302,10 +1247,9 @@ class NotificationService
         ?string $assignedNurseId = null
     ): void {
         $patientName = trim(($patientFirstName ?? '') . ' ' . ($patientLastName ?? ''));
-        $reviewHint = ' Laisser un avis : ouvrez cette notification pour accéder au détail du rendez-vous.';
-        $messageToPatient = 'Votre rendez-vous est terminé.' . $reviewHint;
+        $messageToPatient = 'RDV terminé. Un avis ?';
         if ($actorDisplayLabel !== null && $actorDisplayLabel !== '') {
-            $messageToPatient = $actorDisplayLabel . ' a terminé votre rendez-vous.' . $reviewHint;
+            $messageToPatient = $actorDisplayLabel . ' a terminé votre RDV.';
         }
         // Notification web au patient
         $this->createNotification(

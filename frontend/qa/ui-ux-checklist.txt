@@ -15,7 +15,7 @@ Cases recette (cocher après test réel si besoin de traçabilité release) :
 - [ ] Listes RDV : filtres via sheet mobile depuis la barre
 - [ ] Modale acceptation : corps scroll + pied avec bordure
 - [ ] Cloche : titres/corps lisibles (troncature côté layout)
-- [ ] Landings lab/infirmiers : CTA patient + avis · OneAndLab
+- [ ] Landings lab/infirmiers : CTA patient + avis · Cary
 - [ ] Admin : tableaux utilisables ; /admin/test-table inaccessible hors dev (createError 404)
 
 Réf. code utile :

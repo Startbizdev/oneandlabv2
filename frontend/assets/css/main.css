@@ -6,43 +6,57 @@
   --font-sans: 'Raleway', ui-sans-serif, system-ui, sans-serif;
   --font-heading: 'Raleway', ui-sans-serif, system-ui, sans-serif;
   
-  /* Primary maquette One&Lab (#2F80ED · hover #1E6DD5) */
-  --color-primary-50: #eef6ff;
-  --color-primary-100: #d9ebfd;
-  --color-primary-200: #b3d7fb;
-  --color-primary-300: #7eb8f7;
-  --color-primary-400: #4a94ef;
-  --color-primary-500: #2f80ed;
-  --color-primary-600: #1e6dd5;
-  --color-primary-700: #1858b0;
-  --color-primary-800: #184a92;
-  --color-primary-900: #1a4074;
-  --color-primary-950: #102848;
+  /* Primary Cary (#1CC7B5 · hover #18B5A5) */
+  --color-primary-50: #e8fbf9;
+  --color-primary-100: #d1f7f3;
+  --color-primary-200: #a8efe8;
+  --color-primary-300: #6fe5db;
+  --color-primary-400: #3dd9cc;
+  --color-primary-500: #1cc7b5;
+  --color-primary-600: #18b5a5;
+  --color-primary-700: #149e90;
+  --color-primary-800: #108578;
+  --color-primary-900: #0c6b61;
+  --color-primary-950: #064a44;
 
-  /* Bleu générique Tailwind aligné sur la même base */
-  --color-blue-50: #eef6ff;
-  --color-blue-100: #d9ebfd;
-  --color-blue-200: #b3d7fb;
-  --color-blue-300: #7eb8f7;
-  --color-blue-400: #4a94ef;
-  --color-blue-500: #2f80ed;
-  --color-blue-600: #1e6dd5;
-  --color-blue-700: #1858b0;
-  --color-blue-800: #184a92;
-  --color-blue-900: #1a4074;
-  --color-blue-950: #102848;
-  
-  /* Couleurs secondary (jaune) */
-  --color-secondary-50: #fefce8;
-  --color-secondary-100: #fef9c3;
-  --color-secondary-200: #fef08a;
-  --color-secondary-300: #fde047;
-  --color-secondary-400: #facc15;
-  --color-secondary-500: #F8C12D;
-  --color-secondary-600: #eab308;
-  --color-secondary-700: #ca8a04;
-  --color-secondary-800: #a16207;
-  --color-secondary-900: #854d0e;
+  /* Bleu générique aligné sur primary (compat composants legacy) */
+  --color-blue-50: #e8fbf9;
+  --color-blue-100: #d1f7f3;
+  --color-blue-200: #a8efe8;
+  --color-blue-300: #6fe5db;
+  --color-blue-400: #3dd9cc;
+  --color-blue-500: #1cc7b5;
+  --color-blue-600: #18b5a5;
+  --color-blue-700: #149e90;
+  --color-blue-800: #108578;
+  --color-blue-900: #0c6b61;
+  --color-blue-950: #064a44;
+
+  /* Secondary Cary — dégradé cyan (#2FD4C2 → #16B6D6) */
+  --color-secondary-50: #ecfcfb;
+  --color-secondary-100: #d4f7f4;
+  --color-secondary-200: #a8efe8;
+  --color-secondary-300: #6fe5db;
+  --color-secondary-400: #2fd4c2;
+  --color-secondary-500: #22c9be;
+  --color-secondary-600: #16b6d6;
+  --color-secondary-700: #1299b8;
+  --color-secondary-800: #0f7d96;
+  --color-secondary-900: #0c6478;
+  --color-secondary-950: #084352;
+
+  /* Cyan (alias secondary pour utilitaires Tailwind) */
+  --color-cyan-50: #ecfcfb;
+  --color-cyan-100: #d4f7f4;
+  --color-cyan-200: #a8efe8;
+  --color-cyan-300: #6fe5db;
+  --color-cyan-400: #2fd4c2;
+  --color-cyan-500: #22c9be;
+  --color-cyan-600: #16b6d6;
+  --color-cyan-700: #1299b8;
+  --color-cyan-800: #0f7d96;
+  --color-cyan-900: #0c6478;
+  --color-cyan-950: #084352;
   
   /* Couleurs success (vert) */
   --color-success-50: #f0fdf4;
@@ -81,7 +95,7 @@
   --color-warning-900: #78350f;
 
   /* Fond « toile » des pages (layouts, marketing, flux RDV) */
-  --color-app-canvas: #f4f6f0;
+  --color-app-canvas: #f0faf9;
 }
 
 @layer base {
@@ -100,6 +114,11 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
+  }
+
+  /* Emojis lisibles même avec Raleway (pas de glyphes emoji dans la police titres) */
+  .care-category-emoji {
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', sans-serif;
   }
   
   /* Désactiver les outlines sur focus pour les boutons et liens */
@@ -185,11 +204,11 @@
   }
 
   .bg-app-canvas\/50 {
-    background-color: rgb(244 246 240 / 50%);
+    background-color: rgb(240 250 249 / 50%);
   }
 
   .bg-app-canvas\/90 {
-    background-color: rgb(244 246 240 / 90%);
+    background-color: rgb(240 250 249 / 90%);
   }
 
   /**
@@ -206,5 +225,25 @@
   /* Visionneuse photo (modal échanges) : autoriser pinch / zoom tactile */
   .care-photo-lightbox {
     touch-action: auto;
+  }
+
+  /**
+   * Site marketing (header fixe LandingMaquetteHeader) : réserve l’espace sous le bandeau
+   * pour éviter que le hero / sous-titres soient rognés (notamment iOS + safe-area).
+   */
+  :root {
+    --marketing-header-bar-h: 66px;
+    --marketing-header-offset: calc(env(safe-area-inset-top, 0px) + var(--marketing-header-bar-h));
+  }
+
+  .marketing-header-spacer {
+    height: var(--marketing-header-offset);
+    flex-shrink: 0;
+    width: 100%;
+    pointer-events: none;
+  }
+
+  .marketing-app-shell [id] {
+    scroll-margin-top: calc(var(--marketing-header-offset) + 12px);
   }
 }

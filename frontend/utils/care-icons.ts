@@ -1,3 +1,5 @@
+import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils'
+
 /**
  * URL affichable pour une image de catégorie (`care_categories.image_url`, ex. `/api/categories/care-image?name=…`).
  * Avec `apiBase` relatif (`/api`), renvoie le chemin tel quel pour que le navigateur reste sur l’origine du front (proxy Nitro).
@@ -23,6 +25,9 @@ export function resolveCareCategoryImageSrc(
  */
 export function resolveCareIconFromCategory(cat: { icon?: string | null; type: string }): string {
   const raw = cat.icon && String(cat.icon).trim()
+  if (raw && isCareCategoryEmoji(raw)) {
+    return cat.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-heart-pulse'
+  }
   if (raw) {
     if (raw.startsWith('medical-icon:')) return 'i-medical-icon-' + raw.slice('medical-icon:'.length)
     if (raw.startsWith('healthicons:')) return 'i-healthicons-' + raw.slice('healthicons:'.length)
@@ -42,6 +47,23 @@ export function defaultColorClassForCategory(type: string): string {
 export type CareAccent = {
   iconColor: string
   tileBg: string
+}
+
+export type CareCategoryBadgeVisual = {
+  emoji: string
+  iconName: string
+  iconColor: string
+  tileBg: string
+  imageSrc: string | null
+}
+
+function careCategoryImageSrcForDisplay(
+  imageUrl: string | null | undefined,
+  icon: string | null | undefined,
+  apiBase?: string | null,
+): string | null {
+  if (isCareCategoryEmoji(icon)) return null
+  return resolveCareCategoryImageSrc(imageUrl, apiBase)
 }
 
 const ACCENT_FALLBACK: CareAccent = {
@@ -80,6 +102,7 @@ export function isAutreCategoryLabel(label: string): boolean {
 /** Ligne minimale `care_categories` (liste RDV, APIs compactes). */
 export type CareCategoryRowMinimal = {
   id: string
+  name?: string
   icon?: string | null
   /** Chemin API public vers l’image uploadée (si défini, remplace l’icône Lucide). */
   image_url?: string | null
@@ -120,7 +143,7 @@ export function careListBadgeDisplay(
   categories: CareCategoryRowMinimal[],
   accentMap?: ReadonlyMap<string, CareAccent>,
   apiBase?: string | null,
-): { iconName: string; iconColor: string; tileBg: string; imageSrc: string | null } {
+): CareCategoryBadgeVisual {
   const rawType = String(apt?.type ?? '')
   const typeStr = rawType === 'blood_test' ? 'blood_test' : 'nursing'
   const items = Array.isArray(apt?.blood_test_items) ? apt.blood_test_items : []
@@ -184,14 +207,22 @@ export function careListBadgeDisplay(
     accent = map.get(typeKey) ?? getAccentFallback()
   }
 
+  const categoryRow = idStr ? categories.find((c) => String(c.id) === idStr) : undefined
+
+  const emoji = careCategoryEmojiForCategory({
+    name: categoryRow?.name,
+    icon: iconFromSource ?? null,
+    type: typeStr,
+  })
+
   const iconName = resolveCareIconFromCategory({
     icon: iconFromSource ?? null,
     type: typeStr,
   })
 
-  const imageSrc = resolveCareCategoryImageSrc(imageFromSource ?? null, apiBase)
+  const imageSrc = careCategoryImageSrcForDisplay(imageFromSource, iconFromSource, apiBase)
 
-  return { iconName, iconColor: accent.iconColor, tileBg: accent.tileBg, imageSrc }
+  return { emoji, iconName, iconColor: accent.iconColor, tileBg: accent.tileBg, imageSrc }
 }
 
 /**
@@ -206,7 +237,7 @@ export function careListBadgeForCatalogItem(
   categories: CareCategoryRowMinimal[],
   accentMap?: ReadonlyMap<string, CareAccent>,
   apiBase?: string | null,
-): { iconName: string; iconColor: string; tileBg: string; imageSrc: string | null } {
+): CareCategoryBadgeVisual {
   const rawType = String(appointmentType ?? '')
   const typeStr = rawType === 'blood_test' ? 'blood_test' : 'nursing'
   const map = accentMap ?? buildCategoryAccentMapForList(categories)
@@ -247,11 +278,18 @@ export function careListBadgeForCatalogItem(
       nurIds.length > 0 ? map.get(nurIds[0]) ?? getAccentFallback() : map.get('nursing') ?? getAccentFallback()
   }
 
+  const row = catId ? categories.find((c) => String(c.id) === catId) : undefined
+  const emoji = careCategoryEmojiForCategory({
+    name: row?.name,
+    icon: iconFromSource ?? null,
+    type: typeStr,
+  })
+
   const iconName = resolveCareIconFromCategory({
     icon: iconFromSource ?? null,
     type: typeStr,
   })
-  const imageSrc = resolveCareCategoryImageSrc(imageFromSource ?? null, apiBase)
+  const imageSrc = careCategoryImageSrcForDisplay(imageFromSource, iconFromSource, apiBase)
 
-  return { iconName, iconColor: accent.iconColor, tileBg: accent.tileBg, imageSrc }
+  return { emoji, iconName, iconColor: accent.iconColor, tileBg: accent.tileBg, imageSrc }
 }

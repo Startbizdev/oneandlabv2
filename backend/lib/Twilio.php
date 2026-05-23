@@ -100,7 +100,7 @@ class Twilio
      */
     public function sendAppointmentCanceled(string $to): bool
     {
-        $message = 'OneAndLab : Votre rendez-vous a été annulé.';
+        $message = 'Cary : Votre rendez-vous a été annulé.';
         try {
             $this->sendSMS($to, $message);
             return true;
@@ -116,7 +116,7 @@ class Twilio
     {
         $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://app.oneandlab.fr';
         $rebookUrl = $baseUrl . '/rendez-vous/nouveau';
-        $message = 'OneAndLab : Désolé, aucun professionnel disponible. Vous pouvez reprendre rendez-vous : ' . $rebookUrl;
+        $message = 'Cary : Désolé, aucun professionnel disponible. Vous pouvez reprendre rendez-vous : ' . $rebookUrl;
         try {
             $this->sendSMS($to, $message);
             return true;

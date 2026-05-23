@@ -328,11 +328,18 @@ $durationLabels = [
     '60+' => 'Longue durée',
 ];
 $durationPart = '';
-$durationDays = $formData['duration_days'] ?? '';
+$durationDays = isset($formData['duration_days']) ? trim((string) $formData['duration_days']) : '';
 if ($durationDays === 'custom' && !empty($formData['custom_days'])) {
-    $durationPart = $formData['custom_days'] . ' jours';
-} elseif ($durationDays !== '') {
-    $durationPart = $durationLabels[$durationDays] ?? $durationDays;
+    $durationPart = trim((string) $formData['custom_days']) . ' jours';
+} elseif (
+    $durationDays !== ''
+    && strtolower($durationDays) !== 'undefined'
+    && strtolower($durationDays) !== 'null'
+) {
+    $mapped = $durationLabels[$durationDays] ?? $durationDays;
+    if ($mapped !== '' && strtolower((string) $mapped) !== 'undefined') {
+        $durationPart = $mapped;
+    }
 }
 
 // Récupérer ou créer le token

@@ -1,5 +1,5 @@
 <template>
-  <section class="px-6 pb-12 pt-[clamp(96px,calc(72px+4dvh),140px)] lg:px-12">
+  <section class="px-6 pb-12 pt-10 sm:pt-12 lg:px-12 lg:pt-14">
     <div class="mx-auto max-w-[1200px]">
       <div
         class="overflow-hidden rounded-[22px] border border-[#E8E8F0] bg-white/80 shadow-[0_4px_24px_-6px_rgb(15_23_42/0.08)] backdrop-blur-sm dark:border-gray-800 dark:bg-gray-950/55"

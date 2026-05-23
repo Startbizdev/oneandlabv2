@@ -11,7 +11,7 @@
           width="800"
           height="1200"
           class="h-full w-full object-cover object-[center_22%]"
-          alt="Soins infirmiers à domicile : professionnel OneAndLab auprès d'un patient"
+          alt="Soins infirmiers à domicile : professionnel Cary auprès d'un patient"
           loading="lazy"
           decoding="async"
         />
@@ -29,7 +29,7 @@
           Une plateforme simple pour vos soins à la maison
         </h2>
         <p class="mb-[22px] text-[1.0625rem] leading-[1.75] text-[#3D3D52] dark:text-gray-300">
-          Avec OneAndLab, vous réservez un infirmier ou un prélèvement labo près de chez vous, sans
+          Avec Cary, vous réservez un infirmier ou un prélèvement labo près de chez vous, sans
           courir après les cabinets.
         </p>
         <ul class="m-0 flex list-none flex-col gap-3 p-0">

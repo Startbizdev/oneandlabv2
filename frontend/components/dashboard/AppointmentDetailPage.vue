@@ -86,7 +86,7 @@
                   :appointment="appointment"
                   :is-nursing-type="isNursingType"
                   :show-assigned-professional-section="showAssignedProfessionalSection"
-                  :show-creator-origin="false"
+                  :show-creator-origin="isPatientPortal"
                   :hide-nurse-assignee-if-self="viewerIsAssignedNurse"
                   :hide-lab-assignee-if-self="viewerIsAssignedLabEntity"
                   :hide-preleveur-assignee-if-self="viewerIsAssignedPreleveur"
@@ -322,6 +322,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { CANCELLATION_REASONS } from '~/config/cancellation-reasons';
+import { canViewCancellationPhoto } from '~/utils/appointment-cancellation';
 
 const props = withDefaults(
   defineProps<{
@@ -409,13 +410,7 @@ function appointmentDetailBadgeTypeLabel(t: string) {
   return t === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers';
 }
 
-// Admin, lab, subaccount, patient : accès à la photo d'annulation ; nurse, préleveur : motif uniquement
-const showCancellationPhoto = computed(() =>
-  user.value?.role === 'super_admin' ||
-  user.value?.role === 'lab' ||
-  user.value?.role === 'subaccount' ||
-  user.value?.role === 'patient',
-);
+const showCancellationPhoto = computed(() => canViewCancellationPhoto(user.value?.role));
 
 const isAdmin = computed(() => user.value?.role === 'super_admin');
 
@@ -423,7 +418,7 @@ const showCreatorOrigin = computed(() =>
   ['super_admin', 'nurse', 'lab', 'subaccount', 'preleveur', 'pro'].includes(user.value?.role ?? ''),
 );
 
-/** Plateforme patient : sans préfixe « Patient » ; marque OneAndLab affichée en oneandlab. */
+/** Plateforme patient : sans préfixe « Patient » ; marque Cary affichée en « Cary ». */
 const patientPlatformOriginDisplay = computed(() => {
   const l = appointment.value?.creator_origin?.label;
   const s = String(l ?? '')
@@ -431,7 +426,7 @@ const patientPlatformOriginDisplay = computed(() => {
     .replace(/^patient\s+/i, '')
     .trim();
   const compact = s.replace(/\s+/g, '').toLowerCase();
-  if (!compact || compact === 'oneandlab') return 'oneandlab';
+  if (!compact || compact === 'cary' || compact === 'oneandlab') return 'Cary';
   return s;
 });
 
@@ -501,6 +496,14 @@ const showAssignedProfessionalSection = computed(() => {
   if (!a) return false;
   if (isNursingType.value && (a.assigned_nurse_id || a.assigned_nurse_display_name)) return true;
   if (a.type === 'blood_test' && (a.assigned_lab_id || a.assigned_lab_display_name || a.assigned_to || a.assigned_to_display_name)) {
+    return true;
+  }
+  const o = a.creator_origin;
+  if (
+    isPatientPortal.value &&
+    o?.kind &&
+    ['nurse', 'pro', 'lab_team', 'patient_platform'].includes(String(o.kind))
+  ) {
     return true;
   }
   return false;

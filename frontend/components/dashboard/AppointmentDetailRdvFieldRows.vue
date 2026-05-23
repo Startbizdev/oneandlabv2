@@ -70,6 +70,7 @@
                 class="max-w-full inline-flex items-center gap-1.5 border-0 font-semibold shadow-none ring-1 ring-black/5 dark:ring-white/10 py-1 pl-1.5 pr-2.5"
               >
                 <CareCategoryVisual
+                  :emoji="nursingItemCategoryVisual(nItem).emoji"
                   :image-src="nursingItemCategoryVisual(nItem).imageSrc"
                   :icon-name="nursingItemCategoryVisual(nItem).iconName"
                   img-class="h-4 w-4 shrink-0 object-contain"
@@ -100,19 +101,7 @@
               nursingItemMetaFrequencyLabel(nItem)
             }}</p>
           </div>
-          <div v-if="appt.type === 'nursing' && nursingItems.length > 0 && rdvNursingCareTypeDurationLabel()" :class="kvRow">
-            <div :class="kvLabel">Type de prise en charge</div>
-            <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
-              rdvNursingCareTypeDurationLabel()
-            }}</p>
-          </div>
-          <div v-if="appt.type === 'nursing' && nursingItems.length > 0 && rdvNursingCareFrequencyLabel()" :class="kvRow">
-            <div :class="kvLabel">Fréquence</div>
-            <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
-              rdvNursingCareFrequencyLabel()
-            }}</p>
-          </div>
-          <template v-for="[key, val] in nursingItemCareOptionEntries(nItem)" :key="`ndet-${nIdx}-${key}`">
+          <template v-for="[key, val] in nursingItemCareOptionEntriesUniquePerAct(nItem)" :key="`ndet-${nIdx}-${key}`">
             <div v-if="shouldShowCareOptionValue(val)" :class="kvRow">
               <div :class="kvLabel">{{ getCareOptionLabelForCategory(key, nItem?.category_id) }}</div>
               <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
@@ -122,6 +111,26 @@
           </template>
         </div>
       </template>
+
+      <template v-for="row in nursingSharedIdenticalCareOptionRows" :key="`ndet-shared-${row.key}`">
+        <div :class="kvRow">
+          <div :class="kvLabel">{{ row.label }}</div>
+          <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ row.value }}</p>
+        </div>
+      </template>
+
+      <div v-if="appt.type === 'nursing' && nursingItems.length > 0 && rdvNursingCareTypeDurationLabel()" :class="kvRow">
+        <div :class="kvLabel">Type de prise en charge</div>
+        <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
+          rdvNursingCareTypeDurationLabel()
+        }}</p>
+      </div>
+      <div v-if="appt.type === 'nursing' && nursingItems.length > 0 && rdvNursingCareFrequencyLabel()" :class="kvRow">
+        <div :class="kvLabel">Fréquence</div>
+        <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
+          rdvNursingCareFrequencyLabel()
+        }}</p>
+      </div>
 
       <div v-if="careOptionTypeValue != null && showRootFormCareOptionRows" :class="kvRow">
         <div :class="kvLabel">{{ getCareOptionLabel('type') }}</div>
@@ -143,15 +152,15 @@
         <div :class="kvLabel">Fréquence</div>
         <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ getFrequencyLabel(String(appt.form_data.frequency)) }}</p>
       </div>
-      <template v-for="[key, val] in careOptionsEntriesWithoutType" :key="`care-root-${key}`">
+      <template v-for="[key, val] in careOptionsRootEntriesForDetailDisplay" :key="`care-root-${key}`">
         <div v-if="val != null && val !== '' && showRootFormCareOptionRows" :class="kvRow">
           <div :class="kvLabel">{{ getCareOptionLabel(key) }}</div>
           <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ getCareOptionValueLabel(key, val) }}</p>
         </div>
       </template>
-      <div v-if="appt.notes" :class="kvRow">
-        <div :class="kvLabel">Notes</div>
-        <p class="min-w-0 text-sm text-gray-900 dark:text-white whitespace-pre-wrap">{{ appt.notes }}</p>
+      <div v-if="appointmentNotesText" :class="kvRow">
+        <div :class="kvLabel">Message</div>
+        <p class="min-w-0 text-sm text-gray-900 dark:text-white whitespace-pre-wrap">{{ appointmentNotesText }}</p>
       </div>
     </template>
 
@@ -185,6 +194,7 @@
                 class="max-w-full inline-flex items-center gap-1.5 border-0 font-semibold shadow-none ring-1 ring-black/5 dark:ring-white/10 py-1 pl-1.5 pr-2.5"
               >
                 <CareCategoryVisual
+                  :emoji="bloodItemCategoryVisual(bItem).emoji"
                   :image-src="bloodItemCategoryVisual(bItem).imageSrc"
                   :icon-name="bloodItemCategoryVisual(bItem).iconName"
                   img-class="h-4 w-4 shrink-0 object-contain"
@@ -230,15 +240,15 @@
           formatBloodTestSeriesDurationDays(appt.form_data.duration_days, appt.form_data.custom_days)
         }}</p>
       </div>
-      <template v-for="[key, val] in careOptionsRootEntriesForBloodTestDisplay" :key="`care-blood-root-${key}`">
+      <template v-for="[key, val] in careOptionsRootEntriesForDetailDisplay" :key="`care-blood-root-${key}`">
         <div v-if="val != null && val !== '' && showRootFormCareOptionRows" :class="kvRow">
           <div :class="kvLabel">{{ getCareOptionLabel(key) }}</div>
           <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ getCareOptionValueLabel(key, val) }}</p>
         </div>
       </template>
-      <div v-if="appt.notes" :class="kvRow">
-        <div :class="kvLabel">Notes</div>
-        <p class="min-w-0 text-sm text-gray-900 dark:text-white whitespace-pre-wrap">{{ appt.notes }}</p>
+      <div v-if="appointmentNotesText" :class="kvRow">
+        <div :class="kvLabel">Message</div>
+        <p class="min-w-0 text-sm text-gray-900 dark:text-white whitespace-pre-wrap">{{ appointmentNotesText }}</p>
       </div>
     </template>
 
@@ -309,6 +319,7 @@
           class="max-w-full inline-flex items-center gap-1.5 border-0 font-semibold shadow-none ring-1 ring-black/5 dark:ring-white/10 py-1 pl-1.5 pr-2.5"
         >
           <CareCategoryVisual
+            :emoji="bloodItemCategoryVisual(item).emoji"
             :image-src="bloodItemCategoryVisual(item).imageSrc"
             :icon-name="bloodItemCategoryVisual(item).iconName"
             img-class="h-4 w-4 shrink-0 object-contain"
@@ -349,6 +360,7 @@
           class="max-w-full inline-flex items-center gap-1.5 border-0 font-semibold shadow-none ring-1 ring-black/5 dark:ring-white/10 py-1 pl-1.5 pr-2.5"
         >
           <CareCategoryVisual
+            :emoji="careCategoryDisplay.emoji"
             :image-src="careCategoryDisplay.imageSrc"
             :icon-name="careCategoryDisplay.iconName"
             img-class="h-4 w-4 shrink-0 object-contain"
@@ -380,7 +392,7 @@
       <div :class="kvLabel">Fréquence</div>
       <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ getFrequencyLabel(String(appt.form_data.frequency)) }}</p>
     </div>
-    <template v-for="[key, val] in careOptionsRootEntriesForBloodTestDisplay" :key="`care-${key}`">
+    <template v-for="[key, val] in careOptionsRootEntriesForDetailDisplay" :key="`care-${key}`">
       <div v-if="val != null && val !== '' && showRootFormCareOptionRows" :class="kvRow">
         <div :class="kvLabel">{{ getCareOptionLabel(key) }}</div>
         <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ getCareOptionValueLabel(key, val) }}</p>
@@ -400,6 +412,7 @@
                 class="max-w-full inline-flex items-center gap-1.5 border-0 font-semibold shadow-none ring-1 ring-black/5 dark:ring-white/10 py-1 pl-1.5 pr-2.5"
               >
                 <CareCategoryVisual
+                  :emoji="nursingItemCategoryVisual(nItem).emoji"
                   :image-src="nursingItemCategoryVisual(nItem).imageSrc"
                   :icon-name="nursingItemCategoryVisual(nItem).iconName"
                   img-class="h-4 w-4 shrink-0 object-contain"
@@ -430,19 +443,7 @@
               nursingItemMetaFrequencyLabel(nItem)
             }}</p>
           </div>
-          <div v-if="appt.type === 'nursing' && nursingItems.length > 0 && rdvNursingCareTypeDurationLabel()" :class="kvRow">
-            <div :class="kvLabel">Type de prise en charge</div>
-            <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
-              rdvNursingCareTypeDurationLabel()
-            }}</p>
-          </div>
-          <div v-if="appt.type === 'nursing' && nursingItems.length > 0 && rdvNursingCareFrequencyLabel()" :class="kvRow">
-            <div :class="kvLabel">Fréquence</div>
-            <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
-              rdvNursingCareFrequencyLabel()
-            }}</p>
-          </div>
-          <template v-for="[key, val] in nursingItemCareOptionEntries(nItem)" :key="`ni-${nIdx}-${key}`">
+          <template v-for="[key, val] in nursingItemCareOptionEntriesUniquePerAct(nItem)" :key="`ni-${nIdx}-${key}`">
             <div v-if="shouldShowCareOptionValue(val)" :class="kvRow">
               <div :class="kvLabel">{{ getCareOptionLabelForCategory(key, nItem?.category_id) }}</div>
               <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
@@ -486,7 +487,7 @@
             rdvNursingCareFrequencyLabel()
           }}</p>
         </div>
-        <template v-for="[key, val] in nursingItemCareOptionEntries(nItem)" :key="`ni-${nIdx}-${key}`">
+        <template v-for="[key, val] in nursingItemCareOptionEntriesUniquePerAct(nItem)" :key="`ni-${nIdx}-${key}`">
           <div v-if="shouldShowCareOptionValue(val)" :class="kvRow">
             <div :class="kvLabel">{{ getCareOptionLabelForCategory(key, nItem?.category_id) }}</div>
             <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
@@ -495,6 +496,26 @@
           </div>
         </template>
       </template>
+    </template>
+    <template v-if="appt.type === 'nursing' && nursingItems.length > 1">
+      <template v-for="row in nursingSharedIdenticalCareOptionRows" :key="`ni-shared-${row.key}`">
+        <div :class="kvRow">
+          <div :class="kvLabel">{{ row.label }}</div>
+          <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ row.value }}</p>
+        </div>
+      </template>
+      <div v-if="rdvNursingCareTypeDurationLabel()" :class="kvRow">
+        <div :class="kvLabel">Type de prise en charge</div>
+        <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
+          rdvNursingCareTypeDurationLabel()
+        }}</p>
+      </div>
+      <div v-if="rdvNursingCareFrequencyLabel()" :class="kvRow">
+        <div :class="kvLabel">Fréquence</div>
+        <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
+          rdvNursingCareFrequencyLabel()
+        }}</p>
+      </div>
     </template>
     <template v-for="(bItem, bIdx) in bloodTestItems" :key="`bdef-${String(bItem?.id ?? '')}-${bIdx}`">
       <template v-if="appt.type === 'blood_test' && bloodTestItems.length > 1">
@@ -509,6 +530,7 @@
                 class="max-w-full inline-flex items-center gap-1.5 border-0 font-semibold shadow-none ring-1 ring-black/5 dark:ring-white/10 py-1 pl-1.5 pr-2.5"
               >
                 <CareCategoryVisual
+                  :emoji="bloodItemCategoryVisual(bItem).emoji"
                   :image-src="bloodItemCategoryVisual(bItem).imageSrc"
                   :icon-name="bloodItemCategoryVisual(bItem).iconName"
                   img-class="h-4 w-4 shrink-0 object-contain"
@@ -557,9 +579,9 @@
         </template>
       </template>
     </template>
-    <div v-if="appt.notes" :class="kvRow">
-      <div :class="kvLabel">Notes</div>
-      <p class="min-w-0 text-sm text-gray-900 dark:text-white whitespace-pre-wrap">{{ appt.notes }}</p>
+    <div v-if="appointmentNotesText" :class="kvRow">
+      <div :class="kvLabel">Message</div>
+      <p class="min-w-0 text-sm text-gray-900 dark:text-white whitespace-pre-wrap">{{ appointmentNotesText }}</p>
     </div>
     </template>
   </template>
@@ -576,10 +598,12 @@ import {
   resolveCareCategoryImageSrc,
   resolveCareIconFromCategory,
 } from '~/utils/care-icons';
+import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils';
 import {
   formatCareSelectValueWithAutreDetail,
   isCareAutreDetailKey,
 } from '~/utils/care-category-autre-detail';
+import { getAppointmentNotes } from '~/utils/appointment-notes';
 
 const props = withDefaults(
   defineProps<{
@@ -616,6 +640,8 @@ const isCanceled = computed(() => {
   const s = String(props.appt?.status ?? '').toLowerCase();
   return s === 'canceled' || s === 'cancelled';
 });
+
+const appointmentNotesText = computed(() => getAppointmentNotes(props.appt));
 
 const addressLine = computed(() => appointmentDetailAddressLine(props.appt));
 const addressParsed = computed(() => parseRawPatientAddress(props.appt?.address));
@@ -929,6 +955,74 @@ function nursingItemCareOptionsRecord(item: Record<string, unknown> | null | und
   return nursingItemParsedCareOptions(item);
 }
 
+/** Options métier strictement identiques sur tous les actes du même RDV → une ligne commune (évite ex. « Localisation » × N). */
+const nursingSharedIdenticalCareOptionRows = computed(() => {
+  const items = nursingItems.value as Record<string, unknown>[];
+  if (props.appt?.type !== 'nursing' || items.length <= 1) {
+    return [] as { key: string; label: string; value: string }[];
+  }
+
+  const perItem = items.map((item) => {
+    const m = new Map<string, unknown>();
+    for (const [k, val] of nursingItemCareOptionEntries(item)) {
+      if (shouldShowCareOptionValue(val)) m.set(k, val);
+    }
+    return m;
+  });
+
+  const firstMap = perItem[0]!;
+  const firstItem = items[0]!;
+  const out: { key: string; label: string; value: string }[] = [];
+
+  for (const key of firstMap.keys()) {
+    const v0 = firstMap.get(key)!;
+    const disp0 = getCareOptionValueLabelForCategory(
+      key,
+      v0,
+      firstItem?.category_id as string | null | undefined,
+      nursingItemCareOptionsRecord(firstItem),
+    );
+
+    let allMatch = true;
+    for (let i = 1; i < perItem.length; i++) {
+      const mi = perItem[i]!;
+      const item = items[i]!;
+      if (!mi.has(key)) {
+        allMatch = false;
+        break;
+      }
+      const vi = mi.get(key)!;
+      const disp = getCareOptionValueLabelForCategory(
+        key,
+        vi,
+        item?.category_id as string | null | undefined,
+        nursingItemCareOptionsRecord(item),
+      );
+      if (disp !== disp0) {
+        allMatch = false;
+        break;
+      }
+    }
+
+    if (allMatch) {
+      out.push({
+        key,
+        label: getCareOptionLabelForCategory(key, firstItem?.category_id as string | null | undefined),
+        value: disp0,
+      });
+    }
+  }
+
+  return out;
+});
+
+function nursingItemCareOptionEntriesUniquePerAct(
+  item: Record<string, unknown> | null | undefined,
+): [string, unknown][] {
+  const sharedKeys = new Set(nursingSharedIdenticalCareOptionRows.value.map((r) => r.key));
+  return nursingItemCareOptionEntries(item).filter(([k]) => !sharedKeys.has(k));
+}
+
 function bloodItemCareOptionsRecord(item: Record<string, unknown> | null | undefined): Record<string, unknown> {
   return asCareOptionsRecord(item?.care_options);
 }
@@ -995,6 +1089,7 @@ function nursingItemCareOptionTypeValue(item: Record<string, unknown> | null | u
 
 /** Icône + image catalogue pour un acte `nursing_items` (aligné sur la ligne « Type de soin »). */
 function nursingItemCategoryVisual(item: Record<string, unknown> | null | undefined): {
+  emoji: string;
   imageSrc: string | null;
   iconName: string;
 } {
@@ -1013,8 +1108,16 @@ function nursingItemCategoryVisual(item: Record<string, unknown> | null | undefi
       : itemImg != null && String(itemImg).trim() !== ''
         ? String(itemImg)
         : null;
-  const imageSrc = resolveCareCategoryImageSrc(rawImg, config.public.apiBase);
+  const imageSrc = isCareCategoryEmoji(row?.icon)
+    ? null
+    : resolveCareCategoryImageSrc(rawImg, config.public.apiBase);
+  const emoji = careCategoryEmojiForCategory({
+    name: row?.name ?? String(item?.category_name ?? ''),
+    icon: row?.icon ?? null,
+    type: 'nursing',
+  });
   return {
+    emoji,
     iconName,
     imageSrc,
   };
@@ -1088,6 +1191,7 @@ function shouldShowBloodItemTypeRow(item: Record<string, unknown> | null | undef
 }
 
 function bloodItemCategoryVisual(item: Record<string, unknown> | null | undefined): {
+  emoji: string;
   imageSrc: string | null;
   iconName: string;
 } {
@@ -1106,8 +1210,16 @@ function bloodItemCategoryVisual(item: Record<string, unknown> | null | undefine
       : itemImg != null && String(itemImg).trim() !== ''
         ? String(itemImg)
         : null;
-  const imageSrc = resolveCareCategoryImageSrc(rawImg, config.public.apiBase);
+  const imageSrc = isCareCategoryEmoji(row?.icon)
+    ? null
+    : resolveCareCategoryImageSrc(rawImg, config.public.apiBase);
+  const emoji = careCategoryEmojiForCategory({
+    name: row?.name ?? String(item?.category_name ?? ''),
+    icon: row?.icon ?? null,
+    type: 'blood_test',
+  });
   return {
+    emoji,
     iconName,
     imageSrc,
   };
@@ -1134,8 +1246,16 @@ const careCategoryDisplay = computed(() => {
       : a?.category_image_url != null && String(a.category_image_url).trim() !== ''
         ? String(a.category_image_url)
         : null;
-  const imageSrc = resolveCareCategoryImageSrc(rawImg, config.public.apiBase);
+  const imageSrc = isCareCategoryEmoji(row?.icon)
+    ? null
+    : resolveCareCategoryImageSrc(rawImg, config.public.apiBase);
+  const emoji = careCategoryEmojiForCategory({
+    name: row?.name ?? a?.category_name ?? null,
+    icon: row?.icon ?? null,
+    type: typeStr,
+  });
   return {
+    emoji,
     iconName,
     imageSrc,
   };
@@ -1157,9 +1277,19 @@ const careOptionsEntriesWithoutType = computed(() => {
   );
 });
 
-/** Évite le doublon label/valeur quand les mêmes clés existent en racine et sur `blood_test_items[].care_options`. */
-const careOptionsRootEntriesForBloodTestDisplay = computed(() => {
+/** Évite les doublons : clés présentes en racine ET sur chaque ligne d’acte (nursing comme blood_test). */
+const careOptionsRootEntriesForDetailDisplay = computed(() => {
   const base = careOptionsEntriesWithoutType.value;
+  if (props.appt?.type === 'nursing') {
+    const keysOnItems = new Set<string>();
+    for (const nItem of nursingItems.value) {
+      for (const [k] of nursingItemCareOptionEntries(nItem)) {
+        keysOnItems.add(k);
+      }
+    }
+    if (keysOnItems.size === 0) return base;
+    return base.filter(([k]) => !keysOnItems.has(k));
+  }
   if (props.appt?.type !== 'blood_test') return base;
   const keysOnItems = new Set<string>();
   for (const bItem of bloodTestItems.value) {

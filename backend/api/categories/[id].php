@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/CareCategoryImage.php';
+require_once __DIR__ . '/../../lib/Uuid.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -143,7 +144,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         }
 
-        if ($hasImgCol) {
+        $hasSkipRxCol = $db->query("SHOW COLUMNS FROM care_categories LIKE 'skip_prescription_documents'")->rowCount() > 0;
+        $skipRx = (int) ($existing['skip_prescription_documents'] ?? 0);
+        if ($hasSkipRxCol && array_key_exists('skip_prescription_documents', $data)) {
+            $sv = $data['skip_prescription_documents'];
+            $skipRx = ($sv === true || $sv === 1 || $sv === '1') ? 1 : 0;
+        }
+
+        if ($hasImgCol && $hasSkipRxCol) {
+            $stmt = $db->prepare('
+                UPDATE care_categories
+                SET name = ?, description = ?, type = ?, icon = ?, image_url = ?, is_active = ?, skip_prescription_documents = ?
+                WHERE id = ?
+            ');
+            $stmt->execute([
+                $data['name'] ?? $existing['name'],
+                $data['description'] ?? $existing['description'],
+                $data['type'] ?? $existing['type'],
+                array_key_exists('icon', $data) ? $data['icon'] : $existing['icon'],
+                $imageUrl,
+                $isActive,
+                $skipRx,
+                $id,
+            ]);
+        } elseif ($hasImgCol) {
             $stmt = $db->prepare('
                 UPDATE care_categories
                 SET name = ?, description = ?, type = ?, icon = ?, image_url = ?, is_active = ?
@@ -156,6 +180,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 array_key_exists('icon', $data) ? $data['icon'] : $existing['icon'],
                 $imageUrl,
                 $isActive,
+                $id,
+            ]);
+        } elseif ($hasSkipRxCol) {
+            $stmt = $db->prepare('
+                UPDATE care_categories
+                SET name = ?, description = ?, type = ?, icon = ?, is_active = ?, skip_prescription_documents = ?
+                WHERE id = ?
+            ');
+            $stmt->execute([
+                $data['name'] ?? $existing['name'],
+                $data['description'] ?? $existing['description'],
+                $data['type'] ?? $existing['type'],
+                array_key_exists('icon', $data) ? $data['icon'] : $existing['icon'],
+                $isActive,
+                $skipRx,
                 $id,
             ]);
         } else {
@@ -187,7 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     if (empty($opt['option_key']) || empty($opt['label']) || empty($opt['field_type'])) {
                         continue;
                     }
-                    $optId = bin2hex(random_bytes(18));
+                    $optId = Uuid::v4();
                     $optOptions = isset($opt['options']) && is_array($opt['options'])
                         ? json_encode($opt['options'])
                         : (isset($opt['options']) && is_string($opt['options']) ? $opt['options'] : null);
@@ -217,6 +256,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ];
         if ($hasImgCol) {
             $updated['image_url'] = $imageUrl;
+        }
+        if ($hasSkipRxCol) {
+            $updated['skip_prescription_documents'] = (bool) $skipRx;
         }
         $optStmt = $db->prepare('SELECT option_key, label, field_type, options, is_required, sort_order FROM care_category_options WHERE care_category_id = ? ORDER BY sort_order, id');
         $optStmt->execute([$id]);

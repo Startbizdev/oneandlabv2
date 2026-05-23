@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Logger.php';
+require_once __DIR__ . '/../../lib/Uuid.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -127,6 +128,10 @@ function care_categories_column_fragment(PDO $db, string $tableAlias = ''): stri
     if ($st && $st->rowCount() > 0) {
         $frag .= ', ' . $pre . 'catalog_group';
     }
+    $st = $db->query("SHOW COLUMNS FROM care_categories LIKE 'skip_prescription_documents'");
+    if ($st && $st->rowCount() > 0) {
+        $frag .= ', ' . $pre . 'skip_prescription_documents';
+    }
     return $frag;
 }
 
@@ -237,7 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             exit;
         }
 
-        $id = bin2hex(random_bytes(18));
+        $id = Uuid::v4();
         $isActive = 1;
         if (array_key_exists('is_active', $data)) {
             $v = $data['is_active'];
@@ -246,6 +251,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         $hasIcon = $db->query("SHOW COLUMNS FROM care_categories LIKE 'icon'")->rowCount() > 0;
         $hasImg = $db->query("SHOW COLUMNS FROM care_categories LIKE 'image_url'")->rowCount() > 0;
+        $hasSkipRx = $db->query("SHOW COLUMNS FROM care_categories LIKE 'skip_prescription_documents'")->rowCount() > 0;
+        $skipRx = 0;
+        if ($hasSkipRx && array_key_exists('skip_prescription_documents', $data)) {
+            $sv = $data['skip_prescription_documents'];
+            $skipRx = ($sv === true || $sv === 1 || $sv === '1') ? 1 : 0;
+        }
 
         $cols = ['id', 'name', 'description', 'type'];
         $vals = [$id, $data['name'], $data['description'] ?? '', $data['type']];
@@ -259,6 +270,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         $cols[] = 'is_active';
         $vals[] = $isActive;
+        if ($hasSkipRx) {
+            $cols[] = 'skip_prescription_documents';
+            $vals[] = $skipRx;
+        }
 
         $placeholders = implode(',', array_fill(0, count($cols), '?'));
         $stmt = $db->prepare('INSERT INTO care_categories (' . implode(',', $cols) . ') VALUES (' . $placeholders . ')');
@@ -275,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 if (empty($opt['option_key']) || empty($opt['label']) || empty($opt['field_type'])) {
                     continue;
                 }
-                $optId = bin2hex(random_bytes(18));
+                $optId = Uuid::v4();
                 $optOptions = isset($opt['options']) && is_array($opt['options'])
                     ? json_encode($opt['options'])
                     : (isset($opt['options']) && is_string($opt['options']) ? $opt['options'] : null);
@@ -303,6 +318,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'image_url' => $hasImg ? ($data['image_url'] ?? null) : null,
             'is_active' => (bool) $isActive,
         ];
+        if ($hasSkipRx) {
+            $created['skip_prescription_documents'] = (bool) $skipRx;
+        }
         $created['options'] = appendCategoryOptions($db, [$created])[0]['options'] ?? [];
 
         echo json_encode([

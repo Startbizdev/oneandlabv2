@@ -6,7 +6,7 @@
         role="lab"
         :initial-email="(route.query.email as string) ?? ''"
         title="Inscription Laboratoire"
-        subtitle="Rejoignez le réseau OneAndLab pour les prises de sang à domicile."
+        subtitle="Rejoignez le réseau Cary pour les prises de sang à domicile."
         header-icon="i-lucide-building-2"
         header-icon-bg="bg-blue-600"
         submit-label="Envoyer ma demande d'inscription"

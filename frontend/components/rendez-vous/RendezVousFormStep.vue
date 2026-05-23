@@ -370,7 +370,7 @@
                       politique de confidentialité
                     </NuxtLink>
                     {{ ' ' }}
-                    et consens au traitement de mes données de santé. J’autorise OneAndLab à communiquer les informations
+                    et consens au traitement de mes données de santé. J’autorise Cary à communiquer les informations
                     nécessaires aux professionnels de santé concernés par ce rendez-vous.
                   </span>
                 </template>
@@ -405,9 +405,7 @@
 </template>
 
 <script setup lang="ts">
-import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
-import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
-import { joinFrenchAndList } from '~/utils/join-french-list';
+import { buildBookingWizardSegmentIntro } from '~/utils/booking-wizard-segment';
 
 const props = withDefaults(
   defineProps<{
@@ -510,80 +508,29 @@ const showBeneficiaryCard = computed(
 
 const runtimeWizard = useRuntimeConfig();
 
-/** Suite du H1 : pas de majuscule forcée en tête (continuation de phrase). */
-function lowerFirstLetter(s: string): string {
-  const t = String(s).trim();
-  if (!t) return t;
-  return t.charAt(0).toLowerCase() + t.slice(1);
-}
-
-/** Une carte créneaux / documents : même titre et pastilles que l’étape date (sans fusionner plusieurs lots). */
-function buildWizardSegmentIntro(activeServiceId: string | null) {
-  if (!activeServiceId) return null;
-  const rep = props.selectedServices.find((s) => s.id === activeServiceId);
-  if (!rep) return null;
-
-  const base = String(runtimeWizard.public.apiBase ?? '');
-  const img = (svc: (typeof props.selectedServices)[number]) =>
-    resolveCareCategoryImageSrc(svc.category_image_url ?? null, base);
-
-  if (isNursingAppointment(rep.type)) {
-    const nurs = props.selectedServices.filter((s) => isNursingAppointment(s.type));
-    const lines = nurs.map((s) => ({
-      id: s.id,
-      name: s.name,
-      imageSrc: img(s),
-      iconName: s.icon || 'i-lucide-heart-pulse',
-    }));
-    return { title: 'soins infirmiers', lines };
-  }
-
-  if (isBloodTestAppointment(rep.type)) {
-    const bloods = props.selectedServices.filter((s) => isBloodTestAppointment(s.type));
-    const lines = bloods.map((s) => ({
-      id: s.id,
-      name: s.name,
-      imageSrc: img(s),
-      iconName: s.icon || 'i-lucide-droplet',
-    }));
-    return { title: 'prélèvement', lines };
-  }
-
-  return {
-    title: lowerFirstLetter(rep.name),
-    lines: [
-      {
-        id: rep.id,
-        name: rep.name,
-        imageSrc: img(rep),
-        iconName: rep.icon || 'i-lucide-stethoscope',
-      },
-    ],
-  };
+function segmentIntroFor(activeServiceId: string | null) {
+  return buildBookingWizardSegmentIntro(
+    props.selectedServices,
+    activeServiceId,
+    String(runtimeWizard.public.apiBase ?? ''),
+  );
 }
 
 const wizardSlotDatetimeIntro = computed(() => {
   if (effectiveBookingWizardSection.value !== 'slot-datetime' || !props.bookingActiveSlotServiceId) return null;
-  return buildWizardSegmentIntro(props.bookingActiveSlotServiceId);
+  return segmentIntroFor(props.bookingActiveSlotServiceId);
 });
 
 /** Sous-étape documents alignée sur le lot courant (comme pour la date). */
 const wizardDocumentsIntro = computed(() => {
   if (effectiveBookingWizardSection.value !== 'documents' || !props.bookingActiveDocumentsServiceId) return null;
-  return buildWizardSegmentIntro(props.bookingActiveDocumentsServiceId);
+  return segmentIntroFor(props.bookingActiveDocumentsServiceId);
 });
 
 const wizardBookingHeaderIntro = computed(() => {
   if (effectiveBookingWizardSection.value === 'slot-datetime') return wizardSlotDatetimeIntro.value;
   if (effectiveBookingWizardSection.value === 'documents') return wizardDocumentsIntro.value;
   return null;
-});
-
-/** Libellés des soins du lot courant — concaténés dans le H1 (ex. après un tiret cadratin). */
-const wizardBookingCareTypesLine = computed(() => {
-  const intro = wizardBookingHeaderIntro.value;
-  if (!intro?.lines?.length) return '';
-  return joinFrenchAndList(intro.lines.map((l) => l.name));
 });
 
 const wizardBookingPageTitle = computed(() => {
@@ -594,13 +541,8 @@ const wizardBookingPageTitle = computed(() => {
   return 'Date de votre rendez-vous';
 });
 
-/** Titre affiché : base + soins dans le même `<h1>` lorsque pertinent. */
-const wizardBookingPageHeading = computed(() => {
-  const base = wizardBookingPageTitle.value;
-  const care = wizardBookingCareTypesLine.value;
-  if (!care) return base;
-  return `${base} — ${care}`;
-});
+/** Titre page : le détail des soins est dans la carte visuelle sous le H1. */
+const wizardBookingPageHeading = computed(() => wizardBookingPageTitle.value);
 
 const emit = defineEmits<{
   submit: [data: any];

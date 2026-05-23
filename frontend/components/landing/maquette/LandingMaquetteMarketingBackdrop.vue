@@ -1,10 +1,10 @@
 <template>
   <div
-    class="relative bg-gradient-to-br from-[#F6F8FC] via-white to-[#EDF3FC] dark:from-gray-950 dark:via-gray-950 dark:to-gray-900"
+    class="relative bg-gradient-to-br from-[#F0FAF9] via-white to-[#E8FBF9] dark:from-gray-950 dark:via-gray-950 dark:to-gray-900"
   >
     <div class="landing-mkt-grid-bg pointer-events-none absolute inset-0 z-0" aria-hidden="true" />
     <div
-      class="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_95%_60%_at_50%_-20%,rgb(47_128_237/0.1),transparent_50%)] dark:bg-[radial-gradient(ellipse_95%_60%_at_50%_-20%,rgb(47_128_237/0.15),transparent_50%)]"
+      class="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_95%_60%_at_50%_-20%,rgb(28_199_181/0.1),transparent_50%)] dark:bg-[radial-gradient(ellipse_95%_60%_at_50%_-20%,rgb(28_199_181/0.15),transparent_50%)]"
       aria-hidden="true"
     />
     <div class="relative z-[1]">

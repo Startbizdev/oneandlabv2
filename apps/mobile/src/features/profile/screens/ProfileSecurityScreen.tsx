@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useLayoutEffect, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useNavigation } from 'expo-router';
 import { ScanFace } from 'lucide-react-native';
 import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
@@ -14,13 +14,16 @@ import { useToast } from '@/providers/ToastProvider';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-function openIosBiometricSettings() {
-  void Linking.openURL('App-Prefs:root=TOUCHID_PASSCODE').catch(() =>
-    Linking.openSettings(),
-  );
+function openDeviceBiometricSettings() {
+  if (Platform.OS === 'ios') {
+    void Linking.openURL('App-Prefs:root=TOUCHID_PASSCODE').catch(() => Linking.openSettings());
+    return;
+  }
+  void Linking.openSettings();
 }
 
 export function ProfileSecurityScreen() {
+  const navigation = useNavigation();
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
   const { show: toast } = useToast();
@@ -44,21 +47,31 @@ export function ProfileSecurityScreen() {
     }, [refresh]),
   );
 
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: label });
+  }, [label, navigation]);
+
   const onToggle = async (next: boolean) => {
     if (!user?.id || !token || !hardwareReady) return;
 
     setBusy(true);
     try {
       if (next) {
-        const ok = await enableBiometricLogin(token, user);
-        if (!ok) return;
-        setEnabled(true);
+        const result = await enableBiometricLogin(token, user);
+        if (!result.ok) {
+          if (!result.cancelled && result.message) {
+            toast('Activation impossible', { message: result.message, type: 'error' });
+          }
+          await refresh();
+          return;
+        }
+        await refresh();
         toast(`${label} activé`, { type: 'success' });
         return;
       }
 
       await disableBiometricLogin();
-      setEnabled(false);
+      await refresh();
       toast(`${label} désactivé`, { type: 'info' });
     } finally {
       setBusy(false);
@@ -66,7 +79,9 @@ export function ProfileSecurityScreen() {
   };
 
   const hint = !hardwareReady
-    ? 'Configurer dans Réglages iOS'
+    ? Platform.OS === 'ios'
+      ? 'Configurer dans Réglages iOS'
+      : 'Configurer dans les réglages'
     : enabled
       ? 'Actif sur cet appareil'
       : 'Sans code email';
@@ -99,8 +114,8 @@ export function ProfileSecurityScreen() {
 
   return (
     <ProfileSubScreenLayout hideSave>
-      {!hardwareReady && Platform.OS === 'ios' ? (
-        <Pressable onPress={openIosBiometricSettings}>{card}</Pressable>
+      {!hardwareReady ? (
+        <Pressable onPress={openDeviceBiometricSettings}>{card}</Pressable>
       ) : (
         card
       )}

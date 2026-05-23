@@ -204,14 +204,14 @@ const loginUrl = computed(() => {
 
 // Meta FOMO pour la carte de partage (WhatsApp, etc.)
 const metaTitle = computed(() => {
-  if (!data.value) return 'Prise en charge à domicile – OneAndLab';
+  if (!data.value) return 'Prise en charge à domicile – Cary';
   const n = careItemsList.value.length;
   if (n > 1) {
-    return `🩺 Lot de ${n} soins à domicile – À pourvoir maintenant | OneAndLab`;
+    return `🩺 Lot de ${n} soins à domicile – À pourvoir maintenant | Cary`;
   }
   const cat = data.value.categoryName;
   const date = data.value.dateShort;
-  return `🩺 ${cat} le ${date} – À pourvoir maintenant | OneAndLab`;
+  return `🩺 ${cat} le ${date} – À pourvoir maintenant | Cary`;
 });
 const metaDescription = computed(() => {
   if (!data.value) return "Une prise en charge à domicile est disponible. Connectez-vous pour voir le détail et l'accepter.";

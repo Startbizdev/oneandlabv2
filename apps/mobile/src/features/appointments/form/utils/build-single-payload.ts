@@ -1,4 +1,4 @@
-import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { enrichScheduledAtWithAvailability, isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import type { AppointmentFormValues } from '../types';
 import { buildAvailabilityPayload } from './availability';
 
@@ -8,6 +8,7 @@ export function buildSingleAppointmentPayload(
   status: string = 'pending',
 ): Record<string, unknown> {
   const availability = buildAvailabilityPayload(values.availability_type, values.availability_range);
+  const scheduledAt = enrichScheduledAtWithAvailability(values.scheduled_at, availability);
   const filesMeta = Object.entries(values.files ?? {}).reduce(
     (acc, [key, f]) => {
       if (f) acc[key] = { field: key, name: f.name };
@@ -45,7 +46,7 @@ export function buildSingleAppointmentPayload(
   const body: Record<string, unknown> = {
     type: values.type,
     form_type: values.type,
-    scheduled_at: values.scheduled_at,
+    scheduled_at: scheduledAt,
     address: values.address,
     form_data,
     status,

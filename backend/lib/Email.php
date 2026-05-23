@@ -28,7 +28,7 @@ class Email
         $this->smtpPass = $_ENV['SMTP_PASS'] ?? '';
         $this->smtpSecure = filter_var($_ENV['SMTP_SECURE'] ?? 'false', FILTER_VALIDATE_BOOLEAN);
         $this->fromEmail = $_ENV['EMAIL_FROM'] ?? $_ENV['SMTP_FROM_EMAIL'] ?? 'noreply@oneandlab.fr';
-        $this->fromName = $_ENV['SMTP_FROM_NAME'] ?? 'OneAndLab';
+        $this->fromName = $_ENV['SMTP_FROM_NAME'] ?? 'Cary';
     }
 
     /**
@@ -176,7 +176,7 @@ class Email
         $src = $this->escapeHtml($this->logoSrc());
         $w = $this->emailLogoMaxWidth();
         return '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px 0;"><tr><td>'
-            . '<img src="' . $src . '" alt="OneAndLab" width="' . $w . '" style="display:block;max-width:' . $w . 'px;width:' . $w . 'px;height:auto;border:0;outline:none;text-decoration:none;" />'
+            . '<img src="' . $src . '" alt="Cary" width="' . $w . '" style="display:block;max-width:' . $w . 'px;width:' . $w . 'px;height:auto;border:0;outline:none;text-decoration:none;" />'
             . '</td></tr></table>';
     }
 
@@ -230,7 +230,7 @@ class Email
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
 <!--[if mso]><style type="text/css">table {border-collapse:collapse;border-spacing:0;} a {text-decoration:none;}</style><![endif]-->
-<title>OneAndLab</title>
+<title>Cary</title>
 </head>
 <body style="margin:0;padding:0;word-spacing:normal;background-color:' . $bg . ';-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
 ' . $pre . '
@@ -250,7 +250,7 @@ class Email
 </tr>
 <tr>
 <td style="padding:20px 12px 8px 12px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;font-size:12px;line-height:1.5;color:' . $muted . ';">
-OneAndLab — Prélèvement et soins infirmiers à domicile
+Cary — Prélèvement et soins infirmiers à domicile
 </td>
 </tr>
 </table>
@@ -303,7 +303,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
      */
     private function baseLayout(string $content, array $options = []): string
     {
-        $title = $options['title'] ?? 'OneAndLab';
+        $title = $options['title'] ?? 'Cary';
         $preheader = $options['preheader'] ?? '';
         $ctaUrl = $options['ctaUrl'] ?? '';
         $ctaLabel = $options['ctaLabel'] ?? '';
@@ -326,17 +326,17 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
 
     public function sendWelcome(string $to, array $p): bool
     {
-        $content = '<p style="margin:0 0 14px 0;">Bienvenue sur OneAndLab.</p><p style="margin:0 0 14px 0;">Vous pouvez désormais prendre rendez-vous pour des prises de sang ou soins infirmiers à domicile.</p>';
+        $content = '<p style="margin:0 0 14px 0;">Bienvenue sur Cary.</p><p style="margin:0 0 14px 0;">Vous pouvez désormais prendre rendez-vous pour des prises de sang ou soins infirmiers à domicile.</p>';
         $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
         $body = $this->baseLayout($content, [
             'title' => 'Bienvenue',
-            'preheader' => 'Votre compte OneAndLab est prêt. Accédez à votre espace.',
+            'preheader' => 'Votre compte Cary est prêt. Accédez à votre espace.',
             'ctaUrl' => $baseUrl . '/patient',
             'ctaLabel' => 'Ouvrir mon espace',
             'ctaSecondaryUrl' => $baseUrl . '/rendez-vous/nouveau',
             'ctaSecondaryLabel' => 'Prendre un rendez-vous',
         ]);
-        return $this->send($to, 'Bienvenue sur OneAndLab', $body, true);
+        return $this->send($to, 'Bienvenue sur Cary', $body, true);
     }
 
     public function sendAppointmentCreated(string $to, array $p): bool
@@ -351,14 +351,14 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
             $content .= '<p style="margin:0;">Ils seront pris en charge par un professionnel sous peu. Vous recevrez une confirmation par email.</p>';
             $body = $this->baseLayout($content, [
                 'title' => 'Rendez-vous enregistrés',
-                'preheader' => $n . ' rendez-vous enregistrés sur OneAndLab. Suivez-les depuis votre espace.',
+                'preheader' => $n . ' rendez-vous enregistrés sur Cary. Suivez-les depuis votre espace.',
                 'ctaUrl' => $baseUrl . '/patient',
                 'ctaLabel' => 'Voir mes rendez-vous',
                 'ctaSecondaryUrl' => $baseUrl . '/rendez-vous/nouveau',
                 'ctaSecondaryLabel' => 'Prendre un autre rendez-vous',
             ]);
 
-            return $this->send($to, 'Vos rendez-vous OneAndLab ont été enregistrés', $body, true);
+            return $this->send($to, 'Vos rendez-vous Cary ont été enregistrés', $body, true);
         }
 
         $type = ($p['type'] ?? '') === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers';
@@ -377,7 +377,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
             'ctaSecondaryUrl' => $baseUrl . '/rendez-vous/nouveau',
             'ctaSecondaryLabel' => 'Prendre un autre rendez-vous',
         ]);
-        return $this->send($to, 'Votre rendez-vous OneAndLab a été enregistré', $body, true);
+        return $this->send($to, 'Votre rendez-vous Cary a été enregistré', $body, true);
     }
 
     public function sendAppointmentCanceledToPatient(string $to, array $p): bool
@@ -398,7 +398,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
             'ctaSecondaryUrl' => $baseUrl . '/patient',
             'ctaSecondaryLabel' => 'Mon espace patient',
         ]);
-        return $this->send($to, 'Rendez-vous annulé — OneAndLab', $body, true);
+        return $this->send($to, 'Rendez-vous annulé — Cary', $body, true);
     }
 
     public function sendNewAppointmentToPro(string $to, array $p): bool
@@ -425,7 +425,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
             'ctaSecondaryUrl' => $baseUrl . $listPath,
             'ctaSecondaryLabel' => 'Liste de mes rendez-vous',
         ]);
-        return $this->send($to, 'Nouveau rendez-vous disponible — OneAndLab', $body, true);
+        return $this->send($to, 'Nouveau rendez-vous disponible — Cary', $body, true);
     }
 
     public function sendAppointmentAssignedToPreleveur(string $to, array $p): bool
@@ -445,13 +445,13 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
         $calUrl = $baseUrl . '/preleveur/calendar';
         $body = $this->baseLayout($content, [
             'title' => 'Rendez-vous assigné',
-            'preheader' => 'Un rendez-vous vous a été assigné sur OneAndLab.',
+            'preheader' => 'Un rendez-vous vous a été assigné sur Cary.',
             'ctaUrl' => $detailUrl,
             'ctaLabel' => $appointmentId ? 'Ouvrir la fiche RDV' : 'Voir mon calendrier',
             'ctaSecondaryUrl' => $calUrl,
             'ctaSecondaryLabel' => 'Ouvrir le calendrier',
         ]);
-        return $this->send($to, 'Rendez-vous assigné — OneAndLab', $body, true);
+        return $this->send($to, 'Rendez-vous assigné — Cary', $body, true);
     }
 
     /**
@@ -468,7 +468,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
             return true; // Succès simulé
         }
         
-        $subject = 'Votre code de connexion OneAndLab';
+        $subject = 'Votre code de connexion Cary';
         $body = $this->getOTPTemplate($otp);
         
         return $this->send($to, $subject, $body, true);
@@ -483,14 +483,14 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
         $h1 = '<h1 style="margin:0 0 18px 0;font-size:22px;font-weight:600;line-height:1.25;letter-spacing:-0.02em;color:' . $this->emailText() . ';">' . $this->escapeHtml('Votre code de connexion') . '</h1>';
         $inner = '<div style="font-size:15px;line-height:1.6;color:' . $this->emailMuted() . ';">'
             . '<p style="margin:0 0 14px 0;">Bonjour,</p>'
-            . '<p style="margin:0 0 14px 0;">Utilisez ce code pour vous connecter à OneAndLab (usage unique) :</p>'
+            . '<p style="margin:0 0 14px 0;">Utilisez ce code pour vous connecter à Cary (usage unique) :</p>'
             . $this->emailOtpCodeBlock($otp)
             . '<p style="margin:0 0 14px 0;">Il expire dans <strong style="color:' . $this->emailText() . ';">5 minutes</strong>.</p>'
             . '<p style="margin:0;">Si vous n\'êtes pas à l\'origine de cette demande, ignorez simplement cet email.</p>'
             . '</div>';
         $cta = $this->emailPrimaryCta($baseUrl . '/login', 'Se connecter');
         $secondary = $this->emailSecondaryCta($baseUrl . '/patient', 'Accéder à mon espace patient');
-        return $this->emailWrap('Code de connexion OneAndLab — valable 5 minutes', $this->emailLogoBlock() . $h1 . $inner . $cta . $secondary);
+        return $this->emailWrap('Code de connexion Cary — valable 5 minutes', $this->emailLogoBlock() . $h1 . $inner . $cta . $secondary);
     }
 
     /**
@@ -498,7 +498,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
      */
     public function sendAppointmentConfirmation(string $to, array $appointmentData): bool
     {
-        $subject = 'Confirmation de votre rendez-vous OneAndLab';
+        $subject = 'Confirmation de votre rendez-vous Cary';
         $body = $this->getAppointmentConfirmationTemplate($appointmentData);
         
         return $this->send($to, $subject, $body, true);
@@ -898,7 +898,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
 
         return $this->baseLayout($content, [
             'title' => 'Votre rendez-vous est confirmé',
-            'preheader' => 'Confirmation OneAndLab — professionnel assigné, horaires et lieu.',
+            'preheader' => 'Confirmation Cary — professionnel assigné, horaires et lieu.',
             'ctaUrl' => $detailUrl,
             'ctaLabel' => 'Ouvrir la fiche du rendez-vous',
             'ctaSecondaryUrl' => $baseUrl . '/rendez-vous/nouveau',
@@ -911,7 +911,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
      */
     public function sendReviewInvitation(string $to, string $appointmentId, array $appointmentData): bool
     {
-        $subject = 'Donnez votre avis sur votre rendez-vous OneAndLab';
+        $subject = 'Donnez votre avis sur votre rendez-vous Cary';
         $body = $this->getReviewInvitationTemplate($appointmentId, $appointmentData);
         
         return $this->send($to, $subject, $body, true);
@@ -931,7 +931,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
 
         return $this->baseLayout($content, [
             'title' => 'Donnez votre avis',
-            'preheader' => 'Comment s’est passé votre rendez-vous OneAndLab ? Cliquez pour noter.',
+            'preheader' => 'Comment s’est passé votre rendez-vous Cary ? Cliquez pour noter.',
             'ctaUrl' => $reviewUrl,
             'ctaLabel' => 'Donner mon avis',
             'ctaSecondaryUrl' => $baseUrl . '/patient',
@@ -955,7 +955,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
      */
     public function sendSuspensionEmail(string $to, int $days, string $reason): bool
     {
-        $subject = 'Suspension de votre compte OneAndLab';
+        $subject = 'Suspension de votre compte Cary';
         $body = $this->getSuspensionTemplate($days, $reason);
         
         return $this->send($to, $subject, $body, true);
@@ -969,7 +969,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
      */
     public function sendResultsReadyToPatient(string $to, string $appointmentId): bool
     {
-        $subject = 'Vos résultats sont disponibles — OneAndLab';
+        $subject = 'Vos résultats sont disponibles — Cary';
         $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
         $detailUrl = $baseUrl . '/patient/appointments/' . $appointmentId;
         $content = '<p style="margin:0 0 14px 0;">Bonjour,</p>'
@@ -977,7 +977,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
             . '<p style="margin:0;">Merci pour votre confiance.</p>';
         $body = $this->baseLayout($content, [
             'title' => 'Vos résultats sont prêts',
-            'preheader' => 'Consultez et téléchargez vos résultats depuis votre espace patient OneAndLab.',
+            'preheader' => 'Consultez et téléchargez vos résultats depuis votre espace patient Cary.',
             'ctaUrl' => $detailUrl,
             'ctaLabel' => 'Voir mes résultats',
             'ctaSecondaryUrl' => $baseUrl . '/patient',
@@ -988,7 +988,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
 
     public function sendBanEmail(string $to, string $reason): bool
     {
-        $subject = 'Bannissement de votre compte OneAndLab';
+        $subject = 'Bannissement de votre compte Cary';
         $body = $this->getBanTemplate($reason);
         
         return $this->send($to, $subject, $body, true);
@@ -1010,7 +1010,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
 
         return $this->baseLayout($content, [
             'title' => 'Avertissement — incident enregistré',
-            'preheader' => 'Un incident a été signalé sur votre compte OneAndLab. Consultez les détails.',
+            'preheader' => 'Un incident a été signalé sur votre compte Cary. Consultez les détails.',
             'ctaUrl' => $baseUrl . '/contact',
             'ctaLabel' => 'Contacter le support',
             'ctaSecondaryUrl' => 'mailto:contact@oneandlab.fr',
@@ -1033,7 +1033,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
 
         return $this->baseLayout($content, [
             'title' => 'Suspension de compte',
-            'preheader' => 'Votre compte OneAndLab est suspendu. Durée, motif et contact support.',
+            'preheader' => 'Votre compte Cary est suspendu. Durée, motif et contact support.',
             'ctaUrl' => $baseUrl . '/contact',
             'ctaLabel' => 'Nous contacter',
             'ctaSecondaryUrl' => 'mailto:contact@oneandlab.fr',
@@ -1047,7 +1047,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
     private function getBanTemplate(string $reason): string
     {
         $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
-        $alertInner = '<p style="margin:0;"><strong>Votre compte a été définitivement exclu de la plateforme OneAndLab.</strong></p>'
+        $alertInner = '<p style="margin:0;"><strong>Votre compte a été définitivement exclu de la plateforme Cary.</strong></p>'
             . '<p style="margin:8px 0 0 0;"><strong>Raison indiquée :</strong> ' . $this->escapeHtml($reason) . '</p>';
         $content = '<p style="margin:0 0 14px 0;">Bonjour,</p>'
             . $this->emailAlertBox($alertInner)
@@ -1056,7 +1056,7 @@ OneAndLab — Prélèvement et soins infirmiers à domicile
 
         return $this->baseLayout($content, [
             'title' => 'Compte définitivement fermé',
-            'preheader' => 'Information importante concernant votre compte OneAndLab.',
+            'preheader' => 'Information importante concernant votre compte Cary.',
             'ctaUrl' => 'mailto:contact@oneandlab.fr',
             'ctaLabel' => 'Écrire au support',
             'ctaSecondaryUrl' => $baseUrl . '/contact',

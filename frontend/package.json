@@ -26,6 +26,7 @@
     "@nuxt/devtools": "latest",
     "@playwright/test": "^1.58.2",
     "@types/node": "^24.10.1",
+    "tailwindcss": "^4.1.11",
     "typescript": "^5.9.3"
   }
 }

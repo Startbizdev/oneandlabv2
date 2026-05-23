@@ -16,7 +16,7 @@
   <LandingMaquetteMarketingBackdrop>
 
     <LandingMaquettePillarGrid
-      eyebrow="Pourquoi OneAndLab"
+      eyebrow="Pourquoi Cary"
       title="Tout est pensé pour vous"
       subtitle="Une expérience fluide, du choix du créneau à l'arrivée du professionnel."
       :columns="4"
@@ -46,7 +46,7 @@
       <div class="mx-auto max-w-[1200px] px-6 lg:px-12">
         <Reviews
           title="Ce que disent les patients"
-          subtitle="Des milliers de réservations à domicile · la parole à ceux qui ont testé OneAndLab."
+          subtitle="Des milliers de réservations à domicile · la parole à ceux qui ont testé Cary."
           :reviews="landingReviews"
           :max-reviews="6"
           background-class="!bg-transparent"
@@ -75,11 +75,11 @@
 definePageMeta({ layout: 'default' });
 
 useLandingSeo({
-  title: 'Pour les patients | Soins à domicile | OneAndLab',
+  title: 'Pour les patients | Soins à domicile | Cary',
   description:
-    'Réservez une prise de sang ou des soins infirmiers à domicile. Professionnels qualifiés, créneaux adaptés. Plateforme OneAndLab pour les patients.',
+    'Réservez une prise de sang ou des soins infirmiers à domicile. Professionnels qualifiés, créneaux adaptés. Plateforme Cary pour les patients.',
   keywords:
-    'prise de sang à domicile, soins infirmiers à domicile, rendez-vous patient, OneAndLab, soins à domicile',
+    'prise de sang à domicile, soins infirmiers à domicile, rendez-vous patient, Cary, soins à domicile',
   path: '/pour-les-patients',
 });
 
@@ -223,7 +223,7 @@ const landingReviews = [
     patientName: 'Thomas R.',
     rating: 5,
     comment: 'Rappel SMS utile · le passage s’est fait pile à la minute annoncée.',
-    response: 'Merci Thomas. — OneAndLab',
+    response: 'Merci Thomas. — Cary',
     date: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
   },
 ];

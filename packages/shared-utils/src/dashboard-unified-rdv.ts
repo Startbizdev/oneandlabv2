@@ -78,6 +78,41 @@ function addressIsIncomplete(address: unknown): boolean {
   return false;
 }
 
+/** Date seule YYYY-MM-DD → datetime avec heure dérivée de la disponibilité (aligné web). */
+export function enrichScheduledAtWithAvailability(
+  scheduledAt: unknown,
+  availability: unknown,
+): string | undefined {
+  if (!scheduledAt || String(scheduledAt).trim() === '') return undefined;
+  const raw = String(scheduledAt).trim();
+  if (raw.includes('T') || (raw.includes(' ') && raw.length > 10)) return raw;
+
+  const dateOnly = raw.slice(0, 10);
+  let h = 9;
+  let min = 0;
+
+  let availabilityData: { type?: string; range?: number[] } | null = null;
+  if (typeof availability === 'string' && availability.trim()) {
+    try {
+      availabilityData = JSON.parse(availability) as { type?: string; range?: number[] };
+    } catch {
+      /* ignore */
+    }
+  } else if (availability && typeof availability === 'object') {
+    availabilityData = availability as { type?: string; range?: number[] };
+  }
+
+  if (availabilityData?.type === 'all_day') {
+    h = 0;
+    min = 0;
+  } else if (availabilityData?.type === 'custom' && availabilityData.range?.length === 2) {
+    h = Math.floor(Number(availabilityData.range[0]) || 9);
+    min = 0;
+  }
+
+  return `${dateOnly} ${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
+}
+
 export function validateUnifiedRdvPayload(
   formData: Record<string, unknown>,
   selectedServices: SelectedServiceInput[],
@@ -218,12 +253,16 @@ function dashboardSingleServicePayload(
   ctx: DashboardPayloadCtx,
 ): Record<string, unknown> {
   const svcData = formDataByService[svc.id] ?? {};
+  const enrichedScheduledAt = enrichScheduledAtWithAvailability(
+    svcData.scheduled_at,
+    svcData.availability,
+  );
   const baseFormData: Record<string, unknown> = {
     ...commonForm,
     address: formData.address,
     files: svcData.form_data_files ?? {},
     availability: svcData.availability,
-    scheduled_at: svcData.scheduled_at,
+    scheduled_at: enrichedScheduledAt,
   };
   if (isBloodTestAppointment(svc.type)) {
     Object.assign(baseFormData, {
@@ -250,7 +289,7 @@ function dashboardSingleServicePayload(
     category_id: svc.category_id,
     patient_id: patientId,
     address: formData.address,
-    scheduled_at: svcData.scheduled_at,
+    scheduled_at: enrichedScheduledAt,
     form_data: baseFormData,
     files: svcData.files ?? {},
   };
@@ -275,6 +314,10 @@ function dashboardMergedBloodPayload(
 ): Record<string, unknown> {
   const firstSvc = bloodServices[0];
   const firstData = formDataByService[firstSvc.id] ?? {};
+  const enrichedScheduledAt = enrichScheduledAtWithAvailability(
+    firstData.scheduled_at,
+    firstData.availability,
+  );
   const bloodTestItems = bloodServices.map((svc, index) => ({
     category_id: svc.category_id,
     label: svc.name,
@@ -286,7 +329,7 @@ function dashboardMergedBloodPayload(
     address: formData.address,
     files: firstData.form_data_files ?? {},
     availability: firstData.availability,
-    scheduled_at: firstData.scheduled_at,
+    scheduled_at: enrichedScheduledAt,
     blood_test_type: firstData.blood_test_type,
     duration_days: firstData.blood_test_type === 'multiple' ? firstData.duration_days : undefined,
     custom_days: firstData.duration_days === 'custom' ? firstData.custom_days : undefined,
@@ -299,7 +342,7 @@ function dashboardMergedBloodPayload(
     category_id: firstSvc.category_id,
     patient_id: patientId,
     address: formData.address,
-    scheduled_at: firstData.scheduled_at,
+    scheduled_at: enrichedScheduledAt,
     form_data: baseFormData,
     files: firstData.files ?? {},
     blood_test_items: bloodTestItems,
@@ -325,6 +368,10 @@ function dashboardMergedNursingPayload(
 ): Record<string, unknown> {
   const firstSvc = nursingServices[0];
   const firstData = formDataByService[firstSvc.id] ?? {};
+  const enrichedScheduledAt = enrichScheduledAtWithAvailability(
+    firstData.scheduled_at,
+    firstData.availability,
+  );
   const nursingItems = nursingServices.map((svc, index) => ({
     category_id: svc.category_id,
     label: svc.name,
@@ -336,7 +383,7 @@ function dashboardMergedNursingPayload(
     address: formData.address,
     files: firstData.form_data_files ?? {},
     availability: firstData.availability,
-    scheduled_at: firstData.scheduled_at,
+    scheduled_at: enrichedScheduledAt,
     duration_days: firstData.duration_days,
     frequency: firstData.frequency,
     custom_days: firstData.duration_days === 'custom' ? firstData.custom_days : undefined,
@@ -355,7 +402,7 @@ function dashboardMergedNursingPayload(
     category_id: firstSvc.category_id,
     patient_id: patientId,
     address: formData.address,
-    scheduled_at: firstData.scheduled_at,
+    scheduled_at: enrichedScheduledAt,
     form_data: baseFormData,
     files: firstData.files ?? {},
     nursing_items: nursingItems,

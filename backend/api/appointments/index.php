@@ -598,21 +598,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ];
             }
         }
-        // Batch lookup des noms d'affichage (lab, nurse, préleveur)
+        // Batch lookup noms + photos (assignés + patient bénéficiaire pour cartes liste)
         $userIds = [];
         foreach ($decryptedAppointments as $apt) {
             if (!empty($apt['assigned_lab_id'])) $userIds[] = $apt['assigned_lab_id'];
             if (!empty($apt['assigned_nurse_id'])) $userIds[] = $apt['assigned_nurse_id'];
             if (!empty($apt['assigned_to'])) $userIds[] = $apt['assigned_to'];
+            if (!empty($apt['patient_id'])) $userIds[] = $apt['patient_id'];
         }
         if (!empty($userIds)) {
             require_once __DIR__ . '/../../models/User.php';
             $userModel = new User();
             $displayNames = $userModel->getDisplayNamesByIds($userIds);
+            $profileImages = $userModel->getProfileImageUrlsByIds($userIds);
+            $genders = $userModel->getGendersByIds($userIds);
             foreach ($decryptedAppointments as &$apt) {
-                $apt['assigned_lab_display_name'] = $displayNames[$apt['assigned_lab_id'] ?? ''] ?? null;
-                $apt['assigned_nurse_display_name'] = $displayNames[$apt['assigned_nurse_id'] ?? ''] ?? null;
-                $apt['assigned_to_display_name'] = $displayNames[$apt['assigned_to'] ?? ''] ?? null;
+                $labId = $apt['assigned_lab_id'] ?? '';
+                $nurseId = $apt['assigned_nurse_id'] ?? '';
+                $toId = $apt['assigned_to'] ?? '';
+                $patientId = $apt['patient_id'] ?? '';
+                $apt['assigned_lab_display_name'] = $displayNames[$labId] ?? null;
+                $apt['assigned_nurse_display_name'] = $displayNames[$nurseId] ?? null;
+                $apt['assigned_to_display_name'] = $displayNames[$toId] ?? null;
+                $apt['assigned_lab_profile_image_url'] = $profileImages[$labId] ?? null;
+                $apt['assigned_nurse_profile_image_url'] = $profileImages[$nurseId] ?? null;
+                $apt['assigned_to_profile_image_url'] = $profileImages[$toId] ?? null;
+                $apt['beneficiary_profile_image_url'] = $profileImages[$patientId] ?? null;
+                $apt['assigned_lab_gender'] = $genders[$labId] ?? null;
+                $apt['assigned_nurse_gender'] = $genders[$nurseId] ?? null;
+                $apt['assigned_to_gender'] = $genders[$toId] ?? null;
+                $fdGender = null;
+                if (!empty($apt['form_data']) && is_array($apt['form_data'])) {
+                    $fg = $apt['form_data']['gender'] ?? $apt['form_data']['beneficiary_gender'] ?? null;
+                    if (is_string($fg) && trim($fg) !== '') {
+                        $fdGender = strtolower(trim($fg));
+                    }
+                }
+                $apt['beneficiary_gender'] = $fdGender ?: ($genders[$patientId] ?? null);
             }
             unset($apt);
         }

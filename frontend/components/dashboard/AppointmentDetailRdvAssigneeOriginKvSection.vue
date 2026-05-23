@@ -204,9 +204,20 @@
       :class="kvRow"
     >
       <div :class="kvLabel">Origine</div>
-      <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">
-        {{ patientPlatformOriginDisplay }}
-      </p>
+      <div class="flex min-w-0 items-center gap-2.5">
+        <div
+          class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-default bg-default p-1 ring-1 ring-black/5 dark:ring-white/10 sm:h-9 sm:w-9"
+        >
+          <img
+            src="/images/logo-cary.png"
+            alt="Cary"
+            class="h-full w-full object-contain"
+          >
+        </div>
+        <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">
+          {{ patientPlatformOriginDisplay }}
+        </p>
+      </div>
     </div>
 
     <div
@@ -279,12 +290,39 @@
           v-if="creatorProOriginCompact"
           class="space-y-2.5"
         >
-          <p class="text-sm font-medium text-gray-900 dark:text-white leading-snug">
-            Vous avez créé ce rendez-vous en tant que professionnel de santé depuis votre espace.
-          </p>
-          <p class="text-xs text-muted leading-relaxed">
-            L'origine du dossier est votre compte pro médical ; les informations patient et la suite du parcours sont détaillées ci‑dessous.
-          </p>
+          <div class="flex items-start gap-2.5">
+            <div
+              class="mt-0.5 h-9 w-9 shrink-0 overflow-hidden rounded-full border border-default bg-default ring-1 ring-black/5 dark:ring-white/10"
+            >
+              <img
+                v-if="profileImageUrl(appointment.creator_origin.profile_image_url)"
+                :src="profileImageUrl(appointment.creator_origin.profile_image_url)"
+                :alt="appointment.creator_origin.display_name || ''"
+                class="h-full w-full object-cover"
+              >
+              <div v-else class="flex h-full w-full items-center justify-center">
+                <UIcon name="i-lucide-stethoscope" class="w-4 h-4 text-muted" />
+              </div>
+            </div>
+            <div class="min-w-0 flex-1 space-y-2">
+              <p class="text-sm font-medium text-gray-900 dark:text-white leading-snug">
+                Vous avez créé ce rendez-vous en tant que professionnel de santé depuis votre espace.
+              </p>
+              <p class="text-xs text-muted leading-relaxed">
+                L'origine du dossier est votre compte pro médical ; les informations patient et la suite du parcours sont détaillées ci‑dessous.
+              </p>
+            </div>
+          </div>
+          <UButton
+            variant="outline"
+            color="primary"
+            size="sm"
+            icon="i-lucide-id-card"
+            class="w-full justify-center sm:w-auto"
+            @click="proCreatorProfileOpen = true"
+          >
+            Voir le profil
+          </UButton>
         </div>
         <div
           v-else
@@ -361,6 +399,18 @@
                 :href="proOriginSmsHref(appointment.creator_origin.phone)"
               >
                 Message
+              </UButton>
+            </div>
+            <div class="flex flex-wrap gap-2 pt-1">
+              <UButton
+                variant="outline"
+                color="primary"
+                size="sm"
+                icon="i-lucide-id-card"
+                class="justify-center sm:min-w-[9rem]"
+                @click="proCreatorProfileOpen = true"
+              >
+                Voir le profil
               </UButton>
             </div>
           </div>
@@ -448,9 +498,17 @@
       </div>
     </div>
   </template>
+
+  <ProfessionalCreatorProfileSlideover
+    v-if="appointment.creator_origin?.kind === 'pro'"
+    v-model:open="proCreatorProfileOpen"
+    :origin="appointment.creator_origin"
+  />
 </template>
 
 <script setup lang="ts">
+const proCreatorProfileOpen = ref(false);
+
 const { profileImageUrl } = useProfileImageUrl();
 
 defineProps<{

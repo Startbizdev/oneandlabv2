@@ -910,14 +910,38 @@ function formatDateShort(date: string) {
   return date ? new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 }
 
+/** Aligné backend/api/reviews/index.php (nurse | lab | subaccount selon les FK du RDV). */
+function revieweePayloadForCompletedAppt(appt: any): { reviewee_id: string; reviewee_type: string } | null {
+  if (!appt || appt.status !== 'completed') return null;
+  if (appt.type === 'nursing') {
+    const rid = appt.assigned_nurse_id;
+    if (!rid) return null;
+    return { reviewee_id: String(rid), reviewee_type: 'nurse' };
+  }
+  if (appt.type === 'blood_test') {
+    if (appt.assigned_lab_id) {
+      return { reviewee_id: String(appt.assigned_lab_id), reviewee_type: 'lab' };
+    }
+    if (appt.assigned_to) {
+      return { reviewee_id: String(appt.assigned_to), reviewee_type: 'subaccount' };
+    }
+    return null;
+  }
+  return null;
+}
+
 async function submitReviewForAppt(appt: any) {
   const id = String(appt.id);
   ensureReviewForm(id);
   const form = reviewForms[id];
-  if (appt.type === 'blood_test' && !appt.assigned_lab_id) {
+  const target = revieweePayloadForCompletedAppt(appt);
+  if (!target) {
     toast.add({
       title: 'Avis indisponible',
-      description: 'Aucun laboratoire n’est associé à ce rendez-vous : l’avis ne peut pas être publié.',
+      description:
+        appt?.type === 'blood_test'
+          ? 'Aucun laboratoire ni intervenant n’est associé à ce rendez-vous : l’avis ne peut pas être publié.'
+          : 'Aucun professionnel n’est associé à ce rendez-vous : l’avis ne peut pas être publié.',
       color: 'red',
     });
     return;
@@ -927,8 +951,8 @@ async function submitReviewForAppt(appt: any) {
     method: 'POST',
     body: {
       appointment_id: appt.id,
-      reviewee_id: appt.type === 'nursing' ? appt.assigned_nurse_id : appt.assigned_lab_id,
-      reviewee_type: appt.type === 'nursing' ? 'nurse' : 'lab',
+      reviewee_id: target.reviewee_id,
+      reviewee_type: target.reviewee_type,
       rating: form.rating,
       comment: form.comment,
     },

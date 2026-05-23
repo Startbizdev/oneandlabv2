@@ -39,7 +39,7 @@ const defaultLabFaq = [
   },
   {
     question: 'Comment prendre rendez-vous pour une prise de sang à domicile ?',
-    answer: 'Sur OneAndLab, choisissez le laboratoire proposant les prélèvements à domicile dans votre secteur et réservez un créneau. Le laboratoire confirme l’intervention dans sa zone.',
+    answer: 'Sur Cary, choisissez le laboratoire proposant les prélèvements à domicile dans votre secteur et réservez un créneau. Le laboratoire confirme l’intervention dans sa zone.',
   },
   {
     question: 'Prélèvement à domicile : remboursement ?',
@@ -60,23 +60,23 @@ const metaLocation = computed(() => {
 // Meta tags dynamiques (SEO : Nom laboratoire - Prélèvement à domicile - Ville CODE)
 useHead({
   title: computed(() => {
-    if (!profile.value) return 'Profil laboratoire | OneAndLab';
+    if (!profile.value) return 'Profil laboratoire | Cary';
     const name = profile.value.name || 'Laboratoire';
     const loc = metaLocation.value;
-    if (loc) return `${name} - Prélèvement à domicile - ${loc} | OneAndLab`;
-    return `${name} - Prélèvement à domicile | OneAndLab`;
+    if (loc) return `${name} - Prélèvement à domicile - ${loc} | Cary`;
+    return `${name} - Prélèvement à domicile | Cary`;
   }),
   meta: [
     {
       name: 'description',
       content: computed(() => {
-        if (!profile.value) return 'Profil laboratoire sur OneAndLab';
+        if (!profile.value) return 'Profil laboratoire sur Cary';
         const name = profile.value.name || 'Laboratoire';
         const loc = metaLocation.value;
         const bio = profile.value.biography ? profile.value.biography.substring(0, 140) : '';
         if (bio) return bio;
-        if (loc) return `${name} - Prélèvement à domicile à ${loc}. Prélèvements, analyses. OneAndLab.`;
-        return `${name} - Prélèvement à domicile. Prélèvements, analyses. OneAndLab.`;
+        if (loc) return `${name} - Prélèvement à domicile à ${loc}. Prélèvements, analyses. Cary.`;
+        return `${name} - Prélèvement à domicile. Prélèvements, analyses. Cary.`;
       }),
     },
     {
@@ -102,13 +102,13 @@ useHead({
     {
       property: 'og:description',
       content: computed(() => {
-        if (!profile.value) return 'Profil laboratoire sur OneAndLab';
+        if (!profile.value) return 'Profil laboratoire sur Cary';
         return profile.value.biography?.substring(0, 200) || `Laboratoire ${profile.value.name} - Prélèvement à domicile`;
       }),
     },
     {
       property: 'og:image',
-      content: computed(() => profile.value?.profile_image_url || '/images/onelogo.png'),
+      content: computed(() => profile.value?.profile_image_url || '/images/logo-cary.png'),
     },
     {
       property: 'og:type',

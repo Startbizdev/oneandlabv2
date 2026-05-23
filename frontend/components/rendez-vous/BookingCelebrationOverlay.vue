@@ -62,7 +62,7 @@
             </template>
             <div v-else class="flex flex-col items-center justify-center gap-1">
               <UIcon name="i-lucide-heart-pulse" class="h-8 w-8 text-primary-600/90 dark:text-primary-400/90" />
-              <span class="text-[10px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">OneAndLab</span>
+              <span class="text-[10px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Cary</span>
             </div>
           </div>
 
