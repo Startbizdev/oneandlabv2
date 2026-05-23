@@ -9,6 +9,8 @@ interface Props {
   value: boolean;
   busy?: boolean;
   disabled?: boolean;
+  /** Fond primary sur la ligne quand activé (défaut true). */
+  highlightWhenOn?: boolean;
   onValueChange: (v: boolean) => void;
 }
 
@@ -18,15 +20,17 @@ export function ProfileToggleRow({
   value,
   busy,
   disabled,
+  highlightWhenOn = true,
   onValueChange,
 }: Props) {
   const inactive = busy || disabled;
+  const showActiveHighlight = highlightWhenOn && value && !disabled;
 
   return (
-    <View style={[styles.row, value && !disabled && styles.rowOn, inactive && styles.rowBusy]}>
+    <View style={[styles.row, showActiveHighlight && styles.rowOn, inactive && styles.rowBusy]}>
       <View style={styles.rowText}>
         <Text style={styles.rowLabel}>{label}</Text>
-        <Text style={[styles.rowHint, value && !disabled ? styles.rowHintOn : undefined]}>
+        <Text style={[styles.rowHint, showActiveHighlight ? styles.rowHintOn : undefined]}>
           {hint}
         </Text>
       </View>

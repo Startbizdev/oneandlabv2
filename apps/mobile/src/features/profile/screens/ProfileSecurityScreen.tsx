@@ -96,7 +96,7 @@ export function ProfileSecurityScreen() {
 
   const card = (
     <View style={[styles.card, elevation.xs]}>
-      <View style={styles.iconWrap}>
+      <View style={[styles.iconWrap, enabled && styles.iconWrapActive]}>
         <ScanFace size={22} color={colors.primary} strokeWidth={2} />
       </View>
       <View style={styles.rowWrap}>
@@ -106,6 +106,7 @@ export function ProfileSecurityScreen() {
           value={enabled}
           busy={busy}
           disabled={!hardwareReady}
+          highlightWhenOn={false}
           onValueChange={(v) => void onToggle(v)}
         />
       </View>
@@ -143,6 +144,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+  },
+  iconWrapActive: {
+    backgroundColor: colors.surfaceSubtle,
   },
   rowWrap: {
     flex: 1,
