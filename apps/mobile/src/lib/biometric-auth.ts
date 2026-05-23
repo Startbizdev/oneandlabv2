@@ -135,9 +135,15 @@ async function promptBiometric(message: string): Promise<boolean> {
   const auth = await LocalAuthentication.authenticateAsync({
     promptMessage: message,
     cancelLabel: 'Annuler',
-    disableDeviceFallback: false,
+    // Biométrie uniquement (Face ID / empreinte) — pas le code appareil.
+    disableDeviceFallback: true,
+    fallbackLabel: '',
     ...(Platform.OS === 'android'
-      ? { biometricsSecurityLevel: 'weak' as const, requireConfirmation: false }
+      ? {
+          biometricsSecurityLevel: 'strong' as const,
+          requireConfirmation: false,
+          promptSubtitle: message,
+        }
       : {}),
   });
   return auth.success;
