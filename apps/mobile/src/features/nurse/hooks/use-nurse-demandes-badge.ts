@@ -2,12 +2,9 @@ import { useMemo } from 'react';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import { groupAppointmentsForNurseMesDemandes } from '@/utils/appointment-batch';
 import { useAuthStore } from '@/store/auth-store';
-import {
-  NURSE_DEMANDES_LIST_FILTERS,
-  useNursePendingDemandesQuery,
-} from './use-nurse-pending-demandes-query';
+import { useNursePendingDemandesQuery } from './use-nurse-pending-demandes-query';
 
-export { NURSE_DEMANDES_LIST_FILTERS };
+export { NURSE_DEMANDES_LIST_FILTERS } from '@/features/nurse/constants/nurse-demandes-filters';
 
 /** Nombre de lignes « Mes demandes » (lots regroupés) pour le badge onglet. */
 export function useNurseDemandesBadgeCount(enabled = true) {

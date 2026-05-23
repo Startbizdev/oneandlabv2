@@ -1,17 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { APPOINTMENT_PENDING_POLL_INTERVAL_MS } from '@oneandlab/shared-constants';
-import type { AppointmentListFilters } from '@oneandlab/shared-types';
 import { fetchAppointments } from '@/features/appointments/api/appointments.service';
+import { NURSE_DEMANDES_LIST_FILTERS } from '@/features/nurse/constants/nurse-demandes-filters';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 
-/** Mêmes filtres que `NurseDemandesScreen` — cache React Query partagé. */
-export const NURSE_DEMANDES_LIST_FILTERS: AppointmentListFilters = {
-  status: 'pending',
-  nurse_tab: 'soins',
-  nurse_segment: 'en_attente',
-  limit: 100,
-};
+export { NURSE_DEMANDES_LIST_FILTERS };
 
 /** Source unique pour badge « Demandes » et polling offres entrantes. */
 export function useNursePendingDemandesQuery(enabled = true) {

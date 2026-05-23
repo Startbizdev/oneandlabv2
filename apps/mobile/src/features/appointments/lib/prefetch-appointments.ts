@@ -2,7 +2,7 @@ import type { AppointmentListFilters } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
 import { queryClient } from '@/lib/query-client';
 import { fetchAppointments } from '../api/appointments.service';
-import { NURSE_DEMANDES_LIST_FILTERS } from '@/features/nurse/hooks/use-nurse-pending-demandes-query';
+import { NURSE_DEMANDES_LIST_FILTERS } from '@/features/nurse/constants/nurse-demandes-filters';
 
 const LIST_STALE_MS = 45_000;
 
