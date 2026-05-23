@@ -216,7 +216,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
       >
         <View style={styles.hero}>
           <ProfileAvatar
-            profileImageUrl={(p as { profile_image_url?: string | null }).profile_image_url}
+            profileImageUrl={p.profile_image_url}
             seed={p.id ?? name}
             gender={p.gender}
             size={56}

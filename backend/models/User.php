@@ -1302,7 +1302,7 @@ class User
     {
         $sql = 'SELECT id, role, created_at, updated_at, banned_until, incident_count, last_incident_at,
             email_encrypted, email_dek, first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek,
-            phone_encrypted, phone_dek';
+            phone_encrypted, phone_dek, profile_image_url';
         if ($this->hasCompanyNameColumn()) {
             $sql .= ', company_name_encrypted, company_name_dek';
         }
@@ -1409,6 +1409,10 @@ class User
                 }
                 if ($u['birth_date'] !== null) {
                     $logFields[] = 'birth_date';
+                }
+                if (array_key_exists('profile_image_url', $u)) {
+                    $url = trim((string) ($u['profile_image_url'] ?? ''));
+                    $u['profile_image_url'] = $url !== '' ? $url : null;
                 }
                 $this->logger->logDecrypt($requesterId, $requesterRole, 'profile', $u['id'], array_fill_keys($logFields, true));
                 $decryptedUsers[] = $u;
