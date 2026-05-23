@@ -229,6 +229,37 @@ export function SkeletonDashboardStats() {
   );
 }
 
+/** Wizard booking — étape choix des soins (filtres + cartes). */
+export function SkeletonCareSelectionStep({ count = 7 }: { count?: number }) {
+  return (
+    <View style={styles.careSelectionRoot}>
+      <View style={styles.careSelectionHeader}>
+        <Skeleton height={10} width={92} borderRadius={radius.xs} />
+        <View style={styles.careSelectionChips}>
+          {[72, 88, 96, 64].map((width, i) => (
+            <Skeleton key={i} height={32} width={width} borderRadius={radius.full} />
+          ))}
+        </View>
+        <Skeleton
+          height={10}
+          width={128}
+          borderRadius={radius.xs}
+          style={styles.careSelectionHeading}
+        />
+      </View>
+      <View style={styles.careSelectionList}>
+        {Array.from({ length: count }).map((_, i) => (
+          <View key={i} style={styles.careSelectionCard}>
+            <Skeleton height={40} width={40} borderRadius={radius.md} />
+            <Skeleton height={14} style={styles.careSelectionLabel} borderRadius={radius.sm} />
+            <Skeleton height={32} width={32} borderRadius={radius.full} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 /** Conteneur écran avec padding standard. */
 export function SkeletonScreen({
   children,
@@ -316,5 +347,42 @@ const styles = StyleSheet.create({
   },
   statCell: {
     flex: 1,
+  },
+  careSelectionRoot: {
+    flex: 1,
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: spacing[4],
+    paddingTop: spacing[2],
+  },
+  careSelectionHeader: {
+    gap: spacing[1],
+    marginBottom: spacing[2],
+  },
+  careSelectionChips: {
+    flexDirection: 'row',
+    gap: spacing[1.5],
+    paddingRight: spacing[1],
+  },
+  careSelectionHeading: {
+    marginTop: spacing[0.5],
+  },
+  careSelectionList: {
+    gap: spacing[2],
+  },
+  careSelectionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 52,
+    paddingVertical: spacing[2.5],
+    paddingLeft: spacing[2.5],
+    paddingRight: spacing[2],
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderLight,
+  },
+  careSelectionLabel: {
+    flex: 1,
+    marginHorizontal: spacing[3],
   },
 });

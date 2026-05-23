@@ -25,8 +25,10 @@ import { BookingWizardSegmentContext } from '../components/BookingWizardSegmentC
 import { BookingWizardPreviousRecaps } from '../components/BookingWizardPreviousRecaps';
 import { RelativeQuickAddSheet } from '../components/RelativeQuickAddSheet';
 import { useBookingWizard } from '../hooks/useBookingWizard';
+import { NEW_PATIENT_ID } from '../types';
 import { buildAvailabilityPayload } from '../utils/availability';
 import type { PatientRelative } from '@/features/patient-relatives/api/patient-relatives.service';
+import { SkeletonCareSelectionStep } from '@/components/ui/skeletons';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -63,8 +65,8 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
 
   if (w.loading || (mode === 'patient' && bw.relativesLoading)) {
     return (
-      <View style={styles.loadingWrap}>
-        <Text style={styles.loadingText}>Chargement…</Text>
+      <View style={styles.screen}>
+        <SkeletonCareSelectionStep />
       </View>
     );
   }
@@ -362,17 +364,6 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, minHeight: 0, backgroundColor: colors.background },
-  loadingWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  loadingText: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
   formContent: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],

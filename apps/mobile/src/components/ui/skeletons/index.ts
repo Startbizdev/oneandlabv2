@@ -1,6 +1,7 @@
 export { Skeleton, SkeletonGroup } from '../Skeleton';
 export {
   SkeletonAssigneeCard,
+  SkeletonCareSelectionStep,
   SkeletonDashboardStats,
   SkeletonDetailActionRow,
   SkeletonDetailActionsCard,
