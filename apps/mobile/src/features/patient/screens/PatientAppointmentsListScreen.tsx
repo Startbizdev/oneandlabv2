@@ -5,6 +5,8 @@ import dayjs from 'dayjs';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
+import { AppointmentsBookCta } from '@/features/appointments/components/AppointmentsBookCta';
+import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
@@ -38,7 +40,9 @@ function isUpcoming(apt: Appointment): boolean {
 export function PatientAppointmentsListScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<PatientListTab>('upcoming');
+  const [draftTab, setDraftTab] = useState<PatientListTab>('upcoming');
   const [search, setSearch] = useState('');
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const query = useAppointmentsList({ limit: 100 });
   const { data, refetch } = query;
@@ -58,7 +62,33 @@ export function PatientAppointmentsListScreen() {
     [filtered, tab],
   );
 
-  useAppForegroundRefetch(() => { void refetch(); });
+  useAppForegroundRefetch(() => {
+    void refetch();
+  });
+
+  const openSheet = useCallback(() => {
+    setDraftTab(tab);
+    setSheetOpen(true);
+  }, [tab]);
+
+  const applyFilters = useCallback(() => {
+    setTab(draftTab);
+    setSheetOpen(false);
+  }, [draftTab]);
+
+  const resetFilters = useCallback(() => {
+    setDraftTab('upcoming');
+    setTab('upcoming');
+    setSheetOpen(false);
+  }, []);
+
+  const filterChips = useMemo(() => {
+    if (tab === 'upcoming') return [];
+    const label = PATIENT_TAB_OPTIONS.find((t) => t.value === tab)?.label ?? tab;
+    return [{ key: 'period', label, onRemove: () => setTab('upcoming') }];
+  }, [tab]);
+
+  const advancedCount = tab !== 'upcoming' ? 1 : 0;
 
   const renderItem = useCallback(
     ({ item: row, index }: { item: AppointmentListRow; index: number }) => (
@@ -72,6 +102,15 @@ export function PatientAppointmentsListScreen() {
     [router],
   );
 
+  const ListHeader = useCallback(
+    () => (
+      <View style={styles.listHeader}>
+        <AppointmentsBookCta href="/(patient)/booking/new" label="Prendre rendez-vous" />
+      </View>
+    ),
+    [],
+  );
+
   return (
     <View style={styles.container}>
       <QueryFlatList
@@ -82,24 +121,42 @@ export function PatientAppointmentsListScreen() {
             search={search}
             onSearchChange={setSearch}
             searchPlaceholder="Soin, adresse, nom…"
-            segmentTabs={PATIENT_TAB_OPTIONS}
-            segmentTab={tab}
-            onSegmentTabChange={setTab}
+            onOpenFilters={openSheet}
+            advancedFilterCount={advancedCount}
+            chips={filterChips}
           />
         }
         renderItem={renderItem}
         keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
+        ListHeaderComponent={ListHeader}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        skeletonHeight={116}
         ListEmptyComponent={
           <EmptyState
             imageSource={EMPTY_RDV_IMAGE}
             imageWidth={EMPTY_RDV_IMAGE_WIDTH}
             imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
             title={tab === 'upcoming' ? 'Aucun rendez-vous à venir' : 'Aucun rendez-vous passé'}
-            description="Réservez un nouveau rendez-vous depuis l’onglet Réserver."
+            description="Réservez un nouveau rendez-vous avec le bouton ci-dessus."
           />
         }
+      />
+
+      <AppointmentsFilterSheet
+        visible={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title="Filtrer les rendez-vous"
+        search=""
+        onSearchChange={() => {}}
+        showSearch={false}
+        segments={PATIENT_TAB_OPTIONS}
+        segment={draftTab}
+        onSegmentChange={setDraftTab}
+        segmentSectionLabel="Période"
+        onApply={applyFilters}
+        onReset={resetFilters}
       />
     </View>
   );
@@ -110,5 +167,10 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[8],
+    flexGrow: 1,
+  },
+  listHeader: {
+    gap: spacing[2],
+    marginBottom: spacing[1],
   },
 });

@@ -102,4 +102,6 @@ export interface AppointmentListFilters {
   nurse_segment?: string;
   date_from?: string;
   date_to?: string;
+  /** Préleveur : uniquement les missions assignées (évite la saturation par les offres labo). */
+  assigned_only?: boolean;
 }

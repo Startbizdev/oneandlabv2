@@ -13,6 +13,7 @@ export function buildAppointmentsQuery(filters: AppointmentListFilters): string 
   if (filters.nurse_segment) qs.set('nurse_segment', filters.nurse_segment);
   if (filters.date_from) qs.set('date_from', filters.date_from);
   if (filters.date_to) qs.set('date_to', filters.date_to);
+  if (filters.assigned_only) qs.set('assigned_only', '1');
   return `/appointments?${qs.toString()}`;
 }
 

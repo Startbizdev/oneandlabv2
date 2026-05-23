@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { Button } from '@/components/ui/Button';
-import { SkeletonRdvCarePlaceholder } from '@/components/ui/skeletons';
+import { Skeleton, SkeletonRdvCarePlaceholder } from '@/components/ui/skeletons';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
 import {
   buildRdvBaseRows,
@@ -12,7 +12,7 @@ import {
   type RdvInfoRow,
 } from '../../utils/build-rdv-info-rows';
 import { buildPatientContactButtons } from '@/utils/contact-actions';
-import { colors, spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { rdvDetailSectionStyles } from './rdv-detail-section-styles';
 
@@ -59,6 +59,11 @@ function splitRowsForCareInsert(rows: RdvInfoRow[]): {
 function expectsCareRows(apt: Appointment, omitCareFields: boolean, batch?: Appointment[]) {
   if (omitCareFields && (batch?.length ?? 0) <= 1) return false;
   return isNursingAppointment(apt.type) || isBloodTestAppointment(apt.type);
+}
+
+function hasBatchSiblings(apt: Appointment): boolean {
+  const sibs = apt.batch_siblings;
+  return Array.isArray(sibs) && sibs.length > 0;
 }
 
 function InfoRow({
@@ -125,14 +130,27 @@ export function RdvAppointmentInfoSection({
   const categoriesQ = useAppointmentCareCategories();
   const categories = categoriesQ.data;
   const catalogReady = categoriesQ.isFetched;
+  const multiBatch = hasBatchSiblings(apt);
 
-  const baseRows = useMemo(() => buildRdvBaseRows(apt, viewer, batch), [apt, viewer, batch]);
+  const baseRowsRaw = useMemo(
+    () => buildRdvBaseRows(apt, viewer, batch),
+    [apt, viewer, batch],
+  );
+
+  const addressResolved = baseRowsRaw.some(
+    (r) => r.kind === 'address' && r.value.trim(),
+  );
+  const addressPending = multiBatch && batchLoading && !addressResolved;
+
+  const baseRows = useMemo(() => {
+    if (!addressPending) return baseRowsRaw;
+    return baseRowsRaw.filter((r) => r.kind !== 'address');
+  }, [baseRowsRaw, addressPending]);
 
   const careRows = useMemo(() => {
-    const multiBatch = (batch?.length ?? 0) > 1;
     if (batchLoading && multiBatch) return [];
     return buildRdvCareRows(apt, { omitCareFields, categories, batch });
-  }, [apt, omitCareFields, categories, batch, batchLoading]);
+  }, [apt, omitCareFields, categories, batch, batchLoading, multiBatch]);
 
   const { beforeCare, afterCare } = useMemo(
     () => splitRowsForCareInsert(baseRows),
@@ -148,13 +166,14 @@ export function RdvAppointmentInfoSection({
   const carePending =
     needsCare &&
     careRows.length === 0 &&
-    ((batch?.length ?? 0) > 1 ? batchLoading : !catalogReady);
+    (multiBatch ? batchLoading : !catalogReady);
 
   const hasContent =
     beforeCare.length > 0 ||
     afterCare.length > 0 ||
     careRows.length > 0 ||
     carePending ||
+    addressPending ||
     contactButtons.length > 0;
 
   if (!hasContent) return null;
@@ -176,6 +195,23 @@ export function RdvAppointmentInfoSection({
           rowIndex += 1;
           return el;
         })}
+
+        {addressPending ? (() => {
+          const el = (
+            <View
+              style={[
+                rdvDetailSectionStyles.sectionRow,
+                styles.infoRow,
+                rowIndex > 0 && rdvDetailSectionStyles.rowBorder,
+              ]}
+            >
+              <Text style={styles.label}>Adresse</Text>
+              <Skeleton height={18} width="88%" borderRadius={radius.sm} />
+            </View>
+          );
+          rowIndex += 1;
+          return el;
+        })() : null}
 
         {careRows.map((row) => {
           const el = (

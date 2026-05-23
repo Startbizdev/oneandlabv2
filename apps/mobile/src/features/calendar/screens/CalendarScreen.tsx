@@ -41,6 +41,8 @@ interface Props {
   detailPathPrefix: string;
   /** Calendrier infirmier : Mes soins / Bilans + filtres avancés */
   nurseCalendar?: boolean;
+  /** Statut uniquement dans la modal « Affiner le calendrier » (pas de pills sous le header). */
+  statusFilterInSheetOnly?: boolean;
 }
 
 function monthMatrix(year: number, month: number) {
@@ -58,7 +60,12 @@ function monthMatrix(year: number, month: number) {
   return cells;
 }
 
-export function CalendarScreen({ baseFilters, detailPathPrefix, nurseCalendar = false }: Props) {
+export function CalendarScreen({
+  baseFilters,
+  detailPathPrefix,
+  nurseCalendar = false,
+  statusFilterInSheetOnly = false,
+}: Props) {
   const { width } = useWindowDimensions();
   const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -235,13 +242,15 @@ export function CalendarScreen({ baseFilters, detailPathPrefix, nurseCalendar = 
             onSearchChange={setSearch}
             searchPlaceholder="Patient, soin…"
             segmentTabs={
-              nurseCalendar
+              nurseCalendar || statusFilterInSheetOnly
                 ? undefined
                 : CALENDAR_STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))
             }
-            segmentTab={nurseCalendar ? undefined : statusFilter}
+            segmentTab={nurseCalendar || statusFilterInSheetOnly ? undefined : statusFilter}
             onSegmentTabChange={
-              nurseCalendar ? undefined : (v) => setStatusFilter(v as CalendarStatusFilter)
+              nurseCalendar || statusFilterInSheetOnly
+                ? undefined
+                : (v) => setStatusFilter(v as CalendarStatusFilter)
             }
             onOpenFilters={openFilterSheet}
             advancedFilterCount={advancedCount}

@@ -2,14 +2,19 @@ import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { Appointment } from '@oneandlab/shared-types';
+import { isBloodTestAppointment, isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
+import { AppointmentsBookCta } from '@/features/appointments/components/AppointmentsBookCta';
+import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { useAppointmentsList } from '@/features/appointments/hooks/use-appointments-list';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
+import { useAuthStore } from '@/store/auth-store';
+import { appointmentAddressLine } from '@/utils/appointment-display';
 import {
   PRELEVEUR_STATUS_OPTIONS,
   PRO_STATUS_OPTIONS,
@@ -18,6 +23,7 @@ import {
 } from '@/constants/appointments-list-filters';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { colors, spacing } from '@/theme';
+import type { Href } from 'expo-router';
 
 const PENDING = new Set(['pending', 'assigned', 'offered']);
 const ACTIVE = new Set(['confirmed', 'in_progress', 'on_the_way']);
@@ -31,8 +37,15 @@ function matchesSearch(apt: Appointment, q: string): boolean {
   return (
     name.includes(s) ||
     (apt.category_name ?? '').toLowerCase().includes(s) ||
-    String(apt.address ?? '').toLowerCase().includes(s)
+    appointmentAddressLine(apt).toLowerCase().includes(s)
   );
+}
+
+/** Aligné web — missions assignées + offres entrantes (pas les RDV créés par le préleveur). */
+function isVisibleToPreleveur(apt: Appointment, userId: string | undefined): boolean {
+  if (!isBloodTestAppointment(apt)) return false;
+  if (userId && String(apt.assigned_to ?? '') === String(userId)) return true;
+  return isPendingIncomingOffer(apt, userId);
 }
 
 function matchesProStatus(apt: Appointment, filter: ProStatusFilter): boolean {
@@ -56,20 +69,43 @@ type RoleKind = 'pro' | 'preleveur';
 interface Props {
   role: RoleKind;
   detailPathPrefix: string;
+  bookHref?: Href;
+  bookLabel?: string;
 }
 
-export function RoleFilteredAppointmentsListScreen({ role, detailPathPrefix }: Props) {
+export function RoleFilteredAppointmentsListScreen({
+  role,
+  detailPathPrefix,
+  bookHref,
+  bookLabel,
+}: Props) {
   const router = useRouter();
+  const userId = useAuthStore((s) => s.user?.id);
   const statusOptions = role === 'pro' ? PRO_STATUS_OPTIONS : PRELEVEUR_STATUS_OPTIONS;
 
   const [status, setStatus] = useState<ProStatusFilter | PreleveurStatusFilter>('all');
+  const [draftStatus, setDraftStatus] = useState<ProStatusFilter | PreleveurStatusFilter>('all');
   const [search, setSearch] = useState('');
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  const query = useAppointmentsList({ limit: 100 });
+  const listFilters = useMemo(() => {
+    if (role !== 'preleveur') return { limit: 100 };
+    const base = { limit: 500, type: 'blood_test' as const };
+    // Tous / confirmées / terminées : missions assignées uniquement (aligné Tournée + web « Mes missions »).
+    if (status !== 'pending') {
+      return { ...base, assigned_only: true as const };
+    }
+    return base;
+  }, [role, status]);
+
+  const query = useAppointmentsList(listFilters);
   const { data, refetch } = query;
 
   const filtered = useMemo(() => {
     let list = data ?? [];
+    if (role === 'preleveur') {
+      list = list.filter((a) => isVisibleToPreleveur(a, userId));
+    }
     list = list.filter((a) =>
       role === 'pro'
         ? matchesProStatus(a, status as ProStatusFilter)
@@ -77,17 +113,42 @@ export function RoleFilteredAppointmentsListScreen({ role, detailPathPrefix }: P
     );
     if (search.trim()) list = list.filter((a) => matchesSearch(a, search));
     return list;
-  }, [data, role, status, search]);
+  }, [data, role, status, search, userId]);
 
-  const sortDirection =
-    status === 'done' ? ('past' as const) : ('upcoming' as const);
+  const sortDirection = status === 'done' ? ('past' as const) : ('upcoming' as const);
 
   const displayRows = useMemo(
     () => buildAppointmentDisplayRows(filtered, { direction: sortDirection }),
     [filtered, sortDirection],
   );
 
-  useAppForegroundRefetch(() => { void refetch(); });
+  useAppForegroundRefetch(() => {
+    void refetch();
+  });
+
+  const openSheet = useCallback(() => {
+    setDraftStatus(status);
+    setSheetOpen(true);
+  }, [status]);
+
+  const applyFilters = useCallback(() => {
+    setStatus(draftStatus);
+    setSheetOpen(false);
+  }, [draftStatus]);
+
+  const resetFilters = useCallback(() => {
+    setDraftStatus('all');
+    setStatus('all');
+    setSheetOpen(false);
+  }, []);
+
+  const filterChips = useMemo(() => {
+    if (status === 'all') return [];
+    const label = statusOptions.find((t) => t.value === status)?.label ?? status;
+    return [{ key: 'status', label, onRemove: () => setStatus('all') }];
+  }, [status, statusOptions]);
+
+  const advancedCount = status !== 'all' ? 1 : 0;
 
   const renderItem = useCallback(
     ({ item: row, index }: { item: AppointmentListRow; index: number }) => (
@@ -100,8 +161,17 @@ export function RoleFilteredAppointmentsListScreen({ role, detailPathPrefix }: P
         }}
       />
     ),
-    [detailPathPrefix, router],
+    [detailPathPrefix, role, router],
   );
+
+  const ListHeader = useCallback(() => {
+    if (!bookHref) return null;
+    return (
+      <View style={styles.listHeader}>
+        <AppointmentsBookCta href={bookHref} label={bookLabel ?? 'Prendre un rendez-vous'} />
+      </View>
+    );
+  }, [bookHref, bookLabel]);
 
   return (
     <View style={styles.container}>
@@ -112,15 +182,19 @@ export function RoleFilteredAppointmentsListScreen({ role, detailPathPrefix }: P
           <AppointmentsListFilterBar
             search={search}
             onSearchChange={setSearch}
-            segmentTabs={statusOptions}
-            segmentTab={status}
-            onSegmentTabChange={setStatus}
+            searchPlaceholder="Nom, soin, adresse…"
+            onOpenFilters={openSheet}
+            advancedFilterCount={advancedCount}
+            chips={filterChips}
           />
         }
         renderItem={renderItem}
         keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
+        ListHeaderComponent={bookHref ? ListHeader : undefined}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        skeletonHeight={116}
         ListEmptyComponent={
           <EmptyState
             imageSource={EMPTY_RDV_IMAGE}
@@ -131,6 +205,21 @@ export function RoleFilteredAppointmentsListScreen({ role, detailPathPrefix }: P
           />
         }
       />
+
+      <AppointmentsFilterSheet
+        visible={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title="Filtrer les rendez-vous"
+        search=""
+        onSearchChange={() => {}}
+        showSearch={false}
+        segments={statusOptions}
+        segment={draftStatus}
+        onSegmentChange={setDraftStatus}
+        segmentSectionLabel="Statut"
+        onApply={applyFilters}
+        onReset={resetFilters}
+      />
     </View>
   );
 }
@@ -140,5 +229,10 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[8],
+    flexGrow: 1,
+  },
+  listHeader: {
+    gap: spacing[2],
+    marginBottom: spacing[1],
   },
 });

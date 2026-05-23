@@ -416,31 +416,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 }
             }
         } elseif ($role === 'preleveur') {
-            $prelLabStmt = $db->prepare("SELECT lab_id FROM profiles WHERE id = ? AND role = 'preleveur' LIMIT 1");
-            $prelLabStmt->execute([$userId]);
-            $prelLabId = (string) ($prelLabStmt->fetch(PDO::FETCH_ASSOC)['lab_id'] ?? '');
-            if ($prelLabId !== '') {
-                $sql .= ' AND a.type = "blood_test" AND (
-                    a.assigned_to = ?
-                    OR (
-                        a.status = "pending"
-                        AND (a.assigned_to IS NULL OR a.assigned_to = "")
-                        AND a.assigned_lab_id = ?
-                    )
-                    OR (
-                        a.status = "pending"
-                        AND EXISTS (
-                            SELECT 1 FROM appointment_offers o
-                            WHERE o.appointment_id = a.id AND o.profile_id = ?
-                        )
-                    )
-                )';
-                $params[] = $userId;
-                $params[] = $prelLabId;
+            $assignedOnly = !empty($_GET['assigned_only'])
+                && in_array(strtolower(trim((string) $_GET['assigned_only'])), ['1', 'true', 'yes'], true);
+            if ($assignedOnly) {
+                $sql .= ' AND a.assigned_to = ? AND a.type = \'blood_test\'';
                 $params[] = $userId;
             } else {
-                $sql .= ' AND a.assigned_to = ? AND a.type = "blood_test"';
-                $params[] = $userId;
+                $prelLabStmt = $db->prepare("SELECT lab_id FROM profiles WHERE id = ? AND role = 'preleveur' LIMIT 1");
+                $prelLabStmt->execute([$userId]);
+                $prelLabId = (string) ($prelLabStmt->fetch(PDO::FETCH_ASSOC)['lab_id'] ?? '');
+                if ($prelLabId !== '') {
+                    $sql .= ' AND a.type = "blood_test" AND (
+                        a.assigned_to = ?
+                        OR (
+                            a.status = "pending"
+                            AND (a.assigned_to IS NULL OR a.assigned_to = "")
+                            AND a.assigned_lab_id = ?
+                        )
+                        OR (
+                            a.status = "pending"
+                            AND EXISTS (
+                                SELECT 1 FROM appointment_offers o
+                                WHERE o.appointment_id = a.id AND o.profile_id = ?
+                            )
+                        )
+                    )';
+                    $params[] = $userId;
+                    $params[] = $prelLabId;
+                    $params[] = $userId;
+                } else {
+                    $sql .= ' AND a.assigned_to = ? AND a.type = "blood_test"';
+                    $params[] = $userId;
+                }
             }
         } elseif ($role === 'pro') {
             // Pro : RDV créés par ce professionnel OU patients liés via patient_professional_access (PPA)
@@ -502,6 +509,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $orderBy = ' ORDER BY a.scheduled_at DESC';
     if ($user && ($user['role'] ?? '') === 'nurse') {
         $orderBy = ' ORDER BY a.created_at DESC, a.scheduled_at DESC';
+    } elseif ($user && ($user['role'] ?? '') === 'preleveur') {
+        $assignedOnlyOrder = !empty($_GET['assigned_only'])
+            && in_array(strtolower(trim((string) $_GET['assigned_only'])), ['1', 'true', 'yes'], true);
+        if ($assignedOnlyOrder) {
+            $orderBy = ' ORDER BY a.scheduled_at ASC';
+        } else {
+            $orderBy = ' ORDER BY (CASE WHEN a.assigned_to = ? THEN 0 ELSE 1 END) ASC, a.scheduled_at DESC';
+            $params[] = $userId;
+        }
     }
     $sql .= $orderBy . ' LIMIT ' . (int)$limit . ' OFFSET ' . (int)$offset;
     

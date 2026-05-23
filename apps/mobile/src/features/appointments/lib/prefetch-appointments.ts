@@ -23,7 +23,16 @@ export function prefetchAppointmentsForUser(role: string | undefined): void {
   if (!role) return;
 
   const mainFilters: AppointmentListFilters =
-    role === 'nurse' ? { nurse_tab: 'soins', limit: 100 } : { limit: 100 };
+    role === 'nurse'
+      ? { nurse_tab: 'soins', limit: 100 }
+      : role === 'preleveur'
+        ? {
+            type: 'blood_test',
+            limit: 500,
+            assigned_only: true,
+            status: 'confirmed,in_progress,on_the_way',
+          }
+        : { limit: 100 };
 
   void prefetchList(mainFilters).catch(() => undefined);
 

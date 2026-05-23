@@ -5,10 +5,11 @@ import { Star, User } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { api } from '@/api/client';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
+import { revieweePayloadForCompletedAppt } from '@/utils/reviewee-payload';
 import {
   computePreleveurBannerPhase,
   preleveurBannerSubtitle,
@@ -32,13 +33,6 @@ function canLeaveReview(appt: Appointment): boolean {
   if (t === 'nursing' || t === 'nurse') return !!appt.assigned_nurse_id;
   if (t === 'blood_test') return !!(appt.assigned_lab_id || appt.assigned_to);
   return false;
-}
-
-function revieweeType(appt: Appointment): string {
-  const t = String(appt.type ?? '');
-  if (t === 'nursing' || t === 'nurse') return 'nurse';
-  if (appt.assigned_to) return 'preleveur';
-  return 'lab';
 }
 
 interface Props {
@@ -114,11 +108,19 @@ export function PatientDetailExtras({ batch, documents, onRefresh }: Props) {
     mutationFn: async ({ apptId, rating, comment }: { apptId: string; rating: number; comment: string }) => {
       const appt = batch.find((a) => a.id === apptId);
       if (!appt) throw new Error('RDV introuvable');
+      const target = revieweePayloadForCompletedAppt(appt);
+      if (!target) {
+        throw new Error('Aucun professionnel associé à ce rendez-vous.');
+      }
+      if (rating < 1 || rating > 5) {
+        throw new Error('Choisissez une note entre 1 et 5.');
+      }
       return api.post('/reviews', {
         appointment_id: apptId,
+        reviewee_id: target.reviewee_id,
+        reviewee_type: target.reviewee_type,
         rating,
         comment: comment.trim() || undefined,
-        reviewee_type: revieweeType(appt),
       });
     },
     onSuccess: () => {
@@ -198,8 +200,9 @@ export function PatientDetailExtras({ batch, documents, onRefresh }: Props) {
                     }))
                   }
                 />
-                <Input
+                <Textarea
                   label="Commentaire (optionnel)"
+                  hint="Précisez l'accueil, la ponctualité ou la qualité des soins."
                   value={form.comment}
                   onChangeText={(t) =>
                     setForms((prev) => ({
@@ -207,7 +210,7 @@ export function PatientDetailExtras({ batch, documents, onRefresh }: Props) {
                       [appt.id]: { ...form, comment: t },
                     }))
                   }
-                  multiline
+                  placeholder="Ex. : professionnel à l'écoute, soin effectué avec douceur…"
                 />
                 <Button
                   title="Publier mon avis"

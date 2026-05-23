@@ -1,10 +1,17 @@
-import { RoleFilteredAppointmentsListScreen } from '@/features/appointments/screens/RoleFilteredAppointmentsListScreen';
+import { useLayoutEffect } from 'react';
+import { useNavigation } from 'expo-router';
+import { PreleveurAppointmentsListScreen } from '@/features/appointments/screens/PreleveurAppointmentsListScreen';
+import { HeaderLogo } from '@/navigation/HeaderLogo';
 
 export default function PreleveurHome() {
-  return (
-    <RoleFilteredAppointmentsListScreen
-      role="preleveur"
-      detailPathPrefix="/(preleveur)/appointment"
-    />
-  );
+  const navigation = useNavigation();
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: '',
+      headerLeft: () => <HeaderLogo size="lg" />,
+    });
+  }, [navigation]);
+
+  return <PreleveurAppointmentsListScreen detailPathPrefix="/(preleveur)/appointment" />;
 }

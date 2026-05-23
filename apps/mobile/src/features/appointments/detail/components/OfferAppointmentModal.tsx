@@ -20,6 +20,8 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { useOfferQueueStore } from '../../store/offer-queue-store';
 import { useAuthStore } from '@/store/auth-store';
+import { fetchAppointment } from '../../api/appointments.service';
+import { OfferAcceptPreparationOverlay } from './offer/OfferAcceptPreparationOverlay';
 import { OfferAppointmentPreviewBody } from './offer/OfferAppointmentPreviewBody';
 import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -53,9 +55,15 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
 
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const [prepComplete, setPrepComplete] = useState(false);
 
   useEffect(() => {
-    if (!visible) setTermsAccepted(false);
+    if (!visible) {
+      setTermsAccepted(false);
+      setPreparing(false);
+      setPrepComplete(false);
+    }
   }, [visible]);
 
   const { batchSorted, isMultiBatch, siblingsLoading } = useAppointmentBatch(selected);
@@ -123,11 +131,17 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
       toast('Veuillez accepter la prise en charge avant de confirmer.', { type: 'error' });
       return;
     }
+
     setLoading(true);
+    setPreparing(true);
+    setPrepComplete(false);
+    const startedAt = Date.now();
+
     const r = await acceptOfferBatch(row, user?.id, shareToken);
-    setLoading(false);
 
     if (!r.ok) {
+      setPreparing(false);
+      setLoading(false);
       if (r.planLimit) {
         toast('Limite atteinte — passez à l’offre Pro pour accepter sans limite.', {
           type: 'error',
@@ -142,25 +156,57 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
     }
 
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    await Promise.all([
+      qc.prefetchQuery({
+        queryKey: queryKeys.appointments.detail(selected.id),
+        queryFn: async () => {
+          const res = await fetchAppointment(selected.id);
+          if (!res.success || !res.data) {
+            throw new Error(res.error ?? 'RDV introuvable');
+          }
+          return res.data;
+        },
+      }),
+      qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+    ]);
+
+    const minOverlayMs = 1400;
+    const elapsed = Date.now() - startedAt;
+    if (elapsed < minOverlayMs) {
+      await new Promise((resolve) => setTimeout(resolve, minOverlayMs - elapsed));
+    }
+
+    setLoading(false);
+    setPrepComplete(true);
+  }, [finishAndNext, qc, row, selected, shareToken, termsAccepted, toast, user?.id]);
+
+  const onPrepFinish = useCallback(async () => {
+    const aptId = selected?.id;
+    setPreparing(false);
+    setPrepComplete(false);
     toast(
-      r.count > 1 ? `Lot accepté (${r.count} soins)` : 'Rendez-vous accepté !',
+      batchCount > 1 ? `Lot accepté (${batchCount} soins)` : 'Rendez-vous accepté !',
       { type: 'success' },
     );
-    await finishAndNext();
-    router.push(`${detailPathPrefix}/${selected.id}` as never);
-  }, [
-    detailPathPrefix,
-    finishAndNext,
-    row,
-    router,
-    selected,
-    shareToken,
-    termsAccepted,
-    toast,
-    user?.id,
-  ]);
+    closeModal();
+    if (user?.role && user.id) {
+      void useOfferQueueStore.getState().processNext(user.role, user.id);
+    }
+    if (aptId) {
+      router.push(`${detailPathPrefix}/${aptId}` as never);
+    }
+  }, [batchCount, closeModal, detailPathPrefix, router, selected?.id, toast, user?.id, user?.role]);
 
-  if (!visible || !selected || !row) return null;
+  if (!visible || !selected || !row) {
+    return (
+      <OfferAcceptPreparationOverlay
+        visible={preparing}
+        complete={prepComplete}
+        onFinish={() => void onPrepFinish()}
+      />
+    );
+  }
 
   const footer = (
     <View style={styles.footer}>
@@ -187,32 +233,39 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
   );
 
   return (
-    <BottomSheet
-      visible={visible}
-      onClose={dismissLater}
-      title="Nouveau rendez-vous"
-      subtitle={subtitle}
-      footer={footer}
-    >
-      {lotLabel && !isMultiBatch ? (
-        <View style={styles.lotPill}>
-          <Text style={styles.lotPillText}>{lotLabel}</Text>
+    <>
+      <OfferAcceptPreparationOverlay
+        visible={preparing}
+        complete={prepComplete}
+        onFinish={() => void onPrepFinish()}
+      />
+      <BottomSheet
+        visible={visible && !preparing}
+        onClose={dismissLater}
+        title="Nouveau rendez-vous"
+        subtitle={subtitle}
+        footer={footer}
+      >
+        {lotLabel && !isMultiBatch ? (
+          <View style={styles.lotPill}>
+            <Text style={styles.lotPillText}>{lotLabel}</Text>
+          </View>
+        ) : null}
+        {siblingsLoading ? (
+          <View style={styles.loading}>
+            <SkeletonList count={2} itemHeight={100} gap={12} />
+          </View>
+        ) : (
+          <OfferAppointmentPreviewBody primary={selected} batch={batchSorted} />
+        )}
+        <View style={styles.termsRow}>
+          <ToggleSwitch value={termsAccepted} onValueChange={setTermsAccepted} />
+          <Text style={styles.termsText}>
+            J’accepte la prise en charge et m’engage à respecter la confidentialité du patient.
+          </Text>
         </View>
-      ) : null}
-      {siblingsLoading ? (
-        <View style={styles.loading}>
-        <SkeletonList count={2} itemHeight={100} gap={12} />
-        </View>
-      ) : (
-        <OfferAppointmentPreviewBody primary={selected} batch={batchSorted} />
-      )}
-      <View style={styles.termsRow}>
-        <ToggleSwitch value={termsAccepted} onValueChange={setTermsAccepted} />
-        <Text style={styles.termsText}>
-          J’accepte la prise en charge et m’engage à respecter la confidentialité du patient.
-        </Text>
-      </View>
-    </BottomSheet>
+      </BottomSheet>
+    </>
   );
 }
 
