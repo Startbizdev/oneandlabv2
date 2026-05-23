@@ -124,7 +124,7 @@
           Aucun rendez-vous
         </h2>
         <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-          Planifiez votre premier rendez-vous OneAndLab et suivez ensuite toutes les étapes depuis cet espace.
+          Planifiez votre premier rendez-vous Cary et suivez ensuite toutes les étapes depuis cet espace.
         </p>
         <NuxtLink
           to="/rendez-vous/nouveau"

@@ -27,12 +27,12 @@
             </ClientOnly>
             <NuxtLink 
               to="/" 
-              aria-label="OneAndLab - Accueil" 
+              aria-label="Cary - Accueil" 
               class="flex min-w-0 items-center gap-2 shrink-0"
             >
               <img 
-                src="/images/onelogo.png" 
-                alt="OneAndLab" 
+                src="/images/logo-cary.png" 
+                alt="Cary" 
                 class="h-[22px] w-auto max-w-[min(104px,32vw)] object-contain object-left sm:h-[26px] sm:max-w-[118px]"
                 loading="eager"
                 decoding="async"
@@ -332,11 +332,15 @@
             aria-label="Retour à l'accueil"
             @click="mobileMenuOpen = false"
           >
-            <span
-              class="text-xl font-black leading-none tracking-tight text-gray-900 tabular-nums dark:text-white sm:text-[22px]"
-            >
-              O<span class="text-primary-600 dark:text-primary-400">&</span>L
-            </span>
+            <img
+              src="/images/logo-cary.png"
+              alt="Cary"
+              class="h-8 w-auto max-w-[4.5rem] object-contain"
+              width="120"
+              height="32"
+              loading="eager"
+              decoding="async"
+            />
           </NuxtLink>
         </div>
 

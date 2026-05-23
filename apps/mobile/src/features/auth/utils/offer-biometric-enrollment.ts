@@ -33,8 +33,9 @@ export async function offerBiometricEnrollment(
         text: 'Activer',
         onPress: () => {
           void (async () => {
-            await enableBiometricLogin(token, user);
-            onDone();
+            const result = await enableBiometricLogin(token, user);
+            if (result.ok) onDone();
+            else onDone();
           })();
         },
       },

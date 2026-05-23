@@ -19,12 +19,18 @@
       <div class="flex h-[60px] w-full items-center justify-center border-b border-gray-200 px-2">
         <NuxtLink
           to="/"
-          class="rounded-lg px-2 py-1.5 text-center transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:hover:bg-gray-900/60 dark:focus-visible:ring-offset-gray-950"
-          aria-label="Retour à l'accueil"
+          class="rounded-lg px-1 py-1.5 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:hover:bg-gray-900/60 dark:focus-visible:ring-offset-gray-950"
+          aria-label="Cary — Accueil"
         >
-          <span class="text-xl font-black tracking-tight leading-none text-gray-900 dark:text-white tabular-nums sm:text-[22px]">
-            O<span class="text-primary-600 dark:text-primary-400">&</span>L
-          </span>
+          <img
+            src="/images/logo-cary.png"
+            alt="Cary"
+            class="h-8 w-auto max-w-[4.5rem] object-contain"
+            width="120"
+            height="32"
+            loading="eager"
+            decoding="async"
+          />
         </NuxtLink>
       </div>
 
@@ -303,7 +309,9 @@
           </div>
         </header>
 
-        <div class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:px-6 md:py-6">
+        <div
+          class="dashboard-main-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:px-6 md:py-6"
+        >
           <slot />
         </div>
       </main>
@@ -499,12 +507,25 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 };
 
+/** Fermeture au défilement du rail ou du contenu (le scroll n’émet pas de « clic extérieur »). */
+function isDashboardMainScrollTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && (target.classList.contains('sidebar-scroll') || target.classList.contains('dashboard-main-scroll'));
+}
+
+function closeHeaderMenusOnScroll(event: Event) {
+  if (!isDashboardMainScrollTarget(event.target)) return;
+  userMenuOpen.value = false;
+  notificationsMenuOpen.value = false;
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
+  document.addEventListener('scroll', closeHeaderMenusOnScroll, true);
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
+  document.removeEventListener('scroll', closeHeaderMenusOnScroll, true);
 });
 
 // Modal pour nouveaux rendez-vous (infirmiers, lab, subaccount) — file d'attente FIFO

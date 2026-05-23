@@ -72,6 +72,7 @@
               >
                 <div class="flex h-7 w-7 shrink-0 items-center justify-center self-center" aria-hidden="true">
                   <CareCategoryVisual
+                    :emoji="catalogLineBadge(apt?.type, line).emoji"
                     :image-src="catalogLineBadge(apt?.type, line).imageSrc"
                     :icon-name="catalogLineBadge(apt?.type, line).iconName"
                     img-class="h-6 w-6 rounded object-contain"
@@ -177,6 +178,7 @@
           >
             <div class="flex h-7 w-7 shrink-0 items-center justify-center self-center" aria-hidden="true">
               <CareCategoryVisual
+                :emoji="catalogLineBadge(singleDisplayAppointment?.type, line).emoji"
                 :image-src="catalogLineBadge(singleDisplayAppointment?.type, line).imageSrc"
                 :icon-name="catalogLineBadge(singleDisplayAppointment?.type, line).iconName"
                 img-class="h-6 w-6 rounded object-contain"

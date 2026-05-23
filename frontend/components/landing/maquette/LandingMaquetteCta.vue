@@ -34,7 +34,7 @@
       <p
         class="mx-auto mb-10 max-w-[520px] text-[clamp(1rem,1.4vw,1.125rem)] leading-[1.7] text-white/72"
       >
-        Rejoignez les 15 000 patients qui ont choisi OneAndLab. Inscription gratuite, sans
+        Rejoignez les 15 000 patients qui ont choisi Cary. Inscription gratuite, sans
         engagement.
       </p>
       <div class="flex flex-wrap items-center justify-center gap-3">

@@ -605,13 +605,20 @@ const servicesToShow = computed(() => {
   const p = props.profile
   if (!p) return []
   if (props.type === 'nurse' && p.specializations?.length) {
-    return p.specializations
+    return p.specializations.map((s: any) => ({
+      id: String(s.id),
+      name: String(s.name ?? ''),
+      description: s.description ?? undefined,
+      type: s.type === 'blood_test' ? 'blood_test' : 'nursing',
+      icon: s.icon ?? null,
+      image_url: s.image_url ?? null,
+    }))
   }
   if (props.type === 'lab' && p.services?.length) {
     return p.services.map((s: any) => ({
-      id: s.id,
-      name: s.name,
-      description: s.description,
+      id: String(s.id),
+      name: String(s.name ?? ''),
+      description: s.description ?? undefined,
       type: 'blood_test',
       icon: s.icon ?? null,
       image_url: s.image_url ?? null,

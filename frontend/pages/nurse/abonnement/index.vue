@@ -4,7 +4,7 @@
       <AppPageHeader
         :edge-bleed="false"
         title="Mon abonnement"
-        description="Consultez les offres et gérez votre abonnement OneAndLab"
+        description="Consultez les offres et gérez votre abonnement Cary"
       />
     </template>
 

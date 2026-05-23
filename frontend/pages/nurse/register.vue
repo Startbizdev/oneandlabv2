@@ -6,7 +6,7 @@
         role="nurse"
         :initial-email="(route.query.email as string) ?? ''"
         title="Inscription infirmier ou infirmière"
-        subtitle="Rejoignez le réseau OneAndLab pour les soins infirmiers à domicile."
+        subtitle="Rejoignez le réseau Cary pour les soins infirmiers à domicile."
         header-icon="i-lucide-heart-pulse"
         header-icon-bg="bg-emerald-600"
         submit-label="Envoyer ma demande d'inscription"

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Routeur principal pour l'API OneAndLab V2
+ * Routeur principal pour l'API Cary V2
  * 
  * Ce fichier sert d'entrée unique pour toutes les requêtes API.
  * Il route automatiquement les requêtes vers les fichiers appropriés dans /api/

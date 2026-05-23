@@ -120,7 +120,7 @@ const { data: labsData, pending: loading, refresh } = await useAsyncData(
 const labs = computed(() => labsData.value?.success ? (labsData.value.data ?? []) : [])
 const pagination = computed(() => labsData.value?.pagination ?? { page: 1, limit: 24, total: 0, pages: 0 })
 
-const seoTitle = 'Laboratoire de prélèvements à domicile en France | OneAndLab'
+const seoTitle = 'Laboratoire de prélèvements à domicile en France | Cary'
 const seoDescription = 'Trouvez un laboratoire pour vos prélèvements à domicile. Réservez en ligne. Gratuit, sans engagement, réservation en 1 min.'
 
 useHead({

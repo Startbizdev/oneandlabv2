@@ -1,5 +1,5 @@
-const SITE_NAME = 'OneAndLab'
-const FALLBACK_ORIGIN = 'https://oneandlab.com'
+const SITE_NAME = 'Cary'
+const FALLBACK_ORIGIN = 'https://cary.fr'
 
 export function useLandingSeo(options: {
   title: string

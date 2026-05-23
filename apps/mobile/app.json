@@ -51,7 +51,13 @@
           }
         }
       ],
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true,
+          "faceIDPermission": "Cary utilise Face ID pour sécuriser vos identifiants de connexion."
+        }
+      ],
       [
         "expo-local-authentication",
         {

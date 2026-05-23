@@ -4,7 +4,7 @@
       eyebrow="Pour les infirmiers libéraux"
       :title-lines="['Développez votre', 'activité']"
       highlight="à domicile"
-      description="Recevez des demandes de soins à domicile via OneAndLab : planning clair, périmètre géographique maîtrisable, profil visible par les patients et gestion des rendez-vous depuis un seul espace."
+      description="Recevez des demandes de soins à domicile via Cary : planning clair, périmètre géographique maîtrisable, profil visible par les patients et gestion des rendez-vous depuis un seul espace."
       image-src="https://images.unsplash.com/photo-1631815589968-fdb09a223b1e?w=900&h=1200&q=80&auto=format&fit=crop"
       image-alt="Infirmière souriante en blouse"
       image-object-class="object-[center_20%]"
@@ -34,7 +34,7 @@
 
     <LandingMaquetteStepsCards
       eyebrow="Pour commencer"
-      :heading-lines="['Trois étapes', 'pour être visible sur OneAndLab']"
+      :heading-lines="['Trois étapes', 'pour être visible sur Cary']"
       intro="Complétez votre dossier : après validation, votre profil peut recevoir des demandes alignées sur votre zone et vos disponibilités."
       section-class="bg-white dark:bg-gray-950"
       :cards="stepCards"
@@ -73,10 +73,10 @@
 definePageMeta({ layout: 'default' });
 
 useLandingSeo({
-  title: 'Pour les infirmiers | Soins à domicile | OneAndLab',
+  title: 'Pour les infirmiers | Soins à domicile | Cary',
   description:
-    'Rejoignez OneAndLab : demandes de soins à domicile, planning, profil public et avis patients.',
-  keywords: 'infirmier domicile, IDEL OneAndLab, plateforme infirmiers, soins infirmiers à domicile',
+    'Rejoignez Cary : demandes de soins à domicile, planning, profil public et avis patients.',
+  keywords: 'infirmier domicile, IDEL Cary, plateforme infirmiers, soins infirmiers à domicile',
   path: '/pour-les-infirmiers',
 });
 
@@ -173,7 +173,7 @@ const landingReviews = [
     patientName: 'Sophie M., IDEL Lyon',
     rating: 5,
     comment: 'Interface claire pour voir mes créneaux et mes demandes sans perdre de temps.',
-    response: 'Merci Sophie — OneAndLab',
+    response: 'Merci Sophie — Cary',
     date: new Date(Date.now() - 5 * 86400000),
   },
   {
@@ -220,7 +220,7 @@ const landingReviews = [
 
 const faqItems = [
   {
-    question: 'OneAndLab peut-il remplacer mon cabinet ou mon activité habituelle ?',
+    question: 'Cary peut-il remplacer mon cabinet ou mon activité habituelle ?',
     answer:
       'Non. Il s’agit d’un canal supplémentaire pour recevoir des demandes de soins à domicile : vous restez libéral et responsable de vos actes comme d’habitude.',
   },

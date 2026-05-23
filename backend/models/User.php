@@ -1236,6 +1236,66 @@ class User
     }
 
     /**
+     * Photos de profil pour une liste d'IDs (liste RDV — évite N+1 sur getById).
+     *
+     * @return array<string, string|null> id => profile_image_url
+     */
+    public function getProfileImageUrlsByIds(array $ids): array
+    {
+        $ids = array_unique(array_filter($ids));
+        if (empty($ids)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare(
+            'SELECT id, profile_image_url FROM profiles WHERE id IN (' . $placeholders . ')'
+        );
+        $stmt->execute(array_values($ids));
+        $result = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $url = isset($row['profile_image_url']) ? trim((string) $row['profile_image_url']) : '';
+            $result[(string) $row['id']] = $url !== '' ? $url : null;
+        }
+        return $result;
+    }
+
+    /**
+     * Genres déchiffrés pour une liste d'IDs (cartes RDV — avatars Personas).
+     *
+     * @return array<string, string|null> id => male|female|other|null
+     */
+    public function getGendersByIds(array $ids): array
+    {
+        $ids = array_unique(array_filter($ids));
+        if (empty($ids)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare(
+            'SELECT id, gender_encrypted, gender_dek FROM profiles WHERE id IN (' . $placeholders . ')'
+        );
+        $stmt->execute(array_values($ids));
+        $result = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $id = (string) $row['id'];
+            if (!empty($row['gender_encrypted']) && !empty($row['gender_dek'])) {
+                try {
+                    $g = strtolower(trim($this->crypto->decryptField(
+                        $row['gender_encrypted'],
+                        $row['gender_dek']
+                    )));
+                    $result[$id] = in_array($g, ['male', 'female', 'other'], true) ? $g : null;
+                } catch (Exception $e) {
+                    $result[$id] = null;
+                }
+            } else {
+                $result[$id] = null;
+            }
+        }
+        return $result;
+    }
+
+    /**
      * Récupère la liste des utilisateurs avec pagination et filtres
      */
     public function getAll(array $filters = [], int $page = 1, int $limit = 20, string $requesterId = '', string $requesterRole = ''): array

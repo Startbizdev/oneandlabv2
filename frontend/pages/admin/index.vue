@@ -1,7 +1,7 @@
 <template>
   <DashboardLayout
     title="Tableau de bord"
-    description="Vue d'ensemble de la plateforme OneAndLab — statistiques, derniers rendez-vous et activité en temps réel."
+    description="Vue d'ensemble de la plateforme Cary — statistiques, derniers rendez-vous et activité en temps réel."
     :loading="loading"
     :error="error"
     :stats-cards="statsCards"

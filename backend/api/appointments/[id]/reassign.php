@@ -312,12 +312,16 @@ try {
     if (!empty($reassignNotifyUserId) || $deferredPatientPreleveurNotify !== null) {
         try {
             require_once __DIR__ . '/../../../lib/NotificationService.php';
+            require_once __DIR__ . '/../../../lib/NotificationMessageFormatter.php';
+            require_once __DIR__ . '/../../../lib/Crypto.php';
             require_once __DIR__ . '/../../../models/User.php';
             $ns = new NotificationService();
             $um = new User();
 
             if (!empty($reassignNotifyUserId)) {
-                $stmtA = $pdo->prepare('SELECT type, scheduled_at, patient_id, category_id FROM appointments WHERE id = ?');
+                $stmtA = $pdo->prepare(
+                    'SELECT type, scheduled_at, patient_id, category_id, form_data_encrypted, form_data_dek FROM appointments WHERE id = ?'
+                );
                 $stmtA->execute([$appointmentId]);
                 $rowA = $stmtA->fetch(PDO::FETCH_ASSOC);
                 $patientName = '';
@@ -336,14 +340,20 @@ try {
                         $catName = $cr['name'];
                     }
                 }
-                $schedLabel = '';
-                if ($rowA && !empty($rowA['scheduled_at'])) {
+                $formData = null;
+                if ($rowA && !empty($rowA['form_data_encrypted']) && !empty($rowA['form_data_dek'])) {
                     try {
-                        $schedLabel = (new DateTime($rowA['scheduled_at']))->format('d/m/Y \à H\hi');
+                        $crypto = new Crypto();
+                        $json = $crypto->decryptField($rowA['form_data_encrypted'], $rowA['form_data_dek']);
+                        $decoded = json_decode($json, true);
+                        $formData = is_array($decoded) ? $decoded : null;
                     } catch (Throwable $e) {
-                        $schedLabel = '';
+                        $formData = null;
                     }
                 }
+                $schedLabel = $rowA
+                    ? NotificationMessageFormatter::whenShort($formData, $rowA['scheduled_at'] ?? null)
+                    : '';
                 $ns->notifyAppointmentReassigned(
                     (string) $reassignNotifyUserId,
                     $appointmentId,

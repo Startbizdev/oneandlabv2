@@ -47,5 +47,5 @@ export function nurseCanRescheduleOrCancel(
   opts: { role: string; viewerId?: string | null },
 ): boolean {
   const status = effectiveAppointmentStatus(apt, opts);
-  return ['confirmed', 'inProgress', 'in_progress'].includes(status);
+  return ['pending', 'confirmed', 'inProgress', 'in_progress'].includes(status);
 }

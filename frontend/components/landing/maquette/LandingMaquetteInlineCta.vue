@@ -2,7 +2,7 @@
   <section class="px-6 pb-[72px] lg:pb-[100px] lg:px-12" :class="outerClass">
     <div class="mx-auto max-w-[1200px]">
       <div
-        class="relative overflow-hidden rounded-[22px] border border-[#E8E8F0] bg-gradient-to-br from-[#F7FAFF] via-white to-primary-50/25 px-8 py-10 shadow-[0_8px_32px_-8px_rgb(47_128_237/0.12)] dark:border-gray-800 dark:from-gray-900 dark:via-gray-950 dark:to-primary-950/20 md:px-12 md:py-12"
+        class="relative overflow-hidden rounded-[22px] border border-[#E8E8F0] bg-gradient-to-br from-[#F0FAF9] via-white to-primary-50/25 px-8 py-10 shadow-[0_8px_32px_-8px_rgb(28_199_181/0.12)] dark:border-gray-800 dark:from-gray-900 dark:via-gray-950 dark:to-primary-950/20 md:px-12 md:py-12"
       >
         <div
           class="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary-500/10 blur-3xl dark:bg-primary-500/20"

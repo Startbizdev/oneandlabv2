@@ -24,7 +24,8 @@ export function categorySelectHasAutreOption(opt: {
 }
 
 /**
- * Affichage : libellé catalogue + précision si « Autre ».
+ * Affichage d’un select catalogue : si la valeur est « autre » / « other » et qu’une précision
+ * est saisie, on affiche uniquement cette précision (évite « Autre — … » redondant en fiche RDV / modales).
  */
 export function formatCareSelectValueWithAutreDetail(
   catalogLabel: string,
@@ -37,7 +38,7 @@ export function formatCareSelectValueWithAutreDetail(
   if (raw == null) return catalogLabel;
   const detail = String(raw).trim();
   if (!detail) return catalogLabel;
-  return `${catalogLabel} — ${detail}`;
+  return detail;
 }
 
 /** Retire les clés `*__autre_detail` si le select parent n’est plus « autre ». */

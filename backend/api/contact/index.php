@@ -69,7 +69,7 @@ try {
     }
 
     $typeLabel = $typeLabels[$contactType];
-    $subject = '[OneAndLab Contact] ' . $typeLabel . ' — ' . $name;
+    $subject = '[Cary Contact] ' . $typeLabel . ' — ' . $name;
 
     $inner = '<p style="margin:0 0 12px 0;"><strong>Motif :</strong> ' . htmlspecialchars($typeLabel) . '</p>'
         . '<p style="margin:0 0 12px 0;"><strong>Nom :</strong> ' . htmlspecialchars($name) . '</p>'

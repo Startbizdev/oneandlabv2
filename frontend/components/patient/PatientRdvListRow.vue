@@ -44,6 +44,7 @@
       >
         <div class="flex h-7 w-7 shrink-0 items-center justify-center self-center" aria-hidden="true">
           <CareCategoryVisual
+            :emoji="lineBadge(line).emoji"
             :image-src="lineBadge(line).imageSrc"
             :icon-name="lineBadge(line).iconName"
             img-class="h-6 w-6 rounded object-contain"

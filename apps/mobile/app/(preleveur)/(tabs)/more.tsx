@@ -5,6 +5,7 @@ import { Bell, LogOut, Scale, ScanFace, User } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { useHeaderBellBadgeCount } from '@/navigation/use-header-bell-badge';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
+import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label';
 import { getNotificationsPath } from '@/navigation/notifications-route';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, elevation, radius, spacing } from '@/theme';
@@ -12,6 +13,7 @@ import { fontFamily, fontSize } from '@/theme/typography';
 
 export default function PreleveurMore() {
   const router = useRouter();
+  const biometricLabel = useBiometricLabel('Biométrie');
   const logout = useAuthStore((s) => s.clearSession);
   const user = useAuthStore((s) => s.user);
   const badgeCount = useHeaderBellBadgeCount();
@@ -54,7 +56,7 @@ export default function PreleveurMore() {
             <View style={[styles.menuIcon, { backgroundColor: '#F0FDFA' }]}>
               <ScanFace size={18} color="#0D9488" strokeWidth={2} />
             </View>
-            <Button title="Face ID" variant="ghost" onPress={() => router.push('/profile/security' as never)} />
+            <Button title={biometricLabel} variant="ghost" onPress={() => router.push('/profile/security' as never)} />
           </View>
           <View style={styles.divider} />
           <View style={styles.menuItem}>
@@ -115,8 +117,8 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
+    alignSelf: 'stretch',
     backgroundColor: colors.borderLight,
-    marginHorizontal: spacing[4],
   },
   badge: {
     minWidth: 22,

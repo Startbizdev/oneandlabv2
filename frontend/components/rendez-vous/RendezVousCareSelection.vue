@@ -64,43 +64,46 @@
         </p>
 
         <!-- Liste : 1 carte par ligne ; seul le chip « Ajouter » ouvre les options (mini modal) ou retire le soin. -->
-        <ul class="grid grid-cols-1 gap-2 sm:gap-2.5 md:grid-cols-2" role="list" aria-label="Liste des soins">
+        <ul class="grid grid-cols-1 gap-1.5 sm:gap-2 md:grid-cols-2" role="list" aria-label="Liste des soins">
           <li v-for="item in filteredMainList" :key="item.id" class="list-none min-w-0" role="presentation">
             <div
               :ref="(el) => setCareCardEl(item.id, el)"
-              class="group flex w-full min-h-[3.75rem] items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors sm:min-h-[4rem] sm:gap-4 sm:px-4"
+              class="group flex w-full min-h-[3rem] items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-[box-shadow,transform,background-color] duration-150 sm:gap-3 sm:px-3.5 sm:py-2.5"
               :class="
                 isRowSelected(item.raw, item.id)
-                  ? 'border-emerald-500/55 bg-emerald-50/35 ring-1 ring-emerald-500/15 dark:border-emerald-500/40 dark:bg-emerald-950/20 dark:ring-emerald-400/15'
-                  : 'border-gray-200/90 bg-white hover:border-gray-300 hover:bg-gray-50/80 dark:border-gray-800 dark:bg-gray-950 dark:hover:border-gray-700 dark:hover:bg-gray-900/50'
+                  ? 'border border-primary-300/50 bg-primary-50/70 shadow-[0_2px_10px_rgba(28,199,181,0.12)] dark:border-primary-500/35 dark:bg-primary-950/25 dark:shadow-[0_2px_12px_rgba(28,199,181,0.08)]'
+                  : 'border border-gray-100/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_14px_rgba(15,23,42,0.05)] hover:shadow-[0_2px_6px_rgba(15,23,42,0.06),0_8px_20px_rgba(15,23,42,0.07)] dark:border-gray-800/80 dark:bg-gray-950 dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)] dark:hover:shadow-[0_4px_16px_rgba(0,0,0,0.45)]'
               "
             >
               <div
-                class="care-add-flight-visual flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md bg-neutral-100 p-0.5 ring-1 ring-inset ring-neutral-200/90 dark:bg-neutral-800/55 dark:ring-neutral-600/40 sm:h-12 sm:w-12"
+                class="care-add-flight-visual flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-gray-100/90 bg-gray-50/90 dark:border-gray-700/80 dark:bg-gray-900/60"
+                aria-hidden="true"
               >
+                <span
+                  v-if="item.emoji"
+                  class="select-none text-[1.25rem] leading-none"
+                  role="img"
+                >{{ item.emoji }}</span>
                 <CareCategoryVisual
+                  v-else
+                  :emoji="item.emoji"
                   :image-src="item.imageSrc"
                   :icon-name="item.iconName"
                   :icon-color="item.iconColor"
-                  img-class="block max-h-full max-w-full min-h-0 min-w-0 object-contain"
-                  icon-class="max-h-[92%] max-w-[92%] shrink-0"
+                  emoji-class="text-[1.25rem] leading-none"
+                  img-class="block max-h-full max-w-full object-contain"
+                  icon-class="h-5 w-5 shrink-0"
                 />
               </div>
-              <div class="min-w-0 flex-1 py-0.5">
-                <p class="text-sm font-semibold leading-snug text-gray-900 dark:text-white sm:text-[15px]">
-                  {{ item.label }}
-                </p>
-                <p
-                  v-if="itemDescription(item.raw)"
-                  class="mt-0.5 line-clamp-2 text-xs leading-relaxed text-gray-500 dark:text-gray-400"
-                >
-                  {{ itemDescription(item.raw) }}
-                </p>
-              </div>
-              <div class="shrink-0 self-center pl-1">
+              <p
+                class="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-tight text-gray-900 dark:text-white sm:text-sm"
+              >
+                {{ item.label }}
+              </p>
+              <div class="shrink-0 self-center">
                 <button
                   type="button"
-                  class="focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/80 focus-visible:ring-offset-2 rounded dark:focus-visible:ring-offset-gray-950"
+                  class="focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/80 focus-visible:ring-offset-2 rounded-full dark:focus-visible:ring-offset-gray-950"
                   :aria-pressed="isRowSelected(item.raw, item.id)"
                   :aria-label="
                     isRowSelected(item.raw, item.id)
@@ -111,17 +114,15 @@
                 >
                   <span
                     v-if="!isRowSelected(item.raw, item.id)"
-                    class="pointer-events-none inline-flex items-center gap-0.5 whitespace-nowrap rounded border border-primary-200/90 bg-primary-50/60 px-2 py-1 text-[10px] font-semibold leading-none text-primary-700 transition-colors group-hover:border-primary-300/95 group-hover:bg-primary-50 dark:border-primary-500/28 dark:bg-primary-950/35 dark:text-primary-300 dark:group-hover:border-primary-400/40 dark:group-hover:bg-primary-950/50 sm:text-[11px]"
+                    class="pointer-events-none inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary-200/90 bg-primary-50/80 text-primary-700 transition-colors group-hover:border-primary-300 group-hover:bg-primary-50 dark:border-primary-500/30 dark:bg-primary-950/40 dark:text-primary-300"
                   >
-                    <UIcon name="i-lucide-plus" class="h-3 w-3 shrink-0 opacity-90" />
-                    Ajouter
+                    <UIcon name="i-lucide-plus" class="h-4 w-4 shrink-0 opacity-90" />
                   </span>
                   <span
                     v-else
-                    class="pointer-events-none inline-flex items-center gap-0.5 whitespace-nowrap rounded border border-emerald-400/90 bg-emerald-50/60 px-2 py-1 text-[10px] font-semibold leading-none text-emerald-800 transition-colors group-hover:border-emerald-500/80 group-hover:bg-emerald-50/90 dark:border-emerald-500/30 dark:bg-emerald-950/35 dark:text-emerald-300 dark:group-hover:border-emerald-400/50 dark:group-hover:bg-emerald-950/50 sm:text-[11px]"
+                    class="pointer-events-none inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary-400/60 bg-white text-primary-700 shadow-sm dark:border-primary-500/40 dark:bg-gray-900 dark:text-primary-300"
                   >
-                    <UIcon name="i-lucide-check" class="h-3 w-3 shrink-0 text-emerald-600 opacity-90 dark:text-emerald-400" />
-                    Ajouté
+                    <UIcon name="i-lucide-check" class="h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400" />
                   </span>
                 </button>
               </div>
@@ -202,6 +203,7 @@ import {
   resolveCareCategoryImageSrc,
   resolveCareIconFromCategory,
 } from '~/utils/care-icons';
+import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import {
   bloodServicesInSelection,
@@ -217,6 +219,7 @@ import {
   type CatalogSegmentTabTheme,
 } from '~/utils/catalog-segment-tab-theme';
 import SelectedServicesCartSummary from '~/components/rendez-vous/SelectedServicesCartSummary.vue';
+import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
 
 export type CareCategoryRow = {
   id: string;
@@ -228,6 +231,8 @@ export type CareCategoryRow = {
   appointment_count?: number;
   /** Groupe catalogue (migration 058) : examens, soins, suivi, hygiene, prevention, divers, … */
   catalog_group?: string | null;
+  /** Masquer ordonnance + autre prescription (admin). */
+  skip_prescription_documents?: unknown;
   options?: Array<{
     option_key: string;
     label: string;
@@ -242,6 +247,7 @@ type CareItem = {
   id: string;
   label: string;
   catalogGroup: string;
+  emoji: string;
   iconName: string;
   imageSrc: string | null;
   iconColor: string;
@@ -538,6 +544,7 @@ const allItems = computed((): CareItem[] => {
         id: row.id,
         label: row.label,
         catalogGroup: row.catalogGroup,
+        emoji: careCategoryEmojiForCategory({ name: row.label, icon: row.iconName, type: row.type }),
         iconName: row.iconName,
         imageSrc: row.imageSrc,
         iconColor: accent.iconColor,
@@ -559,8 +566,11 @@ const allItems = computed((): CareItem[] => {
       id: cat.id,
       label: cat.name,
       catalogGroup,
+      emoji: careCategoryEmojiForCategory({ name: cat.name, icon: cat.icon, type: cat.type }),
       iconName: resolveCareIconFromCategory(cat),
-      imageSrc: resolveCareCategoryImageSrc(cat.image_url ?? null, config.public.apiBase),
+      imageSrc: isCareCategoryEmoji(cat.icon)
+        ? null
+        : resolveCareCategoryImageSrc(cat.image_url ?? null, config.public.apiBase),
       iconColor: accent.iconColor,
       appointmentCount: Number(cat.appointment_count ?? 0),
       raw: cat,
@@ -688,13 +698,6 @@ const filteredMainList = computed(() => {
   return list;
 });
 
-function itemDescription(raw: CareItem['raw']): string {
-  if (useFallback.value) return '';
-  const cat = raw as CareCategoryRow;
-  const d = cat.description?.trim();
-  return d || '';
-}
-
 function newServiceInstanceId(): string {
   if (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function') {
     return globalThis.crypto.randomUUID();
@@ -722,14 +725,18 @@ function isRowSelected(raw: CareItem['raw'], fallbackListId: string): boolean {
 }
 
 function categoryLineFromCatalog(cat: CareCategoryRow): SelectedServiceInput {
-  return {
+  const line: SelectedServiceInput = {
     id: newServiceInstanceId(),
     type: cat.type,
     name: cat.name,
     category_id: cat.id,
-    icon: resolveCareIconFromCategory(cat),
-    category_image_url: cat.image_url ?? null,
+    icon: cat.icon && String(cat.icon).trim() !== '' ? String(cat.icon) : resolveCareIconFromCategory(cat),
+    category_image_url: isCareCategoryEmoji(cat.icon) ? null : (cat.image_url ?? null),
   };
+  if (normalizeCategorySkipPrescriptionDocuments(cat.skip_prescription_documents)) {
+    line.skip_prescription_documents = true;
+  }
+  return line;
 }
 
 function categoryOptionsLength(catId: string): number {

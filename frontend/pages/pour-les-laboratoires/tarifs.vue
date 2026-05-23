@@ -1,80 +1,84 @@
 <template>
-  <LandingMaquetteMarketingBackdrop>
-    <LandingMaquetteSubHero
+  <div>
+    <LandingMaquetteHero
       eyebrow="Laboratoires · abonnement"
       :title-lines="['Tarifs', 'pour votre structure']"
       highlight="30 jours d’essai gratuit sur chaque offre · sans engagement"
       description="Starter pour les petites équipes jusqu’à 2 préleveurs, Pro pour préleveurs et sous-comptes illimités avec statistiques étendues et gestion des avis."
-      image-src="/undraw/labo.svg"
-      image-alt="Laboratoire"
+      image-src="https://images.unsplash.com/photo-1579154341184-22069e4614d2?w=900&h=1200&q=80&auto=format&fit=crop"
+      image-alt="Laboratoire d’analyses médicales"
+      image-object-class="object-[center_40%]"
+      hide-quote
+      hide-stats
       :primary-cta="{ label: 'Inscrire mon laboratoire', to: '/lab/register', icon: 'i-lucide-building-2' }"
       :secondary-cta="{ label: 'Retour page laboratoires', to: '/pour-les-laboratoires' }"
     />
+    <LandingMaquetteMarketingBackdrop>
+      <section class="border-t border-[#E8E8F0]/80 bg-[#F7F7FB] py-[72px] dark:border-gray-800 dark:bg-gray-900/75 lg:py-[100px]">
+        <div class="mx-auto max-w-[1200px] px-6 lg:px-12">
+          <div class="grid max-w-4xl grid-cols-1 gap-8 md:mx-auto md:grid-cols-2">
+            <UCard class="flex h-full flex-col overflow-visible">
+              <template #header>
+                <h2 class="text-xl font-semibold text-[#0A0A0F] dark:text-white">Starter</h2>
+                <p class="mt-2 text-3xl font-semibold text-[#0A0A0F] dark:text-white">
+                  49 €<span class="text-base font-normal text-[#9090A8] dark:text-gray-400">/mois</span>
+                </p>
+                <p class="mt-1 text-sm text-[#3D3D52] dark:text-gray-400">30 jours d’essai gratuit</p>
+                <div class="mt-4">
+                  <UButton block size="lg" variant="outline" :loading="loadingStarter" @click="() => startCheckout('lab_starter')">
+                    Commencer l’essai
+                  </UButton>
+                </div>
+              </template>
+              <ul class="min-h-0 flex-1 space-y-3 text-[#3D3D52] dark:text-gray-300">
+                <li v-for="(line, i) in starterLines" :key="i" class="flex items-start gap-2">
+                  <UIcon name="i-lucide-check" class="mt-0.5 h-5 w-5 shrink-0 text-primary-500" />
+                  <span>{{ line }}</span>
+                </li>
+              </ul>
+            </UCard>
 
-    <section class="border-t border-[#E8E8F0]/80 bg-[#F7F7FB] py-[72px] dark:border-gray-800 dark:bg-gray-900/75 lg:py-[100px]">
-      <div class="mx-auto max-w-[1200px] px-6 lg:px-12">
-        <div class="grid max-w-4xl grid-cols-1 gap-8 md:mx-auto md:grid-cols-2">
-          <UCard class="flex h-full flex-col overflow-visible">
-            <template #header>
-              <h2 class="text-xl font-semibold text-[#0A0A0F] dark:text-white">Starter</h2>
-              <p class="mt-2 text-3xl font-semibold text-[#0A0A0F] dark:text-white">
-                49 €<span class="text-base font-normal text-[#9090A8] dark:text-gray-400">/mois</span>
-              </p>
-              <p class="mt-1 text-sm text-[#3D3D52] dark:text-gray-400">30 jours d’essai gratuit</p>
-              <div class="mt-4">
-                <UButton block size="lg" variant="outline" :loading="loadingStarter" @click="() => startCheckout('lab_starter')">
-                  Commencer l’essai
-                </UButton>
+            <UCard class="relative flex h-full flex-col border-2 border-primary-500 shadow-[0_8px_32px_-12px_rgb(28_199_181/0.25)]">
+              <div class="absolute right-3 top-3 z-10">
+                <UBadge color="primary" size="sm">Recommandé</UBadge>
               </div>
-            </template>
-            <ul class="min-h-0 flex-1 space-y-3 text-[#3D3D52] dark:text-gray-300">
-              <li v-for="(line, i) in starterLines" :key="i" class="flex items-start gap-2">
-                <UIcon name="i-lucide-check" class="mt-0.5 h-5 w-5 shrink-0 text-primary-500" />
-                <span>{{ line }}</span>
-              </li>
-            </ul>
-          </UCard>
+              <template #header>
+                <h2 class="text-xl font-semibold text-[#0A0A0F] dark:text-white">Pro</h2>
+                <p class="mt-2 text-3xl font-semibold text-[#0A0A0F] dark:text-white">
+                  129 €<span class="text-base font-normal text-[#9090A8] dark:text-gray-400">/mois</span>
+                </p>
+                <p class="mt-1 text-sm text-[#3D3D52] dark:text-gray-400">30 jours d’essai gratuit</p>
+                <div class="mt-4">
+                  <UButton block size="lg" color="primary" :loading="loadingPro" @click="() => startCheckout('lab_pro')">
+                    Commencer l’essai gratuit
+                  </UButton>
+                </div>
+              </template>
+              <ul class="flex-1 space-y-3 text-[#3D3D52] dark:text-gray-300">
+                <li v-for="(line, i) in proLines" :key="i" class="flex items-start gap-2">
+                  <UIcon name="i-lucide-check" class="mt-0.5 h-5 w-5 shrink-0 text-primary-500" />
+                  <span>{{ line }}</span>
+                </li>
+              </ul>
+            </UCard>
+          </div>
 
-          <UCard class="relative flex h-full flex-col border-2 border-primary-500 shadow-[0_8px_32px_-12px_rgb(47_128_237/0.25)]">
-            <div class="absolute right-3 top-3 z-10">
-              <UBadge color="primary" size="sm">Recommandé</UBadge>
-            </div>
-            <template #header>
-              <h2 class="text-xl font-semibold text-[#0A0A0F] dark:text-white">Pro</h2>
-              <p class="mt-2 text-3xl font-semibold text-[#0A0A0F] dark:text-white">
-                129 €<span class="text-base font-normal text-[#9090A8] dark:text-gray-400">/mois</span>
-              </p>
-              <p class="mt-1 text-sm text-[#3D3D52] dark:text-gray-400">30 jours d’essai gratuit</p>
-              <div class="mt-4">
-                <UButton block size="lg" color="primary" :loading="loadingPro" @click="() => startCheckout('lab_pro')">
-                  Commencer l’essai gratuit
-                </UButton>
-              </div>
-            </template>
-            <ul class="flex-1 space-y-3 text-[#3D3D52] dark:text-gray-300">
-              <li v-for="(line, i) in proLines" :key="i" class="flex items-start gap-2">
-                <UIcon name="i-lucide-check" class="mt-0.5 h-5 w-5 shrink-0 text-primary-500" />
-                <span>{{ line }}</span>
-              </li>
-            </ul>
-          </UCard>
+          <p class="mt-10 text-center text-sm text-[#9090A8] dark:text-gray-500">
+            Annulation possible à tout moment. Gestion de l’abonnement depuis votre espace.
+          </p>
         </div>
+      </section>
 
-        <p class="mt-10 text-center text-sm text-[#9090A8] dark:text-gray-500">
-          Annulation possible à tout moment. Gestion de l’abonnement depuis votre espace.
-        </p>
-      </div>
-    </section>
-
-    <LandingMaquetteFaq anchor-id="faq" section-class="bg-white dark:bg-gray-950" :items="faqItemsLab" />
-  </LandingMaquetteMarketingBackdrop>
+      <LandingMaquetteFaq anchor-id="faq" section-class="bg-white dark:bg-gray-950" :items="faqItemsLab" />
+    </LandingMaquetteMarketingBackdrop>
+  </div>
 </template>
 
 <script setup lang="ts">
 definePageMeta({ layout: 'default' });
 
 useHead({
-  title: 'Tarifs laboratoires | OneAndLab',
+  title: 'Tarifs laboratoires | Cary',
   meta: [{ name: 'description', content: "Tarifs pour les laboratoires : Starter 49 €/mois, Pro 129 €/mois avec 30 jours d'essai." }],
 });
 

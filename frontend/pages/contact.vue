@@ -1,7 +1,7 @@
 <template>
   <div>
     <LandingMaquetteHero
-      eyebrow="Assistance OneAndLab"
+      eyebrow="Assistance Cary"
       :title-lines="['Parlons de', 'votre']"
       highlight="besoin"
       description="Une question sur un rendez-vous, un projet de partenariat laboratoire ou infirmier, ou une demande générale : choisissez un motif et envoyez votre message — réponse sous 24-48 h ouvrées."
@@ -69,7 +69,7 @@
             >
               <h2 class="mb-4 text-sm font-semibold text-[#0A0A0F] dark:text-white">Nos coordonnées</h2>
               <address class="not-italic text-sm leading-relaxed text-[#3D3D52] dark:text-gray-300">
-                <p class="font-medium text-[#0A0A0F] dark:text-white">OneAndLab — ZENFACT SAS</p>
+                <p class="font-medium text-[#0A0A0F] dark:text-white">Cary — ZENFACT SAS</p>
                 <p class="mt-3">
                   230 B avenue Corot<br />
                   13014 Marseille
@@ -257,12 +257,12 @@ async function onSubmit() {
 }
 
 useHead({
-  title: 'Contact — OneAndLab',
+  title: 'Contact — Cary',
   meta: [
     {
       name: 'description',
       content:
-        'Contactez OneAndLab : problème RDV, partenariat laboratoire ou infirmier, questions. Adresse : 230 B avenue Corot, 13014 Marseille.',
+        'Contactez Cary : problème RDV, partenariat laboratoire ou infirmier, questions. Adresse : 230 B avenue Corot, 13014 Marseille.',
     },
   ],
 });

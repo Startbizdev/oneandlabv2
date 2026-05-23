@@ -21,7 +21,7 @@ import {
   Star,
   User,
 } from 'lucide-react-native';
-import { webAppUrl } from '@/config/env';
+import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { queryKeys } from '@/lib/query-keys';
 import type { LucideIcon } from 'lucide-react-native';
@@ -79,6 +79,7 @@ function MenuItem({ icon: Icon, label, onPress, badge, destructive, iconColor, i
 
 export default function NurseMore() {
   const router = useRouter();
+  const biometricLabel = useBiometricLabel('Biométrie');
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.clearSession);
   const unread = useUnreadNotificationsCount();
@@ -181,7 +182,7 @@ export default function NurseMore() {
             <View style={styles.divider} />
             <MenuItem
               icon={ScanFace}
-              label="Face ID"
+              label={biometricLabel}
               onPress={() => nav('/profile/security')}
               iconColor="#0D9488"
               iconBg="#F0FDFA"
@@ -264,8 +265,8 @@ const styles = StyleSheet.create({
   menuLabelDestructive: { color: colors.error },
   divider: {
     height: 1,
+    alignSelf: 'stretch',
     backgroundColor: colors.borderLight,
-    marginLeft: spacing[4] + 36 + spacing[3],
   },
   badge: {
     minWidth: 22,

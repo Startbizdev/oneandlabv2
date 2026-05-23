@@ -6,10 +6,10 @@
     <div
       class="mx-auto flex h-[66px] w-full max-w-[1200px] items-center gap-4 px-6 md:gap-10 lg:px-12"
     >
-      <NuxtLink to="/" class="flex shrink-0 items-center gap-2" aria-label="OneAndLab — Accueil">
+      <NuxtLink to="/" class="flex shrink-0 items-center gap-2" aria-label="Cary — Accueil">
         <img
-          src="/images/onelogo.png"
-          alt="OneAndLab"
+          src="/images/logo-cary.png"
+          alt="Cary"
           class="h-8 w-auto max-h-10 object-contain object-left sm:h-9 md:h-10"
           loading="eager"
           decoding="async"
@@ -298,9 +298,8 @@
           :to="appointmentNewUrl"
           color="primary"
           icon="i-lucide-calendar-plus"
-          size="sm"
+          size="md"
           class="whitespace-nowrap font-medium"
-          :ui="{ base: 'inline-flex items-center justify-center gap-1.5' }"
         >
           <span class="hidden sm:inline">Prendre rendez-vous</span>
           <span class="sm:hidden">RDV</span>
@@ -327,9 +326,12 @@
           @click="mobileOpen = false"
         />
         <div
-          class="absolute right-0 top-0 bottom-0 flex w-[min(100%,20rem)] flex-col overflow-y-auto bg-white shadow-xl dark:bg-gray-900 pt-[calc(66px+env(safe-area-inset-top))]"
+          class="absolute right-0 top-0 bottom-0 flex w-[min(100%,22rem)] flex-col overflow-hidden bg-white shadow-xl dark:bg-gray-900 pt-[calc(66px+env(safe-area-inset-top))]"
         >
-          <div v-if="isAuthenticated && user" class="border-b border-gray-200 px-4 py-5 dark:border-gray-800">
+          <div
+            v-if="isAuthenticated && user"
+            class="max-h-[min(40vh,280px)] shrink-0 overflow-y-auto border-b border-gray-200 px-4 py-5 dark:border-gray-800"
+          >
             <div class="mb-4 flex items-center gap-3">
               <img
                 v-if="user?.profile_image_url ?? user?.avatar"
@@ -368,33 +370,16 @@
             </div>
           </div>
 
-          <nav class="flex flex-col gap-1 p-4" aria-label="Menu mobile">
-            <NuxtLink
-              v-for="item in mobileNavigationItems"
-              :key="item.to + item.label"
-              :to="item.to"
-              class="flex flex-col gap-0.5 rounded-lg px-3 py-3 text-left transition-colors"
-              :class="[
-                route.path === item.to
-                  ? 'bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400'
-                  : 'text-[#3D3D52] hover:bg-[#F7F7FB] dark:text-gray-200 dark:hover:bg-gray-800',
-              ]"
-              @click="mobileOpen = false"
-            >
-              <span class="text-sm font-medium">{{ item.label }}</span>
-              <span v-if="item.description" class="text-xs text-gray-500 dark:text-gray-400">{{
-                item.description
-              }}</span>
-            </NuxtLink>
-            <NuxtLink
-              v-if="!isAuthenticated"
-              :to="loginHref"
-              class="rounded-lg px-3 py-3 text-sm font-medium text-[#3D3D52] hover:bg-[#F7F7FB] dark:text-gray-200 dark:hover:bg-gray-800"
-              @click="mobileOpen = false"
-            >
-              Se connecter
-            </NuxtLink>
-          </nav>
+          <LandingMaquetteMarketingMobileDrill
+            class="flex min-h-0 flex-1 flex-col"
+            :patient-links="patientMenuItems"
+            :nurse-links="nurseMenuItems"
+            :lab-links="labMenuItems"
+            :appointment-url="appointmentNewUrl"
+            :login-href="loginHref"
+            :show-login="!isAuthenticated"
+            @navigate="mobileOpen = false"
+          />
         </div>
       </div>
     </Teleport>
@@ -513,53 +498,6 @@ const handleClickOutside = (event: MouseEvent) => {
     notificationsMenuOpen.value = false;
   }
 };
-
-const mobileNavigationItems = computed(() => {
-  const items: { label: string; to: string; description?: string }[] = [];
-  items.push({
-    label: 'Prendre rendez-vous',
-    to: appointmentNewUrl.value,
-    description: 'Réserver une prise de sang ou soins à domicile',
-  });
-  items.push({
-    label: 'Explorer les laboratoires',
-    to: '/laboratoires',
-    description: 'Les meilleurs laboratoires de France',
-  });
-  items.push({
-    label: 'Explorer les infirmiers',
-    to: '/infirmiers',
-    description: 'Trouvez un infirmier à domicile',
-  });
-  items.push({
-    label: 'Pour les patients',
-    to: '/pour-les-patients',
-    description: 'Découvrez comment prendre rendez-vous',
-  });
-  items.push({
-    label: 'Présentation · Infirmiers',
-    to: '/pour-les-infirmiers',
-    description: 'Avantages et inscription pour les infirmiers',
-  });
-  items.push({
-    label: 'Tarifs · Infirmiers',
-    to: '/pour-les-infirmiers/tarifs',
-    description: "Découverte gratuit, Pro 29 €/mois, 30 j d'essai",
-  });
-  items.push({
-    label: 'Présentation · Laboratoire',
-    to: '/pour-les-laboratoires',
-    description: 'Connectez votre labo, préleveurs et tournées',
-  });
-  items.push({
-    label: 'Tarifs · Laboratoire',
-    to: '/pour-les-laboratoires/tarifs',
-    description: "Starter 49 €, Pro 129 €/mois, 30 j d'essai",
-  });
-  items.push({ label: 'Professionnel', to: '/pour-les-professionnels' });
-  items.push({ label: 'Contact', to: '/contact' });
-  return items;
-});
 
 function onScroll() {
   scrolled.value = window.scrollY > 10;

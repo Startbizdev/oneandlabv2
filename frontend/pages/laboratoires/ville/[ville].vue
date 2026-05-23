@@ -94,7 +94,7 @@ const cityLabel = computed(() => {
 const loading = ref(true)
 const labs = ref<{ id: string; slug: string; name: string; profile_image_url?: string; city?: string; presentation?: string }[]>([])
 
-const seoTitle = computed(() => `Laboratoire de prélèvements à domicile à ${cityLabel.value} | OneAndLab`)
+const seoTitle = computed(() => `Laboratoire de prélèvements à domicile à ${cityLabel.value} | Cary`)
 const seoDescription = computed(() => `Trouvez un laboratoire à ${cityLabel.value} pour vos prélèvements à domicile. Réservez en ligne. Gratuit, sans engagement.`)
 
 useHead({

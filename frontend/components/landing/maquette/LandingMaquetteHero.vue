@@ -1,16 +1,16 @@
 <template>
   <section
-    class="landing-hero-maquette relative overflow-hidden bg-gradient-to-br from-[#F6F8FC] via-white to-[#EDF3FC] dark:from-gray-950 dark:via-gray-950 dark:to-gray-900"
+    class="landing-hero-maquette relative overflow-hidden bg-gradient-to-br from-[#F0FAF9] via-white to-[#E8FBF9] dark:from-gray-950 dark:via-gray-950 dark:to-gray-900"
   >
     <div class="landing-hero-maquette-grid pointer-events-none absolute inset-0 z-0" aria-hidden="true" />
 
     <div
-      class="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_90%_50%_at_50%_-15%,rgb(47_128_237/0.09),transparent_55%)] dark:bg-[radial-gradient(ellipse_90%_50%_at_50%_-15%,rgb(47_128_237/0.14),transparent_55%)]"
+      class="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_90%_50%_at_50%_-15%,rgb(28_199_181/0.12),transparent_55%)] dark:bg-[radial-gradient(ellipse_90%_50%_at_50%_-15%,rgb(28_199_181/0.18),transparent_55%)]"
       aria-hidden="true"
     />
 
     <div
-      class="relative z-[1] mx-auto grid w-full max-w-[1200px] grid-cols-1 items-center gap-12 px-6 pb-20 pt-[clamp(112px,calc(82px+6dvh),176px)] lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-20 lg:px-12 lg:pb-28 lg:pt-[clamp(120px,calc(96px+5dvh),180px)]"
+      class="relative z-[1] mx-auto grid w-full max-w-[1200px] grid-cols-1 items-center gap-12 px-6 pb-20 pt-10 sm:pt-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-20 lg:px-12 lg:pb-28 lg:pt-14"
     >
       <div class="flex flex-col">
         <span
@@ -21,12 +21,9 @@
         </span>
 
         <h1
-          class="mb-6 text-[clamp(2.5rem,4vw,4rem)] font-extrabold leading-[1.07] tracking-[-0.04em] text-[#0A0A0F] dark:text-white"
+          class="mb-6 max-w-[18ch] text-balance text-[clamp(2.5rem,4vw,4rem)] font-extrabold leading-[1.07] tracking-[-0.04em] text-[#0A0A0F] dark:text-white"
         >
-          <template v-for="(line, i) in resolvedTitleLines" :key="`title-${i}`">
-            {{ line }}<br v-if="i < resolvedTitleLines.length - 1 || highlight" />
-          </template>
-          <em v-if="highlight" class="font-light italic text-primary-500">{{ highlight }}</em>
+          {{ resolvedTitleText }}<template v-if="highlight">{{ ' ' }}<em class="font-light italic text-primary-500">{{ highlight }}</em></template>
         </h1>
 
         <p
@@ -54,7 +51,7 @@
         </div>
 
         <ul
-          v-if="resolvedStats.length > 0"
+          v-if="!hideStats && resolvedStats.length > 0"
           class="flex flex-col gap-3.5"
           aria-label="Chiffres clés"
         >
@@ -142,6 +139,8 @@ const props = withDefaults(
     imageObjectClass?: string;
     quote?: HeroQuote;
     hideQuote?: boolean;
+    /** Masque la liste de stats (utile pages type tarifs). */
+    hideStats?: boolean;
   }>(),
   {
     titleLines: () => [],
@@ -150,6 +149,7 @@ const props = withDefaults(
     stats: () => [],
     imageObjectClass: 'object-[center_15%]',
     hideQuote: false,
+    hideStats: false,
   },
 );
 
@@ -165,7 +165,7 @@ const defaultHighlight = 'en moins de 2h';
 const defaultDescription =
   "Infirmiers diplômés et préleveurs certifiés interviennent directement à votre domicile. Sans file d'attente, remboursé par l'Assurance Maladie.";
 const defaultImageSrc = '/images/landing/hero-infirmier.png';
-const defaultImageAlt = 'Thomas, infirmier diplômé OneAndLab à domicile';
+const defaultImageAlt = 'Thomas, infirmier diplômé Cary à domicile';
 const defaultStats: HeroStat[] = [
   { num: '+2000', rest: ' patients accompagnés' },
   { num: '+500', rest: ' professionnels certifiés' },
@@ -181,9 +181,12 @@ const resolvedTitleLines = computed(() =>
   props.titleLines && props.titleLines.length > 0 ? props.titleLines : defaultTitleLines,
 );
 
-const resolvedStats = computed(() =>
-  props.stats && props.stats.length > 0 ? props.stats : defaultStats,
-);
+const resolvedTitleText = computed(() => resolvedTitleLines.value.join(' '));
+
+const resolvedStats = computed(() => {
+  if (props.hideStats) return [];
+  return props.stats && props.stats.length > 0 ? props.stats : defaultStats;
+});
 
 const primaryCta = computed<HeroCta>(() => props.primaryCta ?? defaultPrimaryCta.value);
 const description = computed(() => props.description || defaultDescription);

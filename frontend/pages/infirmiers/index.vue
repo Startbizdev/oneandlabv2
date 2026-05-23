@@ -120,7 +120,7 @@ const { data: nursesData, pending: loading, refresh } = await useAsyncData(
 const nurses = computed(() => nursesData.value?.success ? (nursesData.value.data ?? []) : [])
 const pagination = computed(() => nursesData.value?.pagination ?? { page: 1, limit: 24, total: 0, pages: 0 })
 
-const seoTitle = 'Infirmier libéral à domicile en France | Soins et prises de sang | OneAndLab'
+const seoTitle = 'Infirmier libéral à domicile en France | Soins et prises de sang | Cary'
 const seoDescription = 'Trouvez un infirmier libéral à domicile pour vos soins et prises de sang. Réservez en ligne. Gratuit, sans engagement, réservation en 1 min.'
 
 useHead({

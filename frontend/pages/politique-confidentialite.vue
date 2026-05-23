@@ -24,7 +24,7 @@
             1. Responsable du traitement
           </h2>
           <p>
-            Le responsable du traitement des données personnelles est <strong class="text-gray-700">ZENFACT</strong> (SAS), exploitant la plateforme OneAndLab, dont le siège est situé au 230 B avenue Corot, 13014 Marseille. Pour toute question relative à la protection des données : <a href="mailto:dpo@oneandlab.fr" class="text-primary-600 hover:underline">dpo@oneandlab.fr</a>.
+            Le responsable du traitement des données personnelles est <strong class="text-gray-700">ZENFACT</strong> (SAS), exploitant la plateforme Cary, dont le siège est situé au 230 B avenue Corot, 13014 Marseille. Pour toute question relative à la protection des données : <a href="mailto:dpo@oneandlab.fr" class="text-primary-600 hover:underline">dpo@oneandlab.fr</a>.
           </p>
         </section>
 
@@ -68,7 +68,7 @@
             4. Destinataires et conservation
           </h2>
           <p class="mb-3">
-            Les données sont accessibles aux équipes habilitées de OneAndLab et, dans le cadre strict des prestations, aux professionnels de santé concernés (laboratoire, infirmier assigné). Les sous-traitants (hébergement, paiement, envoi d’emails) sont choisis pour leur conformité (HDS, RGPD) et liés par des engagements de confidentialité et de sécurité.
+            Les données sont accessibles aux équipes habilitées de Cary et, dans le cadre strict des prestations, aux professionnels de santé concernés (laboratoire, infirmier assigné). Les sous-traitants (hébergement, paiement, envoi d’emails) sont choisis pour leur conformité (HDS, RGPD) et liés par des engagements de confidentialité et de sécurité.
           </p>
           <p>
             La durée de conservation est limitée au temps nécessaire aux finalités précitées et aux obligations légales (comptabilité, contentieux, santé). Les données de santé et les éléments nécessaires à la continuité des soins peuvent être conservés selon les durées prévues par la réglementation en vigueur.
@@ -131,9 +131,9 @@
 definePageMeta({ layout: 'default' })
 
 useHead({
-  title: 'Politique de confidentialité — OneAndLab',
+  title: 'Politique de confidentialité — Cary',
   meta: [
-    { name: 'description', content: 'Politique de confidentialité et protection des données personnelles (RGPD) sur OneAndLab.' },
+    { name: 'description', content: 'Politique de confidentialité et protection des données personnelles (RGPD) sur Cary.' },
   ],
 })
 </script>

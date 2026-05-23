@@ -71,6 +71,7 @@
                     class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-gray-100 bg-gray-50/80 dark:border-gray-800 dark:bg-gray-900/50"
                   >
                     <CareCategoryVisual
+                      :emoji="emojiFor(svc)"
                       :image-src="imageSrcFor(svc)"
                       :icon-name="svc.icon || 'i-lucide-stethoscope'"
                       img-class="block max-h-full max-w-full object-contain"
@@ -130,6 +131,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { formatCareSelectValueWithAutreDetail, isCareAutreDetailKey } from '~/utils/care-category-autre-detail';
+import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils';
 import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import type { SelectedServiceInput } from '~/utils/dashboard-unified-rdv';
@@ -178,7 +180,18 @@ const detailActionLabel = computed(() => {
   return n === 1 ? 'Voir le détail du soin' : 'Détails des soins';
 });
 
+function emojiFor(svc: SelectedServiceInput): string {
+  const cat = categoryFor(svc);
+  return careCategoryEmojiForCategory({
+    name: cat?.name ?? svc.name,
+    icon: cat?.icon ?? svc.icon ?? null,
+    type: cat?.type ?? svc.type,
+  });
+}
+
 function imageSrcFor(svc: SelectedServiceInput): string | null {
+  const cat = categoryFor(svc);
+  if (isCareCategoryEmoji(cat?.icon ?? svc.icon)) return null;
   return resolveCareCategoryImageSrc(svc.category_image_url ?? null, config.public.apiBase);
 }
 

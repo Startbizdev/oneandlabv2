@@ -132,17 +132,12 @@ function onFileChange(e: Event) {
 }
 
 function handleConfirm() {
-  console.log('[CancelAppointmentModal] handleConfirm called', { canSubmit: canSubmit.value, reason: reason.value, commentLen: comment.value?.length });
-  if (!canSubmit.value) {
-    console.log('[CancelAppointmentModal] handleConfirm early return: canSubmit false');
-    return;
-  }
+  if (!canSubmit.value) return;
   const payload = {
     reason: reason.value,
     comment: comment.value.trim(),
     photoFile: photoFile.value,
   };
-  console.log('[CancelAppointmentModal] emit confirm + onConfirm', payload);
   emit('confirm', payload);
   props.onConfirm?.(payload);
 }

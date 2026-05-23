@@ -8,6 +8,7 @@
     create-item="always"
     v-model:search-term="searchDraft"
     :reset-search-term-on-blur="false"
+    :reset-search-term-on-select="false"
     :open-on-focus="true"
     ignore-filter
     :ui="{
@@ -79,6 +80,13 @@ const suggestions = computed(() =>
   careAutreDetailSuggestionsForCategory(props.categoryName, props.categoryType),
 );
 
+/** Valeur déjà enregistrée hors liste → doit être dans `items` sinon le combobox n’affiche rien après « Utiliser ». */
+function injectCommittedForDisplay(rows: string[]): string[] {
+  const committed = stringValue.value.trim();
+  if (!committed || rows.includes(committed)) return rows;
+  return [committed, ...rows.filter((x) => x !== committed)];
+}
+
 /**
  * Filtre accent-insensible + scoring comme avant (meilleures suggestions en premier).
  * `ignore-filter` sur UInputMenu pour appliquer notre logique sur la liste passée en `items`.
@@ -86,7 +94,9 @@ const suggestions = computed(() =>
 const menuItems = computed(() => {
   const pool = suggestions.value;
   const q = searchDraft.value.trim();
-  if (!q) return pool.slice(0, 18);
+  if (!q) {
+    return injectCommittedForDisplay(pool.slice(0, 18)).slice(0, 18);
+  }
 
   function rank(s: string): number {
     const S = s
@@ -108,12 +118,14 @@ const menuItems = computed(() => {
     return 1000;
   }
 
-  return [...pool]
+  const filtered = [...pool]
     .map((s) => ({ s, r: rank(s) }))
     .filter((x) => x.r < 1000)
     .sort((a, b) => a.r - b.r || a.s.localeCompare(b.s, 'fr', { sensitivity: 'base' }))
     .slice(0, 18)
     .map((x) => x.s);
+
+  return injectCommittedForDisplay(filtered).slice(0, 18);
 });
 
 const searchDraft = ref('');
@@ -127,11 +139,15 @@ watch(
 );
 
 function onModelUpdate(v: unknown) {
-  emit('update:modelValue', String(v ?? ''));
+  const next = String(v ?? '').trim();
+  emit('update:modelValue', next);
+  searchDraft.value = next;
 }
 
 function onCreate(item: string) {
-  emit('update:modelValue', String(item ?? ''));
+  const v = String(item ?? '').trim();
+  emit('update:modelValue', v);
+  searchDraft.value = v;
 }
 
 function onMenuBlur() {

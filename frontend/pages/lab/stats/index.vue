@@ -336,13 +336,13 @@
                 </div>
               </div>
 
-              <div v-if="appointment.notes" class="mt-4 p-3.5 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800/50">
+              <div v-if="getAppointmentNotes(appointment)" class="mt-4 p-3.5 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800/50">
                 <div class="flex items-start gap-2.5">
                   <UIcon name="i-lucide-alert-circle" class="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                   <div class="flex-1 min-w-0">
-                    <p class="text-[11px] font-bold text-amber-600/80 dark:text-amber-400/80 uppercase tracking-wider mb-1">Notes</p>
+                    <p class="text-[11px] font-bold text-amber-600/80 dark:text-amber-400/80 uppercase tracking-wider mb-1">Message</p>
                     <p class="text-[13px] text-amber-800 dark:text-amber-300 leading-relaxed line-clamp-3">
-                      {{ appointment.notes }}
+                      {{ getAppointmentNotes(appointment) }}
                     </p>
                   </div>
                 </div>
@@ -381,6 +381,7 @@ useHead({
 });
 
 import { apiFetch } from '~/utils/api';
+import { getAppointmentNotes } from '~/utils/appointment-notes';
 import { getNursingDurationLabel } from '~/constants/nursing-duration';
 import { formatBloodTestSeriesDurationDays } from '~/utils/duration-display';
 

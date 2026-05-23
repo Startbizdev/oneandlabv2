@@ -1,0 +1,10 @@
+-- Documentation seule : pas de requête idempotente automatique pour setup-database.php.
+--
+-- Cause : id care_categories hors format UUID 8-4-4-4-12 → erreur « ID catégorie invalide » côté API.
+--
+-- Prod (corr. 2026-05-19) : ancien id 533b0d52e1761cab9cf17ecf5fdc32c119d6 (Certificat de décès).
+-- Correction : TRANSACTION + SET @nid = UUID(); UPDATE care_categories SET id = @nid WHERE id = ancien...
+-- aucune FK enfant pour cette ligne au moment du correctif (appointments, care_category_options, prefs).
+--
+-- Autre ligne prod encore hors format UUID : Epilation laser (voir 048_fix... pour motif doublons + FK).
+--

@@ -94,7 +94,7 @@ const cityLabel = computed(() => {
 const loading = ref(true)
 const nurses = ref<{ id: string; slug: string; name: string; profile_image_url?: string; city?: string; presentation?: string }[]>([])
 
-const seoTitle = computed(() => `Infirmier libéral à domicile à ${cityLabel.value} | OneAndLab`)
+const seoTitle = computed(() => `Infirmier libéral à domicile à ${cityLabel.value} | Cary`)
 const seoDescription = computed(() => `Trouvez un infirmier libéral à domicile à ${cityLabel.value}. Soins et prises de sang. Réservez en ligne. Gratuit, sans engagement.`)
 
 useHead({

@@ -1,7 +1,13 @@
 <template>
   <div class="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3">
-    <UDropdown :items="dropdownItems" :popper="{ placement: 'top', offsetDistance: 8 }">
+    <UDropdownMenu
+      v-model:open="menuOpen"
+      :items="dropdownItems"
+      :content="{ side: 'top', sideOffset: 8, align: 'start' }"
+      :ui="{ content: 'min-w-[12rem]' }"
+    >
       <button
+        type="button"
         class="group w-full flex items-center gap-3 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
       >
         <!-- Avatar -->
@@ -31,7 +37,7 @@
           class="h-4 w-4 flex-shrink-0 text-gray-400 transition-colors group-hover:text-gray-600 dark:group-hover:text-gray-300"
         />
       </button>
-    </UDropdown>
+    </UDropdownMenu>
   </div>
 </template>
 
@@ -42,11 +48,13 @@ defineProps<{
 
 const { user, roleLabel, userMenuItems, userDisplayName } = useHeaderUserMenu();
 
+const menuOpen = ref(false);
+
 const avatarInitial = computed(() =>
-  (user.value?.first_name?.charAt(0) || user.value?.email?.charAt(0) || 'U').toUpperCase()
+  (user.value?.first_name?.charAt(0) || user.value?.email?.charAt(0) || 'U').toUpperCase(),
 );
 
-// Format pour UDropdown : items avec label, icon, onSelect (click)
+/** Même format que les autres UDropdownMenu (onSelect). */
 const dropdownItems = computed(() =>
   userMenuItems.value
     .filter((item: any) => item.type !== 'divider')
@@ -54,8 +62,24 @@ const dropdownItems = computed(() =>
       label: item.label,
       icon: item.icon,
       onSelect: item.click,
-    }))
+    })),
 );
+
+/** Fermer au scroll du rail ou du contenu principal (layout dashboard). */
+function closeOnDashboardScroll(event: Event) {
+  const t = event.target;
+  if (!(t instanceof HTMLElement)) return;
+  if (!t.classList.contains('sidebar-scroll') && !t.classList.contains('dashboard-main-scroll')) return;
+  menuOpen.value = false;
+}
+
+onMounted(() => {
+  document.addEventListener('scroll', closeOnDashboardScroll, true);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('scroll', closeOnDashboardScroll, true);
+});
 </script>
 
 <style scoped>

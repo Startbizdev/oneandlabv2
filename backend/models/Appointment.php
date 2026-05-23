@@ -6,6 +6,7 @@ require_once __DIR__ . '/../lib/Logger.php';
 require_once __DIR__ . '/../lib/Twilio.php';
 require_once __DIR__ . '/../lib/Email.php';
 require_once __DIR__ . '/../lib/NotificationService.php';
+require_once __DIR__ . '/../lib/NotificationMessageFormatter.php';
 require_once __DIR__ . '/../lib/EmailQueue.php';
 require_once __DIR__ . '/../lib/SmsQueue.php';
 require_once __DIR__ . '/../lib/Validation.php';
@@ -217,6 +218,27 @@ class Appointment
         $lab = trim((string) ($row['label'] ?? $row['category_name'] ?? ''));
 
         return $cid . '|' . $lab;
+    }
+
+    /**
+     * Dédup fusion table `appointment_nursing_items` vs `form_data.nursing_items` :
+     * même category_id mais libellé vide d’un côté et nom catalogue de l’autre → deux clés avec bloodTestItemRowDedupKey alors que les care_options sont identiques.
+     */
+    private function nursingMergeDedupKey(array $row): string
+    {
+        $cid = isset($row['category_id']) ? (string) $row['category_id'] : '';
+        $care = $row['care_options'] ?? [];
+        if (!is_array($care)) {
+            $care = [];
+        }
+        ksort($care);
+        try {
+            $json = json_encode($care, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        } catch (Throwable $e) {
+            $json = '{}';
+        }
+
+        return $cid . '|' . $json;
     }
 
     /**
@@ -629,7 +651,7 @@ class Appointment
         $seen = [];
         $out = [];
         foreach ($tableRows as $row) {
-            $k = $this->bloodTestItemRowDedupKey($row);
+            $k = $this->nursingMergeDedupKey($row);
             if ($k === '|') {
                 continue;
             }
@@ -640,7 +662,7 @@ class Appointment
             $out[] = $row;
         }
         foreach ($formRows as $row) {
-            $k = $this->bloodTestItemRowDedupKey($row);
+            $k = $this->nursingMergeDedupKey($row);
             if ($k === '|') {
                 continue;
             }
@@ -1050,7 +1072,7 @@ class Appointment
                 $effectiveLabId = $createdBy;
             }
             if ($effectiveLabId) {
-                $skipLabLeadTime = in_array($createdByRole, ['nurse', 'lab', 'subaccount', 'preleveur'], true);
+                $skipLabLeadTime = in_array($createdByRole, ['nurse', 'lab', 'subaccount', 'preleveur', 'pro', 'super_admin'], true);
                 $this->validateLabAppointmentParams($effectiveLabId, $data['scheduled_at'], $scheduledDate, $skipLabLeadTime);
             }
         }
@@ -1344,15 +1366,17 @@ class Appointment
         try {
             $stmt = $this->db->prepare('
                 SELECT a.id, a.status, a.type, a.scheduled_at, a.category_id, a.created_by, a.created_by_role,
-                       a.assigned_lab_id, c.name AS category_name
+                       a.assigned_lab_id, a.form_data_encrypted, a.form_data_dek,
+                       c.name AS category_name
                 FROM appointments a
                 LEFT JOIN care_categories c ON c.id = a.category_id
                 WHERE a.creation_batch_id = ? AND a.patient_id = ?
                 ORDER BY a.scheduled_at ASC
             ');
             $stmt->execute([$batchId, $patientId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            return $this->attachDecryptedFormDataToRows($rows);
         } catch (Exception $e) {
             error_log('fetchBatchAppointmentRowsForNotifications: ' . $e->getMessage());
 
@@ -1369,15 +1393,16 @@ class Appointment
     {
         try {
             $stmt = $this->db->prepare('
-                SELECT a.id, a.scheduled_at, c.name AS category_name
+                SELECT a.id, a.scheduled_at, a.form_data_encrypted, a.form_data_dek, c.name AS category_name
                 FROM appointments a
                 LEFT JOIN care_categories c ON c.id = a.category_id
                 WHERE a.creation_batch_id = ? AND a.patient_id = ? AND a.type = ?
                 ORDER BY a.scheduled_at ASC
             ');
             $stmt->execute([$batchId, $patientId, 'nursing']);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            return $this->attachDecryptedFormDataToRows($rows);
         } catch (Exception $e) {
             error_log('fetchNursingBatchRowsForStatusNotification: ' . $e->getMessage());
 
@@ -1392,15 +1417,16 @@ class Appointment
     {
         try {
             $stmt = $this->db->prepare('
-                SELECT a.id, a.scheduled_at, c.name AS category_name
+                SELECT a.id, a.scheduled_at, a.form_data_encrypted, a.form_data_dek, c.name AS category_name
                 FROM appointments a
                 LEFT JOIN care_categories c ON c.id = a.category_id
                 WHERE a.creation_batch_id = ? AND a.patient_id = ? AND a.type = ?
                 ORDER BY a.scheduled_at ASC
             ');
             $stmt->execute([$batchId, $patientId, 'blood_test']);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            return $this->attachDecryptedFormDataToRows($rows);
         } catch (Exception $e) {
             error_log('fetchBloodTestBatchRowsForStatusNotification: ' . $e->getMessage());
 
@@ -1409,9 +1435,32 @@ class Appointment
     }
 
     /**
+     * @param array<int,array<string,mixed>> $rows
+     * @return array<int,array<string,mixed>>
+     */
+    private function attachDecryptedFormDataToRows(array $rows): array
+    {
+        foreach ($rows as &$row) {
+            $row['form_data'] = null;
+            if (!empty($row['form_data_encrypted']) && !empty($row['form_data_dek'])) {
+                try {
+                    $json = $this->crypto->decryptField($row['form_data_encrypted'], $row['form_data_dek']);
+                    $decoded = json_decode($json, true);
+                    $row['form_data'] = is_array($decoded) ? $decoded : null;
+                } catch (Exception $e) {
+                    $row['form_data'] = null;
+                }
+            }
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /**
      * Valide que la date du RDV respecte les paramètres du lab (délai min, samedi, dimanche).
      *
-     * @param bool $skipLeadTimeValidation Si true (création depuis espace infirmier / lab / sous-compte), n'applique pas le délai min. du profil lab (RDV le jour J autorisé).
+     * @param bool $skipLeadTimeValidation Si true (création depuis espace pro / personnel soignant / lab / admin), n'applique pas le délai min. du profil lab (RDV le jour J autorisé).
      * @throws Exception si la date ne respecte pas les contraintes
      */
     private function validateLabAppointmentParams(string $labId, string $scheduledAtIso, DateTime $scheduledDate, bool $skipLeadTimeValidation = false): void
@@ -1625,6 +1674,15 @@ class Appointment
                 );
                 $appointment['form_data'] = json_decode($formDataJson, true) ?? [];
             }
+
+            if (!empty($appointment['address']) && is_string($appointment['address'])) {
+                if (!is_array($appointment['form_data'])) {
+                    $appointment['form_data'] = [];
+                }
+                if (empty($appointment['form_data']['address_label'])) {
+                    $appointment['form_data']['address_label'] = $appointment['address'];
+                }
+            }
             
             // Logger le déchiffrement
             $this->logger->logDecrypt(
@@ -1711,7 +1769,7 @@ class Appointment
                 if ($cbRole === 'patient' || ($pid !== null && (string) $cb === (string) $pid)) {
                     $appointment['creator_origin'] = [
                         'kind' => 'patient_platform',
-                        'label' => 'oneandlab',
+                        'label' => 'cary',
                     ];
                 } elseif ($cbRole === 'nurse') {
                     $cp = $userModel->getById((string) $cb, 'system', 'system');
@@ -1724,6 +1782,7 @@ class Appointment
                             'display_name' => trim($fn . ' ' . $ln) ?: null,
                             'first_name' => $fn !== '' ? $fn : null,
                             'last_name' => $ln !== '' ? $ln : null,
+                            'phone' => isset($cp['phone']) ? trim((string) $cp['phone']) : null,
                             'profile_image_url' => isset($cp['profile_image_url']) ? trim((string) $cp['profile_image_url']) : null,
                             'public_slug' => isset($cp['public_slug']) && trim((string) $cp['public_slug']) !== '' ? trim((string) $cp['public_slug']) : null,
                         ];
@@ -1734,6 +1793,7 @@ class Appointment
                         $fn = trim((string) ($cp['first_name'] ?? ''));
                         $ln = trim((string) ($cp['last_name'] ?? ''));
                         $emploi = isset($cp['emploi']) ? trim((string) $cp['emploi']) : '';
+                        $bio = isset($cp['biography']) ? trim((string) $cp['biography']) : '';
                         $appointment['creator_origin'] = [
                             'kind' => 'pro',
                             'id' => (string) $cb,
@@ -1743,6 +1803,7 @@ class Appointment
                             'phone' => isset($cp['phone']) ? trim((string) $cp['phone']) : null,
                             'adeli' => isset($cp['adeli']) ? trim((string) $cp['adeli']) : null,
                             'emploi' => $emploi !== '' ? $emploi : null,
+                            'biography' => $bio !== '' ? $bio : null,
                             'profile_image_url' => isset($cp['profile_image_url']) ? trim((string) $cp['profile_image_url']) : null,
                             'public_slug' => isset($cp['public_slug']) && trim((string) $cp['public_slug']) !== '' ? trim((string) $cp['public_slug']) : null,
                         ];
@@ -1927,6 +1988,11 @@ class Appointment
                 $appointment['form_data'] = json_decode($formDataJson, true) ?? [];
             } else {
                 $appointment['form_data'] = [];
+            }
+            if (!empty($appointment['address']) && is_string($appointment['address'])) {
+                if (empty($appointment['form_data']['address_label'])) {
+                    $appointment['form_data']['address_label'] = $appointment['address'];
+                }
             }
             $this->logger->logDecrypt($requesterId, $requesterRole, 'appointment', $appointment['id'], ['address', 'form_data']);
         } catch (Exception $e) {
@@ -2470,6 +2536,8 @@ class Appointment
                         $this->notifyActorAppointmentRedispatched($sibId, array_merge($appointment, [
                             'id' => $sibId,
                             'scheduled_at' => $sibRow['scheduled_at'],
+                            'form_data_encrypted' => $sibRow['form_data_encrypted'] ?? null,
+                            'form_data_dek' => $sibRow['form_data_dek'] ?? null,
                         ]), $actorId, $actorRole);
                     }
                 }
@@ -2630,6 +2698,7 @@ class Appointment
             SELECT a.patient_id, a.type, a.assigned_to, a.assigned_nurse_id, a.assigned_lab_id,
                    a.scheduled_at, a.address_encrypted, a.address_dek, a.category_id,
                    a.created_by, a.created_by_role, a.creation_batch_id,
+                   a.form_data_encrypted, a.form_data_dek,
                    a.cancellation_reason, a.cancellation_comment, a.cancellation_photo_document_id,
                    c.name as category_name
             FROM appointments a
@@ -2641,6 +2710,20 @@ class Appointment
         
         if (!$appointment) {
             return;
+        }
+
+        $formData = null;
+        if (!empty($appointment['form_data_encrypted']) && !empty($appointment['form_data_dek'])) {
+            try {
+                $formDataJson = $this->crypto->decryptField(
+                    $appointment['form_data_encrypted'],
+                    $appointment['form_data_dek']
+                );
+                $decoded = json_decode($formDataJson, true);
+                $formData = is_array($decoded) ? $decoded : null;
+            } catch (Exception $e) {
+                $formData = null;
+            }
         }
         
         $patientId = $appointment['patient_id'];
@@ -2759,6 +2842,7 @@ class Appointment
                         'scheduled_at' => $appointment['scheduled_at'] ?? null,
                         'type' => $appointment['type'] ?? 'blood_test',
                         'category_name' => $appointment['category_name'] ?? null,
+                        'form_data' => $formData,
                     ]);
                 }
 
@@ -2776,6 +2860,7 @@ class Appointment
                             'patient_last_name' => $patientLastName,
                             'scheduled_at' => $appointment['scheduled_at'] ?? null,
                             'category_name' => $appointment['category_name'] ?? null,
+                            'form_data' => $formData,
                         ]
                     );
                 }
@@ -2791,6 +2876,8 @@ class Appointment
                             'scheduled_at' => $appointment['scheduled_at'],
                             'address' => $address,
                             'category_name' => $appointment['category_name'] ?? 'Soins infirmiers',
+                            'type' => $appointment['type'] ?? 'nursing',
+                            'form_data' => $formData,
                         ]
                     );
                 }
@@ -2858,6 +2945,7 @@ class Appointment
                         'address' => $address,
                         'category_name' => $careTypeLabel,
                         'type' => $appointmentType,
+                        'form_data' => $formData,
                         'assigned_nurse_id' => $appointment['assigned_nurse_id'],
                         'assigned_lab_id' => $appointment['assigned_lab_id'] ?? null,
                         'assigned_to' => $appointment['assigned_to'] ?? null,
@@ -2894,6 +2982,8 @@ class Appointment
                             'patient_last_name' => $patientLastName,
                             'scheduled_at' => $appointment['scheduled_at'],
                             'category_name' => $appointment['category_name'] ?? 'Soins infirmiers',
+                            'type' => $appointment['type'] ?? 'nursing',
+                            'form_data' => $formData,
                         ]
                     );
                 }
@@ -2962,15 +3052,25 @@ class Appointment
         string $actorRole
     ): void {
         try {
-            $scheduledRaw = $appointmentRow['scheduled_at'] ?? '';
-            $dtLabel = 'une date à confirmer';
-            if ($scheduledRaw !== '' && $scheduledRaw !== null) {
+            $formData = null;
+            if (!empty($appointmentRow['form_data_encrypted']) && !empty($appointmentRow['form_data_dek'])) {
                 try {
-                    $dt = new DateTimeImmutable((string) $scheduledRaw);
-                    $dtLabel = $dt->format('d/m/Y \à H\hi');
+                    $json = $this->crypto->decryptField(
+                        $appointmentRow['form_data_encrypted'],
+                        $appointmentRow['form_data_dek']
+                    );
+                    $decoded = json_decode($json, true);
+                    $formData = is_array($decoded) ? $decoded : null;
                 } catch (Throwable $e) {
-                    $dtLabel = (string) $scheduledRaw;
+                    $formData = null;
                 }
+            }
+            $dtLabel = NotificationMessageFormatter::whenShort(
+                $formData,
+                $appointmentRow['scheduled_at'] ?? null
+            );
+            if ($dtLabel === '') {
+                $dtLabel = 'date à confirmer';
             }
             $patientLabel = 'le patient';
             $pid = $appointmentRow['patient_id'] ?? null;
@@ -2993,12 +3093,15 @@ class Appointment
             } elseif (in_array($actorRole, ['lab', 'subaccount'], true) && (($appointmentRow['type'] ?? '') === 'blood_test')) {
                 $peers = 'd\'autres laboratoires';
             }
-            $message = 'Le rendez-vous du ' . $dtLabel . ' pour ' . $patientLabel
-                . ' a été redispatché : il est de nouveau proposé à ' . $peers . '.';
+            $message = NotificationMessageFormatter::joinParts([
+                'Redispatché',
+                $patientLabel !== 'le patient' ? $patientLabel : null,
+                $dtLabel,
+            ]) . ' · proposé à ' . $peers . '.';
             $this->notificationService->createNotification(
                 $actorId,
                 'appointment_redispatched',
-                'Rendez-vous remis à disposition',
+                'RDV redispatché',
                 $message,
                 ['appointment_id' => $appointmentId]
             );
@@ -3328,7 +3431,8 @@ class Appointment
                 continue;
             }
             try {
-                $typeLabel = $type === 'nursing' ? 'soins infirmiers' : 'prise de sang';
+                $typeLabel = NotificationMessageFormatter::appointmentTypeLabel($type);
+                $when = NotificationMessageFormatter::whenShort($formData, $scheduledAt);
                 $notifData = ['appointment_id' => $appointmentId];
                 if ($creationBatchId !== null) {
                     $notifData['creation_batch_id'] = $creationBatchId;
@@ -3336,8 +3440,12 @@ class Appointment
                 $this->notificationService->createNotification(
                     $professional['id'],
                     'new_appointment_available',
-                    'Nouveau rendez-vous disponible',
-                    'Un nouveau rendez-vous de ' . $typeLabel . ' est disponible dans votre zone de couverture. Ouvrez la notification pour répondre.',
+                    'Nouveau RDV',
+                    NotificationMessageFormatter::joinParts([
+                        'Dans votre zone',
+                        $typeLabel,
+                        $when ?: null,
+                    ]),
                     $notifData
                 );
                 // Email async (envoyé après la réponse HTTP)
@@ -3408,7 +3516,7 @@ class Appointment
             $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Type de rendez-vous en français pour le message
-            $typeLabel = $appointmentType === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers';
+            $typeLabel = NotificationMessageFormatter::appointmentTypeLabel($appointmentType);
             
             // Créer une notification pour chaque admin
             foreach ($admins as $admin) {
@@ -3416,8 +3524,8 @@ class Appointment
                     $this->notificationService->createNotification(
                         $admin['id'],
                         'new_appointment_created',
-                        'Nouveau rendez-vous créé',
-                        "Un nouveau rendez-vous de type \"{$typeLabel}\" a été créé et nécessite votre attention.",
+                        'Nouveau RDV',
+                        NotificationMessageFormatter::joinParts(['À traiter', $typeLabel]),
                         [
                             'appointment_id' => $appointmentId,
                             'type' => $appointmentType,

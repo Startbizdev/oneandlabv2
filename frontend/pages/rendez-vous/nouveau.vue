@@ -224,6 +224,7 @@ import {
   countGroupedAppointmentPayloads,
   type SelectedServiceInput,
 } from '~/utils/dashboard-unified-rdv';
+import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
 import {
   type BookingServiceFormSlice,
   formDataSliceForQuickAddedService,
@@ -235,6 +236,7 @@ function bookingServiceLineFromCategory(cat: {
   name: string;
   image_url?: string | null;
   icon?: string | null;
+  skip_prescription_documents?: boolean | null;
 }): {
   id: string;
   type: string;
@@ -242,6 +244,7 @@ function bookingServiceLineFromCategory(cat: {
   category_id: string;
   icon: string;
   category_image_url: string | null;
+  skip_prescription_documents?: boolean;
 } {
   const id =
     typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function'
@@ -254,6 +257,9 @@ function bookingServiceLineFromCategory(cat: {
     category_id: cat.id,
     icon: resolveCareIconFromCategory(cat),
     category_image_url: cat.image_url ?? null,
+    ...(normalizeCategorySkipPrescriptionDocuments((cat as { skip_prescription_documents?: unknown }).skip_prescription_documents)
+      ? { skip_prescription_documents: true as const }
+      : {}),
   };
 }
 
@@ -293,6 +299,7 @@ const careCategoriesList = ref<
     appointment_count?: number;
     image_url?: string | null;
     catalog_group?: string | null;
+    skip_prescription_documents?: boolean | null;
   }>
 >([]);
 const categoriesLoading = ref(true);
@@ -506,6 +513,13 @@ function removeServiceFromCareSelection(serviceId: string) {
   }
 }
 
+function normalizeCareCategoriesApiRows(rows: unknown[]): typeof careCategoriesList.value {
+  return (rows as Array<Record<string, unknown>>).map((c) => ({
+    ...(c as object),
+    skip_prescription_documents: normalizeCategorySkipPrescriptionDocuments(c.skip_prescription_documents),
+  })) as typeof careCategoriesList.value;
+}
+
 async function loadCareCategories() {
   categoriesLoading.value = true;
   careCategoriesList.value = [];
@@ -516,7 +530,7 @@ async function loadCareCategories() {
     } else {
       const response = await apiFetch('/categories', { method: 'GET' });
       if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
-        careCategoriesList.value = response.data;
+        careCategoriesList.value = normalizeCareCategoriesApiRows(response.data as unknown[]);
       }
     }
   } catch (e) {
@@ -531,7 +545,7 @@ async function loadProviderCategories() {
   try {
     const response = await apiFetch(`/categories?provider_id=${providerId.value}`, { method: 'GET' });
     if (response.success && response.data?.length > 0) {
-      careCategoriesList.value = response.data;
+      careCategoriesList.value = normalizeCareCategoriesApiRows(response.data as unknown[]);
     }
   } catch (e) {
     console.error('Erreur chargement catégories provider:', e);
@@ -571,13 +585,29 @@ const patientSlotRows = computed(() =>
   servicesRequiringOwnSlots(selectedServices.value as SelectedServiceInput[]),
 );
 
+/** Sous-étapes « documents ordonnance » : une par ligne de soin qui n’a pas l’option catalogue « masquer prescription ». */
+const patientDocumentsSlotRows = computed(() =>
+  patientSlotRows.value.filter((svc) => !careCategorySkipsPrescription(svc.category_id)),
+);
+
+function careCategorySkipsPrescription(categoryId: string | null | undefined): boolean {
+  if (categoryId == null || String(categoryId).trim() === '') return false;
+  const svc = selectedServices.value.find((s) => String(s.category_id) === String(categoryId));
+  if (svc && normalizeCategorySkipPrescriptionDocuments(svc.skip_prescription_documents)) {
+    return true;
+  }
+  const cat = careCategoriesList.value.find((c) => String(c.id) === String(categoryId));
+  if (!cat) return false;
+  return normalizeCategorySkipPrescriptionDocuments((cat as { skip_prescription_documents?: unknown }).skip_prescription_documents);
+}
+
 const patientBookingWizardSection = computed((): 'slot-datetime' | 'documents' | 'personal' => {
   const n = patientSlotRows.value.length;
+  const nDoc = patientDocumentsSlotRows.value.length;
   const i = bookingWizardIndex.value;
   if (n === 0) return 'personal';
   if (i < n) return 'slot-datetime';
-  /** Une sous-étape documents par carte (soins puis prélèvement, même ordre que les créneaux). */
-  if (i < n + n) return 'documents';
+  if (nDoc > 0 && i < n + nDoc) return 'documents';
   return 'personal';
 });
 
@@ -598,12 +628,25 @@ const patientActiveSlotServiceId = computed(() => {
 const patientActiveDocumentsServiceId = computed(() => {
   if (patientBookingWizardSection.value !== 'documents') return null;
   const n = patientSlotRows.value.length;
+  const docRows = patientDocumentsSlotRows.value;
   const i = bookingWizardIndex.value;
-  return patientSlotRows.value[i - n]?.id ?? null;
+  const docIdx = i - n;
+  return docRows[docIdx]?.id ?? null;
 });
 
 const bookingWizardPersonalStepVisible = computed(
   () => step.value === 1 && patientBookingWizardSection.value === 'personal',
+);
+
+/** Recaler l’index si le nombre de sous-étapes « documents » baisse (ex. activation masquage ordonnance). */
+watch(
+  () => [patientSlotRows.value.length, patientDocumentsSlotRows.value.length] as const,
+  () => {
+    const maxIx = patientSlotRows.value.length + patientDocumentsSlotRows.value.length;
+    if (bookingWizardIndex.value > maxIx) {
+      bookingWizardIndex.value = Math.max(0, maxIx);
+    }
+  },
 );
 
 function pushPatientAvailabilityErrors(
@@ -749,7 +792,8 @@ async function onPatientBookingWizardNext() {
     return;
   }
   const n = patientSlotRows.value.length;
-  const lastIndex = 2 * n;
+  const nDoc = patientDocumentsSlotRows.value.length;
+  const lastIndex = n + nDoc;
   if (bookingWizardIndex.value < lastIndex) {
     bookingWizardIndex.value++;
     nextTick(() => {
@@ -846,7 +890,7 @@ const nextStep = () => {
 const prevStep = () => {
   if (step.value === 3) {
     step.value = 1;
-    bookingWizardIndex.value = Math.max(0, 2 * patientSlotRows.value.length);
+    bookingWizardIndex.value = Math.max(0, patientSlotRows.value.length + patientDocumentsSlotRows.value.length);
   } else if (step.value === 1) {
     if (bookingWizardIndex.value > 0) {
       bookingWizardIndex.value--;
@@ -1701,11 +1745,6 @@ onMounted(async () => {
           stickyProviderBooking.value = state.providerBooking;
         }
         restoredFromDraft = true;
-        if (selectedServices.value.length > 0) {
-          const nSlots = servicesRequiringOwnSlots(selectedServices.value as SelectedServiceInput[]).length;
-          const maxIx = 2 * nSlots;
-          bookingWizardIndex.value = Math.min(Math.max(0, bookingWizardIndex.value), maxIx);
-        }
         // Ne pas supprimer le brouillon ici : permet retour login/refresh sans perdre les champs ;
         // nettoyage dans clearBookingDraft() après création du RDV.
       } catch (e) {
@@ -1722,6 +1761,13 @@ onMounted(async () => {
     loadProviderName();
   }
   await loadCareCategories();
+
+  /** Recale l’index wizard une fois les catégories connues (sous-étapes « documents » variables). */
+  if (selectedServices.value.length > 0) {
+    const nSlots = patientSlotRows.value.length;
+    const maxIx = Math.max(0, nSlots + patientDocumentsSlotRows.value.length);
+    bookingWizardIndex.value = Math.min(Math.max(0, bookingWizardIndex.value), maxIx);
+  }
 
   const typeFromUrl = route.query.type as string | undefined;
   const categoryFromUrl = route.query.category as string | undefined;

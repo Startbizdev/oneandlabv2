@@ -10,6 +10,8 @@ export type SelectedServiceInput = {
   icon?: string;
   /** `care_categories.image_url` — image uploadée admin (remplace l’icône). */
   category_image_url?: string | null;
+  /** Aligné catalogue : masquer ordonnance + autre prescription (option admin). */
+  skip_prescription_documents?: boolean;
 };
 
 /** Actes prélèvement dans le panier (ordre conservé). */

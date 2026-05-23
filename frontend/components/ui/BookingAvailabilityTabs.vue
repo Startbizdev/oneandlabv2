@@ -13,12 +13,19 @@ const props = defineProps<{
   maxUrgentHour?: number;
   /** Libellé marketing sous l’option VIP (ex. supplément TTC). */
   urgencyFeeLabel?: string;
+  /** Borne basse du slider « créneau » (ex. heure Paris si jour même). */
+  rangeSliderMinHour?: number | null;
 }>();
 
 const showUrgent = computed(() => props.showUrgentTab === true);
 const minUrgent = computed(() => (props.minUrgentHour != null ? props.minUrgentHour : 6));
 const maxUrgent = computed(() => (props.maxUrgentHour != null ? props.maxUrgentHour : 19));
 const feeLabel = computed(() => props.urgencyFeeLabel ?? '8,90 € TTC');
+
+/** Aligné sur le slider : pas en dessous de `rangeSliderMinHour` si fourni (jour même Paris). */
+const effectiveRangeSliderMin = computed(() =>
+  Math.max(AVAIL_MIN, props.rangeSliderMinHour != null ? props.rangeSliderMinHour : AVAIL_MIN),
+);
 
 const availabilityType = defineModel<string>('availabilityType', { required: true });
 const availabilityRange = defineModel<[number, number]>('availabilityRange', { required: true });
@@ -106,6 +113,13 @@ watch([urgentHour, urgentMinute, urgentTimingMode, minUrgent, maxUrgent], () => 
   }
 });
 
+watch(effectiveRangeSliderMin, () => {
+  if (availabilityType.value !== 'custom') return;
+  const r = availabilityRange.value;
+  if (!r || !Array.isArray(r) || r.length !== 2) return;
+  availabilityRange.value = clampRange(r[0], r[1]);
+});
+
 const rangeWarn = computed(
   () =>
     availabilityType.value === 'custom' &&
@@ -114,8 +128,9 @@ const rangeWarn = computed(
 
 function clampRange(lo: number, hi: number): [number, number] {
   const max = props.maxHour;
-  let l = Math.max(AVAIL_MIN, Math.min(max, lo));
-  let h = Math.max(AVAIL_MIN, Math.min(max, hi));
+  const floor = effectiveRangeSliderMin.value;
+  let l = Math.max(floor, Math.min(max, lo));
+  let h = Math.max(floor, Math.min(max, hi));
   if (h < l) [l, h] = [h, l];
   if (h - l < AVAILABILITY_MIN_SPAN_HOURS) {
     h = Math.min(max, l + AVAILABILITY_MIN_SPAN_HOURS);
@@ -239,7 +254,7 @@ function tabIconClass(tab: { id: string }) {
           <USlider
             :model-value="availabilityRange"
             :disabled="disabled"
-            :min="AVAIL_MIN"
+            :min="effectiveRangeSliderMin"
             :max="maxHour"
             :step="1"
             color="primary"

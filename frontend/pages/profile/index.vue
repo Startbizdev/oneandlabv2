@@ -660,7 +660,7 @@
                         <span class="text-sm font-medium text-gray-900 dark:text-white">Profil public</span>
                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium" :class="publicProfileForm.is_public_profile_enabled ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-400'">{{ publicProfileForm.is_public_profile_enabled ? 'Activé' : 'Désactivé' }}</span>
                       </div>
-                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ publicProfileForm.is_public_profile_enabled ? 'Fiche visible sur OneAndLab.' : "Fiche non visible." }}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ publicProfileForm.is_public_profile_enabled ? 'Fiche visible sur Cary.' : "Fiche non visible." }}</p>
                     </div>
                     <USwitch :model-value="publicProfileForm.is_public_profile_enabled" class="shrink-0" :disabled="savingPublicProfile" @update:model-value="onPublicProfileToggle($event)" />
                   </div>
@@ -860,7 +860,13 @@
                 <CardHeader
                   icon="i-lucide-image"
                   :title="isPreleveur ? 'Photo de profil' : 'Photo de profil'"
-                  :description="isPreleveur ? 'Votre photo pour votre compte' : 'Image de couverture pour votre fiche publique'"
+                  :description="
+                    isPatient
+                      ? 'Photo affichée sur votre compte'
+                      : isPreleveur
+                        ? 'Votre photo pour votre compte'
+                        : 'Image de couverture pour votre fiche publique'
+                  "
                 />
               </template>
               <ProfileImagesBlock
@@ -868,7 +874,7 @@
                 v-model:cover-image="publicProfileForm.cover_image_url"
                 :profile-label="isSubaccount ? 'Logo' : 'Photo de profil'"
                 :profile-icon="isSubaccount ? 'i-lucide-building-2' : 'i-lucide-user'"
-                :show-cover="!isPreleveur"
+                :show-cover="!isPreleveur && !isPatient"
               />
             </UCard>
 
@@ -1202,7 +1208,11 @@ const hasSettingsCard = computed(
 )
 /** Photo (préleveur) ; photo + couverture (nurse, subaccount, lab) */
 const hasProfilePhotoCard = computed(
-  () => hasPublicProfile.value || isPreleveur.value || isDisplayedProfileLab.value
+  () =>
+    hasPublicProfile.value ||
+    isPreleveur.value ||
+    isDisplayedProfileLab.value ||
+    (isPatient.value && !editingUserId.value && !newPatientMode.value)
 )
 /** Profil pro uniquement : propre compte → une colonne + bouton en bas (pas les infirmiers : eux ont photo, couverture, zone sur la droite). */
 const isProOwnProfile = computed(
@@ -1480,8 +1490,8 @@ const savingPublicProfile = ref(false)
 const savingAccepting = ref(false)
 const publicProfileSlugPrefix = computed(() =>
   (isSubaccount.value || isDisplayedProfileLab.value)
-    ? 'oneandlab.fr/Laboratoire/'
-    : 'oneandlab.fr/infirmier/'
+    ? 'cary.fr/Laboratoire/'
+    : 'cary.fr/infirmier/'
 )
 
 async function onPublicProfileToggle(value: boolean) {
@@ -1767,6 +1777,10 @@ const loadProfile = async () => {
         publicProfileForm.value.nurse_qualifications = [...quals, 'AUTRE']
       }
     }
+    if (isPatient.value && !editingUserId.value) {
+      publicProfileForm.value.profile_image_url = userData.profile_image_url || ''
+      publicProfileForm.value.cover_image_url = ''
+    }
     if (isProOwnProfile.value && userData.role === 'pro') {
       publicProfileForm.value.profile_image_url = userData.profile_image_url || ''
       publicProfileForm.value.cover_image_url = ''
@@ -1983,6 +1997,9 @@ const saveProfile = async (fromSaveAll = false) => {
     if (isPatient.value) {
       body.birth_date = profileForm.value.birth_date || null
       body.gender = profileForm.value.gender || null
+      if (!editingUserId.value) {
+        body.profile_image_url = publicProfileForm.value.profile_image_url || null
+      }
     }
 
     // Adresse
@@ -2185,7 +2202,7 @@ async function savePublicProfile(fromSaveAll = false) {
         const enabled = publicProfileForm.value.is_public_profile_enabled
         toast.add({
           title: enabled ? 'Profil public activé' : 'Profil public désactivé',
-          description: enabled ? 'Votre fiche est visible sur OneAndLab.' : 'Votre fiche n’est plus visible.',
+          description: enabled ? 'Votre fiche est visible sur Cary.' : 'Votre fiche n’est plus visible.',
           color: 'green',
         })
       }

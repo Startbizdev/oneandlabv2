@@ -40,7 +40,7 @@ const defaultNurseFaq = [
   },
   {
     question: 'Comment prendre rendez-vous avec un infirmier à domicile ?',
-    answer: 'Vous pouvez réserver directement sur OneAndLab en choisissant le créneau qui vous convient. L\'infirmier intervient dans sa zone d\'intervention.',
+    answer: 'Vous pouvez réserver directement sur Cary en choisissant le créneau qui vous convient. L\'infirmier intervient dans sa zone d\'intervention.',
   },
   {
     question: 'Prélèvement à domicile : c’est remboursé ?',
@@ -61,23 +61,23 @@ const metaLocation = computed(() => {
 // Meta tags dynamiques (SEO : Nom prénom - Infirmier libéral à Ville CODE POSTAL)
 useHead({
   title: computed(() => {
-    if (!profile.value) return 'Profil infirmier | OneAndLab';
+    if (!profile.value) return 'Profil infirmier | Cary';
     const name = profile.value.name || '';
     const loc = metaLocation.value;
-    if (loc) return `${name} - Infirmier libéral à ${loc} | OneAndLab`;
-    return `${name} - Infirmier libéral | OneAndLab`;
+    if (loc) return `${name} - Infirmier libéral à ${loc} | Cary`;
+    return `${name} - Infirmier libéral | Cary`;
   }),
   meta: [
     {
       name: 'description',
       content: computed(() => {
-        if (!profile.value) return 'Profil infirmier sur OneAndLab';
+        if (!profile.value) return 'Profil infirmier sur Cary';
         const name = profile.value.name || '';
         const loc = metaLocation.value;
         const bio = profile.value.biography ? profile.value.biography.substring(0, 140) : '';
         if (bio) return bio;
-        if (loc) return `Infirmier${profile.value.gender === 'female' ? 'e' : ''} libéral à domicile ${name} à ${loc}. Soins infirmiers, prise de sang, pansements. OneAndLab.`;
-        return `Infirmier${profile.value.gender === 'female' ? 'e' : ''} libéral à domicile ${name}. Soins infirmiers, prise de sang. OneAndLab.`;
+        if (loc) return `Infirmier${profile.value.gender === 'female' ? 'e' : ''} libéral à domicile ${name} à ${loc}. Soins infirmiers, prise de sang, pansements. Cary.`;
+        return `Infirmier${profile.value.gender === 'female' ? 'e' : ''} libéral à domicile ${name}. Soins infirmiers, prise de sang. Cary.`;
       }),
     },
     {
@@ -103,13 +103,13 @@ useHead({
     {
       property: 'og:description',
       content: computed(() => {
-        if (!profile.value) return 'Profil infirmier sur OneAndLab';
+        if (!profile.value) return 'Profil infirmier sur Cary';
         return profile.value.biography?.substring(0, 200) || `Infirmier${profile.value.gender === 'female' ? 'e' : ''} libéral à domicile ${profile.value.name}`;
       }),
     },
     {
       property: 'og:image',
-      content: computed(() => profile.value?.profile_image_url || '/images/onelogo.png'),
+      content: computed(() => profile.value?.profile_image_url || '/images/logo-cary.png'),
     },
     {
       property: 'og:type',

@@ -92,16 +92,17 @@
     />
 
     <div v-else class="min-h-[calc(100vh-4rem)] bg-app-canvas dark:bg-gray-950 pb-32">
-      <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+      <div class="mx-auto w-full max-w-5xl px-0 pt-3 pb-5 sm:px-6 sm:pt-4 sm:pb-6 md:max-w-3xl">
         <template v-if="selectedServices.length > 0">
           <header
-            :class="
+            :class="[
+              'px-4 text-left sm:px-0',
               dashboardWizardBookingHeaderIntro
-                ? 'mb-1.5 text-left sm:mb-2'
+                ? 'mb-1.5 sm:mb-2'
                 : dashboardBookingWizardSection === 'personal'
-                  ? 'mb-2 text-left sm:mb-3'
-                  : 'mb-4 text-left sm:mb-6'
-            "
+                  ? 'mb-2 sm:mb-3'
+                  : 'mb-4 sm:mb-6',
+            ]"
           >
             <h1 class="text-lg font-semibold tracking-tight text-gray-900 dark:text-white sm:text-xl">
               {{ dashboardWizardPageHeading }}
@@ -114,7 +115,7 @@
             variant="soft"
             icon="i-lucide-alert-circle"
             title="Champs obligatoires manquants"
-            class="mb-6 scroll-mt-6"
+            class="mx-4 mb-6 scroll-mt-6 sm:mx-0"
             id="form-error-alert"
           >
           <template #description>
@@ -124,7 +125,7 @@
 
         <section
           v-if="isAdminDashboard && dashboardBookingWizardSection === 'personal'"
-          class="mb-6 space-y-4 rounded-xl border border-dashed border-amber-200/90 bg-amber-50/50 p-4 dark:border-amber-900/35 dark:bg-amber-950/20"
+          class="mx-4 mb-6 space-y-4 rounded-xl border border-dashed border-amber-200/90 bg-amber-50/50 p-4 dark:border-amber-900/35 dark:bg-amber-950/20 sm:mx-0"
           aria-labelledby="admin-rdv-settings-title"
         >
           <div class="flex items-center gap-2">
@@ -203,6 +204,7 @@
             :patient-email-optional="patientEmailOptional"
             :accept-saturday="true"
             :accept-sunday="true"
+            :min-lead-time-hours="0"
             :booking-wizard-section="dashboardBookingWizardSection"
             :active-slot-service-id="dashboardActiveSlotServiceId"
             :active-documents-service-id="dashboardActiveDocumentsServiceId"
@@ -367,6 +369,7 @@ import {
   PATIENT_SELECT_SEARCH_PLACEHOLDER,
   buildPatientSelectRow,
 } from '~/utils/patient-select-menu';
+import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
 
 const PATIENT_EMAIL_LOOKUP_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -422,6 +425,7 @@ const careCategoriesList = ref<
     icon?: string | null;
     appointment_count?: number;
     image_url?: string | null;
+    skip_prescription_documents?: boolean;
   }>
 >([]);
 
@@ -437,12 +441,28 @@ const bookingWizardIndex = ref(0);
 
 const dashboardSlotRows = computed(() => servicesRequiringOwnSlots(selectedServices.value as SelectedServiceInput[]));
 
+function dashboardCareCategorySkipsPrescription(categoryId: string | null | undefined): boolean {
+  if (categoryId == null || String(categoryId).trim() === '') return false;
+  const svc = selectedServices.value.find((s) => String(s.category_id) === String(categoryId));
+  if (svc && normalizeCategorySkipPrescriptionDocuments(svc.skip_prescription_documents)) {
+    return true;
+  }
+  const cat = careCategoriesList.value.find((c) => String(c.id) === String(categoryId));
+  if (!cat) return false;
+  return normalizeCategorySkipPrescriptionDocuments(cat.skip_prescription_documents);
+}
+
+const dashboardDocumentsSlotRows = computed(() =>
+  dashboardSlotRows.value.filter((svc) => !dashboardCareCategorySkipsPrescription(svc.category_id)),
+);
+
 const dashboardBookingWizardSection = computed((): 'slot-datetime' | 'documents' | 'personal' => {
   const n = dashboardSlotRows.value.length;
+  const nDoc = dashboardDocumentsSlotRows.value.length;
   const i = bookingWizardIndex.value;
   if (n === 0) return 'personal';
   if (i < n) return 'slot-datetime';
-  if (i < n + n) return 'documents';
+  if (nDoc > 0 && i < n + nDoc) return 'documents';
   return 'personal';
 });
 
@@ -456,8 +476,10 @@ const dashboardActiveSlotServiceId = computed(() => {
 const dashboardActiveDocumentsServiceId = computed(() => {
   if (dashboardBookingWizardSection.value !== 'documents') return null;
   const n = dashboardSlotRows.value.length;
+  const docRows = dashboardDocumentsSlotRows.value;
   const i = bookingWizardIndex.value;
-  return dashboardSlotRows.value[i - n]?.id ?? null;
+  const docIdx = i - n;
+  return docRows[docIdx]?.id ?? null;
 });
 
 watch(bookingWizardIndex, () => {
@@ -465,6 +487,14 @@ watch(bookingWizardIndex, () => {
     validationError.value = '';
   }
 });
+
+watch(
+  () => [dashboardSlotRows.value.length, dashboardDocumentsSlotRows.value.length] as const,
+  () => {
+    const maxIx = dashboardSlotRows.value.length + dashboardDocumentsSlotRows.value.length;
+    if (bookingWizardIndex.value > maxIx) bookingWizardIndex.value = Math.max(0, maxIx);
+  },
+);
 
 function lowerFirstLetter(s: string): string {
   const t = String(s).trim();
@@ -887,7 +917,10 @@ async function loadCareCategories() {
   try {
     const response = await apiFetch('/categories', { method: 'GET' });
     if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
-      careCategoriesList.value = response.data;
+      careCategoriesList.value = (response.data as Array<Record<string, unknown>>).map((c) => ({
+        ...(c as object),
+        skip_prescription_documents: normalizeCategorySkipPrescriptionDocuments(c.skip_prescription_documents),
+      })) as typeof careCategoriesList.value;
     }
   } catch (e) {
     console.error('Chargement catégories:', e);
@@ -1150,7 +1183,8 @@ async function onDashboardWizardContinue() {
     return;
   }
   const n = dashboardSlotRows.value.length;
-  const lastIndex = 2 * n;
+  const nDoc = dashboardDocumentsSlotRows.value.length;
+  const lastIndex = n + nDoc;
   if (bookingWizardIndex.value < lastIndex) {
     bookingWizardIndex.value++;
     scrollWizardToTop();

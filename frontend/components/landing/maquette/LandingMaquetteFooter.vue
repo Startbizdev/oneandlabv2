@@ -59,7 +59,7 @@
           <div
             class="flex flex-col items-start justify-between gap-4 text-[0.8125rem] text-white/32 sm:flex-row sm:items-center"
           >
-            <span>© {{ year }} One&amp;Lab · Hébergement HDS, conforme RGPD.</span>
+            <span>© {{ year }} Cary · Hébergement HDS, conforme RGPD.</span>
             <div class="flex flex-wrap gap-x-[22px] gap-y-2">
               <NuxtLink
                 to="/politique-confidentialite"
@@ -86,7 +86,7 @@
       class="landing-footer-watermark pointer-events-none select-none"
       aria-hidden="true"
     >
-      <span class="landing-footer-watermark-text">One&amp;Lab</span>
+      <span class="landing-footer-watermark-text">Cary</span>
     </div>
   </footer>
 </template>
@@ -141,11 +141,12 @@ const footerBlocks = computed(() => {
 .landing-footer {
   background: linear-gradient(
     180deg,
-    #2563eb 0%,
-    #2f80ed 16%,
-    #2563a8 42%,
-    #153a6b 68%,
-    #0c2038 86%,
+    #1cc7b5 0%,
+    #18b5a5 14%,
+    #16b6d6 32%,
+    #1299b8 52%,
+    #0c6478 72%,
+    #084352 88%,
     #030508 96%,
     #000000 100%
   );

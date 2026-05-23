@@ -13,6 +13,7 @@ Notifications.setNotificationHandler({
 });
 
 function navigateFromNotificationData(data: Record<string, unknown>) {
+  if (data.no_navigate === true || data.no_navigate === 'true') return;
   const aptId = data.appointment_id ?? data.appointmentId;
   const role = useAuthStore.getState().user?.role;
   if (!aptId || typeof aptId !== 'string') return;

@@ -119,6 +119,7 @@ definePageMeta({
 
 import { nextTick, watch, computed } from 'vue';
 import { apiFetch } from '~/utils/api';
+import { cancelAppointmentWithOptionalPhoto } from '~/utils/appointment-cancellation';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
@@ -286,34 +287,23 @@ function onRescheduleDone(newAppointmentId?: string) {
 async function onConfirmCancel(payload: { reason: string; comment: string; photoFile: File | null }) {
   const apt = currentAppointmentForCancel.value;
   const loadAppointment = currentLoadAppointmentForCancel.value;
-  const appointmentId = apt?.id ?? route.params?.id;
+  const appointmentId = String(apt?.id ?? route.params?.id ?? '');
   if (!appointmentId || typeof loadAppointment !== 'function') return;
   currentAppointmentForCancel.value = null;
   currentLoadAppointmentForCancel.value = null;
   canceling.value = true;
   try {
-    let photoDocId: string | null = null;
-    if (payload.photoFile) {
-      const formData = new FormData();
-      formData.append('file', payload.photoFile);
-      formData.append('appointment_id', appointmentId);
-      formData.append('document_type', 'cancellation_photo');
-      const uploadRes = await apiFetch('/medical-documents', { method: 'POST', body: formData });
-      if (uploadRes.success && uploadRes.data?.id) photoDocId = uploadRes.data.id;
-    }
-    const body: Record<string, unknown> = {
-      status: 'canceled',
-      cancellation_reason: payload.reason,
-      cancellation_comment: payload.comment,
-    };
-    if (photoDocId) body.cancellation_photo_document_id = photoDocId;
-    const response = await apiFetch(`/appointments/${appointmentId}`, { method: 'PUT', body });
-    if (response.success) {
+    const result = await cancelAppointmentWithOptionalPhoto(appointmentId, payload);
+    if (result.ok) {
       showCancelModal.value = false;
       await loadAppointment();
       toast.add({ title: 'Rendez-vous annulé', description: "L'annulation a été enregistrée.", color: 'success' });
     } else {
-      toast.add({ title: 'Erreur', description: response.error || "Impossible d'annuler le rendez-vous", color: 'error' });
+      toast.add({
+        title: result.photoUploadFailed ? 'Photo non envoyée' : 'Erreur',
+        description: result.error,
+        color: 'error',
+      });
     }
   } catch (error: any) {
     toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' });

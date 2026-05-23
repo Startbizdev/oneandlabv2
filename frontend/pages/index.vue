@@ -33,7 +33,7 @@ const faqItems = [
   {
     question: 'La plateforme est-elle conforme aux normes de santé ?',
     answer:
-      'Absolument. OneAndLab est hébergée sur une infrastructure prévue pour les données de santé et respecte le RGPD. Vos données médicales sont chiffrées et ne sont pas commercialisées à des tiers sans votre consentement.',
+      'Absolument. Cary est hébergée sur une infrastructure prévue pour les données de santé et respecte le RGPD. Vos données médicales sont chiffrées et ne sont pas commercialisées à des tiers sans votre consentement.',
   },
   {
     question: 'Puis-je annuler ou modifier un rendez-vous ?',

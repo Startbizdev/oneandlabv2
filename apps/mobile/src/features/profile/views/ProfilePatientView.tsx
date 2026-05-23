@@ -13,6 +13,7 @@ import { AddressAutocomplete } from '@/features/address/components/AddressAutoco
 import type { AddressPayload } from '@/features/appointments/form/types';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { ProfileDocumentsSection } from '@/features/profile/components/ProfileDocumentsSection';
+import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
@@ -28,6 +29,7 @@ import { fontFamily, fontSize } from '@/theme/typography';
 
 export function ProfilePatientView() {
   const router = useRouter();
+  const biometricLabel = useBiometricLabel('Biométrie');
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const clearSession = useAuthStore((s) => s.clearSession);
@@ -175,7 +177,7 @@ export function ProfilePatientView() {
         />
 
         <Button
-          title="Face ID"
+          title={biometricLabel}
           variant="outline"
           onPress={() => router.push('/profile/security' as never)}
           fullWidth

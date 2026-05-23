@@ -1,15 +1,13 @@
 import { useLocalSearchParams } from 'expo-router';
-import { AppointmentFormScreen } from '@/features/appointments/form/screens/AppointmentFormScreen';
+import { RescheduleAppointmentScreen } from '@/features/appointments/reschedule/screens/RescheduleAppointmentScreen';
 
-export default function ProEditAppointment() {
+export default function ProRescheduleAppointment() {
   const { id } = useLocalSearchParams<{ id: string }>();
   return (
-    <AppointmentFormScreen
-      mode="edit"
+    <RescheduleAppointmentScreen
       appointmentId={id}
       role="pro"
       basePath="/(pro)"
-      patientEmailOptional
     />
   );
 }

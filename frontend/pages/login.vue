@@ -5,10 +5,10 @@
     <div class="mx-auto flex w-full max-w-[380px] flex-1 flex-col justify-center">
       <!-- Logo + lien discret -->
       <div class="mb-8 flex flex-col items-center gap-4">
-        <NuxtLink to="/" class="transition-opacity hover:opacity-90" aria-label="OneAndLab — Accueil">
+        <NuxtLink to="/" class="transition-opacity hover:opacity-90" aria-label="Cary — Accueil">
           <img
-            src="/images/onelogo.png"
-            alt=""
+            src="/images/logo-cary.png"
+            alt="Cary"
             class="h-7 w-auto max-w-[120px] object-contain sm:h-8 sm:max-w-[132px] dark:opacity-95"
             loading="eager"
           />
@@ -173,7 +173,7 @@
       </div>
 
       <p class="mt-8 text-center text-[11px] text-gray-400 dark:text-gray-500">
-        © {{ new Date().getFullYear() }} OneAndLab
+        © {{ new Date().getFullYear() }} Cary
       </p>
     </div>
   </div>

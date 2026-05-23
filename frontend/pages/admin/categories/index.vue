@@ -63,6 +63,7 @@
             class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-default bg-muted/30 dark:bg-muted/20"
           >
             <CareCategoryVisual
+              :emoji="categoryListEmoji(cat)"
               :image-src="categoryListImageSrc(cat)"
               :icon-name="getIconName(cat.icon)"
               icon-class="h-4 w-4 text-muted"
@@ -262,6 +263,7 @@
                           class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-default bg-muted/30 dark:bg-muted/20"
                         >
                           <CareCategoryVisual
+                            :emoji="modalCategoryEmoji"
                             :image-src="modalCategoryImageSrc"
                             :icon-name="getIconName(categoryForm.icon)"
                             icon-class="h-6 w-6 text-muted"
@@ -306,6 +308,22 @@
                       <div class="flex shrink-0 items-center gap-2">
                         <USwitch v-model="categoryForm.is_active" size="sm" />
                         <span class="text-xs font-medium text-foreground">{{ categoryForm.is_active ? 'Actif' : 'Inactif' }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- ④ bis Parcours patient : documents prescription -->
+                  <div class="px-4 py-3 sm:px-4 border-b border-default">
+                    <div class="flex items-center justify-between gap-4">
+                      <div class="min-w-0 space-y-0.5">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Documents prescription</p>
+                        <p class="text-xs text-muted leading-relaxed">
+                          Si activé : l’ordonnance et l’« autre prescription » ne sont pas demandés (wizard RDV patient, formulaires).
+                        </p>
+                      </div>
+                      <div class="flex shrink-0 items-center gap-2">
+                        <USwitch v-model="categoryForm.skip_prescription_documents" size="sm" />
+                        <span class="text-xs font-medium text-foreground">{{ categoryForm.skip_prescription_documents ? 'Masqués' : 'Demandés' }}</span>
                       </div>
                     </div>
                   </div>
@@ -453,6 +471,7 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
+import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils';
 import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
 const toast = useAppToast();
 
@@ -564,6 +583,7 @@ const categoryForm = ref<{
   type: string;
   icon: string;
   is_active: boolean;
+  skip_prescription_documents: boolean;
   options: Array<{ option_key: string; label: string; field_type: string; options?: { value: string; label: string }[]; optionsText?: string; is_required: boolean }>;
 }>({
   name: '',
@@ -571,6 +591,7 @@ const categoryForm = ref<{
   type: 'blood_test',
   icon: '',
   is_active: true,
+  skip_prescription_documents: false,
   options: [],
 });
 
@@ -626,9 +647,30 @@ onUnmounted(() => {
   revokePendingImagePreview();
 });
 
+function categoryListEmoji(cat: { name?: string; icon?: string | null; type?: string; image_url?: string | null }): string | null {
+  if (cat?.image_url) return null;
+  const e = careCategoryEmojiForCategory({
+    name: cat?.name,
+    icon: cat?.icon,
+    type: cat?.type ?? 'nursing',
+  });
+  return e || null;
+}
+
 function categoryListImageSrc(cat: any): string | null {
+  if (isCareCategoryEmoji(cat?.icon)) return null;
   return resolveCareCategoryImageSrc(cat?.image_url ?? null, config.public.apiBase);
 }
+
+const modalCategoryEmoji = computed((): string | null => {
+  if (pendingImageObjectUrl.value || modalCategoryImageSrc.value) return null;
+  const e = careCategoryEmojiForCategory({
+    name: categoryForm.value.name,
+    icon: categoryForm.value.icon,
+    type: categoryForm.value.type,
+  });
+  return e || null;
+});
 
 const modalCategoryImageSrc = computed(() => {
   if (pendingImageObjectUrl.value) return pendingImageObjectUrl.value;
@@ -708,6 +750,7 @@ const openCreateModal = () => {
     type: 'blood_test',
     icon: '',
     is_active: true,
+    skip_prescription_documents: false,
     options: [],
   };
   showCreateModal.value = true;
@@ -745,6 +788,7 @@ function editCategory(category: any) {
     type: category.type,
     icon: category.icon || '',
     is_active: category.is_active,
+    skip_prescription_documents: !!category.skip_prescription_documents,
     options: opts.length ? opts : [],
   };
   showCreateModal.value = true;
@@ -819,6 +863,7 @@ async function saveCategory() {
       type: categoryForm.value.type,
       icon: categoryForm.value.icon || null,
       is_active: !!categoryForm.value.is_active,
+      skip_prescription_documents: !!categoryForm.value.skip_prescription_documents,
       options: optionsPayload,
     };
     if (editingCategory.value) {

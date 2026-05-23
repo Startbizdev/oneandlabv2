@@ -273,31 +273,31 @@ class Notification
     {
         $messages = [
             'patient' => [
-                'title' => '👋 Bienvenue sur OneAndLab !',
+                'title' => '👋 Bienvenue sur Cary !',
                 'message' => 'Bonjour ! 👋 Merci de nous faire confiance pour vos soins à domicile. Nous sommes là pour vous accompagner dans vos prises de sang et soins infirmiers. N\'hésitez pas à prendre rendez-vous dès maintenant !'
             ],
             'nurse' => [
-                'title' => '👋 Bienvenue sur OneAndLab !',
+                'title' => '👋 Bienvenue sur Cary !',
                 'message' => 'Salut ! 👋 Merci de rejoindre notre équipe d\'infirmiers. Vous pouvez maintenant gérer vos rendez-vous, consulter votre calendrier et offrir des soins de qualité à nos patients. Bon travail !'
             ],
             'lab' => [
-                'title' => '👋 Bienvenue sur OneAndLab !',
+                'title' => '👋 Bienvenue sur Cary !',
                 'message' => 'Bonjour ! 👋 Merci de nous faire confiance pour gérer vos prélèvements. Vous pouvez maintenant organiser vos rendez-vous, gérer vos préleveurs et suivre vos statistiques. Bienvenue dans l\'équipe !'
             ],
             'preleveur' => [
-                'title' => '👋 Bienvenue sur OneAndLab !',
+                'title' => '👋 Bienvenue sur Cary !',
                 'message' => 'Salut ! 👋 Merci de rejoindre notre équipe de préleveurs. Vous pouvez maintenant consulter votre calendrier et gérer vos rendez-vous de prélèvement. Bon travail !'
             ],
             'pro' => [
-                'title' => '👋 Bienvenue sur OneAndLab !',
+                'title' => '👋 Bienvenue sur Cary !',
                 'message' => 'Bonjour ! 👋 Merci de nous faire confiance pour vos besoins médicaux. Vous pouvez maintenant gérer vos rendez-vous, vos patients et votre calendrier. Bienvenue !'
             ],
             'super_admin' => [
-                'title' => '👋 Bienvenue sur OneAndLab !',
-                'message' => 'Bonjour ! 👋 Bienvenue dans l\'administration de OneAndLab. Vous avez accès à tous les outils de gestion de la plateforme. Bonne journée !'
+                'title' => '👋 Bienvenue sur Cary !',
+                'message' => 'Bonjour ! 👋 Bienvenue dans l\'administration de Cary. Vous avez accès à tous les outils de gestion de la plateforme. Bonne journée !'
             ],
             'subaccount' => [
-                'title' => '👋 Bienvenue sur OneAndLab !',
+                'title' => '👋 Bienvenue sur Cary !',
                 'message' => 'Bonjour ! 👋 Merci de nous faire confiance pour gérer vos prélèvements. Vous pouvez maintenant organiser vos rendez-vous et gérer vos préleveurs. Bienvenue !'
             ],
         ];

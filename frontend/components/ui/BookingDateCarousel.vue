@@ -6,8 +6,8 @@
  * vient des métriques réelles du viewport (scrollLeft / scrollWidth / clientWidth) :
  * aucune dépendance à canScrollNext() ou à des snaps recalculés par une lib tiers.
  */
-import { CalendarDate, DateFormatter, parseDate, today } from '@internationalized/date';
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { CalendarDate, DateFormatter, parseDate } from '@internationalized/date';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
   PARIS_TZ,
   bookingMinCalendarDate,
@@ -92,17 +92,11 @@ function weekdayShort(d: CalendarDate): string {
 }
 
 function calendarDayRibbonLabel(day: CalendarDate): string {
-  const t = today(PARIS_TZ);
-  if (day.compare(t) === 0) return 'Auj';
-  if (day.compare(t.add({ days: 1 })) === 0) return 'Dem';
   return weekdayShort(day);
 }
 
 function calendarDayAriaLabel(day: CalendarDate): string {
-  const t = today(PARIS_TZ);
   const mo = dayMonthShortLabel(day);
-  if (day.compare(t) === 0) return `Aujourd'hui ${day.day} ${mo}`;
-  if (day.compare(t.add({ days: 1 })) === 0) return `Demain ${day.day} ${mo}`;
   return `${weekdayShort(day)} ${day.day} ${mo}`;
 }
 

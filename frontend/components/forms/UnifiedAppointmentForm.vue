@@ -22,6 +22,7 @@
             class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-gray-200/90 bg-white p-0.5 dark:border-gray-700 dark:bg-gray-950 sm:h-12 sm:w-12"
           >
             <CareCategoryVisual
+              :emoji="serviceHeaderEmoji(svc)"
               :image-src="serviceHeaderImageSrc(svc)"
               :icon-name="svc.icon || (isBloodTestAppointment(svc.type) ? 'i-lucide-droplet' : 'i-lucide-heart-pulse')"
               img-class="block max-h-full max-w-full min-h-0 min-w-0 object-contain"
@@ -102,6 +103,7 @@
               class="inline-flex max-w-full items-center gap-2 border-0 font-semibold shadow-none ring-1 ring-black/5 py-1 pl-1.5 pr-2.5 dark:ring-white/10"
             >
               <CareCategoryVisual
+                :emoji="line.emoji"
                 :image-src="line.imageSrc"
                 :icon-name="line.iconName"
                 img-class="h-5 w-5 shrink-0 object-contain"
@@ -118,8 +120,17 @@
         v-if="showWizardDatetimeBlocks"
         :class="['mb-4 space-y-5 md:space-y-6', wizardFlatSectionPad]"
       >
+        <BookingWizardSegmentContext
+          v-if="showPatientWizardSegmentContext"
+          mode="slot-datetime"
+          :selected-services="selectedServices"
+          :slot-rows="renderedServices"
+          :active-service-id="activeSlotServiceId ?? svc.id"
+          :slot-index="wizardActiveSlotIndex"
+          :form-data-by-service="formDataByService"
+        />
         <UFormField
-          :label="'Date souhaitée'"
+          :label="wizardDateFieldLabel"
           :name="`scheduled_at_${svc.id}`"
           required
           :ui="wizardUseServiceCard ? undefined : { label: 'sr-only' }"
@@ -182,6 +193,7 @@
             v-model:urgent-minute="formDataByService[svc.id].urgentMinute!"
             :format-hour="formatHourFr"
             :max-hour="availabilityMaxHour(svc.type)"
+            :range-slider-min-hour="availabilityRangeSliderMinForService(svc)"
             :show-urgent-tab="patientBookingUrgencyStripeFlag && isBloodTestAppointment(svc.type)"
             :urgency-fee-label="'8,90 € TTC'"
           />
@@ -392,15 +404,24 @@
 
       <!-- Documents du soin — un seul bloc (lot nursing fusionné comme blood) -->
       <div v-if="showWizardDocumentsBlocks" :class="[wizardSectionNormalized === 'documents' ? 'mt-0' : 'mt-4', wizardFlatSectionPad]">
+        <BookingWizardSegmentContext
+          v-if="showPatientWizardSegmentContext && wizardSectionNormalized === 'documents'"
+          mode="documents"
+          :selected-services="selectedServices"
+          :slot-rows="renderedServices"
+          :active-service-id="activeDocumentsServiceId ?? svc.id"
+          :slot-index="wizardActiveDocumentsIndex"
+          :form-data-by-service="formDataByService"
+        />
         <p
-          v-if="wizardUseServiceCard"
+          v-if="wizardUseServiceCard && prescriptionDocTypesForServiceCard(svc).length > 0"
           class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2"
         >
           Documents du soin
         </p>
         <div class="flex flex-col gap-2.5">
           <div
-            v-for="docType in serviceDocTypes"
+            v-for="docType in prescriptionDocTypesForServiceCard(svc)"
             :key="`${docFilesServiceId(svc)}-${docType.key}`"
             class="relative"
           >
@@ -497,7 +518,7 @@
           </div>
         </div>
         <div
-          v-if="!hasServiceDocFromProfile(docFilesServiceId(svc), 'ordonnance')"
+          v-if="prescriptionDocTypesForServiceCard(svc).length > 0 && !hasServiceDocFromProfile(docFilesServiceId(svc), 'ordonnance')"
           class="relative mt-3 flex items-center gap-2 overflow-hidden rounded-lg border border-warning/25 bg-warning/10 p-2.5 text-warning sm:p-3 dark:border-warning/20"
         >
           <UIcon name="i-lucide-file-warning" class="size-4 shrink-0 opacity-90" aria-hidden="true" />
@@ -796,6 +817,7 @@ import {
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { getBloodTestPremiumDayKind, type PremiumDayKind } from '~/utils/french-public-holidays';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
+import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils';
 import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
 import {
   careAutreDetailKey,
@@ -803,7 +825,10 @@ import {
   isAutreSelectValue,
   stripOrphanAutreDetailKeys,
 } from '~/utils/care-category-autre-detail';
+import { buildBookingWizardSegmentIntro } from '~/utils/booking-wizard-segment';
 import { servicesRequiringOwnSlots } from '~/utils/dashboard-unified-rdv';
+import { availabilitySliderMinHourParis } from '~/utils/booking-paris-availability';
+import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
 
 const props = defineProps<{
   modelValue: any;
@@ -812,10 +837,22 @@ const props = defineProps<{
     type: string;
     name: string;
     category_id: string | null;
+    skip_prescription_documents?: boolean;
     icon?: string;
     category_image_url?: string | null;
   }>;
-  categories?: Array<{ id: string; options?: Array<{ option_key: string; label: string; field_type: string; options?: { value: string; label: string }[]; is_required?: boolean; sort_order?: number }> }>;
+  categories?: Array<{
+    id: string;
+    skip_prescription_documents?: boolean;
+    options?: Array<{
+      option_key: string;
+      label: string;
+      field_type: string;
+      options?: { value: string; label: string }[];
+      is_required?: boolean;
+      sort_order?: number;
+    }>;
+  }>;
   relative?: any;
   hidePersonalInfo?: boolean;
   /**
@@ -853,7 +890,16 @@ const props = defineProps<{
 
 const config = useRuntimeConfig();
 
-function serviceHeaderImageSrc(svc: { category_image_url?: string | null }) {
+function serviceHeaderEmoji(svc: { type: string; name: string; icon?: string | null }) {
+  return careCategoryEmojiForCategory({
+    name: svc.name,
+    icon: svc.icon ?? null,
+    type: svc.type,
+  });
+}
+
+function serviceHeaderImageSrc(svc: { category_image_url?: string | null; icon?: string | null }) {
+  if (isCareCategoryEmoji(svc.icon)) return null;
   return resolveCareCategoryImageSrc(svc.category_image_url ?? null, config.public.apiBase);
 }
 
@@ -911,6 +957,41 @@ const wizardUseServiceCard = computed(() => wizardSectionNormalized.value === 'a
 const showWizardServiceHeaderInCard = computed(() => wizardUseServiceCard.value);
 /** Padding horizontal mobile quand la carte « soin » est plate (parcours wizard patient). */
 const wizardFlatSectionPad = computed(() => (wizardUseServiceCard.value ? '' : 'px-4 sm:px-0'));
+
+/** Bandeau stepper + carte soin (parcours patient `/rendez-vous/nouveau`). */
+const showPatientWizardSegmentContext = computed(
+  () =>
+    !wizardUseServiceCard.value &&
+    (wizardSectionNormalized.value === 'slot-datetime' ||
+      wizardSectionNormalized.value === 'documents'),
+);
+
+const wizardActiveSlotIndex = computed(() => {
+  const id = props.activeSlotServiceId;
+  if (!id) return 0;
+  const i = renderedServices.value.findIndex((s) => s.id === id);
+  return i >= 0 ? i : 0;
+});
+
+const wizardActiveDocumentsIndex = computed(() => {
+  const id = props.activeDocumentsServiceId;
+  if (!id) return 0;
+  const i = renderedServices.value.findIndex((s) => s.id === id);
+  return i >= 0 ? i : 0;
+});
+
+const wizardDateFieldLabel = computed(() => {
+  if (wizardUseServiceCard.value) return 'Date souhaitée';
+  const intro = buildBookingWizardSegmentIntro(
+    props.selectedServices,
+    props.activeSlotServiceId ?? null,
+    String(config.public.apiBase ?? ''),
+  );
+  if (intro?.kind === 'blood') return 'Jour du prélèvement';
+  if (intro?.kind === 'nursing') return 'Jour des soins à domicile';
+  return 'Jour d’intervention';
+});
+
 const showWizardPatientCard = computed(() => {
   if (props.hidePersonalInfo) return false;
   const ws = wizardSectionNormalized.value;
@@ -922,6 +1003,7 @@ function wizardDocumentBadgeLines(svc: (typeof props.selectedServices)[number]) 
     return bloodServices.value.map((s) => ({
       id: s.id,
       name: s.name,
+      emoji: serviceHeaderEmoji(s),
       imageSrc: serviceHeaderImageSrc(s),
       iconName: s.icon || 'i-lucide-droplet',
     }));
@@ -930,6 +1012,7 @@ function wizardDocumentBadgeLines(svc: (typeof props.selectedServices)[number]) 
     return nursingServices.value.map((s) => ({
       id: s.id,
       name: s.name,
+      emoji: serviceHeaderEmoji(s),
       imageSrc: serviceHeaderImageSrc(s),
       iconName: s.icon || 'i-lucide-heart-pulse',
     }));
@@ -938,6 +1021,7 @@ function wizardDocumentBadgeLines(svc: (typeof props.selectedServices)[number]) 
     {
       id: svc.id,
       name: svc.name,
+      emoji: serviceHeaderEmoji(svc),
       imageSrc: serviceHeaderImageSrc(svc),
       iconName: svc.icon || (isBloodTestAppointment(svc.type) ? 'i-lucide-droplet' : 'i-lucide-heart-pulse'),
     },
@@ -1059,6 +1143,14 @@ function availabilityMaxHour(serviceType: string): number {
   return isBloodTestAppointment(serviceType) ? AVAILABILITY_MAX_HOUR_BLOOD_TEST : AVAILABILITY_MAX_HOUR_NURSING;
 }
 
+function availabilityRangeSliderMinForService(svc: { id: string; type: string }): number {
+  return availabilitySliderMinHourParis(
+    formDataByService[svc.id]?.scheduled_at,
+    availabilityMaxHour(svc.type),
+    AVAILABILITY_MIN,
+  );
+}
+
 const bloodTestTypeOptions = [
   { label: 'Une seule fois', value: 'single' },
   { label: 'Plusieurs prélèvements sur plusieurs jours', value: 'multiple' },
@@ -1098,6 +1190,19 @@ const serviceDocTypes: Array<{
     hint: 'Document complémentaire (facultatif)',
   },
 ];
+
+function categorySkipsPrescriptionFromCatalog(categoryId: string | null | undefined): boolean {
+  if (categoryId == null || String(categoryId).trim() === '') return false;
+  const c = props.categories?.find((x) => String(x.id) === String(categoryId));
+  return normalizeCategorySkipPrescriptionDocuments(c?.skip_prescription_documents);
+}
+
+/** Ordonnance + autre prescription : masqués si l’option catalogue est activée pour ce soin. */
+function prescriptionDocTypesForServiceCard(svc: { category_id: string | null; skip_prescription_documents?: unknown }) {
+  if (normalizeCategorySkipPrescriptionDocuments(svc.skip_prescription_documents)) return [];
+  if (categorySkipsPrescriptionFromCatalog(svc.category_id)) return [];
+  return serviceDocTypes;
+}
 
 const personalDocHints: Record<string, string> = {
   carte_vitale: 'Recto recommandé — PDF, JPG ou PNG',
@@ -1144,14 +1249,15 @@ watch(() => props.selectedServices, (svcs) => {
   });
 }, { immediate: true, deep: true });
 
-// Enforcer l'écart minimum et les bornes max par type de soin
+// Enforcer l'écart minimum et les bornes max par type de soin (+ plancher jour même, heure de Paris)
 watch(formDataByService, () => {
   props.selectedServices.forEach((s) => {
     const max = availabilityMaxHour(s.type);
     const range = formDataByService[s.id]?.availabilityRange;
     if (!range || !Array.isArray(range) || range.length !== 2) return;
-    let lo = Math.max(AVAILABILITY_MIN, Math.min(max, range[0]));
-    let hi = Math.max(AVAILABILITY_MIN, Math.min(max, range[1]));
+    const smin = availabilitySliderMinHourParis(formDataByService[s.id]?.scheduled_at, max, AVAILABILITY_MIN);
+    let lo = Math.max(smin, Math.min(max, range[0]));
+    let hi = Math.max(smin, Math.min(max, range[1]));
     if (hi < lo) [lo, hi] = [hi, lo];
     if (hi - lo < AVAILABILITY_MIN_SPAN_HOURS) {
       hi = Math.min(max, lo + AVAILABILITY_MIN_SPAN_HOURS);
@@ -1599,11 +1705,17 @@ function buildMergedFilesForService(svcId: string): { files: Record<string, File
     ...(svcFiles.autres_assurances ? { autres_assurances: svcFiles.autres_assurances } : {}),
   };
   const filesData: Record<string, any> = {};
-  ['carte_vitale', 'carte_mutuelle', 'ordonnance', 'autres_assurances'].forEach(key => {
+  const profileLinkKeys = ['carte_vitale', 'carte_mutuelle'] as const;
+  profileLinkKeys.forEach((key) => {
     if (mergedFiles[key]) {
       filesData[key] = { field: key, name: mergedFiles[key].name, size: mergedFiles[key].size, type: mergedFiles[key].type, isNew: true };
     } else if (profileDocuments.value[key]) {
       filesData[key] = { field: key, name: profileDocuments.value[key].file_name, medical_document_id: profileDocuments.value[key].medical_document_id, isNew: false };
+    }
+  });
+  (['ordonnance', 'autres_assurances'] as const).forEach((key) => {
+    if (mergedFiles[key]) {
+      filesData[key] = { field: key, name: mergedFiles[key].name, size: mergedFiles[key].size, type: mergedFiles[key].type, isNew: true };
     }
   });
   return { files: mergedFiles, form_data_files: filesData };
@@ -1676,7 +1788,11 @@ function commitBookingSubmit() {
     if (scheduledAt && !scheduledAt.includes('T') && !scheduledAt.includes(' ')) {
       let h = (data?.availabilityRange ?? [9, 11])[0] ?? 9;
       let min = 0;
-      if (data?.availability_type === 'urgent') {
+      if (data?.availability_type === 'all_day') {
+        // Ancre calendrier minuit Paris : le backend accepte ce jour-là même si l'heure est « passée » (cf. Appointment::create).
+        h = 0;
+        min = 0;
+      } else if (data?.availability_type === 'urgent') {
         if (data.urgentTimingMode === 'asap') {
           h = 6;
           min = 0;

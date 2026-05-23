@@ -10,7 +10,7 @@
             Demande bien reçue
           </h1>
           <p class="text-muted mt-2">
-            Merci pour votre inscription sur OneAndLab.
+            Merci pour votre inscription sur Cary.
           </p>
         </div>
       </template>
