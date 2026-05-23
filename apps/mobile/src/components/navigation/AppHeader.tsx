@@ -38,10 +38,10 @@ function renderTitle(options: AppHeaderProps['options'], route: AppHeaderProps['
  * Header 100 % React (View / Text / Pressable) — remplace UINavigationBar / Material toolbar.
  * Branché via `header: AppHeader` dans stackHeaderOptions / tabScreenOptions.
  */
-export function AppHeader({ navigation, options, route, back }: AppHeaderProps) {
+export function AppHeader({ navigation, options, route }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
 
-  const canGoBack = !!back;
+  const canGoBack = navigation.canGoBack();
   const headerLeft = options.headerLeft?.({ tintColor: TINT, canGoBack });
   const headerRight = options.headerRight?.({ tintColor: TINT, canGoBack });
 

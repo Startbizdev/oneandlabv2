@@ -1,8 +1,9 @@
 import { createElement, useCallback, useEffect, useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import { useNavigation } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import type { Appointment } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
+import { HeaderBackButton } from '@/navigation/HeaderBackButton';
 import { useAppointmentDetail } from '../../hooks/use-appointment-detail';
 import { useAppointmentBatch } from './use-appointment-batch';
 import { fetchMedicalDocuments } from '../api/appointment-detail.service';
@@ -27,6 +28,7 @@ export function useAppointmentDetailScreen(
   viewerId?: string | null,
 ) {
   const navigation = useNavigation();
+  const router = useRouter();
   const config = getAppointmentDetailRoleConfig(role);
 
   const detailQ = useAppointmentDetail(id);
@@ -86,6 +88,16 @@ export function useAppointmentDetailScreen(
   const isRefreshing =
     detailQ.isRefetching || siblingsLoading || docQueries.some((q) => q.isRefetching);
 
+  const handleHeaderBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    if (role === 'patient') {
+      router.replace('/(patient)/(tabs)/appointments' as never);
+    }
+  }, [navigation, role, router]);
+
   useEffect(() => {
     const title = primary
       ? appointmentPatientHeaderTitle(primary, batchSorted.length)
@@ -94,14 +106,26 @@ export function useAppointmentDetailScreen(
       ? effectiveAppointmentStatus(primary, { role, viewerId })
       : undefined;
     const status = displayStatus ?? primary?.status;
+    const showBack = navigation.canGoBack() || role === 'patient';
     navigation.setOptions({
       headerTitle: primary
         ? () => createElement(RdvDetailNavTitle, { title, status })
         : title,
+      headerLeft: showBack
+        ? () => createElement(HeaderBackButton, { onPress: handleHeaderBack })
+        : undefined,
       headerRight: undefined,
       headerTitleAlign: 'left',
     });
-  }, [navigation, primary, batchSorted.length, primary?.status, role, viewerId]);
+  }, [
+    navigation,
+    primary,
+    batchSorted.length,
+    primary?.status,
+    role,
+    viewerId,
+    handleHeaderBack,
+  ]);
 
   useEffect(() => {
     if (!config.enablePolling || !id) return;
