@@ -1660,41 +1660,8 @@ class Appointment
             );
         }
         
-        // Déchiffrer les champs
-        try {
-            $appointment['address'] = $this->crypto->decryptField(
-                $appointment['address_encrypted'],
-                $appointment['address_dek']
-            );
-            
-            if ($appointment['form_data_encrypted']) {
-                $formDataJson = $this->crypto->decryptField(
-                    $appointment['form_data_encrypted'],
-                    $appointment['form_data_dek']
-                );
-                $appointment['form_data'] = json_decode($formDataJson, true) ?? [];
-            }
-
-            if (!empty($appointment['address']) && is_string($appointment['address'])) {
-                if (!is_array($appointment['form_data'])) {
-                    $appointment['form_data'] = [];
-                }
-                if (empty($appointment['form_data']['address_label'])) {
-                    $appointment['form_data']['address_label'] = $appointment['address'];
-                }
-            }
-            
-            // Logger le déchiffrement
-            $this->logger->logDecrypt(
-                $requesterId,
-                $requesterRole,
-                'appointment',
-                $id,
-                ['address', 'form_data']
-            );
-        } catch (Exception $e) {
-            throw new Exception('Erreur lors du déchiffrement des données');
-        }
+        // Déchiffrer adresse + form_data (indépendamment — ne pas perdre form_data si l'adresse échoue)
+        $this->decryptAppointmentSensitiveFields($appointment, $requesterId, $requesterRole);
         
         // Nettoyer les champs chiffrés
         unset($appointment['address_encrypted'], $appointment['address_dek']);
@@ -1975,30 +1942,7 @@ class Appointment
     public function decryptRowForList(array $row, string $requesterId, string $requesterRole): array
     {
         $appointment = $row;
-        try {
-            $appointment['address'] = $this->crypto->decryptField(
-                $appointment['address_encrypted'] ?? null,
-                $appointment['address_dek'] ?? null
-            );
-            if (!empty($appointment['form_data_encrypted']) && !empty($appointment['form_data_dek'])) {
-                $formDataJson = $this->crypto->decryptField(
-                    $appointment['form_data_encrypted'],
-                    $appointment['form_data_dek']
-                );
-                $appointment['form_data'] = json_decode($formDataJson, true) ?? [];
-            } else {
-                $appointment['form_data'] = [];
-            }
-            if (!empty($appointment['address']) && is_string($appointment['address'])) {
-                if (empty($appointment['form_data']['address_label'])) {
-                    $appointment['form_data']['address_label'] = $appointment['address'];
-                }
-            }
-            $this->logger->logDecrypt($requesterId, $requesterRole, 'appointment', $appointment['id'], ['address', 'form_data']);
-        } catch (Exception $e) {
-            $appointment['address'] = null;
-            $appointment['form_data'] = [];
-        }
+        $this->decryptAppointmentSensitiveFields($appointment, $requesterId, $requesterRole);
         unset($appointment['address_encrypted'], $appointment['address_dek'], $appointment['form_data_encrypted'], $appointment['form_data_dek']);
 
         if (!empty($appointment['relative_id']) && !empty($appointment['relative_first_name_encrypted'] ?? null)) {
@@ -2048,6 +1992,139 @@ class Appointment
             unset($appointment['created_at'], $appointment['updated_at']);
         }
         return $appointment;
+    }
+
+    /**
+     * Déchiffre address + form_data sans les lier dans un seul try (évite adresse vide alors que form_data contient l'adresse).
+     */
+    private function decryptAppointmentSensitiveFields(
+        array &$appointment,
+        string $requesterId,
+        string $requesterRole
+    ): void {
+        $appointment['address'] = null;
+        if (!is_array($appointment['form_data'] ?? null)) {
+            $appointment['form_data'] = [];
+        }
+
+        $decryptedFields = [];
+
+        if (!empty($appointment['address_encrypted']) && !empty($appointment['address_dek'])) {
+            try {
+                $appointment['address'] = $this->crypto->decryptField(
+                    (string) $appointment['address_encrypted'],
+                    (string) $appointment['address_dek']
+                );
+                $decryptedFields[] = 'address';
+            } catch (Exception $e) {
+                error_log('Appointment address decrypt ' . ($appointment['id'] ?? '') . ': ' . $e->getMessage());
+                $appointment['address'] = null;
+            }
+        }
+
+        if (!empty($appointment['form_data_encrypted']) && !empty($appointment['form_data_dek'])) {
+            try {
+                $formDataJson = $this->crypto->decryptField(
+                    (string) $appointment['form_data_encrypted'],
+                    (string) $appointment['form_data_dek']
+                );
+                $decoded = json_decode($formDataJson, true);
+                $appointment['form_data'] = is_array($decoded) ? $decoded : [];
+                $decryptedFields[] = 'form_data';
+            } catch (Exception $e) {
+                error_log('Appointment form_data decrypt ' . ($appointment['id'] ?? '') . ': ' . $e->getMessage());
+                $appointment['form_data'] = [];
+            }
+        }
+
+        $this->hydrateAppointmentAddressFields($appointment);
+
+        if ($decryptedFields !== []) {
+            $this->logger->logDecrypt(
+                $requesterId,
+                $requesterRole,
+                'appointment',
+                (string) ($appointment['id'] ?? ''),
+                array_fill_keys($decryptedFields, true)
+            );
+        }
+    }
+
+    /**
+     * Expose toujours un libellé d'adresse (address + form_data.address + address_label).
+     */
+    private function hydrateAppointmentAddressFields(array &$appointment): void
+    {
+        if (!is_array($appointment['form_data'] ?? null)) {
+            $appointment['form_data'] = [];
+        }
+
+        $topLabel = $this->extractAddressLabelFromDecrypted($appointment['address'] ?? null);
+        $formLabel = $this->extractAddressLabelFromDecrypted($appointment['form_data']['address'] ?? null);
+        $legacyLabel = trim((string) ($appointment['form_data']['address_label'] ?? ''));
+
+        $label = $topLabel !== '' ? $topLabel : ($formLabel !== '' ? $formLabel : $legacyLabel);
+        if ($label === '') {
+            return;
+        }
+
+        $appointment['address'] = $label;
+
+        if ($legacyLabel === '') {
+            $appointment['form_data']['address_label'] = $label;
+        }
+
+        $fdAddr = $appointment['form_data']['address'] ?? null;
+        if ($fdAddr === null || $fdAddr === '' || (is_string($fdAddr) && trim($fdAddr) === '')) {
+            $lat = isset($appointment['location_lat']) ? (float) $appointment['location_lat'] : null;
+            $lng = isset($appointment['location_lng']) ? (float) $appointment['location_lng'] : null;
+            $payload = ['label' => $label];
+            if ($lat !== null && $lng !== null && ($lat !== 0.0 || $lng !== 0.0)) {
+                $payload['lat'] = $lat;
+                $payload['lng'] = $lng;
+            }
+            $appointment['form_data']['address'] = $payload;
+            return;
+        }
+
+        if (is_string($fdAddr)) {
+            $parsedLabel = $this->extractAddressLabelFromDecrypted($fdAddr);
+            if ($parsedLabel !== '') {
+                $decoded = json_decode(trim($fdAddr), true);
+                $appointment['form_data']['address'] = is_array($decoded) && !empty($decoded['label'])
+                    ? $decoded
+                    : ['label' => $parsedLabel];
+            }
+            return;
+        }
+
+        if (is_array($fdAddr) && empty($fdAddr['label'])) {
+            $appointment['form_data']['address']['label'] = $label;
+        }
+    }
+
+    private function extractAddressLabelFromDecrypted(mixed $raw): string
+    {
+        if ($raw === null) {
+            return '';
+        }
+        if (is_string($raw)) {
+            $t = trim($raw);
+            if ($t === '') {
+                return '';
+            }
+            if ($t[0] === '{' || $t[0] === '[') {
+                $j = json_decode($t, true);
+                if (is_array($j) && !empty($j['label']) && is_string($j['label'])) {
+                    return trim($j['label']);
+                }
+            }
+            return $t;
+        }
+        if (is_array($raw) && !empty($raw['label']) && is_string($raw['label'])) {
+            return trim($raw['label']);
+        }
+        return '';
     }
 
     /**

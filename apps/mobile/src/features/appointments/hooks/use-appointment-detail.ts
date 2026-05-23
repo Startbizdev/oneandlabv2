@@ -12,5 +12,7 @@ export function useAppointmentDetail(id: string | undefined) {
       return res.data ?? null;
     },
     enabled: Boolean(id),
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }
