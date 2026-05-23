@@ -8,10 +8,7 @@
     "scheme": "cary",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/logo-cary.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF",
-      "imageWidth": 240
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": true,
@@ -21,6 +18,7 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Cary a besoin d’accéder à vos photos pour joindre des documents médicaux à vos rendez-vous.",
         "NSCameraUsageDescription": "Cary peut utiliser l’appareil photo pour joindre des documents à vos rendez-vous.",
+        "NSFaceIDUsageDescription": "Cary utilise Face ID pour vous connecter sans saisir de code à chaque ouverture.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
@@ -36,7 +34,30 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "ios": {
+            "image": "./assets/splash-logo.png",
+            "imageWidth": 250,
+            "resizeMode": "contain",
+            "backgroundColor": "#FFFFFF"
+          },
+          "android": {
+            "image": "./assets/splash-logo.png",
+            "imageWidth": 250,
+            "resizeMode": "contain",
+            "backgroundColor": "#FFFFFF"
+          }
+        }
+      ],
       "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Cary utilise Face ID pour vous connecter rapidement et en toute sécurité."
+        }
+      ],
       [
         "expo-notifications",
         {

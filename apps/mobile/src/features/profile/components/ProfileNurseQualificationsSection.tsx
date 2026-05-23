@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { GraduationCap, Plus, Trash2 } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
@@ -108,7 +110,7 @@ export function ProfileNurseQualificationsSection({ bare }: Props) {
   const busy = save.isPending;
 
   const body = q.isLoading ? (
-    <ActivityIndicator color={colors.primary} style={{ paddingVertical: spacing[4] }} />
+    <SkeletonList count={4} itemHeight={52} gap={spacing[2]} />
   ) : (
     <>
       <Text style={[styles.hint, bare && styles.hintBare]}>
@@ -120,25 +122,19 @@ export function ProfileNurseQualificationsSection({ bare }: Props) {
           const on =
             item.code === 'AUTRE' ? showOtherFields : qualificationCodes.includes(item.code);
           return (
-            <Pressable
+            <View
               key={item.code}
-              onPress={() => !busy && toggleQualification(item.code, !on)}
               style={[styles.row, on && styles.rowEnabled, busy && styles.rowBusy]}
             >
-              <View style={styles.rowText}>
-                <Text style={styles.rowTitle}>{item.label}</Text>
-                <Text style={[styles.status, on ? styles.statusOn : styles.statusOff]}>
-                  {on ? 'Activé' : 'Désactivé'}
-                </Text>
-              </View>
-              <Switch
+              <Text style={styles.rowTitle} numberOfLines={1}>
+                {item.label}
+              </Text>
+              <ToggleSwitch
                 value={on}
                 disabled={busy}
                 onValueChange={(v) => toggleQualification(item.code, v)}
-                trackColor={{ false: colors.border, true: colors.primaryMid }}
-                thumbColor={on ? colors.primary : colors.textTertiary}
               />
-            </Pressable>
+            </View>
           );
         })}
       </View>
@@ -215,8 +211,11 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[3],
-    padding: spacing[3],
+    alignSelf: 'stretch',
+    width: '100%',
+    minHeight: 52,
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -226,21 +225,16 @@ const styles = StyleSheet.create({
     borderColor: colors.primaryMid,
     backgroundColor: colors.primaryLight,
   },
-  rowBusy: { opacity: 0.6 },
-  rowText: { flex: 1, gap: 2 },
+  rowBusy: { opacity: 0.55 },
   rowTitle: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    marginRight: spacing[3],
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
     color: colors.textPrimary,
   },
-  status: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize['2xs'],
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  statusOn: { color: colors.primary },
-  statusOff: { color: colors.textTertiary },
   otherBlock: {
     gap: spacing[2],
     marginTop: spacing[2],

@@ -15,10 +15,11 @@ type Variant =
   | 'secondary'
   | 'outline'
   | 'ghost'
+  | 'muted'
   | 'destructive'
   | 'dangerOutline'
   | 'teal';
-type Size = 'sm' | 'md' | 'lg';
+type Size = 'mini' | 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends Omit<PressableProps, 'style'> {
   title: string;
@@ -36,7 +37,9 @@ const variantStyle: Record<Variant, object> = {
   secondary: { backgroundColor: colors.primaryMid },
   outline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.primary },
   ghost: { backgroundColor: 'transparent' },
+  muted: { backgroundColor: colors.surfaceSubtle },
   destructive: { backgroundColor: colors.error },
+  dangerOutline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.error },
   teal: { backgroundColor: colors.primaryDark },
 };
 
@@ -45,18 +48,24 @@ const textColor: Record<Variant, string> = {
   secondary: colors.primary,
   outline: colors.primary,
   ghost: colors.textSecondary,
+  muted: colors.textSecondary,
   destructive: colors.textInverse,
   dangerOutline: colors.error,
   teal: colors.textInverse,
 };
 
-const sizeStyle: Record<Size, { paddingVertical: number; paddingHorizontal: number; borderRadius: number }> = {
-  sm: { paddingVertical: spacing[2], paddingHorizontal: spacing[4], borderRadius: radius.md },
-  md: { paddingVertical: spacing[3], paddingHorizontal: spacing[5], borderRadius: radius.lg },
-  lg: { paddingVertical: spacing[4], paddingHorizontal: spacing[6], borderRadius: radius.xl },
+const sizeStyle: Record<
+  Size,
+  { paddingVertical: number; paddingHorizontal: number; borderRadius: number; minHeight: number }
+> = {
+  mini: { paddingVertical: 4, paddingHorizontal: 6, borderRadius: radius.sm, minHeight: 28 },
+  sm: { paddingVertical: spacing[2], paddingHorizontal: spacing[4], borderRadius: radius.md, minHeight: 44 },
+  md: { paddingVertical: spacing[3], paddingHorizontal: spacing[5], borderRadius: radius.lg, minHeight: 44 },
+  lg: { paddingVertical: spacing[4], paddingHorizontal: spacing[6], borderRadius: radius.xl, minHeight: 48 },
 };
 
 const textSize: Record<Size, number> = {
+  mini: fontSize['2xs'],
   sm: fontSize.sm,
   md: fontSize.base,
   lg: fontSize.md,
@@ -107,8 +116,16 @@ function ButtonComponent({
 
   const isDisabled = disabled || loading;
 
+  const isMini = size === 'mini';
+
   return (
-    <Animated.View style={[fullWidth && styles.fullWidth, animatedStyle]}>
+    <Animated.View
+      style={[
+        fullWidth && styles.fullWidth,
+        isMini && styles.inlineWrap,
+        animatedStyle,
+      ]}
+    >
       <Pressable
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -116,6 +133,7 @@ function ButtonComponent({
         disabled={isDisabled}
         style={[
           styles.base,
+          { minHeight: sizeStyle[size].minHeight, gap: isMini ? 3 : 0 },
           variantStyle[variant],
           sizeStyle[size],
           isDisabled && styles.disabled,
@@ -128,7 +146,10 @@ function ButtonComponent({
           <ActivityIndicator
             size="small"
             color={
-              variant === 'outline' || variant === 'ghost' || variant === 'secondary'
+              variant === 'outline' ||
+              variant === 'ghost' ||
+              variant === 'secondary' ||
+              variant === 'muted'
                 ? colors.primary
                 : variant === 'dangerOutline'
                   ? colors.error
@@ -140,9 +161,13 @@ function ButtonComponent({
             {leftIcon ?? null}
             <Animated.Text
               style={[
-                styles.text,
+                isMini ? styles.textMini : styles.text,
                 { color: textColor[variant], fontSize: textSize[size] },
-                leftIcon || rightIcon ? styles.textWithIcon : null,
+                leftIcon || rightIcon
+                  ? isMini
+                    ? styles.textWithIconMini
+                    : styles.textWithIcon
+                  : null,
               ]}
             >
               {title}
@@ -162,7 +187,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
+  },
+  inlineWrap: {
+    flexShrink: 0,
+    alignSelf: 'center',
   },
   fullWidth: {
     width: '100%',
@@ -171,8 +199,15 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.semiBold,
     letterSpacing: 0.1,
   },
+  textMini: {
+    fontFamily: fontFamily.medium,
+    letterSpacing: 0,
+  },
   textWithIcon: {
     marginHorizontal: spacing[2],
+  },
+  textWithIconMini: {
+    marginHorizontal: 0,
   },
   disabled: {
     opacity: 0.45,

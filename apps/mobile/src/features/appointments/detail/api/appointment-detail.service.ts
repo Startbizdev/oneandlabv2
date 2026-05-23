@@ -46,6 +46,7 @@ export interface ShareForNurseData {
   sharePath?: string;
   shareText?: string;
   shareTextAfterUrl?: string;
+  repended?: boolean;
 }
 
 export async function fetchAppointmentHistory(id: string) {

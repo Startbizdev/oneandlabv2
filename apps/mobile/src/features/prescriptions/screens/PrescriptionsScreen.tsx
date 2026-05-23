@@ -1,11 +1,6 @@
 import { useMemo, useState } from 'react';
-import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { FilePenLine, History, PlusCircle } from 'lucide-react-native';
@@ -16,7 +11,7 @@ import { fetchMedicalDocuments } from '@/features/appointments/detail/api/appoin
 import { fetchAppointmentsPaginated } from '@/features/appointments/api/appointments.service';
 import { SelectField } from '@/components/ui/SelectField';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/Button';
 import { queryKeys } from '@/lib/query-keys';
 import { downloadMedicalDocument } from '@/lib/downloads/download-medical-document';
@@ -115,15 +110,12 @@ export function PrescriptionsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView
+      <KeyboardScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
-        contentInsetAdjustmentBehavior="automatic"
         refreshControl={
           <RefreshControl refreshing={listQ.isRefetching} onRefresh={() => void refreshList()} />
         }
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>Ordonnances</Text>
@@ -139,10 +131,7 @@ export function PrescriptionsScreen() {
           </View>
 
           {listQ.isLoading ? (
-            <View style={styles.skeletons}>
-              <Skeleton height={120} borderRadius={radius.xl} />
-              <Skeleton height={120} borderRadius={radius.xl} />
-            </View>
+            <SkeletonList count={2} itemHeight={120} gap={spacing[3]} />
           ) : (listQ.data?.rows ?? []).length === 0 ? (
             <EmptyState
               Icon={FilePenLine}
@@ -245,7 +234,7 @@ export function PrescriptionsScreen() {
             </View>
           ) : null}
         </View>
-      </ScrollView>
+      </KeyboardScrollView>
     </View>
   );
 }

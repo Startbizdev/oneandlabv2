@@ -1,9 +1,17 @@
 import { useMemo } from 'react';
+import { Mail, MessageCircle, Phone } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
+import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { Button } from '@/components/ui/Button';
+import { SkeletonRdvCarePlaceholder } from '@/components/ui/skeletons';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
-import { buildRdvInfoContent } from '../../utils/build-rdv-info-rows';
-import { ContactActionBar } from './ContactActionBar';
+import {
+  buildRdvBaseRows,
+  buildRdvCareRows,
+  type RdvInfoRow,
+} from '../../utils/build-rdv-info-rows';
+import { buildPatientContactButtons } from '@/utils/contact-actions';
 import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { rdvDetailSectionStyles } from './rdv-detail-section-styles';
@@ -17,6 +25,92 @@ interface Props {
   omitCareFields?: boolean;
   /** Actes liés : soins regroupés dans cette carte (même UX que RDV simple). */
   batch?: Appointment[];
+  /** Lot multi-RDV : attendre le chargement des fratries avant d’afficher. */
+  batchLoading?: boolean;
+}
+
+const CONTACT_ICONS = {
+  phone: Phone,
+  message: MessageCircle,
+  email: Mail,
+} as const;
+
+function splitRowsForCareInsert(rows: RdvInfoRow[]): {
+  beforeCare: RdvInfoRow[];
+  afterCare: RdvInfoRow[];
+} {
+  const dateIdx = rows.findIndex((r) => r.kind === 'field' && r.label === 'Date & créneau');
+  if (dateIdx >= 0) {
+    return {
+      beforeCare: rows.slice(0, dateIdx + 1),
+      afterCare: rows.slice(dateIdx + 1),
+    };
+  }
+  const addrIdx = rows.findIndex((r) => r.kind === 'address');
+  if (addrIdx >= 0) {
+    return {
+      beforeCare: rows.slice(0, addrIdx + 1),
+      afterCare: rows.slice(addrIdx + 1),
+    };
+  }
+  return { beforeCare: [], afterCare: rows };
+}
+
+function expectsCareRows(apt: Appointment, omitCareFields: boolean, batch?: Appointment[]) {
+  if (omitCareFields && (batch?.length ?? 0) <= 1) return false;
+  return isNursingAppointment(apt.type) || isBloodTestAppointment(apt.type);
+}
+
+function InfoRow({
+  row,
+  index,
+  onAddressPress,
+}: {
+  row: RdvInfoRow;
+  index: number;
+  onAddressPress?: () => void;
+}) {
+  if (row.kind === 'address' && !row.value.trim()) return null;
+
+  return (
+    <View
+      style={[
+        rdvDetailSectionStyles.sectionRow,
+        styles.infoRow,
+        index > 0 && rdvDetailSectionStyles.rowBorder,
+      ]}
+    >
+      {row.kind === 'address' ? (
+        <>
+          <Text style={styles.label}>Adresse</Text>
+          <Pressable onPress={onAddressPress} disabled={!onAddressPress}>
+            <Text style={styles.value}>{row.value}</Text>
+          </Pressable>
+        </>
+      ) : row.kind === 'identity' ? (
+        <>
+          <Text style={styles.label}>Patient</Text>
+          <Text style={styles.value}>
+            {[row.firstName, row.lastName].filter(Boolean).join(' ')}
+          </Text>
+        </>
+      ) : (
+        <>
+          <Text style={styles.label}>{row.label}</Text>
+          <View style={styles.valueRow}>
+            {row.emoji ? (
+              <Text style={styles.valueEmoji} accessibilityElementsHidden>
+                {row.emoji}
+              </Text>
+            ) : null}
+            <Text style={[styles.value, row.strikethrough && styles.valueMuted]}>
+              {row.value}
+            </Text>
+          </View>
+        </>
+      )}
+    </View>
+  );
 }
 
 export function RdvAppointmentInfoSection({
@@ -26,64 +120,118 @@ export function RdvAppointmentInfoSection({
   edgeToEdge = false,
   omitCareFields = false,
   batch,
+  batchLoading = false,
 }: Props) {
   const categoriesQ = useAppointmentCareCategories();
   const categories = categoriesQ.data;
+  const catalogReady = categoriesQ.isFetched;
 
-  const { rows } = useMemo(
-    () => buildRdvInfoContent(apt, viewer, { omitCareFields, categories, batch }),
-    [apt, viewer, omitCareFields, categories, batch],
+  const baseRows = useMemo(() => buildRdvBaseRows(apt, viewer), [apt, viewer]);
+
+  const careRows = useMemo(() => {
+    const multiBatch = (batch?.length ?? 0) > 1;
+    if (batchLoading && multiBatch) return [];
+    return buildRdvCareRows(apt, { omitCareFields, categories, batch });
+  }, [apt, omitCareFields, categories, batch, batchLoading]);
+
+  const { beforeCare, afterCare } = useMemo(
+    () => splitRowsForCareInsert(baseRows),
+    [baseRows],
   );
 
-  if (!rows.length) return null;
+  const contactButtons = useMemo(
+    () => buildPatientContactButtons(apt, viewer),
+    [apt, viewer],
+  );
+
+  const needsCare = expectsCareRows(apt, omitCareFields, batch);
+  const carePending =
+    needsCare &&
+    careRows.length === 0 &&
+    ((batch?.length ?? 0) > 1 ? batchLoading : !catalogReady);
+
+  const hasContent =
+    beforeCare.length > 0 ||
+    afterCare.length > 0 ||
+    careRows.length > 0 ||
+    carePending ||
+    contactButtons.length > 0;
+
+  if (!hasContent) return null;
+
+  let rowIndex = 0;
 
   return (
     <View style={[rdvDetailSectionStyles.card, edgeToEdge && rdvDetailSectionStyles.cardEdge]}>
       <View>
-        {rows.map((row, i) => (
+        {beforeCare.map((row) => {
+          const el = (
+            <InfoRow
+              key={`${row.kind}-${rowIndex}`}
+              row={row}
+              index={rowIndex}
+              onAddressPress={onAddressPress}
+            />
+          );
+          rowIndex += 1;
+          return el;
+        })}
+
+        {careRows.map((row) => {
+          const el = (
+            <InfoRow
+              key={`care-${row.kind}-${rowIndex}-${'label' in row ? row.label : ''}`}
+              row={row}
+              index={rowIndex}
+              onAddressPress={onAddressPress}
+            />
+          );
+          rowIndex += 1;
+          return el;
+        })}
+
+        {carePending ? <SkeletonRdvCarePlaceholder count={3} /> : null}
+
+        {afterCare.map((row) => {
+          const el = (
+            <InfoRow
+              key={`${row.kind}-${rowIndex}-${'label' in row ? row.label : ''}`}
+              row={row}
+              index={rowIndex}
+              onAddressPress={onAddressPress}
+            />
+          );
+          rowIndex += 1;
+          return el;
+        })}
+
+        {contactButtons.length > 0 ? (
           <View
-            key={`${row.kind}-${i}`}
             style={[
               rdvDetailSectionStyles.sectionRow,
-              styles.infoRow,
-              i > 0 && rdvDetailSectionStyles.rowBorder,
+              styles.actionsRow,
+              rowIndex > 0 && rdvDetailSectionStyles.rowBorder,
             ]}
           >
-            {row.kind === 'actions' ? (
-              <ContactActionBar actions={row.actions} />
-            ) : row.kind === 'address' ? (
-              <>
-                <Text style={styles.label}>Adresse</Text>
-                <Pressable onPress={onAddressPress} disabled={!onAddressPress}>
-                  <Text style={styles.value}>{row.value}</Text>
-                </Pressable>
-              </>
-            ) : row.kind === 'identity' ? (
-              <>
-                <Text style={styles.label}>Patient</Text>
-                <Text style={styles.value}>
-                  {[row.firstName, row.lastName].filter(Boolean).join(' ')}
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.label}>{row.label}</Text>
-                <View style={styles.valueRow}>
-                  {row.emoji ? (
-                    <Text style={styles.valueEmoji} accessibilityElementsHidden>
-                      {row.emoji}
-                    </Text>
-                  ) : null}
-                  <Text
-                    style={[styles.value, row.strikethrough && styles.valueMuted]}
-                  >
-                    {row.value}
-                  </Text>
-                </View>
-              </>
-            )}
+            <View style={styles.buttonRow}>
+              {contactButtons.map((btn) => {
+                const Icon = CONTACT_ICONS[btn.icon];
+                return (
+                  <View key={btn.key} style={styles.buttonCell}>
+                    <Button
+                      title={btn.label}
+                      size="sm"
+                      variant="primary"
+                      leftIcon={<Icon size={14} color={colors.textInverse} strokeWidth={2.5} />}
+                      onPress={btn.onPress}
+                      style={{ backgroundColor: btn.color, width: '100%' }}
+                    />
+                  </View>
+                );
+              })}
+            </View>
           </View>
-        ))}
+        ) : null}
       </View>
     </View>
   );
@@ -92,6 +240,17 @@ export function RdvAppointmentInfoSection({
 const styles = StyleSheet.create({
   infoRow: {
     gap: spacing[1],
+  },
+  actionsRow: {
+    paddingVertical: spacing[3],
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing[1.5],
+  },
+  buttonCell: {
+    flex: 1,
+    minWidth: 0,
   },
   label: {
     fontFamily: fontFamily.medium,

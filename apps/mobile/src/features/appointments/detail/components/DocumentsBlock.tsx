@@ -11,7 +11,7 @@ import { DocumentDownloadButton } from '@/features/documents/components/Document
 import { useDownloadedDocumentIds } from '@/features/documents/hooks/use-downloaded-document-ids';
 import type { LucideIcon } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton, SkeletonList } from '@/components/ui/skeletons';
 import { downloadMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { useToast } from '@/providers/ToastProvider';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
@@ -118,10 +118,7 @@ export function DocumentsBlock({
     return (
       <Card shadow="sm" padding="md">
         <Skeleton height={14} width={100} borderRadius={radius.sm} />
-        <View style={styles.skeletonRows}>
-          <Skeleton height={52} borderRadius={radius.lg} />
-          <Skeleton height={52} borderRadius={radius.lg} />
-        </View>
+        <SkeletonList count={2} itemHeight={52} gap={spacing[2]} />
       </Card>
     );
   }

@@ -21,6 +21,7 @@ import {
   Heart,
   Route,
   Scale,
+  ScanFace,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
@@ -91,6 +92,13 @@ function getSections(
         icon: User,
         label: 'Mon profil',
         onPress: () => navigate('/profile'),
+      },
+      {
+        icon: ScanFace,
+        label: 'Face ID',
+        onPress: () => navigate('/profile/security'),
+        iconColor: '#0D9488',
+        iconBg: '#F0FDFA',
       },
       ...(role === 'patient'
         ? [

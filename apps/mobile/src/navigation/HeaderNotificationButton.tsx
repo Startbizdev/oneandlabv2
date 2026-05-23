@@ -1,10 +1,9 @@
 import type { ReactElement } from 'react';
 import type { NativeStackHeaderRightProps } from '@react-navigation/native-stack';
 import type { Href } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Bell } from 'lucide-react-native';
-import { HeaderButton } from '@react-navigation/elements';
 import {
   HEADER_ACTION_MARGIN_RIGHT,
   HeaderActionButton,
@@ -23,10 +22,12 @@ export function HeaderNotificationBell() {
 
   return (
     <View style={styles.wrap}>
-      <HeaderButton
-        accessibilityLabel="Notifications"
+      <Pressable
         onPress={() => router.push(getNotificationsPath(role))}
+        hitSlop={8}
         style={styles.btn}
+        accessibilityRole="button"
+        accessibilityLabel="Notifications"
       >
         <Bell size={22} color={colors.primary} strokeWidth={2.25} />
         {badgeCount > 0 ? (
@@ -34,7 +35,7 @@ export function HeaderNotificationBell() {
             <Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text>
           </View>
         ) : null}
-      </HeaderButton>
+      </Pressable>
     </View>
   );
 }
@@ -81,7 +82,10 @@ const styles = StyleSheet.create({
     paddingRight: spacing[1],
   },
   btn: {
-    marginHorizontal: 0,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   badge: {
     position: 'absolute',

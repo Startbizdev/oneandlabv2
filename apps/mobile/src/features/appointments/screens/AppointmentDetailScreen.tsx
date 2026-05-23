@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { isNursingAppointment, isPendingIncomingOffer } from '@oneandlab/shared-utils';
+import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { SkeletonStaffAppointmentDetail } from '@/components/ui/skeletons';
 import { useAppointmentDetailScreen } from '../detail/hooks/use-appointment-detail-screen';
 import { RdvDocumentsPremiumPanel } from '../detail/components/RdvDocumentsPremiumPanel';
 import { DetailSidebarActions } from '../detail/components/DetailSidebarActions';
@@ -17,7 +17,6 @@ import { StaffPatientKvSection } from '../detail/components/StaffPatientKvSectio
 import { PatientAssigneeRows } from '../detail/components/patient/PatientAssigneeRows';
 import { RdvAppointmentInfoSection } from '../detail/components/layout/RdvAppointmentInfoSection';
 import { DetailSegmentBar } from '../detail/components/layout/DetailSegmentBar';
-import { RdvDetailShareFooter } from '../detail/components/layout/RdvDetailShareFooter';
 import { DetailTerminalBanner } from '../detail/components/layout/DetailTerminalBanner';
 import { isCarePhotoGalleryContext } from '../detail/utils/care-photo-rules';
 import { reschedulePathForRole } from '../detail/utils/appointment-detail-role-config';
@@ -106,29 +105,22 @@ export function AppointmentDetailScreen({ role }: Props) {
 
   if (s.isLoading || !s.apt || !primary) {
     return (
-      <View style={styles.loading}>
-        <SkeletonGroup count={4} height={40} gap={8} />
-      </View>
+      <SkeletonStaffAppointmentDetail
+        showPhotosTab={config.showCarePhotosBlock}
+        showAssignees
+        showActions={config.showActionsBlock}
+      />
     );
   }
 
   if (isIncomingOffer) {
-    return (
-      <View style={styles.loading}>
-        <SkeletonGroup count={2} height={40} gap={8} />
-      </View>
-    );
+    return <SkeletonStaffAppointmentDetail showAssignees={false} showActions={false} />;
   }
 
   const { batchSorted, isMultiBatch, canceled } = s;
   const editPath = config.canReschedule && id ? reschedulePathForRole(role, id) : null;
   const showPrescription =
     role === 'pro' && config.showPrescriptionBlock && !isAppointmentCanceled(primary.status);
-  const showShareFooter =
-    config.showShareBlock &&
-    isNursingAppointment(primary.type) &&
-    primary.status !== 'completed' &&
-    !canceled;
 
   return (
     <>
@@ -167,6 +159,7 @@ export function AppointmentDetailScreen({ role }: Props) {
                   viewer={user}
                   edgeToEdge
                   batch={isMultiBatch ? batchSorted : undefined}
+                  batchLoading={s.siblingsLoading}
                   onAddressPress={() => openWazeForAppointment(primary)}
                 />
               </View>
@@ -190,19 +183,15 @@ export function AppointmentDetailScreen({ role }: Props) {
                     viewerId={user?.id}
                     apt={primary}
                     edgeToEdge
+                    shareData={s.shareQ.data ?? undefined}
+                    shareLoading={s.shareQ.isLoading}
+                    onShareDone={s.refreshAll}
                     onReschedule={() => {
                       if (editPath) router.push(editPath as never);
                     }}
                     onCancel={() => setCancelOpen(true)}
                   />
                 </View>
-              ) : null}
-
-              {showShareFooter ? (
-                <RdvDetailShareFooter
-                  shareData={s.shareQ.data ?? undefined}
-                  loading={s.shareQ.isLoading}
-                />
               ) : null}
             </View>
           ) : null}
@@ -220,7 +209,12 @@ export function AppointmentDetailScreen({ role }: Props) {
           ) : null}
 
           {activeSegment === 'photos' && showCarePhotos ? (
-            <DetailCarePhotosPanel apt={primary} userId={user?.id} readOnly={role === 'pro'} />
+            <DetailCarePhotosPanel
+              apt={primary}
+              userId={user?.id}
+              readOnly={role === 'pro'}
+              viewerRole={role}
+            />
           ) : null}
         </View>
       </ScrollView>

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Mail } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
@@ -79,17 +80,12 @@ export function ProfilePreleveurView() {
   });
 
   if (q.isLoading) {
-    return (
-      <View style={{ padding: spacing[4], gap: spacing[3] }}>
-        <Skeleton height={120} borderRadius={16} />
-        <Skeleton height={160} borderRadius={16} />
-      </View>
-    );
+    return <SkeletonProfileScreen cards={2} />;
   }
 
   return (
     <>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <KeyboardScrollView contentContainerStyle={styles.scroll}>
         <ProfileHero
           firstName={firstName}
           lastName={lastName}
@@ -121,7 +117,7 @@ export function ProfilePreleveurView() {
           fullWidth
           size="lg"
         />
-      </ScrollView>
+      </KeyboardScrollView>
 
       <BottomSheet
         visible={photosOpen}

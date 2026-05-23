@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Star } from 'lucide-react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { api } from '@/api/client';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
@@ -103,7 +103,7 @@ export function PatientReviewsScreen() {
     <View style={styles.container}>
       {isLoading ? (
         <View style={styles.loading}>
-          <SkeletonGroup count={3} height={130} gap={12} />
+          <SkeletonList count={3} itemHeight={130} gap={12} />
         </View>
       ) : (
         <FlatList

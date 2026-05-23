@@ -100,7 +100,8 @@ export function nursingSharedOptionKeys(
   return shared;
 }
 
-function buildNursingSharedIdenticalKvRows(
+/** Options métier strictement identiques sur tous les actes → une ligne commune. */
+export function buildNursingSharedIdenticalKvRows(
   items: Array<Record<string, unknown>>,
   categories: CareCategory[],
 ): DetailKvRow[] {

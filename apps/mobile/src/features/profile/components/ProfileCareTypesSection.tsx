@@ -1,6 +1,9 @@
-import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { SkeletonList } from '@/components/ui/skeletons';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { HeartPulse } from 'lucide-react-native';
+import { careCategoryEmojiForCategory } from '@oneandlab/shared-utils';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import {
   fetchNurseCategoryPreferences,
@@ -10,12 +13,20 @@ import type { NurseCategoryPreference } from '@/features/profile/types/profile.t
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { colors, radius, spacing } from '@/theme';
+import { colors, palette, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
   /** Liste seule (écran dédié, sans carte section). */
   bare?: boolean;
+}
+
+function preferenceEmoji(p: NurseCategoryPreference): string {
+  return careCategoryEmojiForCategory({
+    name: p.name ?? '',
+    icon: p.icon ?? null,
+    type: p.type === 'blood_test' ? 'blood_test' : 'nursing',
+  });
 }
 
 export function ProfileCareTypesSection({ bare }: Props) {
@@ -49,7 +60,7 @@ export function ProfileCareTypesSection({ bare }: Props) {
   const updatingId = toggle.isPending ? toggle.variables?.categoryId : null;
 
   const body = q.isLoading ? (
-    <ActivityIndicator color={colors.primary} style={{ paddingVertical: spacing[4] }} />
+    <SkeletonList count={6} itemHeight={48} gap={spacing[2]} />
   ) : prefs.length === 0 ? (
     <Text style={[styles.empty, bare && styles.emptyBare]}>
       Aucune catégorie de soins disponible pour le moment.
@@ -60,32 +71,27 @@ export function ProfileCareTypesSection({ bare }: Props) {
         const enabled = Boolean(p.is_enabled);
         const busy = updatingId === p.category_id;
         return (
-          <Pressable
+          <View
             key={p.category_id}
-            onPress={() =>
-              !busy && toggle.mutate({ categoryId: p.category_id, enabled: !enabled })
-            }
             style={[styles.row, enabled && styles.rowEnabled, busy && styles.rowBusy]}
           >
-            <View style={styles.rowText}>
-              <Text style={styles.rowTitle}>{p.name ?? p.category_id}</Text>
-              {p.description ? (
-                <Text style={styles.rowDesc} numberOfLines={2}>
-                  {p.description}
-                </Text>
-              ) : null}
-              <Text style={[styles.status, enabled ? styles.statusOn : styles.statusOff]}>
-                {enabled ? 'Activé' : 'Désactivé'}
+            <View style={[styles.emojiTile, enabled && styles.emojiTileEnabled]}>
+              <Text style={styles.emoji} accessibilityElementsHidden>
+                {preferenceEmoji(p)}
               </Text>
             </View>
-            <Switch
+            <Text
+              style={[styles.rowTitle, !enabled && styles.rowTitleOff]}
+              numberOfLines={1}
+            >
+              {p.name ?? p.category_id}
+            </Text>
+            <ToggleSwitch
               value={enabled}
               disabled={busy}
               onValueChange={(v) => toggle.mutate({ categoryId: p.category_id, enabled: v })}
-              trackColor={{ false: colors.border, true: colors.primaryMid }}
-              thumbColor={enabled ? colors.primary : colors.textTertiary}
             />
-          </Pressable>
+          </View>
         );
       })}
     </View>
@@ -114,41 +120,54 @@ const styles = StyleSheet.create({
   },
   emptyBare: { paddingVertical: spacing[6] },
   list: { gap: spacing[2] },
-  listBare: { paddingHorizontal: spacing[4], paddingVertical: spacing[2] },
+  listBare: { paddingTop: spacing[1] },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[3],
-    padding: spacing[3],
+    alignSelf: 'stretch',
+    width: '100%',
+    minHeight: 52,
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.surface,
   },
   rowEnabled: {
-    borderColor: colors.primaryMid,
+    borderColor: palette.brand[200],
     backgroundColor: colors.primaryLight,
   },
-  rowBusy: { opacity: 0.6 },
-  rowText: { flex: 1, gap: 2 },
+  rowBusy: { opacity: 0.55 },
+  emojiTile: {
+    width: 36,
+    height: 36,
+    flexShrink: 0,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  emojiTileEnabled: {
+    backgroundColor: colors.surface,
+    borderColor: palette.brand[200],
+  },
+  emoji: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
   rowTitle: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    marginHorizontal: spacing[3],
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
     color: colors.textPrimary,
   },
-  rowDesc: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
+  rowTitleOff: {
     color: colors.textSecondary,
-    lineHeight: fontSize.xs * 1.4,
   },
-  status: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize['2xs'],
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginTop: 2,
-  },
-  statusOn: { color: colors.primary },
-  statusOff: { color: colors.textTertiary },
 });

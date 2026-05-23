@@ -1,10 +1,11 @@
-import { Alert, Linking } from 'react-native';
+import { Alert, Linking, Share } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarPlus,
   MessageSquare,
   Navigation,
   RefreshCcw,
+  Share2,
   XCircle,
 } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
@@ -13,6 +14,11 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { updateAppointment } from '../../api/appointments.service';
+import {
+  fetchShareForNurse,
+  type ShareForNurseData,
+} from '../api/appointment-detail.service';
+import { buildNurseShareMessage } from '../utils/nurse-share-message';
 import {
   appointmentSidebarCardVisible,
   getAppointmentSidebarTerminalEmpty,
@@ -60,6 +66,9 @@ interface Props {
   onReschedule: () => void;
   onCancel: () => void;
   edgeToEdge?: boolean;
+  shareData?: ShareForNurseData | null;
+  shareLoading?: boolean;
+  onShareDone?: () => void;
 }
 
 export function DetailSidebarActions({
@@ -69,6 +78,9 @@ export function DetailSidebarActions({
   onReschedule,
   onCancel,
   edgeToEdge = false,
+  shareData,
+  shareLoading = false,
+  onShareDone,
 }: Props) {
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -83,6 +95,30 @@ export function DetailSidebarActions({
       toast('Demande redispatchée', { type: 'success' });
     },
     onError: (e) => handleApiError(e, toast, 'redispatch'),
+  });
+
+  const shareMut = useMutation({
+    mutationFn: async () => {
+      let data = shareData ?? null;
+      if (!buildNurseShareMessage(data)) {
+        const res = await fetchShareForNurse(apt.id);
+        if (!res.success || !res.data) {
+          throw new Error(res.error ?? 'Impossible de préparer le partage.');
+        }
+        data = res.data;
+      }
+      const message = buildNurseShareMessage(data);
+      if (!message) throw new Error('Impossible de préparer le partage.');
+      await Share.share({ message });
+      return data;
+    },
+    onSuccess: (data) => {
+      void qc.invalidateQueries({
+        queryKey: ['appointments', 'share-for-nurse', apt.id],
+      });
+      if (data?.repended) onShareDone?.();
+    },
+    onError: (e) => handleApiError(e, toast, 'partage'),
   });
 
   if (!appointmentSidebarCardVisible(role, apt)) return null;
@@ -103,6 +139,8 @@ export function DetailSidebarActions({
     role === 'nurse' && status === 'confirmed' && !nursing && !blood;
   const showRedispatchInNursingBlock =
     role === 'nurse' && nursing && status === 'confirmed' && !canceled;
+  const showShareNursing =
+    role === 'nurse' && nursing && status !== 'completed' && !canceled;
 
   const confirmRedispatch = () => {
     Alert.alert(
@@ -159,6 +197,18 @@ export function DetailSidebarActions({
       tone: 'caution',
       loading: redispatchMut.isPending,
       onPress: confirmRedispatch,
+    });
+  }
+
+  if (showShareNursing) {
+    actions.push({
+      key: 'share',
+      label: 'Partager le rendez-vous',
+      hint: 'Lien token pour un confrère infirmier',
+      icon: Share2,
+      tone: 'neutral',
+      loading: shareMut.isPending || shareLoading,
+      onPress: () => shareMut.mutate(),
     });
   }
 

@@ -10,6 +10,11 @@ import {
   saveAuthSession,
   saveAuthUser,
 } from '@/lib/auth-storage';
+import {
+  disableBiometricLogin,
+  getBiometricStoredUserId,
+  refreshBiometricCredentials,
+} from '@/lib/biometric-auth';
 
 interface AuthState {
   token: string | null;
@@ -27,10 +32,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isHydrated: false,
 
   setSession: async (token, user) => {
+    const storedUserId = await getBiometricStoredUserId();
+    if (storedUserId && storedUserId !== user.id) {
+      await disableBiometricLogin();
+    }
     await saveAuthSession(token, user);
     setAuthToken(token);
     set({ token, user });
     clearCsrfCache();
+    void refreshBiometricCredentials(token, user);
   },
 
   clearSession: async () => {

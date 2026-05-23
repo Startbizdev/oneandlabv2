@@ -2,18 +2,19 @@ import { useMemo, useRef, useState } from 'react';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import {
   RefreshControl,
-  ScrollView,
   StyleSheet,
   View,
   type ScrollView as ScrollViewType,
 } from 'react-native';
+import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth-store';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { SkeletonPatientAppointmentDetail } from '@/components/ui/skeletons';
 import { useAppointmentDetailScreen } from '../detail/hooks/use-appointment-detail-screen';
 import { CancelAppointmentSheet } from '../detail/components/blocks/CancelAppointmentSheet';
 import { PatientRdvUnifiedCard } from '../detail/components/patient/PatientRdvUnifiedCard';
+import { PatientAssigneeRows } from '../detail/components/patient/PatientAssigneeRows';
 import { PatientDetailHubCard } from '../detail/components/patient/PatientDetailHubCard';
 import { RdvDocumentsPremiumPanel } from '../detail/components/RdvDocumentsPremiumPanel';
 import {
@@ -101,11 +102,7 @@ export function PatientAppointmentDetailScreen() {
   });
 
   if (s.isLoading || !s.apt || !primary) {
-    return (
-      <View style={styles.loading}>
-        <SkeletonGroup count={4} height={40} gap={8} />
-      </View>
-    );
+    return <SkeletonPatientAppointmentDetail />;
   }
 
   const { batchSorted, isMultiBatch, canceled, cancellableForPatient } = s;
@@ -113,7 +110,7 @@ export function PatientAppointmentDetailScreen() {
 
   return (
     <>
-      <ScrollView
+      <KeyboardScrollView
         ref={scrollRef}
         style={styles.container}
         contentInsetAdjustmentBehavior="automatic"
@@ -159,8 +156,10 @@ export function PatientAppointmentDetailScreen() {
                   viewer={user}
                   edgeToEdge
                   batch={isMultiBatch ? batchSorted : undefined}
+                  batchLoading={s.siblingsLoading}
                 />
               </View>
+              <PatientAssigneeRows apt={primary} />
               <PatientRdvUnifiedCard
                 primary={primary}
                 batch={batchSorted}
@@ -198,7 +197,7 @@ export function PatientAppointmentDetailScreen() {
             </View>
           ) : null}
         </View>
-      </ScrollView>
+      </KeyboardScrollView>
 
       {cancelOpen && cancellableForPatient.length > 0 ? (
         <CancelAppointmentSheet

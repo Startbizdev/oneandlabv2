@@ -1,9 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { RdvDetailHeaderStatus } from './RdvDetailHeaderStatus';
-import { colors } from '@/theme';
+import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-/** Titre + statut dans la barre native (évite le fond blanc iOS de `headerRight`). */
+/** Titre + badge dans `headerTitle` — largeur intrinsèque (pas de flex:1 sur le titre). */
 export function RdvDetailNavTitle({
   title,
   status,
@@ -23,15 +23,13 @@ export function RdvDetailNavTitle({
 
 const styles = StyleSheet.create({
   row: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-    minWidth: 0,
+    gap: spacing[2],
+    maxWidth: '100%',
   },
   title: {
-    flex: 1,
+    flexShrink: 1,
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
     color: colors.textPrimary,

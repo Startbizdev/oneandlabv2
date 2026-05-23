@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Heart, Plus, Users } from 'lucide-react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { PatientRelativeFormSheet } from '@/features/patient-relatives/components/PatientRelativeFormSheet';
 import {
   createPatientRelative,
@@ -140,10 +140,7 @@ export function PatientRelativesScreen() {
   return (
     <View style={styles.container}>
       {isLoading ? (
-        <View style={styles.skeletons}>
-          <Skeleton height={80} borderRadius={radius.xl} />
-          <Skeleton height={80} borderRadius={radius.xl} />
-        </View>
+        <SkeletonList count={2} itemHeight={80} />
       ) : (
         <FlatList
           data={data ?? []}

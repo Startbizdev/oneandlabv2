@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
-  FadeInDown,
+  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -51,10 +51,8 @@ function NurseDemandesOfferCardComponent({ row, index = 0, onPress }: Props) {
   }, [onPress, navigateTarget]);
 
   return (
-    <Animated.View
-      entering={FadeInDown.delay(index * 50).duration(350).springify()}
-      style={[animStyle, cardStyles.cardShell]}
-    >
+    <Animated.View entering={FadeIn.delay(index * 50).duration(350)}>
+      <Animated.View style={[animStyle, cardStyles.cardShell]}>
       <Pressable
         onPressIn={() => {
           scale.value = withSpring(0.978, animation.spring.snappy);
@@ -77,6 +75,7 @@ function NurseDemandesOfferCardComponent({ row, index = 0, onPress }: Props) {
           />
         </View>
       </Pressable>
+      </Animated.View>
     </Animated.View>
   );
 }

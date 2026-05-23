@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, type ViewStyle } from 'react-native';
+import { StyleSheet, type ViewStyle, type ReactNode } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -53,6 +53,7 @@ function SkeletonComponent({
 }
 
 export const Skeleton = React.memo(SkeletonComponent);
+Skeleton.displayName = 'Skeleton';
 
 interface SkeletonGroupProps {
   count?: number;
@@ -72,6 +73,7 @@ function SkeletonGroupComponent({ count = 3, height = 80, gap = 12, style }: Ske
 }
 
 export const SkeletonGroup = React.memo(SkeletonGroupComponent);
+SkeletonGroup.displayName = 'SkeletonGroup';
 
 const styles = StyleSheet.create({
   base: {

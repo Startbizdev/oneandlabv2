@@ -62,6 +62,7 @@ const defaultValues: AppointmentFormSchema = {
   scheduled_at: '',
   availability_type: 'all_day',
   availability_range: [8, 12],
+  files: {},
 };
 
 export function useAppointmentForm(opts: {
@@ -138,6 +139,7 @@ export function useAppointmentForm(opts: {
       category_id: apt.category_id ?? '',
       scheduled_at: apt.scheduled_at ?? '',
       notes: String(fd.notes ?? ''),
+      files: {},
     });
     if (apt.patient_id) setSelectedPatientId(apt.patient_id);
   }, [appointmentQ.data, opts.mode, reset]);

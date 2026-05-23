@@ -16,6 +16,6 @@ module.exports = {
       usesCleartextTraffic: true,
       softwareKeyboardLayoutMode: 'resize',
     },
-    plugins: ['expo-font'],
+    plugins: [...(appJson.expo.plugins ?? []), 'expo-font'],
   },
 };

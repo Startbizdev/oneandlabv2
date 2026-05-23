@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import type { AuthUser } from '@oneandlab/shared-types';
 import { ArrowLeft } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +18,7 @@ import {
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { isDevBuild } from '@/config/env';
+import { offerBiometricEnrollment } from '@/features/auth/utils/offer-biometric-enrollment';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -42,10 +44,6 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onStepChange }: Props) {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
   const showDev = isDevBuild();
-
-  useEffect(() => {
-    onStepChange?.(step, email);
-  }, [step, email, onStepChange]);
 
   function goToOtp(mail: string) {
     setStep('otp');
@@ -113,7 +111,8 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onStepChange }: Props) {
         showAppNotAccessibleAlert(role);
         return;
       }
-      onSuccess();
+      const sessionUser = (me ?? user) as AuthUser;
+      offerBiometricEnrollment(token, sessionUser, onSuccess);
     } catch (e) {
       const msg = (e as Error).message;
       if (!msg.includes("n'a pas accès")) {
@@ -157,9 +156,10 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onStepChange }: Props) {
         value={otp}
         onChangeText={setOtp}
         keyboardType="number-pad"
+        textContentType="oneTimeCode"
+        autoComplete="sms-otp"
         maxLength={6}
         onSubmitEditing={onOtpSubmit}
-        returnKeyType="done"
         placeholder="000000"
       />
       <Button title="Se connecter" loading={loading} onPress={onOtpSubmit} fullWidth size="lg" />

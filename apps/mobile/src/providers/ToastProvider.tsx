@@ -1,85 +1,172 @@
-import React, { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BlurView } from 'expo-blur';
+import {
+  AlertTriangle,
+  CircleCheck,
+  CircleX,
+  Info,
+  type LucideIcon,
+} from 'lucide-react-native';
 import Animated, {
   FadeInDown,
+  FadeOutUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  Easing,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
-interface Toast {
+type ToastState = {
   id: number;
-  title: string;
-  message?: string;
+  line: string;
   type: ToastType;
-}
+};
+
+type ShowOpts = { message?: string; type?: ToastType };
 
 interface ToastContextValue {
-  show: (title: string, opts?: { message?: string; type?: ToastType }) => void;
+  show: (title: string, opts?: ShowOpts) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-const typeConfig: Record<ToastType, { bg: string; accent: string; icon: string }> = {
-  success: { bg: '#0D1B2A', accent: colors.success, icon: '✓' },
-  error: { bg: '#0D1B2A', accent: colors.error, icon: '✕' },
-  info: { bg: '#0D1B2A', accent: colors.primary, icon: 'ℹ' },
-  warning: { bg: '#0D1B2A', accent: colors.warning, icon: '!' },
+const DURATION_MS = 3200;
+const MAX_LINE_LEN = 72;
+
+const TYPE_META: Record<ToastType, { Icon: LucideIcon; iconColor: string; accent: string }> = {
+  success: { Icon: CircleCheck, iconColor: colors.success, accent: colors.success },
+  error: { Icon: CircleX, iconColor: colors.error, accent: colors.error },
+  info: { Icon: Info, iconColor: colors.primaryDark, accent: colors.primary },
+  warning: { Icon: AlertTriangle, iconColor: colors.warning, accent: colors.warning },
 };
 
-function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
-  const config = typeConfig[toast.type];
+/** Une seule ligne courte : titre seul, ou message seul si le titre est générique. */
+function buildToastLine(title: string, message?: string): string {
+  const t = title.trim();
+  const m = message?.trim();
+  if (!m) return t;
+  const genericTitle = /^(erreur|info|attention|succès|success)$/i.test(t);
+  const line = genericTitle ? m : `${t} — ${m}`;
+  if (line.length <= MAX_LINE_LEN) return line;
+  return `${line.slice(0, MAX_LINE_LEN - 1).trim()}…`;
+}
+
+function ToastCard({
+  toast,
+  onDismiss,
+}: {
+  toast: ToastState;
+  onDismiss: () => void;
+}) {
+  const meta = TYPE_META[toast.type];
+  const { Icon } = meta;
+  const progress = useSharedValue(1);
+  const trackWidth = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = 1;
+    progress.value = withTiming(0, {
+      duration: DURATION_MS,
+      easing: Easing.linear,
+    });
+  }, [progress, toast.id]);
+
+  const progressStyle = useAnimatedStyle(() => ({
+    width: trackWidth.value * progress.value,
+  }));
+
+  const Shell = Platform.OS === 'ios' ? BlurView : View;
+  const shellProps =
+    Platform.OS === 'ios'
+      ? { intensity: 80, tint: 'light' as const }
+      : { style: styles.androidShell };
+
   return (
     <Animated.View
-      entering={FadeInDown.springify().damping(22).stiffness(320)}
+      entering={FadeInDown.duration(280).springify().damping(20)}
+      exiting={FadeOutUp.duration(180)}
+      style={styles.toastWrap}
     >
-      <Pressable onPress={onDismiss} style={[styles.toast, { backgroundColor: config.bg }, elevation.lg]}>
-        <View style={[styles.accentBar, { backgroundColor: config.accent }]} />
-        <View style={styles.toastContent}>
-          <Animated.Text style={styles.toastTitle}>{toast.title}</Animated.Text>
-          {toast.message ? (
-            <Animated.Text style={styles.toastMessage}>{toast.message}</Animated.Text>
-          ) : null}
-        </View>
+      <Pressable
+        onPress={onDismiss}
+        accessibilityRole="alert"
+        accessibilityLabel={toast.line}
+        style={({ pressed }) => [styles.pressable, pressed && styles.pressablePressed]}
+      >
+        <Shell {...shellProps} style={styles.card}>
+          <View style={styles.row}>
+            <Icon size={17} color={meta.iconColor} strokeWidth={2.35} />
+            <Text style={styles.line} numberOfLines={1} ellipsizeMode="tail">
+              {toast.line}
+            </Text>
+          </View>
+          <View
+            style={styles.progressTrack}
+            onLayout={(e) => {
+              trackWidth.value = e.nativeEvent.layout.width;
+            }}
+          >
+            <Animated.View
+              style={[styles.progressFill, { backgroundColor: meta.accent }, progressStyle]}
+            />
+          </View>
+        </Shell>
       </Pressable>
     </Animated.View>
   );
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const { top } = useSafeAreaInsets();
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idRef = useRef(0);
 
-  const show = useCallback((title: string, opts?: { message?: string; type?: ToastType }) => {
-    const id = Date.now();
-    const type = opts?.type ?? 'info';
-
-    Haptics.notificationAsync(
-      type === 'success'
-        ? Haptics.NotificationFeedbackType.Success
-        : type === 'error'
-          ? Haptics.NotificationFeedbackType.Error
-          : Haptics.NotificationFeedbackType.Warning,
-    );
-
-    setToasts((prev) => [...prev, { id, title, message: opts?.message, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3800);
+  const hide = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setToast(null);
   }, []);
+
+  const show = useCallback(
+    (title: string, opts?: ShowOpts) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      idRef.current += 1;
+      setToast({
+        id: idRef.current,
+        line: buildToastLine(title, opts?.message),
+        type: opts?.type ?? 'info',
+      });
+      timerRef.current = setTimeout(hide, DURATION_MS);
+    },
+    [hide],
+  );
 
   return (
     <ToastContext.Provider value={{ show }}>
-      {children}
-      <View style={[styles.container, { top: top + 12 }]} pointerEvents="box-none">
-        {toasts.map((t) => (
-          <ToastItem
-            key={t.id}
-            toast={t}
-            onDismiss={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
-          />
-        ))}
+      <View style={styles.root}>
+        {children}
+        {toast ? (
+          <View
+            style={[styles.host, { top: top + spacing[2] }]}
+            pointerEvents="box-none"
+          >
+            <ToastCard key={toast.id} toast={toast} onDismiss={hide} />
+          </View>
+        ) : null}
       </View>
     </ToastContext.Provider>
   );
@@ -92,39 +179,61 @@ export function useToast() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    left: spacing[4],
-    right: spacing[4],
-    gap: spacing[2],
-    zIndex: 9999,
+  root: {
+    flex: 1,
   },
-  toast: {
+  host: {
+    position: 'absolute',
+    left: spacing[5],
+    right: spacing[5],
+    zIndex: 9999,
+    alignItems: 'center',
+  },
+  toastWrap: {
+    width: '100%',
+    maxWidth: 360,
+  },
+  pressable: {
+    width: '100%',
+    borderRadius: radius.full,
+    overflow: 'hidden',
+    ...elevation.md,
+  },
+  pressablePressed: {
+    opacity: 0.9,
+  },
+  card: {
+    borderRadius: radius.full,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(15, 23, 42, 0.07)',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.82)' : colors.surface,
+  },
+  androidShell: {
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-    minHeight: 52,
+    gap: spacing[2.5],
+    paddingVertical: spacing[2.5],
+    paddingHorizontal: spacing[3.5],
   },
-  accentBar: {
-    width: 4,
-    alignSelf: 'stretch',
-  },
-  toastContent: {
+  line: {
     flex: 1,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    gap: 2,
-  },
-  toastTitle: {
+    minWidth: 0,
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textInverse,
-    letterSpacing: 0.1,
-  },
-  toastMessage: {
-    fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: 'rgba(255,255,255,0.65)',
+    color: colors.textPrimary,
+    letterSpacing: -0.15,
+  },
+  progressTrack: {
+    height: 1.5,
+    backgroundColor: 'rgba(15, 23, 42, 0.05)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    opacity: 0.45,
   },
 });

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
+import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Globe, Mail } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { PRO_SANTE_EMPLOIS } from '@/constants/pro-emploi';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
@@ -107,17 +109,12 @@ export function ProfileProView() {
   });
 
   if (q.isLoading) {
-    return (
-      <View style={{ padding: spacing[4], gap: spacing[3] }}>
-        <Skeleton height={160} borderRadius={16} />
-        <Skeleton height={200} borderRadius={16} />
-      </View>
-    );
+    return <SkeletonProfileScreen cards={2} />;
   }
 
   return (
     <>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <KeyboardScrollView contentContainerStyle={styles.scroll}>
         <ProfileHero
           firstName={firstName}
           lastName={lastName}
@@ -160,20 +157,12 @@ export function ProfileProView() {
         </ProfileSection>
 
         <ProfileSection title="Présentation" description="Votre fiche publique sur Cary" Icon={Globe}>
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleInfo}>
-              <Text style={styles.toggleLabel}>Fiche publique</Text>
-              <Text style={styles.toggleHint}>
-                {publicEnabled ? 'Visible sur Cary' : 'Non visible'}
-              </Text>
-            </View>
-            <Switch
-              value={publicEnabled}
-              onValueChange={setPublicEnabled}
-              trackColor={{ false: colors.border, true: colors.primaryMid }}
-              thumbColor={publicEnabled ? colors.primary : colors.textTertiary}
-            />
-          </View>
+          <ProfileToggleRow
+            label="Fiche publique"
+            hint={publicEnabled ? 'Visible sur Cary' : 'Non visible'}
+            value={publicEnabled}
+            onValueChange={setPublicEnabled}
+          />
           <Input
             label="Biographie"
             value={biography}
@@ -192,7 +181,7 @@ export function ProfileProView() {
         </ProfileSection>
 
         <Button title="Enregistrer mon profil" loading={save.isPending} onPress={() => save.mutate()} fullWidth size="lg" />
-      </ScrollView>
+      </KeyboardScrollView>
 
       <BottomSheet
         visible={photosOpen}
@@ -247,23 +236,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: colors.textSecondary,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing[3],
-  },
-  toggleInfo: { flex: 1, gap: 2 },
-  toggleLabel: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-  },
-  toggleHint: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: colors.textTertiary,
   },
   emploiHints: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: -spacing[2] },
   hintChip: {

@@ -5,7 +5,8 @@ Application Expo (iOS / Android) pour patients, infirmiers, professionnels de sa
 ## Branding
 
 - Nom affiché : **Cary** (`app.json` → `expo.name`)
-- **Logo** (horizontal, splash + écran d’accueil) : `assets/logo-cary.png` — ne pas écraser via `icons:generate`
+- **Logo** (horizontal, écran d’accueil) : `assets/logo-cary.png` — ne pas écraser via `icons:generate`
+- **Splash natif** (lancement) : `assets/splash-logo.png` (dérivé du logo, ~200 px de large)
 - **Icône app** (symbole seul) : `assets/icon.png`, `adaptive-icon.png` ← `assets/cary-app-icon-source.png`
 - Régénérer les icônes app : `npm run icons:generate`
 - Deep links : schéma `cary://` (voir `src/config/brand.ts`)

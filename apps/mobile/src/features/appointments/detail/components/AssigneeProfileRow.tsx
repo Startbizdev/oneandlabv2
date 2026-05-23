@@ -1,8 +1,8 @@
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet } from 'react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
-import { ContactActionBar, type ContactAction } from './layout/ContactActionBar';
-import { colors, radius, spacing } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { DetailEntityRow } from '@/components/ui/DetailEntityRow';
+import { buildPhoneContactActions } from '@/utils/contact-actions';
+import { colors, radius } from '@/theme';
 
 interface Props {
   title: string;
@@ -13,28 +13,9 @@ interface Props {
   subtitle?: string;
   publicSlug?: string | null;
   onViewProfile?: () => void;
+  brandLogo?: 'cary';
+  showDivider?: boolean;
 }
-
-function phoneActions(phone?: string): ContactAction[] {
-  const tel = String(phone ?? '').trim().replace(/\s/g, '');
-  if (!tel) return [];
-  return [
-    {
-      key: 'phone',
-      label: 'Appeler',
-      icon: 'phone',
-      onPress: () => void Linking.openURL(`tel:${tel}`),
-    },
-    {
-      key: 'sms',
-      label: 'Message',
-      icon: 'message',
-      onPress: () => void Linking.openURL(`sms:${tel}`),
-    },
-  ];
-}
-
-const AVATAR = 40;
 
 export function AssigneeProfileRow({
   title,
@@ -45,76 +26,56 @@ export function AssigneeProfileRow({
   subtitle,
   publicSlug,
   onViewProfile,
+  brandLogo,
+  showDivider = true,
 }: Props) {
-  const actions = phoneActions(phone);
   const slug = publicSlug?.trim();
+  const hasProfile = Boolean(slug && onViewProfile);
+
+  const leading =
+    brandLogo === 'cary' ? (
+      <Image
+        source={require('../../../../../assets/logo-cary.png')}
+        style={styles.logo}
+        accessibilityLabel="Cary"
+      />
+    ) : (
+      <ProfileAvatar
+        profileImageUrl={profileImageUrl}
+        seed={name}
+        gender={gender}
+        size={36}
+        style={styles.avatar}
+      />
+    );
 
   return (
-    <View style={styles.wrap}>
-      <Text style={styles.rowTitle}>{title}</Text>
-      <View style={styles.row}>
-        <ProfileAvatar
-          profileImageUrl={profileImageUrl}
-          seed={name}
-          gender={gender}
-          size={AVATAR}
-          style={styles.avatarClip}
-        />
-        <View style={styles.body}>
-          <Text style={styles.name}>{name}</Text>
-          {subtitle ? <Text style={styles.sub}>{subtitle}</Text> : null}
-          {actions.length > 0 ? <ContactActionBar actions={actions} /> : null}
-          {slug && onViewProfile ? (
-            <Pressable onPress={onViewProfile} hitSlop={8}>
-              <Text style={styles.profileLink}>Voir le profil</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
-    </View>
+    <DetailEntityRow
+      eyebrow={title}
+      title={name}
+      subtitle={subtitle}
+      leading={leading}
+      contactActions={buildPhoneContactActions(phone)}
+      onProfilePress={hasProfile ? onViewProfile : undefined}
+      profileAccessibilityLabel={`Voir le profil de ${name}`}
+      showDivider={showDivider}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    gap: spacing[2],
-    paddingVertical: spacing[1],
-  },
-  rowTitle: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-  },
-  row: {
-    flexDirection: 'row',
-    gap: spacing[3],
-    alignItems: 'flex-start',
-  },
-  avatarClip: {
-    borderWidth: 1,
+  avatar: {
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderLight,
     borderRadius: radius.full,
   },
-  body: {
-    flex: 1,
-    gap: spacing[2],
-    minWidth: 0,
-  },
-  name: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.base,
-    color: colors.textPrimary,
-  },
-  sub: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
-  profileLink: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.primary,
+  logo: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.surface,
+    resizeMode: 'contain',
   },
 });

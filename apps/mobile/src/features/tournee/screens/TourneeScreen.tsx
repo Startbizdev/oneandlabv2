@@ -10,6 +10,7 @@ import { fetchAppointments } from '@/features/appointments/api/appointments.serv
 import { StatusBadge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
+import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import type { Appointment } from '@oneandlab/shared-types';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
 import { colors, elevation, radius, spacing } from '@/theme';
@@ -161,6 +162,9 @@ export function TourneeScreen() {
           <EmptyState
             title="Aucun arrêt prévu"
             description="Aucun prélèvement assigné pour cette date."
+            imageSource={EMPTY_RDV_IMAGE}
+            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
           />
         }
       />

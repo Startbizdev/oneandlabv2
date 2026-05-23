@@ -1,24 +1,50 @@
+import { Mail, MessageCircle, Phone } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
-import { ContactActionBar, type ContactAction } from './ContactActionBar';
+import { Button } from '@/components/ui/Button';
+import type { PatientContactButton } from '@/utils/contact-actions';
 import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+
+const CONTACT_ICONS = {
+  phone: Phone,
+  message: MessageCircle,
+  email: Mail,
+} as const;
 
 interface Props {
   title?: string;
   name: string;
   subtitle?: string;
   detail?: string;
-  actions?: ContactAction[];
+  buttons?: PatientContactButton[];
 }
 
-export function DetailPersonBlock({ title, name, subtitle, detail, actions }: Props) {
+export function DetailPersonBlock({ title, name, subtitle, detail, buttons }: Props) {
   return (
     <View style={styles.wrap}>
       {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
       <Text style={styles.name}>{name}</Text>
       {subtitle ? <Text style={styles.sub}>{subtitle}</Text> : null}
       {detail ? <Text style={styles.detail}>{detail}</Text> : null}
-      {actions && actions.length > 0 ? <ContactActionBar actions={actions} /> : null}
+      {buttons && buttons.length > 0 ? (
+        <View style={styles.buttonRow}>
+          {buttons.map((btn) => {
+            const Icon = CONTACT_ICONS[btn.icon];
+            return (
+              <View key={btn.key} style={styles.buttonCell}>
+                <Button
+                  title={btn.label}
+                  size="sm"
+                  variant="primary"
+                  leftIcon={<Icon size={14} color={colors.textInverse} strokeWidth={2.5} />}
+                  onPress={btn.onPress}
+                  style={{ backgroundColor: btn.color, width: '100%' }}
+                />
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -51,5 +77,14 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     color: colors.textSecondary,
     lineHeight: fontSize.xs * 1.45,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing[1.5],
+    marginTop: spacing[1],
+  },
+  buttonCell: {
+    flex: 1,
+    minWidth: 0,
   },
 });

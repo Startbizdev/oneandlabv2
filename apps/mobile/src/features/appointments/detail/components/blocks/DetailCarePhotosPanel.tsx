@@ -17,10 +17,13 @@ import {
   canNurseUploadCarePhotos,
   isCarePhotoGalleryContext,
 } from '../../utils/care-photo-rules';
+import { carePhotosPanelIntro } from '../../utils/care-photo-copy';
+import type { AppointmentDetailRole } from '../../utils/appointment-detail-role-config';
 import { CarePhotoDiscussionSheet } from './CarePhotoDiscussionSheet';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -28,9 +31,10 @@ interface Props {
   apt: Appointment;
   userId?: string;
   readOnly?: boolean;
+  viewerRole?: AppointmentDetailRole | string;
 }
 
-export function DetailCarePhotosPanel({ apt, userId, readOnly }: Props) {
+export function DetailCarePhotosPanel({ apt, userId, readOnly, viewerRole = 'nurse' }: Props) {
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [discussionId, setDiscussionId] = useState<string | null>(null);
@@ -94,8 +98,8 @@ export function DetailCarePhotosPanel({ apt, userId, readOnly }: Props) {
 
   if (q.isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} />
+      <View style={styles.wrap}>
+        <SkeletonList count={3} itemHeight={88} gap={spacing[2]} />
       </View>
     );
   }
@@ -115,9 +119,9 @@ export function DetailCarePhotosPanel({ apt, userId, readOnly }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.intro}>
-        Partagées par l’infirmier · discussion en direct avec le prescripteur.
-      </Text>
+      <View style={styles.introCard}>
+        <Text style={styles.intro}>{carePhotosPanelIntro(viewerRole)}</Text>
+      </View>
 
       {photos.length === 0 && !canUpload ? (
         <View style={styles.emptyCard}>
@@ -136,9 +140,13 @@ export function DetailCarePhotosPanel({ apt, userId, readOnly }: Props) {
                 key={p.id}
                 style={[styles.photoRow, idx > 0 && styles.photoRowBorder]}
               >
-                <View style={styles.thumbWrap}>
+                <Pressable
+                  style={styles.thumbWrap}
+                  onPress={() => setDiscussionId(p.id)}
+                  accessibilityLabel={`Ouvrir la photo n°${idx + 1}`}
+                >
                   <CarePhotoThumbnail photoId={p.id} />
-                </View>
+                </Pressable>
                 <View style={styles.photoMeta}>
                   <Text style={styles.photoTitle}>Photo n°{idx + 1}</Text>
                   {p.created_at ? (
@@ -192,6 +200,7 @@ export function DetailCarePhotosPanel({ apt, userId, readOnly }: Props) {
         appointmentId={apt.id}
         photoId={discussionId}
         viewerUserId={userId}
+        viewerRole={viewerRole}
         canComment={canComment}
       />
     </View>
@@ -200,12 +209,19 @@ export function DetailCarePhotosPanel({ apt, userId, readOnly }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing[3] },
+  introCard: {
+    paddingHorizontal: spacing[3.5],
+    paddingVertical: spacing[3],
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.primaryMid,
+  },
   intro: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: colors.textSecondary,
-    lineHeight: fontSize.xs * 1.45,
-    paddingHorizontal: spacing[1],
+    lineHeight: fontSize.xs * 1.5,
   },
   center: { paddingVertical: spacing[8], alignItems: 'center' },
   emptyCard: {

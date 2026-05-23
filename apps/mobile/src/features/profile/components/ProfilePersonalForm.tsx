@@ -4,7 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
@@ -71,11 +71,7 @@ export function ProfilePersonalForm({ showSaveButton = true }: Props) {
       </Animated.View>
 
       {q.isLoading ? (
-        <View style={{ gap: spacing[3] }}>
-          <Skeleton height={72} borderRadius={radius.lg} />
-          <Skeleton height={72} borderRadius={radius.lg} />
-          <Skeleton height={72} borderRadius={radius.lg} />
-        </View>
+        <SkeletonList count={3} itemHeight={72} gap={spacing[3]} />
       ) : (
         <Animated.View entering={FadeInDown.delay(80).duration(280).springify()} style={[styles.formCard, elevation.xs]}>
           <Text style={styles.sectionTitle}>Informations personnelles</Text>

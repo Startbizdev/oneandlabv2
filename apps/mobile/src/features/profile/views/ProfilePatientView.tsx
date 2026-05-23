@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Mail } from 'lucide-react-native';
+import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { Input } from '@/components/ui/Input';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import type { AddressPayload } from '@/features/appointments/form/types';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
@@ -120,21 +121,12 @@ export function ProfilePatientView() {
   }, [clearSession, router]);
 
   if (q.isLoading) {
-    return (
-      <View style={styles.loading}>
-        <Skeleton height={140} borderRadius={16} />
-        <Skeleton height={180} borderRadius={16} />
-      </View>
-    );
+    return <SkeletonProfileScreen cards={2} />;
   }
 
   return (
     <>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        contentInsetAdjustmentBehavior="automatic"
-        keyboardShouldPersistTaps="handled"
-      >
+      <KeyboardScrollView contentContainerStyle={styles.scroll}>
         <ProfileHero
           firstName={firstName}
           lastName={lastName}
@@ -183,6 +175,14 @@ export function ProfilePatientView() {
         />
 
         <Button
+          title="Face ID"
+          variant="outline"
+          onPress={() => router.push('/profile/security' as never)}
+          fullWidth
+          size="lg"
+        />
+
+        <Button
           title="Déconnexion"
           variant="outline"
           onPress={() => void logout()}
@@ -190,7 +190,7 @@ export function ProfilePatientView() {
           size="lg"
           style={styles.logoutBtn}
         />
-      </ScrollView>
+      </KeyboardScrollView>
 
       <BottomSheet visible={photosOpen} onClose={() => setPhotosOpen(false)} title="Photo de profil">
         <ProfilePhotosSheetContent

@@ -39,8 +39,35 @@ export function creatorOriginTitle(origin: CreatorOrigin): string {
 
 export function creatorOriginName(origin: CreatorOrigin): string {
   if (origin.kind === 'patient_platform') {
-    return origin.label?.trim() || 'Plateforme Cary';
+    return platformOriginDisplayName(origin.label);
   }
   const parts = [origin.first_name, origin.last_name].filter(Boolean).join(' ').trim();
   return parts || origin.display_name?.trim() || '—';
+}
+
+/** Normalise le libellé plateforme (oneandlab → Cary). */
+export function platformOriginDisplayName(label?: string | null): string {
+  const s = String(label ?? '')
+    .trim()
+    .replace(/^patient\s+/i, '')
+    .trim();
+  const compact = s.replace(/\s+/g, '').toLowerCase();
+  if (!compact || compact === 'cary' || compact === 'oneandlab' || compact === 'onenandlab') {
+    return 'Cary';
+  }
+  return s;
+}
+
+export function isPatientPlatformOrigin(origin?: CreatorOrigin | null): boolean {
+  return origin?.kind === 'patient_platform';
+}
+
+export function creatorOriginSubtitle(origin: CreatorOrigin): string | undefined {
+  if (origin.kind === 'patient_platform') {
+    return 'Ce rendez-vous a été pris en direct par le patient';
+  }
+  if (origin.kind === 'pro') {
+    return origin.emploi?.trim() || undefined;
+  }
+  return undefined;
 }

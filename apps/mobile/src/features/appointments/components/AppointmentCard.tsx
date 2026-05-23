@@ -1,10 +1,10 @@
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
+  FadeIn,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  FadeInDown,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { MapPin, Clock } from 'lucide-react-native';
@@ -69,10 +69,8 @@ function AppointmentCardComponent({
   const timeLabel = formatAvailabilityDisplayFr(fd?.availability, appointment.scheduled_at);
 
   return (
-    <Animated.View
-      entering={FadeInDown.delay(index * 50).duration(350).springify()}
-      style={animStyle}
-    >
+    <Animated.View entering={FadeIn.delay(index * 50).duration(350)}>
+      <Animated.View style={animStyle}>
       <Pressable
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -160,6 +158,7 @@ function AppointmentCardComponent({
           </View>
         ) : null}
       </Pressable>
+      </Animated.View>
     </Animated.View>
   );
 }

@@ -3,7 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing } from '@/theme';
+import { colors } from '@/theme';
 import { fontFamily } from '@/theme/typography';
 
 /** Hauteur contenu standard (proche tab bar iOS ~49pt). */

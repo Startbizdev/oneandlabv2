@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,8 +8,7 @@ import { Check, X } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { NurseOfferConfirmSheet } from '@/features/nurse/components/NurseOfferConfirmSheet';
+import { SkeletonList } from '@/components/ui/skeletons';
 import {
   acceptOfferBatch,
   refuseOfferBatch,
@@ -51,8 +51,12 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
   const closeModal = useOfferQueueStore((s) => s.closeModal);
   const processNext = useOfferQueueStore((s) => s.processNext);
 
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!visible) setTermsAccepted(false);
+  }, [visible]);
 
   const { batchSorted, isMultiBatch, siblingsLoading } = useAppointmentBatch(selected);
 
@@ -113,12 +117,15 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
     await finishAndNext();
   }, [batchCount, finishAndNext, row, toast, user?.id]);
 
-  const handleAcceptConfirm = useCallback(async () => {
+  const handleAccept = useCallback(async () => {
     if (!row || !selected) return;
+    if (!termsAccepted) {
+      toast('Veuillez accepter la prise en charge avant de confirmer.', { type: 'error' });
+      return;
+    }
     setLoading(true);
     const r = await acceptOfferBatch(row, user?.id, shareToken);
     setLoading(false);
-    setConfirmOpen(false);
 
     if (!r.ok) {
       if (r.planLimit) {
@@ -148,6 +155,7 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
     router,
     selected,
     shareToken,
+    termsAccepted,
     toast,
     user?.id,
   ]);
@@ -160,7 +168,7 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
         title={batchCount > 1 ? `Accepter (${batchCount} soins)` : 'Accepter'}
         loading={loading}
         leftIcon={<Check size={16} color={colors.textInverse} strokeWidth={2.5} />}
-        onPress={() => setConfirmOpen(true)}
+        onPress={() => void handleAccept()}
         fullWidth
         size="lg"
       />
@@ -179,40 +187,32 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
   );
 
   return (
-    <>
-      <BottomSheet
-        visible={visible}
-        onClose={dismissLater}
-        title="Nouveau rendez-vous"
-        subtitle={subtitle}
-        footer={footer}
-      >
-        {lotLabel && !isMultiBatch ? (
-          <View style={styles.lotPill}>
-            <Text style={styles.lotPillText}>{lotLabel}</Text>
-          </View>
-        ) : null}
-        {siblingsLoading ? (
-          <View style={styles.loading}>
-            <Skeleton height={120} borderRadius={16} />
-            <Skeleton height={80} borderRadius={16} />
-          </View>
-        ) : (
-          <OfferAppointmentPreviewBody primary={selected} batch={batchSorted} />
-        )}
-      </BottomSheet>
-
-      <NurseOfferConfirmSheet
-        visible={confirmOpen}
-        loading={loading}
-        batchCount={batchCount}
-        onClose={() => {
-          if (loading) return;
-          setConfirmOpen(false);
-        }}
-        onConfirm={() => void handleAcceptConfirm()}
-      />
-    </>
+    <BottomSheet
+      visible={visible}
+      onClose={dismissLater}
+      title="Nouveau rendez-vous"
+      subtitle={subtitle}
+      footer={footer}
+    >
+      {lotLabel && !isMultiBatch ? (
+        <View style={styles.lotPill}>
+          <Text style={styles.lotPillText}>{lotLabel}</Text>
+        </View>
+      ) : null}
+      {siblingsLoading ? (
+        <View style={styles.loading}>
+        <SkeletonList count={2} itemHeight={100} gap={12} />
+        </View>
+      ) : (
+        <OfferAppointmentPreviewBody primary={selected} batch={batchSorted} />
+      )}
+      <View style={styles.termsRow}>
+        <ToggleSwitch value={termsAccepted} onValueChange={setTermsAccepted} />
+        <Text style={styles.termsText}>
+          J’accepte la prise en charge et m’engage à respecter la confidentialité du patient.
+        </Text>
+      </View>
+    </BottomSheet>
   );
 }
 
@@ -233,6 +233,21 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   loading: { gap: spacing[2] },
+  termsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing[3],
+    marginTop: spacing[2],
+  },
+  termsText: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.sm,
+    color: colors.textPrimary,
+    lineHeight: fontSize.sm * 1.45,
+  },
   footer: { gap: spacing[2] },
   laterBtn: { alignItems: 'center', paddingVertical: spacing[1] },
   laterText: {

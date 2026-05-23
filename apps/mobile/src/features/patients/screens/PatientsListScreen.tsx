@@ -19,7 +19,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { deletePatient, fetchPatients } from '../api/patients.service';
 import type { PatientRow } from '../api/fetch-all-patients';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonGroup } from '@/components/ui/Skeleton';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -186,7 +186,7 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
       />
 
       {isLoading ? (
-        <SkeletonGroup count={8} height={52} gap={0} />
+        <SkeletonList count={8} itemHeight={52} gap={0} />
       ) : filtered.length === 0 ? (
         <EmptyState
           Icon={Users}

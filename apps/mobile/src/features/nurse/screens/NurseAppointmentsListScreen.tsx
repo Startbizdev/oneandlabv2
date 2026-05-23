@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CalendarPlus } from 'lucide-react-native';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -25,6 +24,14 @@ import {
   type NurseListTab,
   type NurseSegment,
 } from '@/constants/appointments-list-filters';
+import {
+  EMPTY_DEMANDE_IMAGE,
+  EMPTY_DEMANDE_IMAGE_HEIGHT,
+  EMPTY_DEMANDE_IMAGE_WIDTH,
+  EMPTY_RDV_IMAGE,
+  EMPTY_RDV_IMAGE_HEIGHT,
+  EMPTY_RDV_IMAGE_WIDTH,
+} from '@/constants/empty-state-images';
 import { colors, spacing } from '@/theme';
 
 function matchesSearch(apt: Appointment, q: string): boolean {
@@ -162,6 +169,12 @@ export function NurseAppointmentsListScreen() {
     [],
   );
 
+  const isDemandesEmpty = segment === 'en_attente';
+  const emptyTitle = isDemandesEmpty ? 'Aucune demande en attente' : 'Aucun rendez-vous';
+  const emptyDescription = isDemandesEmpty
+    ? 'Les nouvelles propositions de soins apparaîtront ici.'
+    : 'Modifiez les filtres ou créez un nouveau RDV.';
+
   return (
     <View style={styles.container}>
       <QueryFlatList
@@ -186,9 +199,11 @@ export function NurseAppointmentsListScreen() {
         skeletonHeight={116}
         ListEmptyComponent={
           <EmptyState
-            title="Aucun rendez-vous"
-            description="Modifiez les filtres ou créez un nouveau RDV."
-            Icon={CalendarPlus}
+            title={emptyTitle}
+            description={emptyDescription}
+            imageSource={isDemandesEmpty ? EMPTY_DEMANDE_IMAGE : EMPTY_RDV_IMAGE}
+            imageWidth={isDemandesEmpty ? EMPTY_DEMANDE_IMAGE_WIDTH : EMPTY_RDV_IMAGE_WIDTH}
+            imageHeight={isDemandesEmpty ? EMPTY_DEMANDE_IMAGE_HEIGHT : EMPTY_RDV_IMAGE_HEIGHT}
           />
         }
       />

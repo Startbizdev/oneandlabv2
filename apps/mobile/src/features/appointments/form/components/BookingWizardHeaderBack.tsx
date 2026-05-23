@@ -1,5 +1,4 @@
-import { HeaderBackButton } from '@react-navigation/elements';
-import { colors } from '@/theme';
+import { HeaderBackButton } from '@/navigation/HeaderBackButton';
 
 interface Props {
   onPress: () => void;
@@ -7,11 +6,5 @@ interface Props {
 
 /** Retour header stack — même style que ProfileStackBackButton. */
 export function BookingWizardHeaderBack({ onPress }: Props) {
-  return (
-    <HeaderBackButton
-      tintColor={colors.primary}
-      onPress={onPress}
-      accessibilityLabel="Retour"
-    />
-  );
+  return <HeaderBackButton onPress={onPress} />;
 }
