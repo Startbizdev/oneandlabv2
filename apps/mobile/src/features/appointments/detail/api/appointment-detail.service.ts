@@ -72,8 +72,14 @@ export async function postCarePhotoComment(
   });
 }
 
+/** Prépare le message de partage sans libérer le RDV (lecture seule). */
 export async function fetchShareForNurse(appointmentId: string) {
   return api.get<ShareForNurseData>(`/appointments/${appointmentId}/share-for-nurse`);
+}
+
+/** Partage confrère : repasse le RDV en attente si assigné, puis retourne le lien / texte. */
+export async function releaseAndFetchShareForNurse(appointmentId: string) {
+  return api.post<ShareForNurseData>(`/appointments/${appointmentId}/share-for-nurse`, {});
 }
 
 /** Annulation patient (lot possible) — sans photo obligatoire. */

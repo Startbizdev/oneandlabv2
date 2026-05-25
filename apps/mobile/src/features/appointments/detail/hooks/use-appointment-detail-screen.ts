@@ -43,7 +43,8 @@ export function useAppointmentDetailScreen(
   /** RDV ouvert (URL) — ne pas remplacer par le 1er du lot trié chronologiquement. */
   const primary =
     apt ?? batchSorted.find((a) => String(a.id) === String(id)) ?? batchSorted[0];
-  const shareQ = useShareForNurse(id, config.showShareBlock);
+  /** Pas de prefetch : GET share-for-nurse ne doit pas être appelé à l’ouverture (effet de bord historique côté API). */
+  const shareQ = useShareForNurse(id, false);
 
   const docQueries = useQueries({
     queries: batchIds.map((bid) => ({
@@ -86,8 +87,7 @@ export function useAppointmentDetailScreen(
     void detailQ.refetch();
     void refetchSiblings();
     docQueries.forEach((q) => void q.refetch());
-    if (config.showShareBlock) void shareQ.refetch();
-  }, [detailQ, refetchSiblings, docQueries, config.showShareBlock, shareQ]);
+  }, [detailQ, refetchSiblings, docQueries]);
 
   const isRefreshing =
     detailQ.isRefetching || siblingsLoading || docQueries.some((q) => q.isRefetching);

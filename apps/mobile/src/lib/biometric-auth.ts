@@ -210,20 +210,24 @@ async function resolveBiometricsSecurityLevel(): Promise<'weak' | 'strong'> {
 }
 
 type PromptBiometricOptions = {
-  /** Activation initiale : autoriser le code appareil si la biométrie échoue (iOS surtout). */
-  allowDeviceFallback?: boolean;
+  /**
+   * iOS : `disableDeviceFallback: true` → politique biométrie seule (Face ID / Touch ID),
+   * sans bouton « Code appareil » — voir expo-local-authentication.
+   */
+  biometricsOnly?: boolean;
 };
 
 async function promptBiometric(
   message: string,
   options: PromptBiometricOptions = {},
 ): Promise<PromptBiometricResult> {
-  const allowDeviceFallback = options.allowDeviceFallback ?? false;
+  const biometricsOnly = options.biometricsOnly ?? true;
   const biometricsSecurityLevel = await resolveBiometricsSecurityLevel();
   const auth = await LocalAuthentication.authenticateAsync({
     promptMessage: message,
     cancelLabel: 'Annuler',
-    disableDeviceFallback: !allowDeviceFallback,
+    disableDeviceFallback: biometricsOnly,
+    ...(Platform.OS === 'ios' && biometricsOnly ? { fallbackLabel: '' } : {}),
     ...(Platform.OS === 'android'
       ? {
           biometricsSecurityLevel,
@@ -245,7 +249,7 @@ async function promptBiometric(
     lockout: 'Trop de tentatives. Réessayez plus tard.',
     passcode_not_set: 'Configurez un code appareil dans les réglages.',
     unavailable: 'Biométrie indisponible sur cet appareil.',
-    authentication_failed: 'Authentification refusée. Réessayez ou utilisez le code appareil.',
+    authentication_failed: 'Authentification refusée. Réessayez ou connectez-vous par email.',
   };
 
   return {
@@ -271,9 +275,7 @@ export async function enableBiometricLogin(
   }
 
   const label = await getBiometricLabel();
-  const confirmed = await promptBiometric(`Activer ${label}`, {
-    allowDeviceFallback: Platform.OS === 'ios',
-  });
+  const confirmed = await promptBiometric(`Activer ${label}`, { biometricsOnly: true });
   if (!confirmed.success) {
     return {
       ok: false,
@@ -310,9 +312,7 @@ export async function loginWithBiometric(): Promise<BiometricLoginResult> {
   }
 
   const label = await getBiometricLabel();
-  const confirmed = await promptBiometric(`Connexion ${label}`, {
-    allowDeviceFallback: Platform.OS === 'ios',
-  });
+  const confirmed = await promptBiometric(`Connexion ${label}`, { biometricsOnly: true });
 
   if (!confirmed.success) {
     if (confirmed.cancelled) {

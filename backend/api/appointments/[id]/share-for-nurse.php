@@ -90,7 +90,13 @@ $needsRepend = !in_array($st, ['completed', 'canceled', 'cancelled', 'refused'],
         || ($st === 'pending' && !empty($assignedNurse))
     );
 
-if ($needsRepend) {
+/**
+ * Repasser en attente (libérer le créneau pour un confrère) : POST uniquement.
+ * Un GET ne doit jamais modifier le RDV (sinon prefetch mobile / aperçu = « partage » involontaire).
+ */
+$shouldReleaseForShare = $_SERVER['REQUEST_METHOD'] === 'POST';
+
+if ($needsRepend && $shouldReleaseForShare) {
     if ($user['role'] === 'nurse' && (string) $assignedNurse !== (string) $user['user_id']) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Seul l’infirmier assigné peut republier ce rendez-vous via le partage.']);
