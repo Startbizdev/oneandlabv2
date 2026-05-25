@@ -15,7 +15,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { updateAppointment } from '../../api/appointments.service';
 import {
-  fetchShareForNurse,
+  releaseAndFetchShareForNurse,
   type ShareForNurseData,
 } from '../api/appointment-detail.service';
 import { buildNurseShareMessage } from '../utils/nurse-share-message';
@@ -101,7 +101,7 @@ export function DetailSidebarActions({
     mutationFn: async () => {
       let data = shareData ?? null;
       if (!buildNurseShareMessage(data)) {
-        const res = await fetchShareForNurse(apt.id);
+        const res = await releaseAndFetchShareForNurse(apt.id);
         if (!res.success || !res.data) {
           throw new Error(res.error ?? 'Impossible de préparer le partage.');
         }

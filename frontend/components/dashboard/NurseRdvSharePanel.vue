@@ -82,7 +82,7 @@ async function buildSharePayload(): Promise<{ text: string; url: string; repende
   if (cachedMessage.value != null && cachedShareUrl.value != null) {
     return { text: cachedMessage.value, url: cachedShareUrl.value, repended: false };
   }
-  const res = await apiFetch(`/appointments/${props.appointmentId}/share-for-nurse`, { method: 'GET' });
+  const res = await apiFetch(`/appointments/${props.appointmentId}/share-for-nurse`, { method: 'POST' });
   if (!res?.success || !res?.data) {
     toast.add({
       title: 'Erreur',
