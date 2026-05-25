@@ -44,6 +44,26 @@ export async function uploadPatientProfileDocument(
   await uploadFormData('/patient-documents/upload', fd);
 }
 
+export const RELATIVE_PROFILE_UPLOAD_TYPES = [
+  'carte_vitale',
+  'carte_mutuelle',
+  'ordonnance',
+] as const;
+
+export type RelativeProfileUploadType = (typeof RELATIVE_PROFILE_UPLOAD_TYPES)[number];
+
+export async function uploadRelativeProfileDocument(
+  relativeId: string,
+  docType: RelativeProfileUploadType,
+  file: { uri: string; fileName: string; mimeType: string },
+): Promise<void> {
+  const fd = await buildMedicalDocumentForm(
+    { uri: file.uri, fileName: file.fileName, mimeType: file.mimeType },
+    { relative_id: relativeId, document_type: docType },
+  );
+  await uploadFormData('/patient-documents/upload', fd);
+}
+
 export async function fetchPatientProfile(userId: string) {
   return api.get<PatientProfile>(`/users/${userId}`);
 }

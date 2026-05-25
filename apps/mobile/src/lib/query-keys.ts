@@ -42,6 +42,7 @@ export const queryKeys = {
   documents: {
     medical: (appointmentId: string) => ['documents', 'medical', appointmentId] as const,
     patient: (userId: string) => ['documents', 'patient', userId] as const,
+    relative: (relativeId: string) => ['documents', 'relative', relativeId] as const,
   },
   planLimits: {
     current: ['plan-limits'] as const,

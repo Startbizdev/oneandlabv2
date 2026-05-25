@@ -4,8 +4,12 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import type { Appointment } from '@oneandlab/shared-types';
-import { Star } from 'lucide-react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
+import {
+  EMPTY_AVIS_IMAGE,
+  EMPTY_AVIS_IMAGE_HEIGHT,
+  EMPTY_AVIS_IMAGE_WIDTH,
+} from '@/constants/empty-state-images';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { api } from '@/api/client';
 import {
@@ -151,9 +155,11 @@ export function PatientReviewsScreen() {
           }
           ListEmptyComponent={
             <EmptyState
-              Icon={Star}
-              title="Aucun avis pour l'instant"
-              description="Après un rendez-vous terminé, vous pourrez noter votre expérience et aider la communauté."
+              title="Aucun avis disponible"
+              description="Il n'y a pas encore d'avis. Après un rendez-vous terminé, vous pourrez noter votre expérience."
+              imageSource={EMPTY_AVIS_IMAGE}
+              imageWidth={EMPTY_AVIS_IMAGE_WIDTH}
+              imageHeight={EMPTY_AVIS_IMAGE_HEIGHT}
               actionLabel="Voir mes rendez-vous"
               onAction={() => router.push('/(patient)/(tabs)/appointments' as never)}
             />

@@ -11,8 +11,13 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Heart, Plus, Users } from 'lucide-react-native';
+import { Heart, Plus } from 'lucide-react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
+import {
+  EMPTY_PROCHE_IMAGE,
+  EMPTY_PROCHE_IMAGE_HEIGHT,
+  EMPTY_PROCHE_IMAGE_WIDTH,
+} from '@/constants/empty-state-images';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { PatientRelativeFormSheet } from '@/features/patient-relatives/components/PatientRelativeFormSheet';
 import {
@@ -157,9 +162,11 @@ export function PatientRelativesScreen() {
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
           ListEmptyComponent={
             <EmptyState
-              Icon={Users}
               title="Aucun proche"
               description="Ajoutez un proche pour prendre rendez-vous en son nom."
+              imageSource={EMPTY_PROCHE_IMAGE}
+              imageWidth={EMPTY_PROCHE_IMAGE_WIDTH}
+              imageHeight={EMPTY_PROCHE_IMAGE_HEIGHT}
             />
           }
         />

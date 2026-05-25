@@ -17,6 +17,10 @@ export default function PatientLayout() {
       />
       <Stack.Screen name="booking/new" options={bookingWizardScreenOptions()} />
       <Stack.Screen name="relatives/[id]" options={{ title: 'Proche' }} />
+      <Stack.Screen
+        name="relatives/[id]/documents"
+        options={{ title: 'Documents' }}
+      />
       <Stack.Screen name="notifications" options={notificationsScreenOptions()} />
       <Stack.Screen name="informations-legales" options={{ headerTitleAlign: 'left' }} />
       <Stack.Screen name="web" options={{ headerTitleAlign: 'left' }} />

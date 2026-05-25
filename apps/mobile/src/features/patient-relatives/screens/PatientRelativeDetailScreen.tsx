@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   RefreshControl,
@@ -9,9 +9,11 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Trash2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
-import { PatientRelativeDocumentsSection } from '../components/PatientRelativeDocumentsSection';
+import { PatientDetailHubCard } from '@/features/appointments/detail/components/patient/PatientDetailHubCard';
+import { DetailActionList } from '@/features/appointments/detail/components/layout/DetailActionList';
 import {
   deletePatientRelative,
   fetchPatientRelative,
@@ -19,6 +21,8 @@ import {
 } from '../api/patient-relatives.service';
 import { PatientRelativeFormSheet } from '../components/PatientRelativeFormSheet';
 import { relationshipLabel } from '../constants/relationship-types';
+import { fetchProfileDocuments } from '@/features/patients/api/patient-profile.service';
+import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
@@ -41,6 +45,17 @@ export function PatientRelativeDetailScreen() {
     },
     enabled: Boolean(id),
   });
+
+  const docsQ = useQuery({
+    queryKey: queryKeys.documents.relative(id ?? ''),
+    queryFn: async () => {
+      const res = await fetchProfileDocuments({ relativeId: id! });
+      return res.data ?? [];
+    },
+    enabled: Boolean(id),
+  });
+
+  const documentsCount = docsQ.data?.length ?? 0;
 
   const saveMut = useMutation({
     mutationFn: (body: Parameters<typeof updatePatientRelative>[1]) =>
@@ -72,8 +87,28 @@ export function PatientRelativeDetailScreen() {
     ]);
   }, [deleteMut, q.data]);
 
+  const deleteActions = useMemo(
+    () => [
+      {
+        key: 'delete',
+        label: 'Supprimer ce proche',
+        hint: 'Action irréversible',
+        icon: Trash2,
+        tone: 'destructive' as const,
+        onPress: onDelete,
+        loading: deleteMut.isPending,
+        showChevron: false,
+      },
+    ],
+    [deleteMut.isPending, onDelete],
+  );
+
   const book = () => {
     router.push(`/(patient)/booking/new?relative_id=${encodeURIComponent(id!)}` as never);
+  };
+
+  const openDocuments = () => {
+    router.push(`/(patient)/relatives/${id}/documents` as never);
   };
 
   if (q.isLoading || !q.data) {
@@ -104,7 +139,13 @@ export function PatientRelativeDetailScreen() {
         contentContainerStyle={styles.scroll}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
-          <RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />
+          <RefreshControl
+            refreshing={q.isRefetching || docsQ.isRefetching}
+            onRefresh={() => {
+              void q.refetch();
+              void docsQ.refetch();
+            }}
+          />
         }
       >
         <View style={styles.hero}>
@@ -121,16 +162,9 @@ export function PatientRelativeDetailScreen() {
 
         <Button title="Réserver pour ce proche" onPress={book} fullWidth size="lg" />
 
-        <PatientRelativeDocumentsSection relativeId={id!} />
+        <PatientDetailHubCard documentsCount={documentsCount} onDocuments={openDocuments} />
 
-        <Button
-          title="Supprimer ce proche"
-          variant="outline"
-          onPress={onDelete}
-          fullWidth
-          loading={deleteMut.isPending}
-          style={styles.deleteBtn}
-        />
+        <DetailActionList actions={deleteActions} edgeToEdge={false} />
       </ScrollView>
 
       <PatientRelativeFormSheet
@@ -145,8 +179,7 @@ export function PatientRelativeDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  loading: { padding: spacing[4], gap: spacing[3] },
-  scroll: { padding: spacing[4], gap: spacing[4], paddingBottom: spacing[12] },
+  scroll: { padding: spacing[4], gap: spacing[3], paddingBottom: spacing[12] },
   hero: { gap: spacing[1] },
   heroName: {
     fontFamily: fontFamily.extraBold,
@@ -164,5 +197,4 @@ const styles = StyleSheet.create({
     color: colors.primary,
     marginRight: spacing[2],
   },
-  deleteBtn: { borderColor: colors.error },
 });
