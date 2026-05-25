@@ -12,6 +12,7 @@ import {
   creatorOriginSubtitle,
   creatorOriginTitle,
   isPatientPlatformOrigin,
+  isViewerAppointmentCreator,
   platformOriginDisplayName,
   type CreatorOrigin,
 } from '../../utils/provider-public-profile';
@@ -38,6 +39,8 @@ export function PatientAssigneeRows({ apt }: Props) {
     String(ext.assigned_lab_id ?? '') === String(user?.id ?? '');
   const hidePreleveur =
     user?.role === 'preleveur' && String(ext.assigned_to ?? '') === String(user?.id ?? '');
+
+  const hideCreatorOrigin = isViewerAppointmentCreator(apt, user?.id);
 
   const blocks: ReactNode[] = [];
   const openSheet = (type: 'nurse' | 'lab', slug: string, title: string) =>
@@ -97,7 +100,7 @@ export function PatientAssigneeRows({ apt }: Props) {
 
   const creator = ext.creator_origin as CreatorOrigin | undefined;
   const hideOriginForPatient = user?.role === 'patient';
-  if (!hideOriginForPatient && creator?.kind) {
+  if (!hideOriginForPatient && creator?.kind && !hideCreatorOrigin) {
     const name = creatorOriginName(creator);
     const title = creatorOriginTitle(creator);
     const slug = creator.public_slug?.trim();

@@ -10,6 +10,7 @@ export function providerPublicProfilePath(
 
 export type CreatorOrigin = {
   kind?: 'patient_platform' | 'nurse' | 'pro' | 'lab_team';
+  id?: string;
   label?: string;
   display_name?: string;
   first_name?: string;
@@ -60,6 +61,19 @@ export function platformOriginDisplayName(label?: string | null): string {
 
 export function isPatientPlatformOrigin(origin?: CreatorOrigin | null): boolean {
   return origin?.kind === 'patient_platform';
+}
+
+/** Viewer connecté = créateur du RDV (ne pas afficher sa propre fiche intervenant). */
+export function isViewerAppointmentCreator(
+  apt: { created_by?: string | null; creator_origin?: CreatorOrigin | null },
+  viewerUserId?: string | null,
+): boolean {
+  if (!viewerUserId) return false;
+  const viewerId = String(viewerUserId);
+  const createdBy = String(apt.created_by ?? '').trim();
+  if (createdBy && createdBy === viewerId) return true;
+  const creatorId = String(apt.creator_origin?.id ?? '').trim();
+  return Boolean(creatorId && creatorId === viewerId);
 }
 
 export function creatorOriginSubtitle(origin: CreatorOrigin): string | undefined {

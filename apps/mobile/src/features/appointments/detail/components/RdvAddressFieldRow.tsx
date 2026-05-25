@@ -81,24 +81,23 @@ export function RdvAddressFieldRow({
           ) : null}
           {showMapActions && line ? (
             <View style={styles.mapActions}>
-              <View style={styles.mapBtn}>
-                <Button
-                  title="Carte"
-                  size="sm"
-                  variant="outline"
-                  leftIcon={<Map size={14} color={colors.primary} strokeWidth={2} />}
-                  onPress={openGoogleMaps}
-                />
-              </View>
-              <View style={styles.mapBtn}>
-                <Button
-                  title="Itinéraire Waze"
-                  size="sm"
-                  variant="outline"
-                  leftIcon={<Navigation size={14} color={colors.primary} strokeWidth={2} />}
-                  onPress={openWaze}
-                />
-              </View>
+              <Button
+                title="Carte"
+                variant="muted"
+                size="mini"
+                leftIcon={<Map size={11} color={colors.textSecondary} strokeWidth={2.25} />}
+                onPress={openGoogleMaps}
+              />
+              <Button
+                title="Waze"
+                variant="muted"
+                size="mini"
+                leftIcon={
+                  <Navigation size={11} color={colors.textSecondary} strokeWidth={2.25} />
+                }
+                onPress={openWaze}
+                accessibilityLabel="Itinéraire Waze"
+              />
             </View>
           ) : null}
         </View>
@@ -136,11 +135,9 @@ const styles = StyleSheet.create({
   },
   mapActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
+    alignItems: 'center',
+    gap: 4,
     paddingTop: spacing[1],
-  },
-  mapBtn: {
-    flexShrink: 1,
+    alignSelf: 'flex-start',
   },
 });
