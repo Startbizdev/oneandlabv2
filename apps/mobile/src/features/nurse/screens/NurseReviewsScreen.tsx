@@ -2,8 +2,12 @@ import { useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Star } from 'lucide-react-native';
 import { api } from '@/api/client';
+import {
+  EMPTY_AVIS_IMAGE,
+  EMPTY_AVIS_IMAGE_HEIGHT,
+  EMPTY_AVIS_IMAGE_WIDTH,
+} from '@/constants/empty-state-images';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -131,9 +135,11 @@ export function NurseReviewsScreen() {
           ListEmptyComponent={
             allReviews.length === 0 ? (
               <EmptyState
-                Icon={Star}
-                title="Aucun avis pour le moment"
-                description="Dès qu'un patient laissera une note après un soin, elle s'affichera ici."
+                title="Aucun avis disponible"
+                description="Il n'y a pas encore d'avis. Dès qu'un patient laissera une note après un soin, elle s'affichera ici."
+                imageSource={EMPTY_AVIS_IMAGE}
+                imageWidth={EMPTY_AVIS_IMAGE_WIDTH}
+                imageHeight={EMPTY_AVIS_IMAGE_HEIGHT}
               />
             ) : (
               <View style={styles.filterEmpty}>
