@@ -88,7 +88,6 @@ export function RoleFilteredAppointmentsListScreen({
   const statusOptions = role === 'pro' ? PRO_STATUS_OPTIONS : PRELEVEUR_STATUS_OPTIONS;
 
   const [status, setStatus] = useState<ProStatusFilter | PreleveurStatusFilter>('all');
-  const [draftStatus, setDraftStatus] = useState<ProStatusFilter | PreleveurStatusFilter>('all');
   const [search, setSearch] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -134,19 +133,8 @@ export function RoleFilteredAppointmentsListScreen({
     void refetch();
   });
 
-  const openSheet = useCallback(() => {
-    setDraftStatus(status);
-    setSheetOpen(true);
-  }, [status]);
-
-  const applyFilters = useCallback(() => {
-    setStatus(draftStatus);
-    setSheetOpen(false);
-  }, [draftStatus]);
-
-  const resetFilters = useCallback(() => {
-    setDraftStatus('all');
-    setStatus('all');
+  const onStatusChange = useCallback((v: ProStatusFilter | PreleveurStatusFilter) => {
+    setStatus(v);
     setSheetOpen(false);
   }, []);
 
@@ -191,7 +179,7 @@ export function RoleFilteredAppointmentsListScreen({
             search={search}
             onSearchChange={setSearch}
             searchPlaceholder="Nom, soin, adresse…"
-            onOpenFilters={openSheet}
+            onOpenFilters={() => setSheetOpen(true)}
             advancedFilterCount={advancedCount}
             chips={filterChips}
           />
@@ -222,11 +210,9 @@ export function RoleFilteredAppointmentsListScreen({
         onSearchChange={() => {}}
         showSearch={false}
         segments={statusOptions}
-        segment={draftStatus}
-        onSegmentChange={setDraftStatus}
+        segment={status}
+        onSegmentChange={onStatusChange}
         segmentSectionLabel="Statut"
-        onApply={applyFilters}
-        onReset={resetFilters}
       />
     </View>
   );

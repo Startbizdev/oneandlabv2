@@ -1,18 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Search } from 'lucide-react-native';
 import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface ChipOption<T extends string> {
-  value: T;
-  label: string;
-  hint?: string;
-}
-
-interface TabOption<T extends string> {
   value: T;
   label: string;
   hint?: string;
@@ -29,14 +22,12 @@ interface Props<
   search: string;
   onSearchChange: (v: string) => void;
   searchPlaceholder?: string;
-  tabs?: TabOption<TTab>[];
+  tabs?: ChipOption<TTab>[];
   tab?: TTab;
   onTabChange?: (v: TTab) => void;
   segments?: ChipOption<TSegment>[];
   segment?: TSegment;
   onSegmentChange?: (v: TSegment) => void;
-  onApply: () => void;
-  onReset: () => void;
   /** false si la recherche est déjà dans la barre liste */
   showSearch?: boolean;
   segmentSectionLabel?: string;
@@ -44,6 +35,51 @@ interface Props<
   secondarySegment?: TSecondary;
   onSecondarySegmentChange?: (v: TSecondary) => void;
   secondarySectionLabel?: string;
+  /** Fermer la sheet après un choix (défaut true). */
+  closeOnPick?: boolean;
+}
+
+function FilterTabRow<T extends string>({
+  options,
+  value,
+  onChange,
+  onClose,
+  closeOnPick,
+}: {
+  options: ChipOption<T>[];
+  value: T;
+  onChange: (v: T) => void;
+  onClose: () => void;
+  closeOnPick: boolean;
+}) {
+  const useEqualColumns = options.length <= 4;
+
+  return (
+    <View style={[styles.tabRow, useEqualColumns && options.length === 2 && styles.tabRowEqual]}>
+      {options.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <Pressable
+            key={opt.value || 'all'}
+            onPress={() => {
+              onChange(opt.value);
+              if (closeOnPick) onClose();
+            }}
+            style={[
+              styles.tabBtn,
+              useEqualColumns && options.length <= 4 && styles.tabBtnFlex,
+              active && styles.tabBtnActive,
+            ]}
+          >
+            <Text style={[styles.tabText, active && styles.tabTextActive]} numberOfLines={2}>
+              {opt.label}
+            </Text>
+            {opt.hint && active ? <Text style={styles.tabHint}>{opt.hint}</Text> : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 }
 
 export function AppointmentsFilterSheet<
@@ -53,7 +89,7 @@ export function AppointmentsFilterSheet<
 >({
   visible,
   onClose,
-  title = 'Filtres et recherche',
+  title = 'Filtres',
   search,
   onSearchChange,
   searchPlaceholder = 'Nom, téléphone, adresse…',
@@ -63,31 +99,20 @@ export function AppointmentsFilterSheet<
   segments,
   segment,
   onSegmentChange,
-  onApply,
-  onReset,
   showSearch = true,
   segmentSectionLabel = 'Statut',
   secondarySegments,
   secondarySegment,
   onSecondarySegmentChange,
   secondarySectionLabel = 'Type de soin',
-}: Props<TTab, TSegment>) {
+  closeOnPick = true,
+}: Props<TTab, TSegment, TSecondary>) {
   return (
     <BottomSheet
       visible={visible}
       onClose={onClose}
       title={title}
-      subtitle="Affinez la liste affichée"
-      footer={
-        <View style={styles.footerRow}>
-          <View style={styles.footerBtn}>
-            <Button title="Réinitialiser" variant="outline" onPress={onReset} fullWidth />
-          </View>
-          <View style={styles.footerBtn}>
-            <Button title="Appliquer" onPress={onApply} fullWidth />
-          </View>
-        </View>
-      }
+      subtitle="Choisissez un onglet — le filtre s’applique tout de suite"
     >
       {showSearch ? (
         <Input
@@ -98,74 +123,42 @@ export function AppointmentsFilterSheet<
         />
       ) : null}
 
-      {tabs && tab && onTabChange ? (
+      {tabs && tab !== undefined && onTabChange ? (
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Affichage</Text>
-          <View style={styles.tabRow}>
-            {tabs.map((t) => {
-              const active = tab === t.value;
-              return (
-                <Pressable
-                  key={t.value}
-                  onPress={() => onTabChange(t.value)}
-                  style={[styles.tabBtn, active && styles.tabBtnActive]}
-                >
-                  <Text style={[styles.tabText, active && styles.tabTextActive]}>{t.label}</Text>
-                  {t.hint && active ? (
-                    <Text style={styles.tabHint}>{t.hint}</Text>
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </View>
+          <FilterTabRow
+            options={tabs}
+            value={tab}
+            onChange={onTabChange}
+            onClose={onClose}
+            closeOnPick={closeOnPick}
+          />
         </View>
       ) : null}
 
       {segments && segment !== undefined && onSegmentChange ? (
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{segmentSectionLabel}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.chipsRow}>
-              {segments.map((s) => {
-                const active = segment === s.value;
-                return (
-                  <Pressable
-                    key={s.value || 'all'}
-                    onPress={() => onSegmentChange(s.value)}
-                    style={[styles.chip, active && styles.chipActive]}
-                  >
-                    <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
-                      {s.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </ScrollView>
+          <FilterTabRow
+            options={segments}
+            value={segment}
+            onChange={onSegmentChange}
+            onClose={onClose}
+            closeOnPick={closeOnPick}
+          />
         </View>
       ) : null}
 
       {secondarySegments && secondarySegment !== undefined && onSecondarySegmentChange ? (
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{secondarySectionLabel}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.chipsRow}>
-              {secondarySegments.map((s) => {
-                const active = secondarySegment === s.value;
-                return (
-                  <Pressable
-                    key={s.value || 'all-secondary'}
-                    onPress={() => onSecondarySegmentChange(s.value)}
-                    style={[styles.chip, active && styles.chipActive]}
-                  >
-                    <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
-                      {s.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </ScrollView>
+          <FilterTabRow
+            options={secondarySegments}
+            value={secondarySegment}
+            onChange={onSecondarySegmentChange}
+            onClose={onClose}
+            closeOnPick={closeOnPick}
+          />
         </View>
       ) : null}
     </BottomSheet>
@@ -184,7 +177,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   tabRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing[2],
+  },
+  tabRowEqual: {
+    flexWrap: 'nowrap',
   },
   tabBtn: {
     padding: spacing[3],
@@ -193,6 +191,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surfaceAlt,
     gap: 4,
+    minWidth: '47%',
+  },
+  tabBtnFlex: {
+    flex: 1,
+    minWidth: 0,
   },
   tabBtnActive: {
     borderColor: colors.primary,
@@ -200,8 +203,9 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.base,
+    fontSize: fontSize.sm,
     color: colors.textPrimary,
+    textAlign: 'center',
   },
   tabTextActive: {
     color: colors.primaryDark,
@@ -211,39 +215,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     color: colors.textSecondary,
     lineHeight: fontSize.xs * 1.4,
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
-    paddingBottom: spacing[1],
-  },
-  chip: {
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  chipActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
-  chipLabel: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
-  chipLabelActive: {
-    color: colors.primary,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    gap: spacing[2],
-    paddingBottom: spacing[2],
-  },
-  footerBtn: {
-    flex: 1,
+    textAlign: 'center',
   },
 });

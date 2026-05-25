@@ -17,8 +17,6 @@ interface Props {
   type: CalendarTypeFilter;
   onStatusChange: (v: CalendarStatusFilter) => void;
   onTypeChange: (v: CalendarTypeFilter) => void;
-  onApply: () => void;
-  onReset: () => void;
   /** Calendrier infirmier : Mes soins / Bilans dans la modal (comme liste RDV). */
   nurseCalendar?: boolean;
   nurseTab?: NurseListTab;
@@ -32,8 +30,6 @@ export function CalendarFilterSheet({
   type,
   onStatusChange,
   onTypeChange,
-  onApply,
-  onReset,
   nurseCalendar = false,
   nurseTab = 'soins',
   onNurseTabChange,
@@ -46,6 +42,7 @@ export function CalendarFilterSheet({
       search=""
       onSearchChange={() => {}}
       showSearch={false}
+      closeOnPick={false}
       tabs={nurseCalendar ? NURSE_TAB_OPTIONS : undefined}
       tab={nurseCalendar ? nurseTab : undefined}
       onTabChange={nurseCalendar ? onNurseTabChange : undefined}
@@ -57,8 +54,6 @@ export function CalendarFilterSheet({
       secondarySegment={type}
       onSecondarySegmentChange={(v) => onTypeChange(v as CalendarTypeFilter)}
       secondarySectionLabel="Type de soin"
-      onApply={onApply}
-      onReset={onReset}
     />
   );
 }
