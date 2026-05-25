@@ -55,6 +55,15 @@ export async function fetchNotifications(limit = 10) {
   return api.get<AppNotification[]>(`/notifications?limit=${limit}`);
 }
 
+/** Compteur non lues — 1 requête SQL COUNT (évite GET /notifications?limit=50). */
+export async function fetchUnreadNotificationsCount() {
+  const res = await api.get<{ count: number }>('/notifications/unread?count=1');
+  if (!res.success) {
+    throw new Error(res.error ?? 'Erreur compteur notifications');
+  }
+  return res.data?.count ?? 0;
+}
+
 export async function markNotificationRead(id: string) {
   return api.put(`/notifications/${id}/read`);
 }

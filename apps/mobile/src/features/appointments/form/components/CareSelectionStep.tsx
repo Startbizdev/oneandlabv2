@@ -30,6 +30,7 @@ interface Props {
   onQuickAdd: (payload: { service: SelectedServiceInput; slice: BookingServiceFormSlice }) => void;
   onRemove: (serviceId: string) => void;
   onContinue: () => void;
+  onEnsureCategoryReady?: (cat: CareCategory) => Promise<CareCategory>;
   loading?: boolean;
 }
 
@@ -102,6 +103,7 @@ export function CareSelectionStep({
   onQuickAdd,
   onRemove,
   onContinue,
+  onEnsureCategoryReady,
   loading,
 }: Props) {
   const [modalCat, setModalCat] = useState<CareCategory | null>(null);
@@ -141,21 +143,22 @@ export function CareSelectionStep({
   );
 
   const attemptAdd = useCallback(
-    (cat: CareCategory) => {
+    async (cat: CareCategory) => {
       if (isSelected(cat.id)) {
         onRemove(cat.id);
         return;
       }
-      const addonOnly = onlyCategoryOptionsFor(cat);
-      const optsLen = cat.options?.length ?? 0;
+      const ready = onEnsureCategoryReady ? await onEnsureCategoryReady(cat) : cat;
+      const addonOnly = onlyCategoryOptionsFor(ready);
+      const optsLen = ready.options?.length ?? 0;
       if (addonOnly && optsLen === 0) {
         onQuickAdd({
           service: {
-            id: cat.id,
-            type: cat.type,
-            name: cat.label,
-            category_id: cat.id,
-            ...(cat.skip_prescription_documents
+            id: ready.id,
+            type: ready.type,
+            name: ready.label,
+            category_id: ready.id,
+            ...(ready.skip_prescription_documents
               ? { skip_prescription_documents: true as const }
               : {}),
           },
@@ -164,10 +167,10 @@ export function CareSelectionStep({
         resetFilterAfterAdd();
         return;
       }
-      setModalCat(cat);
+      setModalCat(ready);
       setModalOnlyOpts(addonOnly);
     },
-    [isSelected, onQuickAdd, onRemove, onlyCategoryOptionsFor, resetFilterAfterAdd],
+    [isSelected, onQuickAdd, onRemove, onlyCategoryOptionsFor, onEnsureCategoryReady, resetFilterAfterAdd],
   );
 
   const formSlices = formDataByService as Record<string, BookingServiceFormSlice | undefined>;

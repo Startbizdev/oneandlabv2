@@ -25,7 +25,8 @@ export const queryKeys = {
     lookup: (query: string) => ['patients', 'lookup', query] as const,
   },
   categories: {
-    list: (type?: string) => ['categories', 'list', type] as const,
+    list: (type?: string, scope?: string) => ['categories', 'list', type, scope] as const,
+    options: (categoryId: string) => ['categories', 'options', categoryId] as const,
   },
   reviews: {
     list: (revieweeId: string) => ['reviews', 'list', revieweeId] as const,

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ChevronRight, MessageCircle, Phone } from 'lucide-react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MessageCircle, Phone, User } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import type { PhoneContactAction } from '@/utils/contact-actions';
 import { colors, spacing } from '@/theme';
@@ -13,9 +13,9 @@ export type DetailEntityRowProps = {
   subtitle?: string;
   leading?: ReactNode;
   contactActions?: PhoneContactAction[];
-  /** Contenu additionnel à droite (avant le chevron profil). */
+  /** Contenu additionnel à droite (avant les boutons contact / profil). */
   trailing?: ReactNode;
-  /** Chevron seul — la ligne n’est pas cliquable. */
+  /** Bouton « Profil » (même style que Appeler / Message). */
   onProfilePress?: () => void;
   profileAccessibilityLabel?: string;
   showDivider?: boolean;
@@ -27,7 +27,7 @@ const CONTACT_ICONS = {
 } as const;
 
 /**
- * Ligne compacte réutilisable : [leading] · [texte] · [actions inline] · [chevron profil].
+ * Ligne compacte réutilisable : [leading] · [texte] · [actions inline contact + profil].
  */
 export function DetailEntityRow({
   eyebrow,
@@ -82,17 +82,16 @@ export function DetailEntityRow({
               );
             })}
             {hasProfile ? (
-              <Pressable
-                accessibilityRole="button"
+              <Button
+                title="Profil"
+                variant="muted"
+                size="mini"
+                leftIcon={<User size={11} color={colors.textSecondary} strokeWidth={2.25} />}
+                onPress={onProfilePress}
                 accessibilityLabel={
                   profileAccessibilityLabel ?? `Voir le profil de ${title}`
                 }
-                onPress={onProfilePress}
-                hitSlop={8}
-                style={({ pressed }) => [styles.chevronBtn, pressed && styles.pressed]}
-              >
-                <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2.25} />
-              </Pressable>
+              />
             ) : null}
           </View>
         ) : null}
@@ -142,12 +141,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexShrink: 0,
     gap: 4,
-  },
-  chevronBtn: {
-    padding: spacing[1],
-  },
-  pressed: {
-    opacity: 0.65,
   },
   divider: {
     height: StyleSheet.hairlineWidth,

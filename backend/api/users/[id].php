@@ -39,7 +39,11 @@ if (!$id) {
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Détails d'un utilisateur
     try {
-        $userData = $userModel->getById($id, $user['user_id'], $user['role']);
+        $scope = isset($_GET['scope']) ? trim((string) $_GET['scope']) : 'full';
+        if (!in_array($scope, ['full', 'mobile'], true)) {
+            $scope = 'full';
+        }
+        $userData = $userModel->getById($id, $user['user_id'], $user['role'], $scope);
 
         if (!$userData) {
             http_response_code(404);

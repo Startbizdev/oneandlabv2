@@ -49,12 +49,25 @@ function normalizeCategory(raw: Record<string, unknown>): CareCategory {
   };
 }
 
-export async function fetchCareCategories(type?: string) {
-  const q = type ? `?type=${encodeURIComponent(type)}` : '';
+export type CareCategoriesScope = 'full' | 'picker';
+
+export async function fetchCareCategories(type?: string, scope: CareCategoriesScope = 'full') {
+  const params = new URLSearchParams();
+  if (type) params.set('type', type);
+  if (scope === 'picker') params.set('scope', 'picker');
+  const q = params.toString() ? `?${params.toString()}` : '';
   const res = await api.get<Record<string, unknown>[]>(`/categories${q}`);
   if (!res.success || !res.data) return { ...res, data: [] as CareCategory[] };
   return {
     ...res,
     data: res.data.map((row) => normalizeCategory(row)),
   };
+}
+
+export async function fetchCareCategoryOptions(categoryId: string) {
+  const res = await api.get<CareCategoryOption[]>(
+    `/categories?category_options_for=${encodeURIComponent(categoryId)}`,
+  );
+  if (!res.success || !res.data) return { ...res, data: [] as CareCategoryOption[] };
+  return res;
 }

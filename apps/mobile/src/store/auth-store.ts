@@ -10,7 +10,7 @@ import {
   saveAuthSession,
   saveAuthUser,
 } from '@/lib/auth-storage';
-import { prefetchAppointmentsForUser } from '@/features/appointments/lib/prefetch-appointments';
+import { prefetchAppDataForRole } from '@/lib/prefetch-app-data';
 import {
   disableBiometricLogin,
   getBiometricStoredUserId,
@@ -45,7 +45,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     setAuthToken(token);
     set({ token, user });
     clearCsrfCache();
-    prefetchAppointmentsForUser(user.role);
+    prefetchAppDataForRole(user.role, user.id);
     void refreshBiometricCredentials(token, user);
   },
 
@@ -67,9 +67,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       setAuthToken(token);
       set({ token, user, isHydrated: true });
       if (token) {
-        prefetchAppointmentsForUser(user?.role);
+        prefetchAppDataForRole(user?.role, user?.id);
         const fresh = await get().fetchMe();
-        if (fresh) prefetchAppointmentsForUser(fresh.role);
+        if (fresh) prefetchAppDataForRole(fresh.role, fresh.id);
         if (!fresh) await get().clearSession();
       }
     } catch {
@@ -81,7 +81,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { token } = get();
     if (!token) return null;
     try {
-      const res = await api.get<AuthUser>('/auth/me');
+      const res = await api.get<AuthUser>('/auth/me?scope=mobile');
       if (res.success && res.data) {
         if (isNonMobileRole(res.data.role)) {
           await get().clearSession();

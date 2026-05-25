@@ -1,6 +1,7 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import type { Appointment } from '@oneandlab/shared-types';
 import type { AppointmentListFilters } from '@oneandlab/shared-types';
+import { CACHE_STALE_APPOINTMENTS_LIST_MS } from '@oneandlab/shared-constants';
 import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
@@ -25,7 +26,8 @@ export function useInfiniteAppointmentsList(filters: AppointmentListFilters) {
     getNextPageParam: (lastPage) =>
       lastPage.pagination.has_more ? lastPage.pagination.page + 1 : undefined,
     enabled: isHydrated && Boolean(token),
-    staleTime: 45_000,
+    staleTime: CACHE_STALE_APPOINTMENTS_LIST_MS,
+    placeholderData: keepPreviousData,
   });
 }
 

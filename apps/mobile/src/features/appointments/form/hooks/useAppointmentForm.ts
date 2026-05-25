@@ -17,8 +17,10 @@ import { createPatient } from '@/features/patients/api/patients.service';
 import { lookupPatientByEmail } from '@/features/patients/api/patient-lookup.service';
 import {
   fetchCareCategories,
+  fetchCareCategoryOptions,
   type CareCategory,
 } from '@/features/categories/api/categories.service';
+import { CACHE_STALE_CATEGORIES_MS } from '@oneandlab/shared-constants';
 import {
   formDataSliceForQuickAddedService,
   type BookingServiceFormSlice,
@@ -91,6 +93,7 @@ export function useAppointmentForm(opts: {
   const patientsQ = useQuery({
     queryKey: queryKeys.patients.list(),
     queryFn: () => fetchAllPatients(),
+    enabled: opts.role !== 'patient',
   });
 
   const categoriesQ = useQuery({
@@ -333,6 +336,7 @@ export function useMultiAppointmentWizard(opts: {
   initialPatientId?: string;
   /** Parcours patient connecté : sync adresse sur /users/:id */
   syncPatientSelfAddress?: boolean;
+  bookingMode?: 'patient' | 'dashboard';
 }) {
   const { show: toast } = useToast();
   const router = useRouter();
@@ -381,9 +385,12 @@ export function useMultiAppointmentWizard(opts: {
     Record<string, DocumentFileRef | undefined>
   >({});
 
+  const isPatientBooking = opts.bookingMode === 'patient' || opts.syncPatientSelfAddress === true;
+
   const patientsQ = useQuery({
     queryKey: queryKeys.patients.list(),
     queryFn: () => fetchAllPatients(),
+    enabled: !isPatientBooking,
   });
 
   const fillWizardPatient = useCallback(
@@ -448,19 +455,35 @@ export function useMultiAppointmentWizard(opts: {
   );
 
   const nursingCatsQ = useQuery({
-    queryKey: queryKeys.categories.list('nursing'),
+    queryKey: queryKeys.categories.list('nursing', 'picker'),
     queryFn: async () => {
-      const res = await fetchCareCategories('nursing');
+      const res = await fetchCareCategories('nursing', 'picker');
       return res.data ?? [];
     },
+    staleTime: CACHE_STALE_CATEGORIES_MS,
   });
   const bloodCatsQ = useQuery({
-    queryKey: queryKeys.categories.list('blood_test'),
+    queryKey: queryKeys.categories.list('blood_test', 'picker'),
     queryFn: async () => {
-      const res = await fetchCareCategories('blood_test');
+      const res = await fetchCareCategories('blood_test', 'picker');
       return res.data ?? [];
     },
+    staleTime: CACHE_STALE_CATEGORIES_MS,
   });
+
+  const ensureCategoryReady = useCallback(
+    async (cat: CareCategory): Promise<CareCategory> => {
+      if ((cat.options?.length ?? 0) > 0) return cat;
+      const res = await fetchCareCategoryOptions(cat.id);
+      const options = res.data ?? [];
+      const patchList = (prev: CareCategory[] | undefined) =>
+        (prev ?? []).map((c) => (c.id === cat.id ? { ...c, options } : c));
+      qc.setQueryData(queryKeys.categories.list('nursing', 'picker'), patchList);
+      qc.setQueryData(queryKeys.categories.list('blood_test', 'picker'), patchList);
+      return { ...cat, options };
+    },
+    [qc],
+  );
 
   const allCategories = useMemo(
     (): CareCategory[] => [...(nursingCatsQ.data ?? []), ...(bloodCatsQ.data ?? [])],
@@ -637,7 +660,11 @@ export function useMultiAppointmentWizard(opts: {
     patients: patientsQ.data ?? [],
     nursingCategories: nursingCatsQ.data ?? [],
     bloodCategories: bloodCatsQ.data ?? [],
-    loading: patientsQ.isLoading,
+    loading:
+      isPatientBooking
+        ? nursingCatsQ.isLoading || bloodCatsQ.isLoading
+        : patientsQ.isLoading || nursingCatsQ.isLoading || bloodCatsQ.isLoading,
+    ensureCategoryReady,
     saving: submitMut.isPending,
     submit: () => submitMut.mutate(),
     isNewPatient: patientMode === 'new',

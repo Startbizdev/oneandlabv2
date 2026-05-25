@@ -76,15 +76,21 @@ export function useProfileAddressSync({
   const loadProfileAddress = useCallback(
     async (profileId: string) => {
       try {
-        const res = await fetchUser(profileId);
+        const cached = qc.getQueryData<{ address?: unknown }>(queryKeys.profile.user(profileId));
+        if (cached) {
+          await applyFromRaw(cached.address);
+          return;
+        }
+        const res = await fetchUser(profileId, 'mobile');
         if (res.success && res.data) {
+          qc.setQueryData(queryKeys.profile.user(profileId), res.data);
           await applyFromRaw((res.data as { address?: unknown }).address);
         }
       } catch {
         /* silencieux */
       }
     },
-    [applyFromRaw],
+    [applyFromRaw, qc],
   );
 
   const persistToProfile = useCallback(

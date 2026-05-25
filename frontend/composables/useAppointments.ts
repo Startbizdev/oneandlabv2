@@ -34,6 +34,7 @@ export const useAppointments = () => {
         if (filters.limit != null) params.limit = String(filters.limit);
         if (filters.patient_id != null && filters.patient_id !== '') params.patient_id = String(filters.patient_id);
         if (filters.nurse_tab != null) params.nurse_tab = String(filters.nurse_tab);
+        if (filters.patient_period != null) params.patient_period = String(filters.patient_period);
       }
       const queryString = Object.keys(params).length ? '?' + new URLSearchParams(params).toString() : '';
       const response = await apiFetch<{ success: boolean; data?: Appointment[]; pagination?: AppointmentsPagination; error?: string }>(`/appointments${queryString}`, {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CACHE_STALE_RELATIVES_MS } from '@oneandlab/shared-constants';
 import { useRouter } from 'expo-router';
 import {
   buildDashboardAppointmentPayloads,
@@ -63,6 +64,18 @@ export function useBookingWizard(opts: {
     basePath: opts.basePath,
     initialPatientId: opts.initialPatientId,
     syncPatientSelfAddress: opts.mode === 'patient',
+    bookingMode: opts.mode,
+  });
+
+  const patientProfileQ = useQuery({
+    queryKey: queryKeys.profile.user(user?.id ?? ''),
+    queryFn: async () => {
+      const res = await fetchUser(user!.id, 'mobile');
+      if (!res.success) throw new Error(res.error ?? 'Profil introuvable');
+      return res.data;
+    },
+    enabled: opts.mode === 'patient' && Boolean(user?.id) && !selectedRelativeId,
+    staleTime: 60_000,
   });
 
   const relativesQ = useQuery({
@@ -73,6 +86,7 @@ export function useBookingWizard(opts: {
       return res.data ?? [];
     },
     enabled: opts.mode === 'patient',
+    staleTime: CACHE_STALE_RELATIVES_MS,
   });
 
   const applyRelativeToForm = useCallback(
@@ -126,18 +140,10 @@ export function useBookingWizard(opts: {
     wizard.form.setValue('last_name', user.last_name ?? '');
     wizard.form.setValue('email', user.email ?? '');
     wizard.form.setValue('phone', (user as { phone?: string }).phone ?? '');
-    void (async () => {
-      try {
-        const res = await fetchUser(user.id);
-        if (!res.success || !res.data) return;
-        const row = res.data as { gender?: string; birth_date?: string };
-        if (row.gender) wizard.form.setValue('gender', normalizePatientGender(row.gender));
-        if (row.birth_date) wizard.form.setValue('birth_date', row.birth_date);
-      } catch {
-        /* silencieux */
-      }
-    })();
-  }, [opts.mode, selectedRelativeId, applyRelativeToForm, user, wizard.form]);
+    const row = patientProfileQ.data as { gender?: string; birth_date?: string } | undefined;
+    if (row?.gender) wizard.form.setValue('gender', normalizePatientGender(row.gender));
+    if (row?.birth_date) wizard.form.setValue('birth_date', row.birth_date);
+  }, [opts.mode, selectedRelativeId, applyRelativeToForm, user, patientProfileQ.data, wizard.form]);
 
   const allCategories = useMemo(
     () => [...wizard.nursingCategories, ...wizard.bloodCategories],

@@ -63,7 +63,7 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
     onWizardBack: bw.wizardPrev,
   });
 
-  if (w.loading || (mode === 'patient' && bw.relativesLoading)) {
+  if (w.loading) {
     return (
       <View style={styles.screen}>
         <SkeletonCareSelectionStep />
@@ -84,6 +84,7 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
         onQuickAdd={w.quickAddService}
         onRemove={w.removeService}
         onContinue={bw.confirmStep0}
+        onEnsureCategoryReady={w.ensureCategoryReady}
         loading={w.saving}
         />
       </View>

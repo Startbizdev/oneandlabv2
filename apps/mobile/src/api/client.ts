@@ -9,6 +9,7 @@ import {
 } from '@oneandlab/shared-api';
 import { getApiBase } from '@/config/env';
 import { getAuthToken } from '@/lib/auth-token';
+import { logApiTiming } from '@/lib/api-timing';
 
 let csrfTokenCache: string | null = null;
 let csrfInFlight: Promise<string | null> | null = null;
@@ -72,10 +73,13 @@ export async function apiRequest<T = unknown>(
     withCredentials: true,
   };
 
+  const startedAt = Date.now();
   try {
     const response = await axios.request<ApiResponse<T>>(config);
+    logApiTiming(path, startedAt, true);
     return response.data;
   } catch (err: unknown) {
+    logApiTiming(path, startedAt, false);
     if (axios.isAxiosError(err) && err.response?.data) {
       const data = err.response.data as ApiResponse;
       const code = data.code ?? '';

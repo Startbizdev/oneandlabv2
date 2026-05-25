@@ -1,16 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
+import { NOTIFICATION_POLL_INTERVAL_MS } from '@oneandlab/shared-constants';
 import { queryKeys } from '@/lib/query-keys';
-import { fetchNotifications } from '../api/notifications.service';
+import { useAuthStore } from '@/store/auth-store';
+import { fetchUnreadNotificationsCount } from '../api/notifications.service';
 
 export function useUnreadNotificationsCount() {
+  const token = useAuthStore((s) => s.token);
   const q = useQuery({
     queryKey: queryKeys.notifications.unread,
-    queryFn: async () => {
-      const res = await fetchNotifications(50);
-      const list = res.data ?? [];
-      return list.filter((n) => !(n as { read_at?: string }).read_at).length;
-    },
-    refetchInterval: 10_000,
+    queryFn: fetchUnreadNotificationsCount,
+    enabled: Boolean(token),
+    refetchInterval: NOTIFICATION_POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+    staleTime: 30_000,
   });
   return q.data ?? 0;
 }

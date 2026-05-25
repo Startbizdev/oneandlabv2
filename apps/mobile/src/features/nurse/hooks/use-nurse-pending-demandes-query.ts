@@ -23,6 +23,7 @@ export function useNursePendingDemandesQuery(enabled = true) {
     },
     enabled: enabled && isHydrated && isNurse && Boolean(myId),
     refetchInterval: APPOINTMENT_PENDING_POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
     staleTime: 8_000,
   });
 }

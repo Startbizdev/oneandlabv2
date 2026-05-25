@@ -35,7 +35,23 @@ $dsn = sprintf(
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // Récupérer les notifications non lues
+    $countOnly = isset($_GET['count']) && in_array((string) $_GET['count'], ['1', 'true'], true);
+
+    if ($countOnly) {
+        $stmt = $db->prepare('
+            SELECT COUNT(*) AS unread_count
+            FROM notifications
+            WHERE user_id = ? AND read_at IS NULL
+        ');
+        $stmt->execute([$user['user_id']]);
+        $count = (int) ($stmt->fetch(PDO::FETCH_ASSOC)['unread_count'] ?? 0);
+        echo json_encode([
+            'success' => true,
+            'data' => ['count' => $count],
+        ]);
+        exit;
+    }
+
     $stmt = $db->prepare('
         SELECT id, type, title, message, data, created_at
         FROM notifications
@@ -45,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     ');
     $stmt->execute([$user['user_id']]);
     $notifications = $stmt->fetchAll();
-    
+
     echo json_encode([
         'success' => true,
         'data' => $notifications,

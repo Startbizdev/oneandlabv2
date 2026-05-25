@@ -136,9 +136,35 @@ function care_categories_column_fragment(PDO $db, string $tableAlias = ''): stri
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    // Options d'une seule catégorie (lazy load mobile)
+    if (!empty($_GET['category_options_for'])) {
+        try {
+            $catId = trim((string) $_GET['category_options_for']);
+            $stmt = $db->prepare('SELECT id FROM care_categories WHERE id = ? AND is_active = TRUE LIMIT 1');
+            $stmt->execute([$catId]);
+            if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'error' => 'Catégorie introuvable', 'code' => 'NOT_FOUND']);
+                exit;
+            }
+            $stub = [['id' => $catId]];
+            $withOpts = appendCategoryOptions($db, $stub);
+            echo json_encode([
+                'success' => true,
+                'data' => $withOpts[0]['options'] ?? [],
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => 'SERVER_ERROR']);
+        }
+        exit;
+    }
+
     // Liste des catégories (public pour patients, authentifié pour admins)
     try {
         $type = $_GET['type'] ?? null;
+        $scope = $_GET['scope'] ?? 'full';
+        $isPickerScope = $scope === 'picker';
         $providerId = $_GET['provider_id'] ?? null;
         $includeInactive = isset($_GET['include_inactive']) && $_GET['include_inactive'] === 'true';
 
@@ -172,7 +198,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $stmt = $db->prepare($sql);
                 $stmt->execute([$providerId]);
                 $categories = $stmt->fetchAll();
-                $categories = appendCategoryOptions($db, $categories);
+                if (!$isPickerScope) {
+                    $categories = appendCategoryOptions($db, $categories);
+                } else {
+                    foreach ($categories as &$c) {
+                        $c['options'] = [];
+                    }
+                    unset($c);
+                }
             } else {
                 // Lab/subaccount : toutes les catégories blood_test actives
                 $ccf = care_categories_column_fragment($db, '');
@@ -180,7 +213,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $stmt = $db->prepare($sql);
                 $stmt->execute(['blood_test']);
                 $categories = $stmt->fetchAll();
-                $categories = appendCategoryOptions($db, $categories);
+                if (!$isPickerScope) {
+                    $categories = appendCategoryOptions($db, $categories);
+                } else {
+                    foreach ($categories as &$c) {
+                        $c['options'] = [];
+                    }
+                    unset($c);
+                }
             }
         } else {
             $ccf = care_categories_column_fragment($db, '');
@@ -203,9 +243,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $categories = $stmt->fetchAll();
         }
 
-        // Charger les options (sous-choix) pour chaque catégorie
-        $categories = appendCategoryOptions($db, $categories);
-        $categories = appendAppointmentCounts($db, $categories);
+        if (!$isPickerScope) {
+            $categories = appendCategoryOptions($db, $categories);
+            $categories = appendAppointmentCounts($db, $categories);
+        } else {
+            foreach ($categories as &$cat) {
+                $cat['options'] = [];
+                $cat['appointment_count'] = 0;
+            }
+            unset($cat);
+            header('Cache-Control: public, max-age=3600');
+        }
 
         echo json_encode([
             'success' => true,

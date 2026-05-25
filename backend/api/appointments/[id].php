@@ -276,6 +276,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
 
         $appointment = $appointmentModel->getById($id, $user['user_id'], $user['role']);
+
+        $include = isset($_GET['include']) ? trim((string) $_GET['include']) : '';
+        if ($appointment && str_contains($include, 'batch')) {
+            $siblings = $appointment['batch_siblings'] ?? [];
+            $batchAppointments = [];
+            if (is_array($siblings) && count($siblings) > 0) {
+                foreach ($siblings as $sib) {
+                    $sibId = is_array($sib) ? ($sib['id'] ?? null) : null;
+                    if (!$sibId || (string) $sibId === (string) $id) {
+                        continue;
+                    }
+                    $sibFull = $appointmentModel->getById((string) $sibId, $user['user_id'], $user['role']);
+                    if ($sibFull) {
+                        $batchAppointments[] = $sibFull;
+                    }
+                }
+            }
+            $appointment['batch_appointments'] = $batchAppointments;
+        }
         
         if (!$appointment) {
             http_response_code(404);
