@@ -76,10 +76,6 @@ export function CalendarScreen({
   const [statusFilter, setStatusFilter] = useState<CalendarStatusFilter>('');
   const [typeFilter, setTypeFilter] = useState<CalendarTypeFilter>('');
   const [search, setSearch] = useState('');
-  const [draftStatus, setDraftStatus] = useState<CalendarStatusFilter>('');
-  const [draftType, setDraftType] = useState<CalendarTypeFilter>('');
-  const [draftNurseTab, setDraftNurseTab] = useState<NurseListTab>('soins');
-
   const rangeFrom = cursor.startOf('month').format('YYYY-MM-DD');
   const rangeTo = cursor.endOf('month').format('YYYY-MM-DD');
 
@@ -157,30 +153,6 @@ export function CalendarScreen({
     (statusFilter ? 1 : 0) +
     (typeFilter ? 1 : 0);
 
-  const openFilterSheet = useCallback(() => {
-    setDraftStatus(statusFilter);
-    setDraftType(typeFilter);
-    setDraftNurseTab(nurseTab);
-    setFilterSheetOpen(true);
-  }, [nurseTab, statusFilter, typeFilter]);
-
-  const applyFilters = useCallback(() => {
-    setStatusFilter(draftStatus);
-    setTypeFilter(draftType);
-    if (nurseCalendar) setNurseTab(draftNurseTab);
-    setFilterSheetOpen(false);
-  }, [draftNurseTab, draftStatus, draftType, nurseCalendar]);
-
-  const resetFilters = useCallback(() => {
-    setDraftStatus('');
-    setDraftType('');
-    setDraftNurseTab('soins');
-    setStatusFilter('');
-    setTypeFilter('');
-    if (nurseCalendar) setNurseTab('soins');
-    setFilterSheetOpen(false);
-  }, [nurseCalendar]);
-
   const goPrevMonth = useCallback(() => {
     setCursor((c) => c.subtract(1, 'month'));
   }, []);
@@ -252,7 +224,7 @@ export function CalendarScreen({
                 ? undefined
                 : (v) => setStatusFilter(v as CalendarStatusFilter)
             }
-            onOpenFilters={openFilterSheet}
+            onOpenFilters={() => setFilterSheetOpen(true)}
             advancedFilterCount={advancedCount}
             chips={filterChips}
           />
@@ -359,15 +331,13 @@ export function CalendarScreen({
       <CalendarFilterSheet
         visible={filterSheetOpen}
         onClose={() => setFilterSheetOpen(false)}
-        status={draftStatus}
-        type={draftType}
-        onStatusChange={setDraftStatus}
-        onTypeChange={setDraftType}
-        onApply={applyFilters}
-        onReset={resetFilters}
+        status={statusFilter}
+        type={typeFilter}
+        onStatusChange={setStatusFilter}
+        onTypeChange={setTypeFilter}
         nurseCalendar={nurseCalendar}
-        nurseTab={draftNurseTab}
-        onNurseTabChange={setDraftNurseTab}
+        nurseTab={nurseTab}
+        onNurseTabChange={setNurseTab}
       />
     </View>
   );

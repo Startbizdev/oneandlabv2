@@ -40,7 +40,6 @@ export function PatientAppointmentsListScreen() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
   const [tab, setTab] = useState<PatientListTab>('upcoming');
-  const [draftTab, setDraftTab] = useState<PatientListTab>('upcoming');
   const [search, setSearch] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -81,19 +80,8 @@ export function PatientAppointmentsListScreen() {
     void refetch();
   }, query.dataUpdatedAt);
 
-  const openSheet = useCallback(() => {
-    setDraftTab(tab);
-    setSheetOpen(true);
-  }, [tab]);
-
-  const applyFilters = useCallback(() => {
-    setTab(draftTab);
-    setSheetOpen(false);
-  }, [draftTab]);
-
-  const resetFilters = useCallback(() => {
-    setDraftTab('upcoming');
-    setTab('upcoming');
+  const onPeriodChange = useCallback((v: PatientListTab) => {
+    setTab(v);
     setSheetOpen(false);
   }, []);
 
@@ -150,7 +138,7 @@ export function PatientAppointmentsListScreen() {
               search={search}
               onSearchChange={setSearch}
               searchPlaceholder="Soin, adresse, nom…"
-              onOpenFilters={openSheet}
+              onOpenFilters={() => setSheetOpen(true)}
               advancedFilterCount={advancedCount}
               chips={filterChips}
             />
@@ -184,11 +172,9 @@ export function PatientAppointmentsListScreen() {
         onSearchChange={() => {}}
         showSearch={false}
         segments={PATIENT_TAB_OPTIONS}
-        segment={draftTab}
-        onSegmentChange={setDraftTab}
+        segment={tab}
+        onSegmentChange={onPeriodChange}
         segmentSectionLabel="Période"
-        onApply={applyFilters}
-        onReset={resetFilters}
       />
     </View>
   );

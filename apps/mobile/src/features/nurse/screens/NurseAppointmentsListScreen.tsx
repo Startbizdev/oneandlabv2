@@ -61,8 +61,6 @@ export function NurseAppointmentsListScreen() {
   const [segment, setSegment] = useState<NurseSegment>('tous');
   const [search, setSearch] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [draftTab, setDraftTab] = useState<NurseListTab>('soins');
-  const [draftSegment, setDraftSegment] = useState<NurseSegment>('tous');
 
   const apiSegment = segment === 'tous' ? undefined : normalizeNurseSegment(segment);
 
@@ -97,26 +95,6 @@ export function NurseAppointmentsListScreen() {
   useAppForegroundRefetch(() => {
     void refetch();
   });
-
-  const openSheet = useCallback(() => {
-    setDraftTab(tab);
-    setDraftSegment(segment);
-    setSheetOpen(true);
-  }, [segment, tab]);
-
-  const applyFilters = useCallback(() => {
-    setTab(draftTab);
-    setSegment(draftSegment);
-    setSheetOpen(false);
-  }, [draftSegment, draftTab]);
-
-  const resetFilters = useCallback(() => {
-    setDraftTab('soins');
-    setDraftSegment('tous');
-    setTab('soins');
-    setSegment('tous');
-    setSheetOpen(false);
-  }, []);
 
   const filterChips = useMemo(() => {
     const chips: Array<{ key: string; label: string; onRemove: () => void }> = [];
@@ -193,7 +171,7 @@ export function NurseAppointmentsListScreen() {
             search={search}
             onSearchChange={setSearch}
             searchPlaceholder="Nom, téléphone, adresse…"
-            onOpenFilters={openSheet}
+            onOpenFilters={() => setSheetOpen(true)}
             advancedFilterCount={advancedCount}
             chips={filterChips}
           />
@@ -223,15 +201,14 @@ export function NurseAppointmentsListScreen() {
         search=""
         onSearchChange={() => {}}
         showSearch={false}
+        closeOnPick={false}
         tabs={NURSE_TAB_OPTIONS}
-        tab={draftTab}
-        onTabChange={setDraftTab}
+        tab={tab}
+        onTabChange={setTab}
         segments={NURSE_SEGMENT_OPTIONS}
-        segment={draftSegment}
-        onSegmentChange={setDraftSegment}
+        segment={segment}
+        onSegmentChange={setSegment}
         segmentSectionLabel="Statut"
-        onApply={applyFilters}
-        onReset={resetFilters}
       />
     </View>
   );

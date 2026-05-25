@@ -1,34 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Keyboard,
-  Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
+  type LayoutChangeEvent,
   type ViewStyle,
 } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  type BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { ChevronLeft } from 'lucide-react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
-import { colors, elevation, radius, spacing, animation } from '@/theme';
+import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-/** Seuil de glissement (px) ou vélocité pour fermer. */
-const DISMISS_DRAG = 72;
-const DISMISS_VELOCITY = 720;
+/** Hauteur réservée au footer collant pour l’offset de scroll au clavier. */
 const FOOTER_STICKY_HEIGHT = 88;
+/** Hauteur max de la sheet (≈ ancien `maxHeight: '86%'`). */
+const MAX_HEIGHT_RATIO = 0.86;
+const MIN_SHEET_HEIGHT = 160;
 
 interface Props {
   visible: boolean;
@@ -39,18 +35,32 @@ interface Props {
   children: React.ReactNode;
   footer?: React.ReactNode;
   contentStyle?: ViewStyle;
-  /** Corps sans ScrollView (ex. FlatList imbriquée). */
+  /** Corps sans ScrollView (ex. FlatList/WebView imbriquée). */
   disableScroll?: boolean;
-  /** Fermer en tapant au-dessus du panneau (zone transparente). */
+  /** Fermer en tapant au-dessus du panneau. */
   dismissOnBackdropPress?: boolean;
   /** Ajuste le contenu quand le clavier est ouvert (défaut true). */
   keyboardAware?: boolean;
-  /** Glisser vers le bas pour fermer (défaut true). */
+  /** Glisser vers le bas (poignée) pour fermer (défaut true). */
   enableSwipeToDismiss?: boolean;
 }
 
 /**
- * Bottom sheet — animations 100 % Reanimated (Modal sans animation native).
+ * Bottom sheet basé sur `@gorhom/bottom-sheet` (`BottomSheetModal`) :
+ * un seul hôte/portail partagé (`BottomSheetModalProvider`) → plus de `<Modal>`
+ * natifs empilés, plus de double source de vérité → fini les flashs / réouvertures.
+ *
+ * L’API publique est strictement identique à l’ancienne implémentation maison :
+ * les ~20 appelants n’ont rien à changer.
+ *
+ * Détails de fidélité au comportement d’origine :
+ * - Drag uniquement par la poignée (`enableContentPanningGesture={false}`) : les
+ *   listes/WebView internes scrollent librement, comme avant.
+ * - Clavier géré par `react-native-keyboard-controller` (KeyboardScrollView +
+ *   KeyboardStickyView) : gorhom ne déplace la sheet que sur focus d’un
+ *   `BottomSheetTextInput` — or ici les champs sont des `TextInput` standard,
+ *   donc gorhom ne touche pas au clavier.
+ * - Hauteur = contenu mesuré, plafonné à 86 % puis scroll (ancien `maxHeight`).
  */
 export function SheetModal({
   visible,
@@ -66,234 +76,172 @@ export function SheetModal({
   keyboardAware = true,
   enableSwipeToDismiss = true,
 }: Props) {
+  const ref = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
-  const travelHeightRef = useRef(windowHeight);
+  const maxHeight = windowHeight * MAX_HEIGHT_RATIO;
 
-  const [modalShown, setModalShown] = useState(visible);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const isClosingRef = useRef(false);
-  const modalShownRef = useRef(modalShown);
-  modalShownRef.current = modalShown;
-  /** Toujours false au montage : si `visible` est déjà true (ex. sheet montée à l’ajout d’un soin), on doit lancer openSheet(). */
-  const visibleRef = useRef(false);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  const translateY = useSharedValue(windowHeight);
-  const dragStartY = useSharedValue(0);
+  const [headerH, setHeaderH] = useState(0);
+  const [bodyH, setBodyH] = useState(0);
+  const [footerH, setFooterH] = useState(0);
+
+  // Pont `visible` → present()/dismiss() (source de vérité unique côté parent).
+  const presentedRef = useRef(false);
+  const skipDismissCallback = useRef(false);
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
-    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
+    if (visible && !presentedRef.current) {
+      presentedRef.current = true;
+      ref.current?.present();
+    } else if (!visible && presentedRef.current) {
+      // Fermeture demandée par le parent : ne pas renvoyer onClose en écho.
+      skipDismissCallback.current = true;
+      presentedRef.current = false;
+      ref.current?.dismiss();
+    }
+  }, [visible]);
 
-  const allowBackdropDismiss = dismissOnBackdropPress && !keyboardOpen;
-  const allowSwipeDismiss = enableSwipeToDismiss && !keyboardOpen;
-
-  const finishDismiss = useCallback(
-    (notifyParent: boolean) => {
-      isClosingRef.current = false;
-      setModalShown(false);
-      setKeyboardOpen(false);
-      translateY.value = travelHeightRef.current;
-      if (notifyParent) onCloseRef.current();
-    },
-    [translateY],
-  );
-
-  const runDismissAnimation = useCallback(
-    (notifyParent = true) => {
-      if (isClosingRef.current) return;
-      isClosingRef.current = true;
-      Keyboard.dismiss();
-      translateY.value = withTiming(
-        travelHeightRef.current,
-        { duration: animation.timing.base },
-        (finished) => {
-          if (finished) runOnJS(finishDismiss)(notifyParent);
-        },
-      );
-    },
-    [finishDismiss, translateY],
-  );
-
-  const openSheet = useCallback(() => {
-    isClosingRef.current = false;
-    travelHeightRef.current = windowHeight;
-    setModalShown(true);
-    translateY.value = windowHeight;
-    translateY.value = withSpring(0, animation.spring.snappy);
-  }, [translateY, windowHeight]);
-
-  useEffect(() => {
-    const wasVisible = visibleRef.current;
-    visibleRef.current = visible;
-    if (visible && !wasVisible) {
-      openSheet();
+  const handleDismiss = useCallback(() => {
+    presentedRef.current = false;
+    if (skipDismissCallback.current) {
+      skipDismissCallback.current = false;
       return;
     }
-    if (!visible && wasVisible && modalShownRef.current && !isClosingRef.current) {
-      runDismissAnimation(false);
-    }
-  }, [visible, openSheet, runDismissAnimation]);
+    // Fermeture initiée par l’utilisateur (swipe / backdrop / bouton retour OS).
+    onClose();
+  }, [onClose]);
 
-  const panGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .enabled(allowSwipeDismiss)
-        .activeOffsetY(6)
-        .failOffsetX([-24, 24])
-        .onStart(() => {
-          dragStartY.value = translateY.value;
-        })
-        .onUpdate((e) => {
-          translateY.value = Math.max(0, dragStartY.value + e.translationY);
-        })
-        .onEnd((e) => {
-          if (translateY.value > DISMISS_DRAG || e.velocityY > DISMISS_VELOCITY) {
-            runOnJS(runDismissAnimation)(true);
-          } else {
-            translateY.value = withSpring(0, animation.spring.snappy);
-          }
-        }),
-    [allowSwipeDismiss, dragStartY, runDismissAnimation, translateY],
+  const bottomPad = Math.max(insets.bottom, spacing[2]);
+
+  const sheetHeight = useMemo(() => {
+    // Avant la première mesure, on ouvre sur une hauteur raisonnable puis on s’ajuste.
+    if (bodyH <= 0) return Math.min(maxHeight, windowHeight * 0.5);
+    const desired = headerH + bodyH + footerH + (footer ? 0 : bottomPad);
+    return Math.min(Math.max(desired, MIN_SHEET_HEIGHT), maxHeight);
+  }, [headerH, bodyH, footerH, footer, bottomPad, maxHeight, windowHeight]);
+
+  const snapPoints = useMemo(() => [sheetHeight], [sheetHeight]);
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0}
+        pressBehavior={dismissOnBackdropPress ? 'close' : 'none'}
+      />
+    ),
+    [dismissOnBackdropPress],
   );
 
-  const sheetAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
+  const renderHandle = useCallback(
+    () => (
+      <View
+        style={styles.handleZone}
+        onLayout={(e: LayoutChangeEvent) => setHeaderH(e.nativeEvent.layout.height)}
+        accessibilityLabel="Glisser vers le bas pour fermer"
+      >
+        <View style={styles.handle} />
+        <View style={styles.header}>
+          {onBack ? (
+            <Pressable onPress={onBack} hitSlop={12} style={styles.backBtn} accessibilityLabel="Retour">
+              <ChevronLeft size={22} color={colors.primary} strokeWidth={2.5} />
+            </Pressable>
+          ) : null}
+          <View style={styles.headerText}>
+            <Text style={styles.title}>{title}</Text>
+            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+          </View>
+        </View>
+      </View>
+    ),
+    [onBack, title, subtitle],
+  );
 
-  const scrollBottomOffset = footer
-    ? FOOTER_STICKY_HEIGHT + Math.max(insets.bottom, spacing[2])
-    : Math.max(insets.bottom, spacing[2]);
+  const scrollBottomOffset = footer ? FOOTER_STICKY_HEIGHT + bottomPad : bottomPad;
+  const bodyContentStyle = [styles.body, contentStyle, footer ? null : { paddingBottom: bottomPad }];
+  const onBodyContentSize = useCallback((_w: number, h: number) => setBodyH(h), []);
 
   const body = disableScroll ? (
-    <View style={[styles.body, styles.bodyStatic, contentStyle]}>{children}</View>
+    <View
+      style={[styles.bodyStatic, ...bodyContentStyle]}
+      onLayout={(e: LayoutChangeEvent) => setBodyH(e.nativeEvent.layout.height)}
+    >
+      {children}
+    </View>
   ) : keyboardAware ? (
     <KeyboardScrollView
       style={styles.scroll}
-      contentContainerStyle={[styles.body, contentStyle]}
+      contentContainerStyle={bodyContentStyle}
       keyboardShouldPersistTaps="always"
       keyboardDismissMode="interactive"
       bottomOffset={scrollBottomOffset}
       nestedScrollEnabled
+      onContentSizeChange={onBodyContentSize}
     >
       {children}
     </KeyboardScrollView>
   ) : (
     <KeyboardScrollView
       style={styles.scroll}
-      contentContainerStyle={[styles.body, contentStyle]}
+      contentContainerStyle={bodyContentStyle}
       enabled={false}
       keyboardShouldPersistTaps="always"
       keyboardDismissMode="none"
       nestedScrollEnabled
+      onContentSizeChange={onBodyContentSize}
     >
       {children}
     </KeyboardScrollView>
   );
 
   const footerNode = footer ? (
-    <KeyboardStickyView offset={{ closed: 0, opened: Math.max(insets.bottom, spacing[2]) }}>
-      <View style={styles.footer}>{footer}</View>
+    <KeyboardStickyView offset={{ closed: 0, opened: bottomPad }}>
+      <View
+        style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing[3]) }]}
+        onLayout={(e: LayoutChangeEvent) => setFooterH(e.nativeEvent.layout.height)}
+      >
+        {footer}
+      </View>
     </KeyboardStickyView>
   ) : null;
 
-  const panel = (
-    <SafeAreaView edges={['bottom']} style={styles.panel}>
-      <View style={styles.column}>
-        <GestureDetector gesture={panGesture}>
-          <View style={styles.dragZone} accessibilityLabel="Glisser vers le bas pour fermer">
-            <View style={styles.handle} />
-            <View style={styles.header}>
-              {onBack ? (
-                <Pressable
-                  onPress={onBack}
-                  hitSlop={12}
-                  style={styles.backBtn}
-                  accessibilityLabel="Retour"
-                >
-                  <ChevronLeft size={22} color={colors.primary} strokeWidth={2.5} />
-                </Pressable>
-              ) : null}
-              <View style={styles.headerText}>
-                <Text style={styles.title}>{title}</Text>
-                {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-              </View>
-            </View>
-          </View>
-        </GestureDetector>
-
-        {body}
-        {footerNode}
-      </View>
-    </SafeAreaView>
-  );
-
   return (
-    <Modal
-      visible={modalShown}
-      transparent
-      animationType="none"
-      onRequestClose={() => runDismissAnimation(true)}
-      statusBarTranslucent={Platform.OS === 'android'}
+    <BottomSheetModal
+      ref={ref}
+      snapPoints={snapPoints}
+      index={0}
+      enableDynamicSizing={false}
+      enablePanDownToClose={enableSwipeToDismiss}
+      enableHandlePanningGesture={enableSwipeToDismiss}
+      enableContentPanningGesture={false}
+      handleComponent={renderHandle}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={styles.sheetBackground}
+      topInset={insets.top}
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
+      onDismiss={handleDismiss}
     >
-      <View style={styles.root} pointerEvents="box-none">
-        <Pressable
-          style={styles.backdrop}
-          onPress={allowBackdropDismiss ? () => runDismissAnimation(true) : undefined}
-          pointerEvents={allowBackdropDismiss ? 'auto' : 'none'}
-          accessibilityRole="button"
-          accessibilityLabel="Fermer"
-        />
-
-        <Animated.View
-          style={[styles.sheet, elevation.sheetTop, sheetAnimStyle]}
-          pointerEvents="box-none"
-        >
-          {panel}
-        </Animated.View>
-      </View>
-    </Modal>
+      {/* Enfants rendus directement dans le conteneur borné de gorhom
+          (Animated.View, hauteur = snapPoint − poignée) : le corps en `flexShrink`
+          y scrolle quand le contenu dépasse, le footer reste collé en bas. */}
+      {body}
+      {footerNode}
+    </BottomSheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    width: '100%',
-    maxHeight: '86%',
+  sheetBackground: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: radius['2xl'],
     borderTopRightRadius: radius['2xl'],
-    overflow: 'visible',
-    zIndex: 2,
+    ...elevation.sheetTop,
   },
-  panel: {
-    width: '100%',
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius['2xl'],
-    borderTopRightRadius: radius['2xl'],
-    overflow: 'hidden',
-  },
-  column: {
-    flexDirection: 'column',
-    maxHeight: '100%',
-  },
-  dragZone: {
+  handleZone: {
     flexShrink: 0,
   },
   handle: {
@@ -345,14 +293,15 @@ const styles = StyleSheet.create({
     gap: spacing[3],
   },
   bodyStatic: {
-    flexShrink: 1,
+    // Pas de flexShrink : le corps statique se mesure à sa hauteur *naturelle*
+    // (onLayout) pour piloter le snapPoint ; les listes/WebView internes ont
+    // leur propre `maxHeight` et scrollent toutes seules.
     minHeight: 0,
   },
   footer: {
     flexShrink: 0,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3],
-    paddingBottom: spacing[3],
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.borderLight,
     backgroundColor: colors.surface,
