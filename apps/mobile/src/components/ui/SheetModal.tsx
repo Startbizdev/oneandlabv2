@@ -75,7 +75,8 @@ export function SheetModal({
   const isClosingRef = useRef(false);
   const modalShownRef = useRef(modalShown);
   modalShownRef.current = modalShown;
-  const visibleRef = useRef(visible);
+  /** Toujours false au montage : si `visible` est déjà true (ex. sheet montée à l’ajout d’un soin), on doit lancer openSheet(). */
+  const visibleRef = useRef(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const translateY = useSharedValue(windowHeight);

@@ -14,6 +14,7 @@ import { BookingActionBar } from './BookingActionBar';
 import { CareCategoryFilterBar } from './CareCategoryFilterBar';
 import { CareServiceQuickOptionsSheet } from './CareServiceQuickOptionsSheet';
 import { SelectedServicesDetailSheet } from './SelectedServicesDetailSheet';
+import { useToast } from '@/providers/ToastProvider';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -106,6 +107,7 @@ export function CareSelectionStep({
   onEnsureCategoryReady,
   loading,
 }: Props) {
+  const { show: toast } = useToast();
   const [modalCat, setModalCat] = useState<CareCategory | null>(null);
   const [modalOnlyOpts, setModalOnlyOpts] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -148,27 +150,31 @@ export function CareSelectionStep({
         onRemove(cat.id);
         return;
       }
-      const ready = onEnsureCategoryReady ? await onEnsureCategoryReady(cat) : cat;
-      const addonOnly = onlyCategoryOptionsFor(ready);
-      const optsLen = ready.options?.length ?? 0;
-      if (addonOnly && optsLen === 0) {
-        onQuickAdd({
-          service: {
-            id: ready.id,
-            type: ready.type,
-            name: ready.label,
-            category_id: ready.id,
-            ...(ready.skip_prescription_documents
-              ? { skip_prescription_documents: true as const }
-              : {}),
-          },
-          slice: {},
-        });
-        resetFilterAfterAdd();
-        return;
+      try {
+        const ready = onEnsureCategoryReady ? await onEnsureCategoryReady(cat) : cat;
+        const addonOnly = onlyCategoryOptionsFor(ready);
+        const optsLen = ready.options?.length ?? 0;
+        if (addonOnly && optsLen === 0) {
+          onQuickAdd({
+            service: {
+              id: ready.id,
+              type: ready.type,
+              name: ready.label,
+              category_id: ready.id,
+              ...(ready.skip_prescription_documents
+                ? { skip_prescription_documents: true as const }
+                : {}),
+            },
+            slice: {},
+          });
+          resetFilterAfterAdd();
+          return;
+        }
+        setModalCat(ready);
+        setModalOnlyOpts(addonOnly);
+      } catch (e) {
+        toast(e instanceof Error ? e.message : 'Impossible de charger ce soin', { type: 'error' });
       }
-      setModalCat(ready);
-      setModalOnlyOpts(addonOnly);
     },
     [isSelected, onQuickAdd, onRemove, onlyCategoryOptionsFor, onEnsureCategoryReady, resetFilterAfterAdd],
   );

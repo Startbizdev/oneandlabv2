@@ -49,7 +49,7 @@ function roleToSegment(role: string): string {
 
 export function getRoleHome(role: string): Href {
   if (role === 'nurse') return '/(nurse)/(tabs)/appointments';
-  if (role === 'pro') return '/(pro)/(tabs)';
+  if (role === 'pro') return '/(pro)/(tabs)/appointments';
   if (role === 'preleveur') return '/(preleveur)/(tabs)';
   if (role === 'patient') return '/(patient)/(tabs)/appointments';
   return '/(auth)/welcome';

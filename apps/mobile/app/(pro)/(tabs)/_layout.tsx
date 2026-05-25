@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Calendar, CalendarDays, FileText, Home, LayoutGrid, Users } from 'lucide-react-native';
+import { Calendar, CalendarDays, FileText, LayoutGrid, Users } from 'lucide-react-native';
 import { TabBar } from '@/components/navigation/TabBar';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { tabScreenOptions } from '@/navigation/screen-options';
@@ -22,12 +22,16 @@ export default function ProTabsLayout() {
     >
       <Tabs.Screen
         name="index"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="appointments"
         options={{
-          title: 'Accueil',
-          headerTitle: tabHeaderTitle('Accueil', Home),
-          tabBarLabel: 'Accueil',
+          title: 'Rendez-vous',
+          headerTitle: tabHeaderTitle('Rendez-vous', CalendarDays),
+          tabBarLabel: 'RDV',
           tabBarIcon: ({ color, size }) => (
-            <Home color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
+            <CalendarDays color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
           ),
         }}
       />
@@ -39,17 +43,6 @@ export default function ProTabsLayout() {
           tabBarLabel: 'Patients',
           tabBarIcon: ({ color, size }) => (
             <Users color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="appointments"
-        options={{
-          title: 'Rendez-vous',
-          headerTitle: tabHeaderTitle('Rendez-vous', CalendarDays),
-          tabBarLabel: 'RDV',
-          tabBarIcon: ({ color, size }) => (
-            <CalendarDays color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
           ),
         }}
       />
