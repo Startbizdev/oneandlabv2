@@ -1,5 +1,6 @@
+import { forwardRef } from 'react';
 import { StyleSheet } from 'react-native';
-import type { ScrollViewProps } from 'react-native';
+import type { ScrollView, ScrollViewProps } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardScrollView } from './KeyboardScrollView';
@@ -16,14 +17,17 @@ interface Props extends ScrollViewProps {
 }
 
 /** Formulaire scrollable avec barre d'action optionnelle au-dessus du clavier. */
-export function FormScreen({
-  children,
-  contentContainerStyle,
-  backgroundColor = colors.background,
-  footer,
-  style,
-  ...scrollProps
-}: Props) {
+export const FormScreen = forwardRef<ScrollView, Props>(function FormScreen(
+  {
+    children,
+    contentContainerStyle,
+    backgroundColor = colors.background,
+    footer,
+    style,
+    ...scrollProps
+  },
+  ref,
+) {
   const { bottom } = useSafeAreaInsets();
   const footerInset = Math.max(bottom, spacing[2]);
   const footerPad = footer
@@ -42,6 +46,7 @@ export function FormScreen({
       style={[styles.container, { backgroundColor }, style]}
     >
       <KeyboardScrollView
+        ref={ref}
         style={styles.scroll}
         bottomOffset={footer ? FORM_ACTION_BAR_HEIGHT + footerInset : footerInset}
         contentContainerStyle={[
@@ -55,7 +60,7 @@ export function FormScreen({
       </KeyboardScrollView>
     </ScreenActionLayout>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

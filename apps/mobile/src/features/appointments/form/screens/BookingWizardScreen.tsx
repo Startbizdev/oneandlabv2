@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View, type ScrollView } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useLocalSearchParams } from 'expo-router';
 import { useBookingWizardHeader } from '../hooks/useBookingWizardHeader';
@@ -45,6 +45,20 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
   }>();
   const user = useAuthStore((s) => s.user);
   const [relativeSheetOpen, setRelativeSheetOpen] = useState(false);
+  const formScrollRef = useRef<ScrollView>(null);
+
+  const onConsentMissing = useCallback(() => {
+    requestAnimationFrame(() => {
+      formScrollRef.current?.scrollToEnd({ animated: true });
+    });
+    Alert.alert(
+      'Consentement requis',
+      mode === 'patient'
+        ? 'Veuillez accepter la politique de confidentialité avant de confirmer votre rendez-vous.'
+        : 'Veuillez accepter les conditions RGPD avant de confirmer le rendez-vous.',
+      [{ text: 'OK' }],
+    );
+  }, [mode]);
 
   const bw = useBookingWizard({
     mode,
@@ -52,6 +66,7 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
     basePath,
     initialPatientId: patientIdParam,
     initialRelativeId: relativeIdParam,
+    onConsentMissing,
   });
   const w = bw.wizard;
 
@@ -121,9 +136,20 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
     isNursingAppointment(svc.type) &&
     !hideNurseGender;
 
+  const consentError =
+    bw.section === 'personal' &&
+    !bw.consent &&
+    Boolean(
+      bw.validationError &&
+        (bw.validationError.includes('RGPD') ||
+          bw.validationError.includes('politique de confidentialité') ||
+          bw.validationError.includes('confidentialité')),
+    );
+
   return (
     <View style={styles.screen}>
       <FormScreen
+        ref={formScrollRef}
         contentContainerStyle={styles.formContent}
         backgroundColor={colors.background}
         footer={
@@ -325,7 +351,7 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
             {mode === 'patient' ? (
               <Pressable
                 onPress={() => bw.setConsent(!bw.consent)}
-                style={styles.consentRow}
+                style={[styles.consentRow, consentError && styles.consentRowError]}
               >
                 <View style={[styles.checkbox, bw.consent && styles.checkboxActive]}>
                   {bw.consent ? <Text style={styles.checkmark}>✓</Text> : null}
@@ -337,7 +363,7 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
             ) : (
               <Pressable
                 onPress={() => bw.setConsent(!bw.consent)}
-                style={styles.consentRow}
+                style={[styles.consentRow, consentError && styles.consentRowError]}
               >
                 <View style={[styles.checkbox, bw.consent && styles.checkboxActive]}>
                   {bw.consent ? <Text style={styles.checkmark}>✓</Text> : null}
@@ -475,6 +501,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing[3],
+    padding: spacing[3],
+    marginHorizontal: -spacing[3],
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  consentRowError: {
+    borderColor: colors.errorMid,
+    backgroundColor: colors.errorLight,
   },
   checkbox: {
     width: 22,

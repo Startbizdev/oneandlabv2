@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
+  Platform,
   StyleSheet,
   View,
   type ImageStyle,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { avatarDisplaySeed, personasAvatarUrl } from '@/lib/images/dicebear-personas-url';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
 import { colors } from '@/theme';
@@ -18,6 +20,8 @@ interface Props {
   /** Genre profil (male | female | other) — influence Personas ; absent = aléatoire selon le seed. */
   gender?: string | null;
   size: number;
+  /** Floute la photo (offres en attente — Mes demandes infirmier). */
+  blurred?: boolean;
   style?: StyleProp<ViewStyle>;
   imageStyle?: StyleProp<ImageStyle>;
 }
@@ -27,6 +31,7 @@ function ProfileAvatarComponent({
   seed,
   gender,
   size,
+  blurred = false,
   style,
   imageStyle,
 }: Props) {
@@ -65,6 +70,14 @@ function ProfileAvatarComponent({
           if (photoUri && !photoFailed) setPhotoFailed(true);
         }}
       />
+      {blurred ? (
+        <BlurView
+          intensity={Platform.OS === 'ios' ? 28 : 48}
+          tint="light"
+          style={StyleSheet.absoluteFillObject}
+          experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
+        />
+      ) : null}
     </View>
   );
 }

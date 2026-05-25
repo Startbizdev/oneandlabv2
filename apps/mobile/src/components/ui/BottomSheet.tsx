@@ -12,6 +12,8 @@ interface Props {
   footer?: React.ReactNode;
   contentStyle?: ViewStyle;
   disableScroll?: boolean;
+  enableSwipeToDismiss?: boolean;
+  dismissOnBackdropPress?: boolean;
 }
 
 /** Wrapper SheetModal pour les écrans existants. */
@@ -25,6 +27,8 @@ export function BottomSheet({
   footer,
   contentStyle,
   disableScroll,
+  enableSwipeToDismiss,
+  dismissOnBackdropPress,
 }: Props) {
   return (
     <SheetModal
@@ -36,6 +40,8 @@ export function BottomSheet({
       footer={footer}
       contentStyle={contentStyle}
       disableScroll={disableScroll}
+      enableSwipeToDismiss={enableSwipeToDismiss}
+      dismissOnBackdropPress={dismissOnBackdropPress}
     >
       {children}
     </SheetModal>

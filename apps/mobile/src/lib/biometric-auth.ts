@@ -199,16 +199,6 @@ type PromptBiometricResult =
   | { success: true }
   | { success: false; cancelled: boolean; message?: string };
 
-/** Android Class 3 (empreinte) vs Class 2 (face 2D) — voir expo-local-authentication. */
-async function resolveBiometricsSecurityLevel(): Promise<'weak' | 'strong'> {
-  if (Platform.OS !== 'android') return 'strong';
-  const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
-  if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
-    return 'strong';
-  }
-  return 'weak';
-}
-
 type PromptBiometricOptions = {
   /**
    * iOS : `disableDeviceFallback: true` → politique biométrie seule (Face ID / Touch ID),
@@ -222,15 +212,16 @@ async function promptBiometric(
   options: PromptBiometricOptions = {},
 ): Promise<PromptBiometricResult> {
   const biometricsOnly = options.biometricsOnly ?? true;
-  const biometricsSecurityLevel = await resolveBiometricsSecurityLevel();
   const auth = await LocalAuthentication.authenticateAsync({
     promptMessage: message,
     cancelLabel: 'Annuler',
     disableDeviceFallback: biometricsOnly,
     ...(Platform.OS === 'ios' && biometricsOnly ? { fallbackLabel: '' } : {}),
+    // Android : 'weak' accepte Classe 2 (visage 2D) ET Classe 3 (empreinte). Forcer 'strong'
+    // d'après le matériel — et non l'enrôlement — fait échouer les appareils visage-seul.
     ...(Platform.OS === 'android'
       ? {
-          biometricsSecurityLevel,
+          biometricsSecurityLevel: 'weak' as const,
           requireConfirmation: false,
           promptSubtitle: message,
         }
