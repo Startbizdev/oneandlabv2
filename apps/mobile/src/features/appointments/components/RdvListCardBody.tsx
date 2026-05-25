@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/ui/Badge';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import {
   type AppointmentListRow,
+  batchLotSummaryLabel,
   displayAppointmentForListRow,
   isBloodTestOnlyBatchRow,
   isNursingOnlyBatchRow,
@@ -166,11 +167,13 @@ export function RdvListCardBody({
   const resolveStatus =
     statusForApt ?? ((apt: Appointment) => String(apt.status ?? ''));
 
-  const displayApt =
-    row.kind === 'batch' &&
-    (isBloodTestOnlyBatchRow(row) || isNursingOnlyBatchRow(row))
-      ? displayAppointmentForListRow(row)
-      : primaryApt;
+  const isMergedHomogeneousBatch =
+    row.kind === 'batch' && (isBloodTestOnlyBatchRow(row) || isNursingOnlyBatchRow(row));
+  const displayApt = isMergedHomogeneousBatch ? displayAppointmentForListRow(row) : primaryApt;
+  const lotSummaryLabel =
+    isMergedHomogeneousBatch && row.kind === 'batch'
+      ? batchLotSummaryLabel(row.appointments)
+      : '';
 
   if (multiRdvBlocks && multiRdvBlocks.length > 0) {
     return (
@@ -190,6 +193,11 @@ export function RdvListCardBody({
 
   return (
     <View style={styles.body}>
+      {lotSummaryLabel ? (
+        <Text style={styles.lotSummary} numberOfLines={1}>
+          {lotSummaryLabel}
+        </Text>
+      ) : null}
       <MaquetteCardBlock apt={displayApt} role={role} status={resolveStatus(displayApt)} />
       {footer ? <View style={styles.extraFooter}>{footer}</View> : null}
     </View>
@@ -199,6 +207,12 @@ export function RdvListCardBody({
 const styles = StyleSheet.create({
   body: {
     gap: 0,
+  },
+  lotSummary: {
+    ...rdvListCardType.meta,
+    color: colors.primary,
+    marginBottom: spacing[1],
+    fontFamily: fontFamily.semiBold,
   },
   block: {
     gap: spacing[2],

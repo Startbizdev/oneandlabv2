@@ -32,8 +32,14 @@ export function mergeBloodBatchAppointmentsForListDisplay(appointments: Appointm
   const mergedItems: Array<Record<string, unknown>> = [];
   const seen = new Set<string>();
   for (const apt of sorted) {
-    const ext = apt as Appointment & { blood_test_items?: Array<Record<string, unknown>> };
-    const raw = Array.isArray(ext.blood_test_items) ? ext.blood_test_items : [];
+    const ext = apt as Appointment & {
+      blood_test_items?: Array<Record<string, unknown>>;
+      blood_test_items_display?: Array<Record<string, unknown>>;
+    };
+    const raw =
+      ext.blood_test_items_display?.length
+        ? ext.blood_test_items_display
+        : ext.blood_test_items ?? [];
     if (raw.length > 0) {
       for (const it of raw) {
         const label = String(it?.label ?? it?.category_name ?? '').trim();
@@ -58,9 +64,15 @@ export function mergeBloodBatchAppointmentsForListDisplay(appointments: Appointm
       });
     }
   }
+  const extPrimary = primary as Appointment & {
+    blood_test_items?: unknown;
+    blood_test_items_display?: unknown;
+  };
   return {
     ...primary,
-    blood_test_items: mergedItems.length > 0 ? mergedItems : (primary as Appointment & { blood_test_items?: unknown }).blood_test_items,
+    blood_test_items: mergedItems.length > 0 ? mergedItems : extPrimary.blood_test_items,
+    blood_test_items_display:
+      mergedItems.length > 0 ? mergedItems : extPrimary.blood_test_items_display,
   } as Appointment;
 }
 

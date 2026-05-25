@@ -311,7 +311,14 @@
           <slot name="sidebarActions" :appointment="appointment" :load-appointment="loadAppointment" />
         </UCard>
         <!-- Section Assignation (colonne de droite, pas dans la carte Actions) -->
-        <slot v-if="$slots.assignationSection" name="assignationSection" :appointment="appointment" :load-appointment="loadAppointment" />
+        <slot
+          v-if="$slots.assignationSection"
+          name="assignationSection"
+          :appointment="appointment"
+          :load-appointment="loadAppointment"
+          :batch-appointment-ids="batchAppointmentIds"
+          :batch-is-multi="batchIsMulti"
+        />
       </div>
     </div>
     </div>

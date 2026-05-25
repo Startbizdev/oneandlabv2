@@ -74,7 +74,10 @@ $deferredPatientPreleveurNotify = null;
 
 try {
     // Récupérer le type, la date patient, catégorie et assigned_to (état avant UPDATE)
-    $checkStmt = $pdo->prepare('SELECT type, scheduled_at, patient_id, category_id, assigned_to FROM appointments WHERE id = ?');
+    $checkStmt = $pdo->prepare(
+        'SELECT type, scheduled_at, patient_id, category_id, assigned_to, assigned_lab_id, creation_batch_id
+         FROM appointments WHERE id = ?'
+    );
     $checkStmt->execute([$appointmentId]);
     $appointment = $checkStmt->fetch(PDO::FETCH_ASSOC);
     if (!$appointment) {
@@ -201,6 +204,65 @@ try {
             ];
         }
         $responseData = ['success' => true, 'data' => ['assigned_lab_id' => $assignedLabId, 'assigned_to' => $ato]];
+
+        // Lot prise de sang (plusieurs RDV même creation_batch_id) : même labo + préleveur sur tout le lot.
+        $batchIdRe = $appointment['creation_batch_id'] ?? null;
+        $patientIdRe = $appointment['patient_id'] ?? null;
+        if (!empty($batchIdRe) && !empty($patientIdRe) && ($appointment['type'] ?? '') === 'blood_test') {
+            $teamIdsRe = [];
+            if (in_array($user['role'] ?? '', ['lab', 'subaccount'], true)) {
+                $teamIdsRe = LabTeamAccess::teamMemberIds($pdo, $user['user_id'], $user['role'] ?? '');
+            }
+            $sibReStmt = $pdo->prepare(
+                'SELECT id, assigned_lab_id FROM appointments
+                 WHERE creation_batch_id = ? AND patient_id = ? AND type = ? AND id != ?'
+            );
+            $sibReStmt->execute([$batchIdRe, $patientIdRe, 'blood_test', $appointmentId]);
+            $updSibRe = $pdo->prepare(
+                'UPDATE appointments SET assigned_lab_id = :assigned_lab_id, assigned_to = :assigned_to, assigned_nurse_id = NULL, updated_at = NOW()
+                 WHERE id = :id'
+            );
+            while ($sibRe = $sibReStmt->fetch(PDO::FETCH_ASSOC)) {
+                $sibReId = (string) ($sibRe['id'] ?? '');
+                if ($sibReId === '') {
+                    continue;
+                }
+                $sibLab = $sibRe['assigned_lab_id'] ?? null;
+                if ($sibLab !== null && $sibLab !== '' && !empty($teamIdsRe) && !in_array((string) $sibLab, $teamIdsRe, true)) {
+                    continue;
+                }
+                $updSibRe->execute([
+                    ':assigned_lab_id' => $assignedLabId,
+                    ':assigned_to' => $ato,
+                    ':id' => $sibReId,
+                ]);
+                if ($updSibRe->rowCount() > 0) {
+                    $deferredLogSib = [
+                        'user' => $user,
+                        'appointmentId' => $sibReId,
+                        'details' => [
+                            'assigned_lab_id' => $assignedLabId,
+                            'assigned_to' => $ato,
+                            'batch_reassign' => true,
+                            'source_appointment_id' => $appointmentId,
+                        ],
+                    ];
+                    try {
+                        $loggerSib = new Logger();
+                        $loggerSib->log(
+                            $deferredLogSib['user']['user_id'] ?? null,
+                            $deferredLogSib['user']['role'] ?? null,
+                            'reassign_appointment',
+                            'appointment',
+                            $deferredLogSib['appointmentId'],
+                            $deferredLogSib['details']
+                        );
+                    } catch (Throwable $e) {
+                        error_log('Reassign batch sibling log failed: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
     } elseif ($assignedNurseId !== null) {
         // Limite 10 RDV/mois pour infirmier en offre Découverte
         $limits = require __DIR__ . '/../../../config/plan-limits.php';

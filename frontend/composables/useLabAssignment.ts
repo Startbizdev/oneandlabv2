@@ -147,13 +147,17 @@ export function useLabAssignment() {
   /** Envoie la réassignation au backend et appelle onReassigned en cas de succès. Si le backend renvoie data, on le passe pour mise à jour instantanée (pas de refetch). */
   async function apply(
     appointmentId: string,
-    onReassigned: (updated?: { assigned_lab_id?: string; assigned_to?: string | null; assigned_nurse_id?: string | null }) => void | Promise<void>
+    onReassigned: (updated?: { assigned_lab_id?: string; assigned_to?: string | null; assigned_nurse_id?: string | null }) => void | Promise<void>,
+    /** Autres RDV du lot (legacy) : le POST principal propage côté API ; ce paramètre sert surtout au libellé UI. */
+    batchAppointmentIds?: string[],
   ): Promise<void> {
     const labId = selectedLabId.value || myId.value
     if (!labId) {
       toast.add({ title: 'Erreur', description: 'Veuillez sélectionner un laboratoire.', color: 'error' })
       return
     }
+
+    const batchCount = batchAppointmentIds?.length ?? 0
 
     reassigning.value = true
     try {
@@ -167,7 +171,11 @@ export function useLabAssignment() {
       })
       if (res?.success) {
         reassigning.value = false
-        toast.add({ title: 'Assignation mise à jour', color: 'green' })
+        toast.add({
+          title: batchCount > 1 ? 'Assignation du lot mise à jour' : 'Assignation mise à jour',
+          description: batchCount > 1 ? `Laboratoire et préleveur appliqués aux ${batchCount} prélèvements du lot.` : undefined,
+          color: 'green',
+        })
         await onReassigned(res?.data)
       } else {
         toast.add({

@@ -498,15 +498,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 }
             }
         } elseif ($role === 'pro') {
-            // Pro : RDV créés par ce professionnel OU patients liés via patient_professional_access (PPA)
-            $sql .= ' AND (
-                a.created_by = ?
-                OR EXISTS (
-                    SELECT 1 FROM patient_professional_access ppa
-                    WHERE ppa.patient_id = a.patient_id AND ppa.professional_id = ?
-                )
-            )';
-            $params[] = $userId;
+            // Pro : uniquement les RDV qu'il a créés. Le lien patient_professional_access sert
+            // à « Mes patients », documents et historique patient — pas à afficher les RDV
+            // créés par un autre soignant (infirmier, autre pro, labo) pour le même patient.
+            $sql .= ' AND a.created_by = ?';
             $params[] = $userId;
         }
         // super_admin sans user_id voit tout (pas de filtre supplémentaire)
@@ -722,24 +717,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             unset($apt);
         }
         $listRole = (string) ($user['role'] ?? '');
-        $skipListCareItems = $listRole === 'patient';
 
-        $bloodTestIds = $skipListCareItems ? [] : array_values(array_filter(array_map(
+        $bloodTestIds = array_values(array_filter(array_map(
             static fn($apt) => (($apt['type'] ?? '') === 'blood_test') ? (string) ($apt['id'] ?? '') : '',
             $decryptedAppointments
         )));
         if (!empty($bloodTestIds)) {
             $itemsByAppointment = $appointmentModel->loadBloodTestItemsForAppointments($bloodTestIds);
+            $bloodBatchMergedFilter = '';
+            if ($hasMergedColumn) {
+                $bloodBatchMergedFilter = ' AND merged_into_appointment_id IS NULL';
+            }
+            $bloodBatchIdsCache = [];
+            $bloodBatchStmt = $db->prepare('
+                SELECT id FROM appointments
+                WHERE creation_batch_id = ?
+                  AND patient_id = ?
+                  AND type = \'blood_test\'
+                  ' . $bloodBatchMergedFilter . '
+                ORDER BY scheduled_at ASC, created_at ASC, id ASC
+            ');
             foreach ($decryptedAppointments as &$apt) {
                 if (($apt['type'] ?? '') === 'blood_test') {
                     $tid = (string) ($apt['id'] ?? '');
                     $pre = $tid !== '' ? ($itemsByAppointment[$tid] ?? []) : [];
                     $apt['blood_test_items'] = $appointmentModel->resolveBloodTestItemsForAppointment($apt, $pre);
+                    $bid = $apt['creation_batch_id'] ?? null;
+                    $apt['blood_test_items_display'] = $apt['blood_test_items'];
+                    if (!empty($bid) && !empty($apt['patient_id'])) {
+                        try {
+                            $batchKey = (string) $bid . '|' . (string) $apt['patient_id'];
+                            if (!array_key_exists($batchKey, $bloodBatchIdsCache)) {
+                                $bloodBatchStmt->execute([(string) $bid, (string) $apt['patient_id']]);
+                                $bloodBatchIdsCache[$batchKey] = array_column(
+                                    $bloodBatchStmt->fetchAll(PDO::FETCH_ASSOC),
+                                    'id'
+                                );
+                            }
+                            $batchIds = $bloodBatchIdsCache[$batchKey];
+                            if (count($batchIds) > 1) {
+                                $mergedDisp = $appointmentModel->mergeBloodTestItemsAcrossBatchAppointmentIds($batchIds);
+                                if (!empty($mergedDisp)) {
+                                    $apt['blood_test_items_display'] = $mergedDisp;
+                                }
+                            }
+                        } catch (Throwable $e) {
+                            error_log('liste RDV blood_test_items_display batch: ' . $e->getMessage());
+                        }
+                    }
                 }
             }
             unset($apt);
         }
-        $nursingIds = $skipListCareItems ? [] : array_values(array_filter(array_map(
+        $nursingIds = array_values(array_filter(array_map(
             static fn($apt) => (($apt['type'] ?? '') === 'nursing') ? (string) ($apt['id'] ?? '') : '',
             $decryptedAppointments
         )));
