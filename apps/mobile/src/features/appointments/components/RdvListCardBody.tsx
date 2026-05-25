@@ -21,6 +21,7 @@ import {
   type RdvMaquetteCounterparty,
 } from '@/utils/rdv-maquette-card-display';
 import { rdvListCardType } from './rdv-list-card-typography';
+import { maskOfferCounterparty } from '@/utils/offer-privacy-display';
 import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -75,7 +76,10 @@ function MaquetteCardBlock({
 }) {
   const dayBadge = rdvMaquetteDayBadge(apt.scheduled_at);
   const creneau = rdvMaquetteTimeLabel(apt);
-  const avatarPerson = rdvMaquetteAvatarCounterparty(apt, role);
+  const maskIdentity = role === 'demande';
+  const avatarPerson = maskIdentity
+    ? maskOfferCounterparty(rdvMaquetteAvatarCounterparty(apt, role))
+    : rdvMaquetteAvatarCounterparty(apt, role);
   const footerPerson = rdvMaquetteFooterCounterparty(apt, role);
 
   const demandeNotes = role === 'demande' ? offerAppointmentNotes(apt) : '';
@@ -95,6 +99,7 @@ function MaquetteCardBlock({
             seed={avatarPerson?.name ?? apt.id}
             gender={avatarPerson?.gender}
             size={AVATAR}
+            blurred={maskIdentity}
             style={styles.avatarClip}
           />
           {showNameUnderAvatar ? (

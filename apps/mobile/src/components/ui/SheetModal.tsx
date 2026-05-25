@@ -75,6 +75,9 @@ export function SheetModal({
   const isClosingRef = useRef(false);
   const modalShownRef = useRef(modalShown);
   modalShownRef.current = modalShown;
+  const visibleRef = useRef(visible);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const translateY = useSharedValue(windowHeight);
   const dragStartY = useSharedValue(0);
 
@@ -98,9 +101,9 @@ export function SheetModal({
       setModalShown(false);
       setKeyboardOpen(false);
       translateY.value = travelHeightRef.current;
-      if (notifyParent) onClose();
+      if (notifyParent) onCloseRef.current();
     },
-    [onClose, translateY],
+    [translateY],
   );
 
   const runDismissAnimation = useCallback(
@@ -128,9 +131,13 @@ export function SheetModal({
   }, [translateY, windowHeight]);
 
   useEffect(() => {
-    if (visible) {
+    const wasVisible = visibleRef.current;
+    visibleRef.current = visible;
+    if (visible && !wasVisible) {
       openSheet();
-    } else if (modalShownRef.current && !isClosingRef.current) {
+      return;
+    }
+    if (!visible && wasVisible && modalShownRef.current && !isClosingRef.current) {
       runDismissAnimation(false);
     }
   }, [visible, openSheet, runDismissAnimation]);
@@ -172,8 +179,9 @@ export function SheetModal({
       style={styles.scroll}
       contentContainerStyle={[styles.body, contentStyle]}
       keyboardShouldPersistTaps="always"
-      keyboardDismissMode="on-drag"
+      keyboardDismissMode="interactive"
       bottomOffset={scrollBottomOffset}
+      nestedScrollEnabled
     >
       {children}
     </KeyboardScrollView>
@@ -183,7 +191,8 @@ export function SheetModal({
       contentContainerStyle={[styles.body, contentStyle]}
       enabled={false}
       keyboardShouldPersistTaps="always"
-      keyboardDismissMode="on-drag"
+      keyboardDismissMode="none"
+      nestedScrollEnabled
     >
       {children}
     </KeyboardScrollView>

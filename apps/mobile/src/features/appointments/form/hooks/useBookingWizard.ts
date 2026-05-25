@@ -39,6 +39,7 @@ export function useBookingWizard(opts: {
   basePath: string;
   initialPatientId?: string;
   initialRelativeId?: string;
+  onConsentMissing?: () => void;
 }) {
   const { show: toast } = useToast();
   const router = useRouter();
@@ -434,6 +435,18 @@ export function useBookingWizard(opts: {
           ? missing[0]
           : missing.map((m, i) => `${i + 1}. ${m}`).join('\n');
       setValidationError(msg);
+      const needsConsent =
+        section === 'personal' &&
+        !consent &&
+        missing.some(
+          (m) =>
+            m.includes('RGPD') ||
+            m.includes('politique de confidentialité') ||
+            m.includes('confidentialité'),
+        );
+      if (needsConsent) {
+        opts.onConsentMissing?.();
+      }
       toast(msg.split('\n')[0] ?? msg, { type: 'error' });
       return false;
     }
@@ -454,6 +467,7 @@ export function useBookingWizard(opts: {
     opts.role,
     consent,
     toast,
+    opts.onConsentMissing,
   ]);
 
   const wizardNext = useCallback(() => {
