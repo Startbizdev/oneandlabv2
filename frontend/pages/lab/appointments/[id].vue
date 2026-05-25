@@ -46,10 +46,11 @@
       </AppointmentDetailSidebarTerminalShell>
     </template>
     <!-- Section Assignation : composant réutilisable lab/sous-compte + préleveur -->
-    <template #assignationSection="{ appointment, loadAppointment }">
+    <template #assignationSection="{ appointment, loadAppointment, batchAppointmentIds }">
       <AppointmentLabAssignmentCard
         :appointment="appointment"
         :load-appointment="loadAppointment"
+        :batch-appointment-ids="batchAppointmentIds"
       />
     </template>
   </AppointmentDetailPage>

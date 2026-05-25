@@ -489,7 +489,7 @@ class Appointment
      * @param list<string> $appointmentIdsOrdered IDs dans l'ordre d'affichage souhaité (ex. scheduled_at).
      * @return list<array<string,mixed>>
      */
-    private function mergeBloodTestItemsAcrossBatchAppointmentIds(array $appointmentIdsOrdered): array
+    public function mergeBloodTestItemsAcrossBatchAppointmentIds(array $appointmentIdsOrdered): array
     {
         $ids = array_values(array_unique(array_filter(array_map('strval', $appointmentIdsOrdered))));
         if (empty($ids)) {
@@ -2329,7 +2329,20 @@ class Appointment
 
         /** @var list<string> */
         $batchSiblingIdsConfirmed = [];
+        // Lot legacy : plusieurs lignes `appointments` partagent `creation_batch_id` (≠ un seul RDV avec blood_test_items[]).
         $propagateBloodTestLegacyBatch = false;
+        if (($atomicLabConfirm || $atomicPreleveurConfirm) && $mainUpdateAffected > 0) {
+            $batchIdBt = $appointment['creation_batch_id'] ?? null;
+            $patientIdBt = $appointment['patient_id'] ?? null;
+            if (!empty($batchIdBt) && !empty($patientIdBt)) {
+                $cntSibBt = $this->db->prepare(
+                    'SELECT COUNT(*) FROM appointments
+                     WHERE creation_batch_id = ? AND patient_id = ? AND type = ? AND id != ?'
+                );
+                $cntSibBt->execute([$batchIdBt, $patientIdBt, 'blood_test', $id]);
+                $propagateBloodTestLegacyBatch = ((int) $cntSibBt->fetchColumn()) > 0;
+            }
+        }
         if ($atomicNurseConfirm && $mainUpdateAffected > 0) {
             $batchId = $appointment['creation_batch_id'] ?? null;
             $patientId = $appointment['patient_id'] ?? null;

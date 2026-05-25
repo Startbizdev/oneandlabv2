@@ -709,6 +709,7 @@ const acceptAppointment = async () => {
     const body: Record<string, unknown> = { status: 'confirmed' }
     const st = shareTokenForAccept.value
     if (st) body.share_token = st
+    // Un PUT : le backend propage la confirmation aux frères du lot (creation_batch_id).
     const res = await apiFetch(`/appointments/${encodeURIComponent(id)}`, { method: 'PUT', body })
     if (res?.success) {
       const n = batchAppointmentIds.value.length

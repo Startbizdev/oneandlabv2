@@ -12,6 +12,9 @@
     <div class="space-y-4">
       <p class="text-sm text-gray-500 dark:text-gray-400">
         Laboratoire en charge (vous ou un sous-compte) puis optionnellement un préleveur.
+        <span v-if="batchCount > 1" class="block mt-1 text-primary-600 dark:text-primary-400">
+          Lot de {{ batchCount }} prélèvements : l’assignation s’applique à tout le lot.
+        </span>
       </p>
       <div class="space-y-2">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Laboratoire assigné</label>
@@ -103,7 +106,14 @@ const props = defineProps<{
   appointment: any
   /** Callback après succès de la réassignation (recharger le RDV). */
   loadAppointment: () => Promise<void>
+  /** Tous les IDs du lot (RDV courant + fratries), pour propagation assignation. */
+  batchAppointmentIds?: string[]
 }>()
+
+const batchCount = computed(() => {
+  const ids = props.batchAppointmentIds?.filter(Boolean) ?? []
+  return ids.length > 0 ? ids.length : 1
+})
 
 const assignment = useLabAssignment()
 
@@ -161,6 +171,10 @@ watch(
 
 async function onApply() {
   if (!props.appointment?.id || !props.loadAppointment) return
-  await assignment.apply(props.appointment.id, props.loadAppointment)
+  const ids =
+    props.batchAppointmentIds?.length
+      ? props.batchAppointmentIds
+      : [String(props.appointment.id)]
+  await assignment.apply(String(props.appointment.id), props.loadAppointment, ids)
 }
 </script>
