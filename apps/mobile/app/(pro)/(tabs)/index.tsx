@@ -1,5 +1,6 @@
-import { ProDashboardScreen } from '@/features/pro/screens/ProDashboardScreen';
+import { Redirect } from 'expo-router';
 
-export default function ProHome() {
-  return <ProDashboardScreen />;
+/** Ancien accueil pro : redirection vers la liste des RDV (comme infirmier). */
+export default function ProTabsIndex() {
+  return <Redirect href="/(pro)/(tabs)/appointments" />;
 }

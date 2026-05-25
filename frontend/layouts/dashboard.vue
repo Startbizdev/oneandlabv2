@@ -1039,10 +1039,10 @@ const navigationItems = computed(() => {
     pro: [
       [
         {
-          label: "Tableau de bord",
-          icon: "i-lucide-layout-dashboard",
-          to: "/pro",
-          active: p === "/pro" || p === "/pro/",
+          label: "Rendez-vous",
+          icon: "i-lucide-calendar",
+          to: "/pro/appointments",
+          active: active("/pro/appointments"),
         },
         {
           label: "Patients",
@@ -1055,12 +1055,6 @@ const navigationItems = computed(() => {
           icon: "i-lucide-file-pen-line",
           to: "/pro/prescriptions",
           active: active("/pro/prescriptions"),
-        },
-        {
-          label: "Rendez-vous",
-          icon: "i-lucide-calendar",
-          to: "/pro/appointments",
-          active: active("/pro/appointments"),
         },
         {
           label: "Calendrier",
