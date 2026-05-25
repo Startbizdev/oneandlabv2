@@ -11,6 +11,7 @@ import {
   creatorOriginSubtitle,
   creatorOriginTitle,
   isPatientPlatformOrigin,
+  isViewerAppointmentCreator,
   type CreatorOrigin,
 } from '../utils/provider-public-profile';
 import { colors, spacing } from '@/theme';
@@ -38,6 +39,7 @@ export function hasAssigneeContent(apt: Appointment, role: string): boolean {
   const preleveurName = String(ext.assigned_to_display_name ?? '').trim();
   const creator = ext.creator_origin as CreatorOrigin | undefined;
   const platformOrigin = String(ext.patient_platform_origin_display ?? '').trim();
+  const hideCreatorOrigin = isViewerAppointmentCreator(apt, user?.id);
 
   const showNurse =
     isNursingAppointment(apt.type) && !hideNurse && (nurseName || ext.assigned_nurse_id);
@@ -47,7 +49,8 @@ export function hasAssigneeContent(apt: Appointment, role: string): boolean {
     isBloodTestAppointment(apt.type) &&
     !hidePreleveur &&
     (preleveurName || ext.assigned_to);
-  const showCreatorOrigin = Boolean(creator?.kind);
+  const showCreatorOrigin =
+    Boolean(creator?.kind) && !isPatient && !hideCreatorOrigin;
   const showPlatform = isPatient && platformOrigin && !creator?.kind;
 
   return Boolean(showNurse || showLab || showPreleveur || showCreatorOrigin || showPlatform);
@@ -72,6 +75,7 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
   const preleveurName = String(ext.assigned_to_display_name ?? '').trim();
   const creator = ext.creator_origin as CreatorOrigin | undefined;
   const platformOrigin = String(ext.patient_platform_origin_display ?? '').trim();
+  const hideCreatorOrigin = isViewerAppointmentCreator(apt, user?.id);
 
   const showNurse =
     isNursingAppointment(apt.type) && !hideNurse && (nurseName || ext.assigned_nurse_id);
@@ -81,7 +85,7 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
     isBloodTestAppointment(apt.type) &&
     !hidePreleveur &&
     (preleveurName || ext.assigned_to);
-  const showCreatorOrigin = Boolean(creator?.kind) && !isPatient;
+  const showCreatorOrigin = Boolean(creator?.kind) && !isPatient && !hideCreatorOrigin;
   const showPlatform = isPatient && platformOrigin && !creator?.kind;
 
   if (!showNurse && !showLab && !showPreleveur && !showCreatorOrigin && !showPlatform) {
