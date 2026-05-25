@@ -15,6 +15,7 @@ export default function PatientTabsLayout() {
       tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
         ...tabScreenOptions(),
+        lazy: true,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
       }}

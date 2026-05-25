@@ -15,10 +15,6 @@ export function useNotificationPolling(enabled = true) {
     },
     enabled: enabled && Boolean(token),
     refetchInterval: NOTIFICATION_POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
   });
-}
-
-export function useUnreadNotificationCount() {
-  const { data } = useNotificationPolling();
-  return data?.filter((n) => !n.read_at).length ?? 0;
 }

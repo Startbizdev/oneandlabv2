@@ -46,6 +46,7 @@ export function NotificationsScreen() {
     getNextPageParam: (lastPage) => lastPage.nextOffset,
     enabled: Boolean(token),
     refetchInterval: NOTIFICATION_POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
   });
 
   const items = useMemo(

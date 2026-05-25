@@ -2,8 +2,11 @@ import { api } from '@/api/client';
 import type { AuthUser } from '@oneandlab/shared-types';
 import type { NurseCategoryPreference, ProfileUserData } from '@/features/profile/types/profile.types';
 
-export async function fetchUser(id: string) {
-  return api.get<ProfileUserData & AuthUser>(`/users/${id}`);
+export type UserFetchScope = 'full' | 'mobile';
+
+export async function fetchUser(id: string, scope: UserFetchScope = 'mobile') {
+  const q = scope === 'full' ? '' : '?scope=mobile';
+  return api.get<ProfileUserData & AuthUser>(`/users/${id}${q}`);
 }
 
 export async function updateUser(id: string, body: Record<string, unknown>) {

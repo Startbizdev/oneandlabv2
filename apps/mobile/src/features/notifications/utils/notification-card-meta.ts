@@ -2,19 +2,30 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { Bell, CalendarClock, MessageSquare, type LucideIcon } from 'lucide-react-native';
+import {
+  formatParisDayMonthYear,
+  formatParisHm,
+  formatParisWeekdayDate,
+  parseParisWallClock,
+} from '@/utils/paris-datetime';
 import { colors } from '@/theme';
 
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
 
+/** Horodatage notification — toujours interprété / affiché en Europe/Paris. */
 export function formatNotificationTime(iso?: string): string {
-  if (!iso) return '';
-  const d = dayjs(iso);
-  const now = dayjs();
-  if (now.diff(d, 'minute') < 60) return d.fromNow(true);
-  if (now.diff(d, 'day') < 1) return d.format('HH:mm');
-  if (now.diff(d, 'day') < 7) return d.format('ddd D MMM');
-  return d.format('D MMM YYYY');
+  const ms = parseParisWallClock(iso);
+  if (ms == null) return '';
+
+  const nowMs = Date.now();
+  const diffMin = Math.floor((nowMs - ms) / 60000);
+  if (diffMin < 60) return dayjs(ms).fromNow(true);
+
+  const diffDay = Math.floor((nowMs - ms) / 86400000);
+  if (diffDay < 1) return formatParisHm(ms);
+  if (diffDay < 7) return formatParisWeekdayDate(ms);
+  return formatParisDayMonthYear(ms);
 }
 
 export function notificationVisual(type?: string): {

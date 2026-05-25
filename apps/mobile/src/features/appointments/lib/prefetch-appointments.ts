@@ -1,11 +1,10 @@
 import type { AppointmentListFilters } from '@oneandlab/shared-types';
+import { CACHE_STALE_APPOINTMENTS_LIST_MS } from '@oneandlab/shared-constants';
 import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
 import { queryKeys } from '@/lib/query-keys';
 import { queryClient } from '@/lib/query-client';
 import { fetchAppointmentsPaginated } from '../api/appointments.service';
 import { NURSE_DEMANDES_LIST_FILTERS } from '@/features/nurse/constants/nurse-demandes-filters';
-
-const LIST_STALE_MS = 45_000;
 
 async function prefetchInfiniteFirstPage(filters: AppointmentListFilters): Promise<void> {
   await queryClient.prefetchInfiniteQuery({
@@ -17,9 +16,9 @@ async function prefetchInfiniteFirstPage(filters: AppointmentListFilters): Promi
         limit: filters.limit ?? APPOINTMENTS_LIST_PAGE_SIZE,
       }),
     initialPageParam: 1,
-    getNextPageParam: (lastPage) =>
+    getNextPageParam: (lastPage: Awaited<ReturnType<typeof fetchAppointmentsPaginated>>) =>
       lastPage.pagination.has_more ? lastPage.pagination.page + 1 : undefined,
-    staleTime: LIST_STALE_MS,
+    staleTime: CACHE_STALE_APPOINTMENTS_LIST_MS,
   });
 }
 

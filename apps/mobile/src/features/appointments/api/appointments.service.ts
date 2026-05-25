@@ -62,8 +62,9 @@ export async function fetchPendingOffers(role: string) {
   return api.get<Appointment[]>(appointmentsPendingOffersQuery(role));
 }
 
-export async function fetchAppointment(id: string) {
-  return api.get<Appointment>(`/appointments/${id}`);
+export async function fetchAppointment(id: string, opts?: { includeBatch?: boolean }) {
+  const q = opts?.includeBatch ? '?include=batch' : '';
+  return api.get<Appointment>(`/appointments/${id}${q}`);
 }
 
 export async function updateAppointment(id: string, body: Record<string, unknown>) {

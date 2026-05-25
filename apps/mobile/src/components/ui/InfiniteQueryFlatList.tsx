@@ -1,12 +1,13 @@
 import React, { type ReactElement, type ReactNode, useCallback } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   type FlatListProps,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
+import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import type { UseInfiniteQueryResult } from '@tanstack/react-query';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
@@ -48,6 +49,15 @@ export function InfiniteQueryFlatList<TPage, Item>({
     }
   }, [query]);
 
+  const {
+    renderItem,
+    keyExtractor,
+    ItemSeparatorComponent,
+    ListEmptyComponent,
+    showsVerticalScrollIndicator,
+    contentInsetAdjustmentBehavior,
+  } = flatListProps;
+
   if (query.isPending && !query.data) {
     return (
       <View style={styles.root}>
@@ -55,6 +65,45 @@ export function InfiniteQueryFlatList<TPage, Item>({
         <View style={styles.skeleton}>
           <SkeletonList count={skeletonCount} itemHeight={skeletonHeight} gap={skeletonGap} />
         </View>
+      </View>
+    );
+  }
+
+  const refreshControl = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      tintColor={colors.primary}
+      colors={[colors.primary]}
+    />
+  );
+
+  const listHeaderNode = ListHeaderComponent
+    ? React.isValidElement(ListHeaderComponent)
+      ? ListHeaderComponent
+      : React.createElement(ListHeaderComponent as React.ComponentType)
+    : null;
+
+  const emptyNode =
+    ListEmptyComponent == null
+      ? null
+      : typeof ListEmptyComponent === 'function'
+        ? <ListEmptyComponent />
+        : ListEmptyComponent;
+
+  if (items.length === 0 && emptyNode) {
+    return (
+      <View style={styles.root}>
+        {header}
+        <ScrollView
+          contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}
+          showsVerticalScrollIndicator={showsVerticalScrollIndicator}
+          contentContainerStyle={[styles.listContent, styles.emptyScrollContent, contentContainerStyle]}
+          refreshControl={refreshControl}
+        >
+          {listHeaderNode}
+          {emptyNode}
+        </ScrollView>
       </View>
     );
   }
@@ -73,19 +122,16 @@ export function InfiniteQueryFlatList<TPage, Item>({
   return (
     <View style={styles.root}>
       {header}
-      <FlatList
-        {...flatListProps}
+      <FlashList
         data={items}
+        renderItem={renderItem as unknown as ListRenderItem<Item>}
+        keyExtractor={keyExtractor}
+        ItemSeparatorComponent={ItemSeparatorComponent}
         ListHeaderComponent={ListHeaderComponent}
+        showsVerticalScrollIndicator={showsVerticalScrollIndicator}
+        contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}
         contentContainerStyle={[styles.listContent, contentContainerStyle]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
+        refreshControl={refreshControl}
         onEndReached={loadMore}
         onEndReachedThreshold={0.35}
         ListFooterComponent={footer}
@@ -103,6 +149,10 @@ const styles = StyleSheet.create({
   },
   listContent: {
     flexGrow: 1,
+  },
+  emptyScrollContent: {
+    flexGrow: 1,
+    paddingBottom: spacing[8],
   },
   footerLoader: {
     paddingVertical: spacing[4],

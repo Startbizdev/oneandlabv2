@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { Appointment } from '@oneandlab/shared-types';
@@ -15,7 +15,8 @@ import {
   useInfiniteAppointmentsList,
 } from '@/features/appointments/hooks/use-infinite-appointments-list';
 import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
-import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
+import { useStaleForegroundRefetch } from '@/lib/hooks/use-stale-foreground-refetch';
+import { prefetchAppointmentsForUser } from '@/features/appointments/lib/prefetch-appointments';
 import { useAuthStore } from '@/store/auth-store';
 import { PATIENT_TAB_OPTIONS, type PatientListTab } from '@/constants/appointments-list-filters';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
@@ -25,7 +26,8 @@ function matchesSearch(apt: Appointment, q: string): boolean {
   const s = q.toLowerCase().trim();
   if (!s) return true;
   const fd = apt.form_data as Record<string, unknown> | undefined;
-  const rel = apt.relative as { first_name?: string; last_name?: string } | undefined;
+  const rel = (apt as Appointment & { relative?: { first_name?: string; last_name?: string } })
+    .relative;
   const name = `${fd?.first_name ?? rel?.first_name ?? ''} ${fd?.last_name ?? rel?.last_name ?? ''}`.toLowerCase();
   return (
     name.includes(s) ||
@@ -71,9 +73,13 @@ export function PatientAppointmentsListScreen() {
     [filtered, tab],
   );
 
-  useAppForegroundRefetch(() => {
+  useEffect(() => {
+    prefetchAppointmentsForUser('patient');
+  }, []);
+
+  useStaleForegroundRefetch(() => {
     void refetch();
-  });
+  }, query.dataUpdatedAt);
 
   const openSheet = useCallback(() => {
     setDraftTab(tab);

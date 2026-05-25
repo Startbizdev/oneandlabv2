@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../../lib/LabTeamAccess.php';
 require_once __DIR__ . '/../../lib/Validation.php';
 require_once __DIR__ . '/../../config/cors.php';
+require_once __DIR__ . '/../../lib/DbSchemaCache.php';
 
 /** Logs verbeux : désactivés si APP_ENV=production (après chargement .env par config/database.php). */
 function appointmentsVerboseLoggingEnabled(): bool
@@ -150,53 +151,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'GET_array' => $_GET
     ]);
     
-    // Vérifier si la colonne relative_id existe avant de faire le JOIN
-    try {
-        logAppointment('Vérification de l\'existence de la colonne relative_id');
-        $checkRelativeColumn = $db->query("
-            SELECT COUNT(*) as col_exists 
-            FROM information_schema.COLUMNS 
-            WHERE TABLE_SCHEMA = DATABASE() 
-            AND TABLE_NAME = 'appointments' 
-            AND COLUMN_NAME = 'relative_id'
-        ")->fetch();
-        
-        $hasRelativeColumn = $checkRelativeColumn && $checkRelativeColumn['col_exists'] > 0;
-        logAppointment('Colonne relative_id existe?', ['exists' => $hasRelativeColumn]);
-    } catch (Exception $e) {
-        logAppointment('ERREUR lors de la vérification de la colonne relative_id', ['error' => $e->getMessage()]);
-        $hasRelativeColumn = false;
-    }
-
-    $hasPatientRelativesTable = false;
-    try {
-        $checkRelativesTable = $db->query("
-            SELECT COUNT(*) as tbl_exists
-            FROM information_schema.TABLES
-            WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME = 'patient_relatives'
-        ")->fetch();
-        $hasPatientRelativesTable = $checkRelativesTable && (int) $checkRelativesTable['tbl_exists'] > 0;
-        logAppointment('Table patient_relatives existe?', ['exists' => $hasPatientRelativesTable]);
-    } catch (Exception $e) {
-        logAppointment('ERREUR lors de la vérification de patient_relatives', ['error' => $e->getMessage()]);
-        $hasPatientRelativesTable = false;
-    }
-
+    $hasRelativeColumn = DbSchemaCache::tableHasColumn($db, 'appointments', 'relative_id');
+    $hasPatientRelativesTable = DbSchemaCache::tableExists($db, 'patient_relatives');
     $useRelativeJoin = $hasRelativeColumn && $hasPatientRelativesTable;
-
-    try {
-        $checkMergedColumn = $db->query("
-            SELECT COUNT(*) as col_exists
-            FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME = 'appointments'
-            AND COLUMN_NAME = 'merged_into_appointment_id'
-        ")->fetch();
-        $hasMergedColumn = $checkMergedColumn && (int) $checkMergedColumn['col_exists'] > 0;
-    } catch (Exception $e) {
-        $hasMergedColumn = false;
-    }
+    $hasMergedColumn = DbSchemaCache::tableHasColumn($db, 'appointments', 'merged_into_appointment_id');
     
     if ($useRelativeJoin) {
         $sql = '
@@ -763,7 +721,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
             unset($apt);
         }
-        $bloodTestIds = array_values(array_filter(array_map(
+        $listRole = (string) ($user['role'] ?? '');
+        $skipListCareItems = $listRole === 'patient';
+
+        $bloodTestIds = $skipListCareItems ? [] : array_values(array_filter(array_map(
             static fn($apt) => (($apt['type'] ?? '') === 'blood_test') ? (string) ($apt['id'] ?? '') : '',
             $decryptedAppointments
         )));
@@ -778,7 +739,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
             unset($apt);
         }
-        $nursingIds = array_values(array_filter(array_map(
+        $nursingIds = $skipListCareItems ? [] : array_values(array_filter(array_map(
             static fn($apt) => (($apt['type'] ?? '') === 'nursing') ? (string) ($apt['id'] ?? '') : '',
             $decryptedAppointments
         )));

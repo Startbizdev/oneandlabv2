@@ -28,7 +28,7 @@
             </div>
           </div>
           <NuxtLink
-            v-if="!loading && !error && appointments.length > 0"
+            v-if="listReady && !error"
             to="/rendez-vous/nouveau"
             class="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600 dark:focus:ring-offset-gray-900 sm:w-auto sm:self-start sm:whitespace-nowrap sm:py-2"
           >
@@ -40,7 +40,7 @@
 
       <!-- Filtres : sans encadré -->
       <div
-        v-if="!loading && !error && appointments.length > 0"
+        v-if="listReady && !error"
         class="mb-7"
       >
         <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-7">
@@ -105,37 +105,21 @@
           <div>
             <p class="text-sm font-semibold text-red-900 dark:text-red-100">Impossible de charger vos rendez-vous</p>
             <p class="mt-1 text-sm text-red-800 dark:text-red-200">{{ error }}</p>
+            <UButton
+              class="mt-3"
+              color="neutral"
+              variant="soft"
+              size="sm"
+              icon="i-lucide-refresh-cw"
+              @click="refreshPatientAppointments()"
+            >
+              Réessayer
+            </UButton>
           </div>
         </div>
       </div>
 
-      <!-- Liste vide (aucun RDV du tout) -->
-      <section
-        v-else-if="appointments.length === 0"
-        class="rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900/70 sm:p-10"
-      >
-        <div
-          class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 ring-1 ring-primary-100 dark:bg-primary-950/40 dark:text-primary-300 dark:ring-primary-900/60"
-          aria-hidden="true"
-        >
-          <UIcon name="i-lucide-calendar-plus" class="h-8 w-8" />
-        </div>
-        <h2 class="text-lg font-semibold text-gray-950 dark:text-white sm:text-xl">
-          Aucun rendez-vous
-        </h2>
-        <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-          Planifiez votre premier rendez-vous Cary et suivez ensuite toutes les étapes depuis cet espace.
-        </p>
-        <NuxtLink
-          to="/rendez-vous/nouveau"
-          class="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600 dark:focus:ring-offset-gray-900 transition-colors"
-        >
-          <UIcon name="i-lucide-plus" class="h-4 w-4 shrink-0" />
-          <span>Créer un rendez-vous</span>
-        </NuxtLink>
-      </section>
-
-      <!-- Liste filtrée vide -->
+      <!-- Liste vide (onglet ou recherche) -->
       <section
         v-else-if="displayRows.length === 0"
         class="rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900/70 sm:p-10"
@@ -151,12 +135,20 @@
             Aucun résultat pour « {{ searchQuery.trim() }} ». Essayez d’autres mots ou effacez la recherche.
           </template>
           <template v-else-if="listTab === 'upcoming'">
-            Vous n’avez pas de rendez-vous à venir. L’historique se trouve sous « Rendez-vous passés ».
+            Vous n’avez pas de rendez-vous à venir. L’historique se trouve sous « Rendez-vous passés », ou réservez un nouveau rendez-vous.
           </template>
           <template v-else>
             Aucun rendez-vous dans l’historique pour l’instant.
           </template>
         </p>
+        <NuxtLink
+          v-if="!searchQuery.trim() && listTab === 'upcoming'"
+          to="/rendez-vous/nouveau"
+          class="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600 dark:focus:ring-offset-gray-900 transition-colors"
+        >
+          <UIcon name="i-lucide-plus" class="h-4 w-4 shrink-0" />
+          <span>Créer un rendez-vous</span>
+        </NuxtLink>
         <UButton
           v-if="searchQuery.trim()"
           class="mt-5"
@@ -217,6 +209,23 @@
             </DashboardCardShell>
           </div>
         </div>
+
+        <div v-if="hasMore" class="mt-6 flex flex-col items-center gap-2">
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="md"
+            :loading="loadingMore"
+            :disabled="loadingMore || loading"
+            icon="i-lucide-chevron-down"
+            @click="loadMore"
+          >
+            Voir plus
+          </UButton>
+          <p v-if="loadingMore" class="text-xs text-gray-500 dark:text-gray-400">
+            Chargement…
+          </p>
+        </div>
       </template>
     </div>
   </div>
@@ -255,7 +264,17 @@ definePageMeta({
 
 const route = useRoute();
 const { user } = useAuth();
-const { appointments, loading, error, fetchAppointments } = useAppointments();
+const {
+  appointments,
+  loading,
+  loadingMore,
+  error,
+  hasMore,
+  listReady,
+  listTab,
+  refresh: refreshPatientAppointments,
+  loadMore,
+} = usePatientAppointmentsList();
 
 /** Évite mismatch SSR/client : le prénom n’est disponible qu’après hydration auth côté client. */
 const showPersonalizedPatientWelcome = ref(false);
@@ -280,47 +299,15 @@ const patientWelcomeName = computed(() => {
   return `, ${capitalizeWords(String(raw).trim())}`;
 });
 
-/** Charge assez de RDV pour filtrage + recherche côté client */
-const PATIENT_LIST_LIMIT = 150;
-
-const listTab = ref<'upcoming' | 'past'>('upcoming');
 const { searchQuery, filtersSectionActive } = usePatientRdvListSearch();
 
 watch(
-  [loading, error, () => (appointments.value || []).length],
+  [loading, error, listReady],
   () => {
-    filtersSectionActive.value =
-      !loading.value && !error.value && (appointments.value || []).length > 0;
+    filtersSectionActive.value = listReady.value && !error.value;
   },
   { immediate: true },
 );
-
-const TERMINAL_STATUSES = new Set(['completed', 'canceled', 'cancelled', 'refused', 'expired']);
-
-function parisYmd(d: Date): string {
-  return d.toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
-}
-
-function appointmentParisYmd(iso: string | undefined | null): string {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
-}
-
-/** À venir : date (Paris) ≥ aujourd’hui et statut non terminal */
-function isUpcomingAppointment(apt: any): boolean {
-  const st = String(apt?.status ?? '');
-  if (TERMINAL_STATUSES.has(st)) return false;
-  const today = parisYmd(new Date());
-  const day = appointmentParisYmd(apt?.scheduled_at);
-  if (!day) return true;
-  return day >= today;
-}
-
-const tabFilteredAppointments = computed(() => {
-  const list = appointments.value || [];
-  if (listTab.value === 'upcoming') return list.filter(isUpcomingAppointment);
-  return list.filter((a: any) => !isUpcomingAppointment(a));
-});
 
 function appointmentSearchHaystack(apt: any): string {
   const parts: string[] = [];
@@ -354,7 +341,7 @@ function appointmentSearchHaystack(apt: any): string {
 function bloodTestBatchPeerCountInCurrentTab(apt: any): number {
   if (!apt?.creation_batch_id || !isBloodTestAppointment(apt.type)) return 0;
   const bid = String(apt.creation_batch_id);
-  return tabFilteredAppointments.value.filter(
+  return (appointments.value || []).filter(
     (x) => String(x.creation_batch_id) === bid && isBloodTestAppointment(x.type),
   ).length;
 }
@@ -362,7 +349,7 @@ function bloodTestBatchPeerCountInCurrentTab(apt: any): number {
 function nursingBatchPeerCountInCurrentTab(apt: any): number {
   if (!apt?.creation_batch_id || !isNursingAppointment(apt.type)) return 0;
   const bid = String(apt.creation_batch_id);
-  return tabFilteredAppointments.value.filter(
+  return (appointments.value || []).filter(
     (x) => String(x.creation_batch_id) === bid && isNursingAppointment(x.type),
   ).length;
 }
@@ -372,7 +359,7 @@ function stripDiacritics(s: string): string {
 }
 
 const filteredAppointments = computed(() => {
-  let list = tabFilteredAppointments.value;
+  const list = appointments.value || [];
   const q = searchQuery.value.trim().toLowerCase();
   if (!q) return list;
   const qn = stripDiacritics(q);
@@ -477,21 +464,17 @@ function careTeamLines(apt: any): { icon: string; label: string; name: string }[
   return lines;
 }
 
-function refreshPatientAppointments() {
-  fetchAppointments({ page: 1, limit: PATIENT_LIST_LIMIT });
-}
-
 onMounted(() => {
   showPersonalizedPatientWelcome.value = true;
-  refreshPatientAppointments();
+  void refreshPatientAppointments();
   loadPatientCareCategories();
 });
 
 onActivated(() => {
-  refreshPatientAppointments();
+  void refreshPatientAppointments({ silent: true });
 });
 
 watch(() => route.path, (newPath) => {
-  if (newPath === '/patient') refreshPatientAppointments();
+  if (newPath === '/patient') void refreshPatientAppointments({ silent: true });
 });
 </script>

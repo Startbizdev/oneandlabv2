@@ -135,6 +135,8 @@ export interface AppointmentFilters {
   /** Infirmier : `nurse_tab=soins|demandes` (aligné liste RDV) */
   nurse_tab?: 'soins' | 'demandes';
   nurse_segment?: string;
+  /** Patient : à venir vs passés (pagination serveur, aligné mobile). */
+  patient_period?: 'upcoming' | 'past';
 }
 
 

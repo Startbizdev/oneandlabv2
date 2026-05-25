@@ -62,9 +62,13 @@ try {
     $authMiddleware = new AuthMiddleware();
     $authUser = $authMiddleware->handle();
     
-    // Récupérer les informations complètes de l'utilisateur
+    $scope = isset($_GET['scope']) ? trim((string) $_GET['scope']) : 'full';
+    if (!in_array($scope, ['full', 'mobile'], true)) {
+        $scope = 'full';
+    }
+
     $userModel = new User();
-    $user = $userModel->getById($authUser['user_id'], $authUser['user_id'], $authUser['role']);
+    $user = $userModel->getById($authUser['user_id'], $authUser['user_id'], $authUser['role'], $scope);
     
     if (!$user) {
         http_response_code(404);

@@ -5,6 +5,7 @@ import {
   disableBiometricLogin,
   getBiometricLabel,
   loginWithBiometric,
+  refreshBiometricCredentials,
 } from '@/lib/biometric-auth';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
@@ -34,26 +35,52 @@ export function BiometricLoginButton({ onSuccess }: Props) {
   const signIn = useCallback(async () => {
     setLoading(true);
     try {
-      const creds = await loginWithBiometric();
-      if (!creds) {
+      const result = await loginWithBiometric();
+
+      if (!result.ok) {
+        if (result.reason === 'cancelled') return;
+        if (result.reason === 'auth_failed') {
+          toast('Connexion impossible', {
+            message: result.message ?? 'Réessayez ou connectez-vous par email.',
+            type: 'error',
+          });
+          return;
+        }
+        if (result.reason === 'missing_credentials') {
+          setAvailable(false);
+          toast('Face ID à réactiver', {
+            message:
+              'Connectez-vous par email, puis réactivez Face ID dans Profil > Sécurité.',
+            type: 'error',
+          });
+          return;
+        }
         toast('Connexion impossible', {
           message: 'Utilisez votre email et un code.',
           type: 'error',
         });
         return;
       }
-      await setSession(creds.token, creds.user);
+
+      await setSession(result.token, result.user);
       const me = await fetchMe();
       if (!me) {
         await disableBiometricLogin();
+        setAvailable(false);
         await useAuthStore.getState().clearSession();
         toast('Session expirée', {
-          message: 'Connectez-vous avec votre email.',
+          message: 'Connectez-vous avec votre email, puis réactivez Face ID si besoin.',
           type: 'error',
         });
         return;
       }
-      const role = me.role ?? creds.user.role;
+
+      const sessionToken = useAuthStore.getState().token;
+      if (sessionToken) {
+        await refreshBiometricCredentials(sessionToken, me);
+      }
+
+      const role = me.role ?? result.user.role;
       if (!role || !isMobileRole(role)) {
         await useAuthStore.getState().clearSession();
         showAppNotAccessibleAlert(role);

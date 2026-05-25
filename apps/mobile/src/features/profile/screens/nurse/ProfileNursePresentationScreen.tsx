@@ -32,7 +32,7 @@ export function ProfileNursePresentationScreen() {
 
   const q = useQuery({
     queryKey: queryKeys.profile.user(user?.id ?? ''),
-    queryFn: async () => (await fetchUser(user!.id)).data,
+    queryFn: async () => (await fetchUser(user!.id, 'full')).data,
     enabled: !!user?.id,
   });
 

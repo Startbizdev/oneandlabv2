@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { isDevBuild } from '@/config/env';
 import type { AuthUser } from '@oneandlab/shared-types';
 
 const ENABLED_KEY = 'biometric_login_enabled';
@@ -28,6 +29,34 @@ function compactUser(user: AuthUser): AuthUser {
     first_name: user.first_name,
     last_name: user.last_name,
   };
+}
+
+function parseStoredBiometricUser(userJson: string | null | undefined): AuthUser | null {
+  if (!userJson) return null;
+  try {
+    const user = JSON.parse(userJson) as AuthUser;
+    if (!user?.id || !user.role) return null;
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+async function readStoredBiometricCredentials(): Promise<{
+  token: string | null;
+  user: AuthUser | null;
+}> {
+  try {
+    const [[, token], [, userJson]] = await AsyncStorage.multiGet([TOKEN_KEY, USER_KEY]);
+    return { token: token || null, user: parseStoredBiometricUser(userJson) };
+  } catch {
+    return { token: null, user: null };
+  }
+}
+
+function logBiometricLoginDev(reason: string, extra?: string): void {
+  if (!isDevBuild()) return;
+  console.warn(`[biometric-login] ${reason}${extra ? ` — ${extra}` : ''}`);
 }
 
 async function migrateLegacySecureStoreOnce(): Promise<void> {
@@ -144,13 +173,23 @@ export async function getBiometricSettingsForUser(userId: string): Promise<{
 export async function canUseBiometricLogin(): Promise<boolean> {
   if (!(await isBiometricLoginEnabled())) return false;
   if (!(await isBiometricHardwareReady())) return false;
-  try {
-    const token = await AsyncStorage.getItem(TOKEN_KEY);
-    return Boolean(token);
-  } catch {
-    return false;
+
+  const { token, user } = await readStoredBiometricCredentials();
+  if (token && user) return true;
+
+  if (await isBiometricLoginEnabled()) {
+    logBiometricLoginDev('invalid_stored_credentials', 'cleanup');
+    await disableBiometricLogin();
   }
+  return false;
 }
+
+export type BiometricLoginResult =
+  | { ok: true; token: string; user: AuthUser }
+  | { ok: false; reason: 'cancelled' }
+  | { ok: false; reason: 'auth_failed'; message?: string }
+  | { ok: false; reason: 'missing_credentials' }
+  | { ok: false; reason: 'not_available' };
 
 export type BiometricEnableResult =
   | { ok: true }
@@ -264,22 +303,38 @@ export async function enableBiometricLogin(
   }
 }
 
-export async function loginWithBiometric(): Promise<{ token: string; user: AuthUser } | null> {
-  if (!(await canUseBiometricLogin())) return null;
+export async function loginWithBiometric(): Promise<BiometricLoginResult> {
+  if (!(await canUseBiometricLogin())) {
+    logBiometricLoginDev('not_available');
+    return { ok: false, reason: 'not_available' };
+  }
 
   const label = await getBiometricLabel();
-  const confirmed = await promptBiometric(`Connexion ${label}`);
-  if (!confirmed.success) return null;
+  const confirmed = await promptBiometric(`Connexion ${label}`, {
+    allowDeviceFallback: Platform.OS === 'ios',
+  });
 
-  try {
-    const [[, token], [, userJson]] = await AsyncStorage.multiGet([TOKEN_KEY, USER_KEY]);
-    if (!token || !userJson) return null;
-    const user = JSON.parse(userJson) as AuthUser;
-    if (!user?.id || !user.role) return null;
-    return { token, user };
-  } catch {
-    return null;
+  if (!confirmed.success) {
+    if (confirmed.cancelled) {
+      logBiometricLoginDev('cancelled');
+      return { ok: false, reason: 'cancelled' };
+    }
+    logBiometricLoginDev('auth_failed', confirmed.message);
+    return {
+      ok: false,
+      reason: 'auth_failed',
+      message: confirmed.message ?? 'Authentification biométrique échouée.',
+    };
   }
+
+  const { token, user } = await readStoredBiometricCredentials();
+  if (!token || !user) {
+    logBiometricLoginDev('missing_credentials');
+    await disableBiometricLogin();
+    return { ok: false, reason: 'missing_credentials' };
+  }
+
+  return { ok: true, token, user };
 }
 
 export async function disableBiometricLogin(): Promise<void> {

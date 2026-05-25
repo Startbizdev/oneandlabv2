@@ -239,8 +239,12 @@ class User
         return $row && isset($row['role']) ? (string) $row['role'] : null;
     }
 
-    public function getById(string $id, string $requesterId, string $requesterRole): ?array
+    /**
+     * @param 'full'|'mobile' $scope mobile = champs session / liste (sans RPPS, SIRET, ADELI, etc.)
+     */
+    public function getById(string $id, string $requesterId, string $requesterRole, string $scope = 'full'): ?array
     {
+        $lightScope = $scope === 'mobile';
         $stmt = $this->db->prepare('SELECT * FROM profiles WHERE id = ?');
         $stmt->execute([$id]);
         $user = $stmt->fetch();
@@ -309,34 +313,42 @@ class User
                 $user['birth_date'] = null;
             }
             
-            if ($user['rpps_encrypted']) {
-                $user['rpps'] = $this->crypto->decryptField($user['rpps_encrypted'], $user['rpps_dek']);
-                $decryptedFields[] = 'rpps';
-            }
-            
-            if ($this->hasCompanyNameColumn() && !empty($user['company_name_encrypted'] ?? '') && !empty($user['company_name_dek'] ?? '')) {
-                $user['company_name'] = $this->crypto->decryptField($user['company_name_encrypted'], $user['company_name_dek']);
-                $decryptedFields[] = 'company_name';
+            if (!$lightScope) {
+                if ($user['rpps_encrypted']) {
+                    $user['rpps'] = $this->crypto->decryptField($user['rpps_encrypted'], $user['rpps_dek']);
+                    $decryptedFields[] = 'rpps';
+                }
+
+                if ($this->hasCompanyNameColumn() && !empty($user['company_name_encrypted'] ?? '') && !empty($user['company_name_dek'] ?? '')) {
+                    $user['company_name'] = $this->crypto->decryptField($user['company_name_encrypted'], $user['company_name_dek']);
+                    $decryptedFields[] = 'company_name';
+                } else {
+                    $user['company_name'] = null;
+                }
+
+                if ($this->hasSiretColumn() && !empty($user['siret_encrypted'] ?? '') && !empty($user['siret_dek'] ?? '')) {
+                    $user['siret'] = $this->crypto->decryptField($user['siret_encrypted'], $user['siret_dek']);
+                    $decryptedFields[] = 'siret';
+                } else {
+                    $user['siret'] = null;
+                }
+
+                if ($this->hasAdeliColumn() && !empty($user['adeli_encrypted'] ?? '') && !empty($user['adeli_dek'] ?? '')) {
+                    $user['adeli'] = $this->crypto->decryptField($user['adeli_encrypted'], $user['adeli_dek']);
+                    $decryptedFields[] = 'adeli';
+                } else {
+                    $user['adeli'] = null;
+                }
+                if ($this->hasEmploiColumn() && array_key_exists('emploi', $user)) {
+                    $user['emploi'] = $user['emploi'] !== null ? trim((string) $user['emploi']) : null;
+                } else {
+                    $user['emploi'] = null;
+                }
             } else {
+                $user['rpps'] = null;
                 $user['company_name'] = null;
-            }
-            
-            if ($this->hasSiretColumn() && !empty($user['siret_encrypted'] ?? '') && !empty($user['siret_dek'] ?? '')) {
-                $user['siret'] = $this->crypto->decryptField($user['siret_encrypted'], $user['siret_dek']);
-                $decryptedFields[] = 'siret';
-            } else {
                 $user['siret'] = null;
-            }
-            
-            if ($this->hasAdeliColumn() && !empty($user['adeli_encrypted'] ?? '') && !empty($user['adeli_dek'] ?? '')) {
-                $user['adeli'] = $this->crypto->decryptField($user['adeli_encrypted'], $user['adeli_dek']);
-                $decryptedFields[] = 'adeli';
-            } else {
                 $user['adeli'] = null;
-            }
-            if ($this->hasEmploiColumn() && array_key_exists('emploi', $user)) {
-                $user['emploi'] = $user['emploi'] !== null ? trim((string)$user['emploi']) : null;
-            } else {
                 $user['emploi'] = null;
             }
             
