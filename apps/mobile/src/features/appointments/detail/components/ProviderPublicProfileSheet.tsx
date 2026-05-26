@@ -34,7 +34,6 @@ export function ProviderPublicProfileSheet({
       visible={visible}
       onClose={onClose}
       title={title}
-      keyboardAware={false}
       disableScroll
       enableSwipeToDismiss={false}
       contentStyle={styles.sheetBody}

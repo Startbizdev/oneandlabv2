@@ -5,7 +5,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,6 +12,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import { Info, Maximize2, MessageSquare, Send } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { useSheetTextInputComponent } from '@/components/ui/sheet-keyboard-context';
 import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { queryKeys } from '@/lib/query-keys';
@@ -81,6 +81,7 @@ export function CarePhotoDiscussionSheet({
   canComment: canCommentProp,
 }: Props) {
   const { show: toast } = useToast();
+  const TextField = useSheetTextInputComponent();
   const qc = useQueryClient();
   const [draft, setDraft] = useState('');
   const [previewUri, setPreviewUri] = useState<string | null>(null);
@@ -169,7 +170,7 @@ export function CarePhotoDiscussionSheet({
 
   const composer = canComment ? (
     <View style={styles.composer}>
-      <TextInput
+      <TextField
         style={styles.input}
         placeholder={composerPlaceholder}
         placeholderTextColor={colors.textTertiary}

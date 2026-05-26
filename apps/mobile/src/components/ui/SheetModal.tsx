@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+import { SheetKeyboardProvider } from './sheet-keyboard-context';
 
 const MAX_HEIGHT_RATIO = 0.86;
 
@@ -36,7 +37,6 @@ interface Props {
   /** WebView / scroll interne uniquement. */
   disableScroll?: boolean;
   dismissOnBackdropPress?: boolean;
-  keyboardAware?: boolean;
   enableSwipeToDismiss?: boolean;
   presentKey?: string | number;
 }
@@ -162,10 +162,11 @@ export function SheetModal({
       topInset={insets.top}
       keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
+      enableBlurKeyboardOnGesture
       android_keyboardInputMode="adjustResize"
       onDismiss={handleDismiss}
     >
-      {body}
+      <SheetKeyboardProvider>{body}</SheetKeyboardProvider>
     </BottomSheetModal>
   );
 }
