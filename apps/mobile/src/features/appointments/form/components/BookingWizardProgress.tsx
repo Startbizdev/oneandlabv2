@@ -6,9 +6,10 @@ interface Props {
   current: number;
   total: number;
   label?: string;
+  hint?: string;
 }
 
-export function BookingWizardProgress({ current, total, label }: Props) {
+export function BookingWizardProgress({ current, total, label, hint }: Props) {
   const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
 
   return (
@@ -19,6 +20,7 @@ export function BookingWizardProgress({ current, total, label }: Props) {
         </Text>
         {label ? <Text style={styles.label}>{label}</Text> : null}
       </View>
+      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
       <View style={styles.track}>
         <View style={[styles.fill, { width: `${pct}%` }]} />
       </View>
@@ -47,6 +49,11 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: colors.textSecondary,
+  },
+  hint: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize['2xs'],
+    color: colors.textTertiary,
   },
   track: {
     height: 4,

@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { Calendar, CalendarDays, ClipboardList, LayoutGrid, Users } from 'lucide-react-native';
 import { TabBar } from '@/components/navigation/TabBar';
 import { TabBarIconBadge } from '@/components/navigation/TabBarIconBadge';
+import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { tabScreenOptions } from '@/navigation/screen-options';
 import { useNurseDemandesBadgeCount } from '@/features/nurse/hooks/use-nurse-demandes-badge';
@@ -23,6 +24,7 @@ export default function NurseTabsLayout() {
         ...tabScreenOptions(),
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
+        headerRight: tabHeaderNotificationRight(),
       }}
     >
       <Tabs.Screen

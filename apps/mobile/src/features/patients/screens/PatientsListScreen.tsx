@@ -14,12 +14,13 @@ import { useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Users } from 'lucide-react-native';
 import { ageFromBirthDate } from '@oneandlab/shared-utils';
-import { headerRightAction } from '@/navigation/HeaderActionButton';
+import { ScreenFab } from '@/components/ui/ScreenFab';
+import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
 import { queryKeys } from '@/lib/query-keys';
 import { deletePatient, fetchPatients } from '../api/patients.service';
 import type { PatientRow } from '../api/fetch-all-patients';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonList } from '@/components/ui/skeletons';
+import { SkeletonPatientList } from '@/components/ui/skeletons';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -42,18 +43,16 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
   const navigation = useNavigation();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: tabHeaderNotificationRight(),
+    });
+  }, [navigation]);
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState('');
-
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: headerRightAction('add-person', {
-        onPress: () => setCreateOpen(true),
-      }),
-    });
-  }, [navigation]);
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: queryKeys.patients.list(),
@@ -176,6 +175,37 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
         ) : null}
       </View>
 
+      {isLoading ? (
+        <SkeletonPatientList count={8} />
+      ) : filtered.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <EmptyState
+            Icon={Users}
+            title="Aucun patient"
+            description="Ajoutez un patient avec le bouton + en bas à droite."
+          />
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentInsetAdjustmentBehavior="automatic"
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={styles.sep} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+          }
+        />
+      )}
+
+      <ScreenFab
+        onPress={() => setCreateOpen(true)}
+        accessibilityLabel="Ajouter un patient"
+      />
+
       <CreatePatientModal
         visible={createOpen}
         onClose={() => setCreateOpen(false)}
@@ -184,29 +214,6 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
           toast('Patient créé', { type: 'success' });
         }}
       />
-
-      {isLoading ? (
-        <SkeletonList count={8} itemHeight={52} gap={0} />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          Icon={Users}
-          title="Aucun patient"
-          description="Ajoutez un patient pour commencer."
-        />
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentInsetAdjustmentBehavior="automatic"
-          style={styles.list}
-          showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={styles.sep} />}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
-          }
-        />
-      )}
     </View>
   );
 }
@@ -215,6 +222,7 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
+    overflow: 'visible',
   },
   searchBlock: {
     paddingHorizontal: 16,
@@ -227,11 +235,19 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     color: colors.textTertiary,
   },
+  emptyWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: spacing[4],
+  },
   list: {
     flex: 1,
     backgroundColor: colors.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.borderLight,
+  },
+  listContent: {
+    paddingBottom: spacing[24],
   },
   row: {
     flexDirection: 'row',

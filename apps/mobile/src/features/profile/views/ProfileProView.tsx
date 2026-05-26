@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
-import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Globe, Mail } from 'lucide-react-native';
+import { Camera, ExternalLink, FileText, Globe, Mail, Share2 } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
-import { PRO_SANTE_EMPLOIS } from '@/constants/pro-emploi';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
+import { ProEmploiSelect } from '@/features/auth/components/ProEmploiSelect';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import { fetchUser, updateProfileImages, updateUser } from '@/features/profile/api/profile.service';
+import {
+  parseProfileSocialLinks,
+  serializeProfileSocialLinks,
+} from '@/features/profile/utils/profile-social-links';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
@@ -34,7 +37,9 @@ export function ProfileProView() {
   const [emploi, setEmploi] = useState('');
   const [biography, setBiography] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
-  const [publicEnabled, setPublicEnabled] = useState(false);
+  const [socialFacebook, setSocialFacebook] = useState('');
+  const [socialLinkedin, setSocialLinkedin] = useState('');
+  const [socialInstagram, setSocialInstagram] = useState('');
   const [profileUrl, setProfileUrl] = useState<string | null>(null);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
 
@@ -54,7 +59,10 @@ export function ProfileProView() {
     setEmploi(d.emploi ?? '');
     setBiography(d.biography ?? '');
     setWebsiteUrl(d.website_url ?? '');
-    setPublicEnabled(!!d.is_public_profile_enabled);
+    const social = parseProfileSocialLinks(d.social_links);
+    setSocialFacebook(social.facebook);
+    setSocialLinkedin(social.linkedin);
+    setSocialInstagram(social.instagram);
     setProfileUrl(d.profile_image_url ?? null);
     setCoverUrl(d.cover_image_url ?? null);
   }, [q.data]);
@@ -96,7 +104,11 @@ export function ProfileProView() {
         emploi: emploi.trim() || null,
         biography: biography.trim() || null,
         website_url: websiteUrl.trim() || null,
-        is_public_profile_enabled: publicEnabled,
+        social_links: serializeProfileSocialLinks({
+          facebook: socialFacebook,
+          linkedin: socialLinkedin,
+          instagram: socialInstagram,
+        }),
         profile_image_url: profileUrl,
         cover_image_url: coverUrl,
       }),
@@ -139,14 +151,7 @@ export function ProfileProView() {
             <Text style={styles.fieldHint}>L'email ne peut pas être modifié depuis l'application.</Text>
           </View>
           <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-          <Input label="Profession" value={emploi} onChangeText={setEmploi} placeholder="Médecin généraliste…" />
-          <View style={styles.emploiHints}>
-            {PRO_SANTE_EMPLOIS.slice(0, 6).map((e) => (
-              <Pressable key={e} onPress={() => setEmploi(e)}>
-                <Text style={styles.hintChip}>{e}</Text>
-              </Pressable>
-            ))}
-          </View>
+          <ProEmploiSelect value={emploi} onChange={setEmploi} label="Profession (emploi)" />
           <Input
             label="Numéro Adeli"
             value={adeli}
@@ -156,27 +161,62 @@ export function ProfileProView() {
           />
         </ProfileSection>
 
-        <ProfileSection title="Présentation" description="Votre fiche publique sur Cary" Icon={Globe}>
-          <ProfileToggleRow
-            label="Fiche publique"
-            hint={publicEnabled ? 'Visible sur Cary' : 'Non visible'}
-            value={publicEnabled}
-            onValueChange={setPublicEnabled}
-          />
+        <ProfileSection
+          title="Présentation"
+          description="Quelques lignes sur votre activité ou votre cabinet (facultatif)"
+          Icon={FileText}
+        >
           <Input
-            label="Biographie"
+            label="Texte de présentation"
             value={biography}
             onChangeText={setBiography}
             multiline
-            numberOfLines={4}
-            style={{ minHeight: 88, textAlignVertical: 'top' }}
+            numberOfLines={5}
+            style={{ minHeight: 120, textAlignVertical: 'top' }}
+            placeholder="Ex. Médecin généraliste, consultations sur rendez-vous…"
           />
+        </ProfileSection>
+
+        <ProfileSection
+          title="Site web et réseaux"
+          description="Liens optionnels (cabinet, LinkedIn, etc.)"
+          Icon={Globe}
+        >
           <Input
-            label="Site web"
+            label="Site internet"
             value={websiteUrl}
             onChangeText={setWebsiteUrl}
             autoCapitalize="none"
             keyboardType="url"
+            placeholder="https://…"
+            leftIcon={<Globe size={16} color={colors.textTertiary} strokeWidth={2} />}
+          />
+          <Input
+            label="Facebook"
+            value={socialFacebook}
+            onChangeText={setSocialFacebook}
+            autoCapitalize="none"
+            keyboardType="url"
+            placeholder="URL de la page"
+            leftIcon={<Share2 size={16} color={colors.textTertiary} strokeWidth={2} />}
+          />
+          <Input
+            label="LinkedIn"
+            value={socialLinkedin}
+            onChangeText={setSocialLinkedin}
+            autoCapitalize="none"
+            keyboardType="url"
+            placeholder="URL du profil"
+            leftIcon={<ExternalLink size={16} color={colors.textTertiary} strokeWidth={2} />}
+          />
+          <Input
+            label="Instagram"
+            value={socialInstagram}
+            onChangeText={setSocialInstagram}
+            autoCapitalize="none"
+            keyboardType="url"
+            placeholder="URL du profil"
+            leftIcon={<Camera size={16} color={colors.textTertiary} strokeWidth={2} />}
           />
         </ProfileSection>
 
@@ -187,7 +227,7 @@ export function ProfileProView() {
         visible={photosOpen}
         onClose={() => setPhotosOpen(false)}
         title="Photos"
-        subtitle="Personnalisez votre fiche publique"
+        subtitle="Photo affichée sur votre compte"
         contentStyle={styles.sheetBody}
       >
         <ProfilePhotosSheetContent
@@ -236,12 +276,5 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: colors.textSecondary,
-  },
-  emploiHints: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: -spacing[2] },
-  hintChip: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: colors.primary,
-    textDecorationLine: 'underline',
   },
 });

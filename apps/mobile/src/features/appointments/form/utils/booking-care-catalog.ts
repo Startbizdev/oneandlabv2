@@ -38,6 +38,21 @@ export function catalogGroupLabel(key: string): string {
   return CATALOG_GROUP_LABELS[key] ?? labelForUnknown(key);
 }
 
+/** Emoji filtre segment (étape 1 mobile — aligné groupes catalogue). */
+const CATALOG_GROUP_FILTER_EMOJI: Record<string, string> = {
+  all: '✨',
+  examens: '🧪',
+  soins: '💗',
+  suivi: '📊',
+  hygiene: '🛁',
+  prevention: '🛡️',
+  divers: '📋',
+};
+
+export function catalogGroupFilterEmoji(key: string): string {
+  return CATALOG_GROUP_FILTER_EMOJI[key] ?? '🏷️';
+}
+
 function sortCatalogGroupKeys(keys: string[]): string[] {
   return [...keys].sort((a, b) => {
     const ia = CATALOG_GROUP_ORDER.indexOf(a as (typeof CATALOG_GROUP_ORDER)[number]);
@@ -86,6 +101,23 @@ export function filterCategoriesByTab(
 ): CareCategory[] {
   if (tab === 'all') return categories;
   return categories.filter((c) => resolveCatalogGroup(c) === tab);
+}
+
+/** Catégorie fourre-tout « Autre » — toujours affichée en dernier à l’étape 1. */
+export function isAutreCareCategory(cat: CareCategory): boolean {
+  const label = (cat.label ?? '').trim().toLowerCase();
+  const name = (cat.name ?? '').trim().toLowerCase();
+  return label === 'autre' || name === 'autre' || /^autre\b/.test(label) || /^autre\b/.test(name);
+}
+
+export function sortCareCategoriesWithAutreLast(categories: CareCategory[]): CareCategory[] {
+  const autre: CareCategory[] = [];
+  const rest: CareCategory[] = [];
+  for (const c of categories) {
+    if (isAutreCareCategory(c)) autre.push(c);
+    else rest.push(c);
+  }
+  return [...rest, ...autre];
 }
 
 export function careListHeading(tab: string, tabs: CareFilterTab[]): string {

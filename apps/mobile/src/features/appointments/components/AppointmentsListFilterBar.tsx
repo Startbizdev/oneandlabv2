@@ -9,18 +9,10 @@ export interface FilterChip {
   onRemove: () => void;
 }
 
-export interface SegmentTab<T extends string = string> {
-  value: T;
-  label: string;
-}
-
-interface Props<T extends string = string> {
+interface Props {
   search: string;
   onSearchChange: (value: string) => void;
   searchPlaceholder?: string;
-  segmentTabs?: SegmentTab<T>[];
-  segmentTab?: T;
-  onSegmentTabChange?: (value: T) => void;
   onOpenFilters?: () => void;
   advancedFilterCount?: number;
   chips?: FilterChip[];
@@ -28,61 +20,20 @@ interface Props<T extends string = string> {
   embedded?: boolean;
 }
 
-export function AppointmentsListFilterBar<T extends string = string>({
+export function AppointmentsListFilterBar({
   search,
   onSearchChange,
   searchPlaceholder = 'Rechercher…',
-  segmentTabs,
-  segmentTab,
-  onSegmentTabChange,
   onOpenFilters,
   advancedFilterCount = 0,
   chips = [],
   embedded = false,
-}: Props<T>) {
+}: Props) {
   const showAdvanced = Boolean(onOpenFilters);
   const hasChips = chips.length > 0;
 
   return (
     <View style={[styles.wrap, embedded && styles.wrapEmbedded]}>
-      {segmentTabs && segmentTab !== undefined && onSegmentTabChange ? (
-        segmentTabs.length <= 2 ? (
-          <View style={styles.segmentTrack}>
-            {segmentTabs.map((tab) => {
-              const active = segmentTab === tab.value;
-              return (
-                <Pressable
-                  key={tab.value}
-                  onPress={() => onSegmentTabChange(tab.value)}
-                  style={[styles.segmentBtn, active && styles.segmentBtnActive]}
-                >
-                  <Text style={[styles.segmentLabel, active && styles.segmentLabelActive]} numberOfLines={1}>
-                    {tab.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsRow}>
-            {segmentTabs.map((tab) => {
-              const active = segmentTab === tab.value;
-              return (
-                <Pressable
-                  key={tab.value}
-                  onPress={() => onSegmentTabChange(tab.value)}
-                  style={[styles.statusPill, active && styles.statusPillActive]}
-                >
-                  <Text style={[styles.statusPillLabel, active && styles.statusPillLabelActive]} numberOfLines={1}>
-                    {tab.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        )
-      ) : null}
-
       <View style={styles.searchRow}>
         <View style={[styles.searchField, elevation.xs]}>
           <Search size={16} color={colors.textTertiary} strokeWidth={2} />
@@ -112,7 +63,7 @@ export function AppointmentsListFilterBar<T extends string = string>({
           <Pressable
             onPress={onOpenFilters}
             style={[styles.filterBtn, advancedFilterCount > 0 && styles.filterBtnActive]}
-            accessibilityLabel="Filtres avancés"
+            accessibilityLabel="Filtres"
           >
             <ListFilter
               size={18}
@@ -162,58 +113,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
     marginTop: 0,
     marginBottom: 0,
-  },
-  segmentTrack: {
-    flexDirection: 'row',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.lg,
-    padding: 3,
-    gap: 3,
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[2],
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentBtnActive: {
-    backgroundColor: colors.surface,
-    ...elevation.xs,
-  },
-  segmentLabel: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
-  segmentLabelActive: {
-    color: colors.primaryDark,
-  },
-  pillsRow: {
-    flexDirection: 'row',
-    gap: spacing[2],
-    paddingVertical: spacing[0.5],
-  },
-  statusPill: {
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  statusPillActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
-  statusPillLabel: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
-  statusPillLabelActive: {
-    color: colors.primaryDark,
   },
   searchRow: {
     flexDirection: 'row',

@@ -205,10 +205,12 @@ export function RoleFilteredAppointmentsListScreen({
       <AppointmentsFilterSheet
         visible={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        title="Filtrer les rendez-vous"
+        title="Filtres"
         search=""
         onSearchChange={() => {}}
         showSearch={false}
+        closeOnPick
+        onReset={() => setStatus('all')}
         segments={statusOptions}
         segment={status}
         onSegmentChange={onStatusChange}

@@ -1,4 +1,4 @@
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { colors, radius, spacing } from '@/theme';
@@ -10,7 +10,7 @@ interface DayAppointmentsSheetProps<T> {
   subtitle: string;
   data: T[];
   keyExtractor: (item: T) => string;
-  renderItem: (item: T) => ReactNode;
+  renderItem: (item: T, index: number) => ReactNode;
   onClose: () => void;
   empty?: ReactNode;
 }
@@ -26,32 +26,22 @@ export function DayAppointmentsSheet<T>({
   empty,
 }: DayAppointmentsSheetProps<T>) {
   return (
-    <SheetModal
-      visible={visible}
-      onClose={onClose}
-      title={title}
-      subtitle={subtitle}
-      disableScroll
-      keyboardAware={false}
-      footer={
-        <Pressable onPress={onClose} style={styles.closeBtn}>
-          <Text style={styles.closeBtnText}>Fermer</Text>
-        </Pressable>
-      }
-    >
+    <SheetModal visible={visible} onClose={onClose} title={title} subtitle={subtitle} keyboardAware={false}>
       {data.length === 0 ? (
         <View style={styles.emptyWrap}>{empty}</View>
       ) : (
-        <FlatList
-          data={data}
-          keyExtractor={keyExtractor}
-          style={styles.list}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          renderItem={({ item }) => <View style={styles.itemWrap}>{renderItem(item)}</View>}
-        />
+        <View style={styles.list}>
+          {data.map((item, index) => (
+            <View key={keyExtractor(item)} style={styles.itemWrap}>
+              {renderItem(item, index)}
+            </View>
+          ))}
+        </View>
       )}
+
+      <Pressable onPress={onClose} style={styles.closeBtn}>
+        <Text style={styles.closeBtnText}>Fermer</Text>
+      </Pressable>
     </SheetModal>
   );
 }
@@ -61,9 +51,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[8],
   },
   list: {
-    maxHeight: 480,
-  },
-  listContent: {
     gap: spacing[2],
   },
   itemWrap: {},

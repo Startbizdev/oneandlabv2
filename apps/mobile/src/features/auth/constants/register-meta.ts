@@ -17,13 +17,13 @@ export const REGISTER_META: Record<
     submit: 'Créer mon compte',
   },
   nurse: {
-    headerTitle: 'Infirmier·ère',
+    headerTitle: 'Infirmier(ère)',
     headerSubtitle: 'Rejoindre le réseau Cary',
     Icon: HeartPulse,
     submit: 'Envoyer ma demande',
   },
   pro: {
-    headerTitle: 'Pro de santé',
+    headerTitle: 'Professionnel de santé',
     headerSubtitle: 'Professionnel prescripteur',
     Icon: Stethoscope,
     submit: 'Envoyer ma demande',

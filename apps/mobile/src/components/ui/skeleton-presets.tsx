@@ -161,6 +161,33 @@ export function SkeletonList({ count = 4, itemHeight = 116, gap = spacing[3] }: 
   );
 }
 
+/** Ligne liste Patients staff (avatar 44 + nom + sous-titre + chevron). */
+export function SkeletonPatientListRow({ showDivider = true }: { showDivider?: boolean }) {
+  return (
+    <View>
+      <View style={styles.patientRow}>
+        <Skeleton height={44} width={44} borderRadius={radius.full} />
+        <View style={styles.patientInfo}>
+          <Skeleton height={15} width="62%" borderRadius={radius.sm} />
+          <Skeleton height={12} width="48%" borderRadius={radius.xs} style={styles.patientSub} />
+        </View>
+        <Skeleton height={20} width={12} borderRadius={radius.xs} />
+      </View>
+      {showDivider ? <View style={styles.patientSep} /> : null}
+    </View>
+  );
+}
+
+export function SkeletonPatientList({ count = 8 }: { count?: number }) {
+  return (
+    <View style={styles.patientList}>
+      {Array.from({ length: count }).map((_, i) => (
+        <SkeletonPatientListRow key={i} showDivider={i < count - 1} />
+      ))}
+    </View>
+  );
+}
+
 /** Écran détail RDV staff (infirmier / pro / préleveur). */
 export function SkeletonStaffAppointmentDetail({
   showPhotosTab = false,
@@ -229,31 +256,24 @@ export function SkeletonDashboardStats() {
   );
 }
 
-/** Wizard booking — étape choix des soins (filtres + cartes). */
-export function SkeletonCareSelectionStep({ count = 7 }: { count?: number }) {
+/** Wizard booking — étape choix des soins (chips + grille 2 colonnes). */
+export function SkeletonCareSelectionStep({ count = 8 }: { count?: number }) {
   return (
     <View style={styles.careSelectionRoot}>
       <View style={styles.careSelectionHeader}>
-        <Skeleton height={10} width={92} borderRadius={radius.xs} />
-        <View style={styles.careSelectionChips}>
-          {[72, 88, 96, 64].map((width, i) => (
-            <Skeleton key={i} height={32} width={width} borderRadius={radius.full} />
+        <View style={styles.careSelectionSegments}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} height={52} width={68} borderRadius={radius.md} />
           ))}
         </View>
-        <Skeleton
-          height={10}
-          width={128}
-          borderRadius={radius.xs}
-          style={styles.careSelectionHeading}
-        />
+        <View style={styles.careSelectionMeta}>
+          <Skeleton height={14} width={120} borderRadius={radius.sm} />
+          <Skeleton height={10} width={48} borderRadius={radius.xs} />
+        </View>
       </View>
-      <View style={styles.careSelectionList}>
+      <View style={styles.careSelectionGrid}>
         {Array.from({ length: count }).map((_, i) => (
-          <View key={i} style={styles.careSelectionCard}>
-            <Skeleton height={40} width={40} borderRadius={radius.md} />
-            <Skeleton height={14} style={styles.careSelectionLabel} borderRadius={radius.sm} />
-            <Skeleton height={32} width={32} borderRadius={radius.full} />
-          </View>
+          <Skeleton key={i} height={108} style={styles.careSelectionTile} borderRadius={radius.xl} />
         ))}
       </View>
     </View>
@@ -332,6 +352,32 @@ const styles = StyleSheet.create({
   listCard: {
     paddingVertical: spacing[1],
   },
+  patientList: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderLight,
+  },
+  patientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+    backgroundColor: colors.surface,
+  },
+  patientInfo: {
+    flex: 1,
+    marginLeft: spacing[3],
+    marginRight: spacing[2],
+  },
+  patientSub: {
+    marginTop: spacing[1.5],
+  },
+  patientSep: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.borderLight,
+    marginLeft: 68,
+  },
   profileHero: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -350,39 +396,29 @@ const styles = StyleSheet.create({
   },
   careSelectionRoot: {
     flex: 1,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
   },
   careSelectionHeader: {
-    gap: spacing[1],
-    marginBottom: spacing[2],
+    gap: spacing[3],
+    marginBottom: spacing[3],
   },
-  careSelectionChips: {
+  careSelectionSegments: {
     flexDirection: 'row',
-    gap: spacing[1.5],
-    paddingRight: spacing[1],
-  },
-  careSelectionHeading: {
-    marginTop: spacing[0.5],
-  },
-  careSelectionList: {
     gap: spacing[2],
   },
-  careSelectionCard: {
+  careSelectionMeta: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    minHeight: 52,
-    paddingVertical: spacing[2.5],
-    paddingLeft: spacing[2.5],
-    paddingRight: spacing[2],
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
   },
-  careSelectionLabel: {
-    flex: 1,
-    marginHorizontal: spacing[3],
+  careSelectionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+  },
+  careSelectionTile: {
+    width: '48%',
   },
 });

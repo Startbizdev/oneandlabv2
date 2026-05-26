@@ -167,10 +167,12 @@ export function PatientAppointmentsListScreen() {
       <AppointmentsFilterSheet
         visible={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        title="Filtrer les rendez-vous"
+        title="Filtres"
         search=""
         onSearchChange={() => {}}
         showSearch={false}
+        closeOnPick
+        onReset={() => setTab('upcoming')}
         segments={PATIENT_TAB_OPTIONS}
         segment={tab}
         onSegmentChange={onPeriodChange}

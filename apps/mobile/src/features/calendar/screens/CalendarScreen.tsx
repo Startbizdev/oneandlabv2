@@ -14,10 +14,11 @@ import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
 import type { Appointment, AppointmentListFilters, AppointmentType } from '@oneandlab/shared-types';
-import { formatAppointmentDateShort } from '@/utils/appointment-datetime-fr';
 import { queryKeys } from '@/lib/query-keys';
 import { fetchAppointments } from '@/features/appointments/api/appointments.service';
-import { AppointmentCard } from '@/features/appointments/components/AppointmentCard';
+import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
+import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
+import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { CalendarFilterSheet } from '@/features/calendar/components/CalendarFilterSheet';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -41,8 +42,14 @@ interface Props {
   detailPathPrefix: string;
   /** Calendrier infirmier : Mes soins / Bilans + filtres avancés */
   nurseCalendar?: boolean;
-  /** Statut uniquement dans la modal « Affiner le calendrier » (pas de pills sous le header). */
-  statusFilterInSheetOnly?: boolean;
+  /** Cartes liste RDV (même rendu que l’onglet Rendez-vous). */
+  listRole?: 'nurse' | 'pro' | 'preleveur';
+}
+
+function listRoleFromDetailPrefix(prefix: string): 'nurse' | 'pro' | 'preleveur' {
+  if (prefix.includes('nurse')) return 'nurse';
+  if (prefix.includes('preleveur')) return 'preleveur';
+  return 'pro';
 }
 
 function monthMatrix(year: number, month: number) {
@@ -64,8 +71,9 @@ export function CalendarScreen({
   baseFilters,
   detailPathPrefix,
   nurseCalendar = false,
-  statusFilterInSheetOnly = false,
+  listRole: listRoleProp,
 }: Props) {
+  const listRole = listRoleProp ?? listRoleFromDetailPrefix(detailPathPrefix);
   const { width } = useWindowDimensions();
   const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -127,6 +135,11 @@ export function CalendarScreen({
     return items;
   }, [byDay, selectedDay, search]);
 
+  const dayDisplayRows = useMemo(
+    () => buildAppointmentDisplayRows(dayItems, { direction: 'upcoming' }),
+    [dayItems],
+  );
+
   const cells = useMemo(() => monthMatrix(cursor.year(), cursor.month()), [cursor]);
   const today = dayjs().format('YYYY-MM-DD');
   const cellSize = Math.floor((width - spacing[4] * 2 - spacing[1] * 6) / 7);
@@ -183,20 +196,23 @@ export function CalendarScreen({
   const closeSheet = useCallback(() => setSheetOpen(false), []);
 
   const renderDayItem = useCallback(
-    (item: Appointment) => (
-      <AppointmentCard
-        appointment={item}
-        subtitle={formatAppointmentDateShort(
-          item.scheduled_at,
-          (item.form_data as { availability?: unknown } | undefined)?.availability,
-        )}
-        onPress={() => {
+    (row: AppointmentListRow, index: number) => (
+      <AppointmentListRowCard
+        row={row}
+        index={index}
+        role={listRole}
+        onPress={(apt) => {
           closeSheet();
-          router.push(`${detailPathPrefix}/${item.id}` as never);
+          router.push(`${detailPathPrefix}/${apt.id}` as never);
         }}
       />
     ),
-    [router, detailPathPrefix, closeSheet],
+    [router, detailPathPrefix, closeSheet, listRole],
+  );
+
+  const dayRowKey = useCallback(
+    (row: AppointmentListRow) => (row.kind === 'batch' ? row.key : row.appointment.id),
+    [],
   );
 
   return (
@@ -213,17 +229,6 @@ export function CalendarScreen({
             search={search}
             onSearchChange={setSearch}
             searchPlaceholder="Patient, soin…"
-            segmentTabs={
-              nurseCalendar || statusFilterInSheetOnly
-                ? undefined
-                : CALENDAR_STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))
-            }
-            segmentTab={nurseCalendar || statusFilterInSheetOnly ? undefined : statusFilter}
-            onSegmentTabChange={
-              nurseCalendar || statusFilterInSheetOnly
-                ? undefined
-                : (v) => setStatusFilter(v as CalendarStatusFilter)
-            }
             onOpenFilters={() => setFilterSheetOpen(true)}
             advancedFilterCount={advancedCount}
             chips={filterChips}
@@ -313,9 +318,9 @@ export function CalendarScreen({
       <DayAppointmentsSheet
         visible={sheetOpen}
         title={dayjs(selectedDay).format('dddd D MMMM YYYY')}
-        subtitle={`${dayItems.length} rendez-vous`}
-        data={dayItems}
-        keyExtractor={(item) => item.id}
+        subtitle={`${dayDisplayRows.length} rendez-vous`}
+        data={dayDisplayRows}
+        keyExtractor={dayRowKey}
         renderItem={renderDayItem}
         onClose={closeSheet}
         empty={

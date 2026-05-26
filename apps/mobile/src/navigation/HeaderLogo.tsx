@@ -1,6 +1,4 @@
 import { Image, StyleSheet, View } from 'react-native';
-import { spacing } from '@/theme';
-
 const LOGO = require('../../assets/logo-cary.png');
 
 const LOGO_SIZES = {
@@ -29,7 +27,6 @@ export function HeaderLogo({ size = 'default' }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingLeft: spacing[1],
     justifyContent: 'center',
   },
   logo: {},

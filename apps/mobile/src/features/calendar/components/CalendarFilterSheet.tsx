@@ -38,11 +38,16 @@ export function CalendarFilterSheet({
     <AppointmentsFilterSheet
       visible={visible}
       onClose={onClose}
-      title="Affiner le calendrier"
+      title="Filtres"
       search=""
       onSearchChange={() => {}}
       showSearch={false}
       closeOnPick={false}
+      onReset={() => {
+        onStatusChange('');
+        onTypeChange('');
+        onNurseTabChange?.('soins');
+      }}
       tabs={nurseCalendar ? NURSE_TAB_OPTIONS : undefined}
       tab={nurseCalendar ? nurseTab : undefined}
       onTabChange={nurseCalendar ? onNurseTabChange : undefined}

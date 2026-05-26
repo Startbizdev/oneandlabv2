@@ -1,54 +1,43 @@
 import { Platform, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
-import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BookingContinueButton } from './BookingContinueButton';
-import { BookingSelectionCart } from './BookingSelectionCart';
+import { BookingPremiumStepCta } from './BookingPremiumStepCta';
 import { colors, elevation, spacing } from '@/theme';
 
-interface CartProps {
-  count: number;
-  onPressDetail: () => void;
-}
-
 interface Props {
-  primaryLabel: string;
+  title: string;
+  subtitle?: string;
   onPrimary: () => void;
   primaryLoading?: boolean;
   primaryDisabled?: boolean;
-  cart?: CartProps;
 }
 
-/** Footer sticky : panier compact à gauche, CTA gradient qui remplit le reste. */
+/** Footer sticky — même CTA premium que l’étape 1 (sans badge numéro), sans animation. */
 export function BookingActionBar({
-  primaryLabel,
+  title,
+  subtitle,
   onPrimary,
   primaryLoading,
   primaryDisabled,
-  cart,
 }: Props) {
   const { bottom } = useSafeAreaInsets();
   const bottomPad = Math.max(bottom, spacing[2]);
 
   const content = (
     <View style={[styles.bar, { paddingBottom: bottomPad }]}>
-      {cart ? (
-        <BookingSelectionCart count={cart.count} onPress={cart.onPressDetail} />
-      ) : null}
-      <View style={styles.ctaWrap}>
-        <BookingContinueButton
-          title={primaryLabel}
-          onPress={onPrimary}
-          loading={primaryLoading}
-          disabled={primaryDisabled}
-          fill
-        />
-      </View>
+      <BookingPremiumStepCta
+        showStepBadge={false}
+        title={title}
+        subtitle={subtitle}
+        onPress={onPrimary}
+        loading={primaryLoading}
+        disabled={primaryDisabled}
+      />
     </View>
   );
 
   return (
-    <Animated.View entering={FadeInUp.duration(240).springify()} style={styles.shell}>
+    <View style={styles.shell}>
       {Platform.OS === 'ios' ? (
         <BlurView intensity={72} tint="light" style={styles.blur}>
           <View style={styles.blurOverlay}>{content}</View>
@@ -56,7 +45,7 @@ export function BookingActionBar({
       ) : (
         <View style={styles.androidBar}>{content}</View>
       )}
-    </Animated.View>
+    </View>
   );
 }
 
@@ -80,16 +69,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     paddingTop: spacing[3],
     paddingHorizontal: spacing[4],
-  },
-  ctaWrap: {
-    flex: 1,
-    minWidth: 120,
-    alignSelf: 'stretch',
-    justifyContent: 'center',
   },
 });

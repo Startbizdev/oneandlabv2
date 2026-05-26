@@ -4,8 +4,6 @@ import { CACHE_STALE_RELATIVES_MS } from '@oneandlab/shared-constants';
 import { useRouter } from 'expo-router';
 import {
   buildDashboardAppointmentPayloads,
-  isBloodTestAppointment,
-  isNursingAppointment,
   servicesRequiringOwnSlots,
   validateUnifiedRdvPayload,
   type SelectedServiceInput,
@@ -20,7 +18,10 @@ import { fetchPatientRelatives, fetchPatientRelative, type PatientRelative } fro
 import { normalizePatientGender } from '@/utils/patient-gender';
 import { normalizeCategorySkipPrescriptionDocuments } from '@/utils/category-skip-prescription-documents';
 import { validateBookingWizardSubstep } from '../utils/validate-booking-wizard-substep';
+import { servicesInActiveLot } from '../utils/booking-wizard-lot';
+import { bookingWizardProgressHint } from '../utils/booking-wizard-progress-label';
 import { recapDateLabel, type WizardRecapItem } from '../components/BookingWizardSegmentContext';
+import { bookingWizardServiceDisplayName } from '../utils/booking-wizard-lot';
 import type { LocalFileRef } from '../types';
 import type { DocumentFileRef } from '../types/document-file-ref';
 import { profileDocRefFromRow } from '../types/document-file-ref';
@@ -217,6 +218,17 @@ export function useBookingWizard(opts: {
     return 'personal';
   }, [slotRows.length, documentsSlotRows.length, wizardIndex]);
 
+  const maxWizardIndex = useMemo(
+    () => slotRows.length + documentsSlotRows.length,
+    [slotRows.length, documentsSlotRows.length],
+  );
+
+  /** Recaler l’index si le nombre de sous-étapes change (web: nouveau.vue). */
+  useEffect(() => {
+    if (step !== 1) return;
+    setWizardIndex((i) => (i > maxWizardIndex ? Math.max(0, maxWizardIndex) : i));
+  }, [step, maxWizardIndex]);
+
   const isFinalWizardStep = section === 'personal';
 
   const profileAddressLoadedRef = useRef(false);
@@ -256,12 +268,20 @@ export function useBookingWizard(opts: {
     return wizard.selectedServices.find((s) => s.id === id) ?? null;
   }, [activeSlotServiceId, activeDocumentsServiceId, wizard.selectedServices]);
 
-  const segmentKind = useMemo((): 'blood' | 'nursing' | 'mixed' | undefined => {
-    if (!activeService) return undefined;
-    if (isBloodTestAppointment(activeService.type)) return 'blood';
-    if (isNursingAppointment(activeService.type)) return 'nursing';
-    return 'mixed';
-  }, [activeService]);
+  const activeLotServices = useMemo(
+    () => servicesInActiveLot(wizard.selectedServices, activeService?.id),
+    [activeService?.id, wizard.selectedServices],
+  );
+
+  const wizardProgressHint = useMemo(
+    () =>
+      bookingWizardProgressHint(
+        wizard.selectedServices,
+        slotRows.length,
+        documentsSlotRows.length,
+      ),
+    [wizard.selectedServices, slotRows.length, documentsSlotRows.length],
+  );
 
   const previousRecaps = useMemo((): WizardRecapItem[] => {
     const recaps: WizardRecapItem[] = [];
@@ -271,7 +291,7 @@ export function useBookingWizard(opts: {
       const data = wizard.formDataByService[svc.id] ?? {};
       recaps.push({
         serviceId: svc.id,
-        shortLabel: svc.name,
+        shortLabel: bookingWizardServiceDisplayName(svc),
         dateLabel: recapDateLabel(String(data.scheduled_at ?? '')),
       });
     };
@@ -284,12 +304,10 @@ export function useBookingWizard(opts: {
     }
 
     if (section === 'documents') {
-      for (let d = 0; d < documentsSlotRows.length; d++) {
-        const docSvc = documentsSlotRows[d];
-        const globalDocStep = n + d;
-        if (wizardIndex > globalDocStep) {
-          pushRecap(docSvc);
-        }
+      const docIdx = wizardIndex - n;
+      for (let i = 0; i < docIdx; i++) {
+        const svc = documentsSlotRows[i];
+        if (svc) pushRecap(svc);
       }
       return recaps;
     }
@@ -485,15 +503,16 @@ export function useBookingWizard(opts: {
         return;
       }
       if (!validateCurrentStep()) return;
-      const maxIx = slotRows.length + documentsSlotRows.length;
-      if (wizardIndex < maxIx) setWizardIndex((i) => i + 1);
-      else setWizardIndex(maxIx);
+      if (wizardIndex < maxWizardIndex) {
+        setWizardIndex((i) => i + 1);
+      } else {
+        setWizardIndex(maxWizardIndex);
+      }
     })();
   }, [
     isFinalWizardStep,
     validateCurrentStep,
-    slotRows.length,
-    documentsSlotRows.length,
+    maxWizardIndex,
     wizardIndex,
     submitMut,
     opts.mode,
@@ -507,6 +526,8 @@ export function useBookingWizard(opts: {
   return {
     step,
     wizard,
+    slotRows,
+    documentsSlotRows,
     allCategories,
     confirmStep0,
     backToCareSelection,
@@ -518,10 +539,11 @@ export function useBookingWizard(opts: {
     wizardStepCount,
     wizardStepCurrent,
     activeService,
+    activeLotServices,
     activeSlotServiceId,
     activeDocumentsServiceId,
     previousRecaps,
-    segmentKind,
+    wizardProgressHint,
     filesByService,
     setServiceFiles,
     personalFiles,

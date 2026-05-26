@@ -217,19 +217,19 @@ export function CareServiceQuickOptionsSheet({
     onClose();
   };
 
-  if (!category) return null;
+  const isOpen = visible && category != null;
 
   return (
     <BottomSheet
-      visible={visible}
+      visible={isOpen}
+      presentKey={category?.id ?? 'closed'}
       onClose={onClose}
       onBack={onClose}
-      title={category.label}
+      title={category?.label ?? ''}
       subtitle="Paramétrez votre soin"
-      footer={
-        <Button title="Valider et ajouter" onPress={handleConfirm} fullWidth size="lg" />
-      }
     >
+      {!category ? null : (
+        <>
       {localError ? (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>{localError}</Text>
@@ -345,6 +345,12 @@ export function CareServiceQuickOptionsSheet({
           ) : null}
         </>
       ) : null}
+
+      <View style={styles.sheetFooter}>
+        <Button title="Valider et ajouter" onPress={handleConfirm} fullWidth size="lg" />
+      </View>
+        </>
+      )}
     </BottomSheet>
   );
 }
@@ -382,4 +388,8 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   pillTextActive: { color: colors.textInverse },
+  sheetFooter: {
+    paddingTop: spacing[4],
+    marginTop: spacing[1],
+  },
 });

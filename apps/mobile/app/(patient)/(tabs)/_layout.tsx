@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { CalendarDays, CalendarPlus, Heart, LayoutGrid, Star } from 'lucide-react-native';
 import { TabBar } from '@/components/navigation/TabBar';
+import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { tabScreenOptions } from '@/navigation/screen-options';
 import { colors } from '@/theme';
@@ -18,6 +19,7 @@ export default function PatientTabsLayout() {
         lazy: true,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
+        headerRight: tabHeaderNotificationRight(),
       }}
     >
       <Tabs.Screen
@@ -36,6 +38,7 @@ export default function PatientTabsLayout() {
         options={{
           title: 'Réserver',
           headerTitle: tabHeaderTitle('Réserver', CalendarPlus),
+          headerRight: () => null,
           tabBarLabel: 'Réserver',
           tabBarIcon: ({ color, size }) => (
             <CalendarPlus color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />

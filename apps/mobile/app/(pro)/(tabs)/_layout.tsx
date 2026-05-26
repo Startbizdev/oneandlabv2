@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Calendar, CalendarDays, FileText, LayoutGrid, Users } from 'lucide-react-native';
 import { TabBar } from '@/components/navigation/TabBar';
+import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { tabScreenOptions } from '@/navigation/screen-options';
 import { SHOW_PRESCRIPTIONS_TAB_NAV } from '@/features/prescriptions/constants';
@@ -13,11 +14,13 @@ function isFocused(color: string) {
 export default function ProTabsLayout() {
   return (
     <Tabs
+      initialRouteName="appointments"
       tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
         ...tabScreenOptions(),
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
+        headerRight: tabHeaderNotificationRight(),
       }}
     >
       <Tabs.Screen
@@ -48,15 +51,22 @@ export default function ProTabsLayout() {
       />
       <Tabs.Screen
         name="prescriptions"
-        options={{
-          title: 'Prescriptions',
-          headerTitle: tabHeaderTitle('Prescriptions', FileText),
-          tabBarLabel: 'Rx',
-          href: SHOW_PRESCRIPTIONS_TAB_NAV ? undefined : null,
-          tabBarIcon: ({ color, size }) => (
-            <FileText color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
-          ),
-        }}
+        options={
+          SHOW_PRESCRIPTIONS_TAB_NAV
+            ? {
+                title: 'Prescriptions',
+                headerTitle: tabHeaderTitle('Prescriptions', FileText),
+                tabBarLabel: 'Rx',
+                tabBarIcon: ({ color, size }) => (
+                  <FileText
+                    color={color}
+                    size={size}
+                    strokeWidth={isFocused(color) ? 2.5 : 1.75}
+                  />
+                ),
+              }
+            : { href: null }
+        }
       />
       <Tabs.Screen
         name="calendar"

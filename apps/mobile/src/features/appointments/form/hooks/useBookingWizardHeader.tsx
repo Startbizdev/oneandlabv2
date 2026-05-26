@@ -4,6 +4,7 @@ import { BookingWizardHeaderBack } from '../components/BookingWizardHeaderBack';
 import { BookingWizardHeaderClose } from '../components/BookingWizardHeaderClose';
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
+import { bookingCareSelectionHeaderTitle } from '../components/BookingCareSelectionHeaderTitle';
 import { bookingCareSelectionTitle } from '../utils/booking-wizard-titles';
 
 interface Options {
@@ -45,7 +46,7 @@ export function useBookingWizardHeader({
 
     const options: NativeStackNavigationOptions = {
       title,
-      headerTitle: title,
+      headerTitle: step === 0 ? bookingCareSelectionHeaderTitle() : title,
       headerBackTitle: '',
       headerBackVisible: false,
       headerRight: undefined,

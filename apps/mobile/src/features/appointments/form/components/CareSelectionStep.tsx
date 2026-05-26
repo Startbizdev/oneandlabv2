@@ -1,6 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Check, Plus } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Check } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { careCategoryEmojiForCategory, type SelectedServiceInput } from '@oneandlab/shared-utils';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 import type { BookingServiceFormSlice } from '../utils/booking-service-form-slice';
@@ -8,25 +18,26 @@ import {
   buildCareFilterTabs,
   careListHeading,
   filterCategoriesByTab,
+  isAutreCareCategory,
+  sortCareCategoriesWithAutreLast,
 } from '../utils/booking-care-catalog';
-import { ScreenActionLayout } from '@/components/layout/ScreenActionLayout';
-import { BookingActionBar } from './BookingActionBar';
+import { BookingPremiumStepCta } from './BookingPremiumStepCta';
 import { CareCategoryFilterBar } from './CareCategoryFilterBar';
 import { CareServiceQuickOptionsSheet } from './CareServiceQuickOptionsSheet';
-import { SelectedServicesDetailSheet } from './SelectedServicesDetailSheet';
 import { useToast } from '@/providers/ToastProvider';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-const EMOJI_TILE = 40;
-const ACTION_SIZE = 32;
+const GRID_GAP = spacing[2];
+const H_PAD = spacing[4];
+/** Hauteur pill CTA flottant (étape 1). */
+const PREMIUM_CTA_HEIGHT = 58;
 
 interface Props {
   nursingCategories: CareCategory[];
   bloodCategories: CareCategory[];
   allCategories: CareCategory[];
   selectedServices: SelectedServiceInput[];
-  formDataByService: Record<string, Record<string, unknown>>;
   onlyCategoryOptionsFor: (cat: CareCategory) => boolean;
   onQuickAdd: (payload: { service: SelectedServiceInput; slice: BookingServiceFormSlice }) => void;
   onRemove: (serviceId: string) => void;
@@ -35,13 +46,15 @@ interface Props {
   loading?: boolean;
 }
 
-function CareRow({
+function CareGridTile({
   cat,
   selected,
+  wide,
   onPress,
 }: {
   cat: CareCategory;
   selected: boolean;
+  wide?: boolean;
   onPress: () => void;
 }) {
   const emoji =
@@ -53,42 +66,65 @@ function CareRow({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={
-        selected ? `${cat.label}, ajouté — appuyer pour retirer` : `Ajouter ${cat.label}`
+        selected ? `${cat.label}, sélectionné` : `Ajouter ${cat.label}`
       }
-      style={({ pressed }) => [styles.listItem, pressed && styles.listItemPressed]}
+      style={({ pressed }) => [
+        styles.tileHit,
+        wide && styles.tileHitWide,
+        pressed && styles.tilePressed,
+      ]}
     >
       <View
         style={[
-          styles.card,
-          elevation.sm,
-          selected ? styles.cardSelected : styles.cardDefault,
+          styles.tile,
+          wide && styles.tileWide,
+          selected ? styles.tileSelected : styles.tileDefault,
         ]}
       >
-        <View style={[styles.emojiTile, selected && styles.emojiTileSelected]}>
-          <Text style={styles.emoji} accessibilityElementsHidden>
-            {emoji}
-          </Text>
-        </View>
+        {selected ? (
+          <LinearGradient
+            pointerEvents="none"
+            colors={['rgba(255,255,255,0.5)', 'rgba(255,255,255,0)']}
+            style={StyleSheet.absoluteFill}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+          />
+        ) : null}
 
-        <Text
-          style={[styles.label, selected && styles.labelSelected]}
-          numberOfLines={1}
-        >
-          {cat.label}
-        </Text>
+        {selected ? (
+          <View style={styles.checkBadge} pointerEvents="none">
+            <Check size={12} color={colors.textInverse} strokeWidth={3} />
+          </View>
+        ) : null}
 
-        <View
-          style={[
-            styles.actionBtn,
-            selected ? styles.actionBtnSelected : styles.actionBtnDefault,
-          ]}
-        >
-          {selected ? (
-            <Check size={15} color={colors.primaryDark} strokeWidth={2.5} />
-          ) : (
-            <Plus size={15} color={colors.primary} strokeWidth={2.5} />
-          )}
-        </View>
+        {wide ? (
+          <>
+            <Text style={styles.tileEmojiWide} accessibilityElementsHidden>
+              {emoji}
+            </Text>
+            <View style={styles.tileWideCopy}>
+              <Text
+                style={[styles.tileLabelWide, selected && styles.tileLabelSelected]}
+                numberOfLines={2}
+              >
+                {cat.label}
+              </Text>
+              <Text style={styles.tileWideHint}>Soin non listé ci-dessus</Text>
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.tileEmoji} accessibilityElementsHidden>
+              {emoji}
+            </Text>
+            <Text
+              style={[styles.tileLabel, selected && styles.tileLabelSelected]}
+              numberOfLines={3}
+            >
+              {cat.label}
+            </Text>
+          </>
+        )}
       </View>
     </Pressable>
   );
@@ -99,7 +135,6 @@ export function CareSelectionStep({
   bloodCategories,
   allCategories,
   selectedServices,
-  formDataByService,
   onlyCategoryOptionsFor,
   onQuickAdd,
   onRemove,
@@ -108,13 +143,26 @@ export function CareSelectionStep({
   loading,
 }: Props) {
   const { show: toast } = useToast();
+  const { width: screenW } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [modalCat, setModalCat] = useState<CareCategory | null>(null);
   const [modalOnlyOpts, setModalOnlyOpts] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
+  /** Invalide les `ensureCategoryReady` en cours après fermeture ou nouveau tap. */
+  const optionsSheetSessionRef = useRef(0);
   const [filterTab, setFilterTab] = useState('all');
+
+  const tileWidth = useMemo(() => {
+    const inner = screenW - H_PAD * 2;
+    return Math.floor((inner - GRID_GAP) / 2);
+  }, [screenW]);
 
   const resetFilterAfterAdd = useCallback(() => {
     setFilterTab('all');
+  }, []);
+
+  const closeOptionsSheet = useCallback(() => {
+    optionsSheetSessionRef.current += 1;
+    setModalCat(null);
   }, []);
 
   const fullList = useMemo(
@@ -132,12 +180,27 @@ export function CareSelectionStep({
   }, [filterTab, filterTabs]);
 
   const displayList = useMemo(
-    () => filterCategoriesByTab(fullList, filterTab),
+    () =>
+      sortCareCategoriesWithAutreLast(filterCategoriesByTab(fullList, filterTab)),
     [fullList, filterTab],
   );
 
-  const count = selectedServices.length;
-  const hasSelection = count > 0;
+  const { gridItems, autreItems } = useMemo(() => {
+    const autre: CareCategory[] = [];
+    const main: CareCategory[] = [];
+    for (const c of displayList) {
+      if (isAutreCareCategory(c)) autre.push(c);
+      else main.push(c);
+    }
+    return { gridItems: main, autreItems: autre };
+  }, [displayList]);
+
+  const hasSelection = selectedServices.length > 0;
+
+  const floatingCtaBottom = Math.max(insets.bottom, spacing[2]) + spacing[3];
+  const scrollBottomPad = hasSelection
+    ? PREMIUM_CTA_HEIGHT + spacing[4] + floatingCtaBottom
+    : spacing[3];
 
   const isSelected = useCallback(
     (catId: string) => selectedServices.some((s) => s.id === catId),
@@ -150,11 +213,25 @@ export function CareSelectionStep({
         onRemove(cat.id);
         return;
       }
+
+      const session = ++optionsSheetSessionRef.current;
+
+      const quickAddWithoutSheet =
+        onlyCategoryOptionsFor(cat) && (cat.options?.length ?? 0) === 0;
+
+      if (!quickAddWithoutSheet) {
+        setModalCat(cat);
+        setModalOnlyOpts(onlyCategoryOptionsFor(cat));
+      }
+
       try {
         const ready = onEnsureCategoryReady ? await onEnsureCategoryReady(cat) : cat;
+        if (session !== optionsSheetSessionRef.current) return;
+
         const addonOnly = onlyCategoryOptionsFor(ready);
         const optsLen = ready.options?.length ?? 0;
         if (addonOnly && optsLen === 0) {
+          setModalCat(null);
           onQuickAdd({
             service: {
               id: ready.id,
@@ -173,224 +250,277 @@ export function CareSelectionStep({
         setModalCat(ready);
         setModalOnlyOpts(addonOnly);
       } catch (e) {
-        toast(e instanceof Error ? e.message : 'Impossible de charger ce soin', { type: 'error' });
+        if (session !== optionsSheetSessionRef.current) return;
+        const msg = e instanceof Error ? e.message : String(e);
+        setModalCat(null);
+        toast(msg || 'Impossible de charger ce soin', { type: 'error' });
       }
     },
-    [isSelected, onQuickAdd, onRemove, onlyCategoryOptionsFor, onEnsureCategoryReady, resetFilterAfterAdd],
-  );
-
-  const formSlices = formDataByService as Record<string, BookingServiceFormSlice | undefined>;
-
-  const renderItem = useCallback(
-    ({ item }: { item: CareCategory }) => (
-      <CareRow
-        cat={item}
-        selected={isSelected(item.id)}
-        onPress={() => attemptAdd(item)}
-      />
-    ),
-    [attemptAdd, isSelected],
+    [isSelected, onQuickAdd, onRemove, onlyCategoryOptionsFor, onEnsureCategoryReady, resetFilterAfterAdd, toast],
   );
 
   const listHeader = useMemo(
     () => (
       <View style={styles.listHeader}>
         {filterTabs.length > 0 ? (
-          <>
-            <Text style={styles.filterKicker}>Par catégorie</Text>
-            <CareCategoryFilterBar
-              tabs={filterTabs}
-              value={filterTab}
-              onChange={setFilterTab}
-            />
-          </>
+          <CareCategoryFilterBar
+            tabs={filterTabs}
+            value={filterTab}
+            onChange={setFilterTab}
+          />
         ) : null}
-        <Text style={styles.sectionHeading}>
-          {careListHeading(filterTab, filterTabs)}
-        </Text>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaTitle}>{careListHeading(filterTab, filterTabs)}</Text>
+          <Text style={styles.metaCount}>
+            {displayList.length} {displayList.length > 1 ? 'soins' : 'soin'}
+          </Text>
+        </View>
       </View>
     ),
-    [filterTab, filterTabs],
+    [displayList.length, filterTab, filterTabs],
   );
 
-  const listEmpty = useMemo(
-    () => (
-      <Text style={styles.emptyList}>
-        {filterTab === 'all'
-          ? 'Aucun soin disponible pour le moment.'
-          : 'Aucun soin dans cette catégorie.'}
-      </Text>
-    ),
-    [filterTab],
-  );
+  const gridBody = useMemo(() => {
+    if (gridItems.length === 0) {
+      return (
+        <Text style={styles.emptyList}>
+          {filterTab === 'all'
+            ? 'Aucun soin disponible pour le moment.'
+            : 'Aucun soin dans cette catégorie.'}
+        </Text>
+      );
+    }
+    return (
+      <View style={styles.grid}>
+        {gridItems.map((cat) => (
+          <View key={cat.id} style={[styles.gridCell, { width: tileWidth }]}>
+            <CareGridTile
+              cat={cat}
+              selected={isSelected(cat.id)}
+              onPress={() => void attemptAdd(cat)}
+            />
+          </View>
+        ))}
+      </View>
+    );
+  }, [attemptAdd, filterTab, gridItems, isSelected, tileWidth]);
 
-  const footer = hasSelection ? (
-    <BookingActionBar
-      cart={{ count, onPressDetail: () => setDetailOpen(true) }}
-      primaryLabel="Continuer"
-      onPrimary={onContinue}
-      primaryLoading={loading}
-    />
-  ) : undefined;
+  const autreFooter = useMemo(() => {
+    if (autreItems.length === 0) return null;
+    return (
+      <View style={styles.autreBlock}>
+        <Text style={styles.autreKicker}>Besoin d’un autre soin ?</Text>
+        {autreItems.map((cat) => (
+          <CareGridTile
+            key={cat.id}
+            cat={cat}
+            selected={isSelected(cat.id)}
+            wide
+            onPress={() => void attemptAdd(cat)}
+          />
+        ))}
+      </View>
+    );
+  }, [autreItems, attemptAdd, isSelected]);
 
   return (
     <>
-      <ScreenActionLayout footer={footer} style={styles.root}>
-        <FlatList
-          data={displayList}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          ListHeaderComponent={listHeader}
-          ListEmptyComponent={listEmpty}
-          contentContainerStyle={styles.listContent}
+      <View style={styles.root}>
+        <ScrollView
           style={styles.list}
+          contentContainerStyle={[styles.listContent, { paddingBottom: scrollBottomPad }]}
+          contentInsetAdjustmentBehavior="automatic"
+          nestedScrollEnabled
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          ItemSeparatorComponent={ListSeparator}
-        />
-      </ScreenActionLayout>
+        >
+          {listHeader}
+          {gridBody}
+          {autreFooter}
+        </ScrollView>
+
+        {hasSelection ? (
+          <Animated.View
+            entering={FadeInUp.duration(420).springify().damping(20).stiffness(260)}
+            style={[styles.floatingCta, { bottom: floatingCtaBottom }]}
+            pointerEvents="box-none"
+          >
+            <BookingPremiumStepCta step={1} onPress={onContinue} loading={loading} />
+          </Animated.View>
+        ) : null}
+      </View>
 
       <CareServiceQuickOptionsSheet
         visible={modalCat != null}
         category={modalCat}
         categories={allCategories}
         onlyCategoryOptions={modalOnlyOpts}
-        onClose={() => setModalCat(null)}
+        onClose={closeOptionsSheet}
         onConfirm={(payload) => {
+          optionsSheetSessionRef.current += 1;
           onQuickAdd(payload);
           setModalCat(null);
           resetFilterAfterAdd();
         }}
       />
 
-      <SelectedServicesDetailSheet
-        visible={detailOpen}
-        selectedServices={selectedServices}
-        categories={allCategories}
-        formDataByService={formSlices}
-        onClose={() => setDetailOpen(false)}
-        onRemove={onRemove}
-      />
     </>
   );
-}
-
-function ListSeparator() {
-  return <View style={styles.separator} />;
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     minHeight: 0,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.primaryLight,
   },
   list: {
     flex: 1,
-  },
-  listContent: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    paddingBottom: spacing[4],
-    flexGrow: 1,
-  },
-  listHeader: {
-    gap: spacing[1],
-    marginBottom: spacing[2],
-  },
-  filterKicker: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  separator: {
-    height: spacing[2],
-  },
-  sectionHeading: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginTop: spacing[0.5],
-  },
-  listItem: {
-    width: '100%',
-  },
-  listItemPressed: {
-    opacity: 0.94,
-  },
-  card: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 52,
-    paddingVertical: spacing[2.5],
-    paddingLeft: spacing[2.5],
-    paddingRight: spacing[2],
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-  },
-  cardDefault: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
-  },
-  cardSelected: {
-    borderWidth: 1,
-    borderColor: colors.primaryMid,
     backgroundColor: colors.primaryLight,
   },
-  emojiTile: {
-    width: EMOJI_TILE,
-    height: EMOJI_TILE,
-    marginRight: spacing[3],
-    borderRadius: radius.md,
+  listContent: {
+    paddingHorizontal: H_PAD,
+    paddingTop: spacing[2],
+    flexGrow: 1,
+  },
+  floatingCta: {
+    position: 'absolute',
+    left: H_PAD,
+    right: H_PAD,
+    zIndex: 20,
+  },
+  listHeader: {
+    gap: spacing[3],
+    marginBottom: spacing[3],
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: spacing[2],
+  },
+  metaTitle: {
+    flex: 1,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.base,
+    color: colors.textPrimary,
+    letterSpacing: -0.2,
+  },
+  metaCount: {
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.xs,
+    color: colors.textTertiary,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: GRID_GAP,
+    rowGap: GRID_GAP,
+  },
+  gridCell: {
+    flexShrink: 0,
+    flexGrow: 0,
+  },
+  tileHit: {
+    width: '100%',
+  },
+  tileHitWide: {
+    width: '100%',
+  },
+  tilePressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.98 }],
+  },
+  tile: {
+    width: '100%',
+    minHeight: 96,
+    paddingHorizontal: spacing[2.5],
+    paddingVertical: spacing[2.5],
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
-    flexShrink: 0,
+    gap: spacing[1.5],
+    overflow: 'hidden',
   },
-  emojiTileSelected: {
+  tileWide: {
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: spacing[3],
+    paddingHorizontal: spacing[4],
+  },
+  tileDefault: {
+    borderWidth: 1,
+    borderColor: colors.border,
     backgroundColor: colors.surface,
-    borderColor: colors.primaryMid,
   },
-  emoji: {
-    fontSize: 22,
-    lineHeight: 26,
+  tileSelected: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryMid,
+  },
+  checkBadge: {
+    position: 'absolute',
+    top: spacing[2],
+    right: spacing[2],
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  tileEmoji: {
+    fontSize: 28,
+    lineHeight: 32,
     textAlign: 'center',
   },
-  label: {
+  tileLabel: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.xs,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    lineHeight: fontSize.xs * 1.35,
+  },
+  tileLabelSelected: {
+    color: colors.primaryDark,
+  },
+  tileEmojiWide: {
+    fontSize: 32,
+    lineHeight: 36,
+  },
+  tileWideCopy: {
     flex: 1,
-    flexShrink: 1,
-    marginRight: spacing[2],
+    minWidth: 0,
+    gap: 2,
+  },
+  tileLabelWide: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
     color: colors.textPrimary,
+    textAlign: 'left',
   },
-  labelSelected: {
-    color: colors.primaryDark,
+  tileWideHint: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
   },
-  actionBtn: {
-    width: ACTION_SIZE,
-    height: ACTION_SIZE,
-    borderRadius: ACTION_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
+  autreBlock: {
+    marginTop: spacing[2],
+    gap: spacing[2],
+    paddingTop: spacing[2],
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderLight,
   },
-  actionBtnDefault: {
-    backgroundColor: colors.primaryLight,
-    borderWidth: 1,
-    borderColor: colors.primaryMid,
-  },
-  actionBtnSelected: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.primary,
+  autreKicker: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize['2xs'],
+    color: colors.textTertiary,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   emptyList: {
     fontFamily: fontFamily.regular,

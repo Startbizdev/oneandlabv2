@@ -29,8 +29,7 @@ export function AssigneeProfileRow({
   brandLogo,
   showDivider = true,
 }: Props) {
-  const slug = publicSlug?.trim();
-  const hasProfile = Boolean(slug && onViewProfile);
+  const hasProfile = Boolean(onViewProfile);
 
   const leading =
     brandLogo === 'cary' ? (

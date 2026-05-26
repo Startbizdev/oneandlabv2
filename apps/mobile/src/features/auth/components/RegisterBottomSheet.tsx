@@ -1,42 +1,39 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { HeartPulse, Mail, Stethoscope, User } from 'lucide-react-native';
+import { HeartPulse, Mail, Stethoscope, User, type LucideIcon } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { RegisterRoleCard } from '@/features/auth/components/RegisterRoleCard';
+import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
+import type { MoreMenuItemProps } from '@/features/profile/components/MoreMenuItem';
 import type { RegisterRole } from '@/features/auth/api/registration.service';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-const ROLES: {
+const REGISTER_ROLES: {
   role: RegisterRole;
   label: string;
-  description: string;
-  Icon: typeof User;
-  accentColor: string;
-  accentBg: string;
+  icon: LucideIcon;
+  iconColor: string;
+  iconBg: string;
 }[] = [
   {
     role: 'patient',
     label: 'Patient',
-    description: 'Réserver des soins ou des prélèvements à domicile pour vous ou vos proches.',
-    Icon: User,
-    accentColor: colors.primary,
-    accentBg: colors.primaryLight,
+    icon: User,
+    iconColor: colors.primary,
+    iconBg: colors.primaryLight,
   },
   {
     role: 'nurse',
-    label: 'Infirmier · Infirmière',
-    description: 'Rejoindre le réseau Cary et gérer vos interventions à domicile.',
-    Icon: HeartPulse,
-    accentColor: '#0D9488',
-    accentBg: '#CCFBF1',
+    label: 'Infirmier(ère)',
+    icon: HeartPulse,
+    iconColor: '#0D9488',
+    iconBg: '#CCFBF1',
   },
   {
     role: 'pro',
-    label: 'Pro de santé',
-    description: 'Médecin, sage-femme, pharmacien ou autre professionnel prescripteur.',
-    Icon: Stethoscope,
-    accentColor: '#D97706',
-    accentBg: '#FFFBEB',
+    label: 'Professionnel de santé',
+    icon: Stethoscope,
+    iconColor: '#D97706',
+    iconBg: '#FFFBEB',
   },
 ];
 
@@ -57,22 +54,20 @@ export function RegisterBottomSheet({
 }: Props) {
   const hasEmail = Boolean(pendingEmail?.trim());
 
+  const roleItems: MoreMenuItemProps[] = REGISTER_ROLES.map((item) => ({
+    icon: item.icon,
+    label: item.label,
+    iconColor: item.iconColor,
+    iconBg: item.iconBg,
+    onPress: () => onSelectRole(item.role),
+  }));
+
   return (
     <BottomSheet
       visible={visible}
       onClose={onClose}
       title="Créer un compte"
       subtitle="Choisissez le profil qui correspond à votre situation"
-      footer={
-        onLoginPress ? (
-          <Pressable onPress={onLoginPress} style={styles.loginLink} hitSlop={8}>
-            <Text style={styles.loginText}>
-              Déjà un compte ?{' '}
-              <Text style={styles.loginAccent}>Se connecter</Text>
-            </Text>
-          </Pressable>
-        ) : undefined
-      }
     >
       <View style={styles.body}>
         {hasEmail ? (
@@ -87,19 +82,16 @@ export function RegisterBottomSheet({
           </View>
         ) : null}
 
-        <View style={styles.list}>
-          {ROLES.map((item) => (
-            <RegisterRoleCard
-              key={item.role}
-              label={item.label}
-              description={item.description}
-              Icon={item.Icon}
-              accentColor={item.accentColor}
-              accentBg={item.accentBg}
-              onPress={() => onSelectRole(item.role)}
-            />
-          ))}
-        </View>
+        <MoreMenuSection title="Profil" items={roleItems} />
+
+        {onLoginPress ? (
+          <Pressable onPress={onLoginPress} style={styles.loginLink} hitSlop={8}>
+            <Text style={styles.loginText}>
+              Déjà un compte ?{' '}
+              <Text style={styles.loginAccent}>Se connecter</Text>
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     </BottomSheet>
   );
@@ -136,18 +128,16 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     lineHeight: fontSize.sm * 1.4,
   },
-  list: {
-    width: '100%',
-    gap: spacing[3],
-  },
   loginLink: {
     alignItems: 'center',
-    paddingVertical: spacing[2],
+    paddingTop: spacing[1],
+    paddingBottom: spacing[1],
   },
   loginText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: colors.textSecondary,
+    textAlign: 'center',
   },
   loginAccent: {
     fontFamily: fontFamily.bold,

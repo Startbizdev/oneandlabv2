@@ -10,6 +10,8 @@ export {
   SkeletonList,
   SkeletonListCard,
   SkeletonPatientAppointmentDetail,
+  SkeletonPatientList,
+  SkeletonPatientListRow,
   SkeletonProfileScreen,
   SkeletonRdvCarePlaceholder,
   SkeletonRdvInfoCard,
