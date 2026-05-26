@@ -9,14 +9,16 @@ import {
 } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check } from 'lucide-react-native';
+import { Check, Plus } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { careCategoryEmojiForCategory, type SelectedServiceInput } from '@oneandlab/shared-utils';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 import type { BookingServiceFormSlice } from '../utils/booking-service-form-slice';
 import {
   buildCareFilterTabs,
+  buildCareTileOrbColorMap,
   careListHeading,
+  careTileEmojiOrbColor,
   filterCategoriesByTab,
   isAutreCareCategory,
   sortCareCategoriesWithAutreLast,
@@ -32,6 +34,8 @@ const GRID_GAP = spacing[2];
 const H_PAD = spacing[4];
 /** Hauteur pill CTA flottant (étape 1). */
 const PREMIUM_CTA_HEIGHT = 58;
+const TILE_EMOJI_ORB = 38;
+const TILE_EMOJI_ORB_WIDE = 46;
 
 interface Props {
   nursingCategories: CareCategory[];
@@ -46,19 +50,54 @@ interface Props {
   loading?: boolean;
 }
 
+function CareEmojiOrb({
+  emoji,
+  backgroundColor,
+  size,
+}: {
+  emoji: string;
+  backgroundColor: string;
+  size: number;
+}) {
+  const fontSize = Math.round(size * 0.46);
+  return (
+    <View
+      style={[
+        styles.emojiOrb,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor,
+        },
+      ]}
+    >
+      <Text
+        style={[styles.emojiOrbGlyph, { fontSize, lineHeight: fontSize + 2 }]}
+        accessibilityElementsHidden
+      >
+        {emoji}
+      </Text>
+    </View>
+  );
+}
+
 function CareGridTile({
   cat,
+  orbColor,
   selected,
   wide,
   onPress,
 }: {
   cat: CareCategory;
+  orbColor: string;
   selected: boolean;
   wide?: boolean;
   onPress: () => void;
 }) {
   const emoji =
     careCategoryEmojiForCategory({ name: cat.name, icon: cat.icon, type: cat.type }) || '➕';
+  const orbSize = wide ? TILE_EMOJI_ORB_WIDE : TILE_EMOJI_ORB;
 
   return (
     <Pressable
@@ -95,13 +134,15 @@ function CareGridTile({
           <View style={styles.checkBadge} pointerEvents="none">
             <Check size={12} color={colors.textInverse} strokeWidth={3} />
           </View>
-        ) : null}
+        ) : (
+          <View style={styles.addBadge} pointerEvents="none">
+            <Plus size={14} color={colors.primary} strokeWidth={2.75} />
+          </View>
+        )}
 
         {wide ? (
           <>
-            <Text style={styles.tileEmojiWide} accessibilityElementsHidden>
-              {emoji}
-            </Text>
+            <CareEmojiOrb emoji={emoji} backgroundColor={orbColor} size={orbSize} />
             <View style={styles.tileWideCopy}>
               <Text
                 style={[styles.tileLabelWide, selected && styles.tileLabelSelected]}
@@ -114,9 +155,7 @@ function CareGridTile({
           </>
         ) : (
           <>
-            <Text style={styles.tileEmoji} accessibilityElementsHidden>
-              {emoji}
-            </Text>
+            <CareEmojiOrb emoji={emoji} backgroundColor={orbColor} size={orbSize} />
             <Text
               style={[styles.tileLabel, selected && styles.tileLabelSelected]}
               numberOfLines={3}
@@ -170,6 +209,8 @@ export function CareSelectionStep({
     [nursingCategories, bloodCategories],
   );
 
+  const tileOrbColorMap = useMemo(() => buildCareTileOrbColorMap(fullList), [fullList]);
+
   const filterTabs = useMemo(() => buildCareFilterTabs(fullList), [fullList]);
 
   useEffect(() => {
@@ -195,7 +236,8 @@ export function CareSelectionStep({
     return { gridItems: main, autreItems: autre };
   }, [displayList]);
 
-  const hasSelection = selectedServices.length > 0;
+  const selectionCount = selectedServices.length;
+  const hasSelection = selectionCount > 0;
 
   const floatingCtaBottom = Math.max(insets.bottom, spacing[2]) + spacing[3];
   const scrollBottomPad = hasSelection
@@ -296,6 +338,7 @@ export function CareSelectionStep({
           <View key={cat.id} style={[styles.gridCell, { width: tileWidth }]}>
             <CareGridTile
               cat={cat}
+              orbColor={careTileEmojiOrbColor(cat, tileOrbColorMap)}
               selected={isSelected(cat.id)}
               onPress={() => void attemptAdd(cat)}
             />
@@ -303,7 +346,7 @@ export function CareSelectionStep({
         ))}
       </View>
     );
-  }, [attemptAdd, filterTab, gridItems, isSelected, tileWidth]);
+  }, [attemptAdd, filterTab, gridItems, isSelected, tileOrbColorMap, tileWidth]);
 
   const autreFooter = useMemo(() => {
     if (autreItems.length === 0) return null;
@@ -314,6 +357,7 @@ export function CareSelectionStep({
           <CareGridTile
             key={cat.id}
             cat={cat}
+            orbColor={careTileEmojiOrbColor(cat, tileOrbColorMap)}
             selected={isSelected(cat.id)}
             wide
             onPress={() => void attemptAdd(cat)}
@@ -321,7 +365,7 @@ export function CareSelectionStep({
         ))}
       </View>
     );
-  }, [autreItems, attemptAdd, isSelected]);
+  }, [autreItems, attemptAdd, isSelected, tileOrbColorMap]);
 
   return (
     <>
@@ -345,7 +389,11 @@ export function CareSelectionStep({
             style={[styles.floatingCta, { bottom: floatingCtaBottom }]}
             pointerEvents="box-none"
           >
-            <BookingPremiumStepCta step={1} onPress={onContinue} loading={loading} />
+            <BookingPremiumStepCta
+              selectionCount={selectionCount}
+              onPress={onContinue}
+              loading={loading}
+            />
           </Animated.View>
         ) : null}
       </View>
@@ -372,11 +420,11 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     minHeight: 0,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.bookingCanvas,
   },
   list: {
     flex: 1,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.bookingCanvas,
   },
   listContent: {
     paddingHorizontal: H_PAD,
@@ -433,9 +481,9 @@ const styles = StyleSheet.create({
   },
   tile: {
     width: '100%',
-    minHeight: 96,
-    paddingHorizontal: spacing[2.5],
-    paddingVertical: spacing[2.5],
+    minHeight: 76,
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[2],
     borderRadius: radius.xl,
     backgroundColor: colors.surface,
     alignItems: 'center',
@@ -463,8 +511,8 @@ const styles = StyleSheet.create({
   },
   checkBadge: {
     position: 'absolute',
-    top: spacing[2],
-    right: spacing[2],
+    top: spacing[1.5],
+    right: spacing[1.5],
     width: 22,
     height: 22,
     borderRadius: 11,
@@ -473,9 +521,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 2,
   },
-  tileEmoji: {
-    fontSize: 28,
-    lineHeight: 32,
+  addBadge: {
+    position: 'absolute',
+    top: spacing[1.5],
+    right: spacing[1.5],
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1.5,
+    borderColor: colors.primaryMid,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  emojiOrb: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  emojiOrbGlyph: {
     textAlign: 'center',
   },
   tileLabel: {
@@ -487,10 +552,6 @@ const styles = StyleSheet.create({
   },
   tileLabelSelected: {
     color: colors.primaryDark,
-  },
-  tileEmojiWide: {
-    fontSize: 32,
-    lineHeight: 36,
   },
   tileWideCopy: {
     flex: 1,

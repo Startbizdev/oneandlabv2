@@ -24,6 +24,12 @@ export const palette = {
     500: '#22C9BE',
     600: brand.gradientEnd,
   },
+  warm: {
+    50: '#F7F4EF',
+    100: '#F3F0EA',
+    150: '#EBE6DE',
+    200: '#E2DCD2',
+  },
   slate: {
     50: '#F8FAFC',
     100: '#F1F5F9',
@@ -70,6 +76,10 @@ export const colors = {
   surface: palette.white,
   surfaceAlt: palette.slate[50],
   surfaceSubtle: palette.slate[100],
+  /** Fond gris beige — étape choix des soins (wizard booking). */
+  bookingCanvas: palette.warm[100],
+  /** Même famille, un peu plus clair — étapes suivantes du wizard. */
+  bookingCanvasLight: palette.warm[50],
 
   // Brand gradient (CSS: linear-gradient(90deg, #2FD4C2, #16B6D6))
   gradientStart: brand.gradientStart,

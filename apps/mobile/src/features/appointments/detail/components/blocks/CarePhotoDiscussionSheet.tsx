@@ -201,7 +201,6 @@ export function CarePhotoDiscussionSheet({
         title="Photo — échanges"
         subtitle={subtitle}
         headerIcon={<MessageSquare size={20} color={colors.primary} strokeWidth={2} />}
-        footer={composer}
       >
         <View style={styles.hintCard}>
           <Info size={15} color={colors.primaryDark} strokeWidth={2.25} />
@@ -263,6 +262,7 @@ export function CarePhotoDiscussionSheet({
             })}
           </View>
         )}
+        {composer}
       </BottomSheet>
 
       <FullscreenImageViewer

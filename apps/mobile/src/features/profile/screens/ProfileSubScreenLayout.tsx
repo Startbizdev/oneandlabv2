@@ -1,12 +1,9 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { colors, spacing } from '@/theme';
-
-const FOOTER_HEIGHT = 48 + spacing[3] + spacing[3];
 
 interface Props {
   children: ReactNode;
@@ -16,7 +13,7 @@ interface Props {
   hideSave?: boolean;
 }
 
-/** Écran secondaire profil : contenu scrollable + bouton Enregistrer au-dessus du clavier. */
+/** Écran secondaire profil : formulaire scrollable, CTA en bas du contenu (pas de barre fixe). */
 export function ProfileSubScreenLayout({
   children,
   saveTitle = 'Enregistrer',
@@ -25,44 +22,44 @@ export function ProfileSubScreenLayout({
   hideSave,
 }: Props) {
   const { bottom } = useSafeAreaInsets();
-  const footerInset = Math.max(bottom, spacing[2]);
-  const showFooter = !hideSave && !!onSave;
+  const bottomInset = Math.max(bottom, spacing[2]);
+  const showSave = !hideSave && !!onSave;
 
   return (
-    <View style={styles.root}>
-      <KeyboardScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          showFooter && { paddingBottom: FOOTER_HEIGHT + footerInset + spacing[4] },
-        ]}
-        bottomOffset={showFooter ? FOOTER_HEIGHT + footerInset : footerInset}
-      >
-        {children}
-      </KeyboardScrollView>
-      {showFooter ? (
-        <KeyboardStickyView offset={{ closed: 0, opened: footerInset }}>
-          <View style={styles.footer}>
-            <Button title={saveTitle} loading={saving} onPress={onSave} fullWidth size="lg" />
-          </View>
-        </KeyboardStickyView>
+    <KeyboardScrollView
+      style={styles.scroll}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: bottomInset + spacing[4] },
+      ]}
+      bottomOffset={bottomInset}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      {children}
+      {showSave ? (
+        <View style={styles.saveBlock}>
+          <Button title={saveTitle} loading={saving} onPress={onSave} fullWidth size="lg" />
+        </View>
       ) : null}
-    </View>
+    </KeyboardScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
   scroll: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
     padding: spacing[4],
     gap: spacing[4],
-    paddingBottom: spacing[6],
+    flexGrow: 1,
   },
-  footer: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    paddingBottom: spacing[6],
+  saveBlock: {
+    marginTop: spacing[2],
+    paddingTop: spacing[3],
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.borderLight,
-    backgroundColor: colors.surface,
   },
 });

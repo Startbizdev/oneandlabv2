@@ -24,6 +24,7 @@ interface OfferQueueState {
   openIncomingOffer: (appointmentId: string, role: string, userId: string) => Promise<void>;
   closeModal: () => void;
   setShareToken: (token: string | null) => void;
+  reset: () => void;
 }
 
 export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
@@ -128,7 +129,13 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
       const batchKeys = new Set(state.displayedBatchKeys);
       if (bk) batchKeys.add(bk);
 
+      // Retirer de la file FIFO pour éviter processNext → même offre en double après fermeture.
+      const queue = bk
+        ? state.queue.filter((a) => batchKey(a) !== bk)
+        : state.queue.filter((a) => a.id !== data.id);
+
       set({
+        queue,
         displayedIds: ids,
         displayedBatchKeys: batchKeys,
         selected: data,
@@ -141,5 +148,16 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
 
   closeModal: () => {
     set({ visible: false, selected: null });
+  },
+
+  reset: () => {
+    set({
+      queue: [],
+      displayedIds: new Set(),
+      displayedBatchKeys: new Set(),
+      visible: false,
+      selected: null,
+      shareToken: null,
+    });
   },
 }));

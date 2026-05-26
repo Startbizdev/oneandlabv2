@@ -19,6 +19,10 @@ import { fetchAppointments } from '@/features/appointments/api/appointments.serv
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
+import {
+  appointmentCalendarDayKey,
+  appointmentInCalendarMonth,
+} from '@/utils/appointment-calendar-day-key';
 import { CalendarFilterSheet } from '@/features/calendar/components/CalendarFilterSheet';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -35,6 +39,10 @@ import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+/** Aligné web `CalendarPage.vue` — inclut les RDV en attente. */
+const NURSE_CALENDAR_STATUSES =
+  'pending,confirmed,inProgress,completed,canceled,refused';
 
 interface Props {
   title: string;
@@ -86,36 +94,42 @@ export function CalendarScreen({
   const [search, setSearch] = useState('');
   const rangeFrom = cursor.startOf('month').format('YYYY-MM-DD');
   const rangeTo = cursor.endOf('month').format('YYYY-MM-DD');
+  const apiStatus = nurseCalendar
+    ? statusFilter || NURSE_CALENDAR_STATUSES
+    : statusFilter || undefined;
+  const calendarLimit = nurseCalendar ? 50 : 200;
 
   const listQ = useQuery({
     queryKey: queryKeys.appointments.list({
       ...baseFilters,
-      ...(nurseCalendar ? { nurse_tab: nurseTab } : {}),
-      date_from: rangeFrom,
-      date_to: rangeTo,
-      limit: 200,
-      status: statusFilter || undefined,
+      ...(nurseCalendar ? { nurse_tab: nurseTab, status: apiStatus } : {}),
+      ...(nurseCalendar ? {} : { date_from: rangeFrom, date_to: rangeTo }),
+      limit: calendarLimit,
+      status: apiStatus,
       type: (typeFilter || undefined) as AppointmentType | undefined,
     }),
     queryFn: async () => {
       const res = await fetchAppointments({
         ...baseFilters,
         ...(nurseCalendar ? { nurse_tab: nurseTab } : {}),
-        date_from: rangeFrom,
-        date_to: rangeTo,
-        limit: 200,
-        ...(statusFilter ? { status: statusFilter } : {}),
+        ...(nurseCalendar ? {} : { date_from: rangeFrom, date_to: rangeTo }),
+        limit: calendarLimit,
+        ...(apiStatus ? { status: apiStatus } : {}),
         ...(typeFilter ? { type: typeFilter as AppointmentType } : {}),
       });
-      return res.data ?? [];
+      let items = res.data ?? [];
+      if (nurseCalendar) {
+        items = items.filter((a) => appointmentInCalendarMonth(a, rangeFrom, rangeTo));
+      }
+      return items;
     },
   });
 
   const byDay = useMemo(() => {
     const map = new Map<string, Appointment[]>();
     for (const a of listQ.data ?? []) {
-      if (!a.scheduled_at) continue;
-      const key = dayjs(a.scheduled_at).format('YYYY-MM-DD');
+      const key = appointmentCalendarDayKey(a);
+      if (!key) continue;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(a);
     }

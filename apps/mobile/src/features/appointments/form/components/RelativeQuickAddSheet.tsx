@@ -75,14 +75,6 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
         onClose();
       }}
       title="Ajouter un proche"
-      footer={
-        <Button
-          title="Enregistrer le proche"
-          loading={mut.isPending}
-          onPress={() => mut.mutate()}
-          fullWidth
-        />
-      }
     >
       <View style={styles.fields}>
         <Input label="Prénom" value={firstName} onChangeText={setFirstName} />
@@ -107,6 +99,12 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
         <GenderSelect value={gender} onChange={setGender} />
         <BirthDatePicker value={birthDate} onChange={setBirthDate} />
       </View>
+      <Button
+        title="Enregistrer le proche"
+        loading={mut.isPending}
+        onPress={() => mut.mutate()}
+        fullWidth
+      />
     </BottomSheet>
   );
 }

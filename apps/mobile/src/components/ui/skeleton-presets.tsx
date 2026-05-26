@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   },
   careSelectionRoot: {
     flex: 1,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.bookingCanvas,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
   },

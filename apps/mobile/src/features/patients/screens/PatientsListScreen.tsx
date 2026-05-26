@@ -213,6 +213,10 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
           void qc.invalidateQueries({ queryKey: queryKeys.patients.all });
           toast('Patient créé', { type: 'success' });
         }}
+        onExistingPatient={() => {
+          void qc.invalidateQueries({ queryKey: queryKeys.patients.all });
+          toast('Ce patient est déjà dans votre liste', { type: 'info' });
+        }}
       />
     </View>
   );

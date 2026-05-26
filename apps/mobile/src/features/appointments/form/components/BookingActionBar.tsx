@@ -63,10 +63,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   blurOverlay: {
-    backgroundColor: 'rgba(255,255,255,0.84)',
+    backgroundColor: 'rgba(247, 244, 239, 0.9)',
   },
   androidBar: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bookingCanvasLight,
   },
   bar: {
     paddingTop: spacing[3],

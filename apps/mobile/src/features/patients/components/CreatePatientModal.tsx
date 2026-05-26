@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { PatientDuplicatePrompt } from '@/features/appointments/form/components/PatientDuplicatePrompt';
+import { usePatientDuplicateDetection } from '@/features/patients/hooks/use-patient-duplicate-detection';
+import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import { WizardDocumentFields } from '@/features/appointments/form/components/WizardDocumentFields';
 import { PERSONAL_DOC_FIELDS } from '@/features/appointments/form/constants/appointment-document-fields';
@@ -20,6 +23,8 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   onCreated: () => void;
+  /** Dossier déjà existant — fermer sans effacer (liste rafraîchie côté parent). */
+  onExistingPatient?: (patient: PatientRow) => void;
 };
 
 function addressForApi(
@@ -37,7 +42,7 @@ function addressForApi(
   };
 }
 
-export function CreatePatientModal({ visible, onClose, onCreated }: Props) {
+export function CreatePatientModal({ visible, onClose, onCreated, onExistingPatient }: Props) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -49,6 +54,12 @@ export function CreatePatientModal({ visible, onClose, onCreated }: Props) {
   const [personalFiles, setPersonalFiles] = useState<
     Record<string, DocumentFileRef | undefined>
   >({});
+  const {
+    duplicateOpen,
+    duplicateRow,
+    dismissDuplicate,
+    resetDuplicate,
+  } = usePatientDuplicateDetection(email, phone, visible);
 
   const reset = () => {
     setFirstName('');
@@ -59,9 +70,19 @@ export function CreatePatientModal({ visible, onClose, onCreated }: Props) {
     setAddressComplement('');
     setPersonalFiles({});
     setError(null);
+    resetDuplicate();
   };
 
+  useEffect(() => {
+    if (!visible) reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset à la fermeture uniquement
+  }, [visible]);
+
   const submit = async () => {
+    if (duplicateOpen && duplicateRow) {
+      setError('Ce patient existe déjà — utilisez le dossier existant.');
+      return;
+    }
     if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
       setError('Prénom, nom et téléphone sont requis.');
       return;
@@ -106,21 +127,20 @@ export function CreatePatientModal({ visible, onClose, onCreated }: Props) {
   };
 
   return (
-    <BottomSheet
-      visible={visible}
-      onClose={onClose}
-      title="Nouveau patient"
-      footer={
-        <View style={styles.actions}>
-          <View style={styles.actionBtn}>
-            <Button title="Annuler" variant="outline" onPress={onClose} fullWidth />
-          </View>
-          <View style={styles.actionBtn}>
-            <Button title="Créer" loading={loading} onPress={() => void submit()} fullWidth />
-          </View>
-        </View>
-      }
-    >
+    <BottomSheet visible={visible} onClose={onClose} title="Nouveau patient">
+      {duplicateOpen && duplicateRow ? (
+        <PatientDuplicatePrompt
+          patient={duplicateRow}
+          variant="create"
+          onDismiss={dismissDuplicate}
+          onUseExisting={() => {
+            if (!duplicateRow) return;
+            dismissDuplicate();
+            onExistingPatient?.(duplicateRow);
+            onClose();
+          }}
+        />
+      ) : null}
       <View style={styles.fields}>
         <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
         <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
@@ -155,6 +175,16 @@ export function CreatePatientModal({ visible, onClose, onCreated }: Props) {
       />
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      <View style={styles.actions}>
+        <View style={styles.actionBtn}>
+          <Button title="Annuler" variant="outline" onPress={onClose} fullWidth />
+        </View>
+        <View style={styles.actionBtn}>
+          <Button title="Créer" loading={loading} onPress={() => void submit()} fullWidth />
+        </View>
+      </View>
+
     </BottomSheet>
   );
 }
@@ -169,6 +199,7 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: spacing[3],
+    marginTop: spacing[2],
   },
   actionBtn: {
     flex: 1,

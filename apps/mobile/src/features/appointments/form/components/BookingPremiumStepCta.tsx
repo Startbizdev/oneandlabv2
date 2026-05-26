@@ -21,8 +21,10 @@ import { animation, colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface BookingPremiumStepCtaProps {
-  /** Numéro d’étape dans le badge blanc (étape 1 uniquement). */
+  /** Numéro d’étape dans le badge blanc (si pas de `selectionCount`). */
   step?: number;
+  /** Nombre de soins sélectionnés — affiché dans le badge à la place du numéro d’étape. */
+  selectionCount?: number;
   showStepBadge?: boolean;
   /** Icône dans le cercle blanc (ex. calendrier liste RDV). */
   leadingIcon?: ReactNode;
@@ -43,6 +45,7 @@ function triggerHaptic() {
 
 export function BookingPremiumStepCta({
   step = 1,
+  selectionCount,
   showStepBadge = true,
   leadingIcon,
   title = DEFAULT_TITLE,
@@ -52,6 +55,14 @@ export function BookingPremiumStepCta({
   disabled,
   style,
 }: BookingPremiumStepCtaProps) {
+  const badgeValue =
+    selectionCount != null && selectionCount > 0
+      ? selectionCount > 99
+        ? '99+'
+        : String(selectionCount)
+      : showStepBadge
+        ? String(step)
+        : null;
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -95,12 +106,12 @@ export function BookingPremiumStepCta({
           end={{ x: 1, y: 0.5 }}
           style={[
             styles.gradient,
-            !showStepBadge && !leadingIcon && styles.gradientNoBadge,
+            badgeValue == null && !leadingIcon && styles.gradientNoBadge,
           ]}
         >
-          {showStepBadge ? (
+          {badgeValue != null ? (
             <View style={[styles.stepBadge, loading && styles.leadingMuted]}>
-              <Text style={styles.stepNum}>{step}</Text>
+              <Text style={styles.stepNum}>{badgeValue}</Text>
             </View>
           ) : leadingIcon ? (
             <View style={[styles.stepBadge, loading && styles.leadingMuted]}>{leadingIcon}</View>

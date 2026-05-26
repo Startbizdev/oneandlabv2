@@ -89,12 +89,20 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
     return 'Acceptez rapidement avant qu’un autre professionnel ne le prenne.';
   }, [batchSorted.length, isMultiBatch]);
 
-  const dismissLater = useCallback(() => {
+  /** Fermeture backdrop / swipe — ne pas enchaîner processNext (évite double modal Gorhom). */
+  const dismissOffer = useCallback(() => {
     closeModal();
-    if (user?.role && user.id) {
-      void processNext(user.role, user.id);
-    }
-  }, [closeModal, processNext, user?.id, user?.role]);
+  }, [closeModal]);
+
+  /** « Plus tard » — passer à l’offre suivante dans la file après fermeture. */
+  const deferOffer = useCallback(() => {
+    closeModal();
+    if (!user?.role || !user.id) return;
+    const { role, id } = user;
+    setTimeout(() => {
+      void useOfferQueueStore.getState().processNext(role, id);
+    }, 400);
+  }, [closeModal, user?.id, user?.role]);
 
   const finishAndNext = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
@@ -192,7 +200,9 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
     if (user?.role && user.id) {
       void useOfferQueueStore.getState().processNext(user.role, user.id);
     }
-    if (aptId) {
+    if (user?.role === 'nurse') {
+      router.replace('/(nurse)/(tabs)/appointments' as never);
+    } else if (aptId) {
       router.push(`${detailPathPrefix}/${aptId}` as never);
     }
   }, [batchCount, closeModal, detailPathPrefix, router, selected?.id, toast, user?.id, user?.role]);
@@ -219,7 +229,7 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
         onPress={() => void handleRefuse()}
         fullWidth
       />
-      <Pressable onPress={dismissLater} style={styles.laterBtn} disabled={loading}>
+      <Pressable onPress={deferOffer} style={styles.laterBtn} disabled={loading}>
         <Text style={styles.laterText}>Plus tard</Text>
       </Pressable>
     </View>
@@ -230,10 +240,9 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
       {!preparing ? (
         <BottomSheet
           visible={visible}
-          onClose={dismissLater}
+          onClose={dismissOffer}
           title="Nouveau rendez-vous"
           subtitle={subtitle}
-          footer={footer}
         >
           {lotLabel && !isMultiBatch ? (
             <View style={styles.lotPill}>
@@ -253,6 +262,7 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
               J’accepte la prise en charge et m’engage à respecter la confidentialité du patient.
             </Text>
           </View>
+          {footer}
         </BottomSheet>
       ) : null}
       <OfferAcceptPreparationOverlay
