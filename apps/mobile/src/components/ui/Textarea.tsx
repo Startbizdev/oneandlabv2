@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+import { useSheetTextInputComponent } from './sheet-keyboard-context';
 
 interface TextareaProps extends TextInputProps {
   label?: string;
@@ -21,6 +22,7 @@ function TextareaComponent(
   ref: React.ForwardedRef<TextInput>,
 ) {
   const [isFocused, setIsFocused] = useState(false);
+  const TextField = useSheetTextInputComponent();
   const borderColor = error
     ? colors.borderError
     : isFocused
@@ -55,7 +57,7 @@ function TextareaComponent(
           { borderColor, borderWidth: isFocused ? 1.5 : 1 },
         ]}
       >
-        <TextInput
+        <TextField
           ref={ref}
           multiline
           numberOfLines={5}

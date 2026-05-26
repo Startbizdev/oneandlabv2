@@ -42,7 +42,6 @@ export function LoginBottomSheet({
       onClose={handleClose}
       title="Connexion"
       subtitle={subtitle}
-      disableScroll
     >
       <View style={styles.content}>
         <LoginFlow

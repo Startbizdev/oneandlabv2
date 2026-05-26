@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+import { useSheetTextInputComponent } from './sheet-keyboard-context';
 
 /** Claviers iOS sans touche retour — RN injecte une barre « Done » si returnKeyType="done". */
 const IOS_ACCESSORY_DONE_KEYBOARDS = new Set([
@@ -58,6 +59,7 @@ function InputComponent(
   ref: React.ForwardedRef<TextInput>,
 ) {
   const [isFocused, setIsFocused] = useState(false);
+  const TextField = useSheetTextInputComponent();
   const resolvedReturnKeyType = resolveReturnKeyType(keyboardType, returnKeyType);
 
   const borderColor = error
@@ -96,7 +98,7 @@ function InputComponent(
       >
         {leftIcon ? <View style={styles.iconLeft}>{leftIcon}</View> : null}
 
-        <TextInput
+        <TextField
           ref={ref}
           onFocus={handleFocus}
           onBlur={handleBlur}
