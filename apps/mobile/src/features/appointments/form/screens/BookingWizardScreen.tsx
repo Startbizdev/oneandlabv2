@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react-native';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { FormScreen } from '@/components/layout/FormScreen';
 import { BookingActionBar } from '../components/BookingActionBar';
+import { bookingWizardFooterCtaCopy } from '../utils/booking-wizard-titles';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import { useAuthStore } from '@/store/auth-store';
 import { CareSelectionStep } from '../components/CareSelectionStep';
@@ -22,7 +23,6 @@ import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { normalizePatientGender } from '@/utils/patient-gender';
 import { BookingWizardProgress } from '../components/BookingWizardProgress';
 import { BookingWizardSegmentContext } from '../components/BookingWizardSegmentContext';
-import { BookingWizardPreviousRecaps } from '../components/BookingWizardPreviousRecaps';
 import { RelativeQuickAddSheet } from '../components/RelativeQuickAddSheet';
 import { useBookingWizard } from '../hooks/useBookingWizard';
 import { NEW_PATIENT_ID } from '../types';
@@ -94,7 +94,6 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
         bloodCategories={w.bloodCategories}
         allCategories={w.allCategories}
         selectedServices={w.selectedServices}
-        formDataByService={w.formDataByService}
         onlyCategoryOptionsFor={w.onlyCategoryOptionsFor}
         onQuickAdd={w.quickAddService}
         onRemove={w.removeService}
@@ -154,7 +153,7 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
         backgroundColor={colors.background}
         footer={
           <BookingActionBar
-            primaryLabel={bw.isFinalWizardStep ? 'Confirmer le rendez-vous' : 'Continuer'}
+            {...bookingWizardFooterCtaCopy(bw.isFinalWizardStep)}
             onPrimary={bw.wizardNext}
             primaryLoading={bw.saving}
           />
@@ -164,18 +163,15 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
           current={bw.wizardStepCurrent}
           total={bw.wizardStepCount}
           label={bw.section === 'slot-datetime' ? 'Créneau' : bw.section === 'documents' ? 'Documents' : 'Infos'}
+          hint={bw.wizardProgressHint || undefined}
         />
 
-        {svc && bw.section === 'slot-datetime' ? (
+        {svc && (bw.section === 'slot-datetime' || bw.section === 'documents') ? (
           <BookingWizardSegmentContext
-            currentLabel={svc.name}
-            kind={bw.segmentKind}
+            activeService={svc}
+            lotServices={bw.activeLotServices}
             previousRecaps={bw.previousRecaps}
           />
-        ) : null}
-
-        {bw.section === 'documents' ? (
-          <BookingWizardPreviousRecaps recaps={bw.previousRecaps} />
         ) : null}
 
         {bw.validationError ? (
@@ -207,7 +203,6 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
         {bw.section === 'documents' && svcId ? (
           <Animated.View entering={FadeInDown.delay(60).duration(260).springify()}>
             <FormDocumentsSection
-              serviceName={svc?.name}
               serviceType={svc?.type}
               files={bw.filesByService[svcId] ?? {}}
               profileDocs={bw.profileDocs}

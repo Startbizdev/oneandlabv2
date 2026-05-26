@@ -4,7 +4,7 @@ import type { Href } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CalendarPlus, Plus, UserPlus, type LucideIcon } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -29,7 +29,7 @@ interface Props {
   kind: HeaderActionKind;
   href?: Href;
   onPress?: () => void;
-  /** Dans HeaderBarActions : pas de marge droite (gérée par le conteneur). */
+  /** Conservé pour les appels existants (cloche + action dans le header). */
   embedded?: boolean;
 }
 
@@ -41,55 +41,39 @@ export function headerRightAction(
   kind: HeaderActionKind,
   opts: { href?: Href; onPress?: () => void } = {},
 ): (props: NativeStackHeaderRightProps) => ReactElement {
-  return () => (
-    <View style={styles.headerRightWrap}>
-      <HeaderActionButton kind={kind} href={opts.href} onPress={opts.onPress} />
-    </View>
-  );
+  return () => <HeaderActionButton kind={kind} href={opts.href} onPress={opts.onPress} />;
 }
 
 /** CTA header — gradient brand (identité Continuer). */
-export function HeaderActionButton({ kind, href, onPress, embedded }: Props) {
+export function HeaderActionButton({ kind, href, onPress }: Props) {
   const router = useRouter();
   const { Icon, label, accessibilityLabel } = CONFIG[kind];
   const handlePress = onPress ?? (href ? () => router.push(href) : undefined);
 
   return (
-    <View style={[styles.outer, embedded && styles.outerEmbedded]}>
-      <Pressable
-        onPress={handlePress}
-        disabled={!handlePress}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
+    <Pressable
+      onPress={handlePress}
+      disabled={!handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
+    >
+      <LinearGradient
+        colors={[colors.gradientStart, colors.gradientEnd]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={styles.pill}
       >
-        <LinearGradient
-          colors={[colors.gradientStart, colors.gradientEnd]}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={styles.pill}
-        >
-          <Icon size={ICON_SIZE} color={colors.textInverse} strokeWidth={2.5} />
-          <Text style={styles.label} numberOfLines={1}>
-            {label}
-          </Text>
-        </LinearGradient>
-      </Pressable>
-    </View>
+        <Icon size={ICON_SIZE} color={colors.textInverse} strokeWidth={2.5} />
+        <Text style={styles.label} numberOfLines={1}>
+          {label}
+        </Text>
+      </LinearGradient>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  headerRightWrap: {
-    paddingRight: HEADER_ACTION_MARGIN_RIGHT,
-    paddingLeft: spacing[1],
-  },
-  outer: {
-    paddingLeft: spacing[1],
-  },
-  outerEmbedded: {
-    paddingLeft: 0,
-  },
   pressable: {
     borderRadius: radius.lg,
     overflow: 'hidden',

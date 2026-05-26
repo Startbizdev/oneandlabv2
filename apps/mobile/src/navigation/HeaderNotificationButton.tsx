@@ -4,39 +4,39 @@ import type { Href } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Bell } from 'lucide-react-native';
-import {
-  HEADER_ACTION_MARGIN_RIGHT,
-  HeaderActionButton,
-  type HeaderActionKind,
-} from '@/navigation/HeaderActionButton';
+import { HeaderActionButton, type HeaderActionKind } from '@/navigation/HeaderActionButton';
 import { getNotificationsPath } from '@/navigation/notifications-route';
 import { useHeaderBellBadgeCount } from '@/navigation/use-header-bell-badge';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
+/** Cloche seule — `screenOptions.headerRight` des onglets principaux. */
+export function tabHeaderNotificationRight(): () => ReactElement {
+  return () => <HeaderNotificationBell />;
+}
+
+/** Marges horizontales : `AppHeader` (stacks) ou `headerRightContainerStyle` (onglets). */
 export function HeaderNotificationBell() {
   const router = useRouter();
   const role = useAuthStore((s) => s.user?.role);
   const badgeCount = useHeaderBellBadgeCount();
 
   return (
-    <View style={styles.wrap}>
-      <Pressable
-        onPress={() => router.push(getNotificationsPath(role))}
-        hitSlop={8}
-        style={styles.btn}
-        accessibilityRole="button"
-        accessibilityLabel="Notifications"
-      >
-        <Bell size={22} color={colors.primary} strokeWidth={2.25} />
-        {badgeCount > 0 ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text>
-          </View>
-        ) : null}
-      </Pressable>
-    </View>
+    <Pressable
+      onPress={() => router.push(getNotificationsPath(role))}
+      hitSlop={8}
+      style={styles.btn}
+      accessibilityRole="button"
+      accessibilityLabel="Notifications"
+    >
+      <Bell size={22} color={colors.primary} strokeWidth={2.25} />
+      {badgeCount > 0 ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -78,9 +78,6 @@ export function headerBarRightAction(
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    paddingRight: spacing[1],
-  },
   btn: {
     width: 44,
     height: 44,
@@ -109,7 +106,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: HEADER_ACTION_MARGIN_RIGHT,
-    paddingLeft: spacing[1],
+    gap: spacing[2],
   },
 });

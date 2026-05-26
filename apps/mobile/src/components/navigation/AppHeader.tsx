@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { NativeStackHeaderProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HeaderBackButton } from '@/navigation/HeaderBackButton';
+import { HEADER_ACTION_MARGIN_RIGHT } from '@/navigation/HeaderActionButton';
 import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -94,6 +95,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     justifyContent: 'center',
     maxWidth: '46%',
+    paddingLeft: spacing[4],
   },
   center: {
     flex: 1,
@@ -115,6 +117,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     maxWidth: '54%',
+    paddingRight: HEADER_ACTION_MARGIN_RIGHT,
+    gap: spacing[2],
   },
   defaultTitle: {
     fontFamily: fontFamily.bold,

@@ -1761,6 +1761,19 @@ class Appointment
                         $ln = trim((string) ($cp['last_name'] ?? ''));
                         $emploi = isset($cp['emploi']) ? trim((string) $cp['emploi']) : '';
                         $bio = isset($cp['biography']) ? trim((string) $cp['biography']) : '';
+                        $website = isset($cp['website_url']) ? trim((string) $cp['website_url']) : '';
+                        $cover = isset($cp['cover_image_url']) ? trim((string) $cp['cover_image_url']) : '';
+                        $socialLinks = null;
+                        if (!empty($cp['social_links'])) {
+                            if (is_string($cp['social_links'])) {
+                                $decoded = json_decode($cp['social_links'], true);
+                                if (is_array($decoded)) {
+                                    $socialLinks = $decoded;
+                                }
+                            } elseif (is_array($cp['social_links'])) {
+                                $socialLinks = $cp['social_links'];
+                            }
+                        }
                         $appointment['creator_origin'] = [
                             'kind' => 'pro',
                             'id' => (string) $cb,
@@ -1772,6 +1785,9 @@ class Appointment
                             'emploi' => $emploi !== '' ? $emploi : null,
                             'biography' => $bio !== '' ? $bio : null,
                             'profile_image_url' => isset($cp['profile_image_url']) ? trim((string) $cp['profile_image_url']) : null,
+                            'cover_image_url' => $cover !== '' ? $cover : null,
+                            'website_url' => $website !== '' ? $website : null,
+                            'social_links' => $socialLinks,
                             'public_slug' => isset($cp['public_slug']) && trim((string) $cp['public_slug']) !== '' ? trim((string) $cp['public_slug']) : null,
                         ];
                     }

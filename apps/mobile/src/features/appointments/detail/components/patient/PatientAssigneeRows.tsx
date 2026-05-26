@@ -3,7 +3,7 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
 import { AssigneeProfileRow } from '../AssigneeProfileRow';
-import { ProviderPublicProfileSheet } from '../ProviderPublicProfileSheet';
+import { AssigneeProfileSheets } from '../AssigneeProfileSheets';
 import { hasAssigneeContent } from '../RdvAssigneeSection';
 import { DetailSection } from '../layout/DetailSection';
 import { appointmentAssigneeGender } from '../../utils/patient-appointment-display';
@@ -14,12 +14,12 @@ import {
   isPatientPlatformOrigin,
   isViewerAppointmentCreator,
   platformOriginDisplayName,
+  resolveCreatorOriginProfileSheet,
+  type AssigneeProfileSheetState,
   type CreatorOrigin,
 } from '../../utils/provider-public-profile';
 
 type AptExt = Appointment & Record<string, unknown>;
-
-type SheetTarget = { type: 'nurse' | 'lab'; slug: string; title: string } | null;
 
 interface Props {
   apt: Appointment;
@@ -28,7 +28,7 @@ interface Props {
 export function PatientAssigneeRows({ apt }: Props) {
   const user = useAuthStore((s) => s.user);
   const ext = apt as AptExt;
-  const [sheet, setSheet] = useState<SheetTarget>(null);
+  const [sheet, setSheet] = useState<AssigneeProfileSheetState | null>(null);
 
   if (!hasAssigneeContent(apt, 'patient')) return null;
 
@@ -43,8 +43,8 @@ export function PatientAssigneeRows({ apt }: Props) {
   const hideCreatorOrigin = isViewerAppointmentCreator(apt, user?.id);
 
   const blocks: ReactNode[] = [];
-  const openSheet = (type: 'nurse' | 'lab', slug: string, title: string) =>
-    setSheet({ type, slug, title });
+  const openWebSheet = (providerType: 'nurse' | 'lab', slug: string, title: string) =>
+    setSheet({ kind: 'web', providerType, slug, title });
 
   const nurseName = String(ext.assigned_nurse_display_name ?? '').trim();
   if (isNursingAppointment(apt.type) && !hideNurse && (nurseName || ext.assigned_nurse_id)) {
@@ -58,7 +58,7 @@ export function PatientAssigneeRows({ apt }: Props) {
         gender={appointmentAssigneeGender(apt, 'nurse')}
         phone={String(ext.assigned_nurse_phone ?? '')}
         publicSlug={slug || null}
-        onViewProfile={slug ? () => openSheet('nurse', slug, nurseName || 'Infirmier') : undefined}
+        onViewProfile={slug ? () => openWebSheet('nurse', slug, nurseName || 'Infirmier') : undefined}
       />,
     );
   }
@@ -75,7 +75,7 @@ export function PatientAssigneeRows({ apt }: Props) {
         gender={appointmentAssigneeGender(apt, 'lab')}
         phone={String(ext.assigned_lab_phone ?? '')}
         publicSlug={slug || null}
-        onViewProfile={slug ? () => openSheet('lab', slug, labName || 'Laboratoire') : undefined}
+        onViewProfile={slug ? () => openWebSheet('lab', slug, labName || 'Laboratoire') : undefined}
       />,
     );
   }
@@ -103,9 +103,8 @@ export function PatientAssigneeRows({ apt }: Props) {
   if (!hideOriginForPatient && creator?.kind && !hideCreatorOrigin) {
     const name = creatorOriginName(creator);
     const title = creatorOriginTitle(creator);
-    const slug = creator.public_slug?.trim();
-    const providerType = creator.kind === 'lab_team' ? 'lab' : creator.kind === 'nurse' ? 'nurse' : null;
-  const platformOrigin = isPatientPlatformOrigin(creator);
+    const platformOrigin = isPatientPlatformOrigin(creator);
+    const profileSheet = resolveCreatorOriginProfileSheet(creator);
     blocks.push(
       <AssigneeProfileRow
         key="creator"
@@ -115,12 +114,8 @@ export function PatientAssigneeRows({ apt }: Props) {
         brandLogo={platformOrigin ? 'cary' : undefined}
         phone={creator.phone}
         subtitle={creatorOriginSubtitle(creator)}
-        publicSlug={slug || null}
-        onViewProfile={
-          slug && providerType
-            ? () => openSheet(providerType, slug, name)
-            : undefined
-        }
+        publicSlug={creator.public_slug?.trim() || null}
+        onViewProfile={profileSheet ? () => setSheet(profileSheet) : undefined}
       />,
     );
   } else if (!hideOriginForPatient) {
@@ -151,15 +146,7 @@ export function PatientAssigneeRows({ apt }: Props) {
             : block,
         )}
       </DetailSection>
-      {sheet ? (
-        <ProviderPublicProfileSheet
-          visible
-          onClose={() => setSheet(null)}
-          providerType={sheet.type}
-          slug={sheet.slug}
-          title={sheet.title}
-        />
-      ) : null}
+      <AssigneeProfileSheets sheet={sheet} onClose={() => setSheet(null)} />
     </>
   );
 }

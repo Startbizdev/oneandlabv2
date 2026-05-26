@@ -1,15 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { FilterOptionChips, type FilterChipOption } from '@/components/ui/FilterOptionChips';
 import { Input } from '@/components/ui/Input';
 import { Search } from 'lucide-react-native';
 import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
-
-interface ChipOption<T extends string> {
-  value: T;
-  label: string;
-  hint?: string;
-}
 
 interface Props<
   TTab extends string = string,
@@ -22,64 +17,21 @@ interface Props<
   search: string;
   onSearchChange: (v: string) => void;
   searchPlaceholder?: string;
-  tabs?: ChipOption<TTab>[];
+  tabs?: FilterChipOption<TTab>[];
   tab?: TTab;
   onTabChange?: (v: TTab) => void;
-  segments?: ChipOption<TSegment>[];
+  segments?: FilterChipOption<TSegment>[];
   segment?: TSegment;
   onSegmentChange?: (v: TSegment) => void;
-  /** false si la recherche est déjà dans la barre liste */
   showSearch?: boolean;
   segmentSectionLabel?: string;
-  secondarySegments?: ChipOption<TSecondary>[];
+  secondarySegments?: FilterChipOption<TSecondary>[];
   secondarySegment?: TSecondary;
   onSecondarySegmentChange?: (v: TSecondary) => void;
   secondarySectionLabel?: string;
-  /** Fermer la sheet après un choix (défaut true). */
+  /** Fermer la sheet après un choix (filtre à une seule dimension). */
   closeOnPick?: boolean;
-}
-
-function FilterTabRow<T extends string>({
-  options,
-  value,
-  onChange,
-  onClose,
-  closeOnPick,
-}: {
-  options: ChipOption<T>[];
-  value: T;
-  onChange: (v: T) => void;
-  onClose: () => void;
-  closeOnPick: boolean;
-}) {
-  const useEqualColumns = options.length <= 4;
-
-  return (
-    <View style={[styles.tabRow, useEqualColumns && options.length === 2 && styles.tabRowEqual]}>
-      {options.map((opt) => {
-        const active = value === opt.value;
-        return (
-          <Pressable
-            key={opt.value || 'all'}
-            onPress={() => {
-              onChange(opt.value);
-              if (closeOnPick) onClose();
-            }}
-            style={[
-              styles.tabBtn,
-              useEqualColumns && options.length <= 4 && styles.tabBtnFlex,
-              active && styles.tabBtnActive,
-            ]}
-          >
-            <Text style={[styles.tabText, active && styles.tabTextActive]} numberOfLines={2}>
-              {opt.label}
-            </Text>
-            {opt.hint && active ? <Text style={styles.tabHint}>{opt.hint}</Text> : null}
-          </Pressable>
-        );
-      })}
-    </View>
-  );
+  onReset?: () => void;
 }
 
 export function AppointmentsFilterSheet<
@@ -105,15 +57,16 @@ export function AppointmentsFilterSheet<
   secondarySegment,
   onSecondarySegmentChange,
   secondarySectionLabel = 'Type de soin',
-  closeOnPick = true,
+  closeOnPick = false,
+  onReset,
 }: Props<TTab, TSegment, TSecondary>) {
+  const pick = <T extends string>(onChange: (v: T) => void) => (v: T) => {
+    onChange(v);
+    if (closeOnPick) onClose();
+  };
+
   return (
-    <BottomSheet
-      visible={visible}
-      onClose={onClose}
-      title={title}
-      subtitle="Choisissez un onglet — le filtre s’applique tout de suite"
-    >
+    <BottomSheet visible={visible} onClose={onClose} title={title}>
       {showSearch ? (
         <Input
           value={search}
@@ -126,40 +79,32 @@ export function AppointmentsFilterSheet<
       {tabs && tab !== undefined && onTabChange ? (
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Affichage</Text>
-          <FilterTabRow
-            options={tabs}
-            value={tab}
-            onChange={onTabChange}
-            onClose={onClose}
-            closeOnPick={closeOnPick}
-          />
+          <FilterOptionChips options={tabs} value={tab} onChange={pick(onTabChange)} />
         </View>
       ) : null}
 
       {segments && segment !== undefined && onSegmentChange ? (
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{segmentSectionLabel}</Text>
-          <FilterTabRow
-            options={segments}
-            value={segment}
-            onChange={onSegmentChange}
-            onClose={onClose}
-            closeOnPick={closeOnPick}
-          />
+          <FilterOptionChips options={segments} value={segment} onChange={pick(onSegmentChange)} />
         </View>
       ) : null}
 
       {secondarySegments && secondarySegment !== undefined && onSecondarySegmentChange ? (
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{secondarySectionLabel}</Text>
-          <FilterTabRow
+          <FilterOptionChips
             options={secondarySegments}
             value={secondarySegment}
-            onChange={onSecondarySegmentChange}
-            onClose={onClose}
-            closeOnPick={closeOnPick}
+            onChange={pick(onSecondarySegmentChange)}
           />
         </View>
+      ) : null}
+
+      {onReset ? (
+        <Pressable onPress={onReset} hitSlop={8} style={styles.resetBtn}>
+          <Text style={styles.resetText}>Réinitialiser les filtres</Text>
+        </Pressable>
       ) : null}
     </BottomSheet>
   );
@@ -171,50 +116,18 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
     color: colors.textTertiary,
-    letterSpacing: 0.6,
+    letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
-  tabRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
+  resetBtn: {
+    alignSelf: 'center',
+    paddingVertical: spacing[2],
   },
-  tabRowEqual: {
-    flexWrap: 'nowrap',
-  },
-  tabBtn: {
-    padding: spacing[3],
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceAlt,
-    gap: 4,
-    minWidth: '47%',
-  },
-  tabBtnFlex: {
-    flex: 1,
-    minWidth: 0,
-  },
-  tabBtnActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
-  tabText: {
+  resetText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  tabTextActive: {
-    color: colors.primaryDark,
-  },
-  tabHint: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
-    lineHeight: fontSize.xs * 1.4,
-    textAlign: 'center',
+    color: colors.primary,
   },
 });

@@ -1,6 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { CircleCheck } from 'lucide-react-native';
+import type { SelectedServiceInput } from '@oneandlab/shared-utils';
 import { formatDateCompact } from '@/utils/appointment-display';
+import {
+  bookingWizardLotKind,
+  bookingWizardLotStepLabel,
+  bookingWizardLotTitle,
+  bookingWizardServiceDisplayName,
+  type BookingWizardLotKind,
+} from '../utils/booking-wizard-lot';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -11,45 +19,54 @@ export interface WizardRecapItem {
 }
 
 interface Props {
-  currentLabel: string;
-  kind?: 'blood' | 'nursing' | 'mixed';
+  activeService: SelectedServiceInput;
+  lotServices: SelectedServiceInput[];
   previousRecaps: WizardRecapItem[];
-  lotCount?: number;
 }
 
-/** Bandeau soin compact — une ligne, pas de carte volumineuse. */
+/** Bandeau lot (prélèvements / soins infirmiers groupés) — aligné web BookingWizardSegmentContext. */
 export function BookingWizardSegmentContext({
-  currentLabel,
-  kind,
+  activeService,
+  lotServices,
   previousRecaps,
-  lotCount,
 }: Props) {
-  const badge =
-    kind === 'blood' ? 'Prélèvement' : kind === 'nursing' ? 'Soins infirmiers' : null;
+  const kind: BookingWizardLotKind = bookingWizardLotKind(activeService);
+  const stepLabel = bookingWizardLotStepLabel(kind);
+  const title = bookingWizardLotTitle(lotServices, kind);
 
   return (
     <View style={styles.wrap}>
       {previousRecaps.length > 0 ? (
-        <View style={styles.doneRow}>
-          <CircleCheck size={12} color={colors.primary} strokeWidth={2.5} />
-          <Text style={styles.doneText} numberOfLines={2}>
-            {previousRecaps.map((r) => r.shortLabel).join(' · ')}
-          </Text>
+        <View style={styles.doneBlock}>
+          <View style={styles.doneHeader}>
+            <CircleCheck size={14} color={colors.primary} strokeWidth={2.5} />
+            <Text style={styles.doneTitle}>Déjà planifié</Text>
+          </View>
+          {previousRecaps.map((r) => (
+            <Text key={r.serviceId} style={styles.doneLine} numberOfLines={2}>
+              <Text style={styles.doneBold}>{r.shortLabel}</Text>
+              {r.dateLabel ? <Text style={styles.doneDate}> — {r.dateLabel}</Text> : null}
+            </Text>
+          ))}
         </View>
       ) : null}
 
-      <View style={styles.currentRow}>
+      <View style={styles.card}>
         <View style={styles.accent} />
-        <View style={styles.currentCopy}>
-          <Text style={styles.serviceName} numberOfLines={2}>
-            {currentLabel}
+        <View style={styles.copy}>
+          <Text style={styles.badge}>{stepLabel}</Text>
+          <Text style={styles.title} numberOfLines={3}>
+            {title}
           </Text>
-          {badge || (lotCount && lotCount > 1) ? (
-            <View style={styles.metaRow}>
-              {badge ? <Text style={styles.badge}>{badge}</Text> : null}
-              {lotCount && lotCount > 1 ? (
-                <Text style={styles.lot}>{lotCount} actes</Text>
-              ) : null}
+          {lotServices.length > 1 ? (
+            <View style={styles.pillRow}>
+              {lotServices.map((s) => (
+                <View key={s.id} style={styles.pill}>
+                  <Text style={styles.pillText} numberOfLines={1}>
+                    {bookingWizardServiceDisplayName(s)}
+                  </Text>
+                </View>
+              ))}
             </View>
           ) : null}
         </View>
@@ -64,58 +81,77 @@ export function recapDateLabel(scheduledAt: string | undefined): string | undefi
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    gap: spacing[2],
+  wrap: { gap: spacing[3] },
+  doneBlock: {
+    gap: spacing[1],
+    paddingVertical: spacing[1],
   },
-  doneRow: {
+  doneHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[1.5],
-    paddingVertical: spacing[1],
   },
-  doneText: {
-    flex: 1,
-    fontFamily: fontFamily.medium,
+  doneTitle: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize['2xs'],
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  doneLine: {
+    fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
+    paddingLeft: spacing[5],
   },
-  currentRow: {
+  doneBold: { fontFamily: fontFamily.semiBold, color: colors.textPrimary },
+  doneDate: { color: colors.textTertiary },
+  card: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: spacing[2.5],
-    minHeight: 0,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.surface,
+    overflow: 'hidden',
   },
   accent: {
-    width: 3,
-    borderRadius: radius.full,
+    width: 4,
     backgroundColor: colors.primary,
   },
-  currentCopy: {
+  copy: {
     flex: 1,
     minWidth: 0,
-    gap: spacing[0.5],
-    justifyContent: 'center',
+    padding: spacing[3],
+    gap: spacing[2],
   },
-  serviceName: {
+  badge: {
     fontFamily: fontFamily.semiBold,
+    fontSize: fontSize['2xs'],
+    color: colors.primaryDark,
+    textTransform: 'uppercase',
+    letterSpacing: 0.35,
+  },
+  title: {
+    fontFamily: fontFamily.bold,
     fontSize: fontSize.sm,
     color: colors.textPrimary,
-    lineHeight: fontSize.sm * 1.3,
+    lineHeight: fontSize.sm * 1.35,
   },
-  metaRow: {
+  pillRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     flexWrap: 'wrap',
     gap: spacing[1.5],
   },
-  badge: {
+  pill: {
+    maxWidth: '100%',
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[1],
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+  },
+  pillText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize['2xs'],
     color: colors.primaryDark,
-  },
-  lot: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
   },
 });

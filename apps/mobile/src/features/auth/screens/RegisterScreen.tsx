@@ -16,14 +16,14 @@ import {
   type RegisterRole,
 } from '@/features/auth/api/registration.service';
 import { verifyOtp } from '@/features/auth/api/auth.service';
-import { PRO_SANTE_EMPLOIS } from '@/constants/pro-emploi';
+import { ProEmploiSelect } from '@/features/auth/components/ProEmploiSelect';
 import { showAppNotAccessibleAlert } from '@/lib/auth/mobile-access';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
 import { offerBiometricEnrollment } from '@/features/auth/utils/offer-biometric-enrollment';
 import { registerHeaderTitle } from '@/navigation/RegisterHeaderTitle';
-import { colors, radius, spacing } from '@/theme';
+import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface RegisterScreenProps {
@@ -54,7 +54,6 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
   const [rpps, setRpps] = useState('');
   const [adeli, setAdeli] = useState('');
   const [emploi, setEmploi] = useState('');
-  const [showEmploiList, setShowEmploiList] = useState(false);
   const [otp, setOtp] = useState('');
   const [userId, setUserId] = useState('');
   const [sessionId, setSessionId] = useState('');
@@ -239,28 +238,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
 
           {role === 'pro' ? (
             <>
-              <Text style={styles.fieldLabel}>Profession (emploi)</Text>
-              <Pressable onPress={() => setShowEmploiList((v) => !v)} style={styles.selectBtn}>
-                <Text style={emploi ? styles.selectValue : styles.selectPlaceholder}>
-                  {emploi || 'Rechercher votre profession…'}
-                </Text>
-              </Pressable>
-              {showEmploiList ? (
-                <View style={styles.emploiList}>
-                  {PRO_SANTE_EMPLOIS.map((e) => (
-                    <Pressable
-                      key={e}
-                      onPress={() => {
-                        setEmploi(e);
-                        setShowEmploiList(false);
-                      }}
-                      style={styles.emploiItem}
-                    >
-                      <Text style={styles.emploiText}>{e}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
+              <ProEmploiSelect value={emploi} onChange={setEmploi} />
               <Input
                 label="Numéro Adeli"
                 value={adeli}
@@ -305,47 +283,6 @@ const styles = StyleSheet.create({
   },
   row2: { flexDirection: 'row', gap: spacing[3] },
   half: { flex: 1 },
-  fieldLabel: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-  },
-  selectBtn: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    backgroundColor: colors.surface,
-  },
-  selectPlaceholder: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.base,
-    color: colors.textTertiary,
-  },
-  selectValue: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.base,
-    color: colors.textPrimary,
-  },
-  emploiList: {
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    marginTop: -spacing[2],
-  },
-  emploiItem: {
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  emploiText: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-  },
   loginLink: { alignItems: 'center', paddingTop: spacing[2] },
   loginLinkText: {
     fontFamily: fontFamily.regular,

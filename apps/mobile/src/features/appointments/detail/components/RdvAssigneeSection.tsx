@@ -4,7 +4,11 @@ import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-
 import { useAuthStore } from '@/store/auth-store';
 import { Card } from '@/components/ui/Card';
 import { AssigneeProfileRow } from './AssigneeProfileRow';
-import { ProviderPublicProfileSheet } from './ProviderPublicProfileSheet';
+import { AssigneeProfileSheets } from './AssigneeProfileSheets';
+import {
+  resolveCreatorOriginProfileSheet,
+  type AssigneeProfileSheetState,
+} from '../utils/provider-public-profile';
 import { appointmentAssigneeGender } from '../utils/patient-appointment-display';
 import {
   creatorOriginName,
@@ -19,7 +23,6 @@ import { StyleSheet } from 'react-native';
 
 type AptExt = Appointment & Record<string, unknown>;
 
-type SheetTarget = { type: 'nurse' | 'lab'; slug: string; title: string } | null;
 
 export function hasAssigneeContent(apt: Appointment, role: string): boolean {
   const user = useAuthStore.getState().user;
@@ -60,7 +63,7 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
   const user = useAuthStore((s) => s.user);
   const ext = apt as AptExt;
   const isPatient = role === 'patient';
-  const [sheet, setSheet] = useState<SheetTarget>(null);
+  const [sheet, setSheet] = useState<AssigneeProfileSheetState | null>(null);
 
   const hideNurse =
     user?.role === 'nurse' && String(ext.assigned_nurse_id ?? '') === String(user.id ?? '');
@@ -92,8 +95,8 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
     return null;
   }
 
-  const openSheet = (type: 'nurse' | 'lab', slug: string, title: string) =>
-    setSheet({ type, slug, title });
+  const openWebSheet = (providerType: 'nurse' | 'lab', slug: string, title: string) =>
+    setSheet({ kind: 'web', providerType, slug, title });
 
   const rows: ReactNode[] = [];
 
@@ -108,7 +111,7 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
         gender={appointmentAssigneeGender(apt, 'nurse')}
         phone={String(ext.assigned_nurse_phone ?? '')}
         publicSlug={slug || null}
-        onViewProfile={slug ? () => openSheet('nurse', slug, nurseName || 'Infirmier') : undefined}
+        onViewProfile={slug ? () => openWebSheet('nurse', slug, nurseName || 'Infirmier') : undefined}
       />,
     );
   }
@@ -123,7 +126,7 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
         gender={appointmentAssigneeGender(apt, 'lab')}
         phone={String(ext.assigned_lab_phone ?? '')}
         publicSlug={slug || null}
-        onViewProfile={slug ? () => openSheet('lab', slug, labName || 'Laboratoire') : undefined}
+        onViewProfile={slug ? () => openWebSheet('lab', slug, labName || 'Laboratoire') : undefined}
       />,
     );
   }
@@ -142,10 +145,8 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
   if (showCreatorOrigin && creator) {
     const name = creatorOriginName(creator);
     const title = creatorOriginTitle(creator);
-    const slug = creator.public_slug?.trim();
     const platformOrigin = isPatientPlatformOrigin(creator);
-    const providerType =
-      creator.kind === 'lab_team' ? 'lab' : creator.kind === 'nurse' ? 'nurse' : null;
+    const profileSheet = resolveCreatorOriginProfileSheet(creator);
     rows.push(
       <AssigneeProfileRow
         key="creator"
@@ -155,10 +156,8 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
         brandLogo={platformOrigin ? 'cary' : undefined}
         phone={creator.phone}
         subtitle={creatorOriginSubtitle(creator)}
-        publicSlug={slug || null}
-        onViewProfile={
-          slug && providerType ? () => openSheet(providerType, slug, name) : undefined
-        }
+        publicSlug={creator.public_slug?.trim() || null}
+        onViewProfile={profileSheet ? () => setSheet(profileSheet) : undefined}
       />,
     );
   }
@@ -177,15 +176,7 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
             : row,
         )}
       </Card>
-      {sheet ? (
-        <ProviderPublicProfileSheet
-          visible
-          onClose={() => setSheet(null)}
-          providerType={sheet.type}
-          slug={sheet.slug}
-          title={sheet.title}
-        />
-      ) : null}
+      <AssigneeProfileSheets sheet={sheet} onClose={() => setSheet(null)} />
     </>
   );
 }

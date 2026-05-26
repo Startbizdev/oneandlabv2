@@ -2,11 +2,15 @@ import type { NativeStackNavigationOptions } from '@react-navigation/native-stac
 import type { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { Platform } from 'react-native';
 import { AppHeader } from '@/components/navigation/AppHeader';
-import { colors } from '@/theme';
+import { HEADER_ACTION_MARGIN_RIGHT } from '@/navigation/HeaderActionButton';
+import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-/** Header natif (onglets) — évite AppHeader dans BottomTabView (ordre des Hooks). */
-function nativeHeaderOptions(): Pick<
+/**
+ * Onglets : header natif (AppHeader + hooks casse BottomTabView).
+ * Marges cloche / actions alignées via header*ContainerStyle.
+ */
+function nativeTabHeaderOptions(): Pick<
   BottomTabNavigationOptions,
   | 'headerShown'
   | 'headerShadowVisible'
@@ -16,6 +20,8 @@ function nativeHeaderOptions(): Pick<
   | 'headerTitleAlign'
   | 'headerBackTitle'
   | 'headerBackButtonDisplayMode'
+  | 'headerRightContainerStyle'
+  | 'headerLeftContainerStyle'
 > {
   return {
     headerShown: true,
@@ -30,6 +36,12 @@ function nativeHeaderOptions(): Pick<
       color: colors.textPrimary,
     },
     headerTitleAlign: 'left',
+    headerRightContainerStyle: {
+      paddingRight: HEADER_ACTION_MARGIN_RIGHT,
+    },
+    headerLeftContainerStyle: {
+      paddingLeft: spacing[4],
+    },
   };
 }
 
@@ -45,12 +57,12 @@ export function stackHeaderOptions(
   };
 }
 
-/** Onglets — header natif + tab bar classique (pas de position absolute). */
+/** Onglets — header natif + marges homogènes (cloche, logo, CTA). */
 export function tabScreenOptions(
   overrides?: BottomTabNavigationOptions,
 ): BottomTabNavigationOptions {
   return {
-    ...nativeHeaderOptions(),
+    ...nativeTabHeaderOptions(),
     sceneStyle: { flex: 1, backgroundColor: colors.background },
     ...overrides,
   };

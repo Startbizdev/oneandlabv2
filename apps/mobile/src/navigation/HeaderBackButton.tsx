@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
-import { colors, spacing } from '@/theme';
+import { colors } from '@/theme';
 
 interface Props {
   onPress: () => void;
@@ -27,6 +27,5 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: spacing[1],
   },
 });

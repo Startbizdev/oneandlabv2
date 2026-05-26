@@ -2,7 +2,7 @@ import { useLayoutEffect } from 'react';
 import { useNavigation } from 'expo-router';
 import { RoleFilteredAppointmentsListScreen } from '@/features/appointments/screens/RoleFilteredAppointmentsListScreen';
 import { HeaderLogo } from '@/navigation/HeaderLogo';
-import { HeaderNotificationBell } from '@/navigation/HeaderNotificationButton';
+import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
 
 export default function ProAppointmentsTab() {
   const navigation = useNavigation();
@@ -11,7 +11,7 @@ export default function ProAppointmentsTab() {
     navigation.setOptions({
       headerTitle: '',
       headerLeft: () => <HeaderLogo size="lg" />,
-      headerRight: () => <HeaderNotificationBell />,
+      headerRight: tabHeaderNotificationRight(),
     });
   }, [navigation]);
 

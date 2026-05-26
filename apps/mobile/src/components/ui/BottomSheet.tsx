@@ -14,6 +14,7 @@ interface Props {
   disableScroll?: boolean;
   enableSwipeToDismiss?: boolean;
   dismissOnBackdropPress?: boolean;
+  presentKey?: string | number;
 }
 
 /** Wrapper SheetModal pour les écrans existants. */
@@ -29,10 +30,12 @@ export function BottomSheet({
   disableScroll,
   enableSwipeToDismiss,
   dismissOnBackdropPress,
+  presentKey,
 }: Props) {
   return (
     <SheetModal
       visible={visible}
+      presentKey={presentKey}
       onClose={onClose}
       onBack={onBack}
       title={title}

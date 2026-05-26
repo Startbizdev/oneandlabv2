@@ -6,7 +6,6 @@ export default function PreleveurCalendar() {
       title="Calendrier"
       baseFilters={{ limit: 200 }}
       detailPathPrefix="/(preleveur)/appointment"
-      statusFilterInSheetOnly
     />
   );
 }

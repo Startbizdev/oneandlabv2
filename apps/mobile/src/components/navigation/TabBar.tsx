@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import type { BottomTabBarProps, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme';
@@ -8,6 +8,12 @@ import { fontFamily } from '@/theme/typography';
 
 /** Hauteur contenu standard (proche tab bar iOS ~49pt). */
 const TAB_CONTENT_HEIGHT = 48;
+
+/** Onglets masqués (ex. `index` redirect avec `href: null`) n’ont pas d’icône. */
+function isTabVisible(options: BottomTabNavigationOptions): boolean {
+  if (options.tabBarButton === null) return false;
+  return options.tabBarIcon != null;
+}
 
 function TabItem({
   isFocused,
@@ -82,9 +88,11 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       ]}
     >
       <View style={styles.row}>
-        {state.routes.map((route, index) => {
+        {state.routes.map((route, routeIndex) => {
           const { options } = descriptors[route.key];
-          const isFocused = state.index === index;
+          if (!isTabVisible(options)) return null;
+
+          const isFocused = state.index === routeIndex;
 
           const onPress = () => {
             const event = navigation.emit({

@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
-import { Mail, Shield } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { LoginFlow } from '@/features/auth/components/LoginFlow';
 import { colors, spacing } from '@/theme';
@@ -31,13 +30,6 @@ export function LoginBottomSheet({
     return 'Recevez un code sécurisé par email';
   }, [step, email]);
 
-  const headerIcon =
-    step === 'otp' ? (
-      <Shield size={20} color={colors.primary} strokeWidth={2} />
-    ) : (
-      <Mail size={20} color={colors.primary} strokeWidth={2} />
-    );
-
   function handleClose() {
     setStep('email');
     setEmail('');
@@ -50,41 +42,46 @@ export function LoginBottomSheet({
       onClose={handleClose}
       title="Connexion"
       subtitle={subtitle}
-      headerIcon={headerIcon}
-      footer={
-        onRegisterPress ? (
-          <Pressable onPress={onRegisterPress} style={styles.footerLink}>
-            <Text style={styles.footerText}>
+      disableScroll
+    >
+      <View style={styles.content}>
+        <LoginFlow
+          onSuccess={onSuccess}
+          onEmailNotFound={onEmailNotFound}
+          onStepChange={(s, mail) => {
+            setStep(s);
+            if (mail) setEmail(mail);
+          }}
+        />
+        {onRegisterPress && step === 'email' ? (
+          <Pressable onPress={onRegisterPress} style={styles.registerLink} hitSlop={8}>
+            <Text style={styles.registerText}>
               Pas encore de compte ?{' '}
-              <Text style={styles.footerAccent}>Créer un compte</Text>
+              <Text style={styles.registerAccent}>Créer un compte</Text>
             </Text>
           </Pressable>
-        ) : undefined
-      }
-    >
-      <LoginFlow
-        onSuccess={onSuccess}
-        onEmailNotFound={onEmailNotFound}
-        onStepChange={(s, mail) => {
-          setStep(s);
-          if (mail) setEmail(mail);
-        }}
-      />
+        ) : null}
+      </View>
     </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  footerLink: {
-    alignItems: 'center',
-    paddingVertical: spacing[2],
+  content: {
+    width: '100%',
+    gap: spacing[4],
   },
-  footerText: {
+  registerLink: {
+    alignItems: 'center',
+    paddingTop: spacing[1],
+  },
+  registerText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: colors.textSecondary,
+    textAlign: 'center',
   },
-  footerAccent: {
+  registerAccent: {
     fontFamily: fontFamily.bold,
     color: colors.primary,
   },

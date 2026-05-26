@@ -11,8 +11,9 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Heart, Plus } from 'lucide-react-native';
+import { Heart } from 'lucide-react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ScreenFab } from '@/components/ui/ScreenFab';
 import {
   EMPTY_PROCHE_IMAGE,
   EMPTY_PROCHE_IMAGE_HEIGHT,
@@ -172,13 +173,10 @@ export function PatientRelativesScreen() {
         />
       )}
 
-      <Pressable
+      <ScreenFab
         onPress={() => setCreateOpen(true)}
-        style={[styles.fab, elevation.md]}
         accessibilityLabel="Ajouter un proche"
-      >
-        <Plus size={22} color="#fff" strokeWidth={2.5} />
-      </Pressable>
+      />
 
       <PatientRelativeFormSheet
         visible={createOpen}
@@ -253,16 +251,5 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: colors.textTertiary,
-  },
-  fab: {
-    position: 'absolute',
-    right: spacing[4],
-    bottom: spacing[6],
-    width: 52,
-    height: 52,
-    borderRadius: radius.full,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

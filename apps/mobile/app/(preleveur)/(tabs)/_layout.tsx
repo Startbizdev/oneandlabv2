@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Calendar, CalendarDays, LayoutGrid, Route } from 'lucide-react-native';
 import { TabBar } from '@/components/navigation/TabBar';
-import { HeaderNotificationBell } from '@/navigation/HeaderNotificationButton';
+import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { tabScreenOptions } from '@/navigation/screen-options';
 import { colors } from '@/theme';
@@ -18,7 +18,7 @@ export default function PreleveurTabsLayout() {
           ...tabScreenOptions(),
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textTertiary,
-          headerRight: () => <HeaderNotificationBell />,
+          headerRight: tabHeaderNotificationRight(),
         }}
       >
         <Tabs.Screen

@@ -197,11 +197,15 @@ export function NurseAppointmentsListScreen() {
       <AppointmentsFilterSheet
         visible={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        title="Affiner la liste"
+        title="Filtres"
         search=""
         onSearchChange={() => {}}
         showSearch={false}
         closeOnPick={false}
+        onReset={() => {
+          setTab('soins');
+          setSegment('tous');
+        }}
         tabs={NURSE_TAB_OPTIONS}
         tab={tab}
         onTabChange={setTab}

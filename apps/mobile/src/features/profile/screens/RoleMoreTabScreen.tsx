@@ -2,10 +2,10 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { LogOut } from 'lucide-react-native';
-import { MoreMenuItem, moreMenuStyles } from '@/features/profile/components/MoreMenuItem';
+import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, elevation, spacing } from '@/theme';
+import { colors, spacing } from '@/theme';
 import type { MoreMenuItemProps } from '@/features/profile/components/MoreMenuItem';
 
 export type MoreTabSection = {
@@ -51,37 +51,25 @@ export function RoleMoreTabScreen({
             entering={FadeInDown.delay(section.delay ?? 150 + sectionIndex * 60)
               .duration(400)
               .springify()}
-            style={moreMenuStyles.section}
           >
-            {section.title ? (
-              <Animated.Text style={moreMenuStyles.sectionTitle}>{section.title}</Animated.Text>
-            ) : null}
-            <View style={[moreMenuStyles.sectionCard, elevation.xs]}>
-              {section.items.map((item, itemIndex) => (
-                <View key={item.label}>
-                  {itemIndex > 0 ? <View style={moreMenuStyles.divider} /> : null}
-                  <MoreMenuItem {...item} />
-                </View>
-              ))}
-            </View>
+            <MoreMenuSection title={section.title} items={section.items} />
           </Animated.View>
         ))}
 
-        <Animated.View
-          entering={FadeInDown.delay(logoutDelay).duration(400).springify()}
-          style={moreMenuStyles.section}
-        >
-          <View style={[moreMenuStyles.sectionCard, elevation.xs]}>
-            <MoreMenuItem
-              icon={LogOut}
-              label="Déconnexion"
-              destructive
-              onPress={async () => {
-                await logout();
-                router.replace('/(auth)/login');
-              }}
-            />
-          </View>
+        <Animated.View entering={FadeInDown.delay(logoutDelay).duration(400).springify()}>
+          <MoreMenuSection
+            items={[
+              {
+                icon: LogOut,
+                label: 'Déconnexion',
+                destructive: true,
+                onPress: async () => {
+                  await logout();
+                  router.replace('/(auth)/login');
+                },
+              },
+            ]}
+          />
         </Animated.View>
       </ScrollView>
     </View>
