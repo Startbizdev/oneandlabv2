@@ -7,6 +7,7 @@ import type { CareCategory } from '@/features/categories/api/categories.service'
 import { formatCareOptionRows } from '@/features/appointments/form/utils/selected-service-detail-lines';
 import { appointmentAddressLine } from './appointment-address';
 import { formatScheduledDateWithAvailabilityLineFr } from './appointment-datetime-fr';
+import { resolveRdvCareDisplayLabel } from './rdv-care-display-label';
 
 dayjs.locale('fr');
 
@@ -174,7 +175,8 @@ export function getAppointmentBloodItems(appt: Appointment): Array<Record<string
 }
 
 export function nursingItemDisplayLabel(item: Record<string, unknown>): string {
-  return String(item.label ?? item.category_name ?? '—').trim() || '—';
+  const raw = String(item.label ?? item.category_name ?? '—').trim() || '—';
+  return resolveRdvCareDisplayLabel(raw, parseItemCareOptions(item.care_options));
 }
 
 export function parseItemCareOptions(co: unknown): Record<string, string | number> {

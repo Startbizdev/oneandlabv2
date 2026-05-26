@@ -37,22 +37,6 @@ export function ReviewReplySheet({
       title="Répondre à l'avis"
       subtitle={reviewerDisplayName(review)}
       headerIcon={<MessageSquare size={20} color={colors.primary} strokeWidth={2} />}
-      footer={
-        <View style={styles.footer}>
-          <View style={styles.footerBtn}>
-            <Button title="Annuler" variant="outline" onPress={onClose} fullWidth />
-          </View>
-          <View style={styles.footerBtn}>
-            <Button
-              title="Publier"
-              loading={submitting}
-              disabled={!draft.trim()}
-              onPress={onSubmit}
-              fullWidth
-            />
-          </View>
-        </View>
-      }
     >
       <View style={styles.preview}>
         <ReviewStars rating={review.rating ?? 0} size={14} />
@@ -70,6 +54,20 @@ export function ReviewReplySheet({
         style={styles.input}
       />
       <Text style={styles.hint}>Votre réponse sera visible sur votre fiche publique Cary.</Text>
+      <View style={styles.actions}>
+        <View style={styles.actionBtn}>
+          <Button title="Annuler" variant="outline" onPress={onClose} fullWidth />
+        </View>
+        <View style={styles.actionBtn}>
+          <Button
+            title="Publier"
+            loading={submitting}
+            disabled={!draft.trim()}
+            onPress={onSubmit}
+            fullWidth
+          />
+        </View>
+      </View>
     </BottomSheet>
   );
 }
@@ -97,9 +95,13 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     lineHeight: fontSize.xs * 1.45,
   },
-  footer: {
+  actions: {
     flexDirection: 'row',
     gap: spacing[3],
+    marginTop: spacing[2],
+    paddingTop: spacing[3],
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderLight,
   },
-  footerBtn: { flex: 1 },
+  actionBtn: { flex: 1 },
 });

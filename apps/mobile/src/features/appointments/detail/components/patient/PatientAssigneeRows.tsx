@@ -30,7 +30,8 @@ export function PatientAssigneeRows({ apt }: Props) {
   const ext = apt as AptExt;
   const [sheet, setSheet] = useState<AssigneeProfileSheetState | null>(null);
 
-  if (!hasAssigneeContent(apt, 'patient')) return null;
+  const viewerRole = user?.role ?? 'patient';
+  if (!hasAssigneeContent(apt, viewerRole)) return null;
 
   const hideNurse =
     user?.role === 'nurse' && String(ext.assigned_nurse_id ?? '') === String(user.id ?? '');

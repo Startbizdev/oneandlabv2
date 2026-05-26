@@ -5,7 +5,7 @@ import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { Input } from '@/components/ui/Input';
 import { lookupPatientByEmail, lookupPatientByPhone } from '@/features/patients/api/patient-lookup.service';
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
-import { PatientDuplicateSheet } from './PatientDuplicateSheet';
+import { PatientDuplicatePrompt } from './PatientDuplicatePrompt';
 import { PatientSelectSheet } from './PatientSelectSheet';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -175,6 +175,14 @@ export function FormPatientSection({
         </>
       ) : (
         <View style={styles.fields}>
+          {duplicateOpen && duplicateRow ? (
+            <PatientDuplicatePrompt
+              patient={duplicateRow}
+              variant="booking"
+              onDismiss={dismissDuplicate}
+              onUseExisting={adoptDuplicate}
+            />
+          ) : null}
           <Input label="Prénom" value={firstName} onChangeText={(v) => onChange('first_name', v)} />
           <Input label="Nom" value={lastName} onChangeText={(v) => onChange('last_name', v)} />
           <Input
@@ -221,12 +229,6 @@ export function FormPatientSection({
         onSelect={onSelectPatient}
       />
 
-      <PatientDuplicateSheet
-        visible={duplicateOpen}
-        patient={duplicateRow}
-        onDismiss={dismissDuplicate}
-        onUseExisting={adoptDuplicate}
-      />
     </View>
   );
 }

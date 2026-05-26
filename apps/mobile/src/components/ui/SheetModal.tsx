@@ -31,7 +31,10 @@ interface Props {
   subtitle?: string;
   onBack?: () => void;
   children: React.ReactNode;
-  /** Actions en bas du contenu scrollable (pas de footerComponent gorhom). */
+  /**
+   * Actions en bas du scroll (après `children`), pas en footer Gorhom —
+   * sinon les champs sont masqués à l’ouverture / avec le clavier.
+   */
   footer?: React.ReactNode;
   contentStyle?: ViewStyle;
   /** WebView / scroll interne uniquement. */
@@ -131,7 +134,7 @@ export function SheetModal({
   const content = (
     <>
       {children}
-      {footer ? <View style={styles.inlineFooter}>{footer}</View> : null}
+      {footer ? <View style={styles.scrollFooter}>{footer}</View> : null}
     </>
   );
 
@@ -226,10 +229,10 @@ const styles = StyleSheet.create({
     padding: spacing[4],
     gap: spacing[3],
   },
-  inlineFooter: {
+  scrollFooter: {
     marginTop: spacing[2],
     paddingTop: spacing[3],
-    gap: spacing[3],
+    gap: spacing[2],
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.borderLight,
   },

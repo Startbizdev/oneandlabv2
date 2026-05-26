@@ -10,6 +10,7 @@ import {
   saveAuthSession,
   saveAuthUser,
 } from '@/lib/auth-storage';
+import { clearAppSessionCache } from '@/lib/clear-app-cache';
 import { prefetchAppDataForRole } from '@/lib/prefetch-app-data';
 import {
   disableBiometricLogin,
@@ -56,6 +57,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       /* ignore */
     }
     await clearAuthSession();
+    await clearAppSessionCache();
     clearCsrfCache();
     setAuthToken(null);
     set({ token: null, user: null });

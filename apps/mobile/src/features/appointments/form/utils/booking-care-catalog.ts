@@ -53,6 +53,163 @@ export function catalogGroupFilterEmoji(key: string): string {
   return CATALOG_GROUP_FILTER_EMOJI[key] ?? '🏷️';
 }
 
+/** Palette visuelle par segment (filtres étape 1 booking). */
+export type CatalogGroupTheme = {
+  orb: string;
+  surface: string;
+  surfaceActive: string;
+  border: string;
+  borderActive: string;
+  label: string;
+  labelActive: string;
+  gradient: readonly [string, string];
+  glow: string;
+};
+
+const DEFAULT_GROUP_THEME: CatalogGroupTheme = {
+  orb: '#E8FBF9',
+  surface: '#FFFFFF',
+  surfaceActive: '#E8FBF9',
+  border: '#E2E8F0',
+  borderActive: '#1CC7B5',
+  label: '#64748B',
+  labelActive: '#0C6B61',
+  gradient: ['#F0FDFB', '#D1F7F3'],
+  glow: 'rgba(28, 199, 181, 0.22)',
+};
+
+const CATALOG_GROUP_THEMES: Record<string, CatalogGroupTheme> = {
+  examens: {
+    orb: '#CCFBF1',
+    surface: '#F8FFFE',
+    surfaceActive: '#ECFDF9',
+    border: '#99F6E4',
+    borderActive: '#0D9488',
+    label: '#5B7A75',
+    labelActive: '#0F766E',
+    gradient: ['#F0FDFA', '#CCFBF1'],
+    glow: 'rgba(13, 148, 136, 0.28)',
+  },
+  soins: {
+    orb: '#FCE7F3',
+    surface: '#FFFBFC',
+    surfaceActive: '#FFF1F5',
+    border: '#FBCFE8',
+    borderActive: '#DB2777',
+    label: '#9D6B82',
+    labelActive: '#9D174D',
+    gradient: ['#FFF5F8', '#FCE7F3'],
+    glow: 'rgba(219, 39, 119, 0.22)',
+  },
+  suivi: {
+    orb: '#DBEAFE',
+    surface: '#FAFCFF',
+    surfaceActive: '#EFF6FF',
+    border: '#BFDBFE',
+    borderActive: '#2563EB',
+    label: '#5C6F8A',
+    labelActive: '#1D4ED8',
+    gradient: ['#F5F9FF', '#DBEAFE'],
+    glow: 'rgba(37, 99, 235, 0.22)',
+  },
+  hygiene: {
+    orb: '#E0F2FE',
+    surface: '#F8FCFF',
+    surfaceActive: '#F0F9FF',
+    border: '#BAE6FD',
+    borderActive: '#0284C7',
+    label: '#5C7A8F',
+    labelActive: '#0369A1',
+    gradient: ['#F0F9FF', '#E0F2FE'],
+    glow: 'rgba(2, 132, 199, 0.22)',
+  },
+  prevention: {
+    orb: '#DCFCE7',
+    surface: '#FAFFFB',
+    surfaceActive: '#F0FDF4',
+    border: '#BBF7D0',
+    borderActive: '#16A34A',
+    label: '#5F7A68',
+    labelActive: '#15803D',
+    gradient: ['#F6FEF8', '#DCFCE7'],
+    glow: 'rgba(22, 163, 74, 0.22)',
+  },
+  divers: {
+    orb: '#FEF3C7',
+    surface: '#FFFDF8',
+    surfaceActive: '#FFFBEB',
+    border: '#FDE68A',
+    borderActive: '#D97706',
+    label: '#8A7A5C',
+    labelActive: '#B45309',
+    gradient: ['#FFFBEB', '#FEF3C7'],
+    glow: 'rgba(217, 119, 6, 0.2)',
+  },
+};
+
+export function catalogGroupTheme(key: string): CatalogGroupTheme {
+  return CATALOG_GROUP_THEMES[key] ?? DEFAULT_GROUP_THEME;
+}
+
+/** Pastels bien séparés visuellement (éviter plusieurs bleus/verts proches). */
+const CARE_TILE_ORB_COLORS = [
+  '#FCE7F3',
+  '#DBEAFE',
+  '#DCFCE7',
+  '#FEF3C7',
+  '#EDE9FE',
+  '#FFEDD5',
+  '#CFFAFE',
+  '#FFE4E6',
+  '#E0E7FF',
+  '#FDE68A',
+  '#FBCFE8',
+  '#D1FAE5',
+  '#FED7AA',
+  '#F3E8FF',
+  '#99F6E4',
+  '#FECDD3',
+] as const;
+
+export function careTileCategoryKey(cat: CareCategory): string {
+  return String(cat.id ?? cat.name ?? cat.label ?? '');
+}
+
+function careTileOrbColorAtIndex(index: number): string {
+  if (index < CARE_TILE_ORB_COLORS.length) {
+    return CARE_TILE_ORB_COLORS[index]!;
+  }
+  const hue = (index * 41) % 360;
+  return `hsl(${hue}, 52%, 90%)`;
+}
+
+/**
+ * Une couleur unique par soin (ordre stable par id) — pas de collision hash.
+ */
+export function buildCareTileOrbColorMap(
+  categories: CareCategory[],
+): Map<string, string> {
+  const byKey = new Map<string, CareCategory>();
+  for (const cat of categories) {
+    const key = careTileCategoryKey(cat);
+    if (key && !byKey.has(key)) byKey.set(key, cat);
+  }
+  const sortedKeys = [...byKey.keys()].sort((a, b) => a.localeCompare(b));
+  const map = new Map<string, string>();
+  sortedKeys.forEach((key, index) => {
+    map.set(key, careTileOrbColorAtIndex(index));
+  });
+  return map;
+}
+
+export function careTileEmojiOrbColor(
+  cat: CareCategory,
+  colorMap: ReadonlyMap<string, string>,
+): string {
+  const key = careTileCategoryKey(cat);
+  return colorMap.get(key) ?? careTileOrbColorAtIndex(0);
+}
+
 function sortCatalogGroupKeys(keys: string[]): string[] {
   return [...keys].sort((a, b) => {
     const ia = CATALOG_GROUP_ORDER.indexOf(a as (typeof CATALOG_GROUP_ORDER)[number]);

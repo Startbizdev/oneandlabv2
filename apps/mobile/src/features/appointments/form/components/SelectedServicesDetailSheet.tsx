@@ -51,7 +51,6 @@ export function SelectedServicesDetailSheet({
       onBack={onClose}
       title={selectionModalTitle(selectedServices.length)}
       subtitle="Vérifiez les options avant de continuer."
-      footer={<Button title="Fermer" onPress={onClose} fullWidth size="lg" />}
     >
       {selectedServices.map((svc, index) => {
         const lines = detailLinesForSelectedService(svc, categories, formDataByService);
@@ -86,6 +85,7 @@ export function SelectedServicesDetailSheet({
           </View>
         );
       })}
+      <Button title="Fermer" onPress={onClose} fullWidth size="lg" />
     </SheetModal>
   );
 }

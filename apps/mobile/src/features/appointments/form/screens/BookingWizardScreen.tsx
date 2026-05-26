@@ -80,7 +80,7 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
 
   if (w.loading) {
     return (
-      <View style={styles.screen}>
+      <View style={styles.screenCare}>
         <SkeletonCareSelectionStep />
       </View>
     );
@@ -88,7 +88,7 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
 
   if (bw.step === 0) {
     return (
-      <View style={styles.screen}>
+      <View style={styles.screenCare}>
         <CareSelectionStep
         nursingCategories={w.nursingCategories}
         bloodCategories={w.bloodCategories}
@@ -146,11 +146,11 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
     );
 
   return (
-    <View style={styles.screen}>
+    <View style={styles.screenWizard}>
       <FormScreen
         ref={formScrollRef}
         contentContainerStyle={styles.formContent}
-        backgroundColor={colors.background}
+        backgroundColor={colors.bookingCanvasLight}
         footer={
           <BookingActionBar
             {...bookingWizardFooterCtaCopy(bw.isFinalWizardStep)}
@@ -385,7 +385,8 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, minHeight: 0, backgroundColor: colors.background },
+  screenWizard: { flex: 1, minHeight: 0, backgroundColor: colors.bookingCanvasLight },
+  screenCare: { flex: 1, minHeight: 0, backgroundColor: colors.bookingCanvas },
   formContent: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],

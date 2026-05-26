@@ -12,7 +12,8 @@ export function useUnreadNotificationsCount() {
     enabled: Boolean(token),
     refetchInterval: NOTIFICATION_POLL_INTERVAL_MS,
     refetchIntervalInBackground: false,
-    staleTime: 30_000,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
   return q.data ?? 0;
 }

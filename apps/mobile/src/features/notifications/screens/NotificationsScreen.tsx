@@ -19,6 +19,10 @@ import {
 import { NotificationsFeed } from '@/features/notifications/components/NotificationsFeed';
 import { NotificationsReadAllAction } from '@/features/notifications/components/NotificationsReadAllAction';
 import { useAuthStore } from '@/store/auth-store';
+import {
+  decrementUnreadNotificationsCount,
+  setUnreadNotificationsCount,
+} from '../lib/notifications-cache';
 import { resolveNotificationNavigation } from '../utils/notification-navigation';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { colors, spacing } from '@/theme';
@@ -64,21 +68,33 @@ export function NotificationsScreen() {
 
   const markRead = useMutation({
     mutationFn: markNotificationRead,
+    onMutate: (id) => {
+      const wasUnread = items.some((n) => n.id === id && !n.read_at);
+      if (wasUnread) decrementUnreadNotificationsCount(qc);
+      return { wasUnread };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.wasUnread) {
+        void qc.invalidateQueries({ queryKey: queryKeys.notifications.unread });
+      }
+    },
     onSuccess: invalidateFeed,
   });
 
   const markAllRead = useMutation({
     mutationFn: async () => {
       const res = await markAllNotificationsRead();
-      if (res.success) return res.data?.marked ?? 0;
-      const unread = items.filter((n) => !n.read_at);
-      if (unread.length === 0) return 0;
-      await Promise.all(unread.map((n) => markNotificationRead(n.id)));
-      return unread.length;
+      if (!res.success) {
+        throw new Error(res.error ?? 'Impossible de tout marquer comme lu');
+      }
+      return res.data?.marked ?? 0;
     },
     onMutate: async () => {
       await qc.cancelQueries({ queryKey: FEED_QUERY_KEY });
+      await qc.cancelQueries({ queryKey: queryKeys.notifications.unread });
       const prev = qc.getQueryData(FEED_QUERY_KEY);
+      const prevUnread = qc.getQueryData(queryKeys.notifications.unread);
+      setUnreadNotificationsCount(qc, 0);
       qc.setQueryData(FEED_QUERY_KEY, (old: typeof feedQ.data) => {
         if (!old) return old;
         const now = new Date().toISOString();
@@ -90,10 +106,13 @@ export function NotificationsScreen() {
           })),
         };
       });
-      return { prev };
+      return { prev, prevUnread };
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(FEED_QUERY_KEY, ctx.prev);
+      if (ctx?.prevUnread !== undefined) {
+        qc.setQueryData(queryKeys.notifications.unread, ctx.prevUnread);
+      }
     },
     onSettled: invalidateFeed,
   });

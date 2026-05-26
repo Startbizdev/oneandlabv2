@@ -98,21 +98,6 @@ export function PatientRelativeFormSheet({
       visible={visible}
       onClose={onClose}
       title={initial ? 'Modifier le proche' : 'Ajouter un proche'}
-      footer={
-        <View style={styles.actions}>
-          <View style={styles.actionBtn}>
-            <Button title="Annuler" variant="outline" onPress={onClose} fullWidth />
-          </View>
-          <View style={styles.actionBtn}>
-            <Button
-              title={initial ? 'Enregistrer' : 'Ajouter'}
-              loading={saving}
-              onPress={submit}
-              fullWidth
-            />
-          </View>
-        </View>
-      }
     >
       <View style={styles.fields}>
         <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
@@ -153,6 +138,19 @@ export function PatientRelativeFormSheet({
         />
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      <View style={styles.actions}>
+        <View style={styles.actionBtn}>
+          <Button title="Annuler" variant="outline" onPress={onClose} fullWidth />
+        </View>
+        <View style={styles.actionBtn}>
+          <Button
+            title={initial ? 'Enregistrer' : 'Ajouter'}
+            loading={saving}
+            onPress={submit}
+            fullWidth
+          />
+        </View>
+      </View>
     </BottomSheet>
   );
 }
@@ -187,6 +185,13 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.error,
   },
-  actions: { flexDirection: 'row', gap: spacing[3] },
+  actions: {
+    flexDirection: 'row',
+    gap: spacing[3],
+    marginTop: spacing[2],
+    paddingTop: spacing[3],
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderLight,
+  },
   actionBtn: { flex: 1 },
 });
