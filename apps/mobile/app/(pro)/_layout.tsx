@@ -7,6 +7,10 @@ export default function ProLayout() {
     <Stack screenOptions={stackHeaderOptions()}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="appointment/[id]" options={{ title: 'Détail du rendez-vous' }} />
+      <Stack.Screen
+        name="appointment/[id]/care-photo/[photoId]"
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+      />
       <Stack.Screen name="appointment/[id]/edit" options={{ title: 'Reprendre le RDV' }} />
       <Stack.Screen name="appointments/new" options={bookingWizardScreenOptions()} />
       <Stack.Screen name="patient/[id]" options={{ title: 'Patient' }} />
