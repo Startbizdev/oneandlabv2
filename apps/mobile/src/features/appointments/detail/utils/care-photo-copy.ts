@@ -2,7 +2,7 @@ import type { AppointmentDetailRole } from './appointment-detail-role-config';
 
 export function carePhotosPanelIntro(role: AppointmentDetailRole | string): string {
   if (role === 'pro') {
-    return 'Suivez l’avancée des soins : photos et messages de l’infirmier(ère) assigné(e).';
+    return 'Échangez sur l’avancée des soins avec l’infirmier(ère) assigné(e). Ajoutez des photos pour documenter le suivi.';
   }
   if (role === 'nurse') {
     return 'Échangez sur l’avancée des soins avec le professionnel de santé prescripteur. Ajoutez des photos pour documenter le suivi.';

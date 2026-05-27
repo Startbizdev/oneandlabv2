@@ -47,19 +47,26 @@ final class CarePhotoGallery
 
     public static function canUpload(array $user, array $appointment): bool
     {
-        if (($user['role'] ?? '') !== 'nurse') {
-            return false;
-        }
         if (!self::isEligibleContext($appointment)) {
-            return false;
-        }
-        if (($appointment['assigned_nurse_id'] ?? '') !== ($user['user_id'] ?? '')) {
             return false;
         }
 
         $st = $appointment['status'] ?? '';
+        if (!in_array($st, ['confirmed', 'planned', 'inProgress', 'in_progress', 'completed'], true)) {
+            return false;
+        }
 
-        return in_array($st, ['confirmed', 'planned', 'inProgress', 'completed'], true);
+        $userId = (string) ($user['user_id'] ?? '');
+        $role = (string) ($user['role'] ?? '');
+
+        if ($role === 'nurse' && (string) ($appointment['assigned_nurse_id'] ?? '') === $userId) {
+            return true;
+        }
+        if ($role === 'pro' && (string) ($appointment['created_by'] ?? '') === $userId) {
+            return true;
+        }
+
+        return false;
     }
 
     public static function canComment(array $user, array $appointment): bool

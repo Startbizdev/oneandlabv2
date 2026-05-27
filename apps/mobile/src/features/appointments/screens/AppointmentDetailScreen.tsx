@@ -230,7 +230,6 @@ export function AppointmentDetailScreen({ role }: Props) {
             <DetailCarePhotosPanel
               apt={primary}
               userId={user?.id}
-              readOnly={role === 'pro'}
               viewerRole={role}
             />
           ) : null}
