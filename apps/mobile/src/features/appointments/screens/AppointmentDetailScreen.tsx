@@ -21,9 +21,9 @@ import { DetailTerminalBanner } from '../detail/components/layout/DetailTerminal
 import { isCarePhotoGalleryContext } from '../detail/utils/care-photo-rules';
 import {
   parseCarePhotoDeepLinkParams,
-  type CarePhotoDeepLinkRequest,
 } from '../detail/utils/care-photo-deep-link';
 import { reschedulePathForRole } from '../detail/utils/appointment-detail-role-config';
+import { carePhotoDiscussionHref } from '../detail/utils/care-photo-navigation';
 import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-store';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
@@ -46,9 +46,6 @@ export function AppointmentDetailScreen({ role }: Props) {
   const user = useAuthStore((s) => s.user);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [segment, setSegment] = useState<SegmentId>('infos');
-  const [carePhotoDeepLink, setCarePhotoDeepLink] = useState<CarePhotoDeepLinkRequest | null>(
-    null,
-  );
 
   const s = useAppointmentDetailScreen(role, id, user?.id);
   const openIncomingOffer = useOfferQueueStore((st) => st.openIncomingOffer);
@@ -71,11 +68,14 @@ export function AppointmentDetailScreen({ role }: Props) {
 
   useEffect(() => {
     const parsed = parseCarePhotoDeepLinkParams({ careGallery, carePhoto });
-    if (!parsed) return;
-    setSegment('photos');
-    setCarePhotoDeepLink(parsed);
+    if (!parsed || !id) return;
     router.setParams({ careGallery: undefined, carePhoto: undefined } as never);
-  }, [careGallery, carePhoto, router]);
+    if (parsed.photoId) {
+      router.push(carePhotoDiscussionHref(role, id, parsed.photoId) as never);
+      return;
+    }
+    setSegment('photos');
+  }, [careGallery, carePhoto, id, role, router]);
   const terminal = primary
     ? getAppointmentSidebarTerminalEmpty(primary.status)
     : null;
@@ -232,8 +232,6 @@ export function AppointmentDetailScreen({ role }: Props) {
               userId={user?.id}
               readOnly={role === 'pro'}
               viewerRole={role}
-              carePhotoDeepLink={carePhotoDeepLink}
-              onCarePhotoDeepLinkConsumed={() => setCarePhotoDeepLink(null)}
             />
           ) : null}
         </View>

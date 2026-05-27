@@ -90,13 +90,16 @@ export function resolveNotificationNavigation(
     (role === 'pro' || role === 'nurse')
   ) {
     const photoId = data.photo_id != null ? String(data.photo_id).trim() : '';
+    if (photoId) {
+      return {
+        kind: 'route',
+        pathname: `${prefix}/appointment/${aptId}/care-photo/${photoId}`,
+      };
+    }
     return {
       kind: 'route',
       pathname: `${prefix}/appointment/${aptId}`,
-      params: {
-        careGallery: '1',
-        ...(photoId ? { carePhoto: photoId } : {}),
-      },
+      params: { careGallery: '1' },
     };
   }
 

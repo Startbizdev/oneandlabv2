@@ -1,27 +1,22 @@
-import { useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { useCallback } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Camera, MessageCircle, Plus } from 'lucide-react-native';
-import { CarePhotoThumbnail } from './CarePhotoThumbnail';
+import { Camera, MessageCircle, Upload } from 'lucide-react-native';
+import { CarePhotoImage } from './CarePhotoImage';
 import type { Appointment } from '@oneandlab/shared-types';
 import { fetchCarePhotos, uploadCarePhoto } from '../../api/appointment-detail.service';
 import {
-  canNurseCommentCarePhotos,
   canNurseUploadCarePhotos,
   isCarePhotoGalleryContext,
 } from '../../utils/care-photo-rules';
 import { carePhotosPanelIntro } from '../../utils/care-photo-copy';
-import type { CarePhotoDeepLinkRequest } from '../../utils/care-photo-deep-link';
-import { resolveCarePhotoDiscussionId } from '../../utils/care-photo-deep-link';
+import { carePhotoDiscussionHref } from '../../utils/care-photo-navigation';
+import { latestCarePhoto } from '../../utils/care-photo-thread-digest';
+import { useCarePhotoUnread } from '../../hooks/use-care-photo-unread';
 import type { AppointmentDetailRole } from '../../utils/appointment-detail-role-config';
 import { carePhotoPickErrorMessage, pickCarePhotoUri } from '@/lib/uploads/pick-care-photo';
-import { CarePhotoDiscussionModal } from './CarePhotoDiscussionModal';
+import { Button } from '@/components/ui/Button';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -34,9 +29,6 @@ interface Props {
   userId?: string;
   readOnly?: boolean;
   viewerRole?: AppointmentDetailRole | string;
-  /** Depuis notification : ouvrir l’onglet puis la discussion photo. */
-  carePhotoDeepLink?: CarePhotoDeepLinkRequest | null;
-  onCarePhotoDeepLinkConsumed?: () => void;
 }
 
 export function DetailCarePhotosPanel({
@@ -44,13 +36,10 @@ export function DetailCarePhotosPanel({
   userId,
   readOnly,
   viewerRole = 'nurse',
-  carePhotoDeepLink,
-  onCarePhotoDeepLinkConsumed,
 }: Props) {
+  const router = useRouter();
   const { show: toast } = useToast();
   const qc = useQueryClient();
-  const [discussionId, setDiscussionId] = useState<string | null>(null);
-  const deepLinkHandledRef = useRef(false);
 
   const q = useQuery({
     queryKey: ['appointments', 'care-photos', apt.id] as const,
@@ -60,6 +49,7 @@ export function DetailCarePhotosPanel({
       return res.data;
     },
     enabled: isCarePhotoGalleryContext(apt),
+    refetchInterval: 8000,
   });
 
   const canUpload =
@@ -67,47 +57,53 @@ export function DetailCarePhotosPanel({
     (q.data?.can_upload === true ||
       (q.data?.can_upload == null && canNurseUploadCarePhotos(apt, userId)));
 
-  const canComment =
-    q.data?.can_comment === true ||
-    (q.data?.can_comment == null && canNurseCommentCarePhotos(apt, userId));
+  const photos = q.data?.photos ?? [];
+  const hasPhotos = photos.length > 0;
+  const { unread, refreshUnread } = useCarePhotoUnread(apt.id, photos, userId);
+
+  const openExchange = useCallback(
+    (photoId?: string) => {
+      const target = photoId ?? latestCarePhoto(photos)?.id;
+      if (!target) return;
+      router.push(carePhotoDiscussionHref(viewerRole, apt.id, target) as never);
+    },
+    [router, viewerRole, apt.id, photos],
+  );
 
   const uploadMut = useMutation({
     mutationFn: async (uri: string) => {
       const r = await uploadCarePhoto(apt.id, uri);
       if (!r.ok) throw new Error(r.error ?? 'Upload échoué');
     },
-    onSuccess: () => {
-      toast('Photo ajoutée', { type: 'success' });
-      void qc.invalidateQueries({ queryKey: ['appointments', 'care-photos', apt.id] });
-      void qc.invalidateQueries({ queryKey: queryKeys.documents.medical(apt.id) });
+    onSuccess: async () => {
+      toast('Photo envoyée', { type: 'success' });
+      await qc.invalidateQueries({ queryKey: ['appointments', 'care-photos', apt.id] });
+      await qc.invalidateQueries({ queryKey: queryKeys.documents.medical(apt.id) });
+      const res = await fetchCarePhotos(apt.id);
+      const list = res.data?.photos ?? [];
+      const newest = latestCarePhoto(list);
+      if (newest?.id) openExchange(newest.id);
+      void refreshUnread();
     },
     onError: (e) => handleApiError(e, toast, 'care-photo-upload'),
   });
 
-  async function pickPhoto() {
+  const pickAndUpload = useCallback(async () => {
     try {
       const uri = await pickCarePhotoUri();
       if (uri) uploadMut.mutate(uri);
     } catch (e) {
       toast(carePhotoPickErrorMessage(e), { type: 'warning' });
     }
-  }
+  }, [toast, uploadMut]);
 
-  const photos = q.data?.photos ?? [];
-
-  useEffect(() => {
-    if (!carePhotoDeepLink?.openDiscussion || photos.length === 0) return;
-    if (deepLinkHandledRef.current) return;
-    const target = resolveCarePhotoDiscussionId(photos, carePhotoDeepLink);
-    if (!target) return;
-    deepLinkHandledRef.current = true;
-    setDiscussionId(target);
-    onCarePhotoDeepLinkConsumed?.();
-  }, [carePhotoDeepLink, photos, onCarePhotoDeepLinkConsumed]);
-
-  useEffect(() => {
-    if (!carePhotoDeepLink) deepLinkHandledRef.current = false;
-  }, [carePhotoDeepLink]);
+  const onPrimaryPress = useCallback(() => {
+    if (hasPhotos) {
+      openExchange();
+      return;
+    }
+    if (canUpload) void pickAndUpload();
+  }, [hasPhotos, canUpload, openExchange, pickAndUpload]);
 
   if (!isCarePhotoGalleryContext(apt)) {
     return (
@@ -123,7 +119,7 @@ export function DetailCarePhotosPanel({
   if (q.isLoading) {
     return (
       <View style={styles.wrap}>
-        <SkeletonList count={3} itemHeight={88} gap={spacing[2]} />
+        <SkeletonList count={2} itemHeight={120} gap={spacing[3]} />
       </View>
     );
   }
@@ -139,118 +135,120 @@ export function DetailCarePhotosPanel({
     );
   }
 
+  const showOpenCta = hasPhotos;
+  const showEmptyReadOnly = !hasPhotos && !canUpload;
+
   return (
     <View style={styles.wrap}>
       <View style={styles.introCard}>
         <Text style={styles.intro}>{carePhotosPanelIntro(viewerRole)}</Text>
       </View>
 
-      {photos.length === 0 && !canUpload ? (
+      {hasPhotos ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.previewRail}
+        >
+          {photos.map((p, idx) => (
+            <View key={p.id} style={styles.previewItem}>
+              <CarePhotoImage photoId={p.id} style={styles.previewThumb} />
+              <Text style={styles.previewLabel}>Photo {idx + 1}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      ) : null}
+
+      {showEmptyReadOnly ? (
         <View style={styles.emptyCard}>
-          <Camera size={28} color={colors.textTertiary} strokeWidth={1.75} />
-          <Text style={styles.emptyTitle}>Aucune photo de soin</Text>
+          <Camera size={32} color={colors.textTertiary} strokeWidth={1.75} />
+          <Text style={styles.emptyTitle}>Aucune photo pour l’instant</Text>
           <Text style={styles.emptySub}>
-            L’ajout de photos est réservé à l’infirmier assigné, une fois le rendez-vous confirmé.
+            L’infirmier(ère) assigné(e) pourra partager des photos de suivi ici.
           </Text>
         </View>
       ) : (
-        <View style={styles.listCard}>
-          {photos.map((p, idx) => {
-            const count = p.comments?.length ?? 0;
-            return (
-              <View
-                key={p.id}
-                style={[styles.photoRow, idx > 0 && styles.photoRowBorder]}
-              >
-                <Pressable
-                  style={styles.thumbWrap}
-                  onPress={() => setDiscussionId(p.id)}
-                  accessibilityLabel={`Ouvrir la photo n°${idx + 1}`}
-                >
-                  <CarePhotoThumbnail photoId={p.id} />
-                </Pressable>
-                <View style={styles.photoMeta}>
-                  <Text style={styles.photoTitle}>Photo n°{idx + 1}</Text>
-                  {p.created_at ? (
-                    <Text style={styles.photoDate}>
-                      {new Date(p.created_at).toLocaleDateString('fr-FR', {
-                        day: 'numeric',
-                        month: 'short',
-                      })}
-                    </Text>
-                  ) : null}
-                </View>
-                <Pressable
-                  style={styles.exchangesBtn}
-                  onPress={() => setDiscussionId(p.id)}
-                >
-                  <MessageCircle size={15} color={colors.textInverse} strokeWidth={2.25} />
-                  <Text style={styles.exchangesBtnText}>Échanges</Text>
-                  {count > 0 ? (
-                    <View style={styles.exchangesBadge}>
-                      <Text style={styles.exchangesBadgeText}>
-                        {count > 99 ? '99+' : count}
-                      </Text>
-                    </View>
-                  ) : null}
-                </Pressable>
+        <View style={styles.ctaWrap}>
+          <View style={styles.ctaBadgeHost}>
+            <Button
+              title={
+                uploadMut.isPending
+                  ? 'Envoi en cours…'
+                  : showOpenCta
+                    ? 'Ouvrir l’échange'
+                    : 'Télécharger une photo'
+              }
+              size="lg"
+              fullWidth
+              loading={uploadMut.isPending}
+              leftIcon={
+                showOpenCta ? (
+                  <MessageCircle size={20} color={colors.textInverse} strokeWidth={2.25} />
+                ) : (
+                  <Upload size={20} color={colors.textInverse} strokeWidth={2.25} />
+                )
+              }
+              onPress={onPrimaryPress}
+            />
+            {showOpenCta && unread > 0 ? (
+              <View style={styles.unreadBadge} accessibilityLabel={`${unread} nouveaux messages`}>
+                <Text style={styles.unreadBadgeText}>{unread > 99 ? '99+' : unread}</Text>
               </View>
-            );
-          })}
-
-          {canUpload ? (
-            <Pressable
-              style={[styles.uploadRow, photos.length > 0 && styles.uploadRowBorder]}
-              onPress={() => void pickPhoto()}
-              disabled={uploadMut.isPending}
-            >
-              <Plus size={18} color={colors.primary} strokeWidth={2.5} />
-              <View style={styles.uploadTexts}>
-                <Text style={styles.uploadTitle}>
-                  {uploadMut.isPending ? 'Envoi en cours…' : 'Ajouter une photo'}
-                </Text>
-                <Text style={styles.uploadHint}>Appareil photo ou galerie · max 25 Mo</Text>
-              </View>
-            </Pressable>
-          ) : null}
+            ) : null}
+          </View>
+          <Text style={styles.ctaHint}>
+            {showOpenCta
+              ? 'Consultez la discussion et envoyez d’autres photos depuis l’échange.'
+              : 'Bibliothèque ou appareil photo · max 25 Mo · ouvre l’échange après envoi.'}
+          </Text>
         </View>
       )}
-
-      <CarePhotoDiscussionModal
-        visible={discussionId != null}
-        onClose={() => setDiscussionId(null)}
-        appointmentId={apt.id}
-        photoId={discussionId}
-        viewerUserId={userId}
-        viewerRole={viewerRole}
-        canComment={canComment}
-        canUpload={canUpload}
-      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: spacing[3] },
+  wrap: { gap: spacing[4] },
   introCard: {
-    paddingHorizontal: spacing[3.5],
-    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3.5],
     backgroundColor: colors.primaryLight,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.primaryMid,
   },
   intro: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
     color: colors.textSecondary,
-    lineHeight: fontSize.xs * 1.5,
+    lineHeight: fontSize.sm * 1.5,
   },
-  center: { paddingVertical: spacing[8], alignItems: 'center' },
+  previewRail: {
+    flexDirection: 'row',
+    gap: spacing[2.5],
+    paddingVertical: spacing[1],
+  },
+  previewItem: {
+    alignItems: 'center',
+    gap: spacing[1.5],
+    width: 72,
+  },
+  previewThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  previewLabel: {
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize['2xs'],
+    color: colors.textTertiary,
+  },
   emptyCard: {
     alignItems: 'center',
-    gap: spacing[2],
-    padding: spacing[5],
+    gap: spacing[2.5],
+    padding: spacing[6],
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -260,6 +258,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
     color: colors.textPrimary,
+    textAlign: 'center',
   },
   emptySub: {
     fontFamily: fontFamily.regular,
@@ -268,102 +267,38 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: fontSize.sm * 1.45,
   },
-  listCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    overflow: 'hidden',
+  ctaWrap: {
+    gap: spacing[2],
   },
-  photoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3.5],
-  },
-  photoRowBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
-  },
-  thumbWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-    backgroundColor: colors.surfaceAlt,
-  },
-  photoMeta: {
-    flex: 1,
-    gap: 2,
-    minWidth: 0,
-  },
-  photoTitle: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-  },
-  photoDate: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: colors.textTertiary,
-  },
-  exchangesBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1.5],
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: radius.lg,
+  ctaBadgeHost: {
     position: 'relative',
   },
-  exchangesBtnText: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xs,
-    color: colors.textInverse,
-  },
-  exchangesBadge: {
+  unreadBadge: {
     position: 'absolute',
     top: -6,
-    right: -6,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
+    right: -4,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: colors.error,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
     borderWidth: 2,
-    borderColor: colors.surface,
+    borderColor: colors.background,
+    zIndex: 2,
   },
-  exchangesBadgeText: {
+  unreadBadgeText: {
     fontFamily: fontFamily.bold,
-    fontSize: 9,
+    fontSize: 11,
     color: colors.textInverse,
   },
-  uploadRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[4],
-    backgroundColor: '#FAFAFA',
-  },
-  uploadRowBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
-    borderStyle: 'dashed',
-  },
-  uploadTexts: { flex: 1, gap: 2 },
-  uploadTitle: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.primary,
-  },
-  uploadHint: {
+  ctaHint: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
     color: colors.textTertiary,
+    textAlign: 'center',
+    lineHeight: fontSize.xs * 1.45,
+    paddingHorizontal: spacing[2],
   },
 });
