@@ -1,6 +1,6 @@
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
-import { careEmojiForLabel } from '@/utils/care-category-display';
+import { careEmojiForCareItem, careEmojiForLabel } from '@/utils/care-category-display';
 import { isAutreCareDisplayLabel, resolveRdvCareDisplayLabel } from '@/utils/rdv-care-display-label';
 
 export type RdvCatalogLine = {
@@ -44,20 +44,12 @@ function mapItem(it: ItemRow, fallbackLabel: string, apt: Appointment): RdvCatal
     isAutreCareDisplayLabel(rawLabel) ? fdCareOpts : undefined,
   );
   const categoryId = it?.category_id != null ? String(it.category_id) : null;
-  const ext = apt as AptWithIcon;
-  const icon =
-    it?.category_icon != null && String(it.category_icon).trim() !== ''
-      ? String(it.category_icon)
-      : categoryId && String(categoryId) === String(apt.category_id)
-        ? ext.category_icon ?? null
-        : ext.category_icon ?? null;
-
   const emojiSource = isAutreCareDisplayLabel(rawLabel) ? rawLabel : label;
 
   return {
     category_id: categoryId,
     label,
-    emoji: careEmojiForLabel(emojiSource, apt.type, { categoryId, categoryIcon: icon }),
+    emoji: careEmojiForCareItem(it, apt.type, undefined, emojiSource),
     category_image_url: it?.category_image_url ?? apt.category_image_url ?? null,
     care_options: mapCareOptions(it?.care_options),
   };

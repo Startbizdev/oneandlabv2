@@ -31,6 +31,8 @@ export interface BookingPremiumStepCtaProps {
   title?: string;
   subtitle?: string;
   onPress: () => void;
+  /** Tap sur le badge compteur (ex. ouvrir le détail du panier). */
+  onSelectionBadgePress?: () => void;
   loading?: boolean;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -51,6 +53,7 @@ export function BookingPremiumStepCta({
   title = DEFAULT_TITLE,
   subtitle = DEFAULT_SUBTITLE,
   onPress,
+  onSelectionBadgePress,
   loading,
   disabled,
   style,
@@ -110,9 +113,24 @@ export function BookingPremiumStepCta({
           ]}
         >
           {badgeValue != null ? (
-            <View style={[styles.stepBadge, loading && styles.leadingMuted]}>
-              <Text style={styles.stepNum}>{badgeValue}</Text>
-            </View>
+            onSelectionBadgePress ? (
+              <Pressable
+                onPress={onSelectionBadgePress}
+                disabled={disabled || loading}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Voir le détail des soins sélectionnés"
+                style={({ pressed }) => [pressed && styles.badgePressed]}
+              >
+                <View style={[styles.stepBadge, loading && styles.leadingMuted]}>
+                  <Text style={styles.stepNum}>{badgeValue}</Text>
+                </View>
+              </Pressable>
+            ) : (
+              <View style={[styles.stepBadge, loading && styles.leadingMuted]}>
+                <Text style={styles.stepNum}>{badgeValue}</Text>
+              </View>
+            )
           ) : leadingIcon ? (
             <View style={[styles.stepBadge, loading && styles.leadingMuted]}>{leadingIcon}</View>
           ) : null}
@@ -182,6 +200,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+  },
+  badgePressed: {
+    opacity: 0.88,
   },
   stepNum: {
     fontFamily: fontFamily.extraBold,

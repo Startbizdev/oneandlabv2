@@ -1,6 +1,6 @@
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
-import { careEmojiForAppointment } from '@/utils/care-category-display';
+import { careEmojiForAppointment, careEmojiForCareItem } from '@/utils/care-category-display';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 import {
   buildAppointmentCareOptionKvRows,
@@ -14,15 +14,15 @@ import {
   getFrequencyLabel,
   getPreferredNurseGenderLabel,
   isAppointmentCanceled,
-  nursingItemDisplayLabel,
+  resolveCareItemDisplayLabel,
   nursingItemMetaDurationLabel,
   nursingItemMetaFrequencyLabel,
   shouldShowNursingItemTypeRow,
 } from '@/utils/appointment-detail-display';
 import {
   buildBatchLotCommonKvRows,
-  buildBatchPerActKvRows,
   buildNursingSharedIdenticalKvRows,
+  collectLotBloodItems,
   collectLotNursingItems,
   nursingSharedOptionKeys,
 } from '@/utils/batch-appointment-detail-display';
@@ -119,14 +119,14 @@ function buildNursingItemGroupRows(
   sharedKeys: Set<string>,
 ): RdvInfoRow[] {
   const rows: RdvInfoRow[] = [];
-  const itemLabel = nursingItemDisplayLabel(item);
-  const fieldLabel = total > 1 ? `Soins prévus #${idx + 1}` : 'Soin';
+  const itemLabel = resolveCareItemDisplayLabel(item, categories);
+  const fieldLabel = total > 1 ? 'Soin' : 'Soins prévus';
 
   pushCareField(
     rows,
     fieldLabel,
     itemLabel,
-    careEmojiForAppointment(apt, itemLabel, categories, item.category_id as string | undefined),
+    careEmojiForCareItem(item, apt.type, categories, itemLabel),
   );
 
   if (categories?.length) {
@@ -156,14 +156,14 @@ function buildBloodItemGroupRows(
   categories: CareCategory[] | undefined,
 ): RdvInfoRow[] {
   const rows: RdvInfoRow[] = [];
-  const itemLabel = nursingItemDisplayLabel(item);
-  const fieldLabel = total > 1 ? `Prestations #${idx + 1}` : 'Prestation';
+  const itemLabel = resolveCareItemDisplayLabel(item, categories);
+  const fieldLabel = total > 1 ? 'Prélèvement' : 'Prestation';
 
   pushCareField(
     rows,
     fieldLabel,
     itemLabel,
-    careEmojiForAppointment(apt, itemLabel, categories, item.category_id as string | undefined),
+    careEmojiForCareItem(item, apt.type, categories, itemLabel),
   );
 
   if (categories?.length) {
@@ -248,52 +248,63 @@ function buildBatchCareRows(
   }
 
   const rows: RdvInfoRow[] = [];
-  const lotItems = collectLotNursingItems(primary, batch);
-  const sharedKeys = categories?.length
-    ? nursingSharedOptionKeys(lotItems, categories)
-    : new Set<string>();
-  const isBlood = isBloodTestAppointment(primary.type);
-  const isNursing = isNursingAppointment(primary.type);
-  const itemPrefix = isBlood ? 'Prestations' : 'Soins prévus';
+  const fd = (primary.form_data ?? {}) as Record<string, unknown>;
 
-  batch.forEach((appt, idx) => {
-    const nursingItems = getAppointmentNursingItems(appt);
-    const careName =
-      nursingItems.length > 0
-        ? nursingItemDisplayLabel(nursingItems[0]!)
-        : String(appt.category_name ?? '').trim();
-    if (careName) {
-      rows.push({
-        kind: 'field',
-        label: batch.length > 1 ? `${itemPrefix} #${idx + 1}` : isNursing ? 'Soin' : 'Prestation',
-        value: careName,
-        emoji: careEmojiForAppointment(appt, careName, categories, appt.category_id),
-      });
-    }
+  if (isNursingAppointment(primary.type)) {
+    const lotItems = collectLotNursingItems(primary, batch);
+    if (lotItems.length > 0) {
+      const sharedKeys =
+        categories?.length && lotItems.length > 1
+          ? nursingSharedOptionKeys(lotItems, categories)
+          : new Set<string>();
 
-    if (categories?.length) {
-      const perAct = buildBatchPerActKvRows(appt, categories, sharedKeys, {
-        showSchedule: false,
-        titleContext: null,
-      });
-      for (const r of perAct) {
-        if (SKIP_CARE_KV_LABELS.has(r.label)) continue;
-        if (CARE_META_LABELS.has(r.label)) continue;
-        if (CARE_ITEM_LABEL_RE.test(r.label)) continue;
-        rows.push({
-          kind: 'field',
-          label: r.label,
-          value: r.value,
-          strikethrough: r.strikethrough,
-        });
+      for (let idx = 0; idx < lotItems.length; idx++) {
+        rows.push(
+          ...buildNursingItemGroupRows(
+            primary,
+            lotItems[idx]!,
+            idx,
+            lotItems.length,
+            categories,
+            sharedKeys,
+          ),
+        );
       }
-    }
-  });
 
-  if (categories?.length) {
-    rows.push(...kvToInfoRows(buildBatchLotCommonKvRows(primary, batch, categories)));
+      if (categories?.length && sharedKeys.size > 0) {
+        pushKvRows(rows, buildNursingSharedIdenticalKvRows(lotItems, categories));
+      }
+
+      const pref = getPreferredNurseGenderLabel(String(fd.preferred_nurse_gender ?? ''));
+      if (pref && fd.preferred_nurse_gender && fd.preferred_nurse_gender !== 'any') {
+        pushCareField(rows, 'Préférence infirmier', pref);
+      }
+
+      if (categories?.length) {
+        pushKvRows(rows, buildBatchLotCommonKvRows(primary, batch, categories));
+      }
+      return rows;
+    }
   }
-  return rows;
+
+  if (isBloodTestAppointment(primary.type)) {
+    const lotItems = collectLotBloodItems(primary, batch);
+    if (lotItems.length > 0) {
+      for (let idx = 0; idx < lotItems.length; idx++) {
+        rows.push(...buildBloodItemGroupRows(primary, lotItems[idx]!, idx, lotItems.length, categories));
+      }
+
+      const bt = getBloodTestTypeLabel(fd);
+      if (bt) pushCareField(rows, 'Type prélèvement', bt);
+
+      if (categories?.length) {
+        pushKvRows(rows, buildBatchLotCommonKvRows(primary, batch, categories));
+      }
+      return rows;
+    }
+  }
+
+  return buildCareRows(primary, categories);
 }
 
 function buildRdvRows(apt: Appointment, viewer?: AuthUser | null, _batch?: Appointment[]): RdvInfoRow[] {

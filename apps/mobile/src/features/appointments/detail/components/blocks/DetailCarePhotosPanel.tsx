@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -6,7 +6,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, MessageCircle, Plus } from 'lucide-react-native';
 import { CarePhotoThumbnail } from './CarePhotoThumbnail';
@@ -18,7 +17,10 @@ import {
   isCarePhotoGalleryContext,
 } from '../../utils/care-photo-rules';
 import { carePhotosPanelIntro } from '../../utils/care-photo-copy';
+import type { CarePhotoDeepLinkRequest } from '../../utils/care-photo-deep-link';
+import { resolveCarePhotoDiscussionId } from '../../utils/care-photo-deep-link';
 import type { AppointmentDetailRole } from '../../utils/appointment-detail-role-config';
+import { carePhotoPickErrorMessage, pickCarePhotoUri } from '@/lib/uploads/pick-care-photo';
 import { CarePhotoDiscussionModal } from './CarePhotoDiscussionModal';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
@@ -32,12 +34,23 @@ interface Props {
   userId?: string;
   readOnly?: boolean;
   viewerRole?: AppointmentDetailRole | string;
+  /** Depuis notification : ouvrir l’onglet puis la discussion photo. */
+  carePhotoDeepLink?: CarePhotoDeepLinkRequest | null;
+  onCarePhotoDeepLinkConsumed?: () => void;
 }
 
-export function DetailCarePhotosPanel({ apt, userId, readOnly, viewerRole = 'nurse' }: Props) {
+export function DetailCarePhotosPanel({
+  apt,
+  userId,
+  readOnly,
+  viewerRole = 'nurse',
+  carePhotoDeepLink,
+  onCarePhotoDeepLinkConsumed,
+}: Props) {
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [discussionId, setDiscussionId] = useState<string | null>(null);
+  const deepLinkHandledRef = useRef(false);
 
   const q = useQuery({
     queryKey: ['appointments', 'care-photos', apt.id] as const,
@@ -72,18 +85,29 @@ export function DetailCarePhotosPanel({ apt, userId, readOnly, viewerRole = 'nur
   });
 
   async function pickPhoto() {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      toast('Autorisez l’accès aux photos dans les réglages du téléphone.', { type: 'warning' });
-      return;
+    try {
+      const uri = await pickCarePhotoUri();
+      if (uri) uploadMut.mutate(uri);
+    } catch (e) {
+      toast(carePhotoPickErrorMessage(e), { type: 'warning' });
     }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.85,
-      allowsEditing: false,
-    });
-    if (!res.canceled && res.assets[0]?.uri) uploadMut.mutate(res.assets[0].uri);
   }
+
+  const photos = q.data?.photos ?? [];
+
+  useEffect(() => {
+    if (!carePhotoDeepLink?.openDiscussion || photos.length === 0) return;
+    if (deepLinkHandledRef.current) return;
+    const target = resolveCarePhotoDiscussionId(photos, carePhotoDeepLink);
+    if (!target) return;
+    deepLinkHandledRef.current = true;
+    setDiscussionId(target);
+    onCarePhotoDeepLinkConsumed?.();
+  }, [carePhotoDeepLink, photos, onCarePhotoDeepLinkConsumed]);
+
+  useEffect(() => {
+    if (!carePhotoDeepLink) deepLinkHandledRef.current = false;
+  }, [carePhotoDeepLink]);
 
   if (!isCarePhotoGalleryContext(apt)) {
     return (
@@ -114,8 +138,6 @@ export function DetailCarePhotosPanel({ apt, userId, readOnly, viewerRole = 'nur
       </View>
     );
   }
-
-  const photos = q.data?.photos ?? [];
 
   return (
     <View style={styles.wrap}>
@@ -187,7 +209,7 @@ export function DetailCarePhotosPanel({ apt, userId, readOnly, viewerRole = 'nur
                 <Text style={styles.uploadTitle}>
                   {uploadMut.isPending ? 'Envoi en cours…' : 'Ajouter une photo'}
                 </Text>
-                <Text style={styles.uploadHint}>JPG ou PNG · max 25 Mo</Text>
+                <Text style={styles.uploadHint}>Appareil photo ou galerie · max 25 Mo</Text>
               </View>
             </Pressable>
           ) : null}

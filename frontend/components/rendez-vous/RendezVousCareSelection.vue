@@ -207,6 +207,7 @@ import {
   careCategoryEmojiForCategory,
   getBookingCareDisplayRank,
   isCareCategoryEmoji,
+  isCareCategoryWithoutBookingOptions,
 } from '@oneandlab/shared-utils';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import {
@@ -775,6 +776,13 @@ function resetCategoryFilterToAll(): void {
 }
 
 function attemptCatalogAdd(cat: CareCategoryRow): void {
+  if (isCareCategoryWithoutBookingOptions(cat)) {
+    const service = categoryLineFromCatalog(cat);
+    emit('quickAddService', { service, slice: {} });
+    resetCategoryFilterToAll();
+    runAddToCartAnimation(String(cat.id));
+    return;
+  }
   const addonOnly = onlyCategoryOptionsForCandidate(cat);
   if (addonOnly && categoryOptionsLength(cat.id) === 0) {
     const service = categoryLineFromCatalog(cat);

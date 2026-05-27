@@ -15,6 +15,7 @@ interface Props {
   enableSwipeToDismiss?: boolean;
   dismissOnBackdropPress?: boolean;
   presentKey?: string | number;
+  onDismissed?: () => void;
 }
 
 /** Wrapper SheetModal pour les écrans existants. */
@@ -31,11 +32,13 @@ export function BottomSheet({
   enableSwipeToDismiss,
   dismissOnBackdropPress,
   presentKey,
+  onDismissed,
 }: Props) {
   return (
     <SheetModal
       visible={visible}
       presentKey={presentKey}
+      onDismissed={onDismissed}
       onClose={onClose}
       onBack={onBack}
       title={title}

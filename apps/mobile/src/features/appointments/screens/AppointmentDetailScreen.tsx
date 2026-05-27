@@ -19,6 +19,10 @@ import { RdvAppointmentInfoSection } from '../detail/components/layout/RdvAppoin
 import { DetailSegmentBar } from '../detail/components/layout/DetailSegmentBar';
 import { DetailTerminalBanner } from '../detail/components/layout/DetailTerminalBanner';
 import { isCarePhotoGalleryContext } from '../detail/utils/care-photo-rules';
+import {
+  parseCarePhotoDeepLinkParams,
+  type CarePhotoDeepLinkRequest,
+} from '../detail/utils/care-photo-deep-link';
 import { reschedulePathForRole } from '../detail/utils/appointment-detail-role-config';
 import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-store';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
@@ -33,11 +37,18 @@ interface Props {
 type SegmentId = 'infos' | 'documents' | 'photos';
 
 export function AppointmentDetailScreen({ role }: Props) {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, careGallery, carePhoto } = useLocalSearchParams<{
+    id: string;
+    careGallery?: string;
+    carePhoto?: string;
+  }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [segment, setSegment] = useState<SegmentId>('infos');
+  const [carePhotoDeepLink, setCarePhotoDeepLink] = useState<CarePhotoDeepLinkRequest | null>(
+    null,
+  );
 
   const s = useAppointmentDetailScreen(role, id, user?.id);
   const openIncomingOffer = useOfferQueueStore((st) => st.openIncomingOffer);
@@ -57,6 +68,14 @@ export function AppointmentDetailScreen({ role }: Props) {
   const showCarePhotos = Boolean(
     config.showCarePhotosBlock && primary && isCarePhotoGalleryContext(primary),
   );
+
+  useEffect(() => {
+    const parsed = parseCarePhotoDeepLinkParams({ careGallery, carePhoto });
+    if (!parsed) return;
+    setSegment('photos');
+    setCarePhotoDeepLink(parsed);
+    router.setParams({ careGallery: undefined, carePhoto: undefined } as never);
+  }, [careGallery, carePhoto, router]);
   const terminal = primary
     ? getAppointmentSidebarTerminalEmpty(primary.status)
     : null;
@@ -213,6 +232,8 @@ export function AppointmentDetailScreen({ role }: Props) {
               userId={user?.id}
               readOnly={role === 'pro'}
               viewerRole={role}
+              carePhotoDeepLink={carePhotoDeepLink}
+              onCarePhotoDeepLinkConsumed={() => setCarePhotoDeepLink(null)}
             />
           ) : null}
         </View>

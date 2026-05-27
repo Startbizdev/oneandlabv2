@@ -89,10 +89,14 @@ export function resolveNotificationNavigation(
     (type === 'care_gallery_photo' || type === 'care_gallery_comment') &&
     (role === 'pro' || role === 'nurse')
   ) {
+    const photoId = data.photo_id != null ? String(data.photo_id).trim() : '';
     return {
       kind: 'route',
       pathname: `${prefix}/appointment/${aptId}`,
-      params: { careGallery: '1' },
+      params: {
+        careGallery: '1',
+        ...(photoId ? { carePhoto: photoId } : {}),
+      },
     };
   }
 
@@ -130,10 +134,14 @@ export function resolveNotificationNavigation(
       };
     }
     if (type === 'care_gallery_photo' || type === 'care_gallery_comment') {
+      const photoId = data.photo_id != null ? String(data.photo_id).trim() : '';
       return {
         kind: 'route',
         pathname: `${prefix}/appointment/${aptId}`,
-        params: { segment: 'documents' },
+        params: {
+          careGallery: '1',
+          ...(photoId ? { carePhoto: photoId } : {}),
+        },
       };
     }
     return { kind: 'route', pathname: `${prefix}/appointment/${aptId}` };

@@ -23,9 +23,53 @@ export function careEmojiForLabel(
           (c) => c.name.trim().toLowerCase() === name.toLowerCase(),
         );
 
+  const catalogIcon = fromCatalog?.icon ?? null;
+  const aptIcon =
+    options?.categoryIcon != null && String(options.categoryIcon).trim() !== ''
+      ? String(options.categoryIcon).trim()
+      : null;
+  // Ne pas réutiliser l’icône du RDV principal pour un autre `category_id` (lots multi-soins).
+  const icon =
+    catId != null && fromCatalog
+      ? catalogIcon ?? aptIcon
+      : aptIcon ?? catalogIcon;
+
   return careCategoryEmojiForCategory({
     name: fromCatalog?.name ?? name,
-    icon: options?.categoryIcon ?? fromCatalog?.icon ?? null,
+    icon,
+    type: fromCatalog?.type ?? appointmentType,
+  });
+}
+
+type CareItemRow = Record<string, unknown> & {
+  category_id?: string | null;
+  category_name?: string | null;
+  category_icon?: string | null;
+  label?: string | null;
+};
+
+/** Emoji catalogue par acte (`nursing_items` / `blood_test_items`), pas l’icône du RDV parent. */
+export function careEmojiForCareItem(
+  item: CareItemRow,
+  appointmentType: string,
+  categories?: CareCategory[],
+  fallbackLabel?: string,
+): string {
+  const catId = item.category_id != null ? String(item.category_id) : '';
+  const fromCatalog = catId
+    ? categories?.find((c) => String(c.id) === catId)
+    : undefined;
+  const name = String(
+    fromCatalog?.name ?? item.category_name ?? item.label ?? fallbackLabel ?? '',
+  ).trim();
+  const itemIcon =
+    item.category_icon != null && String(item.category_icon).trim() !== ''
+      ? String(item.category_icon)
+      : null;
+
+  return careCategoryEmojiForCategory({
+    name,
+    icon: itemIcon ?? fromCatalog?.icon ?? null,
     type: fromCatalog?.type ?? appointmentType,
   });
 }

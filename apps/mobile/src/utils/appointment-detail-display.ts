@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import { CANCELLATION_REASONS, isCareAutreDetailKey } from '@oneandlab/shared-constants';
+import { CANCELLATION_REASONS } from '@oneandlab/shared-constants';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import type { CareCategory } from '@/features/categories/api/categories.service';
@@ -179,6 +179,41 @@ export function nursingItemDisplayLabel(item: Record<string, unknown>): string {
   return resolveRdvCareDisplayLabel(raw, parseItemCareOptions(item.care_options));
 }
 
+const GENERIC_CARE_ITEM_LABELS = new Set([
+  'soin',
+  'soins',
+  'prestation',
+  'prestations',
+  'prélèvement',
+  'prelevement',
+  'analyse',
+  'analyses',
+  '—',
+]);
+
+/** Libellé affiché : nom catalogue si la ligne API est générique (« Prestation », etc.). */
+export function resolveCareItemDisplayLabel(
+  item: Record<string, unknown>,
+  categories?: CareCategory[],
+): string {
+  const fromItem = nursingItemDisplayLabel(item);
+  const norm = fromItem.trim().toLowerCase();
+  if (norm && !GENERIC_CARE_ITEM_LABELS.has(norm)) return fromItem;
+
+  const catId = item.category_id != null ? String(item.category_id) : '';
+  const cat = catId && categories?.length ? categories.find((c) => String(c.id) === catId) : undefined;
+  if (cat?.name?.trim()) {
+    return resolveRdvCareDisplayLabel(cat.name.trim(), parseItemCareOptions(item.care_options));
+  }
+
+  const catName = String(item.category_name ?? '').trim();
+  if (catName && !GENERIC_CARE_ITEM_LABELS.has(catName.toLowerCase())) {
+    return resolveRdvCareDisplayLabel(catName, parseItemCareOptions(item.care_options));
+  }
+
+  return fromItem;
+}
+
 export function parseItemCareOptions(co: unknown): Record<string, string | number> {
   if (!co || typeof co !== 'object') return {};
   const out: Record<string, string | number> = {};
@@ -251,8 +286,13 @@ export function buildNursingItemTypeKvRow(
 ): DetailKvRow | null {
   const typeVal = nursingItemCareOptionTypeValue(item);
   if (typeVal == null) return null;
-  const rows = formatCareOptionRows(categoryForItem(item, categories), { type: typeVal });
-  const row = rows.find((r) => r.value?.trim());
+  const co = parseItemCareOptions(item.care_options);
+  const cat = categoryForItem(item, categories);
+  const typeOpt = cat?.options?.find((o) => o.option_key === 'type');
+  const rows = formatCareOptionRows(cat, co);
+  const row = typeOpt
+    ? rows.find((r) => r.label === typeOpt.label)
+    : rows.find((r) => r.value?.trim());
   return row ? { label: row.label, value: row.value } : null;
 }
 
@@ -265,7 +305,7 @@ export function buildNursingItemPerActOptionKvRows(
   const co = parseItemCareOptions(item.care_options);
   const filtered: Record<string, string | number> = {};
   for (const [k, v] of Object.entries(co)) {
-    if (k === 'type' || PER_ACT_NURSING_META_KEYS.has(k) || excludeKeys.has(k) || isCareAutreDetailKey(k)) {
+    if (k === 'type' || PER_ACT_NURSING_META_KEYS.has(k) || excludeKeys.has(k)) {
       continue;
     }
     filtered[k] = v;
