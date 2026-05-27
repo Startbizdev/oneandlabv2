@@ -38,7 +38,11 @@ function mapItem(it: ItemRow, fallbackLabel: string, apt: Appointment): RdvCatal
   const careOpts = mapCareOptions(it?.care_options);
   const fd = (apt.form_data ?? {}) as Record<string, unknown>;
   const fdCareOpts = mapCareOptions(fd.care_options);
-  const label = resolveRdvCareDisplayLabel(rawLabel, careOpts, fdCareOpts);
+  const label = resolveRdvCareDisplayLabel(
+    rawLabel,
+    careOpts,
+    isAutreCareDisplayLabel(rawLabel) ? fdCareOpts : undefined,
+  );
   const categoryId = it?.category_id != null ? String(it.category_id) : null;
   const ext = apt as AptWithIcon;
   const icon =
@@ -96,7 +100,11 @@ export function rdvCatalogDisplayLines(apt: Appointment): RdvCatalogLine[] {
   const fd = (apt.form_data ?? {}) as Record<string, unknown>;
   const fdCareOpts = mapCareOptions(fd.care_options);
   const fallback = isBloodTestAppointment(t) ? 'Prélèvement' : 'Soin';
-  const singleLabel = resolveRdvCareDisplayLabel(rawLabel || fallback, fdCareOpts);
+  const singleLabel = resolveRdvCareDisplayLabel(
+    rawLabel || fallback,
+    fdCareOpts,
+    isAutreCareDisplayLabel(rawLabel) ? fdCareOpts : undefined,
+  );
   const ext = apt as AptWithIcon;
   const emojiSource = isAutreCareDisplayLabel(rawLabel) ? rawLabel || 'Autre' : singleLabel;
   return [

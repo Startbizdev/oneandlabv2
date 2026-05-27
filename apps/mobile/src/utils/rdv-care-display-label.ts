@@ -10,7 +10,7 @@ export function isAutreCareDisplayLabel(label: string): boolean {
   return t === 'autre' || t === 'other' || /^autre\b/.test(t);
 }
 
-/** Champ texte obligatoire de la catégorie catalogue « Autre » (migration `preciser`). */
+/** Champ texte de la catégorie catalogue « Autre » (migration `preciser`). */
 const AUTRE_CATEGORY_TEXT_KEYS = ['preciser', 'precisez'] as const;
 
 const SKIP_DETAIL_VALUES = new Set(['autre', 'other', '']);
@@ -22,10 +22,9 @@ function pickDetail(raw: unknown): string {
 }
 
 /**
- * Texte libre saisi pour « Autre » :
- * - clés `*__autre_detail` (select catalogue = autre)
- * - clé `preciser` (catégorie Autre entière)
- * - repli : première valeur textuelle significative dans care_options
+ * Texte « Précisez » pour un libellé Autre uniquement :
+ * - clés `*__autre_detail` (select = autre)
+ * - clé `preciser` / `precisez` (catégorie Autre)
  */
 export function extractCareOptionsAutreDetail(
   careOptions?: Record<string, string | number> | null,
@@ -50,19 +49,12 @@ export function extractCareOptionsAutreDetail(
     if (detail) return detail;
   }
 
-  for (const [key, val] of Object.entries(careOptions)) {
-    if (isCareAutreDetailKey(key)) continue;
-    if (key.startsWith('_')) continue;
-    if (isAutreSelectValue(val)) continue;
-    const detail = pickDetail(val);
-    if (detail) return detail;
-  }
-
   return '';
 }
 
 /**
- * Libellé affiché sur les cartes / tags RDV : remplace « Autre » par la précision saisie.
+ * Libellé pill liste RDV : remplace « Autre » par la précision saisie.
+ * Les autres soins gardent leur libellé catalogue inchangé.
  */
 export function resolveRdvCareDisplayLabel(
   rawLabel: string,
@@ -70,6 +62,8 @@ export function resolveRdvCareDisplayLabel(
   extraCareOptions?: Record<string, string | number> | null,
 ): string {
   const base = rawLabel.trim() || 'Soin';
+  if (!isAutreCareDisplayLabel(base)) return base;
+
   const detail =
     extractCareOptionsAutreDetail(careOptions) ||
     extractCareOptionsAutreDetail(extraCareOptions);

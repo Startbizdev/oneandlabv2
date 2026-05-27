@@ -197,13 +197,12 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
       { type: 'success' },
     );
     closeModal();
+    if (aptId) {
+      router.replace(`${detailPathPrefix}/${aptId}` as never);
+      return;
+    }
     if (user?.role && user.id) {
       void useOfferQueueStore.getState().processNext(user.role, user.id);
-    }
-    if (user?.role === 'nurse') {
-      router.replace('/(nurse)/(tabs)/appointments' as never);
-    } else if (aptId) {
-      router.push(`${detailPathPrefix}/${aptId}` as never);
     }
   }, [batchCount, closeModal, detailPathPrefix, router, selected?.id, toast, user?.id, user?.role]);
 

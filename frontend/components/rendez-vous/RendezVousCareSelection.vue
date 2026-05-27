@@ -203,7 +203,11 @@ import {
   resolveCareCategoryImageSrc,
   resolveCareIconFromCategory,
 } from '~/utils/care-icons';
-import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils';
+import {
+  careCategoryEmojiForCategory,
+  getBookingCareDisplayRank,
+  isCareCategoryEmoji,
+} from '@oneandlab/shared-utils';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import {
   bloodServicesInSelection,
@@ -578,13 +582,21 @@ const allItems = computed((): CareItem[] => {
   });
 });
 
+function bookingRankForCareItem(item: CareItem): number {
+  const raw = item.raw as CareCategoryRow | FallbackRow;
+  return getBookingCareDisplayRank({
+    name: raw.name,
+    label: item.label,
+    type: raw.type,
+  });
+}
+
 const sortedFullList = computed(() => {
   const list = [...allItems.value];
   list.sort((a, b) => {
-    const aAutre = isAutreCategoryLabel(a.label) ? 1 : 0;
-    const bAutre = isAutreCategoryLabel(b.label) ? 1 : 0;
-    if (aAutre !== bAutre) return aAutre - bAutre;
-    if (b.appointmentCount !== a.appointmentCount) return b.appointmentCount - a.appointmentCount;
+    const ra = bookingRankForCareItem(a);
+    const rb = bookingRankForCareItem(b);
+    if (ra !== rb) return ra - rb;
     return a.label.localeCompare(b.label, 'fr', { sensitivity: 'base' });
   });
   return list;

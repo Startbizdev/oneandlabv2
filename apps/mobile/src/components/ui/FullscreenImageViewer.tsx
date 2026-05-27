@@ -22,11 +22,11 @@ export function FullscreenImageViewer({ visible, uri, onClose }: Props) {
       animationType="fade"
       onRequestClose={onClose}
       statusBarTranslucent={Platform.OS === 'android'}
+      presentationStyle="overFullScreen"
     >
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Fermer">
-        <Pressable style={styles.imageWrap} onPress={onClose}>
-          <Image source={{ uri }} style={styles.image} resizeMode="contain" />
-        </Pressable>
+      <View style={styles.backdrop}>
+        <Pressable style={styles.backdropTap} onPress={onClose} accessibilityLabel="Fermer" />
+        <Image source={{ uri }} style={styles.image} resizeMode="contain" accessibilityIgnoresInvertColors />
         <Pressable
           onPress={onClose}
           style={[styles.closeBtn, { top: insets.top + spacing[2] }]}
@@ -36,7 +36,7 @@ export function FullscreenImageViewer({ visible, uri, onClose }: Props) {
         >
           <X size={22} color={colors.textInverse} strokeWidth={2.5} />
         </Pressable>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -48,16 +48,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  imageWrap: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing[4],
+  backdropTap: {
+    ...StyleSheet.absoluteFillObject,
   },
   image: {
-    width: '100%',
-    height: '100%',
+    width: '92%',
+    height: '82%',
   },
   closeBtn: {
     position: 'absolute',

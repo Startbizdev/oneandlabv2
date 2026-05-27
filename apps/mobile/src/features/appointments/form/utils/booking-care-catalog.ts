@@ -1,3 +1,7 @@
+import {
+  isAutreBookingCareCategory,
+  sortCareCategoriesForBooking,
+} from '@oneandlab/shared-utils';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 
 export const CATALOG_GROUP_ORDER = [
@@ -262,19 +266,12 @@ export function filterCategoriesByTab(
 
 /** Catégorie fourre-tout « Autre » — toujours affichée en dernier à l’étape 1. */
 export function isAutreCareCategory(cat: CareCategory): boolean {
-  const label = (cat.label ?? '').trim().toLowerCase();
-  const name = (cat.name ?? '').trim().toLowerCase();
-  return label === 'autre' || name === 'autre' || /^autre\b/.test(label) || /^autre\b/.test(name);
+  return isAutreBookingCareCategory(cat);
 }
 
+/** Ordre produit des soins à l’étape 1 (Pansements → Bilan prévention, Autre en dernier). */
 export function sortCareCategoriesWithAutreLast(categories: CareCategory[]): CareCategory[] {
-  const autre: CareCategory[] = [];
-  const rest: CareCategory[] = [];
-  for (const c of categories) {
-    if (isAutreCareCategory(c)) autre.push(c);
-    else rest.push(c);
-  }
-  return [...rest, ...autre];
+  return sortCareCategoriesForBooking(categories);
 }
 
 export function careListHeading(tab: string, tabs: CareFilterTab[]): string {
