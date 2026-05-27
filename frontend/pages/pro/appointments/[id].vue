@@ -14,8 +14,10 @@
         :appointment="appointment as Record<string, unknown>"
         :documents="documents || []"
         :documents-loading="documentsLoading"
-        :enable-care-photo-upload="false"
+        :enable-care-photo-upload="canUploadCarePhotos(appointment, user)"
+        :care-photo-uploading="carePhotoUploading"
         @download="downloadDocument"
+        @care-photo-upload="uploadCarePhotoFile"
         @care-photo-thread-updated="() => loadDocuments()"
         @load-documents-needed="loadDocuments"
       />
@@ -124,10 +126,11 @@ import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailR
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
 import { standardAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
-import { isCarePhotoGalleryContext } from '~/utils/care-photo-gallery-context';
+import { isCarePhotoGalleryContext, canUploadCarePhotos } from '~/utils/care-photo-gallery-context';
 
 const route = useRoute();
 const toast = useAppToast();
+const { user } = useAuth();
 const patientReview = ref<Record<string, unknown> | null>(null);
 
 async function loadPatientReviewForRoute() {
@@ -219,6 +222,47 @@ const uploadDocumentTypes = [
 
 function canUploadDocuments(appointment: any) {
   return !!appointment && canUploadMedicalDocumentsForAppointmentStatus(appointment.status);
+}
+
+const carePhotoUploading = ref(false);
+
+async function uploadCarePhotoFile(file: File) {
+  const appointment = getAppointmentFromDetailRef(detailRef);
+  if (!appointment?.id) return;
+  const allowed = ['image/jpeg', 'image/png', 'image/jpg'];
+  if (!allowed.includes(file.type)) {
+    toast.add({ title: 'Format', description: 'Utilisez une image JPG ou PNG.', color: 'warning' });
+    return;
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    toast.add({ title: 'Fichier trop volumineux', description: 'Le fichier dépasse la limite de 25 Mo.', color: 'error' });
+    return;
+  }
+  carePhotoUploading.value = true;
+  try {
+    const apiBase = config.public?.apiBase || '';
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const csrf = (typeof window !== 'undefined' && (window as any).__csrfTokenCache) || '';
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (csrf) headers['X-CSRF-Token'] = csrf;
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${apiBase}/appointments/${appointment.id}/care-photos`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      headers,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || 'Upload échoué');
+    toast.add({ title: 'Photo ajoutée', color: 'success' });
+    await detailRef.value?.loadDocuments?.();
+  } catch (e: any) {
+    toast.add({ title: 'Upload', description: e?.message || 'Erreur', color: 'error' });
+  } finally {
+    carePhotoUploading.value = false;
+  }
 }
 
 function setAppointmentForUpload(apt: any) {

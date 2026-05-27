@@ -102,7 +102,7 @@
         :appointment="appointment as Record<string, unknown>"
         :documents="documents || []"
         :documents-loading="documentsLoading"
-        :enable-care-photo-upload="canNurseUploadCarePhotos(appointment)"
+        :enable-care-photo-upload="canUploadCarePhotos(appointment, user)"
         :care-photo-uploading="carePhotoUploading"
         @download="downloadDocument"
         @care-photo-upload="uploadCarePhotoFile"
@@ -124,7 +124,7 @@
         :downloading-ids="downloadingDocuments"
         :uploading-types="uploadingTypes"
         :care-photo-appointment-id="appointment?.id ?? null"
-        :enable-care-photo-upload="canNurseUploadCarePhotos(appointment)"
+        :enable-care-photo-upload="canUploadCarePhotos(appointment, user)"
         :care-photo-uploading="carePhotoUploading"
         :omit-care-photos-in-list="true"
         @download="downloadDocument"
@@ -170,7 +170,7 @@ import { isPendingIncomingOffer } from '~/utils/appointment-offer';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { nurseAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
 import { isBloodTestAppointment } from '~/utils/appointment-type-rules';
-import { isCarePhotoGalleryContext } from '~/utils/care-photo-gallery-context';
+import { isCarePhotoGalleryContext, canUploadCarePhotos } from '~/utils/care-photo-gallery-context';
 
 const toast = useAppToast();
 const { user } = useAuth();
@@ -309,15 +309,6 @@ const uploadDocumentTypes = [
 
 function canUploadDocuments(appointment: any) {
   return !!appointment && canUploadMedicalDocumentsForAppointmentStatus(appointment.status);
-}
-
-/** Même règle métier que l’API care-photos : infirmier assigné uniquement. */
-function canNurseUploadCarePhotos(apt: any) {
-  if (!apt || !isCarePhotoGalleryContext(apt)) return false;
-  if (!['confirmed', 'inProgress'].includes(apt.status)) return false;
-  const uid = user.value?.id;
-  if (!uid || !apt.assigned_nurse_id) return false;
-  return String(apt.assigned_nurse_id) === String(uid);
 }
 
 async function uploadCarePhotoFile(file: File) {

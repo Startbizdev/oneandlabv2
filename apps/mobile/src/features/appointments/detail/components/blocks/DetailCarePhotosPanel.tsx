@@ -7,7 +7,7 @@ import { CarePhotoImage } from './CarePhotoImage';
 import type { Appointment } from '@oneandlab/shared-types';
 import { fetchCarePhotos, uploadCarePhoto } from '../../api/appointment-detail.service';
 import {
-  canNurseUploadCarePhotos,
+  canUploadCarePhotos,
   isCarePhotoGalleryContext,
 } from '../../utils/care-photo-rules';
 import { carePhotosPanelIntro } from '../../utils/care-photo-copy';
@@ -55,7 +55,7 @@ export function DetailCarePhotosPanel({
   const canUpload =
     !readOnly &&
     (q.data?.can_upload === true ||
-      (q.data?.can_upload == null && canNurseUploadCarePhotos(apt, userId)));
+      (q.data?.can_upload == null && canUploadCarePhotos(apt, userId, viewerRole)));
 
   const photos = q.data?.photos ?? [];
   const hasPhotos = photos.length > 0;
@@ -164,7 +164,9 @@ export function DetailCarePhotosPanel({
           <Camera size={32} color={colors.textTertiary} strokeWidth={1.75} />
           <Text style={styles.emptyTitle}>Aucune photo pour l’instant</Text>
           <Text style={styles.emptySub}>
-            L’infirmier(ère) assigné(e) pourra partager des photos de suivi ici.
+            {viewerRole === 'pro'
+              ? 'Vous et l’infirmier(ère) assigné(e) pourrez partager des photos de suivi ici.'
+              : 'Vous et le professionnel de santé pourrez partager des photos de suivi ici.'}
           </Text>
         </View>
       ) : (

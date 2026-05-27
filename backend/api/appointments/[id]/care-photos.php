@@ -143,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!CarePhotoGallery::canUpload($user, $appointment)) {
         http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Seul l’infirmier assigné peut ajouter des photos pour ce rendez-vous.']);
+        echo json_encode(['success' => false, 'error' => 'Vous ne pouvez pas ajouter de photos pour ce rendez-vous.']);
         exit;
     }
 
@@ -235,21 +235,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ['appointment_id' => $appointmentId]
         );
 
-        $creatorId = (string) ($appointment['created_by'] ?? '');
-        if ($creatorId !== '' && $creatorId !== (string) $user['user_id']) {
-            $userModel = new User();
-            $nurseNames = $userModel->getDisplayNamesByIds([(string) $user['user_id']]);
-            $nurseName = $nurseNames[(string) $user['user_id']] ?? 'Infirmier';
-            $notificationService->createNotification(
-                $creatorId,
-                'care_gallery_photo',
-                'Photos de soins ajoutées',
-                $nurseName . ' a ajouté une photo pour un rendez-vous que vous avez créé.',
-                [
-                    'appointment_id' => $appointmentId,
-                    'photo_id' => $id,
-                ]
-            );
+        $userModel = new User();
+        $role = (string) ($user['role'] ?? '');
+
+        if ($role === 'nurse') {
+            $creatorId = (string) ($appointment['created_by'] ?? '');
+            if ($creatorId !== '' && $creatorId !== (string) $user['user_id']) {
+                $nurseNames = $userModel->getDisplayNamesByIds([(string) $user['user_id']]);
+                $nurseName = $nurseNames[(string) $user['user_id']] ?? 'Infirmier';
+                $notificationService->createNotification(
+                    $creatorId,
+                    'care_gallery_photo',
+                    'Photos de soins ajoutées',
+                    $nurseName . ' a ajouté une photo pour un rendez-vous que vous avez créé.',
+                    [
+                        'appointment_id' => $appointmentId,
+                        'photo_id' => $id,
+                    ]
+                );
+            }
+        } elseif ($role === 'pro') {
+            $nurseId = (string) ($appointment['assigned_nurse_id'] ?? '');
+            if ($nurseId !== '' && $nurseId !== (string) $user['user_id']) {
+                $proNames = $userModel->getDisplayNamesByIds([(string) $user['user_id']]);
+                $proName = $proNames[(string) $user['user_id']] ?? 'Professionnel';
+                $notificationService->createNotification(
+                    $nurseId,
+                    'care_gallery_photo',
+                    'Photos de soins ajoutées',
+                    $proName . ' a ajouté une photo pour un rendez-vous.',
+                    [
+                        'appointment_id' => $appointmentId,
+                        'photo_id' => $id,
+                    ]
+                );
+            }
         }
 
         echo json_encode([
