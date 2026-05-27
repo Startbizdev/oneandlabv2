@@ -3,7 +3,7 @@ import { CalendarDays, CalendarPlus, Heart, LayoutGrid, Star } from 'lucide-reac
 import { TabBar } from '@/components/navigation/TabBar';
 import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
-import { tabScreenOptions } from '@/navigation/screen-options';
+import { useTabScreenOptions } from '@/navigation/screen-options';
 import { colors } from '@/theme';
 
 function isFocused(color: string) {
@@ -11,11 +11,13 @@ function isFocused(color: string) {
 }
 
 export default function PatientTabsLayout() {
+  const screenOptions = useTabScreenOptions();
+
   return (
     <Tabs
       tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
-        ...tabScreenOptions(),
+        ...screenOptions,
         lazy: true,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,

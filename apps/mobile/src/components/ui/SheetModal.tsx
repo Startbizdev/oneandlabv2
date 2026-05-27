@@ -23,6 +23,8 @@ import { fontFamily, fontSize } from '@/theme/typography';
 import { SheetKeyboardProvider } from './sheet-keyboard-context';
 
 const MAX_HEIGHT_RATIO = 0.86;
+/** Ouverture haute pour fiches profil (intervenant RDV). */
+export const PROFILE_SHEET_SNAP_POINTS: (string | number)[] = ['92%'];
 
 interface Props {
   visible: boolean;
@@ -44,6 +46,10 @@ interface Props {
   presentKey?: string | number;
   /** Appelé quand la sheet est entièrement fermée après `visible={false}` (pas au swipe → onClose). */
   onDismissed?: () => void;
+  /** Remplace le dynamic sizing (ex. fiche profil plein écran). */
+  snapPoints?: (string | number)[];
+  /** Empilement si une autre sheet est déjà ouverte (`push` pour les selects). */
+  stackBehavior?: 'push' | 'switch' | 'replace';
 }
 
 /**
@@ -63,11 +69,14 @@ export function SheetModal({
   enableSwipeToDismiss = true,
   presentKey,
   onDismissed,
+  snapPoints,
+  stackBehavior = 'switch',
 }: Props) {
   const modalRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const maxDynamicContentSize = windowHeight * MAX_HEIGHT_RATIO;
+  const useFixedSnap = snapPoints != null && snapPoints.length > 0;
 
   const dismissFromParentRef = useRef(false);
   const hasPresentedRef = useRef(false);
@@ -133,7 +142,12 @@ export function SheetModal({
   );
 
   const bottomPad = Math.max(insets.bottom, spacing[3]);
-  const contentStyleBase = [styles.body, contentStyle, { paddingBottom: bottomPad }];
+  const contentStyleBase = [
+    styles.body,
+    contentStyle,
+    { paddingBottom: bottomPad },
+    !useFixedSnap && styles.bodyFitContent,
+  ];
 
   const content = (
     <>
@@ -143,11 +157,14 @@ export function SheetModal({
   );
 
   const body = disableScroll ? (
-    <BottomSheetView style={contentStyleBase}>{content}</BottomSheetView>
+    <BottomSheetView style={[contentStyleBase, useFixedSnap && styles.fixedSnapBody]}>
+      {content}
+    </BottomSheetView>
   ) : (
     <BottomSheetScrollView
       contentContainerStyle={contentStyleBase}
-      keyboardShouldPersistTaps="always"
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
       showsVerticalScrollIndicator={false}
     >
       {content}
@@ -157,9 +174,12 @@ export function SheetModal({
   return (
     <BottomSheetModal
       ref={modalRef}
+      stackBehavior={stackBehavior}
       containerComponent={Platform.OS === 'ios' ? BottomSheetModalContainer : undefined}
-      enableDynamicSizing
-      maxDynamicContentSize={maxDynamicContentSize}
+      enableDynamicSizing={!useFixedSnap}
+      maxDynamicContentSize={useFixedSnap ? undefined : maxDynamicContentSize}
+      snapPoints={useFixedSnap ? snapPoints : undefined}
+      index={useFixedSnap ? snapPoints!.length - 1 : undefined}
       enablePanDownToClose={enableSwipeToDismiss}
       enableHandlePanningGesture={enableSwipeToDismiss}
       enableContentPanningGesture={!disableScroll}
@@ -233,11 +253,17 @@ const styles = StyleSheet.create({
     padding: spacing[4],
     gap: spacing[3],
   },
+  bodyFitContent: {
+    flexGrow: 0,
+  },
   scrollFooter: {
     marginTop: spacing[2],
     paddingTop: spacing[3],
     gap: spacing[2],
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.borderLight,
+  },
+  fixedSnapBody: {
+    flex: 1,
   },
 });

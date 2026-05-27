@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  InteractionManager,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -32,16 +30,16 @@ import { BookingPremiumStepCta } from './BookingPremiumStepCta';
 import { CareCategoryFilterBar } from './CareCategoryFilterBar';
 import { CareServiceQuickOptionsSheet } from './CareServiceQuickOptionsSheet';
 import { SelectedServicesDetailSheet } from './SelectedServicesDetailSheet';
-import { selectionDetailActionLabel } from '../utils/selected-service-detail-lines';
 import { useToast } from '@/providers/ToastProvider';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const GRID_GAP = spacing[2];
 const H_PAD = spacing[4];
-/** Hauteur pill CTA flottant + lien détail (étape 1). */
+/** Largeur tuile — 2 colonnes avec espace entre (plus fiable que px + columnGap). */
+const GRID_TILE_WIDTH = '48.5%';
+/** Hauteur pill CTA flottant (étape 1). */
 const PREMIUM_CTA_HEIGHT = 58;
-const DETAIL_LINK_HEIGHT = 28;
 const TILE_EMOJI_ORB = 38;
 const TILE_EMOJI_ORB_WIDE = 46;
 
@@ -193,20 +191,12 @@ export function CareSelectionStep({
 }: Props) {
   const { show: toast } = useToast();
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
-  const { width: screenW } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [modalCat, setModalCat] = useState<CareCategory | null>(null);
   const [modalOnlyOpts, setModalOnlyOpts] = useState(false);
   /** Invalide les `ensureCategoryReady` en cours après fermeture ou nouveau tap. */
   const optionsSheetSessionRef = useRef(0);
-  /** Ouvre le détail panier après fermeture complète du sheet options (évite conflit Gorhom). */
-  const openDetailAfterOptionsDismissRef = useRef(false);
   const [filterTab, setFilterTab] = useState('all');
-
-  const tileWidth = useMemo(() => {
-    const inner = screenW - H_PAD * 2;
-    return Math.floor((inner - GRID_GAP) / 2);
-  }, [screenW]);
 
   const resetFilterAfterAdd = useCallback(() => {
     setFilterTab('all');
@@ -218,32 +208,8 @@ export function CareSelectionStep({
   }, []);
 
   const openServicesDetail = useCallback(() => {
-    InteractionManager.runAfterInteractions(() => {
-      setDetailSheetOpen(true);
-    });
+    setDetailSheetOpen(true);
   }, []);
-
-  const queueOpenServicesDetail = useCallback(() => {
-    openDetailAfterOptionsDismissRef.current = true;
-  }, []);
-
-  const handleOptionsSheetDismissed = useCallback(() => {
-    if (!openDetailAfterOptionsDismissRef.current) return;
-    openDetailAfterOptionsDismissRef.current = false;
-    openServicesDetail();
-  }, [openServicesDetail]);
-
-  /** Repli si `onDismissed` Gorhom ne se déclenche pas après fermeture programmatique. */
-  useEffect(() => {
-    if (modalCat != null) return;
-    if (!openDetailAfterOptionsDismissRef.current) return;
-    const timer = setTimeout(() => {
-      if (!openDetailAfterOptionsDismissRef.current) return;
-      openDetailAfterOptionsDismissRef.current = false;
-      openServicesDetail();
-    }, 480);
-    return () => clearTimeout(timer);
-  }, [modalCat, openServicesDetail]);
 
   const fullList = useMemo(
     () => [...nursingCategories, ...bloodCategories],
@@ -282,7 +248,7 @@ export function CareSelectionStep({
 
   const floatingCtaBottom = Math.max(insets.bottom, spacing[2]) + spacing[3];
   const scrollBottomPad = hasSelection
-    ? PREMIUM_CTA_HEIGHT + DETAIL_LINK_HEIGHT + spacing[4] + floatingCtaBottom
+    ? PREMIUM_CTA_HEIGHT + spacing[4] + floatingCtaBottom
     : spacing[3];
 
   const isSelected = useCallback(
@@ -331,7 +297,6 @@ export function CareSelectionStep({
             slice: {},
           });
           resetFilterAfterAdd();
-          openServicesDetail();
           return;
         }
         setModalCat(ready);
@@ -349,7 +314,6 @@ export function CareSelectionStep({
       onRemove,
       onlyCategoryOptionsFor,
       onEnsureCategoryReady,
-      openServicesDetail,
       resetFilterAfterAdd,
       toast,
     ],
@@ -389,7 +353,7 @@ export function CareSelectionStep({
     return (
       <View style={styles.grid}>
         {gridItems.map((cat) => (
-          <View key={cat.id} style={[styles.gridCell, { width: tileWidth }]}>
+          <View key={cat.id} style={styles.gridCell}>
             <CareGridTile
               cat={cat}
               orbColor={careTileEmojiOrbColor(cat, tileOrbColorMap)}
@@ -400,7 +364,7 @@ export function CareSelectionStep({
         ))}
       </View>
     );
-  }, [attemptAdd, filterTab, gridItems, isSelected, tileOrbColorMap, tileWidth]);
+  }, [attemptAdd, filterTab, gridItems, isSelected, tileOrbColorMap]);
 
   const autreFooter = useMemo(() => {
     if (autreItems.length === 0) return null;
@@ -443,14 +407,6 @@ export function CareSelectionStep({
             style={[styles.floatingCta, { bottom: floatingCtaBottom }]}
             pointerEvents="box-none"
           >
-            <Pressable
-              onPress={openServicesDetail}
-              style={styles.detailLink}
-              accessibilityRole="button"
-              accessibilityLabel={selectionDetailActionLabel(selectionCount)}
-            >
-              <Text style={styles.detailLinkText}>{selectionDetailActionLabel(selectionCount)}</Text>
-            </Pressable>
             <BookingPremiumStepCta
               selectionCount={selectionCount}
               onSelectionBadgePress={openServicesDetail}
@@ -467,13 +423,11 @@ export function CareSelectionStep({
         categories={allCategories}
         onlyCategoryOptions={modalOnlyOpts}
         onClose={closeOptionsSheet}
-        onDismissed={handleOptionsSheetDismissed}
         onConfirm={(payload) => {
           optionsSheetSessionRef.current += 1;
           onQuickAdd(payload);
           setModalCat(null);
           resetFilterAfterAdd();
-          queueOpenServicesDetail();
         }}
       />
 
@@ -510,18 +464,6 @@ const styles = StyleSheet.create({
     left: H_PAD,
     right: H_PAD,
     zIndex: 20,
-    gap: spacing[2],
-  },
-  detailLink: {
-    alignSelf: 'center',
-    paddingVertical: spacing[1],
-    paddingHorizontal: spacing[2],
-  },
-  detailLinkText: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xs,
-    color: colors.primary,
-    textDecorationLine: 'underline',
   },
   listHeader: {
     gap: spacing[3],
@@ -548,10 +490,12 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    columnGap: GRID_GAP,
+    justifyContent: 'space-between',
     rowGap: GRID_GAP,
+    width: '100%',
   },
   gridCell: {
+    width: GRID_TILE_WIDTH,
     flexShrink: 0,
     flexGrow: 0,
   },

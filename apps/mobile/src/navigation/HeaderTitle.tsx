@@ -1,12 +1,16 @@
 import type { ReactElement } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { LucideIcon } from 'lucide-react-native';
-import { colors, spacing } from '@/theme';
+import {
+  APP_HEADER_TITLE_ICON_SIZE,
+  APP_HEADER_ORB_STROKE,
+} from '@/components/navigation/header-layout';
+import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-/** Même taille / trait que les icônes actives de la tab bar. */
-export const HEADER_TAB_ICON_SIZE = 22;
-export const HEADER_TAB_ICON_STROKE = 2.5;
+export const HEADER_TAB_ICON_SIZE = APP_HEADER_TITLE_ICON_SIZE;
+export const HEADER_TAB_ICON_STROKE = APP_HEADER_ORB_STROKE;
 
 interface HeaderTitleProps {
   title: string;
@@ -14,16 +18,21 @@ interface HeaderTitleProps {
   tintColor?: string;
 }
 
-export function HeaderTitleWithIcon({ title, Icon, tintColor }: HeaderTitleProps) {
-  const iconColor = tintColor ?? colors.primary;
-
+export function HeaderTitleWithIcon({ title, Icon }: HeaderTitleProps) {
   return (
     <View style={styles.row}>
-      <Icon
-        size={HEADER_TAB_ICON_SIZE}
-        color={iconColor}
-        strokeWidth={HEADER_TAB_ICON_STROKE}
-      />
+      <LinearGradient
+        colors={[colors.gradientStart, colors.gradientEnd]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={styles.iconChip}
+      >
+        <Icon
+          size={HEADER_TAB_ICON_SIZE}
+          color={colors.textInverse}
+          strokeWidth={HEADER_TAB_ICON_STROKE}
+        />
+      </LinearGradient>
       <Text style={styles.title} numberOfLines={1}>
         {title}
       </Text>
@@ -31,7 +40,7 @@ export function HeaderTitleWithIcon({ title, Icon, tintColor }: HeaderTitleProps
   );
 }
 
-/** Titre header onglet : icône Lucide identique à la tab bar + libellé à gauche. */
+/** Titre header onglet — icône compacte + libellé lisible. */
 export function tabHeaderTitle(
   title: string,
   Icon: LucideIcon,
@@ -45,13 +54,22 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[2],
+    gap: spacing[2.5],
     maxWidth: '100%',
+  },
+  iconChip: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
     color: colors.textPrimary,
     letterSpacing: -0.3,
+    flexShrink: 1,
   },
 });

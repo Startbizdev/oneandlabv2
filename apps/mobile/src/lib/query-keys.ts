@@ -38,6 +38,8 @@ export const queryKeys = {
     coverageZones: (ownerId: string, role: string) =>
       ['profile', 'coverage-zones', ownerId, role] as const,
     nursePreferences: ['profile', 'nurse-category-preferences'] as const,
+    publicProvider: (type: 'nurse' | 'lab', slug: string) =>
+      ['profile', 'public', type, slug] as const,
   },
   documents: {
     medical: (appointmentId: string) => ['documents', 'medical', appointmentId] as const,

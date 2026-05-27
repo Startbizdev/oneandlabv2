@@ -3,7 +3,7 @@ import { Calendar, CalendarDays, FileText, LayoutGrid, Users } from 'lucide-reac
 import { TabBar } from '@/components/navigation/TabBar';
 import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
-import { tabScreenOptions } from '@/navigation/screen-options';
+import { useTabScreenOptions } from '@/navigation/screen-options';
 import { SHOW_PRESCRIPTIONS_TAB_NAV } from '@/features/prescriptions/constants';
 import { colors } from '@/theme';
 
@@ -12,12 +12,14 @@ function isFocused(color: string) {
 }
 
 export default function ProTabsLayout() {
+  const screenOptions = useTabScreenOptions();
+
   return (
     <Tabs
       initialRouteName="appointments"
       tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
-        ...tabScreenOptions(),
+        ...screenOptions,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
         headerRight: tabHeaderNotificationRight(),

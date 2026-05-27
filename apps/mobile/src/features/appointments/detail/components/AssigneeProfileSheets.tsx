@@ -1,4 +1,4 @@
-import { ProviderPublicProfileSheet } from './ProviderPublicProfileSheet';
+import { ProviderPublicProfileSheet } from '@/features/profile/components/ProviderPublicProfileSheet';
 import { ProfessionalProfileSheet } from '@/features/profile/components/ProfessionalProfileSheet';
 import type { AssigneeProfileSheetState } from '../utils/provider-public-profile';
 
@@ -7,11 +7,11 @@ interface Props {
   onClose: () => void;
 }
 
-/** Bottom sheets profil intervenant — fiche web (infirmier / labo) ou fiche native pro. */
+/** Bottom sheets profil intervenant — fiche native infirmier / labo ou fiche pro. */
 export function AssigneeProfileSheets({ sheet, onClose }: Props) {
   if (!sheet) return null;
 
-  if (sheet.kind === 'web') {
+  if (sheet.kind === 'provider') {
     return (
       <ProviderPublicProfileSheet
         visible
@@ -19,6 +19,7 @@ export function AssigneeProfileSheets({ sheet, onClose }: Props) {
         providerType={sheet.providerType}
         slug={sheet.slug}
         title={sheet.title}
+        phone={sheet.phone}
       />
     );
   }

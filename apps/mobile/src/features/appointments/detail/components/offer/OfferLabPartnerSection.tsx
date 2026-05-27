@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FlaskConical } from 'lucide-react-native';
 import { AssigneeProfileRow } from '../AssigneeProfileRow';
-import { ProviderPublicProfileSheet } from '../ProviderPublicProfileSheet';
+import { ProviderPublicProfileSheet } from '@/features/profile/components/ProviderPublicProfileSheet';
 import type { OfferLabPartner } from '../../utils/offer-appointment-display';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -41,6 +41,7 @@ export function OfferLabPartnerSection({ lab }: Props) {
           providerType="lab"
           slug={slug}
           title={lab.displayName}
+          phone={lab.phone}
         />
       ) : null}
     </>

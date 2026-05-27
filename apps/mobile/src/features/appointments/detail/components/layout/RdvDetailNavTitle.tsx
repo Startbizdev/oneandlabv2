@@ -3,7 +3,7 @@ import { RdvDetailHeaderStatus } from './RdvDetailHeaderStatus';
 import { colors, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-/** Titre + badge dans `headerTitle` — largeur intrinsèque (pas de flex:1 sur le titre). */
+/** Titre + badge sur une ligne avec le bouton retour (slot titre du header). */
 export function RdvDetailNavTitle({
   title,
   status,
@@ -16,7 +16,11 @@ export function RdvDetailNavTitle({
       <Text style={styles.title} numberOfLines={1}>
         {title}
       </Text>
-      {status ? <RdvDetailHeaderStatus status={status} /> : null}
+      {status ? (
+        <View style={styles.badgeWrap}>
+          <RdvDetailHeaderStatus status={status} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -26,13 +30,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    maxWidth: '100%',
+    minWidth: 0,
+    flex: 1,
   },
   title: {
     flexShrink: 1,
+    minWidth: 0,
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
     color: colors.textPrimary,
-    minWidth: 0,
+  },
+  badgeWrap: {
+    flexShrink: 0,
   },
 });

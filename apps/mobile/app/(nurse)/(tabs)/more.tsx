@@ -15,6 +15,7 @@ import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label'
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { nursePublicProfilePath } from '@/features/profile/utils/nurse-public-profile';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
+import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { webAppUrl } from '@/config/env';
 import { queryKeys } from '@/lib/query-keys';
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-unread-count';
@@ -59,77 +60,79 @@ export default function NurseMore() {
   };
 
   return (
-    <RoleMoreTabScreen
-      roleLabel="Infirmier(ère)"
-      sections={[
-        {
-          title: 'Actions',
-          delay: 150,
-          items: [
-            {
-              icon: CalendarPlus,
-              label: 'Nouveau rendez-vous',
-              onPress: () => nav('/(nurse)/appointments/new'),
-              iconColor: '#0D9488',
-              iconBg: '#F0FDFA',
-            },
-          ],
-        },
-        {
-          title: 'Professionnel',
-          delay: 210,
-          items: [
-            { icon: User, label: 'Mon profil', onPress: () => nav('/profile') },
-            {
-              icon: Share2,
-              label: 'Partager mon profil',
-              onPress: () => void sharePublicProfile(),
-              iconColor: '#0D9488',
-              iconBg: '#F0FDFA',
-            },
-            {
-              icon: Star,
-              label: 'Mes avis',
-              onPress: () => nav('/(nurse)/reviews'),
-              iconColor: '#D97706',
-              iconBg: '#FFFBEB',
-            },
-            {
-              icon: CreditCard,
-              label: 'Abonnement',
-              onPress: () => nav('/(nurse)/abonnement'),
-              iconColor: '#7C3AED',
-              iconBg: '#F5F3FF',
-            },
-          ],
-        },
-        {
-          title: 'Paramètres',
-          delay: 270,
-          items: [
-            {
-              icon: Bell,
-              label: 'Notifications',
-              onPress: () => router.push(getNotificationsPath('nurse')),
-              badge: unread,
-            },
-            {
-              icon: ScanFace,
-              label: biometricLabel,
-              onPress: () => nav('/profile/security'),
-              iconColor: '#0D9488',
-              iconBg: '#F0FDFA',
-            },
-            {
-              icon: Scale,
-              label: 'Informations légales',
-              onPress: () => nav('/(nurse)/informations-legales'),
-              iconColor: '#64748B',
-              iconBg: '#F1F5F9',
-            },
-          ],
-        },
-      ]}
-    />
+    <TabScreenShell>
+      <RoleMoreTabScreen
+        roleLabel="Infirmier(ère)"
+        sections={[
+          {
+            title: 'Actions',
+            delay: 150,
+            items: [
+              {
+                icon: CalendarPlus,
+                label: 'Nouveau rendez-vous',
+                onPress: () => nav('/(nurse)/appointments/new'),
+                iconColor: '#0D9488',
+                iconBg: '#F0FDFA',
+              },
+            ],
+          },
+          {
+            title: 'Professionnel',
+            delay: 210,
+            items: [
+              { icon: User, label: 'Mon profil', onPress: () => nav('/profile') },
+              {
+                icon: Share2,
+                label: 'Partager mon profil',
+                onPress: () => void sharePublicProfile(),
+                iconColor: '#0D9488',
+                iconBg: '#F0FDFA',
+              },
+              {
+                icon: Star,
+                label: 'Mes avis',
+                onPress: () => nav('/(nurse)/reviews'),
+                iconColor: '#D97706',
+                iconBg: '#FFFBEB',
+              },
+              {
+                icon: CreditCard,
+                label: 'Abonnement',
+                onPress: () => nav('/(nurse)/abonnement'),
+                iconColor: '#7C3AED',
+                iconBg: '#F5F3FF',
+              },
+            ],
+          },
+          {
+            title: 'Paramètres',
+            delay: 270,
+            items: [
+              {
+                icon: Bell,
+                label: 'Notifications',
+                onPress: () => router.push(getNotificationsPath('nurse')),
+                badge: unread,
+              },
+              {
+                icon: ScanFace,
+                label: biometricLabel,
+                onPress: () => nav('/profile/security'),
+                iconColor: '#0D9488',
+                iconBg: '#F0FDFA',
+              },
+              {
+                icon: Scale,
+                label: 'Informations légales',
+                onPress: () => nav('/(nurse)/informations-legales'),
+                iconColor: '#64748B',
+                iconBg: '#F1F5F9',
+              },
+            ],
+          },
+        ]}
+      />
+    </TabScreenShell>
   );
 }

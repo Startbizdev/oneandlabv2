@@ -16,6 +16,7 @@ interface Props {
   dismissOnBackdropPress?: boolean;
   presentKey?: string | number;
   onDismissed?: () => void;
+  stackBehavior?: 'push' | 'switch' | 'replace';
 }
 
 /** Wrapper SheetModal pour les écrans existants. */
@@ -33,6 +34,7 @@ export function BottomSheet({
   dismissOnBackdropPress,
   presentKey,
   onDismissed,
+  stackBehavior,
 }: Props) {
   return (
     <SheetModal
@@ -48,6 +50,7 @@ export function BottomSheet({
       disableScroll={disableScroll}
       enableSwipeToDismiss={enableSwipeToDismiss}
       dismissOnBackdropPress={dismissOnBackdropPress}
+      stackBehavior={stackBehavior}
     >
       {children}
     </SheetModal>

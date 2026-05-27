@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Users } from 'lucide-react-native';
+import { Users } from 'lucide-react-native';
 import { ageFromBirthDate } from '@oneandlab/shared-utils';
 import { ScreenFab } from '@/components/ui/ScreenFab';
 import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
@@ -21,7 +21,7 @@ import { deletePatient, fetchPatients } from '../api/patients.service';
 import type { PatientRow } from '../api/fetch-all-patients';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonPatientList } from '@/components/ui/skeletons';
-import { Input } from '@/components/ui/Input';
+import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { CreatePatientModal } from '../components/CreatePatientModal';
@@ -161,19 +161,11 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.searchBlock}>
-        <Input
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Nom, email, téléphone…"
-          leftIcon={<Search size={16} color={colors.textTertiary} strokeWidth={2} />}
-        />
-        {!isLoading && filtered.length > 0 ? (
-          <Text style={styles.count}>
-            {filtered.length} patient{filtered.length > 1 ? 's' : ''}
-          </Text>
-        ) : null}
-      </View>
+      <AppointmentsListFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Nom, email, téléphone…"
+      />
 
       {isLoading ? (
         <SkeletonPatientList count={8} />
@@ -194,6 +186,11 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
           style={styles.list}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <Text style={styles.count}>
+              {filtered.length} patient{filtered.length > 1 ? 's' : ''}
+            </Text>
+          }
           ItemSeparatorComponent={() => <View style={styles.sep} />}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
@@ -228,13 +225,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     overflow: 'visible',
   },
-  searchBlock: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
   count: {
-    marginTop: 6,
+    marginHorizontal: spacing[4],
+    marginBottom: spacing[2],
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
     color: colors.textTertiary,
@@ -246,9 +239,6 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
   },
   listContent: {
     paddingBottom: spacing[24],
@@ -256,8 +246,8 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
     backgroundColor: colors.surface,
   },
   avatar: {

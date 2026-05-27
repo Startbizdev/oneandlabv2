@@ -1,18 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle } from 'lucide-react-native';
+import { AlertTriangle, CalendarX2 } from 'lucide-react-native';
 import {
   cancellationReasonRequiresPhoto,
   staffCancellationCanSubmit,
 } from '@oneandlab/shared-constants';
 import type { Appointment } from '@oneandlab/shared-types';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
-import { DetailPanel } from '../layout/DetailPanel';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
+import { patientDisplayName } from '@/utils/appointment-detail-display';
 import {
   cancelAppointment,
   cancelAppointmentsPatientBatch,
@@ -21,26 +21,51 @@ import {
   StaffCancellationFields,
   type StaffCancellationValues,
 } from './StaffCancellationFields';
-import { colors, spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
+  visible: boolean;
   role: string;
   /** RDV à annuler (lot patient = plusieurs). */
   targets: Appointment[];
   onDone: () => void;
-  onDismiss: () => void;
+  onClose: () => void;
 }
 
 const EMPTY_STAFF: StaffCancellationValues = { reason: '', comment: '' };
 
-export function CancelAppointmentSheet({ role, targets, onDone, onDismiss }: Props) {
+function cancelSheetSubtitle(isPatient: boolean, isBatch: boolean, count: number): string {
+  if (isBatch) {
+    return `${count} rendez-vous seront définitivement annulés.`;
+  }
+  if (isPatient) {
+    return 'Cette action est définitive et ne peut pas être annulée.';
+  }
+  return 'Indiquez la raison avant de confirmer l’annulation.';
+}
+
+export function CancelAppointmentSheet({ visible, role, targets, onDone, onClose }: Props) {
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [staff, setStaff] = useState<StaffCancellationValues>(EMPTY_STAFF);
   const isPatient = role === 'patient';
   const isBatch = targets.length > 1;
   const canSubmitStaff = staffCancellationCanSubmit(staff.reason, staff.comment);
+
+  const presentKey = useMemo(
+    () => targets.map((t) => t.id).join(',') || 'cancel',
+    [targets],
+  );
+
+  const primaryTarget = targets[0];
+  const targetLabel = primaryTarget ? patientDisplayName(primaryTarget) : null;
+
+  useEffect(() => {
+    if (!visible) {
+      setStaff(EMPTY_STAFF);
+    }
+  }, [visible]);
 
   const mut = useMutation({
     mutationFn: async () => {
@@ -66,10 +91,7 @@ export function CancelAppointmentSheet({ role, targets, onDone, onDismiss }: Pro
       }
       void qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
       const n = r.canceled;
-      toast(
-        n > 1 ? `${n} rendez-vous annulés` : 'Rendez-vous annulé',
-        { type: 'success' },
-      );
+      toast(n > 1 ? `${n} rendez-vous annulés` : 'Rendez-vous annulé', { type: 'success' });
       onDone();
     },
     onError: (e) => handleApiError(e, toast, 'cancelAppointment'),
@@ -85,53 +107,139 @@ export function CancelAppointmentSheet({ role, targets, onDone, onDismiss }: Pro
     });
   }
 
+  const title = isBatch ? 'Annuler le lot' : 'Annuler le rendez-vous';
+  const subtitle = cancelSheetSubtitle(isPatient, isBatch, targets.length);
+
+  const footer = (
+    <View style={styles.footer}>
+      <Button
+        title="Confirmer l'annulation"
+        variant="destructive"
+        size="lg"
+        fullWidth
+        loading={mut.isPending}
+        disabled={!isPatient && !canSubmitStaff}
+        onPress={() => mut.mutate()}
+      />
+      <Button title="Retour" variant="outline" size="lg" fullWidth onPress={onClose} />
+    </View>
+  );
+
   return (
-    <Animated.View entering={FadeInDown.duration(280).springify()}>
-      <DetailPanel title={isBatch ? 'Annuler le lot' : 'Annuler le rendez-vous'}>
-        <View style={styles.warning}>
-          <AlertTriangle size={16} color={colors.error} strokeWidth={2} />
+    <SheetModal
+      visible={visible}
+      presentKey={presentKey}
+      onClose={onClose}
+      title={title}
+      subtitle={subtitle}
+      footer={footer}
+    >
+      <View style={styles.summaryCard}>
+        <View style={styles.warningStrip}>
+          <AlertTriangle size={16} color={colors.error} strokeWidth={2.25} />
           <Text style={styles.warningText}>
             {isBatch
-              ? `Vous allez annuler ${targets.length} rendez-vous. Cette action est définitive.`
+              ? `${targets.length} rendez-vous seront définitivement annulés.`
               : 'Cette action est irréversible.'}
           </Text>
         </View>
-        {!isPatient ? (
-          <StaffCancellationFields values={staff} onChange={patchStaff} />
+
+        {targetLabel && !isBatch ? (
+          <>
+            <View style={styles.summaryDivider} />
+            <View style={styles.targetRow}>
+              <View style={styles.targetIcon}>
+                <CalendarX2 size={16} color={colors.primary} strokeWidth={2.25} />
+              </View>
+              <View style={styles.targetCopy}>
+                <Text style={styles.targetKicker}>Rendez-vous concerné</Text>
+                <Text style={styles.targetName} numberOfLines={2}>
+                  {targetLabel}
+                </Text>
+              </View>
+            </View>
+          </>
         ) : null}
-        <View style={styles.actions}>
-          <Button title="Retour" variant="outline" onPress={onDismiss} />
-          <Button
-            title="Confirmer l'annulation"
-            variant="destructive"
-            loading={mut.isPending}
-            disabled={!isPatient && !canSubmitStaff}
-            onPress={() => mut.mutate()}
-          />
+      </View>
+
+      {!isPatient ? (
+        <View style={styles.formSection}>
+          <Text style={styles.formTitle}>Motif d'annulation</Text>
+          <StaffCancellationFields values={staff} onChange={patchStaff} />
         </View>
-      </DetailPanel>
-    </Animated.View>
+      ) : null}
+    </SheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  warning: {
+  summaryCard: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
+  },
+  warningStrip: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing[2],
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
     backgroundColor: colors.errorLight,
-    borderRadius: 12,
-    padding: spacing[3],
   },
   warningText: {
     flex: 1,
-    fontFamily: fontFamily.medium,
-    fontSize: fontSize.sm,
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.xs,
     color: colors.error,
-    lineHeight: fontSize.sm * 1.45,
+    lineHeight: fontSize.xs * 1.45,
   },
-  actions: {
+  summaryDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.borderLight,
+  },
+  targetRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    padding: spacing[3],
+  },
+  targetIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  targetCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  targetKicker: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize['2xs'],
+    color: colors.textTertiary,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  targetName: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.sm,
+    color: colors.textPrimary,
+  },
+  formSection: {
+    gap: spacing[3],
+  },
+  formTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.sm,
+    color: colors.textPrimary,
+  },
+  footer: {
     gap: spacing[2],
-    marginTop: spacing[2],
   },
 });

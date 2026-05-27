@@ -95,8 +95,12 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
     return null;
   }
 
-  const openWebSheet = (providerType: 'nurse' | 'lab', slug: string, title: string) =>
-    setSheet({ kind: 'web', providerType, slug, title });
+  const openProviderSheet = (
+    providerType: 'nurse' | 'lab',
+    slug: string,
+    title: string,
+    phone?: string,
+  ) => setSheet({ kind: 'provider', providerType, slug, title, phone: phone || null });
 
   const rows: ReactNode[] = [];
 
@@ -111,7 +115,17 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
         gender={appointmentAssigneeGender(apt, 'nurse')}
         phone={String(ext.assigned_nurse_phone ?? '')}
         publicSlug={slug || null}
-        onViewProfile={slug ? () => openWebSheet('nurse', slug, nurseName || 'Infirmier') : undefined}
+        onViewProfile={
+          slug
+            ? () =>
+                openProviderSheet(
+                  'nurse',
+                  slug,
+                  nurseName || 'Infirmier',
+                  String(ext.assigned_nurse_phone ?? ''),
+                )
+            : undefined
+        }
       />,
     );
   }
@@ -126,7 +140,17 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
         gender={appointmentAssigneeGender(apt, 'lab')}
         phone={String(ext.assigned_lab_phone ?? '')}
         publicSlug={slug || null}
-        onViewProfile={slug ? () => openWebSheet('lab', slug, labName || 'Laboratoire') : undefined}
+        onViewProfile={
+          slug
+            ? () =>
+                openProviderSheet(
+                  'lab',
+                  slug,
+                  labName || 'Laboratoire',
+                  String(ext.assigned_lab_phone ?? ''),
+                )
+            : undefined
+        }
       />,
     );
   }

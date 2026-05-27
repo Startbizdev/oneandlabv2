@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Bell, Scale, ScanFace, User } from 'lucide-react-native';
 import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label';
+import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-unread-count';
 import { getNotificationsPath } from '@/navigation/notifications-route';
@@ -13,7 +14,8 @@ export default function PreleveurMore() {
   const nav = (href: string) => router.push(href as never);
 
   return (
-    <RoleMoreTabScreen
+    <TabScreenShell>
+      <RoleMoreTabScreen
       roleLabel="Préleveur"
       sections={[
         {
@@ -49,6 +51,7 @@ export default function PreleveurMore() {
         },
       ]}
       logoutDelay={270}
-    />
+      />
+    </TabScreenShell>
   );
 }

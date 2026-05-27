@@ -10,7 +10,7 @@ import {
   Share2,
   Stethoscope,
 } from 'lucide-react-native';
-import { SheetModal } from '@/components/ui/SheetModal';
+import { SheetModal, PROFILE_SHEET_SNAP_POINTS } from '@/components/ui/SheetModal';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { Button } from '@/components/ui/Button';
 import {
@@ -78,6 +78,7 @@ export function ProfessionalProfileSheet({ visible, onClose, profile, title }: P
       onClose={onClose}
       title={sheetTitle}
       subtitle={profile.emploi?.trim() || 'Professionnel de santé'}
+      snapPoints={PROFILE_SHEET_SNAP_POINTS}
       contentStyle={styles.sheetBody}
     >
       <View style={styles.coverWrap}>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, Modal, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -33,16 +33,24 @@ interface Props {
 export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: Props) {
   const progress = useSharedValue(0);
   const logoScale = useSharedValue(1);
+  const onFinishRef = useRef(onFinish);
+  const finishedRef = useRef(false);
   const [statusIndex, setStatusIndex] = useState(0);
+
+  useEffect(() => {
+    onFinishRef.current = onFinish;
+  }, [onFinish]);
 
   useEffect(() => {
     if (!visible) {
       progress.value = 0;
       logoScale.value = 1;
+      finishedRef.current = false;
       setStatusIndex(0);
       return;
     }
 
+    finishedRef.current = false;
     progress.value = 0;
     progress.value = withTiming(0.78, {
       duration: 4200,
@@ -70,16 +78,26 @@ export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: P
   useEffect(() => {
     if (!visible || !complete) return;
 
+    const invokeFinish = () => {
+      if (finishedRef.current) return;
+      finishedRef.current = true;
+      onFinishRef.current();
+    };
+
     progress.value = withTiming(
       1,
       { duration: 450, easing: Easing.out(Easing.cubic) },
       (finished) => {
         if (finished) {
-          runOnJS(onFinish)();
+          runOnJS(invokeFinish)();
         }
       },
     );
-  }, [complete, onFinish, progress, visible]);
+
+    // Filet de sécurité si le callback Reanimated ne part pas (onFinish recréé, etc.).
+    const fallback = setTimeout(invokeFinish, 700);
+    return () => clearTimeout(fallback);
+  }, [complete, progress, visible]);
 
   const barFillStyle = useAnimatedStyle(() => ({
     width: `${Math.max(4, progress.value * 100)}%`,

@@ -168,14 +168,13 @@ export function PatientAppointmentDetailScreen() {
         </View>
       </KeyboardScrollView>
 
-      {cancelOpen && cancellableForPatient.length > 0 ? (
-        <CancelAppointmentSheet
-          role="patient"
-          targets={cancellableForPatient}
-          onDone={() => router.back()}
-          onDismiss={() => setCancelOpen(false)}
-        />
-      ) : null}
+      <CancelAppointmentSheet
+        visible={cancelOpen && cancellableForPatient.length > 0}
+        role="patient"
+        targets={cancellableForPatient}
+        onDone={() => router.back()}
+        onClose={() => setCancelOpen(false)}
+      />
     </>
   );
 }

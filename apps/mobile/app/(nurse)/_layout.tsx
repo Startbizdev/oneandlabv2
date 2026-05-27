@@ -1,5 +1,7 @@
 import { Fragment } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
+import { APP_HEADER_CHROME } from '@/components/navigation/header-layout';
 import { OfferQueueHost } from '@/features/appointments/components/OfferQueueHost';
 import { useGlobalOfferPolling } from '@/features/appointments/hooks/use-global-offer-polling';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
@@ -10,6 +12,7 @@ export default function NurseLayout() {
 
   return (
     <Fragment>
+    <View style={styles.stackHost}>
     <Stack screenOptions={stackHeaderOptions()}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="appointment/[id]" options={{ title: 'Détail du rendez-vous' }} />
@@ -29,7 +32,12 @@ export default function NurseLayout() {
       <Stack.Screen name="patient/[id]/documents" options={{ headerTitleAlign: 'left' }} />
       <Stack.Screen name="notifications" options={notificationsScreenOptions()} />
     </Stack>
+    </View>
     <OfferQueueHost detailPathPrefix="/(nurse)/appointment" />
     </Fragment>
   );
 }
+
+const styles = StyleSheet.create({
+  stackHost: { flex: 1, backgroundColor: APP_HEADER_CHROME },
+});

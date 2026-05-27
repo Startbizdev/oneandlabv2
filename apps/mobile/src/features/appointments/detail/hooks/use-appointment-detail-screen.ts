@@ -155,6 +155,7 @@ export function useAppointmentDetailScreen(
     docsLoading,
     shareQ,
     isLoading: detailQ.isPending && detailQ.data === undefined,
+    detailFetching: detailQ.isFetching,
     siblingsLoading,
     isRefreshing,
     refreshAll,

@@ -91,7 +91,13 @@ export function isViewerAppointmentCreator(
 }
 
 export type AssigneeProfileSheetState =
-  | { kind: 'web'; providerType: 'nurse' | 'lab'; slug: string; title: string }
+  | {
+      kind: 'provider';
+      providerType: 'nurse' | 'lab';
+      slug: string;
+      title: string;
+      phone?: string | null;
+    }
   | { kind: 'pro'; profile: ProfessionalProfileData; title: string };
 
 export function professionalProfileFromCreatorOrigin(
@@ -125,10 +131,22 @@ export function resolveCreatorOriginProfileSheet(
     : creatorOriginName(origin);
   const slug = origin.public_slug?.trim();
   if (origin.kind === 'nurse' && slug) {
-    return { kind: 'web', providerType: 'nurse', slug, title: name };
+    return {
+      kind: 'provider',
+      providerType: 'nurse',
+      slug,
+      title: name,
+      phone: origin.phone,
+    };
   }
   if (origin.kind === 'lab_team' && slug) {
-    return { kind: 'web', providerType: 'lab', slug, title: name };
+    return {
+      kind: 'provider',
+      providerType: 'lab',
+      slug,
+      title: name,
+      phone: origin.phone,
+    };
   }
   if (origin.kind === 'pro' && profile) {
     return { kind: 'pro', profile, title: name };
