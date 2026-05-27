@@ -99,6 +99,7 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
         onRemove={w.removeService}
         onContinue={bw.confirmStep0}
         onEnsureCategoryReady={w.ensureCategoryReady}
+        formDataByService={w.formDataByService}
         loading={w.saving}
         />
       </View>

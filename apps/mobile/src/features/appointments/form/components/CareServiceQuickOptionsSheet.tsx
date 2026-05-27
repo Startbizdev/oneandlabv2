@@ -40,6 +40,7 @@ interface Props {
   categories: CareCategory[];
   onlyCategoryOptions: boolean;
   onClose: () => void;
+  onDismissed?: () => void;
   onConfirm: (payload: { service: SelectedServiceInput; slice: BookingServiceFormSlice }) => void;
 }
 
@@ -86,6 +87,7 @@ export function CareServiceQuickOptionsSheet({
   categories,
   onlyCategoryOptions,
   onClose,
+  onDismissed,
   onConfirm,
 }: Props) {
   const [localError, setLocalError] = useState('');
@@ -224,6 +226,7 @@ export function CareServiceQuickOptionsSheet({
       visible={isOpen}
       presentKey={category?.id ?? 'closed'}
       onClose={onClose}
+      onDismissed={onDismissed}
       onBack={onClose}
       title={category?.label ?? ''}
       subtitle="Paramétrez votre soin"

@@ -1,10 +1,12 @@
 import type { Appointment } from '@oneandlab/shared-types';
+import { formatCareSelectValueWithAutreDetail } from '@oneandlab/shared-constants';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 import { formatCareOptionRows } from '@/features/appointments/form/utils/selected-service-detail-lines';
 import {
   type DetailKvRow,
   buildAppointmentDetailKvRows,
+  getAppointmentBloodItems,
   getAppointmentNursingItems,
   parseItemCareOptions,
   getAppointmentNotes,
@@ -29,9 +31,21 @@ function careOptionDisplay(
   item: Record<string, unknown>,
   categories: CareCategory[],
 ): string {
-  const co = { [optionKey]: value } as Record<string, string | number>;
-  const rows = formatCareOptionRows(categoryForItem(item, categories), co);
-  const row = rows.find((r) => r.label);
+  const co = parseItemCareOptions(item.care_options);
+  const cat = categoryForItem(item, categories);
+  const opt = cat?.options?.find((o) => o.option_key === optionKey);
+  if (opt?.field_type === 'select') {
+    const choice = opt.options?.find((o) => String(o.value) === String(value));
+    const baseLabel = choice?.label ?? String(value ?? '');
+    return formatCareSelectValueWithAutreDetail(
+      baseLabel,
+      optionKey,
+      value,
+      co as Record<string, unknown>,
+    );
+  }
+  const rows = formatCareOptionRows(cat, co);
+  const row = opt ? rows.find((r) => r.label === opt.label) : rows[0];
   return row?.value ?? String(value ?? '');
 }
 
@@ -61,6 +75,32 @@ export function collectLotNursingItems(
   const seen = new Set<string>();
   for (const apt of batch) {
     for (const item of getAppointmentNursingItems(apt)) {
+      const key = `${String(item.category_id ?? '')}|${nursingItemDisplayLabel(item)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(item);
+    }
+  }
+  return out;
+}
+
+/** Tous les actes labo du lot (agrégat `*_display` ou fratries). */
+export function collectLotBloodItems(
+  primary: Appointment,
+  batch: Appointment[],
+): Array<Record<string, unknown>> {
+  const ext = primary as Appointment & {
+    blood_test_items_display?: unknown;
+    blood_test_items?: unknown;
+  };
+  const disp = ext.blood_test_items_display ?? ext.blood_test_items;
+  if (Array.isArray(disp) && disp.length > 1) {
+    return disp as Array<Record<string, unknown>>;
+  }
+  const out: Array<Record<string, unknown>> = [];
+  const seen = new Set<string>();
+  for (const apt of batch) {
+    for (const item of getAppointmentBloodItems(apt)) {
       const key = `${String(item.category_id ?? '')}|${nursingItemDisplayLabel(item)}`;
       if (seen.has(key)) continue;
       seen.add(key);

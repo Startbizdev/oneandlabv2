@@ -42,6 +42,8 @@ interface Props {
   dismissOnBackdropPress?: boolean;
   enableSwipeToDismiss?: boolean;
   presentKey?: string | number;
+  /** Appelé quand la sheet est entièrement fermée après `visible={false}` (pas au swipe → onClose). */
+  onDismissed?: () => void;
 }
 
 /**
@@ -60,6 +62,7 @@ export function SheetModal({
   dismissOnBackdropPress = true,
   enableSwipeToDismiss = true,
   presentKey,
+  onDismissed,
 }: Props) {
   const modalRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
@@ -90,10 +93,11 @@ export function SheetModal({
     hasPresentedRef.current = false;
     if (dismissFromParentRef.current) {
       dismissFromParentRef.current = false;
+      onDismissed?.();
       return;
     }
     onClose();
-  }, [onClose]);
+  }, [onClose, onDismissed]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (

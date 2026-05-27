@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -15,10 +14,13 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import * as ImagePicker from 'expo-image-picker';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, ImagePlus, Maximize2, Send } from 'lucide-react-native';
+import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
+import { ScreenActionLayout } from '@/components/layout/ScreenActionLayout';
 import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
+import { carePhotoPickErrorMessage, pickCarePhotoUri } from '@/lib/uploads/pick-care-photo';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { queryKeys } from '@/lib/query-keys';
 import {
@@ -36,6 +38,8 @@ import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
+
+const COMPOSER_BAR_HEIGHT = 56 + spacing[2];
 
 interface Props {
   visible: boolean;
@@ -179,18 +183,16 @@ export function CarePhotoDiscussionModal({
   });
 
   const pickAndUpload = useCallback(async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      toast('Autorisez l’accès aux photos dans les réglages.', { type: 'warning' });
-      return;
+    try {
+      const uri = await pickCarePhotoUri();
+      if (uri) uploadMut.mutate(uri);
+    } catch (e) {
+      toast(carePhotoPickErrorMessage(e), { type: 'warning' });
     }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.85,
-      allowsEditing: false,
-    });
-    if (!res.canceled && res.assets[0]?.uri) uploadMut.mutate(res.assets[0].uri);
   }, [toast, uploadMut]);
+
+  const footerInset = Math.max(insets.bottom, spacing[2]);
+  const composerBottomOffset = COMPOSER_BAR_HEIGHT + footerInset;
 
   const isMine = useCallback(
     (authorId: string) =>
@@ -254,14 +256,68 @@ export function CarePhotoDiscussionModal({
             </ScrollView>
           ) : null}
 
-          <KeyboardAvoidingView
+          <ScreenActionLayout
             style={styles.flex}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 56 : 0}
+            footer={
+              canComment || canUpload ? (
+                <KeyboardStickyView offset={{ closed: 0, opened: footerInset }}>
+                  <View style={[styles.composerBar, { paddingBottom: footerInset }]}>
+                    {canUpload ? (
+                      <Pressable
+                        style={styles.attachBtn}
+                        onPress={() => void pickAndUpload()}
+                        disabled={uploadMut.isPending}
+                        accessibilityRole="button"
+                        accessibilityLabel="Ajouter une photo"
+                      >
+                        {uploadMut.isPending ? (
+                          <ActivityIndicator size="small" color={colors.primary} />
+                        ) : (
+                          <ImagePlus size={22} color={colors.primary} strokeWidth={2.25} />
+                        )}
+                      </Pressable>
+                    ) : null}
+                    {canComment ? (
+                      <>
+                        <TextInput
+                          style={styles.input}
+                          placeholder={composerPlaceholder}
+                          placeholderTextColor={colors.textTertiary}
+                          value={draft}
+                          onChangeText={setDraft}
+                          multiline
+                          maxLength={2000}
+                          textAlignVertical="center"
+                        />
+                        <Pressable
+                          style={[
+                            styles.sendBtn,
+                            (!draft.trim() || sendMut.isPending) && styles.sendDisabled,
+                          ]}
+                          onPress={() => sendMut.mutate()}
+                          disabled={!draft.trim() || sendMut.isPending}
+                          accessibilityRole="button"
+                          accessibilityLabel="Envoyer le message"
+                        >
+                          {sendMut.isPending ? (
+                            <ActivityIndicator size="small" color={colors.textInverse} />
+                          ) : (
+                            <Send size={20} color={colors.textInverse} strokeWidth={2.25} />
+                          )}
+                        </Pressable>
+                      </>
+                    ) : (
+                      <Text style={styles.readOnlyHint}>Lecture seule</Text>
+                    )}
+                  </View>
+                </KeyboardStickyView>
+              ) : undefined
+            }
           >
-            <ScrollView
+            <KeyboardScrollView
               ref={scrollRef}
               style={styles.flex}
+              bottomOffset={composerBottomOffset}
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
@@ -321,57 +377,8 @@ export function CarePhotoDiscussionModal({
                   })}
                 </View>
               )}
-            </ScrollView>
-
-            {canComment || canUpload ? (
-              <View style={[styles.composerBar, { paddingBottom: Math.max(insets.bottom, spacing[2]) }]}>
-                {canUpload ? (
-                  <Pressable
-                    style={styles.attachBtn}
-                    onPress={() => void pickAndUpload()}
-                    disabled={uploadMut.isPending}
-                    accessibilityRole="button"
-                    accessibilityLabel="Envoyer une photo"
-                  >
-                    {uploadMut.isPending ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
-                    ) : (
-                      <ImagePlus size={22} color={colors.primary} strokeWidth={2.25} />
-                    )}
-                  </Pressable>
-                ) : null}
-                {canComment ? (
-                  <>
-                    <TextInput
-                      style={styles.input}
-                      placeholder={composerPlaceholder}
-                      placeholderTextColor={colors.textTertiary}
-                      value={draft}
-                      onChangeText={setDraft}
-                      multiline
-                      maxLength={2000}
-                      textAlignVertical="center"
-                    />
-                    <Pressable
-                      style={[styles.sendBtn, (!draft.trim() || sendMut.isPending) && styles.sendDisabled]}
-                      onPress={() => sendMut.mutate()}
-                      disabled={!draft.trim() || sendMut.isPending}
-                      accessibilityRole="button"
-                      accessibilityLabel="Envoyer le message"
-                    >
-                      {sendMut.isPending ? (
-                        <ActivityIndicator size="small" color={colors.textInverse} />
-                      ) : (
-                        <Send size={20} color={colors.textInverse} strokeWidth={2.25} />
-                      )}
-                    </Pressable>
-                  </>
-                ) : (
-                  <Text style={styles.readOnlyHint}>Lecture seule</Text>
-                )}
-              </View>
-            ) : null}
-          </KeyboardAvoidingView>
+            </KeyboardScrollView>
+          </ScreenActionLayout>
         </View>
       </Modal>
 

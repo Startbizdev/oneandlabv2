@@ -257,7 +257,7 @@
                 </UFormField>
               </template>
 
-              <template v-if="form.type === 'nursing'">
+              <template v-if="form.type === 'nursing' && showNursingSchedulingSingleForm">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <UFormField label="Prise en charge" name="duration_days">
                     <USelect v-model="form.form_data.duration_days" :items="nursingDurationOptions" placeholder="Sélectionner" class="w-full" />
@@ -419,7 +419,9 @@
                   </UFormField>
                 </template>
 
-                <template v-if="form.type === 'nursing'">
+                <template
+                  v-if="form.type === 'nursing' && !isCareCategoryWithoutBookingOptions({ name: careCategoryNameForBlock(block) })"
+                >
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <UFormField label="Prise en charge" :name="`duration_days_${block.id}`">
                       <USelect v-model="block.duration_days" :items="nursingDurationOptions" placeholder="Sélectionner" class="w-full" />
@@ -893,6 +895,7 @@ import {
 } from '~/utils/care-category-autre-detail';
 import DashboardPrescriptionSection from '~/components/dashboard/PrescriptionSection.vue';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
+import { isCareCategoryWithoutBookingOptions } from '@oneandlab/shared-utils';
 
 // --- TYPES & INTERFACES ---
 type ServiceType = 'blood_test' | 'nursing';
@@ -1115,6 +1118,7 @@ const careBlocks = ref<CareBlock[]>([makeCareBlock()]);
 function getCareOptionsForBlock(block: CareBlock) {
   const cat = categoriesWithOptions.value.find((c) => String(c.id) === String(block.category_id));
   if (!cat?.options || !Array.isArray(cat.options)) return [];
+  if (isCareCategoryWithoutBookingOptions(cat)) return [];
   return [...cat.options].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 }
 
@@ -1145,6 +1149,12 @@ const careCategoryNameSingleForm = computed(() => {
   const row = categoryOptions.value.find((c) => String(c.value) === id);
   return row?.label ?? '';
 });
+
+const showNursingSchedulingSingleForm = computed(
+  () =>
+    form.type === 'nursing' &&
+    !isCareCategoryWithoutBookingOptions({ name: careCategoryNameSingleForm.value }),
+);
 
 function careCategoryNameForBlock(block: CareBlock): string {
   const id = String(block.category_id || '').trim();
@@ -1734,6 +1744,15 @@ function loadCategoryOptionsForCare(categoryId: string) {
     return;
   }
   const cat = categoriesWithOptions.value.find((c) => String(c.id) === String(categoryId));
+  if (cat && isCareCategoryWithoutBookingOptions(cat)) {
+    categoryOptionsForCare.value = [];
+    if (isNursingAppointment(form.type)) {
+      form.form_data.duration_days = '1';
+      form.form_data.frequency = '';
+      form.form_data.care_options = {};
+    }
+    return;
+  }
   if (cat?.options && Array.isArray(cat.options)) {
     categoryOptionsForCare.value = [...cat.options].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   } else {
@@ -1953,6 +1972,14 @@ function validateMultiCareBlocks(): ClientValidationFail | null {
         description: `${prefix} : choisissez une catégorie dans la liste.`,
       };
     }
+    const withoutBookingOptions = isCareCategoryWithoutBookingOptions({
+      name: careCategoryNameForBlock(block),
+    });
+    if (withoutBookingOptions) {
+      block.duration_days = '1';
+      block.frequency = '';
+      block.care_options = {};
+    }
     const opts = getCareOptionsForBlock(block);
     for (const opt of opts) {
       if (!opt.is_required) continue;
@@ -1998,7 +2025,12 @@ function validateMultiCareBlocks(): ClientValidationFail | null {
       }
     }
 
-    if (isNursingAppointment(form.type) && block.duration_days === 'custom' && !block.custom_days) {
+    if (
+      !withoutBookingOptions &&
+      isNursingAppointment(form.type) &&
+      block.duration_days === 'custom' &&
+      !block.custom_days
+    ) {
       return {
         sectionId: 'appointment-form-section-intervention',
         title: 'Durée requise',
@@ -2006,7 +2038,12 @@ function validateMultiCareBlocks(): ClientValidationFail | null {
       };
     }
 
-    if (isNursingAppointment(form.type) && showNursingFreq(block.duration_days) && !block.frequency) {
+    if (
+      !withoutBookingOptions &&
+      isNursingAppointment(form.type) &&
+      showNursingFreq(block.duration_days) &&
+      !block.frequency
+    ) {
       return {
         sectionId: 'appointment-form-section-intervention',
         title: 'Fréquence requise',
@@ -2044,31 +2081,42 @@ function validateAppointmentFormClient(): ClientValidationFail | null {
     };
   }
 
-  for (const opt of categoryOptionsForCare.value) {
-    if (!opt.is_required) continue;
-    const v = form.form_data.care_options[opt.option_key];
-    const empty =
-      v === undefined || v === null || (typeof v === 'string' && !String(v).trim());
-    if (empty) {
-      return {
-        sectionId: 'appointment-form-section-intervention',
-        title: 'Champ requis',
-        description: `Renseignez « ${opt.label} » pour ce type de soin.`,
-      };
-    }
+  const withoutBookingOptionsSingle = isCareCategoryWithoutBookingOptions({
+    name: careCategoryNameSingleForm.value,
+  });
+  if (withoutBookingOptionsSingle && isNursingAppointment(form.type)) {
+    form.form_data.duration_days = '1';
+    form.form_data.frequency = '';
+    form.form_data.care_options = {};
   }
 
-  for (const opt of categoryOptionsForCare.value) {
-    if (opt.field_type !== 'select' || !categorySelectHasAutreOption(opt)) continue;
-    if (!isAutreSelectValue(form.form_data.care_options[opt.option_key])) continue;
-    const dk = careAutreDetailKey(opt.option_key);
-    const d = form.form_data.care_options[dk];
-    if (d === '' || d == null || String(d).trim() === '') {
-      return {
-        sectionId: 'appointment-form-section-intervention',
-        title: 'Précision requise',
-        description: `Précisez « ${opt.label} » (choix Autre).`,
-      };
+  if (!withoutBookingOptionsSingle) {
+    for (const opt of categoryOptionsForCare.value) {
+      if (!opt.is_required) continue;
+      const v = form.form_data.care_options[opt.option_key];
+      const empty =
+        v === undefined || v === null || (typeof v === 'string' && !String(v).trim());
+      if (empty) {
+        return {
+          sectionId: 'appointment-form-section-intervention',
+          title: 'Champ requis',
+          description: `Renseignez « ${opt.label} » pour ce type de soin.`,
+        };
+      }
+    }
+
+    for (const opt of categoryOptionsForCare.value) {
+      if (opt.field_type !== 'select' || !categorySelectHasAutreOption(opt)) continue;
+      if (!isAutreSelectValue(form.form_data.care_options[opt.option_key])) continue;
+      const dk = careAutreDetailKey(opt.option_key);
+      const d = form.form_data.care_options[dk];
+      if (d === '' || d == null || String(d).trim() === '') {
+        return {
+          sectionId: 'appointment-form-section-intervention',
+          title: 'Précision requise',
+          description: `Précisez « ${opt.label} » (choix Autre).`,
+        };
+      }
     }
   }
 
@@ -2089,7 +2137,12 @@ function validateAppointmentFormClient(): ClientValidationFail | null {
     }
   }
 
-  if (isNursingAppointment(form.type) && form.form_data.duration_days === 'custom' && !form.form_data.custom_days) {
+  if (
+    !withoutBookingOptionsSingle &&
+    isNursingAppointment(form.type) &&
+    form.form_data.duration_days === 'custom' &&
+    !form.form_data.custom_days
+  ) {
     return {
       sectionId: 'appointment-form-section-intervention',
       title: 'Durée requise',
@@ -2097,7 +2150,12 @@ function validateAppointmentFormClient(): ClientValidationFail | null {
     };
   }
 
-  if (isNursingAppointment(form.type) && showNursingFreq(form.form_data.duration_days) && !form.form_data.frequency) {
+  if (
+    !withoutBookingOptionsSingle &&
+    isNursingAppointment(form.type) &&
+    showNursingFreq(form.form_data.duration_days) &&
+    !form.form_data.frequency
+  ) {
     return {
       sectionId: 'appointment-form-section-intervention',
       title: 'Fréquence requise',
@@ -2572,7 +2630,12 @@ watch(
     if (!multiCareEnabled.value || !oldIds?.length) return;
     newIds.forEach((id, i) => {
       if (oldIds[i] !== id && careBlocks.value[i]) {
-        careBlocks.value[i].care_options = {};
+        const block = careBlocks.value[i]!;
+        block.care_options = {};
+        if (isCareCategoryWithoutBookingOptions({ name: careCategoryNameForBlock(block) })) {
+          block.duration_days = '1';
+          block.frequency = '';
+        }
       }
     });
   },
