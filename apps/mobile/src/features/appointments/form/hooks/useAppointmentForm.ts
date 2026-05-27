@@ -423,13 +423,17 @@ export function useMultiAppointmentWizard(opts: {
   }, [opts.initialPatientId, patientsQ.data, fillWizardPatient]);
 
   const onSelectPatient = useCallback(
-    (id: string) => {
+    (id: string, opts?: { keepMode?: boolean }) => {
       setSelectedPatientId(id);
       const isNew = id === NEW_PATIENT_ID;
-      if (isNew) {
-        setPatientMode('new');
-      } else {
-        setPatientMode('existing');
+      if (!opts?.keepMode) {
+        if (isNew) {
+          setPatientMode('new');
+        } else {
+          setPatientMode('existing');
+        }
+      }
+      if (!isNew) {
         const p = patientsQ.data?.find((x) => x.id === id);
         if (p) void fillWizardPatient(p);
       }
@@ -556,9 +560,7 @@ export function useMultiAppointmentWizard(opts: {
       if (err) throw new Error(err.message);
 
       let patientId =
-        patientMode === 'existing' && selectedPatientId && selectedPatientId !== NEW_PATIENT_ID
-          ? selectedPatientId
-          : undefined;
+        selectedPatientId && selectedPatientId !== NEW_PATIENT_ID ? selectedPatientId : undefined;
 
       if (patientMode === 'new' && patient.email?.trim() && !patientId) {
         const lookup = await lookupPatientByEmail(patient.email);

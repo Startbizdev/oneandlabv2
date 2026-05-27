@@ -19,7 +19,7 @@ import {
 } from '../../utils/care-photo-rules';
 import { carePhotosPanelIntro } from '../../utils/care-photo-copy';
 import type { AppointmentDetailRole } from '../../utils/appointment-detail-role-config';
-import { CarePhotoDiscussionSheet } from './CarePhotoDiscussionSheet';
+import { CarePhotoDiscussionModal } from './CarePhotoDiscussionModal';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -194,7 +194,7 @@ export function DetailCarePhotosPanel({ apt, userId, readOnly, viewerRole = 'nur
         </View>
       )}
 
-      <CarePhotoDiscussionSheet
+      <CarePhotoDiscussionModal
         visible={discussionId != null}
         onClose={() => setDiscussionId(null)}
         appointmentId={apt.id}
@@ -202,6 +202,7 @@ export function DetailCarePhotosPanel({ apt, userId, readOnly, viewerRole = 'nur
         viewerUserId={userId}
         viewerRole={viewerRole}
         canComment={canComment}
+        canUpload={canUpload}
       />
     </View>
   );

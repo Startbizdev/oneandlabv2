@@ -7,6 +7,7 @@ import { lookupPatientByEmail, lookupPatientByPhone } from '@/features/patients/
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import { PatientDuplicatePrompt } from './PatientDuplicatePrompt';
 import { PatientSelectSheet } from './PatientSelectSheet';
+import { useToast } from '@/providers/ToastProvider';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -24,7 +25,7 @@ interface Props {
   patientMode: PatientMode;
   onPatientModeChange: (mode: PatientMode) => void;
   selectedPatientId: string;
-  onSelectPatient: (id: string) => void;
+  onSelectPatient: (id: string, opts?: { keepMode?: boolean }) => void;
   firstName: string;
   lastName: string;
   email: string;
@@ -59,6 +60,7 @@ export function FormPatientSection({
   emailOptional,
   onAdoptLookupPatient,
 }: Props) {
+  const { show: toast } = useToast();
   const [selectOpen, setSelectOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [duplicateRow, setDuplicateRow] = useState<PatientRow | null>(null);
@@ -125,9 +127,9 @@ export function FormPatientSection({
   const adoptDuplicate = () => {
     if (!duplicateRow) return;
     setDuplicateOpen(false);
-    onPatientModeChange('existing');
     onAdoptLookupPatient?.(duplicateRow);
-    onSelectPatient(duplicateRow.id);
+    onSelectPatient(duplicateRow.id, { keepMode: true });
+    toast('Patient existant sélectionné', { type: 'success' });
     setDuplicateRow(null);
     suppressKeyRef.current = '';
   };
