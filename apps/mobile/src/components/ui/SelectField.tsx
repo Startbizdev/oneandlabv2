@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
 import { BottomSheet } from './BottomSheet';
+import { useInBottomSheet } from './sheet-keyboard-context';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -26,18 +27,37 @@ export function SelectField({
   error,
   sheetTitle,
 }: Props) {
+  const inSheet = useInBottomSheet();
   const [open, setOpen] = useState(false);
   const selectedLabel = useMemo(
     () => options.find((o) => o.value === value)?.label,
     [options, value],
   );
 
+  function selectOption(next: string) {
+    onChange(next);
+    setOpen(false);
+  }
+
+  const optionItems = options.map((opt) => {
+    const active = opt.value === value;
+    return (
+      <Pressable
+        key={opt.value}
+        onPress={() => selectOption(opt.value)}
+        style={[styles.item, active && styles.itemActive]}
+      >
+        <Text style={[styles.itemText, active && styles.itemTextActive]}>{opt.label}</Text>
+      </Pressable>
+    );
+  });
+
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
       <Pressable
-        onPress={() => setOpen(true)}
-        style={[styles.trigger, error ? styles.triggerError : null]}
+        onPress={() => setOpen((prev) => (inSheet ? !prev : true))}
+        style={[styles.trigger, error ? styles.triggerError : null, open && inSheet && styles.triggerOpen]}
       >
         <Text
           style={[styles.triggerText, !selectedLabel && styles.placeholder]}
@@ -45,35 +65,37 @@ export function SelectField({
         >
           {selectedLabel ?? placeholder}
         </Text>
-        <ChevronDown size={18} color={colors.textSecondary} strokeWidth={2} />
+        <View style={open && inSheet ? styles.chevronOpen : undefined}>
+          <ChevronDown size={18} color={colors.textSecondary} strokeWidth={2} />
+        </View>
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <BottomSheet
-        visible={open}
-        onClose={() => setOpen(false)}
-        title={sheetTitle ?? label}
-      >
-        <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
-          {options.map((opt) => {
-            const active = opt.value === value;
-            return (
-              <Pressable
-                key={opt.value}
-                onPress={() => {
-                  onChange(opt.value);
-                  setOpen(false);
-                }}
-                style={[styles.item, active && styles.itemActive]}
-              >
-                <Text style={[styles.itemText, active && styles.itemTextActive]}>
-                  {opt.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </BottomSheet>
+      {inSheet && open ? (
+        <View style={styles.inlinePanel}>
+          <ScrollView
+            style={styles.inlineList}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {optionItems}
+          </ScrollView>
+        </View>
+      ) : null}
+
+      {!inSheet ? (
+        <BottomSheet
+          visible={open}
+          onClose={() => setOpen(false)}
+          title={sheetTitle ?? label}
+          stackBehavior="push"
+        >
+          <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
+            {optionItems}
+          </ScrollView>
+        </BottomSheet>
+      ) : null}
     </View>
   );
 }
@@ -98,6 +120,23 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
   },
   triggerError: { borderColor: colors.borderError },
+  triggerOpen: {
+    borderColor: colors.primary,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  chevronOpen: { transform: [{ rotate: '180deg' }] },
+  inlinePanel: {
+    marginTop: -1,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: colors.primary,
+    borderBottomLeftRadius: radius.lg,
+    borderBottomRightRadius: radius.lg,
+    backgroundColor: colors.surface,
+    overflow: 'hidden',
+  },
+  inlineList: { maxHeight: 220 },
   triggerText: {
     flex: 1,
     fontFamily: fontFamily.medium,

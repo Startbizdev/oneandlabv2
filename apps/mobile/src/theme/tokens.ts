@@ -97,6 +97,17 @@ export const elevation = {
     android: { elevation: 14 },
     default: {},
   })!,
+  /** Feuille de contenu sous le header — ombre vers le haut, très légère. */
+  contentSheetTop: Platform.select({
+    ios: {
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: -3 },
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+    },
+    android: { elevation: 4 },
+    default: {},
+  })!,
 } as const;
 
 export const animation = {

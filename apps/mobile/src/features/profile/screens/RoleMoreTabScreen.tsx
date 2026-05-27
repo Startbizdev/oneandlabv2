@@ -77,11 +77,11 @@ export function RoleMoreTabScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: colors.surface },
   scroll: {
     paddingHorizontal: spacing[4],
-    paddingBottom: spacing[8],
-    gap: spacing[4],
     paddingTop: spacing[4],
+    paddingBottom: spacing[10],
+    gap: spacing[4],
   },
 });

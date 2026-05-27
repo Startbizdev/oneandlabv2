@@ -44,8 +44,12 @@ export function PatientAssigneeRows({ apt }: Props) {
   const hideCreatorOrigin = isViewerAppointmentCreator(apt, user?.id);
 
   const blocks: ReactNode[] = [];
-  const openWebSheet = (providerType: 'nurse' | 'lab', slug: string, title: string) =>
-    setSheet({ kind: 'web', providerType, slug, title });
+  const openProviderSheet = (
+    providerType: 'nurse' | 'lab',
+    slug: string,
+    title: string,
+    phone?: string,
+  ) => setSheet({ kind: 'provider', providerType, slug, title, phone: phone || null });
 
   const nurseName = String(ext.assigned_nurse_display_name ?? '').trim();
   if (isNursingAppointment(apt.type) && !hideNurse && (nurseName || ext.assigned_nurse_id)) {
@@ -59,7 +63,17 @@ export function PatientAssigneeRows({ apt }: Props) {
         gender={appointmentAssigneeGender(apt, 'nurse')}
         phone={String(ext.assigned_nurse_phone ?? '')}
         publicSlug={slug || null}
-        onViewProfile={slug ? () => openWebSheet('nurse', slug, nurseName || 'Infirmier') : undefined}
+        onViewProfile={
+          slug
+            ? () =>
+                openProviderSheet(
+                  'nurse',
+                  slug,
+                  nurseName || 'Infirmier',
+                  String(ext.assigned_nurse_phone ?? ''),
+                )
+            : undefined
+        }
       />,
     );
   }
@@ -76,7 +90,17 @@ export function PatientAssigneeRows({ apt }: Props) {
         gender={appointmentAssigneeGender(apt, 'lab')}
         phone={String(ext.assigned_lab_phone ?? '')}
         publicSlug={slug || null}
-        onViewProfile={slug ? () => openWebSheet('lab', slug, labName || 'Laboratoire') : undefined}
+        onViewProfile={
+          slug
+            ? () =>
+                openProviderSheet(
+                  'lab',
+                  slug,
+                  labName || 'Laboratoire',
+                  String(ext.assigned_lab_phone ?? ''),
+                )
+            : undefined
+        }
       />,
     );
   }

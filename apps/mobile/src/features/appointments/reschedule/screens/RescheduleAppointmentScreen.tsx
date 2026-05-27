@@ -1,17 +1,18 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CalendarPlus, RefreshCcw, User } from 'lucide-react-native';
+import { User } from 'lucide-react-native';
 import { FormScreen } from '@/components/layout/FormScreen';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import { CategoryPicker } from '../../form/components/CategoryPicker';
 import { FormScheduleSection } from '../../form/components/FormScheduleSection';
+import { RescheduleChoiceStep } from '../components/RescheduleChoiceStep';
 import { useRescheduleAppointment } from '../hooks/useRescheduleAppointment';
 import {
   reschedulePatientDisplayName,
   reschedulePatientPhone,
+  reschedulePatientTitleName,
 } from '../utils/reschedule-patient-display';
-import type { RescheduleChoiceMode } from '../utils/build-reschedule-payload';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -20,26 +21,6 @@ interface Props {
   role: string;
   basePath: string;
 }
-
-const CHOICES: {
-  mode: RescheduleChoiceMode;
-  title: string;
-  description: string;
-  icon: typeof RefreshCcw;
-}[] = [
-  {
-    mode: 'cancel_and_new',
-    title: 'Remplacer le RDV',
-    description: 'Annuler l’ancien, créer le nouveau.',
-    icon: RefreshCcw,
-  },
-  {
-    mode: 'create_only',
-    title: 'Créer un nouveau RDV',
-    description: 'L’ancien reste inchangé.',
-    icon: CalendarPlus,
-  },
-];
 
 export function RescheduleAppointmentScreen({ appointmentId, role, basePath }: Props) {
   const r = useRescheduleAppointment({ appointmentId, role, basePath });
@@ -53,6 +34,8 @@ export function RescheduleAppointmentScreen({ appointmentId, role, basePath }: P
   }
 
   if (r.step === 'choice') {
+    const patientTitle = reschedulePatientTitleName(r.appointment);
+
     return (
       <FormScreen
         contentContainerStyle={styles.content}
@@ -68,26 +51,11 @@ export function RescheduleAppointmentScreen({ appointmentId, role, basePath }: P
           </View>
         }
       >
-        <Text style={styles.intro}>
-          Choisissez comment reprendre ce rendez-vous, puis continuez.
-        </Text>
-        <View style={styles.choiceGrid}>
-          {CHOICES.map((c) => {
-            const on = r.choiceMode === c.mode;
-            const Icon = c.icon;
-            return (
-              <Pressable
-                key={c.mode}
-                onPress={() => r.setChoiceMode(c.mode)}
-                style={[styles.choiceCard, on && styles.choiceCardActive]}
-              >
-                <Icon size={24} color={on ? colors.primary : colors.textSecondary} strokeWidth={1.75} />
-                <Text style={[styles.choiceTitle, on && styles.choiceTitleActive]}>{c.title}</Text>
-                <Text style={styles.choiceDesc}>{c.description}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <RescheduleChoiceStep
+          patientName={patientTitle}
+          choiceMode={r.choiceMode}
+          onSelect={r.setChoiceMode}
+        />
       </FormScreen>
     );
   }
@@ -174,41 +142,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-  },
-  intro: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: fontSize.sm * 1.5,
-  },
-  choiceGrid: {
-    gap: spacing[3],
-  },
-  choiceCard: {
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderRadius: radius.xl,
-    padding: spacing[4],
-    gap: spacing[2],
-    backgroundColor: colors.surface,
-  },
-  choiceCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
-  choiceTitle: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.base,
-    color: colors.textPrimary,
-  },
-  choiceTitleActive: {
-    color: colors.primaryDark,
-  },
-  choiceDesc: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
-    lineHeight: fontSize.xs * 1.45,
   },
   backLink: {
     alignSelf: 'flex-start',

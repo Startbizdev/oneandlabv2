@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Keyboard, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image as ImageIcon } from 'lucide-react-native';
 import {
@@ -53,6 +53,9 @@ export function StaffCancellationFields({ values, onChange }: Props) {
           onChange({ comment: v.slice(0, CANCELLATION_COMMENT_MAX_LENGTH) })
         }
         multiline
+        returnKeyType="done"
+        blurOnSubmit
+        onSubmitEditing={() => Keyboard.dismiss()}
         placeholder="Décrivez brièvement la situation…"
         error={
           comment.length > 0 && commentLen < CANCELLATION_COMMENT_MIN_LENGTH

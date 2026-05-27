@@ -55,13 +55,14 @@ export function AppointmentDetailScreen({ role }: Props) {
   /** Infirmier : pas de fiche détail tant que l’offre n’est pas acceptée (modal d’abord). */
   useEffect(() => {
     if (!id || !user?.id || !primary || role !== 'nurse') return;
+    if (s.detailFetching) return;
     if (!isPendingIncomingOffer(primary, user.id)) return;
 
     void (async () => {
       await openIncomingOffer(id, role, user.id);
       router.replace('/(nurse)/(tabs)/demandes' as never);
     })();
-  }, [id, openIncomingOffer, primary, role, router, user?.id]);
+  }, [id, openIncomingOffer, primary, role, router, s.detailFetching, user?.id]);
   const showCarePhotos = Boolean(
     config.showCarePhotosBlock && primary && isCarePhotoGalleryContext(primary),
   );
@@ -236,14 +237,13 @@ export function AppointmentDetailScreen({ role }: Props) {
         </View>
       </ScrollView>
 
-      {cancelOpen && !canceled ? (
-        <CancelAppointmentSheet
-          role={role}
-          targets={[primary]}
-          onDone={() => router.back()}
-          onDismiss={() => setCancelOpen(false)}
-        />
-      ) : null}
+      <CancelAppointmentSheet
+        visible={cancelOpen && !canceled}
+        role={role}
+        targets={[primary]}
+        onDone={() => router.back()}
+        onClose={() => setCancelOpen(false)}
+      />
     </>
   );
 }

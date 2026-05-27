@@ -1,7 +1,8 @@
 import { useLayoutEffect } from 'react';
 import { useNavigation } from 'expo-router';
+import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { PreleveurAppointmentsListScreen } from '@/features/appointments/screens/PreleveurAppointmentsListScreen';
-import { HeaderLogo } from '@/navigation/HeaderLogo';
+import { HeaderGreeting } from '@/navigation/HeaderGreeting';
 
 export default function PreleveurHome() {
   const navigation = useNavigation();
@@ -9,9 +10,13 @@ export default function PreleveurHome() {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: '',
-      headerLeft: () => <HeaderLogo size="lg" />,
+      headerLeft: () => <HeaderGreeting />,
     });
   }, [navigation]);
 
-  return <PreleveurAppointmentsListScreen detailPathPrefix="/(preleveur)/appointment" />;
+  return (
+    <TabScreenShell>
+      <PreleveurAppointmentsListScreen detailPathPrefix="/(preleveur)/appointment" />
+    </TabScreenShell>
+  );
 }

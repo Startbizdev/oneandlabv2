@@ -1,15 +1,14 @@
 import React, { useCallback } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { BottomTabBarProps, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
-import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '@/theme';
+import * as Haptics from 'expo-haptics';
+import { colors, spacing } from '@/theme';
 import { fontFamily } from '@/theme/typography';
 
-/** Hauteur contenu standard (proche tab bar iOS ~49pt). */
-const TAB_CONTENT_HEIGHT = 48;
+/** Hauteur zone icône + libellé (hors safe area bas). */
+const TAB_CONTENT_HEIGHT = 50;
 
-/** Onglets masqués (ex. `index` redirect avec `href: null`) n’ont pas d’icône. */
 function isTabVisible(options: BottomTabNavigationOptions): boolean {
   if (options.tabBarButton === null) return false;
   return options.tabBarIcon != null;
@@ -70,23 +69,14 @@ function TabItem({
 }
 
 /**
- * Tab bar compacte : seul `insets.bottom` est appliqué ici (doc React Navigation).
- * Les écrans ne doivent pas ajouter de padding bottom pour la home indicator.
- * Pastilles : intégrées dans `tabBarIcon` (voir TabBarIconBadge).
+ * Tab bar — insets bas via `useSafeAreaInsets` (recommandation React Navigation 2026).
+ * @see https://reactnavigation.org/docs/handling-safe-area/
  */
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const { bottom } = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          height: TAB_CONTENT_HEIGHT + bottom,
-          paddingBottom: bottom,
-        },
-      ]}
-    >
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing[1]) }]}>
       <View style={styles.row}>
         {state.routes.map((route, routeIndex) => {
           const { options } = descriptors[route.key];
@@ -128,22 +118,22 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   row: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: TAB_CONTENT_HEIGHT,
+    paddingTop: spacing[1.5],
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 4,
+    paddingBottom: spacing[1],
   },
   iconSlot: {
     height: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
+    marginBottom: spacing[0.5],
   },
   label: {
     fontFamily: fontFamily.medium,

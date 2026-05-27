@@ -1,31 +1,28 @@
-import { Pressable, StyleSheet } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
+import {
+  HeaderGradientOrbButton,
+  HeaderOrbIconSize,
+  HeaderOrbIconStroke,
+} from '@/components/navigation/HeaderGradientOrbButton';
 import { colors } from '@/theme';
 
 interface Props {
   onPress: () => void;
 }
 
-/** Retour header custom (remplace HeaderBackButton natif @react-navigation/elements). */
+/** Retour — anneau gradient + fond verre. */
 export function HeaderBackButton({ onPress }: Props) {
   return (
-    <Pressable
+    <HeaderGradientOrbButton
       onPress={onPress}
-      hitSlop={8}
-      style={styles.btn}
-      accessibilityRole="button"
       accessibilityLabel="Retour"
+      variant="glass"
     >
-      <ChevronLeft size={24} color={colors.primary} strokeWidth={2.25} />
-    </Pressable>
+      <ChevronLeft
+        size={HeaderOrbIconSize()}
+        color={colors.primaryDark}
+        strokeWidth={HeaderOrbIconStroke()}
+      />
+    </HeaderGradientOrbButton>
   );
 }
-
-const styles = StyleSheet.create({
-  btn: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

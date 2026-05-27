@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { InteractionManager, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -57,6 +57,7 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
   const [loading, setLoading] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [prepComplete, setPrepComplete] = useState(false);
+  const acceptedAptIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!visible && !preparing) {
@@ -164,19 +165,30 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
 
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    await Promise.all([
-      qc.prefetchQuery({
-        queryKey: queryKeys.appointments.detail(selected.id),
-        queryFn: async () => {
-          const res = await fetchAppointment(selected.id);
-          if (!res.success || !res.data) {
-            throw new Error(res.error ?? 'RDV introuvable');
-          }
-          return res.data;
-        },
-      }),
-      qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
-    ]);
+    const acceptedId = selected.id;
+    acceptedAptIdRef.current = acceptedId;
+
+    qc.setQueryData<Appointment>(queryKeys.appointments.detail(acceptedId), (prev) =>
+      prev ? { ...prev, status: 'confirmed' } : prev,
+    );
+
+    try {
+      await Promise.all([
+        qc.prefetchQuery({
+          queryKey: queryKeys.appointments.detail(acceptedId),
+          queryFn: async () => {
+            const res = await fetchAppointment(acceptedId);
+            if (!res.success || !res.data) {
+              throw new Error(res.error ?? 'RDV introuvable');
+            }
+            return res.data;
+          },
+        }),
+        qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+      ]);
+    } catch {
+      /* Navigation quand même — cache optimiste déjà à jour. */
+    }
 
     const minOverlayMs = 1400;
     const elapsed = Date.now() - startedAt;
@@ -188,22 +200,30 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
     setPrepComplete(true);
   }, [finishAndNext, qc, row, selected, shareToken, termsAccepted, toast, user?.id]);
 
-  const onPrepFinish = useCallback(async () => {
-    const aptId = selected?.id;
+  const onPrepFinish = useCallback(() => {
+    const aptId = acceptedAptIdRef.current ?? selected?.id ?? null;
+    acceptedAptIdRef.current = null;
+
     setPreparing(false);
     setPrepComplete(false);
+    closeModal();
+
     toast(
       batchCount > 1 ? `Lot accepté (${batchCount} soins)` : 'Rendez-vous accepté !',
       { type: 'success' },
     );
-    closeModal();
-    if (aptId) {
-      router.replace(`${detailPathPrefix}/${aptId}` as never);
+
+    if (!aptId) {
+      if (user?.role && user.id) {
+        void useOfferQueueStore.getState().processNext(user.role, user.id);
+      }
       return;
     }
-    if (user?.role && user.id) {
-      void useOfferQueueStore.getState().processNext(user.role, user.id);
-    }
+
+    const href = `${detailPathPrefix}/${aptId}` as const;
+    InteractionManager.runAfterInteractions(() => {
+      router.push(href as never);
+    });
   }, [batchCount, closeModal, detailPathPrefix, router, selected?.id, toast, user?.id, user?.role]);
 
   if (!preparing && (!visible || !selected || !row)) {
@@ -267,7 +287,7 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
       <OfferAcceptPreparationOverlay
         visible={preparing}
         complete={prepComplete}
-        onFinish={() => void onPrepFinish()}
+        onFinish={onPrepFinish}
       />
     </>
   );

@@ -1,7 +1,8 @@
 import { useLayoutEffect } from 'react';
 import { useNavigation } from 'expo-router';
+import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { PatientAppointmentsListScreen } from '@/features/patient/screens/PatientAppointmentsListScreen';
-import { HeaderLogo } from '@/navigation/HeaderLogo';
+import { HeaderGreeting } from '@/navigation/HeaderGreeting';
 import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
 
 export default function PatientAppointmentsTab() {
@@ -10,10 +11,14 @@ export default function PatientAppointmentsTab() {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: '',
-      headerLeft: () => <HeaderLogo size="lg" />,
+      headerLeft: () => <HeaderGreeting />,
       headerRight: tabHeaderNotificationRight(),
     });
   }, [navigation]);
 
-  return <PatientAppointmentsListScreen />;
+  return (
+    <TabScreenShell>
+      <PatientAppointmentsListScreen />
+    </TabScreenShell>
+  );
 }

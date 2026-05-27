@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
-import { AppointmentsBookCta } from '@/features/appointments/components/AppointmentsBookCta';
+import {
+  AppointmentsRdvListBookHeader,
+  AppointmentsRdvListFilterHeader,
+  rdvListChromeStyles,
+} from '@/features/appointments/components/AppointmentsRdvListToolbar';
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
-import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
 import {
   flattenInfiniteAppointments,
   useInfiniteAppointmentsList,
@@ -17,10 +20,8 @@ import {
 import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
 import { useStaleForegroundRefetch } from '@/lib/hooks/use-stale-foreground-refetch';
 import { prefetchAppointmentsForUser } from '@/features/appointments/lib/prefetch-appointments';
-import { useAuthStore } from '@/store/auth-store';
 import { PATIENT_TAB_OPTIONS, type PatientListTab } from '@/constants/appointments-list-filters';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
-import { colors, spacing } from '@/theme';
 
 function matchesSearch(apt: Appointment, q: string): boolean {
   const s = q.toLowerCase().trim();
@@ -38,7 +39,6 @@ function matchesSearch(apt: Appointment, q: string): boolean {
 
 export function PatientAppointmentsListScreen() {
   const router = useRouter();
-  const userId = useAuthStore((s) => s.user?.id);
   const [tab, setTab] = useState<PatientListTab>('upcoming');
   const [search, setSearch] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -106,63 +106,60 @@ export function PatientAppointmentsListScreen() {
   );
 
   const ListHeader = useCallback(
-    () => (
-      <View style={styles.listHeader}>
-        <AppointmentsBookCta href="/(patient)/booking/new" label="Prendre rendez-vous" />
-      </View>
-    ),
+    () => <AppointmentsRdvListBookHeader href="/(patient)/booking/new" />,
     [],
   );
 
-  return (
-    <View style={styles.container}>
-      {query.isError ? (
-        <View style={styles.errorWrap}>
-          <EmptyState
-            title="Impossible de charger vos rendez-vous"
-            description={
-              query.error instanceof Error
-                ? query.error.message
-                : 'Vérifiez votre connexion et réessayez.'
-            }
-            actionLabel="Réessayer"
-            onAction={() => void refetch()}
-          />
-        </View>
-      ) : (
-        <InfiniteQueryFlatList
-          query={query}
-          items={displayRows}
-          header={
-            <AppointmentsListFilterBar
-              search={search}
-              onSearchChange={setSearch}
-              searchPlaceholder="Soin, adresse, nom…"
-              onOpenFilters={() => setSheetOpen(true)}
-              advancedFilterCount={advancedCount}
-              chips={filterChips}
-            />
+  if (query.isError) {
+    return (
+      <View style={rdvListChromeStyles.errorWrap}>
+        <EmptyState
+          title="Impossible de charger vos rendez-vous"
+          description={
+            query.error instanceof Error
+              ? query.error.message
+              : 'Vérifiez votre connexion et réessayez.'
           }
-          renderItem={renderItem}
-          keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
-          ListHeaderComponent={ListHeader}
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          skeletonHeight={116}
-          ListEmptyComponent={
-            !query.isPending ? (
-              <EmptyState
-                imageSource={EMPTY_RDV_IMAGE}
-                imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-                imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-                title={tab === 'upcoming' ? 'Aucun rendez-vous à venir' : 'Aucun rendez-vous passé'}
-                description="Réservez un nouveau rendez-vous avec le bouton ci-dessus."
-              />
-            ) : null
-          }
+          actionLabel="Réessayer"
+          onAction={() => void refetch()}
         />
-      )}
+      </View>
+    );
+  }
+
+  return (
+    <View style={rdvListChromeStyles.container}>
+      <InfiniteQueryFlatList
+        query={query}
+        items={displayRows}
+        header={
+          <AppointmentsRdvListFilterHeader
+            search={search}
+            onSearchChange={setSearch}
+            onOpenFilters={() => setSheetOpen(true)}
+            advancedFilterCount={advancedCount}
+            chips={filterChips}
+          />
+        }
+        renderItem={renderItem}
+        keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
+        ListHeaderComponent={ListHeader}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={rdvListChromeStyles.listContent}
+        showsVerticalScrollIndicator={false}
+        skeletonHeight={116}
+        ListEmptyComponent={
+          !query.isPending ? (
+            <EmptyState
+              imageSource={EMPTY_RDV_IMAGE}
+              imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+              imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
+              title={tab === 'upcoming' ? 'Aucun rendez-vous à venir' : 'Aucun rendez-vous passé'}
+              description="Réservez un nouveau rendez-vous avec le bouton ci-dessus."
+            />
+          ) : null
+        }
+      />
 
       <AppointmentsFilterSheet
         visible={sheetOpen}
@@ -181,21 +178,3 @@ export function PatientAppointmentsListScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  errorWrap: {
-    flex: 1,
-    paddingHorizontal: spacing[4],
-    justifyContent: 'center',
-  },
-  listContent: {
-    paddingHorizontal: spacing[4],
-    paddingBottom: spacing[8],
-    flexGrow: 1,
-  },
-  listHeader: {
-    gap: spacing[2],
-    marginBottom: spacing[1],
-  },
-});

@@ -1,7 +1,8 @@
 import { useLayoutEffect } from 'react';
 import { useNavigation } from 'expo-router';
+import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { RoleFilteredAppointmentsListScreen } from '@/features/appointments/screens/RoleFilteredAppointmentsListScreen';
-import { HeaderLogo } from '@/navigation/HeaderLogo';
+import { HeaderGreeting } from '@/navigation/HeaderGreeting';
 import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
 
 export default function ProAppointmentsTab() {
@@ -10,17 +11,19 @@ export default function ProAppointmentsTab() {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: '',
-      headerLeft: () => <HeaderLogo size="lg" />,
+      headerLeft: () => <HeaderGreeting />,
       headerRight: tabHeaderNotificationRight(),
     });
   }, [navigation]);
 
   return (
-    <RoleFilteredAppointmentsListScreen
-      role="pro"
-      detailPathPrefix="/(pro)/appointment"
-      bookHref="/(pro)/appointments/new"
-      bookLabel="Prendre un rendez-vous"
-    />
+    <TabScreenShell>
+      <RoleFilteredAppointmentsListScreen
+        role="pro"
+        detailPathPrefix="/(pro)/appointment"
+        bookHref="/(pro)/appointments/new"
+        bookLabel="Prendre un rendez-vous"
+      />
+    </TabScreenShell>
   );
 }
