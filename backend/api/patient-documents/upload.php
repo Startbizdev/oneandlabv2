@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../config/upload-limits.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Crypto.php';
 require_once __DIR__ . '/../../lib/Logger.php';
+require_once __DIR__ . '/../../lib/PatientDossierAccess.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/UploadMimeTypes.php';
 
@@ -81,32 +82,9 @@ $crypto = new Crypto();
 $logger = new Logger();
 $userModel = new User();
 
-// Pro / nurse / lab / sous-compte : vérifier le périmètre (created_by)
-if (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount'], true)) {
-    $checkStmt = $db->prepare('SELECT id, role, created_by FROM profiles WHERE id = ? LIMIT 1');
-    $checkStmt->execute([$targetPatientId]);
-    $profile = $checkStmt->fetch(PDO::FETCH_ASSOC);
-    if (!$profile || ($profile['role'] ?? '') !== 'patient') {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Accès refusé']);
-        exit;
-    }
-    $cb = (string) ($profile['created_by'] ?? '');
-    $ok = false;
-    if (in_array($user['role'], ['pro', 'nurse', 'subaccount'], true)) {
-        $ok = ($cb === $user['user_id']);
-    } elseif ($user['role'] === 'lab') {
-        if ($cb === $user['user_id']) {
-            $ok = true;
-        } else {
-            $creatorLabId = $userModel->getLabId($cb);
-            $ok = ($creatorLabId === $user['user_id']);
-        }
-    }
-    if (!$ok && $userModel->hasProfessionalAccessToPatient($user['user_id'], $targetPatientId)) {
-        $ok = true;
-    }
-    if (!$ok) {
+// Staff : même périmètre que patient-history (créateur, PPA, RDV assigné…)
+if (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'], true)) {
+    if (!PatientDossierAccess::canAccess($db, $userModel, $user, $targetPatientId)) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Accès refusé']);
         exit;

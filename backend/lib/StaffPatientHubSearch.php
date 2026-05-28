@@ -547,6 +547,15 @@ final class StaffPatientHubSearch
      */
     private function preferDocumentItem(array $candidate, array $existing): bool
     {
+        $docType = (string) ($candidate['document_type'] ?? '');
+        if (in_array($docType, ['carte_vitale', 'carte_mutuelle'], true)) {
+            $cProfile = ($candidate['source'] ?? '') === 'profile';
+            $eProfile = ($existing['source'] ?? '') === 'profile';
+            if ($cProfile !== $eProfile) {
+                return $cProfile;
+            }
+        }
+
         $cMed = trim((string) ($candidate['medical_document_id'] ?? '')) !== '';
         $eMed = trim((string) ($existing['medical_document_id'] ?? '')) !== '';
         if ($cMed !== $eMed) {

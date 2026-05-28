@@ -13,9 +13,8 @@ export function staffHubItemRoute(
     return `${rolePrefix}/patient/${item.patient_id}`;
   }
   if (item.kind === 'document') {
-    if (item.source === 'appointment' && item.appointment_id) {
-      const segment = item.document_type === 'care_photo' ? 'photos' : 'documents';
-      return `${rolePrefix}/appointment/${item.appointment_id}?segment=${segment}`;
+    if (item.document_type === 'care_photo' && item.appointment_id) {
+      return `${rolePrefix}/appointment/${item.appointment_id}?segment=photos`;
     }
     return `${rolePrefix}/patient/${item.patient_id}/documents`;
   }

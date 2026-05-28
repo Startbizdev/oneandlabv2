@@ -24,6 +24,7 @@ import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { patientFolderHeaderTitle } from '@/navigation/PatientFolderHeaderTitle';
 import { ProfileStackBackButton } from '@/navigation/ProfileStackBackButton';
 import { getDocumentTypeLabel } from '@/features/appointments/detail/utils/document-labels';
+import dayjs from 'dayjs';
 import {
   formatDocumentFileSubtitle,
   formatDocumentRowTitle,
@@ -44,9 +45,31 @@ const DOC_ICONS: Record<string, LucideIcon> = {
   carte_vitale: CreditCard,
   carte_mutuelle: Shield,
   ordonnance: FileText,
+  resultats: FileText,
   autres_assurances: FileText,
   other: FileText,
 };
+
+function formatPatientDocumentSubtitle(item: {
+  document_type?: string;
+  file_name?: string;
+  created_at?: string;
+  source?: 'profile' | 'appointment';
+  appointment_scheduled_at?: string;
+}): string {
+  const base = formatDocumentFileSubtitle(
+    item.document_type ?? 'other',
+    item.file_name,
+    item.created_at,
+  );
+  if (item.source === 'appointment' && item.appointment_scheduled_at) {
+    const rdv = dayjs(item.appointment_scheduled_at);
+    if (rdv.isValid()) {
+      return `${base} · RDV ${rdv.format('D MMM YYYY')}`;
+    }
+  }
+  return base;
+}
 
 const UPLOAD_SLOTS: { key: PatientProfileUploadType; Icon: LucideIcon }[] = [
   { key: 'carte_vitale', Icon: CreditCard },
@@ -237,7 +260,7 @@ export function StaffPatientDocumentsScreen() {
       <View style={styles.container}>
         <FlatList
           data={pageDocs}
-          keyExtractor={(d) => d.id}
+          keyExtractor={(d) => d.medical_document_id ?? d.id}
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -269,11 +292,7 @@ export function StaffPatientDocumentsScreen() {
           renderItem={({ item }) => {
             const Icon = DOC_ICONS[item.document_type ?? ''] ?? FileText;
             const label = formatDocumentRowTitle(item.document_type ?? 'other');
-            const sub = formatDocumentFileSubtitle(
-              item.document_type ?? 'other',
-              item.file_name,
-              item.created_at,
-            );
+            const sub = formatPatientDocumentSubtitle(item);
             const medicalId = item.medical_document_id ?? item.id;
             return (
               <SavedDocumentRow
