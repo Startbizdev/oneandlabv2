@@ -22,6 +22,9 @@ export type PatientDocumentRow = {
   document_type?: string;
   file_name?: string;
   created_at?: string;
+  source?: 'profile' | 'appointment';
+  appointment_id?: string;
+  appointment_scheduled_at?: string;
 };
 
 export const PATIENT_PROFILE_UPLOAD_TYPES = [

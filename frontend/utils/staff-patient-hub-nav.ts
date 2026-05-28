@@ -5,9 +5,6 @@ export function staffHubItemHref(item: StaffHubSearchItem, basePath: string): st
     return `/profile?userId=${encodeURIComponent(item.patient_id)}`;
   }
   if (item.kind === 'document') {
-    if (item.source === 'appointment' && item.appointment_id) {
-      return `${basePath}/appointments/${encodeURIComponent(item.appointment_id)}`;
-    }
     return `/profile?userId=${encodeURIComponent(item.patient_id)}`;
   }
   const hash = `rdv-care-photo-${encodeURIComponent(item.medical_document_id)}`;
