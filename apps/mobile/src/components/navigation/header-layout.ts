@@ -29,7 +29,7 @@ const contentSheetTopRadius = (): Pick<
 export function appContentSheetShadowStyle(): ViewStyle {
   return {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     ...contentSheetTopRadius(),
     ...elevation.contentSheetTop,
   };
@@ -84,7 +84,7 @@ export function appTabSceneStyle(): ViewStyle {
 export function appStackContentStyle(opts?: { rounded?: boolean }): ViewStyle {
   const rounded = opts?.rounded !== false;
   if (!rounded) {
-    return { flex: 1, backgroundColor: colors.surface };
+    return { flex: 1, backgroundColor: colors.background };
   }
   return appContentSheetFrameStyle();
 }

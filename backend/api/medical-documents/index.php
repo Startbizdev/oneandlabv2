@@ -12,6 +12,7 @@ require_once __DIR__ . '/../../lib/NotificationService.php';
 require_once __DIR__ . '/../../lib/EmailQueue.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/LabTeamAccess.php';
+require_once __DIR__ . '/../../lib/UploadMimeTypes.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -349,7 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // Validation du fichier
         $file = $_FILES['file'];
         $maxSize = ONEANDLAB_MAX_UPLOAD_BYTES;
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+        $allowedTypes = UploadMimeTypes::MEDICAL_DOCUMENT;
         
         if ($file['size'] > $maxSize) {
             http_response_code(400);

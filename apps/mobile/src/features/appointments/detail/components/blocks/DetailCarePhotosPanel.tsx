@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -17,10 +17,12 @@ import { useCarePhotoUnread } from '../../hooks/use-care-photo-unread';
 import type { AppointmentDetailRole } from '../../utils/appointment-detail-role-config';
 import { carePhotoPickErrorMessage, pickCarePhotoUri } from '@/lib/uploads/pick-care-photo';
 import { Button } from '@/components/ui/Button';
+import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { SkeletonList } from '@/components/ui/skeletons';
+import { loadCarePhotoLocalUri } from '../../utils/care-photo-image';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -40,6 +42,8 @@ export function DetailCarePhotosPanel({
   const router = useRouter();
   const { show: toast } = useToast();
   const qc = useQueryClient();
+  const [lightboxUri, setLightboxUri] = useState<string | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const q = useQuery({
     queryKey: ['appointments', 'care-photos', apt.id] as const,
@@ -68,6 +72,19 @@ export function DetailCarePhotosPanel({
       router.push(carePhotoDiscussionHref(viewerRole, apt.id, target) as never);
     },
     [router, viewerRole, apt.id, photos],
+  );
+
+  const openLightbox = useCallback(
+    async (photoId: string) => {
+      const uri = await loadCarePhotoLocalUri(photoId);
+      if (!uri) {
+        toast('Impossible d’afficher la photo', { type: 'warning' });
+        return;
+      }
+      setLightboxUri(uri);
+      setLightboxOpen(true);
+    },
+    [toast],
   );
 
   const uploadMut = useMutation({
@@ -152,7 +169,12 @@ export function DetailCarePhotosPanel({
         >
           {photos.map((p, idx) => (
             <View key={p.id} style={styles.previewItem}>
-              <CarePhotoImage photoId={p.id} style={styles.previewThumb} />
+              <CarePhotoImage
+                photoId={p.id}
+                style={styles.previewThumb}
+                onPress={() => void openLightbox(p.id)}
+                accessibilityLabel={`Agrandir la photo ${idx + 1}`}
+              />
               <Text style={styles.previewLabel}>Photo {idx + 1}</Text>
             </View>
           ))}
@@ -205,6 +227,14 @@ export function DetailCarePhotosPanel({
           </Text>
         </View>
       )}
+      <FullscreenImageViewer
+        visible={lightboxOpen}
+        uri={lightboxUri}
+        onClose={() => {
+          setLightboxOpen(false);
+          setLightboxUri(null);
+        }}
+      />
     </View>
   );
 }

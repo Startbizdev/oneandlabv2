@@ -23,6 +23,7 @@ export const queryKeys = {
     detail: (id: string) => ['patients', 'detail', id] as const,
     history: (id: string) => ['patients', 'history', id] as const,
     lookup: (query: string) => ['patients', 'lookup', query] as const,
+    hubSearch: (query: string) => ['patients', 'hub-search', query] as const,
   },
   categories: {
     list: (type?: string, scope?: string) => ['categories', 'list', type, scope] as const,

@@ -56,7 +56,7 @@ export function ProfileHero({
         </View>
       ) : (
         <LinearGradient
-          colors={['#E8FBF9', '#FFFFFF']}
+          colors={['#E8FBF9', colors.background]}
           style={styles.coverPlaceholder}
         />
       )}

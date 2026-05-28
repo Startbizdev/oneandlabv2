@@ -87,8 +87,11 @@ export function rdvMaquetteFooterDate(scheduledAt?: string | null): string {
 }
 
 /** Libellé soin(s) affiché sous le créneau — virgules pour les lots, sans titre générique. */
-export function rdvMaquetteActsLine(apt: Appointment): string {
-  const lines = rdvCatalogDisplayLines(apt);
+export function rdvMaquetteActsLine(apt: Appointment, role?: RdvListCardViewerRole): string {
+  const lines = rdvCatalogDisplayLines(
+    apt,
+    role === 'patient' ? { hideStaffOnlyCares: true } : undefined,
+  );
   const labels = lines.map((l) => l.label.trim()).filter(Boolean);
   if (labels.length === 0) {
     return apt.category_name?.trim() || 'Rendez-vous';

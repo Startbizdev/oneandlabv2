@@ -110,7 +110,9 @@ const config = useRuntimeConfig();
 
 const accentMap = computed(() => buildCategoryAccentMapForList(props.categories ?? []));
 
-const catalogLines = computed(() => patientRdvCatalogDisplayLines(props.appointment));
+const catalogLines = computed(() =>
+  patientRdvCatalogDisplayLines(props.appointment, { hideStaffOnlyCares: true }),
+);
 
 function lineBadge(line: PatientRdvCatalogLine) {
   return careListBadgeForCatalogItem(

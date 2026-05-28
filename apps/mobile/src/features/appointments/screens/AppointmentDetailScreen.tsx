@@ -37,10 +37,11 @@ interface Props {
 type SegmentId = 'infos' | 'documents' | 'photos';
 
 export function AppointmentDetailScreen({ role }: Props) {
-  const { id, careGallery, carePhoto } = useLocalSearchParams<{
+  const { id, careGallery, carePhoto, segment: segmentParam } = useLocalSearchParams<{
     id: string;
     careGallery?: string;
     carePhoto?: string;
+    segment?: string;
   }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -77,6 +78,13 @@ export function AppointmentDetailScreen({ role }: Props) {
     }
     setSegment('photos');
   }, [careGallery, carePhoto, id, role, router]);
+
+  useEffect(() => {
+    const raw = Array.isArray(segmentParam) ? segmentParam[0] : segmentParam;
+    if (raw !== 'documents' && raw !== 'photos') return;
+    setSegment(raw);
+    router.setParams({ segment: undefined } as never);
+  }, [segmentParam, id, router]);
   const terminal = primary
     ? getAppointmentSidebarTerminalEmpty(primary.status)
     : null;

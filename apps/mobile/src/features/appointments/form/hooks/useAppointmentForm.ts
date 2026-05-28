@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import {
   buildDashboardAppointmentPayloads,
+  filterStaffOnlyCareCategoriesForPatient,
   validateUnifiedRdvPayload,
   type SelectedServiceInput,
 } from '@oneandlab/shared-utils';
@@ -489,9 +490,25 @@ export function useMultiAppointmentWizard(opts: {
     [qc],
   );
 
-  const allCategories = useMemo(
-    (): CareCategory[] => [...(nursingCatsQ.data ?? []), ...(bloodCatsQ.data ?? [])],
-    [nursingCatsQ.data, bloodCatsQ.data],
+  const allCategories = useMemo((): CareCategory[] => {
+    const merged = [...(nursingCatsQ.data ?? []), ...(bloodCatsQ.data ?? [])];
+    return isPatientBooking ? filterStaffOnlyCareCategoriesForPatient(merged) : merged;
+  }, [nursingCatsQ.data, bloodCatsQ.data, isPatientBooking]);
+
+  const nursingCategories = useMemo(
+    () =>
+      isPatientBooking
+        ? filterStaffOnlyCareCategoriesForPatient(nursingCatsQ.data ?? [])
+        : (nursingCatsQ.data ?? []),
+    [nursingCatsQ.data, isPatientBooking],
+  );
+
+  const bloodCategories = useMemo(
+    () =>
+      isPatientBooking
+        ? filterStaffOnlyCareCategoriesForPatient(bloodCatsQ.data ?? [])
+        : (bloodCatsQ.data ?? []),
+    [bloodCatsQ.data, isPatientBooking],
   );
 
   const quickAddService = useCallback(
@@ -660,8 +677,8 @@ export function useMultiAppointmentWizard(opts: {
     onComplementChange: addressSync.onComplementChange,
     loadProfileAddress: addressSync.loadProfileAddress,
     patients: patientsQ.data ?? [],
-    nursingCategories: nursingCatsQ.data ?? [],
-    bloodCategories: bloodCatsQ.data ?? [],
+    nursingCategories,
+    bloodCategories,
     loading:
       isPatientBooking
         ? nursingCatsQ.isLoading || bloodCatsQ.isLoading

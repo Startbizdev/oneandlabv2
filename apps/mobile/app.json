@@ -8,7 +8,7 @@
     "scheme": "cary",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "backgroundColor": "#FFFFFF"
+      "backgroundColor": "#F4FAFA"
     },
     "ios": {
       "supportsTablet": true,
@@ -27,7 +27,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#F4FAFA"
       },
       "package": "com.cary.mobile",
       "edgeToEdgeEnabled": true
@@ -41,13 +41,13 @@
             "image": "./assets/splash-logo.png",
             "imageWidth": 250,
             "resizeMode": "contain",
-            "backgroundColor": "#FFFFFF"
+            "backgroundColor": "#F4FAFA"
           },
           "android": {
             "image": "./assets/splash-logo.png",
             "imageWidth": 250,
             "resizeMode": "contain",
-            "backgroundColor": "#FFFFFF"
+            "backgroundColor": "#F4FAFA"
           }
         }
       ],

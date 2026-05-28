@@ -1,5 +1,9 @@
 import type { Appointment } from '@oneandlab/shared-types';
-import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import {
+  filterRdvCatalogLinesForPatientViewer,
+  isBloodTestAppointment,
+  isNursingAppointment,
+} from '@oneandlab/shared-utils';
 import { careEmojiForCareItem, careEmojiForLabel } from '@/utils/care-category-display';
 import { isAutreCareDisplayLabel, resolveRdvCareDisplayLabel } from '@/utils/rdv-care-display-label';
 
@@ -55,8 +59,20 @@ function mapItem(it: ItemRow, fallbackLabel: string, apt: Appointment): RdvCatal
   };
 }
 
+export type RdvCatalogDisplayOpts = {
+  /** Masque certificat de décès et autres actes staff-only (vue patient). */
+  hideStaffOnlyCares?: boolean;
+};
+
+function finalizeRdvCatalogLines(
+  lines: RdvCatalogLine[],
+  opts?: RdvCatalogDisplayOpts,
+): RdvCatalogLine[] {
+  return opts?.hideStaffOnlyCares ? filterRdvCatalogLinesForPatientViewer(lines) : lines;
+}
+
 /** Lignes catalogue pour carte liste (aligné `patientRdvCatalogDisplayLines` web). */
-export function rdvCatalogDisplayLines(apt: Appointment): RdvCatalogLine[] {
+export function rdvCatalogDisplayLines(apt: Appointment, opts?: RdvCatalogDisplayOpts): RdvCatalogLine[] {
   if (!apt) {
     return [{ category_id: null, label: 'Rendez-vous', emoji: '📋' }];
   }
@@ -71,7 +87,10 @@ export function rdvCatalogDisplayLines(apt: Appointment): RdvCatalogLine[] {
         ? ext.blood_test_items_display
         : ext.blood_test_items ?? [];
     if (raw.length > 0) {
-      return raw.map((it) => mapItem(it, apt.category_name ?? 'Analyse', apt));
+      return finalizeRdvCatalogLines(
+        raw.map((it) => mapItem(it, apt.category_name ?? 'Analyse', apt)),
+        opts,
+      );
     }
   }
   if (isNursingAppointment(t)) {
@@ -84,7 +103,7 @@ export function rdvCatalogDisplayLines(apt: Appointment): RdvCatalogLine[] {
         ? ext.nursing_items_display
         : ext.nursing_items ?? [];
     if (raw.length > 0) {
-      return raw.map((it) => mapItem(it, 'Soin', apt));
+      return finalizeRdvCatalogLines(raw.map((it) => mapItem(it, 'Soin', apt)), opts);
     }
   }
   const catId = apt.category_id != null ? String(apt.category_id) : null;
@@ -99,16 +118,19 @@ export function rdvCatalogDisplayLines(apt: Appointment): RdvCatalogLine[] {
   );
   const ext = apt as AptWithIcon;
   const emojiSource = isAutreCareDisplayLabel(rawLabel) ? rawLabel || 'Autre' : singleLabel;
-  return [
-    {
-      category_id: catId,
-      label: singleLabel,
-      emoji: careEmojiForLabel(emojiSource, t, {
-        categoryId: catId,
-        categoryIcon: ext.category_icon ?? null,
-      }),
-      category_image_url: apt.category_image_url ?? null,
-      care_options: fdCareOpts,
-    },
-  ];
+  return finalizeRdvCatalogLines(
+    [
+      {
+        category_id: catId,
+        label: singleLabel,
+        emoji: careEmojiForLabel(emojiSource, t, {
+          categoryId: catId,
+          categoryIcon: ext.category_icon ?? null,
+        }),
+        category_image_url: apt.category_image_url ?? null,
+        care_options: fdCareOpts,
+      },
+    ],
+    opts,
+  );
 }

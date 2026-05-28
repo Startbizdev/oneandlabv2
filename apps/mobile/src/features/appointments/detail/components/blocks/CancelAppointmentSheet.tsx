@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CalendarX2 } from 'lucide-react-native';
@@ -21,6 +21,10 @@ import {
   StaffCancellationFields,
   type StaffCancellationValues,
 } from './StaffCancellationFields';
+import {
+  carePhotoPickErrorMessage,
+  pickCarePhoto,
+} from '@/lib/uploads/pick-care-photo';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -49,6 +53,8 @@ export function CancelAppointmentSheet({ visible, role, targets, onDone, onClose
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [staff, setStaff] = useState<StaffCancellationValues>(EMPTY_STAFF);
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const pickingPhotoRef = useRef(false);
   const isPatient = role === 'patient';
   const isBatch = targets.length > 1;
   const canSubmitStaff = staffCancellationCanSubmit(staff.reason, staff.comment);
@@ -62,10 +68,58 @@ export function CancelAppointmentSheet({ visible, role, targets, onDone, onClose
   const targetLabel = primaryTarget ? patientDisplayName(primaryTarget) : null;
 
   useEffect(() => {
+    if (visible) {
+      setSheetVisible(true);
+    } else {
+      setSheetVisible(false);
+      pickingPhotoRef.current = false;
+    }
+  }, [visible]);
+
+  useEffect(() => {
     if (!visible) {
       setStaff(EMPTY_STAFF);
     }
   }, [visible]);
+
+  function patchStaff(patch: Partial<StaffCancellationValues>) {
+    setStaff((prev) => {
+      const next = { ...prev, ...patch };
+      if (patch.reason != null && !cancellationReasonRequiresPhoto(patch.reason)) {
+        next.photoUri = undefined;
+        next.photoName = undefined;
+        next.photoMimeType = undefined;
+      }
+      return next;
+    });
+  }
+
+  const handleSheetDismissed = useCallback(() => {
+    if (!pickingPhotoRef.current) return;
+    pickingPhotoRef.current = false;
+
+    void (async () => {
+      try {
+        const picked = await pickCarePhoto();
+        if (picked) {
+          patchStaff({
+            photoUri: picked.uri,
+            photoName: picked.fileName,
+            photoMimeType: picked.mimeType,
+          });
+        }
+      } catch (e) {
+        toast(carePhotoPickErrorMessage(e), { type: 'warning' });
+      } finally {
+        if (visible) setSheetVisible(true);
+      }
+    })();
+  }, [toast, visible]);
+
+  const beginPhotoPick = useCallback(() => {
+    pickingPhotoRef.current = true;
+    setSheetVisible(false);
+  }, []);
 
   const mut = useMutation({
     mutationFn: async () => {
@@ -78,6 +132,8 @@ export function CancelAppointmentSheet({ visible, role, targets, onDone, onClose
         reason: staff.reason,
         comment: staff.comment.trim(),
         photoUri: staff.photoUri,
+        photoName: staff.photoName,
+        photoMimeType: staff.photoMimeType,
       }).then((r) => ({
         ok: r.ok,
         canceled: r.ok ? 1 : 0,
@@ -96,16 +152,6 @@ export function CancelAppointmentSheet({ visible, role, targets, onDone, onClose
     },
     onError: (e) => handleApiError(e, toast, 'cancelAppointment'),
   });
-
-  function patchStaff(patch: Partial<StaffCancellationValues>) {
-    setStaff((prev) => {
-      const next = { ...prev, ...patch };
-      if (patch.reason != null && !cancellationReasonRequiresPhoto(patch.reason)) {
-        next.photoUri = undefined;
-      }
-      return next;
-    });
-  }
 
   const title = isBatch ? 'Annuler le lot' : 'Annuler le rendez-vous';
   const subtitle = cancelSheetSubtitle(isPatient, isBatch, targets.length);
@@ -127,9 +173,10 @@ export function CancelAppointmentSheet({ visible, role, targets, onDone, onClose
 
   return (
     <SheetModal
-      visible={visible}
+      visible={sheetVisible}
       presentKey={presentKey}
       onClose={onClose}
+      onDismissed={handleSheetDismissed}
       title={title}
       subtitle={subtitle}
       footer={footer}
@@ -165,7 +212,7 @@ export function CancelAppointmentSheet({ visible, role, targets, onDone, onClose
       {!isPatient ? (
         <View style={styles.formSection}>
           <Text style={styles.formTitle}>Motif d'annulation</Text>
-          <StaffCancellationFields values={staff} onChange={patchStaff} />
+          <StaffCancellationFields values={staff} onChange={patchStaff} onPickPhoto={beginPhotoPick} />
         </View>
       ) : null}
     </SheetModal>

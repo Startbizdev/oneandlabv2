@@ -1,5 +1,9 @@
 /** Libellés, dates et statuts partagés entre la liste patient (`PatientRdvListRow`) et la page. */
 
+import {
+  filterRdvCatalogLinesForPatientViewer,
+  isStaffOnlyCareCategory,
+} from '@oneandlab/shared-utils';
 import { appointmentListAddressLine } from '~/utils/address-display';
 import {
   MULTI_BLOOD_TEST_ITEMS_CARD_LABEL,
@@ -84,7 +88,19 @@ export function patientRdvAppointmentCategorySummary(apt: any, opts?: PatientRdv
   }
 
   const name = apt?.category_name || apt?.form_data?.category_name;
-  return name ? String(name).trim() : 'Soin';
+  const label = name ? patientVisibleCareLabel(String(name).trim(), true) : '';
+  return label || (apt?.type === 'blood_test' ? 'Prélèvement' : 'Soin');
+}
+
+export type PatientRdvCatalogDisplayOpts = {
+  /** Vue patient : masque certificat de décès et actes staff-only. */
+  hideStaffOnlyCares?: boolean;
+};
+
+function patientVisibleCareLabel(label: string, hideStaffOnlyCares?: boolean): string {
+  const trimmed = String(label ?? '').trim();
+  if (!trimmed || !hideStaffOnlyCares) return trimmed;
+  return isStaffOnlyCareCategory({ label: trimmed, name: trimmed }) ? '' : trimmed;
 }
 
 /** Ligne affichée sous la date (image + titre du soin / de l’analyse). */
@@ -97,7 +113,10 @@ export type PatientRdvCatalogLine = {
 /**
  * Lignes catalogue pour la carte liste patient (une entrée par analyse ou par soin du panier / du lot fusionné).
  */
-export function patientRdvCatalogDisplayLines(apt: any): PatientRdvCatalogLine[] {
+export function patientRdvCatalogDisplayLines(
+  apt: any,
+  opts?: PatientRdvCatalogDisplayOpts,
+): PatientRdvCatalogLine[] {
   if (!apt) {
     return [{ category_id: null, label: 'Rendez-vous' }];
   }
@@ -105,12 +124,15 @@ export function patientRdvCatalogDisplayLines(apt: any): PatientRdvCatalogLine[]
   if (t === 'blood_test') {
     const raw = Array.isArray(apt.blood_test_items) ? apt.blood_test_items : [];
     if (raw.length > 0) {
-      return raw.map((it: any) => ({
-        category_id: it?.category_id != null && String(it.category_id).trim() !== '' ? String(it.category_id) : null,
-        category_image_url: it?.category_image_url ?? null,
-        label:
-          String(it?.label ?? it?.category_name ?? apt?.category_name ?? 'Analyse').trim() || 'Analyse',
-      }));
+      return finalizePatientRdvCatalogLines(
+        raw.map((it: any) => ({
+          category_id: it?.category_id != null && String(it.category_id).trim() !== '' ? String(it.category_id) : null,
+          category_image_url: it?.category_image_url ?? null,
+          label:
+            String(it?.label ?? it?.category_name ?? apt?.category_name ?? 'Analyse').trim() || 'Analyse',
+        })),
+        opts,
+      );
     }
   }
   if (t === 'nursing' || t === 'nurse') {
@@ -121,11 +143,14 @@ export function patientRdvCatalogDisplayLines(apt: any): PatientRdvCatalogLine[]
           ? apt.nursing_items
           : [];
     if (raw.length > 0) {
-      return raw.map((it: any) => ({
-        category_id: it?.category_id != null && String(it.category_id).trim() !== '' ? String(it.category_id) : null,
-        category_image_url: it?.category_image_url ?? null,
-        label: String(it?.label ?? it?.category_name ?? '').trim() || 'Soin',
-      }));
+      return finalizePatientRdvCatalogLines(
+        raw.map((it: any) => ({
+          category_id: it?.category_id != null && String(it.category_id).trim() !== '' ? String(it.category_id) : null,
+          category_image_url: it?.category_image_url ?? null,
+          label: String(it?.label ?? it?.category_name ?? '').trim() || 'Soin',
+        })),
+        opts,
+      );
     }
   }
   const catId =
@@ -137,13 +162,23 @@ export function patientRdvCatalogDisplayLines(apt: any): PatientRdvCatalogLine[]
   const label = String(
     apt?.category_name ?? apt?.form_data?.category_name ?? (t === 'blood_test' ? 'Prélèvement' : 'Soin'),
   ).trim();
-  return [
-    {
-      category_id: catId,
-      category_image_url: apt?.category_image_url ?? null,
-      label: label || (t === 'blood_test' ? 'Prélèvement' : 'Soin'),
-    },
-  ];
+  return finalizePatientRdvCatalogLines(
+    [
+      {
+        category_id: catId,
+        category_image_url: apt?.category_image_url ?? null,
+        label: label || (t === 'blood_test' ? 'Prélèvement' : 'Soin'),
+      },
+    ],
+    opts,
+  );
+}
+
+function finalizePatientRdvCatalogLines(
+  lines: PatientRdvCatalogLine[],
+  opts?: PatientRdvCatalogDisplayOpts,
+): PatientRdvCatalogLine[] {
+  return opts?.hideStaffOnlyCares ? filterRdvCatalogLinesForPatientViewer(lines) : lines;
 }
 
 /** Couleurs `UBadge` alignées dashboard infirmier. */
@@ -219,7 +254,7 @@ export function patientRdvTypeDeSoinLabel(
     return MULTI_NURSING_ITEMS_CARD_LABEL;
   }
   const name = apt?.category_name || apt?.form_data?.category_name;
-  return name ? String(name).trim() : '';
+  return name ? patientVisibleCareLabel(String(name).trim(), true) : '';
 }
 
 export function patientRdvAppointmentCardTitle(apt: any, opts?: PatientRdvCategorySummaryOpts): string {

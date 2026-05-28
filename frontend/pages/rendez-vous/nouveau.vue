@@ -225,6 +225,7 @@ import {
   type SelectedServiceInput,
 } from '~/utils/dashboard-unified-rdv';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
+import { filterStaffOnlyCareCategoriesForPatient } from '@oneandlab/shared-utils';
 import {
   type BookingServiceFormSlice,
   formDataSliceForQuickAddedService,
@@ -514,10 +515,11 @@ function removeServiceFromCareSelection(serviceId: string) {
 }
 
 function normalizeCareCategoriesApiRows(rows: unknown[]): typeof careCategoriesList.value {
-  return (rows as Array<Record<string, unknown>>).map((c) => ({
+  const normalized = (rows as Array<Record<string, unknown>>).map((c) => ({
     ...(c as object),
     skip_prescription_documents: normalizeCategorySkipPrescriptionDocuments(c.skip_prescription_documents),
   })) as typeof careCategoriesList.value;
+  return filterStaffOnlyCareCategoriesForPatient(normalized);
 }
 
 async function loadCareCategories() {

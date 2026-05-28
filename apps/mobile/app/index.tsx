@@ -2,14 +2,15 @@ import { Redirect } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
+import { colors } from '@/theme';
 
 export default function Index() {
   const { token, user, isHydrated } = useAuthStore();
 
   if (!isHydrated) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' }}>
-        <ActivityIndicator color="#1CC7B5" size="large" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }

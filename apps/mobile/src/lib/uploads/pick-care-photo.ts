@@ -4,7 +4,27 @@ import { MAX_UPLOAD_BYTES } from './upload-file';
 
 export type CarePhotoPickSource = 'camera' | 'library';
 
-async function pickFromLibrary(): Promise<string | null> {
+export type CarePhotoPickResult = {
+  uri: string;
+  fileName: string;
+  mimeType: string;
+};
+
+function defaultFileName(mimeType: string): string {
+  if (mimeType.includes('heic') || mimeType.includes('heif')) return 'photo.heic';
+  if (mimeType.includes('png')) return 'photo.png';
+  if (mimeType.includes('webp')) return 'photo.webp';
+  return 'photo.jpg';
+}
+
+function metaFromAsset(asset: ImagePicker.ImagePickerAsset): CarePhotoPickResult {
+  const uri = asset.uri;
+  const mimeType = asset.mimeType ?? 'image/jpeg';
+  const fileName = asset.fileName ?? defaultFileName(mimeType);
+  return { uri, fileName, mimeType };
+}
+
+async function pickFromLibrary(): Promise<CarePhotoPickResult | null> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) {
     throw new Error('PERMISSION_LIBRARY');
@@ -19,10 +39,10 @@ async function pickFromLibrary(): Promise<string | null> {
   if (asset.fileSize != null && asset.fileSize > MAX_UPLOAD_BYTES) {
     throw new Error('FILE_TOO_LARGE');
   }
-  return asset.uri;
+  return metaFromAsset(asset);
 }
 
-async function pickFromCamera(): Promise<string | null> {
+async function pickFromCamera(): Promise<CarePhotoPickResult | null> {
   const perm = await ImagePicker.requestCameraPermissionsAsync();
   if (!perm.granted) {
     throw new Error('PERMISSION_CAMERA');
@@ -37,7 +57,7 @@ async function pickFromCamera(): Promise<string | null> {
   if (asset.fileSize != null && asset.fileSize > MAX_UPLOAD_BYTES) {
     throw new Error('FILE_TOO_LARGE');
   }
-  return asset.uri;
+  return metaFromAsset(asset);
 }
 
 function chooseSource(): Promise<CarePhotoPickSource | null> {
@@ -67,15 +87,18 @@ function chooseSource(): Promise<CarePhotoPickSource | null> {
   });
 }
 
-/**
- * Photo de soin : appareil photo ou galerie (max 25 Mo).
- * Retourne l’URI locale ou `null` si annulé.
- */
-export async function pickCarePhotoUri(): Promise<string | null> {
+/** Photo : appareil photo ou galerie (max 25 Mo). */
+export async function pickCarePhoto(): Promise<CarePhotoPickResult | null> {
   const source = await chooseSource();
   if (!source) return null;
   if (source === 'camera') return pickFromCamera();
   return pickFromLibrary();
+}
+
+/** @deprecated Préférer `pickCarePhoto()` pour récupérer aussi le MIME. */
+export async function pickCarePhotoUri(): Promise<string | null> {
+  const picked = await pickCarePhoto();
+  return picked?.uri ?? null;
 }
 
 export function carePhotoPickErrorMessage(err: unknown): string {

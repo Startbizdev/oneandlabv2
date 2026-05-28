@@ -123,13 +123,23 @@ export async function uploadCarePhoto(
 
 export async function cancelAppointment(
   appointmentId: string,
-  payload: { reason: string; comment: string; photoUri?: string; photoName?: string },
+  payload: {
+    reason: string;
+    comment: string;
+    photoUri?: string;
+    photoName?: string;
+    photoMimeType?: string;
+  },
 ): Promise<{ ok: boolean; error?: string }> {
   let photoDocId: string | null = null;
 
   if (payload.photoUri) {
     const fd = await buildMedicalDocumentForm(
-      { uri: payload.photoUri, fileName: payload.photoName ?? 'cancellation.jpg' },
+      {
+        uri: payload.photoUri,
+        fileName: payload.photoName ?? 'cancellation.jpg',
+        mimeType: payload.photoMimeType,
+      },
       { appointment_id: appointmentId, document_type: 'cancellation_photo' },
     );
     try {
