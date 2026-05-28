@@ -41,6 +41,6 @@ const styles = StyleSheet.create({
   frost: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor:
-      Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.9)',
+      Platform.OS === 'ios' ? 'rgba(244, 250, 250, 0.62)' : 'rgba(244, 250, 250, 0.88)',
   },
 });

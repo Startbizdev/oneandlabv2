@@ -24,7 +24,7 @@ module.exports = {
           end: '#16B6D6',
         },
         surface: '#FFFFFF',
-        background: '#FFFFFF',
+        background: '#F4FAFA',
         success: {
           DEFAULT: '#16A34A',
           light: '#F0FDF4',

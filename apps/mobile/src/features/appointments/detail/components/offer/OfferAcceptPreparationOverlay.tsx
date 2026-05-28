@@ -113,7 +113,7 @@ export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: P
     <Modal visible animationType="fade" presentationStyle="fullScreen" statusBarTranslucent>
       <View style={styles.root}>
         <LinearGradient
-          colors={['#E6FAF7', '#FFFFFF', '#F0FDFA']}
+          colors={['#E6FAF7', colors.background, '#F0FDFA']}
           locations={[0, 0.55, 1]}
           style={StyleSheet.absoluteFill}
         />

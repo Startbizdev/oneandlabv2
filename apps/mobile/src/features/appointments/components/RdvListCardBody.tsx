@@ -116,7 +116,7 @@ function MaquetteCardBlock({
               </Text>
             ) : null}
             {creneau ? <CreneauRow label={creneau} /> : null}
-            <RdvCareTagsRow apt={apt} />
+            <RdvCareTagsRow apt={apt} hideStaffOnlyCares={role === 'patient'} />
             {demandeNotes ? (
               <Text style={styles.demandeNotes} numberOfLines={2}>
                 {demandeNotes}

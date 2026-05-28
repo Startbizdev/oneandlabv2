@@ -45,7 +45,7 @@ export function WelcomeScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={['#E6FAF7', '#FFFFFF', '#FFFFFF']}
+        colors={['#E6FAF7', colors.background, colors.background]}
         locations={[0, 0.42, 1]}
         style={StyleSheet.absoluteFill}
       />
@@ -125,7 +125,7 @@ export function WelcomeScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
   glowTop: {
     position: 'absolute',

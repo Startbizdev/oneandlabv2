@@ -1,16 +1,21 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
-import { rdvCatalogDisplayLines } from '@/utils/rdv-catalog-lines';
+import { rdvCatalogDisplayLines, type RdvCatalogDisplayOpts } from '@/utils/rdv-catalog-lines';
 import { rdvListCardType } from './rdv-list-card-typography';
 import { colors, radius } from '@/theme';
 
 interface Props {
   apt: Appointment;
+  /** Vue patient : masque certificat de décès et actes staff-only. */
+  hideStaffOnlyCares?: boolean;
 }
 
 /** Soins en mini-tags primary clair (emoji + libellé). */
-export function RdvCareTagsRow({ apt }: Props) {
-  const lines = rdvCatalogDisplayLines(apt);
+export function RdvCareTagsRow({ apt, hideStaffOnlyCares }: Props) {
+  const opts: RdvCatalogDisplayOpts | undefined = hideStaffOnlyCares
+    ? { hideStaffOnlyCares: true }
+    : undefined;
+  const lines = rdvCatalogDisplayLines(apt, opts);
   if (!lines.length) return null;
 
   const seen = new Set<string>();

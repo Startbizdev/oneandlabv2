@@ -1,5 +1,4 @@
 import { Keyboard, StyleSheet, Text, View } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { Image as ImageIcon } from 'lucide-react-native';
 import {
   CANCELLATION_COMMENT_MAX_LENGTH,
@@ -18,23 +17,21 @@ export type StaffCancellationValues = {
   reason: string;
   comment: string;
   photoUri?: string;
+  photoName?: string;
+  photoMimeType?: string;
 };
 
 interface Props {
   values: StaffCancellationValues;
   onChange: (patch: Partial<StaffCancellationValues>) => void;
+  onPickPhoto: () => void;
 }
 
-export function StaffCancellationFields({ values, onChange }: Props) {
+export function StaffCancellationFields({ values, onChange, onPickPhoto }: Props) {
   const { reason, comment, photoUri } = values;
   const showPhoto = cancellationReasonRequiresPhoto(reason);
   const commentLen = comment.trim().length;
   const canSubmit = staffCancellationCanSubmit(reason, comment);
-
-  async function pickPhoto() {
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'] });
-    if (!res.canceled && res.assets[0]) onChange({ photoUri: res.assets[0].uri });
-  }
 
   return (
     <View style={styles.form}>
@@ -77,14 +74,14 @@ export function StaffCancellationFields({ values, onChange }: Props) {
             variant="outline"
             size="sm"
             leftIcon={<ImageIcon size={14} color={colors.primary} strokeWidth={2} />}
-            onPress={pickPhoto}
+            onPress={onPickPhoto}
           />
           {photoUri ? (
             <Button
               title="Retirer la photo"
               variant="ghost"
               size="sm"
-              onPress={() => onChange({ photoUri: undefined })}
+              onPress={() => onChange({ photoUri: undefined, photoName: undefined, photoMimeType: undefined })}
             />
           ) : null}
         </View>

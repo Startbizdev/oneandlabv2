@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/UploadMimeTypes.php';
+
 /**
  * Création / copie de pièces médicales sans requête HTTP (webhook, brouillon patient).
  */
@@ -185,7 +187,7 @@ final class MedicalDocumentsInternal
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mimeType = finfo_file($finfo, $localPath);
 
-        $allowedMimes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+        $allowedMimes = UploadMimeTypes::MEDICAL_DOCUMENT;
         if (!in_array($mimeType, $allowedMimes, true)) {
             throw new RuntimeException('Type de fichier non autorisé pour la pièce');
         }

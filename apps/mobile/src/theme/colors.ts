@@ -24,6 +24,12 @@ export const palette = {
     500: '#22C9BE',
     600: brand.gradientEnd,
   },
+  /** Fonds app — teinte mint-gris (remplace le blanc pur et le beige chaud). */
+  canvas: {
+    base: '#F4FAFA',
+    light: '#F8FCFC',
+    muted: '#EEF6F5',
+  },
   warm: {
     50: '#F7F4EF',
     100: '#F3F0EA',
@@ -72,14 +78,13 @@ export const palette = {
 
 export const colors = {
   // Backgrounds
-  background: palette.white,
+  background: palette.canvas.base,
   surface: palette.white,
-  surfaceAlt: palette.slate[50],
-  surfaceSubtle: palette.slate[100],
-  /** Fond gris beige — étape choix des soins (wizard booking). */
-  bookingCanvas: palette.warm[100],
-  /** Même famille, un peu plus clair — étapes suivantes du wizard. */
-  bookingCanvasLight: palette.warm[50],
+  surfaceAlt: palette.canvas.muted,
+  surfaceSubtle: palette.brand[50],
+  /** Fond des écrans booking (aligné sur le canvas app). */
+  bookingCanvas: palette.canvas.base,
+  bookingCanvasLight: palette.canvas.light,
 
   // Brand gradient (CSS: linear-gradient(90deg, #2FD4C2, #16B6D6))
   gradientStart: brand.gradientStart,

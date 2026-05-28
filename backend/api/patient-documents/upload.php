@@ -10,6 +10,7 @@ require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Crypto.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../../lib/UploadMimeTypes.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -186,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Validation du fichier
         $file = $_FILES['file'];
         $maxSize = ONEANDLAB_MAX_UPLOAD_BYTES;
-        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+        $allowedMimeTypes = UploadMimeTypes::MEDICAL_DOCUMENT;
 
         if ($file['size'] > $maxSize) {
             http_response_code(400);

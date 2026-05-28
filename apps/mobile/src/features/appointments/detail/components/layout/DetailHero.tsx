@@ -35,7 +35,7 @@ export function DetailHero({ primary, batch, isMultiBatch }: Props) {
 
   return (
     <LinearGradient
-      colors={['#F0FDFA', '#FFFFFF']}
+      colors={['#F0FDFA', colors.background]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.wrap}

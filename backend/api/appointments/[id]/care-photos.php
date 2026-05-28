@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../../lib/Logger.php';
 require_once __DIR__ . '/../../../lib/CarePhotoGallery.php';
 require_once __DIR__ . '/../../../lib/NotificationService.php';
 require_once __DIR__ . '/../../../models/User.php';
+require_once __DIR__ . '/../../../lib/UploadMimeTypes.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -155,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $file = $_FILES['file'];
     $maxSize = ONEANDLAB_MAX_UPLOAD_BYTES;
-    $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    $allowedTypes = UploadMimeTypes::CARE_PHOTO;
 
     if ($file['size'] > $maxSize) {
         http_response_code(400);
@@ -168,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!in_array($mimeType, $allowedTypes, true)) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Formats acceptés : JPG, PNG uniquement']);
+        echo json_encode(['success' => false, 'error' => 'Formats acceptés : JPG, PNG, HEIC']);
         exit;
     }
 
