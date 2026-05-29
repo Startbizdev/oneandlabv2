@@ -5,6 +5,7 @@ import {
   Bell,
   CalendarPlus,
   CreditCard,
+  FlaskConical,
   Scale,
   ScanFace,
   Share2,
@@ -95,6 +96,13 @@ export default function NurseMore() {
                 onPress: () => nav('/(nurse)/reviews'),
                 iconColor: '#D97706',
                 iconBg: '#FFFBEB',
+              },
+              {
+                icon: FlaskConical,
+                label: 'Résultats',
+                onPress: () => nav('/(nurse)/resultats'),
+                iconColor: '#059669',
+                iconBg: '#ECFDF5',
               },
               {
                 icon: CreditCard,

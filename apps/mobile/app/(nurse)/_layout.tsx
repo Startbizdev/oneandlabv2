@@ -31,6 +31,7 @@ export default function NurseLayout() {
       <Stack.Screen name="patient/[id]/history" options={{ title: 'Historique' }} />
       <Stack.Screen name="patient/[id]/documents" options={{ headerTitleAlign: 'left' }} />
       <Stack.Screen name="notifications" options={notificationsScreenOptions()} />
+      <Stack.Screen name="resultats" options={{ title: 'Résultats' }} />
     </Stack>
     </View>
     <OfferQueueHost detailPathPrefix="/(nurse)/appointment" />

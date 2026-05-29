@@ -11,6 +11,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth-store';
 import { SkeletonPatientAppointmentDetail } from '@/components/ui/skeletons';
 import { useAppointmentDetailScreen } from '../detail/hooks/use-appointment-detail-screen';
+import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
 import { CancelAppointmentSheet } from '../detail/components/blocks/CancelAppointmentSheet';
 import { PatientAssigneeRows } from '../detail/components/patient/PatientAssigneeRows';
 import { PatientDetailActions } from '../detail/components/patient/PatientDetailActions';
@@ -73,6 +74,15 @@ export function PatientAppointmentDetailScreen() {
   const pullRefresh = useManualRefresh(async () => {
     s.refreshAll();
   });
+
+  if (s.detailBlock) {
+    return (
+      <AppointmentDetailBlockedEmptyState
+        onBack={() => router.back()}
+        block={s.detailBlock}
+      />
+    );
+  }
 
   if (s.isLoading || !s.apt || !primary) {
     return <SkeletonPatientAppointmentDetail />;

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
 import { SkeletonStaffAppointmentDetail } from '@/components/ui/skeletons';
-import { Button } from '@/components/ui/Button';
+import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
 import { useAppointmentDetailScreen } from '../detail/hooks/use-appointment-detail-screen';
 import { RdvDocumentsPremiumPanel } from '../detail/components/RdvDocumentsPremiumPanel';
 import { DetailSidebarActions } from '../detail/components/DetailSidebarActions';
@@ -30,7 +30,6 @@ import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
 import { filterListDocuments } from '../detail/utils/document-labels';
 import { colors, spacing } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
   role: string;
@@ -132,18 +131,26 @@ export function AppointmentDetailScreen({ role }: Props) {
     s.refreshAll();
   });
 
+  if (s.detailBlock) {
+    return (
+      <AppointmentDetailBlockedEmptyState
+        onBack={() => router.back()}
+        block={s.detailBlock}
+      />
+    );
+  }
+
   if (s.detailError) {
     const blockedMessage =
-      s.detailError instanceof Error && s.detailError.message === 'ALREADY_ACCEPTED'
-        ? 'Ce rendez-vous a déjà été accepté par un autre professionnel.'
-        : s.detailError instanceof Error
-          ? s.detailError.message
-          : 'Impossible d’ouvrir ce rendez-vous.';
+      s.detailError instanceof Error
+        ? s.detailError.message
+        : 'Impossible d’ouvrir ce rendez-vous.';
     return (
       <View style={styles.blocked}>
-        <Text style={styles.blockedTitle}>Rendez-vous inaccessible</Text>
-        <Text style={styles.blockedSub}>{blockedMessage}</Text>
-        <Button title="Retour" variant="outline" onPress={() => router.back()} />
+        <AppointmentDetailBlockedEmptyState
+          onBack={() => router.back()}
+          description={blockedMessage}
+        />
       </View>
     );
   }
@@ -295,22 +302,6 @@ const styles = StyleSheet.create({
   blocked: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[6],
-    gap: spacing[3],
     justifyContent: 'center',
-  },
-  blockedTitle: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.lg,
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  blockedSub: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: fontSize.sm * 1.45,
   },
 });

@@ -1,32 +1,32 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import {
   Calendar,
   CalendarDays,
   Clock,
   Droplet,
-  Layers,
   MapPin,
   MessageSquare,
   Repeat,
   Stethoscope,
 } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment } from '@oneandlab/shared-utils';
+import { useAppointmentCareCategories } from '../../hooks/use-appointment-care-categories';
 import {
+  offerAdditionalCareOptionRows,
   offerAddressLine,
   offerAppointmentNotes,
-  offerAvailabilityDisplayLine,
   offerAvailabilityLabel,
-  offerBatchLotSummaryLabel,
   offerBloodTestTypeLabel,
-  offerDateShort,
+  offerCareTagLines,
   offerDateTimeLabel,
   offerDurationLabel,
   offerFrequencyLabel,
   offerLabPartnerFromAppointment,
-  offerShowBatchCard,
 } from '../../utils/offer-appointment-display';
-import { RdvCareTagsRow } from '@/features/appointments/components/RdvCareTagsRow';
+import { rdvListCardType } from '@/features/appointments/components/rdv-list-card-typography';
 import { OfferInfoRow } from './OfferInfoRow';
 import { OfferLabPartnerSection } from './OfferLabPartnerSection';
 import { colors, radius, spacing } from '@/theme';
@@ -37,40 +37,73 @@ interface Props {
   batch: Appointment[];
 }
 
-function SingleOfferCard({ appt }: { appt: Appointment }) {
-  const notes = offerAppointmentNotes(appt);
-  const rows: { icon: typeof Stethoscope; label: string; value: string }[] = [];
+function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
+  const lines = useMemo(() => offerCareTagLines(batch), [batch]);
+  if (!lines.length) return null;
 
-  const dateTime = offerDateTimeLabel(appt);
+  return (
+    <View style={styles.careTagsBlock}>
+      <View style={styles.careTagsWrap}>
+        {lines.map((line, idx) => (
+          <View
+            key={`${line.category_id ?? 'noid'}-${idx}-${line.label}`}
+            style={styles.careTag}
+          >
+            <Text style={styles.careTagEmoji} accessibilityElementsHidden>
+              {line.emoji}
+            </Text>
+            <Text style={styles.careTagLabel} numberOfLines={1}>
+              {line.label}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function OfferCard({ primary, batch }: { primary: Appointment; batch: Appointment[] }) {
+  const { data: categories = [] } = useAppointmentCareCategories();
+  const notes = offerAppointmentNotes(primary);
+  const extraOptions = useMemo(
+    () => offerAdditionalCareOptionRows(primary, batch, categories),
+    [batch, categories, primary],
+  );
+
+  const rows: { icon: LucideIcon; label: string; value: string }[] = [];
+
+  const dateTime = offerDateTimeLabel(primary);
   if (dateTime) rows.push({ icon: Calendar, label: 'Date souhaitée', value: dateTime });
 
-  if (isBloodTestAppointment(appt.type)) {
-    const bt = offerBloodTestTypeLabel(appt);
+  if (isBloodTestAppointment(primary.type)) {
+    const bt = offerBloodTestTypeLabel(primary);
     if (bt) rows.push({ icon: Droplet, label: 'Prélèvement', value: bt });
   }
 
-  const duration = offerDurationLabel(appt);
+  const duration = offerDurationLabel(primary);
   if (duration) rows.push({ icon: CalendarDays, label: 'Durée', value: duration });
 
-  const freq = offerFrequencyLabel(appt);
+  const freq = offerFrequencyLabel(primary);
   if (freq) rows.push({ icon: Repeat, label: 'Fréquence', value: freq });
 
-  const avail = offerAvailabilityLabel(appt);
+  const avail = offerAvailabilityLabel(primary);
   if (avail && !(dateTime && dateTime.includes(avail))) {
     rows.push({ icon: Clock, label: 'Disponibilité', value: avail });
   }
 
-  const addr = offerAddressLine(appt);
+  for (const opt of extraOptions) {
+    rows.push({ icon: Stethoscope, label: opt.label, value: opt.value });
+  }
+
+  const addr = offerAddressLine(primary);
   rows.push({ icon: MapPin, label: 'Adresse', value: addr });
 
   return (
     <View style={styles.card}>
-      <View style={styles.careTagsBlock}>
-        <RdvCareTagsRow apt={appt} />
-      </View>
+      <OfferCareTagsBlock batch={batch} />
       {rows.map((r, i) => (
         <OfferInfoRow
-          key={r.label}
+          key={`${r.label}-${i}`}
           icon={r.icon}
           label={r.label}
           value={r.value}
@@ -90,63 +123,12 @@ function SingleOfferCard({ appt }: { appt: Appointment }) {
   );
 }
 
-function BatchOfferCard({ batch }: { batch: Appointment[] }) {
-  const primary = batch[0]!;
-  const lotLabel = offerBatchLotSummaryLabel(batch);
-  const notes = offerAppointmentNotes(primary);
-
-  return (
-    <View style={styles.card}>
-      {lotLabel ? (
-        <View style={styles.lotBanner}>
-          <Layers size={14} color={colors.primary} strokeWidth={2.25} />
-          <Text style={styles.lotBannerText}>{lotLabel}</Text>
-        </View>
-      ) : null}
-      {batch.map((appt, idx) => {
-        const duration = offerDurationLabel(appt);
-        const avail = offerAvailabilityLabel(appt);
-        const meta = [duration, avail].filter(Boolean).join(' · ');
-        return (
-          <View
-            key={appt.id}
-            style={[styles.batchItem, idx > 0 && styles.batchItemBorder]}
-          >
-            <View style={styles.batchItemHead}>
-              <View style={styles.batchItemMain}>
-                <Text style={styles.batchNum}>{idx + 1}.</Text>
-                <RdvCareTagsRow apt={appt} />
-              </View>
-              <Text style={styles.batchDate}>{offerDateShort(appt)}</Text>
-            </View>
-            {meta ? <Text style={styles.batchMeta}>{meta}</Text> : null}
-          </View>
-        );
-      })}
-      <View style={[styles.addressFooter, styles.batchItemBorder]}>
-        <Text style={styles.footerKicker}>Adresse</Text>
-        <Text style={styles.footerValue}>{offerAddressLine(primary)}</Text>
-      </View>
-      {notes ? (
-        <View style={[styles.notesBlock, styles.batchItemBorder]}>
-          <View style={styles.notesHead}>
-            <MessageSquare size={14} color={colors.textTertiary} strokeWidth={2} />
-            <Text style={styles.notesLabel}>Message</Text>
-          </View>
-          <Text style={styles.notesText}>{notes}</Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
 export function OfferAppointmentPreviewBody({ primary, batch }: Props) {
   const lab = offerLabPartnerFromAppointment(primary);
-  const showBatch = offerShowBatchCard(batch, primary);
 
   return (
     <View style={styles.wrap}>
-      {showBatch ? <BatchOfferCard batch={batch} /> : <SingleOfferCard appt={primary} />}
+      <OfferCard primary={primary} batch={batch} />
       {lab ? <OfferLabPartnerSection lab={lab} /> : null}
     </View>
   );
@@ -161,6 +143,27 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.borderLight,
   },
+  careTagsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'stretch',
+  },
+  careTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    maxWidth: '100%',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryLight,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.primaryMid,
+  },
+  careTagEmoji: rdvListCardType.careEmoji,
+  careTagLabel: rdvListCardType.careTag,
   card: {
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -168,89 +171,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     overflow: 'hidden',
   },
-  lotBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    backgroundColor: colors.primaryLight,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
-  },
-  lotBannerText: {
-    flex: 1,
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xs,
-    color: colors.textPrimary,
-    lineHeight: fontSize.xs * 1.35,
-  },
-  batchItem: {
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    gap: spacing[1],
-  },
-  batchItemBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
-  },
-  batchItemHead: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: spacing[2],
-  },
-  batchItemMain: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[1.5],
-  },
-  batchNum: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xs,
-    color: colors.textTertiary,
-    lineHeight: fontSize.xs * 1.5,
-    marginTop: 4,
-  },
-  batchDate: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSize['2xs'],
-    color: colors.textSecondary,
-    maxWidth: '38%',
-    textAlign: 'right',
-  },
-  batchMeta: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
-    lineHeight: fontSize.xs * 1.4,
-  },
-  addressFooter: {
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    gap: spacing[1],
-    backgroundColor: colors.surfaceAlt,
-  },
-  footerKicker: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textSecondary,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  footerValue: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-    lineHeight: fontSize.sm * 1.4,
-  },
   notesBlock: {
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     gap: spacing[2],
     backgroundColor: colors.surfaceAlt,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderLight,
   },
   notesHead: {
     flexDirection: 'row',

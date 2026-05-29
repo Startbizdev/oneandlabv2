@@ -5,6 +5,11 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
 import { HeaderBackButton } from '@/navigation/HeaderBackButton';
 import { useAppointmentDetail } from '../../hooks/use-appointment-detail';
+import {
+  APPOINTMENT_ALREADY_ACCEPTED,
+  appointmentDetailBlockReason,
+  resolveAppointmentDetail,
+} from '../../hooks/appointment-detail-result';
 import { useAppointmentBatch } from './use-appointment-batch';
 import { fetchMedicalDocuments } from '../api/appointment-detail.service';
 import { useShareForNurse } from './use-appointment-detail-extras';
@@ -36,7 +41,8 @@ export function useAppointmentDetailScreen(
   const config = getAppointmentDetailRoleConfig(role);
 
   const detailQ = useAppointmentDetail(id);
-  const apt = detailQ.data;
+  const detailBlock = appointmentDetailBlockReason(detailQ.data);
+  const apt = resolveAppointmentDetail(detailQ.data);
   const { batchSorted, isMultiBatch, batchIds, siblingsLoading, refetchSiblings } =
     useAppointmentBatch(apt);
 
@@ -154,8 +160,12 @@ export function useAppointmentDetailScreen(
     listDocuments,
     docsLoading,
     shareQ,
-    isLoading: detailQ.isPending && detailQ.data === undefined && !detailQ.isError,
-    detailError: detailQ.error,
+    isLoading:
+      detailQ.isPending && detailQ.data === undefined && !detailQ.isError && !detailBlock,
+    detailBlock,
+    /** @deprecated Utiliser detailBlock === APPOINTMENT_ALREADY_ACCEPTED */
+    alreadyAccepted: detailBlock === APPOINTMENT_ALREADY_ACCEPTED,
+    detailError: detailBlock ? null : detailQ.error,
     detailFetching: detailQ.isFetching,
     siblingsLoading,
     isRefreshing,

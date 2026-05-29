@@ -268,3 +268,15 @@ export function navigateAppointmentForListRow(row: AppointmentListRow): Appointm
   if (row.kind === 'single') return row.appointment;
   return firstBatchAppointmentForDetail(row.appointments);
 }
+
+/** Aperçu offre pour la modal — données liste (ouverture immédiate avant GET détail). */
+export function offerPreviewFromListRow(row: AppointmentListRow): Appointment {
+  const primary = navigateAppointmentForListRow(row);
+  if (row.kind === 'batch') {
+    const siblings = row.appointments.filter((a) => a.id !== primary.id);
+    if (siblings.length > 0) {
+      return { ...primary, batch_siblings: siblings };
+    }
+  }
+  return primary;
+}

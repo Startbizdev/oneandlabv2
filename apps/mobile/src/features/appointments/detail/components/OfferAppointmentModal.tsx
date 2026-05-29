@@ -49,6 +49,7 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
   const user = useAuthStore((s) => s.user);
   const visible = useOfferQueueStore((s) => s.visible);
   const selected = useOfferQueueStore((s) => s.selected);
+  const presentNonce = useOfferQueueStore((s) => s.presentNonce);
   const shareToken = useOfferQueueStore((s) => s.shareToken);
   const closeModal = useOfferQueueStore((s) => s.closeModal);
   const processNext = useOfferQueueStore((s) => s.processNext);
@@ -259,6 +260,7 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
       {!preparing ? (
         <BottomSheet
           visible={visible}
+          presentKey={selected ? `${selected.id}:${presentNonce}` : 'closed'}
           onClose={dismissOffer}
           title="Nouveau rendez-vous"
           subtitle={subtitle}

@@ -1,4 +1,5 @@
 export * from './appointments';
+export * from './lab-results';
 export * from './staff-hub-search';
 export {
   GENDER_OPTIONS,

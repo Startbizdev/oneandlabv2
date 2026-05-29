@@ -17,7 +17,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { Skeleton, SkeletonList, SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/Button';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
-import { fetchPatientDocuments, fetchPatientHistory, fetchPatientProfile } from '../api/patient-profile.service';
+import { fetchPatientDocuments, fetchPatientProfile, fetchStaffPatientHistoryAppointments } from '../api/patient-profile.service';
 import { useAuthStore } from '@/store/auth-store';
 import { deletePatient } from '../api/patients.service';
 import { useToast } from '@/providers/ToastProvider';
@@ -83,10 +83,10 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   });
 
   const historyQ = useQuery({
-    queryKey: queryKeys.patients.history(id ?? ''),
+    queryKey: queryKeys.patients.historyCount(id ?? ''),
     queryFn: async () => {
-      const res = await fetchPatientHistory(id!);
-      return res.data ?? [];
+      const { total } = await fetchStaffPatientHistoryAppointments(id!);
+      return total;
     },
     enabled: !!id,
   });
@@ -122,7 +122,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   });
 
   const docCount = docsQ.data?.length ?? 0;
-  const histCount = historyQ.data?.length ?? 0;
+  const histCount = historyQ.data ?? 0;
   const tel = p.phone?.replace(/\s/g, '') ?? '';
   const address = patientAddressLines(p.address);
   const birthLine = patientBirthLine(p.birth_date, age);

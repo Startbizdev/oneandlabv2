@@ -25,6 +25,7 @@ export default function PatientLayout() {
           options={{ title: 'Documents' }}
         />
         <Stack.Screen name="notifications" options={notificationsScreenOptions()} />
+        <Stack.Screen name="resultats" options={{ title: 'Résultats' }} />
         <Stack.Screen name="informations-legales" options={{ headerTitleAlign: 'left' }} />
         <Stack.Screen name="web" options={{ headerTitleAlign: 'left' }} />
       </Stack>

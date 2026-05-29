@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, type ImageSourcePropType, View, StyleSheet } from 'react-native';
+import { Image, type ImageSourcePropType, Text, View, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import type { LucideIcon } from 'lucide-react-native';
 import { colors, radius, spacing } from '@/theme';
@@ -10,6 +10,9 @@ interface EmptyStateProps {
   title: string;
   description?: string;
   Icon?: LucideIcon;
+  /** Emoji centré (prioritaire sur Icon, ignoré si imageSource). */
+  emoji?: string;
+  emojiSize?: number;
   /** Illustration sans cadre (prioritaire sur Icon). */
   imageSource?: ImageSourcePropType;
   imageWidth?: number;
@@ -22,6 +25,8 @@ function EmptyStateComponent({
   title,
   description,
   Icon,
+  emoji,
+  emojiSize = 56,
   imageSource,
   imageWidth = 220,
   imageHeight,
@@ -43,6 +48,13 @@ function EmptyStateComponent({
           resizeMode="contain"
           accessibilityRole="image"
         />
+      ) : emoji ? (
+        <Text
+          style={[styles.emoji, { fontSize: emojiSize, lineHeight: emojiSize * 1.08 }]}
+          accessibilityRole="image"
+        >
+          {emoji}
+        </Text>
       ) : Icon ? (
         <View style={styles.iconWrap}>
           <Icon size={28} color={colors.textTertiary} strokeWidth={1.5} />
@@ -76,6 +88,9 @@ const styles = StyleSheet.create({
   },
   image: {
     marginBottom: spacing[2],
+  },
+  emoji: {
+    marginBottom: spacing[1],
   },
   iconWrap: {
     width: 64,

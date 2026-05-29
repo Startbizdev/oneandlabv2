@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Bell, CalendarPlus, Scale, ScanFace, User } from 'lucide-react-native';
+import { Bell, CalendarPlus, FlaskConical, Scale, ScanFace, User } from 'lucide-react-native';
 import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label';
 import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
@@ -34,7 +34,16 @@ export default function ProMore() {
         {
           title: 'Professionnel',
           delay: 210,
-          items: [{ icon: User, label: 'Mon profil', onPress: () => nav('/profile') }],
+          items: [
+            { icon: User, label: 'Mon profil', onPress: () => nav('/profile') },
+            {
+              icon: FlaskConical,
+              label: 'Résultats',
+              onPress: () => nav('/(pro)/resultats'),
+              iconColor: '#059669',
+              iconBg: '#ECFDF5',
+            },
+          ],
         },
         {
           title: 'Paramètres',

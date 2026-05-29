@@ -21,7 +21,8 @@ export const queryKeys = {
     all: ['patients'] as const,
     list: (filters?: Record<string, unknown>) => ['patients', 'list', filters] as const,
     detail: (id: string) => ['patients', 'detail', id] as const,
-    history: (id: string) => ['patients', 'history', id] as const,
+    history: (id: string) => ['patients', 'history', 'appointments', id] as const,
+    historyCount: (id: string) => ['patients', 'history', 'count', id] as const,
     lookup: (query: string) => ['patients', 'lookup', query] as const,
     hubSearch: (query: string) => ['patients', 'hub-search', query] as const,
   },
@@ -52,5 +53,8 @@ export const queryKeys = {
   },
   prescriptions: {
     list: (query: string) => ['prescriptions', 'list', query] as const,
+  },
+  labResults: {
+    list: (query: string) => ['lab-results', 'list', query] as const,
   },
 } as const;
