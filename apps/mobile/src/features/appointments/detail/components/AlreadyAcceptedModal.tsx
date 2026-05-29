@@ -1,6 +1,5 @@
 import { Modal, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { AlertTriangle } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -11,9 +10,9 @@ export function AlreadyAcceptedModal() {
     <Modal transparent animationType="fade">
       <View style={styles.backdrop}>
         <View style={[styles.card, elevation.lg]}>
-          <View style={styles.iconWrap}>
-            <AlertTriangle size={24} color={colors.warning} strokeWidth={2} />
-          </View>
+          <Text style={styles.emoji} accessibilityRole="image">
+            😔
+          </Text>
           <Text style={styles.title}>Déjà accepté</Text>
           <Text style={styles.message}>
             Ce rendez-vous a déjà été accepté par un autre préleveur.
@@ -41,13 +40,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
-  iconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.full,
-    backgroundColor: colors.warningLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+  emoji: {
+    fontSize: 56,
+    lineHeight: 60,
+    marginBottom: spacing[1],
   },
   title: {
     fontFamily: fontFamily.bold,

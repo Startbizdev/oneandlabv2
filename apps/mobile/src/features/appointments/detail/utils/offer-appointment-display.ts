@@ -1,5 +1,15 @@
 import type { Appointment } from '@oneandlab/shared-types';
+import type { CareCategory } from '@/features/categories/api/categories.service';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import {
+  buildNursingItemPerActOptionKvRows,
+  resolveCareItemDisplayLabel,
+} from '@/utils/appointment-detail-display';
+import {
+  collectLotBloodItems,
+  collectLotNursingItems,
+} from '@/utils/batch-appointment-detail-display';
+import { rdvCatalogDisplayLines, type RdvCatalogLine } from '@/utils/rdv-catalog-lines';
 import { appointmentAddressLine } from '@/utils/appointment-display';
 import { formatStreetAndDistrictWithoutStreetNumber } from '@/utils/offer-address-display';
 import {
@@ -124,20 +134,52 @@ export function offerBatchLotSummaryLabel(batch: Appointment[]): string {
   return `Lot · ${n} rendez-vous · une acceptation`;
 }
 
-export function offerNursingMultiActCount(appt: Appointment): number {
-  const ext = appt as AptExt;
-  const raw =
-    Array.isArray(ext.nursing_items_display) && ext.nursing_items_display.length
-      ? ext.nursing_items_display
-      : Array.isArray(ext.nursing_items)
-        ? ext.nursing_items
-        : [];
-  return raw.length > 1 ? raw.length : 0;
+/** Badges soins agrégés (lot multi-RDV ou multi-actes). */
+export function offerCareTagLines(batch: Appointment[]): RdvCatalogLine[] {
+  const seen = new Set<string>();
+  const out: RdvCatalogLine[] = [];
+  for (const appt of batch) {
+    for (const line of rdvCatalogDisplayLines(appt)) {
+      const key = line.label.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(line);
+    }
+  }
+  return out;
 }
 
-export function offerShowBatchCard(batch: Appointment[], primary: Appointment): boolean {
-  if (batch.length > 1) return true;
-  return offerNursingMultiActCount(primary) > 1;
+export type OfferCareOptionRow = { label: string; value: string };
+
+/** Options catalogue des soins additionnels (2e acte et suivants). */
+export function offerAdditionalCareOptionRows(
+  primary: Appointment,
+  batch: Appointment[],
+  categories: CareCategory[],
+): OfferCareOptionRow[] {
+  const nursingItems = collectLotNursingItems(primary, batch);
+  const bloodItems = collectLotBloodItems(primary, batch);
+  const items = [...nursingItems, ...bloodItems];
+  if (items.length <= 1) return [];
+
+  const rows: OfferCareOptionRow[] = [];
+  const seen = new Set<string>();
+  const multiCare = items.length > 2;
+
+  for (let i = 1; i < items.length; i++) {
+    const item = items[i]!;
+    const careLabel = resolveCareItemDisplayLabel(item, categories);
+    for (const row of buildNursingItemPerActOptionKvRows(item, categories)) {
+      const dedupeKey = `${row.label}|${row.value}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      rows.push({
+        label: multiCare ? `${row.label} · ${careLabel}` : row.label,
+        value: row.value,
+      });
+    }
+  }
+  return rows;
 }
 
 export type OfferLabPartner = {

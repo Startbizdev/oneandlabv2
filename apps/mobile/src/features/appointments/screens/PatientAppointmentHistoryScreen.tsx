@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import type { Appointment } from '@oneandlab/shared-types';
@@ -7,12 +7,14 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
-import { AppointmentCard } from '@/features/appointments/components/AppointmentCard';
+import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import { fetchAppointmentsPaginated } from '@/features/appointments/api/appointments.service';
 import { useAppointmentDetail } from '@/features/appointments/hooks/use-appointment-detail';
+import { resolveAppointmentDetail } from '@/features/appointments/hooks/appointment-detail-result';
+import type { AppointmentListRow } from '@/utils/appointment-batch';
+import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { PatientPaginationBar } from '../detail/components/patient/PatientPaginationBar';
 import { colors, spacing } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
 
 const PAGE_SIZE = 8;
 const PAST_STATUSES = 'completed,canceled,cancelled,refused,expired';
@@ -23,7 +25,7 @@ export function PatientAppointmentHistoryScreen() {
   const [page, setPage] = useState(1);
 
   const detailQ = useAppointmentDetail(id);
-  const primary = detailQ.data;
+  const primary = resolveAppointmentDetail(detailQ.data) ?? undefined;
   const relativeId = (primary as Appointment & { relative_id?: string })?.relative_id ?? null;
 
   const historyQ = useQuery({
@@ -42,119 +44,94 @@ export function PatientAppointmentHistoryScreen() {
             relativeId,
         );
       }
-      return filtered.sort((a, b) => {
-        const da = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
-        const db = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0;
-        return db - da;
-      });
+      return filtered;
     },
     enabled: Boolean(id && primary),
     staleTime: 60_000,
   });
 
-  const allItems = historyQ.data ?? [];
-  const pages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
-  const items = allItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const displayRows = useMemo(
+    () =>
+      buildAppointmentDisplayRows(historyQ.data ?? [], {
+        direction: 'past',
+        groupMode: 'batch',
+      }),
+    [historyQ.data],
+  );
 
-  const subtitle = useMemo(() => {
-    const rel = (primary as Appointment & { relative?: { first_name?: string; last_name?: string } })
-      ?.relative;
-    if (relativeId && rel) {
-      const r = rel;
-      const name = [r.first_name, r.last_name].filter(Boolean).join(' ');
-      return name ? `Rendez-vous passés pour ${name}` : 'Rendez-vous passés pour ce proche';
-    }
-    return 'Vos rendez-vous passés';
-  }, [relativeId, primary]);
+  const pages = Math.max(1, Math.ceil(displayRows.length / PAGE_SIZE));
+  const items = displayRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const renderItem = useCallback(
+    ({ item: row, index }: { item: AppointmentListRow; index: number }) => (
+      <AppointmentListRowCard
+        row={row}
+        index={index}
+        role="patient"
+        onPress={(apt) => router.push(`/(patient)/appointment/${apt.id}` as never)}
+      />
+    ),
+    [router],
+  );
 
   const ListFooter = useMemo(
     () =>
-      allItems.length > PAGE_SIZE ? (
+      displayRows.length > PAGE_SIZE ? (
         <PatientPaginationBar
           page={page}
           pages={pages}
-          total={allItems.length}
+          total={displayRows.length}
           onPrev={() => setPage((p) => Math.max(1, p - 1))}
           onNext={() => setPage((p) => Math.min(pages, p + 1))}
         />
       ) : null,
-    [allItems.length, page, pages],
+    [displayRows.length, page, pages],
   );
 
   if (detailQ.isPending && !primary) {
     return (
-      <View style={styles.container}>
-        <View style={styles.intro}>
-          <Text style={styles.introTitle}>Historique</Text>
-          <Text style={styles.introSub}>Chargement…</Text>
-        </View>
-        <View style={styles.loading}>
-          <SkeletonList count={4} itemHeight={88} gap={10} />
-        </View>
+      <View style={styles.loading}>
+        <SkeletonList count={4} itemHeight={116} gap={12} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.intro}>
-        <Text style={styles.introTitle}>Historique</Text>
-        <Text style={styles.introSub}>{subtitle}</Text>
-      </View>
-
-      <QueryFlatList
-        query={historyQ}
-        items={items}
-        keyExtractor={(item) => item.id}
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        skeletonHeight={88}
-        ListFooterComponent={ListFooter}
-        renderItem={({ item, index }) => (
-          <AppointmentCard
-            appointment={item}
-            index={index}
-            onPress={() => router.push(`/(patient)/appointment/${item.id}` as never)}
-          />
-        )}
-        ItemSeparatorComponent={() => <View style={styles.sep} />}
-        ListEmptyComponent={
-          <EmptyState
-            imageSource={EMPTY_RDV_IMAGE}
-            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-            title="Aucun historique"
-            description="Les rendez-vous passés apparaîtront ici."
-          />
-        }
-      />
-    </View>
+    <QueryFlatList
+      query={historyQ}
+      items={items}
+      keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={styles.list}
+      showsVerticalScrollIndicator={false}
+      skeletonHeight={116}
+      ListFooterComponent={ListFooter}
+      renderItem={renderItem}
+      ListEmptyComponent={
+        <EmptyState
+          imageSource={EMPTY_RDV_IMAGE}
+          imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+          imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
+          title="Aucun historique"
+          description="Les rendez-vous passés apparaîtront ici."
+        />
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  intro: {
+  loading: {
+    flex: 1,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
-    paddingBottom: spacing[3],
-    gap: spacing[1],
-  },
-  introTitle: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.xl,
-    color: colors.textPrimary,
-  },
-  introSub: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    backgroundColor: colors.background,
   },
   list: {
     paddingHorizontal: spacing[4],
+    paddingTop: spacing[2],
     paddingBottom: spacing[8],
+    flexGrow: 1,
+    backgroundColor: colors.background,
   },
-  sep: { height: spacing[2] },
-  loading: { paddingHorizontal: spacing[4], flex: 1 },
 });

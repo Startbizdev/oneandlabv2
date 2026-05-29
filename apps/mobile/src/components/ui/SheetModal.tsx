@@ -87,9 +87,11 @@ export function SheetModal({
 
     if (visible) {
       dismissFromParentRef.current = false;
-      modal.present();
-      hasPresentedRef.current = true;
-      return;
+      const frame = requestAnimationFrame(() => {
+        modal.present();
+        hasPresentedRef.current = true;
+      });
+      return () => cancelAnimationFrame(frame);
     }
 
     if (!hasPresentedRef.current) return;

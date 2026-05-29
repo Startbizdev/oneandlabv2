@@ -1,5 +1,6 @@
 import { api } from '@/api/client';
 import { buildMedicalDocumentForm, uploadFormData } from '@/lib/uploads/upload-file';
+import { fetchAppointmentsPaginated } from '@/features/appointments/api/appointments.service';
 import type { Appointment } from '@oneandlab/shared-types';
 
 export type PatientProfile = {
@@ -75,6 +76,16 @@ export async function fetchPatientHistory(patientId: string, page = 1, limit = 2
   return api.get<Appointment[]>(
     `/patient-history?patient_id=${encodeURIComponent(patientId)}&page=${page}&limit=${limit}`,
   );
+}
+
+/** Historique dossier patient staff — même payload déchiffré que la liste RDV (créneaux, soins, assignés). */
+export async function fetchStaffPatientHistoryAppointments(patientId: string) {
+  const { appointments, pagination } = await fetchAppointmentsPaginated({
+    patient_id: patientId,
+    page: 1,
+    limit: 120,
+  });
+  return { appointments, total: pagination.total };
 }
 
 export async function fetchPatientDocuments(userId: string) {

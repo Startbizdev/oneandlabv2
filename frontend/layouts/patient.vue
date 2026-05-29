@@ -481,6 +481,7 @@ const patientMobileNavItems = [
   { to: '/patient', label: 'Mes rendez-vous', icon: 'i-lucide-calendar' },
   { to: '/rendez-vous/nouveau', label: 'Nouveau RDV', icon: 'i-lucide-calendar-plus' },
   { to: '/patient/relatives', label: 'Mes proches', icon: 'i-lucide-users' },
+  { to: '/patient/resultats', label: 'Résultats', icon: 'i-lucide-flask-conical' },
   { to: '/patient/reviews', label: 'Mes avis', icon: 'i-lucide-star' },
   { to: '/profile', label: 'Mon profil', icon: 'i-lucide-user' },
 ] as const
@@ -490,6 +491,7 @@ function isPatientMobileNavActive(to: string): boolean {
   if (to === '/patient') return p === '/patient'
   if (to === '/rendez-vous/nouveau') return p.startsWith('/rendez-vous')
   if (to === '/patient/relatives') return p.startsWith('/patient/relatives')
+  if (to === '/patient/resultats') return p.startsWith('/patient/resultats')
   if (to === '/patient/reviews') return p.startsWith('/patient/reviews')
   if (to === '/profile') return p.startsWith('/profile')
   return false
@@ -674,13 +676,24 @@ const notificationItems = computed(() => {
         return;
       }
       if (role === 'patient') {
-        const hash = notif.type === 'results_ready' ? '#resultats' : '';
-        navigateTo({ path: `/patient/appointments/${aptId}`, hash });
+        if (notif.type === 'results_ready' || notif.type === 'results_available') {
+          navigateTo('/patient/resultats');
+          return;
+        }
+        navigateTo(`/patient/appointments/${aptId}`);
       } else if (role === 'nurse') {
+        if (notif.type === 'results_available') {
+          navigateTo('/nurse/resultats');
+          return;
+        }
         navigateTo(`/nurse/appointments/${aptId}`);
       } else if (role === 'lab' || role === 'subaccount') {
         navigateTo(`/lab/appointments/${aptId}`);
       } else if (role === 'pro') {
+        if (notif.type === 'results_available') {
+          navigateTo('/pro/resultats');
+          return;
+        }
         navigateTo(`/pro/appointments/${aptId}`);
       } else if (role === 'preleveur') {
         navigateTo(`/preleveur/appointments/${aptId}`);

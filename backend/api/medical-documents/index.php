@@ -588,6 +588,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     error_log('Erreur notification infirmier résultats: ' . $e->getMessage());
                 }
             }
+
+            $proIds = [];
+            $aptCreatorId = (string) ($appointment['created_by'] ?? '');
+            $aptCreatorRole = (string) ($appointment['created_by_role'] ?? '');
+            if ($aptCreatorId !== '' && $aptCreatorRole === 'pro') {
+                $proIds[$aptCreatorId] = true;
+            }
+            if ($patientId) {
+                $patCreatorStmt = $db->prepare('
+                    SELECT p.created_by, pr.role AS creator_role
+                    FROM profiles p
+                    LEFT JOIN profiles pr ON pr.id = p.created_by
+                    WHERE p.id = ?
+                    LIMIT 1
+                ');
+                $patCreatorStmt->execute([$patientId]);
+                $patCreatorRow = $patCreatorStmt->fetch(PDO::FETCH_ASSOC);
+                if ($patCreatorRow && ($patCreatorRow['creator_role'] ?? '') === 'pro' && !empty($patCreatorRow['created_by'])) {
+                    $proIds[(string) $patCreatorRow['created_by']] = true;
+                }
+                try {
+                    $ppaStmt = $db->prepare('
+                        SELECT ppa.professional_id
+                        FROM patient_professional_access ppa
+                        INNER JOIN profiles pr ON pr.id = ppa.professional_id AND pr.role = ?
+                        WHERE ppa.patient_id = ?
+                    ');
+                    $ppaStmt->execute(['pro', $patientId]);
+                    foreach ($ppaStmt->fetchAll(PDO::FETCH_ASSOC) as $ppaRow) {
+                        if (!empty($ppaRow['professional_id'])) {
+                            $proIds[(string) $ppaRow['professional_id']] = true;
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log('Erreur lookup PPA pro résultats: ' . $e->getMessage());
+                }
+            }
+            if ($proIds !== []) {
+                try {
+                    $notificationService = new NotificationService();
+                    $patientLabel = 'Patient';
+                    if ($patientId) {
+                        $np = $db->prepare('SELECT first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek FROM profiles WHERE id = ?');
+                        $np->execute([$patientId]);
+                        $prow = $np->fetch(PDO::FETCH_ASSOC);
+                        if ($prow && !empty($prow['first_name_encrypted']) && !empty($prow['first_name_dek'])) {
+                            $fn = $crypto->decryptField($prow['first_name_encrypted'], $prow['first_name_dek']);
+                            $ln = (!empty($prow['last_name_encrypted']) && !empty($prow['last_name_dek']))
+                                ? $crypto->decryptField($prow['last_name_encrypted'], $prow['last_name_dek'])
+                                : '';
+                            $patientLabel = trim($fn . ' ' . $ln) ?: 'Patient';
+                        }
+                    }
+                    foreach (array_keys($proIds) as $proId) {
+                        if ($proId === (string) ($user['user_id'] ?? '')) {
+                            continue;
+                        }
+                        $notificationService->createNotification(
+                            $proId,
+                            'results_available',
+                            'Résultats disponibles',
+                            'De nouveaux résultats d’analyses sont disponibles pour ' . $patientLabel . '.',
+                            [
+                                'appointment_id' => $appointmentId,
+                                'medical_document_id' => $id,
+                            ]
+                        );
+                    }
+                } catch (Exception $e) {
+                    error_log('Erreur notification pro résultats: ' . $e->getMessage());
+                }
+            }
         }
         
         echo json_encode([

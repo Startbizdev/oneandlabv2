@@ -881,6 +881,12 @@ const navigationItems = computed(() => {
           active: active("/nurse/patients"),
         },
         {
+          label: "Résultats",
+          icon: "i-lucide-flask-conical",
+          to: "/nurse/resultats",
+          active: active("/nurse/resultats"),
+        },
+        {
           label: "Mes avis",
           icon: "i-lucide-star",
           to: "/nurse/reviews",
@@ -1051,6 +1057,12 @@ const navigationItems = computed(() => {
           active: active("/pro/patients"),
         },
         {
+          label: "Résultats",
+          icon: "i-lucide-flask-conical",
+          to: "/pro/resultats",
+          active: active("/pro/resultats"),
+        },
+        {
           label: "Prescriptions",
           icon: "i-lucide-file-pen-line",
           to: "/pro/prescriptions",
@@ -1211,19 +1223,18 @@ const notificationItems = computed(() => {
                 ? "i-lucide-user-check"
               : notif.type === "care_gallery_photo" || notif.type === "care_gallery_comment"
                 ? "i-lucide-images"
+              : notif.type === "results_available" || notif.type === "results_ready"
+                ? "i-lucide-flask-conical"
                 : "i-lucide-bell",
       isRead: !!notif.read_at,
       disabled: isShareLinkInfo,
       click: () => {
         if (isShareLinkInfo) return;
         const aptId = notif.appointment_id || data?.appointment_id;
-        if (aptId && notif.type === "results_available" && role === "nurse") {
+        if (notif.type === "results_available" && (role === "nurse" || role === "pro")) {
           notificationsMenuOpen.value = false;
-          const q: Record<string, string> = { focus: "resultats" };
-          if (data?.medical_document_id) {
-            q.doc = String(data.medical_document_id);
-          }
-          void navigateTo({ path: `/nurse/appointments/${aptId}`, query: q });
+          const base = role === "pro" ? "/pro" : "/nurse";
+          void navigateTo(`${base}/resultats`);
           return;
         }
         if (

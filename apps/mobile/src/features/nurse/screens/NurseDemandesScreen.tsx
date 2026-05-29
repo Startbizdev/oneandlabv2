@@ -6,8 +6,10 @@ import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { PlanLimitsBanner } from '@/features/nurse/components/PlanLimitsBanner';
 import { NurseDemandesOfferCard } from '@/features/nurse/components/NurseDemandesOfferCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
+import { offerPreviewFromListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { useAppointmentsList } from '@/features/appointments/hooks/use-appointments-list';
+import { useToast } from '@/providers/ToastProvider';
 import { NURSE_DEMANDES_LIST_FILTERS } from '@/features/nurse/hooks/use-nurse-demandes-badge';
 import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-store';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
@@ -17,6 +19,7 @@ import { colors, spacing } from '@/theme';
 
 export function NurseDemandesScreen() {
   const user = useAuthStore((s) => s.user);
+  const { show: toast } = useToast();
 
   const query = useAppointmentsList(NURSE_DEMANDES_LIST_FILTERS);
   const { data, refetch } = query;
@@ -52,13 +55,23 @@ export function NurseDemandesScreen() {
         row={row}
         index={index}
         onPress={(apt) => {
-          if (apt?.id && user?.id) {
-            void openIncomingOffer(apt.id, 'nurse', user.id);
-          }
+          if (!apt?.id || !user?.id) return;
+          const preview = offerPreviewFromListRow(row);
+          void openIncomingOffer(apt.id, 'nurse', user.id, preview).then((result) => {
+            if (result.ok) return;
+            if (result.reason === 'already_accepted') {
+              toast('Ce rendez-vous a déjà été pris par un autre professionnel.', { type: 'info' });
+            } else if (result.reason === 'unavailable') {
+              toast('Cette demande n’est plus disponible.', { type: 'info' });
+            } else if (result.reason === 'network') {
+              toast('Connexion instable — réessayez.', { type: 'error' });
+            }
+            void refetch();
+          });
         }}
       />
     ),
-    [openIncomingOffer, user?.id],
+    [openIncomingOffer, refetch, toast, user?.id],
   );
 
   const ListHeader = useCallback(

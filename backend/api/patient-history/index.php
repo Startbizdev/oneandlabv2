@@ -7,7 +7,10 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/LabTeamAccess.php';
 require_once __DIR__ . '/../../lib/Validation.php';
+require_once __DIR__ . '/../../lib/DbSchemaCache.php';
+require_once __DIR__ . '/../../lib/AppointmentListPayload.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../../models/Appointment.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -44,7 +47,7 @@ if (!in_array($role, $allowedRoles, true)) {
 $patientId = trim((string) ($_GET['patient_id'] ?? ''));
 $relativeId = trim((string) ($_GET['relative_id'] ?? ''));
 $page = max(1, (int) ($_GET['page'] ?? 1));
-$limit = min(max((int) ($_GET['limit'] ?? 5), 1), 25);
+$limit = min(max((int) ($_GET['limit'] ?? 20), 1), 120);
 $offset = ($page - 1) * $limit;
 
 if ($patientId === '' || !Validation::uuid($patientId)) {
@@ -115,53 +118,114 @@ if (!patientHistoryHasAccess($db, $role, $userId, $patientId)) {
     exit;
 }
 
+/**
+ * Historique dossier patient : uniquement les RDV du professionnel connecté (assignation / création).
+ *
+ * @return array{0: string, 1: list<mixed>}
+ */
+function patientHistoryScopeFilter(PDO $db, string $role, string $userId): array
+{
+    if ($role === 'super_admin') {
+        return ['', []];
+    }
+
+    if ($role === 'nurse') {
+        return [' AND a.assigned_nurse_id = ?', [$userId]];
+    }
+
+    if ($role === 'pro') {
+        return [' AND a.created_by = ?', [$userId]];
+    }
+
+    if ($role === 'preleveur') {
+        return [' AND a.assigned_to = ?', [$userId]];
+    }
+
+    if (in_array($role, ['lab', 'subaccount'], true)) {
+        $teamIds = LabTeamAccess::teamMemberIds($db, $userId, $role);
+        if ($teamIds === []) {
+            return [' AND 1 = 0', []];
+        }
+        $placeholders = implode(',', array_fill(0, count($teamIds), '?'));
+
+        return [" AND a.assigned_lab_id IN ($placeholders)", $teamIds];
+    }
+
+    return [' AND 1 = 0', []];
+}
+
+[$scopeSql, $scopeParams] = patientHistoryScopeFilter($db, $role, $userId);
+
+$hasRelativeColumn = DbSchemaCache::tableHasColumn($db, 'appointments', 'relative_id');
+$hasPatientRelativesTable = DbSchemaCache::tableExists($db, 'patient_relatives');
+$useRelativeJoin = $hasRelativeColumn && $hasPatientRelativesTable;
+$hasMergedColumn = DbSchemaCache::tableHasColumn($db, 'appointments', 'merged_into_appointment_id');
+
 $where = 'a.patient_id = ?';
 $params = [$patientId];
 if ($relativeId !== '') {
     $where .= ' AND a.relative_id = ?';
     $params[] = $relativeId;
 }
-try {
-    $hasMergedColumn = (bool) $db->query("
-        SELECT COUNT(*) FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'appointments'
-          AND COLUMN_NAME = 'merged_into_appointment_id'
-    ")->fetchColumn();
-} catch (Throwable $e) {
-    $hasMergedColumn = false;
-}
 if ($hasMergedColumn) {
     $where .= ' AND a.merged_into_appointment_id IS NULL';
 }
+$where .= $scopeSql;
+$params = array_merge($params, $scopeParams);
 
 $countStmt = $db->prepare("SELECT COUNT(*) FROM appointments a WHERE $where");
 $countStmt->execute($params);
 $total = (int) $countStmt->fetchColumn();
 
-$stmt = $db->prepare("
-    SELECT
-        a.id,
-        a.type,
-        a.status,
-        a.scheduled_at,
-        a.created_at,
-        a.assigned_lab_id,
-        a.assigned_nurse_id,
-        a.assigned_to,
-        cc.name AS category_name
-    FROM appointments a
-    LEFT JOIN care_categories cc ON cc.id = a.category_id
-    WHERE $where
-    ORDER BY COALESCE(a.scheduled_at, a.created_at) DESC
-    LIMIT " . (int) $limit . ' OFFSET ' . (int) $offset
-);
-$stmt->execute($params);
-$appointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+if ($useRelativeJoin) {
+    $sql = '
+        SELECT
+            a.*,
+            pr.first_name_encrypted as relative_first_name_encrypted,
+            pr.first_name_dek as relative_first_name_dek,
+            pr.last_name_encrypted as relative_last_name_encrypted,
+            pr.last_name_dek as relative_last_name_dek,
+            pr.email_encrypted as relative_email_encrypted,
+            pr.email_dek as relative_email_dek,
+            pr.phone_encrypted as relative_phone_encrypted,
+            pr.phone_dek as relative_phone_dek,
+            pr.relationship_type as relative_relationship_type,
+            cc.name as category_name,
+            cc.type as category_type,
+            cc.icon as category_icon,
+            cc.image_url as category_image_url
+        FROM appointments a
+        LEFT JOIN patient_relatives pr ON a.relative_id = pr.id
+        LEFT JOIN care_categories cc ON a.category_id = cc.id
+        WHERE ' . $where . '
+        ORDER BY COALESCE(a.scheduled_at, a.created_at) DESC
+        LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
+} else {
+    $sql = '
+        SELECT
+            a.*,
+            cc.name as category_name,
+            cc.type as category_type,
+            cc.icon as category_icon,
+            cc.image_url as category_image_url
+        FROM appointments a
+        LEFT JOIN care_categories cc ON a.category_id = cc.id
+        WHERE ' . $where . '
+        ORDER BY COALESCE(a.scheduled_at, a.created_at) DESC
+        LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
+}
 
-$ids = array_values(array_filter(array_map(static fn($row) => (string) ($row['id'] ?? ''), $appointments)));
+$stmt = $db->prepare($sql);
+$stmt->execute($params);
+$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$appointmentModel = new Appointment();
+$decrypted = AppointmentListPayload::decryptRowsForList($appointmentModel, $rows, $userId, $role);
+$data = AppointmentListPayload::enrichForListCards($db, $appointmentModel, $decrypted, $hasMergedColumn);
+
+$ids = array_values(array_filter(array_map(static fn(array $row): string => (string) ($row['id'] ?? ''), $data)));
 $resultsByAppointment = [];
-if (!empty($ids)) {
+if ($ids !== []) {
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $docStmt = $db->prepare("
         SELECT id, appointment_id, file_name, file_size, mime_type, document_type, created_at
@@ -187,35 +251,11 @@ if (!empty($ids)) {
     }
 }
 
-$profileIds = [];
-foreach ($appointments as $row) {
-    foreach (['assigned_lab_id', 'assigned_nurse_id', 'assigned_to'] as $key) {
-        if (!empty($row[$key])) {
-            $profileIds[] = (string) $row[$key];
-        }
-    }
+foreach ($data as &$row) {
+    $id = (string) ($row['id'] ?? '');
+    $row['resultats'] = $resultsByAppointment[$id] ?? [];
 }
-$displayNames = [];
-if (!empty($profileIds)) {
-    $userModel = new User();
-    $displayNames = $userModel->getDisplayNamesByIds(array_values(array_unique($profileIds)));
-}
-
-$data = array_map(static function (array $row) use ($resultsByAppointment, $displayNames): array {
-    $id = (string) $row['id'];
-    return [
-        'id' => $id,
-        'type' => $row['type'],
-        'status' => $row['status'],
-        'scheduled_at' => $row['scheduled_at'],
-        'created_at' => $row['created_at'],
-        'category_name' => $row['category_name'],
-        'assigned_lab_display_name' => !empty($row['assigned_lab_id']) ? ($displayNames[(string) $row['assigned_lab_id']] ?? null) : null,
-        'assigned_nurse_display_name' => !empty($row['assigned_nurse_id']) ? ($displayNames[(string) $row['assigned_nurse_id']] ?? null) : null,
-        'assigned_to_display_name' => !empty($row['assigned_to']) ? ($displayNames[(string) $row['assigned_to']] ?? null) : null,
-        'resultats' => $resultsByAppointment[$id] ?? [],
-    ];
-}, $appointments);
+unset($row);
 
 echo json_encode([
     'success' => true,

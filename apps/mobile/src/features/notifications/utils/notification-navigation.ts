@@ -71,16 +71,10 @@ export function resolveNotificationNavigation(
     type === 'new_review_on_pro_patient' ||
     Boolean(data.review_id);
 
-  if (aptId && type === 'results_available' && role === 'nurse') {
+  if (type === 'results_available' && (role === 'nurse' || role === 'pro')) {
     return {
       kind: 'route',
-      pathname: `${prefix}/appointment/${aptId}`,
-      params: {
-        focus: 'resultats',
-        ...(data.medical_document_id
-          ? { doc: String(data.medical_document_id) }
-          : {}),
-      },
+      pathname: `${prefix}/resultats`,
     };
   }
 
@@ -128,15 +122,14 @@ export function resolveNotificationNavigation(
     return { kind: 'route', pathname: `${prefix}/appointment/${aptId}` };
   }
 
-  if (aptId && role === 'patient') {
+  if (role === 'patient') {
     if (type === 'results_ready' || type === 'results_available') {
       return {
         kind: 'route',
-        pathname: `${prefix}/appointment/${aptId}`,
-        params: { focus: 'resultats' },
+        pathname: `${prefix}/resultats`,
       };
     }
-    if (type === 'care_gallery_photo' || type === 'care_gallery_comment') {
+    if (aptId && (type === 'care_gallery_photo' || type === 'care_gallery_comment')) {
       const photoId = data.photo_id != null ? String(data.photo_id).trim() : '';
       return {
         kind: 'route',
@@ -147,7 +140,9 @@ export function resolveNotificationNavigation(
         },
       };
     }
-    return { kind: 'route', pathname: `${prefix}/appointment/${aptId}` };
+    if (aptId) {
+      return { kind: 'route', pathname: `${prefix}/appointment/${aptId}` };
+    }
   }
 
   if (

@@ -14,9 +14,18 @@ export const persistQueryOptions = {
   persister: asyncStoragePersister,
   maxAge: MAX_AGE_MS,
   dehydrateOptions: {
-    shouldDehydrateQuery: (query: { queryKey: readonly unknown[] }) => {
+    shouldDehydrateQuery: (query: {
+      queryKey: readonly unknown[];
+      state: { status: string; fetchStatus: string };
+    }) => {
       const root = query.queryKey[0];
-      return root === 'appointments' || root === 'categories';
+      if (root !== 'appointments' && root !== 'categories') return false;
+      if (query.state.status === 'pending' || query.state.fetchStatus === 'fetching') {
+        return false;
+      }
+      if (query.state.status === 'error') return false;
+      if (root === 'appointments' && query.queryKey[1] === 'detail') return false;
+      return true;
     },
   },
 };

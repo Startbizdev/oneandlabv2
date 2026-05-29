@@ -20,6 +20,7 @@ import { ChevronLeft, ImagePlus, Maximize2, Send } from 'lucide-react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { ScreenActionLayout } from '@/components/layout/ScreenActionLayout';
 import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { carePhotoPickErrorMessage, pickCarePhotoUri } from '@/lib/uploads/pick-care-photo';
 import { useAuthStore } from '@/store/auth-store';
 import { queryKeys } from '@/lib/query-keys';
@@ -33,7 +34,7 @@ import {
 import { CarePhotoImage } from '../detail/components/blocks/CarePhotoImage';
 import {
   carePhotoComposerPlaceholder,
-  carePhotoDiscussionHint,
+  carePhotoDiscussionHeaderSubtitle,
 } from '../detail/utils/care-photo-copy';
 import { loadCarePhotoLocalUri } from '../detail/utils/care-photo-image';
 import {
@@ -42,6 +43,13 @@ import {
   sortPhotosChronologically,
 } from '../detail/utils/care-photo-thread-digest';
 import type { AppointmentDetailRole } from '../detail/utils/appointment-detail-role-config';
+import { useAppointmentDetail } from '../hooks/use-appointment-detail';
+import {
+  appointmentDetailBlockReason,
+  resolveAppointmentDetail,
+} from '../hooks/appointment-detail-result';
+import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
+import { rdvMaquetteAvatarCounterparty } from '@/utils/rdv-maquette-card-display';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { SkeletonList } from '@/components/ui/skeletons';
@@ -51,6 +59,7 @@ import { fontFamily, fontSize } from '@/theme/typography';
 dayjs.locale('fr');
 
 const COMPOSER_BAR_HEIGHT = 56 + spacing[2];
+const HEADER_AVATAR = 44;
 
 interface Props {
   role: AppointmentDetailRole;
@@ -83,6 +92,20 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const scrollRef = useRef<ScrollView>(null);
+
+  const detailQ = useAppointmentDetail(appointmentId);
+  const detailBlock = appointmentDetailBlockReason(detailQ.data);
+  const apt = resolveAppointmentDetail(detailQ.data);
+  const patientHeader = useMemo(() => {
+    if (!apt) return null;
+    const cardRole = role === 'nurse' ? 'nurse' : role === 'pro' ? 'pro' : 'patient';
+    return rdvMaquetteAvatarCounterparty(apt, cardRole);
+  }, [apt, role]);
+
+  const headerSubtitle = useMemo(
+    () => carePhotoDiscussionHeaderSubtitle(apt, role),
+    [apt, role],
+  );
 
   const [draft, setDraft] = useState('');
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
@@ -203,6 +226,28 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
     );
   }
 
+  if (detailBlock) {
+    return (
+      <View style={styles.root}>
+        <View style={[styles.header, { paddingTop: insets.top + spacing[1] }]}>
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+          >
+            <ChevronLeft size={24} color={colors.textPrimary} strokeWidth={2.25} />
+          </Pressable>
+          <View style={styles.headerSpacer} />
+        </View>
+        <AppointmentDetailBlockedEmptyState
+          onBack={() => router.back()}
+          block={detailBlock}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + spacing[1] }]}>
@@ -214,11 +259,29 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
         >
           <ChevronLeft size={24} color={colors.textPrimary} strokeWidth={2.25} />
         </Pressable>
-        <View style={styles.headerCopy}>
-          <Text style={styles.headerTitle}>Échanges</Text>
-          <Text style={styles.headerSub} numberOfLines={2}>
-            {carePhotoDiscussionHint(role)}
-          </Text>
+        <View style={styles.headerIdentity}>
+          {patientHeader?.name ? (
+            <>
+              <ProfileAvatar
+                profileImageUrl={patientHeader.profileImageUrl}
+                seed={patientHeader.name || apt?.id || appointmentId}
+                gender={patientHeader.gender}
+                size={HEADER_AVATAR}
+                style={styles.headerAvatar}
+              />
+              <View style={styles.headerCopy}>
+                <Text style={styles.headerPatientName} numberOfLines={1}>
+                  {patientHeader.name}
+                </Text>
+                <Text style={styles.headerSub}>{headerSubtitle}</Text>
+              </View>
+            </>
+          ) : (
+            <View style={styles.headerCopy}>
+              <Text style={styles.headerTitle}>Échanges</Text>
+              <Text style={styles.headerSub}>{headerSubtitle}</Text>
+            </View>
+          )}
         </View>
         <View style={styles.headerSpacer} />
       </View>
@@ -413,12 +476,23 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: spacing[2],
     paddingBottom: spacing[3],
     backgroundColor: colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.borderLight,
+  },
+  headerIdentity: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    minWidth: 0,
+    paddingRight: spacing[1],
+  },
+  headerAvatar: {
+    flexShrink: 0,
   },
   backBtn: {
     width: 44,
@@ -428,20 +502,26 @@ const styles = StyleSheet.create({
   },
   headerCopy: {
     flex: 1,
-    paddingTop: spacing[1],
     minWidth: 0,
+    justifyContent: 'center',
+    gap: 2,
   },
   headerSpacer: { width: 44 },
+  headerPatientName: {
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.base,
+    color: colors.textPrimary,
+    letterSpacing: -0.2,
+  },
   headerTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
     color: colors.textPrimary,
   },
   headerSub: {
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
-    marginTop: 2,
+    color: colors.textSecondary,
     lineHeight: fontSize.xs * 1.45,
   },
   scrollContent: {

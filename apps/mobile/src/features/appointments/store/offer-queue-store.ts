@@ -3,12 +3,45 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { isPendingIncomingOffer, isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { fetchAppointment } from '../api/appointments.service';
 
+export type OpenIncomingOfferResult =
+  | { ok: true }
+  | { ok: false; reason: 'invalid' | 'unavailable' | 'already_accepted' | 'network' };
+
 function batchKey(apt: Appointment): string | null {
   const bid = apt.creation_batch_id;
   if (!bid) return null;
   if (isBloodTestAppointment(apt.type)) return `blood_test:${bid}`;
   if (isNursingAppointment(apt.type)) return `nursing:${bid}`;
   return null;
+}
+
+function canOpenOffer(data: Appointment, role: string, userId: string): boolean {
+  if (!data?.id) return false;
+  if (['canceled', 'cancelled', 'refused', 'expired'].includes(String(data.status ?? ''))) {
+    return false;
+  }
+  if (role === 'nurse' && isBloodTestAppointment(data.type)) return false;
+  if (!isPendingIncomingOffer(data, userId)) return false;
+  if (role === 'nurse') {
+    const assigned = data.assigned_nurse_id;
+    if (assigned && String(assigned) !== String(userId)) return false;
+  }
+  return true;
+}
+
+function markDisplayedAndFilterQueue(
+  state: Pick<OfferQueueState, 'queue' | 'displayedIds' | 'displayedBatchKeys'>,
+  data: Appointment,
+) {
+  const ids = new Set(state.displayedIds);
+  ids.add(data.id);
+  const bk = batchKey(data);
+  const batchKeys = new Set(state.displayedBatchKeys);
+  if (bk) batchKeys.add(bk);
+  const queue = bk
+    ? state.queue.filter((a) => batchKey(a) !== bk)
+    : state.queue.filter((a) => a.id !== data.id);
+  return { queue, displayedIds: ids, displayedBatchKeys: batchKeys };
 }
 
 interface OfferQueueState {
@@ -18,10 +51,16 @@ interface OfferQueueState {
   visible: boolean;
   selected: Appointment | null;
   shareToken: string | null;
+  /** Force Gorhom à re-présenter la sheet à chaque ouverture manuelle. */
+  presentNonce: number;
   enqueueMany: (items: Appointment[]) => void;
   processNext: (role: string, userId: string) => Promise<void>;
-  /** Ouvre la modal pour une offre (liste Mes demandes — pas la fiche détail). */
-  openIncomingOffer: (appointmentId: string, role: string, userId: string) => Promise<void>;
+  openIncomingOffer: (
+    appointmentId: string,
+    role: string,
+    userId: string,
+    preview?: Appointment | null,
+  ) => Promise<OpenIncomingOfferResult>;
   closeModal: () => void;
   setShareToken: (token: string | null) => void;
   reset: () => void;
@@ -34,6 +73,7 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
   visible: false,
   selected: null,
   shareToken: null,
+  presentNonce: 0,
 
   setShareToken: (token) => set({ shareToken: token }),
 
@@ -73,76 +113,83 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
     }
 
     try {
-      const res = await fetchAppointment(next.id);
+      const res = await fetchAppointment(next.id, { includeBatch: true });
       if (!res.success || !res.data) {
+        if (res.success && (res as { alreadyAccepted?: boolean }).alreadyAccepted) {
+          set({ queue: state.queue.slice(1) });
+          return;
+        }
         set({ queue: state.queue.slice(1) });
         return;
       }
       const data = res.data;
 
-      if (['canceled', 'cancelled', 'refused', 'expired'].includes(data.status)) {
+      if (!canOpenOffer(data, role, userId)) {
         set({ queue: state.queue.slice(1) });
         return;
       }
 
-      if (role === 'nurse' && isBloodTestAppointment(data.type)) {
-        set({ queue: state.queue.slice(1) });
-        return;
-      }
-
-      if (!isPendingIncomingOffer(data, userId)) {
-        set({ queue: state.queue.slice(1) });
-        return;
-      }
-
-      const rest = state.queue.slice(1);
-      const bk = batchKey(data);
-      const filtered = bk
-        ? rest.filter((a) => batchKey(a) !== bk)
-        : rest;
-
+      const marked = markDisplayedAndFilterQueue(get(), data);
       set({
-        queue: filtered,
+        ...marked,
         selected: data,
         visible: true,
+        presentNonce: get().presentNonce + 1,
       });
     } catch {
       set({ queue: state.queue.slice(1) });
     }
   },
 
-  openIncomingOffer: async (appointmentId, role, userId) => {
-    if (!appointmentId || !role || !userId) return;
+  openIncomingOffer: async (appointmentId, role, userId, preview) => {
+    if (!appointmentId || !role || !userId) {
+      return { ok: false, reason: 'invalid' };
+    }
+
+    const previewData =
+      preview && preview.id === appointmentId && canOpenOffer(preview, role, userId)
+        ? preview
+        : null;
+
+    if (previewData) {
+      const marked = markDisplayedAndFilterQueue(get(), previewData);
+      set({
+        ...marked,
+        selected: previewData,
+        visible: true,
+        presentNonce: get().presentNonce + 1,
+      });
+    }
+
     try {
-      const res = await fetchAppointment(appointmentId);
-      if (!res.success || !res.data) return;
+      const res = await fetchAppointment(appointmentId, { includeBatch: true });
+      if (res.success && (res as { alreadyAccepted?: boolean }).alreadyAccepted) {
+        set({ visible: false, selected: null });
+        return { ok: false, reason: 'already_accepted' };
+      }
+      if (!res.success || !res.data) {
+        if (previewData) return { ok: true };
+        return { ok: false, reason: 'unavailable' };
+      }
       const data = res.data;
 
-      if (['canceled', 'cancelled', 'refused', 'expired'].includes(data.status)) return;
-      if (role === 'nurse' && isBloodTestAppointment(data.type)) return;
-      if (!isPendingIncomingOffer(data, userId)) return;
+      if (!canOpenOffer(data, role, userId)) {
+        set({ visible: false, selected: null });
+        return { ok: false, reason: 'unavailable' };
+      }
 
-      const state = get();
-      const ids = new Set(state.displayedIds);
-      ids.add(data.id);
-      const bk = batchKey(data);
-      const batchKeys = new Set(state.displayedBatchKeys);
-      if (bk) batchKeys.add(bk);
-
-      // Retirer de la file FIFO pour éviter processNext → même offre en double après fermeture.
-      const queue = bk
-        ? state.queue.filter((a) => batchKey(a) !== bk)
-        : state.queue.filter((a) => a.id !== data.id);
-
+      const marked = markDisplayedAndFilterQueue(get(), data);
       set({
-        queue,
-        displayedIds: ids,
-        displayedBatchKeys: batchKeys,
+        ...marked,
         selected: data,
         visible: true,
+        presentNonce: previewData ? get().presentNonce : get().presentNonce + 1,
       });
+      return { ok: true };
     } catch {
-      /* ignore */
+      if (previewData) return { ok: true };
+      set({ visible: false, selected: null });
+      return { ok: false, reason: 'network' };
     }
   },
 
@@ -158,6 +205,7 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
       visible: false,
       selected: null,
       shareToken: null,
+      presentNonce: 0,
     });
   },
 }));

@@ -9,6 +9,7 @@ import { BookAppointmentCta } from '@/features/nurse/components/BookAppointmentC
 import { PlanLimitsBanner } from '@/features/nurse/components/PlanLimitsBanner';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
+import { offerPreviewFromListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
@@ -18,6 +19,7 @@ import {
 } from '@/features/appointments/hooks/use-infinite-appointments-list';
 import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
 import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-store';
+import { useToast } from '@/providers/ToastProvider';
 import { useAppointmentsCacheSyncOnFocus } from '@/features/appointments/hooks/use-appointments-cache-sync';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { useAuthStore } from '@/store/auth-store';
@@ -56,6 +58,7 @@ function matchesSearch(apt: Appointment, q: string): boolean {
 export function NurseAppointmentsListScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const { show: toast } = useToast();
 
   const [tab, setTab] = useState<NurseListTab>('soins');
   const [segment, setSegment] = useState<NurseSegment>('tous');
@@ -134,7 +137,20 @@ export function NurseAppointmentsListScreen() {
           viewerId={user?.id}
           onPress={(apt) => {
             if (isOffer && user?.id) {
-              void useOfferQueueStore.getState().openIncomingOffer(apt.id, 'nurse', user.id);
+              const preview = offerPreviewFromListRow(row);
+              void useOfferQueueStore.getState().openIncomingOffer(apt.id, 'nurse', user.id, preview).then(
+                (result) => {
+                  if (result.ok) return;
+                  if (result.reason === 'already_accepted') {
+                    toast('Ce rendez-vous a déjà été pris par un autre professionnel.', { type: 'info' });
+                  } else if (result.reason === 'unavailable') {
+                    toast('Cette demande n’est plus disponible.', { type: 'info' });
+                  } else if (result.reason === 'network') {
+                    toast('Connexion instable — réessayez.', { type: 'error' });
+                  }
+                  void refetch();
+                },
+              );
             } else {
               router.push(`/(nurse)/appointment/${apt.id}` as never);
             }
@@ -142,7 +158,7 @@ export function NurseAppointmentsListScreen() {
         />
       );
     },
-    [router, segment, user?.id],
+    [refetch, router, segment, toast, user?.id],
   );
 
   const ListHeader = useCallback(

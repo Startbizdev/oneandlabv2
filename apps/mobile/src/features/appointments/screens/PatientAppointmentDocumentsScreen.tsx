@@ -29,6 +29,7 @@ import { pickMedicalDocumentFile } from '@/lib/uploads/pick-medical-document';
 import { downloadMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '@/utils/appointment-documents-upload';
 import { useAppointmentDetail } from '@/features/appointments/hooks/use-appointment-detail';
+import { resolveAppointmentDetail } from '@/features/appointments/hooks/appointment-detail-result';
 import { fetchMedicalDocuments } from '@/features/appointments/detail/api/appointment-detail.service';
 import { filterListDocuments, getDocumentTypeLabel } from '@/features/appointments/detail/utils/document-labels';
 import {
@@ -103,10 +104,10 @@ export function PatientAppointmentDocumentsScreen() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const cachedApt = id
-    ? qc.getQueryData<Appointment | null>(queryKeys.appointments.detail(id))
+    ? resolveAppointmentDetail(qc.getQueryData(queryKeys.appointments.detail(id)))
     : null;
   const detailQ = useAppointmentDetail(id);
-  const apt = detailQ.data ?? cachedApt ?? null;
+  const apt = resolveAppointmentDetail(detailQ.data) ?? cachedApt ?? null;
 
   const docsQ = useQuery({
     queryKey: queryKeys.documents.medical(id ?? ''),
