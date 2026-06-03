@@ -14,7 +14,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/Button';
 import { queryKeys } from '@/lib/query-keys';
-import { downloadMedicalDocument } from '@/lib/downloads/download-medical-document';
+import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { useToast } from '@/providers/ToastProvider';
 import { PrescriptionComposer } from '../components/PrescriptionComposer';
 import { PrescriptionHistoryCard } from '../components/PrescriptionHistoryCard';
@@ -98,9 +98,9 @@ export function PrescriptionsScreen() {
 
   async function downloadRow(id: string, fileName?: string) {
     setDownloadingId(id);
-    const res = await downloadMedicalDocument(id, fileName);
+    const res = await openMedicalDocument(id, fileName);
     setDownloadingId(null);
-    if (!res.ok) toast(res.error ?? 'Téléchargement impossible', { type: 'error' });
+    if (!res.ok) toast(res.error ?? 'Ouverture impossible', { type: 'error' });
   }
 
   function onPatientChange(id: string) {

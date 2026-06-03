@@ -151,9 +151,27 @@ class Email
         return '#e2e8f0';
     }
 
+    /** Logo Cary servi depuis le frontend public (aligné site / app). */
+    private const DEFAULT_EMAIL_LOGO_PATH = '/images/logo-cary.png';
+
     private function logoSrc(): string
     {
-        return $_ENV['EMAIL_LOGO_URL'] ?? ($_ENV['FRONTEND_URL'] ?? 'https://app.oneandlab.fr') . '/images/onelogo.png';
+        $custom = trim((string) ($_ENV['EMAIL_LOGO_URL'] ?? ''));
+        if ($custom !== '') {
+            $legacyNeedles = ['onelogo.png', 'logo-email.png', 'oneandlab.png', '/images/one'];
+            foreach ($legacyNeedles as $needle) {
+                if (stripos($custom, $needle) !== false) {
+                    $custom = '';
+                    break;
+                }
+            }
+            if ($custom !== '') {
+                return $custom;
+            }
+        }
+        $base = rtrim((string) ($_ENV['FRONTEND_URL'] ?? 'https://app.oneandlab.fr'), '/');
+
+        return $base . self::DEFAULT_EMAIL_LOGO_PATH;
     }
 
     private function escapeHtml(string $s): string
@@ -164,8 +182,8 @@ class Email
     /** Largeur logo (px) — évite l’étirement : width fixe + height:auto */
     private function emailLogoMaxWidth(): int
     {
-        $w = (int) ($_ENV['EMAIL_LOGO_MAX_WIDTH'] ?? 140);
-        return $w >= 80 && $w <= 280 ? $w : 140;
+        $w = (int) ($_ENV['EMAIL_LOGO_MAX_WIDTH'] ?? 168);
+        return $w >= 80 && $w <= 280 ? $w : 168;
     }
 
     /**

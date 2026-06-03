@@ -12,7 +12,7 @@ import { useDownloadedDocumentIds } from '@/features/documents/hooks/use-downloa
 import type { LucideIcon } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Skeleton, SkeletonList } from '@/components/ui/skeletons';
-import { downloadMedicalDocument } from '@/lib/downloads/download-medical-document';
+import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { useToast } from '@/providers/ToastProvider';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
 import {
@@ -52,19 +52,23 @@ function DocIcon({ type }: { type: string }) {
 function DocumentRow({
   doc,
   downloading,
-  downloaded,
-  onDownload,
+  onOpen,
 }: {
   doc: MedicalDocumentRow;
   downloading: boolean;
-  downloaded: boolean;
-  onDownload: (doc: MedicalDocumentRow) => void;
+  onOpen: (doc: MedicalDocumentRow) => void;
 }) {
   const label = getDocumentTypeLabel(doc.document_type);
   const sub = doc.file_name?.trim();
 
   return (
-    <View style={styles.docRow}>
+    <Pressable
+      onPress={() => onOpen(doc)}
+      disabled={downloading}
+      style={({ pressed }) => [styles.docRow, pressed && styles.docRowPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={`Ouvrir ${label}`}
+    >
       <DocIcon type={doc.document_type} />
       <View style={styles.docBody}>
         <Text style={styles.docLabel}>{label}</Text>
@@ -75,12 +79,11 @@ function DocumentRow({
         ) : null}
       </View>
       <DocumentDownloadButton
-        downloaded={downloaded}
         downloading={downloading}
-        onPress={() => onDownload(doc)}
-        accessibilityLabel={`Télécharger ${label}`}
+        onPress={() => onOpen(doc)}
+        accessibilityLabel={`Ouvrir ${label}`}
       />
-    </View>
+    </Pressable>
   );
 }
 
@@ -99,16 +102,16 @@ export function DocumentsBlock({
 
   const list = filterListDocuments(docs, { omitCarePhotos });
 
-  const handleDownload = useCallback(
+  const handleOpen = useCallback(
     async (doc: MedicalDocumentRow) => {
       setDownloadingId(doc.id);
-      const res = await downloadMedicalDocument(doc.id, doc.file_name);
+      const res = await openMedicalDocument(doc.id, doc.file_name);
       setDownloadingId(null);
       if (res.ok) {
         await markDownloaded(doc.id);
-        toast('Document prêt à enregistrer', { type: 'success' });
+        toast('Document ouvert', { type: 'success' });
       } else {
-        toast(res.error ?? 'Téléchargement impossible', { type: 'error' });
+        toast(res.error ?? 'Ouverture impossible', { type: 'error' });
       }
     },
     [toast, markDownloaded],
@@ -135,8 +138,7 @@ export function DocumentsBlock({
           <DocumentRow
             doc={d}
             downloading={downloadingId === d.id}
-            downloaded={isDownloaded(d.id)}
-            onDownload={handleDownload}
+            onOpen={handleOpen}
           />
         </View>
       ))}
@@ -161,6 +163,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[3],
     paddingVertical: spacing[3],
+  },
+  docRowPressed: {
+    opacity: 0.88,
   },
   docIcon: {
     width: 36,

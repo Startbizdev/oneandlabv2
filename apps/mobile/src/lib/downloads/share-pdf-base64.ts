@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+import { openLocalFile } from './open-local-file';
 
 export async function sharePdfFromBase64(
   base64: string,
@@ -18,19 +18,15 @@ export async function sharePdfFromBase64(
       encoding: FileSystem.EncodingType.Base64,
     });
 
-    if (!(await Sharing.isAvailableAsync())) {
-      return { ok: false, error: 'Le partage de fichiers n’est pas disponible sur cet appareil.' };
+    const opened = await openLocalFile(dest, safeName);
+    if (!opened.ok) {
+      return { ok: false, error: opened.error };
     }
-
-    await Sharing.shareAsync(dest, {
-      mimeType: 'application/pdf',
-      dialogTitle: 'Ordonnance',
-    });
     return { ok: true, localUri: dest };
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : 'Impossible de partager le PDF.',
+      error: e instanceof Error ? e.message : 'Impossible d’ouvrir le PDF.',
     };
   }
 }

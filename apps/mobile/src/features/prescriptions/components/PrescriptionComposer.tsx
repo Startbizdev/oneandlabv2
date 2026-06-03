@@ -7,7 +7,7 @@ import type { MedicalDocumentRow } from '@/features/appointments/detail/api/appo
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { downloadMedicalDocument } from '@/lib/downloads/download-medical-document';
+import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { sharePdfFromBase64 } from '@/lib/downloads/share-pdf-base64';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -87,13 +87,13 @@ export function PrescriptionComposer({
   const downloadMut = useMutation({
     mutationFn: async () => {
       if (!existingOrdonnance?.id) throw new Error('NO_DOC');
-      return downloadMedicalDocument(
+      return openMedicalDocument(
         existingOrdonnance.id,
         existingOrdonnance.file_name,
       );
     },
     onSuccess: (r) => {
-      if (!r.ok) toast(r.error ?? 'Téléchargement impossible', { type: 'error' });
+      if (!r.ok) toast(r.error ?? 'Ouverture impossible', { type: 'error' });
     },
     onError: (e) => handleApiError(e, toast, 'download-prescription'),
   });

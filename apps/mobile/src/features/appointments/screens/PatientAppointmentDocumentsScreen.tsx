@@ -26,7 +26,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { buildMedicalDocumentForm, uploadFormData } from '@/lib/uploads/upload-file';
 import { pickMedicalDocumentFile } from '@/lib/uploads/pick-medical-document';
-import { downloadMedicalDocument } from '@/lib/downloads/download-medical-document';
+import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '@/utils/appointment-documents-upload';
 import { useAppointmentDetail } from '@/features/appointments/hooks/use-appointment-detail';
 import { resolveAppointmentDetail } from '@/features/appointments/hooks/appointment-detail-result';
@@ -162,10 +162,10 @@ export function PatientAppointmentDocumentsScreen() {
   const handleDownload = useCallback(
     async (docId: string, fileName?: string) => {
       setDownloadingId(docId);
-      const res = await downloadMedicalDocument(docId, fileName);
+      const res = await openMedicalDocument(docId, fileName);
       setDownloadingId(null);
-      if (res.ok) toast('Document prêt à enregistrer', { type: 'success' });
-      else toast(res.error ?? 'Téléchargement impossible', { type: 'error' });
+      if (res.ok) toast('Document ouvert', { type: 'success' });
+      else toast(res.error ?? 'Ouverture impossible', { type: 'error' });
     },
     [toast],
   );
