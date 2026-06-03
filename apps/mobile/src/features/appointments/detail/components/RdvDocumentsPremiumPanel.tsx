@@ -24,7 +24,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { buildMedicalDocumentForm, uploadFormData } from '@/lib/uploads/upload-file';
-import { downloadMedicalDocument } from '@/lib/downloads/download-medical-document';
+import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
 import {
   canUploadLabResultatsForAppointmentStatus,
   canUploadMedicalDocumentsForAppointmentStatus,
@@ -89,14 +89,12 @@ function uploadTypesForRole(role: string, apt: Appointment): readonly string[] {
 function DocRow({
   doc,
   downloading,
-  downloaded,
-  onDownload,
+  onOpen,
   bordered,
 }: {
   doc: MedicalDocumentRow;
   downloading: boolean;
-  downloaded: boolean;
-  onDownload: (d: MedicalDocumentRow) => void;
+  onOpen: (d: MedicalDocumentRow) => void;
   bordered: boolean;
 }) {
   const Icon = DOC_ICONS[doc.document_type] ?? FileText;
@@ -107,7 +105,17 @@ function DocRow({
     doc.created_at,
   );
   return (
-    <View style={[styles.docRow, bordered && styles.docRowBorder]}>
+    <Pressable
+      onPress={() => onOpen(doc)}
+      disabled={downloading}
+      style={({ pressed }) => [
+        styles.docRow,
+        bordered && styles.docRowBorder,
+        pressed && styles.docRowPressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={`Ouvrir ${label}`}
+    >
       <View style={styles.docIcon}>
         <Icon size={16} color={colors.primary} strokeWidth={2} />
       </View>
@@ -118,12 +126,11 @@ function DocRow({
         </Text>
       </View>
       <DocumentDownloadButton
-        downloaded={downloaded}
         downloading={downloading}
-        onPress={() => onDownload(doc)}
-        accessibilityLabel={`Télécharger ${label}`}
+        onPress={() => onOpen(doc)}
+        accessibilityLabel={`Ouvrir ${label}`}
       />
-    </View>
+    </Pressable>
   );
 }
 
@@ -219,15 +226,15 @@ export function RdvDocumentsPremiumPanel({
     [canUpload, uploadMut, uploading, toast],
   );
 
-  const handleDownload = useCallback(
+  const handleOpen = useCallback(
     async (doc: MedicalDocumentRow) => {
       setDownloadingId(doc.id);
-      const res = await downloadMedicalDocument(doc.id, doc.file_name);
+      const res = await openMedicalDocument(doc.id, doc.file_name);
       setDownloadingId(null);
       if (res.ok) {
         await markDownloaded(doc.id);
-        toast('Document prêt à enregistrer', { type: 'success' });
-      } else toast(res.error ?? 'Téléchargement impossible', { type: 'error' });
+        toast('Document ouvert', { type: 'success' });
+      } else toast(res.error ?? 'Ouverture impossible', { type: 'error' });
     },
     [toast, markDownloaded],
   );
@@ -260,8 +267,7 @@ export function RdvDocumentsPremiumPanel({
             key={d.id}
             doc={d}
             downloading={downloadingId === d.id}
-            downloaded={isDownloaded(d.id)}
-            onDownload={(doc) => void handleDownload(doc)}
+            onOpen={(doc) => void handleOpen(doc)}
             bordered={i > 0}
           />
         ))
@@ -329,6 +335,9 @@ const styles = StyleSheet.create({
   docRowBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.borderLight,
+  },
+  docRowPressed: {
+    opacity: 0.88,
   },
   docIcon: {
     width: 32,

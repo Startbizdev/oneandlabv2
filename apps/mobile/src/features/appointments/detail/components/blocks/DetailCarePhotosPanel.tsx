@@ -144,7 +144,7 @@ export function DetailCarePhotosPanel({
   if (q.isError) {
     return (
       <View style={styles.emptyCard}>
-        <Text style={styles.emptyTitle}>Photos indisponibles</Text>
+        <Text style={styles.emptyTitle}>Échange indisponible</Text>
         <Text style={styles.emptySub}>
           {q.error instanceof Error ? q.error.message : 'Erreur de chargement'}
         </Text>

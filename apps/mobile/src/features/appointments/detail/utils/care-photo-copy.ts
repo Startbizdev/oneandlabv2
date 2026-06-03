@@ -6,6 +6,45 @@ import type { AppointmentDetailRole } from './appointment-detail-role-config';
 
 dayjs.locale('fr');
 
+export function careExchangeTabLabel(): string {
+  return 'Échange';
+}
+
+export type CareExchangeHintContent = {
+  title: string;
+  body: string;
+};
+
+/** Alerte sur l’onglet Informations pour guider vers l’échange pro ↔ infirmier. */
+export function careExchangeInformativeHint(
+  role: AppointmentDetailRole | string,
+  unreadCount = 0,
+): CareExchangeHintContent | null {
+  if (role !== 'pro' && role !== 'nurse') return null;
+
+  if (unreadCount > 0) {
+    return {
+      title: 'Nouveaux messages sur l’échange',
+      body:
+        role === 'pro'
+          ? 'L’infirmier(ère) assigné(e) ou vous avez partagé des nouveautés. Ouvrez l’onglet Échange pour répondre et envoyer des photos de suivi.'
+          : 'Le professionnel de santé prescripteur ou vous avez partagé des nouveautés. Ouvrez l’onglet Échange pour répondre et envoyer des photos de suivi.',
+    };
+  }
+
+  if (role === 'pro') {
+    return {
+      title: 'Échangez avec l’infirmier(ère)',
+      body: 'Vous pouvez partager des photos et des messages de suivi avec l’infirmier(ère) assigné(e). Rendez-vous dans l’onglet Échange.',
+    };
+  }
+
+  return {
+    title: 'Échangez avec le professionnel de santé',
+    body: 'Vous pouvez partager des photos et des messages de suivi avec le prescripteur du soin. Rendez-vous dans l’onglet Échange.',
+  };
+}
+
 export function carePhotosPanelIntro(role: AppointmentDetailRole | string): string {
   if (role === 'pro') {
     return 'Échangez sur l’avancée des soins avec l’infirmier(ère) assigné(e). Ajoutez des photos pour documenter le suivi.';

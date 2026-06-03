@@ -18,7 +18,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { pickMedicalDocumentFile } from '@/lib/uploads/pick-medical-document';
-import { downloadMedicalDocument } from '@/lib/downloads/download-medical-document';
+import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { patientFolderHeaderTitle } from '@/navigation/PatientFolderHeaderTitle';
@@ -233,12 +233,12 @@ export function StaffPatientDocumentsScreen() {
   const handleDownload = useCallback(
     async (medicalDocId: string, fileName?: string) => {
       setDownloadingId(medicalDocId);
-      const res = await downloadMedicalDocument(medicalDocId, fileName);
+      const res = await openMedicalDocument(medicalDocId, fileName);
       setDownloadingId(null);
       if (res.ok) {
         await markDownloaded(medicalDocId);
-        toast('Document prêt à enregistrer', { type: 'success' });
-      } else toast(res.error ?? 'Téléchargement impossible', { type: 'error' });
+        toast('Document ouvert', { type: 'success' });
+      } else toast(res.error ?? 'Ouverture impossible', { type: 'error' });
     },
     [toast, markDownloaded],
   );

@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
-  Camera,
   ClipboardList,
   FileText,
+  MessageCircle,
   Star,
   type LucideIcon,
 } from 'lucide-react-native';
@@ -12,7 +12,7 @@ import { fontFamily, fontSize } from '@/theme/typography';
 const SEGMENT_ICONS: Record<string, LucideIcon> = {
   infos: ClipboardList,
   documents: FileText,
-  photos: Camera,
+  photos: MessageCircle,
   avis: Star,
 };
 

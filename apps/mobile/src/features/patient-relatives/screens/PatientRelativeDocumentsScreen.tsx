@@ -23,7 +23,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { pickMedicalDocumentFile } from '@/lib/uploads/pick-medical-document';
-import { downloadMedicalDocument } from '@/lib/downloads/download-medical-document';
+import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { getDocumentTypeLabel } from '@/features/appointments/detail/utils/document-labels';
 import {
   formatDocumentFileSubtitle,
@@ -201,8 +201,8 @@ export function PatientRelativeDocumentsScreen() {
       setDownloadingId(null);
       if (res.ok) {
         await markDownloaded(medicalDocId);
-        toast('Document prêt à enregistrer', { type: 'success' });
-      } else toast(res.error ?? 'Téléchargement impossible', { type: 'error' });
+        toast('Document ouvert', { type: 'success' });
+      } else toast(res.error ?? 'Ouverture impossible', { type: 'error' });
     },
     [toast, markDownloaded],
   );
