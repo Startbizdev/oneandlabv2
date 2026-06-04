@@ -664,16 +664,26 @@ const notificationItems = computed(() => {
       if (!aptId) return;
       const role = user.value?.role;
       if (
-        (notif.type === 'care_gallery_photo' || notif.type === 'care_gallery_comment') &&
-        (role === 'pro' || role === 'nurse')
+        aptId &&
+        (notif.type === 'care_gallery_photo' || notif.type === 'care_gallery_comment')
       ) {
-        const base = role === 'pro' ? '/pro' : '/nurse';
-        const pid = data?.photo_id != null && String(data.photo_id).trim() !== '' ? String(data.photo_id) : null;
-        void navigateTo({
-          path: `${base}/appointments/${aptId}`,
-          query: { careGallery: '1', ...(pid ? { carePhoto: pid } : {}) },
-        });
-        return;
+        if (role === 'pro' || role === 'nurse') {
+          const base = role === 'pro' ? '/pro' : '/nurse';
+          const pid = data?.photo_id != null && String(data.photo_id).trim() !== '' ? String(data.photo_id) : null;
+          void navigateTo({
+            path: `${base}/appointments/${aptId}`,
+            query: { careGallery: '1', ...(pid ? { carePhoto: pid } : {}) },
+          });
+          return;
+        }
+        if (role === 'patient') {
+          const pid = data?.photo_id != null && String(data.photo_id).trim() !== '' ? String(data.photo_id) : null;
+          void navigateTo({
+            path: `/patient/appointments/${aptId}`,
+            query: { careGallery: '1', ...(pid ? { carePhoto: pid } : {}) },
+          });
+          return;
+        }
       }
       if (role === 'patient') {
         if (notif.type === 'results_ready' || notif.type === 'results_available') {

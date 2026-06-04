@@ -81,8 +81,8 @@ cd "$FRONTEND_DIR"
 rm -rf .nuxt node_modules/.vite 2>/dev/null || true
 
 echo "==> Build local (production)..."
-export NUXT_PUBLIC_API_BASE="https://app.oneandlab.fr/api"
-export NUXT_PUBLIC_SITE_URL="https://app.oneandlab.fr"
+export NUXT_PUBLIC_API_BASE="https://cary.bio/api"
+export NUXT_PUBLIC_SITE_URL="https://cary.bio"
 npm run build
 
 echo "==> Envoi du build vers le serveur..."

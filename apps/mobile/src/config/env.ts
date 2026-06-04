@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 /** Même API que buildlocaloneandlab.sh → NUXT_PUBLIC_API_BASE */
-export const PRODUCTION_API_BASE = 'https://app.oneandlab.fr/api';
+export const PRODUCTION_API_BASE = 'https://cary.bio/api';
 
 const LOCAL_API_PORT = 8888;
 
@@ -45,7 +45,8 @@ export function isDevBuild(): boolean {
 }
 
 export function isProductionApi(): boolean {
-  return getApiBase().startsWith('https://app.oneandlab.fr');
+  const base = getApiBase();
+  return base.startsWith('https://cary.bio');
 }
 
 /** Origine du site Nuxt (sans `/api`) — WebViews abonnement, pages légales, etc. */
@@ -55,7 +56,7 @@ export function getWebAppBase(): string {
     return __DEV__ ? rewriteLocalhost(fromEnv.replace(/\/$/, '')) : fromEnv.replace(/\/$/, '');
   }
   const api = getApiBase().replace(/\/$/, '');
-  return api.replace(/\/api$/i, '') || 'https://app.oneandlab.fr';
+  return api.replace(/\/api$/i, '') || 'https://cary.bio';
 }
 
 export function webAppUrl(path: string): string {

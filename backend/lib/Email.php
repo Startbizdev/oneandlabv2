@@ -169,7 +169,7 @@ class Email
                 return $custom;
             }
         }
-        $base = rtrim((string) ($_ENV['FRONTEND_URL'] ?? 'https://app.oneandlab.fr'), '/');
+        $base = rtrim((string) ($_ENV['FRONTEND_URL'] ?? 'https://cary.bio'), '/');
 
         return $base . self::DEFAULT_EMAIL_LOGO_PATH;
     }
