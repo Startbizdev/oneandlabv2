@@ -16,12 +16,12 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, ImagePlus, Maximize2, Send } from 'lucide-react-native';
+import { ChevronLeft, Maximize2, Plus, Send } from 'lucide-react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { ScreenActionLayout } from '@/components/layout/ScreenActionLayout';
 import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
-import { carePhotoPickErrorMessage, pickCarePhotoUri } from '@/lib/uploads/pick-care-photo';
+import { carePhotoPickErrorMessage, pickCarePhoto } from '@/lib/uploads/pick-care-photo';
 import { useAuthStore } from '@/store/auth-store';
 import { queryKeys } from '@/lib/query-keys';
 import {
@@ -31,7 +31,8 @@ import {
   type CarePhotoComment,
   type CarePhotoRow,
 } from '../detail/api/appointment-detail.service';
-import { CarePhotoImage } from '../detail/components/blocks/CarePhotoImage';
+import { CarePhotoAttachment } from '../detail/components/blocks/CarePhotoAttachment';
+import { isCarePhotoPdf } from '../detail/utils/care-photo-file';
 import {
   carePhotoComposerPlaceholder,
   carePhotoDiscussionHeaderSubtitle,
@@ -172,13 +173,13 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
   });
 
   const uploadMut = useMutation({
-    mutationFn: async (uri: string) => {
+    mutationFn: async (file: { uri: string; fileName: string; mimeType: string }) => {
       if (!appointmentId) throw new Error('Rendez-vous invalide');
-      const r = await uploadCarePhoto(appointmentId, uri);
+      const r = await uploadCarePhoto(appointmentId, file);
       if (!r.ok) throw new Error(r.error ?? 'Upload échoué');
     },
     onSuccess: async () => {
-      toast('Photo envoyée', { type: 'success' });
+      toast('Fichier envoyé', { type: 'success' });
       await qc.invalidateQueries({ queryKey: ['appointments', 'care-photos', appointmentId] });
       await qc.invalidateQueries({ queryKey: queryKeys.documents.medical(appointmentId!) });
       scrollToBottom();
@@ -188,16 +189,17 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
 
   const pickAndUpload = useCallback(async () => {
     try {
-      const uri = await pickCarePhotoUri();
-      if (uri) uploadMut.mutate(uri);
+      const picked = await pickCarePhoto();
+      if (picked) uploadMut.mutate(picked);
     } catch (e) {
       toast(carePhotoPickErrorMessage(e), { type: 'warning' });
     }
   }, [toast, uploadMut]);
 
   const openLightbox = useCallback(
-    async (photoId: string) => {
-      const uri = await loadCarePhotoLocalUri(photoId);
+    async (photo: CarePhotoRow) => {
+      if (isCarePhotoPdf(photo)) return;
+      const uri = await loadCarePhotoLocalUri(photo.id);
       if (!uri) {
         toast('Impossible d’afficher la photo', { type: 'warning' });
         return;
@@ -298,12 +300,12 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
                     onPress={() => void pickAndUpload()}
                     disabled={uploadMut.isPending}
                     accessibilityRole="button"
-                    accessibilityLabel="Envoyer une photo"
+                    accessibilityLabel="Ajouter une photo ou un document"
                   >
                     {uploadMut.isPending ? (
                       <ActivityIndicator size="small" color={colors.primary} />
                     ) : (
-                      <ImagePlus size={22} color={colors.primary} strokeWidth={2.25} />
+                      <Plus size={24} color={colors.primary} strokeWidth={2.25} />
                     )}
                   </Pressable>
                 ) : null}
@@ -365,11 +367,11 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
             </View>
           ) : photos.length === 0 ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>Aucune photo</Text>
+              <Text style={styles.emptyTitle}>Aucun fichier</Text>
               <Text style={styles.emptySub}>
                 {canUpload
-                  ? 'Utilisez le bouton ci-dessous pour envoyer une première photo.'
-                  : 'Les photos partagées apparaîtront ici.'}
+                  ? 'Utilisez le bouton + pour envoyer une photo ou un PDF.'
+                  : 'Les fichiers partagés apparaîtront ici.'}
               </Text>
             </View>
           ) : (
@@ -379,7 +381,7 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
                 photo={photo}
                 index={idx}
                 isMine={isMine}
-                onZoom={() => void openLightbox(photo.id)}
+                onZoom={() => void openLightbox(photo)}
               />
             ))
           )}
@@ -413,22 +415,25 @@ function PhotoThreadBlock({
 
   return (
     <View style={styles.photoBlock}>
-      <Text style={styles.photoBlockLabel}>Photo {index + 1}</Text>
+      <Text style={styles.photoBlockLabel}>
+        {isCarePhotoPdf(photo) ? `Document ${index + 1}` : `Photo ${index + 1}`}
+      </Text>
       {photo.created_at ? (
         <Text style={styles.photoBlockDate}>{formatPhotoDate(photo.created_at)}</Text>
       ) : null}
-      <CarePhotoImage
-        photoId={photo.id}
+      <CarePhotoAttachment
+        photo={photo}
         style={styles.heroImageWrap}
-        resizeMode="cover"
-        onPress={onZoom}
-        accessibilityLabel={`Agrandir la photo ${index + 1}`}
+        onZoom={onZoom}
+        accessibilityLabel={`Ouvrir le fichier ${index + 1}`}
       >
-        <View style={styles.zoomPill}>
-          <Maximize2 size={14} color={colors.textInverse} strokeWidth={2.5} />
-          <Text style={styles.zoomPillText}>Agrandir</Text>
-        </View>
-      </CarePhotoImage>
+        {!isCarePhotoPdf(photo) ? (
+          <View style={styles.zoomPill}>
+            <Maximize2 size={14} color={colors.textInverse} strokeWidth={2.5} />
+            <Text style={styles.zoomPillText}>Agrandir</Text>
+          </View>
+        ) : null}
+      </CarePhotoAttachment>
 
       {comments.length === 0 ? (
         <Text style={styles.noComments}>Aucun message sur cette photo.</Text>

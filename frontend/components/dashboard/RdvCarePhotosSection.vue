@@ -60,18 +60,24 @@
                 class="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-gray-100 ring-1 ring-black/[0.04] dark:bg-gray-800/80 dark:ring-white/10"
               >
                 <img
-                  v-if="thumbUrls[doc.id]"
+                  v-if="thumbUrls[doc.id] && !isCarePhotoPdf(doc)"
                   :src="thumbUrls[doc.id]"
                   alt=""
                   class="h-full w-full object-cover"
                 >
+                <div
+                  v-else-if="isCarePhotoPdf(doc)"
+                  class="flex h-full w-full flex-col items-center justify-center gap-0.5 bg-primary-500/10 px-1"
+                >
+                  <UIcon name="i-lucide-file-text" class="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                </div>
                 <div v-else class="flex h-full w-full items-center justify-center">
                   <UIcon name="i-lucide-image" class="h-5 w-5 text-muted" />
                 </div>
               </div>
               <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-50">
-                  Photo n°{{ idx + 1 }}
+                  {{ isCarePhotoPdf(doc) ? 'Document' : 'Photo' }} n°{{ idx + 1 }}
                 </p>
                 <p v-if="formatCarePhotoMeta(doc)" class="mt-0.5 text-xs text-muted">
                   {{ formatCarePhotoMeta(doc) }}
@@ -129,13 +135,13 @@
         >
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p class="text-[11px] leading-relaxed text-muted sm:max-w-md sm:text-xs">
-              JPG ou PNG · max 25&nbsp;Mo · visible par le professionnel prescripteur.
+              Image ou PDF · max 25&nbsp;Mo · visible par le professionnel prescripteur.
             </p>
             <div class="flex shrink-0 justify-end">
               <input
                 ref="carePhotoFileInputRef"
                 type="file"
-                accept="image/jpeg,image/png,image/jpg"
+                :accept="carePhotoAccept"
                 class="hidden"
                 @change="onCarePhotoFileChange"
               >
@@ -164,6 +170,7 @@
       :document-id="careDiscussionDocId ?? undefined"
       :viewer-user-id="effectiveViewerId ?? undefined"
       @comment-posted="onDiscussionCommentPosted"
+      @file-uploaded="onDiscussionCommentPosted"
       @thread-loaded="onThreadLoaded"
     />
   </section>
@@ -173,6 +180,9 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { readCarePhotoSeenDigest, writeCarePhotoSeenDigest } from '~/utils/care-photo-thread-digest';
+import { CARE_PHOTO_ACCEPT_ATTR, isCarePhotoPdf } from '~/utils/care-photo-file';
+
+const carePhotoAccept = CARE_PHOTO_ACCEPT_ATTR;
 
 const props = withDefaults(
   defineProps<{

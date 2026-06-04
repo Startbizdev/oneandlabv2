@@ -37,7 +37,10 @@ export type CreatorOrigin = {
   role?: string;
 };
 
-export function creatorOriginTitle(origin: CreatorOrigin): string {
+export function creatorOriginTitle(origin: CreatorOrigin, viewerRole?: string): string {
+  if (viewerRole === 'patient' && origin.kind === 'pro') {
+    return 'Rendez-vous pris par';
+  }
   switch (origin.kind) {
     case 'patient_platform':
       return 'Origine';
@@ -75,6 +78,37 @@ export function platformOriginDisplayName(label?: string | null): string {
 
 export function isPatientPlatformOrigin(origin?: CreatorOrigin | null): boolean {
   return origin?.kind === 'patient_platform';
+}
+
+/** Créateur affichable côté patient (pro / infirmier / labo — pas soi-même via Cary). */
+export function isCreatorOriginVisibleToPatient(origin: CreatorOrigin): boolean {
+  return (
+    origin.kind === 'pro' ||
+    origin.kind === 'nurse' ||
+    origin.kind === 'lab_team'
+  );
+}
+
+export function assigneeCreatorOriginVisible(
+  creator: CreatorOrigin | undefined,
+  viewerRole: string,
+  hideCreatorOrigin: boolean,
+): boolean {
+  if (!creator?.kind || hideCreatorOrigin) return false;
+  if (viewerRole === 'patient') {
+    return isCreatorOriginVisibleToPatient(creator);
+  }
+  return true;
+}
+
+export function assigneePlatformOriginVisible(
+  creator: CreatorOrigin | undefined,
+  platformOriginLabel: string,
+  viewerRole: string,
+): boolean {
+  if (viewerRole !== 'patient') return false;
+  if (creator?.kind === 'patient_platform') return true;
+  return Boolean(platformOriginLabel.trim() && !creator?.kind);
 }
 
 /** Viewer connecté = créateur du RDV (ne pas afficher sa propre fiche intervenant). */
@@ -154,12 +188,22 @@ export function resolveCreatorOriginProfileSheet(
   return null;
 }
 
-export function creatorOriginSubtitle(origin: CreatorOrigin): string | undefined {
+export function creatorOriginSubtitle(
+  origin: CreatorOrigin,
+  viewerRole?: string,
+): string | undefined {
   if (origin.kind === 'patient_platform') {
     return 'Ce rendez-vous a été pris en direct par le patient';
   }
   if (origin.kind === 'pro') {
-    return origin.emploi?.trim() || undefined;
+    const emploi = origin.emploi?.trim();
+    if (viewerRole === 'patient') {
+      return emploi || 'Professionnel de santé prescripteur';
+    }
+    return emploi || undefined;
+  }
+  if (origin.kind === 'nurse' && viewerRole === 'patient') {
+    return 'Infirmier(ère) ayant créé ce rendez-vous';
   }
   return undefined;
 }

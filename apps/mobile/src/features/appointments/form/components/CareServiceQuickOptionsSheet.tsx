@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import type { CareCategory, CareCategoryOption } from '@/features/categories/api/categories.service';
 import type { BookingServiceFormSlice } from '../utils/booking-service-form-slice';
+import { resolveRdvCareDisplayLabel } from '@/utils/rdv-care-display-label';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -187,18 +188,19 @@ export function CareServiceQuickOptionsSheet({
     }
     if (!category) return;
 
+    const coPayload = { ...careOptions };
+    stripOrphanAutreDetailKeys(coPayload);
+
     const service: SelectedServiceInput = {
       id: category.id,
       type: category.type,
-      name: category.label,
+      name: resolveRdvCareDisplayLabel(category.label, coPayload),
       category_id: category.id,
       ...(category.skip_prescription_documents
         ? { skip_prescription_documents: true as const }
         : {}),
     };
 
-    const coPayload = { ...careOptions };
-    stripOrphanAutreDetailKeys(coPayload);
     const slice: BookingServiceFormSlice = { care_options: coPayload };
 
     if (showBloodSchedulingFields) {

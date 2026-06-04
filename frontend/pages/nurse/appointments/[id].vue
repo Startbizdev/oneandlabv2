@@ -314,9 +314,9 @@ function canUploadDocuments(appointment: any) {
 async function uploadCarePhotoFile(file: File) {
   const appointment = getAppointmentFromDetailRef(detailRef);
   if (!appointment?.id) return;
-  const allowed = ['image/jpeg', 'image/png', 'image/jpg'];
+  const allowed = ['image/jpeg', 'image/png', 'image/jpg', 'image/heic', 'image/heif', 'image/webp', 'application/pdf'];
   if (!allowed.includes(file.type)) {
-    toast.add({ title: 'Format', description: 'Utilisez une image JPG ou PNG.', color: 'warning' });
+    toast.add({ title: 'Format', description: 'Utilisez une image ou un PDF.', color: 'warning' });
     return;
   }
   if (file.size > MAX_UPLOAD_BYTES) {
@@ -342,7 +342,7 @@ async function uploadCarePhotoFile(file: File) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data?.error || 'Upload échoué');
-    toast.add({ title: 'Photo ajoutée', color: 'success' });
+    toast.add({ title: 'Fichier ajouté', color: 'success' });
     await detailRef.value?.loadDocuments();
   } catch (e: any) {
     toast.add({ title: 'Upload', description: e?.message || 'Erreur', color: 'error' });

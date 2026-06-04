@@ -8,6 +8,8 @@ import { hasAssigneeContent } from '../RdvAssigneeSection';
 import { DetailSection } from '../layout/DetailSection';
 import { appointmentAssigneeGender } from '../../utils/patient-appointment-display';
 import {
+  assigneeCreatorOriginVisible,
+  assigneePlatformOriginVisible,
   creatorOriginName,
   creatorOriginSubtitle,
   creatorOriginTitle,
@@ -124,38 +126,38 @@ export function PatientAssigneeRows({ apt }: Props) {
   }
 
   const creator = ext.creator_origin as CreatorOrigin | undefined;
-  const hideOriginForPatient = user?.role === 'patient';
-  if (!hideOriginForPatient && creator?.kind && !hideCreatorOrigin) {
+  const platformOrigin = String(ext.patient_platform_origin_display ?? '').trim();
+  const showCreatorOrigin = assigneeCreatorOriginVisible(creator, viewerRole, hideCreatorOrigin);
+  const showPlatform = assigneePlatformOriginVisible(creator, platformOrigin, viewerRole);
+
+  if (showCreatorOrigin && creator) {
     const name = creatorOriginName(creator);
-    const title = creatorOriginTitle(creator);
-    const platformOrigin = isPatientPlatformOrigin(creator);
+    const title = creatorOriginTitle(creator, viewerRole);
+    const platformOriginRow = isPatientPlatformOrigin(creator);
     const profileSheet = resolveCreatorOriginProfileSheet(creator);
     blocks.push(
       <AssigneeProfileRow
         key="creator"
         title={title}
         name={name}
-        profileImageUrl={platformOrigin ? null : creator.profile_image_url}
-        brandLogo={platformOrigin ? 'cary' : undefined}
+        profileImageUrl={platformOriginRow ? null : creator.profile_image_url}
+        brandLogo={platformOriginRow ? 'cary' : undefined}
         phone={creator.phone}
-        subtitle={creatorOriginSubtitle(creator)}
+        subtitle={creatorOriginSubtitle(creator, viewerRole)}
         publicSlug={creator.public_slug?.trim() || null}
         onViewProfile={profileSheet ? () => setSheet(profileSheet) : undefined}
       />,
     );
-  } else if (!hideOriginForPatient) {
-    const rawPlatform = String(ext.patient_platform_origin_display ?? '').trim();
-    if (rawPlatform) {
-      blocks.push(
-        <AssigneeProfileRow
-          key="origin"
-          title="Origine"
-          name={platformOriginDisplayName(rawPlatform)}
-          brandLogo="cary"
-          subtitle="Ce rendez-vous a été pris en direct par le patient"
-        />,
-      );
-    }
+  } else if (showPlatform) {
+    blocks.push(
+      <AssigneeProfileRow
+        key="origin"
+        title="Origine"
+        name={platformOriginDisplayName(platformOrigin)}
+        brandLogo="cary"
+        subtitle="Ce rendez-vous a été pris en direct par le patient"
+      />,
+    );
   }
 
   if (!blocks.length) return null;

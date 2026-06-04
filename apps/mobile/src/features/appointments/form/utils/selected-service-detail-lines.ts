@@ -6,6 +6,7 @@ import {
   isCareAutreDetailKey,
 } from '@oneandlab/shared-constants';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { shouldHideAutrePreciserDetailRow } from '@/utils/rdv-care-display-label';
 import type { SelectedServiceInput } from '@oneandlab/shared-utils';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 import type { BookingServiceFormSlice } from './booking-service-form-slice';
@@ -38,8 +39,10 @@ export function formatCareOptionRows(
 ): Array<{ label: string; value: string }> {
   if (!cat?.options?.length || !co) return [];
   const rows: Array<{ label: string; value: string }> = [];
+  const categoryLabel = cat.label ?? cat.name;
   for (const opt of [...cat.options].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))) {
     if (isCareAutreDetailKey(opt.option_key)) continue;
+    if (shouldHideAutrePreciserDetailRow(categoryLabel, opt.option_key)) continue;
     const raw = co[opt.option_key];
     if (raw === '' || raw === undefined || raw === null) continue;
     if (opt.field_type === 'select') {

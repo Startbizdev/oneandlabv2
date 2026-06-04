@@ -24,5 +24,6 @@ final class UploadMimeTypes
         'image/heic',
         'image/heif',
         'image/webp',
+        'application/pdf',
     ];
 }
