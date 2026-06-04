@@ -6,18 +6,19 @@ import { Card } from '@/components/ui/Card';
 import { AssigneeProfileRow } from './AssigneeProfileRow';
 import { AssigneeProfileSheets } from './AssigneeProfileSheets';
 import {
-  resolveCreatorOriginProfileSheet,
-  type AssigneeProfileSheetState,
-} from '../utils/provider-public-profile';
-import { appointmentAssigneeGender } from '../utils/patient-appointment-display';
-import {
+  assigneeCreatorOriginVisible,
+  assigneePlatformOriginVisible,
   creatorOriginName,
   creatorOriginSubtitle,
   creatorOriginTitle,
   isPatientPlatformOrigin,
   isViewerAppointmentCreator,
+  platformOriginDisplayName,
+  resolveCreatorOriginProfileSheet,
+  type AssigneeProfileSheetState,
   type CreatorOrigin,
 } from '../utils/provider-public-profile';
+import { appointmentAssigneeGender } from '../utils/patient-appointment-display';
 import { colors, spacing } from '@/theme';
 import { StyleSheet } from 'react-native';
 
@@ -27,7 +28,6 @@ type AptExt = Appointment & Record<string, unknown>;
 export function hasAssigneeContent(apt: Appointment, role: string): boolean {
   const user = useAuthStore.getState().user;
   const ext = apt as AptExt;
-  const isPatient = role === 'patient';
 
   const hideNurse =
     user?.role === 'nurse' && String(ext.assigned_nurse_id ?? '') === String(user.id ?? '');
@@ -52,9 +52,8 @@ export function hasAssigneeContent(apt: Appointment, role: string): boolean {
     isBloodTestAppointment(apt.type) &&
     !hidePreleveur &&
     (preleveurName || ext.assigned_to);
-  const showCreatorOrigin =
-    Boolean(creator?.kind) && !isPatient && !hideCreatorOrigin;
-  const showPlatform = isPatient && platformOrigin && !creator?.kind;
+  const showCreatorOrigin = assigneeCreatorOriginVisible(creator, role, hideCreatorOrigin);
+  const showPlatform = assigneePlatformOriginVisible(creator, platformOrigin, role);
 
   return Boolean(showNurse || showLab || showPreleveur || showCreatorOrigin || showPlatform);
 }
@@ -62,7 +61,6 @@ export function hasAssigneeContent(apt: Appointment, role: string): boolean {
 export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: string }) {
   const user = useAuthStore((s) => s.user);
   const ext = apt as AptExt;
-  const isPatient = role === 'patient';
   const [sheet, setSheet] = useState<AssigneeProfileSheetState | null>(null);
 
   const hideNurse =
@@ -88,8 +86,8 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
     isBloodTestAppointment(apt.type) &&
     !hidePreleveur &&
     (preleveurName || ext.assigned_to);
-  const showCreatorOrigin = Boolean(creator?.kind) && !isPatient && !hideCreatorOrigin;
-  const showPlatform = isPatient && platformOrigin && !creator?.kind;
+  const showCreatorOrigin = assigneeCreatorOriginVisible(creator, role, hideCreatorOrigin);
+  const showPlatform = assigneePlatformOriginVisible(creator, platformOrigin, role);
 
   if (!showNurse && !showLab && !showPreleveur && !showCreatorOrigin && !showPlatform) {
     return null;
@@ -168,7 +166,7 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
   }
   if (showCreatorOrigin && creator) {
     const name = creatorOriginName(creator);
-    const title = creatorOriginTitle(creator);
+    const title = creatorOriginTitle(creator, role);
     const platformOrigin = isPatientPlatformOrigin(creator);
     const profileSheet = resolveCreatorOriginProfileSheet(creator);
     rows.push(
@@ -179,14 +177,22 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
         profileImageUrl={platformOrigin ? null : creator.profile_image_url}
         brandLogo={platformOrigin ? 'cary' : undefined}
         phone={creator.phone}
-        subtitle={creatorOriginSubtitle(creator)}
+        subtitle={creatorOriginSubtitle(creator, role)}
         publicSlug={creator.public_slug?.trim() || null}
         onViewProfile={profileSheet ? () => setSheet(profileSheet) : undefined}
       />,
     );
   }
   if (showPlatform) {
-    rows.push(<AssigneeProfileRow key="platform" title="Origine" name={platformOrigin} />);
+    rows.push(
+      <AssigneeProfileRow
+        key="platform"
+        title="Origine"
+        name={platformOriginDisplayName(platformOrigin)}
+        brandLogo="cary"
+        subtitle="Ce rendez-vous a été pris en direct par le patient"
+      />,
+    );
   }
 
   return (

@@ -102,17 +102,26 @@ export async function cancelAppointmentsPatientBatch(
 
 export async function uploadCarePhoto(
   appointmentId: string,
-  uri: string,
-  fileName = 'care-photo.jpg',
-): Promise<{ ok: boolean; error?: string }> {
+  file: string | { uri: string; fileName: string; mimeType: string },
+): Promise<{ ok: boolean; error?: string; id?: string }> {
   const { buildMedicalDocumentForm, uploadFormData } = await import('@/lib/uploads/upload-file');
+  const input =
+    typeof file === 'string'
+      ? { uri: file, fileName: 'care-photo.jpg', mimeType: 'image/jpeg' }
+      : file;
   try {
     const fd = await buildMedicalDocumentForm(
-      { uri, fileName, mimeType: 'image/jpeg', fieldName: 'file' },
+      { uri: input.uri, fileName: input.fileName, mimeType: input.mimeType, fieldName: 'file' },
       {},
     );
-    await uploadFormData(`/appointments/${appointmentId}/care-photos`, fd);
-    return { ok: true };
+    const res = await api.postForm<{ id?: string }>(
+      `/appointments/${appointmentId}/care-photos`,
+      fd,
+    );
+    if (res.success === false) {
+      return { ok: false, error: res.error ?? res.message ?? 'Upload échoué' };
+    }
+    return { ok: true, id: res.data?.id };
   } catch (e) {
     return {
       ok: false,

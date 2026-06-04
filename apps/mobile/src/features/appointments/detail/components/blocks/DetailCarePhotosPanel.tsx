@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, MessageCircle, Upload } from 'lucide-react-native';
-import { CarePhotoImage } from './CarePhotoImage';
+import { CarePhotoAttachment } from './CarePhotoAttachment';
 import type { Appointment } from '@oneandlab/shared-types';
 import { fetchCarePhotos, uploadCarePhoto } from '../../api/appointment-detail.service';
 import {
@@ -15,7 +15,7 @@ import { carePhotoDiscussionHref } from '../../utils/care-photo-navigation';
 import { latestCarePhoto } from '../../utils/care-photo-thread-digest';
 import { useCarePhotoUnread } from '../../hooks/use-care-photo-unread';
 import type { AppointmentDetailRole } from '../../utils/appointment-detail-role-config';
-import { carePhotoPickErrorMessage, pickCarePhotoUri } from '@/lib/uploads/pick-care-photo';
+import { carePhotoPickErrorMessage, pickCarePhoto } from '@/lib/uploads/pick-care-photo';
 import { Button } from '@/components/ui/Button';
 import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
 import { queryKeys } from '@/lib/query-keys';
@@ -88,12 +88,12 @@ export function DetailCarePhotosPanel({
   );
 
   const uploadMut = useMutation({
-    mutationFn: async (uri: string) => {
-      const r = await uploadCarePhoto(apt.id, uri);
+    mutationFn: async (file: { uri: string; fileName: string; mimeType: string }) => {
+      const r = await uploadCarePhoto(apt.id, file);
       if (!r.ok) throw new Error(r.error ?? 'Upload échoué');
     },
     onSuccess: async () => {
-      toast('Photo envoyée', { type: 'success' });
+      toast('Fichier envoyé', { type: 'success' });
       await qc.invalidateQueries({ queryKey: ['appointments', 'care-photos', apt.id] });
       await qc.invalidateQueries({ queryKey: queryKeys.documents.medical(apt.id) });
       const res = await fetchCarePhotos(apt.id);
@@ -107,8 +107,8 @@ export function DetailCarePhotosPanel({
 
   const pickAndUpload = useCallback(async () => {
     try {
-      const uri = await pickCarePhotoUri();
-      if (uri) uploadMut.mutate(uri);
+      const picked = await pickCarePhoto();
+      if (picked) uploadMut.mutate(picked);
     } catch (e) {
       toast(carePhotoPickErrorMessage(e), { type: 'warning' });
     }
@@ -169,13 +169,13 @@ export function DetailCarePhotosPanel({
         >
           {photos.map((p, idx) => (
             <View key={p.id} style={styles.previewItem}>
-              <CarePhotoImage
-                photoId={p.id}
+              <CarePhotoAttachment
+                photo={p}
                 style={styles.previewThumb}
-                onPress={() => void openLightbox(p.id)}
-                accessibilityLabel={`Agrandir la photo ${idx + 1}`}
+                onZoom={() => void openLightbox(p.id)}
+                accessibilityLabel={`Ouvrir le fichier ${idx + 1}`}
               />
-              <Text style={styles.previewLabel}>Photo {idx + 1}</Text>
+              <Text style={styles.previewLabel}>Fichier {idx + 1}</Text>
             </View>
           ))}
         </ScrollView>
@@ -223,7 +223,7 @@ export function DetailCarePhotosPanel({
           <Text style={styles.ctaHint}>
             {showOpenCta
               ? 'Consultez la discussion et envoyez d’autres photos depuis l’échange.'
-              : 'Bibliothèque ou appareil photo · max 25 Mo · ouvre l’échange après envoi.'}
+              : 'Appareil, galerie ou fichier (image, PDF) · max 25 Mo · ouvre l’échange après envoi.'}
           </Text>
         </View>
       )}

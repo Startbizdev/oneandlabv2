@@ -205,6 +205,7 @@ import {
   isAutreSelectValue,
   stripOrphanAutreDetailKeys,
 } from '~/utils/care-category-autre-detail';
+import { resolveRdvCareDisplayLabel } from '~/utils/rdv-care-display-label';
 import { careAutreDetailPopoverModalContentProps } from '~/utils/care-autre-detail-popover-modal-guard';
 import type { SelectedServiceInput } from '~/utils/dashboard-unified-rdv';
 import type { BookingServiceFormSlice } from '~/utils/booking-service-form-slice';
@@ -422,9 +423,12 @@ function confirm(close: () => void): void {
   }
   if (!props.category) return;
 
-  const service = props.buildServiceLine(props.category);
   const coPayload = { ...draft.care_options };
   stripOrphanAutreDetailKeys(coPayload);
+
+  const service = props.buildServiceLine(props.category);
+  service.name = resolveRdvCareDisplayLabel(service.name, coPayload);
+
   const slice: BookingServiceFormSlice = {
     care_options: coPayload,
   };

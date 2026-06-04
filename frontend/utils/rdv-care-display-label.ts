@@ -1,16 +1,18 @@
+/**
+ * Aligné apps/mobile/src/utils/rdv-care-display-label.ts
+ * Libellé « Autre » → texte saisi dans « Précisez » (catégorie ou select autre).
+ */
 import {
   careAutreDetailKey,
   isAutreSelectValue,
   isCareAutreDetailKey,
-} from '@oneandlab/shared-constants';
+} from '~/utils/care-category-autre-detail';
 
-/** Libellé catalogue « Autre » sans précision (catégorie ou option select). */
 export function isAutreCareDisplayLabel(label: string): boolean {
   const t = label.trim().toLowerCase();
   return t === 'autre' || t === 'other' || /^autre\b/.test(t);
 }
 
-/** Champ texte de la catégorie catalogue « Autre » (migration `preciser`). */
 const AUTRE_CATEGORY_TEXT_KEYS = ['preciser', 'precisez'] as const;
 
 const SKIP_DETAIL_VALUES = new Set(['autre', 'other', '']);
@@ -21,11 +23,6 @@ function pickDetail(raw: unknown): string {
   return detail;
 }
 
-/**
- * Texte « Précisez » pour un libellé Autre uniquement :
- * - clés `*__autre_detail` (select = autre)
- * - clé `preciser` / `precisez` (catégorie Autre)
- */
 export function extractCareOptionsAutreDetail(
   careOptions?: Record<string, string | number> | null,
 ): string {
@@ -52,10 +49,6 @@ export function extractCareOptionsAutreDetail(
   return '';
 }
 
-/**
- * Libellé pill liste RDV : remplace « Autre » par la précision saisie.
- * Les autres soins gardent leur libellé catalogue inchangé.
- */
 export function resolveRdvCareDisplayLabel(
   rawLabel: string,
   careOptions?: Record<string, string | number> | null,
@@ -78,4 +71,14 @@ export function shouldHideAutrePreciserDetailRow(
 ): boolean {
   if (!categoryLabel || !isAutreCareDisplayLabel(categoryLabel)) return false;
   return (AUTRE_CATEGORY_TEXT_KEYS as readonly string[]).includes(optionKey);
+}
+
+export function mapCareOptionsRecord(raw: unknown): Record<string, string | number> | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const out: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (v === '' || v === undefined || v === null) continue;
+    if (typeof v === 'string' || typeof v === 'number') out[k] = v;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }

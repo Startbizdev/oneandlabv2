@@ -83,12 +83,12 @@
                       <p
                         class="min-w-0 flex-1 text-[13px] font-semibold leading-tight tracking-tight text-gray-900 dark:text-gray-50"
                       >
-                        {{ svc.name }}
+                        {{ cartServiceDisplayName(svc) }}
                       </p>
                       <button
                         type="button"
                         class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                        :aria-label="`Retirer ${svc.name} du panier`"
+                        :aria-label="`Retirer ${cartServiceDisplayName(svc)} du panier`"
                         @click="confirmRemove(svc)"
                       >
                         <UIcon name="i-lucide-trash-2" class="h-3.5 w-3.5" aria-hidden="true" />
@@ -131,6 +131,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { formatCareSelectValueWithAutreDetail, isCareAutreDetailKey } from '~/utils/care-category-autre-detail';
+import {
+  resolveRdvCareDisplayLabel,
+  shouldHideAutrePreciserDetailRow,
+} from '~/utils/rdv-care-display-label';
 import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils';
 import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
@@ -205,6 +209,11 @@ function sliceFor(svc: SelectedServiceInput): BookingServiceFormSlice | undefine
   return props.formDataByService?.[svc.id];
 }
 
+function cartServiceDisplayName(svc: SelectedServiceInput): string {
+  const co = sliceFor(svc)?.care_options as Record<string, string | number> | undefined;
+  return resolveRdvCareDisplayLabel(svc.name, co);
+}
+
 const multipleDaysLabels: Record<string, string> = {
   '2': '2 jours',
   '3': '3 jours',
@@ -234,8 +243,10 @@ function formatCareOptionRows(
 ): { label: string; value: string }[] {
   if (!cat?.options?.length || !co) return [];
   const rows: { label: string; value: string }[] = [];
+  const categoryLabel = cat.name;
   for (const opt of [...cat.options].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))) {
     if (isCareAutreDetailKey(opt.option_key)) continue;
+    if (shouldHideAutrePreciserDetailRow(categoryLabel, opt.option_key)) continue;
     const raw = co[opt.option_key];
     if (raw === '' || raw === undefined || raw === null) continue;
     if (opt.field_type === 'select') {

@@ -48,9 +48,10 @@
                 ref="scrollRef"
                 class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-y-contain px-3 pb-3 pt-3 [-webkit-overflow-scrolling:touch] sm:gap-3 sm:px-4 sm:pb-3 sm:pt-4"
               >
-                <!-- Photo dans le fil (comme une pièce jointe), pas une section séparée -->
+                <!-- Fichier dans le fil (image ou PDF) -->
                 <div class="flex shrink-0 w-full justify-center px-0.5 pb-1">
                   <button
+                    v-if="!isPreviewPdf"
                     type="button"
                     class="care-photo-chat-preview group relative flex aspect-square w-full max-w-[min(13rem,78vw)] overflow-hidden rounded-2xl bg-gray-100 shadow-sm ring-1 ring-gray-200/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 enabled:cursor-zoom-in disabled:cursor-not-allowed dark:bg-gray-900/80 dark:ring-gray-700 sm:max-w-[14rem]"
                     :disabled="previewLoading || !previewUrl"
@@ -77,6 +78,25 @@
                       <UIcon name="i-lucide-maximize-2" class="h-3 w-3" aria-hidden="true" />
                       Agrandir
                     </span>
+                  </button>
+                  <button
+                    v-else
+                    type="button"
+                    class="flex w-full max-w-[min(16rem,88vw)] flex-col items-center gap-2 rounded-2xl bg-gray-50 px-4 py-5 text-center shadow-sm ring-1 ring-gray-200/90 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed dark:bg-gray-900/80 dark:ring-gray-700 dark:hover:bg-gray-900"
+                    :disabled="previewLoading || !previewUrl"
+                    aria-label="Ouvrir le PDF"
+                    @click="openPdfPreview"
+                  >
+                    <div v-if="previewLoading" class="py-4">
+                      <UIcon name="i-lucide-loader-2" class="h-6 w-6 animate-spin text-primary-500" />
+                    </div>
+                    <template v-else>
+                      <UIcon name="i-lucide-file-text" class="h-10 w-10 text-primary-600 dark:text-primary-400" />
+                      <p class="line-clamp-2 text-xs font-medium text-gray-900 dark:text-gray-100">
+                        {{ previewFileName }}
+                      </p>
+                      <span class="text-[11px] font-medium text-primary-600 dark:text-primary-400">Ouvrir le PDF</span>
+                    </template>
                   </button>
                 </div>
 
@@ -113,12 +133,78 @@
               </div>
 
               <div
-                v-if="canComment"
+                v-if="canComment || canUpload"
                 class="shrink-0 border-t border-gray-100 bg-white px-3 pt-2 pb-[max(0.625rem,env(safe-area-inset-bottom,0px))] dark:border-gray-800 dark:bg-gray-950 sm:px-4 sm:pb-3"
               >
-                <!-- Composer : grille alignée bas, hauteur mini identique champ / bouton (44px), icône centrée au pixel près -->
+                <input
+                  ref="cameraInputRef"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  class="hidden"
+                  @change="onAttachFileChange"
+                >
+                <input
+                  ref="galleryInputRef"
+                  type="file"
+                  :accept="carePhotoAccept"
+                  class="hidden"
+                  @change="onAttachFileChange"
+                >
+                <input
+                  ref="fileInputRef"
+                  type="file"
+                  :accept="carePhotoAccept"
+                  class="hidden"
+                  @change="onAttachFileChange"
+                >
+                <!-- Composer : + pièce jointe, message, envoyer -->
                 <div class="flex w-full min-w-0 items-end gap-2">
-                  <div class="min-h-0 min-w-0 flex-1">
+                  <div v-if="canUpload" class="relative shrink-0">
+                    <button
+                      type="button"
+                      class="care-chat-composer__attach inline-flex size-[2.75rem] shrink-0 cursor-pointer items-center justify-center rounded-lg border border-gray-200/90 bg-white text-primary-600 shadow-sm outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-primary-400 disabled:pointer-events-none disabled:opacity-55 dark:border-gray-700 dark:bg-gray-900 dark:text-primary-400 dark:hover:bg-gray-800"
+                      :disabled="uploading"
+                      aria-label="Ajouter une photo ou un document"
+                      @click="attachMenuOpen = !attachMenuOpen"
+                    >
+                      <UIcon
+                        :name="uploading ? 'i-lucide-loader-2' : 'i-lucide-plus'"
+                        class="pointer-events-none size-[1.25rem] shrink-0"
+                        :class="{ 'animate-spin': uploading }"
+                      />
+                    </button>
+                    <div
+                      v-if="attachMenuOpen"
+                      class="absolute bottom-[calc(100%+0.35rem)] left-0 z-20 min-w-[10.5rem] overflow-hidden rounded-lg border border-gray-200/90 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+                    >
+                      <button
+                        type="button"
+                        class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-gray-800"
+                        @click="triggerAttachPicker('camera')"
+                      >
+                        <UIcon name="i-lucide-camera" class="h-4 w-4 shrink-0" />
+                        Appareil photo
+                      </button>
+                      <button
+                        type="button"
+                        class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-gray-800"
+                        @click="triggerAttachPicker('gallery')"
+                      >
+                        <UIcon name="i-lucide-image" class="h-4 w-4 shrink-0" />
+                        Galerie
+                      </button>
+                      <button
+                        type="button"
+                        class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-gray-800"
+                        @click="triggerAttachPicker('file')"
+                      >
+                        <UIcon name="i-lucide-file-up" class="h-4 w-4 shrink-0" />
+                        Fichier
+                      </button>
+                    </div>
+                  </div>
+                  <div v-if="canComment" class="min-h-0 min-w-0 flex-1">
                     <UTextarea
                       v-model="draft"
                       :rows="1"
@@ -141,6 +227,7 @@
                     />
                   </div>
                   <button
+                    v-if="canComment"
                     type="button"
                     class="care-chat-composer__send inline-flex size-[2.75rem] shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-primary-600 p-0 text-white shadow-sm outline-none transition-colors hover:bg-primary-700 focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-55 dark:bg-primary-500 dark:hover:bg-primary-600 dark:focus-visible:ring-offset-gray-950"
                     :disabled="sending"
@@ -206,9 +293,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { carePhotoCommentsDigest } from '~/utils/care-photo-thread-digest';
+import {
+  CARE_PHOTO_ACCEPT_ATTR,
+  CARE_PHOTO_ALLOWED_MIME,
+  isCarePhotoPdf,
+} from '~/utils/care-photo-file';
 
 type CarePhotoComment = {
   id: string;
@@ -221,6 +313,7 @@ type CarePhotoComment = {
 type CarePhotoRow = {
   id: string;
   file_name?: string;
+  mime_type?: string;
   created_at: string;
   comments: CarePhotoComment[];
 };
@@ -232,26 +325,52 @@ const props = defineProps<{
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
-const emit = defineEmits<{ commentPosted: []; threadLoaded: [payload: { documentId: string; digest: string }] }>();
+const emit = defineEmits<{
+  commentPosted: [];
+  fileUploaded: [];
+  threadLoaded: [payload: { documentId: string; digest: string }];
+}>();
 
 const toast = useAppToast();
 const config = useRuntimeConfig();
 
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const carePhotoAccept = CARE_PHOTO_ACCEPT_ATTR;
+
 const loading = ref(false);
 const sending = ref(false);
+const uploading = ref(false);
 const photo = ref<CarePhotoRow | null>(null);
 const canComment = ref(false);
+const canUpload = ref(false);
 const draft = ref('');
 const scrollRef = ref<HTMLElement | null>(null);
+const attachMenuOpen = ref(false);
+const activeDocumentId = ref<string | null>(null);
+
+const cameraInputRef = ref<HTMLInputElement | null>(null);
+const galleryInputRef = ref<HTMLInputElement | null>(null);
+const fileInputRef = ref<HTMLInputElement | null>(null);
 
 const previewUrl = ref<string | null>(null);
 let previewBlobUrl: string | null = null;
 const previewLoading = ref(false);
 const zoomOpen = ref(false);
 
+const isPreviewPdf = computed(() => isCarePhotoPdf(photo.value));
+
+const previewFileName = computed(
+  () => photo.value?.file_name?.trim() || 'Document PDF',
+);
+
 function openLightbox() {
-  if (previewLoading.value || !previewUrl.value) return;
+  if (previewLoading.value || !previewUrl.value || isPreviewPdf.value) return;
   zoomOpen.value = true;
+}
+
+function openPdfPreview() {
+  if (previewLoading.value || !previewUrl.value || !isPreviewPdf.value) return;
+  window.open(previewUrl.value, '_blank', 'noopener,noreferrer');
 }
 
 function closeLightbox() {
@@ -357,16 +476,107 @@ function formatShortDate(iso: string) {
 
 function emitThreadSeen() {
   if (!open.value) return;
-  const did = props.documentId;
+  const did = effectiveDocumentId();
   const aid = props.appointmentId;
   if (!photo.value || !did || !aid) return;
   const digest = carePhotoCommentsDigest((photo.value.comments || []).map((c) => String(c.id)));
   emit('threadLoaded', { documentId: String(did), digest });
 }
 
+function effectiveDocumentId() {
+  return activeDocumentId.value || props.documentId || null;
+}
+
+function closeAttachMenu() {
+  attachMenuOpen.value = false;
+}
+
+function triggerAttachPicker(kind: 'camera' | 'gallery' | 'file') {
+  closeAttachMenu();
+  if (kind === 'camera') cameraInputRef.value?.click();
+  else if (kind === 'gallery') galleryInputRef.value?.click();
+  else fileInputRef.value?.click();
+}
+
+function onAttachFileChange(ev: Event) {
+  const target = ev.target as HTMLInputElement;
+  const file = target.files?.[0];
+  target.value = '';
+  if (file) void uploadCarePhotoFile(file);
+}
+
+async function uploadCarePhotoFile(file: File) {
+  const aid = props.appointmentId;
+  if (!aid) return;
+  if (!CARE_PHOTO_ALLOWED_MIME.includes(file.type as (typeof CARE_PHOTO_ALLOWED_MIME)[number])) {
+    toast.add({
+      title: 'Format',
+      description: 'Utilisez une image (JPG, PNG, HEIC) ou un PDF.',
+      color: 'warning',
+    });
+    return;
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    toast.add({
+      title: 'Fichier trop volumineux',
+      description: 'Maximum 25 Mo.',
+      color: 'error',
+    });
+    return;
+  }
+  uploading.value = true;
+  try {
+    const apiBase = config.public?.apiBase || '';
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const csrf = (typeof window !== 'undefined' && (window as any).__csrfTokenCache) || '';
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (csrf) headers['X-CSRF-Token'] = csrf;
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${apiBase}/appointments/${encodeURIComponent(aid)}/care-photos`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      headers,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || 'Upload échoué');
+    const newId = data?.data?.id ? String(data.data.id) : null;
+    if (newId) activeDocumentId.value = newId;
+    toast.add({ title: 'Fichier envoyé', color: 'success' });
+    emit('fileUploaded');
+    await loadThread(false);
+    emit('commentPosted');
+  } catch (e: any) {
+    toast.add({ title: 'Upload', description: e?.message || 'Erreur', color: 'error' });
+  } finally {
+    uploading.value = false;
+  }
+}
+
+function onDocPointerDown(ev: MouseEvent) {
+  if (!attachMenuOpen.value) return;
+  const target = ev.target as HTMLElement | null;
+  if (target?.closest('.care-chat-composer__attach')) return;
+  closeAttachMenu();
+}
+
+onMounted(() => {
+  if (typeof document !== 'undefined') {
+    document.addEventListener('pointerdown', onDocPointerDown);
+  }
+});
+
+onUnmounted(() => {
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('pointerdown', onDocPointerDown);
+  }
+});
+
 async function loadThread(silent = false) {
   const aid = props.appointmentId;
-  const did = props.documentId;
+  const did = effectiveDocumentId();
   if (!aid || !did) {
     photo.value = null;
     return;
@@ -378,6 +588,7 @@ async function loadThread(silent = false) {
       throw new Error((res as any)?.error || 'Chargement impossible');
     }
     canComment.value = !!res.data.can_comment;
+    canUpload.value = !!res.data.can_upload;
     const rows = (res.data.photos || []) as CarePhotoRow[];
     const nextPhoto = rows.find((p) => String(p.id) === String(did)) ?? null;
     const prevLen = photo.value?.comments?.length ?? 0;
@@ -409,10 +620,12 @@ async function loadThread(silent = false) {
 
 watch(
   () => [open.value, props.appointmentId, props.documentId] as const,
-  ([isOpened]) => {
+  ([isOpened, , docId]) => {
     if (isOpened) {
       draft.value = '';
       zoomOpen.value = false;
+      attachMenuOpen.value = false;
+      activeDocumentId.value = docId ? String(docId) : null;
       void loadThread(false);
       startPoll();
     } else {
@@ -420,6 +633,8 @@ watch(
       photo.value = null;
       revokePreviewBlob();
       zoomOpen.value = false;
+      attachMenuOpen.value = false;
+      activeDocumentId.value = null;
     }
   },
 );
@@ -432,7 +647,7 @@ onBeforeUnmount(() => {
 async function sendComment() {
   const body = draft.value.trim();
   const aid = props.appointmentId;
-  const did = props.documentId;
+  const did = effectiveDocumentId();
   if (!body || !aid || !did) return;
   sending.value = true;
   try {

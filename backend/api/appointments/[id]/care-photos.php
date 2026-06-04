@@ -169,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!in_array($mimeType, $allowedTypes, true)) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Formats acceptés : JPG, PNG, HEIC']);
+        echo json_encode(['success' => false, 'error' => 'Formats acceptés : JPG, PNG, HEIC, PDF']);
         exit;
     }
 

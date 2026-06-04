@@ -10,6 +10,11 @@ import {
   MULTI_NURSING_ITEMS_CARD_LABEL,
 } from '~/utils/appointment-type-rules';
 import { formatPatientUrgentCreneauShortFr } from '~/utils/patient-urgency-display';
+import {
+  isAutreCareDisplayLabel,
+  mapCareOptionsRecord,
+  resolveRdvCareDisplayLabel,
+} from '~/utils/rdv-care-display-label';
 
 function capitalizeWords(str: string): string {
   if (!str) return '';
@@ -88,7 +93,16 @@ export function patientRdvAppointmentCategorySummary(apt: any, opts?: PatientRdv
   }
 
   const name = apt?.category_name || apt?.form_data?.category_name;
-  const label = name ? patientVisibleCareLabel(String(name).trim(), true) : '';
+  const raw = name ? String(name).trim() : '';
+  const fdCare = mapCareOptionsRecord(apt?.form_data?.care_options);
+  const resolved = raw
+    ? resolveRdvCareDisplayLabel(
+        raw,
+        fdCare,
+        isAutreCareDisplayLabel(raw) ? fdCare : undefined,
+      )
+    : '';
+  const label = resolved ? patientVisibleCareLabel(resolved, true) : '';
   return label || (apt?.type === 'blood_test' ? 'Prélèvement' : 'Soin');
 }
 
@@ -124,13 +138,25 @@ export function patientRdvCatalogDisplayLines(
   if (t === 'blood_test') {
     const raw = Array.isArray(apt.blood_test_items) ? apt.blood_test_items : [];
     if (raw.length > 0) {
+      const fdCare = mapCareOptionsRecord(apt?.form_data?.care_options);
       return finalizePatientRdvCatalogLines(
-        raw.map((it: any) => ({
-          category_id: it?.category_id != null && String(it.category_id).trim() !== '' ? String(it.category_id) : null,
-          category_image_url: it?.category_image_url ?? null,
-          label:
-            String(it?.label ?? it?.category_name ?? apt?.category_name ?? 'Analyse').trim() || 'Analyse',
-        })),
+        raw.map((it: any) => {
+          const rawLabel =
+            String(it?.label ?? it?.category_name ?? apt?.category_name ?? 'Analyse').trim() || 'Analyse';
+          const itemCare = mapCareOptionsRecord(it?.care_options);
+          return {
+            category_id:
+              it?.category_id != null && String(it.category_id).trim() !== ''
+                ? String(it.category_id)
+                : null,
+            category_image_url: it?.category_image_url ?? null,
+            label: resolveRdvCareDisplayLabel(
+              rawLabel,
+              itemCare,
+              isAutreCareDisplayLabel(rawLabel) ? fdCare : undefined,
+            ),
+          };
+        }),
         opts,
       );
     }
@@ -143,12 +169,24 @@ export function patientRdvCatalogDisplayLines(
           ? apt.nursing_items
           : [];
     if (raw.length > 0) {
+      const fdCare = mapCareOptionsRecord(apt?.form_data?.care_options);
       return finalizePatientRdvCatalogLines(
-        raw.map((it: any) => ({
-          category_id: it?.category_id != null && String(it.category_id).trim() !== '' ? String(it.category_id) : null,
-          category_image_url: it?.category_image_url ?? null,
-          label: String(it?.label ?? it?.category_name ?? '').trim() || 'Soin',
-        })),
+        raw.map((it: any) => {
+          const rawLabel = String(it?.label ?? it?.category_name ?? '').trim() || 'Soin';
+          const itemCare = mapCareOptionsRecord(it?.care_options);
+          return {
+            category_id:
+              it?.category_id != null && String(it.category_id).trim() !== ''
+                ? String(it.category_id)
+                : null,
+            category_image_url: it?.category_image_url ?? null,
+            label: resolveRdvCareDisplayLabel(
+              rawLabel,
+              itemCare,
+              isAutreCareDisplayLabel(rawLabel) ? fdCare : undefined,
+            ),
+          };
+        }),
         opts,
       );
     }
@@ -159,15 +197,22 @@ export function patientRdvCatalogDisplayLines(
       : apt?.form_data?.category_id != null && String(apt.form_data.category_id).trim() !== ''
         ? String(apt.form_data.category_id)
         : null;
-  const label = String(
+  const rawLabel = String(
     apt?.category_name ?? apt?.form_data?.category_name ?? (t === 'blood_test' ? 'Prélèvement' : 'Soin'),
   ).trim();
+  const fdCare = mapCareOptionsRecord(apt?.form_data?.care_options);
+  const label =
+    resolveRdvCareDisplayLabel(
+      rawLabel,
+      fdCare,
+      isAutreCareDisplayLabel(rawLabel) ? fdCare : undefined,
+    ) || (t === 'blood_test' ? 'Prélèvement' : 'Soin');
   return finalizePatientRdvCatalogLines(
     [
       {
         category_id: catId,
         category_image_url: apt?.category_image_url ?? null,
-        label: label || (t === 'blood_test' ? 'Prélèvement' : 'Soin'),
+        label,
       },
     ],
     opts,
@@ -254,7 +299,16 @@ export function patientRdvTypeDeSoinLabel(
     return MULTI_NURSING_ITEMS_CARD_LABEL;
   }
   const name = apt?.category_name || apt?.form_data?.category_name;
-  return name ? patientVisibleCareLabel(String(name).trim(), true) : '';
+  const raw = name ? String(name).trim() : '';
+  const fdCare = mapCareOptionsRecord(apt?.form_data?.care_options);
+  const resolved = raw
+    ? resolveRdvCareDisplayLabel(
+        raw,
+        fdCare,
+        isAutreCareDisplayLabel(raw) ? fdCare : undefined,
+      )
+    : '';
+  return resolved ? patientVisibleCareLabel(resolved, true) : '';
 }
 
 export function patientRdvAppointmentCardTitle(apt: any, opts?: PatientRdvCategorySummaryOpts): string {

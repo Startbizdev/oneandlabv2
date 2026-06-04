@@ -198,12 +198,12 @@
           <div class="min-w-0">
             <div class="flex w-full min-w-0 flex-row flex-nowrap items-center justify-end gap-2 sm:justify-between sm:gap-3">
               <p class="mr-2 hidden min-w-0 flex-1 truncate text-sm text-muted sm:block">
-                Partagée avec le professionnel — JPG, PNG · max 25&nbsp;Mo
+                Partagée avec le professionnel — image ou PDF · max 25&nbsp;Mo
               </p>
               <input
                 ref="carePhotoFileInputRef"
                 type="file"
-                accept="image/jpeg,image/png,image/jpg"
+                accept="image/jpeg,image/png,image/jpg,image/heic,image/heif,image/webp,application/pdf"
                 class="hidden"
                 @change="onCarePhotoFileChange"
               >
@@ -512,7 +512,7 @@
           <input
             ref="carePhotoFileInputRef"
             type="file"
-            accept="image/jpeg,image/png,image/jpg"
+            accept="image/jpeg,image/png,image/jpg,image/heic,image/heif,image/webp,application/pdf"
             class="hidden"
             @change="onCarePhotoFileChange"
           >
@@ -683,6 +683,7 @@
       :document-id="careDiscussionDocId ?? undefined"
       :viewer-user-id="documentsViewerId ?? undefined"
       @comment-posted="onCarePhotoCommentPosted"
+      @file-uploaded="onCarePhotoCommentPosted"
     />
   </div>
 </template>

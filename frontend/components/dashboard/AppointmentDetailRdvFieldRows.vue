@@ -343,7 +343,7 @@
           size="sm"
           class="max-w-full"
         >
-          <span class="truncate">{{ item.label || item.category_name || 'Soin' }}</span>
+          <span class="truncate">{{ nursingItemDisplayLabel(item) }}</span>
         </UBadge>
       </div>
     </div>
@@ -366,7 +366,7 @@
             img-class="h-4 w-4 shrink-0 object-contain"
             icon-class="h-4 w-4 shrink-0 text-gray-600 dark:text-gray-400"
           />
-          <span class="truncate text-gray-900 dark:text-gray-100">{{ appt.category_name }}</span>
+          <span class="truncate text-gray-900 dark:text-gray-100">{{ appointmentCategoryDisplayName }}</span>
         </UBadge>
       </div>
     </div>
@@ -603,6 +603,7 @@ import {
   formatCareSelectValueWithAutreDetail,
   isCareAutreDetailKey,
 } from '~/utils/care-category-autre-detail';
+import { mapCareOptionsRecord, resolveRdvCareDisplayLabel } from '~/utils/rdv-care-display-label';
 import { getAppointmentNotes } from '~/utils/appointment-notes';
 
 const props = withDefaults(
@@ -1125,7 +1126,8 @@ function nursingItemCategoryVisual(item: Record<string, unknown> | null | undefi
 
 /** Libellé badge pour une ligne d’acte infirmier (détail lot). */
 function nursingItemDisplayLabel(item: Record<string, unknown>): string {
-  return String(item?.label ?? item?.category_name ?? 'Soin').trim() || 'Soin';
+  const raw = String(item?.label ?? item?.category_name ?? 'Soin').trim() || 'Soin';
+  return resolveRdvCareDisplayLabel(raw, mapCareOptionsRecord(nursingItemCareOptionsRecord(item)));
 }
 
 /** Évite de répéter le type sous chaque ligne quand une seule entrée reflète déjà celui déjà affiché en racine (`form_data.care_options.type`). */
@@ -1226,8 +1228,16 @@ function bloodItemCategoryVisual(item: Record<string, unknown> | null | undefine
 }
 
 function bloodItemDisplayLabel(item: Record<string, unknown> | null | undefined): string {
-  return String(item?.label ?? item?.category_name ?? 'Prestation').trim() || 'Prestation';
+  const raw = String(item?.label ?? item?.category_name ?? 'Prestation').trim() || 'Prestation';
+  return resolveRdvCareDisplayLabel(raw, mapCareOptionsRecord(item?.care_options));
 }
+
+const appointmentCategoryDisplayName = computed(() => {
+  const raw = String(props.appt?.category_name ?? '').trim();
+  if (!raw) return '';
+  const fdCare = mapCareOptionsRecord(props.appt?.form_data?.care_options);
+  return resolveRdvCareDisplayLabel(raw, fdCare);
+});
 
 const careCategoryDisplay = computed(() => {
   const a = props.appt;
