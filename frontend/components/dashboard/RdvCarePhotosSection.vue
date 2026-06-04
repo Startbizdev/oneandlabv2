@@ -181,6 +181,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { readCarePhotoSeenDigest, writeCarePhotoSeenDigest } from '~/utils/care-photo-thread-digest';
 import { CARE_PHOTO_ACCEPT_ATTR, isCarePhotoPdf } from '~/utils/care-photo-file';
+import { useCareGalleryNotificationDeepLink } from '~/composables/useCareGalleryNotificationDeepLink';
 
 const carePhotoAccept = CARE_PHOTO_ACCEPT_ATTR;
 
@@ -336,6 +337,12 @@ function openCareDiscussion(doc: any) {
   careDiscussionDocId.value = String(doc.id);
   careDiscussionOpen.value = true;
 }
+
+useCareGalleryNotificationDeepLink({
+  careDocs: primaryCareDocs,
+  documentsLoading: computed(() => props.documentsLoading === true),
+  openCareDiscussion,
+});
 
 function onDiscussionCommentPosted() {
   emit('carePhotoThreadUpdated');

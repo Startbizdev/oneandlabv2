@@ -22,6 +22,11 @@ class Twilio
         }
     }
 
+    private function frontendBaseUrl(): string
+    {
+        return rtrim((string) ($_ENV['FRONTEND_URL'] ?? 'https://cary.bio'), '/');
+    }
+
     /**
      * Envoie un SMS
      */
@@ -63,7 +68,7 @@ class Twilio
     {
         $date = date('d/m/Y à H:i', strtotime($appointmentData['scheduled_at']));
         $appointmentId = $appointmentData['id'];
-        $url = 'https://oneandlab.fr/nurse/appointments/' . $appointmentId;
+        $url = $this->frontendBaseUrl() . '/nurse/appointments/' . $appointmentId;
         
         $message = "[NOUVEAU] Nouveau RDV dans votre secteur le {$date}.\nVoir détails : {$url}";
         
@@ -83,7 +88,7 @@ class Twilio
         $professionalName = $appointmentData['professional_name'] ?? 'votre professionnel';
         $date = date('d/m/Y à H:i', strtotime($appointmentData['scheduled_at']));
         $appointmentId = $appointmentData['id'];
-        $url = 'https://oneandlab.fr/patient/appointments/' . $appointmentId;
+        $url = $this->frontendBaseUrl() . '/patient/appointments/' . $appointmentId;
         
         $message = "[CONFIRME] Votre rendez-vous est confirmé avec {$professionalName} le {$date}.\nVoir détails : {$url}";
         
@@ -114,7 +119,7 @@ class Twilio
      */
     public function sendAppointmentExpired(string $to): bool
     {
-        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://app.oneandlab.fr';
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
         $rebookUrl = $baseUrl . '/rendez-vous/nouveau';
         $message = 'Cary : Désolé, aucun professionnel disponible. Vous pouvez reprendre rendez-vous : ' . $rebookUrl;
         try {

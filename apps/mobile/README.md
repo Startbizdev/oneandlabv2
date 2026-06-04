@@ -19,10 +19,10 @@ L’app pointe par défaut vers l’**API production** :
 
 ```bash
 # .env (optionnel)
-# EXPO_PUBLIC_API_BASE=https://app.oneandlab.fr/api
+# EXPO_PUBLIC_API_BASE=https://cary.bio/api
 ```
 
-Pas de credentials SSH dans l’app — seule l’URL publique `https://app.oneandlab.fr/api`.
+Pas de credentials SSH dans l’app — seule l’URL publique `https://cary.bio/api`.
 
 ## Démarrage
 

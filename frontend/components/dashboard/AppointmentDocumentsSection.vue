@@ -816,6 +816,22 @@ function openCareDiscussion(doc: any) {
   careDiscussionOpen.value = true;
 }
 
+const carePhotoDocsForDeepLink = computed(() => {
+  if (props.omitCarePhotosInList) return [];
+  const aid = props.carePhotoAppointmentId ? String(props.carePhotoAppointmentId) : '';
+  return (props.documents || []).filter(
+    (d: any) =>
+      d.document_type === 'care_photo' &&
+      (!aid || String(d.appointment_id || '') === aid),
+  );
+});
+
+useCareGalleryNotificationDeepLink({
+  careDocs: carePhotoDocsForDeepLink,
+  documentsLoading: computed(() => props.loading === true),
+  openCareDiscussion,
+});
+
 function onCarePhotoCommentPosted() {
   emit('carePhotoThreadUpdated');
 }

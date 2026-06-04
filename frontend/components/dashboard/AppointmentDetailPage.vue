@@ -850,49 +850,5 @@ watch(
   },
 );
 
-/** Notification galerie : scroll vers la carte « Photos de soins » (rdv-care-photo-* ou rdv-doc-*). */
-watch(
-  () => ({
-    q: route.query.careGallery,
-    carePhoto: route.query.carePhoto,
-    careIds: documents.value
-      .filter((d) => d.document_type === 'care_photo')
-      .map((d) => String((d as { id?: string }).id || ''))
-      .join(','),
-    docLoading: documentsLoading.value,
-    aptLoading: loading.value,
-  }),
-  async ({ q, carePhoto, careIds, docLoading, aptLoading }) => {
-    if (q !== '1' && q !== 'true') return;
-    if (aptLoading || docLoading) return;
-    const list = careIds
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (list.length === 0) return;
-
-    const fromQuery =
-      typeof carePhoto === 'string'
-        ? carePhoto.trim()
-        : Array.isArray(carePhoto)
-          ? String(carePhoto[0] || '').trim()
-          : '';
-    const targetId =
-      fromQuery && list.includes(fromQuery) ? fromQuery : list[0];
-
-    await nextTick();
-    const byCare =
-      document.getElementById(`rdv-care-photo-${targetId}`) ||
-      document.getElementById('rdv-care-photos-section');
-    const byDoc = document.getElementById(`rdv-doc-${targetId}`);
-    (byCare || byDoc)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    const rest = { ...route.query } as Record<string, unknown>;
-    delete rest.careGallery;
-    delete rest.carePhoto;
-    void router.replace({ path: route.path, query: rest as Record<string, string | string[] | undefined> });
-  },
-);
-
 defineExpose({ loadAppointment, loadDocuments, appointment, documents, documentsLoading, loading, batchAppointmentsSorted });
 </script>

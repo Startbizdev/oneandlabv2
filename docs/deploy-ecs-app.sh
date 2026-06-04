@@ -26,8 +26,8 @@ fi
 echo "==> Frontend: npm ci et build..."
 cd /var/www/oneandlab/frontend
 # Valeurs pour app.oneandlab.fr (éditables dans .env à la racine du projet)
-export NUXT_PUBLIC_API_BASE="${NUXT_PUBLIC_API_BASE:-https://app.oneandlab.fr/api}"
-export NUXT_PUBLIC_SITE_URL="${NUXT_PUBLIC_SITE_URL:-https://app.oneandlab.fr}"
+export NUXT_PUBLIC_API_BASE="${NUXT_PUBLIC_API_BASE:-https://cary.bio/api}"
+export NUXT_PUBLIC_SITE_URL="${NUXT_PUBLIC_SITE_URL:-https://cary.bio}"
 npm ci
 npm run build
 

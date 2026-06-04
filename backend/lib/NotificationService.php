@@ -554,7 +554,7 @@ class NotificationService
 
         if (!empty($patientPhone) && $this->twilio !== null) {
             try {
-                $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://app.oneandlab.fr';
+                $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
                 $url = rtrim($baseUrl, '/') . '/patient/appointments/' . $ids[0];
                 $this->twilio->sendSMS(
                     $patientPhone,
@@ -692,7 +692,7 @@ class NotificationService
 
         if (!empty($patientPhone) && $this->twilio !== null) {
             try {
-                $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://app.oneandlab.fr';
+                $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
                 $url = rtrim($baseUrl, '/') . '/patient/appointments/' . $ids[0];
                 $this->twilio->sendSMS(
                     $patientPhone,

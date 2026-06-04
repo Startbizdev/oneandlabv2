@@ -11,7 +11,7 @@ export function isNonMobileRole(role: string | undefined): boolean {
 
 export function roleAccessDeniedMessage(role?: string): string {
   const label = role ? (ROLE_LABELS[role] ?? role) : 'Ce type de compte';
-  return `${label} n’a pas accès à l’application mobile Cary.\n\nConnectez-vous sur le site web app.oneandlab.fr depuis un ordinateur.`;
+  return `${label} n’a pas accès à l’application mobile Cary.\n\nConnectez-vous sur le site web cary.bio depuis un ordinateur.`;
 }
 
 export function showAppNotAccessibleAlert(role?: string): void {
