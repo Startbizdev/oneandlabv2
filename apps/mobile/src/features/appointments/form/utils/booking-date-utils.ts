@@ -80,4 +80,32 @@ export function formatBookingDayLabel(d: dayjs.Dayjs): { weekday: string; day: s
   return { weekday, day: String(d.date()), month };
 }
 
+/** Libellé court pour une tuile jour (jour + abréviation). */
+export function formatBookingDayCell(d: dayjs.Dayjs): { weekday: string; day: string } {
+  const weekday = d.locale('fr').format('ddd').replace('.', '');
+  return { weekday, day: String(d.date()) };
+}
+
+/** Période affichée au-dessus de la grille (ex. « 7 – 16 juin 2026 »). */
+export function formatBookingSlidePeriod(days: dayjs.Dayjs[]): string {
+  if (days.length === 0) return '';
+  const first = days[0].locale('fr');
+  const last = days[days.length - 1].locale('fr');
+  if (first.isSame(last, 'day')) {
+    return first.format('dddd D MMMM YYYY');
+  }
+  if (first.isSame(last, 'month')) {
+    return `${first.format('D')} – ${last.format('D MMMM YYYY')}`;
+  }
+  if (first.isSame(last, 'year')) {
+    return `${first.format('D MMM')} – ${last.format('D MMM YYYY')}`;
+  }
+  return `${first.format('D MMM YYYY')} – ${last.format('D MMM YYYY')}`;
+}
+
+/** Récap sous la grille pour la date sélectionnée. */
+export function formatBookingSelectedDay(d: dayjs.Dayjs): string {
+  return d.locale('fr').format('dddd D MMMM');
+}
+
 export { PARIS_OFFSET_HINT };
