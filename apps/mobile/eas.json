@@ -13,6 +13,11 @@
     },
     "production": {
       "distribution": "store",
+      "env": {
+        "RCT_USE_PREBUILT_RNCORE": "0",
+        "RCT_USE_RN_DEP": "0",
+        "RCT_BUILD_HERMES_FROM_SOURCE": "true"
+      },
       "ios": {
         "autoIncrement": true,
         "image": "macos-sequoia-15.6-xcode-16.4"
