@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "eas-build-pre-install": "cd ../.. && npm ci --workspace=@oneandlab/mobile --include-workspace-root",
-    "eas-build-post-install": "node scripts/verify-ios-pods-hermes.cjs",
+    "eas-build-post-install": "node scripts/fix-ios-pods-hermes.cjs",
     "bundle:ios:verify": "expo export --platform ios",
     "verify:eas": "node scripts/verify-eas-preflight.cjs",
     "start": "expo start",
