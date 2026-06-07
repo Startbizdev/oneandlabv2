@@ -6,6 +6,7 @@
   "scripts": {
     "eas-build-pre-install": "cd ../.. && npm ci --workspace=@oneandlab/mobile --include-workspace-root",
     "bundle:ios:verify": "expo export --platform ios",
+    "verify:eas": "node scripts/verify-eas-preflight.cjs",
     "start": "expo start",
     "start:clean": "expo start -c",
     "clean:metro": "node scripts/clean-metro.cjs",
@@ -17,6 +18,8 @@
     "ios:setup": "bash scripts/setup-ios-native.sh",
     "ios:dev-build": "expo run:ios",
     "icons:generate": "bash scripts/generate-brand-icons.sh",
+    "build:ios:store": "node scripts/run-eas-ios.cjs",
+    "submit:ios:latest": "node scripts/run-eas-ios.cjs submit --platform ios --profile production --latest --non-interactive",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx"
   },
@@ -39,6 +42,7 @@
     "dayjs": "^1.11.13",
     "expo": "~54.0.35",
     "expo-blur": "~15.0.8",
+    "expo-build-properties": "~1.0.10",
     "expo-constants": "~18.0.9",
     "expo-device": "~8.0.8",
     "expo-document-picker": "~14.0.7",
