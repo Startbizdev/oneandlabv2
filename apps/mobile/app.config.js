@@ -24,9 +24,6 @@ module.exports = {
           android: {
             usesCleartextTraffic: true,
           },
-          ios: {
-            buildReactNativeFromSource: true,
-          },
         },
       ],
     ],
