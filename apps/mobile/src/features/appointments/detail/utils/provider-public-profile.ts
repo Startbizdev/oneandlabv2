@@ -102,13 +102,12 @@ export function assigneeCreatorOriginVisible(
 }
 
 export function assigneePlatformOriginVisible(
-  creator: CreatorOrigin | undefined,
-  platformOriginLabel: string,
-  viewerRole: string,
+  _creator: CreatorOrigin | undefined,
+  _platformOriginLabel: string,
+  _viewerRole: string,
 ): boolean {
-  if (viewerRole !== 'patient') return false;
-  if (creator?.kind === 'patient_platform') return true;
-  return Boolean(platformOriginLabel.trim() && !creator?.kind);
+  // Le patient a pris le RDV lui-même sur Cary — inutile d’afficher une ligne « Origine ».
+  return false;
 }
 
 /** Viewer connecté = créateur du RDV (ne pas afficher sa propre fiche intervenant). */
