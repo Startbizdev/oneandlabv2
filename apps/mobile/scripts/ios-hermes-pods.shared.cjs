@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const PODFILE_SANDBOX_MARKER = '# @oneandlab/eas-script-sandboxing-fix';
 
@@ -12,7 +13,6 @@ function patchPodfile(podfilePath) {
     throw new Error('Podfile Expo inattendu — anchor podfile_properties introuvable.');
   }
 
-  // Retire d’anciennes injections from-source si le Podfile a été réutilisé.
   contents = contents.replace(/\n# @oneandlab\/eas-hermes-from-source[\s\S]*?ENV\['RCT_USE_RN_DEP'\] = '0'\n/g, '\n');
 
   if (!contents.includes(PODFILE_SANDBOX_MARKER)) {
@@ -43,6 +43,73 @@ function patchPodfile(podfilePath) {
   fs.writeFileSync(podfilePath, contents);
 }
 
+function getReactNativeRoot(mobileDir) {
+  const candidates = [
+    path.resolve(mobileDir, 'node_modules', 'react-native'),
+    path.resolve(mobileDir, '..', '..', 'node_modules', 'react-native'),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, 'package.json'))) {
+      return candidate;
+    }
+  }
+  throw new Error('react-native introuvable dans le monorepo.');
+}
+
+function resetPods(iosDir) {
+  for (const target of ['Pods', 'Podfile.lock']) {
+    fs.rmSync(path.join(iosDir, target), { recursive: true, force: true });
+  }
+}
+
+function cleanPodCache() {
+  console.log('→ pod cache clean --all');
+  spawnSync('pod', ['cache', 'clean', '--all'], {
+    stdio: 'inherit',
+    shell: true,
+  });
+}
+
+function prepareHermesReleaseArtifacts(iosDir, rnRoot) {
+  const version = require(path.join(rnRoot, 'package.json')).version;
+  const replaceScript = path.join(
+    rnRoot,
+    'sdks/hermes-engine/utils/replace_hermes_version.js'
+  );
+  const podsRoot = path.join(iosDir, 'Pods');
+
+  console.log('→ replace_hermes_version.js (Release)');
+  const result = spawnSync(
+    'node',
+    [replaceScript, '-c', 'Release', '-r', version, '-p', podsRoot],
+    {
+      cwd: path.join(podsRoot, 'hermes-engine'),
+      stdio: 'inherit',
+      shell: true,
+    }
+  );
+
+  if (result.status !== 0) {
+    throw new Error('replace_hermes_version.js a échoué.');
+  }
+}
+
+function assertHermesXcframework(iosDir) {
+  const xcframework = path.join(
+    iosDir,
+    'Pods',
+    'hermes-engine',
+    'destroot',
+    'Library',
+    'Frameworks',
+    'universal',
+    'hermes.xcframework'
+  );
+  if (!fs.existsSync(xcframework)) {
+    throw new Error(`hermes.xcframework introuvable: ${xcframework}`);
+  }
+}
+
 function readPodsProject(iosDir) {
   const pbxPath = path.join(iosDir, 'Pods', 'Pods.xcodeproj', 'project.pbxproj');
   if (!fs.existsSync(pbxPath)) {
@@ -61,15 +128,32 @@ function assertHermesPrebuilt(iosDir) {
     throw new Error('Pods/Pods.xcodeproj introuvable après pod install.');
   }
   if (!isHermesPrebuiltMode(pbx)) {
-    throw new Error(
-      'Hermes n’est pas en mode précompilé — hermesc custom risque de casser le bundle JS.'
-    );
+    throw new Error('Hermes n’est pas en mode précompilé.');
+  }
+}
+
+function pruneIosBuildExceptGenerated(iosDir) {
+  const buildDir = path.join(iosDir, 'build');
+  if (!fs.existsSync(buildDir)) {
+    return;
+  }
+  for (const entry of fs.readdirSync(buildDir)) {
+    if (entry === 'generated') {
+      continue;
+    }
+    fs.rmSync(path.join(buildDir, entry), { recursive: true, force: true });
   }
 }
 
 module.exports = {
   patchPodfile,
+  getReactNativeRoot,
+  resetPods,
+  cleanPodCache,
+  prepareHermesReleaseArtifacts,
+  assertHermesXcframework,
   readPodsProject,
   isHermesPrebuiltMode,
   assertHermesPrebuilt,
+  pruneIosBuildExceptGenerated,
 };
