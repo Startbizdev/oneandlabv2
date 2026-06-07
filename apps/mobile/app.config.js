@@ -1,8 +1,7 @@
 /** @type {import('expo/config').ExpoConfig} */
 const appJson = require('./app.json');
-const withIosForceBuildFromSource = require('./plugins/withIosForceBuildFromSource');
 
-module.exports = withIosForceBuildFromSource({
+module.exports = {
   expo: {
     ...appJson.expo,
     extra: {
@@ -31,6 +30,7 @@ module.exports = withIosForceBuildFromSource({
           },
         },
       ],
+      './plugins/withIosForceBuildFromSource',
     ],
   },
-});
+};

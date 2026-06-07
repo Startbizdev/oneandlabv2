@@ -13,6 +13,9 @@
     },
     "production": {
       "distribution": "store",
+      "cache": {
+        "key": "ios-build-from-source-v2"
+      },
       "env": {
         "RCT_USE_PREBUILT_RNCORE": "0",
         "RCT_USE_RN_DEP": "0",
