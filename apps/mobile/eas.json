@@ -13,17 +13,18 @@
     },
     "production": {
       "distribution": "store",
+      "prebuildCommand": "npx expo prebuild --clean --platform ios",
       "cache": {
-        "key": "ios-build-from-source-v2"
+        "disabled": true
       },
       "env": {
-        "RCT_USE_PREBUILT_RNCORE": "0",
-        "RCT_USE_RN_DEP": "0",
-        "RCT_BUILD_HERMES_FROM_SOURCE": "true"
+        "EAS_BUILD_DISABLE_COCOAPODS_CACHE": "1",
+        "EAS_RESTORE_CACHE": "0"
       },
       "ios": {
         "autoIncrement": true,
-        "image": "macos-sequoia-15.6-xcode-16.4"
+        "image": "macos-sequoia-15.6-xcode-16.4",
+        "cocoapods": "1.16.2"
       }
     }
   },
