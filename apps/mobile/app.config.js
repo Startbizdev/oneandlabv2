@@ -24,8 +24,13 @@ module.exports = {
           android: {
             usesCleartextTraffic: true,
           },
+          ios: {
+            // EAS SDK 54 : forcer RN + Hermes depuis sources (évite [CP] Copy XCFrameworks).
+            buildReactNativeFromSource: true,
+          },
         },
       ],
+      './plugins/withIosForceBuildFromSource',
     ],
   },
 };
