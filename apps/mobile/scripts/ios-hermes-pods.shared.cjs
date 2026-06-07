@@ -3,6 +3,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const PODFILE_SANDBOX_MARKER = '# @oneandlab/eas-script-sandboxing-fix';
+const PODFILE_HERMES_PREBUILT_MARKER = '# @oneandlab/eas-hermes-prebuilt';
 
 function patchPodfile(podfilePath) {
   let contents = fs.readFileSync(podfilePath, 'utf8');
@@ -13,7 +14,17 @@ function patchPodfile(podfilePath) {
     throw new Error('Podfile Expo inattendu — anchor podfile_properties introuvable.');
   }
 
+  // Retire d’anciennes injections from-source.
   contents = contents.replace(/\n# @oneandlab\/eas-hermes-from-source[\s\S]*?ENV\['RCT_USE_RN_DEP'\] = '0'\n/g, '\n');
+
+  if (!contents.includes(PODFILE_HERMES_PREBUILT_MARKER)) {
+    const prebuiltBlock = `
+${PODFILE_HERMES_PREBUILT_MARKER}
+# Hermes précompilé uniquement (évite cmake / hermesc custom en monorepo EAS).
+ENV.delete('RCT_BUILD_HERMES_FROM_SOURCE')
+`;
+    contents = contents.replace(anchor, `${anchor}${prebuiltBlock}`);
+  }
 
   if (!contents.includes(PODFILE_SANDBOX_MARKER)) {
     const sandboxBlock = `
@@ -43,6 +54,16 @@ function patchPodfile(podfilePath) {
   fs.writeFileSync(podfilePath, contents);
 }
 
+/** Env explicite pour pod install : jamais from-source Hermes. */
+function podInstallEnv(processEnv) {
+  return {
+    ...processEnv,
+    RCT_BUILD_HERMES_FROM_SOURCE: '0',
+    RCT_USE_PREBUILT_RNCORE: '1',
+    RCT_USE_RN_DEP: '1',
+  };
+}
+
 function getReactNativeRoot(mobileDir) {
   const candidates = [
     path.resolve(mobileDir, 'node_modules', 'react-native'),
@@ -56,20 +77,6 @@ function getReactNativeRoot(mobileDir) {
   throw new Error('react-native introuvable dans le monorepo.');
 }
 
-function resetPods(iosDir) {
-  for (const target of ['Pods', 'Podfile.lock']) {
-    fs.rmSync(path.join(iosDir, target), { recursive: true, force: true });
-  }
-}
-
-function cleanPodCache() {
-  console.log('→ pod cache clean --all');
-  spawnSync('pod', ['cache', 'clean', '--all'], {
-    stdio: 'inherit',
-    shell: true,
-  });
-}
-
 function prepareHermesReleaseArtifacts(iosDir, rnRoot) {
   const version = require(path.join(rnRoot, 'package.json')).version;
   const replaceScript = path.join(
@@ -77,13 +84,18 @@ function prepareHermesReleaseArtifacts(iosDir, rnRoot) {
     'sdks/hermes-engine/utils/replace_hermes_version.js'
   );
   const podsRoot = path.join(iosDir, 'Pods');
+  const hermesEngineDir = path.join(podsRoot, 'hermes-engine');
+
+  if (!fs.existsSync(hermesEngineDir)) {
+    throw new Error('Pods/hermes-engine introuvable — pod install incomplet.');
+  }
 
   console.log('→ replace_hermes_version.js (Release)');
   const result = spawnSync(
     'node',
     [replaceScript, '-c', 'Release', '-r', version, '-p', podsRoot],
     {
-      cwd: path.join(podsRoot, 'hermes-engine'),
+      cwd: hermesEngineDir,
       stdio: 'inherit',
       shell: true,
     }
@@ -128,7 +140,9 @@ function assertHermesPrebuilt(iosDir) {
     throw new Error('Pods/Pods.xcodeproj introuvable après pod install.');
   }
   if (!isHermesPrebuiltMode(pbx)) {
-    throw new Error('Hermes n’est pas en mode précompilé.');
+    throw new Error(
+      'Hermes n’est pas en mode précompilé (attendu: script Replace Hermes, pas Build Hermesc).'
+    );
   }
 }
 
@@ -147,9 +161,8 @@ function pruneIosBuildExceptGenerated(iosDir) {
 
 module.exports = {
   patchPodfile,
+  podInstallEnv,
   getReactNativeRoot,
-  resetPods,
-  cleanPodCache,
   prepareHermesReleaseArtifacts,
   assertHermesXcframework,
   readPodsProject,

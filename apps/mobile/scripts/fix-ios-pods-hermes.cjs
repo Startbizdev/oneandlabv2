@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 /**
- * Post-install EAS : sandbox fix, Hermes précompilé, derived data hors ios/build.
+ * Post-install EAS : sandbox fix + Hermes précompilé (sans reset Pods).
+ * Ne pas supprimer Pods/ — EAS les installe déjà en mode précompilé.
  */
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const {
   patchPodfile,
+  podInstallEnv,
   getReactNativeRoot,
-  resetPods,
-  cleanPodCache,
   prepareHermesReleaseArtifacts,
   assertHermesXcframework,
   assertHermesPrebuilt,
@@ -27,6 +27,9 @@ function fail(message) {
 
 console.log('=== Fix iOS post-install ===');
 console.log(`  GYM_DERIVED_DATA_PATH=${process.env.GYM_DERIVED_DATA_PATH ?? '(absent)'}`);
+console.log(
+  `  RCT_BUILD_HERMES_FROM_SOURCE=${process.env.RCT_BUILD_HERMES_FROM_SOURCE ?? '(absent)'}`
+);
 
 if (!process.env.GYM_DERIVED_DATA_PATH) {
   fail('GYM_DERIVED_DATA_PATH doit être défini dans eas.json (production.env).');
@@ -38,20 +41,16 @@ if (!fs.existsSync(podfilePath)) {
 
 try {
   patchPodfile(podfilePath);
-  cleanPodCache();
 } catch (error) {
   fail(error.message);
 }
 
-console.log('→ Réinstallation Pods (cache EAS + pod install EAS)');
-resetPods(iosDir);
-
-console.log('\n→ pod install');
+console.log('\n→ pod install (sandbox + Hermes précompilé, sans reset Pods)');
 const podResult = spawnSync('pod', ['install'], {
   cwd: iosDir,
   stdio: 'inherit',
   shell: true,
-  env: process.env,
+  env: podInstallEnv(process.env),
 });
 
 if (podResult.status !== 0) {
@@ -60,9 +59,9 @@ if (podResult.status !== 0) {
 
 try {
   const rnRoot = getReactNativeRoot(mobileDir);
+  assertHermesPrebuilt(iosDir);
   prepareHermesReleaseArtifacts(iosDir, rnRoot);
   assertHermesXcframework(iosDir);
-  assertHermesPrebuilt(iosDir);
   pruneIosBuildExceptGenerated(iosDir);
 } catch (error) {
   fail(error.message);
