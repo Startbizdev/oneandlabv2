@@ -19,18 +19,22 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import {
   buildBookingDaySlides,
   dateToIsoDay,
-  formatBookingDayLabel,
+  formatBookingDayCell,
+  formatBookingSelectedDay,
+  formatBookingSlidePeriod,
   isBookingDayDisabled,
   parseIsoDay,
   slideIndexForBookingDate,
 } from '../utils/booking-date-utils';
 import { animation, elevation, radius, spacing } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { FONT_SIZE_BASE, fontFamily, fontSize, lh } from '@/theme/typography';
+import { getTextScaleMultiplier } from '@/theme/text-scale';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -38,24 +42,15 @@ const DAYS_PER_SLIDE = 10;
 const COLS = 5;
 const ROWS = 2;
 const SLIDE_COUNT = 32;
-const CELL_H = 60;
 
-/** Ombre type iOS sur chaque tuile jour */
-const iosDayShadow = {
-  ...elevation.sm,
-  shadowColor: '#0F172A',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.1,
-  shadowRadius: 6,
-} as const;
-
-const iosDayShadowSelected = {
-  ...elevation.md,
-  shadowColor: colors.primaryDark,
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.28,
-  shadowRadius: 10,
-} as const;
+function bookingDayCellHeight(): number {
+  const scale = getTextScaleMultiplier();
+  const padY = spacing[1.5] * 2;
+  const innerGap = 2;
+  const weekdayH = lh(Math.round(FONT_SIZE_BASE['2xs'] * scale), 1.35);
+  const dayH = lh(Math.round(FONT_SIZE_BASE.base * scale), 1.22);
+  return padY + innerGap + weekdayH + dayH + spacing[1];
+}
 
 interface Props {
   value: string;
@@ -70,16 +65,18 @@ function DayCell({
   selected,
   disabled,
   width,
+  height,
   onPress,
 }: {
   day: Dayjs;
   selected: boolean;
   disabled: boolean;
   width: number;
+  height: number;
   onPress: () => void;
 }) {
   const scale = useSharedValue(1);
-  const { weekday, day: dayNum, month } = formatBookingDayLabel(day);
+  const { weekday, day: dayNum } = formatBookingDayCell(day);
   const isToday = day.isSame(dayjs(), 'day');
 
   const animStyle = useAnimatedStyle(() => ({
@@ -95,20 +92,20 @@ function DayCell({
     <AnimatedPressable
       onPress={handlePress}
       onPressIn={() => {
-        if (!disabled) scale.value = withSpring(0.94, animation.spring.snappy);
+        if (!disabled) scale.value = withSpring(0.96, animation.spring.snappy);
       }}
       onPressOut={() => {
         scale.value = withSpring(1, animation.spring.bouncy);
       }}
       disabled={disabled}
       accessibilityRole="button"
+      accessibilityLabel={day.locale('fr').format('dddd D MMMM')}
       accessibilityState={{ selected, disabled }}
       style={[
         animStyle,
         styles.cellOuter,
-        { width, height: CELL_H },
-        !selected && !disabled && iosDayShadow,
-        selected && iosDayShadowSelected,
+        { width, height },
+        selected && styles.cellOuterSelected,
         disabled && styles.cellOuterDisabled,
       ]}
     >
@@ -119,24 +116,35 @@ function DayCell({
           end={{ x: 1, y: 1 }}
           style={[styles.cellInner, styles.cellInnerSelected]}
         >
-          <Text style={[styles.weekday, styles.textOn]} numberOfLines={1}>
+          <Text style={[styles.weekday, styles.textOn]} numberOfLines={1} adjustsFontSizeToFit>
             {weekday}
           </Text>
-          <Text style={[styles.dayNum, styles.textOn]}>{dayNum}</Text>
-          <Text style={[styles.month, styles.textOnMuted]} numberOfLines={1}>
-            {month}
+          <Text style={[styles.dayNum, styles.textOn]} adjustsFontSizeToFit minimumFontScale={0.85}>
+            {dayNum}
           </Text>
         </LinearGradient>
       ) : (
-        <View style={[styles.cellInner, styles.cellInnerDefault, isToday && styles.cellInnerToday]}>
-          <Text style={[styles.weekday, disabled && styles.textOff]} numberOfLines={1}>
+        <View
+          style={[
+            styles.cellInner,
+            styles.cellInnerDefault,
+            isToday && !disabled && styles.cellInnerToday,
+          ]}
+        >
+          <Text
+            style={[styles.weekday, disabled && styles.textOff, isToday && !disabled && styles.weekdayToday]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
             {weekday}
           </Text>
-          <Text style={[styles.dayNum, disabled && styles.textOff]}>{dayNum}</Text>
-          <Text style={[styles.month, disabled && styles.textOff]} numberOfLines={1}>
-            {month}
+          <Text
+            style={[styles.dayNum, disabled && styles.textOff, isToday && !disabled && styles.dayNumToday]}
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
+          >
+            {dayNum}
           </Text>
-          {isToday && !disabled ? <View style={styles.todayDot} /> : null}
         </View>
       )}
     </AnimatedPressable>
@@ -148,6 +156,7 @@ function DayGrid({
   slideWidth,
   gap,
   cellWidth,
+  cellHeight,
   selected,
   minLeadTimeHours,
   acceptSaturday,
@@ -158,6 +167,7 @@ function DayGrid({
   slideWidth: number;
   gap: number;
   cellWidth: number;
+  cellHeight: number;
   selected: ReturnType<typeof parseIsoDay>;
   minLeadTimeHours: number;
   acceptSaturday: boolean;
@@ -183,12 +193,67 @@ function DayGrid({
                 selected={selected?.isSame(d, 'day') ?? false}
                 disabled={disabled}
                 width={cellWidth}
+                height={cellHeight}
                 onPress={() => onChange(iso)}
               />
             );
           })}
         </View>
       ))}
+    </View>
+  );
+}
+
+function PeriodNavigator({
+  label,
+  page,
+  pageCount,
+  onPrev,
+  onNext,
+}: {
+  label: string;
+  page: number;
+  pageCount: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const canPrev = page > 0;
+  const canNext = page < pageCount - 1;
+
+  return (
+    <View style={styles.periodNav}>
+      <Pressable
+        onPress={onPrev}
+        disabled={!canPrev}
+        hitSlop={8}
+        style={[styles.navBtn, !canPrev && styles.navBtnDisabled]}
+        accessibilityRole="button"
+        accessibilityLabel="Période précédente"
+      >
+        <ChevronLeft size={18} color={canPrev ? colors.primary : colors.textTertiary} strokeWidth={2.5} />
+      </Pressable>
+
+      <View style={styles.periodCenter}>
+        <Text style={styles.periodLabel} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.9}>
+          {label}
+        </Text>
+        {pageCount > 1 ? (
+          <Text style={styles.periodHint}>
+            {page + 1} / {pageCount}
+          </Text>
+        ) : null}
+      </View>
+
+      <Pressable
+        onPress={onNext}
+        disabled={!canNext}
+        hitSlop={8}
+        style={[styles.navBtn, !canNext && styles.navBtnDisabled]}
+        accessibilityRole="button"
+        accessibilityLabel="Période suivante"
+      >
+        <ChevronRight size={18} color={canNext ? colors.primary : colors.textTertiary} strokeWidth={2.5} />
+      </Pressable>
     </View>
   );
 }
@@ -211,10 +276,15 @@ export function BookingDateCarousel({
   );
 
   const selected = parseIsoDay(value);
-  const gap = spacing[2];
-  const cellWidth =
-    slideWidth > 0 ? (slideWidth - gap * (COLS - 1)) / COLS : 0;
-  const listHeight = ROWS * CELL_H + gap + spacing[1];
+  const gap = spacing[1.5];
+  const cellHeight = bookingDayCellHeight();
+  const cellWidth = slideWidth > 0 ? (slideWidth - gap * (COLS - 1)) / COLS : 0;
+  const listHeight = ROWS * cellHeight + gap + spacing[0.5];
+
+  const periodLabel = useMemo(() => {
+    const slide = slides[page];
+    return slide ? formatBookingSlidePeriod(slide) : '';
+  }, [page, slides]);
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     setSlideWidth(e.nativeEvent.layout.width);
@@ -267,6 +337,7 @@ export function BookingDateCarousel({
         slideWidth={slideWidth}
         gap={gap}
         cellWidth={cellWidth}
+        cellHeight={cellHeight}
         selected={selected}
         minLeadTimeHours={minLeadTimeHours}
         acceptSaturday={acceptSaturday}
@@ -277,6 +348,7 @@ export function BookingDateCarousel({
     [
       acceptSaturday,
       acceptSunday,
+      cellHeight,
       cellWidth,
       gap,
       minLeadTimeHours,
@@ -290,117 +362,193 @@ export function BookingDateCarousel({
     <View style={styles.wrap}>
       <Text style={styles.label}>Date souhaitée</Text>
 
-      <View style={styles.sliderHost} onLayout={onLayout}>
-        {slideWidth > 0 ? (
-          <FlatList
-            ref={listRef}
-            data={slides}
-            horizontal
-            pagingEnabled
-            bounces={false}
-            decelerationRate="fast"
-            showsHorizontalScrollIndicator={false}
-            clipToPadding={false}
-            style={{ height: listHeight, overflow: 'visible' }}
-            contentContainerStyle={styles.listContent}
-            keyExtractor={(_, index) => String(index)}
-            renderItem={renderSlide}
-            onMomentumScrollEnd={onMomentumScrollEnd}
-            getItemLayout={(_, index) => ({
-              length: slideWidth,
-              offset: slideWidth * index,
-              index,
-            })}
-          />
-        ) : (
-          <View style={{ height: listHeight }} />
-        )}
+      <View style={styles.calendarCard}>
+        <PeriodNavigator
+          label={periodLabel}
+          page={page}
+          pageCount={slides.length}
+          onPrev={() => scrollToPage(page - 1)}
+          onNext={() => scrollToPage(page + 1)}
+        />
+
+        <View style={styles.sliderHost} onLayout={onLayout}>
+          {slideWidth > 0 ? (
+            <FlatList
+              ref={listRef}
+              data={slides}
+              horizontal
+              pagingEnabled
+              bounces={false}
+              decelerationRate="fast"
+              showsHorizontalScrollIndicator={false}
+              style={{ height: listHeight }}
+              contentContainerStyle={styles.listContent}
+              keyExtractor={(_, index) => String(index)}
+              renderItem={renderSlide}
+              onMomentumScrollEnd={onMomentumScrollEnd}
+              getItemLayout={(_, index) => ({
+                length: slideWidth,
+                offset: slideWidth * index,
+                index,
+              })}
+            />
+          ) : (
+            <View style={{ height: listHeight }} />
+          )}
+        </View>
+
+        {selected ? (
+          <View style={styles.selectedRecap}>
+            <Text style={styles.selectedRecapText} numberOfLines={1}>
+              {formatBookingSelectedDay(selected)}
+            </Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );
 }
 
 function buildStyles(c: AppColors) {
+  const weekdaySize = Math.round(FONT_SIZE_BASE['2xs'] * getTextScaleMultiplier());
+  const daySize = Math.round(FONT_SIZE_BASE.base * getTextScaleMultiplier());
+
   return {
-  wrap: { gap: spacing[2] },
-  label: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-  },
-  sliderHost: {
-    overflow: 'visible',
-    marginHorizontal: -spacing[0.5],
-  },
-  listContent: {
-    paddingVertical: spacing[1],
-    paddingHorizontal: spacing[0.5],
-  },
-  slide: {
-    paddingHorizontal: 0,
-  },
-  row: {
-    flexDirection: 'row',
-  },
-  cellOuter: {
-    borderRadius: radius.lg,
-    backgroundColor: 'transparent',
-  },
-  cellOuterDisabled: {
-    opacity: 0.38,
-  },
-  cellInner: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing[1.5],
-    paddingHorizontal: spacing[0.5],
-    gap: 1,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-  },
-  cellInnerSelected: {
-    borderWidth: 0,
-  },
-  cellInnerDefault: {
-    backgroundColor: c.surface,
-    borderWidth: 0,
-  },
-  cellInnerToday: {
-    backgroundColor: c.primaryLight,
-  },
-  weekday: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  dayNum: {
-    fontFamily: fontFamily.extraBold,
-    fontSize: fontSize.lg,
-    color: c.textPrimary,
-    lineHeight: fontSize.lg + 2,
-    fontVariant: ['tabular-nums'],
-  },
-  month: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    textTransform: 'capitalize',
-  },
-  todayDot: {
-    position: 'absolute',
-    bottom: 5,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: c.primary,
-  },
-  textOn: { color: c.textInverse },
-  textOnMuted: { color: 'rgba(255,255,255,0.82)' },
-  textOff: { color: c.textTertiary },
-};
+    wrap: { gap: spacing[2] },
+    label: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.sm,
+      color: c.textPrimary,
+    },
+    calendarCard: {
+      gap: spacing[2.5],
+      padding: spacing[3],
+      borderRadius: radius.xl,
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.borderLight,
+      ...elevation.xs,
+    },
+    periodNav: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+    },
+    navBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: radius.md,
+      backgroundColor: c.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    navBtnDisabled: {
+      backgroundColor: c.surfaceSubtle,
+      opacity: 0.7,
+    },
+    periodCenter: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 2,
+    },
+    periodLabel: {
+      fontFamily: fontFamily.bold,
+      fontSize: fontSize.sm,
+      color: c.textPrimary,
+      textAlign: 'center',
+      textTransform: 'capitalize',
+      letterSpacing: -0.2,
+    },
+    periodHint: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSize['2xs'],
+      color: c.textTertiary,
+    },
+    sliderHost: {
+      overflow: 'hidden',
+    },
+    listContent: {
+      paddingVertical: spacing[0.5],
+    },
+    slide: {
+      paddingHorizontal: 0,
+    },
+    row: {
+      flexDirection: 'row',
+    },
+    cellOuter: {
+      borderRadius: radius.md,
+      backgroundColor: 'transparent',
+    },
+    cellOuterSelected: {
+      ...elevation.sm,
+      shadowColor: c.primaryDark,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+    },
+    cellOuterDisabled: {
+      opacity: 0.42,
+    },
+    cellInner: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing[1.5],
+      paddingHorizontal: spacing[0.5],
+      gap: 2,
+      borderRadius: radius.md,
+      overflow: 'hidden',
+    },
+    cellInnerSelected: {
+      borderWidth: 0,
+    },
+    cellInnerDefault: {
+      backgroundColor: c.surfaceSubtle,
+      borderWidth: 1,
+      borderColor: c.borderLight,
+    },
+    cellInnerToday: {
+      backgroundColor: c.surface,
+      borderColor: c.primary,
+      borderWidth: 1.5,
+    },
+    weekday: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: weekdaySize,
+      color: c.textTertiary,
+      textTransform: 'capitalize',
+      letterSpacing: 0.2,
+      lineHeight: lh(weekdaySize, 1.35),
+    },
+    weekdayToday: {
+      color: c.primary,
+    },
+    dayNum: {
+      fontFamily: fontFamily.bold,
+      fontSize: daySize,
+      color: c.textPrimary,
+      lineHeight: lh(daySize, 1.22),
+      fontVariant: ['tabular-nums'],
+    },
+    dayNumToday: {
+      color: c.primary,
+    },
+    textOn: { color: c.textInverse },
+    textOff: { color: c.textTertiary },
+    selectedRecap: {
+      alignItems: 'center',
+      paddingTop: spacing[1],
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.borderLight,
+    },
+    selectedRecapText: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.sm,
+      color: c.primary,
+      textTransform: 'capitalize',
+    },
+  };
 }
 
 const styles = new Proxy({} as Record<string, any>, {
