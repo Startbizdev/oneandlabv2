@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MessageSquare } from 'lucide-react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
@@ -8,7 +11,7 @@ import {
   formatReviewDate,
   reviewerDisplayName,
 } from '@/features/reviews/utils/review-labels';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
@@ -86,12 +89,13 @@ export function ReviewReceivedCard({ review, onReply }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[3],
   },
@@ -112,7 +116,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -120,24 +124,24 @@ const styles = StyleSheet.create({
   authorName: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   meta: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.xs * 1.35,
   },
   date: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   quote: {
     borderLeftWidth: 3,
-    borderLeftColor: '#FCD34D',
+    borderLeftColor: c.starFill,
     paddingLeft: spacing[3],
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderRadius: radius.md,
     paddingVertical: spacing[2],
     paddingRight: spacing[2],
@@ -145,22 +149,22 @@ const styles = StyleSheet.create({
   comment: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.base * 1.55,
   },
   noComment: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     fontStyle: 'italic',
   },
   responseBox: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     borderRadius: radius.lg,
     padding: spacing[3],
     gap: spacing[2],
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
   },
   responseHeader: {
     flexDirection: 'row',
@@ -170,14 +174,14 @@ const styles = StyleSheet.create({
   responseLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.primary,
+    color: c.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   responseText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.primaryDark,
+    color: c.primaryDark,
     lineHeight: fontSize.sm * 1.5,
   },
   replyBtn: {
@@ -188,12 +192,22 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[3],
     borderRadius: radius.lg,
     borderWidth: 1.5,
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
+    borderColor: c.primary,
+    backgroundColor: c.surface,
   },
   replyBtnText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.primary,
+    color: c.primary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_reviews_components_ReviewReceivedCard_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

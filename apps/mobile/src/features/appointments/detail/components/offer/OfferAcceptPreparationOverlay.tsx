@@ -1,3 +1,7 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useRef, useState } from 'react';
 import { Image, Modal, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,7 +15,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const LOGO = require('../../../../../../assets/logo-cary.png');
@@ -31,6 +35,7 @@ interface Props {
 }
 
 export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: Props) {
+  const c = useAppColors();
   const progress = useSharedValue(0);
   const logoScale = useSharedValue(1);
   const onFinishRef = useRef(onFinish);
@@ -113,7 +118,7 @@ export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: P
     <Modal visible animationType="fade" presentationStyle="fullScreen" statusBarTranslucent>
       <View style={styles.root}>
         <LinearGradient
-          colors={['#E6FAF7', colors.background, '#F0FDFA']}
+          colors={[c.primaryLight, c.background, c.surfaceSubtle]}
           locations={[0, 0.55, 1]}
           style={StyleSheet.absoluteFill}
         />
@@ -149,10 +154,11 @@ export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: P
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   glowTop: {
     position: 'absolute',
@@ -192,20 +198,20 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize['2xl'],
-    color: colors.textPrimary,
+    color: c.textPrimary,
     textAlign: 'center',
     letterSpacing: -0.4,
   },
   subtitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.primaryDark,
+    color: c.primaryDark,
     textAlign: 'center',
   },
   tagline: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'center',
     lineHeight: fontSize.sm * 1.55,
     maxWidth: 300,
@@ -218,10 +224,10 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 8,
     borderRadius: radius.full,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   progressFillWrap: {
     height: '100%',
@@ -232,5 +238,15 @@ const styles = StyleSheet.create({
   progressFill: {
     flex: 1,
     borderRadius: radius.full,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_offer_OfferAcceptPreparationOverlay_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

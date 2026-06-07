@@ -24,9 +24,14 @@
                 <UIcon name="i-lucide-stethoscope" class="w-4 h-4 text-muted" />
               </div>
             </div>
-            <p class="text-sm font-medium text-gray-900 dark:text-white">
-              {{ appointment.assigned_nurse_display_name || '·' }}
-            </p>
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">
+                {{ appointment.assigned_nurse_display_name || '·' }}
+              </p>
+              <CompactAssigneeRating
+                :summary="assigneeReviewFromPrefix(appointment, 'assigned_nurse')"
+              />
+            </div>
           </div>
           <div class="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
             <UButton
@@ -97,9 +102,14 @@
                 <UIcon name="i-lucide-flask-conical" class="w-4 h-4 text-muted" />
               </div>
             </div>
-            <p class="text-sm font-medium text-gray-900 dark:text-white">
-              {{ appointment.assigned_lab_display_name || '·' }}
-            </p>
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">
+                {{ appointment.assigned_lab_display_name || '·' }}
+              </p>
+              <CompactAssigneeRating
+                :summary="assigneeReviewFromPrefix(appointment, 'assigned_lab')"
+              />
+            </div>
           </div>
           <div class="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
             <UButton
@@ -165,6 +175,9 @@
               <p class="text-sm font-medium text-gray-900 dark:text-white">
                 {{ appointment.assigned_to_display_name || appointment.assigned_to_name || '·' }}
               </p>
+              <CompactAssigneeRating
+                :summary="assigneeReviewFromPrefix(appointment, 'assigned_to')"
+              />
               <div
                 v-if="proOriginTelHref(appointment.assigned_to_phone) || proOriginSmsHref(appointment.assigned_to_phone)"
                 class="flex flex-wrap items-center gap-2 pt-1.5"
@@ -256,6 +269,9 @@
               <p class="text-sm font-medium text-gray-900 dark:text-white leading-snug">
                 {{ appointment.creator_origin.display_name || 'Infirmier' }}
               </p>
+              <CompactAssigneeRating
+                :summary="creatorOriginReviewSummary(appointment.creator_origin)"
+              />
               <p class="text-xs text-muted">
                 Saisie par un infirmier
               </p>
@@ -357,6 +373,9 @@
                   {{ appointment.creator_origin.display_name || '·' }}
                 </template>
               </p>
+              <CompactAssigneeRating
+                :summary="creatorOriginReviewSummary(appointment.creator_origin)"
+              />
               <div class="mt-2 flex flex-wrap items-center gap-2">
                 <UBadge
                   color="neutral"
@@ -477,6 +496,9 @@
               <p class="text-sm font-medium text-gray-900 dark:text-white leading-snug mt-0.5">
                 {{ appointment.creator_origin.display_name || '·' }}
               </p>
+              <CompactAssigneeRating
+                :summary="creatorOriginReviewSummary(appointment.creator_origin)"
+              />
             </div>
             <div
               v-if="appointment.creator_origin.public_slug"
@@ -507,6 +529,12 @@
 </template>
 
 <script setup lang="ts">
+import CompactAssigneeRating from '~/components/dashboard/CompactAssigneeRating.vue';
+import {
+  assigneeReviewFromPrefix,
+  creatorOriginReviewSummary,
+} from '~/utils/assignee-review-display';
+
 const proCreatorProfileOpen = ref(false);
 
 const { profileImageUrl } = useProfileImageUrl();

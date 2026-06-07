@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -23,7 +26,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { loadCarePhotoLocalUri } from '../../utils/care-photo-image';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -239,20 +242,21 @@ export function DetailCarePhotosPanel({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[4] },
   introCard: {
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3.5],
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
   },
   intro: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.5,
   },
   previewRail: {
@@ -270,32 +274,32 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   previewLabel: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
   },
   emptyCard: {
     alignItems: 'center',
     gap: spacing[2.5],
     padding: spacing[6],
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   emptyTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     textAlign: 'center',
   },
   emptySub: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     textAlign: 'center',
     lineHeight: fontSize.sm * 1.45,
   },
@@ -312,25 +316,35 @@ const styles = StyleSheet.create({
     minWidth: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: colors.error,
+    backgroundColor: c.error,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
     borderWidth: 2,
-    borderColor: colors.background,
+    borderColor: c.background,
     zIndex: 2,
   },
   unreadBadgeText: {
     fontFamily: fontFamily.bold,
-    fontSize: 11,
-    color: colors.textInverse,
+    fontSize: fontSize.sm,
+    color: c.textInverse,
   },
   ctaHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     textAlign: 'center',
     lineHeight: fontSize.xs * 1.45,
     paddingHorizontal: spacing[2],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_blocks_DetailCarePhotosPanel_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

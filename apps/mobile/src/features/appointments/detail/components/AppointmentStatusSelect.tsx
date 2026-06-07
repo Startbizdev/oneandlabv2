@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
@@ -63,12 +65,13 @@ export function AppointmentStatusSelect({ appointmentId, currentStatus, role }: 
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrapper: { gap: spacing[2] },
   overline: {
     fontFamily: fontFamily.bold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
@@ -82,17 +85,27 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[1.5],
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
   },
   pillActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: c.primary,
+    borderColor: c.primary,
   },
   pillText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
-  pillTextActive: { color: colors.textInverse },
+  pillTextActive: { color: c.textInverse },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_AppointmentStatusSelect_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
+  },
 });

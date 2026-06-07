@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { useCallback } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import { Map, Navigation } from 'lucide-react-native';
@@ -10,7 +11,7 @@ import {
   resolveAppointmentMapCoords,
 } from '../utils/appointment-address-display';
 import { rdvDetailSectionStyles } from './layout/rdv-detail-section-styles';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -84,14 +85,14 @@ export function RdvAddressFieldRow({
               <Button
                 title="Carte"
                 variant="muted"
-                size="mini"
+                size="sm"
                 leftIcon={<Map size={11} color={colors.textSecondary} strokeWidth={2.25} />}
                 onPress={openGoogleMaps}
               />
               <Button
                 title="Waze"
                 variant="muted"
-                size="mini"
+                size="sm"
                 leftIcon={
                   <Navigation size={11} color={colors.textSecondary} strokeWidth={2.25} />
                 }
@@ -112,7 +113,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
     color: colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,

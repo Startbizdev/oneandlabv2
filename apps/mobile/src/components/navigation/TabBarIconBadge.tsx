@@ -1,7 +1,10 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { StyleSheet, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { colors } from '@/theme';
-import { fontFamily } from '@/theme/typography';
+
+import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
   Icon: LucideIcon;
@@ -41,7 +44,8 @@ export function TabBarIconBadge({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
     width: 28,
     height: 24,
@@ -55,9 +59,9 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.error,
+    backgroundColor: c.error,
     borderWidth: 1.5,
-    borderColor: colors.surface,
+    borderColor: c.surface,
   },
   badge: {
     position: 'absolute',
@@ -67,9 +71,9 @@ const styles = StyleSheet.create({
     height: 17,
     paddingHorizontal: 4,
     borderRadius: 9,
-    backgroundColor: colors.error,
+    backgroundColor: c.error,
     borderWidth: 2,
-    borderColor: colors.surface,
+    borderColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -79,8 +83,18 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontFamily: fontFamily.bold,
-    fontSize: 9,
-    lineHeight: 11,
-    color: colors.textInverse,
+    fontSize: fontSize.xs,
+    lineHeight: fontSize.xs * 1.15,
+    color: c.textInverse,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('components_navigation_TabBarIconBadge_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

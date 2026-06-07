@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -42,7 +45,7 @@ import { yearsExperienceLabel } from '@/features/profile/utils/years-experience-
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import { queryKeys } from '@/lib/query-keys';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const AVATAR = 96;
@@ -445,7 +448,8 @@ export function ProviderPublicProfileSheet({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   sheetBody: {
     paddingHorizontal: 0,
     paddingTop: 0,
@@ -460,14 +464,14 @@ const styles = StyleSheet.create({
   stateText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'center',
     lineHeight: fontSize.sm * 1.45,
   },
   errorTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.md,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   retryBtn: {
     marginTop: spacing[2],
@@ -475,7 +479,7 @@ const styles = StyleSheet.create({
   coverWrap: {
     height: 140,
     width: '100%',
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     overflow: 'hidden',
     marginBottom: spacing[2],
   },
@@ -496,7 +500,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderRadius: radius.full,
     padding: 3,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
@@ -505,13 +509,13 @@ const styles = StyleSheet.create({
   },
   avatar: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   avatarFallback: {
     width: AVATAR,
     height: AVATAR,
     borderRadius: AVATAR / 2,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -523,26 +527,26 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     borderWidth: 2,
-    borderColor: colors.surface,
+    borderColor: c.surface,
   },
   statusDotOpen: {
-    backgroundColor: colors.success,
+    backgroundColor: c.success,
   },
   statusDotBusy: {
-    backgroundColor: colors.warning,
+    backgroundColor: c.warning,
   },
   roleEyebrow: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-    color: colors.textTertiary,
+    color: c.textTertiary,
     marginTop: spacing[1],
   },
   name: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.xl,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     textAlign: 'center',
   },
   metaRow: {
@@ -556,12 +560,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[1],
     borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
   },
   metaPillText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.primaryDark,
+    color: c.primaryDark,
   },
   reviewMeta: {
     flexDirection: 'row',
@@ -571,7 +575,7 @@ const styles = StyleSheet.create({
   reviewMetaText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   contactRow: {
     flexDirection: 'row',
@@ -582,7 +586,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[2],
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   contactBtn: {
     minWidth: 120,
@@ -597,13 +601,13 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   bio: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     lineHeight: fontSize.sm * 1.55,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   emptyBox: {
     alignItems: 'center',
@@ -612,13 +616,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surfaceAlt,
+    borderColor: c.borderLight,
+    backgroundColor: c.surfaceAlt,
   },
   emptyText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     textAlign: 'center',
   },
   chipWrap: {
@@ -634,9 +638,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderRadius: radius.full,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   chipEmoji: {
     fontSize: 14,
@@ -645,15 +649,15 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   infoCard: {
     gap: spacing[2],
     padding: spacing[3],
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   infoRow: {
     flexDirection: 'row',
@@ -664,17 +668,17 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.sm * 1.45,
   },
   infoHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   infoHintStrong: {
     fontFamily: fontFamily.semiBold,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   itineraryBtn: {
     alignSelf: 'flex-start',
@@ -696,12 +700,12 @@ const styles = StyleSheet.create({
   hoursDayText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   hoursValue: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   qualList: {
     gap: spacing[2],
@@ -714,14 +718,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surfaceAlt,
+    borderColor: c.borderLight,
+    backgroundColor: c.surfaceAlt,
   },
   qualText: {
     flex: 1,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.sm * 1.4,
   },
   linkRow: {
@@ -731,15 +735,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[3],
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   linkIcon: {
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -750,12 +754,12 @@ const styles = StyleSheet.create({
   linkLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   linkUrl: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   reviewList: {
     gap: spacing[2],
@@ -763,16 +767,16 @@ const styles = StyleSheet.create({
   reviewCard: {
     padding: spacing[3],
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     gap: spacing[2],
   },
   reviewComment: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     fontStyle: 'italic',
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,
   },
   reviewFooter: {
@@ -782,11 +786,21 @@ const styles = StyleSheet.create({
     gap: spacing[2],
     paddingTop: spacing[2],
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
   reviewAuthor: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textPrimary,
+    color: c.textPrimary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_components_ProviderPublicProfileSheet_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

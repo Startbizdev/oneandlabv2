@@ -1,11 +1,7 @@
-import { useMemo, useRef, useState } from 'react';
+import { colors, spacing } from '@/theme';
+import { useEffect, useMemo, useState } from 'react';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
-import {
-  RefreshControl,
-  StyleSheet,
-  View,
-  type ScrollView as ScrollViewType,
-} from 'react-native';
+import { RefreshControl, StyleSheet, View } from 'react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth-store';
@@ -15,12 +11,9 @@ import { AppointmentDetailBlockedEmptyState } from '../detail/components/Appoint
 import { CancelAppointmentSheet } from '../detail/components/blocks/CancelAppointmentSheet';
 import { PatientAssigneeRows } from '../detail/components/patient/PatientAssigneeRows';
 import { PatientDetailActions } from '../detail/components/patient/PatientDetailActions';
-import { PatientDetailHubCard } from '../detail/components/patient/PatientDetailHubCard';
+import { PatientCompletedReviewPrompt } from '../detail/components/patient/PatientCompletedReviewPrompt';
+import { PatientPreleveurAlerts } from '../detail/components/patient/PatientEngagementSections';
 import { RdvDocumentsPremiumPanel } from '../detail/components/RdvDocumentsPremiumPanel';
-import {
-  PatientPreleveurAlerts,
-  PatientReviewsSection,
-} from '../detail/components/patient/PatientEngagementSections';
 import { RdvCancellationBanner } from '../detail/components/RdvCancellationBanner';
 import { RdvAppointmentInfoSection } from '../detail/components/layout/RdvAppointmentInfoSection';
 import { DetailSegmentBar } from '../detail/components/layout/DetailSegmentBar';
@@ -29,18 +22,18 @@ import { filterListDocuments } from '../detail/utils/document-labels';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
 import { batchHasReviewableAppointment } from '@/utils/can-leave-review';
-import { colors, spacing } from '@/theme';
 
-type SegmentId = 'infos' | 'documents' | 'avis';
+type SegmentId = 'infos' | 'documents';
 
 export function PatientAppointmentDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, segment: segmentParam } = useLocalSearchParams<{
+    id: string;
+    segment?: string;
+  }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [segment, setSegment] = useState<SegmentId>('infos');
-  const scrollRef = useRef<ScrollViewType>(null);
-  const reviewsOffset = useRef(0);
 
   const s = useAppointmentDetailScreen('patient', id);
 
@@ -55,21 +48,26 @@ export function PatientAppointmentDetailScreen() {
     [s.allDocuments],
   );
 
-  const showReviewsTab = useMemo(
+  const showReviewPrompt = useMemo(
     () => batchHasReviewableAppointment(s.batchSorted),
     [s.batchSorted],
   );
 
   const segments = useMemo((): { id: SegmentId; label: string; badge?: number }[] => {
-    const base: { id: SegmentId; label: string; badge?: number }[] = [
+    return [
       { id: 'infos', label: 'Informations' },
       { id: 'documents', label: 'Documents', badge: documentsCount || undefined },
     ];
-    if (showReviewsTab) base.push({ id: 'avis', label: 'Avis' });
-    return base;
-  }, [documentsCount, showReviewsTab]);
+  }, [documentsCount]);
 
   const activeSegment = segments.some((x) => x.id === segment) ? segment : 'infos';
+
+  useEffect(() => {
+    const raw = Array.isArray(segmentParam) ? segmentParam[0] : segmentParam;
+    if (raw !== 'documents') return;
+    setSegment(raw);
+    router.setParams({ segment: undefined } as never);
+  }, [segmentParam, router]);
 
   const pullRefresh = useManualRefresh(async () => {
     s.refreshAll();
@@ -94,7 +92,6 @@ export function PatientAppointmentDetailScreen() {
   return (
     <>
       <KeyboardScrollView
-        ref={scrollRef}
         style={styles.container}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
@@ -111,6 +108,10 @@ export function PatientAppointmentDetailScreen() {
         <View style={styles.content}>
           {terminal ? <DetailTerminalBanner terminal={terminal} /> : null}
 
+          {showReviewPrompt ? (
+            <PatientCompletedReviewPrompt batch={batchSorted} onRefresh={s.refreshAll} />
+          ) : null}
+
           <PatientPreleveurAlerts batch={batchSorted} />
 
           {!isMultiBatch && isAppointmentCanceled(primary.status) ? (
@@ -120,15 +121,7 @@ export function PatientAppointmentDetailScreen() {
           <DetailSegmentBar
             segments={segments}
             active={activeSegment}
-            onChange={(sid) => {
-              if (sid === 'avis') {
-                scrollRef.current?.scrollTo({
-                  y: Math.max(0, reviewsOffset.current - spacing[2]),
-                  animated: true,
-                });
-              }
-              setSegment(sid as SegmentId);
-            }}
+            onChange={(sid) => setSegment(sid as SegmentId)}
           />
 
           {activeSegment === 'infos' ? (
@@ -143,17 +136,12 @@ export function PatientAppointmentDetailScreen() {
                 />
               </View>
               <PatientAssigneeRows apt={primary} />
-              <PatientDetailHubCard
-                documentsCount={documentsCount}
-                onDocuments={() => router.push(`/(patient)/appointment/${id}/documents` as never)}
-              />
               <View style={styles.edgeBleed}>
                 <PatientDetailActions
                   batch={batchSorted}
                   canceled={canceled}
                   cancelCount={cancellableForPatient.length}
                   onCancel={() => setCancelOpen(true)}
-                  onScrollToReviews={() => setSegment('avis')}
                 />
               </View>
             </View>
@@ -166,14 +154,7 @@ export function PatientAppointmentDetailScreen() {
               role="patient"
               docs={s.allDocuments}
               loading={s.docsLoading}
-              embedded
             />
-          ) : null}
-
-          {activeSegment === 'avis' ? (
-            <View onLayout={(e) => { reviewsOffset.current = e.nativeEvent.layout.y; }}>
-              <PatientReviewsSection batch={batchSorted} onRefresh={s.refreshAll} />
-            </View>
           ) : null}
         </View>
       </KeyboardScrollView>
@@ -191,12 +172,6 @@ export function PatientAppointmentDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  loading: {
-    flex: 1,
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    backgroundColor: colors.background,
-  },
   scroll: { paddingBottom: spacing[10] },
   content: {
     paddingHorizontal: spacing[4],

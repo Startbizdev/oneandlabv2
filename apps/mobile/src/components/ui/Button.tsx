@@ -7,7 +7,8 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { colors, animation, radius, spacing } from '@/theme';
+import { animation, radius, spacing } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Variant =
@@ -27,45 +28,25 @@ interface ButtonProps extends Omit<PressableProps, 'style'> {
   size?: Size;
   loading?: boolean;
   fullWidth?: boolean;
+  /** Pastille icône seule (sans label visible). */
+  iconOnly?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   style?: PressableProps['style'];
 }
 
-const variantStyle: Record<Variant, object> = {
-  primary: { backgroundColor: colors.primary },
-  secondary: { backgroundColor: colors.primaryMid },
-  outline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.primary },
-  ghost: { backgroundColor: 'transparent' },
-  muted: { backgroundColor: colors.surfaceSubtle },
-  destructive: { backgroundColor: colors.error },
-  dangerOutline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.error },
-  teal: { backgroundColor: colors.primaryDark },
-};
-
-const textColor: Record<Variant, string> = {
-  primary: colors.textInverse,
-  secondary: colors.primary,
-  outline: colors.primary,
-  ghost: colors.textSecondary,
-  muted: colors.textSecondary,
-  destructive: colors.textInverse,
-  dangerOutline: colors.error,
-  teal: colors.textInverse,
-};
-
 const sizeStyle: Record<
   Size,
   { paddingVertical: number; paddingHorizontal: number; borderRadius: number; minHeight: number }
 > = {
-  mini: { paddingVertical: 4, paddingHorizontal: 6, borderRadius: radius.sm, minHeight: 28 },
+  mini: { paddingVertical: spacing[2], paddingHorizontal: spacing[2], borderRadius: radius.md, minHeight: 40 },
   sm: { paddingVertical: spacing[2], paddingHorizontal: spacing[4], borderRadius: radius.md, minHeight: 44 },
   md: { paddingVertical: spacing[3], paddingHorizontal: spacing[5], borderRadius: radius.lg, minHeight: 44 },
   lg: { paddingVertical: spacing[4], paddingHorizontal: spacing[6], borderRadius: radius.xl, minHeight: 48 },
 };
 
 const textSize: Record<Size, number> = {
-  mini: fontSize['2xs'],
+  mini: fontSize.xs,
   sm: fontSize.sm,
   md: fontSize.base,
   lg: fontSize.md,
@@ -75,6 +56,45 @@ function triggerHaptic() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 }
 
+function variantStyleFor(variant: Variant, c: ReturnType<typeof useAppColors>): object {
+  switch (variant) {
+    case 'primary':
+      return { backgroundColor: c.primary };
+    case 'secondary':
+      return { backgroundColor: c.primaryMid };
+    case 'outline':
+      return { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: c.primary };
+    case 'ghost':
+      return { backgroundColor: 'transparent' };
+    case 'muted':
+      return { backgroundColor: c.surfaceSubtle };
+    case 'destructive':
+      return { backgroundColor: c.error };
+    case 'dangerOutline':
+      return { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: c.error };
+    case 'teal':
+      return { backgroundColor: c.primaryDark };
+    default:
+      return { backgroundColor: c.primary };
+  }
+}
+
+function textColorFor(variant: Variant, c: ReturnType<typeof useAppColors>): string {
+  switch (variant) {
+    case 'primary':
+    case 'destructive':
+    case 'teal':
+      return c.textInverse;
+    case 'secondary':
+    case 'outline':
+      return c.primary;
+    case 'dangerOutline':
+      return c.error;
+    default:
+      return c.textSecondary;
+  }
+}
+
 function ButtonComponent({
   title,
   variant = 'primary',
@@ -82,12 +102,14 @@ function ButtonComponent({
   loading,
   disabled,
   fullWidth,
+  iconOnly = false,
   leftIcon,
   rightIcon,
   style,
   onPress,
   ...props
 }: ButtonProps) {
+  const c = useAppColors();
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
@@ -131,10 +153,12 @@ function ButtonComponent({
         onPressOut={handlePressOut}
         onPress={handlePress}
         disabled={isDisabled}
+        accessibilityRole="button"
+        accessibilityLabel={props.accessibilityLabel ?? (iconOnly ? title : undefined)}
         style={[
           styles.base,
           { minHeight: sizeStyle[size].minHeight, gap: isMini ? 3 : 0 },
-          variantStyle[variant],
+          variantStyleFor(variant, c),
           sizeStyle[size],
           isDisabled && styles.disabled,
           fullWidth && styles.fullWidth,
@@ -150,19 +174,21 @@ function ButtonComponent({
               variant === 'ghost' ||
               variant === 'secondary' ||
               variant === 'muted'
-                ? colors.primary
+                ? c.primary
                 : variant === 'dangerOutline'
-                  ? colors.error
-                  : colors.textInverse
+                  ? c.error
+                  : c.textInverse
             }
           />
+        ) : iconOnly ? (
+          leftIcon ?? rightIcon ?? null
         ) : (
           <>
             {leftIcon ?? null}
             <Animated.Text
               style={[
                 isMini ? styles.textMini : styles.text,
-                { color: textColor[variant], fontSize: textSize[size] },
+                { color: textColorFor(variant, c), fontSize: textSize[size] },
                 leftIcon || rightIcon
                   ? isMini
                     ? styles.textWithIconMini

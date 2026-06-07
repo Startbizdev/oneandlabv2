@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { Keyboard, StyleSheet, Text, View } from 'react-native';
 import { Image as ImageIcon } from 'lucide-react-native';
 import {
@@ -10,7 +11,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { SelectField } from '@/components/ui/SelectField';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type StaffCancellationValues = {

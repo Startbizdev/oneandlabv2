@@ -1,6 +1,9 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Minus, Plus } from 'lucide-react-native';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const STEP = 5;
@@ -58,7 +61,8 @@ export function CoverageRadiusControl({ value, min, max, onChange, disabled }: P
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[2] },
   header: {
     flexDirection: 'row',
@@ -68,12 +72,12 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   value: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize['2xl'],
-    color: colors.primary,
+    color: c.primary,
     fontVariant: ['tabular-nums'],
   },
   row: {
@@ -85,9 +89,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -95,13 +99,13 @@ const styles = StyleSheet.create({
   track: {
     flex: 1,
     height: 8,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderRadius: radius.full,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     borderRadius: radius.full,
   },
   limits: {
@@ -111,12 +115,22 @@ const styles = StyleSheet.create({
   limitText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   hint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     lineHeight: fontSize.xs * 1.5,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_components_CoverageRadiusControl_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

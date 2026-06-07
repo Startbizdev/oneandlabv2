@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Input } from '@/components/ui/Input';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
@@ -152,18 +154,19 @@ export function FormCareFieldsSection({
   return null;
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrapper: { gap: spacing[3] },
   sectionLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   group: { gap: spacing[2] },
   groupLabel: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   pill: {
@@ -171,17 +174,27 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
   },
   pillActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: c.primary,
+    borderColor: c.primary,
   },
   pillText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
-  pillTextActive: { color: colors.textInverse },
+  pillTextActive: { color: c.textInverse },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_FormCareFieldsSection_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
+  },
 });

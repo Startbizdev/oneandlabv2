@@ -1,16 +1,34 @@
-import { Modal, Pressable, StyleSheet, Image, View, Platform } from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Image,
+  View,
+  Platform,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X } from 'lucide-react-native';
-import { colors, spacing } from '@/theme';
+import { Download, X } from 'lucide-react-native';
+import { colors, iconSize, spacing } from '@/theme';
+import { inspectMedDocFile, logMedDoc } from '@/lib/uploads/medical-doc-file-debug';
 
 interface Props {
   visible: boolean;
   uri: string | null;
   onClose: () => void;
+  /** Affiche le bouton enregistrer / partager (Fichiers, Photos…). */
+  onExport?: () => void;
+  exportBusy?: boolean;
 }
 
 /** Visionneuse plein écran (tap ou croix pour fermer). */
-export function FullscreenImageViewer({ visible, uri, onClose }: Props) {
+export function FullscreenImageViewer({
+  visible,
+  uri,
+  onClose,
+  onExport,
+  exportBusy = false,
+}: Props) {
   const insets = useSafeAreaInsets();
 
   if (!uri) return null;
@@ -26,15 +44,45 @@ export function FullscreenImageViewer({ visible, uri, onClose }: Props) {
     >
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropTap} onPress={onClose} accessibilityLabel="Fermer" />
-        <Image source={{ uri }} style={styles.image} resizeMode="contain" accessibilityIgnoresInvertColors />
+        <Image
+          source={{ uri }}
+          style={styles.image}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+          onLoad={() => {
+            logMedDoc('viewer:image:onLoad', { uri });
+          }}
+          onError={(e) => {
+            logMedDoc('viewer:image:onError', { uri, error: e.nativeEvent.error });
+            void inspectMedDocFile(uri, 'viewer:image:error');
+          }}
+        />
+
+        {onExport ? (
+          <Pressable
+            onPress={onExport}
+            disabled={exportBusy}
+            style={[styles.actionBtn, styles.exportBtn, { top: insets.top + spacing[2] }]}
+            accessibilityRole="button"
+            accessibilityLabel="Enregistrer l’image"
+            hitSlop={12}
+          >
+            {exportBusy ? (
+              <ActivityIndicator size="small" color={colors.textInverse} />
+            ) : (
+              <Download size={iconSize.md} color={colors.textInverse} strokeWidth={2.25} />
+            )}
+          </Pressable>
+        ) : null}
+
         <Pressable
           onPress={onClose}
-          style={[styles.closeBtn, { top: insets.top + spacing[2] }]}
+          style={[styles.actionBtn, styles.closeBtn, { top: insets.top + spacing[2] }]}
           accessibilityRole="button"
           accessibilityLabel="Fermer la photo"
           hitSlop={12}
         >
-          <X size={22} color={colors.textInverse} strokeWidth={2.5} />
+          <X size={iconSize.md} color={colors.textInverse} strokeWidth={2.5} />
         </Pressable>
       </View>
     </Modal>
@@ -55,14 +103,19 @@ const styles = StyleSheet.create({
     width: '92%',
     height: '82%',
   },
-  closeBtn: {
+  actionBtn: {
     position: 'absolute',
-    right: spacing[4],
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: spacing[12],
+    height: spacing[12],
+    borderRadius: spacing[12] / 2,
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  exportBtn: {
+    left: spacing[4],
+  },
+  closeBtn: {
+    right: spacing[4],
   },
 });

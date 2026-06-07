@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -6,7 +9,7 @@ import { FolderOpen } from 'lucide-react-native';
 import { queryKeys } from '@/lib/query-keys';
 import { fetchPatientDocuments } from '@/features/patients/api/patient-profile.service';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -71,14 +74,15 @@ export function WizardPatientDocumentsPanel({ patientUserId, documentsRoute }: P
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
     width: '100%',
     alignSelf: 'stretch',
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surface,
+    borderColor: c.borderLight,
+    backgroundColor: c.surface,
     overflow: 'hidden',
   },
   loadingRow: {
@@ -92,7 +96,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -107,9 +111,19 @@ const styles = StyleSheet.create({
   loadingTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   spinner: {
     marginLeft: spacing[2],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_WizardPatientDocumentsPanel_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

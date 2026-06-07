@@ -1,17 +1,7 @@
 import { Alert, Share } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import {
-  Bell,
-  CalendarPlus,
-  CreditCard,
-  FlaskConical,
-  Scale,
-  ScanFace,
-  Share2,
-  Star,
-  User,
-} from 'lucide-react-native';
+import { Bell, CalendarPlus, CreditCard, FlaskConical, Scale, ScanFace, Settings, Share2, Star, User } from 'lucide-react-native';
 import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { nursePublicProfilePath } from '@/features/profile/utils/nurse-public-profile';
@@ -22,6 +12,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-unread-count';
 import { useAuthStore } from '@/store/auth-store';
 import { getNotificationsPath } from '@/navigation/notifications-route';
+import { buildHelpMoreItems } from '@/features/help/help-more-items';
 
 export default function NurseMore() {
   const router = useRouter();
@@ -73,8 +64,7 @@ export default function NurseMore() {
                 icon: CalendarPlus,
                 label: 'Nouveau rendez-vous',
                 onPress: () => nav('/(nurse)/appointments/new'),
-                iconColor: '#0D9488',
-                iconBg: '#F0FDFA',
+                iconAccent: 'teal',
               },
             ],
           },
@@ -87,36 +77,43 @@ export default function NurseMore() {
                 icon: Share2,
                 label: 'Partager mon profil',
                 onPress: () => void sharePublicProfile(),
-                iconColor: '#0D9488',
-                iconBg: '#F0FDFA',
+                iconAccent: 'teal',
               },
               {
                 icon: Star,
                 label: 'Mes avis',
                 onPress: () => nav('/(nurse)/reviews'),
-                iconColor: '#D97706',
-                iconBg: '#FFFBEB',
+                iconAccent: 'warning',
               },
               {
                 icon: FlaskConical,
                 label: 'Résultats',
                 onPress: () => nav('/(nurse)/resultats'),
-                iconColor: '#059669',
-                iconBg: '#ECFDF5',
+                iconAccent: 'results',
               },
               {
                 icon: CreditCard,
                 label: 'Abonnement',
                 onPress: () => nav('/(nurse)/abonnement'),
-                iconColor: '#7C3AED',
-                iconBg: '#F5F3FF',
+                iconAccent: 'warning',
               },
             ],
           },
           {
+            title: 'Aide',
+            delay: 240,
+            items: buildHelpMoreItems(nav),
+          },
+          {
             title: 'Paramètres',
-            delay: 270,
+            delay: 300,
             items: [
+              {
+                icon: Settings,
+                label: "Paramètres de l'app",
+                onPress: () => nav('/profile/settings'),
+                iconAccent: 'settings',
+              },
               {
                 icon: Bell,
                 label: 'Notifications',
@@ -127,15 +124,13 @@ export default function NurseMore() {
                 icon: ScanFace,
                 label: biometricLabel,
                 onPress: () => nav('/profile/security'),
-                iconColor: '#0D9488',
-                iconBg: '#F0FDFA',
+                iconAccent: 'teal',
               },
               {
                 icon: Scale,
                 label: 'Informations légales',
                 onPress: () => nav('/(nurse)/informations-legales'),
-                iconColor: '#64748B',
-                iconBg: '#F1F5F9',
+                iconAccent: 'muted',
               },
             ],
           },

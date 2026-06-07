@@ -1,6 +1,9 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Plus, type LucideIcon } from 'lucide-react-native';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 
 interface ScreenFabProps {
   onPress: () => void;
@@ -27,7 +30,8 @@ export function ScreenFab({ onPress, accessibilityLabel, Icon = Plus }: ScreenFa
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   overlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 20,
@@ -37,11 +41,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: spacing[4],
     bottom: spacing[6],
-    width: 52,
-    height: 52,
+    width: 56,
+    height: 56,
     borderRadius: radius.full,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('components_ui_ScreenFab_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

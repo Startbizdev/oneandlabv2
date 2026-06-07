@@ -1,8 +1,12 @@
+import type { AppColors } from '@/theme/colors';
+import { hexToRgba } from '@/theme/color-utils';
 import {
   isAutreBookingCareCategory,
+  isBloodTestAppointment,
   sortCareCategoriesForBooking,
 } from '@oneandlab/shared-utils';
 import type { CareCategory } from '@/features/categories/api/categories.service';
+import { getAppColors, getColorblindType, isColorblindModeEnabled, palette } from '@/theme/colors';
 
 export const CATALOG_GROUP_ORDER = [
   'examens',
@@ -70,29 +74,91 @@ export type CatalogGroupTheme = {
   glow: string;
 };
 
+type AccentKey = 'primary' | 'success' | 'warning' | 'error';
+
+function accentFromColors(c: AppColors, key: AccentKey) {
+  switch (key) {
+    case 'success':
+      return {
+        active: c.success,
+        light: c.successLight,
+        mid: c.successMid,
+        dark: c.success,
+      };
+    case 'warning':
+      return {
+        active: c.warning,
+        light: c.warningLight,
+        mid: c.warningMid,
+        dark: c.warning,
+      };
+    case 'error':
+      return {
+        active: c.error,
+        light: c.errorLight,
+        mid: c.errorMid,
+        dark: c.error,
+      };
+    default:
+      return {
+        active: c.primary,
+        light: c.primaryLight,
+        mid: c.primaryMid,
+        dark: c.primaryDark,
+      };
+  }
+}
+
+function buildThemeFromAccent(c: AppColors, accent: AccentKey): CatalogGroupTheme {
+  const a = accentFromColors(c, accent);
+  return {
+    orb: a.light,
+    surface: c.surface,
+    surfaceActive: a.light,
+    border: c.border,
+    borderActive: a.active,
+    label: c.textTertiary,
+    labelActive: a.dark,
+    gradient: [a.light, a.mid] as const,
+    glow: hexToRgba(a.active, 0.22),
+  };
+}
+
 const DEFAULT_GROUP_THEME: CatalogGroupTheme = {
-  orb: '#E8FBF9',
-  surface: '#FFFFFF',
-  surfaceActive: '#E8FBF9',
-  border: '#E2E8F0',
-  borderActive: '#1CC7B5',
-  label: '#64748B',
-  labelActive: '#0C6B61',
-  gradient: ['#F0FDFB', '#D1F7F3'],
-  glow: 'rgba(28, 199, 181, 0.22)',
+  orb: palette.brand[50],
+  surface: palette.white,
+  surfaceActive: palette.brand[50],
+  border: palette.slate[200],
+  borderActive: palette.brand[500],
+  label: palette.slate[500],
+  labelActive: palette.brand[900],
+  gradient: [palette.brand[50], palette.brand[100]],
+  glow: hexToRgba(palette.brand[500], 0.22),
 };
 
-const CATALOG_GROUP_THEMES: Record<string, CatalogGroupTheme> = {
+/** Thèmes marque d’origine (mode standard). */
+const STANDARD_CATALOG_THEMES: Record<string, CatalogGroupTheme> = {
+  all: {
+    orb: palette.brand[50],
+    surface: '#F8FFFE',
+    surfaceActive: palette.brand[50],
+    border: palette.brand[200],
+    borderActive: palette.brand[500],
+    label: '#5B7A75',
+    labelActive: palette.brand[900],
+    gradient: ['#F0FDFB', palette.brand[100]],
+    glow: hexToRgba(palette.brand[500], 0.28),
+  },
   examens: {
     orb: '#CCFBF1',
     surface: '#F8FFFE',
     surfaceActive: '#ECFDF9',
-    border: '#99F6E4',
+    border: palette.brand[200],
     borderActive: '#0D9488',
     label: '#5B7A75',
     labelActive: '#0F766E',
     gradient: ['#F0FDFA', '#CCFBF1'],
-    glow: 'rgba(13, 148, 136, 0.28)',
+    glow: hexToRgba('#0D9488', 0.28),
   },
   soins: {
     orb: '#FCE7F3',
@@ -103,7 +169,7 @@ const CATALOG_GROUP_THEMES: Record<string, CatalogGroupTheme> = {
     label: '#9D6B82',
     labelActive: '#9D174D',
     gradient: ['#FFF5F8', '#FCE7F3'],
-    glow: 'rgba(219, 39, 119, 0.22)',
+    glow: hexToRgba('#DB2777', 0.22),
   },
   suivi: {
     orb: '#DBEAFE',
@@ -114,7 +180,7 @@ const CATALOG_GROUP_THEMES: Record<string, CatalogGroupTheme> = {
     label: '#5C6F8A',
     labelActive: '#1D4ED8',
     gradient: ['#F5F9FF', '#DBEAFE'],
-    glow: 'rgba(37, 99, 235, 0.22)',
+    glow: hexToRgba('#2563EB', 0.22),
   },
   hygiene: {
     orb: '#E0F2FE',
@@ -125,63 +191,98 @@ const CATALOG_GROUP_THEMES: Record<string, CatalogGroupTheme> = {
     label: '#5C7A8F',
     labelActive: '#0369A1',
     gradient: ['#F0F9FF', '#E0F2FE'],
-    glow: 'rgba(2, 132, 199, 0.22)',
+    glow: hexToRgba('#0284C7', 0.22),
   },
   prevention: {
-    orb: '#DCFCE7',
+    orb: palette.green[100],
     surface: '#FAFFFB',
-    surfaceActive: '#F0FDF4',
+    surfaceActive: palette.green[50],
     border: '#BBF7D0',
-    borderActive: '#16A34A',
+    borderActive: palette.green[600],
     label: '#5F7A68',
-    labelActive: '#15803D',
-    gradient: ['#F6FEF8', '#DCFCE7'],
-    glow: 'rgba(22, 163, 74, 0.22)',
+    labelActive: palette.green[700],
+    gradient: ['#F6FEF8', palette.green[100]],
+    glow: hexToRgba(palette.green[600], 0.22),
   },
   divers: {
-    orb: '#FEF3C7',
+    orb: palette.amber[100],
     surface: '#FFFDF8',
-    surfaceActive: '#FFFBEB',
+    surfaceActive: palette.amber[50],
     border: '#FDE68A',
-    borderActive: '#D97706',
+    borderActive: palette.amber[600],
     label: '#8A7A5C',
-    labelActive: '#B45309',
-    gradient: ['#FFFBEB', '#FEF3C7'],
-    glow: 'rgba(217, 119, 6, 0.2)',
+    labelActive: palette.amber[700],
+    gradient: [palette.amber[50], palette.amber[100]],
+    glow: hexToRgba(palette.amber[600], 0.2),
   },
 };
 
-export function catalogGroupTheme(key: string): CatalogGroupTheme {
-  return CATALOG_GROUP_THEMES[key] ?? DEFAULT_GROUP_THEME;
+/** Thèmes accessibilité — accents bien séparés, sans vert/rouge proches. */
+function buildAccessibleCatalogThemes(c: AppColors): Record<string, CatalogGroupTheme> {
+  return {
+    all: buildThemeFromAccent(c, 'primary'),
+    examens: buildThemeFromAccent(c, 'success'),
+    soins: buildThemeFromAccent(c, 'warning'),
+    suivi: buildThemeFromAccent(c, 'primary'),
+    hygiene: buildThemeFromAccent(c, 'success'),
+    prevention: buildThemeFromAccent(c, 'success'),
+    divers: buildThemeFromAccent(c, 'error'),
+  };
 }
 
-/** Pastels bien séparés visuellement (éviter plusieurs bleus/verts proches). */
-const CARE_TILE_ORB_COLORS = [
-  '#FCE7F3',
-  '#DBEAFE',
-  '#DCFCE7',
-  '#FEF3C7',
-  '#EDE9FE',
-  '#FFEDD5',
-  '#CFFAFE',
-  '#FFE4E6',
-  '#E0E7FF',
-  '#FDE68A',
-  '#FBCFE8',
-  '#D1FAE5',
-  '#FED7AA',
-  '#F3E8FF',
-  '#99F6E4',
-  '#FECDD3',
-] as const;
+export function catalogGroupTheme(key: string): CatalogGroupTheme {
+  if (!isColorblindModeEnabled()) {
+    return STANDARD_CATALOG_THEMES[key] ?? DEFAULT_GROUP_THEME;
+  }
+  const themes = buildAccessibleCatalogThemes(getAppColors());
+  return themes[key] ?? buildThemeFromAccent(getAppColors(), 'primary');
+}
+
+function careTileOrbPalette(c: AppColors): readonly string[] {
+  if (!isColorblindModeEnabled()) {
+    return [
+      '#FCE7F3',
+      '#DBEAFE',
+      '#DCFCE7',
+      '#FEF3C7',
+      '#EDE9FE',
+      '#FFEDD5',
+      '#CFFAFE',
+      '#FFE4E6',
+      '#E0E7FF',
+      '#FDE68A',
+      '#FBCFE8',
+      '#D1FAE5',
+      '#FED7AA',
+      '#F3E8FF',
+      palette.brand[200],
+      '#FECDD3',
+    ] as const;
+  }
+  return [
+    c.primaryLight,
+    c.successLight,
+    c.warningLight,
+    c.errorLight,
+    c.primaryMid,
+    c.successMid,
+    c.warningMid,
+    c.errorMid,
+    palette.slate[100],
+    palette.slate[150],
+    c.surfaceAlt,
+    c.surfaceSubtle,
+  ] as const;
+}
 
 export function careTileCategoryKey(cat: CareCategory): string {
   return String(cat.id ?? cat.name ?? cat.label ?? '');
 }
 
 function careTileOrbColorAtIndex(index: number): string {
-  if (index < CARE_TILE_ORB_COLORS.length) {
-    return CARE_TILE_ORB_COLORS[index]!;
+  const paletteOrbs = careTileOrbPalette(getAppColors());
+  if (index < paletteOrbs.length) {
+    return paletteOrbs[index]!;
   }
   const hue = (index * 41) % 360;
   return `hsl(${hue}, 52%, 90%)`;
@@ -252,8 +353,10 @@ export function buildCareFilterTabs(categories: CareCategory[]): CareFilterTab[]
   const segmentKeys = sortCatalogGroupKeys([...keys]);
   if (segmentKeys.length <= 1) return [];
 
-  /** Pas d’onglet « Tous » — valeur interne `all` = liste complète (aligné web IosSwipeSegmentFilter). */
-  return segmentKeys.map((key) => ({ value: key, label: catalogGroupLabel(key) }));
+  return [
+    { value: 'all', label: 'Tous' },
+    ...segmentKeys.map((key) => ({ value: key, label: catalogGroupLabel(key) })),
+  ];
 }
 
 export function filterCategoriesByTab(
@@ -278,4 +381,77 @@ export function careListHeading(tab: string, tabs: CareFilterTab[]): string {
   if (tab === 'all') return 'Tous les soins';
   const found = tabs.find((t) => t.value === tab);
   return found?.label ?? 'Soins';
+}
+
+/** Invalide les caches UI dépendants du thème catalogue (appeler après toggle). */
+export function getCatalogThemeRevision(): string {
+  return getColorblindType();
+}
+
+export type RdvCareTagColors = {
+  backgroundColor: string;
+  borderColor: string;
+};
+
+function stableLabelColorIndex(label: string): number {
+  let h = 0;
+  const s = label.trim().toLowerCase() || 'soin';
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+function findCategoryForRdvLine(
+  line: { category_id: string | null; label: string },
+  categories: CareCategory[],
+): CareCategory | undefined {
+  if (line.category_id != null) {
+    const id = String(line.category_id);
+    const byId = categories.find((c) => String(c.id) === id);
+    if (byId) return byId;
+  }
+  const norm = line.label.trim().toLowerCase();
+  if (!norm) return undefined;
+  return categories.find((c) => c.name.trim().toLowerCase() === norm);
+}
+
+/** Fond + bordure mini-tag soin (liste RDV, offres). */
+export function resolveRdvCareTagColors(
+  line: { category_id: string | null; label: string },
+  appointmentType: string,
+  categories: CareCategory[],
+  orbColorMap?: ReadonlyMap<string, string>,
+): RdvCareTagColors {
+  const c = getAppColors();
+
+  // Mode standard : pastilles turquoise Cary (comme avant le mode accessible).
+  if (!isColorblindModeEnabled()) {
+    return {
+      backgroundColor: c.primaryLight,
+      borderColor: c.primaryMid,
+    };
+  }
+
+  const map = orbColorMap ?? buildCareTileOrbColorMap(categories);
+  const cat = findCategoryForRdvLine(line, categories);
+
+  if (cat) {
+    const theme = catalogGroupTheme(resolveCatalogGroup(cat));
+    return {
+      backgroundColor: careTileEmojiOrbColor(cat, map),
+      borderColor: theme.border,
+    };
+  }
+
+  if (isBloodTestAppointment(appointmentType)) {
+    const theme = catalogGroupTheme('examens');
+    return { backgroundColor: theme.orb, borderColor: theme.border };
+  }
+
+  const theme = catalogGroupTheme('divers');
+  return {
+    backgroundColor: careTileOrbColorAtIndex(stableLabelColorIndex(line.label)),
+    borderColor: theme.border,
+  };
 }

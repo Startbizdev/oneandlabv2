@@ -23,9 +23,11 @@ import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { nursePublicProfilePath } from '@/features/profile/utils/nurse-public-profile';
 import { colors, spacing } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 
 export function ProfileNurseHubView() {
   const router = useRouter();
+  const c = useAppColors();
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
@@ -130,8 +132,8 @@ export function ProfileNurseHubView() {
             title="Présentation"
             subtitle={summary.presentationSubtitle}
             onPress={() => push('/profile/nurse/presentation')}
-            iconColor="#0D9488"
-            iconBg="#F0FDFA"
+            iconColor={c.success}
+            iconBg={c.successLight}
           />
           <View style={styles.divider} />
           <ProfileNavRow
@@ -139,8 +141,8 @@ export function ProfileNurseHubView() {
             title="Diplômes et formations"
             subtitle={summary.qualificationsSubtitle}
             onPress={() => push('/profile/nurse/qualifications')}
-            iconColor="#7C3AED"
-            iconBg="#F5F3FF"
+            iconColor={c.warning}
+            iconBg={c.warningLight}
           />
           <View style={styles.divider} />
           <ProfileNavRow
@@ -148,8 +150,8 @@ export function ProfileNurseHubView() {
             title="Types de soins"
             subtitle={summary.careTypesSubtitle}
             onPress={() => push('/profile/nurse/care-types')}
-            iconColor="#DC2626"
-            iconBg="#FEF2F2"
+            iconColor={colors.error}
+            iconBg={colors.errorLight}
           />
           <View style={styles.divider} />
           <ProfileNavRow
@@ -157,8 +159,8 @@ export function ProfileNurseHubView() {
             title="Zone de couverture"
             subtitle={summary.coverageSubtitle}
             onPress={() => push('/profile/nurse/coverage')}
-            iconColor="#2563EB"
-            iconBg="#EFF6FF"
+            iconColor={colors.primary}
+            iconBg={colors.primaryLight}
           />
           {publicSlug ? (
             <>
@@ -168,8 +170,8 @@ export function ProfileNurseHubView() {
                 title="Voir mon profil public"
                 subtitle={nursePublicProfilePath(publicSlug)}
                 onPress={openPublicProfile}
-                iconColor="#0891B2"
-                iconBg="#E0F2FE"
+                iconColor={c.primaryDark}
+                iconBg={c.primaryLight}
               />
             </>
           ) : null}

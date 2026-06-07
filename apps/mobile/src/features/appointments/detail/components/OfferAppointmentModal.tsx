@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
@@ -23,7 +26,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { fetchAppointment } from '../../api/appointments.service';
 import { OfferAcceptPreparationOverlay } from './offer/OfferAcceptPreparationOverlay';
 import { OfferAppointmentPreviewBody } from './offer/OfferAppointmentPreviewBody';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -295,21 +298,22 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   lotPill: {
     alignSelf: 'flex-start',
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderRadius: 12,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
     marginBottom: spacing[2],
   },
   lotPillText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.primary,
+    color: c.primary,
   },
   loading: { gap: spacing[2] },
   termsRow: {
@@ -324,7 +328,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.sm * 1.45,
   },
   footer: { gap: spacing[2] },
@@ -332,6 +336,16 @@ const styles = StyleSheet.create({
   laterText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textTertiary,
+    color: c.textTertiary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_OfferAppointmentModal_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

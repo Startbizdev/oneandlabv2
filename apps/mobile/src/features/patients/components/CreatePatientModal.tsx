@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -178,10 +180,10 @@ export function CreatePatientModal({ visible, onClose, onCreated, onExistingPati
 
       <View style={styles.actions}>
         <View style={styles.actionBtn}>
-          <Button title="Annuler" variant="outline" onPress={onClose} fullWidth />
+          <Button title="Annuler" variant="outline" onPress={onClose} fullWidth size="lg" />
         </View>
         <View style={styles.actionBtn}>
-          <Button title="Créer" loading={loading} onPress={() => void submit()} fullWidth />
+          <Button title="Créer" loading={loading} onPress={() => void submit()} fullWidth size="lg" />
         </View>
       </View>
 
@@ -189,12 +191,13 @@ export function CreatePatientModal({ visible, onClose, onCreated, onExistingPati
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   fields: { gap: spacing[3] },
   errorText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.error,
+    color: c.error,
   },
   actions: {
     flexDirection: 'row',
@@ -203,5 +206,15 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_patients_components_CreatePatientModal_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

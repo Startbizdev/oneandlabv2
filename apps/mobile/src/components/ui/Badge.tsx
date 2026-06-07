@@ -2,7 +2,8 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { STATUS_BADGE_COLOR, STATUS_LABELS } from '@oneandlab/shared-utils';
-import { colors, radius, spacing } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type BadgeVariant = 'primary' | 'success' | 'error' | 'warning' | 'neutral' | 'teal';
@@ -14,14 +15,25 @@ interface BadgeProps {
   size?: 'sm' | 'md';
 }
 
-const variantConfig: Record<BadgeVariant, { bg: string; text: string; dot: string }> = {
-  primary: { bg: colors.primaryLight, text: colors.primaryDark, dot: colors.primary },
-  success: { bg: colors.successLight, text: colors.success, dot: colors.success },
-  error: { bg: colors.errorLight, text: colors.error, dot: colors.error },
-  warning: { bg: colors.warningLight, text: colors.warning, dot: colors.warning },
-  neutral: { bg: colors.surfaceAlt, text: colors.textSecondary, dot: colors.textTertiary },
-  teal: { bg: '#F0FDFA', text: '#0F766E', dot: '#0D9488' },
-};
+function variantConfigFor(
+  variant: BadgeVariant,
+  c: ReturnType<typeof useAppColors>,
+): { bg: string; text: string; dot: string } {
+  switch (variant) {
+    case 'primary':
+      return { bg: c.primaryLight, text: c.primaryDark, dot: c.primary };
+    case 'success':
+      return { bg: c.successLight, text: c.success, dot: c.success };
+    case 'error':
+      return { bg: c.errorLight, text: c.error, dot: c.error };
+    case 'warning':
+      return { bg: c.warningLight, text: c.warning, dot: c.warning };
+    case 'teal':
+      return { bg: c.primaryLight, text: c.primaryDark, dot: c.primary };
+    default:
+      return { bg: c.surfaceAlt, text: c.textSecondary, dot: c.textTertiary };
+  }
+}
 
 const statusToVariant: Record<string, BadgeVariant> = {
   primary: 'primary',
@@ -32,11 +44,15 @@ const statusToVariant: Record<string, BadgeVariant> = {
 };
 
 function BadgeComponent({ label, variant = 'neutral', dot = true, size = 'sm' }: BadgeProps) {
-  const config = variantConfig[variant];
+  const c = useAppColors();
+  const config = variantConfigFor(variant, c);
   const isSmall = size === 'sm';
 
   return (
-    <View style={[styles.base, isSmall ? styles.sm : styles.md, { backgroundColor: config.bg }]}>
+    <View
+      style={[styles.base, isSmall ? styles.sm : styles.md, { backgroundColor: config.bg }]}
+      accessibilityLabel={dot ? `Statut : ${label}` : label}
+    >
       {dot && <View style={[styles.dot, { backgroundColor: config.dot }]} />}
       <Animated.Text
         style={[
@@ -95,9 +111,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   labelSm: {
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
   },
   labelMd: {
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
   },
 });

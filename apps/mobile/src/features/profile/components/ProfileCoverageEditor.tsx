@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -21,7 +24,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const MIN_RADIUS = 5;
@@ -264,13 +267,14 @@ export function ProfileCoverageEditor({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   stack: { gap: spacing[4] },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[3],
   },
@@ -282,42 +286,42 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   cardDesc: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,
   },
   alert: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing[2],
-    backgroundColor: colors.warningLight,
+    backgroundColor: c.warningLight,
     borderRadius: radius.md,
     padding: spacing[3],
     borderWidth: 1,
-    borderColor: colors.warningMid,
+    borderColor: c.warningMid,
   },
   alertText: {
     flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.warning,
+    color: c.warning,
     lineHeight: fontSize.sm * 1.45,
   },
   discoveryBanner: {
-    backgroundColor: colors.warningLight,
+    backgroundColor: c.warningLight,
     borderRadius: radius.md,
     padding: spacing[3],
     borderWidth: 1,
-    borderColor: colors.warningMid,
+    borderColor: c.warningMid,
   },
   discoveryText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.warning,
+    color: c.warning,
     lineHeight: fontSize.sm * 1.45,
   },
   discoveryLink: {
@@ -327,7 +331,17 @@ const styles = StyleSheet.create({
   savingHint: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.primary,
+    color: c.primary,
     textAlign: 'center',
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_components_ProfileCoverageEditor_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

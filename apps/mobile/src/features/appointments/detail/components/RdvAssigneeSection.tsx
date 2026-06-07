@@ -18,6 +18,10 @@ import {
   type AssigneeProfileSheetState,
   type CreatorOrigin,
 } from '../utils/provider-public-profile';
+import {
+  assigneeReviewFromPrefix,
+  creatorOriginReviewSummary,
+} from '../utils/assignee-review-display';
 import { appointmentAssigneeGender } from '../utils/patient-appointment-display';
 import { colors, spacing } from '@/theme';
 import { StyleSheet } from 'react-native';
@@ -124,6 +128,7 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
                 )
             : undefined
         }
+        reviewSummary={assigneeReviewFromPrefix(ext, 'assigned_nurse')}
       />,
     );
   }
@@ -149,6 +154,7 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
                 )
             : undefined
         }
+        reviewSummary={assigneeReviewFromPrefix(ext, 'assigned_lab')}
       />,
     );
   }
@@ -161,6 +167,7 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
         profileImageUrl={String(ext.assigned_to_profile_image_url ?? '') || null}
         gender={appointmentAssigneeGender(apt, 'preleveur')}
         phone={String(ext.assigned_preleveur_phone ?? ext.assigned_to_phone ?? '')}
+        reviewSummary={assigneeReviewFromPrefix(ext, 'assigned_to')}
       />,
     );
   }
@@ -180,6 +187,7 @@ export function RdvAssigneeSection({ apt, role }: { apt: Appointment; role: stri
         subtitle={creatorOriginSubtitle(creator, role)}
         publicSlug={creator.public_slug?.trim() || null}
         onViewProfile={profileSheet ? () => setSheet(profileSheet) : undefined}
+        reviewSummary={creatorOriginReviewSummary(creator as Record<string, unknown>)}
       />,
     );
   }

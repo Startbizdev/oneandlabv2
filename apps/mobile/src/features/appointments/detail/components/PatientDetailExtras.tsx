@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -17,7 +20,7 @@ import {
 } from '@/utils/preleveur-live-banner';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type ReviewRow = {
@@ -54,8 +57,8 @@ function InteractiveStars({
         <Pressable key={n} onPress={() => onChange(n)} hitSlop={8}>
           <Star
             size={28}
-            color="#F59E0B"
-            fill={n <= rating ? '#FCD34D' : 'transparent'}
+            color={colors.star}
+            fill={n <= rating ? colors.starFill : 'transparent'}
             strokeWidth={1.5}
           />
         </Pressable>
@@ -163,7 +166,7 @@ export function PatientDetailExtras({ batch, documents, onRefresh }: Props) {
       {reviewable.length > 0 ? (
         <View style={styles.reviewsCard}>
           <View style={styles.reviewsHeader}>
-            <Star size={18} color="#F59E0B" fill="#FCD34D" strokeWidth={1.5} />
+            <Star size={18} color={colors.star} fill={colors.starFill} strokeWidth={1.5} />
             <Text style={styles.sectionLabel}>
               {reviewable.length > 1 ? 'Vos avis' : 'Votre avis'}
             </Text>
@@ -233,52 +236,53 @@ export function PatientDetailExtras({ batch, documents, onRefresh }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[3] },
   alertCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing[3],
-    backgroundColor: '#EFF6FF',
+    backgroundColor: c.primaryLight,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: c.primaryMid,
     padding: spacing[4],
   },
   alertArrive: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
+    backgroundColor: c.successLight,
+    borderColor: c.successMid,
   },
   alertTexts: { flex: 1, gap: 4 },
   alertTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   alertSub: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: 18,
   },
   resultatsCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
     padding: spacing[4],
     gap: spacing[1],
   },
   resultatsHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   reviewsCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[4],
   },
@@ -290,27 +294,37 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   reviewBlock: { gap: spacing[3] },
   reviewApptTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   reviewComment: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: 20,
   },
   reviewMuted: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   starsRow: {
     flexDirection: 'row',
     gap: spacing[1],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_PatientDetailExtras_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

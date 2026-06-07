@@ -1,8 +1,11 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function RegisterMerciScreen() {
@@ -28,11 +31,12 @@ export function RegisterMerciScreen() {
           Vous recevrez un email dès que votre compte sera activé.
         </Text>
         <View style={styles.actions}>
-          <Button title="Retour à l'accueil" fullWidth onPress={() => router.replace('/(auth)/welcome')} />
+          <Button title="Retour à l'accueil" fullWidth size="lg" onPress={() => router.replace('/(auth)/welcome')} />
           <Button
             title="Se connecter"
             variant="outline"
             fullWidth
+            size="lg"
             onPress={() => router.replace('/(auth)/welcome')}
           />
         </View>
@@ -41,18 +45,19 @@ export function RegisterMerciScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
     padding: spacing[5],
     justifyContent: 'center',
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[6],
     alignItems: 'center',
     gap: spacing[3],
@@ -61,7 +66,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[2],
@@ -69,26 +74,26 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize['2xl'],
-    color: colors.textPrimary,
+    color: c.textPrimary,
     textAlign: 'center',
   },
   sub: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.base,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'center',
   },
   body: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     textAlign: 'center',
     lineHeight: fontSize.sm * 1.55,
   },
   hint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     textAlign: 'center',
     lineHeight: fontSize.xs * 1.5,
   },
@@ -96,5 +101,15 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: spacing[3],
     marginTop: spacing[4],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_auth_screens_RegisterMerciScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

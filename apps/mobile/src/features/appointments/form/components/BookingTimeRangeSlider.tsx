@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -15,7 +18,7 @@ import {
   isAvailabilityRangeValid,
 } from '../utils/booking-availability-utils';
 import { AVAILABILITY_MIN_SPAN_HOURS } from '@oneandlab/shared-constants';
-import { animation, colors, radius, spacing } from '@/theme';
+import { animation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const THUMB = 24;
@@ -188,7 +191,8 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
     gap: spacing[2],
     paddingTop: spacing[1],
@@ -202,13 +206,13 @@ const styles = StyleSheet.create({
   timeValue: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     fontVariant: ['tabular-nums'],
   },
   timeSep: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   trackShell: {
     height: THUMB + 4,
@@ -217,7 +221,7 @@ const styles = StyleSheet.create({
   trackBase: {
     height: 4,
     borderRadius: radius.full,
-    backgroundColor: colors.border,
+    backgroundColor: c.border,
   },
   trackFill: {
     position: 'absolute',
@@ -231,9 +235,9 @@ const styles = StyleSheet.create({
     width: THUMB,
     height: THUMB,
     borderRadius: THUMB / 2,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: c.primary,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -246,7 +250,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
   },
   ticksRow: {
     flexDirection: 'row',
@@ -254,13 +258,23 @@ const styles = StyleSheet.create({
   },
   tick: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
   },
   warn: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSize['2xs'],
-    color: colors.error,
+    fontSize: fontSize.xs,
+    color: c.error,
     textAlign: 'center',
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_BookingTimeRangeSlider_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

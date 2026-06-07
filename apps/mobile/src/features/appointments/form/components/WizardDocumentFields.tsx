@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Check, FileText, Upload } from 'lucide-react-native';
 import type { PatientDocumentRow } from '@/features/patients/api/patient-profile.service';
@@ -11,7 +14,7 @@ import {
   profileDocRefFromRow,
   type DocumentFileRef,
 } from '../types/document-file-ref';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -132,17 +135,18 @@ export function WizardDocumentFields({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrapper: { gap: spacing[2] },
   sectionLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   subtitle: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.primaryDark,
+    color: c.primaryDark,
   },
   loadingRow: {
     flexDirection: 'row',
@@ -153,7 +157,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   docRow: {
     flexDirection: 'row',
@@ -163,24 +167,24 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[3],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
   },
   docRowDone: {
-    borderColor: colors.successMid,
-    backgroundColor: colors.successLight,
+    borderColor: c.successMid,
+    backgroundColor: c.successLight,
   },
   docIcon: {
     width: 28,
     height: 28,
     borderRadius: radius.sm,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   docIconDone: {
-    backgroundColor: colors.successLight,
+    backgroundColor: c.successLight,
   },
   docTextCol: {
     flex: 1,
@@ -190,15 +194,15 @@ const styles = StyleSheet.create({
   docLabel: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   docLabelDone: {
-    color: colors.success,
+    color: c.success,
   },
   docHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   fileMetaRow: {
     flexDirection: 'row',
@@ -209,11 +213,21 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   replaceLink: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.primary,
+    color: c.primary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_WizardDocumentFields_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
@@ -21,15 +24,16 @@ import {
   type RdvListCardViewerRole,
   type RdvMaquetteCounterparty,
 } from '@/utils/rdv-maquette-card-display';
-import { rdvListCardType } from './rdv-list-card-typography';
+import { buildRdvListCardTypography } from './rdv-list-card-typography';
 import { maskOfferCounterparty } from '@/utils/offer-privacy-display';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const AVATAR = 52;
 const LEFT_COL = 72;
 
 function MaquetteFooterPerson({ counterparty }: { counterparty: RdvMaquetteCounterparty | null }) {
+  const styles = useThemedStyles(buildStyles);
   if (!counterparty?.name) return null;
   const sub = counterparty.subtitle?.trim();
   return (
@@ -41,6 +45,7 @@ function MaquetteFooterPerson({ counterparty }: { counterparty: RdvMaquetteCount
 }
 
 function AvatarColumnName({ counterparty }: { counterparty: RdvMaquetteCounterparty | null }) {
+  const styles = useThemedStyles(buildStyles);
   const name = counterparty?.name?.trim();
   if (!name) return null;
   const sub = counterparty?.subtitle?.trim();
@@ -59,6 +64,7 @@ function AvatarColumnName({ counterparty }: { counterparty: RdvMaquetteCounterpa
 }
 
 function CreneauRow({ label }: { label: string }) {
+  const styles = useThemedStyles(buildStyles);
   return (
     <Text style={styles.creneau} numberOfLines={1}>
       {label}
@@ -75,6 +81,8 @@ function MaquetteCardBlock({
   role: RdvListCardViewerRole;
   status: string;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles);
   const dayBadge = rdvMaquetteDayBadge(apt.scheduled_at);
   const creneau = rdvMaquetteTimeLabel(apt);
   const maskIdentity = role === 'demande';
@@ -125,7 +133,7 @@ function MaquetteCardBlock({
           </View>
           <ChevronRight
             size={18}
-            color={colors.textTertiary}
+            color={c.textTertiary}
             strokeWidth={2}
             style={styles.chevron}
           />
@@ -161,6 +169,8 @@ export function RdvListCardBody({
   multiRdvBlocks,
   footer,
 }: RdvListCardBodyProps) {
+  useAppColors();
+  const styles = useThemedStyles(buildStyles);
   const role: RdvListCardViewerRole =
     roleProp ?? (showPatientName ? 'nurse' : 'patient');
 
@@ -204,13 +214,15 @@ export function RdvListCardBody({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  const type = buildRdvListCardTypography(c);
+  return {
   body: {
     gap: 0,
   },
   lotSummary: {
-    ...rdvListCardType.meta,
-    color: colors.primary,
+    ...type.meta,
+    color: c.primary,
     marginBottom: spacing[1],
     fontFamily: fontFamily.semiBold,
   },
@@ -241,12 +253,12 @@ const styles = StyleSheet.create({
   },
   dayAboveSlot: {
     alignSelf: 'flex-start',
-    ...rdvListCardType.day,
+    ...type.day,
     textTransform: 'capitalize',
   },
   avatarClip: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   avatarNameWrap: {
     alignSelf: 'stretch',
@@ -255,14 +267,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   avatarName: {
-    ...rdvListCardType.patientName,
+    ...type.patientName,
     textAlign: 'center',
   },
   avatarNameSub: {
     fontFamily: fontFamily.medium,
-    fontSize: 10,
-    lineHeight: 13,
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    lineHeight: fontSize.xs * 1.35,
+    color: c.textTertiary,
     textAlign: 'center',
   },
   mainContentWrap: {
@@ -293,14 +305,14 @@ const styles = StyleSheet.create({
     paddingTop: spacing[2],
     marginTop: spacing[0.5],
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
   creneau: {
     alignSelf: 'stretch',
-    ...rdvListCardType.slot,
+    ...type.slot,
   },
   demandeNotes: {
-    ...rdvListCardType.meta,
+    ...type.meta,
     fontStyle: 'italic',
   },
   footerPersonWrap: {
@@ -311,12 +323,12 @@ const styles = StyleSheet.create({
   footerName: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.primary,
+    color: c.primary,
   },
   footerRole: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   multiWrap: {
     paddingBottom: spacing[1.5],
@@ -324,12 +336,13 @@ const styles = StyleSheet.create({
   multiBorder: {
     paddingTop: spacing[2.5],
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
   extraFooter: {
     paddingTop: spacing[2],
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
     gap: spacing[1],
   },
-});
+};
+}

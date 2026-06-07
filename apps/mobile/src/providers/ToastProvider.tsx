@@ -14,7 +14,6 @@ import {
   CircleCheck,
   CircleX,
   Info,
-  type LucideIcon,
 } from 'lucide-react-native';
 import Animated, {
   FadeInDown,
@@ -26,6 +25,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, elevation, radius, spacing } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -47,12 +47,18 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 const DURATION_MS = 3200;
 const MAX_LINE_LEN = 72;
 
-const TYPE_META: Record<ToastType, { Icon: LucideIcon; iconColor: string; accent: string }> = {
-  success: { Icon: CircleCheck, iconColor: colors.success, accent: colors.success },
-  error: { Icon: CircleX, iconColor: colors.error, accent: colors.error },
-  info: { Icon: Info, iconColor: colors.primaryDark, accent: colors.primary },
-  warning: { Icon: AlertTriangle, iconColor: colors.warning, accent: colors.warning },
-};
+function toastMetaFor(type: ToastType, c: ReturnType<typeof useAppColors>) {
+  switch (type) {
+    case 'success':
+      return { Icon: CircleCheck, iconColor: c.success, accent: c.success };
+    case 'error':
+      return { Icon: CircleX, iconColor: c.error, accent: c.error };
+    case 'warning':
+      return { Icon: AlertTriangle, iconColor: c.warning, accent: c.warning };
+    default:
+      return { Icon: Info, iconColor: c.primaryDark, accent: c.primary };
+  }
+}
 
 /** Une seule ligne courte : titre seul, ou message seul si le titre est générique. */
 function buildToastLine(title: string, message?: string): string {
@@ -72,7 +78,8 @@ function ToastCard({
   toast: ToastState;
   onDismiss: () => void;
 }) {
-  const meta = TYPE_META[toast.type];
+  const c = useAppColors();
+  const meta = toastMetaFor(toast.type, c);
   const { Icon } = meta;
   const progress = useSharedValue(1);
   const trackWidth = useSharedValue(0);

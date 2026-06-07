@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
-import { Bell, Scale, ScanFace, User } from 'lucide-react-native';
+import { Bell, Scale, ScanFace, Settings, User } from 'lucide-react-native';
 import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label';
 import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-unread-count';
 import { getNotificationsPath } from '@/navigation/notifications-route';
+import { buildHelpMoreItems } from '@/features/help/help-more-items';
 
 export default function PreleveurMore() {
   const router = useRouter();
@@ -16,41 +17,50 @@ export default function PreleveurMore() {
   return (
     <TabScreenShell>
       <RoleMoreTabScreen
-      roleLabel="Préleveur"
-      sections={[
-        {
-          title: 'Professionnel',
-          delay: 150,
-          items: [{ icon: User, label: 'Mon profil', onPress: () => nav('/profile') }],
-        },
-        {
-          title: 'Paramètres',
-          delay: 210,
-          items: [
-            {
-              icon: Bell,
-              label: 'Notifications',
-              onPress: () => router.push(getNotificationsPath('preleveur')),
-              badge: unread,
-            },
-            {
-              icon: ScanFace,
-              label: biometricLabel,
-              onPress: () => nav('/profile/security'),
-              iconColor: '#0D9488',
-              iconBg: '#F0FDFA',
-            },
-            {
-              icon: Scale,
-              label: 'Informations légales',
-              onPress: () => nav('/(preleveur)/informations-legales'),
-              iconColor: '#64748B',
-              iconBg: '#F1F5F9',
-            },
-          ],
-        },
-      ]}
-      logoutDelay={270}
+        roleLabel="Préleveur"
+        sections={[
+          {
+            title: 'Professionnel',
+            delay: 150,
+            items: [{ icon: User, label: 'Mon profil', onPress: () => nav('/profile') }],
+          },
+          {
+            title: 'Aide',
+            delay: 180,
+            items: buildHelpMoreItems(nav),
+          },
+          {
+            title: 'Paramètres',
+            delay: 240,
+            items: [
+              {
+                icon: Settings,
+                label: "Paramètres de l'app",
+                onPress: () => nav('/profile/settings'),
+                iconAccent: 'settings',
+              },
+              {
+                icon: Bell,
+                label: 'Notifications',
+                onPress: () => router.push(getNotificationsPath('preleveur')),
+                badge: unread,
+              },
+              {
+                icon: ScanFace,
+                label: biometricLabel,
+                onPress: () => nav('/profile/security'),
+                iconAccent: 'teal',
+              },
+              {
+                icon: Scale,
+                label: 'Informations légales',
+                onPress: () => nav('/(preleveur)/informations-legales'),
+                iconAccent: 'muted',
+              },
+            ],
+          },
+        ]}
+        logoutDelay={300}
       />
     </TabScreenShell>
   );

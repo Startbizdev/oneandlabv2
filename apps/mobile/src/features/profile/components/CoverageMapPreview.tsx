@@ -1,6 +1,7 @@
+import { colors } from '@/theme';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { colors, radius } from '@/theme';
+import { radius } from '@/theme';
 
 interface Props {
   radiusKm: number;

@@ -6,7 +6,8 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { colors, palette } from '@/theme';
+import { palette } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 
 type Props = {
   value: boolean;
@@ -22,19 +23,21 @@ const TRAVEL = TRACK_W - THUMB - PAD * 2;
 
 /** Toggle custom taille fixe — ne casse pas le flex row (contrairement au Switch natif iOS). */
 export function ToggleSwitch({ value, onValueChange, disabled }: Props) {
+  const c = useAppColors();
+  const trackOff = palette.slate[200];
+  const trackOn = c.primary;
   const progress = useSharedValue(value ? 1 : 0);
 
   useEffect(() => {
     progress.value = withTiming(value ? 1 : 0, { duration: 180 });
   }, [progress, value]);
 
-  const trackStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(
-      progress.value,
-      [0, 1],
-      [palette.slate[200], colors.primary],
-    ),
-  }));
+  const trackStyle = useAnimatedStyle(
+    () => ({
+      backgroundColor: interpolateColor(progress.value, [0, 1], [trackOff, trackOn]),
+    }),
+    [trackOff, trackOn],
+  );
 
   const thumbStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: progress.value * TRAVEL }],
@@ -78,7 +81,7 @@ const styles = StyleSheet.create({
     width: THUMB,
     height: THUMB,
     borderRadius: THUMB / 2,
-    backgroundColor: colors.surface,
+    backgroundColor: palette.white,
     shadowColor: palette.slate[900],
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.18,

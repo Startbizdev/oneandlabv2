@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
@@ -99,7 +101,8 @@ export function PatientRdvUnifiedCard({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[3] },
   actions: {
     flexDirection: 'row',
@@ -110,13 +113,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3.5],
     paddingVertical: spacing[2.5],
     borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
   },
   actionBtnText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.primary,
+    color: c.primary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_patient_PatientRdvUnifiedCard_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

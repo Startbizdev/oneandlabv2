@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -25,7 +28,7 @@ import {
   carePhotoPickErrorMessage,
   pickCarePhoto,
 } from '@/lib/uploads/pick-care-photo';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -219,13 +222,14 @@ export function CancelAppointmentSheet({ visible, role, targets, onDone, onClose
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   summaryCard: {
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     overflow: 'hidden',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
   },
   warningStrip: {
     flexDirection: 'row',
@@ -233,18 +237,18 @@ const styles = StyleSheet.create({
     gap: spacing[2],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
-    backgroundColor: colors.errorLight,
+    backgroundColor: c.errorLight,
   },
   warningText: {
     flex: 1,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.error,
+    color: c.error,
     lineHeight: fontSize.xs * 1.45,
   },
   summaryDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
   },
   targetRow: {
     flexDirection: 'row',
@@ -256,7 +260,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -268,15 +272,15 @@ const styles = StyleSheet.create({
   },
   targetKicker: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
   targetName: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   formSection: {
     gap: spacing[3],
@@ -284,9 +288,19 @@ const styles = StyleSheet.create({
   formTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   footer: {
     gap: spacing[2],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_blocks_CancelAppointmentSheet_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

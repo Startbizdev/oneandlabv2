@@ -119,7 +119,7 @@ function assigneeForPatientView(apt: AptExt): RdvMaquetteCounterparty | null {
     if (!display && !apt.assigned_nurse_id) return null;
     return {
       name: professionalFirstName(display, 'Professionnel'),
-      subtitle: 'Infirmier diplômé',
+      subtitle: 'Infirmier(e)',
       profileImageUrl: apt.assigned_nurse_profile_image_url as string | null | undefined,
       gender: appointmentAssigneeGender(apt, 'nurse'),
     };

@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getAppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useRef } from 'react';
 import {
   Platform,
@@ -18,7 +21,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { SheetKeyboardProvider } from './sheet-keyboard-context';
 
@@ -72,6 +75,7 @@ export function SheetModal({
   snapPoints,
   stackBehavior = 'switch',
 }: Props) {
+  const styles = useThemedStyles(buildStyles);
   const modalRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -130,7 +134,7 @@ export function SheetModal({
         <View style={styles.header}>
           {onBack ? (
             <Pressable onPress={onBack} hitSlop={12} style={styles.backBtn} accessibilityLabel="Retour">
-              <ChevronLeft size={22} color={colors.primary} strokeWidth={2.5} />
+              <ChevronLeft size={22} color={getAppColors().primary} strokeWidth={2.5} />
             </Pressable>
           ) : null}
           <View style={styles.headerText}>
@@ -140,7 +144,7 @@ export function SheetModal({
         </View>
       </View>
     ),
-    [onBack, subtitle, title],
+    [onBack, styles, subtitle, title],
   );
 
   const bottomPad = Math.max(insets.bottom, spacing[3]);
@@ -200,72 +204,76 @@ export function SheetModal({
   );
 }
 
-const styles = StyleSheet.create({
-  sheetBackground: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius['2xl'],
-    borderTopRightRadius: radius['2xl'],
-    ...elevation.sheetTop,
-  },
-  handleZone: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius['2xl'],
-    borderTopRightRadius: radius['2xl'],
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: colors.border,
-    marginTop: spacing[2],
-    marginBottom: spacing[2],
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing[4],
-    paddingBottom: spacing[3],
-    gap: spacing[2],
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerText: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  title: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.md,
-    color: colors.textPrimary,
-  },
-  subtitle: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
-  body: {
-    padding: spacing[4],
-    gap: spacing[3],
-  },
-  bodyFitContent: {
-    flexGrow: 0,
-  },
-  scrollFooter: {
-    marginTop: spacing[2],
-    paddingTop: spacing[3],
-    gap: spacing[2],
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
-  },
-  fixedSnapBody: {
-    flex: 1,
-  },
-});
+function buildStyles(c: AppColors) {
+  return {
+    sheetBackground: {
+      backgroundColor: c.surface,
+      borderTopLeftRadius: radius['2xl'],
+      borderTopRightRadius: radius['2xl'],
+      ...elevation.sheetTop,
+    },
+    handleZone: {
+      backgroundColor: c.surface,
+      borderTopLeftRadius: radius['2xl'],
+      borderTopRightRadius: radius['2xl'],
+    },
+    handle: {
+      alignSelf: 'center',
+      width: 40,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: c.border,
+      marginTop: spacing[2],
+      marginBottom: spacing[2],
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: spacing[4],
+      paddingBottom: spacing[3],
+      gap: spacing[2],
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.borderLight,
+    },
+    backBtn: {
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerText: {
+      flex: 1,
+      minWidth: 0,
+      gap: spacing[1],
+    },
+    title: {
+      fontFamily: fontFamily.bold,
+      fontSize: fontSize.md,
+      color: c.textPrimary,
+      lineHeight: fontSize.md * 1.25,
+    },
+    subtitle: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+      lineHeight: fontSize.sm * 1.4,
+    },
+    body: {
+      padding: spacing[4],
+      gap: spacing[3],
+    },
+    bodyFitContent: {
+      flexGrow: 0,
+    },
+    scrollFooter: {
+      marginTop: spacing[2],
+      paddingTop: spacing[3],
+      gap: spacing[2],
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.borderLight,
+    },
+    fixedSnapBody: {
+      flex: 1,
+    },
+  };
+}

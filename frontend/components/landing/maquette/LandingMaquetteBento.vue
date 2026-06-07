@@ -1,26 +1,45 @@
 <template>
   <section id="plateforme" class="pb-[72px] lg:pb-[100px]">
     <div class="mx-auto max-w-[1200px] px-6 lg:px-12">
-      <div class="max-w-[640px] pb-10">
-        <span
-          class="mb-4 inline-block text-[11px] font-semibold uppercase tracking-[0.12em] text-primary-500"
+      <div class="mb-10 grid gap-8 lg:mb-10 lg:grid-cols-[1fr_min(42%,360px)] lg:items-center lg:gap-10">
+        <div class="max-w-[640px]">
+          <span
+            class="mb-4 inline-block text-[11px] font-semibold uppercase tracking-[0.12em] text-primary-500"
+          >
+            Notre plateforme
+          </span>
+          <h2
+            class="mb-3 text-[clamp(1.875rem,2.5vw,2.625rem)] font-extrabold leading-[1.1] tracking-[-0.035em] text-[#0A0A0F] dark:text-white"
+          >
+            Un réseau, chaque profil
+          </h2>
+          <p class="mt-2 text-base leading-relaxed text-[#3D3D52] dark:text-gray-300">
+            Infirmiers, laboratoires, médecins et patients : un parcours dédié par rôle.
+          </p>
+        </div>
+        <div
+          class="relative aspect-[4/3] w-full max-w-[360px] overflow-hidden rounded-[22px] border border-[#E8E8F0] lg:max-w-none lg:justify-self-end dark:border-gray-800"
         >
-          Notre plateforme
-        </span>
-        <h2
-          class="mb-3 text-[clamp(1.875rem,2.5vw,2.625rem)] font-extrabold leading-[1.1] tracking-[-0.035em] text-[#0A0A0F] dark:text-white"
-        >
-          Un réseau, chaque profil
-        </h2>
-        <p class="mt-2 text-base leading-relaxed text-[#3D3D52] dark:text-gray-300">
-          Infirmiers, laboratoires, médecins et patients : un parcours dédié par rôle.
-        </p>
+          <img
+            src="/images/landing/landing-platform-network.svg"
+            alt="Réseau Cary : infirmiers, laboratoires, médecins et patients"
+            width="800"
+            height="600"
+            class="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+          <div
+            class="pointer-events-none absolute inset-0 bg-gradient-to-t from-primary-500/20 via-transparent to-transparent"
+            aria-hidden="true"
+          />
+        </div>
       </div>
 
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-10 lg:gap-5">
         <LandingMaquetteBentoCard
           class="lg:col-span-4 lg:row-start-1"
-          image="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=900&q=80&auto=format&fit=crop"
+          image="/images/landing/landing-bento-nurse.png"
         >
           <template #heading>
             <span class="inline-flex items-center gap-2">
@@ -46,7 +65,7 @@
 
         <LandingMaquetteBentoCard
           class="lg:col-span-6 lg:row-start-1"
-          image="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=900&q=80&auto=format&fit=crop"
+          image="/images/landing/landing-bento-lab.jpg"
         >
           <template #heading>
             <span class="inline-flex items-center gap-2">
@@ -74,7 +93,7 @@
 
         <article
           ref="statCardEl"
-          class="lg:col-span-2 lg:row-start-2 relative isolate flex flex-col justify-end overflow-hidden rounded-[22px] bg-primary-500 px-4 py-6 text-white shadow-[0_6px_32px_rgba(47,128,237,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(47,128,237,0.45)] lg:pb-5 lg:pl-5 lg:pr-5 lg:pt-6"
+          class="lg:col-span-2 lg:row-start-2 relative isolate flex flex-col justify-end overflow-hidden rounded-[22px] bg-primary-500 px-4 py-6 text-white shadow-[0_6px_32px_rgba(28,199,181,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(28,199,181,0.45)] lg:pb-5 lg:pl-5 lg:pr-5 lg:pt-6"
         >
           <div
             class="absolute inset-0 z-0 rounded-[inherit] opacity-55 bg-[linear-gradient(rgba(255,255,255,0.14)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.14)_1px,transparent_1px)] bg-[length:20px_20px] pointer-events-none"
@@ -101,7 +120,7 @@
 
         <LandingMaquetteBentoCard
           class="lg:col-span-4 lg:row-start-2"
-          image="https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=900&q=80&auto=format&fit=crop"
+          image="/images/landing/landing-bento-patient.jpg"
         >
           <template #heading>
             <span class="inline-flex items-center gap-2">
@@ -127,7 +146,7 @@
 
         <LandingMaquetteBentoCard
           class="lg:col-span-4 lg:row-start-2"
-          image="https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=900&q=80&auto=format&fit=crop"
+          image="/images/landing/landing-bento-pro.jpg"
         >
           <template #heading>
             <span class="inline-flex items-center gap-2">

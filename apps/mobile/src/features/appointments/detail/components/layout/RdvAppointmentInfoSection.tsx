@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { useMemo } from 'react';
 import { Mail, MessageCircle, Phone } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
@@ -16,7 +17,7 @@ import {
   resolveAppointmentDetailAddressLine,
 } from '../../utils/appointment-address-display';
 import { buildPatientContactButtons } from '@/utils/contact-actions';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { rdvDetailSectionStyles } from './rdv-detail-section-styles';
 
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
     color: colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,

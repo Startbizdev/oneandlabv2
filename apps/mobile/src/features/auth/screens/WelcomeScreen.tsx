@@ -1,3 +1,7 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,12 +14,13 @@ import { RegisterBottomSheet } from '@/features/auth/components/RegisterBottomSh
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
 import { useAuthStore } from '@/store/auth-store';
 import type { RegisterRole } from '@/features/auth/api/registration.service';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const LOGO = require('../../../../assets/logo-cary.png');
 
 export function WelcomeScreen() {
+  const c = useAppColors();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -45,7 +50,7 @@ export function WelcomeScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={['#E6FAF7', colors.background, colors.background]}
+        colors={[c.primaryLight, c.background, c.background]}
         locations={[0, 0.42, 1]}
         style={StyleSheet.absoluteFill}
       />
@@ -122,10 +127,11 @@ export function WelcomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   glowTop: {
     position: 'absolute',
@@ -165,7 +171,7 @@ const styles = StyleSheet.create({
   tagline: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize['2xl'],
-    color: colors.textPrimary,
+    color: c.textPrimary,
     textAlign: 'center',
     lineHeight: fontSize['2xl'] * 1.3,
     letterSpacing: -0.4,
@@ -173,13 +179,13 @@ const styles = StyleSheet.create({
   },
   taglineAccent: {
     fontFamily: fontFamily.extraBold,
-    color: colors.primary,
+    color: c.primary,
   },
   taglineRule: {
     width: 48,
     height: 3,
     borderRadius: 2,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     opacity: 0.35,
   },
   footer: {
@@ -187,19 +193,29 @@ const styles = StyleSheet.create({
     gap: spacing[4],
   },
   actionsCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[3],
   },
   legal: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     textAlign: 'center',
-    lineHeight: fontSize['2xs'] * 1.55,
+    lineHeight: fontSize.xs * 1.55,
     paddingHorizontal: spacing[4],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_auth_screens_WelcomeScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

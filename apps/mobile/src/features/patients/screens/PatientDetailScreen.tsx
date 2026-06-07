@@ -1,3 +1,7 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 import { Linking, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -30,7 +34,7 @@ import {
   patientGenderLabel,
 } from '../utils/patient-profile-display';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -67,6 +71,7 @@ function InfoRow({
 }
 
 export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
+  const c = useAppColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -281,8 +286,8 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
             subtitle={histSubtitle}
             badge={histCount}
             onPress={() => router.push(`${rolePrefix}/patient/${id}/history` as never)}
-            iconColor="#0D9488"
-            iconBg="#F0FDFA"
+            iconColor={c.success}
+            iconBg={c.successLight}
           />
         </View>
 
@@ -314,10 +319,11 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   loading: {
     flex: 1,
@@ -339,7 +345,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -352,27 +358,27 @@ const styles = StyleSheet.create({
   heroName: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.3,
   },
   heroMeta: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   card: {
     width: '100%',
     alignSelf: 'stretch',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     overflow: 'hidden',
   },
   cardKicker: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     paddingHorizontal: spacing[4],
@@ -390,7 +396,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -403,31 +409,31 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   infoValue: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.sm * 1.4,
   },
   infoSecondary: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.xs * 1.4,
   },
   rowDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     marginLeft: spacing[4] + 36 + spacing[3],
   },
   rowDividerInset: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     marginLeft: spacing[4] + 40 + spacing[3],
   },
   buttonRow: {
@@ -437,5 +443,15 @@ const styles = StyleSheet.create({
   buttonCell: {
     flex: 1,
     minWidth: 0,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_patients_screens_PatientDetailScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

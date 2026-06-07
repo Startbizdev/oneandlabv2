@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
@@ -11,7 +12,7 @@ import {
 import type { AppNotification } from '@/features/notifications/api/notifications.service';
 import { NotificationCard } from './NotificationCard';
 import { Button } from '@/components/ui/Button';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -64,7 +65,7 @@ export function NotificationsFeed({
     if (hasMore) {
       return (
         <View style={styles.footerActions}>
-          <Button title="Voir plus" variant="outline" size="sm" onPress={onLoadMore} fullWidth />
+          <Button title="Voir plus" variant="outline" size="md" onPress={onLoadMore} fullWidth />
         </View>
       );
     }

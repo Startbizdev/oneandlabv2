@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import {
   ActivityIndicator,
   Image,
@@ -12,7 +15,7 @@ import { Camera, ImagePlus, Trash2, User } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { usePickProfileImage } from '@/features/profile/hooks/use-pick-profile-image';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -183,7 +186,8 @@ function PhotoActions({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   root: {
     width: '100%',
   },
@@ -191,8 +195,8 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surfaceAlt,
+    borderColor: c.borderLight,
+    backgroundColor: c.surfaceAlt,
     marginBottom: spacing[5],
     overflow: 'hidden',
   },
@@ -203,7 +207,7 @@ const styles = StyleSheet.create({
   coverFrame: {
     flex: 1,
     overflow: 'hidden',
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
   },
   coverFill: {
     flex: 1,
@@ -222,7 +226,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingVertical: spacing[4],
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
   },
   avatarPressable: {
     width: AVATAR + 12,
@@ -235,9 +239,9 @@ const styles = StyleSheet.create({
     height: AVATAR,
     borderRadius: AVATAR / 2,
     borderWidth: 4,
-    borderColor: colors.surface,
+    borderColor: c.surface,
     overflow: 'hidden',
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
   },
   avatarImage: {
     width: '100%',
@@ -255,11 +259,11 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: colors.surface,
+    borderColor: c.surface,
   },
   section: {
     width: '100%',
@@ -268,7 +272,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     marginBottom: spacing[2],
   },
   sectionButtons: {
@@ -276,7 +280,17 @@ const styles = StyleSheet.create({
     rowGap: spacing[2],
   },
   removeOutline: {
-    borderColor: colors.errorMid,
-    backgroundColor: colors.errorLight,
+    borderColor: c.errorMid,
+    backgroundColor: c.errorLight,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_components_ProfilePhotosSheetContent_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 import { colors, radius, spacing } from '@/theme';
@@ -31,12 +33,13 @@ export function CategoryPicker({ categories, selectedId, onSelect }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrapper: { gap: spacing[2] },
   label: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   scroll: {
     flexDirection: 'row',
@@ -44,21 +47,34 @@ const styles = StyleSheet.create({
     paddingRight: spacing[4],
   },
   chip: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
+    paddingVertical: spacing[2.5],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
   },
   chipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: c.primary,
+    borderColor: c.primary,
   },
   chipText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
+    lineHeight: fontSize.sm * 1.35,
   },
-  chipTextActive: { color: colors.textInverse },
+  chipTextActive: { color: c.textInverse },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_CategoryPicker_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
+  },
 });

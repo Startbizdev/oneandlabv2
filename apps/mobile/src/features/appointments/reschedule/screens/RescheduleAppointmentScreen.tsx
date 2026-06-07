@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { User } from 'lucide-react-native';
 import { FormScreen } from '@/components/layout/FormScreen';
@@ -13,7 +16,7 @@ import {
   reschedulePatientPhone,
   reschedulePatientTitleName,
 } from '../utils/reschedule-patient-display';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -122,12 +125,13 @@ export function RescheduleAppointmentScreen({ appointmentId, role, basePath }: P
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   loading: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   content: {
     paddingHorizontal: spacing[4],
@@ -139,9 +143,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3],
     paddingBottom: spacing[3],
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopColor: c.border,
   },
   backLink: {
     alignSelf: 'flex-start',
@@ -149,7 +153,7 @@ const styles = StyleSheet.create({
   backLinkText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.primary,
+    color: c.primary,
   },
   patientBanner: {
     flexDirection: 'row',
@@ -158,16 +162,26 @@ const styles = StyleSheet.create({
     gap: spacing[2],
     padding: spacing[3],
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
   },
   patientName: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   patientPhone: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_reschedule_screens_RescheduleAppointmentScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

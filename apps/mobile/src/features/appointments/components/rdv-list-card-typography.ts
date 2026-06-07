@@ -1,56 +1,59 @@
-import { colors } from '@/theme';
-import { fontFamily } from '@/theme/typography';
+import type { AppColors } from '@/theme/colors';
+import { fontFamily, fontSize, lh } from '@/theme/typography';
 
-const BODY_SIZE = 11;
-const BODY_LINE = 15;
+/** Échelle typo — cartes liste RDV (lisible, alignée tokens globaux). */
+export function buildRdvListCardTypography(c: AppColors) {
+  const body = fontSize.base;
+  const emphasis = fontSize.md;
+  const meta = fontSize.sm;
 
-/** Échelle typo homogène — cartes liste RDV (date, créneau, soins à 11px). */
-export const rdvListCardType = {
-  day: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: BODY_SIZE,
-    lineHeight: BODY_LINE,
-    color: colors.textPrimary,
-    letterSpacing: 0.1,
-  },
-  patientName: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: BODY_SIZE,
-    lineHeight: BODY_LINE,
-    color: colors.textPrimary,
-  },
-  slot: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: BODY_SIZE,
-    lineHeight: BODY_LINE,
-    color: colors.primaryDark,
-  },
-  care: {
-    fontFamily: fontFamily.medium,
-    fontSize: BODY_SIZE,
-    lineHeight: BODY_LINE,
-    color: colors.textPrimary,
-  },
-  careTag: {
-    fontFamily: fontFamily.medium,
-    fontSize: BODY_SIZE,
-    lineHeight: BODY_LINE,
-    color: colors.textPrimary,
-  },
-  careEmoji: {
-    fontSize: BODY_SIZE,
-    lineHeight: BODY_LINE,
-  },
-  careSep: {
-    fontFamily: fontFamily.medium,
-    fontSize: 11,
-    lineHeight: 15,
-    color: colors.textTertiary,
-  },
-  meta: {
-    fontFamily: fontFamily.regular,
-    fontSize: 11,
-    lineHeight: 15,
-    color: colors.textSecondary,
-  },
-} as const;
+  return {
+    day: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: body,
+      lineHeight: lh(body),
+      color: c.textPrimary,
+      letterSpacing: 0.1,
+    },
+    patientName: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: emphasis,
+      lineHeight: lh(emphasis),
+      color: c.textPrimary,
+    },
+    slot: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: body,
+      lineHeight: lh(body),
+      color: c.primaryDark,
+    },
+    care: {
+      fontFamily: fontFamily.medium,
+      fontSize: body,
+      lineHeight: lh(body),
+      color: c.textPrimary,
+    },
+    careTag: {
+      fontFamily: fontFamily.medium,
+      fontSize: body,
+      lineHeight: lh(body),
+      color: c.textPrimary,
+    },
+    careEmoji: {
+      fontSize: body,
+      lineHeight: lh(body),
+    },
+    careSep: {
+      fontFamily: fontFamily.medium,
+      fontSize: meta,
+      lineHeight: lh(meta),
+      color: c.textTertiary,
+    },
+    meta: {
+      fontFamily: fontFamily.regular,
+      fontSize: meta,
+      lineHeight: lh(meta),
+      color: c.textSecondary,
+    },
+  } as const;
+}

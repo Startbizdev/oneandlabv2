@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import type { ReactElement } from 'react';
 import type { NativeStackHeaderRightProps } from '@react-navigation/native-stack';
 import type { Href } from 'expo-router';
@@ -5,10 +6,10 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CalendarPlus, Plus, UserPlus, type LucideIcon } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-const ICON_SIZE = 14;
+const ICON_SIZE = 16;
 
 export type HeaderActionKind = 'add' | 'book' | 'add-person';
 
@@ -87,15 +88,16 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: spacing[2.5],
-    paddingVertical: 7,
+    gap: spacing[1.5],
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2.5],
+    minHeight: 44,
     borderRadius: radius.lg,
-    maxWidth: 124,
+    maxWidth: 148,
   },
   label: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
     color: colors.textInverse,
     letterSpacing: 0.1,
   },

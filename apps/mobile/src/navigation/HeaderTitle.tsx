@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import type { ReactElement } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,7 +7,7 @@ import {
   APP_HEADER_TITLE_ICON_SIZE,
   APP_HEADER_ORB_STROKE,
 } from '@/components/navigation/header-layout';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export const HEADER_TAB_ICON_SIZE = APP_HEADER_TITLE_ICON_SIZE;

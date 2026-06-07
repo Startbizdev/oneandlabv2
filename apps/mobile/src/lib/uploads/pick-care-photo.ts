@@ -1,7 +1,8 @@
 import { ActionSheetIOS, Alert, Platform } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { MAX_UPLOAD_BYTES } from './upload-file';
+import { assertUploadSize } from './prepare-upload-file';
+import { inspectMedDocFile, logMedDoc } from './medical-doc-file-debug';
 
 export type CarePhotoPickSource = 'camera' | 'library' | 'file';
 
@@ -40,10 +41,8 @@ function normalizeMime(mimeType: string | undefined | null, fileName: string): s
   return 'image/jpeg';
 }
 
-function assertSize(fileSize: number | undefined | null) {
-  if (fileSize != null && fileSize > MAX_UPLOAD_BYTES) {
-    throw new Error('FILE_TOO_LARGE');
-  }
+async function validatePickedSize(uri: string) {
+  await assertUploadSize(uri);
 }
 
 function metaFromAsset(asset: ImagePicker.ImagePickerAsset): CarePhotoPickResult {
@@ -61,11 +60,19 @@ async function pickFromLibrary(): Promise<CarePhotoPickResult | null> {
   const res = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
     quality: 0.85,
+    exif: false,
     allowsEditing: false,
   });
   if (res.canceled || !res.assets[0]?.uri) return null;
   const asset = res.assets[0];
-  assertSize(asset.fileSize);
+  logMedDoc('pick:library:asset', {
+    uri: asset.uri,
+    fileName: asset.fileName,
+    mimeType: asset.mimeType,
+    fileSize: asset.fileSize,
+  });
+  await validatePickedSize(asset.uri);
+  await inspectMedDocFile(asset.uri, 'pick:library:raw');
   return metaFromAsset(asset);
 }
 
@@ -76,13 +83,31 @@ async function pickFromCamera(): Promise<CarePhotoPickResult | null> {
   }
   const res = await ImagePicker.launchCameraAsync({
     mediaTypes: ['images'],
-    quality: 0.85,
+    quality: 0.8,
+    exif: false,
     allowsEditing: false,
   });
   if (res.canceled || !res.assets[0]?.uri) return null;
   const asset = res.assets[0];
-  assertSize(asset.fileSize);
-  return metaFromAsset(asset);
+  logMedDoc('pick:camera:asset', {
+    uri: asset.uri,
+    fileName: asset.fileName,
+    mimeType: asset.mimeType,
+    width: asset.width,
+    height: asset.height,
+    fileSize: asset.fileSize,
+  });
+  await validatePickedSize(asset.uri);
+  await inspectMedDocFile(asset.uri, 'pick:camera:raw');
+  const meta = metaFromAsset(asset);
+  const ts = Date.now();
+  const out = {
+    ...meta,
+    fileName: /\.jpe?g$/i.test(meta.fileName) ? meta.fileName : `photo-${ts}.jpg`,
+    mimeType: 'image/jpeg',
+  };
+  logMedDoc('pick:camera:out', out);
+  return out;
 }
 
 async function pickFromFiles(): Promise<CarePhotoPickResult | null> {
@@ -93,7 +118,9 @@ async function pickFromFiles(): Promise<CarePhotoPickResult | null> {
   });
   if (res.canceled || !res.assets?.[0]?.uri) return null;
   const asset = res.assets[0];
-  assertSize(asset.size ?? undefined);
+  logMedDoc('pick:file:asset', { uri: asset.uri, name: asset.name, mimeType: asset.mimeType });
+  await validatePickedSize(asset.uri);
+  await inspectMedDocFile(asset.uri, 'pick:file:raw');
   const fileName = asset.name ?? defaultFileName(asset.mimeType ?? '');
   const mimeType = normalizeMime(asset.mimeType, fileName);
   if (!CARE_PHOTO_MIME.includes(mimeType as (typeof CARE_PHOTO_MIME)[number])) {
@@ -134,6 +161,7 @@ function chooseSource(): Promise<CarePhotoPickSource | null> {
 /** Image ou PDF : appareil, galerie ou fichier (max 25 Mo). */
 export async function pickCarePhoto(): Promise<CarePhotoPickResult | null> {
   const source = await chooseSource();
+  logMedDoc('pick:source', { source });
   if (!source) return null;
   if (source === 'camera') return pickFromCamera();
   if (source === 'library') return pickFromLibrary();
@@ -156,6 +184,9 @@ export function carePhotoPickErrorMessage(err: unknown): string {
   }
   if (code === 'FILE_TOO_LARGE') {
     return 'Fichier trop volumineux (maximum 25 Mo).';
+  }
+  if (code === 'FILE_EMPTY') {
+    return 'La photo est vide ou illisible — réessayez ou choisissez la galerie.';
   }
   if (code === 'INVALID_FORMAT') {
     return 'Format non accepté. Utilisez une image (JPG, PNG, HEIC) ou un PDF.';

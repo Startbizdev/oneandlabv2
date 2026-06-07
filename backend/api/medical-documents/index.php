@@ -189,8 +189,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         unset($d);
 
-        // Documents du compte patient (profil seul, pas déjà couverts par le RDV) pour lab/subaccount/préleveur/nurse/pro/admin
-        if ($patientId && in_array($user['role'], ['lab', 'subaccount', 'preleveur', 'nurse', 'pro', 'super_admin'], true)) {
+        // Documents profil patient (non liés au RDV) — visible patient + équipe soignante
+        $canMergeProfileDocs = $patientId && (
+            $user['role'] === 'patient'
+            || in_array($user['role'], ['lab', 'subaccount', 'preleveur', 'nurse', 'pro', 'super_admin'], true)
+        );
+        if ($canMergeProfileDocs && $user['role'] === 'patient' && (string) $patientId !== (string) $user['user_id']) {
+            $canMergeProfileDocs = false;
+        }
+        if ($canMergeProfileDocs) {
             $patientDocs = [];
             if ($relativeId) {
                 $tableExists = $db->query("SHOW TABLES LIKE 'patient_relative_documents'")->rowCount() > 0;

@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -28,7 +30,8 @@ export function BookingWizardProgress({ current, total, label, hint }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[2] },
   row: {
     flexDirection: 'row',
@@ -38,32 +41,43 @@ const styles = StyleSheet.create({
   },
   stepText: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xs,
-    color: colors.primary,
+    fontSize: fontSize.sm,
+    color: c.primary,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.35,
   },
   label: {
     flex: 1,
     textAlign: 'right',
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   hint: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.sm,
+    color: c.textSecondary,
+    lineHeight: fontSize.sm * 1.4,
   },
   track: {
-    height: 4,
+    height: 5,
     borderRadius: radius.full,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     borderRadius: radius.full,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_BookingWizardProgress_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

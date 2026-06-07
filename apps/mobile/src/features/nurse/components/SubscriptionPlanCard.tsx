@@ -1,7 +1,10 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { StyleSheet, Text, View } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type SubscriptionPlanCardProps = {
@@ -86,48 +89,49 @@ export function SubscriptionPlanCard({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[5],
     gap: spacing[3],
     overflow: 'visible',
   },
   cardRecommended: {
-    borderColor: colors.primary,
+    borderColor: c.primary,
     borderWidth: 2,
   },
   cardCurrent: {
-    borderColor: colors.textTertiary,
+    borderColor: c.textTertiary,
   },
   badge: {
     position: 'absolute',
     top: spacing[3],
     right: spacing[3],
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     paddingHorizontal: spacing[2.5],
     paddingVertical: 4,
     borderRadius: radius.full,
   },
   badgeCurrent: {
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
   },
   badgeText: {
     fontFamily: fontFamily.bold,
-    fontSize: fontSize['2xs'],
-    color: colors.textInverse,
+    fontSize: fontSize.xs,
+    color: c.textInverse,
     letterSpacing: 0.3,
   },
   badgeTextCurrent: {
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   name: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     paddingRight: 72,
   },
   priceRow: {
@@ -138,18 +142,18 @@ const styles = StyleSheet.create({
   price: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize['3xl'],
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.5,
   },
   priceSuffix: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   tagline: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   features: {
     gap: spacing[2.5],
@@ -164,7 +168,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
@@ -173,7 +177,17 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: 20,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_nurse_components_SubscriptionPlanCard_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

@@ -70,7 +70,7 @@ export function StaffPatientHubListRow({ item, onPress, onLongPress }: Props) {
     );
   }
 
-  const visual = hubExchangeVisual;
+  const visual = hubExchangeVisual();
   return (
     <ProfileNavRow
       icon={visual.Icon}

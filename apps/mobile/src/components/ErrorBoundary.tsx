@@ -26,7 +26,7 @@ export class ErrorBoundary extends Component<Props, State> {
             Redémarrez l&apos;application. Si le problème persiste, contactez le support.
           </Text>
           <View className="mt-6 w-full max-w-xs">
-            <Button title="Réessayer" onPress={() => this.setState({ hasError: false })} />
+            <Button title="Réessayer" size="lg" fullWidth onPress={() => this.setState({ hasError: false })} />
           </View>
         </View>
       );

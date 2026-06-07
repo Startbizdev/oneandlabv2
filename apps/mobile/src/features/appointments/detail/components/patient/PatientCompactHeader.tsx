@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { StyleSheet, Text, View } from 'react-native';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
@@ -6,7 +9,7 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { StatusBadge } from '@/components/ui/Badge';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -71,12 +74,13 @@ export function PatientCompactHeader({ primary, batch, isMultiBatch }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[2],
   },
@@ -97,7 +101,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.3,
     lineHeight: fontSize.lg * 1.2,
   },
@@ -110,12 +114,12 @@ const styles = StyleSheet.create({
   type: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.primary,
+    color: c.primary,
   },
   batchHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   schedule: { gap: spacing[1.5], marginTop: spacing[0.5] },
   scheduleLine: {
@@ -126,11 +130,21 @@ const styles = StyleSheet.create({
   date: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   time: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_patient_PatientCompactHeader_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

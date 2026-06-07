@@ -1,8 +1,11 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { StyleSheet, Text, View } from 'react-native';
 import { UserCheck } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -54,14 +57,15 @@ export function PatientDuplicatePrompt({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
     gap: spacing[2.5],
     padding: spacing[3],
     borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
   },
   header: {
     flexDirection: 'row',
@@ -72,16 +76,26 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.primaryDark,
+    color: c.primaryDark,
   },
   text: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,
   },
   actions: {
     gap: spacing[2],
     marginTop: spacing[0.5],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_PatientDuplicatePrompt_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
@@ -178,23 +180,34 @@ export function PatientRelativeDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   scroll: { padding: spacing[4], gap: spacing[3], paddingBottom: spacing[12] },
   hero: { gap: spacing[1] },
   heroName: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize['2xl'],
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   heroSub: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   headerEdit: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.primary,
+    color: c.primary,
     marginRight: spacing[2],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_patient_relatives_screens_PatientRelativeDetailScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

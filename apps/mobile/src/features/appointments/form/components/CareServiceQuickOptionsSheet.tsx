@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
@@ -72,6 +74,9 @@ function OptionSelect({
               key={item.value}
               onPress={() => onChange(item.value)}
               style={[styles.pill, on && styles.pillActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={item.label}
             >
               <Text style={[styles.pillText, on && styles.pillTextActive]}>{item.label}</Text>
             </Pressable>
@@ -360,41 +365,56 @@ export function CareServiceQuickOptionsSheet({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   errorBox: {
-    backgroundColor: colors.errorLight,
+    backgroundColor: c.errorLight,
     borderRadius: radius.lg,
     padding: spacing[3],
   },
   errorText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.error,
+    color: c.error,
   },
   field: { gap: spacing[2] },
   fieldLabel: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    fontSize: fontSize.base,
+    color: c.textPrimary,
+    lineHeight: fontSize.base * 1.3,
   },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   pill: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
+    paddingVertical: spacing[2.5],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
   },
-  pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  pillActive: { backgroundColor: c.primary, borderColor: c.primary },
   pillText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
+    lineHeight: fontSize.sm * 1.35,
   },
-  pillTextActive: { color: colors.textInverse },
+  pillTextActive: { color: c.textInverse },
   sheetFooter: {
     paddingTop: spacing[4],
     marginTop: spacing[1],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_CareServiceQuickOptionsSheet_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

@@ -5,6 +5,7 @@ import { LogOut } from 'lucide-react-native';
 import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
 import { useAuthStore } from '@/store/auth-store';
+import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { colors, spacing } from '@/theme';
 import type { MoreMenuItemProps } from '@/features/profile/components/MoreMenuItem';
 
@@ -31,9 +32,11 @@ export function RoleMoreTabScreen({
 }: Props) {
   const router = useRouter();
   const logout = useAuthStore((s) => s.clearSession);
+  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
+  const textScale = useAppPreferencesStore((s) => s.textScale);
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} key={`${colorblindType}:${textScale}`}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         contentInsetAdjustmentBehavior="automatic"

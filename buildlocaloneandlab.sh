@@ -4,6 +4,9 @@
 set -euo pipefail
 
 SSH_KEY="${SSH_KEY:-$HOME/Desktop/oneandlab-key.pem}"
+if [[ ! -f "$SSH_KEY" && -f "$HOME/.ssh/oneandlab-key.pem" ]]; then
+  SSH_KEY="$HOME/.ssh/oneandlab-key.pem"
+fi
 SSH_HOST="${SSH_HOST:-ubuntu@ec2-15-188-11-249.eu-west-3.compute.amazonaws.com}"
 REMOTE_BASE="/var/www/oneandlab"
 REMOTE_DIR="$REMOTE_BASE/frontend"
@@ -19,6 +22,9 @@ fi
 
 SSH_TARGET="$SSH_USER@$SSH_HOSTNAME"
 SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=12 -i "$SSH_KEY")
+DEPLOY_SSH_OPTS=("${SSH_OPTS[@]}")
+# shellcheck source=scripts/deploy-sync.sh
+source "$SCRIPT_DIR/scripts/deploy-sync.sh"
 export RSYNC_RSH="ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12 -i $SSH_KEY"
 
 retry_cmd() {
@@ -86,32 +92,32 @@ export NUXT_PUBLIC_SITE_URL="https://cary.bio"
 npm run build
 
 echo "==> Envoi du build vers le serveur..."
-retry_cmd 3 rsync -avz --partial \
+retry_cmd 3 deploy_sync_dir \
   "$FRONTEND_DIR/.output/" \
   "$SSH_TARGET:$REMOTE_DIR/.output/"
 
 echo "==> Envoi des fichiers sources (frontend sauf build/node_modules)..."
-retry_cmd 3 rsync -avz --partial \
-  --exclude='node_modules' \
-  --exclude='.output' \
-  --exclude='.nuxt' \
-  --exclude='.git' \
+retry_cmd 3 deploy_sync_dir \
   "$FRONTEND_DIR/" \
-  "$SSH_TARGET:$REMOTE_DIR/"
+  "$SSH_TARGET:$REMOTE_DIR/" \
+  --exclude=node_modules \
+  --exclude=.output \
+  --exclude=.nuxt \
+  --exclude=.git
 
 echo "==> Envoi du backend (sauf vendor/.env/uploads + scripts migration legacy)..."
-retry_cmd 3 rsync -avz --partial \
-  --exclude='vendor' \
-  --exclude='.env' \
-  --exclude='uploads' \
-  --exclude='scripts/migration' \
-  --exclude='scripts/test-*.php' \
-  --exclude='scripts/run-test-*.sh' \
+retry_cmd 3 deploy_sync_dir \
   "$BACKEND_DIR/" \
-  "$SSH_TARGET:$REMOTE_BASE/backend/"
+  "$SSH_TARGET:$REMOTE_BASE/backend/" \
+  --exclude=vendor \
+  --exclude=.env \
+  --exclude=uploads \
+  --exclude=scripts/migration \
+  --exclude=scripts/test-*.php \
+  --exclude=scripts/run-test-*.sh
 
 echo "==> Envoi du dossier database (schemas SQL)..."
-retry_cmd 3 rsync -avz --partial \
+retry_cmd 3 deploy_sync_dir \
   "$SCRIPT_DIR/database/" \
   "$SSH_TARGET:$REMOTE_BASE/database/"
 

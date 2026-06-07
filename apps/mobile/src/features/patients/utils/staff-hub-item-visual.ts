@@ -7,7 +7,7 @@ import {
   Shield,
   type LucideIcon,
 } from 'lucide-react-native';
-import { colors } from '@/theme';
+import { getAppColors } from '@/theme/colors';
 
 export type HubItemVisual = {
   Icon: LucideIcon;
@@ -15,55 +15,61 @@ export type HubItemVisual = {
   iconBg: string;
 };
 
-const DOC_VISUALS: Record<string, HubItemVisual> = {
-  carte_vitale: {
-    Icon: CreditCard,
-    iconColor: colors.success,
-    iconBg: colors.successLight,
-  },
-  carte_mutuelle: {
-    Icon: Shield,
-    iconColor: '#2563EB',
-    iconBg: '#EFF6FF',
-  },
-  ordonnance: {
-    Icon: FileText,
-    iconColor: colors.warning,
-    iconBg: colors.warningLight,
-  },
-  autres_assurances: {
-    Icon: FileText,
-    iconColor: '#7C3AED',
-    iconBg: '#F5F3FF',
-  },
-  resultats: {
-    Icon: FlaskConical,
-    iconColor: colors.primaryDark,
-    iconBg: colors.primaryLight,
-  },
-  care_photo: {
-    Icon: Camera,
-    iconColor: '#DB2777',
-    iconBg: '#FDF2F8',
-  },
-  cancellation_photo: {
-    Icon: Camera,
-    iconColor: colors.error,
-    iconBg: colors.errorLight,
-  },
-  other: {
-    Icon: FileText,
-    iconColor: colors.textSecondary,
-    iconBg: colors.surfaceSubtle,
-  },
-};
-
-export function hubDocumentVisual(documentType: string): HubItemVisual {
-  return DOC_VISUALS[documentType] ?? DOC_VISUALS.other;
+function docVisuals(): Record<string, HubItemVisual> {
+  const c = getAppColors();
+  return {
+    carte_vitale: {
+      Icon: CreditCard,
+      iconColor: c.success,
+      iconBg: c.successLight,
+    },
+    carte_mutuelle: {
+      Icon: Shield,
+      iconColor: c.primary,
+      iconBg: c.primaryLight,
+    },
+    ordonnance: {
+      Icon: FileText,
+      iconColor: c.warning,
+      iconBg: c.warningLight,
+    },
+    autres_assurances: {
+      Icon: FileText,
+      iconColor: c.warning,
+      iconBg: c.warningLight,
+    },
+    resultats: {
+      Icon: FlaskConical,
+      iconColor: c.primaryDark,
+      iconBg: c.primaryLight,
+    },
+    care_photo: {
+      Icon: Camera,
+      iconColor: c.primary,
+      iconBg: c.primaryLight,
+    },
+    cancellation_photo: {
+      Icon: Camera,
+      iconColor: c.error,
+      iconBg: c.errorLight,
+    },
+    other: {
+      Icon: FileText,
+      iconColor: c.textSecondary,
+      iconBg: c.surfaceSubtle,
+    },
+  };
 }
 
-export const hubExchangeVisual: HubItemVisual = {
-  Icon: MessageCircle,
-  iconColor: '#0D9488',
-  iconBg: '#F0FDFA',
-};
+export function hubDocumentVisual(documentType: string): HubItemVisual {
+  return docVisuals()[documentType] ?? docVisuals().other;
+}
+
+export function hubExchangeVisual(): HubItemVisual {
+  const c = getAppColors();
+  return {
+    Icon: MessageCircle,
+    iconColor: c.primary,
+    iconBg: c.primaryLight,
+  };
+}

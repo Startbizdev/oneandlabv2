@@ -7,7 +7,7 @@ import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
 import {
   AppointmentsRdvListBookHeader,
   AppointmentsRdvListFilterHeader,
-  rdvListChromeStyles,
+  useRdvListChromeStyles,
 } from '@/features/appointments/components/AppointmentsRdvListToolbar';
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
@@ -39,6 +39,7 @@ function matchesSearch(apt: Appointment, q: string): boolean {
 
 export function PatientAppointmentsListScreen() {
   const router = useRouter();
+  const chromeStyles = useRdvListChromeStyles();
   const [tab, setTab] = useState<PatientListTab>('upcoming');
   const [search, setSearch] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -106,13 +107,24 @@ export function PatientAppointmentsListScreen() {
   );
 
   const ListHeader = useCallback(
-    () => <AppointmentsRdvListBookHeader href="/(patient)/booking/new" />,
-    [],
+    () => (
+      <View style={chromeStyles.listHeader}>
+        <AppointmentsRdvListFilterHeader
+          search={search}
+          onSearchChange={setSearch}
+          onOpenFilters={() => setSheetOpen(true)}
+          advancedFilterCount={advancedCount}
+          chips={filterChips}
+        />
+        <AppointmentsRdvListBookHeader href="/(patient)/booking/new" />
+      </View>
+    ),
+    [advancedCount, filterChips, search, chromeStyles],
   );
 
   if (query.isError) {
     return (
-      <View style={rdvListChromeStyles.errorWrap}>
+      <View style={chromeStyles.errorWrap}>
         <EmptyState
           title="Impossible de charger vos rendez-vous"
           description={
@@ -128,24 +140,15 @@ export function PatientAppointmentsListScreen() {
   }
 
   return (
-    <View style={rdvListChromeStyles.container}>
+    <View style={chromeStyles.container}>
       <InfiniteQueryFlatList
         query={query}
         items={displayRows}
-        header={
-          <AppointmentsRdvListFilterHeader
-            search={search}
-            onSearchChange={setSearch}
-            onOpenFilters={() => setSheetOpen(true)}
-            advancedFilterCount={advancedCount}
-            chips={filterChips}
-          />
-        }
         renderItem={renderItem}
         keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
         ListHeaderComponent={ListHeader}
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={rdvListChromeStyles.listContent}
+        contentContainerStyle={chromeStyles.listContent}
         showsVerticalScrollIndicator={false}
         skeletonHeight={116}
         ListEmptyComponent={

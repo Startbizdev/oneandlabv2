@@ -21,6 +21,21 @@ export function prefetchAppDataForRole(role: string | undefined, userId?: string
         staleTime: 60_000,
       })
       .catch(() => undefined);
+
+    void queryClient
+      .prefetchQuery({
+        queryKey: queryKeys.documents.patient(userId),
+        queryFn: async () => {
+          const { fetchProfileDocuments } = await import(
+            '@/features/patients/api/patient-profile.service'
+          );
+          const res = await fetchProfileDocuments();
+          if (!res.success) throw new Error(res.error ?? 'Erreur chargement documents');
+          return res.data ?? [];
+        },
+        staleTime: 30_000,
+      })
+      .catch(() => undefined);
   }
 
   void queryClient

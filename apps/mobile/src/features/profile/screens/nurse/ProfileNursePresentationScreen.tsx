@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -137,11 +139,12 @@ export function ProfileNursePresentationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   sectionKicker: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
@@ -151,37 +154,47 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   chip: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surfaceAlt,
+    borderColor: c.borderLight,
+    backgroundColor: c.surfaceAlt,
   },
   chipActive: {
-    color: colors.primary,
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
+    color: c.primary,
+    borderColor: c.primary,
+    backgroundColor: c.primaryLight,
     fontFamily: fontFamily.semiBold,
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[3],
     gap: spacing[1],
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     marginVertical: spacing[0.5],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_screens_nurse_ProfileNursePresentationScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

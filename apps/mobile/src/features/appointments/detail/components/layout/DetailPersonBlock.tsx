@@ -1,8 +1,9 @@
+import { colors } from '@/theme';
 import { Mail, MessageCircle, Phone } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import type { PatientContactButton } from '@/utils/contact-actions';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const CONTACT_ICONS = {
@@ -56,7 +57,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
     color: colors.textTertiary,
     letterSpacing: 0.3,
     textTransform: 'uppercase',

@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,7 +18,7 @@ import { loadCarePhotoLocalUri } from '../../utils/care-photo-image';
 import { CarePhotoImage } from './CarePhotoImage';
 import { openLocalFile } from '@/lib/downloads/open-local-file';
 import { useToast } from '@/providers/ToastProvider';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -161,13 +164,14 @@ function CarePhotoPdfCard({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   pdfWrap: {
     overflow: 'hidden',
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     minHeight: 160,
   },
   center: {
@@ -180,8 +184,8 @@ const styles = StyleSheet.create({
   },
   failText: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     textAlign: 'center',
   },
   retryRow: {
@@ -192,8 +196,8 @@ const styles = StyleSheet.create({
   },
   retryText: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.primary,
+    fontSize: fontSize.xs,
+    color: c.primary,
   },
   pdfBody: {
     flex: 1,
@@ -207,14 +211,14 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: radius.xl,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   pdfName: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     textAlign: 'center',
   },
   openRow: {
@@ -226,7 +230,7 @@ const styles = StyleSheet.create({
   openText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.primary,
+    color: c.primary,
   },
   zoomPill: {
     position: 'absolute',
@@ -242,7 +246,17 @@ const styles = StyleSheet.create({
   },
   zoomPillText: {
     fontFamily: fontFamily.semiBold,
-    fontSize: 11,
-    color: colors.textInverse,
+    fontSize: fontSize.sm,
+    color: c.textInverse,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_blocks_CarePhotoAttachment_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

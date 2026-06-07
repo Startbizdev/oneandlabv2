@@ -5,6 +5,9 @@
 set -euo pipefail
 
 SSH_KEY="${SSH_KEY:-$HOME/Desktop/oneandlab-key.pem}"
+if [[ ! -f "$SSH_KEY" && -f "$HOME/.ssh/oneandlab-key.pem" ]]; then
+  SSH_KEY="$HOME/.ssh/oneandlab-key.pem"
+fi
 SSH_HOST="${SSH_HOST:-ubuntu@ec2-15-188-11-249.eu-west-3.compute.amazonaws.com}"
 REMOTE_BASE="${REMOTE_BASE:-/var/www/oneandlab}"
 REMOTE_DIR="$REMOTE_BASE/frontend"
@@ -20,6 +23,9 @@ fi
 
 SSH_TARGET="$SSH_USER@$SSH_HOSTNAME"
 SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=12 -i "$SSH_KEY")
+DEPLOY_SSH_OPTS=("${SSH_OPTS[@]}")
+# shellcheck source=scripts/deploy-sync.sh
+source "$SCRIPT_DIR/scripts/deploy-sync.sh"
 export RSYNC_RSH="ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12 -i $SSH_KEY"
 
 retry_cmd() {
@@ -82,13 +88,13 @@ fi
 ensure_ssh_target
 
 echo "==> Sync menuswipe -> $SSH_TARGET:$REMOTE_DIR/public/images/menuswipe/"
-retry_cmd 3 rsync -avz --partial \
-  "$LOCAL_MENUSWIPE/" \
-  "$SSH_TARGET:$REMOTE_DIR/public/images/menuswipe/"
+retry_cmd 3 deploy_sync_menuswipe \
+  "$LOCAL_MENUSWIPE" \
+  "$SSH_TARGET:$REMOTE_DIR/public/images/menuswipe"
 
 echo "==> Sync menuswipe -> .output/public (assets servis par Nuxt en prod)..."
-retry_cmd 3 rsync -avz --partial \
-  "$LOCAL_MENUSWIPE/" \
-  "$SSH_TARGET:$REMOTE_DIR/.output/public/images/menuswipe/"
+retry_cmd 3 deploy_sync_menuswipe \
+  "$LOCAL_MENUSWIPE" \
+  "$SSH_TARGET:$REMOTE_DIR/.output/public/images/menuswipe"
 
 echo "✅ Sync menuswipe termine."

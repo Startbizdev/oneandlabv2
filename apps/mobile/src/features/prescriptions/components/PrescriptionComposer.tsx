@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -15,7 +18,7 @@ import {
   generatePrescriptionPdf,
   savePrescriptionPdfToAppointment,
 } from '../api/prescriptions.service';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -158,26 +161,37 @@ export function PrescriptionComposer({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   cardTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     marginBottom: spacing[3],
   },
   inner: { gap: spacing[3] },
   warn: {
     gap: spacing[2],
-    backgroundColor: colors.warningLight,
+    backgroundColor: c.warningLight,
     borderRadius: 12,
     padding: spacing[3],
   },
   warnText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.warning,
+    color: c.warning,
     lineHeight: fontSize.sm * 1.45,
   },
   textarea: { minHeight: 140, textAlignVertical: 'top' },
   actions: { gap: spacing[2] },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_prescriptions_components_PrescriptionComposer_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
+  },
 });

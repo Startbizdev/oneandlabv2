@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
@@ -26,7 +29,7 @@ import {
   parseIsoDay,
   slideIndexForBookingDate,
 } from '../utils/booking-date-utils';
-import { animation, colors, elevation, radius, spacing } from '@/theme';
+import { animation, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -317,12 +320,13 @@ export function BookingDateCarousel({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[2] },
   label: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   sliderHost: {
     overflow: 'visible',
@@ -359,30 +363,30 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   cellInnerDefault: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderWidth: 0,
   },
   cellInnerToday: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
   },
   weekday: {
     fontFamily: fontFamily.semiBold,
-    fontSize: 10,
-    color: colors.textSecondary,
+    fontSize: fontSize.xs,
+    color: c.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   dayNum: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.lg + 2,
     fontVariant: ['tabular-nums'],
   },
   month: {
     fontFamily: fontFamily.medium,
-    fontSize: 9,
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     textTransform: 'capitalize',
   },
   todayDot: {
@@ -391,9 +395,19 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
   },
-  textOn: { color: colors.textInverse },
+  textOn: { color: c.textInverse },
   textOnMuted: { color: 'rgba(255,255,255,0.82)' },
-  textOff: { color: colors.textTertiary },
+  textOff: { color: c.textTertiary },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_BookingDateCarousel_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
+  },
 });

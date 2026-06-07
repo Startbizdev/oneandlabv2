@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -89,6 +91,9 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
                   key={o.value}
                   onPress={() => setRelationshipType(o.value)}
                   style={[styles.pill, active && styles.pillActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={o.label}
                 >
                   <Text style={[styles.pillText, active && styles.pillTextActive]}>{o.label}</Text>
                 </Pressable>
@@ -109,34 +114,49 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   fields: { gap: spacing[3] },
   label: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    fontSize: fontSize.base,
+    color: c.textPrimary,
     marginBottom: spacing[2],
+    lineHeight: fontSize.base * 1.3,
   },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   pill: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
+    paddingVertical: spacing[2.5],
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
   },
   pillActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
+    borderColor: c.primary,
+    backgroundColor: c.primaryLight,
   },
   pillText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
+    lineHeight: fontSize.sm * 1.35,
   },
   pillTextActive: {
-    color: colors.primary,
+    color: c.primary,
     fontFamily: fontFamily.semiBold,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_RelativeQuickAddSheet_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

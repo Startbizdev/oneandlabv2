@@ -1,9 +1,12 @@
 import { createElement, useCallback, useEffect, useMemo } from 'react';
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { useNavigation, useRouter } from 'expo-router';
 import type { Appointment } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
 import { HeaderBackButton } from '@/navigation/HeaderBackButton';
+import { useAuthStore } from '@/store/auth-store';
+import { fetchProfileDocuments } from '@/features/patients/api/patient-profile.service';
+import { mergeProfileDocumentsIntoAppointmentDocs } from '@/features/documents/utils/merge-profile-documents';
 import { useAppointmentDetail } from '../../hooks/use-appointment-detail';
 import {
   APPOINTMENT_ALREADY_ACCEPTED,
@@ -38,6 +41,7 @@ export function useAppointmentDetailScreen(
 ) {
   const navigation = useNavigation();
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const config = getAppointmentDetailRoleConfig(role);
 
   const detailQ = useAppointmentDetail(id);
@@ -49,6 +53,21 @@ export function useAppointmentDetailScreen(
   /** RDV ouvert (URL) — ne pas remplacer par le 1er du lot trié chronologiquement. */
   const primary =
     apt ?? batchSorted.find((a) => String(a.id) === String(id)) ?? batchSorted[0];
+  const relativeId = primary?.relative_id?.trim() || undefined;
+
+  const profileDocsQ = useQuery({
+    queryKey: relativeId
+      ? queryKeys.documents.relative(relativeId)
+      : queryKeys.documents.patient(user?.id ?? ''),
+    queryFn: async () => {
+      const res = await fetchProfileDocuments(relativeId ? { relativeId } : {});
+      if (!res.success) throw new Error(res.error ?? 'Erreur chargement documents profil');
+      return res.data ?? [];
+    },
+    enabled: role === 'patient' && Boolean(user?.id) && Boolean(primary),
+    staleTime: 30_000,
+  });
+
   /** Pas de prefetch : GET share-for-nurse ne doit pas être appelé à l’ouverture (effet de bord historique côté API). */
   const shareQ = useShareForNurse(id, false);
 
@@ -63,14 +82,18 @@ export function useAppointmentDetailScreen(
   const allDocuments = useMemo(() => {
     const merged = docQueries.flatMap((q) => q.data ?? []);
     const seen = new Set<string>();
-    return merged.filter((d) => {
+    const aptDocs = merged.filter((d) => {
       if (seen.has(d.id)) return false;
       seen.add(d.id);
       return true;
     });
-  }, [docQueries]);
+    if (role !== 'patient') return aptDocs;
+    return mergeProfileDocumentsIntoAppointmentDocs(aptDocs, profileDocsQ.data ?? []);
+  }, [docQueries, profileDocsQ.data, role]);
 
-  const docsLoading = docQueries.some((q) => q.isLoading);
+  const docsLoading =
+    docQueries.some((q) => q.isLoading) ||
+    (role === 'patient' && profileDocsQ.isLoading && profileDocsQ.data === undefined);
   const canceled = primary ? isAppointmentCanceled(primary.status) : false;
 
   const cancellableForPatient = useMemo(
@@ -93,10 +116,14 @@ export function useAppointmentDetailScreen(
     void detailQ.refetch();
     void refetchSiblings();
     docQueries.forEach((q) => void q.refetch());
-  }, [detailQ, refetchSiblings, docQueries]);
+    if (role === 'patient') void profileDocsQ.refetch();
+  }, [detailQ, refetchSiblings, docQueries, profileDocsQ, role]);
 
   const isRefreshing =
-    detailQ.isRefetching || siblingsLoading || docQueries.some((q) => q.isRefetching);
+    detailQ.isRefetching ||
+    siblingsLoading ||
+    docQueries.some((q) => q.isRefetching) ||
+    (role === 'patient' && profileDocsQ.isRefetching);
 
   const handleHeaderBack = useCallback(() => {
     if (navigation.canGoBack()) {

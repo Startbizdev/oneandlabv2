@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { useCallback } from 'react';
 import {
   ActivityIndicator,
@@ -17,7 +18,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { ArrowRight } from 'lucide-react-native';
-import { animation, colors, elevation, radius, spacing } from '@/theme';
+import { animation, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -98,7 +99,7 @@ export function BookingContinueButton({
                 {title}
               </Text>
               <View style={styles.iconCircle}>
-                <ArrowRight size={16} color={colors.textInverse} strokeWidth={2.5} />
+                <ArrowRight size={18} color={colors.textInverse} strokeWidth={2.5} />
               </View>
             </View>
           )}
@@ -130,14 +131,14 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   gradient: {
-    height: 48,
+    minHeight: 52,
     paddingHorizontal: spacing[4],
     borderRadius: radius.lg,
     justifyContent: 'center',
   },
   gradientFill: {
     width: '100%',
-    minHeight: 48,
+    minHeight: 52,
   },
   content: {
     flexDirection: 'row',
@@ -147,13 +148,13 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fontFamily.bold,
-    fontSize: fontSize.sm,
+    fontSize: fontSize.base,
     color: colors.textInverse,
     letterSpacing: 0.15,
   },
   iconCircle: {
-    width: 22,
-    height: 22,
+    width: 26,
+    height: 26,
     borderRadius: radius.full,
     backgroundColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',

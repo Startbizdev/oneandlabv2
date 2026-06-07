@@ -1,8 +1,11 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import type { ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, elevation, radius } from '@/theme';
-import { fontFamily } from '@/theme/typography';
+import { elevation, radius } from '@/theme';
+import { fontFamily, fontSize } from '@/theme/typography';
 import {
   APP_HEADER_ORB_ICON,
   APP_HEADER_ORB_SIZE,
@@ -64,7 +67,7 @@ export function HeaderGradientOrbButton({
       {showBadge ? (
         <View style={styles.badgeAnchor} pointerEvents="none">
           <LinearGradient
-            colors={['#FF5A5F', colors.error]}
+            colors={[colors.errorMid, colors.error]}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={styles.badge}
@@ -87,7 +90,8 @@ export function HeaderOrbIconStroke() {
 
 const BADGE_SIZE = 20;
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   host: {
     width: APP_HEADER_ORB_SIZE,
     height: APP_HEADER_ORB_SIZE,
@@ -107,7 +111,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: colors.gradientEnd,
+        shadowColor: c.gradientEnd,
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.22,
         shadowRadius: 8,
@@ -130,7 +134,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: 1.5,
     ...elevation.sm,
-    shadowColor: colors.gradientEnd,
+    shadowColor: c.gradientEnd,
     shadowOpacity: 0.2,
   },
   glassRingGradient: {
@@ -151,7 +155,7 @@ const styles = StyleSheet.create({
     zIndex: 20,
     ...Platform.select({
       ios: {
-        shadowColor: colors.error,
+        shadowColor: c.error,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.45,
         shadowRadius: 4,
@@ -167,13 +171,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2.5,
-    borderColor: colors.surface,
+    borderColor: c.surface,
   },
   badgeText: {
     fontFamily: fontFamily.extraBold,
-    fontSize: 10,
-    lineHeight: 12,
-    color: colors.textInverse,
+    fontSize: fontSize.xs,
+    lineHeight: fontSize.xs * 1.15,
+    color: c.textInverse,
     includeFontPadding: false,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('components_navigation_HeaderGradientOrbButton_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

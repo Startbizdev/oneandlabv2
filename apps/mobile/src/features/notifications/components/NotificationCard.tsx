@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -8,7 +11,7 @@ import {
   formatNotificationTime,
   notificationVisual,
 } from '@/features/notifications/utils/notification-card-meta';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -72,17 +75,18 @@ export const NotificationCard = React.memo(function NotificationCard({ item, onP
 const ICON = 40;
 const CHEVRON = 16;
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
     alignSelf: 'stretch',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     overflow: 'hidden',
   },
   cardUnread: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
   },
   cardPressed: {
     opacity: 0.88,
@@ -95,7 +99,7 @@ const styles = StyleSheet.create({
     width: 3,
     borderTopRightRadius: radius.full,
     borderBottomRightRadius: radius.full,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
   },
   row: {
     flexDirection: 'row',
@@ -129,7 +133,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.15,
   },
   titleUnread: {
@@ -137,8 +141,8 @@ const styles = StyleSheet.create({
   },
   time: {
     fontFamily: fontFamily.medium,
-    fontSize: 10,
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     lineHeight: 14,
     flexShrink: 0,
     paddingTop: 1,
@@ -147,7 +151,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[1],
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.xs * 1.5,
   },
   chevron: {
@@ -155,5 +159,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_notifications_components_NotificationCard_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

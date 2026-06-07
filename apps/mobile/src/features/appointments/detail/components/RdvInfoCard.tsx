@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { StyleSheet, Text, View } from 'react-native';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
@@ -6,7 +9,7 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -52,7 +55,8 @@ export function RdvInfoCard({ apt }: { apt: Appointment }) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   topRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -61,13 +65,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing[3],
     paddingBottom: spacing[3],
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: c.borderLight,
   },
   category: {
     flex: 1,
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.3,
   },
   dateRow: {
@@ -79,7 +83,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -90,13 +94,13 @@ const styles = StyleSheet.create({
   dayText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     textTransform: 'capitalize',
   },
   dayMuted: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   timeRow: {
     flexDirection: 'row',
@@ -106,6 +110,16 @@ const styles = StyleSheet.create({
   timeText: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.primary,
+    color: c.primary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_RdvInfoCard_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

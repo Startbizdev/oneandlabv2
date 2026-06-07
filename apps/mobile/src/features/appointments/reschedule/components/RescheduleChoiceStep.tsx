@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,7 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import type { RescheduleChoiceMode } from '../utils/build-reschedule-payload';
-import { colors, elevation, palette, radius, spacing } from '@/theme';
+import { elevation, palette, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type FlowChip = {
@@ -204,7 +207,8 @@ export function RescheduleChoiceStep({ patientName, choiceMode, onSelect }: Prop
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   root: {
     gap: spacing[3],
   },
@@ -221,21 +225,21 @@ const styles = StyleSheet.create({
   },
   heroEyebrow: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.primaryDark,
+    fontSize: fontSize.xs,
+    color: c.primaryDark,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   heroTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.2,
   },
   instruction: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.4,
     paddingHorizontal: spacing[0.5],
   },
@@ -252,13 +256,13 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: radius['2xl'],
     borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
     overflow: 'hidden',
     ...elevation.xs,
   },
   cardSelected: {
-    borderColor: colors.primary,
+    borderColor: c.primary,
     ...elevation.sm,
   },
   cardAccentBar: {
@@ -303,37 +307,37 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.primaryDark,
+    fontSize: fontSize.xs,
+    color: c.primaryDark,
   },
   cardTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.1,
   },
   cardTitleSelected: {
-    color: colors.primaryDark,
+    color: c.primaryDark,
   },
   radio: {
     width: 24,
     height: 24,
     borderRadius: radius.full,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: c.border,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
     marginTop: 2,
   },
   radioSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
+    borderColor: c.primary,
+    backgroundColor: c.primary,
   },
   cardDescription: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,
   },
   flowRow: {
@@ -353,23 +357,33 @@ const styles = StyleSheet.create({
     borderColor: palette.slate[200],
   },
   flowChipMuted: {
-    backgroundColor: palette.red[50],
-    borderColor: palette.red[100],
+    backgroundColor: c.errorLight,
+    borderColor: c.errorMid,
   },
   flowChipSuccess: {
-    backgroundColor: palette.green[50],
-    borderColor: palette.green[100],
+    backgroundColor: c.successLight,
+    borderColor: c.successMid,
   },
   flowChipAccent: {
-    backgroundColor: palette.brand[50],
-    borderColor: palette.brand[200],
+    backgroundColor: c.primaryLight,
+    borderColor: c.primaryMid,
   },
   flowChipText: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
   },
   flowChipTextNeutral: { color: palette.slate[600] },
-  flowChipTextMuted: { color: palette.red[700] },
-  flowChipTextSuccess: { color: palette.green[700] },
-  flowChipTextAccent: { color: colors.primaryDark },
+  flowChipTextMuted: { color: c.error },
+  flowChipTextSuccess: { color: c.success },
+  flowChipTextAccent: { color: c.primaryDark },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_reschedule_components_RescheduleChoiceStep_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
+  },
 });

@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -27,6 +29,7 @@ export function FilterOptionChips<T extends string>({ options, value, onChange }
             style={[styles.chip, active && styles.chipActive]}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
+            accessibilityLabel={opt.label}
           >
             <Text style={[styles.label, active && styles.labelActive]} numberOfLines={2}>
               {opt.label}
@@ -41,38 +44,51 @@ export function FilterOptionChips<T extends string>({ options, value, onChange }
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing[2],
   },
   chip: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
+    paddingVertical: spacing[2.5],
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
   },
   chipActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
+    borderColor: c.primary,
+    backgroundColor: c.primaryLight,
   },
   label: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   labelActive: {
-    color: colors.primaryDark,
+    color: c.primaryDark,
   },
   hint: {
     width: '100%',
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     lineHeight: fontSize.xs * 1.4,
     marginTop: -spacing[1],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('components_ui_FilterOptionChips_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

@@ -1,5 +1,10 @@
 export function getErrorMessage(err: unknown, fallback = 'Une erreur est survenue'): string {
-  if (err instanceof Error && err.message) return err.message;
+  if (err instanceof Error) {
+    if (err.message === 'FILE_TOO_LARGE') {
+      return 'Fichier trop volumineux (maximum 25 Mo).';
+    }
+    if (err.message) return err.message;
+  }
   if (typeof err === 'object' && err !== null && 'message' in err) {
     const m = (err as { message?: unknown }).message;
     if (typeof m === 'string' && m.trim()) return m;

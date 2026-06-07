@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import type { ReactElement } from 'react';
 import type { Href } from 'expo-router';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -7,8 +10,8 @@ import { HeaderActionButton, type HeaderActionKind } from '@/navigation/HeaderAc
 import { getNotificationsPath } from '@/navigation/notifications-route';
 import { useHeaderBellBadgeCount } from '@/navigation/use-header-bell-badge';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, spacing } from '@/theme';
-import { fontFamily } from '@/theme/typography';
+import { spacing } from '@/theme';
+import { fontFamily, fontSize } from '@/theme/typography';
 
 const BELL_SIZE = 44;
 const BELL_ICON = 22;
@@ -30,7 +33,11 @@ export function HeaderNotificationBell() {
       onPress={() => router.push(getNotificationsPath(role))}
       hitSlop={4}
       accessibilityRole="button"
-      accessibilityLabel="Notifications"
+      accessibilityLabel={
+        showBadge
+          ? `Notifications, ${badgeCount > 99 ? 'plus de 99' : badgeCount} non lues`
+          : 'Notifications'
+      }
       style={({ pressed }) => [styles.host, pressed && styles.pressed]}
     >
       <View style={styles.circle}>
@@ -84,7 +91,8 @@ export function headerBarRightAction(
 
 const BADGE = 18;
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   host: {
     width: BELL_SIZE + 8,
     height: BELL_SIZE + 8,
@@ -100,7 +108,7 @@ const styles = StyleSheet.create({
     width: BELL_SIZE,
     height: BELL_SIZE,
     borderRadius: BELL_SIZE / 2,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
@@ -121,22 +129,32 @@ const styles = StyleSheet.create({
     height: BADGE,
     borderRadius: BADGE / 2,
     paddingHorizontal: 4,
-    backgroundColor: colors.error,
+    backgroundColor: c.error,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: colors.surface,
+    borderColor: c.surface,
   },
   badgeText: {
     fontFamily: fontFamily.extraBold,
-    fontSize: 10,
-    lineHeight: 12,
-    color: colors.textInverse,
+    fontSize: fontSize.xs,
+    lineHeight: fontSize.xs * 1.15,
+    color: c.textInverse,
     includeFontPadding: false,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2.5],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('navigation_HeaderNotificationButton_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

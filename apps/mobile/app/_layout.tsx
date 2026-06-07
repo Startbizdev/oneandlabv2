@@ -19,6 +19,7 @@ import {
 import { AppProviders } from '@/providers/AppProviders';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAuthStore } from '@/store/auth-store';
+import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { useAuthGuard } from '@/features/auth/hooks/use-auth-guard';
 import { registerNotificationHandlers } from '@/features/notifications/handlers/register-handlers';
 import { useDeepLinks } from '@/features/navigation/hooks/use-deep-links';
@@ -30,6 +31,8 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootLayoutInner() {
   const hydrate = useAuthStore((s) => s.hydrate);
+  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
+  const textScale = useAppPreferencesStore((s) => s.textScale);
 
   useEffect(() => {
     void hydrate();
@@ -43,7 +46,10 @@ function RootLayoutInner() {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" backgroundColor={colors.background} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { flex: 1, backgroundColor: colors.background } }}>
+      <Stack
+        key={`${colorblindType}:${textScale}`}
+        screenOptions={{ headerShown: false, contentStyle: { flex: 1, backgroundColor: colors.background } }}
+      >
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(nurse)" />

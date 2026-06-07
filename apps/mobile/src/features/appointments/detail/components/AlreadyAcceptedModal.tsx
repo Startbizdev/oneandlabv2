@@ -17,7 +17,7 @@ export function AlreadyAcceptedModal() {
           <Text style={styles.message}>
             Ce rendez-vous a déjà été accepté par un autre préleveur.
           </Text>
-          <Button title="OK" onPress={() => router.back()} fullWidth />
+          <Button title="OK" onPress={() => router.back()} fullWidth size="lg" />
         </View>
       </View>
     </Modal>

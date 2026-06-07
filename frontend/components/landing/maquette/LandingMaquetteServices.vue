@@ -26,37 +26,58 @@
         <article
           v-for="(card, i) in cards"
           :key="i"
-          class="group rounded-[22px] border p-9 transition-all duration-200 sm:px-10 sm:py-11"
+          class="group flex flex-col overflow-hidden rounded-[22px] border transition-all duration-200"
           :class="
             card.highlight
-              ? 'border-primary-500 bg-primary-500 text-white shadow-none hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)]'
+              ? 'border-primary-500 bg-primary-500 text-white shadow-none hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(28,199,181,0.25)]'
               : 'border-[#E8E8F0] bg-white hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)] dark:border-gray-800 dark:bg-gray-900'
           "
         >
           <div
-            class="mb-7 flex h-[52px] w-[52px] items-center justify-center rounded-[14px] border transition-colors"
-            :class="
-              card.highlight
-                ? 'border-white/20 bg-white/15 text-white'
-                : 'border-[#E8E8F0] bg-[#F7F7FB] text-primary-500 group-hover:border-primary-500/20 group-hover:bg-[#EBF3FD] dark:border-gray-700 dark:bg-gray-800'
-            "
+            v-if="card.image && !card.highlight"
+            class="relative aspect-[4/3] w-full overflow-hidden"
           >
-            <UIcon :name="card.icon" class="h-6 w-6" />
+            <img
+              :src="card.image"
+              :alt="card.imageAlt"
+              width="800"
+              height="600"
+              class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+              loading="lazy"
+              decoding="async"
+            />
+            <div
+              class="pointer-events-none absolute inset-0 bg-gradient-to-t from-primary-500/35 via-primary-500/10 to-transparent"
+              aria-hidden="true"
+            />
           </div>
-          <h3
-            class="mb-3 text-[1.125rem] font-bold leading-[1.3] tracking-[-0.02em]"
-            :class="card.highlight ? 'text-white' : 'text-[#0A0A0F] dark:text-white'"
-          >
-            {{ card.title }}
-          </h3>
-          <p
-            class="text-[0.9375rem] leading-[1.72]"
-            :class="
-              card.highlight ? 'text-white/75' : 'text-[#3D3D52] dark:text-gray-400'
-            "
-          >
-            {{ card.body }}
-          </p>
+
+          <div class="flex flex-1 flex-col p-9 sm:px-10 sm:py-11">
+            <div
+              class="mb-7 flex h-[52px] w-[52px] items-center justify-center rounded-[14px] border transition-colors"
+              :class="
+                card.highlight
+                  ? 'border-white/20 bg-white/15 text-white'
+                  : 'border-[#E8E8F0] bg-[#F7F7FB] text-primary-500 group-hover:border-primary-500/20 group-hover:bg-primary-50 dark:border-gray-700 dark:bg-gray-800 dark:group-hover:bg-primary-500/10'
+              "
+            >
+              <UIcon :name="card.icon" class="h-6 w-6" />
+            </div>
+            <h3
+              class="mb-3 text-[1.125rem] font-bold leading-[1.3] tracking-[-0.02em]"
+              :class="card.highlight ? 'text-white' : 'text-[#0A0A0F] dark:text-white'"
+            >
+              {{ card.title }}
+            </h3>
+            <p
+              class="text-[0.9375rem] leading-[1.72]"
+              :class="
+                card.highlight ? 'text-white/75' : 'text-[#3D3D52] dark:text-gray-400'
+              "
+            >
+              {{ card.body }}
+            </p>
+          </div>
         </article>
       </div>
     </div>
@@ -76,12 +97,16 @@ const cards = [
     icon: 'i-lucide-check-circle-2',
     title: 'Confirmation immédiate',
     body: 'Un professionnel qualifié disponible dans votre secteur accepte la demande. Vous recevez une confirmation par SMS et par email.',
+    image: '/images/landing/landing-process-confirmation.svg',
+    imageAlt: 'Confirmation de rendez-vous par SMS et email',
   },
   {
     highlight: false,
     icon: 'i-lucide-house',
     title: 'Soins à domicile',
     body: "Le professionnel intervient chez vous à l'heure convenue avec le matériel adapté. Qualité hospitalière dans votre foyer.",
+    image: '/images/landing/landing-process-home-care.svg',
+    imageAlt: 'Soins infirmiers à domicile par un professionnel Cary',
   },
 ] as const;
 </script>

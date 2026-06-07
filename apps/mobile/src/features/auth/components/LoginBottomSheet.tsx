@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -65,7 +67,8 @@ export function LoginBottomSheet({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   content: {
     width: '100%',
     gap: spacing[4],
@@ -77,11 +80,21 @@ const styles = StyleSheet.create({
   registerText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'center',
   },
   registerAccent: {
     fontFamily: fontFamily.bold,
-    color: colors.primary,
+    color: c.primary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_auth_components_LoginBottomSheet_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

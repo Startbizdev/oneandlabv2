@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { CalendarDays, CalendarPlus, Heart, LayoutGrid, Star } from 'lucide-react-native';
+import { CalendarDays, CalendarPlus, Heart, LayoutGrid, Smile } from 'lucide-react-native';
 import { TabBar } from '@/components/navigation/TabBar';
 import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
@@ -59,13 +59,15 @@ export default function PatientTabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="reviews"
+        name="ai"
         options={{
-          title: 'Mes avis',
-          headerTitle: tabHeaderTitle('Mes avis', Star),
-          tabBarLabel: 'Avis',
+          title: 'Assistant Cary',
+          headerTitle: tabHeaderTitle('Assistant Cary', Smile),
+          headerRight: () => null,
+          tabBarHideOnKeyboard: true,
+          tabBarLabel: 'Cary',
           tabBarIcon: ({ color, size }) => (
-            <Star color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
+            <Smile color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
           ),
         }}
       />

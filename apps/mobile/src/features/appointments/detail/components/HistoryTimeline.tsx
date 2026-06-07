@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -65,7 +67,8 @@ export function HistoryTimeline({ entries }: { entries: AppointmentHistoryEntry[
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   timeline: {
     gap: 0,
   },
@@ -81,20 +84,20 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: radius.full,
-    backgroundColor: colors.border,
+    backgroundColor: c.border,
     borderWidth: 2,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     marginTop: 2,
     flexShrink: 0,
   },
   dotActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryLight,
+    backgroundColor: c.primary,
+    borderColor: c.primaryLight,
   },
   line: {
     flex: 1,
     width: 1.5,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     marginTop: 4,
     marginBottom: 0,
   },
@@ -108,7 +111,7 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   metaRow: {
     flexDirection: 'row',
@@ -117,6 +120,16 @@ const styles = StyleSheet.create({
   metaText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_HistoryTimeline_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

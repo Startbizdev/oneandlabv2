@@ -25,10 +25,4 @@ export const LEGAL_PAGES: LegalPageDef[] = [
     path: '/cgv',
     description: 'CGV et conditions de service',
   },
-  {
-    slug: 'contact',
-    label: 'Contact',
-    path: '/contact',
-    description: 'Nous contacter',
-  },
 ];

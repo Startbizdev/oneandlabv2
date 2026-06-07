@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -19,7 +20,7 @@ import { ReviewReceivedCard } from '@/features/reviews/components/ReviewReceived
 import { ReviewReplySheet } from '@/features/reviews/components/ReviewReplySheet';
 import { ReviewStatsBanner } from '@/features/reviews/components/ReviewStatsBanner';
 import type { Review, ReviewFilter, ReviewStats } from '@/features/reviews/types';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function filterReviews(list: Review[], filter: ReviewFilter): Review[] {

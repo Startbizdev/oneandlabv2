@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
@@ -16,6 +19,7 @@ import {
   type SelectedServiceInput,
 } from '@oneandlab/shared-utils';
 import type { CareCategory } from '@/features/categories/api/categories.service';
+import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import type { BookingServiceFormSlice } from '../utils/booking-service-form-slice';
 import {
   buildCareFilterTabs,
@@ -27,21 +31,19 @@ import {
   sortCareCategoriesWithAutreLast,
 } from '../utils/booking-care-catalog';
 import { BookingPremiumStepCta } from './BookingPremiumStepCta';
+import { BookingWizardProgress } from './BookingWizardProgress';
 import { CareCategoryFilterBar } from './CareCategoryFilterBar';
 import { CareServiceQuickOptionsSheet } from './CareServiceQuickOptionsSheet';
 import { SelectedServicesDetailSheet } from './SelectedServicesDetailSheet';
 import { useToast } from '@/providers/ToastProvider';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-const GRID_GAP = spacing[2];
 const H_PAD = spacing[4];
-/** Largeur tuile — 2 colonnes avec espace entre (plus fiable que px + columnGap). */
-const GRID_TILE_WIDTH = '48.5%';
 /** Hauteur pill CTA flottant (étape 1). */
 const PREMIUM_CTA_HEIGHT = 58;
-const TILE_EMOJI_ORB = 38;
-const TILE_EMOJI_ORB_WIDE = 46;
+const TILE_EMOJI_ORB = 52;
+const LIST_GAP = spacing[2.5];
 
 interface Props {
   nursingCategories: CareCategory[];
@@ -55,6 +57,8 @@ interface Props {
   onEnsureCategoryReady?: (cat: CareCategory) => Promise<CareCategory>;
   formDataByService?: Record<string, BookingServiceFormSlice | undefined>;
   loading?: boolean;
+  /** Estimation du nombre d’étapes après validation (min. 3). */
+  progressTotal?: number;
 }
 
 function CareEmojiOrb({
@@ -66,7 +70,7 @@ function CareEmojiOrb({
   backgroundColor: string;
   size: number;
 }) {
-  const fontSize = Math.round(size * 0.46);
+  const glyphSize = Math.round(size * 0.46);
   return (
     <View
       style={[
@@ -80,7 +84,7 @@ function CareEmojiOrb({
       ]}
     >
       <Text
-        style={[styles.emojiOrbGlyph, { fontSize, lineHeight: fontSize + 2 }]}
+        style={[styles.emojiOrbGlyph, { fontSize: glyphSize, lineHeight: glyphSize + 2 }]}
         accessibilityElementsHidden
       >
         {emoji}
@@ -89,22 +93,22 @@ function CareEmojiOrb({
   );
 }
 
-function CareGridTile({
+function CareListTile({
   cat,
   orbColor,
   selected,
-  wide,
+  hint,
   onPress,
 }: {
   cat: CareCategory;
   orbColor: string;
   selected: boolean;
-  wide?: boolean;
+  hint?: string;
   onPress: () => void;
 }) {
+  const c = useAppColors();
   const emoji =
     careCategoryEmojiForCategory({ name: cat.name, icon: cat.icon, type: cat.type }) || '➕';
-  const orbSize = wide ? TILE_EMOJI_ORB_WIDE : TILE_EMOJI_ORB;
 
   return (
     <Pressable
@@ -114,63 +118,49 @@ function CareGridTile({
       accessibilityLabel={
         selected ? `${cat.label}, sélectionné` : `Ajouter ${cat.label}`
       }
-      style={({ pressed }) => [
-        styles.tileHit,
-        wide && styles.tileHitWide,
-        pressed && styles.tilePressed,
-      ]}
+      style={({ pressed }) => [styles.tileHit, pressed && styles.tilePressed]}
     >
       <View
         style={[
           styles.tile,
-          wide && styles.tileWide,
           selected ? styles.tileSelected : styles.tileDefault,
         ]}
       >
         {selected ? (
           <LinearGradient
             pointerEvents="none"
-            colors={['rgba(255,255,255,0.5)', 'rgba(255,255,255,0)']}
+            colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0)']}
             style={StyleSheet.absoluteFill}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
           />
         ) : null}
 
-        {selected ? (
-          <View style={styles.checkBadge} pointerEvents="none">
-            <Check size={12} color={colors.textInverse} strokeWidth={3} />
-          </View>
-        ) : (
-          <View style={styles.addBadge} pointerEvents="none">
-            <Plus size={14} color={colors.primary} strokeWidth={2.75} />
-          </View>
-        )}
+        <CareEmojiOrb emoji={emoji} backgroundColor={orbColor} size={TILE_EMOJI_ORB} />
 
-        {wide ? (
-          <>
-            <CareEmojiOrb emoji={emoji} backgroundColor={orbColor} size={orbSize} />
-            <View style={styles.tileWideCopy}>
-              <Text
-                style={[styles.tileLabelWide, selected && styles.tileLabelSelected]}
-                numberOfLines={2}
-              >
-                {cat.label}
-              </Text>
-              <Text style={styles.tileWideHint}>Soin non listé ci-dessus</Text>
-            </View>
-          </>
-        ) : (
-          <>
-            <CareEmojiOrb emoji={emoji} backgroundColor={orbColor} size={orbSize} />
-            <Text
-              style={[styles.tileLabel, selected && styles.tileLabelSelected]}
-              numberOfLines={3}
-            >
-              {cat.label}
-            </Text>
-          </>
-        )}
+        <View style={styles.tileCopy}>
+          <Text
+            style={[styles.tileLabel, selected && styles.tileLabelSelected]}
+            numberOfLines={2}
+          >
+            {cat.label}
+          </Text>
+          {hint ? <Text style={styles.tileHint}>{hint}</Text> : null}
+        </View>
+
+        <View
+          style={[
+            styles.tileAction,
+            selected ? styles.tileActionSelected : styles.tileActionIdle,
+          ]}
+          pointerEvents="none"
+        >
+          {selected ? (
+            <Check size={18} color={c.textInverse} strokeWidth={3} />
+          ) : (
+            <Plus size={18} color={c.primary} strokeWidth={2.75} />
+          )}
+        </View>
       </View>
     </Pressable>
   );
@@ -188,6 +178,7 @@ export function CareSelectionStep({
   onEnsureCategoryReady,
   formDataByService,
   loading,
+  progressTotal = 3,
 }: Props) {
   const { show: toast } = useToast();
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
@@ -211,12 +202,17 @@ export function CareSelectionStep({
     setDetailSheetOpen(true);
   }, []);
 
+  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
+
   const fullList = useMemo(
     () => [...nursingCategories, ...bloodCategories],
     [nursingCategories, bloodCategories],
   );
 
-  const tileOrbColorMap = useMemo(() => buildCareTileOrbColorMap(fullList), [fullList]);
+  const tileOrbColorMap = useMemo(
+    () => buildCareTileOrbColorMap(fullList),
+    [fullList, colorblindType],
+  );
 
   const filterTabs = useMemo(() => buildCareFilterTabs(fullList), [fullList]);
 
@@ -322,6 +318,12 @@ export function CareSelectionStep({
   const listHeader = useMemo(
     () => (
       <View style={styles.listHeader}>
+        <BookingWizardProgress
+          current={1}
+          total={progressTotal}
+          label="Choix des soins"
+        />
+
         {filterTabs.length > 0 ? (
           <CareCategoryFilterBar
             tabs={filterTabs}
@@ -329,18 +331,36 @@ export function CareSelectionStep({
             onChange={setFilterTab}
           />
         ) : null}
+
         <View style={styles.metaRow}>
-          <Text style={styles.metaTitle}>{careListHeading(filterTab, filterTabs)}</Text>
-          <Text style={styles.metaCount}>
-            {displayList.length} {displayList.length > 1 ? 'soins' : 'soin'}
-          </Text>
+          <View style={styles.metaCopy}>
+            <Text style={styles.metaTitle}>{careListHeading(filterTab, filterTabs)}</Text>
+            <Text style={styles.metaSubtitle}>
+              {hasSelection
+                ? `${selectionCount} sélectionné${selectionCount > 1 ? 's' : ''} — touchez à nouveau pour retirer`
+                : 'Choisissez un ou plusieurs soins ci-dessous'}
+            </Text>
+          </View>
+          <View style={styles.metaCountPill}>
+            <Text style={styles.metaCount}>{displayList.length}</Text>
+            <Text style={styles.metaCountLabel}>
+              {displayList.length > 1 ? 'soins' : 'soin'}
+            </Text>
+          </View>
         </View>
       </View>
     ),
-    [displayList.length, filterTab, filterTabs],
+    [
+      displayList.length,
+      filterTab,
+      filterTabs,
+      hasSelection,
+      progressTotal,
+      selectionCount,
+    ],
   );
 
-  const gridBody = useMemo(() => {
+  const listBody = useMemo(() => {
     if (gridItems.length === 0) {
       return (
         <Text style={styles.emptyList}>
@@ -351,16 +371,15 @@ export function CareSelectionStep({
       );
     }
     return (
-      <View style={styles.grid}>
+      <View style={styles.list}>
         {gridItems.map((cat) => (
-          <View key={cat.id} style={styles.gridCell}>
-            <CareGridTile
-              cat={cat}
-              orbColor={careTileEmojiOrbColor(cat, tileOrbColorMap)}
-              selected={isSelected(cat.id)}
-              onPress={() => void attemptAdd(cat)}
-            />
-          </View>
+          <CareListTile
+            key={cat.id}
+            cat={cat}
+            orbColor={careTileEmojiOrbColor(cat, tileOrbColorMap)}
+            selected={isSelected(cat.id)}
+            onPress={() => void attemptAdd(cat)}
+          />
         ))}
       </View>
     );
@@ -372,12 +391,12 @@ export function CareSelectionStep({
       <View style={styles.autreBlock}>
         <Text style={styles.autreKicker}>Besoin d’un autre soin ?</Text>
         {autreItems.map((cat) => (
-          <CareGridTile
+          <CareListTile
             key={cat.id}
             cat={cat}
             orbColor={careTileEmojiOrbColor(cat, tileOrbColorMap)}
             selected={isSelected(cat.id)}
-            wide
+            hint="Soin non listé ci-dessus"
             onPress={() => void attemptAdd(cat)}
           />
         ))}
@@ -389,7 +408,7 @@ export function CareSelectionStep({
     <>
       <View style={styles.root}>
         <ScrollView
-          style={styles.list}
+          style={styles.listScroll}
           contentContainerStyle={[styles.listContent, { paddingBottom: scrollBottomPad }]}
           contentInsetAdjustmentBehavior="automatic"
           nestedScrollEnabled
@@ -397,7 +416,7 @@ export function CareSelectionStep({
           keyboardShouldPersistTaps="handled"
         >
           {listHeader}
-          {gridBody}
+          {listBody}
           {autreFooter}
         </ScrollView>
 
@@ -444,19 +463,20 @@ export function CareSelectionStep({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   root: {
     flex: 1,
     minHeight: 0,
-    backgroundColor: colors.bookingCanvas,
+    backgroundColor: c.bookingCanvas,
   },
-  list: {
+  listScroll: {
     flex: 1,
-    backgroundColor: colors.bookingCanvas,
+    backgroundColor: c.bookingCanvas,
   },
   listContent: {
     paddingHorizontal: H_PAD,
-    paddingTop: spacing[2],
+    paddingTop: spacing[4],
     flexGrow: 1,
   },
   floatingCta: {
@@ -466,104 +486,124 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   listHeader: {
-    gap: spacing[3],
-    marginBottom: spacing[3],
+    gap: spacing[4],
+    marginBottom: spacing[4],
   },
   metaRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: spacing[2],
+    gap: spacing[3],
+  },
+  metaCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing[1],
   },
   metaTitle: {
-    flex: 1,
     fontFamily: fontFamily.bold,
-    fontSize: fontSize.base,
-    color: colors.textPrimary,
-    letterSpacing: -0.2,
+    fontSize: fontSize.lg,
+    color: c.textPrimary,
+    letterSpacing: -0.35,
+    lineHeight: fontSize.lg * 1.15,
+  },
+  metaSubtitle: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.sm,
+    color: c.textSecondary,
+    lineHeight: fontSize.sm * 1.4,
+  },
+  metaCountPill: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing[1],
+    paddingHorizontal: spacing[2.5],
+    paddingVertical: spacing[1.5],
+    borderRadius: radius.full,
+    backgroundColor: c.surface,
+    borderWidth: 1,
+    borderColor: c.border,
+    flexShrink: 0,
   },
   metaCount: {
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.base,
+    color: c.textPrimary,
+  },
+  metaCountLabel: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: GRID_GAP,
+  list: {
+    gap: LIST_GAP,
     width: '100%',
-  },
-  gridCell: {
-    width: GRID_TILE_WIDTH,
-    flexShrink: 0,
-    flexGrow: 0,
   },
   tileHit: {
     width: '100%',
   },
-  tileHitWide: {
-    width: '100%',
-  },
   tilePressed: {
-    opacity: 0.92,
-    transform: [{ scale: 0.98 }],
+    opacity: 0.94,
+    transform: [{ scale: 0.985 }],
   },
   tile: {
     width: '100%',
-    minHeight: 76,
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[2],
+    minHeight: 88,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3.5],
     borderRadius: radius.xl,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[1.5],
-    overflow: 'hidden',
-  },
-  tileWide: {
-    minHeight: 72,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
     gap: spacing[3],
-    paddingHorizontal: spacing[4],
+    overflow: 'hidden',
   },
   tileDefault: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: c.border,
+    backgroundColor: c.surface,
   },
   tileSelected: {
     borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryMid,
+    borderColor: c.primary,
+    backgroundColor: c.primaryMid,
   },
-  checkBadge: {
-    position: 'absolute',
-    top: spacing[1.5],
-    right: spacing[1.5],
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.primary,
+  tileCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing[0.5],
+    justifyContent: 'center',
+  },
+  tileLabel: {
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.base,
+    color: c.textPrimary,
+    letterSpacing: -0.2,
+    lineHeight: fontSize.base * 1.25,
+  },
+  tileLabelSelected: {
+    color: c.primaryDark,
+  },
+  tileHint: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.sm,
+    color: c.textSecondary,
+    lineHeight: fontSize.sm * 1.35,
+  },
+  tileAction: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 2,
+    flexShrink: 0,
   },
-  addBadge: {
-    position: 'absolute',
-    top: spacing[1.5],
-    right: spacing[1.5],
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.primaryLight,
+  tileActionIdle: {
+    backgroundColor: c.primaryLight,
     borderWidth: 1.5,
-    borderColor: colors.primaryMid,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
+    borderColor: c.primaryMid,
+  },
+  tileActionSelected: {
+    backgroundColor: c.primary,
   },
   emojiOrb: {
     alignItems: 'center',
@@ -573,51 +613,34 @@ const styles = StyleSheet.create({
   emojiOrbGlyph: {
     textAlign: 'center',
   },
-  tileLabel: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xs,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    lineHeight: fontSize.xs * 1.35,
-  },
-  tileLabelSelected: {
-    color: colors.primaryDark,
-  },
-  tileWideCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  tileLabelWide: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-    textAlign: 'left',
-  },
-  tileWideHint: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
-  },
   autreBlock: {
-    marginTop: spacing[2],
-    gap: spacing[2],
-    paddingTop: spacing[2],
+    marginTop: spacing[4],
+    gap: LIST_GAP,
+    paddingTop: spacing[4],
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
   autreKicker: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.sm,
+    color: c.textSecondary,
+    letterSpacing: 0.2,
   },
   emptyList: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSize.sm,
-    color: colors.textTertiary,
+    fontSize: fontSize.base,
+    color: c.textTertiary,
     textAlign: 'center',
-    paddingVertical: spacing[8],
+    paddingVertical: spacing[10],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_CareSelectionStep_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

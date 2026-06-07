@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useLayoutEffect, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from 'expo-router';
@@ -12,7 +15,7 @@ import {
 } from '@/lib/biometric-auth';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function openDeviceBiometricSettings() {
@@ -134,15 +137,16 @@ export function ProfileSecurityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     paddingLeft: spacing[3],
     paddingRight: spacing[1],
   },
@@ -150,13 +154,13 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   iconWrapActive: {
-    backgroundColor: colors.surfaceSubtle,
+    backgroundColor: c.surfaceSubtle,
   },
   rowWrap: {
     flex: 1,
@@ -165,7 +169,17 @@ const styles = StyleSheet.create({
   error: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.base,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'center',
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_screens_ProfileSecurityScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

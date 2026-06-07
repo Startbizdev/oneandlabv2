@@ -1,10 +1,11 @@
+import { colors } from '@/theme';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import type { Review } from '@/features/reviews/types';
 import { reviewerDisplayName } from '@/features/reviews/utils/review-labels';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { MessageSquare } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
@@ -56,7 +57,7 @@ export function ReviewReplySheet({
       <Text style={styles.hint}>Votre réponse sera visible sur votre fiche publique Cary.</Text>
       <View style={styles.actions}>
         <View style={styles.actionBtn}>
-          <Button title="Annuler" variant="outline" onPress={onClose} fullWidth />
+          <Button title="Annuler" variant="outline" onPress={onClose} fullWidth size="lg" />
         </View>
         <View style={styles.actionBtn}>
           <Button
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
     padding: spacing[3],
     gap: spacing[2],
     borderLeftWidth: 3,
-    borderLeftColor: '#F59E0B',
+    borderLeftColor: colors.star,
   },
   previewComment: {
     fontFamily: fontFamily.regular,

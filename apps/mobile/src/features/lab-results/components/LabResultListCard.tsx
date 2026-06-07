@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -5,7 +8,7 @@ import { ChevronRight, FlaskConical } from 'lucide-react-native';
 import type { LabResultListItem } from '@oneandlab/shared-types';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -112,13 +115,14 @@ export const LabResultListCard = React.memo(function LabResultListCard({
 const ICON = 40;
 const CHEVRON = 16;
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
     alignSelf: 'stretch',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     overflow: 'hidden',
   },
   cardPressed: {
@@ -134,7 +138,7 @@ const styles = StyleSheet.create({
     width: ICON,
     height: ICON,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing[3],
@@ -157,13 +161,13 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.15,
   },
   time: {
     fontFamily: fontFamily.medium,
-    fontSize: 10,
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     lineHeight: 14,
     flexShrink: 0,
     paddingTop: 1,
@@ -172,7 +176,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[1],
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.xs * 1.5,
   },
   chevron: {
@@ -180,5 +184,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_lab_results_components_LabResultListCard_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

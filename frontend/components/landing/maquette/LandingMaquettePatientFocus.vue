@@ -7,11 +7,11 @@
         class="m-0 max-h-[min(520px,70vh)] overflow-hidden rounded-[22px] bg-[#E8E8F0] shadow-[0_12px_48px_rgba(15,23,42,0.1)] aspect-[4/5] max-lg:aspect-[16/10] max-lg:max-h-[min(420px,55vh)]"
       >
         <img
-          src="/images/landing/hero-infirmier.png"
-          width="800"
-          height="1200"
-          class="h-full w-full object-cover object-[center_22%]"
-          alt="Soins infirmiers à domicile : professionnel Cary auprès d'un patient"
+          src="/images/landing/landing-cary-cta-home-care.png"
+          width="1600"
+          height="900"
+          class="h-full w-full object-cover object-[center_35%]"
+          alt="Soins infirmiers à domicile : infirmière Cary avec une patiente chez elle"
           loading="lazy"
           decoding="async"
         />

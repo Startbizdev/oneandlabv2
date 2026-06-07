@@ -1,9 +1,10 @@
+import { colors } from '@/theme';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { MessageCircle, Phone, User } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import type { PhoneContactAction } from '@/utils/contact-actions';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type DetailEntityRowProps = {
@@ -11,6 +12,8 @@ export type DetailEntityRowProps = {
   eyebrow?: string;
   title: string;
   subtitle?: string;
+  /** Contenu compact sous le titre (ex. note + avis). */
+  belowTitle?: ReactNode;
   leading?: ReactNode;
   contactActions?: PhoneContactAction[];
   /** Contenu additionnel à droite (avant les boutons contact / profil). */
@@ -33,6 +36,7 @@ export function DetailEntityRow({
   eyebrow,
   title,
   subtitle,
+  belowTitle,
   leading,
   contactActions = [],
   trailing,
@@ -58,6 +62,7 @@ export function DetailEntityRow({
           <Text style={styles.title} numberOfLines={1}>
             {title}
           </Text>
+          {belowTitle}
           {subtitle ? (
             <Text style={styles.subtitle} numberOfLines={1}>
               {subtitle}
@@ -75,7 +80,7 @@ export function DetailEntityRow({
                   key={action.key}
                   title={action.label}
                   variant="muted"
-                  size="mini"
+                  size="sm"
                   leftIcon={<Icon size={11} color={colors.textSecondary} strokeWidth={2.25} />}
                   onPress={action.onPress}
                 />
@@ -85,7 +90,7 @@ export function DetailEntityRow({
               <Button
                 title="Profil"
                 variant="muted"
-                size="mini"
+                size="sm"
                 leftIcon={<User size={11} color={colors.textSecondary} strokeWidth={2.25} />}
                 onPress={onProfilePress}
                 accessibilityLabel={
@@ -120,20 +125,19 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+    letterSpacing: 0.2,
   },
   title: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
+    fontSize: fontSize.base,
     color: colors.textPrimary,
   },
   subtitle: {
     marginTop: 1,
     fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
     color: colors.textSecondary,
   },
   trailing: {

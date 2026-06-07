@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useMemo, useState } from 'react';
 import {
   FlatList,
@@ -11,7 +14,7 @@ import { Check, Search } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import type { PatientOption } from './FormPatientSection';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const H_PAD = spacing[4];
@@ -75,7 +78,7 @@ export function PatientSelectSheet({
           </Text>
           <View style={styles.trailing}>
             {selected ? (
-              <Check size={18} color={colors.primary} strokeWidth={2.5} />
+              <Check size={20} color={colors.primary} strokeWidth={2.5} />
             ) : null}
           </View>
         </View>
@@ -121,7 +124,8 @@ export function PatientSelectSheet({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   sheetBody: {
     padding: 0,
     gap: 0,
@@ -137,8 +141,8 @@ const styles = StyleSheet.create({
     width: '100%',
     maxHeight: 360,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
+    borderTopColor: c.border,
+    backgroundColor: c.surface,
     overflow: 'hidden',
   },
   list: {
@@ -151,13 +155,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    minHeight: 50,
+    minHeight: 52,
     paddingVertical: spacing[3],
     paddingHorizontal: H_PAD,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
   },
   rowSelected: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
   },
   name: {
     flex: 1,
@@ -165,10 +169,10 @@ const styles = StyleSheet.create({
     marginRight: spacing[2],
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   nameSelected: {
-    color: colors.primary,
+    color: c.primary,
   },
   trailing: {
     width: 22,
@@ -177,14 +181,24 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
+    backgroundColor: c.border,
   },
   empty: {
     paddingHorizontal: H_PAD,
     paddingVertical: spacing[6],
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     textAlign: 'center',
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_PatientSelectSheet_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

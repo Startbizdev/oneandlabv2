@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Phone, MessageSquare, Mail } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
@@ -6,7 +7,7 @@ import {
   getRelationshipLabel,
   patientDisplayName,
 } from '@/utils/appointment-detail-display';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
     color: colors.textTertiary,
     letterSpacing: 0.5,
     textTransform: 'uppercase',

@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   },
   caption: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
     color: colors.textSecondary,
     marginTop: spacing[1],
   },

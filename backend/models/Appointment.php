@@ -91,8 +91,50 @@ class Appointment
         return $cache[$table];
     }
 
+    /** Statistiques d'avis visibles pour un professionnel (détail RDV). */
+    private function reviewStatsForUserId(?string $userId): array
+    {
+        if ($userId === null || trim((string) $userId) === '') {
+            return ['average_rating' => null, 'total_reviews' => null];
+        }
+        try {
+            require_once __DIR__ . '/Review.php';
+            $reviewModel = new Review();
+            $stats = $reviewModel->getStats((string) $userId);
+            $total = (int) ($stats['total_reviews'] ?? 0);
+            if ($total <= 0) {
+                return ['average_rating' => null, 'total_reviews' => null];
+            }
+
+            return [
+                'average_rating' => $stats['average_rating'],
+                'total_reviews' => $total,
+            ];
+        } catch (Throwable $e) {
+            return ['average_rating' => null, 'total_reviews' => null];
+        }
+    }
+
+    private function applyAssigneeReviewStats(array &$appointment): void
+    {
+        $map = [
+            ['assigned_nurse_id', 'assigned_nurse_average_rating', 'assigned_nurse_reviews_count'],
+            ['assigned_lab_id', 'assigned_lab_average_rating', 'assigned_lab_reviews_count'],
+            ['assigned_to', 'assigned_to_average_rating', 'assigned_to_reviews_count'],
+        ];
+        foreach ($map as [$idKey, $ratingKey, $countKey]) {
+            $appointment[$ratingKey] = null;
+            $appointment[$countKey] = null;
+            if (empty($appointment[$idKey])) {
+                continue;
+            }
+            $stats = $this->reviewStatsForUserId((string) $appointment[$idKey]);
+            $appointment[$ratingKey] = $stats['average_rating'];
+            $appointment[$countKey] = $stats['total_reviews'];
+        }
+    }
+
     /**
-     * Parse le tableau brut `blood_test_items` (POST ou form_data) — même règles qu'à la création.
      *
      * @return list<array{category_id: ?string, label: ?string, care_options: array, sort_order: int}>
      */
@@ -1727,6 +1769,8 @@ class Appointment
                 }
             }
 
+            $this->applyAssigneeReviewStats($appointment);
+
             // Origine du RDV (créateur)
             $appointment['creator_origin'] = null;
             $cb = $appointment['created_by'] ?? null;
@@ -1743,7 +1787,7 @@ class Appointment
                     if ($cp) {
                         $fn = trim((string) ($cp['first_name'] ?? ''));
                         $ln = trim((string) ($cp['last_name'] ?? ''));
-                        $appointment['creator_origin'] = [
+                        $appointment['creator_origin'] = array_merge([
                             'kind' => 'nurse',
                             'id' => (string) $cb,
                             'display_name' => trim($fn . ' ' . $ln) ?: null,
@@ -1752,7 +1796,7 @@ class Appointment
                             'phone' => isset($cp['phone']) ? trim((string) $cp['phone']) : null,
                             'profile_image_url' => isset($cp['profile_image_url']) ? trim((string) $cp['profile_image_url']) : null,
                             'public_slug' => isset($cp['public_slug']) && trim((string) $cp['public_slug']) !== '' ? trim((string) $cp['public_slug']) : null,
-                        ];
+                        ], $this->reviewStatsForUserId((string) $cb));
                     }
                 } elseif ($cbRole === 'pro') {
                     $cp = $userModel->getById((string) $cb, 'system', 'system');
@@ -1774,7 +1818,7 @@ class Appointment
                                 $socialLinks = $cp['social_links'];
                             }
                         }
-                        $appointment['creator_origin'] = [
+                        $appointment['creator_origin'] = array_merge([
                             'kind' => 'pro',
                             'id' => (string) $cb,
                             'display_name' => trim($fn . ' ' . $ln) ?: null,
@@ -1789,7 +1833,7 @@ class Appointment
                             'website_url' => $website !== '' ? $website : null,
                             'social_links' => $socialLinks,
                             'public_slug' => isset($cp['public_slug']) && trim((string) $cp['public_slug']) !== '' ? trim((string) $cp['public_slug']) : null,
-                        ];
+                        ], $this->reviewStatsForUserId((string) $cb));
                     }
                 } elseif (in_array($cbRole, ['lab', 'subaccount', 'preleveur'], true)) {
                     $cp = $userModel->getById((string) $cb, 'system', 'system');
@@ -1798,14 +1842,14 @@ class Appointment
                         $fn = trim((string) ($cp['first_name'] ?? ''));
                         $ln = trim((string) ($cp['last_name'] ?? ''));
                         $name = trim($fn . ' ' . $ln);
-                        $appointment['creator_origin'] = [
+                        $appointment['creator_origin'] = array_merge([
                             'kind' => 'lab_team',
                             'id' => (string) $cb,
                             'role' => $cbRole,
                             'display_name' => $company !== '' ? $company : ($name !== '' ? $name : null),
                             'profile_image_url' => isset($cp['profile_image_url']) ? trim((string) $cp['profile_image_url']) : null,
                             'public_slug' => isset($cp['public_slug']) && trim((string) $cp['public_slug']) !== '' ? trim((string) $cp['public_slug']) : null,
-                        ];
+                        ], $this->reviewStatsForUserId((string) $cb));
                     }
                 }
             }

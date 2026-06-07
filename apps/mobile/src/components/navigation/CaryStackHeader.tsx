@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { getDefaultHeaderHeight, getHeaderTitle } from '@react-navigation/elements';
 import { Platform, StyleSheet, Text, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native';
 import type { NativeStackHeaderProps } from '@react-navigation/native-stack';
@@ -9,7 +10,7 @@ import {
   APP_HEADER_INNER_H_PADDING,
 } from '@/components/navigation/header-layout';
 import { HeaderBackButton } from '@/navigation/HeaderBackButton';
-import { colors } from '@/theme';
+
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const STATUS_BAR_OFFSET = Platform.select({ ios: -7, default: 0 });

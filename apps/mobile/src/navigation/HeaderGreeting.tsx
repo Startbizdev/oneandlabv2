@@ -1,7 +1,8 @@
+import { colors } from '@/theme';
 import { StyleSheet, Text, View } from 'react-native';
 import { APP_HEADER_INNER_H_PADDING } from '@/components/navigation/header-layout';
 import { useAuthStore } from '@/store/auth-store';
-import { colors } from '@/theme';
+
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function formatFirstName(raw?: string | null): string {

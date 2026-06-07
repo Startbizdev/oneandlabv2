@@ -1,5 +1,5 @@
 import { api } from '@/api/client';
-import { buildMedicalDocumentForm, uploadFormData } from '@/lib/uploads/upload-file';
+import { uploadMedicalDocument } from '@/lib/uploads/upload-file';
 import { fetchAppointmentsPaginated } from '@/features/appointments/api/appointments.service';
 import type { Appointment } from '@oneandlab/shared-types';
 
@@ -41,11 +41,11 @@ export async function uploadPatientProfileDocument(
   docType: PatientProfileUploadType,
   file: { uri: string; fileName: string; mimeType: string },
 ): Promise<void> {
-  const fd = await buildMedicalDocumentForm(
+  await uploadMedicalDocument(
     { uri: file.uri, fileName: file.fileName, mimeType: file.mimeType },
     { user_id: patientUserId, document_type: docType },
+    '/patient-documents/upload',
   );
-  await uploadFormData('/patient-documents/upload', fd);
 }
 
 export const RELATIVE_PROFILE_UPLOAD_TYPES = [
@@ -61,11 +61,11 @@ export async function uploadRelativeProfileDocument(
   docType: RelativeProfileUploadType,
   file: { uri: string; fileName: string; mimeType: string },
 ): Promise<void> {
-  const fd = await buildMedicalDocumentForm(
+  await uploadMedicalDocument(
     { uri: file.uri, fileName: file.fileName, mimeType: file.mimeType },
     { relative_id: relativeId, document_type: docType },
+    '/patient-documents/upload',
   );
-  await uploadFormData('/patient-documents/upload', fd);
 }
 
 export async function fetchPatientProfile(userId: string) {
@@ -97,8 +97,28 @@ export type FetchProfileDocumentsParams = {
   relativeId?: string;
 };
 
+/** Fusionne un document profil dans la liste cache (après upload). */
+export function mergePatientDocumentRow(
+  rows: PatientDocumentRow[] | undefined,
+  uploaded: { id: string; file_name?: string; document_type: string },
+): PatientDocumentRow[] {
+  const base = rows ?? [];
+  const without = base.filter((r) => r.document_type !== uploaded.document_type);
+  return [
+    ...without,
+    {
+      id: uploaded.id,
+      medical_document_id: uploaded.id,
+      document_type: uploaded.document_type,
+      file_name: uploaded.file_name,
+      created_at: new Date().toISOString(),
+      source: 'profile' as const,
+    },
+  ];
+}
+
 /** Dossier patient connecté, proche, ou patient staff (aligné web GET /patient-documents). */
-export async function fetchProfileDocuments(params: FetchProfileDocumentsParams) {
+export async function fetchProfileDocuments(params: FetchProfileDocumentsParams = {}) {
   const qs = new URLSearchParams();
   if (params.relativeId) {
     qs.set('relative_id', params.relativeId);

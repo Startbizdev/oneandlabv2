@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import React, { useCallback } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Phone, MessageSquare, Mail, AlertTriangle, User } from 'lucide-react-native';
@@ -11,7 +14,7 @@ import {
   getRelationshipLabel,
   patientDisplayName,
 } from '@/utils/appointment-detail-display';
-import { colors, spacing, elevation } from '@/theme';
+import { spacing, elevation } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -141,7 +144,8 @@ export function RdvPatientSection({ apt, role }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -152,7 +156,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -162,34 +166,34 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   patientName: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.3,
   },
   birthText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     marginBottom: spacing[1],
   },
   relText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     marginBottom: spacing[1],
   },
   minorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: colors.warningLight,
+    backgroundColor: c.warningLight,
     borderRadius: 8,
     padding: spacing[3],
     marginTop: spacing[2],
@@ -198,7 +202,7 @@ const styles = StyleSheet.create({
   minorText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.warning,
+    color: c.warning,
     flex: 1,
   },
   actions: {
@@ -208,7 +212,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[3],
     paddingTop: spacing[3],
     borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
   chip: {
     flexDirection: 'row',
@@ -216,39 +220,49 @@ const styles = StyleSheet.create({
     gap: spacing[1.5],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
   chipLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   bookingBlock: {
     marginTop: spacing[4],
     paddingTop: spacing[4],
     borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
     gap: spacing[1],
   },
   bookingLabel: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   bookingName: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   bookingHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     marginBottom: spacing[1],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_RdvPatientSection_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

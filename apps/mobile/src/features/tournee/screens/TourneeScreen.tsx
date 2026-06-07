@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -14,7 +17,7 @@ import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '
 import type { Appointment } from '@oneandlab/shared-types';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
 import { appointmentAddressLine } from '@/utils/appointment-display';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const OFFSET_MIN = -90;
@@ -172,18 +175,19 @@ export function TourneeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { flex: 1, backgroundColor: c.background },
   dateNav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     margin: spacing[4],
     marginBottom: spacing[3],
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
   },
@@ -191,12 +195,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   navBtnDisabled: {
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
   },
   dateCenter: {
     alignItems: 'center',
@@ -205,22 +209,22 @@ const styles = StyleSheet.create({
   },
   todayBadge: {
     fontFamily: fontFamily.bold,
-    fontSize: fontSize['2xs'],
-    color: colors.primary,
+    fontSize: fontSize.xs,
+    color: c.primary,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   dateLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     textTransform: 'capitalize',
     textAlign: 'center',
   },
   stopCount: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   list: {
     paddingHorizontal: spacing[4],
@@ -234,10 +238,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     overflow: 'hidden',
   },
@@ -245,7 +249,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -253,7 +257,7 @@ const styles = StyleSheet.create({
   stopIndexText: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.primary,
+    color: c.primary,
   },
   stopInfo: {
     flex: 1,
@@ -262,7 +266,7 @@ const styles = StyleSheet.create({
   stopName: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   stopMeta: {
     flexDirection: 'row',
@@ -273,18 +277,28 @@ const styles = StyleSheet.create({
   stopTime: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.primary,
+    color: c.primary,
   },
   metaDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: colors.textTertiary,
+    backgroundColor: c.textTertiary,
   },
   stopAddress: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     flex: 1,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_tournee_screens_TourneeScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

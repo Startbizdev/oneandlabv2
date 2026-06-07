@@ -34,9 +34,10 @@ if (!RateLimit::allow('contact', $contactIp, 10, 60)) {
     exit;
 }
 
-$CONTACT_TO = 'contact@oneandlab.fr';
+$CONTACT_TO = 'contact@cary.bio';
 
 $typeLabels = [
+    'app_mobile' => 'Assistance application Cary (mobile)',
     'rdv' => 'Problème avec un rendez-vous',
     'partenariat_labo' => 'Partenariat laboratoire',
     'partenariat_infirmier' => 'Partenariat infirmier',
@@ -75,7 +76,24 @@ try {
         . '<p style="margin:0 0 12px 0;"><strong>Nom :</strong> ' . htmlspecialchars($name) . '</p>'
         . '<p style="margin:0 0 12px 0;"><strong>Email :</strong> ' . htmlspecialchars($email) . '</p>'
         . '<p style="margin:0 0 8px 0;"><strong>Message :</strong></p>'
-        . '<p style="margin:0;white-space:pre-wrap;">' . nl2br(htmlspecialchars($message)) . '</p>';
+        . '<p style="margin:0 0 16px 0;white-space:pre-wrap;">' . nl2br(htmlspecialchars($message)) . '</p>';
+
+    $context = $input['context'] ?? null;
+    if (is_array($context) && count($context) > 0) {
+        $inner .= '<hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;" />'
+            . '<p style="margin:0 0 8px 0;"><strong>Informations compte (application mobile)</strong></p>';
+        foreach ($context as $label => $value) {
+            if (!is_scalar($value)) {
+                continue;
+            }
+            $text = trim((string) $value);
+            if ($text === '') {
+                continue;
+            }
+            $inner .= '<p style="margin:0 0 6px 0;"><strong>' . htmlspecialchars((string) $label) . ' :</strong> '
+                . htmlspecialchars($text) . '</p>';
+        }
+    }
 
     $emailLib = new Email();
     $body = $emailLib->buildStaffInquiryBody('Nouveau message — formulaire contact', $inner);

@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, type ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -17,7 +20,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { ArrowRight } from 'lucide-react-native';
-import { animation, colors, elevation, radius, spacing } from '@/theme';
+import { animation, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface BookingPremiumStepCtaProps {
@@ -39,7 +42,7 @@ export interface BookingPremiumStepCtaProps {
 }
 
 const DEFAULT_TITLE = 'Valider la sélection';
-const DEFAULT_SUBTITLE = 'PASSER À L’ÉTAPE SUIVANTE';
+const DEFAULT_SUBTITLE = 'Passer à l’étape suivante';
 
 function triggerHaptic() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -160,11 +163,12 @@ export function BookingPremiumStepCta({
 const STEP_BADGE = 40;
 const ARROW_ORB = 44;
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   root: {
     width: '100%',
     ...elevation.lg,
-    shadowColor: colors.gradientEnd,
+    shadowColor: c.gradientEnd,
     shadowOpacity: 0.28,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
@@ -180,10 +184,10 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   gradient: {
-    minHeight: 58,
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing[2.5],
+    paddingVertical: spacing[3],
     paddingLeft: spacing[2.5],
     paddingRight: spacing[2],
     gap: spacing[3],
@@ -196,7 +200,7 @@ const styles = StyleSheet.create({
     width: STEP_BADGE,
     height: STEP_BADGE,
     borderRadius: STEP_BADGE / 2,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -207,7 +211,7 @@ const styles = StyleSheet.create({
   stepNum: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize.lg,
-    color: colors.primary,
+    color: c.primary,
     letterSpacing: -0.5,
   },
   copy: {
@@ -218,16 +222,15 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fontFamily.bold,
-    fontSize: fontSize.sm,
-    color: colors.textInverse,
-    letterSpacing: -0.1,
+    fontSize: fontSize.md,
+    color: c.textInverse,
+    letterSpacing: -0.15,
   },
   subtitle: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: 'rgba(255,255,255,0.88)',
-    letterSpacing: 0.55,
-    textTransform: 'uppercase',
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.sm,
+    color: 'rgba(255,255,255,0.92)',
+    letterSpacing: 0.1,
   },
   arrowOrb: {
     width: ARROW_ORB,
@@ -237,5 +240,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_BookingPremiumStepCta_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

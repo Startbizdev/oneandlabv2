@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   ClipboardList,
@@ -6,7 +9,7 @@ import {
   Star,
   type LucideIcon,
 } from 'lucide-react-native';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const SEGMENT_ICONS: Record<string, LucideIcon> = {
@@ -67,10 +70,11 @@ export function DetailSegmentBar({ segments, active, onChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   track: {
     flexDirection: 'row',
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderRadius: radius.lg,
     padding: 3,
     gap: 3,
@@ -81,40 +85,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing[1.5],
+    minHeight: 44,
     paddingVertical: spacing[2.5],
     paddingHorizontal: spacing[1.5],
     borderRadius: radius.md,
   },
   btnOn: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     ...elevation.xs,
   },
   label: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   labelOn: {
-    color: colors.primaryDark,
+    color: c.primaryDark,
   },
   badge: {
     minWidth: 18,
     height: 18,
     borderRadius: 9,
     paddingHorizontal: 5,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeOn: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
   },
   badgeText: {
     fontFamily: fontFamily.bold,
-    fontSize: 10,
-    color: colors.textSecondary,
+    fontSize: fontSize.xs,
+    color: c.textSecondary,
   },
   badgeTextOn: {
-    color: colors.primary,
+    color: c.primary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_layout_DetailSegmentBar_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -35,7 +38,7 @@ import {
   type CalendarTypeFilter,
 } from '@/constants/calendar-filters';
 import { NURSE_TAB_OPTIONS, type NurseListTab } from '@/constants/appointments-list-filters';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -81,6 +84,8 @@ export function CalendarScreen({
   nurseCalendar = false,
   listRole: listRoleProp,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles);
   const listRole = listRoleProp ?? listRoleFromDetailPrefix(detailPathPrefix);
   const { width } = useWindowDimensions();
   const router = useRouter();
@@ -256,11 +261,11 @@ export function CalendarScreen({
               style={[styles.monthNav, elevation.xs]}
             >
               <Pressable onPress={goPrevMonth} style={styles.navBtn} hitSlop={8}>
-                <ChevronLeft size={18} color={colors.primary} strokeWidth={2.5} />
+                <ChevronLeft size={18} color={c.primary} strokeWidth={2.5} />
               </Pressable>
               <Text style={styles.monthLabel}>{cursor.format('MMMM YYYY')}</Text>
               <Pressable onPress={goNextMonth} style={styles.navBtn} hitSlop={8}>
-                <ChevronRight size={18} color={colors.primary} strokeWidth={2.5} />
+                <ChevronRight size={18} color={c.primary} strokeWidth={2.5} />
               </Pressable>
             </Animated.View>
 
@@ -320,11 +325,11 @@ export function CalendarScreen({
 
         <Animated.View entering={FadeInDown.delay(160).duration(280).springify()}>
           <Pressable onPress={() => openDaySheet(selectedDay)} style={styles.daySummary}>
-            <Calendar size={15} color={colors.primary} strokeWidth={2} />
+            <Calendar size={15} color={c.primary} strokeWidth={2} />
             <Text style={styles.daySummaryText} numberOfLines={1}>
               {dayjs(selectedDay).format('dddd D MMMM')} · {dayItems.length} RDV
             </Text>
-            <ChevronRight size={15} color={colors.primary} strokeWidth={2.5} />
+            <ChevronRight size={15} color={c.primary} strokeWidth={2.5} />
           </Pressable>
         </Animated.View>
       </ScrollView>
@@ -362,8 +367,9 @@ export function CalendarScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { flex: 1, backgroundColor: c.background },
   scroll: { flex: 1 },
   content: {
     paddingHorizontal: spacing[4],
@@ -378,10 +384,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
   },
@@ -389,14 +395,14 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   monthLabel: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.md,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.3,
     textTransform: 'capitalize',
   },
@@ -407,8 +413,8 @@ const styles = StyleSheet.create({
   weekCell: { alignItems: 'center', paddingBottom: spacing[1] },
   weekLabel: {
     fontFamily: fontFamily.bold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
@@ -422,46 +428,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   dayCellSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: c.primary,
+    borderColor: c.primary,
   },
   dayCellToday: {
-    borderColor: colors.primary,
+    borderColor: c.primary,
     borderWidth: 1.5,
   },
   dayCellHasEvents: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primaryMid,
+    backgroundColor: c.primaryLight,
+    borderColor: c.primaryMid,
   },
   dayNum: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
-  dayNumSelected: { color: colors.textInverse },
-  dayNumToday: { color: colors.primary },
+  dayNumSelected: { color: c.textInverse },
+  dayNumToday: { color: c.primary },
   dotRow: { flexDirection: 'row', gap: 2 },
   dotPlaceholder: { height: 4 },
   dot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
   },
   dotWhite: { backgroundColor: 'rgba(255,255,255,0.75)' },
   daySummary: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
   },
@@ -469,7 +475,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.primary,
+    color: c.primary,
     textTransform: 'capitalize',
   },
-});
+};
+}
