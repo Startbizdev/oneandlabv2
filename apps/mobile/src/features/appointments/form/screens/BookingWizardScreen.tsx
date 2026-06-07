@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View, type ScrollView } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -29,7 +32,7 @@ import { NEW_PATIENT_ID } from '../types';
 import { buildAvailabilityPayload } from '../utils/availability';
 import type { PatientRelative } from '@/features/patient-relatives/api/patient-relatives.service';
 import { SkeletonCareSelectionStep } from '@/components/ui/skeletons';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -101,6 +104,7 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
         onEnsureCategoryReady={w.ensureCategoryReady}
         formDataByService={w.formDataByService}
         loading={w.saving}
+        progressTotal={Math.max(3, bw.wizardStepCount)}
         />
       </View>
     );
@@ -353,7 +357,9 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
                   {bw.consent ? <Text style={styles.checkmark}>✓</Text> : null}
                 </View>
                 <Text style={styles.consentText}>
-                  J&apos;accepte la politique de confidentialité et le traitement de mes données de santé.
+                  J&apos;accepte la politique de confidentialité et consens au traitement de mes données de
+                  santé. J&apos;autorise Cary à partager les informations de mon profil et les éléments
+                  nécessaires à la prise de rendez-vous avec les professionnels de santé de mon secteur.
                 </Text>
               </Pressable>
             ) : (
@@ -365,7 +371,9 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
                   {bw.consent ? <Text style={styles.checkmark}>✓</Text> : null}
                 </View>
                 <Text style={styles.consentText}>
-                  J&apos;accepte les conditions RGPD et le traitement des données de santé du patient.
+                  J&apos;accepte les conditions RGPD et consens au traitement des données de santé du
+                  patient. J&apos;autorise Cary à communiquer les informations du profil et les éléments
+                  nécessaires aux professionnels de santé concernés par ce rendez-vous.
                 </Text>
               </Pressable>
             )}
@@ -385,9 +393,10 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screenWizard: { flex: 1, minHeight: 0, backgroundColor: colors.bookingCanvasLight },
-  screenCare: { flex: 1, minHeight: 0, backgroundColor: colors.bookingCanvas },
+function buildStyles(c: AppColors) {
+  return {
+  screenWizard: { flex: 1, minHeight: 0, backgroundColor: c.bookingCanvasLight },
+  screenCare: { flex: 1, minHeight: 0, backgroundColor: c.bookingCanvas },
   formContent: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],
@@ -397,19 +406,19 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   errorBox: {
-    backgroundColor: colors.errorLight,
+    backgroundColor: c.errorLight,
     borderRadius: radius.lg,
     padding: spacing[3],
     borderWidth: 1,
-    borderColor: colors.errorMid,
+    borderColor: c.errorMid,
   },
   errorText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.error,
+    color: c.error,
     lineHeight: fontSize.sm * 1.45,
   },
   relativeRow: {
@@ -423,19 +432,19 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
   },
   relativePillActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: c.primary,
+    borderColor: c.primary,
   },
   relativePillText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
-  relativePillTextActive: { color: colors.textInverse },
+  relativePillTextActive: { color: c.textInverse },
   addRelativeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -444,16 +453,16 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
     borderStyle: 'dashed',
   },
   addRelativeText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.primary,
+    color: c.primary,
   },
   selfCard: {
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderRadius: radius.lg,
     padding: spacing[3],
     gap: 2,
@@ -461,18 +470,18 @@ const styles = StyleSheet.create({
   selfName: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   selfEmail: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   identityBlock: { gap: spacing[3] },
   fieldLabel: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   genderRow: { gap: spacing[2] },
   genderPills: { flexDirection: 'row', gap: spacing[2] },
@@ -481,19 +490,19 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
   },
   genderPillActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: c.primary,
+    borderColor: c.primary,
   },
   genderPillText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
-  genderPillTextActive: { color: colors.textInverse },
+  genderPillTextActive: { color: c.textInverse },
   consentRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -505,35 +514,45 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   consentRowError: {
-    borderColor: colors.errorMid,
-    backgroundColor: colors.errorLight,
+    borderColor: c.errorMid,
+    backgroundColor: c.errorLight,
   },
   checkbox: {
     width: 22,
     height: 22,
     borderRadius: radius.sm,
     borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
     flexShrink: 0,
   },
   checkboxActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: c.primary,
+    borderColor: c.primary,
   },
   checkmark: {
     fontFamily: fontFamily.bold,
-    fontSize: 12,
-    color: colors.textInverse,
+    fontSize: fontSize.xs,
+    color: c.textInverse,
   },
   consentText: {
     flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.55,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_screens_BookingWizardScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

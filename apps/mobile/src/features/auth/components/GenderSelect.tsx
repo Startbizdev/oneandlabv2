@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { GENDER_OPTIONS } from '@/constants/pro-emploi';
 import { colors, radius, spacing } from '@/theme';
@@ -33,38 +35,53 @@ export function GenderSelect({ label = 'Genre', value, onChange, error }: Props)
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[2] },
   label: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    fontSize: fontSize.base,
+    color: c.textPrimary,
+    lineHeight: fontSize.base * 1.3,
   },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   chip: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
+    paddingVertical: spacing[2.5],
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surface,
+    borderColor: c.borderLight,
+    backgroundColor: c.surface,
   },
   chipActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
+    borderColor: c.primary,
+    backgroundColor: c.primaryLight,
   },
   chipText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
+    lineHeight: fontSize.sm * 1.35,
   },
   chipTextActive: {
-    color: colors.primary,
+    color: c.primary,
     fontFamily: fontFamily.semiBold,
   },
   error: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.error,
+    color: c.error,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_auth_components_GenderSelect_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
     color: colors.textTertiary,
     letterSpacing: 0.9,
     textTransform: 'uppercase',

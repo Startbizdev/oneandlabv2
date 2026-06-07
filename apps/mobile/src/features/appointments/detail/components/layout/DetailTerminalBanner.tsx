@@ -1,8 +1,9 @@
+import { colors } from '@/theme';
 import { StyleSheet, Text, View } from 'react-native';
 import { CalendarX, CircleCheck, Ban, TimerOff } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import type { AppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const ICONS: Record<string, LucideIcon> = {

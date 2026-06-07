@@ -6,17 +6,20 @@ import type { ReactNode } from 'react';
 import { queryClient } from '@/lib/query-client';
 import { persistQueryOptions } from '@/lib/query-persist';
 import { ToastProvider } from './ToastProvider';
+import { AppThemeProvider } from './AppThemeProvider';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <PersistQueryClientProvider client={queryClient} persistOptions={persistQueryOptions}>
-          <ToastProvider>
-            {/* Hôte unique pour tous les bottom sheets (gorhom) : un seul portail,
-                plus de <Modal> natifs empilés → fini les flashs / réouvertures. */}
-            <BottomSheetModalProvider>{children}</BottomSheetModalProvider>
-          </ToastProvider>
+          <AppThemeProvider>
+            <ToastProvider>
+              {/* Hôte unique pour tous les bottom sheets (gorhom) : un seul portail,
+                  plus de <Modal> natifs empilés → fini les flashs / réouvertures. */}
+              <BottomSheetModalProvider>{children}</BottomSheetModalProvider>
+            </ToastProvider>
+          </AppThemeProvider>
         </PersistQueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

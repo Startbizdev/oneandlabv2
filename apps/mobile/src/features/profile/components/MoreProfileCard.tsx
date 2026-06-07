@@ -1,3 +1,8 @@
+import type { AppColors } from '@/theme/colors';
+import { hexToRgba } from '@/theme/color-utils';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -8,7 +13,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { queryKeys } from '@/lib/query-keys';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -21,6 +26,7 @@ interface Props {
 
 /** Carte profil premium pour les onglets « Plus » — photo / logo si disponible. */
 export function MoreProfileCard({ roleLabel, onPress, subtitle, delay = 80 }: Props) {
+  const c = useAppColors();
   const user = useAuthStore((s) => s.user);
 
   const profileQ = useQuery({
@@ -54,7 +60,7 @@ export function MoreProfileCard({ roleLabel, onPress, subtitle, delay = 80 }: Pr
         accessibilityLabel={`Profil de ${name}`}
       >
         <LinearGradient
-          colors={['#ECFDF9', '#FFFFFF']}
+          colors={[c.primaryLight, c.surface]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
@@ -95,13 +101,14 @@ export function MoreProfileCard({ roleLabel, onPress, subtitle, delay = 80 }: Pr
 
 const AVATAR = 58;
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
     borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     overflow: 'hidden',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
   },
   cardPressed: {
     opacity: 0.92,
@@ -116,7 +123,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 3,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     borderTopLeftRadius: radius['2xl'],
     borderBottomLeftRadius: radius['2xl'],
   },
@@ -131,10 +138,10 @@ const styles = StyleSheet.create({
     height: AVATAR,
     borderRadius: AVATAR / 2,
     borderWidth: 2.5,
-    borderColor: colors.surface,
-    backgroundColor: colors.primaryLight,
+    borderColor: c.surface,
+    backgroundColor: c.primaryLight,
     overflow: 'hidden',
-    shadowColor: '#0D9488',
+    shadowColor: c.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -149,7 +156,7 @@ const styles = StyleSheet.create({
   name: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.35,
   },
   rolePill: {
@@ -157,29 +164,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[2.5],
     paddingVertical: 3,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(13, 148, 136, 0.1)',
+    backgroundColor: hexToRgba(c.primary, 0.1),
     borderWidth: 1,
-    borderColor: 'rgba(13, 148, 136, 0.18)',
+    borderColor: hexToRgba(c.primary, 0.18),
   },
   roleText: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.primaryDark,
+    fontSize: fontSize.xs,
+    color: c.primaryDark,
     letterSpacing: 0.2,
   },
   subtitle: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     marginTop: 2,
   },
   chevronWrap: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_components_MoreProfileCard_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

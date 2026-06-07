@@ -1,8 +1,9 @@
+import { colors } from '@/theme';
 import { Image, StyleSheet, View } from 'react-native';
 import { Droplet, Stethoscope } from 'lucide-react-native';
 import { isBloodTestAppointment } from '@oneandlab/shared-utils';
 import { resolveCareCategoryImageSrc } from '@/utils/care-category-image';
-import { colors, radius } from '@/theme';
+import { radius } from '@/theme';
 
 interface Props {
   imageUrl?: string | null;

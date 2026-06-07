@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { useAppPreferencesStore } from '@/store/app-preferences-store';
+import { getAppColors } from '@/theme/colors';
 import { colors, radius } from '@/theme';
 
 interface Props {
@@ -20,7 +22,7 @@ function zoomForRadiusKm(km: number): number {
   return 7;
 }
 
-function buildMapHtml(lat: number, lng: number, radiusKm: number): string {
+function buildMapHtml(lat: number, lng: number, radiusKm: number, primary: string, primaryMid: string): string {
   const r = Math.max(1, radiusKm) * 1000;
   const zoom = zoomForRadiusKm(radiusKm);
   return `<!DOCTYPE html>
@@ -47,15 +49,15 @@ function buildMapHtml(lat: number, lng: number, radiusKm: number): string {
     }).addTo(map);
     L.circle([lat, lng], {
       radius: radiusM,
-      color: '#1CC7B5',
-      fillColor: '#3DD9CC',
+      color: '${primary}',
+      fillColor: '${primaryMid}',
       fillOpacity: 0.25,
       weight: 2
     }).addTo(map);
     L.circleMarker([lat, lng], {
       radius: 6,
       color: '#fff',
-      fillColor: '#1CC7B5',
+      fillColor: '${primary}',
       fillOpacity: 1,
       weight: 2
     }).addTo(map);
@@ -66,7 +68,11 @@ function buildMapHtml(lat: number, lng: number, radiusKm: number): string {
 }
 
 export function CoverageMapLive({ lat, lng, radiusKm, height = 260 }: Props) {
-  const html = useMemo(() => buildMapHtml(lat, lng, radiusKm), [lat, lng, radiusKm]);
+  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
+  const html = useMemo(() => {
+    const c = getAppColors();
+    return buildMapHtml(lat, lng, radiusKm, c.primary, c.primaryMid);
+  }, [colorblindType, lat, lng, radiusKm]);
 
   return (
     <View style={[styles.wrap, { height }]}>

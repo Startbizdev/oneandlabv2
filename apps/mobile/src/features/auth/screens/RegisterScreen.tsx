@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
@@ -272,7 +274,8 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   content: {
     padding: spacing[4],
     paddingBottom: spacing[10],
@@ -287,10 +290,20 @@ const styles = StyleSheet.create({
   loginLinkText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   loginLinkAccent: {
     fontFamily: fontFamily.semiBold,
-    color: colors.primary,
+    color: c.primary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_auth_screens_RegisterScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

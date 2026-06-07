@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -17,7 +20,7 @@ import {
   beneficiaryDisplayName,
   patientContactEmail,
 } from '../../utils/patient-appointment-display';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -155,12 +158,13 @@ export function RdvDetailHero({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[2.5],
   },
@@ -181,19 +185,19 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.bold,
     fontSize: fontSize.xl,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.4,
     lineHeight: fontSize.xl * 1.15,
   },
   typeOnly: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.sm,
-    color: colors.primary,
+    color: c.primary,
   },
   type: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.primary,
+    color: c.primary,
   },
   scheduleRow: {
     flexDirection: 'row',
@@ -209,26 +213,26 @@ const styles = StyleSheet.create({
   scheduleText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   patientBlock: {
     gap: spacing[1.5],
     paddingTop: spacing[1],
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
   patientName: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   patientSub: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   muted: {
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -250,12 +254,22 @@ const styles = StyleSheet.create({
     minWidth: 0,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,
   },
   meta: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_layout_RdvDetailHero_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

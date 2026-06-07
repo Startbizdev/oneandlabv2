@@ -7,7 +7,7 @@
       :style="{ backgroundImage: `url('${image}')` }"
     />
     <div
-      class="pointer-events-none absolute inset-0 z-[1] rounded-[inherit] bg-gradient-to-br from-black/15 via-black/40 to-black/[0.58]"
+      class="pointer-events-none absolute inset-0 z-[1] rounded-[inherit] bg-gradient-to-br from-primary-900/25 via-black/45 to-black/[0.62]"
     />
     <div class="relative z-[3] flex flex-col gap-2">
       <h3 class="m-0 flex flex-col items-start gap-1.5 leading-tight">

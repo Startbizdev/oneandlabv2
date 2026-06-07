@@ -1,7 +1,10 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function PatientListCard({
@@ -89,12 +92,13 @@ export function PatientActionChips({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     overflow: 'hidden',
   },
   cardHead: {
@@ -105,20 +109,20 @@ const styles = StyleSheet.create({
     paddingTop: spacing[3.5],
     paddingBottom: spacing[2],
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: c.borderLight,
   },
   iconWrap: {
     width: 28,
     height: 28,
     borderRadius: radius.sm,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.2,
   },
   cardBody: {},
@@ -131,16 +135,16 @@ const styles = StyleSheet.create({
   },
   rowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: c.borderLight,
   },
   rowHighlight: {
-    backgroundColor: '#FFFBEB',
+    backgroundColor: c.warningLight,
   },
   rowLabel: {
     width: 100,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     paddingTop: 2,
   },
   rowValue: {
@@ -152,17 +156,17 @@ const styles = StyleSheet.create({
   valueText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.sm * 1.45,
   },
   valueMuted: {
     fontFamily: fontFamily.regular,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   valueSub: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.xs * 1.4,
   },
   chips: {
@@ -176,12 +180,22 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[1.5],
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceAlt,
+    borderColor: c.border,
+    backgroundColor: c.surfaceAlt,
   },
   chipText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textPrimary,
+    color: c.textPrimary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_patient_PatientListPrimitives_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

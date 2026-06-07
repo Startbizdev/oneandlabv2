@@ -1,11 +1,22 @@
-export const BOOKING_CARE_SELECTION_TITLE = 'Quel type de soin avez vous besoin ?';
-
 export const BOOKING_WIZARD_CTA_SUBTITLE_NEXT = 'PASSER À L’ÉTAPE SUIVANTE';
 export const BOOKING_WIZARD_CTA_SUBTITLE_CONFIRM = 'FINALISER LA DEMANDE';
 
-/** Titre étape 0 — accessibilité / fallback navigation. */
-export function bookingCareSelectionTitle(): string {
-  return BOOKING_CARE_SELECTION_TITLE;
+/** Titre étape 0 — aligné web (`selection-title` par rôle dashboard + défaut patient). */
+export function bookingCareSelectionTitle(role?: string): string {
+  switch (role) {
+    case 'pro':
+      return 'Quels soins pour ce rendez-vous ?';
+    case 'nurse':
+      return 'Soins infirmiers ou prises de sang pour le patient ?';
+    case 'lab':
+    case 'subaccount':
+      return 'Quel prélèvement pour ce rendez-vous ?';
+    case 'admin':
+      return 'Quels actes pour ce rendez-vous ?';
+    case 'patient':
+    default:
+      return 'Quels soins vous concernent ?';
+  }
 }
 
 export function bookingWizardFooterCtaCopy(isFinalStep: boolean): {

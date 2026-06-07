@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -11,7 +14,7 @@ import {
   normalizeNursePlanLimits,
   type NursePlanLimitsApi,
 } from '@/features/nurse/utils/nurse-plan-limits';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function PlanLimitsBanner() {
@@ -70,12 +73,13 @@ export function PlanLimitsBanner() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[3],
   },
@@ -88,7 +92,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -102,11 +106,11 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   pill: {
     fontFamily: fontFamily.bold,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     paddingHorizontal: spacing[2],
@@ -114,38 +118,48 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   pillActive: {
-    backgroundColor: colors.primaryLight,
-    color: colors.primary,
+    backgroundColor: c.primaryLight,
+    color: c.primary,
   },
   pillFull: {
-    backgroundColor: colors.warningLight,
-    color: colors.warning,
+    backgroundColor: c.warningLight,
+    color: c.warning,
   },
   countText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   countBig: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize.xl,
-    color: colors.primary,
+    color: c.primary,
   },
   countBigFull: {
-    color: colors.warning,
+    color: c.warning,
   },
   trackBg: {
     height: 6,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderRadius: radius.full,
     overflow: 'hidden',
   },
   trackFill: {
     height: '100%',
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     borderRadius: radius.full,
   },
   trackFull: {
-    backgroundColor: colors.warning,
+    backgroundColor: c.warning,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_nurse_components_PlanLimitsBanner_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

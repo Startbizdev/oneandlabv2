@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { StyleSheet, Text, View } from 'react-native';
 import { MessageSquare } from 'lucide-react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
@@ -7,7 +8,7 @@ import {
   appointmentTypeLabel,
   formatReviewDate,
 } from '@/features/reviews/utils/review-labels';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';

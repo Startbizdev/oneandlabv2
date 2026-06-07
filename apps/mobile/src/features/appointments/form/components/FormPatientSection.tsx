@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronDown, UserPlus, Users } from 'lucide-react-native';
@@ -8,7 +11,7 @@ import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import { PatientDuplicatePrompt } from './PatientDuplicatePrompt';
 import { PatientSelectSheet } from './PatientSelectSheet';
 import { useToast } from '@/providers/ToastProvider';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface PatientOption {
@@ -235,21 +238,22 @@ export function FormPatientSection({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrapper: { gap: spacing[3] },
   sectionLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   modeTabs: {
     flexDirection: 'row',
     gap: spacing[2],
     padding: spacing[1],
     borderRadius: radius.xl,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   modeTab: {
     flex: 1,
@@ -262,24 +266,24 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
   },
   modeTabActive: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
   },
   modeTabText: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSize['2xs'],
-    color: colors.textSecondary,
+    fontSize: fontSize.xs,
+    color: c.textSecondary,
     textAlign: 'center',
   },
   modeTabTextActive: {
-    color: colors.primary,
+    color: c.primary,
     fontFamily: fontFamily.semiBold,
   },
   fieldLabel: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   selectBtn: {
     flexDirection: 'row',
@@ -290,16 +294,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
   },
   selectBtnText: {
     flex: 1,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
-  selectPlaceholder: { color: colors.textTertiary },
+  selectPlaceholder: { color: c.textTertiary },
   fields: { gap: spacing[2] },
   genderRow: { gap: spacing[2] },
   genderPills: { flexDirection: 'row', gap: spacing[2] },
@@ -308,18 +312,28 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2.5],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
     alignItems: 'center',
   },
   genderPillActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: c.primary,
+    borderColor: c.primary,
   },
   genderText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
-  genderTextActive: { color: colors.textInverse },
+  genderTextActive: { color: c.textInverse },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_FormPatientSection_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
+  },
 });

@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Clock, Sun } from 'lucide-react-native';
@@ -7,7 +10,7 @@ import {
   availabilitySliderMinHour,
   clampAvailabilityRange,
 } from '../utils/booking-availability-utils';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -85,19 +88,20 @@ export function BookingAvailabilitySection({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[2] },
   label: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   segmentShell: {
     flexDirection: 'row',
     gap: spacing[1],
     padding: spacing[0.5],
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
+    backgroundColor: c.surfaceSubtle,
   },
   segment: {
     flex: 1,
@@ -110,16 +114,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[2],
   },
   segmentActive: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
   },
   segmentLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   segmentLabelActive: {
-    color: colors.primaryDark,
+    color: c.primaryDark,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_BookingAvailabilitySection_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

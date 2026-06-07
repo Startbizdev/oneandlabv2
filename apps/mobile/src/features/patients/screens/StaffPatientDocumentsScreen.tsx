@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -36,7 +39,7 @@ import {
   fetchPatientProfile,
   uploadPatientProfileDocument,
 } from '../api/patient-profile.service';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const PAGE_SIZE = 8;
@@ -325,8 +328,9 @@ export function StaffPatientDocumentsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { flex: 1, backgroundColor: c.background },
   loading: { flex: 1, padding: spacing[4] },
   list: {
     paddingHorizontal: spacing[4],
@@ -344,16 +348,16 @@ const styles = StyleSheet.create({
   addCard: {
     width: '100%',
     alignSelf: 'stretch',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     overflow: 'hidden',
   },
   addKicker: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     paddingHorizontal: spacing[4],
@@ -362,20 +366,20 @@ const styles = StyleSheet.create({
   },
   rowDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     marginLeft: spacing[4] + 40 + spacing[3],
   },
   sectionKicker: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   emptyHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,
     paddingBottom: spacing[2],
   },
@@ -386,10 +390,10 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     width: '100%',
     gap: spacing[3],
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[4],
   },
@@ -397,7 +401,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -406,22 +410,32 @@ const styles = StyleSheet.create({
   docLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   docFile: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.35,
   },
   downloadBtn: {
     width: 40,
     height: 40,
     borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   footer: { marginTop: spacing[4], width: '100%' },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_patients_screens_StaffPatientDocumentsScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
+  },
 });

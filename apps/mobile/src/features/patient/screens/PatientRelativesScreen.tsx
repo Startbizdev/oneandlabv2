@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
@@ -32,7 +35,7 @@ import { relationshipLabel } from '@/features/patient-relatives/constants/relati
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -188,12 +191,13 @@ export function PatientRelativesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { flex: 1, backgroundColor: c.background },
   subtitle: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     marginBottom: spacing[2],
   },
   skeletons: {
@@ -210,17 +214,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
   },
   avatar: {
     width: 46,
     height: 46,
     borderRadius: radius.full,
-    backgroundColor: colors.errorLight,
+    backgroundColor: c.errorLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -229,7 +233,7 @@ const styles = StyleSheet.create({
   name: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   relationPill: {
     flexDirection: 'row',
@@ -240,16 +244,26 @@ const styles = StyleSheet.create({
   relationText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   meta: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   birth: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_patient_screens_PatientRelativesScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

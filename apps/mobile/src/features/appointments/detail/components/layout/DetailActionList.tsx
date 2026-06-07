@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import {
   ActivityIndicator,
   Pressable,
@@ -8,7 +11,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { type LucideIcon } from 'lucide-react-native';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { rdvDetailSectionStyles } from './rdv-detail-section-styles';
 
@@ -132,7 +135,8 @@ export function DetailActionList({ actions, edgeToEdge = false, style }: Props) 
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -166,15 +170,25 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: 22,
     lineHeight: 24,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   rowDestructive: {
-    backgroundColor: colors.errorLight,
+    backgroundColor: c.errorLight,
   },
   rowPressed: {
-    backgroundColor: colors.surfaceSubtle,
+    backgroundColor: c.surfaceSubtle,
   },
   rowDisabled: {
     opacity: 0.5,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_layout_DetailActionList_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

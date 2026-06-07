@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { forwardRef } from 'react';
 import { StyleSheet } from 'react-native';
 import type { ScrollView, ScrollViewProps } from 'react-native';
@@ -5,7 +6,7 @@ import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardScrollView } from './KeyboardScrollView';
 import { ScreenActionLayout } from './ScreenActionLayout';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 /** Hauteur estimée barre d'action (hors safe area basse). */
 export const FORM_ACTION_BAR_HEIGHT = 48 + spacing[3] + spacing[3];

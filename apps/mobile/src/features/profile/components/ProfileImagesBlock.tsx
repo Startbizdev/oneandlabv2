@@ -1,8 +1,11 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Camera, ImagePlus, Trash2, Upload, User } from 'lucide-react-native';
 import { usePickProfileImage } from '@/features/profile/hooks/use-pick-profile-image';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -131,19 +134,20 @@ export function ProfileImagesBlock({
 
 const AVATAR = 112;
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[4],
   },
   cardTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   profileRow: {
     flexDirection: 'row',
@@ -156,7 +160,7 @@ const styles = StyleSheet.create({
     borderRadius: AVATAR / 2,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   avatarImage: {
     width: '100%',
@@ -166,7 +170,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -186,32 +190,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
   },
   actionBtnDanger: {
-    backgroundColor: colors.errorLight,
-    borderColor: colors.errorMid,
+    backgroundColor: c.errorLight,
+    borderColor: c.errorMid,
   },
   actionLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.primary,
+    color: c.primary,
   },
   actionLabelDanger: {
-    color: colors.error,
+    color: c.error,
   },
   coverSection: {
     gap: spacing[2],
     paddingTop: spacing[2],
     borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
   coverLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   coverBtn: {
     width: '100%',
@@ -220,8 +224,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surfaceAlt,
+    borderColor: c.borderLight,
+    backgroundColor: c.surfaceAlt,
   },
   coverImage: {
     width: '100%',
@@ -242,5 +246,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing[2],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_components_ProfileImagesBlock_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

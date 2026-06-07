@@ -1,10 +1,11 @@
+import { colors } from '@/theme';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MapPin, X } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { searchAddresses, type AddressSuggestion } from '../api/address.service';
 import type { AddressPayload } from '@/features/appointments/form/types';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {

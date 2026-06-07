@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import type { ReviewFilter } from '@/features/reviews/types';
 import { colors, radius, spacing } from '@/theme';
@@ -40,7 +42,8 @@ export function ReviewFilterChips({ value, onChange, counts }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   row: {
     flexDirection: 'row',
     gap: spacing[2],
@@ -51,19 +54,29 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surface,
+    borderColor: c.borderLight,
+    backgroundColor: c.surface,
   },
   chipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: c.primary,
+    borderColor: c.primary,
   },
   chipText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   chipTextActive: {
-    color: colors.textInverse,
+    color: c.textInverse,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_reviews_components_ReviewFilterChips_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

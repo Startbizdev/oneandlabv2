@@ -1,9 +1,12 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { FilterOptionChips, type FilterChipOption } from '@/components/ui/FilterOptionChips';
 import { Input } from '@/components/ui/Input';
 import { Search } from 'lucide-react-native';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props<
@@ -110,14 +113,15 @@ export function AppointmentsFilterSheet<
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   section: {
     gap: spacing[2],
   },
   sectionLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
@@ -128,6 +132,16 @@ const styles = StyleSheet.create({
   resetText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.primary,
+    color: c.primary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_components_AppointmentsFilterSheet_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

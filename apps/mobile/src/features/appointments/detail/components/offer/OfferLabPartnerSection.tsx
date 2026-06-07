@@ -1,10 +1,13 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FlaskConical } from 'lucide-react-native';
 import { AssigneeProfileRow } from '../AssigneeProfileRow';
 import { ProviderPublicProfileSheet } from '@/features/profile/components/ProviderPublicProfileSheet';
 import type { OfferLabPartner } from '../../utils/offer-appointment-display';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -48,12 +51,13 @@ export function OfferLabPartnerSection({ lab }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
-    backgroundColor: colors.primaryLight,
+    borderColor: c.primaryMid,
+    backgroundColor: c.primaryLight,
     padding: spacing[4],
     gap: spacing[2],
   },
@@ -65,12 +69,22 @@ const styles = StyleSheet.create({
   headTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.primary,
+    color: c.primary,
   },
   hint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_offer_OfferLabPartnerSection_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

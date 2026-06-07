@@ -1,5 +1,7 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -108,13 +110,16 @@ export function PatientRelativeFormSheet({
             {RELATIONSHIP_OPTIONS.map((o) => {
               const active = relationshipType === o.value;
               return (
-                <Text
+                <Pressable
                   key={o.value}
                   onPress={() => setRelationshipType(o.value)}
                   style={[styles.pill, active && styles.pillActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={o.label}
                 >
-                  {o.label}
-                </Text>
+                  <Text style={[styles.pillText, active && styles.pillTextActive]}>{o.label}</Text>
+                </Pressable>
               );
             })}
           </View>
@@ -140,7 +145,7 @@ export function PatientRelativeFormSheet({
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <View style={styles.actions}>
         <View style={styles.actionBtn}>
-          <Button title="Annuler" variant="outline" onPress={onClose} fullWidth />
+          <Button title="Annuler" variant="outline" onPress={onClose} fullWidth size="lg" />
         </View>
         <View style={styles.actionBtn}>
           <Button
@@ -148,6 +153,7 @@ export function PatientRelativeFormSheet({
             loading={saving}
             onPress={submit}
             fullWidth
+            size="lg"
           />
         </View>
       </View>
@@ -155,35 +161,45 @@ export function PatientRelativeFormSheet({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   fields: { gap: spacing[3] },
   label: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    fontSize: fontSize.base,
+    color: c.textPrimary,
     marginBottom: spacing[2],
+    lineHeight: fontSize.base * 1.3,
   },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   pill: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
+    paddingVertical: spacing[2.5],
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surfaceAlt,
+    borderColor: c.borderLight,
+    backgroundColor: c.surfaceAlt,
   },
   pillActive: {
-    color: colors.primary,
-    borderColor: colors.primaryMid,
-    backgroundColor: colors.primaryLight,
+    borderColor: c.primaryMid,
+    backgroundColor: c.primaryLight,
+  },
+  pillText: {
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.sm,
+    color: c.textSecondary,
+    lineHeight: fontSize.sm * 1.35,
+  },
+  pillTextActive: {
+    color: c.primary,
+    fontFamily: fontFamily.semiBold,
   },
   error: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.error,
+    color: c.error,
   },
   actions: {
     flexDirection: 'row',
@@ -191,7 +207,17 @@ const styles = StyleSheet.create({
     marginTop: spacing[2],
     paddingTop: spacing[3],
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
   actionBtn: { flex: 1 },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_patient_relatives_components_PatientRelativeFormSheet_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
+  },
 });

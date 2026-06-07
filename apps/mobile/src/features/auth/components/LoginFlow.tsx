@@ -1,3 +1,5 @@
+import { colors } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { AuthUser } from '@oneandlab/shared-types';
@@ -19,7 +21,7 @@ import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { isDevBuild } from '@/config/env';
 import { offerBiometricEnrollment } from '@/features/auth/utils/offer-biometric-enrollment';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Step = 'email' | 'otp';
@@ -31,6 +33,7 @@ interface Props {
 }
 
 export function LoginFlow({ onSuccess, onEmailNotFound, onStepChange }: Props) {
+  const c = useAppColors();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -148,9 +151,15 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onStepChange }: Props) {
   return (
     <View style={styles.step}>
       {showDev && devOtp ? (
-        <Pressable onPress={() => setOtp(devOtp)} style={styles.devBanner}>
-          <Text style={styles.devCode}>Dev · {devOtp}</Text>
-          <Text style={styles.devHint}>Appuyer pour remplir</Text>
+        <Pressable
+          onPress={() => setOtp(devOtp)}
+          style={[
+            styles.devBanner,
+            { borderColor: c.success, backgroundColor: c.successLight },
+          ]}
+        >
+          <Text style={[styles.devCode, { color: c.success }]}>Dev · {devOtp}</Text>
+          <Text style={[styles.devHint, { color: c.textSecondary }]}>Appuyer pour remplir</Text>
         </Pressable>
       ) : null}
       <Input
@@ -180,8 +189,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: '#10B981',
-    backgroundColor: '#F0FDF4',
     padding: spacing[3],
     alignItems: 'center',
     gap: 4,
@@ -189,13 +196,11 @@ const styles = StyleSheet.create({
   devCode: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: '#065F46',
     letterSpacing: 1,
   },
   devHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: '#34D399',
   },
   backBtn: {
     flexDirection: 'row',

@@ -54,7 +54,7 @@ export function RdvKvCard({
 const styles = StyleSheet.create({
   overline: {
     fontFamily: fontFamily.bold,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
     color: colors.textTertiary,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
     color: colors.textTertiary,
     letterSpacing: 0.5,
     textTransform: 'uppercase',

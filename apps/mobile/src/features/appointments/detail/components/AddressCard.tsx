@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import React, { useCallback } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -9,7 +10,7 @@ import {
   resolveAppointmentDetailAddressLine,
   resolveAppointmentMapCoords,
 } from '../utils/appointment-address-display';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function AddressCard({

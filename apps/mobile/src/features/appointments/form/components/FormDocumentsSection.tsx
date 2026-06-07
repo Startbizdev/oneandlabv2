@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { View, StyleSheet, Text } from 'react-native';
 import { SERVICE_DOC_FIELDS } from '../constants/appointment-document-fields';
 import type { PatientDocumentRow } from '@/features/patients/api/patient-profile.service';
@@ -69,19 +71,30 @@ export function FormDocumentsSection({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrapper: { gap: spacing[3] },
   profileBanner: {
     padding: spacing[3],
     borderRadius: 12,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
   },
   profileBannerText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.primaryDark,
+    color: c.primaryDark,
     lineHeight: fontSize.sm * 1.45,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_FormDocumentsSection_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

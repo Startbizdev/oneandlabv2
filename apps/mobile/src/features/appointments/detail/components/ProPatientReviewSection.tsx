@@ -25,7 +25,7 @@ export function ProPatientReviewSection({ apt }: { apt: Appointment }) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Star size={18} color="#F59E0B" fill="#FCD34D" strokeWidth={1.5} />
+        <Star size={18} color={colors.star} fill={colors.starFill} strokeWidth={1.5} />
         <Text style={styles.title}>Avis patient</Text>
       </View>
       <ReviewStars rating={review.rating ?? 0} size={20} showValue={false} />

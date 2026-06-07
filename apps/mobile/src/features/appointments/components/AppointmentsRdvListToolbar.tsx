@@ -1,11 +1,16 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ReactNode } from 'react-native';
 import type { Href } from 'expo-router';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { AppointmentsBookCta } from '@/features/appointments/components/AppointmentsBookCta';
 import {
   AppointmentsListFilterBar,
   type FilterChip,
 } from '@/features/appointments/components/AppointmentsListFilterBar';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
+
+/** Espacement vertical uniforme entre blocs chrome (recherche, CTA, liste). */
+export const RDV_LIST_CHROME_GAP = spacing[2];
 
 /** Placeholder recherche unifié (pro / patient / préleveur). */
 export const APPOINTMENTS_RDV_SEARCH_PLACEHOLDER = 'Nom, soin, adresse…';
@@ -22,7 +27,7 @@ interface FilterHeaderProps {
   chips: FilterChip[];
 }
 
-/** Barre recherche + filtres (sticky au-dessus de la liste). */
+/** Barre recherche + filtres (défile avec la liste). */
 export function AppointmentsRdvListFilterHeader({
   search,
   onSearchChange,
@@ -33,6 +38,8 @@ export function AppointmentsRdvListFilterHeader({
 }: FilterHeaderProps) {
   return (
     <AppointmentsListFilterBar
+      embedded
+      followedByBookCta
       search={search}
       onSearchChange={onSearchChange}
       searchPlaceholder={searchPlaceholder}
@@ -53,23 +60,44 @@ export function AppointmentsRdvListBookHeader({
   href,
   label = 'Prendre un rendez-vous',
 }: BookHeaderProps) {
-  return (
-    <View style={rdvListChromeStyles.listHeader}>
-      <AppointmentsBookCta href={href} label={label} />
-    </View>
-  );
+  return <AppointmentsBookCta href={href} label={label} />;
 }
 
+function buildRdvListChromeStyles(c: AppColors) {
+  return {
+    container: { flex: 1, backgroundColor: c.background },
+    listContent: {
+      paddingHorizontal: spacing[4],
+      paddingBottom: spacing[8],
+      flexGrow: 1,
+    },
+    listHeader: {
+      alignSelf: 'stretch' as const,
+      width: '100%',
+    },
+    errorWrap: {
+      flex: 1,
+      paddingHorizontal: spacing[4],
+      justifyContent: 'center' as const,
+    },
+  };
+}
+
+export function useRdvListChromeStyles() {
+  return useThemedStyles(buildRdvListChromeStyles);
+}
+
+/** @deprecated Préférer useRdvListChromeStyles() dans les écrans fonctionnels. */
 export const rdvListChromeStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   listContent: {
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[8],
     flexGrow: 1,
   },
   listHeader: {
-    gap: spacing[2],
-    marginBottom: spacing[1],
+    alignSelf: 'stretch',
+    width: '100%',
   },
   errorWrap: {
     flex: 1,
@@ -77,3 +105,8 @@ export const rdvListChromeStyles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
+export function RdvListChromeContainer({ children }: { children: ReactNode }) {
+  const styles = useRdvListChromeStyles();
+  return <View style={styles.container}>{children}</View>;
+}

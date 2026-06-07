@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { StyleSheet, View } from 'react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
 import {
@@ -5,7 +6,7 @@ import {
   appointmentDetailBlockedCopy,
   type AppointmentDetailBlock,
 } from '@/features/appointments/hooks/appointment-detail-result';
-import { colors } from '@/theme';
+
 
 interface Props {
   onBack: () => void;

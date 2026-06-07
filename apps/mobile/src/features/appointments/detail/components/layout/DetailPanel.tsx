@@ -1,7 +1,10 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -33,12 +36,13 @@ export function DetailPanel({ title, subtitle, Icon, children, noPadding }: Prop
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   panel: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     overflow: 'hidden',
   },
   header: {
@@ -49,13 +53,13 @@ const styles = StyleSheet.create({
     paddingTop: spacing[4],
     paddingBottom: spacing[3],
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: c.borderLight,
   },
   iconWrap: {
     width: 32,
     height: 32,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -63,16 +67,26 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   subtitle: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,
   },
   body: {
     padding: spacing[4],
     gap: spacing[3],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_layout_DetailPanel_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

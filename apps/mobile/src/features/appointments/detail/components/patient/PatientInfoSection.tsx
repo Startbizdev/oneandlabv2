@@ -2,6 +2,7 @@ import { Linking, StyleSheet, Text, View } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { Users } from 'lucide-react-native';
 import { spacing } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 import {
   beneficiaryBirthLine,
@@ -55,6 +56,7 @@ interface Props {
 }
 
 export function PatientInfoSection({ apt, viewer }: Props) {
+  const c = useAppColors();
   const ext = apt as AptExt;
   const hasRelative = Boolean(ext.relative);
   const birth = beneficiaryBirthLine(apt);
@@ -92,8 +94,13 @@ export function PatientInfoSection({ apt, viewer }: Props) {
       </PatientListRow>
 
       {ext.relative?.is_minor === true ? (
-        <View style={styles.minorBanner}>
-          <Text style={styles.minorText}>
+        <View
+          style={[
+            styles.minorBanner,
+            { backgroundColor: c.warningLight, borderTopColor: c.warningMid },
+          ]}
+        >
+          <Text style={[styles.minorText, { color: c.warning }]}>
             <Text style={styles.minorBold}>Personne mineure</Text>
             {ext.relative.age_years != null
               ? ` (${ext.relative.age_years} an${ext.relative.age_years === 1 ? '' : 's'})`
@@ -123,14 +130,11 @@ const styles = StyleSheet.create({
   minorBanner: {
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-    backgroundColor: '#FFFBEB',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#FDE68A',
   },
   minorText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: '#92400E',
     lineHeight: fontSize.sm * 1.45,
   },
   minorBold: {

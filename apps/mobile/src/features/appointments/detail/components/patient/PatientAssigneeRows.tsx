@@ -20,6 +20,10 @@ import {
   type AssigneeProfileSheetState,
   type CreatorOrigin,
 } from '../../utils/provider-public-profile';
+import {
+  assigneeReviewFromPrefix,
+  creatorOriginReviewSummary,
+} from '../../utils/assignee-review-display';
 
 type AptExt = Appointment & Record<string, unknown>;
 
@@ -76,6 +80,7 @@ export function PatientAssigneeRows({ apt }: Props) {
                 )
             : undefined
         }
+        reviewSummary={assigneeReviewFromPrefix(ext, 'assigned_nurse')}
       />,
     );
   }
@@ -103,6 +108,7 @@ export function PatientAssigneeRows({ apt }: Props) {
                 )
             : undefined
         }
+        reviewSummary={assigneeReviewFromPrefix(ext, 'assigned_lab')}
       />,
     );
   }
@@ -121,6 +127,7 @@ export function PatientAssigneeRows({ apt }: Props) {
         profileImageUrl={String(ext.assigned_to_profile_image_url ?? '') || null}
         gender={appointmentAssigneeGender(apt, 'preleveur')}
         phone={String(ext.assigned_preleveur_phone ?? ext.assigned_to_phone ?? '')}
+        reviewSummary={assigneeReviewFromPrefix(ext, 'assigned_to')}
       />,
     );
   }
@@ -146,6 +153,7 @@ export function PatientAssigneeRows({ apt }: Props) {
         subtitle={creatorOriginSubtitle(creator, viewerRole)}
         publicSlug={creator.public_slug?.trim() || null}
         onViewProfile={profileSheet ? () => setSheet(profileSheet) : undefined}
+        reviewSummary={creatorOriginReviewSummary(creator as Record<string, unknown>)}
       />,
     );
   } else if (showPlatform) {

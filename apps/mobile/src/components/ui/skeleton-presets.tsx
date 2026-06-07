@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Skeleton } from './Skeleton';
@@ -256,24 +258,28 @@ export function SkeletonDashboardStats() {
   );
 }
 
-/** Wizard booking — étape choix des soins (chips + grille 2 colonnes). */
-export function SkeletonCareSelectionStep({ count = 8 }: { count?: number }) {
+/** Wizard booking — étape choix des soins (chips + liste cartes). */
+export function SkeletonCareSelectionStep({ count = 6 }: { count?: number }) {
   return (
     <View style={styles.careSelectionRoot}>
+      <View style={styles.careSelectionProgress}>
+        <Skeleton height={12} width={100} borderRadius={radius.sm} />
+        <Skeleton height={5} borderRadius={radius.full} />
+      </View>
       <View style={styles.careSelectionHeader}>
         <View style={styles.careSelectionSegments}>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} height={52} width={68} borderRadius={radius.md} />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} height={52} width={128} borderRadius={radius.full} />
           ))}
         </View>
         <View style={styles.careSelectionMeta}>
-          <Skeleton height={14} width={120} borderRadius={radius.sm} />
-          <Skeleton height={10} width={48} borderRadius={radius.xs} />
+          <Skeleton height={20} width={160} borderRadius={radius.sm} />
+          <Skeleton height={14} width="72%" borderRadius={radius.sm} />
         </View>
       </View>
-      <View style={styles.careSelectionGrid}>
+      <View style={styles.careSelectionList}>
         {Array.from({ length: count }).map((_, i) => (
-          <Skeleton key={i} height={108} style={styles.careSelectionTile} borderRadius={radius.xl} />
+          <Skeleton key={i} height={88} borderRadius={radius.xl} />
         ))}
       </View>
     </View>
@@ -291,13 +297,14 @@ export function SkeletonScreen({
   return <View style={[styles.screen, style]}>{children}</View>;
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   screen: {
     flex: 1,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
     gap: spacing[3],
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   kvRow: {
     gap: spacing[1],
@@ -329,7 +336,7 @@ const styles = StyleSheet.create({
   },
   entityDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: c.borderLight,
   },
   entityText: {
     flex: 1,
@@ -343,7 +350,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[3],
   },
   actionRowDestructive: {
-    backgroundColor: colors.errorLight,
+    backgroundColor: c.errorLight,
   },
   actionText: {
     flex: 1,
@@ -354,16 +361,16 @@ const styles = StyleSheet.create({
   },
   patientList: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
   patientRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
   },
   patientInfo: {
     flex: 1,
@@ -375,7 +382,7 @@ const styles = StyleSheet.create({
   },
   patientSep: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     marginLeft: 68,
   },
   profileHero: {
@@ -396,29 +403,35 @@ const styles = StyleSheet.create({
   },
   careSelectionRoot: {
     flex: 1,
-    backgroundColor: colors.bookingCanvas,
+    backgroundColor: c.bookingCanvas,
     paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
+    paddingTop: spacing[4],
+    gap: spacing[4],
+  },
+  careSelectionProgress: {
+    gap: spacing[2],
   },
   careSelectionHeader: {
     gap: spacing[3],
-    marginBottom: spacing[3],
   },
   careSelectionSegments: {
     flexDirection: 'row',
     gap: spacing[2],
   },
   careSelectionMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: spacing[1.5],
   },
-  careSelectionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
+  careSelectionList: {
+    gap: spacing[2.5],
   },
-  careSelectionTile: {
-    width: '48%',
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('components_ui_skeleton_presets_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

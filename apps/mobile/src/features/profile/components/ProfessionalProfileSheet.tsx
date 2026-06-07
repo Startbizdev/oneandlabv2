@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useMemo } from 'react';
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,7 +22,7 @@ import {
   type ProfessionalProfileData,
 } from '@/features/profile/utils/professional-profile-sheet';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const AVATAR = 96;
@@ -202,7 +205,8 @@ export function ProfessionalProfileSheet({ visible, onClose, profile, title }: P
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   sheetBody: {
     paddingHorizontal: 0,
     paddingTop: 0,
@@ -210,7 +214,7 @@ const styles = StyleSheet.create({
   coverWrap: {
     height: 140,
     width: '100%',
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     overflow: 'hidden',
     marginBottom: spacing[2],
   },
@@ -230,7 +234,7 @@ const styles = StyleSheet.create({
   avatarRing: {
     borderRadius: radius.full,
     padding: 3,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     ...{
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
@@ -241,20 +245,20 @@ const styles = StyleSheet.create({
   },
   avatar: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   roleEyebrow: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-    color: colors.textTertiary,
+    color: c.textTertiary,
     marginTop: spacing[1],
   },
   name: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.xl,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     textAlign: 'center',
   },
   badges: {
@@ -271,19 +275,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[1],
     borderRadius: radius.full,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   badgeMuted: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   badgeValue: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   contactRow: {
     flexDirection: 'row',
@@ -294,7 +298,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[2],
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   contactBtn: {
     minWidth: 120,
@@ -309,13 +313,13 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   bio: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     lineHeight: fontSize.sm * 1.55,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   emptyBox: {
     alignItems: 'center',
@@ -324,13 +328,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surfaceAlt,
+    borderColor: c.borderLight,
+    backgroundColor: c.surfaceAlt,
   },
   emptyText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     textAlign: 'center',
   },
   linkRow: {
@@ -340,15 +344,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[3],
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   linkIcon: {
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -359,11 +363,21 @@ const styles = StyleSheet.create({
   linkLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   linkUrl: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_components_ProfessionalProfileSheet_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

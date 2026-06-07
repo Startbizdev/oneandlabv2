@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useQuery } from '@tanstack/react-query';
@@ -6,7 +9,7 @@ import dayjs from 'dayjs';
 import { api } from '@/api/client';
 import { SkeletonDashboardStats } from '@/components/ui/skeletons';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function greeting() {
@@ -110,8 +113,9 @@ export function ProDashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { flex: 1, backgroundColor: c.background },
   scroll: { flex: 1 },
   content: {
     padding: spacing[4],
@@ -124,12 +128,12 @@ const styles = StyleSheet.create({
   greeting: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.lg,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   name: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize['3xl'],
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.8,
   },
   statsGrid: {
@@ -138,10 +142,10 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[2],
     alignItems: 'flex-start',
@@ -156,32 +160,42 @@ const styles = StyleSheet.create({
   statValue: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize['2xl'],
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.5,
   },
   statLabel: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   dateCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[1],
   },
   dateDay: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.lg,
-    color: colors.primary,
+    color: c.primary,
     textTransform: 'capitalize',
   },
   dateLabel: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.base,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     textTransform: 'capitalize',
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_pro_screens_ProDashboardScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

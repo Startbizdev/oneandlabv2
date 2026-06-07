@@ -219,6 +219,7 @@ import type { BookingServiceFormSlice } from '~/utils/booking-service-form-slice
 import CareServiceQuickOptionsModal from '~/components/rendez-vous/CareServiceQuickOptionsModal.vue';
 import type { QuickModalCategoryRow } from '~/components/rendez-vous/CareServiceQuickOptionsModal.vue';
 import {
+  ALL_SEGMENT_THEME,
   catalogSegmentThemeForKey,
   FALLBACK_SEGMENT_THEME,
   type CatalogSegmentTabTheme,
@@ -677,11 +678,12 @@ function tabRowFromTheme(
 
 const filterTabs = computed(() => {
   const keys = segmentKeysForTabs.value;
-  return keys.map((key) => {
+  const segments = keys.map((key) => {
     const t = catalogSegmentThemeForKey(key);
     if (t) return tabRowFromTheme(t, key);
     return tabRowFromTheme(FALLBACK_SEGMENT_THEME, key, labelForUnknownCatalogGroup(key));
   });
+  return [tabRowFromTheme(ALL_SEGMENT_THEME, 'all', undefined, 'Tous les soins'), ...segments];
 });
 
 /** Titre au-dessus de la grille de soins (« Tous les soins » ou nom du segment actif). */

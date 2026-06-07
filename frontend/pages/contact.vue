@@ -76,10 +76,10 @@
                 </p>
                 <p class="mt-3">
                   <a
-                    href="mailto:contact@oneandlab.fr"
+                    href="mailto:contact@cary.bio"
                     class="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
                   >
-                    contact@oneandlab.fr
+                    contact@cary.bio
                   </a>
                 </p>
                 <p class="mt-2">
@@ -174,10 +174,10 @@
         <p v-if="!sent" class="mt-14 text-center text-sm text-[#9090A8] dark:text-gray-500">
           Vous pouvez aussi nous écrire directement à
           <a
-            href="mailto:contact@oneandlab.fr"
+            href="mailto:contact@cary.bio"
             class="font-medium text-primary-600 underline decoration-primary-600/40 underline-offset-2 hover:text-primary-700 dark:text-primary-400"
           >
-            contact@oneandlab.fr
+            contact@cary.bio
           </a>
         </p>
       </div>
@@ -248,7 +248,7 @@ async function onSubmit() {
       throw new Error(res?.error ?? 'Envoi impossible');
     }
   } catch (e: any) {
-    const msg = e?.message ?? 'Une erreur est survenue. Vous pouvez nous écrire à contact@oneandlab.fr.';
+    const msg = e?.message ?? 'Une erreur est survenue. Vous pouvez nous écrire à contact@cary.bio.';
     const toast = useToast();
     toast.add({ title: 'Erreur', description: msg, color: 'red' });
   } finally {

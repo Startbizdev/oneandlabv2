@@ -1,10 +1,11 @@
+import { colors } from '@/theme';
 import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Share2 } from 'lucide-react-native';
 import type { ShareForNurseData } from '../../api/appointment-detail.service';
 import { buildNurseShareMessage } from '../../utils/nurse-share-message';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {

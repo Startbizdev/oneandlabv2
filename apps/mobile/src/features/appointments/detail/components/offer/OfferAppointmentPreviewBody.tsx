@@ -1,4 +1,12 @@
+import type { AppColors } from '@/theme/colors';
+import { useAppColors } from '@/theme/use-app-colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo } from 'react';
+import { useAppPreferencesStore } from '@/store/app-preferences-store';
+import {
+  buildCareTileOrbColorMap,
+  resolveRdvCareTagColors,
+} from '@/features/appointments/form/utils/booking-care-catalog';
 import { StyleSheet, Text, View } from 'react-native';
 import {
   Calendar,
@@ -26,10 +34,10 @@ import {
   offerFrequencyLabel,
   offerLabPartnerFromAppointment,
 } from '../../utils/offer-appointment-display';
-import { rdvListCardType } from '@/features/appointments/components/rdv-list-card-typography';
+import { buildRdvListCardTypography } from '@/features/appointments/components/rdv-list-card-typography';
 import { OfferInfoRow } from './OfferInfoRow';
 import { OfferLabPartnerSection } from './OfferLabPartnerSection';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -38,31 +46,50 @@ interface Props {
 }
 
 function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
+  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
+  const tagStyles = useThemedStyles(buildCareTagStyles);
+  const { data: categories = [] } = useAppointmentCareCategories();
   const lines = useMemo(() => offerCareTagLines(batch), [batch]);
+  const orbColorMap = useMemo(
+    () => buildCareTileOrbColorMap(categories),
+    [categories, colorblindType],
+  );
+  const primaryType = batch[0]?.type ?? 'nursing';
   if (!lines.length) return null;
 
   return (
-    <View style={styles.careTagsBlock}>
-      <View style={styles.careTagsWrap}>
-        {lines.map((line, idx) => (
-          <View
-            key={`${line.category_id ?? 'noid'}-${idx}-${line.label}`}
-            style={styles.careTag}
-          >
-            <Text style={styles.careTagEmoji} accessibilityElementsHidden>
-              {line.emoji}
-            </Text>
-            <Text style={styles.careTagLabel} numberOfLines={1}>
-              {line.label}
-            </Text>
-          </View>
-        ))}
+    <View style={tagStyles.careTagsBlock}>
+      <View style={tagStyles.careTagsWrap}>
+        {lines.map((line, idx) => {
+          const tagColors = resolveRdvCareTagColors(line, primaryType, categories, orbColorMap);
+          return (
+            <View
+              key={`${line.category_id ?? 'noid'}-${idx}-${line.label}`}
+              style={[
+                tagStyles.careTag,
+                {
+                  backgroundColor: tagColors.backgroundColor,
+                  borderColor: tagColors.borderColor,
+                },
+              ]}
+            >
+              <Text style={tagStyles.careTagEmoji} accessibilityElementsHidden>
+                {line.emoji}
+              </Text>
+              <Text style={tagStyles.careTagLabel} numberOfLines={1}>
+                {line.label}
+              </Text>
+            </View>
+          );
+        })}
       </View>
     </View>
   );
 }
 
 function OfferCard({ primary, batch }: { primary: Appointment; batch: Appointment[] }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildCardStyles);
   const { data: categories = [] } = useAppointmentCareCategories();
   const notes = offerAppointmentNotes(primary);
   const extraOptions = useMemo(
@@ -113,7 +140,7 @@ function OfferCard({ primary, batch }: { primary: Appointment; batch: Appointmen
       {notes ? (
         <View style={styles.notesBlock}>
           <View style={styles.notesHead}>
-            <MessageSquare size={14} color={colors.textTertiary} strokeWidth={2} />
+            <MessageSquare size={14} color={c.textTertiary} strokeWidth={2} />
             <Text style={styles.notesLabel}>Message</Text>
           </View>
           <Text style={styles.notesText}>{notes}</Text>
@@ -124,6 +151,7 @@ function OfferCard({ primary, batch }: { primary: Appointment; batch: Appointmen
 }
 
 export function OfferAppointmentPreviewBody({ primary, batch }: Props) {
+  const styles = useThemedStyles(buildPreviewStyles);
   const lab = offerLabPartnerFromAppointment(primary);
 
   return (
@@ -134,67 +162,78 @@ export function OfferAppointmentPreviewBody({ primary, batch }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { gap: spacing[3] },
-  careTagsBlock: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[3],
-    paddingBottom: spacing[2],
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
-  },
-  careTagsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 5,
-    alignSelf: 'stretch',
-  },
-  careTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    maxWidth: '100%',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.primaryMid,
-  },
-  careTagEmoji: rdvListCardType.careEmoji,
-  careTagLabel: rdvListCardType.careTag,
-  card: {
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surface,
-    overflow: 'hidden',
-  },
-  notesBlock: {
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    gap: spacing[2],
-    backgroundColor: colors.surfaceAlt,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
-  },
-  notesHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
-  notesLabel: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textSecondary,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  notesText: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
-    lineHeight: fontSize.xs * 1.45,
-  },
-});
+function buildCareTagStyles(c: AppColors) {
+  const type = buildRdvListCardTypography(c);
+  return {
+    careTagsBlock: {
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[3],
+      paddingBottom: spacing[2],
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.borderLight,
+    },
+    careTagsWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: 5,
+      alignSelf: 'stretch',
+    },
+    careTag: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      maxWidth: '100%',
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: radius.full,
+      borderWidth: StyleSheet.hairlineWidth,
+    },
+    careTagEmoji: type.careEmoji,
+    careTagLabel: type.careTag,
+  };
+}
+
+function buildCardStyles(c: AppColors) {
+  return {
+    card: {
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: c.borderLight,
+      backgroundColor: c.surface,
+      overflow: 'hidden' as const,
+    },
+    notesBlock: {
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[3],
+      gap: spacing[2],
+      backgroundColor: c.surfaceAlt,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.borderLight,
+    },
+    notesHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+    },
+    notesLabel: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.xs,
+      color: c.textSecondary,
+      letterSpacing: 0.4,
+      textTransform: 'uppercase' as const,
+    },
+    notesText: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.xs,
+      color: c.textSecondary,
+      lineHeight: fontSize.xs * 1.45,
+    },
+  };
+}
+
+function buildPreviewStyles(c: AppColors) {
+  return {
+    wrap: { gap: spacing[3] },
+  };
+}

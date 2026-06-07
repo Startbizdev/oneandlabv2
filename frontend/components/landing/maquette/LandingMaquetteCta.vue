@@ -2,14 +2,14 @@
   <section class="relative flex min-h-[clamp(480px,62vw,600px)] items-center overflow-hidden">
     <div class="absolute inset-0 z-0">
       <img
-        src="https://images.unsplash.com/photo-1631815588090-d4bfec5b1ccb?w=1600&q=85&auto=format&fit=crop"
-        alt=""
+        src="/images/landing/landing-cary-cta-home-care.png"
+        alt="Patiente accompagnée par une infirmière Cary à domicile"
         class="h-full w-full object-cover object-[center_35%]"
         loading="lazy"
         decoding="async"
       />
       <div
-        class="absolute inset-0 bg-gradient-to-br from-[rgb(8_14_32/0.88)] via-[rgb(25_70_150/0.42)] to-[rgb(6_10_22/0.78)]"
+        class="absolute inset-0 bg-gradient-to-br from-[rgb(8_14_32/0.88)] via-[rgb(12_90_82/0.45)] to-[rgb(6_10_22/0.78)]"
         aria-hidden="true"
       />
       <div

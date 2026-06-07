@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
@@ -10,7 +11,7 @@ import {
 } from 'react-native';
 import type { LabResultListItem } from '@oneandlab/shared-types';
 import { LabResultListCard } from './LabResultListCard';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type RoleMode = 'patient' | 'nurse' | 'pro';

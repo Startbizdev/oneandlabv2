@@ -1,6 +1,9 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronRight, FileText } from 'lucide-react-native';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -28,14 +31,15 @@ export function PatientDetailHubCard({ documentsCount, onDocuments }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3.5],
     gap: spacing[3],
@@ -44,7 +48,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -55,26 +59,36 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   subtitle: {
     marginTop: 2,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   badge: {
     minWidth: 24,
     height: 24,
     borderRadius: 12,
     paddingHorizontal: 7,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeText: {
     fontFamily: fontFamily.bold,
-    fontSize: 11,
-    color: colors.textInverse,
+    fontSize: fontSize.sm,
+    color: c.textInverse,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_patient_PatientDetailHubCard_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

@@ -7,6 +7,12 @@
     "apps/*",
     "frontend"
   ],
+  "overrides": {
+    "react-native-worklets": "0.5.1",
+    "react-native-reanimated": {
+      "react-native-worklets": "0.5.1"
+    }
+  },
   "scripts": {
     "web:dev": "npm run dev --workspace=oneandlab-frontend",
     "web:build": "npm run build --workspace=oneandlab-frontend",
@@ -15,5 +21,8 @@
     "mobile:android": "npm run android --workspace=@oneandlab/mobile",
     "typecheck:shared": "npm run typecheck --workspaces --if-present",
     "mobile:typecheck": "npm run typecheck --workspace=@oneandlab/mobile"
+  },
+  "dependencies": {
+    "react-native-worklets": "0.5.1"
   }
 }

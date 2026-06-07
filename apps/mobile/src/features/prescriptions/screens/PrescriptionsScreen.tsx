@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
@@ -20,7 +23,7 @@ import { PrescriptionComposer } from '../components/PrescriptionComposer';
 import { PrescriptionHistoryCard } from '../components/PrescriptionHistoryCard';
 import { fetchProPrescriptions } from '../api/prescriptions.service';
 import { appointmentOptionLabel } from '../utils/prescription-display';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const PAGE_SIZE = 20;
@@ -239,8 +242,9 @@ export function PrescriptionsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { flex: 1, backgroundColor: c.background },
   scroll: { flex: 1 },
   content: {
     padding: spacing[4],
@@ -251,19 +255,19 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize['2xl'],
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   heroDesc: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.5,
   },
   section: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[3],
   },
@@ -275,12 +279,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   sectionHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,
   },
   skeletons: { gap: spacing[2] },
@@ -289,13 +293,13 @@ const styles = StyleSheet.create({
     marginTop: spacing[2],
     paddingTop: spacing[3],
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
     gap: spacing[2],
   },
   pagerText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'center',
   },
   pagerBtns: {
@@ -306,12 +310,22 @@ const styles = StyleSheet.create({
   warn: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.warning,
+    color: c.warning,
   },
   composerWrap: {
     marginTop: spacing[2],
     paddingTop: spacing[4],
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_prescriptions_screens_PrescriptionsScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

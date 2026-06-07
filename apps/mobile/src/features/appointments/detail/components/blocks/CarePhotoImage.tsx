@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -13,7 +16,7 @@ import {
 } from 'react-native';
 import { ImageOff, RefreshCw } from 'lucide-react-native';
 import { loadCarePhotoLocalUri } from '../../utils/care-photo-image';
-import { colors, radius } from '@/theme';
+import { radius } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -98,10 +101,11 @@ export function CarePhotoImage({
   return body;
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
     overflow: 'hidden',
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
   },
   image: {
     width: '100%',
@@ -116,8 +120,8 @@ const styles = StyleSheet.create({
   },
   failText: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     textAlign: 'center',
   },
   retryRow: {
@@ -128,8 +132,18 @@ const styles = StyleSheet.create({
   },
   retryText: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.primary,
+    fontSize: fontSize.xs,
+    color: c.primary,
   },
   pressed: { opacity: 0.92 },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_blocks_CarePhotoImage_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
+  },
 });

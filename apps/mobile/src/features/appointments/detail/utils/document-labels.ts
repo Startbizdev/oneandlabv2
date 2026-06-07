@@ -8,7 +8,7 @@ export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   autres_assurances: 'Autre prescription',
   care_photo: 'Photo de soin',
   cancellation_photo: 'Photo annulation',
-  other: 'Autre',
+  other: 'Autre document',
 };
 
 export function getDocumentTypeLabel(type: string): string {

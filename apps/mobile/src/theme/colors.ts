@@ -1,4 +1,14 @@
-/** Tokens marque Cary */
+import { getColorblindSemantic } from './colorblind-palette';
+import {
+  DEFAULT_COLORBLIND_TYPE,
+  type ActiveColorblindType,
+  type ColorblindType,
+} from './colorblind-types';
+
+export type { ColorblindType, ActiveColorblindType } from './colorblind-types';
+export { COLORBLIND_TYPE_OPTIONS, DEFAULT_COLORBLIND_TYPE } from './colorblind-types';
+
+/** Tokens marque Cary — palette de base (indépendante du mode daltonien). */
 export const brand = {
   primary: '#1CC7B5',
   gradientStart: '#2FD4C2',
@@ -24,7 +34,6 @@ export const palette = {
     500: '#22C9BE',
     600: brand.gradientEnd,
   },
-  /** Fonds app — teinte mint-gris (remplace le blanc pur et le beige chaud). */
   canvas: {
     base: '#F4FAFA',
     light: '#F8FCFC',
@@ -52,6 +61,7 @@ export const palette = {
   green: {
     50: '#F0FDF4',
     100: '#DCFCE7',
+    200: '#BBF7D0',
     500: '#22C55E',
     600: '#16A34A',
     700: '#15803D',
@@ -76,58 +86,122 @@ export const palette = {
   transparent: 'transparent',
 } as const;
 
-export const colors = {
-  // Backgrounds
-  background: palette.canvas.base,
-  surface: palette.white,
-  surfaceAlt: palette.canvas.muted,
-  surfaceSubtle: palette.brand[50],
-  /** Fond des écrans booking (aligné sur le canvas app). */
-  bookingCanvas: palette.canvas.base,
-  bookingCanvasLight: palette.canvas.light,
+declare global {
+  // eslint-disable-next-line no-var
+  var __CARY_COLORBLIND_TYPE__: ColorblindType | undefined;
+}
 
-  // Brand gradient (CSS: linear-gradient(90deg, #2FD4C2, #16B6D6))
-  gradientStart: brand.gradientStart,
-  gradientEnd: brand.gradientEnd,
+export function syncColorblindTheme(type: ColorblindType): void {
+  globalThis.__CARY_COLORBLIND_TYPE__ = type;
+}
 
-  // Borders
-  border: palette.slate[200],
-  borderLight: palette.slate[100],
-  borderFocus: brand.primary,
-  borderError: palette.red[500],
+/** @deprecated Préférer syncColorblindTheme(type). */
+export function syncColorblindGlobal(enabled: boolean): void {
+  syncColorblindTheme(enabled ? DEFAULT_COLORBLIND_TYPE : 'off');
+}
 
-  // Text (secondary/tertiary assombris pour une meilleure lisibilité)
-  textPrimary: palette.slate[900],
-  textSecondary: palette.slate[600],
-  textTertiary: palette.slate[500],
-  textInverse: palette.white,
-  textLink: brand.primary,
+export function getColorblindType(): ColorblindType {
+  return globalThis.__CARY_COLORBLIND_TYPE__ ?? 'off';
+}
 
-  // Brand
-  primary: brand.primary,
-  primaryLight: palette.brand[50],
-  primaryMid: palette.brand[100],
-  primaryDark: palette.brand[700],
+export function isColorblindModeEnabled(): boolean {
+  return getColorblindType() !== 'off';
+}
 
-  // Semantic
-  success: palette.green[600],
-  successLight: palette.green[50],
-  successMid: palette.green[100],
+function resolveSemantic(type: ColorblindType) {
+  if (type === 'off') return null;
+  return getColorblindSemantic(type);
+}
 
-  warning: palette.amber[600],
-  warningLight: palette.amber[50],
-  warningMid: palette.amber[100],
+function buildAppColorsSync(type: ColorblindType) {
+  const cb = resolveSemantic(type);
 
-  error: palette.red[600],
-  errorLight: palette.red[50],
-  errorMid: palette.red[100],
+  return {
+    background: palette.canvas.base,
+    surface: palette.white,
+    surfaceAlt: palette.canvas.muted,
+    surfaceSubtle: palette.brand[50],
+    bookingCanvas: palette.canvas.base,
+    bookingCanvasLight: palette.canvas.light,
 
-  // Status badge colors
-  statusPending: { bg: palette.amber[50], text: palette.amber[700], dot: palette.amber[500] },
-  statusAccepted: { bg: palette.brand[50], text: palette.brand[800], dot: brand.primary },
-  statusCompleted: { bg: palette.green[50], text: palette.green[700], dot: palette.green[500] },
-  statusCancelled: { bg: palette.red[50], text: palette.red[700], dot: palette.red[500] },
-  statusNeutral: { bg: palette.slate[100], text: palette.slate[600], dot: palette.slate[400] },
-} as const;
+    gradientStart: cb?.gradientStart ?? brand.gradientStart,
+    gradientEnd: cb?.gradientEnd ?? brand.gradientEnd,
 
-export type ColorKey = keyof typeof colors;
+    border: palette.slate[200],
+    borderLight: palette.slate[100],
+    borderFocus: cb?.borderFocus ?? brand.primary,
+    borderError: cb?.error ?? palette.red[500],
+
+    textPrimary: palette.slate[900],
+    textSecondary: palette.slate[600],
+    textTertiary: palette.slate[500],
+    textInverse: palette.white,
+    textLink: cb?.textLink ?? brand.primary,
+
+    primary: cb?.primary ?? brand.primary,
+    primaryLight: cb?.primaryLight ?? palette.brand[50],
+    primaryMid: cb?.primaryMid ?? palette.brand[100],
+    primaryDark: cb?.primaryDark ?? palette.brand[700],
+
+    success: cb?.success ?? palette.green[600],
+    successLight: cb?.successLight ?? palette.green[50],
+    successMid: cb?.successMid ?? palette.green[100],
+    successSurface: cb?.successSurface ?? palette.green[200],
+
+    warning: cb?.warning ?? palette.amber[600],
+    warningLight: cb?.warningLight ?? palette.amber[50],
+    warningMid: cb?.warningMid ?? palette.amber[100],
+
+    error: cb?.error ?? palette.red[600],
+    errorLight: cb?.errorLight ?? palette.red[50],
+    errorMid: cb?.errorMid ?? palette.red[100],
+
+    statusPending: cb?.statusPending ?? {
+      bg: palette.amber[50],
+      text: palette.amber[700],
+      dot: palette.amber[500],
+    },
+    statusAccepted: cb?.statusAccepted ?? {
+      bg: palette.brand[50],
+      text: palette.brand[800],
+      dot: brand.primary,
+    },
+    statusCompleted: cb?.statusCompleted ?? {
+      bg: palette.green[50],
+      text: palette.green[700],
+      dot: palette.green[500],
+    },
+    statusCancelled: cb?.statusCancelled ?? {
+      bg: palette.red[50],
+      text: palette.red[700],
+      dot: palette.red[500],
+    },
+    statusNeutral: cb?.statusNeutral ?? {
+      bg: palette.slate[100],
+      text: palette.slate[600],
+      dot: palette.slate[400],
+    },
+
+    star: cb?.star ?? palette.amber[600],
+    starFill: cb?.starFill ?? palette.amber[100],
+  };
+}
+
+export type AppColors = ReturnType<typeof buildAppColorsSync>;
+
+/** Palette courante (recalculée à chaque accès — type daltonien pris en compte). */
+export function getAppColors(): AppColors {
+  return buildAppColorsSync(getColorblindType());
+}
+
+/** Compat : accès dynamique aux tokens (StyleSheet statiques inchangés). */
+export const colors: AppColors = new Proxy({} as AppColors, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getAppColors()[prop as keyof AppColors];
+    }
+    return undefined;
+  },
+});
+
+export type ColorKey = keyof AppColors;

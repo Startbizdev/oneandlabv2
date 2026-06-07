@@ -96,6 +96,11 @@ export async function apiRequest<T = unknown>(
     }
     if (axios.isAxiosError(err) && err.response) {
       const status = err.response.status;
+      if (status === 413) {
+        throw new Error(
+          'Fichier trop volumineux (max. 25 Mo). Réessayez avec une photo plus légère ou un PDF plus petit.',
+        );
+      }
       throw new Error(
         status === 500
           ? 'Erreur serveur (500). Le chargement est peut-être trop volumineux — réessayez.'

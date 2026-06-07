@@ -1,7 +1,8 @@
+import { colors } from '@/theme';
 import { StyleSheet, Text, View } from 'react-native';
 import { CircleCheck } from 'lucide-react-native';
 import type { WizardRecapItem } from './BookingWizardSegmentContext';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -38,7 +39,7 @@ const styles = StyleSheet.create({
   copy: { flex: 1, gap: 2 },
   title: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
     color: colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,

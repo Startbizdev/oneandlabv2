@@ -1,27 +1,31 @@
-import { LinearGradient } from 'expo-linear-gradient';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { useMemo } from 'react';
 import {
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
-  useWindowDimensions,
   View,
+  useWindowDimensions,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import {
   catalogGroupFilterEmoji,
   catalogGroupTheme,
   type CareFilterTab,
 } from '../utils/booking-care-catalog';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
-import { spacing } from '@/theme';
 
 const H_PAD = spacing[4];
-const CHIP_GAP = spacing[1.5];
-/** ~4,5 cartes visibles pour indiquer le scroll horizontal. */
-const VISIBLE_CHIPS = 4.5;
-const CHIP_MIN = 76;
-const CHIP_MAX = 92;
+const CHIP_GAP = spacing[2.5];
+const EMOJI_ORB = 34;
+/** ~2 chips entiers + un troisième coupé → affordance scroll. */
+const PEEK_VISIBLE_CHIPS = 2.35;
+const CHIP_WIDTH_MIN = 136;
+const CHIP_WIDTH_MAX = 168;
 
 interface Props {
   tabs: CareFilterTab[];
@@ -31,29 +35,34 @@ interface Props {
 }
 
 export function CareCategoryFilterBar({ tabs, value, onChange }: Props) {
+  const styles = useThemedStyles(buildStyles);
+  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
+  const textScale = useAppPreferencesStore((s) => s.textScale);
   const { width: screenW } = useWindowDimensions();
-  const chipSize = useMemo(() => {
-    const gaps = CHIP_GAP * Math.floor(VISIBLE_CHIPS);
-    const raw = (screenW - H_PAD * 2 - gaps) / VISIBLE_CHIPS;
-    return Math.round(Math.min(CHIP_MAX, Math.max(CHIP_MIN, raw)));
+
+  const chipWidth = useMemo(() => {
+    const gapCount = Math.max(1, Math.floor(PEEK_VISIBLE_CHIPS));
+    const raw =
+      (screenW - H_PAD * 2 - CHIP_GAP * gapCount) / PEEK_VISIBLE_CHIPS;
+    return Math.round(Math.min(CHIP_WIDTH_MAX, Math.max(CHIP_WIDTH_MIN, raw)));
   }, [screenW]);
 
-  const orbSize = Math.round(chipSize * 0.4);
-  const emojiSize = Math.round(orbSize * 0.52);
-  const chipRadius = Math.round(chipSize * 0.2);
+  const snapInterval = chipWidth + CHIP_GAP;
 
   if (tabs.length === 0) return null;
 
   return (
     <View style={styles.shell}>
       <ScrollView
+        key={`${colorblindType}:${textScale}`}
         horizontal
         nestedScrollEnabled
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
-        snapToInterval={chipSize + CHIP_GAP}
+        snapToInterval={snapInterval}
         snapToAlignment="start"
-        contentContainerStyle={[styles.row, { paddingRight: H_PAD }]}
+        disableIntervalMomentum
+        contentContainerStyle={styles.row}
         keyboardShouldPersistTaps="handled"
       >
         {tabs.map((tab) => {
@@ -61,69 +70,46 @@ export function CareCategoryFilterBar({ tabs, value, onChange }: Props) {
           const theme = catalogGroupTheme(tab.value);
           const emoji = catalogGroupFilterEmoji(tab.value);
 
+          const chipStyle: StyleProp<ViewStyle> = active
+            ? {
+                backgroundColor: theme.surfaceActive,
+                borderColor: theme.borderActive,
+              }
+            : null;
+
           return (
             <Pressable
               key={tab.value}
-              onPress={() => onChange(active ? 'all' : tab.value)}
+              onPress={() => {
+                if (active && tab.value === 'all') return;
+                onChange(active ? 'all' : tab.value);
+              }}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               accessibilityLabel={`Filtrer par ${tab.label}`}
               style={({ pressed }) => [
-                styles.chipOuter,
-                { width: chipSize, height: chipSize },
-                pressed && styles.chipPressed,
-                active && { shadowColor: theme.glow },
+                styles.chipHit,
+                { width: chipWidth },
+                pressed && styles.chipHitPressed,
               ]}
             >
-              {active ? (
-                <LinearGradient
-                  colors={[...theme.gradient]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[
-                    styles.chip,
-                    {
-                      width: chipSize,
-                      height: chipSize,
-                      borderRadius: chipRadius,
-                      borderColor: theme.borderActive,
-                      shadowColor: theme.glow,
-                    },
-                    styles.chipActive,
-                  ]}
-                >
-                  <CategoryChipContent
-                    emoji={emoji}
-                    label={tab.label}
-                    active
-                    theme={theme}
-                    orbSize={orbSize}
-                    emojiSize={emojiSize}
-                  />
-                </LinearGradient>
-              ) : (
-                <View
-                  style={[
-                    styles.chip,
-                    {
-                      width: chipSize,
-                      height: chipSize,
-                      borderRadius: chipRadius,
-                      backgroundColor: theme.surface,
-                      borderColor: theme.border,
-                    },
-                  ]}
-                >
-                  <CategoryChipContent
-                    emoji={emoji}
-                    label={tab.label}
-                    active={false}
-                    theme={theme}
-                    orbSize={orbSize}
-                    emojiSize={emojiSize}
-                  />
+              <View style={[styles.chip, chipStyle]}>
+                <View style={[styles.emojiOrb, { backgroundColor: theme.orb }]}>
+                  <Text style={styles.emojiGlyph} accessibilityElementsHidden>
+                    {emoji}
+                  </Text>
                 </View>
-              )}
+                <Text
+                  style={[
+                    styles.label,
+                    active ? { color: theme.labelActive } : null,
+                  ]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {tab.label}
+                </Text>
+              </View>
             </Pressable>
           );
         })}
@@ -132,117 +118,60 @@ export function CareCategoryFilterBar({ tabs, value, onChange }: Props) {
   );
 }
 
-function CategoryChipContent({
-  emoji,
-  label,
-  active,
-  theme,
-  orbSize,
-  emojiSize,
-}: {
-  emoji: string;
-  label: string;
-  active: boolean;
-  theme: ReturnType<typeof catalogGroupTheme>;
-  orbSize: number;
-  emojiSize: number;
-}) {
-  return (
-    <View style={styles.chipInner}>
-      <View
-        style={[
-          styles.orb,
-          {
-            width: orbSize,
-            height: orbSize,
-            borderRadius: orbSize / 2,
-            backgroundColor: theme.orb,
-          },
-        ]}
-      >
-        <Text
-          style={[styles.orbEmoji, { fontSize: emojiSize, lineHeight: emojiSize + 4 }]}
-          accessibilityElementsHidden
-        >
-          {emoji}
-        </Text>
-      </View>
-      <Text
-        style={[
-          styles.chipLabel,
-          { color: active ? theme.labelActive : theme.label },
-        ]}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.82}
-      >
-        {label}
-      </Text>
-      {active ? (
-        <View style={[styles.activeDot, { backgroundColor: theme.borderActive }]} />
-      ) : null}
-    </View>
-  );
+function buildStyles(c: AppColors) {
+  return {
+    shell: {
+      marginHorizontal: -H_PAD,
+    },
+    row: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: CHIP_GAP,
+      paddingHorizontal: H_PAD,
+      paddingVertical: spacing[1],
+    },
+    chipHit: {
+      flexShrink: 0,
+      borderRadius: radius.full,
+    },
+    chipHitPressed: {
+      opacity: 0.92,
+      transform: [{ scale: 0.98 }],
+    },
+    chip: {
+      flex: 1,
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      minHeight: 52,
+      paddingLeft: spacing[2.5],
+      paddingRight: spacing[3],
+      paddingVertical: spacing[2.5],
+      borderRadius: radius.full,
+      borderWidth: 2,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+      overflow: 'hidden' as const,
+    },
+    emojiOrb: {
+      width: EMOJI_ORB,
+      height: EMOJI_ORB,
+      borderRadius: EMOJI_ORB / 2,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      marginRight: spacing[2],
+    },
+    emojiGlyph: {
+      fontSize: 18,
+      lineHeight: 20,
+      textAlign: 'center' as const,
+    },
+    label: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: fontFamily.bold,
+      fontSize: fontSize.base,
+      color: c.textSecondary,
+      letterSpacing: -0.2,
+    },
+  };
 }
-
-const styles = StyleSheet.create({
-  shell: {
-    marginHorizontal: -H_PAD,
-    paddingVertical: spacing[1],
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: CHIP_GAP,
-    paddingHorizontal: H_PAD,
-  },
-  chipOuter: {
-    flexShrink: 0,
-  },
-  chipPressed: {
-    transform: [{ scale: 0.97 }],
-    opacity: 0.94,
-  },
-  chip: {
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  chipActive: {
-    borderWidth: 2,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  chipInner: {
-    flex: 1,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing[1],
-    paddingVertical: spacing[1],
-    gap: spacing[0.5],
-  },
-  orb: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orbEmoji: {
-    textAlign: 'center',
-  },
-  chipLabel: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize['2xs'],
-    textAlign: 'center',
-    lineHeight: fontSize['2xs'] * 1.15,
-    letterSpacing: -0.35,
-    width: '100%',
-  },
-  activeDot: {
-    width: 16,
-    height: 2,
-    borderRadius: 2,
-  },
-});

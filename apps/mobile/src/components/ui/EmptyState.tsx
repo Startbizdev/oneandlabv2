@@ -1,8 +1,9 @@
+import { colors } from '@/theme';
 import React from 'react';
 import { Image, type ImageSourcePropType, Text, View, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import type { LucideIcon } from 'lucide-react-native';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { Button } from './Button';
 
@@ -69,7 +70,7 @@ function EmptyStateComponent({
 
       {actionLabel && onAction ? (
         <View style={styles.action}>
-          <Button title={actionLabel} onPress={onAction} size="md" />
+          <Button title={actionLabel} onPress={onAction} size="lg" fullWidth />
         </View>
       ) : null}
     </Animated.View>

@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import React, { useCallback, useState } from 'react';
 import {
   Platform,
@@ -7,7 +10,7 @@ import {
   StyleSheet,
   type TextInputProps,
 } from 'react-native';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { useSheetTextInputComponent } from './sheet-keyboard-context';
 
@@ -104,6 +107,7 @@ function InputComponent(
           onBlur={handleBlur}
           keyboardType={keyboardType}
           returnKeyType={resolvedReturnKeyType}
+          accessibilityLabel={props.accessibilityLabel ?? label}
           style={[
             styles.input,
             leftIcon ? styles.inputWithLeftIcon : null,
@@ -126,27 +130,28 @@ function InputComponent(
 
 export const Input = React.memo(React.forwardRef(InputComponent));
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrapper: {
     gap: spacing[1],
   },
   label: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
     letterSpacing: 0.3,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     marginBottom: 2,
   },
   labelFocused: {
-    color: colors.primary,
+    color: c.primary,
   },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     minHeight: 52,
     overflow: 'hidden',
   },
@@ -154,7 +159,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     minHeight: 52,
@@ -174,12 +179,22 @@ const styles = StyleSheet.create({
   error: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.error,
+    color: c.error,
     letterSpacing: 0.1,
   },
   hint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('components_ui_Input_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

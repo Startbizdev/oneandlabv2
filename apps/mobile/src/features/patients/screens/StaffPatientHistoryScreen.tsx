@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,7 +17,7 @@ import {
   fetchStaffPatientHistoryAppointments,
 } from '../api/patient-profile.service';
 import { enrichPatientHistoryAppointments } from '../utils/enrich-patient-history-appointments';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 const PAGE_SIZE = 8;
 

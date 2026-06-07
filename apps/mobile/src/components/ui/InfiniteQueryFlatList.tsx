@@ -11,7 +11,8 @@ import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import type { UseInfiniteQueryResult } from '@tanstack/react-query';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
-import { colors, spacing } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
+import { spacing } from '@/theme';
 
 type Props<TPage, Item> = Omit<
   FlatListProps<Item>,
@@ -41,6 +42,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
   ListFooterComponent,
   ...flatListProps
 }: Props<TPage, Item>) {
+  const c = useAppColors();
   const { refreshing, onRefresh } = useManualRefresh(query.refetch);
 
   const loadMore = useCallback(() => {
@@ -73,8 +75,8 @@ export function InfiniteQueryFlatList<TPage, Item>({
     <RefreshControl
       refreshing={refreshing}
       onRefresh={onRefresh}
-      tintColor={colors.primary}
-      colors={[colors.primary]}
+      tintColor={c.primary}
+      colors={[c.primary]}
     />
   );
 
@@ -112,7 +114,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
     <>
       {query.isFetchingNextPage ? (
         <View style={styles.footerLoader}>
-          <ActivityIndicator color={colors.primary} />
+          <ActivityIndicator color={c.primary} />
         </View>
       ) : null}
       {typeof ListFooterComponent === 'function' ? <ListFooterComponent /> : ListFooterComponent}

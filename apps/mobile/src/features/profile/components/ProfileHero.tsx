@@ -1,9 +1,13 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, User } from 'lucide-react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const ROLE_LABEL: Record<string, string> = {
@@ -36,6 +40,7 @@ export function ProfileHero({
   showCover = false,
   onEditPhotos,
 }: Props) {
+  const c = useAppColors();
   const name = `${firstName} ${lastName}`.trim() || 'Mon profil';
   const coverSrc = resolveProfileImageUrl(coverImageUrl);
 
@@ -56,7 +61,7 @@ export function ProfileHero({
         </View>
       ) : (
         <LinearGradient
-          colors={['#E8FBF9', colors.background]}
+          colors={[c.primaryLight, c.background]}
           style={styles.coverPlaceholder}
         />
       )}
@@ -94,14 +99,15 @@ export function ProfileHero({
 
 const AVATAR = 96;
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
     marginBottom: spacing[2],
   },
   coverWrap: {
     height: 120,
     width: '100%',
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     overflow: 'hidden',
   },
   coverImage: {
@@ -129,9 +135,9 @@ const styles = StyleSheet.create({
     height: AVATAR,
     borderRadius: AVATAR / 2,
     borderWidth: 3,
-    borderColor: colors.surface,
+    borderColor: c.surface,
     overflow: 'hidden',
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
   },
   cameraBadge: {
     position: 'absolute',
@@ -140,13 +146,13 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: colors.surface,
+    borderColor: c.surface,
     zIndex: 2,
-    shadowColor: '#0D9488',
+    shadowColor: c.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -155,7 +161,7 @@ const styles = StyleSheet.create({
   name: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize['2xl'],
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.5,
     textAlign: 'center',
   },
@@ -166,19 +172,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[1],
     borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
   },
   roleText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.primary,
+    color: c.primary,
   },
   email: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'center',
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_components_ProfileHero_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

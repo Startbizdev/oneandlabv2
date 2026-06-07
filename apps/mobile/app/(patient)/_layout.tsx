@@ -1,6 +1,8 @@
 import { StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
+import { Star } from 'lucide-react-native';
 import { APP_HEADER_CHROME } from '@/components/navigation/header-layout';
+import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
 import { bookingWizardScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
 
@@ -12,7 +14,7 @@ export default function PatientLayout() {
         <Stack.Screen name="appointment/[id]" options={{ title: 'Détail du rendez-vous' }} />
         <Stack.Screen
           name="appointment/[id]/documents"
-          options={{ title: 'Documents' }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="appointment/[id]/history"
@@ -26,6 +28,13 @@ export default function PatientLayout() {
         />
         <Stack.Screen name="notifications" options={notificationsScreenOptions()} />
         <Stack.Screen name="resultats" options={{ title: 'Résultats' }} />
+        <Stack.Screen
+          name="reviews"
+          options={{
+            title: 'Mes avis',
+            headerTitle: tabHeaderTitle('Mes avis', Star),
+          }}
+        />
         <Stack.Screen name="informations-legales" options={{ headerTitleAlign: 'left' }} />
         <Stack.Screen name="web" options={{ headerTitleAlign: 'left' }} />
       </Stack>

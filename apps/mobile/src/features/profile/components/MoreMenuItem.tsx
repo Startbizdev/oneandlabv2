@@ -1,3 +1,10 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import {
+  resolveMoreMenuIconColors,
+  type MoreMenuIconAccent,
+} from '@/navigation/more-menu-icon-colors';
+import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -7,7 +14,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { ChevronRight } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface MoreMenuItemProps {
@@ -16,6 +23,8 @@ export interface MoreMenuItemProps {
   onPress: () => void;
   badge?: number;
   destructive?: boolean;
+  /** Couleurs recalculées à chaque rendu — préféré au spread iconColor/iconBg. */
+  iconAccent?: MoreMenuIconAccent;
   iconColor?: string;
   iconBg?: string;
 }
@@ -26,13 +35,16 @@ export function MoreMenuItem({
   onPress,
   badge,
   destructive,
+  iconAccent,
   iconColor,
   iconBg,
 }: MoreMenuItemProps) {
+  const c = useAppColors();
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const ic = iconColor ?? (destructive ? colors.error : colors.primary);
-  const ib = iconBg ?? (destructive ? colors.errorLight : colors.primaryLight);
+  const accent = iconAccent ? resolveMoreMenuIconColors(c, iconAccent) : null;
+  const ic = iconColor ?? accent?.iconColor ?? (destructive ? c.error : c.primary);
+  const ib = iconBg ?? accent?.iconBg ?? (destructive ? c.errorLight : c.primaryLight);
 
   return (
     <Animated.View style={animStyle}>
@@ -62,7 +74,7 @@ export function MoreMenuItem({
         ) : (
           <ChevronRight
             size={16}
-            color={destructive ? colors.error : colors.textTertiary}
+            color={destructive ? c.error : c.textTertiary}
             strokeWidth={2}
           />
         )}
@@ -71,21 +83,21 @@ export function MoreMenuItem({
   );
 }
 
-export const moreMenuStyles = StyleSheet.create({
+export function buildMoreMenuStyles(c: AppColors) {
+  return {
   section: { gap: spacing[2] },
   sectionTitle: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xs,
-    color: colors.textTertiary,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    fontSize: fontSize.sm,
+    color: c.textSecondary,
+    letterSpacing: 0.2,
     paddingHorizontal: spacing[1],
   },
   sectionCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     overflow: 'hidden',
   },
   menuItem: {
@@ -107,27 +119,37 @@ export const moreMenuStyles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
-  menuLabelDestructive: { color: colors.error },
+  menuLabelDestructive: { color: c.error },
   divider: {
     height: 1,
     alignSelf: 'stretch',
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
   },
   badge: {
     minWidth: 22,
     height: 22,
     borderRadius: radius.full,
-    backgroundColor: colors.error,
+    backgroundColor: c.error,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing[1],
   },
   badgeText: {
     fontFamily: fontFamily.bold,
-    fontSize: 10,
-    color: colors.textInverse,
+    fontSize: fontSize.xs,
+    color: c.textInverse,
+  },
+};
+}
+
+export const moreMenuStyles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_components_MoreMenuItem_tsx_moreMenuStyles', buildMoreMenuStyles)[prop];
+    }
+    return undefined;
   },
 });
 

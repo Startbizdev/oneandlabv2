@@ -1,60 +1,19 @@
-import { useEffect, useMemo, useState, type ReactNode, type RefObject } from 'react';
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Star, User, FileCheck, XCircle } from 'lucide-react-native';
+import { User, FileCheck, XCircle } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
-import { api } from '@/api/client';
-import { Button } from '@/components/ui/Button';
-import { Textarea } from '@/components/ui/Textarea';
-import { ReviewStars } from '@/features/reviews/components/ReviewStars';
-import { useToast } from '@/providers/ToastProvider';
-import { handleApiError } from '@/lib/errors/handle-api-error';
-import { revieweePayloadForCompletedAppt } from '@/utils/reviewee-payload';
 import {
   computePreleveurBannerPhase,
   preleveurBannerSubtitle,
   preleveurBannerTitle,
 } from '@/utils/preleveur-live-banner';
 import type { MedicalDocumentRow } from '../../api/appointment-detail.service';
-import {
-  PatientListCard,
-  PatientListRow,
-  PatientRowValue,
-} from './PatientListPrimitives';
-import { colors, radius, spacing } from '@/theme';
+import { PatientListCard, PatientListRow } from './PatientListPrimitives';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
-
-type ReviewRow = {
-  id: string;
-  appointment_id?: string;
-  rating?: number;
-  comment?: string;
-};
-
-import { canLeaveReview } from '@/utils/can-leave-review';
-
-function InteractiveStars({
-  rating,
-  onChange,
-}: {
-  rating: number;
-  onChange: (n: number) => void;
-}) {
-  return (
-    <View style={styles.starsRow}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <Pressable key={n} onPress={() => onChange(n)} hitSlop={8}>
-          <Star
-            size={26}
-            color="#F59E0B"
-            fill={n <= rating ? '#FCD34D' : 'transparent'}
-            strokeWidth={1.5}
-          />
-        </Pressable>
-      ))}
-    </View>
-  );
-}
 
 export function PatientPreleveurAlerts({ batch }: { batch: Appointment[] }) {
   const [now, setNow] = useState(Date.now());
@@ -106,7 +65,6 @@ export function PatientFooterActions({
   canceled,
   cancelCount,
   onCancel,
-  onScrollToReviews,
   onScrollToDocuments,
 }: {
   batch: Appointment[];
@@ -114,32 +72,10 @@ export function PatientFooterActions({
   canceled: boolean;
   cancelCount: number;
   onCancel: () => void;
-  onScrollToReviews?: () => void;
   onScrollToDocuments?: () => void;
 }) {
   const resultats = documents.filter((d) => d.document_type === 'resultats');
-  const reviewable = batch.filter(canLeaveReview);
   const completed = batch.filter((a) => a.status === 'completed');
-
-  const reviewsQ = useQuery({
-    queryKey: ['reviews', 'patient-footer', reviewable.map((a) => a.id).join(',')] as const,
-    queryFn: async () => {
-      const out: Record<string, ReviewRow> = {};
-      for (const appt of reviewable) {
-        const res = await api.get<ReviewRow[]>(
-          `/reviews?appointment_id=${encodeURIComponent(appt.id)}`,
-        );
-        const first = res.data?.[0];
-        if (first) out[appt.id] = first;
-      }
-      return out;
-    },
-    enabled: reviewable.length > 0,
-  });
-
-  const anyWithoutReview = reviewable.some((a) => !reviewsQ.data?.[a.id]);
-  const anyWithReview = reviewable.some((a) => reviewsQ.data?.[a.id]);
-  const isMulti = batch.length > 1;
 
   if (canceled) return null;
 
@@ -152,24 +88,6 @@ export function PatientFooterActions({
         <Pressable onPress={onScrollToDocuments} style={styles.actionBtn}>
           <FileCheck size={16} color={colors.primary} strokeWidth={2} />
           <Text style={styles.actionBtnText}>Voir les résultats</Text>
-        </Pressable>
-      ),
-    });
-  }
-
-  if (anyWithoutReview || anyWithReview) {
-    rows.push({
-      label: 'Avis',
-      node: (
-        <Pressable onPress={onScrollToReviews} style={styles.actionBtn}>
-          <Star size={16} color="#F59E0B" fill="#FCD34D" strokeWidth={1.5} />
-          <Text style={styles.actionBtnText}>
-            {anyWithoutReview
-              ? 'Laisser un avis'
-              : isMulti
-                ? 'Voir mes avis'
-                : 'Voir mon avis'}
-          </Text>
         </Pressable>
       ),
     });
@@ -203,205 +121,66 @@ export function PatientFooterActions({
   );
 }
 
-export function PatientReviewsSection({
-  batch,
-  onRefresh,
-  sectionRef,
-}: {
-  batch: Appointment[];
-  onRefresh: () => void;
-  sectionRef?: RefObject<View | null>;
-}) {
-  const { show: toast } = useToast();
-  const [forms, setForms] = useState<Record<string, { rating: number; comment: string }>>({});
-
-  const reviewable = batch.filter(canLeaveReview);
-
-  const reviewsQ = useQuery({
-    queryKey: ['reviews', 'patient-section', reviewable.map((a) => a.id).join(',')] as const,
-    queryFn: async () => {
-      const out: Record<string, ReviewRow> = {};
-      for (const appt of reviewable) {
-        const res = await api.get<ReviewRow[]>(
-          `/reviews?appointment_id=${encodeURIComponent(appt.id)}`,
-        );
-        const first = res.data?.[0];
-        if (first) out[appt.id] = first;
-      }
-      return out;
+function buildStyles(c: AppColors) {
+  return {
+    alertCard: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing[3],
+      backgroundColor: c.primaryLight,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: c.primaryMid,
+      padding: spacing[4],
     },
-    enabled: reviewable.length > 0,
-  });
-
-  const submitReview = useMutation({
-    mutationFn: async ({
-      apptId,
-      rating,
-      comment,
-    }: {
-      apptId: string;
-      rating: number;
-      comment: string;
-    }) => {
-      const appt = batch.find((a) => a.id === apptId);
-      if (!appt) throw new Error('RDV introuvable');
-      const target = revieweePayloadForCompletedAppt(appt);
-      if (!target) {
-        throw new Error('Aucun professionnel associé à ce rendez-vous.');
-      }
-      if (rating < 1 || rating > 5) {
-        throw new Error('Choisissez une note entre 1 et 5.');
-      }
-      return api.post('/reviews', {
-        appointment_id: apptId,
-        reviewee_id: target.reviewee_id,
-        reviewee_type: target.reviewee_type,
-        rating,
-        comment: comment.trim() || undefined,
-      });
+    alertArrive: {
+      backgroundColor: c.successLight,
+      borderColor: c.successMid,
     },
-    onSuccess: () => {
-      toast('Merci pour votre avis', { type: 'success' });
-      void reviewsQ.refetch();
-      onRefresh();
+    alertTexts: { flex: 1, gap: 4 },
+    alertTitle: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.sm,
+      color: c.textPrimary,
     },
-    onError: (e) => handleApiError(e, toast, 'review'),
-  });
-
-  if (!reviewable.length) return null;
-
-  return (
-    <View ref={sectionRef} collapsable={false}>
-      <PatientListCard title={reviewable.length > 1 ? 'Vos avis' : 'Votre avis'} Icon={Star}>
-        {reviewable.map((appt, idx) => {
-          const existing = reviewsQ.data?.[appt.id];
-          const form = forms[appt.id] ?? { rating: 5, comment: '' };
-          return (
-            <View
-              key={appt.id}
-              style={[styles.reviewBlock, idx > 0 && styles.reviewBlockBorder]}
-            >
-              {batch.length > 1 ? (
-                <Text style={styles.reviewApptTitle}>{appt.category_name ?? 'Soin'}</Text>
-              ) : null}
-              {existing ? (
-                <>
-                  <ReviewStars rating={existing.rating ?? 0} size={20} showValue={false} />
-                  {existing.comment ? (
-                    <PatientRowValue text={existing.comment} />
-                  ) : (
-                    <PatientRowValue text="Pas de commentaire" muted />
-                  )}
-                </>
-              ) : (
-                <>
-                  <InteractiveStars
-                    rating={form.rating}
-                    onChange={(r) =>
-                      setForms((prev) => ({
-                        ...prev,
-                        [appt.id]: { ...form, rating: r },
-                      }))
-                    }
-                  />
-                  <Textarea
-                    label="Commentaire (optionnel)"
-                    hint="Précisez l'accueil, la ponctualité ou la qualité des soins."
-                    value={form.comment}
-                    onChangeText={(t) =>
-                      setForms((prev) => ({
-                        ...prev,
-                        [appt.id]: { ...form, comment: t },
-                      }))
-                    }
-                    placeholder="Ex. : professionnel à l'écoute, soin effectué avec douceur…"
-                  />
-                  <Button
-                    title="Publier mon avis"
-                    size="sm"
-                    loading={submitReview.isPending}
-                    onPress={() =>
-                      submitReview.mutate({
-                        apptId: appt.id,
-                        rating: form.rating,
-                        comment: form.comment,
-                      })
-                    }
-                  />
-                </>
-              )}
-            </View>
-          );
-        })}
-      </PatientListCard>
-    </View>
-  );
+    alertSub: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.xs,
+      color: c.textSecondary,
+      lineHeight: 18,
+    },
+    actionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+      alignSelf: 'flex-start',
+      paddingHorizontal: spacing[3],
+      paddingVertical: spacing[2],
+      borderRadius: radius.lg,
+      backgroundColor: c.primaryLight,
+    },
+    actionBtnDanger: {
+      backgroundColor: c.errorLight,
+    },
+    actionBtnText: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.sm,
+      color: c.primary,
+    },
+    actionBtnTextDanger: {
+      color: c.error,
+    },
+  };
 }
 
-const styles = StyleSheet.create({
-  alertCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[3],
-    backgroundColor: '#EFF6FF',
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    padding: spacing[4],
-  },
-  alertArrive: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
-  },
-  alertTexts: { flex: 1, gap: 4 },
-  alertTitle: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-  },
-  alertSub: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
-  },
-  actionBtnDanger: {
-    backgroundColor: '#FEF2F2',
-  },
-  actionBtnText: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.primary,
-  },
-  actionBtnTextDanger: {
-    color: colors.error,
-  },
-  reviewBlock: {
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[4],
-    gap: spacing[3],
-  },
-  reviewBlockBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
-  },
-  reviewApptTitle: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    gap: spacing[1],
+const styles = new Proxy({} as Record<string, unknown>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles(
+        'features_appointments_detail_components_patient_PatientEngagementSections_tsx_styles',
+        buildStyles,
+      )[prop];
+    }
+    return undefined;
   },
 });

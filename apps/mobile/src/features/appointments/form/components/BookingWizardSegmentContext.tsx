@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { StyleSheet, Text, View } from 'react-native';
 import { CircleCheck } from 'lucide-react-native';
 import type { SelectedServiceInput } from '@oneandlab/shared-utils';
@@ -9,7 +12,7 @@ import {
   bookingWizardServiceDisplayName,
   type BookingWizardLotKind,
 } from '../utils/booking-wizard-lot';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface WizardRecapItem {
@@ -80,7 +83,8 @@ export function recapDateLabel(scheduledAt: string | undefined): string | undefi
   return formatDateCompact(scheduledAt) || scheduledAt.slice(0, 10);
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[3] },
   doneBlock: {
     gap: spacing[1],
@@ -93,30 +97,30 @@ const styles = StyleSheet.create({
   },
   doneTitle: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.primary,
+    fontSize: fontSize.xs,
+    color: c.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   doneLine: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     paddingLeft: spacing[5],
   },
-  doneBold: { fontFamily: fontFamily.semiBold, color: colors.textPrimary },
-  doneDate: { color: colors.textTertiary },
+  doneBold: { fontFamily: fontFamily.semiBold, color: c.textPrimary },
+  doneDate: { color: c.textTertiary },
   card: {
     flexDirection: 'row',
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surface,
+    borderColor: c.borderLight,
+    backgroundColor: c.surface,
     overflow: 'hidden',
   },
   accent: {
     width: 4,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
   },
   copy: {
     flex: 1,
@@ -126,15 +130,15 @@ const styles = StyleSheet.create({
   },
   badge: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.primaryDark,
+    fontSize: fontSize.xs,
+    color: c.primaryDark,
     textTransform: 'uppercase',
     letterSpacing: 0.35,
   },
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.sm * 1.35,
   },
   pillRow: {
@@ -147,11 +151,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[2],
     paddingVertical: spacing[1],
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
   },
   pillText: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSize['2xs'],
-    color: colors.primaryDark,
+    fontSize: fontSize.xs,
+    color: c.primaryDark,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_BookingWizardSegmentContext_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

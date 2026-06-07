@@ -163,12 +163,22 @@ export function NurseAppointmentsListScreen() {
 
   const ListHeader = useCallback(
     () => (
-      <View style={styles.listHeader}>
+      <View style={styles.scrollHeader}>
+        <AppointmentsListFilterBar
+          embedded
+          followedByBookCta
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Nom, téléphone, adresse…"
+          onOpenFilters={() => setSheetOpen(true)}
+          advancedFilterCount={advancedCount}
+          chips={filterChips}
+        />
         <BookAppointmentCta href="/(nurse)/appointments/new" />
         <PlanLimitsBanner />
       </View>
     ),
-    [],
+    [advancedCount, filterChips, search],
   );
 
   const isDemandesEmpty = segment === 'en_attente';
@@ -182,16 +192,6 @@ export function NurseAppointmentsListScreen() {
       <InfiniteQueryFlatList
         query={query}
         items={displayRows}
-        header={
-          <AppointmentsListFilterBar
-            search={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Nom, téléphone, adresse…"
-            onOpenFilters={() => setSheetOpen(true)}
-            advancedFilterCount={advancedCount}
-            chips={filterChips}
-          />
-        }
         renderItem={renderItem}
         keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
         ListHeaderComponent={ListHeader}
@@ -238,11 +238,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   listContent: {
     paddingHorizontal: spacing[4],
+    paddingTop: 0,
     paddingBottom: spacing[8],
     flexGrow: 1,
   },
-  listHeader: {
-    gap: spacing[2],
-    marginBottom: spacing[1],
+  scrollHeader: {
+    marginTop: 0,
+    alignSelf: 'stretch',
+    width: '100%',
+  },
+  listHeaderComponent: {
+    paddingTop: 0,
+    marginTop: 0,
   },
 });

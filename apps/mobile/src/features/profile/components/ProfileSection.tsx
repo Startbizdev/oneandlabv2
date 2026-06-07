@@ -1,6 +1,9 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { StyleSheet, Text, View, type ViewProps } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props extends ViewProps {
@@ -29,12 +32,13 @@ export function ProfileSection({ title, description, Icon, children, style, ...r
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     overflow: 'hidden',
   },
   header: {
@@ -49,7 +53,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -57,17 +61,27 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   description: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.4,
   },
   body: {
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[4],
     gap: spacing[3],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_components_ProfileSection_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

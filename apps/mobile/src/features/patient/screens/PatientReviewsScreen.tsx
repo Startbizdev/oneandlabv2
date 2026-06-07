@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useMemo } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -23,7 +26,7 @@ import { ReviewGivenCard } from '@/features/reviews/components/ReviewGivenCard';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import type { Review } from '@/features/reviews/types';
 import { enrichReviewsWithAppointmentProfiles } from '@/features/reviews/utils/enrich-reviews-with-profiles';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const PATIENT_APPOINTMENTS_FILTERS = {
@@ -56,15 +59,16 @@ function PatientReviewsSummary({ reviews }: { reviews: Review[] }) {
   );
 }
 
-const summaryStyles = StyleSheet.create({
+function buildSummaryStyles(c: AppColors) {
+  return {
   wrap: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[3],
   },
@@ -72,19 +76,29 @@ const summaryStyles = StyleSheet.create({
   count: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize['3xl'],
-    color: colors.primary,
+    color: c.primary,
     letterSpacing: -0.5,
   },
   countLabel: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   right: { alignItems: 'flex-end', gap: spacing[1] },
   avgLabel: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
+  },
+};
+}
+
+const summaryStyles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_patient_screens_PatientReviewsScreen_tsx_summaryStyles', buildSummaryStyles)[prop];
+    }
+    return undefined;
   },
 });
 

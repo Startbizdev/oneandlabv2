@@ -1,41 +1,37 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { HeartPulse, Mail, Stethoscope, User, type LucideIcon } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
 import type { MoreMenuItemProps } from '@/features/profile/components/MoreMenuItem';
 import type { RegisterRole } from '@/features/auth/api/registration.service';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-const REGISTER_ROLES: {
+const REGISTER_ROLE_META: {
   role: RegisterRole;
   label: string;
   icon: LucideIcon;
-  iconColor: string;
-  iconBg: string;
+  accent: 'primary' | 'success' | 'warning';
 }[] = [
-  {
-    role: 'patient',
-    label: 'Patient',
-    icon: User,
-    iconColor: colors.primary,
-    iconBg: colors.primaryLight,
-  },
-  {
-    role: 'nurse',
-    label: 'Infirmier(ère)',
-    icon: HeartPulse,
-    iconColor: '#0D9488',
-    iconBg: '#CCFBF1',
-  },
-  {
-    role: 'pro',
-    label: 'Professionnel de santé',
-    icon: Stethoscope,
-    iconColor: '#D97706',
-    iconBg: '#FFFBEB',
-  },
+  { role: 'patient', label: 'Patient', icon: User, accent: 'primary' },
+  { role: 'nurse', label: 'Infirmier(ère)', icon: HeartPulse, accent: 'success' },
+  { role: 'pro', label: 'Professionnel de santé', icon: Stethoscope, accent: 'warning' },
 ];
+
+function roleIconColors(c: AppColors, accent: 'primary' | 'success' | 'warning') {
+  switch (accent) {
+    case 'success':
+      return { iconColor: c.success, iconBg: c.successLight };
+    case 'warning':
+      return { iconColor: c.warning, iconBg: c.warningLight };
+    default:
+      return { iconColor: c.primary, iconBg: c.primaryLight };
+  }
+}
 
 interface Props {
   visible: boolean;
@@ -52,15 +48,19 @@ export function RegisterBottomSheet({
   onSelectRole,
   onLoginPress,
 }: Props) {
+  const c = useAppColors();
   const hasEmail = Boolean(pendingEmail?.trim());
 
-  const roleItems: MoreMenuItemProps[] = REGISTER_ROLES.map((item) => ({
-    icon: item.icon,
-    label: item.label,
-    iconColor: item.iconColor,
-    iconBg: item.iconBg,
-    onPress: () => onSelectRole(item.role),
-  }));
+  const roleItems: MoreMenuItemProps[] = REGISTER_ROLE_META.map((item) => {
+    const ic = roleIconColors(c, item.accent);
+    return {
+      icon: item.icon,
+      label: item.label,
+      iconColor: ic.iconColor,
+      iconBg: ic.iconBg,
+      onPress: () => onSelectRole(item.role),
+    };
+  });
 
   return (
     <BottomSheet
@@ -97,7 +97,8 @@ export function RegisterBottomSheet({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   body: {
     width: '100%',
     gap: spacing[4],
@@ -108,9 +109,9 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     padding: spacing[4],
     borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
   },
   emailTextCol: {
     flex: 1,
@@ -120,12 +121,12 @@ const styles = StyleSheet.create({
   emailLabel: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   emailValue: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.sm * 1.4,
   },
   loginLink: {
@@ -136,11 +137,21 @@ const styles = StyleSheet.create({
   loginText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'center',
   },
   loginAccent: {
     fontFamily: fontFamily.bold,
-    color: colors.primary,
+    color: c.primary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_auth_components_RegisterBottomSheet_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import React, { useCallback, useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
@@ -25,7 +26,7 @@ import {
 } from '../lib/notifications-cache';
 import { resolveNotificationNavigation } from '../utils/notification-navigation';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 const FEED_QUERY_KEY = queryKeys.notifications.feed(NOTIFICATIONS_PAGE_SIZE);
 

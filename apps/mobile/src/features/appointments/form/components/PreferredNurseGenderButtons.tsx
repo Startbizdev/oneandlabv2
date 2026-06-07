@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -35,12 +37,13 @@ export function PreferredNurseGenderButtons({ value, onChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[2] },
   label: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   pill: {
@@ -48,10 +51,20 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
   },
-  pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  text: { fontFamily: fontFamily.medium, fontSize: fontSize.sm, color: colors.textSecondary },
-  textActive: { color: colors.textInverse },
+  pillActive: { backgroundColor: c.primary, borderColor: c.primary },
+  text: { fontFamily: fontFamily.medium, fontSize: fontSize.sm, color: c.textSecondary },
+  textActive: { color: c.textInverse },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_PreferredNurseGenderButtons_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
+  },
 });

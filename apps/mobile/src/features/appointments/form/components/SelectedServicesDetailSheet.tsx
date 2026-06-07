@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Trash2 } from 'lucide-react-native';
 import type { SelectedServiceInput } from '@oneandlab/shared-utils';
@@ -66,9 +68,11 @@ export function SelectedServicesDetailSheet({
               <Pressable
                 onPress={() => handleRemove(svc)}
                 hitSlop={8}
+                style={styles.removeBtn}
                 accessibilityLabel={`Retirer ${svc.name}`}
+                accessibilityRole="button"
               >
-                <Trash2 size={16} color={colors.error} strokeWidth={2} />
+                <Trash2 size={20} color={colors.error} strokeWidth={2} />
               </Pressable>
             </View>
             {lines.length > 0 ? (
@@ -91,48 +95,72 @@ export function SelectedServicesDetailSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  item: {
-    paddingVertical: spacing[3],
-  },
-  itemBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
-  },
-  itemTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2],
-  },
-  itemName: {
-    flex: 1,
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-  },
-  details: {
-    marginTop: spacing[2],
-    paddingLeft: spacing[2.5],
-    borderLeftWidth: 2,
-    borderLeftColor: colors.border,
-    gap: spacing[1],
-  },
-  detailLine: {
-    fontSize: fontSize.xs,
-    lineHeight: fontSize.xs * 1.45,
-  },
-  detailLabel: {
-    fontFamily: fontFamily.regular,
-    color: colors.textTertiary,
-  },
-  detailValue: {
-    fontFamily: fontFamily.medium,
-    color: colors.textSecondary,
-  },
-  empty: {
-    marginTop: spacing[1],
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: colors.textTertiary,
+function buildStyles(c: AppColors) {
+  return {
+    item: {
+      paddingVertical: spacing[3],
+    },
+    itemBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.borderLight,
+    },
+    itemTop: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing[2],
+    },
+    itemName: {
+      flex: 1,
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.base,
+      color: c.textPrimary,
+      lineHeight: fontSize.base * 1.35,
+    },
+    removeBtn: {
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: -spacing[2],
+      marginRight: -spacing[2],
+    },
+    details: {
+      marginTop: spacing[2],
+      paddingLeft: spacing[2.5],
+      borderLeftWidth: 2,
+      borderLeftColor: c.border,
+      gap: spacing[1.5],
+    },
+    detailLine: {
+      fontSize: fontSize.sm,
+      lineHeight: fontSize.sm * 1.45,
+    },
+    detailLabel: {
+      fontFamily: fontFamily.regular,
+      color: c.textTertiary,
+    },
+    detailValue: {
+      fontFamily: fontFamily.medium,
+      color: c.textSecondary,
+    },
+    empty: {
+      marginTop: spacing[1],
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.sm,
+      color: c.textTertiary,
+      lineHeight: fontSize.sm * 1.4,
+    },
+  };
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles(
+        'features_appointments_form_components_SelectedServicesDetailSheet_tsx_styles',
+        buildStyles,
+      )[prop];
+    }
+    return undefined;
   },
 });

@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
@@ -32,7 +35,7 @@ import {
 import { PatientPaginationBar } from '@/features/appointments/detail/components/patient/PatientPaginationBar';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const PAGE_SIZE = 8;
@@ -295,34 +298,35 @@ export function PatientRelativeDocumentsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { flex: 1, backgroundColor: c.background },
   loading: { flex: 1, padding: spacing[4] },
   list: { paddingHorizontal: spacing[4], paddingBottom: spacing[12], flexGrow: 1 },
   header: { gap: spacing[2], marginBottom: spacing[3] },
   introTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   introSub: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,
   },
   addCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     overflow: 'hidden',
     marginTop: spacing[1],
   },
   addKicker: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     paddingHorizontal: spacing[4],
@@ -331,20 +335,20 @@ const styles = StyleSheet.create({
   addHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[2],
     lineHeight: fontSize.xs * 1.4,
   },
   rowDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     marginLeft: spacing[4] + 40 + spacing[3],
   },
   sectionKicker: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     marginTop: spacing[2],
@@ -352,7 +356,7 @@ const styles = StyleSheet.create({
   emptyHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     marginTop: spacing[2],
     lineHeight: fontSize.sm * 1.4,
   },
@@ -361,17 +365,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[3.5],
   },
   docIcon: {
     width: 40,
     height: 40,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -379,12 +383,22 @@ const styles = StyleSheet.create({
   docLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   docFile: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   footer: { marginTop: spacing[2] },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_patient_relatives_screens_PatientRelativeDocumentsScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
+  },
 });

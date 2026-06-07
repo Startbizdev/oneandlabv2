@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
@@ -144,12 +146,13 @@ export function BirthDatePicker({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[2] },
   label: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   row: {
     flexDirection: 'row',
@@ -162,33 +165,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
     paddingHorizontal: spacing[2],
   },
   fieldFilled: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
+    borderColor: c.primary,
+    backgroundColor: c.primaryLight,
   },
   fieldDisabled: { opacity: 0.5 },
   fieldText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   fieldTextFilled: {
-    color: colors.textPrimary,
+    color: c.textPrimary,
     fontFamily: fontFamily.semiBold,
   },
   summary: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   error: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.error,
+    color: c.error,
   },
   list: { gap: spacing[1] },
   listItem: {
@@ -199,6 +202,16 @@ const styles = StyleSheet.create({
   listItemText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('components_ui_BirthDatePicker_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

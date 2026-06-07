@@ -4,6 +4,8 @@ import {
   Globe,
   GraduationCap,
   HeartPulse,
+  HelpCircle,
+  LifeBuoy,
   MapPin,
   Settings,
   ScanFace,
@@ -41,6 +43,37 @@ export default function ProfileLayout() {
         options={{
           title: 'Informations personnelles',
           headerTitle: tabHeaderTitle('Informations personnelles', User),
+        }}
+      />
+      <Stack.Screen
+        name="settings"
+        options={{
+          title: "Paramètres de l'app",
+          headerTitle: tabHeaderTitle("Paramètres de l'app", Settings),
+        }}
+      />
+      <Stack.Screen
+        name="help/index"
+        options={{
+          title: "Centre d'aide",
+          headerTitle: tabHeaderTitle("Centre d'aide", HelpCircle),
+          ...headerWithBack,
+        }}
+      />
+      <Stack.Screen
+        name="help/[slug]"
+        options={{
+          title: 'Aide',
+          headerTitle: tabHeaderTitle('Aide', HelpCircle),
+          ...headerWithBack,
+        }}
+      />
+      <Stack.Screen
+        name="support"
+        options={{
+          title: 'Contacter le support',
+          headerTitle: tabHeaderTitle('Contacter le support', LifeBuoy),
+          ...headerWithBack,
         }}
       />
       <Stack.Screen

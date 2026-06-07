@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
@@ -5,7 +6,7 @@ import { WebView } from 'react-native-webview';
 import { webAppUrl } from '@/config/env';
 import { useAuthStore } from '@/store/auth-store';
 import { ProfileStackBackButton } from '@/navigation/ProfileStackBackButton';
-import { colors } from '@/theme';
+
 
 interface Props {
   /** Chemin web relatif, ex. `/nurse/abonnement` */

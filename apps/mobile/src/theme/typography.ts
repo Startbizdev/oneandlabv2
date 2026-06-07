@@ -1,3 +1,5 @@
+import { scaleFontSize } from './text-scale';
+
 export const fontFamily = {
   regular: 'Nunito_400Regular',
   medium: 'Nunito_500Medium',
@@ -7,25 +9,43 @@ export const fontFamily = {
   black: 'Nunito_900Black',
 } as const;
 
-export const fontSize = {
-  '2xs': 10,
-  xs: 12,
-  sm: 13,
-  base: 15,
-  md: 16,
-  lg: 18,
-  xl: 20,
-  '2xl': 24,
-  '3xl': 28,
-  '4xl': 32,
-  '5xl': 40,
+/** Tailles de base (avant scale accessibilité « Texte agrandi »). Minimum lisible : 12 px. */
+export const FONT_SIZE_BASE = {
+  /** Badges décoratifs uniquement — jamais pour du contenu informatif seul */
+  '2xs': 12,
+  xs: 14,
+  sm: 15,
+  base: 16,
+  md: 18,
+  lg: 20,
+  xl: 22,
+  '2xl': 26,
+  '3xl': 30,
+  '4xl': 34,
+  '5xl': 42,
 } as const;
+
+export type FontSizeKey = keyof typeof FONT_SIZE_BASE;
+
+export function getFontSize(key: FontSizeKey): number {
+  return scaleFontSize(FONT_SIZE_BASE[key]);
+}
+
+/** Échelle typographique courante (respecte le réglage « Texte agrandi »). */
+export const fontSize = new Proxy(FONT_SIZE_BASE, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string' && prop in FONT_SIZE_BASE) {
+      return getFontSize(prop as FontSizeKey);
+    }
+    return undefined;
+  },
+}) as { readonly [K in FontSizeKey]: number };
 
 export const lineHeight = {
   tight: 1.2,
   snug: 1.35,
   normal: 1.5,
-  relaxed: 1.65,
+  relaxed: 1.55,
   loose: 2,
 } as const;
 
@@ -35,96 +55,107 @@ export const letterSpacing = {
   wide: 0.25,
   wider: 0.5,
   widest: 1,
-  caps: 0.8,
+  /** @deprecated Préférer sentence case pour les titres de section */
+  caps: 0.4,
 } as const;
 
 export const textStyles = {
   display: {
     fontFamily: fontFamily.extraBold,
-    fontSize: fontSize['4xl'],
+    fontSize: FONT_SIZE_BASE['4xl'],
     letterSpacing: letterSpacing.tight,
-    lineHeight: fontSize['4xl'] * lineHeight.tight,
+    lineHeight: FONT_SIZE_BASE['4xl'] * lineHeight.tight,
   },
   h1: {
     fontFamily: fontFamily.bold,
-    fontSize: fontSize['3xl'],
+    fontSize: FONT_SIZE_BASE['3xl'],
     letterSpacing: letterSpacing.tight,
-    lineHeight: fontSize['3xl'] * lineHeight.tight,
+    lineHeight: FONT_SIZE_BASE['3xl'] * lineHeight.tight,
   },
   h2: {
     fontFamily: fontFamily.bold,
-    fontSize: fontSize['2xl'],
+    fontSize: FONT_SIZE_BASE['2xl'],
     letterSpacing: letterSpacing.tight,
-    lineHeight: fontSize['2xl'] * lineHeight.snug,
+    lineHeight: FONT_SIZE_BASE['2xl'] * lineHeight.snug,
   },
   h3: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xl,
+    fontSize: FONT_SIZE_BASE.xl,
     letterSpacing: letterSpacing.normal,
-    lineHeight: fontSize.xl * lineHeight.snug,
+    lineHeight: FONT_SIZE_BASE.xl * lineHeight.snug,
   },
   h4: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.lg,
+    fontSize: FONT_SIZE_BASE.lg,
     letterSpacing: letterSpacing.normal,
-    lineHeight: fontSize.lg * lineHeight.snug,
+    lineHeight: FONT_SIZE_BASE.lg * lineHeight.snug,
   },
   bodyLarge: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSize.md,
+    fontSize: FONT_SIZE_BASE.md,
     letterSpacing: letterSpacing.normal,
-    lineHeight: fontSize.md * lineHeight.normal,
+    lineHeight: FONT_SIZE_BASE.md * lineHeight.normal,
   },
   body: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSize.base,
+    fontSize: FONT_SIZE_BASE.base,
     letterSpacing: letterSpacing.normal,
-    lineHeight: fontSize.base * lineHeight.normal,
+    lineHeight: FONT_SIZE_BASE.base * lineHeight.normal,
   },
   bodyMedium: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSize.base,
+    fontSize: FONT_SIZE_BASE.base,
     letterSpacing: letterSpacing.normal,
-    lineHeight: fontSize.base * lineHeight.normal,
+    lineHeight: FONT_SIZE_BASE.base * lineHeight.normal,
   },
   bodySemiBold: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.base,
+    fontSize: FONT_SIZE_BASE.base,
     letterSpacing: letterSpacing.normal,
-    lineHeight: fontSize.base * lineHeight.normal,
+    lineHeight: FONT_SIZE_BASE.base * lineHeight.normal,
   },
   caption: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSize.xs,
-    letterSpacing: letterSpacing.wide,
-    lineHeight: fontSize.xs * lineHeight.snug,
+    fontSize: FONT_SIZE_BASE.xs,
+    letterSpacing: letterSpacing.normal,
+    lineHeight: FONT_SIZE_BASE.xs * lineHeight.snug,
+  },
+  sectionTitle: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: FONT_SIZE_BASE.sm,
+    letterSpacing: letterSpacing.normal,
+    lineHeight: FONT_SIZE_BASE.sm * lineHeight.snug,
   },
   overline: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize['2xs'],
-    letterSpacing: letterSpacing.caps,
-    lineHeight: fontSize['2xs'] * lineHeight.normal,
-    textTransform: 'uppercase' as const,
+    fontFamily: fontFamily.semiBold,
+    fontSize: FONT_SIZE_BASE.xs,
+    letterSpacing: letterSpacing.normal,
+    lineHeight: FONT_SIZE_BASE.xs * lineHeight.normal,
   },
   label: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
+    fontSize: FONT_SIZE_BASE.sm,
     letterSpacing: letterSpacing.normal,
-    lineHeight: fontSize.sm * lineHeight.snug,
+    lineHeight: FONT_SIZE_BASE.sm * lineHeight.snug,
   },
   button: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.base,
+    fontSize: FONT_SIZE_BASE.base,
     letterSpacing: letterSpacing.normal,
   },
   buttonSm: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
+    fontSize: FONT_SIZE_BASE.sm,
     letterSpacing: letterSpacing.normal,
   },
   buttonLg: {
     fontFamily: fontFamily.bold,
-    fontSize: fontSize.md,
+    fontSize: FONT_SIZE_BASE.md,
     letterSpacing: letterSpacing.normal,
   },
 } as const;
+
+/** Line-height calculé pour une taille de police (px). */
+export function lh(sizePx: number, ratio: number = lineHeight.normal): number {
+  return Math.round(sizePx * ratio);
+}

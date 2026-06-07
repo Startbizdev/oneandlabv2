@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
@@ -16,7 +19,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -195,11 +198,12 @@ export function ProfileNurseQualificationsSection({ bare }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   hint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     lineHeight: fontSize.xs * 1.45,
   },
   hintBare: {
@@ -218,12 +222,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surfaceAlt,
+    borderColor: c.borderLight,
+    backgroundColor: c.surfaceAlt,
   },
   rowEnabled: {
-    borderColor: colors.primaryMid,
-    backgroundColor: colors.primaryLight,
+    borderColor: c.primaryMid,
+    backgroundColor: c.primaryLight,
   },
   rowBusy: { opacity: 0.55 },
   rowTitle: {
@@ -233,22 +237,22 @@ const styles = StyleSheet.create({
     marginRight: spacing[3],
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   otherBlock: {
     gap: spacing[2],
     marginTop: spacing[2],
     padding: spacing[3],
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   otherBlockBare: { marginHorizontal: spacing[4] },
   otherTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   otherRow: {
     flexDirection: 'row',
@@ -266,6 +270,16 @@ const styles = StyleSheet.create({
   addText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.primary,
+    color: c.primary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_components_ProfileNurseQualificationsSection_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

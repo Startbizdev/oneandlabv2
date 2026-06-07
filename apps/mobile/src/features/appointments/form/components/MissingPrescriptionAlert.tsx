@@ -1,8 +1,11 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AlertTriangle } from 'lucide-react-native';
 import { missingPrescriptionCopy } from '../constants/appointment-document-fields';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -30,7 +33,8 @@ export function MissingPrescriptionAlert({ serviceType, visible }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   box: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -38,24 +42,34 @@ const styles = StyleSheet.create({
     padding: spacing[3],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.warningMid,
-    backgroundColor: colors.warningLight,
+    borderColor: c.warningMid,
+    backgroundColor: c.warningLight,
   },
   body: { flex: 1, gap: spacing[1] },
   title: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   more: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.warning,
+    color: c.warning,
   },
   desc: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_form_components_MissingPrescriptionAlert_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

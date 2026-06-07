@@ -1,3 +1,7 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import dayjs from 'dayjs';
@@ -7,7 +11,7 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { StatusBadge } from '@/components/ui/Badge';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -19,6 +23,7 @@ interface Props {
 }
 
 export function DetailHero({ primary, batch, isMultiBatch }: Props) {
+  const c = useAppColors();
   const scheduled = primary.scheduled_at ? dayjs(primary.scheduled_at) : null;
   const fd = (primary.form_data ?? {}) as Record<string, unknown>;
   const timeLabel = formatAvailabilityDisplayFr(fd.availability, primary.scheduled_at);
@@ -35,7 +40,7 @@ export function DetailHero({ primary, batch, isMultiBatch }: Props) {
 
   return (
     <LinearGradient
-      colors={['#F0FDFA', colors.background]}
+      colors={[c.primaryLight, c.background]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.wrap}
@@ -81,11 +86,12 @@ export function DetailHero({ primary, batch, isMultiBatch }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
     borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.primaryMid,
+    borderColor: c.primaryMid,
     padding: spacing[4],
     gap: spacing[3],
   },
@@ -106,7 +112,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize.xl,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.4,
     lineHeight: fontSize.xl * 1.2,
   },
@@ -117,21 +123,21 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   typePill: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     paddingHorizontal: spacing[2.5],
     paddingVertical: 4,
     borderRadius: radius.full,
   },
   typePillText: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.primary,
+    fontSize: fontSize.xs,
+    color: c.primary,
     letterSpacing: 0.3,
   },
   batchHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     flex: 1,
   },
   schedule: {
@@ -144,7 +150,7 @@ const styles = StyleSheet.create({
   dateLine: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     textTransform: 'capitalize',
   },
   timeRow: {
@@ -155,6 +161,16 @@ const styles = StyleSheet.create({
   timeLine: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_layout_DetailHero_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

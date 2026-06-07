@@ -161,32 +161,36 @@ export function RoleFilteredAppointmentsListScreen({
   );
 
   const ListHeader = useCallback(() => {
-    if (!bookHref) return null;
-    return (
-      <View style={styles.listHeader}>
+    const bookBlock =
+      bookHref != null ? (
         <AppointmentsBookCta href={bookHref} label={bookLabel ?? 'Prendre un rendez-vous'} />
+      ) : null;
+
+    return (
+      <View style={styles.scrollHeader}>
+        <AppointmentsListFilterBar
+          embedded
+          followedByBookCta={bookHref != null}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Nom, soin, adresse…"
+          onOpenFilters={() => setSheetOpen(true)}
+          advancedFilterCount={advancedCount}
+          chips={filterChips}
+        />
+        {bookBlock}
       </View>
     );
-  }, [bookHref, bookLabel]);
+  }, [advancedCount, bookHref, bookLabel, filterChips, search]);
 
   return (
     <View style={styles.container}>
       <InfiniteQueryFlatList
         query={query}
         items={displayRows}
-        header={
-          <AppointmentsListFilterBar
-            search={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Nom, soin, adresse…"
-            onOpenFilters={() => setSheetOpen(true)}
-            advancedFilterCount={advancedCount}
-            chips={filterChips}
-          />
-        }
         renderItem={renderItem}
         keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
-        ListHeaderComponent={bookHref ? ListHeader : undefined}
+        ListHeaderComponent={ListHeader}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
@@ -224,11 +228,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   listContent: {
     paddingHorizontal: spacing[4],
+    paddingTop: 0,
     paddingBottom: spacing[8],
     flexGrow: 1,
   },
-  listHeader: {
-    gap: spacing[2],
-    marginBottom: spacing[1],
+  scrollHeader: {
+    marginTop: 0,
+    alignSelf: 'stretch',
+    width: '100%',
+  },
+  listHeaderComponent: {
+    paddingTop: 0,
+    marginTop: 0,
   },
 });

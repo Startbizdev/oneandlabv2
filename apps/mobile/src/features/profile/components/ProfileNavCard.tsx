@@ -21,10 +21,9 @@ const styles = StyleSheet.create({
   section: { gap: spacing[2] },
   sectionTitle: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xs,
-    color: colors.textTertiary,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    letterSpacing: 0.2,
     paddingHorizontal: spacing[1],
   },
   card: {

@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -37,7 +38,7 @@ import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-st
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
 import { filterListDocuments } from '../detail/utils/document-labels';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 interface Props {
   role: string;
@@ -293,7 +294,6 @@ export function AppointmentDetailScreen({ role }: Props) {
               docs={s.allDocuments}
               loading={s.docsLoading}
               omitCarePhotos={showCarePhotos}
-              embedded
             />
           ) : null}
 

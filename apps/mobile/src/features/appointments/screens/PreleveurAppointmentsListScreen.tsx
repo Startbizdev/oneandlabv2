@@ -85,23 +85,26 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix }: Props) {
     [detailPathPrefix, router],
   );
 
+  const ListHeader = useCallback(
+    () => (
+      <AppointmentsListFilterBar
+        embedded
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Nom, adresse, soin…"
+      />
+    ),
+    [search],
+  );
+
   return (
     <View style={styles.container}>
       <InfiniteQueryFlatList
         query={query}
         items={displayRows}
-        header={
-          <AppointmentsListFilterBar
-            search={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Nom, adresse, soin…"
-            onOpenFilters={() => {}}
-            advancedFilterCount={0}
-            chips={[]}
-          />
-        }
         renderItem={renderItem}
         keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
+        ListHeaderComponent={ListHeader}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
@@ -126,7 +129,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   listContent: {
     paddingHorizontal: spacing[4],
+    paddingTop: 0,
     paddingBottom: spacing[8],
     flexGrow: 1,
+  },
+  listHeaderComponent: {
+    paddingTop: 0,
+    marginTop: 0,
   },
 });

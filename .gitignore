@@ -35,6 +35,9 @@ data/mysql-dumps/
 # Uploads backend (fichiers médicaux sur disque — pas le code mobile src/lib/uploads/)
 /uploads/
 
+# Clés SSH embarquées (secrets — ne pas versionner)
+scripts/setup-ssh-oneandlab.sh
+
 # Migration legacy (données sensibles, ne pas versionner)
 data/legacy-export.json
 data/legacy-uploads/

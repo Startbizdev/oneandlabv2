@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,7 +22,7 @@ import {
   filterListDocuments,
   getDocumentTypeLabel,
 } from '../utils/document-labels';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const DOC_ICONS: Record<string, LucideIcon> = {
@@ -146,7 +149,8 @@ export function DocumentsBlock({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   skeletonRows: {
     marginTop: spacing[3],
     gap: spacing[2],
@@ -156,7 +160,7 @@ const styles = StyleSheet.create({
   },
   docRowBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
   docRow: {
     flexDirection: 'row',
@@ -171,7 +175,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -184,18 +188,18 @@ const styles = StyleSheet.create({
   docLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   docFile: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   downloadBtn: {
     width: 40,
     height: 40,
     borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -205,5 +209,15 @@ const styles = StyleSheet.create({
   },
   downloadBtnDisabled: {
     opacity: 0.5,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_detail_components_DocumentsBlock_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

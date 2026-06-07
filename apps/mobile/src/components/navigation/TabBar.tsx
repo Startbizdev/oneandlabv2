@@ -1,10 +1,13 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import React, { useCallback } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { BottomTabBarProps, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing } from '@/theme';
-import { fontFamily } from '@/theme/typography';
+import { spacing } from '@/theme';
+import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Hauteur zone icône + libellé (hors safe area bas). */
 const TAB_CONTENT_HEIGHT = 50;
@@ -53,7 +56,7 @@ function TabItem({
       onLongPress={onLongPress}
       accessibilityRole="tab"
       accessibilityState={{ selected: isFocused }}
-      accessibilityLabel={options.tabBarAccessibilityLabel}
+      accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
       testID={options.tabBarButtonTestID}
       style={styles.tabItem}
     >
@@ -111,11 +114,12 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   container: {
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopColor: c.border,
   },
   row: {
     flexDirection: 'row',
@@ -137,14 +141,25 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fontFamily.medium,
-    fontSize: 10,
+    fontSize: fontSize.xs,
     letterSpacing: 0.1,
   },
   labelFocused: {
-    color: colors.primary,
+    color: c.primary,
     fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.sm,
   },
   labelIdle: {
-    color: colors.textTertiary,
+    color: c.textTertiary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('components_navigation_TabBar_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

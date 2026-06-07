@@ -1,6 +1,7 @@
+import { colors } from '@/theme';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { FormScreen } from '@/components/layout/FormScreen';
 import { Button } from '@/components/ui/Button';

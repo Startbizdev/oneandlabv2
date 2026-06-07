@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View } from 'react-native';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
@@ -110,11 +112,12 @@ export function ProfileCareTypesSection({ bare }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   empty: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     textAlign: 'center',
     paddingVertical: spacing[2],
   },
@@ -131,12 +134,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surface,
+    borderColor: c.borderLight,
+    backgroundColor: c.surface,
   },
   rowEnabled: {
     borderColor: palette.brand[200],
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
   },
   rowBusy: { opacity: 0.55 },
   emojiTile: {
@@ -146,12 +149,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceSubtle,
+    backgroundColor: c.surfaceSubtle,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
   emojiTileEnabled: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderColor: palette.brand[200],
   },
   emoji: {
@@ -165,9 +168,19 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing[3],
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   rowTitleOff: {
-    color: colors.textSecondary,
+    color: c.textSecondary,
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_components_ProfileCareTypesSection_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

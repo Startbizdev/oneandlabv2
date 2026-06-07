@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { useAppColors } from '@/theme/use-app-colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
@@ -18,7 +21,7 @@ import {
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import { colors, elevation, radius, spacing, animation } from '@/theme';
+import { elevation, radius, spacing, animation } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -42,6 +45,8 @@ function AppointmentCardComponent({
   onAccept,
   onRefuse,
 }: AppointmentCardProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles);
   const scale = useSharedValue(1);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -100,7 +105,7 @@ function AppointmentCardComponent({
           {scheduledAt && (
             <View style={styles.metaItem}>
               <View style={styles.metaIconWrap}>
-                <Clock size={12} color={colors.primary} strokeWidth={2.5} />
+                <Clock size={12} color={c.primary} strokeWidth={2.5} />
               </View>
               <Animated.Text style={styles.metaText}>
                 {scheduledAt.format('ddd D MMM')}
@@ -119,7 +124,7 @@ function AppointmentCardComponent({
           {address && (
             <View style={styles.metaItem}>
               <View style={styles.metaIconWrap}>
-                <MapPin size={12} color={colors.textTertiary} strokeWidth={2.5} />
+                <MapPin size={12} color={c.textTertiary} strokeWidth={2.5} />
               </View>
               <Animated.Text style={[styles.metaText, styles.metaAddress]} numberOfLines={1}>
                 {address}
@@ -165,12 +170,13 @@ function AppointmentCardComponent({
 
 export const AppointmentCard = React.memo(AppointmentCardComponent);
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     marginBottom: spacing[3],
   },
@@ -187,17 +193,17 @@ const styles = StyleSheet.create({
   patientName: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.2,
   },
   careText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   divider: {
     height: 1,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     marginBottom: spacing[3],
   },
   meta: {
@@ -215,15 +221,15 @@ const styles = StyleSheet.create({
   metaText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     flex: 1,
   },
   metaTime: {
     fontFamily: fontFamily.bold,
-    color: colors.primary,
+    color: c.primary,
   },
   metaAddress: {
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   offerActions: {
     flexDirection: 'row',
@@ -231,7 +237,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[3],
     paddingTop: spacing[3],
     borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
   offerBtn: {
     flex: 1,
@@ -241,21 +247,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   refuseBtn: {
-    backgroundColor: colors.errorLight,
+    backgroundColor: c.errorLight,
     borderWidth: 1,
-    borderColor: colors.errorMid,
+    borderColor: c.errorMid,
   },
   acceptBtn: {
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
   },
   offerBtnText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
   },
   refuseBtnText: {
-    color: colors.error,
+    color: c.error,
   },
   acceptBtnText: {
-    color: colors.textInverse,
+    color: c.textInverse,
   },
-});
+};
+}

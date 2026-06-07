@@ -1,6 +1,8 @@
 import { Image, StyleSheet } from 'react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { DetailEntityRow } from '@/components/ui/DetailEntityRow';
+import { CompactAssigneeRating } from '@/features/appointments/detail/components/CompactAssigneeRating';
+import type { AssigneeReviewSummary } from '@/features/appointments/detail/utils/assignee-review-display';
 import { buildPhoneContactActions } from '@/utils/contact-actions';
 import { colors, radius } from '@/theme';
 
@@ -11,6 +13,7 @@ interface Props {
   gender?: string | null;
   phone?: string;
   subtitle?: string;
+  reviewSummary?: AssigneeReviewSummary | null;
   publicSlug?: string | null;
   onViewProfile?: () => void;
   brandLogo?: 'cary';
@@ -24,6 +27,7 @@ export function AssigneeProfileRow({
   gender,
   phone,
   subtitle,
+  reviewSummary,
   publicSlug,
   onViewProfile,
   brandLogo,
@@ -53,6 +57,7 @@ export function AssigneeProfileRow({
       eyebrow={title}
       title={name}
       subtitle={subtitle}
+      belowTitle={<CompactAssigneeRating summary={reviewSummary} />}
       leading={leading}
       contactActions={buildPhoneContactActions(phone)}
       onProfilePress={hasProfile ? onViewProfile : undefined}

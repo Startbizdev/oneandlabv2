@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { Fragment, useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActionSheetIOS,
@@ -29,7 +30,7 @@ import { StaffPatientHubListRow } from '../components/StaffPatientHubListRow';
 import { staffHubItemRoute } from '../utils/staff-hub-navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function hubPatientToRow(item: StaffHubPatientItem): PatientRow {
@@ -242,7 +243,7 @@ const styles = StyleSheet.create({
   },
   sectionKicker: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
+    fontSize: fontSize.xs,
     color: colors.textTertiary,
     letterSpacing: 0.6,
     textTransform: 'uppercase',

@@ -164,8 +164,8 @@ const defaultTitleLines = ['Un professionnel', 'de santé chez vous,'];
 const defaultHighlight = 'en moins de 2h';
 const defaultDescription =
   "Infirmiers diplômés et préleveurs certifiés interviennent directement à votre domicile. Sans file d'attente, remboursé par l'Assurance Maladie.";
-const defaultImageSrc = '/images/landing/hero-infirmier.png';
-const defaultImageAlt = 'Thomas, infirmier diplômé Cary à domicile';
+const defaultImageSrc = '/images/landing/hero-cary-home-nurse.png';
+const defaultImageAlt = 'Infirmier diplômé Cary préparant une visite à domicile';
 const defaultStats: HeroStat[] = [
   { num: '+2000', rest: ' patients accompagnés' },
   { num: '+500', rest: ' professionnels certifiés' },
@@ -173,7 +173,7 @@ const defaultStats: HeroStat[] = [
 ];
 const defaultQuote: HeroQuote = {
   text:
-    "Thomas est un infirmier exceptionnel, très à l'écoute et d'un grand professionnalisme. Je me suis senti en totale confiance pour mes soins à domicile.",
+    "Un professionnel à l'écoute et d'un grand sérieux. Je me suis senti en totale confiance pour mes soins à domicile.",
   author: 'Marc D., patient',
 };
 

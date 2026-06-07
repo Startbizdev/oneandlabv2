@@ -1,3 +1,4 @@
+import { colors } from '@/theme';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { pickMedicalDocumentFile } from '@/lib/uploads/pick-medical-document';
@@ -15,7 +16,7 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { DocumentsBlock } from './DocumentsBlock';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
 import { getDocumentTypeLabel } from '../utils/document-labels';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const PATIENT_TYPES = [

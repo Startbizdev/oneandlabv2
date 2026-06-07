@@ -1,4 +1,8 @@
-import React, { useCallback } from 'react';
+import type { AppColors } from '@/theme/colors';
+import { getAppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
+import React, { useCallback, useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   FadeInDown,
@@ -27,9 +31,10 @@ import type { LucideIcon } from 'lucide-react-native';
 import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
 import { useAuthStore } from '@/store/auth-store';
+import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { getNotificationsPath } from '@/navigation/notifications-route';
 import { roleRoutePrefix } from '@/navigation/role-route-prefix';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface MenuItemProps {
@@ -81,6 +86,14 @@ function getSections(
   logout: () => Promise<void>,
   biometricLabel: string,
 ): MenuSection[] {
+  const c = getAppColors();
+  const menuIcons = {
+    teal: { iconColor: c.primary, iconBg: c.primaryLight },
+    heart: { iconColor: c.error, iconBg: c.errorLight },
+    warning: { iconColor: c.warning, iconBg: c.warningLight },
+    muted: { iconColor: c.textSecondary, iconBg: c.surfaceAlt },
+  };
+
   const navigate = (href: string) => router.push(href as never);
   const logoutAndRedirect = async () => {
     await logout();
@@ -99,8 +112,7 @@ function getSections(
         icon: ScanFace,
         label: biometricLabel,
         onPress: () => navigate('/profile/security'),
-        iconColor: '#0D9488',
-        iconBg: '#F0FDFA',
+        ...menuIcons.teal,
       },
       ...(role === 'patient'
         ? [
@@ -121,8 +133,7 @@ function getSections(
         icon: Scale,
         label: 'Informations légales',
         onPress: () => navigate(`${roleRoutePrefix(role)}/informations-legales`),
-        iconColor: '#64748B',
-        iconBg: '#F1F5F9',
+        ...menuIcons.muted,
       },
     ],
   };
@@ -145,9 +156,9 @@ function getSections(
         title: 'Navigation',
         items: [
           { icon: CalendarDays, label: 'Mes rendez-vous', onPress: () => navigate('/(patient)/(tabs)/appointments') },
-          { icon: CalendarDays, label: 'Réserver un RDV', onPress: () => navigate('/(patient)/(tabs)/book'), iconColor: '#0D9488', iconBg: '#F0FDFA' },
-          { icon: Heart, label: 'Mes proches', onPress: () => navigate('/(patient)/(tabs)/relatives'), iconColor: '#DC2626', iconBg: '#FEF2F2' },
-          { icon: Star, label: 'Mes avis', onPress: () => navigate('/(patient)/(tabs)/reviews'), iconColor: '#D97706', iconBg: '#FFFBEB' },
+          { icon: CalendarDays, label: 'Réserver un RDV', onPress: () => navigate('/(patient)/(tabs)/book'), ...menuIcons.teal },
+          { icon: Heart, label: 'Mes proches', onPress: () => navigate('/(patient)/(tabs)/relatives'), ...menuIcons.heart },
+          { icon: Star, label: 'Mes avis', onPress: () => navigate('/(patient)/reviews'), ...menuIcons.warning },
         ],
       },
       legalSection,
@@ -161,8 +172,8 @@ function getSections(
       {
         title: 'Professionnel',
         items: [
-          { icon: Star, label: 'Mes avis', onPress: () => navigate('/(nurse)/reviews'), iconColor: '#D97706', iconBg: '#FFFBEB' },
-          { icon: CreditCard, label: 'Abonnement', onPress: () => navigate('/(nurse)/abonnement'), iconColor: '#7C3AED', iconBg: '#F5F3FF' },
+          { icon: Star, label: 'Mes avis', onPress: () => navigate('/(nurse)/reviews'), ...menuIcons.warning },
+          { icon: CreditCard, label: 'Abonnement', onPress: () => navigate('/(nurse)/abonnement'), ...menuIcons.warning },
         ],
       },
       legalSection,
@@ -191,7 +202,7 @@ function getSections(
       {
         title: 'Navigation',
         items: [
-          { icon: Route, label: 'Tournée', onPress: () => navigate('/(preleveur)/(tabs)/tournee'), iconColor: '#0D9488', iconBg: '#F0FDFA' },
+          { icon: Route, label: 'Tournée', onPress: () => navigate('/(preleveur)/(tabs)/tournee'), ...menuIcons.teal },
           { icon: CalendarDays, label: 'Rendez-vous', onPress: () => navigate('/(preleveur)/(tabs)/index') },
         ],
       },
@@ -208,8 +219,12 @@ export function ProfileHubScreen() {
   const biometricLabel = useBiometricLabel('Biométrie');
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.clearSession);
+  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
 
-  const sections = getSections(user?.role, router, logout, biometricLabel);
+  const sections = useMemo(
+    () => getSections(user?.role, router, logout, biometricLabel),
+    [user?.role, router, logout, biometricLabel, colorblindType],
+  );
 
   const roleLabel: Record<string, string> = {
     nurse: 'Infirmier(ère)',
@@ -258,10 +273,11 @@ export function ProfileHubScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   scroll: {
     paddingHorizontal: spacing[4],
@@ -274,16 +290,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     paddingHorizontal: spacing[1],
   },
   sectionCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     overflow: 'hidden',
   },
   menuItem: {
@@ -305,14 +321,24 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   menuLabelDestructive: {
-    color: colors.error,
+    color: c.error,
   },
   itemDivider: {
     height: 1,
     alignSelf: 'stretch',
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
+  },
+  };
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_profile_screens_ProfileHubScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });

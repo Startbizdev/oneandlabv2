@@ -1,9 +1,12 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
 import { BottomSheet } from './BottomSheet';
 import { useInBottomSheet } from './sheet-keyboard-context';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type SelectOption = { value: string; label: string };
@@ -46,6 +49,9 @@ export function SelectField({
         key={opt.value}
         onPress={() => selectOption(opt.value)}
         style={[styles.item, active && styles.itemActive]}
+        accessibilityRole="button"
+        accessibilityState={{ selected: active }}
+        accessibilityLabel={opt.label}
       >
         <Text style={[styles.itemText, active && styles.itemTextActive]}>{opt.label}</Text>
       </Pressable>
@@ -58,6 +64,9 @@ export function SelectField({
       <Pressable
         onPress={() => setOpen((prev) => (inSheet ? !prev : true))}
         style={[styles.trigger, error ? styles.triggerError : null, open && inSheet && styles.triggerOpen]}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}, ${selectedLabel ?? placeholder}`}
+        accessibilityState={{ expanded: open }}
       >
         <Text
           style={[styles.triggerText, !selectedLabel && styles.placeholder]}
@@ -100,12 +109,13 @@ export function SelectField({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[2] },
   label: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   trigger: {
     minHeight: 48,
@@ -114,14 +124,14 @@ const styles = StyleSheet.create({
     gap: spacing[2],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
   },
-  triggerError: { borderColor: colors.borderError },
+  triggerError: { borderColor: c.borderError },
   triggerOpen: {
-    borderColor: colors.primary,
+    borderColor: c.primary,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
   },
@@ -130,10 +140,10 @@ const styles = StyleSheet.create({
     marginTop: -1,
     borderWidth: 1,
     borderTopWidth: 0,
-    borderColor: colors.primary,
+    borderColor: c.primary,
     borderBottomLeftRadius: radius.lg,
     borderBottomRightRadius: radius.lg,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     overflow: 'hidden',
   },
   inlineList: { maxHeight: 220 },
@@ -141,27 +151,39 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
-  placeholder: { color: colors.textTertiary },
+  placeholder: { color: c.textTertiary },
   error: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.error,
+    color: c.error,
   },
   list: { maxHeight: 360 },
   item: {
+    minHeight: 52,
+    justifyContent: 'center',
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[1],
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: c.borderLight,
   },
-  itemActive: { backgroundColor: colors.primaryLight },
+  itemActive: { backgroundColor: c.primaryLight },
   itemText: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-    lineHeight: fontSize.sm * 1.4,
+    fontSize: fontSize.base,
+    color: c.textPrimary,
+    lineHeight: fontSize.base * 1.4,
   },
-  itemTextActive: { color: colors.primary, fontFamily: fontFamily.semiBold },
+  itemTextActive: { color: c.primary, fontFamily: fontFamily.semiBold },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('components_ui_SelectField_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
+  },
 });

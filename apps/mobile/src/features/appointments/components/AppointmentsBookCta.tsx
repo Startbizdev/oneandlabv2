@@ -41,6 +41,7 @@ export function AppointmentsBookCta({
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: spacing[1],
+    marginTop: spacing[2],
+    marginBottom: spacing[2],
   },
 });

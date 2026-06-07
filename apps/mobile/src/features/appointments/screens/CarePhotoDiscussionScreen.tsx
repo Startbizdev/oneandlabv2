@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { getThemedStyles } from '@/theme/use-themed-styles';
+import { colors } from '@/theme';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -54,7 +57,7 @@ import { rdvMaquetteAvatarCounterparty } from '@/utils/rdv-maquette-card-display
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -462,10 +465,11 @@ function PhotoThreadBlock({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   flex: { flex: 1 },
   errorWrap: {
@@ -477,16 +481,16 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing[2],
     paddingBottom: spacing[3],
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: c.borderLight,
   },
   headerIdentity: {
     flex: 1,
@@ -515,18 +519,18 @@ const styles = StyleSheet.create({
   headerPatientName: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.2,
   },
   headerTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   headerSub: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,
   },
   scrollContent: {
@@ -538,21 +542,21 @@ const styles = StyleSheet.create({
   emptyCard: {
     padding: spacing[5],
     borderRadius: radius.xl,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     alignItems: 'center',
     gap: spacing[2],
   },
   emptyTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   emptySub: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     textAlign: 'center',
     lineHeight: fontSize.sm * 1.45,
   },
@@ -562,12 +566,12 @@ const styles = StyleSheet.create({
   photoBlockLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   photoBlockDate: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     marginTop: -4,
   },
   heroImageWrap: {
@@ -598,13 +602,13 @@ const styles = StyleSheet.create({
   },
   zoomPillText: {
     fontFamily: fontFamily.semiBold,
-    fontSize: 11,
-    color: colors.textInverse,
+    fontSize: fontSize.sm,
+    color: c.textInverse,
   },
   noComments: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     paddingVertical: spacing[1],
   },
   thread: { gap: spacing[2] },
@@ -616,14 +620,14 @@ const styles = StyleSheet.create({
   },
   bubbleMine: {
     alignSelf: 'flex-end',
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     borderBottomRightRadius: radius.sm,
   },
   bubbleOther: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     borderBottomLeftRadius: radius.sm,
   },
   bubbleMeta: {
@@ -634,23 +638,23 @@ const styles = StyleSheet.create({
   },
   author: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize['2xs'],
-    color: colors.textSecondary,
+    fontSize: fontSize.xs,
+    color: c.textSecondary,
   },
   authorMine: { color: 'rgba(255,255,255,0.9)' },
   time: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSize['2xs'],
-    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
   },
   timeMine: { color: 'rgba(255,255,255,0.75)' },
   body: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.sm * 1.45,
   },
-  bodyMine: { color: colors.textInverse },
+  bodyMine: { color: c.textInverse },
   composerBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -658,14 +662,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     paddingTop: spacing[2],
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
-    backgroundColor: colors.surface,
+    borderTopColor: c.borderLight,
+    backgroundColor: c.surface,
   },
   attachBtn: {
     width: 44,
     height: 44,
     borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: c.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
@@ -676,19 +680,19 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surfaceAlt,
+    borderColor: c.borderLight,
+    backgroundColor: c.surfaceAlt,
     paddingHorizontal: spacing[3],
     paddingVertical: Platform.OS === 'ios' ? spacing[2.5] : spacing[2],
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   sendBtn: {
     width: 44,
     height: 44,
     borderRadius: radius.lg,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
@@ -698,8 +702,18 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     textAlign: 'center',
     paddingVertical: spacing[3],
+  },
+};
+}
+
+const styles = new Proxy({} as Record<string, any>, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'string') {
+      return getThemedStyles('features_appointments_screens_CarePhotoDiscussionScreen_tsx_styles', buildStyles)[prop];
+    }
+    return undefined;
   },
 });
