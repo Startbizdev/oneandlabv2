@@ -1,12 +1,20 @@
 #!/usr/bin/env node
 /**
- * Après pod install EAS : applique le fix sandbox Xcode 16+ et relance pod install.
- * Hermes reste en mode précompilé (hermesc officiel Expo/RN).
+ * Post-install EAS : sandbox fix, Hermes précompilé, derived data hors ios/build.
  */
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { patchPodfile, assertHermesPrebuilt } = require('./ios-hermes-pods.shared.cjs');
+const {
+  patchPodfile,
+  getReactNativeRoot,
+  resetPods,
+  cleanPodCache,
+  prepareHermesReleaseArtifacts,
+  assertHermesXcframework,
+  assertHermesPrebuilt,
+  pruneIosBuildExceptGenerated,
+} = require('./ios-hermes-pods.shared.cjs');
 
 const mobileDir = path.resolve(__dirname, '..');
 const iosDir = path.join(mobileDir, 'ios');
@@ -17,7 +25,12 @@ function fail(message) {
   process.exit(1);
 }
 
-console.log('=== Fix iOS post-install (sandbox + Hermes précompilé) ===');
+console.log('=== Fix iOS post-install ===');
+console.log(`  GYM_DERIVED_DATA_PATH=${process.env.GYM_DERIVED_DATA_PATH ?? '(absent)'}`);
+
+if (!process.env.GYM_DERIVED_DATA_PATH) {
+  fail('GYM_DERIVED_DATA_PATH doit être défini dans eas.json (production.env).');
+}
 
 if (!fs.existsSync(podfilePath)) {
   fail('ios/Podfile introuvable.');
@@ -25,26 +38,34 @@ if (!fs.existsSync(podfilePath)) {
 
 try {
   patchPodfile(podfilePath);
+  cleanPodCache();
 } catch (error) {
   fail(error.message);
 }
 
-console.log('\n→ pod install (appliquer ENABLE_USER_SCRIPT_SANDBOXING=NO)');
-const result = spawnSync('pod', ['install'], {
+console.log('→ Réinstallation Pods (cache EAS + pod install EAS)');
+resetPods(iosDir);
+
+console.log('\n→ pod install');
+const podResult = spawnSync('pod', ['install'], {
   cwd: iosDir,
   stdio: 'inherit',
   shell: true,
   env: process.env,
 });
 
-if (result.status !== 0) {
-  process.exit(result.status ?? 1);
+if (podResult.status !== 0) {
+  process.exit(podResult.status ?? 1);
 }
 
 try {
+  const rnRoot = getReactNativeRoot(mobileDir);
+  prepareHermesReleaseArtifacts(iosDir, rnRoot);
+  assertHermesXcframework(iosDir);
   assertHermesPrebuilt(iosDir);
+  pruneIosBuildExceptGenerated(iosDir);
 } catch (error) {
   fail(error.message);
 }
 
-console.log('✓ Hermes précompilé + sandbox désactivé pour les scripts Pods');
+console.log('✓ Hermes précompilé prêt — derived data hors ios/build');

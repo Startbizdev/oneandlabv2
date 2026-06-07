@@ -14,8 +14,12 @@
     "production": {
       "distribution": "store",
       "prebuildCommand": "node scripts/eas-prebuild-ios.cjs",
+      "env": {
+        "GYM_DERIVED_DATA_PATH": "/Users/expo/workingdir/derived-data"
+      },
       "ios": {
         "autoIncrement": true,
+        "image": "macos-sequoia-15.6-xcode-16.4",
         "cocoapods": "1.16.2"
       }
     }
