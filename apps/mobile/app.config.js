@@ -13,9 +13,23 @@ module.exports = {
     platforms: ['ios', 'android'],
     android: {
       ...appJson.expo.android,
-      usesCleartextTraffic: true,
       softwareKeyboardLayoutMode: 'resize',
     },
-    plugins: [...(appJson.expo.plugins ?? []), 'expo-font'],
+    plugins: [
+      ...(appJson.expo.plugins ?? []),
+      'expo-font',
+      [
+        'expo-build-properties',
+        {
+          android: {
+            usesCleartextTraffic: true,
+          },
+          ios: {
+            // Xcode 26 sur EAS : Hermes précompilé → échec Copy XCFrameworks.
+            buildReactNativeFromSource: true,
+          },
+        },
+      ],
+    ],
   },
 };
