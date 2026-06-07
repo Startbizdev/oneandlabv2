@@ -1,7 +1,8 @@
 /** @type {import('expo/config').ExpoConfig} */
 const appJson = require('./app.json');
+const withIosForceBuildFromSource = require('./plugins/withIosForceBuildFromSource');
 
-module.exports = {
+module.exports = withIosForceBuildFromSource({
   expo: {
     ...appJson.expo,
     extra: {
@@ -25,11 +26,11 @@ module.exports = {
             usesCleartextTraffic: true,
           },
           ios: {
-            // Xcode 26 sur EAS : Hermes précompilé → échec Copy XCFrameworks.
+            // EAS SDK 54 : forcer RN + Hermes depuis sources (évite [CP] Copy XCFrameworks).
             buildReactNativeFromSource: true,
           },
         },
       ],
     ],
   },
-};
+});
