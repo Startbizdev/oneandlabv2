@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const PODFILE_ENV_MARKER = '# @oneandlab/eas-hermes-from-source';
 const PODFILE_SANDBOX_MARKER = '# @oneandlab/eas-script-sandboxing-fix';
@@ -88,6 +89,39 @@ function resetPods(iosDir) {
   }
 }
 
+function commandExists(command) {
+  const result = spawnSync('bash', ['-lc', `command -v ${command}`], {
+    encoding: 'utf8',
+  });
+  return result.status === 0 && Boolean(result.stdout?.trim());
+}
+
+function ensureCmake() {
+  if (commandExists('cmake')) {
+    console.log('✓ cmake disponible');
+    return;
+  }
+
+  console.log('→ cmake absent — requis pour Hermes from source (brew install cmake)');
+  const result = spawnSync('brew', ['install', 'cmake'], {
+    stdio: 'inherit',
+    shell: true,
+    env: {
+      ...process.env,
+      HOMEBREW_NO_AUTO_UPDATE: '1',
+      HOMEBREW_NO_INSTALL_CLEANUP: '1',
+    },
+  });
+
+  if (result.status !== 0 || !commandExists('cmake')) {
+    throw new Error(
+      'cmake introuvable après brew install — impossible de compiler Hermes depuis sources.'
+    );
+  }
+
+  console.log('✓ cmake installé');
+}
+
 module.exports = {
   HERMES_ENV,
   patchPodfile,
@@ -96,4 +130,5 @@ module.exports = {
   isHermesFromSourceMode,
   assertHermesFromSource,
   resetPods,
+  ensureCmake,
 };

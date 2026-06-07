@@ -13,6 +13,7 @@ const {
   isHermesPrebuiltMode,
   assertHermesFromSource,
   resetPods,
+  ensureCmake,
 } = require('./ios-hermes-pods.shared.cjs');
 
 const mobileDir = path.resolve(__dirname, '..');
@@ -62,6 +63,13 @@ if (existingPbx && !isHermesPrebuiltMode(existingPbx)) {
 
 console.log('→ Réinitialisation Pods (pod install EAS = mode précompilé)');
 resetPods(iosDir);
+
+try {
+  ensureCmake();
+} catch (error) {
+  fail(error.message);
+}
+
 runPodInstall();
 
 try {
