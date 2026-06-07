@@ -75,7 +75,8 @@
       "expo-document-picker"
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "autolinkingModuleResolution": true
     },
     "extra": {
       "router": {
