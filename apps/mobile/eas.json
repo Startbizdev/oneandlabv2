@@ -13,8 +13,16 @@
     },
     "production": {
       "distribution": "store",
+      "prebuildCommand": "node scripts/eas-prebuild-ios.cjs",
+      "env": {
+        "RCT_BUILD_HERMES_FROM_SOURCE": "true",
+        "RCT_USE_PREBUILT_RNCORE": "0",
+        "RCT_USE_RN_DEP": "0",
+        "EAS_BUILD_DISABLE_COCOAPODS_CACHE": "1"
+      },
       "ios": {
-        "autoIncrement": true
+        "autoIncrement": true,
+        "cocoapods": "1.16.2"
       }
     }
   },
