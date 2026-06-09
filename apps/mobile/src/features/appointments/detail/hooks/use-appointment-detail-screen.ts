@@ -34,6 +34,14 @@ function patientCanCancelStatus(status: unknown): boolean {
   return ['pending', 'confirmed', 'planned', 'in_progress', 'inprogress'].includes(s);
 }
 
+const STAFF_PROFILE_MERGE_ROLES = new Set(['pro', 'nurse', 'preleveur']);
+
+function shouldMergeProfileDocuments(role: string, relativeId?: string): boolean {
+  if (role === 'patient') return true;
+  if (relativeId) return false;
+  return STAFF_PROFILE_MERGE_ROLES.has(role);
+}
+
 export function useAppointmentDetailScreen(
   role: string,
   id: string | undefined,
@@ -54,17 +62,28 @@ export function useAppointmentDetailScreen(
   const primary =
     apt ?? batchSorted.find((a) => String(a.id) === String(id)) ?? batchSorted[0];
   const relativeId = primary?.relative_id?.trim() || undefined;
+  const patientId = primary?.patient_id?.trim() || undefined;
+  const mergeProfileDocs = shouldMergeProfileDocuments(role, relativeId);
 
   const profileDocsQ = useQuery({
     queryKey: relativeId
       ? queryKeys.documents.relative(relativeId)
-      : queryKeys.documents.patient(user?.id ?? ''),
+      : queryKeys.documents.patient(role === 'patient' ? (user?.id ?? '') : (patientId ?? '')),
     queryFn: async () => {
-      const res = await fetchProfileDocuments(relativeId ? { relativeId } : {});
+      const params =
+        role === 'patient'
+          ? relativeId
+            ? { relativeId }
+            : {}
+          : { userId: patientId };
+      const res = await fetchProfileDocuments(params);
       if (!res.success) throw new Error(res.error ?? 'Erreur chargement documents profil');
       return res.data ?? [];
     },
-    enabled: role === 'patient' && Boolean(user?.id) && Boolean(primary),
+    enabled:
+      Boolean(primary) &&
+      mergeProfileDocs &&
+      (role === 'patient' ? Boolean(user?.id) : Boolean(patientId)),
     staleTime: 30_000,
   });
 
@@ -87,13 +106,13 @@ export function useAppointmentDetailScreen(
       seen.add(d.id);
       return true;
     });
-    if (role !== 'patient') return aptDocs;
+    if (!mergeProfileDocs) return aptDocs;
     return mergeProfileDocumentsIntoAppointmentDocs(aptDocs, profileDocsQ.data ?? []);
-  }, [docQueries, profileDocsQ.data, role]);
+  }, [docQueries, mergeProfileDocs, profileDocsQ.data]);
 
   const docsLoading =
     docQueries.some((q) => q.isLoading) ||
-    (role === 'patient' && profileDocsQ.isLoading && profileDocsQ.data === undefined);
+    (mergeProfileDocs && profileDocsQ.isLoading && profileDocsQ.data === undefined);
   const canceled = primary ? isAppointmentCanceled(primary.status) : false;
 
   const cancellableForPatient = useMemo(
@@ -116,14 +135,14 @@ export function useAppointmentDetailScreen(
     void detailQ.refetch();
     void refetchSiblings();
     docQueries.forEach((q) => void q.refetch());
-    if (role === 'patient') void profileDocsQ.refetch();
-  }, [detailQ, refetchSiblings, docQueries, profileDocsQ, role]);
+    if (mergeProfileDocs) void profileDocsQ.refetch();
+  }, [detailQ, refetchSiblings, docQueries, profileDocsQ, mergeProfileDocs]);
 
   const isRefreshing =
     detailQ.isRefetching ||
     siblingsLoading ||
     docQueries.some((q) => q.isRefetching) ||
-    (role === 'patient' && profileDocsQ.isRefetching);
+    (mergeProfileDocs && profileDocsQ.isRefetching);
 
   const handleHeaderBack = useCallback(() => {
     if (navigation.canGoBack()) {

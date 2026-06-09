@@ -244,13 +244,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $patientDocs = $stmtPat->fetchAll(PDO::FETCH_ASSOC);
             }
             $appointmentDocIds = array_column($documents, 'id');
-            $typesOnAppointment = [];
-            foreach ($documents as $d) {
-                $t = $d['document_type'] ?? '';
-                if ($t !== '') {
-                    $typesOnAppointment[$t] = true;
-                }
-            }
             foreach ($patientDocs as $pd) {
                 if (($pd['document_type'] ?? '') === 'care_photo') {
                     continue;
@@ -259,8 +252,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     continue;
                 }
                 $canonicalType = $pd['document_type'] ?? '';
-                if ($canonicalType !== '' && isset($typesOnAppointment[$canonicalType])) {
+                $replacedExisting = false;
+                if ($canonicalType !== '') {
+                    foreach ($documents as $idx => $d) {
+                        if (($d['document_type'] ?? '') !== $canonicalType) {
+                            continue;
+                        }
+                        if (($d['source'] ?? 'appointment') !== 'appointment') {
+                            continue;
+                        }
+                        $aptCreated = strtotime($d['created_at'] ?? '') ?: 0;
+                        $profileCreated = strtotime($pd['created_at'] ?? '') ?: 0;
+                        if ($profileCreated > $aptCreated) {
+                            unset($documents[$idx]);
+                            $documents = array_values($documents);
+                            $pd['source'] = 'patient_profile';
+                            $pd['profile_newer_than_appointment'] = true;
+                            $documents[] = $pd;
+                            $replacedExisting = true;
+                        }
+                        break;
+                    }
+                }
+                if ($replacedExisting) {
                     continue;
+                }
+                if ($canonicalType !== '') {
+                    $typeAlreadyOnAppointment = false;
+                    foreach ($documents as $d) {
+                        if (($d['document_type'] ?? '') === $canonicalType) {
+                            $typeAlreadyOnAppointment = true;
+                            break;
+                        }
+                    }
+                    if ($typeAlreadyOnAppointment) {
+                        continue;
+                    }
                 }
                 $pd['source'] = 'patient_profile';
                 $documents[] = $pd;

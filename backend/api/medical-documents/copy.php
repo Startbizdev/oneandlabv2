@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Crypto.php';
 require_once __DIR__ . '/../../lib/Logger.php';
+require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -129,13 +130,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif ($allowed && ($sourceDocumentRelativeId !== null || $appointmentRelativeId !== null)) {
                 $allowed = ($sourceDocumentRelativeId === $appointmentRelativeId);
             }
-        } elseif ($user['role'] === 'pro') {
-            // Pro : document doit appartenir au patient du RDV et le patient doit avoir été créé par ce pro
+        } elseif (in_array($user['role'], ['pro', 'subaccount'], true)) {
             if ($sourceDocumentPatientId && $sourceDocumentPatientId === $appointmentPatientId) {
-                $profStmt = $db->prepare('SELECT created_by FROM profiles WHERE id = ? AND role = ? LIMIT 1');
-                $profStmt->execute([$appointmentPatientId, 'patient']);
-                $prof = $profStmt->fetch(PDO::FETCH_ASSOC);
-                $allowed = $prof && ($prof['created_by'] === $user['user_id']);
+                $allowed = MedicalDocumentAccess::userHasProfessionalPatientAccess(
+                    $db,
+                    $user,
+                    (string) $appointmentPatientId,
+                );
             }
         } elseif ($user['role'] === 'preleveur') {
             $aptStmt = $db->prepare('SELECT id FROM appointments WHERE id = ? AND type = ? AND assigned_to = ? AND patient_id = ? LIMIT 1');

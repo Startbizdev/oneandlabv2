@@ -47,16 +47,96 @@ export type BuildAssigneeEntriesOptions = {
   onOpenProfileSheet: (sheet: AssigneeProfileSheetState) => void;
 };
 
+function normalizedId(value: unknown): string {
+  return String(value ?? '').trim();
+}
+
+function creatorPersonId(ext: AptExt): string {
+  const creator = ext.creator_origin as CreatorOrigin | undefined;
+  return normalizedId(creator?.id ?? ext.created_by);
+}
+
+type AssigneeSlot = 'nurse' | 'lab' | 'preleveur';
+
+function assigneePersonId(ext: AptExt, slot: AssigneeSlot): string {
+  switch (slot) {
+    case 'nurse':
+      return normalizedId(ext.assigned_nurse_id);
+    case 'lab':
+      return normalizedId(ext.assigned_lab_id);
+    case 'preleveur':
+      return normalizedId(ext.assigned_to);
+  }
+}
+
+/** Créateur et assigné = même personne sur ce créneau. */
+function assigneeSlotMergedWithCreator(ext: AptExt, slot: AssigneeSlot): boolean {
+  const creatorId = creatorPersonId(ext);
+  const assigneeId = assigneePersonId(ext, slot);
+  return Boolean(creatorId && assigneeId && creatorId === assigneeId);
+}
+
+function viewerIsCreatorAndAssignee(
+  ext: AptExt,
+  viewerId?: string | null,
+): boolean {
+  const viewer = normalizedId(viewerId);
+  if (!viewer || !isViewerAppointmentCreator(ext, viewerId)) return false;
+
+  const creatorId = creatorPersonId(ext);
+  if (creatorId !== viewer) return false;
+
+  return (
+    assigneeSlotMergedWithCreator(ext, 'nurse') ||
+    assigneeSlotMergedWithCreator(ext, 'lab') ||
+    assigneeSlotMergedWithCreator(ext, 'preleveur')
+  );
+}
+
 function viewerFlags(ext: AptExt, viewerId?: string | null, viewerRole?: string) {
   return {
-    hideNurse: viewerRole === 'nurse' && String(ext.assigned_nurse_id ?? '') === String(viewerId ?? ''),
+    hideNurse:
+      viewerRole === 'nurse' &&
+      assigneePersonId(ext, 'nurse') === normalizedId(viewerId),
     hideLab:
       (viewerRole === 'lab' || viewerRole === 'subaccount') &&
-      String(ext.assigned_lab_id ?? '') === String(viewerId ?? ''),
+      assigneePersonId(ext, 'lab') === normalizedId(viewerId),
     hidePreleveur:
-      viewerRole === 'preleveur' && String(ext.assigned_to ?? '') === String(viewerId ?? ''),
+      viewerRole === 'preleveur' &&
+      assigneePersonId(ext, 'preleveur') === normalizedId(viewerId),
     hideCreatorOrigin: isViewerAppointmentCreator(ext, viewerId),
   };
+}
+
+function mergedAssigneeTitle(slot: AssigneeSlot): string {
+  switch (slot) {
+    case 'nurse':
+      return 'Infirmier(e) assigné(e)';
+    case 'lab':
+      return 'Laboratoire assigné';
+    case 'preleveur':
+      return 'Préleveur assigné';
+  }
+}
+
+function personIdsOnEntries(ext: AptExt, entries: AssigneeEntry[]): Set<string> {
+  const ids = new Set<string>();
+  for (const entry of entries) {
+    if (entry.id === 'nurse') {
+      const id = assigneePersonId(ext, 'nurse');
+      if (id) ids.add(id);
+    } else if (entry.id === 'lab') {
+      const id = assigneePersonId(ext, 'lab');
+      if (id) ids.add(id);
+    } else if (entry.id === 'preleveur') {
+      const id = assigneePersonId(ext, 'preleveur');
+      if (id) ids.add(id);
+    } else if (entry.id === 'creator') {
+      const id = creatorPersonId(ext);
+      if (id) ids.add(id);
+    }
+  }
+  return ids;
 }
 
 export function hasAssigneeContent(
@@ -81,6 +161,11 @@ export function buildAssigneeEntries({
   onOpenProfileSheet,
 }: BuildAssigneeEntriesOptions): AssigneeEntry[] {
   const ext = apt as AptExt;
+
+  if (viewerIsCreatorAndAssignee(ext, viewerId)) {
+    return [];
+  }
+
   const { hideNurse, hideLab, hidePreleveur, hideCreatorOrigin } = viewerFlags(
     ext,
     viewerId,
@@ -90,11 +175,14 @@ export function buildAssigneeEntries({
   const entries: AssigneeEntry[] = [];
 
   const nurseName = String(ext.assigned_nurse_display_name ?? '').trim();
-  if (isNursingAppointment(apt.type) && !hideNurse && (nurseName || ext.assigned_nurse_id)) {
+  const nurseId = assigneePersonId(ext, 'nurse');
+  const nurseMergedWithCreator = assigneeSlotMergedWithCreator(ext, 'nurse');
+
+  if (isNursingAppointment(apt.type) && !hideNurse && (nurseName || nurseId)) {
     const slug = String(ext.assigned_nurse_public_slug ?? '').trim();
     entries.push({
       id: 'nurse',
-      title: 'Infirmier(e)',
+      title: nurseMergedWithCreator ? mergedAssigneeTitle('nurse') : 'Infirmier(e)',
       name: nurseName || 'Assigné',
       profileImageUrl: String(ext.assigned_nurse_profile_image_url ?? '') || null,
       gender: appointmentAssigneeGender(apt, 'nurse'),
@@ -113,11 +201,14 @@ export function buildAssigneeEntries({
   }
 
   const labName = String(ext.assigned_lab_display_name ?? '').trim();
-  if (isBloodTestAppointment(apt.type) && !hideLab && (labName || ext.assigned_lab_id)) {
+  const labId = assigneePersonId(ext, 'lab');
+  const labMergedWithCreator = assigneeSlotMergedWithCreator(ext, 'lab');
+
+  if (isBloodTestAppointment(apt.type) && !hideLab && (labName || labId)) {
     const slug = String(ext.assigned_lab_public_slug ?? '').trim();
     entries.push({
       id: 'lab',
-      title: 'Laboratoire',
+      title: labMergedWithCreator ? mergedAssigneeTitle('lab') : 'Laboratoire',
       name: labName || 'Assigné',
       profileImageUrl: String(ext.assigned_lab_profile_image_url ?? '') || null,
       gender: appointmentAssigneeGender(apt, 'lab'),
@@ -136,14 +227,19 @@ export function buildAssigneeEntries({
   }
 
   const preleveurName = String(ext.assigned_to_display_name ?? '').trim();
+  const preleveurId = assigneePersonId(ext, 'preleveur');
+  const preleveurMergedWithCreator = assigneeSlotMergedWithCreator(ext, 'preleveur');
+
   if (
     isBloodTestAppointment(apt.type) &&
     !hidePreleveur &&
-    (preleveurName || ext.assigned_to)
+    (preleveurName || preleveurId)
   ) {
     entries.push({
       id: 'preleveur',
-      title: 'Préleveur',
+      title: preleveurMergedWithCreator
+        ? mergedAssigneeTitle('preleveur')
+        : 'Préleveur',
       name: preleveurName || 'Assigné',
       profileImageUrl: String(ext.assigned_to_profile_image_url ?? '') || null,
       gender: appointmentAssigneeGender(apt, 'preleveur'),
@@ -154,21 +250,31 @@ export function buildAssigneeEntries({
 
   const creator = ext.creator_origin as CreatorOrigin | undefined;
   const showCreatorOrigin = assigneeCreatorOriginVisible(creator, viewerRole, hideCreatorOrigin);
+  const coveredPersonIds = personIdsOnEntries(ext, entries);
+  const creatorId = creatorPersonId(ext);
 
   if (showCreatorOrigin && creator) {
-    const platformOriginRow = isPatientPlatformOrigin(creator);
-    const profileSheet = resolveCreatorOriginProfileSheet(creator);
-    entries.push({
-      id: 'creator',
-      title: creatorOriginTitle(creator, viewerRole),
-      name: creatorOriginName(creator),
-      profileImageUrl: platformOriginRow ? null : creator.profile_image_url,
-      brandLogo: platformOriginRow ? 'cary' : undefined,
-      phone: creator.phone,
-      subtitle: creatorOriginSubtitle(creator, viewerRole),
-      reviewSummary: creatorOriginReviewSummary(creator as Record<string, unknown>),
-      onViewProfile: profileSheet ? () => onOpenProfileSheet(profileSheet) : undefined,
-    });
+    const alreadyListed =
+      Boolean(creatorId && coveredPersonIds.has(creatorId)) ||
+      assigneeSlotMergedWithCreator(ext, 'nurse') ||
+      assigneeSlotMergedWithCreator(ext, 'lab') ||
+      assigneeSlotMergedWithCreator(ext, 'preleveur');
+
+    if (!alreadyListed) {
+      const platformOriginRow = isPatientPlatformOrigin(creator);
+      const profileSheet = resolveCreatorOriginProfileSheet(creator);
+      entries.push({
+        id: 'creator',
+        title: creatorOriginTitle(creator, viewerRole),
+        name: creatorOriginName(creator),
+        profileImageUrl: platformOriginRow ? null : creator.profile_image_url,
+        brandLogo: platformOriginRow ? 'cary' : undefined,
+        phone: creator.phone,
+        subtitle: creatorOriginSubtitle(creator, viewerRole),
+        reviewSummary: creatorOriginReviewSummary(creator as Record<string, unknown>),
+        onViewProfile: profileSheet ? () => onOpenProfileSheet(profileSheet) : undefined,
+      });
+    }
   }
 
   return entries;
