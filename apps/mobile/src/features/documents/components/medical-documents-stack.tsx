@@ -54,7 +54,20 @@ export type MedicalDocumentStackItem = {
   document_type: string;
   file_name?: string;
   created_at?: string;
+  source?: 'appointment' | 'patient_profile' | 'profile';
+  profile_newer_than_appointment?: boolean;
 };
+
+function buildDocumentRowHint(doc: MedicalDocumentStackItem): string {
+  const base =
+    formatDocumentFileSubtitle(doc.document_type, doc.file_name, doc.created_at) ||
+    'Document disponible';
+  const tags: string[] = [];
+  if (doc.source === 'patient_profile') tags.push('Compte patient');
+  if (doc.profile_newer_than_appointment) tags.push('Version profil à jour');
+  if (tags.length === 0) return base;
+  return `${base} · ${tags.join(' · ')}`;
+}
 
 export type DocumentStackRow =
   | { key: string; kind: 'open'; doc: MedicalDocumentStackItem }
@@ -278,9 +291,7 @@ export function MedicalDocumentOpenRow({
   const styles = useThemedStyles(buildRowStyles);
   const Icon = MEDICAL_DOC_ICONS[doc.document_type] ?? FileText;
   const label = formatDocumentRowTitle(doc.document_type);
-  const hint =
-    formatDocumentFileSubtitle(doc.document_type, doc.file_name, doc.created_at) ||
-    'Document disponible';
+  const hint = buildDocumentRowHint(doc);
 
   const busy = busyAction !== null;
   const pillBg = c.surface;

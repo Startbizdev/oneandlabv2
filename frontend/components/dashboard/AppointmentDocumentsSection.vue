@@ -1,5 +1,14 @@
 <template>
   <div class="space-y-1">
+    <UAlert
+      v-if="hasProfileNewerAlert"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-info"
+      title="Version profil plus récente"
+      description="Certains documents du compte patient sont plus récents que ceux attachés au rendez-vous. La version affichée provient du profil patient."
+      class="mb-3"
+    />
     <!-- Fiche RDV : même grille libellé / valeur que le reste de la page -->
     <div v-if="embeddedInRdvAccordion && loading" class="divide-y divide-default">
       <div :class="docKvRow">
@@ -81,23 +90,25 @@
                   {{ formatCarePhotoMeta(doc) }}
                 </p>
                 <div
-                  v-if="doc.source === 'patient_profile'"
-                  class="flex items-center gap-2 text-sm flex-nowrap"
+                  v-if="doc.source === 'patient_profile' || doc.profile_newer_than_appointment"
+                  class="flex flex-wrap items-center gap-2 text-sm"
                 >
-                  <template v-if="docPatientProfileDownloadAvailable(doc)">
-                    <UIcon
-                      name="i-lucide-circle-check"
-                      class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-                    />
-                    <span class="text-gray-700 dark:text-gray-200">Télécharger</span>
-                  </template>
-                  <template v-else>
-                    <UIcon
-                      name="i-lucide-file-x"
-                      class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500"
-                    />
-                    <span class="text-muted">Pas disponible</span>
-                  </template>
+                  <UBadge
+                    v-if="doc.source === 'patient_profile'"
+                    color="primary"
+                    variant="subtle"
+                    size="xs"
+                  >
+                    Compte patient
+                  </UBadge>
+                  <UBadge
+                    v-if="doc.profile_newer_than_appointment"
+                    color="warning"
+                    variant="subtle"
+                    size="xs"
+                  >
+                    Version profil à jour
+                  </UBadge>
                 </div>
               </div>
               <div class="flex items-center gap-1 shrink-0">
@@ -243,23 +254,25 @@
             <div class="flex w-full min-w-0 flex-row flex-nowrap items-center justify-between gap-2 sm:gap-3">
               <div class="min-w-0 flex-1 space-y-1 overflow-hidden">
                 <div
-                  v-if="doc.source === 'patient_profile'"
-                  class="flex flex-nowrap items-center gap-2 text-sm"
+                  v-if="doc.source === 'patient_profile' || doc.profile_newer_than_appointment"
+                  class="flex flex-wrap items-center gap-2 text-sm"
                 >
-                  <template v-if="docPatientProfileDownloadAvailable(doc)">
-                    <UIcon
-                      name="i-lucide-circle-check"
-                      class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-                    />
-                    <span class="text-gray-700 dark:text-gray-200">Télécharger</span>
-                  </template>
-                  <template v-else>
-                    <UIcon
-                      name="i-lucide-file-x"
-                      class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500"
-                    />
-                    <span class="text-muted">Pas disponible</span>
-                  </template>
+                  <UBadge
+                    v-if="doc.source === 'patient_profile'"
+                    color="primary"
+                    variant="subtle"
+                    size="xs"
+                  >
+                    Compte patient
+                  </UBadge>
+                  <UBadge
+                    v-if="doc.profile_newer_than_appointment"
+                    color="warning"
+                    variant="subtle"
+                    size="xs"
+                  >
+                    Version profil à jour
+                  </UBadge>
                 </div>
               </div>
               <div class="flex items-center gap-1 shrink-0">
@@ -400,23 +413,25 @@
               {{ formatCarePhotoMeta(doc) }}
             </p>
             <div
-              v-if="doc.source === 'patient_profile'"
-              class="flex items-center gap-2 text-xs mt-0.5"
+              v-if="doc.source === 'patient_profile' || doc.profile_newer_than_appointment"
+              class="flex flex-wrap items-center gap-2 text-xs mt-0.5"
             >
-              <template v-if="docPatientProfileDownloadAvailable(doc)">
-                <UIcon
-                  name="i-lucide-circle-check"
-                  class="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
-                />
-                <span class="text-gray-600 dark:text-gray-300">Télécharger</span>
-              </template>
-              <template v-else>
-                <UIcon
-                  name="i-lucide-file-x"
-                  class="w-3.5 h-3.5 shrink-0 text-gray-400 dark:text-gray-500"
-                />
-                <span class="text-gray-500 dark:text-gray-400">Pas disponible</span>
-              </template>
+              <UBadge
+                v-if="doc.source === 'patient_profile'"
+                color="primary"
+                variant="subtle"
+                size="xs"
+              >
+                Compte patient
+              </UBadge>
+              <UBadge
+                v-if="doc.profile_newer_than_appointment"
+                color="warning"
+                variant="subtle"
+                size="xs"
+              >
+                Version profil à jour
+              </UBadge>
             </div>
           </div>
           <div class="flex items-center gap-1 shrink-0">
@@ -568,23 +583,25 @@
                 {{ getDocumentTypeLabel(doc.document_type) }}
               </p>
               <div
-                v-if="doc.source === 'patient_profile'"
-                class="flex items-center gap-2 text-xs mt-0.5"
+                v-if="doc.source === 'patient_profile' || doc.profile_newer_than_appointment"
+                class="flex flex-wrap items-center gap-2 text-xs mt-0.5"
               >
-                <template v-if="docPatientProfileDownloadAvailable(doc)">
-                  <UIcon
-                    name="i-lucide-circle-check"
-                    class="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
-                  />
-                  <span class="text-red-900/90 dark:text-red-100/90">Télécharger</span>
-                </template>
-                <template v-else>
-                  <UIcon
-                    name="i-lucide-file-x"
-                    class="w-3.5 h-3.5 shrink-0 text-red-800/50 dark:text-red-300/60"
-                  />
-                  <span class="text-red-800/80 dark:text-red-300/80">Pas disponible</span>
-                </template>
+                <UBadge
+                  v-if="doc.source === 'patient_profile'"
+                  color="primary"
+                  variant="subtle"
+                  size="xs"
+                >
+                  Compte patient
+                </UBadge>
+                <UBadge
+                  v-if="doc.profile_newer_than_appointment"
+                  color="warning"
+                  variant="subtle"
+                  size="xs"
+                >
+                  Version profil à jour
+                </UBadge>
               </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
@@ -847,12 +864,9 @@ function onCarePhotoFileChange(ev: Event) {
   if (file) emit('carePhotoUpload', file);
 }
 
-/** Documents issus du profil patient : indicateur visuel au lieu du libellé « Compte patient ». */
-function docPatientProfileDownloadAvailable(doc: any) {
-  if (!doc?.id) return false;
-  if (doc.file_missing === true || doc.missing_file === true) return false;
-  return true;
-}
+const hasProfileNewerAlert = computed(() =>
+  (props.documents || []).some((d: any) => d.profile_newer_than_appointment === true),
+);
 
 function getDocTypeIcon(type: string) {
   return DOC_TYPE_ICONS[type] || 'i-lucide-file';

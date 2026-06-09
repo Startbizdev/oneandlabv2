@@ -15,6 +15,8 @@ export interface MedicalDocumentRow {
   document_type: string;
   file_name?: string;
   created_at?: string;
+  source?: 'appointment' | 'patient_profile' | 'profile';
+  profile_newer_than_appointment?: boolean;
 }
 
 export interface CarePhotoComment {

@@ -6,8 +6,7 @@ require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
 require_once __DIR__ . '/../../../lib/Logger.php';
-require_once __DIR__ . '/../../../lib/LabTeamAccess.php';
-require_once __DIR__ . '/../../../models/User.php';
+require_once __DIR__ . '/../../../lib/MedicalDocumentAccess.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
@@ -81,94 +80,7 @@ try {
     }
     
     // Vérifier les permissions
-    $hasAccess = false;
-    if ($user['role'] === 'super_admin') {
-        $hasAccess = true;
-    } elseif ($document['uploaded_by'] === $user['user_id']) {
-        $hasAccess = true;
-    } elseif (!empty($document['appointment_id'])) {
-        // Document lié à un RDV : droits via le rendez-vous
-        $hasAccess = (
-            $document['apt_patient_id'] === $user['user_id'] ||
-            $document['assigned_nurse_id'] === $user['user_id'] ||
-            $document['assigned_lab_id'] === $user['user_id'] ||
-            (!empty($document['assigned_to']) && $document['assigned_to'] === $user['user_id']) ||
-            $document['apt_created_by'] === $user['user_id']
-        );
-        if (!$hasAccess && in_array($user['role'], ['lab', 'subaccount', 'preleveur'], true)) {
-            $teamIdsDirect = LabTeamAccess::teamMemberIds($db, $user['user_id'], $user['role']);
-            if (in_array($document['assigned_lab_id'] ?? '', $teamIdsDirect, true)
-                || (!empty($document['assigned_to']) && in_array($document['assigned_to'], $teamIdsDirect, true))) {
-                $hasAccess = true;
-            }
-        }
-        // Lab / sous-compte / préleveur / infirmier : si pas d'accès via ce RDV, autoriser si au moins un RDV avec ce patient leur est assigné (doc "compte patient" d'un autre RDV)
-        if (!$hasAccess && !empty($document['apt_patient_id']) && in_array($user['role'], ['lab', 'subaccount', 'preleveur', 'nurse'], true)) {
-            $docPatientId = $document['apt_patient_id'];
-            if ($user['role'] === 'nurse') {
-                $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND assigned_nurse_id = ? LIMIT 1');
-                $chk->execute([$docPatientId, $user['user_id']]);
-                if ($chk->fetch()) {
-                    $hasAccess = true;
-                }
-            } elseif (in_array($user['role'], ['lab', 'subaccount', 'preleveur'], true)) {
-                $teamIds = LabTeamAccess::teamMemberIds($db, $user['user_id'], $user['role']);
-                if (!empty($teamIds)) {
-                    $placeholders = implode(',', array_fill(0, count($teamIds), '?'));
-                    $chk = $db->prepare("SELECT 1 FROM appointments WHERE patient_id = ? AND (assigned_lab_id IN ($placeholders) OR assigned_to IN ($placeholders)) LIMIT 1");
-                    $chk->execute(array_merge([$docPatientId], $teamIds, $teamIds));
-                    if ($chk->fetch()) {
-                        $hasAccess = true;
-                    }
-                }
-            }
-        }
-        // Professionnel de santé lié au patient : tous les documents du RDV (ordonnances, preuve d’annulation, etc.)
-        if (!$hasAccess && !empty($document['apt_patient_id']) && $user['role'] === 'pro') {
-            $userModel = new User();
-            if ($userModel->hasProfessionalAccessToPatient($user['user_id'], $document['apt_patient_id'])) {
-                $hasAccess = true;
-            }
-        }
-    } else {
-        // Document de profil (appointment_id NULL) : patient, pro créateur, ou lab/sous-compte/préleveur/infirmier ayant un RDV avec ce patient
-        $patStmt = $db->prepare('SELECT patient_id FROM patient_documents WHERE medical_document_id = ? LIMIT 1');
-        $patStmt->execute([$id]);
-        $pd = $patStmt->fetch(PDO::FETCH_ASSOC);
-        if ($pd && !empty($pd['patient_id'])) {
-            $docPatientId = $pd['patient_id'];
-            if ($docPatientId === $user['user_id']) {
-                $hasAccess = true;
-            } else {
-                $createdStmt = $db->prepare('SELECT created_by FROM profiles WHERE id = ? LIMIT 1');
-                $createdStmt->execute([$docPatientId]);
-                $prof = $createdStmt->fetch(PDO::FETCH_ASSOC);
-                if ($prof && ($prof['created_by'] ?? '') === $user['user_id']) {
-                    $hasAccess = true;
-                }
-            }
-            // Lab / sous-compte / préleveur / infirmier : accès si au moins un RDV avec ce patient leur est assigné
-            if (!$hasAccess && in_array($user['role'], ['lab', 'subaccount', 'preleveur', 'nurse'], true)) {
-                if ($user['role'] === 'nurse') {
-                    $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND assigned_nurse_id = ? LIMIT 1');
-                    $chk->execute([$docPatientId, $user['user_id']]);
-                    if ($chk->fetch()) {
-                        $hasAccess = true;
-                    }
-                } else {
-                    $teamIds = LabTeamAccess::teamMemberIds($db, $user['user_id'], $user['role']);
-                    if (!empty($teamIds)) {
-                        $placeholders = implode(',', array_fill(0, count($teamIds), '?'));
-                        $chk = $db->prepare("SELECT 1 FROM appointments WHERE patient_id = ? AND (assigned_lab_id IN ($placeholders) OR assigned_to IN ($placeholders)) LIMIT 1");
-                        $chk->execute(array_merge([$docPatientId], $teamIds, $teamIds));
-                        if ($chk->fetch()) {
-                            $hasAccess = true;
-                        }
-                    }
-                }
-            }
-        }
-    }
+    $hasAccess = MedicalDocumentAccess::userCanAccess($db, $user, $document);
     
     if (!$hasAccess) {
         http_response_code(403);

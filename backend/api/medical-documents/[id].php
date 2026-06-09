@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Logger.php';
+require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -71,31 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         
         // Vérifier les permissions (document lié à un RDV ou document de profil)
-        $hasAccess = false;
-        if ($user['role'] === 'super_admin' || $document['uploaded_by'] === $user['user_id']) {
-            $hasAccess = true;
-        } elseif (!empty($document['appointment_id'])) {
-            $hasAccess = (
-                $document['apt_patient_id'] === $user['user_id'] ||
-                $document['assigned_nurse_id'] === $user['user_id'] ||
-                $document['assigned_lab_id'] === $user['user_id'] ||
-                $document['apt_created_by'] === $user['user_id']
-            );
-        } else {
-            $patStmt = $db->prepare('SELECT patient_id FROM patient_documents WHERE medical_document_id = ? LIMIT 1');
-            $patStmt->execute([$id]);
-            $pd = $patStmt->fetch(PDO::FETCH_ASSOC);
-            if ($pd && $pd['patient_id'] === $user['user_id']) {
-                $hasAccess = true;
-            } elseif ($pd) {
-                $createdStmt = $db->prepare('SELECT created_by FROM profiles WHERE id = ? LIMIT 1');
-                $createdStmt->execute([$pd['patient_id']]);
-                $prof = $createdStmt->fetch(PDO::FETCH_ASSOC);
-                if ($prof && ($prof['created_by'] ?? '') === $user['user_id']) {
-                    $hasAccess = true;
-                }
-            }
-        }
+        $hasAccess = MedicalDocumentAccess::userCanAccess($db, $user, $document);
         if (!$hasAccess) {
             http_response_code(403);
             echo json_encode(['success' => false, 'error' => 'Accès refusé']);
