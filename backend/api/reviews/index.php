@@ -210,6 +210,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             throw new Exception('La note doit être entre 1 et 5');
         }
 
+        $revieweeType = trim((string) $input['reviewee_type']);
+        if (!in_array($revieweeType, Review::REVIEWEE_TYPES, true)) {
+            throw new Exception('reviewee_type invalide (nurse, lab ou subaccount attendu)');
+        }
+
         $config = require __DIR__ . '/../../config/database.php';
         $dsn = sprintf(
             'mysql:host=%s;port=%d;dbname=%s;charset=%s',
@@ -238,7 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             throw new Exception('Vous ne pouvez noter qu\'un rendez-vous terminé');
         }
         $revieweeId = $input['reviewee_id'];
-        $revieweeType = $input['reviewee_type'];
+        $revieweeType = $revieweeType;
         $match = false;
         if ($revieweeType === 'nurse') {
             $match = !empty($apt['assigned_nurse_id']) && $apt['assigned_nurse_id'] === $revieweeId;
@@ -314,6 +319,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         echo json_encode([
             'success' => true,
             'data' => ['id' => $id],
+        ]);
+    } catch (InvalidArgumentException|RuntimeException $e) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'code' => 'VALIDATION_ERROR',
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(400);
+        $msg = $e->getMessage();
+        $friendly = str_contains($msg, 'reviewee_type') || str_contains($msg, 'Data truncated')
+            ? 'Impossible d\'enregistrer l\'avis : type de professionnel non supporté en base (migration 053 requise).'
+            : 'Erreur base de données lors de l\'enregistrement de l\'avis.';
+        echo json_encode([
+            'success' => false,
+            'error' => $friendly,
+            'code' => 'DATABASE_ERROR',
         ]);
     } catch (Exception $e) {
         http_response_code(400);

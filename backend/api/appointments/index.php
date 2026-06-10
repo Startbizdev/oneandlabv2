@@ -716,6 +716,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
             unset($apt);
         }
+        $appointmentModel->enrichListAssigneeReviewStats($decryptedAppointments);
         $listRole = (string) ($user['role'] ?? '');
 
         $bloodTestIds = array_values(array_filter(array_map(

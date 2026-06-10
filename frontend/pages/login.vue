@@ -43,9 +43,83 @@
         </div>
 
         <div class="px-5 py-5">
+          <div
+            v-if="step === 'email' || step === 'otp'"
+            class="mb-4 flex rounded-lg border border-gray-200/90 bg-gray-50 p-0.5 dark:border-gray-800 dark:bg-gray-900/50"
+            role="tablist"
+          >
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="loginMode === 'code'"
+              class="flex-1 rounded-md px-2 py-2 text-[12px] font-medium transition-colors"
+              :class="
+                loginMode === 'code'
+                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-950 dark:text-gray-100'
+                  : 'text-gray-500 hover:text-gray-800 dark:text-gray-400'
+              "
+              @click="loginMode = 'code'"
+            >
+              Code par email
+            </button>
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="loginMode === 'password'"
+              class="flex-1 rounded-md px-2 py-2 text-[12px] font-medium transition-colors"
+              :class="
+                loginMode === 'password'
+                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-950 dark:text-gray-100'
+                  : 'text-gray-500 hover:text-gray-800 dark:text-gray-400'
+              "
+              @click="loginMode = 'password'"
+            >
+              Mot de passe
+            </button>
+          </div>
+
           <Transition name="fade-slide" mode="out-in">
-            <!-- Email -->
-            <form v-if="step === 'email'" key="email" class="space-y-4" @submit.prevent="onCheckEmail">
+            <!-- Email (code) ou login password -->
+            <form
+              v-if="step === 'email' && loginMode === 'password'"
+              key="password-login"
+              class="space-y-4"
+              @submit.prevent="onPasswordLogin"
+            >
+              <UFormField label="Email" name="email">
+                <UInput v-model="email" type="email" autocomplete="email" class="w-full" :disabled="loading" />
+              </UFormField>
+              <UFormField label="Mot de passe" name="password">
+                <UInput
+                  v-model="password"
+                  type="password"
+                  autocomplete="current-password"
+                  class="w-full"
+                  :disabled="loading"
+                />
+              </UFormField>
+              <div
+                v-if="noPasswordHint"
+                class="rounded-lg border border-primary-200/80 bg-primary-50/80 px-3 py-2.5 text-[12px] leading-snug text-primary-900 dark:border-primary-900/40 dark:bg-primary-950/30 dark:text-primary-100"
+              >
+                Aucun mot de passe sur ce compte.
+                <button type="button" class="font-semibold underline" @click="loginMode = 'code'">
+                  Utiliser le code par email
+                </button>
+                ou créez-en un depuis Mon profil après connexion.
+              </div>
+              <UButton type="submit" block :loading="loading" :disabled="!email.trim() || !password">
+                Se connecter
+              </UButton>
+              <NuxtLink
+                to="/forgot-password"
+                class="block text-center text-[12px] font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
+              >
+                Mot de passe oublié ?
+              </NuxtLink>
+            </form>
+
+            <form v-else-if="step === 'email'" key="email" class="space-y-4" @submit.prevent="onCheckEmail">
               <UFormField label="Email" name="email" class="[&_[data-slot=label]]:text-xs [&_[data-slot=label]]:font-medium [&_[data-slot=label]]:text-gray-600 dark:[&_[data-slot=label]]:text-gray-400">
                 <UInput
                   v-model="email"
@@ -187,7 +261,7 @@ definePageMeta({
   layout: false,
 })
 
-const { login, verifyOTP, isAuthenticated, user } = useAuth()
+const { login, loginWithPassword, verifyOTP, isAuthenticated, user } = useAuth()
 const router = useRouter()
 const route = useRoute()
 const toast = useAppToast()
@@ -207,6 +281,10 @@ watch(
 )
 
 // -- State --
+type LoginMode = 'code' | 'password'
+const loginMode = ref<LoginMode>((route.query.mode as LoginMode) || 'code')
+const password = ref('')
+const noPasswordHint = ref(false)
 type Step = 'email' | 'role-select' | 'otp'
 const step = ref<Step>('email')
 const email = ref('')
@@ -264,7 +342,10 @@ const stepHeaderConfig = computed(() => {
     case 'email':
       return {
         title: 'Connexion',
-        subtitle: 'Code à usage unique par email.',
+        subtitle:
+          loginMode.value === 'password'
+            ? 'Entrez votre mot de passe Cary'
+            : 'Recevez un code sécurisé par email',
       }
     case 'role-select':
       return {
@@ -302,6 +383,40 @@ function startCountdown(seconds: number = 300) {
 onUnmounted(() => {
   if (countdownInterval) clearInterval(countdownInterval)
 })
+
+function redirectAfterLogin(mustChangePassword?: boolean) {
+  if (mustChangePassword) {
+    router.replace('/profile?changePassword=1')
+    return
+  }
+  const target = resolvePostLoginPath(route.query.returnTo, user.value?.role)
+  router.replace(target)
+}
+
+async function onPasswordLogin() {
+  const trimmed = email.value.trim()
+  if (!trimmed || !password.value) return
+  loading.value = true
+  noPasswordHint.value = false
+  try {
+    const check = await apiFetch('/auth/check-email', { method: 'POST', body: { email: trimmed } })
+    if (check.success && check.exists && check.has_password === false) {
+      noPasswordHint.value = true
+      return
+    }
+    const result = await loginWithPassword(trimmed, password.value)
+    if (result.success) {
+      await nextTick()
+      redirectAfterLogin(result.mustChangePassword)
+    } else {
+      toast.add({ title: 'Connexion impossible', description: result.error, color: 'red' })
+    }
+  } catch (err: any) {
+    toast.add({ title: 'Erreur', description: err.message, color: 'red' })
+  } finally {
+    loading.value = false
+  }
+}
 
 // -- Step 1: Check email --
 async function onCheckEmail() {
@@ -386,8 +501,7 @@ async function onVerifyOTP() {
     const result = await verifyOTP(userId.value, cleaned, sessionId.value)
     if (result.success) {
       await nextTick()
-      const target = resolvePostLoginPath(route.query.returnTo, user.value?.role)
-      await router.replace(target)
+      redirectAfterLogin(user.value?.must_change_password)
     } else {
       toast.add({ title: 'Code invalide', description: result.error || 'Le code saisi est incorrect', color: 'red' })
       otpDigits.value = []

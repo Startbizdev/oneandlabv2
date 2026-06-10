@@ -21,6 +21,9 @@ import type { AppointmentDetailRole } from '../../utils/appointment-detail-role-
 import { carePhotoPickErrorMessage, pickCarePhoto } from '@/lib/uploads/pick-care-photo';
 import { Button } from '@/components/ui/Button';
 import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
+import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
+import type { CarePhotoRow } from '../../api/appointment-detail.service';
+import { isCarePhotoPdf } from '../../utils/care-photo-file';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -47,6 +50,9 @@ export function DetailCarePhotosPanel({
   const qc = useQueryClient();
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState<string | undefined>();
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const q = useQuery({
     queryKey: ['appointments', 'care-photos', apt.id] as const,
@@ -78,10 +84,16 @@ export function DetailCarePhotosPanel({
   );
 
   const openLightbox = useCallback(
-    async (photoId: string) => {
-      const uri = await loadCarePhotoLocalUri(photoId);
+    async (photo: CarePhotoRow) => {
+      const uri = await loadCarePhotoLocalUri(photo.id);
       if (!uri) {
-        toast('Impossible d’afficher la photo', { type: 'warning' });
+        toast('Impossible d’afficher le fichier', { type: 'warning' });
+        return;
+      }
+      if (isCarePhotoPdf(photo)) {
+        setPreviewUri(uri);
+        setPreviewFileName(photo.file_name?.trim() || 'Document PDF');
+        setPreviewOpen(true);
         return;
       }
       setLightboxUri(uri);
@@ -175,7 +187,7 @@ export function DetailCarePhotosPanel({
               <CarePhotoAttachment
                 photo={p}
                 style={styles.previewThumb}
-                onZoom={() => void openLightbox(p.id)}
+                onZoom={() => void openLightbox(p)}
                 accessibilityLabel={`Ouvrir le fichier ${idx + 1}`}
               />
               <Text style={styles.previewLabel}>Fichier {idx + 1}</Text>
@@ -236,6 +248,16 @@ export function DetailCarePhotosPanel({
         onClose={() => {
           setLightboxOpen(false);
           setLightboxUri(null);
+        }}
+      />
+      <MedicalDocumentPreviewModal
+        visible={previewOpen}
+        localUri={previewUri}
+        fileName={previewFileName}
+        onClose={() => {
+          setPreviewOpen(false);
+          setPreviewUri(null);
+          setPreviewFileName(undefined);
         }}
       />
     </View>

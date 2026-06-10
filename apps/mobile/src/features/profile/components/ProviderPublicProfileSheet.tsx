@@ -42,6 +42,7 @@ import { openingHoursRows } from '@/features/profile/utils/opening-hours-display
 import { parseProfileSocialLinks } from '@/features/profile/utils/profile-social-links';
 import { normalizeExternalUrl } from '@/features/profile/utils/professional-profile-sheet';
 import { yearsExperienceLabel } from '@/features/profile/utils/years-experience-label';
+import { CompactAssigneeRating } from '@/features/appointments/detail/components/CompactAssigneeRating';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import { queryKeys } from '@/lib/query-keys';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
@@ -249,25 +250,23 @@ export function ProviderPublicProfileSheet({
             <Text style={styles.roleEyebrow}>{roleLabel}</Text>
             <Text style={styles.name}>{displayName}</Text>
 
-            <View style={styles.metaRow}>
-              {experience ? (
-                <View style={styles.metaPill}>
-                  <Text style={styles.metaPillText}>{experience}</Text>
-                </View>
-              ) : null}
-              {reviewStats?.total_reviews ? (
-                <View style={styles.reviewMeta}>
-                  <ReviewStars
-                    rating={reviewStats.average_rating ?? 0}
-                    size={14}
-                    showValue={false}
+            {reviewStats?.total_reviews || experience ? (
+              <View style={styles.identityMeta}>
+                {reviewStats?.total_reviews ? (
+                  <CompactAssigneeRating
+                    summary={{
+                      averageRating: reviewStats.average_rating ?? 0,
+                      reviewsCount: reviewStats.total_reviews,
+                    }}
                   />
-                  <Text style={styles.reviewMetaText}>
-                    {(reviewStats.average_rating ?? 0).toFixed(1)} · {reviewStats.total_reviews} avis
-                  </Text>
-                </View>
-              ) : null}
-            </View>
+                ) : null}
+                {experience ? (
+                  <View style={styles.metaPill}>
+                    <Text style={styles.metaPillText}>{experience}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
           </View>
 
           {dialPhone ? (
@@ -549,12 +548,10 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
     textAlign: 'center',
   },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+  identityMeta: {
     alignItems: 'center',
-    gap: spacing[2],
+    gap: spacing[1],
+    marginTop: spacing[0.5],
   },
   metaPill: {
     paddingHorizontal: spacing[3],
@@ -566,16 +563,6 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
     color: c.primaryDark,
-  },
-  reviewMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1],
-  },
-  reviewMetaText: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
   },
   contactRow: {
     flexDirection: 'row',

@@ -102,6 +102,24 @@ if (file_exists($dynamicActionFile)) {
 }
 
 // ======================================================
+// 6) Nested action: /users/123/password/reset-email
+// Example: users/[id]/password/reset-email.php
+// ======================================================
+$segments = explode('/', $path);
+if (count($segments) >= 4) {
+    $nestedAction = array_pop($segments);
+    $nestedFolder = array_pop($segments);
+    $nestedId = array_pop($segments);
+    $nestedBase = implode('/', $segments);
+    $nestedFile = $apiDir . '/' . $nestedBase . '/[id]/' . $nestedFolder . '/' . $nestedAction . '.php';
+    if (file_exists($nestedFile)) {
+        $_GET['id'] = $nestedId;
+        require $nestedFile;
+        exit;
+    }
+}
+
+// ======================================================
 // No route found
 // ======================================================
 http_response_code(404);

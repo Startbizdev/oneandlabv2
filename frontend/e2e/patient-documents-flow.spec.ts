@@ -21,13 +21,23 @@ const TEST_LAST_NAME = 'Barth';
 
 test.describe('Flux patient - Documents (Charle Barth)', () => {
   test.beforeEach(async ({ page }) => {
-    // Se connecter si credentials fournis
     if (process.env.E2E_TEST_EMAIL && process.env.E2E_TEST_PASSWORD) {
-      await page.goto('/login');
-      await page.getByLabel(/email|e-mail/i).fill(TEST_EMAIL);
-      await page.getByLabel(/mot de passe|password/i).fill(TEST_PASSWORD);
-      await page.getByRole('button', { name: /connexion|se connecter|login/i }).click();
-      await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
+      await page.goto('/login?mode=password');
+      const passwordTab = page.getByRole('button', { name: /mot de passe/i });
+      if (await passwordTab.isVisible()) {
+        await passwordTab.click();
+      }
+      await page.getByLabel(/email|e-mail/i).first().fill(TEST_EMAIL);
+      await page.getByLabel(/^mot de passe$/i).fill(TEST_PASSWORD);
+      await page.getByRole('button', { name: /^se connecter$/i }).click();
+      await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 });
+      const changePwdBanner = page.getByText(/choisissez un nouveau mot de passe/i);
+      if (await changePwdBanner.isVisible().catch(() => false)) {
+        const newPwd = process.env.E2E_TEST_NEW_PASSWORD || 'NewPassword123!';
+        await page.getByLabel(/nouveau mot de passe/i).first().fill(newPwd);
+        await page.getByLabel(/confirmation/i).first().fill(newPwd);
+        await page.getByRole('button', { name: /enregistrer|mettre à jour|continuer/i }).click();
+      }
     }
   });
 

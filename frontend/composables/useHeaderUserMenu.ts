@@ -50,6 +50,12 @@ export function useHeaderUserMenu() {
       });
     }
 
+    items.push({
+      label: 'Mot de passe et sécurité',
+      icon: 'i-lucide-lock',
+      click: () => navigateTo('/profile#securite'),
+    });
+
     items.push({ type: 'divider' } as { type: string });
     items.push({
       label: 'Déconnexion',

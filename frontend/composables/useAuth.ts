@@ -55,60 +55,8 @@ export const useAuth = () => {
       });
       
       if (response.success && response.token) {
-        token.value = response.token;
-        
-        // Stocker le token dans localStorage
-        if (process.client) {
-          localStorage.setItem('auth_token', response.token);
-          
-          // Réinitialiser le cache CSRF pour forcer la récupération d'un nouveau token
-          // après la connexion (nouvelle session PHP créée)
-          if (typeof window !== 'undefined') {
-            (window as any).__csrfTokenCache = null;
-          }
-          
-          // Récupérer un nouveau token CSRF immédiatement après la connexion
-          // Utiliser la même logique que dans api.ts pour obtenir l'URL de base
-          let apiBase = 'http://localhost:8888/api';
-          if (typeof window !== 'undefined') {
-            if ((window as any).__NUXT__?.config?.public?.apiBase) {
-              apiBase = (window as any).__NUXT__.config.public.apiBase;
-            } else if (import.meta.env?.NUXT_PUBLIC_API_BASE) {
-              apiBase = import.meta.env.NUXT_PUBLIC_API_BASE;
-            }
-          }
-          try {
-            const csrfResponse = await fetch(`${apiBase}/auth/csrf-token`, {
-              method: 'GET',
-              mode: 'cors',
-              credentials: 'include',
-            });
-            if (csrfResponse.ok) {
-              const csrfData = await csrfResponse.json();
-              if (csrfData.success && csrfData.data?.csrf_token) {
-                if (typeof window !== 'undefined') {
-                  (window as any).__csrfTokenCache = csrfData.data.csrf_token;
-                }
-              }
-            }
-          } catch (csrfError) {
-            // Ignorer les erreurs CSRF
-          }
-          
-          // Récupérer les informations utilisateur complètes
-          const userData = await fetchCurrentUser();
-          if (userData) {
-            return { success: true, user: userData };
-          }
-        }
-        
-        // Fallback avec les données basiques si fetchCurrentUser échoue
-        user.value = response.user || { id: response.user?.id, role: response.user?.role };
-        if (process.client) {
-          localStorage.setItem('auth_user', JSON.stringify(user.value));
-        }
-        
-        return { success: true, user: user.value };
+        const session = await applySessionFromToken(response);
+        return { success: true, user: session.user };
       }
       
       return { success: false, error: response.error || 'Code OTP invalide' };
@@ -221,11 +169,121 @@ export const useAuth = () => {
     }
   };
   
+  const applySessionFromToken = async (response: {
+    token: string;
+    user?: { id?: string; role?: string; must_change_password?: boolean };
+    must_change_password?: boolean;
+  }) => {
+    token.value = response.token;
+    if (process.client) {
+      localStorage.setItem('auth_token', response.token);
+      if (typeof window !== 'undefined') {
+        (window as any).__csrfTokenCache = null;
+      }
+      let apiBase = 'http://localhost:8888/api';
+      if (typeof window !== 'undefined') {
+        if ((window as any).__NUXT__?.config?.public?.apiBase) {
+          apiBase = (window as any).__NUXT__.config.public.apiBase;
+        } else if (import.meta.env?.NUXT_PUBLIC_API_BASE) {
+          apiBase = import.meta.env.NUXT_PUBLIC_API_BASE;
+        }
+      }
+      try {
+        const csrfResponse = await fetch(`${apiBase}/auth/csrf-token`, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'include',
+        });
+        if (csrfResponse.ok) {
+          const csrfData = await csrfResponse.json();
+          if (csrfData.success && csrfData.data?.csrf_token && typeof window !== 'undefined') {
+            (window as any).__csrfTokenCache = csrfData.data.csrf_token;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    const userData = await fetchCurrentUser();
+    const mustChange =
+      response.must_change_password === true ||
+      response.user?.must_change_password === true ||
+      userData?.must_change_password === true;
+    return { user: userData ?? user.value, mustChangePassword: mustChange };
+  };
+
+  const loginWithPassword = async (
+    email: string,
+    password: string,
+  ): Promise<{ success: boolean; error?: string; mustChangePassword?: boolean }> => {
+    try {
+      const response = await apiFetch('/auth/login', {
+        method: 'POST',
+        body: { email, password },
+      });
+      if (response.success && response.token) {
+        const session = await applySessionFromToken(response);
+        return { success: true, mustChangePassword: session.mustChangePassword };
+      }
+      return { success: false, error: response.error || 'Connexion impossible' };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Connexion impossible' };
+    }
+  };
+
+  const forgotPassword = async (email: string) => {
+    try {
+      await apiFetch('/auth/password/forgot', {
+        method: 'POST',
+        body: { email },
+      });
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Erreur' };
+    }
+  };
+
+  const resetPassword = async (payload: {
+    new_password: string;
+    confirm_password: string;
+    token?: string;
+    code?: string;
+    email?: string;
+  }) => {
+    try {
+      await apiFetch('/auth/password/reset', {
+        method: 'POST',
+        body: payload,
+      });
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Erreur' };
+    }
+  };
+
+  const updatePassword = async (payload: {
+    new_password: string;
+    confirm_password: string;
+    current_password?: string;
+  }) => {
+    try {
+      const response = await apiFetch('/auth/password', {
+        method: 'PUT',
+        body: payload,
+      });
+      if (response.success) {
+        await fetchCurrentUser();
+      }
+      return { success: response.success, error: response.error };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Erreur' };
+    }
+  };
+
   const initAuth = async () => {
     if (process.client) {
       // Vérifier si un logout est en cours - si oui, ne rien charger
-      const logoutInProgress = sessionStorage.getItem('logout_in_progress');
-      if (logoutInProgress === 'true') {
+      if (sessionStorage.getItem('logout_in_progress') === 'true') {
         // Nettoyer le flag et s'assurer que tout est null
         sessionStorage.removeItem('logout_in_progress');
         token.value = null;
@@ -293,7 +351,11 @@ export const useAuth = () => {
     user,
     isAuthenticated,
     login,
+    loginWithPassword,
     verifyOTP,
+    forgotPassword,
+    resetPassword,
+    updatePassword,
     logout,
     initAuth,
     fetchCurrentUser,

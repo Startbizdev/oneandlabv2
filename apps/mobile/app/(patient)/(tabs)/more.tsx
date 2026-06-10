@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
-import { Bell, FileText, FlaskConical, Scale, ScanFace, Settings, Star, User } from 'lucide-react-native';
+import { Bell, FileText, FlaskConical, Scale, Settings, Star, User } from 'lucide-react-native';
 import { buildHelpMoreItems } from '@/features/help/help-more-items';
-import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label';
+import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-unread-count';
@@ -9,7 +9,6 @@ import { getNotificationsPath } from '@/navigation/notifications-route';
 
 export default function PatientMore() {
   const router = useRouter();
-  const biometricLabel = useBiometricLabel('Biométrie');
   const unread = useUnreadNotificationsCount();
 
   const nav = (href: string) => router.navigate(href as never);
@@ -66,10 +65,10 @@ export default function PatientMore() {
                 badge: unread,
               },
               {
-                icon: ScanFace,
-                label: biometricLabel,
-                onPress: () => nav('/profile/security'),
-                iconAccent: 'teal',
+                icon: PROFILE_SECURITY_MENU.Icon,
+                label: PROFILE_SECURITY_MENU.label,
+                onPress: () => nav(PROFILE_SECURITY_MENU.href),
+                iconAccent: PROFILE_SECURITY_MENU.iconAccent,
               },
               {
                 icon: Scale,

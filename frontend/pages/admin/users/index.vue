@@ -391,6 +391,8 @@ const getActionItems = (user: any) => {
   const main: any[] = [
     { label: 'Voir le détail', icon: 'i-lucide-eye', onSelect: () => navigateTo(profileUrl) },
     { label: 'Historique des incidents', icon: 'i-lucide-shield-alert', onSelect: () => navigateTo(profileUrl) },
+    { label: 'Envoyer reset mot de passe', icon: 'i-lucide-mail', onSelect: () => sendPasswordResetEmail(user.id) },
+    { label: 'Mot de passe temporaire', icon: 'i-lucide-key-round', onSelect: () => setTemporaryPassword(user.id) },
   ];
   const sanctions: any[] = [];
   if (user.banned_until && new Date(user.banned_until) > new Date()) {
@@ -433,6 +435,44 @@ const banUser = async (id: string) => {
     if (response.success) {
       toast.add({ title: 'Utilisateur banni', color: 'green' });
       await fetchUsers();
+    } else {
+      toast.add({ title: 'Erreur', description: response.error, color: 'red' });
+    }
+  } catch (error: any) {
+    toast.add({ title: 'Erreur', description: error.message, color: 'red' });
+  }
+};
+
+const sendPasswordResetEmail = async (id: string) => {
+  if (!confirm('Envoyer un email de réinitialisation du mot de passe ?')) return;
+  try {
+    const response = await apiFetch(`/users/${id}/password/reset-email`, { method: 'POST' });
+    if (response.success) {
+      toast.add({ title: 'Email envoyé', color: 'green' });
+    } else {
+      toast.add({ title: 'Erreur', description: response.error, color: 'red' });
+    }
+  } catch (error: any) {
+    toast.add({ title: 'Erreur', description: error.message, color: 'red' });
+  }
+};
+
+const setTemporaryPassword = async (id: string) => {
+  const custom = prompt('Mot de passe temporaire (laisser vide pour générer automatiquement) :');
+  if (custom === null) return;
+  try {
+    const response = await apiFetch(`/users/${id}/password/temporary`, {
+      method: 'POST',
+      body: custom.trim() ? { password: custom.trim() } : {},
+    });
+    if (response.success && response.data?.temporary_password) {
+      toast.add({
+        title: 'Mot de passe temporaire',
+        description: `Copiez-le maintenant : ${response.data.temporary_password}`,
+        color: 'green',
+      });
+    } else if (response.success) {
+      toast.add({ title: 'Mot de passe temporaire défini', color: 'green' });
     } else {
       toast.add({ title: 'Erreur', description: response.error, color: 'red' });
     }

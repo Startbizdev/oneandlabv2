@@ -512,6 +512,73 @@ Cary — Prélèvement et soins infirmiers à domicile
     }
 
     /**
+     * Email réinitialisation mot de passe — lien + code 6 chiffres (charte Cary).
+     */
+    public function sendPasswordReset(string $to, string $plainToken, string $code, int $expiresMinutes = 60): bool
+    {
+        if (empty($this->smtpUser) || empty($this->smtpPass)) {
+            error_log("⚠️ SMTP non configuré - reset password (DEV) token=$plainToken code=$code");
+            return true;
+        }
+
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
+        $resetUrl = $baseUrl . '/reset-password?token=' . urlencode($plainToken);
+        $subject = 'Réinitialisez votre mot de passe Cary';
+        $body = $this->getPasswordResetTemplate($resetUrl, $code, $expiresMinutes);
+        return $this->send($to, $subject, $body, true);
+    }
+
+    public function sendAdminPasswordResetNotice(string $to): bool
+    {
+        if (empty($this->smtpUser) || empty($this->smtpPass)) {
+            return true;
+        }
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
+        $subject = 'Réinitialisation de votre mot de passe Cary';
+        $h1 = '<h1 style="margin:0 0 18px 0;font-size:22px;font-weight:600;line-height:1.25;letter-spacing:-0.02em;color:' . $this->emailText() . ';">' . $this->escapeHtml('Réinitialisation demandée') . '</h1>';
+        $inner = '<div style="font-size:15px;line-height:1.6;color:' . $this->emailMuted() . ';">'
+            . '<p style="margin:0 0 14px 0;">Bonjour,</p>'
+            . '<p style="margin:0 0 14px 0;">Un administrateur Cary a déclenché une réinitialisation de votre mot de passe. Consultez l’email avec le lien ou le code, ou contactez le support si vous n’êtes pas à l’origine de cette demande.</p>'
+            . '</div>';
+        $cta = $this->emailPrimaryCta($baseUrl . '/login', 'Se connecter');
+        $body = $this->emailWrap('Réinitialisation mot de passe Cary', $this->emailLogoBlock() . $h1 . $inner . $cta);
+        return $this->send($to, $subject, $body, true);
+    }
+
+    public function sendTemporaryPasswordNotice(string $to): bool
+    {
+        if (empty($this->smtpUser) || empty($this->smtpPass)) {
+            return true;
+        }
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
+        $subject = 'Votre mot de passe Cary a été réinitialisé';
+        $h1 = '<h1 style="margin:0 0 18px 0;font-size:22px;font-weight:600;line-height:1.25;letter-spacing:-0.02em;color:' . $this->emailText() . ';">' . $this->escapeHtml('Mot de passe réinitialisé') . '</h1>';
+        $inner = '<div style="font-size:15px;line-height:1.6;color:' . $this->emailMuted() . ';">'
+            . '<p style="margin:0 0 14px 0;">Bonjour,</p>'
+            . '<p style="margin:0 0 14px 0;">Votre mot de passe Cary a été réinitialisé par un administrateur. Vous devrez choisir un nouveau mot de passe lors de votre prochaine connexion.</p>'
+            . '<p style="margin:0;">Si vous n’êtes pas à l’origine de cette action, contactez immédiatement le support Cary.</p>'
+            . '</div>';
+        $cta = $this->emailPrimaryCta($baseUrl . '/login', 'Se connecter');
+        $body = $this->emailWrap('Mot de passe Cary réinitialisé', $this->emailLogoBlock() . $h1 . $inner . $cta);
+        return $this->send($to, $subject, $body, true);
+    }
+
+    private function getPasswordResetTemplate(string $resetUrl, string $code, int $expiresMinutes): string
+    {
+        $h1 = '<h1 style="margin:0 0 18px 0;font-size:22px;font-weight:600;line-height:1.25;letter-spacing:-0.02em;color:' . $this->emailText() . ';">' . $this->escapeHtml('Réinitialisez votre mot de passe') . '</h1>';
+        $inner = '<div style="font-size:15px;line-height:1.6;color:' . $this->emailMuted() . ';">'
+            . '<p style="margin:0 0 14px 0;">Bonjour,</p>'
+            . '<p style="margin:0 0 14px 0;">Choisissez un nouveau mot de passe pour votre compte Cary :</p>'
+            . $this->emailOtpCodeBlock($code)
+            . '<p style="margin:0 0 14px 0;">Ou utilisez le bouton ci-dessous (valable <strong style="color:' . $this->emailText() . ';">' . (int) $expiresMinutes . ' minutes</strong>) :</p>'
+            . '<p style="margin:0;">Si vous n’êtes pas à l’origine de cette demande, ignorez cet email.</p>'
+            . '</div>';
+        $cta = $this->emailPrimaryCta($resetUrl, 'Choisir un nouveau mot de passe');
+        $secondary = $this->emailSecondaryCta($resetUrl, 'Ouvrir le lien de réinitialisation');
+        return $this->emailWrap('Réinitialisation mot de passe Cary', $this->emailLogoBlock() . $h1 . $inner . $cta . $secondary);
+    }
+
+    /**
      * Envoie une notification de confirmation de rendez-vous
      */
     public function sendAppointmentConfirmation(string $to, array $appointmentData): bool

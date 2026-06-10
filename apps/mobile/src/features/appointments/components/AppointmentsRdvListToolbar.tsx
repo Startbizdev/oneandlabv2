@@ -58,9 +58,9 @@ interface BookHeaderProps {
 /** CTA « Prendre un rendez-vous » sous la barre de recherche. */
 export function AppointmentsRdvListBookHeader({
   href,
-  label = 'Prendre un rendez-vous',
+  label,
 }: BookHeaderProps) {
-  return <AppointmentsBookCta href={href} label={label} />;
+  return <AppointmentsBookCta href={href} {...(label != null ? { label } : {})} />;
 }
 
 function buildRdvListChromeStyles(c: AppColors) {

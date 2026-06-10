@@ -2,13 +2,14 @@ import { api } from '@/api/client';
 import type { ApiResponse } from '@oneandlab/shared-api';
 import type { AuthUser } from '@oneandlab/shared-types';
 
-export type CheckEmailResult = ApiResponse<{ exists: boolean; role?: string }> & {
+export type CheckEmailResult = ApiResponse<{ exists: boolean; role?: string; has_password?: boolean }> & {
   exists?: boolean;
   role?: string;
+  has_password?: boolean;
 };
 
 export async function checkEmail(email: string) {
-  return api.post<{ exists: boolean; role?: string }>('/auth/check-email', {
+  return api.post<{ exists: boolean; role?: string; has_password?: boolean }>('/auth/check-email', {
     email,
   }) as Promise<CheckEmailResult>;
 }
@@ -43,4 +44,36 @@ export async function verifyOtp(userId: string, otp: string, sessionId?: string)
     otp: cleanOTP,
     ...(sessionId ? { session_id: String(sessionId) } : {}),
   }) as Promise<VerifyOtpResponse>;
+}
+
+type LoginPasswordResponse = ApiResponse<AuthUser> & {
+  token?: string;
+  user?: AuthUser;
+  must_change_password?: boolean;
+};
+
+export async function loginWithPassword(email: string, password: string) {
+  return api.post<AuthUser>('/auth/login', { email, password }) as Promise<LoginPasswordResponse>;
+}
+
+export async function forgotPassword(email: string) {
+  return api.post('/auth/password/forgot', { email });
+}
+
+export async function resetPassword(body: {
+  new_password: string;
+  confirm_password: string;
+  token?: string;
+  code?: string;
+  email?: string;
+}) {
+  return api.post('/auth/password/reset', body);
+}
+
+export async function updatePassword(body: {
+  new_password: string;
+  confirm_password: string;
+  current_password?: string;
+}) {
+  return api.put('/auth/password', body);
 }

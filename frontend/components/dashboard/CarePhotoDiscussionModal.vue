@@ -82,21 +82,63 @@
                   <button
                     v-else
                     type="button"
-                    class="flex w-full max-w-[min(16rem,88vw)] flex-col items-center gap-2 rounded-2xl bg-gray-50 px-4 py-5 text-center shadow-sm ring-1 ring-gray-200/90 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed dark:bg-gray-900/80 dark:ring-gray-700 dark:hover:bg-gray-900"
+                    class="group relative flex w-full max-w-[min(16rem,88vw)] flex-col overflow-hidden rounded-2xl bg-gray-50 shadow-sm ring-1 ring-gray-200/90 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed dark:bg-gray-900/80 dark:ring-gray-700 dark:hover:bg-gray-900"
                     :disabled="previewLoading || !previewUrl"
-                    aria-label="Ouvrir le PDF"
+                    aria-label="Ouvrir l’aperçu PDF"
                     @click="openPdfPreview"
                   >
-                    <div v-if="previewLoading" class="py-4">
+                    <div v-if="previewLoading" class="flex min-h-[10rem] w-full items-center justify-center py-8">
                       <UIcon name="i-lucide-loader-2" class="h-6 w-6 animate-spin text-primary-500" />
                     </div>
-                    <template v-else>
-                      <UIcon name="i-lucide-file-text" class="h-10 w-10 text-primary-600 dark:text-primary-400" />
-                      <p class="line-clamp-2 text-xs font-medium text-gray-900 dark:text-gray-100">
-                        {{ previewFileName }}
-                      </p>
-                      <span class="text-[11px] font-medium text-primary-600 dark:text-primary-400">Ouvrir le PDF</span>
+                    <template v-else-if="previewUrl">
+                      <div class="relative h-44 w-full overflow-hidden bg-gray-100 dark:bg-gray-950">
+                        <iframe
+                          :src="pdfEmbedUrl"
+                          title="Aperçu du document PDF"
+                          class="pointer-events-none h-[calc(100%+2rem)] w-full border-0"
+                        />
+                        <span
+                          class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent"
+                          aria-hidden="true"
+                        />
+                        <span
+                          class="pointer-events-none absolute bottom-1.5 right-1.5 inline-flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm backdrop-blur-[2px]"
+                        >
+                          <UIcon name="i-lucide-maximize-2" class="h-3 w-3" aria-hidden="true" />
+                          Aperçu
+                        </span>
+                      </div>
+                      <div class="flex w-full flex-col gap-2 px-3 py-3">
+                        <p class="line-clamp-2 text-xs font-medium text-gray-900 dark:text-gray-100">
+                          {{ previewFileName }}
+                        </p>
+                        <div class="flex flex-wrap items-center gap-2">
+                          <span class="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 dark:text-primary-400">
+                            <UIcon name="i-lucide-eye" class="h-3.5 w-3.5" aria-hidden="true" />
+                            Ouvrir la visionneuse
+                          </span>
+                          <button
+                            type="button"
+                            class="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+                            :disabled="pdfDownloading"
+                            aria-label="Télécharger le PDF"
+                            @click.stop="downloadPdf"
+                          >
+                            <UIcon
+                              :name="pdfDownloading ? 'i-lucide-loader-2' : 'i-lucide-download'"
+                              class="h-3.5 w-3.5"
+                              :class="{ 'animate-spin': pdfDownloading }"
+                              aria-hidden="true"
+                            />
+                            Télécharger
+                          </button>
+                        </div>
+                      </div>
                     </template>
+                    <div v-else class="flex min-h-[10rem] w-full flex-col items-center justify-center gap-2 px-4 py-8 text-center">
+                      <UIcon name="i-lucide-file-text" class="h-10 w-10 text-primary-600 dark:text-primary-400" />
+                      <p class="text-xs text-muted">Aperçu indisponible</p>
+                    </div>
                   </button>
                 </div>
 
@@ -263,28 +305,60 @@
         >
           <div
             v-if="zoomOpen && previewUrl"
-            class="care-photo-lightbox fixed inset-0 z-[9999] flex items-center justify-center bg-black/92 p-3 backdrop-blur-sm sm:p-6"
+            class="care-photo-lightbox fixed inset-0 z-[9999] flex flex-col bg-black/92 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
-            aria-label="Visionneuse photo"
+            :aria-label="isPreviewPdf ? 'Visionneuse PDF' : 'Visionneuse photo'"
             @click.self="closeLightbox"
           >
-            <button
-              type="button"
-              class="absolute right-3 top-3 z-10 rounded-full bg-white/15 p-2.5 text-white transition-colors hover:bg-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:right-5 sm:top-5"
-              aria-label="Fermer la visionneuse"
-              @click="closeLightbox"
-            >
-              <UIcon name="i-lucide-x" class="h-6 w-6" />
-            </button>
-            <!-- Image plein écran : pinch / zoom navigateur possibles (pas de rdv-no-mobile-zoom ici) -->
-            <img
-              :src="previewUrl"
-              alt=""
-              class="max-h-full max-w-full cursor-zoom-out select-none object-contain"
-              draggable="false"
-              @click.stop="closeLightbox"
-            >
+            <div class="flex shrink-0 items-center justify-between gap-3 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top,0px))] sm:px-5">
+              <p class="min-w-0 flex-1 truncate text-sm font-medium text-white/95">
+                {{ previewFileName }}
+              </p>
+              <div class="flex shrink-0 items-center gap-2">
+                <button
+                  v-if="isPreviewPdf"
+                  type="button"
+                  class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:opacity-50"
+                  :disabled="pdfDownloading"
+                  aria-label="Télécharger le PDF"
+                  @click="downloadPdf"
+                >
+                  <UIcon
+                    :name="pdfDownloading ? 'i-lucide-loader-2' : 'i-lucide-download'"
+                    class="h-4 w-4"
+                    :class="{ 'animate-spin': pdfDownloading }"
+                    aria-hidden="true"
+                  />
+                  Télécharger
+                </button>
+                <button
+                  type="button"
+                  class="rounded-full bg-white/15 p-2.5 text-white transition-colors hover:bg-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                  aria-label="Fermer la visionneuse"
+                  @click="closeLightbox"
+                >
+                  <UIcon name="i-lucide-x" class="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            <div class="flex min-h-0 flex-1 items-center justify-center p-3 sm:p-6">
+              <iframe
+                v-if="isPreviewPdf"
+                :src="pdfEmbedUrl"
+                title="Document PDF"
+                class="h-full w-full max-w-5xl rounded-lg border-0 bg-white shadow-2xl"
+                @click.stop
+              />
+              <img
+                v-else
+                :src="previewUrl"
+                alt=""
+                class="max-h-full max-w-full cursor-zoom-out select-none object-contain"
+                draggable="false"
+                @click.stop="closeLightbox"
+              >
+            </div>
           </div>
         </Transition>
       </Teleport>
@@ -356,12 +430,18 @@ const previewUrl = ref<string | null>(null);
 let previewBlobUrl: string | null = null;
 const previewLoading = ref(false);
 const zoomOpen = ref(false);
+const pdfDownloading = ref(false);
 
 const isPreviewPdf = computed(() => isCarePhotoPdf(photo.value));
 
 const previewFileName = computed(
   () => photo.value?.file_name?.trim() || 'Document PDF',
 );
+
+const pdfEmbedUrl = computed(() => {
+  if (!previewUrl.value || !isPreviewPdf.value) return '';
+  return `${previewUrl.value}#toolbar=1&navpanes=0&view=FitH`;
+});
 
 function openLightbox() {
   if (previewLoading.value || !previewUrl.value || isPreviewPdf.value) return;
@@ -370,11 +450,35 @@ function openLightbox() {
 
 function openPdfPreview() {
   if (previewLoading.value || !previewUrl.value || !isPreviewPdf.value) return;
-  window.open(previewUrl.value, '_blank', 'noopener,noreferrer');
+  zoomOpen.value = true;
 }
 
 function closeLightbox() {
   zoomOpen.value = false;
+}
+
+async function downloadPdf() {
+  if (!previewUrl.value || !isPreviewPdf.value || pdfDownloading.value) return;
+  pdfDownloading.value = true;
+  try {
+    const a = document.createElement('a');
+    a.href = previewUrl.value;
+    a.download = previewFileName.value.endsWith('.pdf')
+      ? previewFileName.value
+      : `${previewFileName.value.replace(/\.pdf$/i, '')}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast.add({ title: 'Téléchargement lancé', color: 'success' });
+  } catch (e: any) {
+    toast.add({
+      title: 'Téléchargement',
+      description: e?.message || 'Impossible de télécharger le PDF.',
+      color: 'error',
+    });
+  } finally {
+    pdfDownloading.value = false;
+  }
 }
 
 function revokePreviewBlob() {

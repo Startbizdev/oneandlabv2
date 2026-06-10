@@ -8,6 +8,7 @@ import {
   Globe,
   GraduationCap,
   HeartPulse,
+  Lock,
   MapPin,
 } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -175,6 +176,17 @@ export function ProfileNurseHubView() {
               />
             </>
           ) : null}
+        </ProfileNavCard>
+
+        <ProfileNavCard title="Compte">
+          <ProfileNavRow
+            icon={Lock}
+            title="Mot de passe et connexion"
+            subtitle="Créer ou modifier votre mot de passe · biométrie"
+            onPress={() => push('/profile/security')}
+            iconColor={c.primary}
+            iconBg={c.primaryLight}
+          />
         </ProfileNavCard>
       </ScrollView>
 

@@ -135,6 +135,48 @@ class Appointment
     }
 
     /**
+     * Notes moyennes des assignés pour une page liste RDV (requête groupée).
+     *
+     * @param list<array<string, mixed>> $appointments
+     */
+    public function enrichListAssigneeReviewStats(array &$appointments): void
+    {
+        $userIds = [];
+        foreach ($appointments as $apt) {
+            foreach (['assigned_nurse_id', 'assigned_lab_id', 'assigned_to'] as $key) {
+                if (!empty($apt[$key])) {
+                    $userIds[] = (string) $apt[$key];
+                }
+            }
+        }
+        if ($userIds === []) {
+            return;
+        }
+
+        require_once __DIR__ . '/Review.php';
+        $statsByUser = (new Review())->getStatsByRevieweeIds($userIds);
+
+        foreach ($appointments as &$appointment) {
+            $map = [
+                ['assigned_nurse_id', 'assigned_nurse_average_rating', 'assigned_nurse_reviews_count'],
+                ['assigned_lab_id', 'assigned_lab_average_rating', 'assigned_lab_reviews_count'],
+                ['assigned_to', 'assigned_to_average_rating', 'assigned_to_reviews_count'],
+            ];
+            foreach ($map as [$idKey, $ratingKey, $countKey]) {
+                $appointment[$ratingKey] = null;
+                $appointment[$countKey] = null;
+                $uid = !empty($appointment[$idKey]) ? (string) $appointment[$idKey] : '';
+                if ($uid === '' || !isset($statsByUser[$uid])) {
+                    continue;
+                }
+                $appointment[$ratingKey] = $statsByUser[$uid]['average_rating'];
+                $appointment[$countKey] = $statsByUser[$uid]['total_reviews'];
+            }
+        }
+        unset($appointment);
+    }
+
+    /**
      *
      * @return list<array{category_id: ?string, label: ?string, care_options: array, sort_order: int}>
      */

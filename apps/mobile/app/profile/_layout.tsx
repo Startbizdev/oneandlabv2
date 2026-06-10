@@ -6,9 +6,9 @@ import {
   HeartPulse,
   HelpCircle,
   LifeBuoy,
+  Lock,
   MapPin,
   Settings,
-  ScanFace,
   User,
 } from 'lucide-react-native';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
@@ -79,8 +79,8 @@ export default function ProfileLayout() {
       <Stack.Screen
         name="security"
         options={{
-          title: 'Biométrie',
-          headerTitle: tabHeaderTitle('Biométrie', ScanFace),
+          title: 'Mot de passe et connexion',
+          headerTitle: tabHeaderTitle('Mot de passe et connexion', Lock),
         }}
       />
       <Stack.Screen

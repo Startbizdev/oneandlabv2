@@ -58,7 +58,7 @@ const COMMON_SECTIONS: HelpFaqSectionDef[] = [
       {
         question: 'Biométrie (Face ID / empreinte)',
         answer:
-          'Plus > Biométrie permet de vous reconnecter rapidement sans retaper votre mot de passe. La biométrie est liée à votre compte sur cet appareil ; changez d’utilisateur ou réinstallez l’app pour la reconfigurer.',
+          'Plus > Sécurité permet de vous reconnecter rapidement sans code email, via Face ID ou empreinte. La biométrie stocke votre session (pas votre mot de passe) sur cet appareil ; changez d’utilisateur ou réinstallez l’app pour la reconfigurer. Vous pouvez aussi créer un mot de passe depuis la même page.',
       },
       {
         question: 'Informations légales',

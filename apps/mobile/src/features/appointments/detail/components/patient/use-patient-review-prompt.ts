@@ -86,7 +86,6 @@ export function usePatientReviewPrompt(batch: Appointment[], onRefresh: () => vo
       });
     },
     onSuccess: () => {
-      toast('Merci pour votre avis', { type: 'success' });
       void reviewsQ.refetch();
       onRefresh();
       setSheetApptId(null);

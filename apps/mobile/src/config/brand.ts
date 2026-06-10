@@ -2,7 +2,7 @@
 export const APP_DISPLAY_NAME = 'Cary';
 
 /** Identifiants stores — alignés avec `app.json` (iOS bundleIdentifier / Android package). */
-export const APP_BUNDLE_ID = 'com.cary.mobile';
+export const APP_BUNDLE_ID = 'com.carybioapp.app';
 
 /** Schéma Expo Linking (`cary://…`). Garder aligné avec `app.json` → `scheme`. */
 export const APP_URL_SCHEME = 'cary';

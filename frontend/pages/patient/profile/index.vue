@@ -144,6 +144,10 @@
       </UForm>
     </UCard>
 
+    <div id="securite" class="mt-8">
+      <ProfileAccountSecurity />
+    </div>
+
     <ProfileDocuments
       v-if="!loading && !error"
       class="mt-8"
@@ -161,6 +165,7 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick } from 'vue'
 import { apiFetch } from '~/utils/api'
 import type { DocumentType } from '~/types/profile'
 import { isTechnicalPatientEmail, patientUiEmailLine } from '~/utils/patient-address-rdv'
@@ -171,6 +176,7 @@ definePageMeta({
   role: 'patient',
 })
 
+const route = useRoute()
 const { user, fetchCurrentUser } = useAuth()
 const toast = useAppToast()
 
@@ -225,6 +231,10 @@ onMounted(async () => {
     loadProfile(),
     loadDocuments()
   ])
+  if (import.meta.client && route.hash === '#securite') {
+    await nextTick()
+    document.getElementById('securite')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 })
 
 const loadProfile = async () => {

@@ -22,6 +22,7 @@ import {
   filterListDocuments,
   getDocumentTypeLabel,
 } from '../utils/document-labels';
+import { formatDocumentFileSubtitle } from '@/utils/document-display-name';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -62,7 +63,7 @@ function DocumentRow({
   onOpen: (doc: MedicalDocumentRow) => void;
 }) {
   const label = getDocumentTypeLabel(doc.document_type);
-  const sub = doc.file_name?.trim();
+  const sub = formatDocumentFileSubtitle(doc.document_type, null, doc.created_at);
 
   return (
     <Pressable
@@ -75,11 +76,9 @@ function DocumentRow({
       <DocIcon type={doc.document_type} />
       <View style={styles.docBody}>
         <Text style={styles.docLabel}>{label}</Text>
-        {sub ? (
-          <Text style={styles.docFile} numberOfLines={1}>
-            {sub}
-          </Text>
-        ) : null}
+        <Text style={styles.docFile} numberOfLines={1}>
+          {sub}
+        </Text>
       </View>
       <DocumentDownloadButton
         downloading={downloading}

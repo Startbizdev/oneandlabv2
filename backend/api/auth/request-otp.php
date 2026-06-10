@@ -3,6 +3,8 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../lib/Auth.php';
 require_once __DIR__ . '/../../lib/Email.php';
+require_once __DIR__ . '/../../lib/RateLimit.php';
+require_once __DIR__ . '/../../lib/auth_public_helpers.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -37,6 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
+    $ip = authClientIp();
+    if (!RateLimit::allow('auth_request_otp', $ip, 15, 900)) {
+        http_response_code(429);
+        echo json_encode(['success' => false, 'error' => 'Trop de demandes. Réessayez dans quelques minutes.']);
+        exit;
+    }
+
     $input = json_decode(file_get_contents('php://input'), true);
     
     if (!isset($input['email'])) {
@@ -68,12 +77,16 @@ try {
     // Envoyer l'email OTP
     $emailLib->sendOTP($input['email'], $result['otp']);
 
-    echo json_encode([
+    $payload = [
         'success' => true,
         'session_id' => $result['session_id'] ?? null,
         'user_id' => $result['user_id'] ?? null,
-        'otp' => $result['otp'],
-    ]);
+    ];
+    if (authExposeOtpInResponse()) {
+        $payload['otp'] = $result['otp'];
+    }
+
+    echo json_encode($payload);
 } catch (Exception $e) {
     // Logger l'échec de demande OTP (HDS)
     require_once __DIR__ . '/../../lib/Logger.php';

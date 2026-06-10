@@ -129,6 +129,27 @@ class Validation
     }
 
     /**
+     * Valide un mot de passe utilisateur (min 8, lettre + chiffre).
+     * @return array{valid: bool, error?: string}
+     */
+    public static function password(string $password, ?string $email = null): array
+    {
+        if (strlen($password) < 8) {
+            return ['valid' => false, 'error' => 'Le mot de passe doit contenir au moins 8 caractères.'];
+        }
+        if (!preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) {
+            return ['valid' => false, 'error' => 'Le mot de passe doit contenir au moins une lettre et un chiffre.'];
+        }
+        if ($email !== null && $email !== '') {
+            $normalizedEmail = strtolower(trim($email));
+            if ($normalizedEmail !== '' && strtolower($password) === $normalizedEmail) {
+                return ['valid' => false, 'error' => 'Le mot de passe ne peut pas être identique à votre email.'];
+            }
+        }
+        return ['valid' => true];
+    }
+
+    /**
      * Valide une taille de fichier (en bytes)
      */
     public static function fileSize(int $size, int $maxSize): bool

@@ -124,6 +124,44 @@ class NotificationMessageFormatter
         return implode(' · ', $out);
     }
 
+    /** Titre cloche / push — invitation avis post-RDV patient. */
+    public static function completedAppointmentReviewTitle(): string
+    {
+        return 'Comment s\'est passé votre soin ?';
+    }
+
+    /** Corps cloche / push — invitation avis post-RDV patient. */
+    public static function completedAppointmentReviewMessage(?string $actorDisplayLabel): string
+    {
+        $actorShort = self::actorShortNameForReview($actorDisplayLabel);
+        if ($actorShort !== null) {
+            return 'Votre soin avec ' . $actorShort . ' est terminé. Notez votre expérience en 2 minutes — cela aide d\'autres patients Cary.';
+        }
+
+        return 'Votre soin est terminé. Notez votre expérience en 2 minutes pour aider la communauté Cary.';
+    }
+
+    private static function actorShortNameForReview(?string $actorDisplayLabel): ?string
+    {
+        if ($actorDisplayLabel === null) {
+            return null;
+        }
+        $label = trim($actorDisplayLabel);
+        if ($label === '') {
+            return null;
+        }
+
+        $prefixes = ['Le laboratoire ', 'Le préleveur ', "L'infirmier "];
+        foreach ($prefixes as $prefix) {
+            if (str_starts_with($label, $prefix)) {
+                $rest = trim(substr($label, strlen($prefix)));
+                return $rest !== '' ? $rest : null;
+            }
+        }
+
+        return $label;
+    }
+
     /**
      * @param array<string,mixed>|string|null $formData
      * @return array<string,mixed>|null

@@ -18,6 +18,7 @@ import { appointmentStatusForDisplay } from '@/utils/effective-appointment-statu
 import { useAppColors } from '@/theme/use-app-colors';
 import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
 import { RdvListCardBody } from './RdvListCardBody';
+import { buildRdvListCardAccessibilityLabel } from './rdv-list-card-accessibility';
 import { spacing, animation } from '@/theme';
 
 interface Props {
@@ -71,6 +72,16 @@ function AppointmentListRowCardComponent({
           ? 'lab'
           : 'patient';
 
+  const cardStatus = appointmentStatusForDisplay(primaryApt, {
+    role: cardRole,
+    viewerId,
+  });
+  const accessibilityLabel = buildRdvListCardAccessibilityLabel(
+    primaryApt,
+    cardRole,
+    cardStatus,
+  );
+
   return (
     <Animated.View entering={FadeIn.delay(index * 50).duration(350)}>
       <Animated.View style={[animStyle, cardStyles.cardShell]}>
@@ -83,8 +94,15 @@ function AppointmentListRowCardComponent({
         }}
         onPress={handlePress}
         style={cardStyles.card}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
       >
-        <View style={styles.inner}>
+        <View
+          style={styles.inner}
+          accessible={false}
+          importantForAccessibility="no"
+          accessibilityElementsHidden
+        >
           <RdvListCardBody
             row={row}
             primaryApt={primaryApt}
@@ -106,7 +124,7 @@ export const AppointmentListRowCard = React.memo(AppointmentListRowCardComponent
 const styles = StyleSheet.create({
   inner: {
     paddingHorizontal: spacing[4],
-    paddingTop: spacing[3],
-    paddingBottom: spacing[3],
+    paddingTop: spacing[3.5],
+    paddingBottom: spacing[3.5],
   },
 });

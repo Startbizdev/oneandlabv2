@@ -45,6 +45,20 @@ export function appointmentBeneficiaryGender(apt: Appointment): string | null {
   return null;
 }
 
+export function appointmentBeneficiaryAvatarMeta(apt: Appointment): {
+  profileImageUrl: string | null;
+  gender: string | null;
+  seed: string;
+} {
+  const ext = apt as AptExt & { beneficiary_profile_image_url?: string | null };
+  const seed = beneficiaryDisplayName(apt) || apt.id;
+  return {
+    profileImageUrl: ext.beneficiary_profile_image_url ?? null,
+    gender: appointmentBeneficiaryGender(apt),
+    seed,
+  };
+}
+
 /** Genre de l’assigné (infirmier, labo, préleveur) si exposé par l’API. */
 export function appointmentAssigneeGender(
   apt: Appointment,

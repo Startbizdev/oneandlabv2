@@ -377,6 +377,20 @@ class User
         unset($user['birth_date_encrypted'], $user['birth_date_dek']);
         unset($user['rpps_encrypted'], $user['rpps_dek']);
         unset($user['email_hash']);
+        if ($this->hasPasswordColumn()) {
+            $flags = $this->getPasswordFlagsForUser($id);
+            $user['has_password'] = $flags['has_password'];
+            $user['must_change_password'] = $flags['must_change_password'];
+        } else {
+            $user['has_password'] = false;
+            $user['must_change_password'] = false;
+        }
+        if (array_key_exists('password_hash', $user)) {
+            unset($user['password_hash']);
+        }
+        if (array_key_exists('password_set_at', $user)) {
+            unset($user['password_set_at']);
+        }
         if (array_key_exists('company_name_encrypted', $user)) {
             unset($user['company_name_encrypted'], $user['company_name_dek']);
         }
@@ -795,6 +809,45 @@ class User
         return $hasColumn;
     }
 
+    private function hasPasswordColumn(): bool
+    {
+        static $hasColumn = null;
+        if ($hasColumn === null) {
+            $stmt = $this->db->query("SHOW COLUMNS FROM profiles LIKE 'password_hash'");
+            $hasColumn = $stmt->rowCount() > 0;
+        }
+        return $hasColumn;
+    }
+
+    /** @return array{has_password: bool, must_change_password: bool} */
+    public function getPasswordFlagsForUser(string $userId): array
+    {
+        if (!$this->hasPasswordColumn()) {
+            return ['has_password' => false, 'must_change_password' => false];
+        }
+        $stmt = $this->db->prepare('SELECT password_hash, must_change_password FROM profiles WHERE id = ?');
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return ['has_password' => false, 'must_change_password' => false];
+        }
+        return [
+            'has_password' => !empty($row['password_hash']),
+            'must_change_password' => (bool) ($row['must_change_password'] ?? false),
+        ];
+    }
+
+    public function getDecryptedEmail(string $userId): ?string
+    {
+        $stmt = $this->db->prepare('SELECT email_encrypted, email_dek FROM profiles WHERE id = ?');
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row || empty($row['email_encrypted']) || empty($row['email_dek'])) {
+            return null;
+        }
+        return $this->crypto->decryptField($row['email_encrypted'], $row['email_dek']);
+    }
+
     private function hasSiretColumn(): bool
     {
         static $hasColumn = null;
@@ -1099,6 +1152,63 @@ class User
                     continue;
                 }
                 $newEmail = 'delegated-' . strtolower($row['id']) . '@patients.internal.local';
+                $this->setEmailPlainInternal((string) $row['id'], $newEmail);
+                $totalFixed++;
+            }
+        }
+
+        return $totalFixed;
+    }
+
+    /**
+     * Corrige les doublons email_hash entre comptes staff (migration 051).
+     * Conserve le rôle le plus prioritaire ; les autres reçoivent un email technique interne.
+     */
+    public function migrateDuplicateEmailHashesForStaff(): int
+    {
+        $rolePriority = [
+            'super_admin' => 0,
+            'lab' => 1,
+            'subaccount' => 2,
+            'preleveur' => 3,
+            'nurse' => 4,
+            'pro' => 5,
+        ];
+
+        $stmt = $this->db->query('
+            SELECT email_hash
+            FROM profiles
+            WHERE role <> \'patient\'
+            GROUP BY email_hash
+            HAVING COUNT(*) > 1
+        ');
+        $dupHashes = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $totalFixed = 0;
+
+        foreach ($dupHashes as $hash) {
+            $q = $this->db->prepare('
+                SELECT id, role FROM profiles
+                WHERE email_hash = ? AND role <> ?
+                ORDER BY created_at ASC
+            ');
+            $q->execute([$hash, 'patient']);
+            $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+            if (count($rows) < 2) {
+                continue;
+            }
+
+            usort($rows, static function (array $a, array $b) use ($rolePriority): int {
+                $pa = $rolePriority[$a['role']] ?? 99;
+                $pb = $rolePriority[$b['role']] ?? 99;
+                if ($pa !== $pb) {
+                    return $pa <=> $pb;
+                }
+                return strcmp((string) $a['id'], (string) $b['id']);
+            });
+
+            array_shift($rows);
+            foreach ($rows as $row) {
+                $newEmail = 'delegated-' . strtolower((string) $row['id']) . '@profiles.internal.local';
                 $this->setEmailPlainInternal((string) $row['id'], $newEmail);
                 $totalFixed++;
             }

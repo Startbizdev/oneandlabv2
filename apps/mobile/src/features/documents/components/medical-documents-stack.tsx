@@ -59,9 +59,7 @@ export type MedicalDocumentStackItem = {
 };
 
 function buildDocumentRowHint(doc: MedicalDocumentStackItem): string {
-  const base =
-    formatDocumentFileSubtitle(doc.document_type, doc.file_name, doc.created_at) ||
-    'Document disponible';
+  const base = formatDocumentFileSubtitle(doc.document_type, null, doc.created_at);
   const tags: string[] = [];
   if (doc.source === 'patient_profile') tags.push('Compte patient');
   if (doc.profile_newer_than_appointment) tags.push('Version profil à jour');
@@ -256,7 +254,7 @@ function DocRowActionButton({
     <Button
       title=""
       variant={variant}
-      size="md"
+      size="mini"
       iconOnly
       disabled={disabled}
       loading={loading}
@@ -316,7 +314,7 @@ export function MedicalDocumentOpenRow({
             disabled={busy}
             bg={pillBg}
           >
-            <Eye size={iconSize.lg} color={pillColor} strokeWidth={2.25} />
+            <Eye size={iconSize.sm} color={pillColor} strokeWidth={2.25} />
           </DocRowActionButton>
           {canReplace ? (
             <DocRowActionButton
@@ -326,7 +324,7 @@ export function MedicalDocumentOpenRow({
               loading={busyAction === 'replace'}
               bg={pillBg}
             >
-              <RefreshCw size={iconSize.lg} color={pillColor} strokeWidth={2.25} />
+              <RefreshCw size={iconSize.sm} color={pillColor} strokeWidth={2.25} />
             </DocRowActionButton>
           ) : null}
           <DocRowActionButton
@@ -337,7 +335,7 @@ export function MedicalDocumentOpenRow({
             variant="secondary"
             bg={pillBg}
           >
-            <Download size={iconSize.lg} color={pillColor} strokeWidth={2.25} />
+            <Download size={iconSize.sm} color={pillColor} strokeWidth={2.25} />
           </DocRowActionButton>
         </>
       }
@@ -504,7 +502,7 @@ export function MedicalDocumentAddRow({
           variant="secondary"
           bg={c.primaryLight}
         >
-          <Plus size={iconSize.lg} color={c.primary} strokeWidth={2.5} />
+          <Plus size={iconSize.sm} color={c.primary} strokeWidth={2.5} />
         </DocRowActionButton>
       }
     />
@@ -602,16 +600,16 @@ function buildRowStyles(c: AppColors) {
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
       justifyContent: 'flex-end' as const,
-      gap: spacing[2],
+      gap: spacing[1.5],
       flexShrink: 0,
       marginLeft: 'auto' as const,
-      paddingLeft: spacing[2],
+      paddingLeft: spacing[1.5],
     },
     actionBtn: {
-      minWidth: spacing[12],
-      minHeight: spacing[12],
-      width: spacing[12],
-      height: spacing[12],
+      minWidth: spacing[9],
+      minHeight: spacing[9],
+      width: spacing[9],
+      height: spacing[9],
       paddingHorizontal: 0,
       paddingVertical: 0,
       borderRadius: radius.full,
