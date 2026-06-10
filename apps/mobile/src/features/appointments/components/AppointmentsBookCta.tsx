@@ -1,7 +1,6 @@
-import { useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import * as Haptics from 'expo-haptics';
 import { CalendarPlus } from 'lucide-react-native';
 import { BookingPremiumStepCta } from '@/features/appointments/form/components/BookingPremiumStepCta';
 import { colors, spacing } from '@/theme';
@@ -9,35 +8,31 @@ import { colors, spacing } from '@/theme';
 interface Props {
   href: Href;
   label?: string;
-  subtitle?: string;
 }
 
-const DEFAULT_SUBTITLE = 'NOUVEAU RENDEZ-VOUS';
+const DEFAULT_LABEL = 'Nouveau rendez-vous';
 
-export function AppointmentsBookCta({
-  href,
-  label = 'Prendre un rendez-vous',
-  subtitle = DEFAULT_SUBTITLE,
-}: Props) {
+function AppointmentsBookCtaComponent({ href, label = DEFAULT_LABEL }: Props) {
   const router = useRouter();
 
   const onPress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push(href);
   }, [href, router]);
 
   return (
     <View style={styles.wrap}>
       <BookingPremiumStepCta
+        variant="list"
         showStepBadge={false}
         title={label}
-        subtitle={subtitle}
-        leadingIcon={<CalendarPlus size={20} color={colors.primary} strokeWidth={2.5} />}
+        leadingIcon={<CalendarPlus size={18} color={colors.primary} strokeWidth={2.25} />}
         onPress={onPress}
       />
     </View>
   );
 }
+
+export const AppointmentsBookCta = React.memo(AppointmentsBookCtaComponent);
 
 const styles = StyleSheet.create({
   wrap: {

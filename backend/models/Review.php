@@ -12,6 +12,9 @@ class Review
     private PDO $db;
     private Logger $logger;
 
+    /** Valeurs autorisées pour reviewee_type (aligné migration 053). */
+    public const REVIEWEE_TYPES = ['nurse', 'subaccount', 'lab'];
+
     public function __construct()
     {
         $config = require __DIR__ . '/../config/database.php';
@@ -33,6 +36,13 @@ class Review
      */
     public function create(array $data, string $patientId): string
     {
+        $revieweeType = isset($data['reviewee_type']) ? trim((string) $data['reviewee_type']) : '';
+        if (!in_array($revieweeType, self::REVIEWEE_TYPES, true)) {
+            throw new InvalidArgumentException(
+                'Type de professionnel invalide. Valeurs acceptées : nurse, lab, subaccount.'
+            );
+        }
+
         $id = $this->generateUUID();
         
         $stmt = $this->db->prepare('
@@ -42,15 +52,31 @@ class Review
             ) VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW())
         ');
         
-        $stmt->execute([
-            $id,
-            $data['appointment_id'],
-            $patientId,
-            $data['reviewee_id'],
-            $data['reviewee_type'],
-            $data['rating'],
-            $data['comment'] ?? null,
-        ]);
+        try {
+            $stmt->execute([
+                $id,
+                $data['appointment_id'],
+                $patientId,
+                $data['reviewee_id'],
+                $revieweeType,
+                $data['rating'],
+                $data['comment'] ?? null,
+            ]);
+        } catch (PDOException $e) {
+            $msg = $e->getMessage();
+            if (
+                str_contains($msg, 'reviewee_type')
+                || str_contains($msg, 'Data truncated')
+                || str_contains($msg, '1265')
+            ) {
+                throw new RuntimeException(
+                    'Le type d\'avis « lab » n\'est pas encore activé en base. Contactez le support ou relancez la migration 053.',
+                    0,
+                    $e
+                );
+            }
+            throw $e;
+        }
         
         // Logger la création
         $this->logger->log(
@@ -96,6 +122,47 @@ class Review
                 '5' => (int) $stats['rating_5'],
             ],
         ];
+    }
+
+    /**
+     * Statistiques d'avis pour plusieurs professionnels (liste RDV — évite N+1).
+     *
+     * @param list<string> $revieweeIds
+     * @return array<string, array{average_rating: float, total_reviews: int}>
+     */
+    public function getStatsByRevieweeIds(array $revieweeIds): array
+    {
+        $revieweeIds = array_values(array_unique(array_filter(array_map(
+            static fn($id) => trim((string) $id),
+            $revieweeIds
+        ))));
+        if ($revieweeIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($revieweeIds), '?'));
+        $stmt = $this->db->prepare("
+            SELECT reviewee_id, COUNT(*) as total_reviews, AVG(rating) as average_rating
+            FROM reviews
+            WHERE reviewee_id IN ($placeholders) AND is_visible = TRUE
+            GROUP BY reviewee_id
+        ");
+        $stmt->execute($revieweeIds);
+
+        $out = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $id = (string) ($row['reviewee_id'] ?? '');
+            $total = (int) ($row['total_reviews'] ?? 0);
+            if ($id === '' || $total <= 0) {
+                continue;
+            }
+            $out[$id] = [
+                'average_rating' => round((float) ($row['average_rating'] ?? 0), 1),
+                'total_reviews' => $total,
+            ];
+        }
+
+        return $out;
     }
 
     /**

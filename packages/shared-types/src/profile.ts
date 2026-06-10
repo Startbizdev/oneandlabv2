@@ -59,4 +59,6 @@ export interface AuthUser {
   last_name?: string;
   profile_image_url?: string | null;
   avatar?: string | null;
+  has_password?: boolean;
+  must_change_password?: boolean;
 }

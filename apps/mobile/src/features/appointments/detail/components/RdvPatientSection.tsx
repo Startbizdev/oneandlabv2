@@ -3,7 +3,8 @@ import { getThemedStyles } from '@/theme/use-themed-styles';
 import { colors } from '@/theme';
 import React, { useCallback } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Phone, MessageSquare, Mail, AlertTriangle, User } from 'lucide-react-native';
+import { Phone, MessageSquare, Mail, AlertTriangle } from 'lucide-react-native';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import type { Appointment } from '@oneandlab/shared-types';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
 import { Card } from '@/components/ui/Card';
@@ -14,6 +15,7 @@ import {
   getRelationshipLabel,
   patientDisplayName,
 } from '@/utils/appointment-detail-display';
+import { appointmentBeneficiaryAvatarMeta } from '../utils/patient-appointment-display';
 import { spacing, elevation } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -90,6 +92,7 @@ export function RdvPatientSection({ apt, role }: Props) {
   ).relative;
 
   const name = patientDisplayName(apt) || '—';
+  const avatar = appointmentBeneficiaryAvatarMeta(apt);
   const phone = String(fd.phone ?? '');
   const email = String(fd.email ?? '');
   const birthRaw = rel?.birth_date ?? fd.birth_date;
@@ -103,9 +106,12 @@ export function RdvPatientSection({ apt, role }: Props) {
   return (
     <Card shadow="sm" padding="md">
       <View style={styles.sectionHeader}>
-        <View style={styles.avatarCircle}>
-          <User size={18} color={colors.primary} strokeWidth={2} />
-        </View>
+        <ProfileAvatar
+          profileImageUrl={avatar.profileImageUrl}
+          seed={avatar.seed}
+          gender={avatar.gender}
+          size={44}
+        />
         <View style={styles.sectionHeaderText}>
           <Text style={styles.sectionLabel}>{rel ? 'Bénéficiaire' : 'Patient'}</Text>
           <Text style={styles.patientName}>{name}</Text>
@@ -151,14 +157,6 @@ function buildStyles(c: AppColors) {
     alignItems: 'center',
     gap: spacing[3],
     marginBottom: spacing[3],
-  },
-  avatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   sectionHeaderText: {
     flex: 1,

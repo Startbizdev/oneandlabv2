@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
+import { ProfileSecurityLinkRow } from '@/features/profile/components/ProfileSecurityLinkRow';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import { fetchUser, updateProfileImages, updateUser } from '@/features/profile/api/profile.service';
 import { queryKeys } from '@/lib/query-keys';
@@ -110,6 +111,8 @@ export function ProfilePreleveurView() {
           </View>
           <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         </ProfileSection>
+
+        <ProfileSecurityLinkRow />
 
         <Button
           title="Enregistrer mon profil"

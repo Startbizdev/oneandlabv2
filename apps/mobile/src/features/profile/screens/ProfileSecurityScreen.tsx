@@ -5,6 +5,7 @@ import { useCallback, useLayoutEffect, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from 'expo-router';
 import { ScanFace } from 'lucide-react-native';
+import { PasswordManagementPanel } from '@/features/profile/components/PasswordManagementPanel';
 import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
 import { loadAuthSession } from '@/lib/auth-storage';
@@ -52,8 +53,8 @@ export function ProfileSecurityScreen() {
   );
 
   useLayoutEffect(() => {
-    navigation.setOptions({ title: label });
-  }, [label, navigation]);
+    navigation.setOptions({ title: 'Mot de passe et connexion' });
+  }, [navigation]);
 
   const onToggle = async (next: boolean) => {
     if (!user?.id || !hardwareReady) return;
@@ -95,9 +96,9 @@ export function ProfileSecurityScreen() {
     ? Platform.OS === 'ios'
       ? 'Configurer dans Réglages iOS'
       : 'Configurer dans les réglages'
-    : enabled
+      : enabled
       ? 'Actif sur cet appareil'
-      : 'Sans code email';
+      : 'Reconnexion rapide sans code email';
 
   if (!user?.id) {
     return (
@@ -128,11 +129,14 @@ export function ProfileSecurityScreen() {
 
   return (
     <ProfileSubScreenLayout hideSave>
-      {!hardwareReady ? (
-        <Pressable onPress={openDeviceBiometricSettings}>{card}</Pressable>
-      ) : (
-        card
-      )}
+      <View style={styles.stack}>
+        {!hardwareReady ? (
+          <Pressable onPress={openDeviceBiometricSettings}>{card}</Pressable>
+        ) : (
+          card
+        )}
+        <PasswordManagementPanel />
+      </View>
     </ProfileSubScreenLayout>
   );
 }
@@ -171,6 +175,9 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.base,
     color: c.textSecondary,
     textAlign: 'center',
+  },
+  stack: {
+    gap: spacing[4],
   },
 };
 }

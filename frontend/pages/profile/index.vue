@@ -143,7 +143,9 @@
               @reset="resetForm"
             />
 
-            <!-- Pro libéral (son propre profil) : photo, présentation, site & réseaux (sans fiche publique type infirmier) -->
+            <div id="securite">
+              <ProfileAccountSecurity v-if="!editingUserId && !newPatientMode && !newPreleveurMode" />
+            </div>
             <template v-if="isProOwnProfile">
               <UCard class="overflow-hidden">
                 <template #header>
@@ -1694,6 +1696,10 @@ onMounted(async () => {
   if (isPatient.value && !newPatientMode.value) promises.push(loadDocuments())
   if (hasAppointmentsSection.value) promises.push(loadProfileAppointments())
   await Promise.all(promises)
+  if (import.meta.client && route.hash === '#securite') {
+    await nextTick()
+    document.getElementById('securite')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 })
 
 const loadProfile = async () => {

@@ -12,7 +12,10 @@ interface BadgeProps {
   label: string;
   variant?: BadgeVariant;
   dot?: boolean;
+  /** Pastille colorée seule — sans fond ni libellé (cartes liste). */
+  dotOnly?: boolean;
   size?: 'sm' | 'md';
+  shape?: 'rounded' | 'square';
 }
 
 function variantConfigFor(
@@ -43,14 +46,43 @@ const statusToVariant: Record<string, BadgeVariant> = {
   neutral: 'neutral',
 };
 
-function BadgeComponent({ label, variant = 'neutral', dot = true, size = 'sm' }: BadgeProps) {
+function BadgeComponent({
+  label,
+  variant = 'neutral',
+  dot = true,
+  dotOnly = false,
+  size = 'sm',
+  shape = 'rounded',
+}: BadgeProps) {
   const c = useAppColors();
   const config = variantConfigFor(variant, c);
   const isSmall = size === 'sm';
 
+  if (dotOnly) {
+    return (
+      <View
+        style={[styles.dotOnlyWrap, isSmall ? styles.dotOnlyWrapSm : styles.dotOnlyWrapMd]}
+        accessibilityLabel={`Statut : ${label}`}
+      >
+        <View
+          style={[
+            styles.dotOnly,
+            isSmall ? styles.dotOnlySm : styles.dotOnlyMd,
+            { backgroundColor: config.dot },
+          ]}
+        />
+      </View>
+    );
+  }
+
   return (
     <View
-      style={[styles.base, isSmall ? styles.sm : styles.md, { backgroundColor: config.bg }]}
+      style={[
+        styles.base,
+        isSmall ? styles.sm : styles.md,
+        shape === 'square' ? styles.square : null,
+        { backgroundColor: config.bg },
+      ]}
       accessibilityLabel={dot ? `Statut : ${label}` : label}
     >
       {dot && <View style={[styles.dot, { backgroundColor: config.dot }]} />}
@@ -73,13 +105,22 @@ export const Badge = React.memo(BadgeComponent);
 interface StatusBadgeProps {
   status: string;
   size?: 'sm' | 'md';
+  shape?: 'rounded' | 'square';
+  dotOnly?: boolean;
 }
 
-function StatusBadgeComponent({ status, size = 'sm' }: StatusBadgeProps) {
+function StatusBadgeComponent({
+  status,
+  size = 'sm',
+  shape = 'rounded',
+  dotOnly = false,
+}: StatusBadgeProps) {
   const colorKey = STATUS_BADGE_COLOR[status] ?? 'neutral';
   const label = STATUS_LABELS[status] ?? status;
   const variant = statusToVariant[colorKey] ?? 'neutral';
-  return <Badge label={label} variant={variant} dot size={size} />;
+  return (
+    <Badge label={label} variant={variant} dot size={size} shape={shape} dotOnly={dotOnly} />
+  );
 }
 
 export const StatusBadge = React.memo(StatusBadgeComponent);
@@ -101,10 +142,36 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[1],
     borderRadius: radius.md,
   },
+  square: {
+    borderRadius: 0,
+  },
   dot: {
     width: 6,
     height: 6,
     borderRadius: radius.full,
+  },
+  dotOnlyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dotOnlyWrapSm: {
+    width: 12,
+    height: 12,
+  },
+  dotOnlyWrapMd: {
+    width: 14,
+    height: 14,
+  },
+  dotOnly: {
+    borderRadius: radius.full,
+  },
+  dotOnlySm: {
+    width: 8,
+    height: 8,
+  },
+  dotOnlyMd: {
+    width: 10,
+    height: 10,
   },
   label: {
     fontFamily: fontFamily.semiBold,

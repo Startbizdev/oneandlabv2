@@ -24,6 +24,8 @@ import { animation, elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface BookingPremiumStepCtaProps {
+  /** `wizard` : pill + 2 lignes. `list` : une ligne, coins modérés (liste RDV). */
+  variant?: 'wizard' | 'list';
   /** Numéro d’étape dans le badge blanc (si pas de `selectionCount`). */
   step?: number;
   /** Nombre de soins sélectionnés — affiché dans le badge à la place du numéro d’étape. */
@@ -49,6 +51,7 @@ function triggerHaptic() {
 }
 
 export function BookingPremiumStepCta({
+  variant = 'wizard',
   step = 1,
   selectionCount,
   showStepBadge = true,
@@ -61,6 +64,8 @@ export function BookingPremiumStepCta({
   disabled,
   style,
 }: BookingPremiumStepCtaProps) {
+  const isList = variant === 'list';
+  const cornerRadius = isList ? radius.lg : radius.full;
   const badgeValue =
     selectionCount != null && selectionCount > 0
       ? selectionCount > 99
@@ -90,10 +95,10 @@ export function BookingPremiumStepCta({
     onPress();
   }, [disabled, loading, onPress]);
 
-  const a11yLabel = `${title}. ${subtitle}`;
+  const a11yLabel = isList || !subtitle ? title : `${title}. ${subtitle}`;
 
   return (
-    <Animated.View style={[styles.root, animatedStyle, style]}>
+    <Animated.View style={[styles.root, isList && styles.rootList, animatedStyle, style]}>
       <Pressable
         onPress={handlePress}
         onPressIn={handlePressIn}
@@ -103,6 +108,7 @@ export function BookingPremiumStepCta({
         accessibilityLabel={a11yLabel}
         style={({ pressed }) => [
           styles.hit,
+          { borderRadius: cornerRadius },
           (pressed || disabled) && !loading && styles.hitDim,
         ]}
       >
@@ -112,6 +118,8 @@ export function BookingPremiumStepCta({
           end={{ x: 1, y: 0.5 }}
           style={[
             styles.gradient,
+            { borderRadius: cornerRadius },
+            isList && styles.gradientList,
             badgeValue == null && !leadingIcon && styles.gradientNoBadge,
           ]}
         >
@@ -135,23 +143,37 @@ export function BookingPremiumStepCta({
               </View>
             )
           ) : leadingIcon ? (
-            <View style={[styles.stepBadge, loading && styles.leadingMuted]}>{leadingIcon}</View>
+            <View
+              style={[
+                styles.stepBadge,
+                isList && styles.stepBadgeList,
+                loading && styles.leadingMuted,
+              ]}
+            >
+              {leadingIcon}
+            </View>
           ) : null}
 
           <View style={styles.copy}>
-            <Text style={styles.title} numberOfLines={1}>
+            <Text style={[styles.title, isList && styles.titleList]} numberOfLines={1}>
               {title}
             </Text>
-            <Text style={styles.subtitle} numberOfLines={1}>
-              {subtitle}
-            </Text>
+            {!isList && subtitle ? (
+              <Text style={styles.subtitle} numberOfLines={1}>
+                {subtitle}
+              </Text>
+            ) : null}
           </View>
 
-          <View style={styles.arrowOrb}>
+          <View style={[styles.arrowOrb, isList && styles.arrowOrbList]}>
             {loading ? (
               <ActivityIndicator color={colors.textInverse} size="small" />
             ) : (
-              <ArrowRight size={20} color={colors.textInverse} strokeWidth={2.5} />
+              <ArrowRight
+                size={isList ? 18 : 20}
+                color={colors.textInverse}
+                strokeWidth={2.5}
+              />
             )}
           </View>
         </LinearGradient>
@@ -162,6 +184,7 @@ export function BookingPremiumStepCta({
 
 const STEP_BADGE = 40;
 const ARROW_ORB = 44;
+const LIST_ORB = 36;
 
 function buildStyles(c: AppColors) {
   return {
@@ -173,8 +196,12 @@ function buildStyles(c: AppColors) {
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
   },
+  rootList: {
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
   hit: {
-    borderRadius: radius.full,
     overflow: 'hidden',
   },
   hitDim: {
@@ -191,7 +218,11 @@ function buildStyles(c: AppColors) {
     paddingLeft: spacing[2.5],
     paddingRight: spacing[2],
     gap: spacing[3],
-    borderRadius: radius.full,
+  },
+  gradientList: {
+    minHeight: 52,
+    paddingVertical: spacing[2.5],
+    gap: spacing[2.5],
   },
   gradientNoBadge: {
     paddingLeft: spacing[4],
@@ -199,11 +230,17 @@ function buildStyles(c: AppColors) {
   stepBadge: {
     width: STEP_BADGE,
     height: STEP_BADGE,
-    borderRadius: STEP_BADGE / 2,
+    borderRadius: radius.full,
     backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    overflow: 'hidden',
+  },
+  stepBadgeList: {
+    width: LIST_ORB,
+    height: LIST_ORB,
+    borderRadius: radius.md,
   },
   badgePressed: {
     opacity: 0.88,
@@ -226,6 +263,9 @@ function buildStyles(c: AppColors) {
     color: c.textInverse,
     letterSpacing: -0.15,
   },
+  titleList: {
+    fontSize: fontSize.base,
+  },
   subtitle: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
@@ -235,11 +275,17 @@ function buildStyles(c: AppColors) {
   arrowOrb: {
     width: ARROW_ORB,
     height: ARROW_ORB,
-    borderRadius: ARROW_ORB / 2,
+    borderRadius: radius.full,
     backgroundColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    overflow: 'hidden',
+  },
+  arrowOrbList: {
+    width: LIST_ORB,
+    height: LIST_ORB,
+    borderRadius: radius.md,
   },
 };
 }

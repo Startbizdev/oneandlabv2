@@ -14,6 +14,7 @@ import type { AddressPayload } from '@/features/appointments/form/types';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
+import { ProfileSecurityLinkRow } from '@/features/profile/components/ProfileSecurityLinkRow';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import { fetchUser, updateProfileImages, updateUser } from '@/features/profile/api/profile.service';
 import { parseProfileAddress } from '@/features/profile/utils/parse-profile-address';
@@ -155,6 +156,8 @@ export function ProfilePatientView() {
             label="Adresse"
           />
         </ProfileSection>
+
+        <ProfileSecurityLinkRow />
 
         <Button
           title="Enregistrer mon profil"

@@ -41,6 +41,9 @@ export function creatorOriginTitle(origin: CreatorOrigin, viewerRole?: string): 
   if (viewerRole === 'patient' && origin.kind === 'pro') {
     return 'Rendez-vous pris par';
   }
+  if (viewerRole === 'patient' && origin.kind === 'nurse') {
+    return 'Infirmier(ère) ayant créé ce rendez-vous';
+  }
   switch (origin.kind) {
     case 'patient_platform':
       return 'Origine';
@@ -200,9 +203,6 @@ export function creatorOriginSubtitle(
       return emploi || 'Professionnel de santé prescripteur';
     }
     return emploi || undefined;
-  }
-  if (origin.kind === 'nurse' && viewerRole === 'patient') {
-    return 'Infirmier(ère) ayant créé ce rendez-vous';
   }
   return undefined;
 }

@@ -11,6 +11,7 @@ import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProEmploiSelect } from '@/features/auth/components/ProEmploiSelect';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
+import { ProfileSecurityLinkRow } from '@/features/profile/components/ProfileSecurityLinkRow';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import { fetchUser, updateProfileImages, updateUser } from '@/features/profile/api/profile.service';
 import {
@@ -220,6 +221,8 @@ export function ProfileProView() {
             leftIcon={<Camera size={16} color={colors.textTertiary} strokeWidth={2} />}
           />
         </ProfileSection>
+
+        <ProfileSecurityLinkRow />
 
         <Button title="Enregistrer mon profil" loading={save.isPending} onPress={() => save.mutate()} fullWidth size="lg" />
       </KeyboardScrollView>

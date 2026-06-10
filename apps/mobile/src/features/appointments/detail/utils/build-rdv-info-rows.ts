@@ -30,6 +30,7 @@ import { formatAvailabilityDisplayFr, formatFrenchWeekdayDate } from '@/utils/ap
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import {
+  appointmentBeneficiaryAvatarMeta,
   beneficiaryBirthLine,
   beneficiaryFirstName,
   beneficiaryLastName,
@@ -43,7 +44,15 @@ dayjs.locale('fr');
 
 export type RdvInfoRow =
   | { kind: 'field'; label: string; value: string; emoji?: string; strikethrough?: boolean }
-  | { kind: 'identity'; firstName: string; lastName: string; identityLabel?: string }
+  | {
+      kind: 'identity';
+      firstName: string;
+      lastName: string;
+      identityLabel?: string;
+      profileImageUrl?: string | null;
+      gender?: string | null;
+      avatarSeed?: string;
+    }
   | { kind: 'address'; value: string };
 
 export type BuildRdvInfoRowsOptions = {
@@ -326,11 +335,15 @@ function buildRdvRows(apt: Appointment, viewer?: AuthUser | null, _batch?: Appoi
   const forRelative = isAppointmentForRelative(apt);
 
   if ((!isPatientViewer || forRelative) && (first || last)) {
+    const avatar = appointmentBeneficiaryAvatarMeta(apt);
     rows.push({
       kind: 'identity',
       firstName: first || '—',
       lastName: last || '—',
       identityLabel: isPatientViewer && forRelative ? 'Pour qui' : 'Patient',
+      profileImageUrl: avatar.profileImageUrl,
+      gender: avatar.gender,
+      avatarSeed: avatar.seed,
     });
   }
 

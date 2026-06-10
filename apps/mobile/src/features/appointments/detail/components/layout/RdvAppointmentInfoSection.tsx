@@ -5,6 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { Button } from '@/components/ui/Button';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { SkeletonRdvCarePlaceholder } from '@/components/ui/skeletons';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
 import { RdvAddressFieldRow } from '../RdvAddressFieldRow';
@@ -85,9 +86,20 @@ function InfoRow({
       {row.kind === 'identity' ? (
         <>
           <Text style={styles.label}>{row.identityLabel ?? 'Patient'}</Text>
-          <Text style={styles.value}>
-            {[row.firstName, row.lastName].filter(Boolean).join(' ')}
-          </Text>
+          <View style={styles.identityValueRow}>
+            <ProfileAvatar
+              profileImageUrl={row.profileImageUrl}
+              seed={
+                row.avatarSeed ??
+                [row.firstName, row.lastName].filter((p) => p && p !== '—').join(' ')
+              }
+              gender={row.gender}
+              size={40}
+            />
+            <Text style={styles.value}>
+              {[row.firstName, row.lastName].filter(Boolean).join(' ')}
+            </Text>
+          </View>
         </>
       ) : (
         <>
@@ -250,6 +262,11 @@ export function RdvAppointmentInfoSection({
 const styles = StyleSheet.create({
   infoRow: {
     gap: spacing[1],
+  },
+  identityValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2.5],
   },
   actionsRow: {
     paddingVertical: spacing[3],

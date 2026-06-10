@@ -7,10 +7,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Star } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
+import { RdvPublishedReviewBanner } from '@/features/appointments/detail/components/RdvPublishedReviewBanner';
 import { elevation, radius, spacing } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
-import { PatientReviewPromptSheet } from './PatientReviewPromptSheet';
-import { revieweeFirstName, usePatientReviewPrompt } from './use-patient-review-prompt';
+import { fontFamily, fontSize } from '@/theme/typography';import { PatientReviewPromptSheet } from './PatientReviewPromptSheet';
+import {
+  revieweeFirstName,
+  type ReviewRow,
+  usePatientReviewPrompt,
+} from './use-patient-review-prompt';
 
 interface Props {
   batch: Appointment[];
@@ -88,46 +92,26 @@ function PendingReviewCard({
   );
 }
 
-function DoneReviewCard({
+function PublishedReviewAlert({
   appt,
+  review,
   isMulti,
   onPress,
 }: {
   appt: Appointment;
+  review: ReviewRow;
   isMulti: boolean;
   onPress: () => void;
 }) {
-  const c = useAppColors();
+  const rating = review.rating ?? 0;
+  const careLabel = appt.category_name?.trim() || 'Soin';
+  const ratingLine =
+    rating > 0
+      ? `Note ${rating}/5 enregistrée. Toucher pour consulter votre avis.`
+      : 'Toucher pour consulter votre avis.';
+  const message = isMulti ? `${careLabel} · ${ratingLine}` : ratingLine;
 
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel="Voir mon avis publié"
-      style={({ pressed }) => [pressed && cardStyles.pressedOuter]}
-    >
-      <View style={[cardStyles.shell, elevation.sm]}>
-        <LinearGradient
-          colors={[hexToRgba(c.success, 0.14), c.surface]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={cardStyles.gradient}
-        >
-          <View style={cardStyles.content}>
-            <Text style={[cardStyles.kicker, { color: c.success }]}>Merci !</Text>
-
-            <Text style={cardStyles.headline}>
-              {isMulti ? `Avis publié · ${appt.category_name ?? 'Soin'}` : 'Votre avis est en ligne'}
-            </Text>
-
-            <View style={[cardStyles.ctaOutline, { borderColor: c.successMid }]}>
-              <Text style={[cardStyles.ctaOutlineText, { color: c.success }]}>Voir mon avis</Text>
-            </View>
-          </View>
-        </LinearGradient>
-      </View>
-    </Pressable>
-  );
+  return <RdvPublishedReviewBanner message={message} onPress={onPress} />;
 }
 
 /** Encart avis post-RDV — carte visible & cliquable → bottom sheet. */
@@ -165,9 +149,10 @@ export function PatientCompletedReviewPrompt({ batch, onRefresh }: Props) {
 
           if (existing) {
             return (
-              <DoneReviewCard
+              <PublishedReviewAlert
                 key={appt.id}
                 appt={appt}
+                review={existing}
                 isMulti={isMulti}
                 onPress={() => open(appt.id)}
               />
@@ -282,21 +267,6 @@ function buildCardStyles(c: AppColors) {
       fontFamily: fontFamily.bold,
       fontSize: fontSize.base,
       textAlign: 'center' as const,
-    },
-    ctaOutline: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      gap: spacing[2],
-      marginTop: spacing[1],
-      paddingVertical: spacing[2.5],
-      paddingHorizontal: spacing[4],
-      borderRadius: radius.xl,
-      borderWidth: 1.5,
-    },
-    ctaOutlineText: {
-      fontFamily: fontFamily.semiBold,
-      fontSize: fontSize.sm,
     },
     footerHint: {
       textAlign: 'center' as const,

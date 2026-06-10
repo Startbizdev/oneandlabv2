@@ -22,7 +22,6 @@ export default function ProAppointmentsTab() {
         role="pro"
         detailPathPrefix="/(pro)/appointment"
         bookHref="/(pro)/appointments/new"
-        bookLabel="Prendre un rendez-vous"
       />
     </TabScreenShell>
   );

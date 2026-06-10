@@ -11,11 +11,13 @@ import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { formatAvailabilityDisplayFr, formatFrenchWeekdayDate } from '@/utils/appointment-datetime-fr';
 import { formatAppointmentCreatedAtMeta } from '@/utils/appointment-detail-display';
 import { appointmentAddressLine } from '@/utils/appointment-display';
 import { buildPatientContactButtons } from '@/utils/contact-actions';
 import {
+  appointmentBeneficiaryAvatarMeta,
   beneficiaryBirthLine,
   beneficiaryDisplayName,
   patientContactEmail,
@@ -74,6 +76,10 @@ export function RdvDetailHero({
     () => buildPatientContactButtons(primary, viewer),
     [primary, viewer],
   );
+  const patientAvatar = useMemo(
+    () => appointmentBeneficiaryAvatarMeta(primary),
+    [primary],
+  );
 
   return (
     <View style={styles.wrap}>
@@ -114,11 +120,21 @@ export function RdvDetailHero({
 
       {name ? (
         <View style={styles.patientBlock}>
-          <Text style={styles.patientName}>{name}</Text>
-          {birth ? <Text style={styles.patientSub}>{birth}</Text> : null}
-          {email.text ? (
-            <Text style={[styles.patientSub, !email.href && styles.muted]}>{email.text}</Text>
-          ) : null}
+          <View style={styles.patientHeadRow}>
+            <ProfileAvatar
+              profileImageUrl={patientAvatar.profileImageUrl}
+              seed={patientAvatar.seed}
+              gender={patientAvatar.gender}
+              size={44}
+            />
+            <View style={styles.patientHeadText}>
+              <Text style={styles.patientName}>{name}</Text>
+              {birth ? <Text style={styles.patientSub}>{birth}</Text> : null}
+              {email.text ? (
+                <Text style={[styles.patientSub, !email.href && styles.muted]}>{email.text}</Text>
+              ) : null}
+            </View>
+          </View>
           {contactButtons.length > 0 ? (
             <View style={styles.buttonRow}>
               {contactButtons.map((btn) => {
@@ -220,6 +236,16 @@ function buildStyles(c: AppColors) {
     paddingTop: spacing[1],
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: c.borderLight,
+  },
+  patientHeadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+  },
+  patientHeadText: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing[0.5],
   },
   patientName: {
     fontFamily: fontFamily.bold,

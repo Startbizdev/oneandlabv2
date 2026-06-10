@@ -42,6 +42,7 @@ try {
         'success' => true,
         'exists' => $result['exists'],
         'role' => $result['role'] ?? null,
+        'has_password' => $result['has_password'] ?? false,
     ]);
 } catch (Exception $e) {
     http_response_code(400);

@@ -163,7 +163,10 @@ export function RoleFilteredAppointmentsListScreen({
   const ListHeader = useCallback(() => {
     const bookBlock =
       bookHref != null ? (
-        <AppointmentsBookCta href={bookHref} label={bookLabel ?? 'Prendre un rendez-vous'} />
+        <AppointmentsBookCta
+          href={bookHref}
+          {...(bookLabel != null ? { label: bookLabel } : {})}
+        />
       ) : null;
 
     return (

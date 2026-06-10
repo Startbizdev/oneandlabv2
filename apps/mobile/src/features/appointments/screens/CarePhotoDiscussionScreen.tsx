@@ -23,6 +23,7 @@ import { ChevronLeft, Maximize2, Plus, Send } from 'lucide-react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { ScreenActionLayout } from '@/components/layout/ScreenActionLayout';
 import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
+import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { carePhotoPickErrorMessage, pickCarePhoto } from '@/lib/uploads/pick-care-photo';
 import { useAuthStore } from '@/store/auth-store';
@@ -114,6 +115,9 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
   const [draft, setDraft] = useState('');
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState<string | undefined>();
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const threadQ = useQuery({
     queryKey: ['appointments', 'care-photos', appointmentId] as const,
@@ -201,10 +205,15 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
 
   const openLightbox = useCallback(
     async (photo: CarePhotoRow) => {
-      if (isCarePhotoPdf(photo)) return;
       const uri = await loadCarePhotoLocalUri(photo.id);
       if (!uri) {
-        toast('Impossible d’afficher la photo', { type: 'warning' });
+        toast('Impossible d’afficher le fichier', { type: 'warning' });
+        return;
+      }
+      if (isCarePhotoPdf(photo)) {
+        setPreviewUri(uri);
+        setPreviewFileName(photo.file_name?.trim() || 'Document PDF');
+        setPreviewOpen(true);
         return;
       }
       setLightboxUri(uri);
@@ -397,6 +406,17 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
         onClose={() => {
           setLightboxOpen(false);
           setLightboxUri(null);
+        }}
+      />
+
+      <MedicalDocumentPreviewModal
+        visible={previewOpen}
+        localUri={previewUri}
+        fileName={previewFileName}
+        onClose={() => {
+          setPreviewOpen(false);
+          setPreviewUri(null);
+          setPreviewFileName(undefined);
         }}
       />
     </View>

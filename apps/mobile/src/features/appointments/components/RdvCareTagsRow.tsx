@@ -12,20 +12,36 @@ import {
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { rdvCatalogDisplayLines, type RdvCatalogDisplayOpts } from '@/utils/rdv-catalog-lines';
 import { buildRdvListCardTypography } from './rdv-list-card-typography';
-import { radius } from '@/theme';
+import { radius, spacing } from '@/theme';
+import { fontSize, lh } from '@/theme/typography';
 
 interface Props {
   apt: Appointment;
-  /** Vue patient : masque certificat de décès et actes staff-only. */
   hideStaffOnlyCares?: boolean;
+  /** `neutral` = fond gris (liste RDV) ; `brand` = primaryLight. */
+  tone?: 'neutral' | 'brand';
+  /** `compact` = sous le créneau dans la colonne principale. */
+  density?: 'default' | 'compact';
 }
 
-/** Soins en mini-tags colorés par acte (emoji + libellé). */
-export function RdvCareTagsRow({ apt, hideStaffOnlyCares }: Props) {
+function listCareTagColors(c: AppColors) {
+  return {
+    backgroundColor: c.surfaceAlt,
+    borderColor: c.border,
+  };
+}
+
+/** Soins en mini-tags (emoji + libellé). */
+export function RdvCareTagsRow({
+  apt,
+  hideStaffOnlyCares,
+  tone = 'neutral',
+  density = 'default',
+}: Props) {
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
-  useAppColors();
+  const c = useAppColors();
   const { data: categories = [] } = useAppointmentCareCategories();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useThemedStyles((colors) => buildStyles(colors, density));
   const orbColorMap = useMemo(
     () => buildCareTileOrbColorMap(categories),
     [categories, colorblindType],
@@ -47,10 +63,14 @@ export function RdvCareTagsRow({ apt, hideStaffOnlyCares }: Props) {
 
   if (!items.length) return null;
 
+  const useNeutral = tone === 'neutral';
+
   return (
     <View style={styles.wrap} key={colorblindType}>
       {items.map((line, idx) => {
-        const tagColors = resolveRdvCareTagColors(line, apt.type, categories, orbColorMap);
+        const tagColors = useNeutral
+          ? listCareTagColors(c)
+          : resolveRdvCareTagColors(line, apt.type, categories, orbColorMap);
         return (
           <View
             key={`${line.category_id ?? 'noid'}-${idx}-${line.label}`}
@@ -75,27 +95,38 @@ export function RdvCareTagsRow({ apt, hideStaffOnlyCares }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles(c: AppColors, density: 'default' | 'compact') {
   const type = buildRdvListCardTypography(c);
-  return {
+  const compact = density === 'compact';
+  const labelSize = compact ? fontSize.xs : fontSize.sm;
+
+  return StyleSheet.create({
     wrap: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'center',
-      gap: 5,
+      gap: compact ? spacing[1] : spacing[1.5],
       alignSelf: 'stretch',
     },
     tag: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: compact ? 3 : spacing[1],
       maxWidth: '100%',
-      paddingHorizontal: 7,
-      paddingVertical: 3,
-      borderRadius: radius.full,
+      paddingHorizontal: compact ? spacing[1.5] : spacing[2],
+      paddingVertical: compact ? spacing[0.5] : spacing[1],
+      borderRadius: radius.sm,
       borderWidth: StyleSheet.hairlineWidth,
     },
-    emoji: type.careEmoji,
-    label: type.careTag,
-  };
+    emoji: {
+      fontSize: labelSize,
+      lineHeight: lh(labelSize),
+    },
+    label: {
+      fontFamily: type.careTag.fontFamily,
+      fontSize: labelSize,
+      lineHeight: lh(labelSize),
+      color: c.textSecondary,
+    },
+  });
 }

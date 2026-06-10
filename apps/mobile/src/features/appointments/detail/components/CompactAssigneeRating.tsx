@@ -7,15 +7,39 @@ import {
   formatReviewsCount,
   type AssigneeReviewSummary,
 } from '../utils/assignee-review-display';
-
 interface Props {
   summary: AssigneeReviewSummary | null | undefined;
+  /** Liste RDV : étoiles grises + « Nouveau » si aucun avis. */
+  showNewWhenEmpty?: boolean;
+}
+
+function EmptyAssigneeRating({ label = 'Nouveau' }: { label?: string }) {
+  return (
+    <View
+      style={styles.row}
+      accessibilityLabel={`${label}, pas encore d'avis`}
+    >
+      <View style={styles.stars}>
+        {Array.from({ length: 5 }, (_, index) => (
+          <Star
+            key={index}
+            size={11}
+            color={colors.border}
+            fill="transparent"
+            strokeWidth={1.5}
+          />
+        ))}
+      </View>
+      <Text style={styles.newLabel}>{label}</Text>
+    </View>
+  );
 }
 
 /** Note + nombre d'avis sous le nom d'un intervenant. */
-export function CompactAssigneeRating({ summary }: Props) {
-  if (!summary) return null;
-
+export function CompactAssigneeRating({ summary, showNewWhenEmpty = false }: Props) {
+  if (!summary) {
+    return showNewWhenEmpty ? <EmptyAssigneeRating /> : null;
+  }
   const { averageRating, reviewsCount } = summary;
   const filledStars = Math.min(5, Math.max(0, Math.round(averageRating)));
 
@@ -69,5 +93,10 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
     color: colors.textSecondary,
+  },
+  newLabel: {
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.xs,
+    color: colors.textTertiary,
   },
 });

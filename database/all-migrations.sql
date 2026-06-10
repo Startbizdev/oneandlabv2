@@ -198,7 +198,7 @@ CREATE TABLE IF NOT EXISTS reviews (
     appointment_id CHAR(36) NOT NULL,
     patient_id CHAR(36) NOT NULL,
     reviewee_id CHAR(36) NOT NULL, -- Professionnel noté
-    reviewee_type ENUM('nurse', 'subaccount') NOT NULL,
+    reviewee_type ENUM('nurse', 'subaccount', 'lab') NOT NULL,
     rating TINYINT NOT NULL CHECK (rating >= 1 AND rating <= 5),
     comment TEXT NULL,
     response TEXT NULL, -- Réponse du professionnel

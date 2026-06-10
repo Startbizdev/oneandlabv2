@@ -1247,15 +1247,13 @@ class NotificationService
         ?string $assignedNurseId = null
     ): void {
         $patientName = trim(($patientFirstName ?? '') . ' ' . ($patientLastName ?? ''));
-        $messageToPatient = 'RDV terminé. Un avis ?';
-        if ($actorDisplayLabel !== null && $actorDisplayLabel !== '') {
-            $messageToPatient = $actorDisplayLabel . ' a terminé votre RDV.';
-        }
+        $patientTitle = NotificationMessageFormatter::completedAppointmentReviewTitle();
+        $messageToPatient = NotificationMessageFormatter::completedAppointmentReviewMessage($actorDisplayLabel);
         // Notification web au patient
         $this->createNotification(
             $patientId,
             'appointment_completed',
-            'RDV terminé',
+            $patientTitle,
             $messageToPatient,
             ['appointment_id' => $appointmentId]
         );

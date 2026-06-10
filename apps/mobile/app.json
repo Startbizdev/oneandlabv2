@@ -12,7 +12,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cary.mobile",
+      "bundleIdentifier": "com.carybioapp.app",
       "infoPlist": {
         "CFBundleDisplayName": "Cary",
         "ITSAppUsesNonExemptEncryption": false,
@@ -29,7 +29,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F4FAFA"
       },
-      "package": "com.cary.mobile",
+      "package": "com.carybioapp.app",
       "edgeToEdgeEnabled": true
     },
     "plugins": [

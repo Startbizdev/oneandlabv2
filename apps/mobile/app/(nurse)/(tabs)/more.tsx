@@ -1,8 +1,8 @@
 import { Alert, Share } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { Bell, CalendarPlus, CreditCard, FlaskConical, Scale, ScanFace, Settings, Share2, Star, User } from 'lucide-react-native';
-import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label';
+import { Bell, CalendarPlus, CreditCard, FlaskConical, Scale, Settings, Share2, Star, User } from 'lucide-react-native';
+import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { nursePublicProfilePath } from '@/features/profile/utils/nurse-public-profile';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
@@ -16,7 +16,6 @@ import { buildHelpMoreItems } from '@/features/help/help-more-items';
 
 export default function NurseMore() {
   const router = useRouter();
-  const biometricLabel = useBiometricLabel('Biométrie');
   const user = useAuthStore((s) => s.user);
   const unread = useUnreadNotificationsCount();
 
@@ -121,10 +120,10 @@ export default function NurseMore() {
                 badge: unread,
               },
               {
-                icon: ScanFace,
-                label: biometricLabel,
-                onPress: () => nav('/profile/security'),
-                iconAccent: 'teal',
+                icon: PROFILE_SECURITY_MENU.Icon,
+                label: PROFILE_SECURITY_MENU.label,
+                onPress: () => nav(PROFILE_SECURITY_MENU.href),
+                iconAccent: PROFILE_SECURITY_MENU.iconAccent,
               },
               {
                 icon: Scale,

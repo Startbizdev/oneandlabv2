@@ -21,6 +21,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { useAuthGuard } from '@/features/auth/hooks/use-auth-guard';
+import { MustChangePasswordGate } from '@/features/auth/components/MustChangePasswordGate';
 import { registerNotificationHandlers } from '@/features/notifications/handlers/register-handlers';
 import { useDeepLinks } from '@/features/navigation/hooks/use-deep-links';
 import { NetworkProvider } from '@/providers/NetworkProvider';
@@ -59,6 +60,7 @@ function RootLayoutInner() {
         <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
       </Stack>
+      <MustChangePasswordGate />
     </View>
   );
 }

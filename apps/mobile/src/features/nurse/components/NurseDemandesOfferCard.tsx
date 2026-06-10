@@ -15,6 +15,7 @@ import {
   navigateAppointmentForListRow,
 } from '@/utils/appointment-batch';
 import { RdvListCardBody } from '@/features/appointments/components/RdvListCardBody';
+import { buildRdvListCardAccessibilityLabel } from '@/features/appointments/components/rdv-list-card-accessibility';
 import { appointmentListCardStyles as cardStyles } from '@/utils/appointment-list-card-styles';
 import { spacing, animation } from '@/theme';
 
@@ -50,6 +51,12 @@ function NurseDemandesOfferCardComponent({ row, index = 0, onPress }: Props) {
     onPress(navigateTarget);
   }, [onPress, navigateTarget]);
 
+  const accessibilityLabel = buildRdvListCardAccessibilityLabel(
+    primaryApt,
+    'demande',
+    'pending',
+  );
+
   return (
     <Animated.View entering={FadeIn.delay(index * 50).duration(350)}>
       <Animated.View style={[animStyle, cardStyles.cardShell]}>
@@ -62,8 +69,15 @@ function NurseDemandesOfferCardComponent({ row, index = 0, onPress }: Props) {
         }}
         onPress={handlePress}
         style={cardStyles.card}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
       >
-        <View style={styles.inner}>
+        <View
+          style={styles.inner}
+          accessible={false}
+          importantForAccessibility="no"
+          accessibilityElementsHidden
+        >
           <RdvListCardBody
             row={row}
             primaryApt={primaryApt}

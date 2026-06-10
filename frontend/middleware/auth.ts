@@ -63,6 +63,20 @@ export default defineNuxtRouteMiddleware((to, from) => {
         return navigateTo('/login');
       }
     }
+    // Changement de mot de passe obligatoire : accès limité au profil
+    const currentUser = user.value;
+    if (currentUser?.must_change_password) {
+      const path = to.path.split('?')[0];
+      const allowed =
+        path === '/profile' ||
+        path.startsWith('/profile/') ||
+        path === '/login' ||
+        path === '/forgot-password' ||
+        path === '/reset-password';
+      if (!allowed) {
+        return navigateTo('/profile?changePassword=1');
+      }
+    }
   } else {
     // Côté serveur, ne pas bloquer - laisser le client gérer l'authentification
     // Le localStorage n'existe pas côté serveur, donc on ne peut pas vérifier l'authentification

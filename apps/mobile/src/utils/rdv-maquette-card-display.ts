@@ -15,7 +15,15 @@ import {
 } from '@/features/appointments/detail/utils/offer-appointment-display';
 import { appointmentAddressLine, appointmentCreneauLabel } from '@/utils/appointment-display';
 import { capitalizeFrench } from '@/utils/appointment-datetime-fr';
+import {
+  formatMiniDateCalendarParts,
+  type MiniDateCalendarParts,
+} from '@/utils/mini-date-calendar-parts';
 import { rdvCatalogDisplayLines } from '@/utils/rdv-catalog-lines';
+import {
+  assigneeReviewFromPrefix,
+  type AssigneeReviewSummary,
+} from '@/features/appointments/detail/utils/assignee-review-display';
 
 dayjs.locale('fr');
 
@@ -32,10 +40,16 @@ type AptExt = Appointment & Record<string, unknown>;
 export type RdvMaquetteCounterparty = {
   /** Prénom seul (carte patient) ou prénom + nom (carte pro). */
   name: string;
-  /** Rôle après la virgule (gris) ; vide = pas de virgule. */
+  /** Rôle affiché en puce (ex. Infirmier(e), Préleveur). */
   subtitle: string;
   profileImageUrl?: string | null;
   gender?: string | null;
+  /** Assignation en cours — pas d’avatar, libellé animé. */
+  assignmentPending?: boolean;
+  /** Note moyenne + nombre d’avis (comme détail RDV). */
+  reviewSummary?: AssigneeReviewSummary | null;
+  /** Étoiles sous le nom — intervenants notables uniquement, pas les patients. */
+  showRating?: boolean;
 };
 
 function capitalizeWords(name: string): string {
@@ -72,6 +86,20 @@ export function rdvMaquetteDayBadge(scheduledAt?: string | null): string {
   if (diff === 1) return 'Demain';
   if (diff > 1 && diff < 7) return capitalizeFrench(d.format('dddd'));
   return capitalizeFrench(d.format('ddd D MMM'));
+}
+
+export type RdvMaquetteCalendarParts = MiniDateCalendarParts & {
+  /** @deprecated Préférer `accessibilityLabel` (alias conservé pour compat). */
+  dateLabel: string;
+};
+
+/** Puce calendrier + libellé date complet pour cartes liste RDV. */
+export function rdvMaquetteCalendarParts(
+  scheduledAt?: string | null,
+): RdvMaquetteCalendarParts | null {
+  const parts = formatMiniDateCalendarParts(scheduledAt);
+  if (!parts) return null;
+  return { ...parts, dateLabel: parts.accessibilityLabel };
 }
 
 /** Créneau en gros : « 9h00 - 11h00 », « Toute la journée », urgence VIP… (pas l’heure seule du RDV). */
@@ -113,38 +141,79 @@ export function rdvMaquetteAddressLine(
   return appointmentAddressLine(apt);
 }
 
-function assigneeForPatientView(apt: AptExt): RdvMaquetteCounterparty | null {
+function assigneeDisplayName(raw: string, fallback: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return fallback;
+  return capitalizeWords(trimmed);
+}
+
+function bloodTestPreleveurReviewSummary(apt: AptExt): AssigneeReviewSummary | null {
+  if (apt.assigned_lab_id) {
+    return assigneeReviewFromPrefix(apt, 'assigned_lab');
+  }
+  return assigneeReviewFromPrefix(apt, 'assigned_to');
+}
+
+function assigneeForPatientView(apt: AptExt): RdvMaquetteCounterparty {
   if (isNursingAppointment(apt.type)) {
     const display = String(apt.assigned_nurse_display_name ?? '').trim();
-    if (!display && !apt.assigned_nurse_id) return null;
+    const assigned = Boolean(display || apt.assigned_nurse_id);
+    if (!assigned) {
+      return {
+        name: '',
+        subtitle: '',
+        assignmentPending: true,
+        profileImageUrl: null,
+        gender: null,
+      };
+    }
     return {
-      name: professionalFirstName(display, 'Professionnel'),
+      name: assigneeDisplayName(display, 'Infirmier(ère)'),
       subtitle: 'Infirmier(e)',
       profileImageUrl: apt.assigned_nurse_profile_image_url as string | null | undefined,
       gender: appointmentAssigneeGender(apt, 'nurse'),
+      reviewSummary: assigneeReviewFromPrefix(apt, 'assigned_nurse'),
+      showRating: true,
     };
   }
   if (isBloodTestAppointment(apt.type)) {
     const preleveur = String(apt.assigned_to_display_name ?? '').trim();
     if (preleveur || apt.assigned_to) {
       return {
-        name: professionalFirstName(preleveur, 'Préleveur'),
+        name: assigneeDisplayName(preleveur, 'Préleveur'),
         subtitle: 'Préleveur',
         profileImageUrl: apt.assigned_to_profile_image_url as string | null | undefined,
         gender: appointmentAssigneeGender(apt, 'preleveur'),
+        reviewSummary: bloodTestPreleveurReviewSummary(apt),
+        showRating: true,
       };
     }
     const lab = String(apt.assigned_lab_display_name ?? '').trim();
     if (lab || apt.assigned_lab_id) {
       return {
-        name: lab || 'Laboratoire',
-        subtitle: '',
+        name: assigneeDisplayName(lab, 'Laboratoire'),
+        subtitle: 'Laboratoire',
         profileImageUrl: apt.assigned_lab_profile_image_url as string | null | undefined,
         gender: appointmentAssigneeGender(apt, 'lab'),
+        reviewSummary: assigneeReviewFromPrefix(apt, 'assigned_lab'),
+        showRating: true,
       };
     }
+    return {
+      name: '',
+      subtitle: '',
+      assignmentPending: true,
+      profileImageUrl: null,
+      gender: null,
+    };
   }
-  return null;
+  return {
+    name: '',
+    subtitle: '',
+    assignmentPending: true,
+    profileImageUrl: null,
+    gender: null,
+  };
 }
 
 function patientForProView(apt: Appointment): RdvMaquetteCounterparty {
@@ -156,6 +225,7 @@ function patientForProView(apt: Appointment): RdvMaquetteCounterparty {
     profileImageUrl:
       (ext.beneficiary_profile_image_url as string | null | undefined) ?? null,
     gender: appointmentBeneficiaryGender(apt),
+    showRating: false,
   };
 }
 

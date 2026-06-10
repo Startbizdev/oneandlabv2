@@ -25,10 +25,9 @@ import {
   Heart,
   Route,
   Scale,
-  ScanFace,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { useBiometricLabel } from '@/features/profile/hooks/use-biometric-label';
+import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
@@ -84,7 +83,6 @@ function getSections(
   role: string | undefined,
   router: ReturnType<typeof useRouter>,
   logout: () => Promise<void>,
-  biometricLabel: string,
 ): MenuSection[] {
   const c = getAppColors();
   const menuIcons = {
@@ -109,9 +107,9 @@ function getSections(
         onPress: () => navigate('/profile'),
       },
       {
-        icon: ScanFace,
-        label: biometricLabel,
-        onPress: () => navigate('/profile/security'),
+        icon: PROFILE_SECURITY_MENU.Icon,
+        label: PROFILE_SECURITY_MENU.label,
+        onPress: () => navigate(PROFILE_SECURITY_MENU.href),
         ...menuIcons.teal,
       },
       ...(role === 'patient'
@@ -216,14 +214,13 @@ function getSections(
 
 export function ProfileHubScreen() {
   const router = useRouter();
-  const biometricLabel = useBiometricLabel('Biométrie');
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.clearSession);
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
 
   const sections = useMemo(
-    () => getSections(user?.role, router, logout, biometricLabel),
-    [user?.role, router, logout, biometricLabel, colorblindType],
+    () => getSections(user?.role, router, logout),
+    [user?.role, router, logout, colorblindType],
   );
 
   const roleLabel: Record<string, string> = {

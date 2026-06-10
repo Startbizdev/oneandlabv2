@@ -44,6 +44,9 @@ try {
     $fixed = $userModel->migrateDuplicateEmailHashesForPatients();
     echo "Profils patients réécrits : {$fixed}\n";
 
+    $staffFixed = $userModel->migrateDuplicateEmailHashesForStaff();
+    echo "Profils staff réécrits : {$staffFixed}\n";
+
     $afterDup = $userModel->countDuplicateEmailHashes();
     echo "Doublons email_hash après correction : {$afterDup}\n";
 
