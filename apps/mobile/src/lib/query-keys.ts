@@ -51,6 +51,9 @@ export const queryKeys = {
   planLimits: {
     current: ['plan-limits'] as const,
   },
+  iap: {
+    subscription: ['iap', 'subscription'] as const,
+  },
   prescriptions: {
     list: (query: string) => ['prescriptions', 'list', query] as const,
   },

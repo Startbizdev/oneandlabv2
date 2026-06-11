@@ -398,6 +398,7 @@ function slugify(text: string): string {
     .slice(0, 40);
 }
 
+
 function withSlugs(role: MobileRole, sections: HelpFaqSectionDef[]): HelpFaqSection[] {
   return sections.map((section) => {
     const sectionSlug = `${role}-${slugify(section.title)}`;

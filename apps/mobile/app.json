@@ -11,7 +11,7 @@
       "backgroundColor": "#F4FAFA"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.carybioapp.app",
       "infoPlist": {
         "CFBundleDisplayName": "Cary",

@@ -94,7 +94,7 @@ export default function NurseMore() {
                 icon: CreditCard,
                 label: 'Abonnement',
                 onPress: () => nav('/(nurse)/abonnement'),
-                iconAccent: 'warning',
+                iconAccent: 'warning' as const,
               },
             ],
           },

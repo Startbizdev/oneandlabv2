@@ -1,11 +1,5 @@
-import { AppWebViewScreen } from '@/components/web/AppWebViewScreen';
+import { NurseSubscriptionScreen } from '@/features/nurse/screens/NurseSubscriptionScreen';
 
-export default function NurseAbonnementWeb() {
-  return (
-    <AppWebViewScreen
-      path="/nurse/abonnement"
-      title="Abonnement"
-      requireAuth
-    />
-  );
+export default function NurseAbonnementScreen() {
+  return <NurseSubscriptionScreen />;
 }

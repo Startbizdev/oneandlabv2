@@ -356,10 +356,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $stmtApt->execute([$id]);
             $apt = $stmtApt->fetch(PDO::FETCH_ASSOC);
             if ($apt && ($apt['type'] ?? '') === 'nursing') {
-                $stmtSub = $dbCheck->prepare('SELECT plan_slug FROM subscriptions WHERE user_id = ? AND status IN (\'active\', \'trialing\') ORDER BY updated_at DESC LIMIT 1');
-                $stmtSub->execute([$user['user_id']]);
-                $sub = $stmtSub->fetch(PDO::FETCH_ASSOC);
-                $planSlug = $sub ? ($sub['plan_slug'] ?? 'discovery') : 'discovery';
+                require_once __DIR__ . '/../../lib/SubscriptionService.php';
+                $subscriptionService = new SubscriptionService($dbCheck);
+                $planSlug = $subscriptionService->getActiveNursePlan($user['user_id']);
                 $limits = require __DIR__ . '/../../config/plan-limits.php';
                 $nurseLimits = $limits['nurse'][$planSlug] ?? $limits['nurse']['discovery'];
                 // null = illimité (nurse_pro) — ne pas utiliser ?? 10 qui remplace null par 10
