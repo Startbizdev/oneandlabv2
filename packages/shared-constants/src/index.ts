@@ -45,3 +45,4 @@ export * from './availability';
 export * from './nursing-duration';
 export * from './care-category-autre-detail';
 export * from './cancellation-reasons';
+export * from './nurse-subscription-plans';

@@ -159,10 +159,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // Limite rayon pour les infirmiers selon l'abonnement
     if ($role === 'nurse') {
-        $stmtSub = $db->prepare('SELECT plan_slug FROM subscriptions WHERE user_id = ? AND status IN (\'active\', \'trialing\') ORDER BY updated_at DESC LIMIT 1');
-        $stmtSub->execute([$ownerId]);
-        $sub = $stmtSub->fetch(PDO::FETCH_ASSOC);
-        $planSlug = $sub ? ($sub['plan_slug'] ?? 'discovery') : 'discovery';
+        require_once __DIR__ . '/../../lib/SubscriptionService.php';
+        $subscriptionService = new SubscriptionService($db);
+        $planSlug = $subscriptionService->getActiveNursePlan($ownerId);
         $limits = require __DIR__ . '/../../config/plan-limits.php';
         $nurseLimits = $limits['nurse'][$planSlug] ?? $limits['nurse']['discovery'];
         $maxRadiusKm = $nurseLimits['max_radius_km'] ?? 20;

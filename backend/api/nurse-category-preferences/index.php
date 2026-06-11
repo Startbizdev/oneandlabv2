@@ -130,10 +130,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         // Limite types de soins selon l'abonnement (discovery = illimité, nurse_pro = illimité)
         if ($isEnabled) {
-            $stmtSub = $db->prepare('SELECT plan_slug FROM subscriptions WHERE user_id = ? AND status IN (\'active\', \'trialing\') ORDER BY updated_at DESC LIMIT 1');
-            $stmtSub->execute([$user['user_id']]);
-            $sub = $stmtSub->fetch(PDO::FETCH_ASSOC);
-            $planSlug = $sub ? ($sub['plan_slug'] ?? 'discovery') : 'discovery';
+            require_once __DIR__ . '/../../lib/SubscriptionService.php';
+            $subscriptionService = new SubscriptionService($db);
+            $planSlug = $subscriptionService->getActiveNursePlan($user['user_id']);
             $limits = require __DIR__ . '/../../config/plan-limits.php';
             $nurseLimits = $limits['nurse'][$planSlug] ?? $limits['nurse']['discovery'];
             $maxCareTypes = $nurseLimits['max_care_types'] ?? null;

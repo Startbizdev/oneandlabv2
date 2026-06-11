@@ -171,7 +171,12 @@ function getSections(
         title: 'Professionnel',
         items: [
           { icon: Star, label: 'Mes avis', onPress: () => navigate('/(nurse)/reviews'), ...menuIcons.warning },
-          { icon: CreditCard, label: 'Abonnement', onPress: () => navigate('/(nurse)/abonnement'), ...menuIcons.warning },
+          {
+            icon: CreditCard,
+            label: 'Abonnement',
+            onPress: () => navigate('/(nurse)/abonnement'),
+            ...menuIcons.warning,
+          },
         ],
       },
       legalSection,

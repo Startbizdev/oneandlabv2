@@ -37,7 +37,9 @@ try {
 $config = require __DIR__ . '/../../config/database.php';
 $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
+require_once __DIR__ . '/../../lib/SubscriptionService.php';
 $limitsConfig = require __DIR__ . '/../../config/plan-limits.php';
+$subscriptionService = new SubscriptionService($db);
 $role = $user['role'] ?? null;
 $userId = $user['user_id'] ?? null;
 
@@ -45,10 +47,7 @@ $planSlug = null;
 $data = ['plan_slug' => null];
 
 if ($role === 'nurse') {
-    $stmt = $db->prepare('SELECT plan_slug FROM subscriptions WHERE user_id = ? AND status IN (\'active\', \'trialing\') ORDER BY updated_at DESC LIMIT 1');
-    $stmt->execute([$userId]);
-    $sub = $stmt->fetch(PDO::FETCH_ASSOC);
-    $planSlug = $sub ? ($sub['plan_slug'] ?? 'discovery') : 'discovery';
+    $planSlug = $subscriptionService->getActiveNursePlan($userId);
     $nurseLimits = $limitsConfig['nurse'][$planSlug] ?? $limitsConfig['nurse']['discovery'];
     // null = illimité (nurse_pro) — ne pas utiliser ?? 10 qui remplace null par 10
     $maxAppointmentsPerMonth = array_key_exists('max_appointments_per_month', $nurseLimits)

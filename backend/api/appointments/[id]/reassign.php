@@ -265,11 +265,10 @@ try {
         }
     } elseif ($assignedNurseId !== null) {
         // Limite 10 RDV/mois pour infirmier en offre Découverte
+        require_once __DIR__ . '/../../../lib/SubscriptionService.php';
+        $subscriptionService = new SubscriptionService($pdo);
         $limits = require __DIR__ . '/../../../config/plan-limits.php';
-        $stmtSub = $pdo->prepare('SELECT plan_slug FROM subscriptions WHERE user_id = ? AND status IN (\'active\', \'trialing\') ORDER BY updated_at DESC LIMIT 1');
-        $stmtSub->execute([$assignedNurseId]);
-        $sub = $stmtSub->fetch(PDO::FETCH_ASSOC);
-        $planSlug = $sub ? ($sub['plan_slug'] ?? 'discovery') : 'discovery';
+        $planSlug = $subscriptionService->getActiveNursePlan($assignedNurseId);
         $nurseLimits = $limits['nurse'][$planSlug] ?? $limits['nurse']['discovery'];
         $maxPerMonth = array_key_exists('max_appointments_per_month', $nurseLimits)
             ? $nurseLimits['max_appointments_per_month']
