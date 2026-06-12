@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { getThemedStyles } from '@/theme/use-themed-styles';
 import { colors } from '@/theme';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Download } from 'lucide-react-native';
+import { Download, Eye } from 'lucide-react-native';
 import type { ProPrescriptionRow } from '../api/prescriptions.service';
 import {
   formatPrescriptionDateTime,
@@ -16,15 +16,19 @@ import { fontFamily, fontSize } from '@/theme/typography';
 interface Props {
   row: ProPrescriptionRow;
   onDownload: () => void;
+  onPreview?: () => void;
   onOpenAppointment?: () => void;
   downloading: boolean;
+  previewing?: boolean;
 }
 
 export function PrescriptionHistoryCard({
   row,
   onDownload,
+  onPreview,
   onOpenAppointment,
   downloading,
+  previewing = false,
 }: Props) {
   return (
     <View style={[styles.card, elevation.xs]}>
@@ -69,15 +73,29 @@ export function PrescriptionHistoryCard({
         </Text>
       </View>
 
-      <Button
-        title="Télécharger"
-        variant="outline"
-        size="sm"
-        leftIcon={<Download size={14} color={colors.primary} strokeWidth={2} />}
-        loading={downloading}
-        onPress={onDownload}
-        fullWidth
-      />
+      <View style={styles.actions}>
+        {onPreview ? (
+          <Button
+            title="Voir"
+            variant="outline"
+            size="sm"
+            leftIcon={<Eye size={14} color={colors.primary} strokeWidth={2} />}
+            loading={previewing}
+            onPress={onPreview}
+            style={styles.actionBtn}
+          />
+        ) : null}
+        <Button
+          title="Télécharger"
+          variant="outline"
+          size="sm"
+          leftIcon={<Download size={14} color={colors.primary} strokeWidth={2} />}
+          loading={downloading}
+          onPress={onDownload}
+          fullWidth={!onPreview}
+          style={onPreview ? styles.actionBtn : undefined}
+        />
+      </View>
     </View>
   );
 }
@@ -116,6 +134,8 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.sm,
     color: c.primary,
   },
+  actions: { flexDirection: 'row', gap: spacing[2] },
+  actionBtn: { flex: 1 },
 };
 }
 

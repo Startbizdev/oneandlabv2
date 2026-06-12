@@ -4,10 +4,8 @@ definePageMeta({
   middleware: ['auth', 'role'],
   role: 'nurse',
 });
-
-await navigateTo('/nurse/appointments', { replace: true });
 </script>
 
 <template>
-  <div />
+  <PrescriptionsToolPage role-base="/nurse" prescription-kind="nursing" />
 </template>

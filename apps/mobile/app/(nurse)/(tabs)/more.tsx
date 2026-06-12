@@ -1,7 +1,7 @@
 import { Alert, Share } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { Bell, CalendarPlus, CreditCard, FlaskConical, Scale, Settings, Share2, Star, User } from 'lucide-react-native';
+import { Bell, CalendarPlus, CreditCard, FilePenLine, FlaskConical, Scale, Settings, Share2, Star, User } from 'lucide-react-native';
 import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { nursePublicProfilePath } from '@/features/profile/utils/nurse-public-profile';
@@ -89,6 +89,12 @@ export default function NurseMore() {
                 label: 'Résultats',
                 onPress: () => nav('/(nurse)/resultats'),
                 iconAccent: 'results',
+              },
+              {
+                icon: FilePenLine,
+                label: 'Ordonnances',
+                onPress: () => nav('/(nurse)/prescriptions'),
+                iconAccent: 'teal',
               },
               {
                 icon: CreditCard,

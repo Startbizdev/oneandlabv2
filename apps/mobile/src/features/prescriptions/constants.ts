@@ -1,2 +1,2 @@
-/** Onglet / menu « Prescriptions » — désactivé pour nurse, pro, preleveur en attendant. */
-export const SHOW_PRESCRIPTIONS_TAB_NAV = false;
+/** Onglet / menu « Prescriptions » — pro et infirmier. */
+export const SHOW_PRESCRIPTIONS_TAB_NAV = true;

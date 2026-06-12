@@ -38,7 +38,7 @@ const CONFIG: Record<AppointmentDetailRole, AppointmentDetailRoleConfig> = {
     showLocationBlock: false,
     showActionsBlock: true,
     showOfferBlock: true,
-    showPrescriptionBlock: false,
+    showPrescriptionBlock: true,
     showCarePhotosBlock: true,
     showShareBlock: true,
     showDocumentsBlock: true,

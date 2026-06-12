@@ -17,29 +17,44 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/Button';
 import { queryKeys } from '@/lib/query-keys';
-import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
+import { cacheMedicalDocument, openMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { useToast } from '@/providers/ToastProvider';
+import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import { PrescriptionComposer } from '../components/PrescriptionComposer';
 import { PrescriptionHistoryCard } from '../components/PrescriptionHistoryCard';
-import { fetchProPrescriptions } from '../api/prescriptions.service';
+import { fetchNursePrescriptions, fetchProPrescriptions } from '../api/prescriptions.service';
 import { appointmentOptionLabel } from '../utils/prescription-display';
 import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const PAGE_SIZE = 20;
 
-export function PrescriptionsScreen() {
+interface Props {
+  roleBase?: 'pro' | 'nurse';
+  rolePrefix?: '/(pro)' | '/(nurse)';
+}
+
+export function PrescriptionsScreen({
+  roleBase = 'pro',
+  rolePrefix = '/(pro)',
+}: Props) {
+  const prescriptionKind = roleBase === 'nurse' ? 'nursing' : 'medical';
   const router = useRouter();
   const { show: toast } = useToast();
   const [page, setPage] = useState(1);
   const [patientId, setPatientId] = useState('');
   const [appointmentId, setAppointmentId] = useState('');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState('ordonnance.pdf');
 
   const listQ = useQuery({
-    queryKey: queryKeys.prescriptions.list(`pro-p${page}`),
+    queryKey: queryKeys.prescriptions.list(`${roleBase}-p${page}-${patientId}`),
     queryFn: async () => {
-      const res = await fetchProPrescriptions(page, PAGE_SIZE);
+      const fetcher = roleBase === 'nurse' ? fetchNursePrescriptions : fetchProPrescriptions;
+      const res = await fetcher(page, PAGE_SIZE, patientId || undefined);
       return {
         rows: res.data ?? [],
         pagination: res.pagination as
@@ -62,7 +77,9 @@ export function PrescriptionsScreen() {
         limit: 80,
         page: 1,
       });
-      return appointments;
+      return appointments.filter((a) =>
+        prescriptionKind === 'nursing' ? a.type === 'nursing' : true,
+      );
     },
     enabled: Boolean(patientId),
   });
@@ -99,6 +116,19 @@ export function PrescriptionsScreen() {
     if (appointmentId) await docsQ.refetch();
   }
 
+  async function previewRow(id: string, fileName?: string) {
+    setPreviewingId(id);
+    const res = await cacheMedicalDocument(id, fileName);
+    setPreviewingId(null);
+    if (!res.ok || !res.localUri) {
+      toast(res.error ?? 'Aperçu impossible', { type: 'error' });
+      return;
+    }
+    setPreviewUri(res.localUri);
+    setPreviewFileName(fileName ?? 'ordonnance.pdf');
+    setPreviewOpen(true);
+  }
+
   async function downloadRow(id: string, fileName?: string) {
     setDownloadingId(id);
     const res = await openMedicalDocument(id, fileName);
@@ -109,6 +139,7 @@ export function PrescriptionsScreen() {
   function onPatientChange(id: string) {
     setPatientId(id);
     setAppointmentId('');
+    setPage(1);
   }
 
   return (
@@ -121,7 +152,9 @@ export function PrescriptionsScreen() {
         }
       >
         <View style={styles.hero}>
-          <Text style={styles.heroTitle}>Ordonnances</Text>
+          <Text style={styles.heroTitle}>
+            {prescriptionKind === 'nursing' ? 'Prescriptions d\'actes' : 'Ordonnances'}
+          </Text>
           <Text style={styles.heroDesc}>
             Documents générés ou enregistrés pour vos patients, liés à un rendez-vous.
           </Text>
@@ -149,10 +182,12 @@ export function PrescriptionsScreen() {
                   row={row}
                   downloading={downloadingId === row.id}
                   onDownload={() => void downloadRow(row.id, row.file_name)}
+                  onPreview={() => void previewRow(row.id, row.file_name)}
+                  previewing={previewingId === row.id}
                   onOpenAppointment={
                     row.appointment_id
                       ? () =>
-                          router.push(`/(pro)/appointment/${row.appointment_id}` as never)
+                          router.push(`${rolePrefix}/appointment/${row.appointment_id}` as never)
                       : undefined
                   }
                 />
@@ -232,12 +267,23 @@ export function PrescriptionsScreen() {
                 appointmentId={appointmentId}
                 documents={docsQ.data ?? []}
                 onDocumentsChanged={refreshList}
+                prescriptionKind={prescriptionKind}
                 embedded
               />
             </View>
           ) : null}
         </View>
       </KeyboardScrollView>
+
+      <MedicalDocumentPreviewModal
+        visible={previewOpen}
+        localUri={previewUri}
+        fileName={previewFileName}
+        onClose={() => {
+          setPreviewOpen(false);
+          setPreviewUri(null);
+        }}
+      />
     </View>
   );
 }

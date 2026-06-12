@@ -6,8 +6,7 @@ require_once __DIR__ . '/../../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
-require_once __DIR__ . '/../../../models/User.php';
-require_once __DIR__ . '/../../../lib/LabTeamAccess.php';
+require_once __DIR__ . '/../../../lib/PrescriptionService.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -33,8 +32,9 @@ CSRFMiddleware::handle();
 
 $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
+$role = $user['role'] ?? '';
 
-if (!in_array($user['role'] ?? '', ['pro', 'super_admin'], true)) {
+if (!in_array($role, ['pro', 'nurse', 'super_admin'], true)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'La génération d\'ordonnance est réservée aux professionnels de santé']);
     exit;
@@ -49,14 +49,25 @@ if (!$appointmentId) {
 
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 $prescriptionText = trim($input['prescription_text'] ?? $input['prescription'] ?? '');
-if (empty($prescriptionText)) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Le texte de la prescription est requis']);
+
+if ($role === 'nurse' && ($input['prescription_kind'] ?? '') === PrescriptionService::KIND_MEDICAL) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Les infirmiers ne peuvent générer que des prescriptions d\'actes infirmiers']);
     exit;
 }
-if (strlen($prescriptionText) > 10000) {
+
+try {
+    $prescriptionKind = PrescriptionService::resolveKindForRole($role, $input['prescription_kind'] ?? null);
+} catch (InvalidArgumentException $e) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    exit;
+}
+
+$textError = PrescriptionService::validatePrescriptionText($prescriptionKind, $prescriptionText);
+if ($textError !== null) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'La prescription ne doit pas dépasser 10 000 caractères']);
+    echo json_encode(['success' => false, 'error' => $textError]);
     exit;
 }
 
@@ -84,28 +95,13 @@ if ($appointment['status'] === 'canceled') {
     exit;
 }
 
-$hasAccess = (
-    $appointment['assigned_nurse_id'] === $user['user_id'] ||
-    $appointment['created_by'] === $user['user_id'] ||
-    $user['role'] === 'super_admin'
-);
-if (!$hasAccess && $appointment['type'] === 'blood_test') {
-    $teamIds = LabTeamAccess::teamMemberIds($db, $user['user_id'], $user['role'] ?? '');
-    if (in_array($appointment['assigned_lab_id'] ?? '', $teamIds, true)
-        || (!empty($appointment['assigned_to']) && in_array($appointment['assigned_to'], $teamIds, true))) {
-        $hasAccess = true;
-    }
+if ($prescriptionKind === PrescriptionService::KIND_NURSING && ($appointment['type'] ?? '') !== 'nursing') {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Les prescriptions infirmières ne peuvent être générées que pour des rendez-vous de soins infirmiers']);
+    exit;
 }
-if (!$hasAccess && $user['role'] === 'pro') {
-    $userModel = new User();
-    if (
-        $appointment['created_by'] === $user['user_id']
-        || $userModel->hasProfessionalAccessToPatient($user['user_id'], (string) ($appointment['patient_id'] ?? ''))
-    ) {
-        $hasAccess = true;
-    }
-}
-if (!$hasAccess) {
+
+if (!PrescriptionService::canGenerateForAppointment($user, $appointment, $db)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Accès refusé à ce rendez-vous']);
     exit;
@@ -113,7 +109,6 @@ if (!$hasAccess) {
 
 $patientId = $appointment['patient_id'] ?? null;
 
-/** Déchiffre seulement si les deux valeurs sont non vides (évite TypeError si colonnes NULL). */
 $safeDecrypt = function ($encrypted, $dek) use ($crypto) {
     if ($encrypted === null || $encrypted === '' || $dek === null || $dek === '') {
         return '';
@@ -132,13 +127,20 @@ $prescriberRow = is_array($prescriberRow) ? $prescriberRow : [];
 $prescriber = [
     'first_name' => $safeDecrypt($prescriberRow['first_name_encrypted'] ?? null, $prescriberRow['first_name_dek'] ?? null),
     'last_name' => $safeDecrypt($prescriberRow['last_name_encrypted'] ?? null, $prescriberRow['last_name_dek'] ?? null),
-    'title' => (isset($prescriberRow['emploi']) && trim((string) $prescriberRow['emploi']) !== '') ? trim((string) $prescriberRow['emploi']) : ($user['role'] === 'nurse' ? 'Infirmier(ère)' : 'Dr'),
+    'title' => (isset($prescriberRow['emploi']) && trim((string) $prescriberRow['emploi']) !== '') ? trim((string) $prescriberRow['emploi']) : ($role === 'nurse' ? 'Infirmier(ère)' : 'Dr'),
     'address' => $safeDecrypt($prescriberRow['address_encrypted'] ?? null, $prescriberRow['address_dek'] ?? null) ?: null,
     'rpps' => $safeDecrypt($prescriberRow['rpps_encrypted'] ?? null, $prescriberRow['rpps_dek'] ?? null),
     'adeli' => $safeDecrypt($prescriberRow['adeli_encrypted'] ?? null, $prescriberRow['adeli_dek'] ?? null),
 ];
 
-$patient = ['first_name' => '', 'last_name' => '', 'birth_date' => '', 'address' => null];
+$credentialError = PrescriptionService::validatePrescriberCredentials($role, $prescriber);
+if ($credentialError !== null) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => $credentialError]);
+    exit;
+}
+
+$patient = ['first_name' => '', 'last_name' => '', 'birth_date' => '', 'address' => null, 'nir' => ''];
 if ($patientId) {
     $patientStmt = $db->prepare('SELECT first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek, birth_date_encrypted, birth_date_dek, address_encrypted, address_dek FROM profiles WHERE id = ?');
     $patientStmt->execute([$patientId]);
@@ -149,6 +151,7 @@ if ($patientId) {
         'last_name' => $safeDecrypt($patientRow['last_name_encrypted'] ?? null, $patientRow['last_name_dek'] ?? null),
         'birth_date' => $safeDecrypt($patientRow['birth_date_encrypted'] ?? null, $patientRow['birth_date_dek'] ?? null),
         'address' => $safeDecrypt($patientRow['address_encrypted'] ?? null, $patientRow['address_dek'] ?? null) ?: null,
+        'nir' => '',
     ];
 }
 
@@ -177,20 +180,21 @@ if (!$patientId && (empty($patient['first_name']) || empty($patient['last_name']
 }
 
 try {
-    require_once __DIR__ . '/../../../lib/PrescriptionPdf.php';
-    $pdfContent = PrescriptionPdf::generate($prescriber, $patient, $prescriptionText);
+    $result = PrescriptionService::generatePdf($prescriber, $patient, $prescriptionText, $prescriptionKind);
 } catch (Throwable $e) {
     error_log('PrescriptionPdf error: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Erreur lors de la génération du PDF. Vérifiez que dompdf est installé (composer require dompdf/dompdf).']);
+    echo json_encode(['success' => false, 'error' => 'Erreur lors de la génération du PDF.']);
     exit;
 }
 
-$pdfBase64 = base64_encode($pdfContent);
 echo json_encode([
     'success' => true,
     'data' => [
-        'pdf_base64' => $pdfBase64,
-        'file_name' => 'ordonnance-' . $appointmentId . '.pdf',
+        'pdf_base64' => $result['pdf_base64'],
+        'file_name' => $result['file_name'],
+        'prescription_number' => $result['prescription_number'],
+        'prescription_kind' => $result['prescription_kind'],
+        'prescription_text' => $prescriptionText,
     ],
 ]);

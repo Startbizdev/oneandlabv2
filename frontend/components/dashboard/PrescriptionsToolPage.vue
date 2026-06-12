@@ -68,17 +68,29 @@
               <p class="text-xs text-muted">Fichier</p>
               <p class="text-sm truncate" :title="row.file_name">{{ row.file_name || '—' }}</p>
             </div>
-            <UButton
-              block
-              size="sm"
-              color="primary"
-              variant="soft"
-              leading-icon="i-lucide-download"
-              :loading="downloadingId === row.id"
-              @click="downloadPrescription(row)"
-            >
-              Télécharger
-            </UButton>
+            <div class="flex flex-col gap-2">
+              <UButton
+                block
+                size="sm"
+                color="neutral"
+                variant="soft"
+                leading-icon="i-lucide-eye"
+                @click="previewPrescription(row)"
+              >
+                Voir
+              </UButton>
+              <UButton
+                block
+                size="sm"
+                color="primary"
+                variant="soft"
+                leading-icon="i-lucide-download"
+                :loading="downloadingId === row.id"
+                @click="downloadPrescription(row)"
+              >
+                Télécharger
+              </UButton>
+            </div>
           </div>
         </div>
 
@@ -121,7 +133,16 @@
                   <span v-else class="text-muted">—</span>
                 </td>
                 <td class="px-4 py-3 max-w-[220px] truncate" :title="row.file_name">{{ row.file_name || '—' }}</td>
-                <td class="px-4 py-3 text-right">
+                <td class="px-4 py-3 text-right space-x-1">
+                  <UButton
+                    size="xs"
+                    variant="soft"
+                    color="neutral"
+                    leading-icon="i-lucide-eye"
+                    @click="previewPrescription(row)"
+                  >
+                    Voir
+                  </UButton>
                   <UButton
                     size="xs"
                     variant="soft"
@@ -214,9 +235,17 @@
           :appointment="{ id: selectedAppointmentId }"
           :documents="appointmentDocuments"
           :load-documents="loadAppointmentDocumentsAndRefreshList"
+          :prescription-kind="prescriptionKind"
         />
       </div>
     </UCard>
+
+    <PrescriptionPdfPreviewModal
+      v-model="previewOpen"
+      :pdf-url="previewUrl"
+      :file-name="previewFileName"
+      title="Aperçu ordonnance"
+    />
   </AppPageShell>
 </template>
 
@@ -227,7 +256,12 @@ import type { Appointment } from '~/types/appointments';
 
 const props = defineProps<{
   roleBase: string;
+  prescriptionKind?: 'medical' | 'nursing';
+  /** Pré-sélection patient (fiche patient) */
+  initialPatientId?: string;
 }>();
+
+const prescriptionKind = computed(() => props.prescriptionKind ?? 'medical');
 
 const toast = useAppToast();
 
@@ -240,6 +274,9 @@ interface ProPrescriptionRow {
   appointment_status?: string | null;
   patient_first_name?: string | null;
   patient_last_name?: string | null;
+  prescription_kind?: string | null;
+  prescription_number?: string | null;
+  generated_at?: string | null;
 }
 
 const prescriptions = ref<ProPrescriptionRow[]>([]);
@@ -248,6 +285,11 @@ const pagination = ref<{ page: number; limit: number; total: number; pages: numb
 const currentPage = ref(1);
 const pageSize = ref(20);
 const downloadingId = ref<string | null>(null);
+const previewOpen = ref(false);
+const previewUrl = ref<string | null>(null);
+const previewFileName = ref('ordonnance.pdf');
+let previewBlobUrl: string | null = null;
+const config = useRuntimeConfig();
 
 const patients = ref<any[]>([]);
 const patientsLoading = ref(false);
@@ -323,6 +365,9 @@ async function fetchPrescriptionsList() {
       page: String(currentPage.value),
       limit: String(pageSize.value),
     });
+    if (selectedPatientId.value) {
+      q.set('patient_id', selectedPatientId.value);
+    }
     const res = await apiFetch(`${props.roleBase}/prescriptions?${q.toString()}`, { method: 'GET' });
     if (res?.success && Array.isArray(res.data)) {
       prescriptions.value = res.data;
@@ -366,7 +411,9 @@ async function fetchAppointmentsForPatient(patientId: string) {
     });
     const res = await apiFetch(`/appointments?${params.toString()}`, { method: 'GET' });
     if (res?.success && Array.isArray(res.data)) {
-      appointments.value = res.data;
+      appointments.value = res.data.filter((a: Appointment) =>
+        prescriptionKind.value === 'nursing' ? a.type === 'nursing' : true,
+      );
     } else {
       appointments.value = [];
     }
@@ -401,18 +448,48 @@ async function loadAppointmentDocumentsAndRefreshList() {
   await fetchPrescriptionsList();
 }
 
+async function fetchPdfBlob(docId: string): Promise<Blob | null> {
+  const apiBase = config.public?.apiBase || '';
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
+  const res = await fetch(`${apiBase}/medical-documents/${docId}/download`, {
+    method: 'GET',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) return null;
+  return res.blob();
+}
+
+function revokePreviewBlob() {
+  if (previewBlobUrl) {
+    try {
+      URL.revokeObjectURL(previewBlobUrl);
+    } catch {
+      /* ignore */
+    }
+    previewBlobUrl = null;
+  }
+}
+
+async function previewPrescription(row: ProPrescriptionRow) {
+  revokePreviewBlob();
+  previewUrl.value = null;
+  previewFileName.value = row.file_name || 'ordonnance.pdf';
+  previewOpen.value = true;
+  try {
+    const blob = await fetchPdfBlob(row.id);
+    if (!blob) throw new Error('Aperçu impossible');
+    previewBlobUrl = URL.createObjectURL(blob);
+    previewUrl.value = previewBlobUrl;
+  } catch (e: any) {
+    toast.add({ title: 'Erreur', description: e?.message ?? 'Aperçu impossible', color: 'error' });
+  }
+}
+
 async function downloadPrescription(row: ProPrescriptionRow) {
   downloadingId.value = row.id;
   try {
-    const config = useRuntimeConfig();
-    const apiBase = config.public?.apiBase || '';
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const res = await fetch(`${apiBase}/medical-documents/${row.id}/download`, {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error('Téléchargement impossible');
-    const blob = await res.blob();
+    const blob = await fetchPdfBlob(row.id);
+    if (!blob) throw new Error('Téléchargement impossible');
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -436,6 +513,8 @@ watch(currentPage, () => {
 watch(selectedPatientId, (id) => {
   selectedAppointmentId.value = undefined;
   appointmentDocuments.value = [];
+  currentPage.value = 1;
+  fetchPrescriptionsList();
   if (id) {
     fetchAppointmentsForPatient(id);
   } else {
@@ -452,7 +531,14 @@ watch(selectedAppointmentId, (id) => {
 });
 
 onMounted(() => {
+  if (props.initialPatientId) {
+    selectedPatientId.value = props.initialPatientId;
+  }
   fetchPrescriptionsList();
   fetchPatients();
+});
+
+watch(previewOpen, (open) => {
+  if (!open) revokePreviewBlob();
 });
 </script>
