@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ErrorCode, getAvailablePurchases, useIAP, type Purchase } from 'expo-iap';
+import {
+  ErrorCode,
+  getAvailablePurchases,
+  useIAP,
+  type Purchase,
+} from 'expo-iap';
 import { NURSE_IAP_PRODUCT_ID } from '@oneandlab/shared-constants';
 import {
   fetchNurseIapSubscription,
@@ -9,6 +14,10 @@ import {
   verifyGooglePurchase,
   type NurseIapSubscription,
 } from '@/features/nurse/api/iap.service';
+import {
+  buildSubscriptionPurchaseRequest,
+} from '@/features/nurse/lib/iap-purchase';
+import { loadStoreProductFromStore, requestSubscriptionPurchase } from '@/features/nurse/lib/iap-store';
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
@@ -48,6 +57,7 @@ export function useNurseIap() {
   const { show: toast } = useToast();
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [restoreLoading, setRestoreLoading] = useState(false);
+  const [storeLoading, setStoreLoading] = useState(false);
   const finishRef = useRef<((purchase: Purchase) => Promise<void>) | null>(null);
 
   const subscriptionQ = useQuery({
@@ -62,7 +72,6 @@ export function useNurseIap() {
     connected,
     subscriptions,
     fetchProducts,
-    requestPurchase,
     finishTransaction,
     restorePurchases,
   } = useIAP({
@@ -85,7 +94,14 @@ export function useNurseIap() {
       if (error.code === ErrorCode.UserCancelled) {
         return;
       }
-      toast(error.message || 'Achat impossible', { type: 'error' });
+      let message = error.message || 'Achat impossible';
+      if (error.code === ErrorCode.EmptySkuList) {
+        message =
+          Platform.OS === 'ios'
+            ? 'Produit App Store introuvable. Vérifiez que cary.pro.monthly est actif dans App Store Connect (accord Paid Apps signé) et testez avec un build EAS natif.'
+            : 'Produit Google Play introuvable ou offerToken manquant.';
+      }
+      toast(message, { type: 'error' });
     },
   });
 
@@ -93,12 +109,24 @@ export function useNurseIap() {
     await finishTransaction({ purchase, isConsumable: false });
   };
 
+  const loadStoreProduct = useCallback(async () => {
+    if (!connected) {
+      return;
+    }
+    setStoreLoading(true);
+    try {
+      await fetchProducts({ skus: [NURSE_IAP_PRODUCT_ID], type: 'subs' });
+    } finally {
+      setStoreLoading(false);
+    }
+  }, [connected, fetchProducts]);
+
   useEffect(() => {
     if (!connected) {
       return;
     }
-    void fetchProducts({ skus: [NURSE_IAP_PRODUCT_ID], type: 'subs' });
-  }, [connected, fetchProducts]);
+    void loadStoreProduct();
+  }, [connected, loadStoreProduct]);
 
   const storeProduct = useMemo(
     () => subscriptions.find((item) => item.id === NURSE_IAP_PRODUCT_ID),
@@ -118,20 +146,48 @@ export function useNurseIap() {
       });
       return;
     }
+
+    let product = storeProduct;
+    if (!product) {
+      setStoreLoading(true);
+      try {
+        product = await loadStoreProductFromStore(NURSE_IAP_PRODUCT_ID);
+      } finally {
+        setStoreLoading(false);
+      }
+    }
+
+    if (!product) {
+      toast(
+        `Produit « ${NURSE_IAP_PRODUCT_ID} » introuvable dans la boutique. Vérifiez qu’il est actif dans ${Platform.OS === 'ios' ? 'App Store Connect' : 'Google Play Console'} et testez avec un build natif (pas Expo Go).`,
+        { type: 'error' },
+      );
+      return;
+    }
+
+    const purchaseRequest = buildSubscriptionPurchaseRequest(
+      product,
+      NURSE_IAP_PRODUCT_ID,
+      Platform.OS === 'android' ? 'android' : 'ios',
+    );
+    if (!purchaseRequest.ok) {
+      toast(purchaseRequest.reason, { type: 'error' });
+      return;
+    }
+
     setPurchaseLoading(true);
     try {
-      await requestPurchase({
-        type: 'subs',
-        request: {
-          apple: { sku: NURSE_IAP_PRODUCT_ID },
-          google: { skus: [NURSE_IAP_PRODUCT_ID] },
-        },
-      });
+      await requestSubscriptionPurchase(purchaseRequest.request);
     } catch (error) {
       setPurchaseLoading(false);
       handleApiError(error, toast, 'iap-purchase');
     }
-  }, [connected, requestPurchase, subscriptionQ.data?.can_purchase_store, toast]);
+  }, [
+    connected,
+    storeProduct,
+    subscriptionQ.data?.can_purchase_store,
+    toast,
+  ]);
 
   const restore = useCallback(async () => {
     if (!connected) {
@@ -170,6 +226,7 @@ export function useNurseIap() {
 
   return {
     connected,
+    storeLoading,
     subscription: subscriptionQ.data,
     subscriptionLoading: subscriptionQ.isLoading,
     refetchSubscription: subscriptionQ.refetch,
