@@ -450,12 +450,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         // Stocker les métadonnées en base
         $relativePath = '/uploads/medical/' . $id . '/' . $fileName . '.encrypted';
-        
+
+        $prescriptionKind = null;
+        if ($documentType === 'ordonnance' && isset($_POST['prescription_kind'])) {
+            $kindRaw = trim((string) $_POST['prescription_kind']);
+            if (in_array($kindRaw, ['medical', 'nursing'], true)) {
+                $prescriptionKind = $kindRaw;
+            }
+        }
+        $prescriptionText = null;
+        if ($documentType === 'ordonnance' && isset($_POST['prescription_text'])) {
+            $textRaw = trim((string) $_POST['prescription_text']);
+            if ($textRaw !== '') {
+                $prescriptionText = $textRaw;
+            }
+        }
+        $prescriptionNumber = null;
+        if ($documentType === 'ordonnance' && isset($_POST['prescription_number'])) {
+            $numRaw = trim((string) $_POST['prescription_number']);
+            if ($numRaw !== '') {
+                $prescriptionNumber = substr($numRaw, 0, 32);
+            }
+        }
+        $generatedAt = ($documentType === 'ordonnance' && ($prescriptionKind || $prescriptionText || $prescriptionNumber))
+            ? date('Y-m-d H:i:s')
+            : null;
+
         $stmt = $db->prepare('
             INSERT INTO medical_documents (
                 id, appointment_id, uploaded_by, file_name, file_path,
-                file_size, mime_type, document_type, encrypted, file_dek, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                file_size, mime_type, document_type, prescription_kind, prescription_text,
+                prescription_number, generated_at, encrypted, file_dek, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ');
 
         $stmt->execute([
@@ -467,7 +493,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $file['size'],
             $mimeType,
             $documentType,
-            1, // Toujours chiffré
+            $prescriptionKind,
+            $prescriptionText,
+            $prescriptionNumber,
+            $generatedAt,
+            1,
             $encryptedData['dek'],
         ]);
 

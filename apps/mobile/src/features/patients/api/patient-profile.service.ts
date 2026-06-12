@@ -51,7 +51,6 @@ export async function uploadPatientProfileDocument(
 export const RELATIVE_PROFILE_UPLOAD_TYPES = [
   'carte_vitale',
   'carte_mutuelle',
-  'ordonnance',
 ] as const;
 
 export type RelativeProfileUploadType = (typeof RELATIVE_PROFILE_UPLOAD_TYPES)[number];

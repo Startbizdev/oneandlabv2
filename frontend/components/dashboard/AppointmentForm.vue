@@ -1459,6 +1459,13 @@ async function generateAndAttachPrescriptionDuringCreate(appointmentId: string):
     formData.append('file', blob, (res as any).data?.file_name || 'ordonnance.pdf');
     formData.append('appointment_id', appointmentId);
     formData.append('document_type', 'ordonnance');
+    if ((res as any).data?.prescription_kind) {
+      formData.append('prescription_kind', (res as any).data.prescription_kind);
+    }
+    formData.append('prescription_text', text);
+    if ((res as any).data?.prescription_number) {
+      formData.append('prescription_number', (res as any).data.prescription_number);
+    }
     await apiFetch('/medical-documents', { method: 'POST', body: formData });
     toast.add({ title: 'Ordonnance enregistrée', description: "L'ordonnance a été générée et ajoutée au RDV.", color: 'green', icon: 'i-lucide-check-circle' });
   } catch (e: any) {

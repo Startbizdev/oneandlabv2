@@ -51,7 +51,6 @@ const DOC_ICONS: Record<string, LucideIcon> = {
 const UPLOAD_SLOTS: { key: RelativeProfileUploadType; Icon: LucideIcon }[] = [
   { key: 'carte_vitale', Icon: CreditCard },
   { key: 'carte_mutuelle', Icon: Shield },
-  { key: 'ordonnance', Icon: FileText },
 ];
 
 function AddDocumentSection({
@@ -235,8 +234,8 @@ export function PatientRelativeDocumentsScreen() {
             <Text style={styles.introTitle}>Documents</Text>
             <Text style={styles.introSub}>
               {relativeName
-                ? `Carte Vitale, mutuelle et ordonnance pour ${relativeName}.`
-                : 'Carte Vitale, mutuelle et ordonnance pour ce proche.'}
+                ? `Carte Vitale et mutuelle pour ${relativeName}.`
+                : 'Carte Vitale et mutuelle pour ce proche.'}
             </Text>
             <AddDocumentSection
               uploading={uploading}

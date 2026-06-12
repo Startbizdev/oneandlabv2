@@ -4,7 +4,7 @@ import { PrescriptionsScreen } from '@/features/prescriptions/screens/Prescripti
 export default function ProPrescriptions() {
   return (
     <TabScreenShell>
-      <PrescriptionsScreen />
+      <PrescriptionsScreen roleBase="pro" rolePrefix="/(pro)" />
     </TabScreenShell>
   );
 }

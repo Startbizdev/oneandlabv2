@@ -1,8 +1,8 @@
 <?php
 
 /**
- * Liste des ordonnances du professionnel connecté.
- * GET — rôle : pro. Query : page, limit, patient_id
+ * Liste des ordonnances / prescriptions d'actes de l'infirmier connecté.
+ * GET — rôle : nurse. Query : page, limit, patient_id
  */
 
 header('Content-Type: application/json');
@@ -35,9 +35,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
-if (($user['role'] ?? '') !== 'pro') {
+if (($user['role'] ?? '') !== 'nurse') {
     http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Accès réservé aux professionnels de santé']);
+    echo json_encode(['success' => false, 'error' => 'Accès réservé aux infirmiers']);
     exit;
 }
 
@@ -64,7 +64,7 @@ try {
         $db,
         $crypto,
         $user['user_id'],
-        'pro',
+        'nurse',
         $page,
         $limit,
         $patientId
@@ -76,7 +76,7 @@ try {
         'pagination' => $result['pagination'],
     ]);
 } catch (Throwable $e) {
-    error_log('pro/prescriptions: ' . $e->getMessage());
+    error_log('nurse/prescriptions: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Erreur serveur']);
 }

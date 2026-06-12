@@ -774,6 +774,12 @@
                 @download="(id, fileName) => downloadDocument(id, fileName)"
                 @update:error="documentError = $event"
               />
+              <PatientPrescriptionsSection
+                v-if="showStaffPatientPrescriptions"
+                :patient-id="effectiveUserId"
+                :role-base="staffPrescriptionsRoleBase"
+                :prescription-kind="staffPrescriptionKind"
+              />
               <div class="pt-2 w-full shrink-0">
                 <UButton
                   size="xl"
@@ -1235,6 +1241,18 @@ const showPatientProfileHistory = computed(
     !!editingUserId.value &&
     role.value === 'patient' &&
     ['super_admin', 'pro', 'nurse', 'lab', 'subaccount'].includes(user.value?.role ?? '')
+)
+const showStaffPatientPrescriptions = computed(
+  () =>
+    !!editingUserId.value &&
+    role.value === 'patient' &&
+    (user.value?.role === 'pro' || user.value?.role === 'nurse')
+)
+const staffPrescriptionsRoleBase = computed(() =>
+  user.value?.role === 'nurse' ? '/nurse' : '/pro'
+)
+const staffPrescriptionKind = computed<'medical' | 'nursing'>(() =>
+  user.value?.role === 'nurse' ? 'nursing' : 'medical'
 )
 /** Grille du profil : 3 cols (historique | formulaire | panneau) quand historique patient, sinon 2 cols classiques */
 const profilePatientLayoutGridClass = computed(() => {

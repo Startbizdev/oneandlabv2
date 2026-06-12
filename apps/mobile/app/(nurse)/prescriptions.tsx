@@ -1,6 +1,5 @@
-import { Redirect } from 'expo-router';
+import { PrescriptionsScreen } from '@/features/prescriptions/screens/PrescriptionsScreen';
 
-/** Prescriptions réservées au pro — redirection liste RDV infirmier. */
 export default function NursePrescriptions() {
-  return <Redirect href="/(nurse)/(tabs)/appointments" />;
+  return <PrescriptionsScreen roleBase="nurse" rolePrefix="/(nurse)" />;
 }

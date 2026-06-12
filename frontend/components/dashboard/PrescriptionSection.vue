@@ -3,30 +3,43 @@
     <template #header>
       <h2 class="text-lg font-normal flex items-center gap-2">
         <UIcon name="i-lucide-file-text" class="w-5 h-5" />
-        Créer une ordonnance
+        {{ sectionTitle }}
       </h2>
     </template>
     <div v-if="hasExistingOrdonnance" class="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg space-y-3">
       <p class="text-sm text-amber-800 dark:text-amber-200">
-        Une ordonnance est déjà enregistrée pour ce rendez-vous. Vous pouvez la télécharger ou modifier le texte ci-dessous pour en régénérer une nouvelle.
+        Une ordonnance est déjà enregistrée pour ce rendez-vous. Vous pouvez la consulter, la télécharger ou modifier le texte ci-dessous pour en régénérer une nouvelle.
       </p>
-      <UButton
-        v-if="existingOrdonnanceDoc"
-        size="sm"
-        color="neutral"
-        variant="soft"
-        leading-icon="i-lucide-download"
-        :loading="downloadingExisting"
-        @click="downloadExistingOrdonnance"
-      >
-        Télécharger l'ordonnance enregistrée
-      </UButton>
+      <div class="flex flex-wrap gap-2">
+        <UButton
+          v-if="existingOrdonnanceDoc"
+          size="sm"
+          color="neutral"
+          variant="soft"
+          leading-icon="i-lucide-eye"
+          :loading="previewingExisting"
+          @click="previewExistingOrdonnance"
+        >
+          Voir
+        </UButton>
+        <UButton
+          v-if="existingOrdonnanceDoc"
+          size="sm"
+          color="neutral"
+          variant="soft"
+          leading-icon="i-lucide-download"
+          :loading="downloadingExisting"
+          @click="downloadExistingOrdonnance"
+        >
+          Télécharger
+        </UButton>
+      </div>
     </div>
     <div class="space-y-4">
-      <UFormField label="Prescription (médicaments, posologie, durée...)" name="prescription">
+      <UFormField :label="textareaLabel" name="prescription">
         <UTextarea
           v-model="prescriptionText"
-          placeholder="Ex: Doliprane 1000mg - 1 cp x 3/jour pendant 5 jours..."
+          :placeholder="textareaPlaceholder"
           :rows="6"
           class="font-mono text-sm w-full"
         />
@@ -37,9 +50,18 @@
           leading-icon="i-lucide-file-output"
           :loading="generating"
           :disabled="!prescriptionText.trim()"
-          @click="generateAndDownload"
+          @click="generatePdf"
         >
           Générer le PDF
+        </UButton>
+        <UButton
+          v-if="generatedPdfBase64"
+          color="neutral"
+          variant="soft"
+          leading-icon="i-lucide-eye"
+          @click="previewGenerated"
+        >
+          Aperçu
         </UButton>
         <UButton
           v-if="generatedPdfBase64"
@@ -53,6 +75,13 @@
         </UButton>
       </div>
     </div>
+
+    <PrescriptionPdfPreviewModal
+      v-model="previewOpen"
+      :pdf-url="previewUrl"
+      :file-name="previewFileName"
+      :title="sectionTitle"
+    />
   </UCard>
 </template>
 
@@ -61,16 +90,39 @@ const props = defineProps<{
   appointment: { id: string } | null;
   documents: any[];
   loadDocuments?: () => Promise<void>;
-  /** Texte de prescription initial (ex. après création du RDV pour modifier / régénérer) */
   initialPrescriptionText?: string;
+  prescriptionKind?: 'medical' | 'nursing';
 }>();
 
 const toast = useAppToast();
+const config = useRuntimeConfig();
+
+const kind = computed(() => props.prescriptionKind ?? 'medical');
+const sectionTitle = computed(() =>
+  kind.value === 'nursing' ? 'Prescription d\'actes infirmiers' : 'Créer une ordonnance',
+);
+const textareaLabel = computed(() =>
+  kind.value === 'nursing'
+    ? 'Actes de soins infirmiers (pansements, injections, surveillance…)'
+    : 'Prescription (médicaments, posologie, durée…)',
+);
+const textareaPlaceholder = computed(() =>
+  kind.value === 'nursing'
+    ? 'Ex: Pansement quotidien — surveillance plaie — injection sous-cutanée…'
+    : 'Ex: Doliprane 1000mg - 1 cp x 3/jour pendant 5 jours...',
+);
+
 const prescriptionText = ref(props.initialPrescriptionText ?? '');
 const generating = ref(false);
 const uploading = ref(false);
 const generatedPdfBase64 = ref<string | null>(null);
+const generatedMeta = ref<{ file_name?: string; prescription_number?: string; prescription_kind?: string } | null>(null);
 const downloadingExisting = ref(false);
+const previewingExisting = ref(false);
+const previewOpen = ref(false);
+const previewUrl = ref<string | null>(null);
+const previewFileName = ref('ordonnance.pdf');
+let previewBlobUrl: string | null = null;
 
 watch(() => props.initialPrescriptionText, (v) => {
   if (v != null && v !== prescriptionText.value) prescriptionText.value = v;
@@ -84,35 +136,14 @@ const existingOrdonnanceDoc = computed(() =>
   (props.documents || []).find((d: any) => d.document_type === 'ordonnance')
 );
 
-async function generateAndDownload() {
-  if (!props.appointment?.id || !prescriptionText.value.trim()) return;
-  generating.value = true;
-  generatedPdfBase64.value = null;
-  try {
-    const res = await apiFetch(`/appointments/${props.appointment.id}/generate-prescription`, {
-      method: 'POST',
-      body: { prescription_text: prescriptionText.value.trim() },
-    });
-    if (!res?.success || !res?.data?.pdf_base64) {
-      toast.add({ title: 'Erreur', description: (res as any)?.error ?? 'Impossible de générer le PDF', color: 'error' });
-      return;
+function revokePreviewBlob() {
+  if (previewBlobUrl) {
+    try {
+      URL.revokeObjectURL(previewBlobUrl);
+    } catch {
+      /* ignore */
     }
-    generatedPdfBase64.value = res.data.pdf_base64;
-    const fileName = res.data.file_name || 'ordonnance.pdf';
-    const blob = base64ToBlob(res.data.pdf_base64, 'application/pdf');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.add({ title: 'PDF généré', description: 'Téléchargez-le ou enregistrez-le sur le RDV.', color: 'success' });
-  } catch (e: any) {
-    toast.add({ title: 'Erreur', description: e?.message ?? 'Génération impossible', color: 'error' });
-  } finally {
-    generating.value = false;
+    previewBlobUrl = null;
   }
 }
 
@@ -122,8 +153,78 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
   for (let i = 0; i < byteChars.length; i++) {
     byteNumbers[i] = byteChars.charCodeAt(i);
   }
-  const byteArray = new Uint8Array(byteNumbers);
-  return new Blob([byteArray], { type: mimeType });
+  return new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+}
+
+function openBlobPreview(blob: Blob, fileName: string) {
+  revokePreviewBlob();
+  previewBlobUrl = URL.createObjectURL(blob);
+  previewUrl.value = previewBlobUrl;
+  previewFileName.value = fileName;
+  previewOpen.value = true;
+}
+
+async function generatePdf() {
+  if (!props.appointment?.id || !prescriptionText.value.trim()) return;
+  generating.value = true;
+  generatedPdfBase64.value = null;
+  generatedMeta.value = null;
+  try {
+    const res = await apiFetch(`/appointments/${props.appointment.id}/generate-prescription`, {
+      method: 'POST',
+      body: {
+        prescription_text: prescriptionText.value.trim(),
+        prescription_kind: kind.value,
+      },
+    });
+    if (!res?.success || !res?.data?.pdf_base64) {
+      toast.add({ title: 'Erreur', description: (res as any)?.error ?? 'Impossible de générer le PDF', color: 'error' });
+      return;
+    }
+    generatedPdfBase64.value = res.data.pdf_base64;
+    generatedMeta.value = {
+      file_name: res.data.file_name,
+      prescription_number: res.data.prescription_number,
+      prescription_kind: res.data.prescription_kind,
+    };
+    toast.add({ title: 'PDF généré', description: 'Consultez l\'aperçu ou enregistrez sur le RDV.', color: 'success' });
+  } catch (e: any) {
+    toast.add({ title: 'Erreur', description: e?.message ?? 'Génération impossible', color: 'error' });
+  } finally {
+    generating.value = false;
+  }
+}
+
+function previewGenerated() {
+  if (!generatedPdfBase64.value) return;
+  const fileName = generatedMeta.value?.file_name || 'ordonnance.pdf';
+  openBlobPreview(base64ToBlob(generatedPdfBase64.value, 'application/pdf'), fileName);
+}
+
+async function fetchExistingBlob(docId: string): Promise<Blob | null> {
+  const apiBase = config.public?.apiBase || '';
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
+  const res = await fetch(`${apiBase}/medical-documents/${docId}/download`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+  return res.blob();
+}
+
+async function previewExistingOrdonnance() {
+  const doc = existingOrdonnanceDoc.value;
+  if (!doc?.id) return;
+  previewingExisting.value = true;
+  try {
+    const blob = await fetchExistingBlob(doc.id);
+    if (!blob) throw new Error('Aperçu impossible');
+    openBlobPreview(blob, doc.file_name || 'ordonnance.pdf');
+  } catch (e: any) {
+    toast.add({ title: 'Erreur', description: e?.message ?? 'Aperçu impossible', color: 'error' });
+  } finally {
+    previewingExisting.value = false;
+  }
 }
 
 async function downloadExistingOrdonnance() {
@@ -131,15 +232,8 @@ async function downloadExistingOrdonnance() {
   if (!doc?.id) return;
   downloadingExisting.value = true;
   try {
-    const config = useRuntimeConfig();
-    const apiBase = config.public?.apiBase || '';
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const res = await fetch(`${apiBase}/medical-documents/${doc.id}/download`, {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error('Téléchargement impossible');
-    const blob = await res.blob();
+    const blob = await fetchExistingBlob(doc.id);
+    if (!blob) throw new Error('Téléchargement impossible');
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -161,14 +255,21 @@ async function saveToAppointment() {
   uploading.value = true;
   try {
     const blob = base64ToBlob(generatedPdfBase64.value, 'application/pdf');
+    const fileName = generatedMeta.value?.file_name || 'ordonnance.pdf';
     const formData = new FormData();
-    formData.append('file', blob, 'ordonnance.pdf');
+    formData.append('file', blob, fileName);
     formData.append('appointment_id', props.appointment.id);
     formData.append('document_type', 'ordonnance');
+    formData.append('prescription_kind', generatedMeta.value?.prescription_kind || kind.value);
+    formData.append('prescription_text', prescriptionText.value.trim());
+    if (generatedMeta.value?.prescription_number) {
+      formData.append('prescription_number', generatedMeta.value.prescription_number);
+    }
     const res = await apiFetch('/medical-documents', { method: 'POST', body: formData });
     if (res?.success) {
       toast.add({ title: 'Ordonnance enregistrée', description: "L'ordonnance a été ajoutée aux documents du RDV.", color: 'success' });
       generatedPdfBase64.value = null;
+      generatedMeta.value = null;
       await props.loadDocuments?.();
     } else {
       toast.add({ title: 'Erreur', description: (res as any)?.error ?? "Impossible d'enregistrer", color: 'error' });
@@ -179,4 +280,8 @@ async function saveToAppointment() {
     uploading.value = false;
   }
 }
+
+watch(previewOpen, (open) => {
+  if (!open) revokePreviewBlob();
+});
 </script>

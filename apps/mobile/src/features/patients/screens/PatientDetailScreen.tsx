@@ -10,6 +10,7 @@ import { ageFromBirthDate } from '@oneandlab/shared-utils';
 import {
   Calendar,
   ClipboardList,
+  FilePenLine,
   FolderOpen,
   Mail,
   MapPin,
@@ -280,6 +281,17 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
             onPress={() => router.push(`${rolePrefix}/patient/${id}/documents` as never)}
           />
           <View style={styles.rowDividerInset} />
+          {(user?.role === 'pro' || user?.role === 'nurse') ? (
+            <>
+              <ProfileNavRow
+                icon={FilePenLine}
+                title="Ordonnances"
+                subtitle="Historique et création"
+                onPress={() => router.push(`${rolePrefix}/patient/${id}/prescriptions` as never)}
+              />
+              <View style={styles.rowDividerInset} />
+            </>
+          ) : null}
           <ProfileNavRow
             icon={ClipboardList}
             title="Historique"

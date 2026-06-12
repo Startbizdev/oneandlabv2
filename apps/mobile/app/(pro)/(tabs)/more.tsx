@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
-import { Bell, CalendarPlus, FlaskConical, Scale, Settings, User } from 'lucide-react-native';
+import { Bell, CalendarPlus, FilePenLine, FlaskConical, Scale, Settings, User } from 'lucide-react-native';
+import { SHOW_PRESCRIPTIONS_TAB_NAV } from '@/features/prescriptions/constants';
 import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
@@ -41,6 +42,16 @@ export default function ProMore() {
                 onPress: () => nav('/(pro)/resultats'),
                 iconAccent: 'results',
               },
+              ...(!SHOW_PRESCRIPTIONS_TAB_NAV
+                ? [
+                    {
+                      icon: FilePenLine,
+                      label: 'Ordonnances',
+                      onPress: () => nav('/(pro)/(tabs)/prescriptions'),
+                      iconAccent: 'teal' as const,
+                    },
+                  ]
+                : []),
             ],
           },
           {

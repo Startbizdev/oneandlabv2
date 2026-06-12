@@ -1,5 +1,5 @@
 <template>
-  <PrescriptionsToolPage role-base="/pro" />
+  <PrescriptionsToolPage role-base="/pro" prescription-kind="medical" />
 </template>
 
 <script setup lang="ts">
