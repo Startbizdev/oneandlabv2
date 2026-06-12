@@ -1,14 +1,20 @@
 <?php
 
-header('Content-Type: application/json');
-require_once __DIR__ . '/../../../middleware/AuthMiddleware.php';
-require_once __DIR__ . '/../../../middleware/CSRFMiddleware.php';
-require_once __DIR__ . '/../../../config/database.php';
-require_once __DIR__ . '/../../../config/cors.php';
-require_once __DIR__ . '/../../../lib/Crypto.php';
-require_once __DIR__ . '/../../../lib/PrescriptionService.php';
+/**
+ * POST /prescriptions/generate
+ * Body: { patient_id, prescription_text, prescription_kind?, appointment_id? }
+ * Rendez-vous optionnel — patient_id obligatoire.
+ */
 
-$corsConfig = require __DIR__ . '/../../../config/cors.php';
+header('Content-Type: application/json');
+require_once __DIR__ . '/../middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../middleware/CSRFMiddleware.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/cors.php';
+require_once __DIR__ . '/../lib/Crypto.php';
+require_once __DIR__ . '/../lib/PrescriptionService.php';
+
+$corsConfig = require __DIR__ . '/../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $corsConfig['allowed_origins'], true) || strpos($origin, 'http://localhost:') === 0) {
     header('Access-Control-Allow-Origin: ' . $origin);
@@ -40,15 +46,13 @@ if (!in_array($role, ['pro', 'nurse', 'super_admin'], true)) {
     exit;
 }
 
-$appointmentId = $_GET['id'] ?? null;
-if (!$appointmentId) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'ID du rendez-vous requis']);
-    exit;
-}
-
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 $prescriptionText = trim($input['prescription_text'] ?? $input['prescription'] ?? '');
+$patientId = trim((string) ($input['patient_id'] ?? ''));
+$appointmentId = isset($input['appointment_id']) ? trim((string) $input['appointment_id']) : null;
+if ($appointmentId === '') {
+    $appointmentId = null;
+}
 
 if ($role === 'nurse' && ($input['prescription_kind'] ?? '') === PrescriptionService::KIND_MEDICAL) {
     http_response_code(403);
@@ -71,19 +75,10 @@ if ($textError !== null) {
     exit;
 }
 
-$config = require __DIR__ . '/../../../config/database.php';
+$config = require __DIR__ . '/../config/database.php';
 $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
 $crypto = new Crypto();
-
-$aptStmt = $db->prepare('SELECT patient_id FROM appointments WHERE id = ? LIMIT 1');
-$aptStmt->execute([$appointmentId]);
-$patientId = (string) ($aptStmt->fetchColumn() ?: '');
-if ($patientId === '') {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Rendez-vous sans patient associé']);
-    exit;
-}
 
 $result = PrescriptionService::generatePrescriptionRequest(
     $db,

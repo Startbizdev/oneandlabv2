@@ -34,129 +34,16 @@
           />
         </div>
 
-        <!-- Mobile : cartes -->
-        <div v-else class="md:hidden space-y-3">
-          <div
+        <div v-else class="space-y-2">
+          <PrescriptionHistoryRow
             v-for="row in prescriptions"
             :key="row.id"
-            class="rounded-xl border border-default/50 bg-default/5 p-4 space-y-3"
-          >
-            <div class="flex items-start justify-between gap-2">
-              <div class="min-w-0">
-                <p class="text-xs text-muted uppercase tracking-wide">Enregistrée le</p>
-                <p class="text-sm font-medium">{{ formatDateTime(row.created_at) }}</p>
-              </div>
-              <UBadge v-if="row.appointment_status" :color="statusBadgeColor(row.appointment_status)" variant="subtle" size="sm">
-                {{ appointmentStatusLabelFr(row.appointment_status) }}
-              </UBadge>
-            </div>
-            <div>
-              <p class="text-xs text-muted">Patient</p>
-              <p class="text-sm font-medium truncate">{{ patientLabel(row) }}</p>
-            </div>
-            <div v-if="row.appointment_id">
-              <p class="text-xs text-muted">Rendez-vous</p>
-              <NuxtLink
-                :to="`${roleBase}/appointments/${row.appointment_id}`"
-                class="text-sm text-primary hover:underline inline-flex items-center gap-1"
-              >
-                {{ formatDateTime(row.appointment_scheduled_at) }}
-                <UIcon name="i-lucide-arrow-up-right" class="w-3.5 h-3.5" />
-              </NuxtLink>
-            </div>
-            <div>
-              <p class="text-xs text-muted">Fichier</p>
-              <p class="text-sm truncate" :title="row.file_name">{{ row.file_name || '—' }}</p>
-            </div>
-            <div class="flex flex-col gap-2">
-              <UButton
-                block
-                size="sm"
-                color="neutral"
-                variant="soft"
-                leading-icon="i-lucide-eye"
-                @click="previewPrescription(row)"
-              >
-                Voir
-              </UButton>
-              <UButton
-                block
-                size="sm"
-                color="primary"
-                variant="soft"
-                leading-icon="i-lucide-download"
-                :loading="downloadingId === row.id"
-                @click="downloadPrescription(row)"
-              >
-                Télécharger
-              </UButton>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tableau desktop -->
-        <div v-if="prescriptions.length > 0" class="hidden md:block overflow-x-auto -mx-4 sm:mx-0">
-          <table class="min-w-full text-sm">
-            <thead>
-              <tr class="border-b border-default/60 text-left text-muted">
-                <th class="px-4 py-3 font-medium">Date</th>
-                <th class="px-4 py-3 font-medium">Patient</th>
-                <th class="px-4 py-3 font-medium">Rendez-vous</th>
-                <th class="px-4 py-3 font-medium">Statut</th>
-                <th class="px-4 py-3 font-medium">Fichier</th>
-                <th class="px-4 py-3 font-medium text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="row in prescriptions"
-                :key="`t-${row.id}`"
-                class="border-b border-default/40 hover:bg-default/30 transition-colors"
-              >
-                <td class="px-4 py-3 whitespace-nowrap">{{ formatDateTime(row.created_at) }}</td>
-                <td class="px-4 py-3">{{ patientLabel(row) }}</td>
-                <td class="px-4 py-3">
-                  <template v-if="row.appointment_id">
-                    <NuxtLink
-                      :to="`${roleBase}/appointments/${row.appointment_id}`"
-                      class="text-primary hover:underline font-medium"
-                    >
-                      {{ formatDateTime(row.appointment_scheduled_at) }}
-                    </NuxtLink>
-                  </template>
-                  <span v-else class="text-muted">—</span>
-                </td>
-                <td class="px-4 py-3">
-                  <UBadge v-if="row.appointment_status" :color="statusBadgeColor(row.appointment_status)" variant="subtle" size="sm">
-                    {{ appointmentStatusLabelFr(row.appointment_status) }}
-                  </UBadge>
-                  <span v-else class="text-muted">—</span>
-                </td>
-                <td class="px-4 py-3 max-w-[220px] truncate" :title="row.file_name">{{ row.file_name || '—' }}</td>
-                <td class="px-4 py-3 text-right space-x-1">
-                  <UButton
-                    size="xs"
-                    variant="soft"
-                    color="neutral"
-                    leading-icon="i-lucide-eye"
-                    @click="previewPrescription(row)"
-                  >
-                    Voir
-                  </UButton>
-                  <UButton
-                    size="xs"
-                    variant="soft"
-                    color="primary"
-                    leading-icon="i-lucide-download"
-                    :loading="downloadingId === row.id"
-                    @click="downloadPrescription(row)"
-                  >
-                    Télécharger
-                  </UButton>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+            :row="row"
+            :role-base="roleBase"
+            :downloading="downloadingId === row.id"
+            @preview="previewPrescription"
+            @download="downloadPrescription"
+          />
         </div>
 
         <div
@@ -185,7 +72,7 @@
         </h2>
       </template>
       <p class="text-sm text-muted mb-4">
-        Choisissez un patient puis un rendez-vous existant. Le PDF sera lié à ce rendez-vous.
+        Choisissez un patient, puis générez l'ordonnance avec ou sans lien vers un rendez-vous.
       </p>
       <div class="space-y-4 max-w-xl">
         <UFormField label="Patient" name="patient">
@@ -213,7 +100,34 @@
             </template>
           </USelectMenu>
         </UFormField>
-        <UFormField v-if="selectedPatientId" label="Rendez-vous" name="appointment">
+
+        <UFormField v-if="selectedPatientId" label="Lien rendez-vous" name="link-mode">
+          <div class="flex flex-wrap gap-2">
+            <UButton
+              size="sm"
+              :color="linkMode === 'standalone' ? 'primary' : 'neutral'"
+              :variant="linkMode === 'standalone' ? 'solid' : 'soft'"
+              @click="linkMode = 'standalone'"
+            >
+              Sans rendez-vous
+            </UButton>
+            <UButton
+              size="sm"
+              :color="linkMode === 'appointment' ? 'primary' : 'neutral'"
+              :variant="linkMode === 'appointment' ? 'solid' : 'soft'"
+              @click="linkMode = 'appointment'"
+            >
+              Liée à un rendez-vous
+            </UButton>
+          </div>
+          <p class="text-xs text-muted mt-2">
+            {{ linkMode === 'standalone'
+              ? 'L\'ordonnance sera enregistrée pour le patient, sans document de RDV.'
+              : 'L\'ordonnance sera attachée aux documents du rendez-vous choisi.' }}
+          </p>
+        </UFormField>
+
+        <UFormField v-if="selectedPatientId && linkMode === 'appointment'" label="Rendez-vous" name="appointment">
           <USelectMenu
             v-model="selectedAppointmentId"
             :items="appointmentSelectItems"
@@ -225,14 +139,18 @@
             :disabled="appointmentSelectItems.length === 0 && !appointmentsLoading"
           />
           <p v-if="selectedPatientId && !appointmentsLoading && appointmentSelectItems.length === 0" class="text-sm text-amber-600 dark:text-amber-400 mt-2">
-            Aucun rendez-vous pour ce patient. Créez d’abord un rendez-vous depuis la fiche patient ou le calendrier.
+            Aucun rendez-vous pour ce patient. Vous pouvez générer une ordonnance « sans rendez-vous ».
           </p>
         </UFormField>
       </div>
 
-      <div v-if="selectedAppointmentId" class="mt-6 pt-6 border-t border-default/50">
+      <div
+        v-if="selectedPatientId && (linkMode === 'standalone' || selectedAppointmentId)"
+        class="mt-6 pt-6 border-t border-default/50"
+      >
         <PrescriptionSection
-          :appointment="{ id: selectedAppointmentId }"
+          :patient-id="selectedPatientId"
+          :appointment="linkMode === 'appointment' && selectedAppointmentId ? { id: selectedAppointmentId } : null"
           :documents="appointmentDocuments"
           :load-documents="loadAppointmentDocumentsAndRefreshList"
           :prescription-kind="prescriptionKind"
@@ -250,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { apiFetch } from '~/utils/api';
+import PrescriptionHistoryRow from '~/components/dashboard/PrescriptionHistoryRow.vue';
 import { PATIENT_SELECT_SEARCH_PLACEHOLDER, buildPatientSelectRow } from '~/utils/patient-select-menu';
 import type { Appointment } from '~/types/appointments';
 
@@ -272,6 +190,9 @@ interface ProPrescriptionRow {
   created_at: string;
   appointment_scheduled_at?: string | null;
   appointment_status?: string | null;
+  appointment_type?: string | null;
+  appointment_category_name?: string | null;
+  appointment_availability?: unknown;
   patient_first_name?: string | null;
   patient_last_name?: string | null;
   prescription_kind?: string | null;
@@ -298,6 +219,7 @@ const selectedPatientId = ref<string | undefined>(undefined);
 const appointments = ref<Appointment[]>([]);
 const appointmentsLoading = ref(false);
 const selectedAppointmentId = ref<string | undefined>(undefined);
+const linkMode = ref<'standalone' | 'appointment'>('standalone');
 
 const appointmentDocuments = ref<any[]>([]);
 
@@ -314,12 +236,6 @@ const appointmentSelectItems = computed(() =>
   }))
 );
 
-function patientLabel(row: ProPrescriptionRow) {
-  const n = [String(row.patient_first_name ?? '').trim(), String(row.patient_last_name ?? '').trim()]
-    .filter(Boolean)
-    .join(' ');
-  return n || '—';
-}
 
 function formatDateTime(iso: string | null | undefined) {
   if (!iso) return '—';
@@ -444,7 +360,11 @@ async function loadAppointmentDocuments() {
 }
 
 async function loadAppointmentDocumentsAndRefreshList() {
-  await loadAppointmentDocuments();
+  if (linkMode.value === 'appointment' && selectedAppointmentId.value) {
+    await loadAppointmentDocuments();
+  } else {
+    appointmentDocuments.value = [];
+  }
   await fetchPrescriptionsList();
 }
 
@@ -519,6 +439,13 @@ watch(selectedPatientId, (id) => {
     fetchAppointmentsForPatient(id);
   } else {
     appointments.value = [];
+  }
+});
+
+watch(linkMode, (mode) => {
+  if (mode === 'standalone') {
+    selectedAppointmentId.value = undefined;
+    appointmentDocuments.value = [];
   }
 });
 

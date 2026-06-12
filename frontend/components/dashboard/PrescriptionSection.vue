@@ -6,7 +6,7 @@
         {{ sectionTitle }}
       </h2>
     </template>
-    <div v-if="hasExistingOrdonnance" class="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg space-y-3">
+    <div v-if="linkedToAppointment && hasExistingOrdonnance" class="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg space-y-3">
       <p class="text-sm text-amber-800 dark:text-amber-200">
         Une ordonnance est déjà enregistrée pour ce rendez-vous. Vous pouvez la consulter, la télécharger ou modifier le texte ci-dessous pour en régénérer une nouvelle.
       </p>
@@ -49,7 +49,7 @@
           color="primary"
           leading-icon="i-lucide-file-output"
           :loading="generating"
-          :disabled="!prescriptionText.trim()"
+          :disabled="!canGenerate"
           @click="generatePdf"
         >
           Générer le PDF
@@ -69,9 +69,9 @@
           variant="soft"
           leading-icon="i-lucide-upload"
           :loading="uploading"
-          @click="saveToAppointment"
+          @click="savePrescription"
         >
-          Enregistrer sur le RDV
+          {{ saveButtonLabel }}
         </UButton>
       </div>
     </div>
@@ -87,8 +87,9 @@
 
 <script setup lang="ts">
 const props = defineProps<{
-  appointment: { id: string } | null;
-  documents: any[];
+  patientId: string;
+  appointment?: { id: string } | null;
+  documents?: any[];
   loadDocuments?: () => Promise<void>;
   initialPrescriptionText?: string;
   prescriptionKind?: 'medical' | 'nursing';
@@ -98,8 +99,12 @@ const toast = useAppToast();
 const config = useRuntimeConfig();
 
 const kind = computed(() => props.prescriptionKind ?? 'medical');
+const linkedToAppointment = computed(() => Boolean(props.appointment?.id));
 const sectionTitle = computed(() =>
   kind.value === 'nursing' ? 'Prescription d\'actes infirmiers' : 'Créer une ordonnance',
+);
+const saveButtonLabel = computed(() =>
+  linkedToAppointment.value ? 'Enregistrer sur le RDV' : 'Enregistrer l\'ordonnance',
 );
 const textareaLabel = computed(() =>
   kind.value === 'nursing'
@@ -124,16 +129,21 @@ const previewUrl = ref<string | null>(null);
 const previewFileName = ref('ordonnance.pdf');
 let previewBlobUrl: string | null = null;
 
+const canGenerate = computed(() =>
+  Boolean(props.patientId?.trim()) && Boolean(prescriptionText.value.trim()),
+);
+
 watch(() => props.initialPrescriptionText, (v) => {
   if (v != null && v !== prescriptionText.value) prescriptionText.value = v;
 }, { immediate: true });
 
 const hasExistingOrdonnance = computed(() =>
-  (props.documents || []).some((d: any) => d.document_type === 'ordonnance')
+  linkedToAppointment.value &&
+  (props.documents || []).some((d: any) => d.document_type === 'ordonnance'),
 );
 
 const existingOrdonnanceDoc = computed(() =>
-  (props.documents || []).find((d: any) => d.document_type === 'ordonnance')
+  (props.documents || []).find((d: any) => d.document_type === 'ordonnance'),
 );
 
 function revokePreviewBlob() {
@@ -165,17 +175,22 @@ function openBlobPreview(blob: Blob, fileName: string) {
 }
 
 async function generatePdf() {
-  if (!props.appointment?.id || !prescriptionText.value.trim()) return;
+  if (!canGenerate.value) return;
   generating.value = true;
   generatedPdfBase64.value = null;
   generatedMeta.value = null;
   try {
-    const res = await apiFetch(`/appointments/${props.appointment.id}/generate-prescription`, {
+    const body: Record<string, string> = {
+      patient_id: props.patientId,
+      prescription_text: prescriptionText.value.trim(),
+      prescription_kind: kind.value,
+    };
+    if (props.appointment?.id) {
+      body.appointment_id = props.appointment.id;
+    }
+    const res = await apiFetch('/prescriptions/generate', {
       method: 'POST',
-      body: {
-        prescription_text: prescriptionText.value.trim(),
-        prescription_kind: kind.value,
-      },
+      body,
     });
     if (!res?.success || !res?.data?.pdf_base64) {
       toast.add({ title: 'Erreur', description: (res as any)?.error ?? 'Impossible de générer le PDF', color: 'error' });
@@ -187,7 +202,13 @@ async function generatePdf() {
       prescription_number: res.data.prescription_number,
       prescription_kind: res.data.prescription_kind,
     };
-    toast.add({ title: 'PDF généré', description: 'Consultez l\'aperçu ou enregistrez sur le RDV.', color: 'success' });
+    toast.add({
+      title: 'PDF généré',
+      description: linkedToAppointment.value
+        ? 'Consultez l\'aperçu ou enregistrez sur le RDV.'
+        : 'Consultez l\'aperçu ou enregistrez l\'ordonnance.',
+      color: 'success',
+    });
   } catch (e: any) {
     toast.add({ title: 'Erreur', description: e?.message ?? 'Génération impossible', color: 'error' });
   } finally {
@@ -250,16 +271,19 @@ async function downloadExistingOrdonnance() {
   }
 }
 
-async function saveToAppointment() {
-  if (!props.appointment?.id || !generatedPdfBase64.value) return;
+async function savePrescription() {
+  if (!generatedPdfBase64.value || !props.patientId) return;
   uploading.value = true;
   try {
     const blob = base64ToBlob(generatedPdfBase64.value, 'application/pdf');
     const fileName = generatedMeta.value?.file_name || 'ordonnance.pdf';
     const formData = new FormData();
     formData.append('file', blob, fileName);
-    formData.append('appointment_id', props.appointment.id);
     formData.append('document_type', 'ordonnance');
+    formData.append('patient_id', props.patientId);
+    if (props.appointment?.id) {
+      formData.append('appointment_id', props.appointment.id);
+    }
     formData.append('prescription_kind', generatedMeta.value?.prescription_kind || kind.value);
     formData.append('prescription_text', prescriptionText.value.trim());
     if (generatedMeta.value?.prescription_number) {
@@ -267,7 +291,13 @@ async function saveToAppointment() {
     }
     const res = await apiFetch('/medical-documents', { method: 'POST', body: formData });
     if (res?.success) {
-      toast.add({ title: 'Ordonnance enregistrée', description: "L'ordonnance a été ajoutée aux documents du RDV.", color: 'success' });
+      toast.add({
+        title: 'Ordonnance enregistrée',
+        description: linkedToAppointment.value
+          ? "L'ordonnance a été ajoutée aux documents du RDV."
+          : "L'ordonnance a été enregistrée dans l'historique du patient.",
+        color: 'success',
+      });
       generatedPdfBase64.value = null;
       generatedMeta.value = null;
       await props.loadDocuments?.();

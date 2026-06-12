@@ -22,7 +22,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import { PrescriptionComposer } from '../components/PrescriptionComposer';
 import { PrescriptionHistoryCard } from '../components/PrescriptionHistoryCard';
-import { fetchNursePrescriptions, fetchProPrescriptions } from '../api/prescriptions.service';
+import { fetchNursePrescriptions, fetchProPrescriptions, type PrescriptionLinkMode } from '../api/prescriptions.service';
 import { appointmentOptionLabel } from '../utils/prescription-display';
 import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -43,6 +43,7 @@ export function PrescriptionsScreen({
   const { show: toast } = useToast();
   const [page, setPage] = useState(1);
   const [patientId, setPatientId] = useState('');
+  const [linkMode, setLinkMode] = useState<PrescriptionLinkMode>('standalone');
   const [appointmentId, setAppointmentId] = useState('');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
@@ -142,6 +143,11 @@ export function PrescriptionsScreen({
     setPage(1);
   }
 
+  function onLinkModeChange(mode: PrescriptionLinkMode) {
+    setLinkMode(mode);
+    if (mode === 'standalone') setAppointmentId('');
+  }
+
   return (
     <View style={styles.container}>
       <KeyboardScrollView
@@ -167,7 +173,7 @@ export function PrescriptionsScreen({
           </View>
 
           {listQ.isLoading ? (
-            <SkeletonList count={2} itemHeight={120} gap={spacing[3]} />
+            <SkeletonList count={2} itemHeight={72} gap={spacing[2]} />
           ) : (listQ.data?.rows ?? []).length === 0 ? (
             <EmptyState
               Icon={FilePenLine}
@@ -180,6 +186,7 @@ export function PrescriptionsScreen({
                 <PrescriptionHistoryCard
                   key={row.id}
                   row={row}
+                  showPatient
                   downloading={downloadingId === row.id}
                   onDownload={() => void downloadRow(row.id, row.file_name)}
                   onPreview={() => void previewRow(row.id, row.file_name)}
@@ -227,7 +234,7 @@ export function PrescriptionsScreen({
             <Text style={styles.sectionTitle}>Nouvelle ordonnance</Text>
           </View>
           <Text style={styles.sectionHint}>
-            Choisissez un patient puis un rendez-vous existant. Le PDF sera lié à ce rendez-vous.
+            Choisissez un patient, puis générez avec ou sans lien vers un rendez-vous.
           </Text>
 
           <SelectField
@@ -240,6 +247,23 @@ export function PrescriptionsScreen({
           />
 
           {patientId ? (
+            <View style={styles.linkRow}>
+              <Button
+                title="Sans RDV"
+                size="sm"
+                variant={linkMode === 'standalone' ? 'primary' : 'outline'}
+                onPress={() => onLinkModeChange('standalone')}
+              />
+              <Button
+                title="Liée au RDV"
+                size="sm"
+                variant={linkMode === 'appointment' ? 'primary' : 'outline'}
+                onPress={() => onLinkModeChange('appointment')}
+              />
+            </View>
+          ) : null}
+
+          {patientId && linkMode === 'appointment' ? (
             <SelectField
               label="Rendez-vous"
               value={appointmentId}
@@ -254,17 +278,17 @@ export function PrescriptionsScreen({
             />
           ) : null}
 
-          {patientId && !appointmentsQ.isLoading && appointmentOptions.length === 0 ? (
+          {patientId && linkMode === 'appointment' && !appointmentsQ.isLoading && appointmentOptions.length === 0 ? (
             <Text style={styles.warn}>
-              Aucun rendez-vous pour ce patient. Créez d’abord un rendez-vous depuis la fiche
-              patient ou le calendrier.
+              Aucun rendez-vous — utilisez « Sans RDV » pour générer quand même.
             </Text>
           ) : null}
 
-          {appointmentId ? (
+          {patientId && (linkMode === 'standalone' || appointmentId) ? (
             <View style={styles.composerWrap}>
               <PrescriptionComposer
-                appointmentId={appointmentId}
+                patientId={patientId}
+                appointmentId={linkMode === 'appointment' ? appointmentId : null}
                 documents={docsQ.data ?? []}
                 onDocumentsChanged={refreshList}
                 prescriptionKind={prescriptionKind}
@@ -334,7 +358,7 @@ function buildStyles(c: AppColors) {
     lineHeight: fontSize.sm * 1.45,
   },
   skeletons: { gap: spacing[2] },
-  list: { gap: spacing[3] },
+  list: { gap: spacing[2] },
   pager: {
     marginTop: spacing[2],
     paddingTop: spacing[3],
@@ -357,6 +381,11 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
     color: c.warning,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    gap: spacing[2],
+    flexWrap: 'wrap',
   },
   composerWrap: {
     marginTop: spacing[2],

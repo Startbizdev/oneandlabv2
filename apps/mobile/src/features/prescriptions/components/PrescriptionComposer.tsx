@@ -4,7 +4,6 @@ import { colors } from '@/theme';
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/lib/query-keys';
 import { AlertTriangle, Download, Eye, FileOutput, Upload } from 'lucide-react-native';
 import type { MedicalDocumentRow } from '@/features/appointments/detail/api/appointment-detail.service';
 import { Button } from '@/components/ui/Button';
@@ -17,15 +16,16 @@ import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import {
   generatePrescriptionPdf,
-  savePrescriptionPdfToAppointment,
+  savePrescriptionPdf,
   type PrescriptionKind,
 } from '../api/prescriptions.service';
 import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
-  appointmentId: string;
-  documents: MedicalDocumentRow[];
+  patientId: string;
+  appointmentId?: string | null;
+  documents?: MedicalDocumentRow[];
   onDocumentsChanged?: () => void | Promise<void>;
   initialText?: string;
   embedded?: boolean;
@@ -33,8 +33,9 @@ interface Props {
 }
 
 export function PrescriptionComposer({
-  appointmentId,
-  documents,
+  patientId,
+  appointmentId = null,
+  documents = [],
   onDocumentsChanged,
   initialText = '',
   embedded = false,
@@ -51,16 +52,23 @@ export function PrescriptionComposer({
   } | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  const linkedToAppointment = Boolean(appointmentId);
   const isNursing = prescriptionKind === 'nursing';
   const existingOrdonnance = useMemo(
-    () => documents.find((d) => d.document_type === 'ordonnance'),
-    [documents],
+    () => (linkedToAppointment ? documents.find((d) => d.document_type === 'ordonnance') : undefined),
+    [documents, linkedToAppointment],
   );
   const hasExisting = Boolean(existingOrdonnance);
-  const canGenerate = text.trim().length > 0;
+  const canGenerate = Boolean(patientId?.trim()) && text.trim().length > 0;
 
   const generateMut = useMutation({
-    mutationFn: () => generatePrescriptionPdf(appointmentId, text, prescriptionKind),
+    mutationFn: () =>
+      generatePrescriptionPdf({
+        patientId,
+        prescriptionText: text,
+        prescriptionKind,
+        appointmentId: appointmentId ?? undefined,
+      }),
     onSuccess: async (res) => {
       if (!res.success || !res.data?.pdf_base64) {
         toast(res.error ?? 'Impossible de générer le PDF', { type: 'error' });
@@ -78,7 +86,12 @@ export function PrescriptionComposer({
         return;
       }
       setPdfUri(shared.localUri);
-      toast('PDF généré — aperçu ou enregistrement sur le RDV', { type: 'success' });
+      toast(
+        linkedToAppointment
+          ? 'PDF généré — aperçu ou enregistrement sur le RDV'
+          : 'PDF généré — aperçu ou enregistrement',
+        { type: 'success' },
+      );
     },
     onError: (e) => handleApiError(e, toast, 'generate-prescription'),
   });
@@ -86,7 +99,9 @@ export function PrescriptionComposer({
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!pdfUri) throw new Error('NO_PDF');
-      return savePrescriptionPdfToAppointment(appointmentId, pdfUri, {
+      return savePrescriptionPdf(pdfUri, {
+        patientId,
+        appointmentId: appointmentId ?? undefined,
         fileName: pdfFileName,
         prescriptionKind,
         prescriptionText: text.trim(),
@@ -100,7 +115,12 @@ export function PrescriptionComposer({
       }
       setPdfUri(undefined);
       setPdfMeta(null);
-      toast('Ordonnance enregistrée sur le rendez-vous', { type: 'success' });
+      toast(
+        linkedToAppointment
+          ? 'Ordonnance enregistrée sur le rendez-vous'
+          : 'Ordonnance enregistrée',
+        { type: 'success' },
+      );
       void qc.invalidateQueries({ queryKey: ['prescriptions'] });
       await onDocumentsChanged?.();
     },
@@ -141,8 +161,8 @@ export function PrescriptionComposer({
         <View style={styles.warn}>
           <AlertTriangle size={16} color={colors.warning} strokeWidth={2} />
           <Text style={styles.warnText}>
-            Une ordonnance est déjà enregistrée. Consultez-la, téléchargez-la ou modifiez le texte
-            ci-dessous pour en régénérer une nouvelle.
+            Une ordonnance est déjà enregistrée sur ce rendez-vous. Consultez-la ou régénérez-en une
+            nouvelle ci-dessous.
           </Text>
           <View style={styles.warnActions}>
             <Button
@@ -199,7 +219,7 @@ export function PrescriptionComposer({
               onPress={() => setPreviewOpen(true)}
             />
             <Button
-              title="Enregistrer sur le RDV"
+              title={linkedToAppointment ? 'Enregistrer sur le RDV' : 'Enregistrer'}
               variant="outline"
               leftIcon={<Upload size={16} color={colors.primary} strokeWidth={2} />}
               loading={saveMut.isPending}
@@ -223,7 +243,7 @@ export function PrescriptionComposer({
   return (
     <Card>
       <Text style={styles.cardTitle}>
-        {isNursing ? 'Prescription d\'actes infirmiers' : 'Créer une ordonnance'}
+        {isNursing ? "Prescription d'actes infirmiers" : 'Créer une ordonnance'}
       </Text>
       {content}
     </Card>

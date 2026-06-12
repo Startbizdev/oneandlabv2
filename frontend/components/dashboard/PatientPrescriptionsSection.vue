@@ -20,41 +20,42 @@
         />
       </div>
       <ul v-else class="space-y-2 mb-6">
-        <li
-          v-for="row in prescriptions"
-          :key="row.id"
-          class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border border-default/50 bg-default/5"
-        >
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium truncate">{{ row.file_name || 'Ordonnance' }}</p>
-            <p class="text-xs text-muted">
-              {{ formatDateTime(row.generated_at || row.created_at) }}
-              <span v-if="row.prescription_kind === 'nursing'"> · Actes infirmiers</span>
-              <span v-else-if="row.prescription_kind === 'medical'"> · Médicale</span>
-            </p>
-          </div>
-          <div class="flex flex-wrap gap-2 shrink-0">
-            <UButton size="xs" variant="soft" color="neutral" leading-icon="i-lucide-eye" @click="previewRow(row)">
-              Voir
-            </UButton>
-            <UButton
-              size="xs"
-              variant="soft"
-              color="primary"
-              leading-icon="i-lucide-download"
-              :loading="downloadingId === row.id"
-              @click="downloadRow(row)"
-            >
-              Télécharger
-            </UButton>
-          </div>
+        <li v-for="row in prescriptions" :key="row.id">
+          <PrescriptionHistoryRow
+            :row="row"
+            :role-base="roleBase"
+            :show-patient="false"
+            :downloading="downloadingId === row.id"
+            @preview="previewRow"
+            @download="downloadRow"
+          />
         </li>
       </ul>
     </template>
 
     <div class="pt-4 border-t border-default/50 space-y-4">
       <p class="text-sm text-muted">{{ createHint }}</p>
-      <UFormField label="Rendez-vous" name="rx-appointment">
+
+      <div class="flex flex-wrap gap-2">
+        <UButton
+          size="sm"
+          :color="linkMode === 'standalone' ? 'primary' : 'neutral'"
+          :variant="linkMode === 'standalone' ? 'solid' : 'soft'"
+          @click="linkMode = 'standalone'"
+        >
+          Sans rendez-vous
+        </UButton>
+        <UButton
+          size="sm"
+          :color="linkMode === 'appointment' ? 'primary' : 'neutral'"
+          :variant="linkMode === 'appointment' ? 'solid' : 'soft'"
+          @click="linkMode = 'appointment'"
+        >
+          Liée à un rendez-vous
+        </UButton>
+      </div>
+
+      <UFormField v-if="linkMode === 'appointment'" label="Rendez-vous" name="rx-appointment">
         <USelectMenu
           v-model="selectedAppointmentId"
           :items="appointmentSelectItems"
@@ -67,14 +68,15 @@
         />
       </UFormField>
       <p
-        v-if="!appointmentsLoading && appointmentSelectItems.length === 0"
+        v-if="linkMode === 'appointment' && !appointmentsLoading && appointmentSelectItems.length === 0"
         class="text-sm text-amber-600 dark:text-amber-400"
       >
-        Aucun rendez-vous pour ce patient.
+        Aucun rendez-vous — utilisez « sans rendez-vous ».
       </p>
       <PrescriptionSection
-        v-if="selectedAppointmentId"
-        :appointment="{ id: selectedAppointmentId }"
+        v-if="linkMode === 'standalone' || selectedAppointmentId"
+        :patient-id="patientId"
+        :appointment="linkMode === 'appointment' && selectedAppointmentId ? { id: selectedAppointmentId } : null"
         :documents="appointmentDocuments"
         :load-documents="reloadAll"
         :prescription-kind="prescriptionKind"
@@ -102,10 +104,16 @@ const props = defineProps<{
 
 interface PrescriptionRow {
   id: string;
+  appointment_id?: string | null;
   file_name: string;
   created_at: string;
   generated_at?: string | null;
   prescription_kind?: string | null;
+  appointment_scheduled_at?: string | null;
+  appointment_status?: string | null;
+  appointment_type?: string | null;
+  appointment_category_name?: string | null;
+  appointment_availability?: unknown;
 }
 
 const toast = useAppToast();
@@ -116,6 +124,7 @@ const listLoading = ref(true);
 const appointments = ref<Appointment[]>([]);
 const appointmentsLoading = ref(false);
 const selectedAppointmentId = ref<string | undefined>(undefined);
+const linkMode = ref<'standalone' | 'appointment'>('standalone');
 const appointmentDocuments = ref<any[]>([]);
 const downloadingId = ref<string | null>(null);
 
@@ -132,8 +141,8 @@ const emptyDescription = computed(() =>
 
 const createHint = computed(() =>
   props.prescriptionKind === 'nursing'
-    ? 'Créer une prescription d\'actes infirmiers liée à un rendez-vous de soins.'
-    : 'Créer une ordonnance médicale liée à un rendez-vous.',
+    ? 'Prescription d\'actes infirmiers — avec ou sans rendez-vous.'
+    : 'Ordonnance médicale — avec ou sans rendez-vous.',
 );
 
 const appointmentSelectItems = computed(() =>
@@ -211,7 +220,11 @@ async function loadAppointmentDocuments() {
 }
 
 async function reloadAll() {
-  await loadAppointmentDocuments();
+  if (linkMode.value === 'appointment' && selectedAppointmentId.value) {
+    await loadAppointmentDocuments();
+  } else {
+    appointmentDocuments.value = [];
+  }
   await fetchPrescriptions();
 }
 
@@ -267,6 +280,13 @@ async function downloadRow(row: PrescriptionRow) {
 watch(selectedAppointmentId, (id) => {
   if (id) loadAppointmentDocuments();
   else appointmentDocuments.value = [];
+});
+
+watch(linkMode, (mode) => {
+  if (mode === 'standalone') {
+    selectedAppointmentId.value = undefined;
+    appointmentDocuments.value = [];
+  }
 });
 
 watch(previewOpen, (open) => {

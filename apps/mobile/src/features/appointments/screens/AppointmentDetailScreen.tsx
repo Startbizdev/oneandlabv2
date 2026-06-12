@@ -258,6 +258,7 @@ export function AppointmentDetailScreen({ role }: Props) {
               {showPrescription ? (
                 <PrescriptionSection
                   appointmentId={id!}
+                  patientId={primary.patient_id ?? ''}
                   role={role}
                   documents={s.allDocuments}
                   onDocumentsChanged={s.refreshAll}

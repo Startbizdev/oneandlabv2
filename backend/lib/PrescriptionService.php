@@ -98,6 +98,254 @@ class PrescriptionService
     }
 
     /**
+     * Génération PDF : patient obligatoire, rendez-vous optionnel.
+     *
+     * @return array{success: bool, error?: string, http?: int, data?: array<string, mixed>}
+     */
+    public static function generatePrescriptionRequest(
+        PDO $db,
+        Crypto $crypto,
+        array $user,
+        string $prescriptionText,
+        string $prescriptionKind,
+        string $patientId,
+        ?string $appointmentId = null
+    ): array {
+        $role = $user['role'] ?? '';
+
+        if ($patientId === '') {
+            return ['success' => false, 'http' => 400, 'error' => 'patient_id requis'];
+        }
+
+        $patientProfileStmt = $db->prepare('SELECT id, role FROM profiles WHERE id = ? LIMIT 1');
+        $patientProfileStmt->execute([$patientId]);
+        $patientProfile = $patientProfileStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$patientProfile || ($patientProfile['role'] ?? '') !== 'patient') {
+            return ['success' => false, 'http' => 404, 'error' => 'Patient introuvable'];
+        }
+
+        $appointment = null;
+        if ($appointmentId !== null && $appointmentId !== '') {
+            $stmt = $db->prepare('
+                SELECT id, patient_id, type, status, assigned_nurse_id, assigned_lab_id, assigned_to, created_by,
+                       form_data_encrypted, form_data_dek, address_encrypted, address_dek
+                FROM appointments WHERE id = ?
+            ');
+            $stmt->execute([$appointmentId]);
+            $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$appointment) {
+                return ['success' => false, 'http' => 404, 'error' => 'Rendez-vous introuvable'];
+            }
+            if (($appointment['status'] ?? '') === 'canceled') {
+                return ['success' => false, 'http' => 400, 'error' => 'Impossible de créer une ordonnance pour un rendez-vous annulé'];
+            }
+            if (($appointment['patient_id'] ?? '') !== $patientId) {
+                return ['success' => false, 'http' => 400, 'error' => 'Le rendez-vous ne correspond pas au patient sélectionné'];
+            }
+            if ($prescriptionKind === self::KIND_NURSING && ($appointment['type'] ?? '') !== 'nursing') {
+                return ['success' => false, 'http' => 400, 'error' => 'Les prescriptions infirmières ne peuvent être générées que pour des rendez-vous de soins infirmiers'];
+            }
+            if (!self::canGenerateForAppointment($user, $appointment, $db)) {
+                return ['success' => false, 'http' => 403, 'error' => 'Accès refusé à ce rendez-vous'];
+            }
+        } elseif (!self::canGenerateForPatient($user, $patientId, $db)) {
+            return ['success' => false, 'http' => 403, 'error' => 'Accès refusé à ce patient'];
+        }
+
+        $prescriber = self::loadPrescriber($db, $crypto, (string) $user['user_id'], $role);
+        $credentialError = self::validatePrescriberCredentials($role, $prescriber);
+        if ($credentialError !== null) {
+            return ['success' => false, 'http' => 400, 'error' => $credentialError];
+        }
+
+        $patient = self::loadPatient($db, $crypto, $patientId);
+        if ($appointment !== null) {
+            $patient = self::mergePatientFromAppointmentForm($crypto, $patient, $appointment);
+        }
+
+        if (trim($patient['first_name'] . $patient['last_name']) === '') {
+            return ['success' => false, 'http' => 400, 'error' => 'Identité patient indisponible pour l\'ordonnance'];
+        }
+
+        try {
+            $result = self::generatePdf($prescriber, $patient, $prescriptionText, $prescriptionKind);
+        } catch (Throwable $e) {
+            error_log('PrescriptionPdf error: ' . $e->getMessage());
+
+            return ['success' => false, 'http' => 500, 'error' => 'Erreur lors de la génération du PDF.'];
+        }
+
+        return [
+            'success' => true,
+            'data' => array_merge($result, [
+                'prescription_text' => $prescriptionText,
+                'patient_id' => $patientId,
+                'appointment_id' => $appointmentId ?: null,
+            ]),
+        ];
+    }
+
+    public static function canGenerateForPatient(array $user, string $patientId, PDO $db): bool
+    {
+        if (($user['role'] ?? '') === 'super_admin') {
+            return true;
+        }
+
+        $role = $user['role'] ?? '';
+        $userId = $user['user_id'] ?? '';
+
+        if (!in_array($role, ['pro', 'nurse'], true)) {
+            return false;
+        }
+
+        require_once __DIR__ . '/../models/User.php';
+        $userModel = new User();
+        if ($userModel->hasProfessionalAccessToPatient($userId, $patientId)) {
+            return true;
+        }
+
+        $createdStmt = $db->prepare('SELECT created_by FROM profiles WHERE id = ? AND role = ? LIMIT 1');
+        $createdStmt->execute([$patientId, 'patient']);
+        $createdBy = $createdStmt->fetchColumn();
+        if ($createdBy && (string) $createdBy === $userId) {
+            return true;
+        }
+
+        if ($role === 'pro') {
+            $aptStmt = $db->prepare('
+                SELECT 1 FROM appointments
+                WHERE patient_id = ? AND (created_by = ? OR assigned_to = ?)
+                LIMIT 1
+            ');
+            $aptStmt->execute([$patientId, $userId, $userId]);
+
+            return (bool) $aptStmt->fetchColumn();
+        }
+
+        $nurseStmt = $db->prepare('
+            SELECT 1 FROM appointments
+            WHERE patient_id = ? AND assigned_nurse_id = ? AND type = ?
+            LIMIT 1
+        ');
+        $nurseStmt->execute([$patientId, $userId, 'nursing']);
+
+        return (bool) $nurseStmt->fetchColumn();
+    }
+
+    /**
+     * @return array{first_name: string, last_name: string, title: string, address: mixed, rpps: string, adeli: string}
+     */
+    public static function loadPrescriber(PDO $db, Crypto $crypto, string $userId, string $role): array
+    {
+        $stmt = $db->prepare('SELECT first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek, address_encrypted, address_dek, rpps_encrypted, rpps_dek, adeli_encrypted, adeli_dek, emploi FROM profiles WHERE id = ?');
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'first_name' => self::safeDecrypt($crypto, $row['first_name_encrypted'] ?? null, $row['first_name_dek'] ?? null),
+            'last_name' => self::safeDecrypt($crypto, $row['last_name_encrypted'] ?? null, $row['last_name_dek'] ?? null),
+            'title' => (isset($row['emploi']) && trim((string) $row['emploi']) !== '') ? trim((string) $row['emploi']) : ($role === 'nurse' ? 'Infirmier(ère)' : 'Dr'),
+            'address' => self::safeDecrypt($crypto, $row['address_encrypted'] ?? null, $row['address_dek'] ?? null) ?: null,
+            'rpps' => self::safeDecrypt($crypto, $row['rpps_encrypted'] ?? null, $row['rpps_dek'] ?? null),
+            'adeli' => self::safeDecrypt($crypto, $row['adeli_encrypted'] ?? null, $row['adeli_dek'] ?? null),
+        ];
+    }
+
+    /**
+     * @return array{first_name: string, last_name: string, birth_date: string, address: mixed, nir: string}
+     */
+    public static function loadPatient(PDO $db, Crypto $crypto, string $patientId): array
+    {
+        $stmt = $db->prepare('SELECT first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek, birth_date_encrypted, birth_date_dek, address_encrypted, address_dek FROM profiles WHERE id = ?');
+        $stmt->execute([$patientId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'first_name' => self::safeDecrypt($crypto, $row['first_name_encrypted'] ?? null, $row['first_name_dek'] ?? null),
+            'last_name' => self::safeDecrypt($crypto, $row['last_name_encrypted'] ?? null, $row['last_name_dek'] ?? null),
+            'birth_date' => self::safeDecrypt($crypto, $row['birth_date_encrypted'] ?? null, $row['birth_date_dek'] ?? null),
+            'address' => self::safeDecrypt($crypto, $row['address_encrypted'] ?? null, $row['address_dek'] ?? null) ?: null,
+            'nir' => '',
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $patient
+     * @param array<string, mixed> $appointment
+     * @return array<string, mixed>
+     */
+    public static function mergePatientFromAppointmentForm(Crypto $crypto, array $patient, array $appointment): array
+    {
+        $formData = [];
+        if (!empty($appointment['form_data_encrypted']) && !empty($appointment['form_data_dek'])) {
+            try {
+                $fd = $crypto->decryptField($appointment['form_data_encrypted'], $appointment['form_data_dek']);
+                $formData = is_string($fd) ? json_decode($fd, true) ?? [] : (is_array($fd) ? $fd : []);
+            } catch (Exception $e) {
+                $formData = [];
+            }
+        }
+        if (empty($patient['first_name']) && !empty($formData['first_name'])) {
+            $patient['first_name'] = (string) $formData['first_name'];
+        }
+        if (empty($patient['last_name']) && !empty($formData['last_name'])) {
+            $patient['last_name'] = (string) $formData['last_name'];
+        }
+        if (empty($patient['birth_date']) && !empty($formData['birth_date'])) {
+            $patient['birth_date'] = (string) $formData['birth_date'];
+        }
+
+        return $patient;
+    }
+
+    private static function safeDecrypt(Crypto $crypto, $encrypted, $dek): string
+    {
+        if ($encrypted === null || $encrypted === '' || $dek === null || $dek === '') {
+            return '';
+        }
+        try {
+            return (string) $crypto->decryptField((string) $encrypted, (string) $dek);
+        } catch (Throwable $e) {
+            return '';
+        }
+    }
+
+    /** Extrait availability depuis form_data chiffré (liste ordonnances). */
+    private static function extractAppointmentAvailability(Crypto $crypto, $encrypted, $dek)
+    {
+        if ($encrypted === null || $encrypted === '' || $dek === null || $dek === '') {
+            return null;
+        }
+        try {
+            $json = $crypto->decryptField((string) $encrypted, (string) $dek);
+            $fd = json_decode($json, true);
+            if (!is_array($fd)) {
+                return null;
+            }
+            $availability = $fd['availability'] ?? null;
+            if ($availability !== null && $availability !== '') {
+                return $availability;
+            }
+            $typ = strtolower(trim((string) ($fd['availability_type'] ?? '')));
+            if (in_array($typ, ['all_day', 'fullday', 'full_day'], true)) {
+                return ['type' => 'all_day'];
+            }
+            if ($typ === 'custom') {
+                $start = $fd['availability_start'] ?? $fd['availabilityStart'] ?? null;
+                $end = $fd['availability_end'] ?? $fd['availabilityEnd'] ?? null;
+                if ($start !== null && $end !== null) {
+                    return ['type' => 'custom', 'range' => [(int) $start, (int) $end]];
+                }
+            }
+
+            return null;
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
      * @return array{data: array<int, array<string, mixed>>, pagination: array<string, int>}
      */
     public static function listPrescriptions(
@@ -128,7 +376,8 @@ class PrescriptionService
         }
 
         if ($patientId) {
-            $where .= ' AND a.patient_id = ?';
+            $where .= ' AND (a.patient_id = ? OR md.patient_id = ?)';
+            $params[] = $patientId;
             $params[] = $patientId;
         }
 
@@ -141,6 +390,7 @@ class PrescriptionService
             SELECT
                 md.id,
                 md.appointment_id,
+                md.patient_id AS md_patient_id,
                 md.file_name,
                 md.file_size,
                 md.mime_type,
@@ -150,14 +400,19 @@ class PrescriptionService
                 md.created_at,
                 a.scheduled_at AS appointment_scheduled_at,
                 a.status AS appointment_status,
-                a.patient_id,
+                a.type AS appointment_type,
+                cc.name AS appointment_category_name,
+                a.form_data_encrypted AS appointment_form_data_enc,
+                a.form_data_dek AS appointment_form_data_dek,
+                COALESCE(a.patient_id, md.patient_id) AS patient_id,
                 p.first_name_encrypted AS patient_fn_enc,
                 p.first_name_dek AS patient_fn_dek,
                 p.last_name_encrypted AS patient_ln_enc,
                 p.last_name_dek AS patient_ln_dek
             FROM medical_documents md
             LEFT JOIN appointments a ON a.id = md.appointment_id
-            LEFT JOIN profiles p ON p.id = a.patient_id
+            LEFT JOIN care_categories cc ON cc.id = a.category_id
+            LEFT JOIN profiles p ON p.id = COALESCE(a.patient_id, md.patient_id)
             WHERE {$where}
             ORDER BY COALESCE(md.generated_at, md.created_at) DESC
             LIMIT ? OFFSET ?
@@ -172,22 +427,17 @@ class PrescriptionService
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $safeDecrypt = static function ($encrypted, $dek) use ($crypto) {
-            if ($encrypted === null || $encrypted === '' || $dek === null || $dek === '') {
-                return '';
-            }
-            try {
-                return $crypto->decryptField((string) $encrypted, (string) $dek);
-            } catch (Throwable $e) {
-                return '';
-            }
-        };
-
         $out = [];
         foreach ($rows as $row) {
-            $row['patient_first_name'] = $safeDecrypt($row['patient_fn_enc'] ?? null, $row['patient_fn_dek'] ?? null);
-            $row['patient_last_name'] = $safeDecrypt($row['patient_ln_enc'] ?? null, $row['patient_ln_dek'] ?? null);
-            unset($row['patient_fn_enc'], $row['patient_fn_dek'], $row['patient_ln_enc'], $row['patient_ln_dek']);
+            $row['patient_first_name'] = self::safeDecrypt($crypto, $row['patient_fn_enc'] ?? null, $row['patient_fn_dek'] ?? null);
+            $row['patient_last_name'] = self::safeDecrypt($crypto, $row['patient_ln_enc'] ?? null, $row['patient_ln_dek'] ?? null);
+            unset($row['patient_fn_enc'], $row['patient_fn_dek'], $row['patient_ln_enc'], $row['patient_ln_dek'], $row['md_patient_id']);
+            $row['appointment_availability'] = self::extractAppointmentAvailability(
+                $crypto,
+                $row['appointment_form_data_enc'] ?? null,
+                $row['appointment_form_data_dek'] ?? null
+            );
+            unset($row['appointment_form_data_enc'], $row['appointment_form_data_dek']);
             $out[] = $row;
         }
 
