@@ -47,6 +47,7 @@ export function NurseSubscriptionScreen() {
     restore,
     restoreLoading,
     connected,
+    storeLoading,
   } = useNurseIap();
 
   const activePlan = subscription?.plan_slug ?? 'discovery';
@@ -71,10 +72,11 @@ export function NurseSubscriptionScreen() {
             ctaLabel = 'Gérer mon abonnement';
             onCtaPress = openManageSubscriptions;
           } else if (canPurchaseStore) {
-            ctaLabel = connected ? 'Passer en Pro' : 'Chargement boutique…';
+            const storePending = connected && storeLoading;
+            ctaLabel = !connected || storePending ? 'Chargement boutique…' : 'Passer en Pro';
             onCtaPress = purchasePro;
-            ctaLoading = purchaseLoading;
-            disabled = !connected;
+            ctaLoading = purchaseLoading || storeLoading;
+            disabled = !connected || storePending;
           } else {
             ctaLabel = 'Géré sur cary.bio';
             disabled = true;
@@ -106,6 +108,7 @@ export function NurseSubscriptionScreen() {
       proPriceLabel,
       purchaseLoading,
       purchasePro,
+      storeLoading,
     ],
   );
 

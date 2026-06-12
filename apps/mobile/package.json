@@ -22,6 +22,7 @@
     "build:ios:store": "node scripts/run-eas-ios.cjs",
     "submit:ios:latest": "node scripts/run-eas-ios.cjs submit --platform ios --profile production --latest --non-interactive",
     "typecheck": "tsc --noEmit",
+    "simulate:iap": "node scripts/simulate-iap-purchase.cjs",
     "lint": "eslint . --ext .ts,.tsx"
   },
   "dependencies": {
