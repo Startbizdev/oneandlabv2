@@ -7,6 +7,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { FilePenLine } from 'lucide-react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
+import { Button } from '@/components/ui/Button';
 import { SelectField } from '@/components/ui/SelectField';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonList } from '@/components/ui/skeletons';
@@ -16,7 +17,11 @@ import { cacheMedicalDocument, openMedicalDocument } from '@/lib/downloads/downl
 import { useToast } from '@/providers/ToastProvider';
 import { PrescriptionComposer } from '../components/PrescriptionComposer';
 import { PrescriptionHistoryCard } from '../components/PrescriptionHistoryCard';
-import { fetchNursePrescriptions, fetchProPrescriptions } from '../api/prescriptions.service';
+import {
+  fetchNursePrescriptions,
+  fetchProPrescriptions,
+  type PrescriptionLinkMode,
+} from '../api/prescriptions.service';
 import { appointmentOptionLabel } from '../utils/prescription-display';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import { spacing } from '@/theme';
@@ -32,6 +37,7 @@ export function PatientPrescriptionsScreen({ patientId, rolePrefix, roleBase }: 
   const router = useRouter();
   const { show: toast } = useToast();
   const prescriptionKind = roleBase === 'nurse' ? 'nursing' : 'medical';
+  const [linkMode, setLinkMode] = useState<PrescriptionLinkMode>('standalone');
   const [appointmentId, setAppointmentId] = useState('');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
@@ -122,6 +128,7 @@ export function PatientPrescriptionsScreen({ patientId, rolePrefix, roleBase }: 
               <PrescriptionHistoryCard
                 key={row.id}
                 row={row}
+                showPatient={false}
                 downloading={downloadingId === row.id}
                 onDownload={() => downloadDoc(row.id, row.file_name)}
                 onPreview={() => previewDoc(row.id, row.file_name)}
@@ -140,17 +147,37 @@ export function PatientPrescriptionsScreen({ patientId, rolePrefix, roleBase }: 
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Créer</Text>
-          <SelectField
-            label="Rendez-vous"
-            value={appointmentId}
-            onChange={setAppointmentId}
-            options={appointmentOptions}
-            placeholder="Choisir un rendez-vous…"
-            sheetTitle="Rendez-vous"
-          />
-          {appointmentId ? (
+          <View style={styles.linkRow}>
+            <Button
+              title="Sans RDV"
+              size="sm"
+              variant={linkMode === 'standalone' ? 'primary' : 'outline'}
+              onPress={() => {
+                setLinkMode('standalone');
+                setAppointmentId('');
+              }}
+            />
+            <Button
+              title="Liée au RDV"
+              size="sm"
+              variant={linkMode === 'appointment' ? 'primary' : 'outline'}
+              onPress={() => setLinkMode('appointment')}
+            />
+          </View>
+          {linkMode === 'appointment' ? (
+            <SelectField
+              label="Rendez-vous"
+              value={appointmentId}
+              onChange={setAppointmentId}
+              options={appointmentOptions}
+              placeholder="Choisir un rendez-vous…"
+              sheetTitle="Rendez-vous"
+            />
+          ) : null}
+          {linkMode === 'standalone' || appointmentId ? (
             <PrescriptionComposer
-              appointmentId={appointmentId}
+              patientId={patientId}
+              appointmentId={linkMode === 'appointment' ? appointmentId : null}
               documents={docsQ.data ?? []}
               prescriptionKind={prescriptionKind}
               onDocumentsChanged={async () => {
@@ -185,6 +212,11 @@ function buildStyles(c: AppColors) {
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.lg,
       color: c.textPrimary,
+    },
+    linkRow: {
+      flexDirection: 'row',
+      gap: spacing[2],
+      flexWrap: 'wrap',
     },
   };
 }

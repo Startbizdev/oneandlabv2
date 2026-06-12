@@ -329,56 +329,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             exit;
         }
         
-        $appointmentId = $_POST['appointment_id'] ?? null;
+        $appointmentId = isset($_POST['appointment_id']) ? trim((string) $_POST['appointment_id']) : '';
+        if ($appointmentId === '') {
+            $appointmentId = null;
+        }
+        $postPatientId = isset($_POST['patient_id']) ? trim((string) $_POST['patient_id']) : '';
+        if ($postPatientId === '') {
+            $postPatientId = null;
+        }
         $documentType = $_POST['document_type'] ?? null;
         $allowedTypes = ['carte_vitale', 'carte_mutuelle', 'ordonnance', 'autres_assurances', 'resultats', 'other', 'cancellation_photo'];
         $documentType = in_array($documentType ?? '', $allowedTypes, true) ? $documentType : 'other';
 
+        $appointment = null;
+        $standaloneOrdonnance = false;
+
         if (!$appointmentId) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'appointment_id requis']);
-            exit;
-        }
-        
-        // Vérifier les permissions (inclure relative_id pour documents proche)
-        $stmt = $db->prepare('
-            SELECT patient_id, relative_id, assigned_to, assigned_nurse_id, assigned_lab_id, created_by
-            FROM appointments
-            WHERE id = ?
-        ');
-        $stmt->execute([$appointmentId]);
-        $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$appointment) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'error' => 'Rendez-vous introuvable']);
-            exit;
-        }
-        
-        $hasAccess = (
-            $appointment['patient_id'] === $user['user_id'] ||
-            $appointment['assigned_nurse_id'] === $user['user_id'] ||
-            $appointment['assigned_lab_id'] === $user['user_id'] ||
-            (!empty($appointment['assigned_to']) && $appointment['assigned_to'] === $user['user_id']) ||
-            (!empty($appointment['created_by']) && $appointment['created_by'] === $user['user_id']) ||
-            $user['role'] === 'super_admin'
-        );
-        if (!$hasAccess && in_array($user['role'], ['lab', 'subaccount', 'preleveur'], true)) {
-            $teamIds = LabTeamAccess::teamMemberIds($db, $user['user_id'], $user['role']);
-            if (in_array($appointment['assigned_lab_id'] ?? '', $teamIds, true) || (!empty($appointment['assigned_to']) && in_array($appointment['assigned_to'], $teamIds, true))) {
-                $hasAccess = true;
+            if ($documentType === 'ordonnance' && $postPatientId && in_array($user['role'], ['pro', 'nurse', 'super_admin'], true)) {
+                require_once __DIR__ . '/../../lib/PrescriptionService.php';
+                if (!PrescriptionService::canGenerateForPatient($user, $postPatientId, $db)) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'error' => 'Accès refusé à ce patient']);
+                    exit;
+                }
+                $standaloneOrdonnance = true;
+            } else {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'appointment_id requis']);
+                exit;
             }
-        }
-        if (!$hasAccess && $user['role'] === 'pro') {
-            $userModel = new User();
-            if ($userModel->hasProfessionalAccessToPatient($user['user_id'], (string) ($appointment['patient_id'] ?? ''))) {
-                $hasAccess = true;
+        } else {
+            // Vérifier les permissions (inclure relative_id pour documents proche)
+            $stmt = $db->prepare('
+                SELECT patient_id, relative_id, assigned_to, assigned_nurse_id, assigned_lab_id, created_by
+                FROM appointments
+                WHERE id = ?
+            ');
+            $stmt->execute([$appointmentId]);
+            $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$appointment) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'error' => 'Rendez-vous introuvable']);
+                exit;
             }
-        }
-        if (!$hasAccess) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Accès refusé']);
-            exit;
+
+            $hasAccess = (
+                $appointment['patient_id'] === $user['user_id'] ||
+                $appointment['assigned_nurse_id'] === $user['user_id'] ||
+                $appointment['assigned_lab_id'] === $user['user_id'] ||
+                (!empty($appointment['assigned_to']) && $appointment['assigned_to'] === $user['user_id']) ||
+                (!empty($appointment['created_by']) && $appointment['created_by'] === $user['user_id']) ||
+                $user['role'] === 'super_admin'
+            );
+            if (!$hasAccess && in_array($user['role'], ['lab', 'subaccount', 'preleveur'], true)) {
+                $teamIds = LabTeamAccess::teamMemberIds($db, $user['user_id'], $user['role']);
+                if (in_array($appointment['assigned_lab_id'] ?? '', $teamIds, true) || (!empty($appointment['assigned_to']) && in_array($appointment['assigned_to'], $teamIds, true))) {
+                    $hasAccess = true;
+                }
+            }
+            if (!$hasAccess && $user['role'] === 'pro') {
+                $userModel = new User();
+                if ($userModel->hasProfessionalAccessToPatient($user['user_id'], (string) ($appointment['patient_id'] ?? ''))) {
+                    $hasAccess = true;
+                }
+            }
+            if (!$hasAccess) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'error' => 'Accès refusé']);
+                exit;
+            }
         }
         
         // Validation du fichier
@@ -476,17 +496,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ? date('Y-m-d H:i:s')
             : null;
 
+        $patientIdForDoc = $standaloneOrdonnance
+            ? $postPatientId
+            : ($appointment['patient_id'] ?? null);
+
         $stmt = $db->prepare('
             INSERT INTO medical_documents (
-                id, appointment_id, uploaded_by, file_name, file_path,
+                id, appointment_id, patient_id, uploaded_by, file_name, file_path,
                 file_size, mime_type, document_type, prescription_kind, prescription_text,
                 prescription_number, generated_at, encrypted, file_dek, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ');
 
         $stmt->execute([
             $id,
             $appointmentId,
+            $patientIdForDoc,
             $user['user_id'],
             $fileName,
             $relativePath,
@@ -519,8 +544,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // Si c'est un document de profil (carte_vitale, carte_mutuelle, autres_assurances),
         // sauvegarder dans patient_documents ou patient_relative_documents selon le RDV
         $profileDocumentTypes = ['carte_vitale', 'carte_mutuelle', 'autres_assurances'];
-        $patientIdForProfile = $appointment['patient_id'] ?? null;
-        $relativeIdForProfile = $appointment['relative_id'] ?? null;
+        $patientIdForProfile = $standaloneOrdonnance ? $postPatientId : ($appointment['patient_id'] ?? null);
+        $relativeIdForProfile = $standaloneOrdonnance ? null : ($appointment['relative_id'] ?? null);
         if ($documentType && in_array($documentType, $profileDocumentTypes, true) && $patientIdForProfile) {
             try {
                 if ($relativeIdForProfile) {

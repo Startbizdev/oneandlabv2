@@ -3,7 +3,8 @@
     <template #prescriptionSection="{ appointment, documents, loadDocuments }">
       <PrescriptionSection
         v-if="appointment && !['canceled'].includes(appointment.status)"
-        :appointment="appointment"
+        :patient-id="appointment.patient_id"
+        :appointment="{ id: appointment.id }"
         :documents="documents"
         :load-documents="loadDocuments"
       />

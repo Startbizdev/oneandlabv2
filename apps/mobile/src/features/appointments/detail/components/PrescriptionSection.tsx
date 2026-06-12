@@ -3,17 +3,19 @@ import { PrescriptionComposer } from '@/features/prescriptions/components/Prescr
 import type { PrescriptionKind } from '@/features/prescriptions/api/prescriptions.service';
 
 interface Props {
-  appointmentId: string;
+  appointmentId?: string;
+  patientId: string;
   role: string;
-  documents: MedicalDocumentRow[];
+  documents?: MedicalDocumentRow[];
   onDocumentsChanged?: () => void | Promise<void>;
   initialPrescriptionText?: string;
 }
 
 export function PrescriptionSection({
   appointmentId,
+  patientId,
   role,
-  documents,
+  documents = [],
   onDocumentsChanged,
   initialPrescriptionText,
 }: Props) {
@@ -23,7 +25,8 @@ export function PrescriptionSection({
 
   return (
     <PrescriptionComposer
-      appointmentId={appointmentId}
+      patientId={patientId}
+      appointmentId={appointmentId ?? null}
       documents={documents}
       onDocumentsChanged={onDocumentsChanged}
       initialText={initialPrescriptionText}

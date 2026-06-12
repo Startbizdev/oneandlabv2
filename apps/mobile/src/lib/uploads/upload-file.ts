@@ -17,6 +17,7 @@ export type MedicalDocumentMeta = {
   document_type?: string;
   user_id?: string;
   relative_id?: string;
+  patient_id?: string;
   prescription_kind?: string;
   prescription_text?: string;
   prescription_number?: string;
@@ -54,6 +55,7 @@ function buildFormDataFromPrepared(prepared: UploadFileInput, meta: MedicalDocum
   if (meta.document_type) fd.append('document_type', meta.document_type);
   if (meta.user_id) fd.append('user_id', meta.user_id);
   if (meta.relative_id) fd.append('relative_id', meta.relative_id);
+  if (meta.patient_id) fd.append('patient_id', meta.patient_id);
   if (meta.prescription_kind) fd.append('prescription_kind', meta.prescription_kind);
   if (meta.prescription_text) fd.append('prescription_text', meta.prescription_text);
   if (meta.prescription_number) fd.append('prescription_number', meta.prescription_number);

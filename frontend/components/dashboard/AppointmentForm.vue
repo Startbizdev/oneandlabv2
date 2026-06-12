@@ -63,6 +63,7 @@
           </div>
         </div>
         <DashboardPrescriptionSection
+          :patient-id="selectedPatient?.id || ''"
           :appointment="{ id: postCreateAppointmentId }"
           :documents="postCreateDocuments"
           :load-documents="loadPostCreateDocuments"
@@ -548,7 +549,8 @@
             class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6"
           >
             <DashboardPrescriptionSection
-              :appointment="appointment"
+              :patient-id="appointment.patient_id"
+              :appointment="{ id: appointment.id }"
               :documents="editModeDocuments"
               :load-documents="loadEditModeDocuments"
             />
