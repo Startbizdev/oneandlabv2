@@ -1,8 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useRef, useState } from 'react';
-import { Image, Text, View } from 'react-native';
+import { useRef, useState, useEffect } from 'react';
+import { Image, Keyboard, Text, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PenLine } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -32,6 +32,10 @@ export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Pr
   const [sheetOpen, setSheetOpen] = useState(false);
   const padRef = useRef<PrescriptionSignaturePadHandle>(null);
   const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    if (sheetOpen) Keyboard.dismiss();
+  }, [sheetOpen]);
 
   const saveMut = useMutation({
     mutationFn: (png: string | null) =>
@@ -67,40 +71,46 @@ export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Pr
   };
 
   return (
-    <ProfileSection title="Signature ordonnance" Icon={PenLine}>
-      <Text style={styles.help}>
-        Cette signature apparaît sur vos ordonnances lorsque vous choisissez de signer avant génération.
-      </Text>
-      {previewUri ? (
-        <View style={styles.previewWrap}>
-          <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="contain" />
-        </View>
-      ) : (
-        <Text style={styles.empty}>Aucune signature enregistrée</Text>
-      )}
-      <View style={styles.actions}>
-        <Button
-          title={previewUri ? 'Modifier' : 'Créer ma signature'}
-          variant="outline"
-          size="sm"
-          onPress={() => setSheetOpen(true)}
-        />
+    <>
+      <ProfileSection title="Signature ordonnance" Icon={PenLine}>
+        <Text style={styles.help}>
+          Cette signature apparaît sur vos ordonnances lorsque vous choisissez de signer avant génération.
+        </Text>
         {previewUri ? (
+          <View style={styles.previewWrap}>
+            <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="contain" />
+          </View>
+        ) : (
+          <Text style={styles.empty}>Aucune signature enregistrée</Text>
+        )}
+        <View style={styles.actions}>
           <Button
-            title="Supprimer"
+            title={previewUri ? 'Modifier' : 'Créer ma signature'}
             variant="outline"
             size="sm"
-            loading={saveMut.isPending}
-            onPress={() => saveMut.mutate(null)}
+            onPress={() => setSheetOpen(true)}
           />
-        ) : null}
-      </View>
+          {previewUri ? (
+            <Button
+              title="Supprimer"
+              variant="outline"
+              size="sm"
+              loading={saveMut.isPending}
+              onPress={() => saveMut.mutate(null)}
+            />
+          ) : null}
+        </View>
+      </ProfileSection>
 
       <BottomSheet
         visible={sheetOpen}
         onClose={() => setSheetOpen(false)}
         title="Signature manuscrite"
         subtitle="Utilisée sur vos ordonnances PDF"
+        disableScroll
+        stackBehavior="push"
+        snapPoints={['72%']}
+        keyboardBehavior="fillParent"
         footer={
           <View style={styles.footer}>
             <Button title="Enregistrer" loading={saveMut.isPending} onPress={handleSave} />
@@ -111,6 +121,7 @@ export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Pr
           ref={padRef}
           initialPng={signaturePng}
           onExport={onExport}
+          height={220}
         />
         <Button
           title="Effacer"
@@ -120,7 +131,7 @@ export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Pr
           style={styles.clearBtn}
         />
       </BottomSheet>
-    </ProfileSection>
+    </>
   );
 }
 

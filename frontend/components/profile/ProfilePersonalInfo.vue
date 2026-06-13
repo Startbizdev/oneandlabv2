@@ -136,6 +136,14 @@
         <BirthdayPicker v-model="form.birth_date" />
       </UFormField>
 
+      <FormInput
+        v-if="isPatient"
+        v-model="form.nir"
+        label="N° de sécurité sociale (NIR)"
+        name="nir"
+        placeholder="1 85 08 75 123 45 67"
+      />
+
       <UFormField
         v-if="isPatient || isNurse"
         label="Genre"
@@ -232,6 +240,7 @@ const defaultForm = (): ProfileForm => ({
   adeli: '',
   emploi: null,
   birth_date: null,
+  nir: null,
   gender: null,
   address: null,
   address_complement: null,

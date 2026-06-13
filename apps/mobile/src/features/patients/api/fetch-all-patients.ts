@@ -8,6 +8,7 @@ export interface PatientRow {
   email_display?: string | null;
   phone?: string;
   birth_date?: string;
+  nir?: string | null;
   gender?: string;
   profile_image_url?: string | null;
   address?: Record<string, unknown>;

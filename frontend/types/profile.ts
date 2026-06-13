@@ -23,6 +23,7 @@ export interface ProfileForm {
   /** Profession de santé (pro uniquement, hors infirmier) */
   emploi: string | null
   birth_date: string | null
+  nir: string | null
   gender: string | null
   address: Address | null
   address_complement: string | null

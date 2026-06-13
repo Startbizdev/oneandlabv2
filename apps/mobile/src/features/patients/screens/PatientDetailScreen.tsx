@@ -10,6 +10,7 @@ import { ageFromBirthDate } from '@oneandlab/shared-utils';
 import {
   Calendar,
   ClipboardList,
+  CreditCard,
   FilePenLine,
   FolderOpen,
   Mail,
@@ -146,6 +147,9 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
       ? { icon: Calendar, label: 'Date de naissance', value: birthLine }
       : null,
     genderLine ? { icon: User, label: 'Genre', value: genderLine } : null,
+    p.nir?.trim()
+      ? { icon: CreditCard, label: 'N° sécurité sociale', value: p.nir.trim() }
+      : null,
     address
       ? {
           icon: MapPin,

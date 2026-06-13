@@ -54,6 +54,7 @@ interface Props {
   snapPoints?: (string | number)[];
   /** Empilement si une autre sheet est déjà ouverte (`push` pour les selects). */
   stackBehavior?: 'push' | 'switch' | 'replace';
+  keyboardBehavior?: 'extend' | 'fillParent' | 'interactive';
 }
 
 /**
@@ -75,6 +76,7 @@ export function SheetModal({
   onDismissed,
   snapPoints,
   stackBehavior = 'switch',
+  keyboardBehavior = 'interactive',
 }: Props) {
   const styles = useThemedStyles(buildStyles);
   const modalRef = useRef<BottomSheetModal>(null);
@@ -194,7 +196,7 @@ export function SheetModal({
       backdropComponent={renderBackdrop}
       backgroundStyle={styles.sheetBackground}
       topInset={insets.top}
-      keyboardBehavior="interactive"
+      keyboardBehavior={keyboardBehavior}
       keyboardBlurBehavior="restore"
       enableBlurKeyboardOnGesture
       android_keyboardInputMode="adjustResize"

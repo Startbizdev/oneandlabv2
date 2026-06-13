@@ -1412,6 +1412,7 @@ function getDefaultProfileForm(): import('~/types/profile').ProfileForm {
     adeli: '',
     emploi: null,
     birth_date: null,
+    nir: null,
     gender: null,
     address: null,
     address_complement: null,
@@ -1781,6 +1782,7 @@ const loadProfile = async () => {
       adeli: userData.adeli || '',
       emploi: userData.emploi || null,
       birth_date: userData.birth_date || null,
+      nir: (userData as { nir?: string | null }).nir || null,
       gender: userData.gender || null,
       address: userData.address || null,
       address_complement: userData.address?.complement || null,
@@ -1922,6 +1924,7 @@ const saveProfile = async (fromSaveAll = false) => {
         last_name: last_name.trim(),
         phone: phone.trim(),
         birth_date: profileForm.value.birth_date?.trim() || null,
+        nir: profileForm.value.nir?.trim() || null,
         gender: profileForm.value.gender?.trim() || null,
         address: addressBody,
       }
@@ -2037,6 +2040,7 @@ const saveProfile = async (fromSaveAll = false) => {
     }
     if (isPatient.value) {
       body.birth_date = profileForm.value.birth_date || null
+      body.nir = profileForm.value.nir?.trim() || null
       body.gender = profileForm.value.gender || null
       if (!editingUserId.value) {
         body.profile_image_url = publicProfileForm.value.profile_image_url || null

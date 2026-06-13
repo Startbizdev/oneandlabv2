@@ -4,11 +4,34 @@
       <AppPageHeader
         :edge-bleed="false"
         title="Ordonnances"
-        description="Documents générés ou enregistrés pour vos patients, liés à un rendez-vous."
+        description="Créez une ordonnance ou consultez l'historique complet."
       />
     </template>
 
-    <UCard class="overflow-hidden ring-1 ring-default/60">
+    <div class="flex gap-2 p-1 rounded-lg bg-muted/40 ring-1 ring-default/50">
+      <UButton
+        size="md"
+        class="flex-1 justify-center"
+        :color="workspaceTab === 'create' ? 'primary' : 'neutral'"
+        :variant="workspaceTab === 'create' ? 'solid' : 'ghost'"
+        icon="i-lucide-plus-circle"
+        @click="workspaceTab = 'create'"
+      >
+        Créer
+      </UButton>
+      <UButton
+        size="md"
+        class="flex-1 justify-center"
+        :color="workspaceTab === 'history' ? 'primary' : 'neutral'"
+        :variant="workspaceTab === 'history' ? 'solid' : 'ghost'"
+        icon="i-lucide-history"
+        @click="workspaceTab = 'history'"
+      >
+        Historique
+      </UButton>
+    </div>
+
+    <UCard v-if="workspaceTab === 'history'" class="overflow-hidden ring-1 ring-default/60">
       <template #header>
         <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <h2 class="text-lg font-normal flex items-center gap-2">
@@ -40,6 +63,7 @@
             :key="row.id"
             :row="row"
             :role-base="roleBase"
+            :show-patient="!initialPatientId"
             :downloading="downloadingId === row.id"
             @preview="previewPrescription"
             @download="downloadPrescription"
@@ -64,7 +88,7 @@
       </template>
     </UCard>
 
-    <UCard class="ring-1 ring-default/60">
+    <UCard v-else class="ring-1 ring-default/60">
       <template #header>
         <h2 class="text-lg font-normal flex items-center gap-2">
           <UIcon name="i-lucide-plus-circle" class="w-5 h-5 text-primary shrink-0" />
@@ -72,33 +96,44 @@
         </h2>
       </template>
       <p class="text-sm text-muted mb-4">
-        Choisissez un patient, puis générez l'ordonnance avec ou sans lien vers un rendez-vous.
+        Recherchez un patient, puis générez l'ordonnance avec ou sans lien vers un rendez-vous.
       </p>
       <div class="space-y-4 max-w-xl">
-        <UFormField label="Patient" name="patient">
-          <USelectMenu
-            v-model="selectedPatientId"
-            :items="patientSelectItems"
-            value-key="value"
-            placeholder="Sélectionner un patient…"
-            size="md"
-            class="w-full"
-            :loading="patientsLoading"
-            :search-input="{ placeholder: patientSelectSearchPlaceholder }"
-            :filter-fields="['label', 'searchText']"
-          >
-            <template #item-label="{ item }">
-              <div class="min-w-0 flex-1 py-0.5 text-left">
-                <p class="truncate font-medium text-gray-900 dark:text-white">{{ item.label }}</p>
-                <p v-if="item.metaLine" class="truncate text-xs text-gray-500 dark:text-gray-400">
-                  {{ item.metaLine }}
-                </p>
-              </div>
-            </template>
-            <template #empty="{ searchTerm }">
-              <PatientSelectMenuEmpty :search-term="searchTerm" :suggest-new-patient-option="false" />
-            </template>
-          </USelectMenu>
+        <UFormField v-if="!initialPatientId" label="Patient" name="patient">
+          <div class="flex gap-2 items-start">
+            <USelectMenu
+              v-model="selectedPatientId"
+              :items="patientSelectItems"
+              value-key="value"
+              placeholder="Rechercher un patient…"
+              size="md"
+              class="w-full min-w-0 flex-1"
+              :loading="patientsLoading"
+              :search-input="{ placeholder: patientSelectSearchPlaceholder }"
+              :filter-fields="['label', 'searchText']"
+            >
+              <template #item-label="{ item }">
+                <div class="min-w-0 flex-1 py-0.5 text-left">
+                  <p class="truncate font-medium text-gray-900 dark:text-white">{{ item.label }}</p>
+                  <p v-if="item.metaLine" class="truncate text-xs text-gray-500 dark:text-gray-400">
+                    {{ item.metaLine }}
+                  </p>
+                </div>
+              </template>
+              <template #empty="{ searchTerm }">
+                <PatientSelectMenuEmpty :search-term="searchTerm" :suggest-new-patient-option="false" />
+              </template>
+            </USelectMenu>
+            <UButton
+              v-if="selectedPatientId"
+              size="md"
+              color="neutral"
+              variant="soft"
+              icon="i-lucide-pen-line"
+              :to="`/profile?userId=${selectedPatientId}`"
+              aria-label="Modifier la fiche patient"
+            />
+          </div>
         </UFormField>
 
         <UFormField v-if="selectedPatientId" label="Lien rendez-vous" name="link-mode">
@@ -222,6 +257,7 @@ const selectedAppointmentId = ref<string | undefined>(undefined);
 const linkMode = ref<'standalone' | 'appointment'>('standalone');
 
 const appointmentDocuments = ref<any[]>([]);
+const workspaceTab = ref<'create' | 'history'>('create');
 
 const patientSelectSearchPlaceholder = PATIENT_SELECT_SEARCH_PLACEHOLDER;
 
@@ -281,8 +317,8 @@ async function fetchPrescriptionsList() {
       page: String(currentPage.value),
       limit: String(pageSize.value),
     });
-    if (selectedPatientId.value) {
-      q.set('patient_id', selectedPatientId.value);
+    if (props.initialPatientId) {
+      q.set('patient_id', props.initialPatientId);
     }
     const res = await apiFetch(`${props.roleBase}/prescriptions?${q.toString()}`, { method: 'GET' });
     if (res?.success && Array.isArray(res.data)) {
@@ -433,8 +469,6 @@ watch(currentPage, () => {
 watch(selectedPatientId, (id) => {
   selectedAppointmentId.value = undefined;
   appointmentDocuments.value = [];
-  currentPage.value = 1;
-  fetchPrescriptionsList();
   if (id) {
     fetchAppointmentsForPatient(id);
   } else {

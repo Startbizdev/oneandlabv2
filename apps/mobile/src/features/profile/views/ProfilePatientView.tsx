@@ -42,6 +42,7 @@ export function ProfilePatientView() {
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [nir, setNir] = useState('');
   const [gender, setGender] = useState('');
   const [address, setAddress] = useState<AddressPayload | null>(null);
   const [addressComplement, setAddressComplement] = useState('');
@@ -61,6 +62,7 @@ export function ProfilePatientView() {
     setLastName(d.last_name ?? '');
     setPhone(d.phone ?? '');
     setBirthDate(d.birth_date ?? '');
+    setNir(d.nir ?? '');
     setGender(d.gender ?? '');
     setProfileUrl(d.profile_image_url ?? null);
     const parsed = parseProfileAddress(d.address);
@@ -88,6 +90,7 @@ export function ProfilePatientView() {
         last_name: lastName.trim(),
         phone: phone.trim() || null,
         birth_date: birthDate.trim() || null,
+        nir: nir.trim() || null,
         gender: gender || null,
         address: addr,
       });
@@ -155,6 +158,13 @@ export function ProfilePatientView() {
             </View>
           ) : null}
           <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+          <Input
+            label="N° de sécurité sociale (NIR)"
+            value={nir}
+            onChangeText={setNir}
+            placeholder="1 85 08 75 123 45 67"
+            autoCapitalize="none"
+          />
           <BirthDatePicker value={birthDate} onChange={setBirthDate} />
           <GenderSelect value={gender} onChange={setGender} />
           <AddressAutocomplete

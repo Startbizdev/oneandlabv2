@@ -17,6 +17,8 @@ interface Props {
   presentKey?: string | number;
   onDismissed?: () => void;
   stackBehavior?: 'push' | 'switch' | 'replace';
+  snapPoints?: (string | number)[];
+  keyboardBehavior?: 'extend' | 'fillParent' | 'interactive';
 }
 
 /** Wrapper SheetModal pour les écrans existants. */
@@ -35,6 +37,8 @@ export function BottomSheet({
   presentKey,
   onDismissed,
   stackBehavior,
+  snapPoints,
+  keyboardBehavior,
 }: Props) {
   return (
     <SheetModal
@@ -51,6 +55,8 @@ export function BottomSheet({
       enableSwipeToDismiss={enableSwipeToDismiss}
       dismissOnBackdropPress={dismissOnBackdropPress}
       stackBehavior={stackBehavior}
+      snapPoints={snapPoints}
+      keyboardBehavior={keyboardBehavior}
     >
       {children}
     </SheetModal>
