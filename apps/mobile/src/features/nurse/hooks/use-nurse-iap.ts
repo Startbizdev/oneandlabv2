@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ErrorCode,
   getAvailablePurchases,
+  isUserCancelledError,
   useIAP,
   type Purchase,
 } from 'expo-iap';
@@ -17,6 +18,7 @@ import {
 import {
   buildSubscriptionPurchaseRequest,
 } from '@/features/nurse/lib/iap-purchase';
+import { resolveNurseProPriceDisplay } from '@/features/nurse/lib/format-nurse-pro-price';
 import { loadStoreProductFromStore, requestSubscriptionPurchase } from '@/features/nurse/lib/iap-store';
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -133,7 +135,10 @@ export function useNurseIap() {
     [subscriptions],
   );
 
-  const localizedProPrice = storeProduct?.displayPrice ?? null;
+  const proPriceDisplay = useMemo(
+    () => resolveNurseProPriceDisplay(storeProduct),
+    [storeProduct],
+  );
 
   const purchasePro = useCallback(async () => {
     if (!connected) {
@@ -180,6 +185,9 @@ export function useNurseIap() {
       await requestSubscriptionPurchase(purchaseRequest.request);
     } catch (error) {
       setPurchaseLoading(false);
+      if (isUserCancelledError(error)) {
+        return;
+      }
       handleApiError(error, toast, 'iap-purchase');
     }
   }, [
@@ -230,7 +238,7 @@ export function useNurseIap() {
     subscription: subscriptionQ.data,
     subscriptionLoading: subscriptionQ.isLoading,
     refetchSubscription: subscriptionQ.refetch,
-    localizedProPrice,
+    proPriceDisplay,
     purchasePro,
     purchaseLoading,
     restore,

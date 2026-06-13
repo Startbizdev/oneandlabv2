@@ -36,26 +36,34 @@ export async function requestSubscriptionPurchase(payload: IapPurchaseRequest): 
     throw new Error('SKU Apple manquant');
   }
 
+  const nativePurchasePayload = {
+    type: 'subs' as const,
+    request: {
+      apple: { sku },
+      ios: { sku },
+    },
+  };
+
+  let native: { requestPurchase: (params: unknown) => Promise<unknown> } | null = null;
   try {
-    const native = requireNativeModule<{ requestPurchase: (params: unknown) => Promise<unknown> }>(
-      'ExpoIap',
-    );
-    await native.requestPurchase({
-      type: 'subs',
-      request: {
-        apple: { sku },
-        ios: { sku },
-      },
-    });
+    native = requireNativeModule('ExpoIap');
   } catch {
-    // Fallback si le module natif n'est pas résolu (ex. build atypique).
-    await requestPurchase({
-      type: 'subs',
-      request: {
-        apple: { sku },
-        ios: { sku },
-        google: payload.request.google,
-      },
-    });
+    // Module absent (Expo Go, tests) — fallback JS expo-iap.
   }
+
+  if (native) {
+    // Ne jamais fallback sur erreur StoreKit (ex. annulation) : rejette la promesse
+    // et le catch vide relançait un 2e requestPurchase → 2e sheet Apple.
+    await native.requestPurchase(nativePurchasePayload);
+    return;
+  }
+
+  await requestPurchase({
+    type: 'subs',
+    request: {
+      apple: { sku },
+      ios: { sku },
+      google: payload.request.google,
+    },
+  });
 }
