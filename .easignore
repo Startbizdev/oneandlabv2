@@ -1,7 +1,68 @@
-# Réduit l’archive EAS (monorepo) — garder apps/mobile + packages/
+# Archive EAS (monorepo Cary) — source : racine git, app dans apps/mobile/
+# Quand ce fichier existe, .gitignore n'est plus pris en compte par EAS.
+
+# --- Monorepo : hors build mobile ---
 backend/
 frontend/
-/uploads/
+apps/web/
+/database/
+/docs/
+/scripts/
+/vendor/
+uploads/
 data/
+
+# --- Git / IDE / outils locaux ---
+.git/
+.cursor/
+.expo/
+.idea/
+.vscode/
+
+# --- Dépendances (réinstallées sur EAS) ---
+node_modules/
+**/node_modules/
+
+# --- Natif généré par EAS Prebuild (ne pas uploader le dossier local) ---
+apps/mobile/ios/
+apps/mobile/android/
+apps/mobile/.kotlin/
+
+# --- Secrets / env ---
+.env
+.env.*
+!.env.example
+*.pem
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# --- Build / cache / logs ---
+dist/
+.output/
+.nuxt/
+.nitro/
+web-build/
+coverage/
 *.log
+logs/
+**/*.tsbuildinfo
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# --- PHP / Composer (inutile pour mobile) ---
+composer
+composer.phar
+composer-setup.php
+
+# --- OS / divers ---
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.sqlite
+*.db
