@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { AlertTriangle } from 'lucide-react-native';
 import { missingPrescriptionCopy } from '../constants/appointment-document-fields';
 import { radius, spacing } from '@/theme';
@@ -13,15 +15,22 @@ interface Props {
   visible: boolean;
 }
 
-export function MissingPrescriptionAlert({ serviceType, visible }: Props) {
+export function MissingPrescriptionAlert({
+  serviceType, visible }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_MissingPrescriptionAlert_tsx_styles');
   const [open, setOpen] = useState(false);
   if (!visible) return null;
 
   const { title, description } = missingPrescriptionCopy(serviceType);
 
   return (
-    <View style={styles.box}>
-      <AlertTriangle size={18} color={colors.warning} strokeWidth={2.25} />
+    <Cluster
+      align="start"
+      gap={spacing[2.5]}
+      style={styles.box}
+      leading={<AlertTriangle size={18} color={c.warning} strokeWidth={2.25} />}
+    >
       <View style={styles.body}>
         <Text style={styles.title}>{title}</Text>
         <Pressable onPress={() => setOpen((v) => !v)} hitSlop={8}>
@@ -29,23 +38,20 @@ export function MissingPrescriptionAlert({ serviceType, visible }: Props) {
         </Pressable>
         {open ? <Text style={styles.desc}>{description}</Text> : null}
       </View>
-    </View>
+    </Cluster>
   );
 }
 
 function buildStyles(c: AppColors) {
   return {
   box: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2.5],
     padding: spacing[3],
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: c.warningMid,
     backgroundColor: c.warningLight,
   },
-  body: { flex: 1, gap: spacing[1] },
+  body: { minWidth: 0, flex: 1, gap: spacing[1] },
   title: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
@@ -65,11 +71,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_MissingPrescriptionAlert_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

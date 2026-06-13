@@ -1,17 +1,16 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
-import { FilePenLine, History, PlusCircle } from 'lucide-react-native';
-import type { Appointment } from '@oneandlab/shared-types';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { FilePenLine, PlusCircle } from 'lucide-react-native';
 import { fetchAllPatients } from '@/features/patients/api/fetch-all-patients';
 import { patientPickerOptionFromRow } from '@/features/patients/utils/patient-contact-display';
 import { fetchMedicalDocuments } from '@/features/appointments/detail/api/appointment-detail.service';
-import { fetchAppointmentsPaginated } from '@/features/appointments/api/appointments.service';
 import { SelectField } from '@/components/ui/SelectField';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonList } from '@/components/ui/skeletons';
@@ -21,9 +20,16 @@ import { cacheMedicalDocument, openMedicalDocument } from '@/lib/downloads/downl
 import { useToast } from '@/providers/ToastProvider';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import { PrescriptionComposer } from '../components/PrescriptionComposer';
-import { PrescriptionHistoryCard } from '../components/PrescriptionHistoryCard';
+import { PrescriptionHistoryCard, PrescriptionHistoryList } from '../components/PrescriptionHistoryCard';
+import { PrescriptionAppointmentSelectField } from '../components/PrescriptionAppointmentSelectField';
+import { PrescriptionComposerAwaitingRdv } from '../components/PrescriptionComposerAwaitingRdv';
+import { PrescriptionLinkModeTabs } from '../components/PrescriptionLinkModeTabs';
 import { fetchNursePrescriptions, fetchProPrescriptions, type PrescriptionLinkMode } from '../api/prescriptions.service';
-import { appointmentOptionLabel } from '../utils/prescription-display';
+import {
+  flattenPrescriptionPickerAppointments,
+  prescriptionPickerTotalCount,
+  usePrescriptionAppointmentPickerInfinite,
+} from '../hooks/use-prescription-appointment-picker-infinite';
 import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -38,8 +44,11 @@ export function PrescriptionsScreen({
   roleBase = 'pro',
   rolePrefix = '/(pro)',
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'PrescriptionsScreen');
   const prescriptionKind = roleBase === 'nurse' ? 'nursing' : 'medical';
   const router = useRouter();
+  const qc = useQueryClient();
   const { show: toast } = useToast();
   const [page, setPage] = useState(1);
   const [patientId, setPatientId] = useState('');
@@ -70,20 +79,18 @@ export function PrescriptionsScreen({
     queryFn: () => fetchAllPatients(),
   });
 
-  const appointmentsQ = useQuery({
-    queryKey: ['prescriptions', 'appointments', patientId] as const,
-    queryFn: async () => {
-      const { appointments } = await fetchAppointmentsPaginated({
-        patient_id: patientId,
-        limit: 80,
-        page: 1,
-      });
-      return appointments.filter((a) =>
-        prescriptionKind === 'nursing' ? a.type === 'nursing' : true,
-      );
-    },
-    enabled: Boolean(patientId),
-  });
+  const appointmentsQ = usePrescriptionAppointmentPickerInfinite(
+    patientId,
+    prescriptionKind,
+    Boolean(patientId) && linkMode === 'appointment',
+  );
+
+  const appointmentOptions = useMemo(
+    () => flattenPrescriptionPickerAppointments(appointmentsQ.data?.pages),
+    [appointmentsQ.data?.pages],
+  );
+
+  const appointmentTotal = prescriptionPickerTotalCount(appointmentsQ.data?.pages);
 
   const docsQ = useQuery({
     queryKey: queryKeys.documents.medical(appointmentId),
@@ -100,20 +107,12 @@ export function PrescriptionsScreen({
     [patientsQ.data],
   );
 
-  const appointmentOptions = useMemo(
-    () =>
-      (appointmentsQ.data ?? []).map((a: Appointment) => ({
-        value: a.id,
-        label: appointmentOptionLabel(a),
-      })),
-    [appointmentsQ.data],
-  );
-
   const pagination = listQ.data?.pagination;
   const totalPages = Math.max(1, pagination?.pages ?? 1);
 
   async function refreshList() {
-    await listQ.refetch();
+    setPage(1);
+    await qc.invalidateQueries({ queryKey: ['prescriptions'] });
     if (appointmentId) await docsQ.refetch();
   }
 
@@ -162,18 +161,15 @@ export function PrescriptionsScreen({
             {prescriptionKind === 'nursing' ? 'Prescriptions d\'actes' : 'Ordonnances'}
           </Text>
           <Text style={styles.heroDesc}>
-            Documents générés ou enregistrés pour vos patients, liés à un rendez-vous.
+            Documents générés pour vos patients, avec ou sans lien vers un rendez-vous.
           </Text>
         </View>
 
-        <View style={[styles.section, elevation.xs]}>
-          <View style={styles.sectionHeader}>
-            <History size={20} color={colors.primary} strokeWidth={2} />
-            <Text style={styles.sectionTitle}>Historique</Text>
-          </View>
+        <View style={[styles.section, styles.historySection]}>
+          <Text style={styles.sectionTitle}>Historique</Text>
 
           {listQ.isLoading ? (
-            <SkeletonList count={2} itemHeight={72} gap={spacing[2]} />
+            <SkeletonList count={3} itemHeight={52} gap={spacing[1]} />
           ) : (listQ.data?.rows ?? []).length === 0 ? (
             <EmptyState
               Icon={FilePenLine}
@@ -181,12 +177,13 @@ export function PrescriptionsScreen({
               description="Les ordonnances enregistrées apparaîtront ici."
             />
           ) : (
-            <View style={styles.list}>
-              {(listQ.data?.rows ?? []).map((row) => (
+            <PrescriptionHistoryList>
+              {(listQ.data?.rows ?? []).map((row, index) => (
                 <PrescriptionHistoryCard
                   key={row.id}
                   row={row}
                   showPatient
+                  topBorder={index > 0}
                   downloading={downloadingId === row.id}
                   onDownload={() => void downloadRow(row.id, row.file_name)}
                   onPreview={() => void previewRow(row.id, row.file_name)}
@@ -199,7 +196,7 @@ export function PrescriptionsScreen({
                   }
                 />
               ))}
-            </View>
+            </PrescriptionHistoryList>
           )}
 
           {totalPages > 1 ? (
@@ -208,7 +205,7 @@ export function PrescriptionsScreen({
                 Page {page} / {totalPages}
                 {pagination?.total != null ? ` · ${pagination.total} ordonnance(s)` : ''}
               </Text>
-              <View style={styles.pagerBtns}>
+              <Row justify="center" gap={spacing[2]} style={styles.pagerBtns}>
                 <Button
                   title="Préc."
                   variant="outline"
@@ -223,18 +220,18 @@ export function PrescriptionsScreen({
                   disabled={page >= totalPages}
                   onPress={() => setPage((p) => p + 1)}
                 />
-              </View>
+              </Row>
             </View>
           ) : null}
         </View>
 
         <View style={[styles.section, elevation.xs]}>
-          <View style={styles.sectionHeader}>
-            <PlusCircle size={20} color={colors.primary} strokeWidth={2} />
+          <Row gap={spacing[2]} style={styles.sectionHeader}>
+            <PlusCircle size={20} color={c.primary} strokeWidth={2} />
             <Text style={styles.sectionTitle}>Nouvelle ordonnance</Text>
-          </View>
+          </Row>
           <Text style={styles.sectionHint}>
-            Choisissez un patient, puis générez avec ou sans lien vers un rendez-vous.
+            Choisissez un patient, puis rédigez l'ordonnance — avec ou sans lien vers un rendez-vous.
           </Text>
 
           <SelectField
@@ -247,54 +244,49 @@ export function PrescriptionsScreen({
           />
 
           {patientId ? (
-            <View style={styles.linkRow}>
-              <Button
-                title="Sans RDV"
-                size="sm"
-                variant={linkMode === 'standalone' ? 'primary' : 'outline'}
-                onPress={() => onLinkModeChange('standalone')}
-              />
-              <Button
-                title="Liée au RDV"
-                size="sm"
-                variant={linkMode === 'appointment' ? 'primary' : 'outline'}
-                onPress={() => onLinkModeChange('appointment')}
-              />
-            </View>
+            <PrescriptionLinkModeTabs value={linkMode} onChange={onLinkModeChange} />
           ) : null}
 
-          {patientId && linkMode === 'appointment' ? (
-            <SelectField
-              label="Rendez-vous"
-              value={appointmentId}
-              options={appointmentOptions}
-              onChange={setAppointmentId}
-              placeholder={
-                appointmentsQ.isLoading
-                  ? 'Chargement…'
-                  : 'Sélectionner un rendez-vous…'
-              }
-              sheetTitle="Rendez-vous"
-            />
-          ) : null}
-
-          {patientId && linkMode === 'appointment' && !appointmentsQ.isLoading && appointmentOptions.length === 0 ? (
-            <Text style={styles.warn}>
-              Aucun rendez-vous — utilisez « Sans RDV » pour générer quand même.
-            </Text>
-          ) : null}
-
-          {patientId && (linkMode === 'standalone' || appointmentId) ? (
+          {patientId && linkMode === 'standalone' ? (
             <View style={styles.composerWrap}>
               <PrescriptionComposer
                 patientId={patientId}
-                appointmentId={linkMode === 'appointment' ? appointmentId : null}
-                documents={docsQ.data ?? []}
+                appointmentId={null}
+                documents={[]}
                 onDocumentsChanged={refreshList}
                 prescriptionKind={prescriptionKind}
                 embedded
               />
             </View>
+          ) : null}
+
+          {patientId && linkMode === 'appointment' ? (
+            <>
+              <PrescriptionAppointmentSelectField
+                appointments={appointmentOptions}
+                selectedId={appointmentId}
+                onSelect={setAppointmentId}
+                loading={appointmentsQ.isPending}
+                totalCount={appointmentTotal}
+                hasNextPage={appointmentsQ.hasNextPage}
+                isFetchingNextPage={appointmentsQ.isFetchingNextPage}
+                onLoadMore={() => void appointmentsQ.fetchNextPage()}
+              />
+              {appointmentId ? (
+                <View style={styles.composerWrap}>
+                  <PrescriptionComposer
+                    patientId={patientId}
+                    appointmentId={appointmentId}
+                    documents={docsQ.data ?? []}
+                    onDocumentsChanged={refreshList}
+                    prescriptionKind={prescriptionKind}
+                    embedded
+                  />
+                </View>
+              ) : (
+                <PrescriptionComposerAwaitingRdv />
+              )}
+            </>
           ) : null}
         </View>
       </KeyboardScrollView>
@@ -314,8 +306,8 @@ export function PrescriptionsScreen({
 
 function buildStyles(c: AppColors) {
   return {
-  container: { flex: 1, backgroundColor: c.background },
-  scroll: { flex: 1 },
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+  scroll: { minWidth: 0, flex: 1 },
   content: {
     padding: spacing[4],
     gap: spacing[4],
@@ -339,12 +331,14 @@ function buildStyles(c: AppColors) {
     borderWidth: 1,
     borderColor: c.borderLight,
     padding: spacing[4],
-    gap: spacing[3],
+    gap: spacing[4],
+  },
+  historySection: {
+    padding: spacing[3],
+    gap: spacing[2],
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
+    minWidth: 0,
   },
   sectionTitle: {
     fontFamily: fontFamily.semiBold,
@@ -358,7 +352,6 @@ function buildStyles(c: AppColors) {
     lineHeight: fontSize.sm * 1.45,
   },
   skeletons: { gap: spacing[2] },
-  list: { gap: spacing[2] },
   pager: {
     marginTop: spacing[2],
     paddingTop: spacing[3],
@@ -370,22 +363,10 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   pagerBtns: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing[2],
-  },
-  warn: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSize.sm,
-    color: c.warning,
-  },
-  linkRow: {
-    flexDirection: 'row',
-    gap: spacing[2],
-    flexWrap: 'wrap',
+    minWidth: 0,
   },
   composerWrap: {
     marginTop: spacing[2],
@@ -395,12 +376,3 @@ function buildStyles(c: AppColors) {
   },
 };
 }
-
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_prescriptions_screens_PrescriptionsScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

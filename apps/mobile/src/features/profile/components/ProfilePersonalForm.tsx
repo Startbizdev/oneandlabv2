@@ -1,5 +1,8 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
@@ -11,7 +14,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { fetchUser, updateUser } from '../api/profile.service';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -20,6 +23,8 @@ interface Props {
 }
 
 export function ProfilePersonalForm({ showSaveButton = true }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfilePersonalForm_tsx_ProfilePersonalForm_styles');
+
   const user = useAuthStore((s) => s.user);
   const { show: toast } = useToast();
   const [firstName, setFirstName] = useState('');
@@ -52,22 +57,25 @@ export function ProfilePersonalForm({ showSaveButton = true }: Props) {
   return (
     <>
       <Animated.View entering={FadeInDown.duration(280).springify()} style={styles.avatarSection}>
-        <ProfileAvatar
-          profileImageUrl={
-            (q.data as { profile_image_url?: string | null } | undefined)?.profile_image_url ??
-            user?.profile_image_url
-          }
-          seed={user?.id ?? `${firstName} ${lastName}`}
-          gender={(q.data as { gender?: string | null } | undefined)?.gender}
-          size={64}
-          style={styles.avatar}
-        />
-        <View style={styles.avatarInfo}>
-          <Text style={styles.avatarName}>
-            {firstName || lastName ? `${firstName} ${lastName}`.trim() : 'Votre profil'}
-          </Text>
-          <Text style={styles.avatarEmail}>{user?.email ?? ''}</Text>
-        </View>
+        <Cluster gap={spacing[4]} leading={
+          <ProfileAvatar
+            profileImageUrl={
+              (q.data as { profile_image_url?: string | null } | undefined)?.profile_image_url ??
+              user?.profile_image_url
+            }
+            seed={user?.id ?? `${firstName} ${lastName}`}
+            gender={(q.data as { gender?: string | null } | undefined)?.gender}
+            size={64}
+            style={styles.avatar}
+          />
+        }>
+          <View style={styles.avatarInfo}>
+            <Text style={styles.avatarName}>
+              {firstName || lastName ? `${firstName} ${lastName}`.trim() : 'Votre profil'}
+            </Text>
+            <Text style={styles.avatarEmail}>{user?.email ?? ''}</Text>
+          </View>
+        </Cluster>
       </Animated.View>
 
       {q.isLoading ? (
@@ -119,46 +127,45 @@ export function ProfilePersonalForm({ showSaveButton = true }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   avatarSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[4],
     paddingTop: spacing[2],
   },
   avatar: {
     borderWidth: 2,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
-  avatarInfo: { flex: 1, gap: 2 },
+  avatarInfo: { gap: 2 },
   avatarName: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   avatarEmail: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   formCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[3],
   },
   sectionTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     marginBottom: spacing[1],
   },
   hint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     lineHeight: fontSize.xs * 1.5,
   },
-});
+};
+}

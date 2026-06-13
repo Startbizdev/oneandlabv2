@@ -1,5 +1,5 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, Plus } from 'lucide-react-native';
@@ -70,6 +71,7 @@ function CareEmojiOrb({
   backgroundColor: string;
   size: number;
 }) {
+  const styles = useThemedStyles(buildStyles, 'CareSelectionStep.CareEmojiOrb');
   const glyphSize = Math.round(size * 0.46);
   return (
     <View
@@ -107,6 +109,7 @@ function CareListTile({
   onPress: () => void;
 }) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'CareSelectionStep.CareListTile');
   const emoji =
     careCategoryEmojiForCategory({ name: cat.name, icon: cat.icon, type: cat.type }) || '➕';
 
@@ -120,12 +123,7 @@ function CareListTile({
       }
       style={({ pressed }) => [styles.tileHit, pressed && styles.tilePressed]}
     >
-      <View
-        style={[
-          styles.tile,
-          selected ? styles.tileSelected : styles.tileDefault,
-        ]}
-      >
+      <Row gap={spacing[3]} align="center" style={[styles.tile, selected ? styles.tileSelected : styles.tileDefault]}>
         {selected ? (
           <LinearGradient
             pointerEvents="none"
@@ -161,7 +159,7 @@ function CareListTile({
             <Plus size={18} color={c.primary} strokeWidth={2.75} />
           )}
         </View>
-      </View>
+      </Row>
     </Pressable>
   );
 }
@@ -180,6 +178,7 @@ export function CareSelectionStep({
   loading,
   progressTotal = 3,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_CareSelectionStep_tsx_styles');
   const { show: toast } = useToast();
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const insets = useSafeAreaInsets();
@@ -332,7 +331,7 @@ export function CareSelectionStep({
           />
         ) : null}
 
-        <View style={styles.metaRow}>
+        <Row gap={spacing[3]} align="start" justify="between">
           <View style={styles.metaCopy}>
             <Text style={styles.metaTitle}>{careListHeading(filterTab, filterTabs)}</Text>
             <Text style={styles.metaSubtitle}>
@@ -341,13 +340,13 @@ export function CareSelectionStep({
                 : 'Choisissez un ou plusieurs soins ci-dessous'}
             </Text>
           </View>
-          <View style={styles.metaCountPill}>
+          <Row gap={spacing[1]} align="baseline" style={styles.metaCountPill}>
             <Text style={styles.metaCount}>{displayList.length}</Text>
             <Text style={styles.metaCountLabel}>
               {displayList.length > 1 ? 'soins' : 'soin'}
             </Text>
-          </View>
-        </View>
+          </Row>
+        </Row>
       </View>
     ),
     [
@@ -466,21 +465,24 @@ export function CareSelectionStep({
 function buildStyles(c: AppColors) {
   return {
   root: {
+    minWidth: 0,
     flex: 1,
     minHeight: 0,
     backgroundColor: c.bookingCanvas,
   },
   listScroll: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: c.bookingCanvas,
   },
   listContent: {
+    minWidth: 0,
     paddingHorizontal: H_PAD,
     paddingTop: spacing[4],
     flexGrow: 1,
   },
   floatingCta: {
-    position: 'absolute',
+    position: 'absolute' as const,
     left: H_PAD,
     right: H_PAD,
     zIndex: 20,
@@ -488,12 +490,6 @@ function buildStyles(c: AppColors) {
   listHeader: {
     gap: spacing[4],
     marginBottom: spacing[4],
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: spacing[3],
   },
   metaCopy: {
     flex: 1,
@@ -514,9 +510,6 @@ function buildStyles(c: AppColors) {
     lineHeight: fontSize.sm * 1.4,
   },
   metaCountPill: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing[1],
     paddingHorizontal: spacing[2.5],
     paddingVertical: spacing[1.5],
     borderRadius: radius.full,
@@ -537,25 +530,23 @@ function buildStyles(c: AppColors) {
   },
   list: {
     gap: LIST_GAP,
-    width: '100%',
+    width: '100%' as const,
   },
   tileHit: {
-    width: '100%',
+    width: '100%' as const,
   },
   tilePressed: {
     opacity: 0.94,
     transform: [{ scale: 0.985 }],
   },
   tile: {
-    width: '100%',
+    minWidth: 0,
+    width: '100%' as const,
     minHeight: 88,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3.5],
     borderRadius: radius.xl,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   tileDefault: {
     borderWidth: 1.5,
@@ -571,7 +562,7 @@ function buildStyles(c: AppColors) {
     flex: 1,
     minWidth: 0,
     gap: spacing[0.5],
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
   },
   tileLabel: {
     fontFamily: fontFamily.bold,
@@ -593,8 +584,8 @@ function buildStyles(c: AppColors) {
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   tileActionIdle: {
@@ -606,12 +597,12 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.primary,
   },
   emojiOrb: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   emojiOrbGlyph: {
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   autreBlock: {
     marginTop: spacing[4],
@@ -630,17 +621,9 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.base,
     color: c.textTertiary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     paddingVertical: spacing[10],
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_CareSelectionStep_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

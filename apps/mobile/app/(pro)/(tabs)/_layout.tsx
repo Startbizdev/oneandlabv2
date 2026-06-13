@@ -5,14 +5,12 @@ import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButto
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { useTabScreenOptions } from '@/navigation/screen-options';
 import { SHOW_PRESCRIPTIONS_TAB_NAV } from '@/features/prescriptions/constants';
-import { colors } from '@/theme';
-
-function isFocused(color: string) {
-  return color === colors.primary;
-}
+import { useAppColors } from '@/theme/use-app-colors';
 
 export default function ProTabsLayout() {
+  const c = useAppColors();
   const screenOptions = useTabScreenOptions();
+  const isFocused = (color: string) => color === c.primary;
 
   return (
     <Tabs
@@ -20,8 +18,8 @@ export default function ProTabsLayout() {
       tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
         ...screenOptions,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarActiveTintColor: c.primary,
+        tabBarInactiveTintColor: c.textTertiary,
         headerRight: tabHeaderNotificationRight(),
       }}
     >

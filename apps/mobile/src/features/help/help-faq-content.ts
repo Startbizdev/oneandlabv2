@@ -447,7 +447,7 @@ export function findHelpFaqTopic(
 ): HelpFaqItem | null {
   const faq = getHelpFaqForRole(role);
   for (const section of faq.sections) {
-    const item = section.items.find((entry) => entry.slug === slug);
+    const item = section.items.find((entry: HelpFaqItem) => entry.slug === slug);
     if (item) return item;
   }
   return null;

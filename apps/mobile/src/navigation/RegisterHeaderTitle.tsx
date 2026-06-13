@@ -1,7 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { StyleSheet, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -12,12 +14,20 @@ interface Props {
   Icon: LucideIcon;
 }
 
-export function RegisterHeaderTitle({ title, subtitle, Icon }: Props) {
+export function RegisterHeaderTitle({
+  title, subtitle, Icon }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'navigation_RegisterHeaderTitle_tsx_styles');
   return (
-    <View style={styles.row}>
-      <View style={styles.iconWrap}>
-        <Icon size={20} color={colors.primary} strokeWidth={2.5} />
-      </View>
+    <Cluster
+      gap={spacing[3]}
+      leading={
+        <View style={styles.iconWrap}>
+          <Icon size={20} color={c.primary} strokeWidth={2.5} />
+        </View>
+      }
+      style={styles.row}
+    >
       <View style={styles.textCol}>
         <Text style={styles.title} numberOfLines={1}>
           {title}
@@ -28,7 +38,7 @@ export function RegisterHeaderTitle({ title, subtitle, Icon }: Props) {
           </Text>
         ) : null}
       </View>
-    </View>
+    </Cluster>
   );
 }
 
@@ -43,24 +53,20 @@ export function registerHeaderTitle(
 function buildStyles(c: AppColors) {
   return {
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     flex: 1,
-    maxWidth: '100%',
+    minWidth: 0,
+    maxWidth: '100%' as const,
   },
   iconWrap: {
     width: 40,
     height: 40,
     borderRadius: radius.lg,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   textCol: {
-    flex: 1,
-    minWidth: 0,
     gap: 2,
   },
   title: {
@@ -78,11 +84,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('navigation_RegisterHeaderTitle_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Download, Eye, FileOutput, Upload } from 'lucide-react-native';
 import type { MedicalDocumentRow } from '@/features/appointments/detail/api/appointment-detail.service';
@@ -11,7 +13,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import { cacheMedicalDocument, openMedicalDocument } from '@/lib/downloads/download-medical-document';
-import { sharePdfFromBase64 } from '@/lib/downloads/share-pdf-base64';
+import { cachePdfFromBase64 } from '@/lib/downloads/cache-pdf-base64';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import {
@@ -41,6 +43,8 @@ export function PrescriptionComposer({
   embedded = false,
   prescriptionKind = 'medical',
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_prescriptions_components_PrescriptionComposer_tsx_styles');
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [text, setText] = useState(initialText);
@@ -51,6 +55,7 @@ export function PrescriptionComposer({
     prescription_kind?: string;
   } | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
 
   const linkedToAppointment = Boolean(appointmentId);
   const isNursing = prescriptionKind === 'nursing';
@@ -62,36 +67,59 @@ export function PrescriptionComposer({
   const canGenerate = Boolean(patientId?.trim()) && text.trim().length > 0;
 
   const generateMut = useMutation({
-    mutationFn: () =>
-      generatePrescriptionPdf({
+    mutationFn: async () => {
+      const res = await generatePrescriptionPdf({
         patientId,
         prescriptionText: text,
         prescriptionKind,
         appointmentId: appointmentId ?? undefined,
-      }),
-    onSuccess: async (res) => {
+      });
       if (!res.success || !res.data?.pdf_base64) {
-        toast(res.error ?? 'Impossible de générer le PDF', { type: 'error' });
-        return;
+        throw new Error(res.error ?? 'Impossible de générer le PDF');
       }
+
       const name = res.data.file_name ?? 'ordonnance.pdf';
-      setPdfFileName(name);
-      setPdfMeta({
+      const meta = {
         prescription_number: res.data.prescription_number,
         prescription_kind: res.data.prescription_kind,
-      });
-      const shared = await sharePdfFromBase64(res.data.pdf_base64, name);
-      if (!shared.ok) {
-        toast(shared.error ?? 'Partage impossible', { type: 'error' });
-        return;
+      };
+      const cached = await cachePdfFromBase64(res.data.pdf_base64, name);
+      if (!cached.ok || !cached.localUri) {
+        throw new Error(cached.error ?? 'Impossible d’afficher le PDF');
       }
-      setPdfUri(shared.localUri);
-      toast(
-        linkedToAppointment
-          ? 'PDF généré — aperçu ou enregistrement sur le RDV'
-          : 'PDF généré — aperçu ou enregistrement',
-        { type: 'success' },
-      );
+
+      const saveRes = await savePrescriptionPdf(cached.localUri, {
+        patientId,
+        appointmentId: appointmentId ?? undefined,
+        fileName: name,
+        prescriptionKind,
+        prescriptionText: text.trim(),
+        prescriptionNumber: meta.prescription_number,
+      });
+
+      return { cached, name, meta, saveOk: saveRes.success, saveError: saveRes.error };
+    },
+    onSuccess: async ({ cached, name, meta, saveOk, saveError }) => {
+      setPdfFileName(name);
+      setPdfMeta(meta);
+      setPdfUri(cached.localUri);
+      setSaveFailed(!saveOk);
+      setPreviewOpen(true);
+
+      if (saveOk) {
+        toast(
+          linkedToAppointment
+            ? 'Ordonnance enregistrée sur le rendez-vous'
+            : 'Ordonnance enregistrée dans l’historique',
+          { type: 'success' },
+        );
+        await qc.invalidateQueries({ queryKey: ['prescriptions'] });
+        await onDocumentsChanged?.();
+      } else {
+        toast(saveError ?? 'PDF généré — enregistrement impossible, réessayez', {
+          type: 'error',
+        });
+      }
     },
     onError: (e) => handleApiError(e, toast, 'generate-prescription'),
   });
@@ -115,13 +143,14 @@ export function PrescriptionComposer({
       }
       setPdfUri(undefined);
       setPdfMeta(null);
+      setSaveFailed(false);
       toast(
         linkedToAppointment
           ? 'Ordonnance enregistrée sur le rendez-vous'
-          : 'Ordonnance enregistrée',
+          : 'Ordonnance enregistrée dans l’historique',
         { type: 'success' },
       );
-      void qc.invalidateQueries({ queryKey: ['prescriptions'] });
+      await qc.invalidateQueries({ queryKey: ['prescriptions'] });
       await onDocumentsChanged?.();
     },
     onError: (e) => handleApiError(e, toast, 'save-prescription'),
@@ -159,17 +188,17 @@ export function PrescriptionComposer({
     <View style={styles.inner}>
       {hasExisting ? (
         <View style={styles.warn}>
-          <AlertTriangle size={16} color={colors.warning} strokeWidth={2} />
+          <AlertTriangle size={16} color={c.warning} strokeWidth={2} />
           <Text style={styles.warnText}>
             Une ordonnance est déjà enregistrée sur ce rendez-vous. Consultez-la ou régénérez-en une
             nouvelle ci-dessous.
           </Text>
-          <View style={styles.warnActions}>
+          <Row wrap gap={spacing[2]} style={styles.warnActions}>
             <Button
               title="Voir"
               variant="outline"
               size="sm"
-              leftIcon={<Eye size={14} color={colors.primary} strokeWidth={2} />}
+              leftIcon={<Eye size={14} color={c.primary} strokeWidth={2} />}
               loading={previewExistingMut.isPending}
               onPress={() => previewExistingMut.mutate()}
             />
@@ -177,11 +206,11 @@ export function PrescriptionComposer({
               title="Télécharger"
               variant="outline"
               size="sm"
-              leftIcon={<Download size={14} color={colors.primary} strokeWidth={2} />}
+              leftIcon={<Download size={14} color={c.primary} strokeWidth={2} />}
               loading={downloadMut.isPending}
               onPress={() => downloadMut.mutate()}
             />
-          </View>
+          </Row>
         </View>
       ) : null}
 
@@ -205,27 +234,34 @@ export function PrescriptionComposer({
       <View style={styles.actions}>
         <Button
           title="Générer le PDF"
-          leftIcon={<FileOutput size={16} color={colors.textInverse} strokeWidth={2} />}
+          leftIcon={<FileOutput size={16} color={c.textInverse} strokeWidth={2} />}
           loading={generateMut.isPending}
           disabled={!canGenerate}
           onPress={() => generateMut.mutate()}
         />
-        {pdfUri && !hasExisting ? (
+        {pdfUri && !hasExisting && saveFailed ? (
           <>
             <Button
               title="Aperçu"
               variant="outline"
-              leftIcon={<Eye size={16} color={colors.primary} strokeWidth={2} />}
+              leftIcon={<Eye size={16} color={c.primary} strokeWidth={2} />}
               onPress={() => setPreviewOpen(true)}
             />
             <Button
               title={linkedToAppointment ? 'Enregistrer sur le RDV' : 'Enregistrer'}
               variant="outline"
-              leftIcon={<Upload size={16} color={colors.primary} strokeWidth={2} />}
+              leftIcon={<Upload size={16} color={c.primary} strokeWidth={2} />}
               loading={saveMut.isPending}
               onPress={() => saveMut.mutate()}
             />
           </>
+        ) : pdfUri && !hasExisting ? (
+          <Button
+            title="Aperçu"
+            variant="outline"
+            leftIcon={<Eye size={16} color={c.primary} strokeWidth={2} />}
+            onPress={() => setPreviewOpen(true)}
+          />
         ) : null}
       </View>
 
@@ -271,17 +307,11 @@ function buildStyles(c: AppColors) {
       color: c.warning,
       lineHeight: fontSize.sm * 1.45,
     },
-    warnActions: { flexDirection: 'row', gap: spacing[2], flexWrap: 'wrap' },
-    textarea: { minHeight: 140, textAlignVertical: 'top' },
+    warnActions: {
+      minWidth: 0,
+    },
+    textarea: { minHeight: 140, textAlignVertical: 'top' as const },
     actions: { gap: spacing[2] },
   };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_prescriptions_components_PrescriptionComposer_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

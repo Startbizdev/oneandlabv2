@@ -1,7 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
-import { StyleSheet, Text, View } from 'react-native';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
+import { Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { UserCheck } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
@@ -22,6 +24,8 @@ export function PatientDuplicatePrompt({
   onDismiss,
   onUseExisting,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_PatientDuplicatePrompt_tsx_styles');
   if (!patient) return null;
 
   const name = `${patient.first_name ?? ''} ${patient.last_name ?? ''}`.trim();
@@ -29,10 +33,10 @@ export function PatientDuplicatePrompt({
 
   return (
     <View style={styles.card} accessibilityRole="alert">
-      <View style={styles.header}>
-        <UserCheck size={22} color={colors.primary} strokeWidth={2} />
+      <Row gap={spacing[2]} align="center">
+        <UserCheck size={22} color={c.primary} strokeWidth={2} />
         <Text style={styles.title}>Patient déjà enregistré</Text>
-      </View>
+      </Row>
       <Text style={styles.text}>
         {isBooking
           ? `Un dossier existe déjà${name ? ` pour ${name}` : ''}. Vous pouvez le sélectionner pour ce rendez-vous ou continuer à saisir un nouveau patient.`
@@ -67,12 +71,8 @@ function buildStyles(c: AppColors) {
     borderWidth: 1,
     borderColor: c.primaryMid,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
   title: {
+    minWidth: 0,
     flex: 1,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
@@ -91,11 +91,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_PatientDuplicatePrompt_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

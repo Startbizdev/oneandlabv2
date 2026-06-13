@@ -1,7 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { Minus, Plus } from 'lucide-react-native';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -16,24 +18,27 @@ interface Props {
   disabled?: boolean;
 }
 
-export function CoverageRadiusControl({ value, min, max, onChange, disabled }: Props) {
+export function CoverageRadiusControl({
+  value, min, max, onChange, disabled }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_CoverageRadiusControl_tsx_styles');
   const dec = () => onChange(Math.max(min, value - STEP));
   const inc = () => onChange(Math.min(max, value + STEP));
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.header}>
+      <Row justify="between" align="center" style={styles.header}>
         <Text style={styles.label}>Rayon d'intervention</Text>
         <Text style={styles.value}>{value} km</Text>
-      </View>
-      <View style={styles.row}>
+      </Row>
+      <Row gap={spacing[3]} align="center" style={styles.row}>
         <Pressable
           onPress={dec}
           disabled={disabled || value <= min}
           style={[styles.btn, (disabled || value <= min) && styles.btnDisabled]}
           accessibilityLabel="Diminuer le rayon"
         >
-          <Minus size={20} color={colors.primary} strokeWidth={2.5} />
+          <Minus size={20} color={c.primary} strokeWidth={2.5} />
         </Pressable>
         <View style={styles.track}>
           <View
@@ -49,13 +54,13 @@ export function CoverageRadiusControl({ value, min, max, onChange, disabled }: P
           style={[styles.btn, (disabled || value >= max) && styles.btnDisabled]}
           accessibilityLabel="Augmenter le rayon"
         >
-          <Plus size={20} color={colors.primary} strokeWidth={2.5} />
+          <Plus size={20} color={c.primary} strokeWidth={2.5} />
         </Pressable>
-      </View>
-      <View style={styles.limits}>
+      </Row>
+      <Row justify="between" style={styles.limits}>
         <Text style={styles.limitText}>{min} km</Text>
         <Text style={styles.limitText}>{max} km</Text>
-      </View>
+      </Row>
       <Text style={styles.hint}>Ajustez par pas de {STEP} km pour définir votre zone.</Text>
     </View>
   );
@@ -64,11 +69,7 @@ export function CoverageRadiusControl({ value, min, max, onChange, disabled }: P
 function buildStyles(c: AppColors) {
   return {
   wrap: { gap: spacing[2] },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+  header: {},
   label: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
@@ -78,13 +79,9 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize['2xl'],
     color: c.primary,
-    fontVariant: ['tabular-nums'],
+    fontVariant: ['tabular-nums' as const],
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-  },
+  row: {},
   btn: {
     width: 44,
     height: 44,
@@ -92,26 +89,24 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.primaryLight,
     borderWidth: 1,
     borderColor: c.primaryMid,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   btnDisabled: { opacity: 0.4 },
   track: {
+    minWidth: 0,
     flex: 1,
     height: 8,
     backgroundColor: c.surfaceAlt,
     borderRadius: radius.full,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   fill: {
-    height: '100%',
+    height: '100%' as const,
     backgroundColor: c.primary,
     borderRadius: radius.full,
   },
-  limits: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
+  limits: {},
   limitText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
@@ -126,11 +121,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_components_CoverageRadiusControl_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

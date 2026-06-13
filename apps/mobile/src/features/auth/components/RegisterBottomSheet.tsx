@@ -1,8 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { HeartPulse, Mail, Stethoscope, User, type LucideIcon } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
@@ -49,6 +49,7 @@ export function RegisterBottomSheet({
   onLoginPress,
 }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_auth_components_RegisterBottomSheet_tsx_styles');
   const hasEmail = Boolean(pendingEmail?.trim());
 
   const roleItems: MoreMenuItemProps[] = REGISTER_ROLE_META.map((item) => {
@@ -71,15 +72,19 @@ export function RegisterBottomSheet({
     >
       <View style={styles.body}>
         {hasEmail ? (
-          <View style={styles.emailBanner}>
-            <Mail size={16} color={colors.primary} strokeWidth={2} />
+          <Cluster
+            gap={spacing[3]}
+            align="start"
+            leading={<Mail size={16} color={c.primary} strokeWidth={2} />}
+            style={styles.emailBanner}
+          >
             <View style={styles.emailTextCol}>
               <Text style={styles.emailLabel}>Aucun compte trouvé pour</Text>
               <Text style={styles.emailValue} numberOfLines={2}>
                 {pendingEmail}
               </Text>
             </View>
-          </View>
+          </Cluster>
         ) : null}
 
         <MoreMenuSection title="Profil" items={roleItems} />
@@ -100,13 +105,10 @@ export function RegisterBottomSheet({
 function buildStyles(c: AppColors) {
   return {
   body: {
-    width: '100%',
+    width: '100%' as const,
     gap: spacing[4],
   },
   emailBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[3],
     padding: spacing[4],
     borderRadius: radius.lg,
     backgroundColor: c.primaryLight,
@@ -114,8 +116,6 @@ function buildStyles(c: AppColors) {
     borderColor: c.primaryMid,
   },
   emailTextCol: {
-    flex: 1,
-    minWidth: 0,
     gap: 2,
   },
   emailLabel: {
@@ -130,7 +130,7 @@ function buildStyles(c: AppColors) {
     lineHeight: fontSize.sm * 1.4,
   },
   loginLink: {
-    alignItems: 'center',
+    alignItems: 'center' as const,
     paddingTop: spacing[1],
     paddingBottom: spacing[1],
   },
@@ -138,7 +138,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   loginAccent: {
     fontFamily: fontFamily.bold,
@@ -147,11 +147,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_auth_components_RegisterBottomSheet_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -26,11 +26,12 @@ import { registerNotificationHandlers } from '@/features/notifications/handlers/
 import { useDeepLinks } from '@/features/navigation/hooks/use-deep-links';
 import { NetworkProvider } from '@/providers/NetworkProvider';
 import { usePushTokenRegistration } from '@/features/notifications/hooks/use-push-token-registration';
-import { colors } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootLayoutInner() {
+  const c = useAppColors();
   const hydrate = useAuthStore((s) => s.hydrate);
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
   const textScale = useAppPreferencesStore((s) => s.textScale);
@@ -46,10 +47,10 @@ function RootLayoutInner() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" backgroundColor={colors.background} />
+      <StatusBar style="dark" backgroundColor={c.background} />
       <Stack
         key={`${colorblindType}:${textScale}`}
-        screenOptions={{ headerShown: false, contentStyle: { flex: 1, backgroundColor: colors.background } }}
+        screenOptions={{ headerShown: false, contentStyle: { flex: 1, backgroundColor: c.background } }}
       >
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />

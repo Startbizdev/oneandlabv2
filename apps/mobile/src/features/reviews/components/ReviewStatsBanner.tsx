@@ -1,4 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Star } from 'lucide-react-native';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
@@ -15,6 +18,8 @@ interface Props {
 
 export function ReviewStatsBanner({ stats, subtitle }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_reviews_components_ReviewStatsBanner_tsx_ReviewStatsBanner_styles');
+
   const avg = stats.average_rating;
   const countLabel =
     stats.total_reviews > 1
@@ -28,29 +33,29 @@ export function ReviewStatsBanner({ stats, subtitle }: Props) {
       end={{ x: 1, y: 1 }}
       style={[styles.wrap, { borderColor: c.warningMid }]}
     >
-      <View style={[styles.iconBadge, { backgroundColor: c.surface }]}>
-        <Star size={22} color={c.star} fill={c.starFill} strokeWidth={1.5} />
-      </View>
-      <View style={styles.main}>
-        <Text style={[styles.score, { color: c.textPrimary }]}>
-          {avg.toFixed(1).replace('.', ',')}
-        </Text>
-        <View style={styles.meta}>
-          <ReviewStars rating={avg} size={18} showValue={false} />
-          <Text style={[styles.count, { color: c.textSecondary }]}>
-            {subtitle ?? countLabel}
-          </Text>
+      <Row align="center" gap={spacing[4]}>
+        <View style={[styles.iconBadge, { backgroundColor: c.surface }]}>
+          <Star size={22} color={c.star} fill={c.starFill} strokeWidth={1.5} />
         </View>
-      </View>
+        <Row align="center" gap={spacing[3]} flex={1}>
+          <Text style={[styles.score, { color: c.textPrimary }]}>
+            {avg.toFixed(1).replace('.', ',')}
+          </Text>
+          <View style={styles.meta}>
+            <ReviewStars rating={avg} size={18} showValue={false} />
+            <Text style={[styles.count, { color: c.textSecondary }]}>
+              {subtitle ?? countLabel}
+            </Text>
+          </View>
+        </Row>
+      </Row>
     </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[4],
     padding: spacing[4],
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -59,14 +64,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  main: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   score: {
     fontFamily: fontFamily.extraBold,
@@ -74,9 +73,10 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     lineHeight: 44,
   },
-  meta: { flex: 1, gap: spacing[1] },
+  meta: { flex: 1, minWidth: 0, gap: spacing[1] },
   count: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
   },
-});
+};
+}

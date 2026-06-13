@@ -1,6 +1,6 @@
 import { Linking } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
-import { colors } from '@/theme';
+import { getAppColors } from '@/theme/colors';
 import {
   patientContactEmail,
   patientPhone,
@@ -53,6 +53,7 @@ export function buildPatientContactButtons(
 ): PatientContactButton[] {
   if (viewer?.role === 'patient') return [];
 
+  const c = getAppColors();
   const email = patientContactEmail(apt, viewer ?? undefined);
   const tel = normalizePhone(patientPhone(apt));
   const buttons: PatientContactButton[] = [];
@@ -62,14 +63,14 @@ export function buildPatientContactButtons(
       key: 'phone',
       label: 'Appeler',
       icon: 'phone',
-      color: colors.success,
+      color: c.success,
       onPress: () => void Linking.openURL(`tel:${tel}`),
     });
     buttons.push({
       key: 'sms',
       label: 'Message',
       icon: 'message',
-      color: colors.primary,
+      color: c.primary,
       onPress: () => void Linking.openURL(`sms:${tel}`),
     });
   }
@@ -79,7 +80,7 @@ export function buildPatientContactButtons(
       key: 'email',
       label: 'E-mail',
       icon: 'email',
-      color: colors.gradientEnd,
+      color: c.gradientEnd,
       onPress: () => void Linking.openURL(email.href!),
     });
   }

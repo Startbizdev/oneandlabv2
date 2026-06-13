@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { FadeInDown, runOnJS } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -256,28 +257,30 @@ export function CalendarScreen({
 
         <GestureDetector gesture={monthSwipeGesture}>
           <Animated.View style={styles.calendarSwipeArea}>
-            <Animated.View
-              entering={FadeInDown.delay(40).duration(280).springify()}
-              style={[styles.monthNav, elevation.xs]}
-            >
-              <Pressable onPress={goPrevMonth} style={styles.navBtn} hitSlop={8}>
-                <ChevronLeft size={18} color={c.primary} strokeWidth={2.5} />
-              </Pressable>
-              <Text style={styles.monthLabel}>{cursor.format('MMMM YYYY')}</Text>
-              <Pressable onPress={goNextMonth} style={styles.navBtn} hitSlop={8}>
-                <ChevronRight size={18} color={c.primary} strokeWidth={2.5} />
-              </Pressable>
+            <Animated.View entering={FadeInDown.delay(40).duration(280).springify()}>
+              <Row justify="between" align="center" style={[styles.monthNav, elevation.xs]}>
+                <Pressable onPress={goPrevMonth} style={styles.navBtn} hitSlop={8}>
+                  <ChevronLeft size={18} color={c.primary} strokeWidth={2.5} />
+                </Pressable>
+                <Text style={styles.monthLabel}>{cursor.format('MMMM YYYY')}</Text>
+                <Pressable onPress={goNextMonth} style={styles.navBtn} hitSlop={8}>
+                  <ChevronRight size={18} color={c.primary} strokeWidth={2.5} />
+                </Pressable>
+              </Row>
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(60).duration(280).springify()} style={styles.weekRow}>
+            <Animated.View entering={FadeInDown.delay(60).duration(280).springify()}>
+              <Row gap={spacing[1]}>
               {WEEKDAYS.map((d, i) => (
                 <View key={i} style={[styles.weekCell, { width: cellSize }]}>
                   <Text style={styles.weekLabel}>{d}</Text>
                 </View>
               ))}
+              </Row>
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(100).duration(280).springify()} style={styles.grid}>
+            <Animated.View entering={FadeInDown.delay(100).duration(280).springify()}>
+              <Row wrap gap={spacing[1]}>
               {cells.map((day, idx) => {
                 if (!day) {
                   return <View key={`empty-${idx}`} style={{ width: cellSize, height: cellSize + 8 }} />;
@@ -308,28 +311,33 @@ export function CalendarScreen({
                       {day.format('D')}
                     </Text>
                     {count > 0 ? (
-                      <View style={styles.dotRow}>
+                      <Row gap={2}>
                         {Array.from({ length: Math.min(count, 3) }).map((_, di) => (
                           <View key={di} style={[styles.dot, isSelected && styles.dotWhite]} />
                         ))}
-                      </View>
+                      </Row>
                     ) : (
                       <View style={styles.dotPlaceholder} />
                     )}
                   </Pressable>
                 );
               })}
+              </Row>
             </Animated.View>
           </Animated.View>
         </GestureDetector>
 
         <Animated.View entering={FadeInDown.delay(160).duration(280).springify()}>
           <Pressable onPress={() => openDaySheet(selectedDay)} style={styles.daySummary}>
-            <Calendar size={15} color={c.primary} strokeWidth={2} />
-            <Text style={styles.daySummaryText} numberOfLines={1}>
-              {dayjs(selectedDay).format('dddd D MMMM')} · {dayItems.length} RDV
-            </Text>
-            <ChevronRight size={15} color={c.primary} strokeWidth={2.5} />
+            <Cluster
+              gap={spacing[2]}
+              leading={<Calendar size={15} color={c.primary} strokeWidth={2} />}
+              actions={<ChevronRight size={15} color={c.primary} strokeWidth={2.5} />}
+            >
+              <Text style={styles.daySummaryText} numberOfLines={1}>
+                {dayjs(selectedDay).format('dddd D MMMM')} · {dayItems.length} RDV
+              </Text>
+            </Cluster>
           </Pressable>
         </Animated.View>
       </ScrollView>
@@ -369,8 +377,8 @@ export function CalendarScreen({
 
 function buildStyles(c: AppColors) {
   return {
-  container: { flex: 1, backgroundColor: c.background },
-  scroll: { flex: 1 },
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+  scroll: { minWidth: 0, flex: 1 },
   content: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
@@ -381,9 +389,6 @@ function buildStyles(c: AppColors) {
     gap: spacing[3],
   },
   monthNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -396,37 +401,28 @@ function buildStyles(c: AppColors) {
     height: 34,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   monthLabel: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.md,
     color: c.textPrimary,
     letterSpacing: -0.3,
-    textTransform: 'capitalize',
+    textTransform: 'capitalize' as const,
   },
-  weekRow: {
-    flexDirection: 'row',
-    gap: spacing[1],
-  },
-  weekCell: { alignItems: 'center', paddingBottom: spacing[1] },
+  weekCell: { alignItems: 'center' as const, paddingBottom: spacing[1] },
   weekLabel: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[1],
+    textTransform: 'uppercase' as const,
   },
   dayCell: {
     borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     gap: 2,
     backgroundColor: c.surface,
     borderWidth: 1,
@@ -451,7 +447,6 @@ function buildStyles(c: AppColors) {
   },
   dayNumSelected: { color: c.textInverse },
   dayNumToday: { color: c.primary },
-  dotRow: { flexDirection: 'row', gap: 2 },
   dotPlaceholder: { height: 4 },
   dot: {
     width: 4,
@@ -461,9 +456,6 @@ function buildStyles(c: AppColors) {
   },
   dotWhite: { backgroundColor: 'rgba(255,255,255,0.75)' },
   daySummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
     backgroundColor: c.primaryLight,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -472,11 +464,10 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[3],
   },
   daySummaryText: {
-    flex: 1,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
     color: c.primary,
-    textTransform: 'capitalize',
+    textTransform: 'capitalize' as const,
   },
 };
 }

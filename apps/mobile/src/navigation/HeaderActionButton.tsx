@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import type { ReactElement } from 'react';
 import type { NativeStackHeaderRightProps } from '@react-navigation/native-stack';
 import type { Href } from 'expo-router';
@@ -6,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CalendarPlus, Plus, UserPlus, type LucideIcon } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -47,6 +50,9 @@ export function headerRightAction(
 
 /** CTA header — gradient brand (identité Continuer). */
 export function HeaderActionButton({ kind, href, onPress }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'navigation_HeaderActionButton_tsx_HeaderActionButton_styles');
+
   const router = useRouter();
   const { Icon, label, accessibilityLabel } = CONFIG[kind];
   const handlePress = onPress ?? (href ? () => router.push(href) : undefined);
@@ -60,24 +66,27 @@ export function HeaderActionButton({ kind, href, onPress }: Props) {
       style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
     >
       <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
+        colors={[c.gradientStart, c.gradientEnd]}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
         style={styles.pill}
       >
-        <Icon size={ICON_SIZE} color={colors.textInverse} strokeWidth={2.5} />
-        <Text style={styles.label} numberOfLines={1}>
-          {label}
-        </Text>
+        <Row gap={spacing[1.5]} align="center">
+          <Icon size={ICON_SIZE} color={c.textInverse} strokeWidth={2.5} />
+          <Text style={styles.label} numberOfLines={1}>
+            {label}
+          </Text>
+        </Row>
       </LinearGradient>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   pressable: {
     borderRadius: radius.lg,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     ...elevation.sm,
     shadowColor: '#16B6D6',
     shadowOpacity: 0.22,
@@ -86,9 +95,6 @@ const styles = StyleSheet.create({
     opacity: 0.92,
   },
   pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1.5],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2.5],
     minHeight: 44,
@@ -98,7 +104,8 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textInverse,
+    color: c.textInverse,
     letterSpacing: 0.1,
   },
-});
+};
+}

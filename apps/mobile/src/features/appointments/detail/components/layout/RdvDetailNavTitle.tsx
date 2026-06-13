@@ -1,6 +1,9 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { RdvDetailHeaderStatus } from './RdvDetailHeaderStatus';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Titre + badge sur une ligne avec le bouton retour (slot titre du header). */
@@ -11,8 +14,10 @@ export function RdvDetailNavTitle({
   title: string;
   status?: string;
 }) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_RdvDetailNavTitle_tsx_RdvDetailNavTitle_styles');
+
   return (
-    <View style={styles.row}>
+    <Row gap={spacing[2]} align="center" flex={1} style={styles.row}>
       <Text style={styles.title} numberOfLines={1}>
         {title}
       </Text>
@@ -21,26 +26,24 @@ export function RdvDetailNavTitle({
           <RdvDetailHeaderStatus status={status} />
         </View>
       ) : null}
-    </View>
+    </Row>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
     minWidth: 0,
-    flex: 1,
   },
   title: {
     flexShrink: 1,
     minWidth: 0,
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   badgeWrap: {
     flexShrink: 0,
   },
-});
+};
+}

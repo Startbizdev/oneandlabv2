@@ -8,8 +8,10 @@
     "eas-build-post-install": "node scripts/eas-chmod-pod-scripts.cjs",
     "bundle:ios:verify": "expo export --platform ios",
     "verify:eas": "node scripts/verify-eas-preflight.cjs",
-    "start": "expo start",
-    "start:clean": "expo start -c",
+    "start": "node scripts/start-expo-dev.cjs",
+    "start:localhost": "expo start",
+    "start:tunnel": "node scripts/start-expo-dev.cjs --tunnel",
+    "start:clean": "node scripts/clean-metro.cjs && node scripts/start-expo-dev.cjs -c",
     "clean:metro": "node scripts/clean-metro.cjs",
     "clean:all": "bash scripts/clean-all.sh",
     "prebuild:ios:clean": "expo prebuild --platform ios --clean",
@@ -23,7 +25,11 @@
     "submit:ios:latest": "node scripts/run-eas-ios.cjs submit --platform ios --profile production --latest --non-interactive",
     "typecheck": "tsc --noEmit",
     "simulate:iap": "node scripts/simulate-iap-purchase.cjs",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:styles": "node scripts/lint-themed-styles.mjs",
+    "lint:styles:strict": "node scripts/lint-themed-styles.mjs --strict-colors",
+    "lint:layout": "node scripts/lint-layout.mjs --ratchet",
+    "verify": "npm run typecheck && npm run lint:layout && npm run lint:styles:strict && npm run lint -- --max-warnings 9999"
   },
   "dependencies": {
     "@expo-google-fonts/nunito": "^0.4.2",

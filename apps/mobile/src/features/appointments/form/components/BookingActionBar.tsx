@@ -1,8 +1,10 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Platform, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookingPremiumStepCta } from './BookingPremiumStepCta';
-import { colors, elevation, spacing } from '@/theme';
+import { elevation, spacing } from '@/theme';
 
 interface Props {
   title: string;
@@ -20,6 +22,8 @@ export function BookingActionBar({
   primaryLoading,
   primaryDisabled,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingActionBar_tsx_BookingActionBar_styles');
+
   const { bottom } = useSafeAreaInsets();
   const bottomPad = Math.max(bottom, spacing[2]);
 
@@ -49,27 +53,29 @@ export function BookingActionBar({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   shell: {
     flexShrink: 0,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
     ...elevation.lg,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
   },
   blur: {
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   blurOverlay: {
     backgroundColor: 'rgba(247, 244, 239, 0.9)',
   },
   androidBar: {
-    backgroundColor: colors.bookingCanvasLight,
+    backgroundColor: c.bookingCanvasLight,
   },
   bar: {
     paddingTop: spacing[3],
     paddingHorizontal: spacing[4],
   },
-});
+};
+}

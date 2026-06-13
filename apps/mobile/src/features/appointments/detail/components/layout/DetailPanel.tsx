@@ -1,6 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
+import { Cluster } from '@/components/layout/primitives';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
@@ -15,21 +17,30 @@ interface Props {
   noPadding?: boolean;
 }
 
-export function DetailPanel({ title, subtitle, Icon, children, noPadding }: Props) {
+export function DetailPanel({
+  title, subtitle, Icon, children, noPadding }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_DetailPanel_tsx_styles');
   return (
     <View style={[styles.panel, elevation.xs]}>
       {title ? (
-        <View style={styles.header}>
-          {Icon ? (
-            <View style={styles.iconWrap}>
-              <Icon size={16} color={colors.primary} strokeWidth={2} />
-            </View>
-          ) : null}
+        <Cluster
+          gap={spacing[3]}
+          align="start"
+          style={styles.header}
+          leading={
+            Icon ? (
+              <View style={styles.iconWrap}>
+                <Icon size={16} color={c.primary} strokeWidth={2} />
+              </View>
+            ) : undefined
+          }
+        >
           <View style={styles.headerText}>
             <Text style={styles.title}>{title}</Text>
             {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
           </View>
-        </View>
+        </Cluster>
       ) : null}
       <View style={noPadding ? undefined : styles.body}>{children}</View>
     </View>
@@ -43,12 +54,9 @@ function buildStyles(c: AppColors) {
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: c.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[3],
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],
     paddingBottom: spacing[3],
@@ -60,10 +68,10 @@ function buildStyles(c: AppColors) {
     height: 32,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
-  headerText: { flex: 1, gap: 2 },
+  headerText: { gap: 2 },
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
@@ -82,11 +90,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_layout_DetailPanel_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

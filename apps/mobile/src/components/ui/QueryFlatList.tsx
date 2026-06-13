@@ -1,12 +1,18 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import React, { type ReactElement, type ReactNode } from 'react';
-import { FlatList, type FlatListProps, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, type FlatListProps, RefreshControl, View } from 'react-native';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useQueryListUi } from '@/lib/hooks/use-query-list-ui';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
-type QuerySlice<T> = Pick<UseQueryResult<T>, 'isPending' | 'isFetching' | 'data' | 'refetch'>;
+type QuerySlice<T> = Pick<
+  UseQueryResult<T>,
+  'isPending' | 'isFetching' | 'isLoading' | 'data' | 'isError' | 'isSuccess' | 'refetch'
+>;
 
 type Props<T, Item> = Omit<
   FlatListProps<Item>,
@@ -34,6 +40,8 @@ export function QueryFlatList<T, Item>({
   contentContainerStyle,
   ...flatListProps
 }: Props<T, Item>) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'QueryFlatList');
   const ui = useQueryListUi(query);
   const { refreshing, onRefresh } = useManualRefresh(query.refetch);
 
@@ -60,8 +68,8 @@ export function QueryFlatList<T, Item>({
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
+            tintColor={c.primary}
+            colors={[c.primary]}
           />
         }
       />
@@ -69,14 +77,18 @@ export function QueryFlatList<T, Item>({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  skeleton: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    flex: 1,
-  },
-  listContent: {
-    flexGrow: 1,
-  },
-});
+function buildStyles(_c: AppColors) {
+  return {
+    root: { minWidth: 0, flex: 1 },
+    skeleton: {
+      minWidth: 0,
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[2],
+      flex: 1,
+    },
+    listContent: {
+      minWidth: 0,
+      flexGrow: 1,
+    },
+  };
+}

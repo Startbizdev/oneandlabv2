@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
@@ -44,6 +46,8 @@ function AppointmentListRowCardComponent({
   role,
   viewerId,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_components_AppointmentListRowCard_tsx_AppointmentListRowCardComponent_styles');
+
   useAppColors();
   const cardStyles = getAppointmentListCardStyles();
   const scale = useSharedValue(1);
@@ -121,10 +125,12 @@ function AppointmentListRowCardComponent({
 
 export const AppointmentListRowCard = React.memo(AppointmentListRowCardComponent);
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   inner: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3.5],
     paddingBottom: spacing[3.5],
   },
-});
+};
+}

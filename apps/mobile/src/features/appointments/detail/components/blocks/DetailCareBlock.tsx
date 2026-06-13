@@ -1,7 +1,10 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View } from 'react-native';
 import { Stethoscope } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { DetailPanel } from '../layout/DetailPanel';
 import { RdvCancellationBanner } from '../RdvCancellationBanner';
@@ -12,7 +15,7 @@ import {
   isAppointmentCanceled,
 } from '@/utils/appointment-detail-display';
 import { appointmentAddressLine } from '@/utils/appointment-display';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function actTitle(appt: Appointment, index: number): string {
@@ -37,6 +40,8 @@ export function DetailCareBlock({
   role,
   addressInLocationBlock,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_blocks_DetailCareBlock_tsx_DetailCareBlock_styles');
+
   if (!isMultiBatch) {
     const canceled = isAppointmentCanceled(primary.status);
     return (
@@ -66,10 +71,10 @@ export function DetailCareBlock({
     >
       {batch.map((appt, idx) => (
         <View key={appt.id} style={styles.act}>
-          <View style={styles.actHead}>
+          <Row justify="between" align="center" gap={spacing[2]} style={styles.actHead}>
             <Text style={styles.actTitle}>{actTitle(appt, idx)}</Text>
             <StatusBadge status={appt.status} size="sm" />
-          </View>
+          </Row>
           {isAppointmentCanceled(appt.status) ? (
             <View style={styles.actCancel}>
               <RdvCancellationBanner apt={appt} compact />
@@ -94,25 +99,23 @@ export function DetailCareBlock({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   act: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
   actHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3],
     paddingBottom: spacing[2],
-    gap: spacing[2],
   },
   actTitle: {
+    minWidth: 0,
     flex: 1,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   actCancel: { paddingHorizontal: spacing[4], paddingBottom: spacing[2] },
   actBody: { paddingHorizontal: spacing[2], paddingBottom: spacing[3] },
@@ -120,6 +123,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[4],
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
-});
+};
+}

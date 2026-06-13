@@ -1,6 +1,5 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -25,6 +24,7 @@ export function TabBarIconBadge({
   strokeWidth = 2,
   badge = 0,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'components_navigation_TabBarIconBadge_tsx_styles');
   const showDot = badge > 0 && badge < 10;
   const label = badge > 99 ? '99+' : String(badge);
 
@@ -49,11 +49,11 @@ function buildStyles(c: AppColors) {
   wrap: {
     width: 28,
     height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   dot: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: 0,
     right: 0,
     width: 8,
@@ -64,7 +64,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.surface,
   },
   badge: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: -3,
     right: -10,
     minWidth: 17,
@@ -74,8 +74,8 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.error,
     borderWidth: 2,
     borderColor: c.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   badgeWide: {
     minWidth: 22,
@@ -90,11 +90,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('components_navigation_TabBarIconBadge_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

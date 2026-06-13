@@ -1,5 +1,8 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { CalendarX, CircleCheck, Ban, TimerOff } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import type { AppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
@@ -14,39 +17,45 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 export function DetailTerminalBanner({ terminal }: { terminal: AppointmentSidebarTerminalEmpty }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_DetailTerminalBanner_tsx_DetailTerminalBanner_styles');
+
   const Icon = ICONS[terminal.icon] ?? CircleCheck;
   return (
-    <View style={styles.wrap}>
-      <Icon size={16} color={colors.textTertiary} strokeWidth={2} />
+    <Cluster
+      gap={spacing[2]}
+      align="start"
+      style={styles.wrap}
+      leading={<Icon size={16} color={c.textTertiary} strokeWidth={2} />}
+    >
       <Text style={styles.text}>
         <Text style={styles.title}>{terminal.title}</Text>
         <Text style={styles.desc}> · {terminal.description}</Text>
       </Text>
-    </View>
+    </Cluster>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2.5],
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
-  text: { flex: 1 },
+  text: {},
   title: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   desc: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
-});
+};
+}

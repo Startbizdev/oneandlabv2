@@ -1,12 +1,14 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Star, User } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { api } from '@/api/client';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
@@ -51,23 +53,28 @@ function InteractiveStars({
   rating: number;
   onChange: (n: number) => void;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'PatientDetailExtras');
   return (
-    <View style={styles.starsRow}>
+    <Row wrap gap={spacing[1]}>
       {[1, 2, 3, 4, 5].map((n) => (
         <Pressable key={n} onPress={() => onChange(n)} hitSlop={8}>
           <Star
             size={28}
-            color={colors.star}
-            fill={n <= rating ? colors.starFill : 'transparent'}
+            color={c.star}
+            fill={n <= rating ? c.starFill : 'transparent'}
             strokeWidth={1.5}
           />
         </Pressable>
       ))}
-    </View>
+    </Row>
   );
 }
 
-export function PatientDetailExtras({ batch, documents, onRefresh }: Props) {
+export function PatientDetailExtras({
+  batch, documents, onRefresh }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_PatientDetailExtras_tsx_styles');
   const { show: toast } = useToast();
   const [now, setNow] = useState(Date.now());
   const [forms, setForms] = useState<Record<string, { rating: number; comment: string }>>({});
@@ -145,13 +152,20 @@ export function PatientDetailExtras({ batch, documents, onRefresh }: Props) {
   return (
     <View style={styles.wrap}>
       {preleveurAlerts.map(({ appt, phase }) => (
-        <View key={appt.id} style={[styles.alertCard, phase === 'arrive' && styles.alertArrive]}>
-          <User size={20} color={phase === 'arrive' ? colors.success : colors.primary} strokeWidth={2} />
+        <Cluster
+          key={appt.id}
+          gap={spacing[3]}
+          align="start"
+          style={[styles.alertCard, phase === 'arrive' && styles.alertArrive]}
+          leading={
+            <User size={20} color={phase === 'arrive' ? c.success : c.primary} strokeWidth={2} />
+          }
+        >
           <View style={styles.alertTexts}>
             <Text style={styles.alertTitle}>{preleveurBannerTitle(appt, phase)}</Text>
             <Text style={styles.alertSub}>{preleveurBannerSubtitle(appt, phase)}</Text>
           </View>
-        </View>
+        </Cluster>
       ))}
 
       {resultats.length > 0 ? (
@@ -165,12 +179,12 @@ export function PatientDetailExtras({ batch, documents, onRefresh }: Props) {
 
       {reviewable.length > 0 ? (
         <View style={styles.reviewsCard}>
-          <View style={styles.reviewsHeader}>
-            <Star size={18} color={colors.star} fill={colors.starFill} strokeWidth={1.5} />
+          <Row gap={spacing[2]} align="center">
+            <Star size={18} color={c.star} fill={c.starFill} strokeWidth={1.5} />
             <Text style={styles.sectionLabel}>
               {reviewable.length > 1 ? 'Vos avis' : 'Votre avis'}
             </Text>
-          </View>
+          </Row>
           {reviewable.map((appt) => {
             const existing = reviewsQ.data?.[appt.id];
             const form = forms[appt.id] ?? { rating: 5, comment: '' };
@@ -240,9 +254,6 @@ function buildStyles(c: AppColors) {
   return {
   wrap: { gap: spacing[3] },
   alertCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[3],
     backgroundColor: c.primaryLight,
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -253,7 +264,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.successLight,
     borderColor: c.successMid,
   },
-  alertTexts: { flex: 1, gap: 4 },
+  alertTexts: { gap: 4 },
   alertTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
@@ -286,11 +297,6 @@ function buildStyles(c: AppColors) {
     padding: spacing[4],
     gap: spacing[4],
   },
-  reviewsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
   sectionLabel: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.sm,
@@ -313,18 +319,6 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
-  starsRow: {
-    flexDirection: 'row',
-    gap: spacing[1],
-  },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_PatientDetailExtras_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

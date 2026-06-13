@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -39,6 +41,8 @@ interface StopCardProps {
 }
 
 const StopCard = React.memo(function StopCard({ item, index, onPress }: StopCardProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'TourneeScreen.StopCard');
   const fd = item.form_data as {
     first_name?: string;
     last_name?: string;
@@ -51,32 +55,39 @@ const StopCard = React.memo(function StopCard({ item, index, onPress }: StopCard
   return (
     <Animated.View entering={FadeInDown.delay(index * 50).duration(300).springify()}>
       <Pressable onPress={onPress} style={[styles.stopCardShell, elevation.md]}>
-        <View style={styles.stopCard}>
-        <View style={styles.stopIndex}>
-          <Text style={styles.stopIndexText}>{index + 1}</Text>
-        </View>
-        <View style={styles.stopInfo}>
-          <Text style={styles.stopName}>{name}</Text>
-          <View style={styles.stopMeta}>
-            <Clock size={12} color={colors.primary} strokeWidth={2} />
-            <Text style={styles.stopTime}>{timeLabel || '—'}</Text>
-            {address ? (
-              <>
-                <View style={styles.metaDot} />
-                <MapPin size={12} color={colors.textTertiary} strokeWidth={2} />
-                <Text style={styles.stopAddress} numberOfLines={1}>{address}</Text>
-              </>
-            ) : null}
+        <Cluster
+          gap={spacing[3]}
+          style={styles.stopCard}
+          leading={
+            <View style={styles.stopIndex}>
+              <Text style={styles.stopIndexText}>{index + 1}</Text>
+            </View>
+          }
+          actions={<StatusBadge status={item.status} />}
+        >
+          <View style={styles.stopInfo}>
+            <Text style={styles.stopName}>{name}</Text>
+            <Row wrap gap={spacing[1]} align="center">
+              <Clock size={12} color={c.primary} strokeWidth={2} />
+              <Text style={styles.stopTime}>{timeLabel || '—'}</Text>
+              {address ? (
+                <>
+                  <View style={styles.metaDot} />
+                  <MapPin size={12} color={c.textTertiary} strokeWidth={2} />
+                  <Text style={styles.stopAddress} numberOfLines={1}>{address}</Text>
+                </>
+              ) : null}
+            </Row>
           </View>
-        </View>
-        <StatusBadge status={item.status} />
-        </View>
+        </Cluster>
       </Pressable>
     </Animated.View>
   );
 });
 
 export function TourneeScreen() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_tournee_screens_TourneeScreen_tsx_styles');
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
   const [dayOffset, setDayOffset] = useState(0);
@@ -126,14 +137,15 @@ export function TourneeScreen() {
   return (
     <View style={styles.container}>
       {/* Date navigator */}
-      <Animated.View entering={FadeInDown.duration(280).springify()} style={[styles.dateNav, elevation.xs]}>
+      <Animated.View entering={FadeInDown.duration(280).springify()}>
+        <Row justify="between" align="center" style={[styles.dateNav, elevation.xs]}>
         <Pressable
           onPress={() => shiftDay(-1)}
           disabled={dayOffset <= OFFSET_MIN}
           style={[styles.navBtn, dayOffset <= OFFSET_MIN && styles.navBtnDisabled]}
           hitSlop={12}
         >
-          <ChevronLeft size={20} color={dayOffset <= OFFSET_MIN ? colors.textTertiary : colors.primary} strokeWidth={2.5} />
+          <ChevronLeft size={20} color={dayOffset <= OFFSET_MIN ? c.textTertiary : c.primary} strokeWidth={2.5} />
         </Pressable>
         <View style={styles.dateCenter}>
           {isToday ? <Text style={styles.todayBadge}>Aujourd'hui</Text> : null}
@@ -148,8 +160,9 @@ export function TourneeScreen() {
           style={[styles.navBtn, dayOffset >= OFFSET_MAX && styles.navBtnDisabled]}
           hitSlop={12}
         >
-          <ChevronRight size={20} color={dayOffset >= OFFSET_MAX ? colors.textTertiary : colors.primary} strokeWidth={2.5} />
+          <ChevronRight size={20} color={dayOffset >= OFFSET_MAX ? c.textTertiary : c.primary} strokeWidth={2.5} />
         </Pressable>
+        </Row>
       </Animated.View>
 
       <QueryFlatList
@@ -177,11 +190,8 @@ export function TourneeScreen() {
 
 function buildStyles(c: AppColors) {
   return {
-  container: { flex: 1, backgroundColor: c.background },
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   dateNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     margin: spacing[4],
     marginBottom: spacing[3],
     backgroundColor: c.surface,
@@ -196,14 +206,15 @@ function buildStyles(c: AppColors) {
     height: 36,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   navBtnDisabled: {
     backgroundColor: c.surfaceAlt,
   },
   dateCenter: {
-    alignItems: 'center',
+    minWidth: 0,
+    alignItems: 'center' as const,
     gap: 2,
     flex: 1,
   },
@@ -212,14 +223,14 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.primary,
     letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   dateLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
-    textTransform: 'capitalize',
-    textAlign: 'center',
+    textTransform: 'capitalize' as const,
+    textAlign: 'center' as const,
   },
   stopCount: {
     fontFamily: fontFamily.regular,
@@ -227,6 +238,7 @@ function buildStyles(c: AppColors) {
     color: c.textTertiary,
   },
   list: {
+    minWidth: 0,
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[10],
     flexGrow: 1,
@@ -235,23 +247,20 @@ function buildStyles(c: AppColors) {
     borderRadius: radius.xl,
   },
   stopCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: c.borderLight,
     padding: spacing[4],
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   stopIndex: {
     width: 40,
     height: 40,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   stopIndexText: {
@@ -260,19 +269,12 @@ function buildStyles(c: AppColors) {
     color: c.primary,
   },
   stopInfo: {
-    flex: 1,
     gap: spacing[1],
   },
   stopName: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
-  },
-  stopMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1],
-    flexWrap: 'wrap',
   },
   stopTime: {
     fontFamily: fontFamily.semiBold,
@@ -286,6 +288,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.textTertiary,
   },
   stopAddress: {
+    minWidth: 0,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
@@ -294,11 +297,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_tournee_screens_TourneeScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

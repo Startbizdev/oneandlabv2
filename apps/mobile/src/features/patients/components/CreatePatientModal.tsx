@@ -1,7 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -18,7 +19,7 @@ import {
   uploadPatientProfileDocument,
   type PatientProfileUploadType,
 } from '../api/patient-profile.service';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -45,6 +46,7 @@ function addressForApi(
 }
 
 export function CreatePatientModal({ visible, onClose, onCreated, onExistingPatient }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_patients_components_CreatePatientModal_tsx_styles');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -77,7 +79,6 @@ export function CreatePatientModal({ visible, onClose, onCreated, onExistingPati
 
   useEffect(() => {
     if (!visible) reset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset à la fermeture uniquement
   }, [visible]);
 
   const submit = async () => {
@@ -178,14 +179,14 @@ export function CreatePatientModal({ visible, onClose, onCreated, onExistingPati
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <View style={styles.actions}>
+      <Row gap={spacing[3]} style={styles.actions}>
         <View style={styles.actionBtn}>
           <Button title="Annuler" variant="outline" onPress={onClose} fullWidth size="lg" />
         </View>
         <View style={styles.actionBtn}>
           <Button title="Créer" loading={loading} onPress={() => void submit()} fullWidth size="lg" />
         </View>
-      </View>
+      </Row>
 
     </BottomSheet>
   );
@@ -200,21 +201,12 @@ function buildStyles(c: AppColors) {
     color: c.error,
   },
   actions: {
-    flexDirection: 'row',
-    gap: spacing[3],
     marginTop: spacing[2],
   },
   actionBtn: {
+    minWidth: 0,
     flex: 1,
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_patients_components_CreatePatientModal_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

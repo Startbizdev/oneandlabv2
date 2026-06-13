@@ -1,6 +1,5 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useRef, useState } from 'react';
 import { Image, Modal, StyleSheet, Text, View } from 'react-native';
@@ -36,6 +35,7 @@ interface Props {
 
 export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_offer_OfferAcceptPreparationOverlay_tsx_styles');
   const progress = useSharedValue(0);
   const logoScale = useSharedValue(1);
   const onFinishRef = useRef(onFinish);
@@ -139,7 +139,7 @@ export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: P
               <View style={styles.progressTrack}>
                 <Animated.View style={[styles.progressFillWrap, barFillStyle]}>
                   <LinearGradient
-                    colors={[colors.gradientStart, colors.gradientEnd]}
+                    colors={[c.gradientStart, c.gradientEnd]}
                     start={{ x: 0, y: 0.5 }}
                     end={{ x: 1, y: 0.5 }}
                     style={styles.progressFill}
@@ -157,11 +157,12 @@ export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: P
 function buildStyles(c: AppColors) {
   return {
   root: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: c.background,
   },
   glowTop: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: -80,
     right: -40,
     width: 220,
@@ -170,7 +171,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: 'rgba(22, 182, 214, 0.14)',
   },
   glowBottom: {
-    position: 'absolute',
+    position: 'absolute' as const,
     bottom: -60,
     left: -30,
     width: 180,
@@ -179,12 +180,14 @@ function buildStyles(c: AppColors) {
     backgroundColor: 'rgba(13, 148, 136, 0.1)',
   },
   safe: {
+    minWidth: 0,
     flex: 1,
   },
   content: {
+    minWidth: 0,
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     paddingHorizontal: spacing[6],
     gap: spacing[3],
   },
@@ -199,25 +202,25 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.bold,
     fontSize: fontSize['2xl'],
     color: c.textPrimary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     letterSpacing: -0.4,
   },
   subtitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
     color: c.primaryDark,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   tagline: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     lineHeight: fontSize.sm * 1.55,
     maxWidth: 300,
   },
   progressBlock: {
-    width: '100%',
+    width: '100%' as const,
     maxWidth: 320,
     marginTop: spacing[4],
   },
@@ -225,28 +228,21 @@ function buildStyles(c: AppColors) {
     height: 8,
     borderRadius: radius.full,
     backgroundColor: c.surfaceAlt,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     borderWidth: 1,
     borderColor: c.borderLight,
   },
   progressFillWrap: {
-    height: '100%',
+    height: '100%' as const,
     minWidth: 8,
     borderRadius: radius.full,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   progressFill: {
+    minWidth: 0,
     flex: 1,
     borderRadius: radius.full,
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_offer_OfferAcceptPreparationOverlay_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

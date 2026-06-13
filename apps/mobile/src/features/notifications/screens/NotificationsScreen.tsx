@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback, useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
@@ -31,6 +33,9 @@ import { spacing } from '@/theme';
 const FEED_QUERY_KEY = queryKeys.notifications.feed(NOTIFICATIONS_PAGE_SIZE);
 
 export function NotificationsScreen() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_notifications_screens_NotificationsScreen_tsx_NotificationsScreen_styles');
+
   const router = useRouter();
   const qc = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
@@ -160,7 +165,7 @@ export function NotificationsScreen() {
       <View style={styles.container}>
         {feedQ.isLoading ? (
           <View style={styles.centered}>
-            <ActivityIndicator color={colors.primary} />
+            <ActivityIndicator color={c.primary} />
           </View>
         ) : items.length === 0 ? (
           <View style={[styles.centered, styles.emptyPad]}>
@@ -188,17 +193,21 @@ export function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   container: {
+    minWidth: 0,
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   centered: {
+    minWidth: 0,
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   emptyPad: {
     paddingHorizontal: spacing[4],
   },
-});
+};
+}

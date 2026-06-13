@@ -1,9 +1,11 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import React, { useCallback } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Phone, MessageSquare, Mail, AlertTriangle } from 'lucide-react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import type { Appointment } from '@oneandlab/shared-types';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
@@ -28,15 +30,20 @@ interface ActionChipProps {
 }
 
 function ActionChip({ icon, label, onPress }: ActionChipProps) {
+  const styles = useThemedStyles(buildStyles, 'RdvPatientSection.ActionChip');
   return (
     <Pressable onPress={onPress} style={[styles.chip, elevation.xs]}>
-      {icon}
-      <Text style={styles.chipLabel}>{label}</Text>
+      <Row gap={spacing[1.5]} align="center">
+        {icon}
+        <Text style={styles.chipLabel}>{label}</Text>
+      </Row>
     </Pressable>
   );
 }
 
 function ContactRow({ phone, email }: { phone: string; email: string }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'RdvPatientSection.ContactRow');
   const callPhone = useCallback(() => void Linking.openURL(`tel:${phone}`), [phone]);
   const smsPhone = useCallback(() => void Linking.openURL(`sms:${phone}`), [phone]);
   const sendEmail = useCallback(() => void Linking.openURL(`mailto:${email}`), [email]);
@@ -44,29 +51,29 @@ function ContactRow({ phone, email }: { phone: string; email: string }) {
   if (!phone && !email) return null;
 
   return (
-    <View style={styles.actions}>
+    <Row wrap gap={spacing[2]} style={styles.actions}>
       {phone ? (
         <ActionChip
-          icon={<Phone size={14} color={colors.primary} strokeWidth={2} />}
+          icon={<Phone size={14} color={c.primary} strokeWidth={2} />}
           label="Appeler"
           onPress={callPhone}
         />
       ) : null}
       {phone ? (
         <ActionChip
-          icon={<MessageSquare size={14} color={colors.primary} strokeWidth={2} />}
+          icon={<MessageSquare size={14} color={c.primary} strokeWidth={2} />}
           label="Message"
           onPress={smsPhone}
         />
       ) : null}
       {email ? (
         <ActionChip
-          icon={<Mail size={14} color={colors.primary} strokeWidth={2} />}
+          icon={<Mail size={14} color={c.primary} strokeWidth={2} />}
           label="E-mail"
           onPress={sendEmail}
         />
       ) : null}
-    </View>
+    </Row>
   );
 }
 
@@ -75,7 +82,10 @@ interface Props {
   role: string;
 }
 
-export function RdvPatientSection({ apt, role }: Props) {
+export function RdvPatientSection({
+  apt, role }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvPatientSection_tsx_styles');
   if (role === 'patient') return null;
 
   const fd = (apt.form_data ?? {}) as Record<string, unknown>;
@@ -105,18 +115,24 @@ export function RdvPatientSection({ apt, role }: Props) {
 
   return (
     <Card shadow="sm" padding="md">
-      <View style={styles.sectionHeader}>
-        <ProfileAvatar
-          profileImageUrl={avatar.profileImageUrl}
-          seed={avatar.seed}
-          gender={avatar.gender}
-          size={44}
-        />
+      <Cluster
+        gap={spacing[3]}
+        align="center"
+        style={styles.sectionHeader}
+        leading={
+          <ProfileAvatar
+            profileImageUrl={avatar.profileImageUrl}
+            seed={avatar.seed}
+            gender={avatar.gender}
+            size={44}
+          />
+        }
+      >
         <View style={styles.sectionHeaderText}>
           <Text style={styles.sectionLabel}>{rel ? 'Bénéficiaire' : 'Patient'}</Text>
           <Text style={styles.patientName}>{name}</Text>
         </View>
-      </View>
+      </Cluster>
 
       {birth ? <Text style={styles.birthText}>Né(e) le {birth}</Text> : null}
 
@@ -125,15 +141,15 @@ export function RdvPatientSection({ apt, role }: Props) {
       ) : null}
 
       {rel?.is_minor ? (
-        <View style={styles.minorBanner}>
-          <AlertTriangle size={14} color={colors.warning} strokeWidth={2} />
+        <Row gap={spacing[2]} align="center" style={styles.minorBanner}>
+          <AlertTriangle size={14} color={c.warning} strokeWidth={2} />
           <Text style={styles.minorText}>
             Personne mineure
             {rel.age_years != null
               ? ` · ${rel.age_years} an${rel.age_years === 1 ? '' : 's'}`
               : ''}
           </Text>
-        </View>
+        </Row>
       ) : null}
 
       <ContactRow phone={phone} email={email} />
@@ -153,13 +169,9 @@ export function RdvPatientSection({ apt, role }: Props) {
 function buildStyles(c: AppColors) {
   return {
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     marginBottom: spacing[3],
   },
   sectionHeaderText: {
-    flex: 1,
     gap: 2,
   },
   sectionLabel: {
@@ -167,7 +179,7 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   patientName: {
     fontFamily: fontFamily.bold,
@@ -188,9 +200,6 @@ function buildStyles(c: AppColors) {
     marginBottom: spacing[1],
   },
   minorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
     backgroundColor: c.warningLight,
     borderRadius: 8,
     padding: spacing[3],
@@ -198,24 +207,19 @@ function buildStyles(c: AppColors) {
     marginBottom: spacing[1],
   },
   minorText: {
+    minWidth: 0,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
     color: c.warning,
     flex: 1,
   },
   actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
     marginTop: spacing[3],
     paddingTop: spacing[3],
     borderTopWidth: 1,
     borderTopColor: c.borderLight,
   },
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1.5],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     backgroundColor: c.surface,
@@ -240,7 +244,7 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   bookingName: {
     fontFamily: fontFamily.semiBold,
@@ -256,11 +260,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_RdvPatientSection_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

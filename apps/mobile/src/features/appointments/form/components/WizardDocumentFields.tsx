@@ -1,7 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { Check, FileText, Upload } from 'lucide-react-native';
 import type { PatientDocumentRow } from '@/features/patients/api/patient-profile.service';
 import { getDocumentTypeLabel } from '@/features/appointments/detail/utils/document-labels';
@@ -36,6 +38,8 @@ export function WizardDocumentFields({
   onChange,
   loadingProfile,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_WizardDocumentFields_tsx_styles');
   async function pick(key: string) {
     const picked = await pickMedicalDocumentFile();
     if (!picked) return;
@@ -61,10 +65,10 @@ export function WizardDocumentFields({
         </Text>
       ) : null}
       {loadingProfile ? (
-        <View style={styles.loadingRow}>
-          <ActivityIndicator size="small" color={colors.primary} />
+        <Row gap={spacing[2]} align="center" style={styles.loadingRow}>
+          <ActivityIndicator size="small" color={c.primary} />
           <Text style={styles.loadingText}>Chargement de votre dossier…</Text>
-        </View>
+        </Row>
       ) : null}
 
       {fields.map((f) => {
@@ -91,43 +95,51 @@ export function WizardDocumentFields({
             }}
             style={[styles.docRow, done && styles.docRowDone]}
           >
-            <View style={[styles.docIcon, done && styles.docIconDone]}>
-              {done ? (
-                <Check size={14} color={colors.success} strokeWidth={2.5} />
-              ) : (
-                <Upload size={14} color={colors.primary} strokeWidth={2} />
-              )}
-            </View>
-            <View style={styles.docTextCol}>
-              <Text style={[styles.docLabel, done && styles.docLabelDone]}>
-                {f.label}
-                {done ? ' · OK' : ''}
-              </Text>
-              {f.hint && !done ? <Text style={styles.docHint}>{f.hint}</Text> : null}
-              {done ? (
-                <View style={styles.fileMetaRow}>
-                  <FileText size={12} color={colors.textSecondary} strokeWidth={2} />
-                  <Text style={styles.fileMeta} numberOfLines={1}>
-                    {fromProfile && !local ? 'Déjà enregistré — ' : ''}
-                    {displayName}
-                  </Text>
+            <Cluster
+              gap={spacing[3]}
+              leading={
+                <View style={[styles.docIcon, done && styles.docIconDone]}>
+                  {done ? (
+                    <Check size={14} color={c.success} strokeWidth={2.5} />
+                  ) : (
+                    <Upload size={14} color={c.primary} strokeWidth={2} />
+                  )}
                 </View>
-              ) : null}
-            </View>
-            {done && local ? (
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation?.();
-                  if (profileRow) applyProfile(f.key);
-                  else onChange(f.key, undefined);
-                }}
-                hitSlop={8}
-              >
-                <Text style={styles.replaceLink}>
-                  {profileRow ? 'Dossier' : 'Modifier'}
+              }
+              actions={
+                done && local ? (
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      if (profileRow) applyProfile(f.key);
+                      else onChange(f.key, undefined);
+                    }}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.replaceLink}>
+                      {profileRow ? 'Dossier' : 'Modifier'}
+                    </Text>
+                  </Pressable>
+                ) : null
+              }
+            >
+              <View style={styles.docTextCol}>
+                <Text style={[styles.docLabel, done && styles.docLabelDone]}>
+                  {f.label}
+                  {done ? ' · OK' : ''}
                 </Text>
-              </Pressable>
-            ) : null}
+                {f.hint && !done ? <Text style={styles.docHint}>{f.hint}</Text> : null}
+                {done ? (
+                  <Row gap={4} align="center">
+                    <FileText size={12} color={c.textSecondary} strokeWidth={2} />
+                    <Text style={styles.fileMeta} numberOfLines={1}>
+                      {fromProfile && !local ? 'Déjà enregistré — ' : ''}
+                      {displayName}
+                    </Text>
+                  </Row>
+                ) : null}
+              </View>
+            </Cluster>
           </Pressable>
         );
       })}
@@ -149,9 +161,6 @@ function buildStyles(c: AppColors) {
     color: c.primaryDark,
   },
   loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
     paddingVertical: spacing[1],
   },
   loadingText: {
@@ -160,9 +169,6 @@ function buildStyles(c: AppColors) {
     color: c.textSecondary,
   },
   docRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     borderRadius: radius.lg,
@@ -179,8 +185,8 @@ function buildStyles(c: AppColors) {
     height: 28,
     borderRadius: radius.sm,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   docIconDone: {
@@ -204,12 +210,8 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
-  fileMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
   fileMeta: {
+    minWidth: 0,
     flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
@@ -223,11 +225,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_WizardDocumentFields_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

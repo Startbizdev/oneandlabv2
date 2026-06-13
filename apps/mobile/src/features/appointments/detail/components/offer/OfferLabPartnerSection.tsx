@@ -1,9 +1,11 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FlaskConical } from 'lucide-react-native';
+import { Row } from '@/components/layout/primitives';
 import { AssigneeProfileRow } from '../AssigneeProfileRow';
 import { ProviderPublicProfileSheet } from '@/features/profile/components/ProviderPublicProfileSheet';
 import type { OfferLabPartner } from '../../utils/offer-appointment-display';
@@ -14,17 +16,20 @@ interface Props {
   lab: OfferLabPartner;
 }
 
-export function OfferLabPartnerSection({ lab }: Props) {
+export function OfferLabPartnerSection({
+  lab }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_offer_OfferLabPartnerSection_tsx_styles');
   const [sheetOpen, setSheetOpen] = useState(false);
   const slug = lab.publicSlug?.trim();
 
   return (
     <>
       <View style={styles.wrap}>
-        <View style={styles.head}>
-          <FlaskConical size={14} color={colors.primary} strokeWidth={2} />
+        <Row align="center" gap={spacing[2]} style={styles.head}>
+          <FlaskConical size={14} color={c.primary} strokeWidth={2} />
           <Text style={styles.headTitle}>Laboratoire associé</Text>
-        </View>
+        </Row>
         <Text style={styles.hint}>
           Ce laboratoire a déjà accepté la prise en charge sur ce rendez-vous.
         </Text>
@@ -33,7 +38,6 @@ export function OfferLabPartnerSection({ lab }: Props) {
           name={lab.displayName}
           profileImageUrl={lab.profileImageUrl}
           phone={lab.phone}
-          publicSlug={slug}
           onViewProfile={slug ? () => setSheetOpen(true) : undefined}
         />
       </View>
@@ -62,9 +66,7 @@ function buildStyles(c: AppColors) {
     gap: spacing[2],
   },
   head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
+    minWidth: 0,
   },
   headTitle: {
     fontFamily: fontFamily.semiBold,
@@ -80,11 +82,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_offer_OfferLabPartnerSection_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

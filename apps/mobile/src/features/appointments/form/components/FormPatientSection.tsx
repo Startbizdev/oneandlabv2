@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { ChevronDown, UserPlus, Users } from 'lucide-react-native';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { Input } from '@/components/ui/Input';
@@ -63,6 +65,8 @@ export function FormPatientSection({
   emailOptional,
   onAdoptLookupPatient,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_FormPatientSection_tsx_styles');
   const { show: toast } = useToast();
   const [selectOpen, setSelectOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
@@ -141,41 +145,48 @@ export function FormPatientSection({
     <View style={styles.wrapper}>
       <Text style={styles.sectionLabel}>Patient</Text>
 
-      <View style={styles.modeTabs}>
+      <Row gap={spacing[2]} style={styles.modeTabs}>
         <Pressable
           onPress={() => onPatientModeChange('existing')}
           style={[styles.modeTab, patientMode === 'existing' && styles.modeTabActive]}
         >
-          <Users size={16} color={patientMode === 'existing' ? colors.primary : colors.textTertiary} />
-          <Text style={[styles.modeTabText, patientMode === 'existing' && styles.modeTabTextActive]}>
-            Patient dans la liste
-          </Text>
+          <Row gap={spacing[1.5]} align="center" justify="center">
+            <Users size={16} color={patientMode === 'existing' ? c.primary : c.textTertiary} />
+            <Text style={[styles.modeTabText, patientMode === 'existing' && styles.modeTabTextActive]}>
+              Patient dans la liste
+            </Text>
+          </Row>
         </Pressable>
         <Pressable
           onPress={() => onPatientModeChange('new')}
           style={[styles.modeTab, patientMode === 'new' && styles.modeTabActive]}
         >
-          <UserPlus size={16} color={patientMode === 'new' ? colors.primary : colors.textTertiary} />
-          <Text style={[styles.modeTabText, patientMode === 'new' && styles.modeTabTextActive]}>
-            Nouveau patient
-          </Text>
+          <Row gap={spacing[1.5]} align="center" justify="center">
+            <UserPlus size={16} color={patientMode === 'new' ? c.primary : c.textTertiary} />
+            <Text style={[styles.modeTabText, patientMode === 'new' && styles.modeTabTextActive]}>
+              Nouveau patient
+            </Text>
+          </Row>
         </Pressable>
-      </View>
+      </Row>
 
       {patientMode === 'existing' ? (
         <>
           <Text style={styles.fieldLabel}>Choisir un patient</Text>
           <Pressable onPress={() => setSelectOpen(true)} style={styles.selectBtn}>
-            <Text
-              style={[
-                styles.selectBtnText,
-                !selectedPatientId && styles.selectPlaceholder,
-              ]}
-              numberOfLines={1}
+            <Cluster
+              actions={<ChevronDown size={18} color={c.textTertiary} />}
             >
-              {selectedLabel}
-            </Text>
-            <ChevronDown size={18} color={colors.textTertiary} />
+              <Text
+                style={[
+                  styles.selectBtnText,
+                  !selectedPatientId && styles.selectPlaceholder,
+                ]}
+                numberOfLines={1}
+              >
+                {selectedLabel}
+              </Text>
+            </Cluster>
           </Pressable>
         </>
       ) : (
@@ -205,7 +216,7 @@ export function FormPatientSection({
           />
           <View style={styles.genderRow}>
             <Text style={styles.fieldLabel}>Genre</Text>
-            <View style={styles.genderPills}>
+            <Row gap={spacing[2]}>
               {(['M', 'F'] as const).map((g) => {
                 const on = gender.toUpperCase() === g;
                 return (
@@ -220,7 +231,7 @@ export function FormPatientSection({
                   </Pressable>
                 );
               })}
-            </View>
+            </Row>
           </View>
           <BirthDatePicker value={birthDate} onChange={(v) => onChange('birth_date', v)} />
         </View>
@@ -247,8 +258,6 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
   },
   modeTabs: {
-    flexDirection: 'row',
-    gap: spacing[2],
     padding: spacing[1],
     borderRadius: radius.xl,
     backgroundColor: c.surfaceAlt,
@@ -256,11 +265,8 @@ function buildStyles(c: AppColors) {
     borderColor: c.borderLight,
   },
   modeTab: {
+    minWidth: 0,
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[1.5],
     paddingVertical: spacing[2.5],
     paddingHorizontal: spacing[2],
     borderRadius: radius.lg,
@@ -274,7 +280,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
     color: c.textSecondary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   modeTabTextActive: {
     color: c.primary,
@@ -286,10 +292,6 @@ function buildStyles(c: AppColors) {
     color: c.textSecondary,
   },
   selectBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing[2],
     paddingVertical: spacing[3.5],
     paddingHorizontal: spacing[4],
     borderRadius: radius.lg,
@@ -298,6 +300,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.surface,
   },
   selectBtnText: {
+    minWidth: 0,
     flex: 1,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.base,
@@ -306,15 +309,15 @@ function buildStyles(c: AppColors) {
   selectPlaceholder: { color: c.textTertiary },
   fields: { gap: spacing[2] },
   genderRow: { gap: spacing[2] },
-  genderPills: { flexDirection: 'row', gap: spacing[2] },
   genderPill: {
+    minWidth: 0,
     flex: 1,
     paddingVertical: spacing[2.5],
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: c.border,
     backgroundColor: c.surface,
-    alignItems: 'center',
+    alignItems: 'center' as const,
   },
   genderPillActive: {
     backgroundColor: c.primary,
@@ -329,11 +332,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_FormPatientSection_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

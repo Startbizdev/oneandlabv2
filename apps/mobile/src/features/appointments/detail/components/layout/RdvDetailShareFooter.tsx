@@ -1,8 +1,11 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Share2 } from 'lucide-react-native';
+import { Row } from '@/components/layout/primitives';
 import type { ShareForNurseData } from '../../api/appointment-detail.service';
 import { buildNurseShareMessage } from '../../utils/nurse-share-message';
 import { elevation, radius, spacing } from '@/theme';
@@ -17,6 +20,9 @@ interface Props {
 
 /** Partage RDV — CTA gradient (identité Cary). */
 export function RdvDetailShareFooter({ shareData, shareText: shareTextProp, loading }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_RdvDetailShareFooter_tsx_RdvDetailShareFooter_styles');
+
   const shareText = useMemo(
     () => shareTextProp?.trim() || buildNurseShareMessage(shareData),
     [shareData, shareTextProp],
@@ -35,18 +41,18 @@ export function RdvDetailShareFooter({ shareData, shareText: shareTextProp, load
         accessibilityLabel="Partager le rendez-vous"
       >
         <LinearGradient
-          colors={[colors.gradientStart, colors.gradientEnd]}
+          colors={[c.gradientStart, c.gradientEnd]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={[styles.gradient, disabled && styles.gradientDisabled]}
         >
           {loading ? (
-            <ActivityIndicator color={colors.textInverse} size="small" />
+            <ActivityIndicator color={c.textInverse} size="small" />
           ) : (
-            <>
-              <Share2 size={18} color={colors.textInverse} strokeWidth={2.25} />
+            <Row gap={spacing[2]} align="center" justify="center">
+              <Share2 size={18} color={c.textInverse} strokeWidth={2.25} />
               <Text style={styles.btnText}>Partager le rendez-vous</Text>
-            </>
+            </Row>
           )}
         </LinearGradient>
       </Pressable>
@@ -54,13 +60,14 @@ export function RdvDetailShareFooter({ shareData, shareText: shareTextProp, load
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
     marginTop: spacing[2],
   },
   pressable: {
     borderRadius: radius.lg,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     ...elevation.sm,
     shadowColor: '#16B6D6',
     shadowOpacity: 0.2,
@@ -69,10 +76,6 @@ const styles = StyleSheet.create({
     opacity: 0.92,
   },
   gradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
     paddingVertical: spacing[3.5],
     paddingHorizontal: spacing[4],
     minHeight: 52,
@@ -84,6 +87,7 @@ const styles = StyleSheet.create({
   btnText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textInverse,
+    color: c.textInverse,
   },
-});
+};
+}

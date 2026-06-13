@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { useQuery } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,6 +27,7 @@ interface Props {
 /** Carte profil premium pour les onglets « Plus » — photo / logo si disponible. */
 export function MoreProfileCard({ roleLabel, onPress, subtitle, delay = 80 }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_MoreProfileCard_tsx_styles');
   const user = useAuthStore((s) => s.user);
 
   const profileQ = useQuery({
@@ -66,15 +67,24 @@ export function MoreProfileCard({ roleLabel, onPress, subtitle, delay = 80 }: Pr
           style={styles.gradient}
         >
           <View style={styles.accent} />
-          <View style={styles.row}>
-            <ProfileAvatar
-              profileImageUrl={rawImage}
-              seed={avatarSeed}
-              gender={profileQ.data?.gender}
-              size={56}
-              style={styles.avatarRing}
-            />
-
+          <Cluster
+            gap={spacing[3.5]}
+            leading={
+              <ProfileAvatar
+                profileImageUrl={rawImage}
+                seed={avatarSeed}
+                gender={profileQ.data?.gender}
+                size={56}
+                style={styles.avatarRing}
+              />
+            }
+            actions={
+              <View style={styles.chevronWrap}>
+                <ChevronRight size={18} color={c.textTertiary} strokeWidth={2} />
+              </View>
+            }
+            style={styles.row}
+          >
             <View style={styles.info}>
               <Text style={styles.name} numberOfLines={1}>
                 {name}
@@ -88,11 +98,7 @@ export function MoreProfileCard({ roleLabel, onPress, subtitle, delay = 80 }: Pr
                 </Text>
               ) : null}
             </View>
-
-            <View style={styles.chevronWrap}>
-              <ChevronRight size={18} color={colors.textTertiary} strokeWidth={2} />
-            </View>
-          </View>
+          </Cluster>
         </LinearGradient>
       </Pressable>
     </Animated.View>
@@ -107,7 +113,7 @@ function buildStyles(c: AppColors) {
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: c.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     backgroundColor: c.surface,
   },
   cardPressed: {
@@ -115,10 +121,10 @@ function buildStyles(c: AppColors) {
   },
   gradient: {
     padding: spacing[4],
-    position: 'relative',
+    position: 'relative' as const,
   },
   accent: {
-    position: 'absolute',
+    position: 'absolute' as const,
     left: 0,
     top: 0,
     bottom: 0,
@@ -128,9 +134,6 @@ function buildStyles(c: AppColors) {
     borderBottomLeftRadius: radius['2xl'],
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3.5],
     paddingLeft: spacing[1],
   },
   avatarRing: {
@@ -140,7 +143,7 @@ function buildStyles(c: AppColors) {
     borderWidth: 2.5,
     borderColor: c.surface,
     backgroundColor: c.primaryLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     shadowColor: c.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
@@ -149,9 +152,7 @@ function buildStyles(c: AppColors) {
     flexShrink: 0,
   },
   info: {
-    flex: 1,
     gap: spacing[1],
-    minWidth: 0,
   },
   name: {
     fontFamily: fontFamily.bold,
@@ -160,7 +161,7 @@ function buildStyles(c: AppColors) {
     letterSpacing: -0.35,
   },
   rolePill: {
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-start' as const,
     paddingHorizontal: spacing[2.5],
     paddingVertical: 3,
     borderRadius: radius.full,
@@ -185,18 +186,10 @@ function buildStyles(c: AppColors) {
     height: 28,
     borderRadius: 14,
     backgroundColor: c.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_components_MoreProfileCard_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

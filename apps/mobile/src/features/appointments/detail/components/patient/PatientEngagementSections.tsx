@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { User, FileCheck, XCircle } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import {
@@ -15,7 +17,10 @@ import { PatientListCard, PatientListRow } from './PatientListPrimitives';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-export function PatientPreleveurAlerts({ batch }: { batch: Appointment[] }) {
+export function PatientPreleveurAlerts({
+  batch }: { batch: Appointment[] }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'PatientEngagementSections');
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -40,20 +45,24 @@ export function PatientPreleveurAlerts({ batch }: { batch: Appointment[] }) {
   return (
     <>
       {alerts.map(({ appt, phase }) => (
-        <View
+        <Cluster
           key={appt.id}
+          gap={spacing[3]}
+          align="start"
           style={[styles.alertCard, phase === 'arrive' && styles.alertArrive]}
+          leading={
+            <User
+              size={20}
+              color={phase === 'arrive' ? c.success : c.primary}
+              strokeWidth={2}
+            />
+          }
         >
-          <User
-            size={20}
-            color={phase === 'arrive' ? colors.success : colors.primary}
-            strokeWidth={2}
-          />
           <View style={styles.alertTexts}>
             <Text style={styles.alertTitle}>{preleveurBannerTitle(appt, phase)}</Text>
             <Text style={styles.alertSub}>{preleveurBannerSubtitle(appt, phase)}</Text>
           </View>
-        </View>
+        </Cluster>
       ))}
     </>
   );
@@ -74,6 +83,8 @@ export function PatientFooterActions({
   onCancel: () => void;
   onScrollToDocuments?: () => void;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'PatientEngagementSections');
   const resultats = documents.filter((d) => d.document_type === 'resultats');
   const completed = batch.filter((a) => a.status === 'completed');
 
@@ -85,9 +96,11 @@ export function PatientFooterActions({
     rows.push({
       label: 'Résultats',
       node: (
-        <Pressable onPress={onScrollToDocuments} style={styles.actionBtn}>
-          <FileCheck size={16} color={colors.primary} strokeWidth={2} />
-          <Text style={styles.actionBtnText}>Voir les résultats</Text>
+        <Pressable onPress={onScrollToDocuments}>
+          <Row gap={spacing[2]} align="center" style={styles.actionBtn}>
+            <FileCheck size={16} color={c.primary} strokeWidth={2} />
+            <Text style={styles.actionBtnText}>Voir les résultats</Text>
+          </Row>
         </Pressable>
       ),
     });
@@ -98,11 +111,13 @@ export function PatientFooterActions({
       label: 'Annulation',
       last: true,
       node: (
-        <Pressable onPress={onCancel} style={[styles.actionBtn, styles.actionBtnDanger]}>
-          <XCircle size={16} color={colors.error} strokeWidth={2} />
-          <Text style={[styles.actionBtnText, styles.actionBtnTextDanger]}>
-            {cancelCount > 1 ? 'Annuler les rendez-vous du lot' : 'Annuler le rendez-vous'}
-          </Text>
+        <Pressable onPress={onCancel}>
+          <Row gap={spacing[2]} align="center" style={[styles.actionBtn, styles.actionBtnDanger]}>
+            <XCircle size={16} color={c.error} strokeWidth={2} />
+            <Text style={[styles.actionBtnText, styles.actionBtnTextDanger]}>
+              {cancelCount > 1 ? 'Annuler les rendez-vous du lot' : 'Annuler le rendez-vous'}
+            </Text>
+          </Row>
         </Pressable>
       ),
     });
@@ -124,9 +139,6 @@ export function PatientFooterActions({
 function buildStyles(c: AppColors) {
   return {
     alertCard: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: spacing[3],
       backgroundColor: c.primaryLight,
       borderRadius: radius.xl,
       borderWidth: 1,
@@ -137,7 +149,7 @@ function buildStyles(c: AppColors) {
       backgroundColor: c.successLight,
       borderColor: c.successMid,
     },
-    alertTexts: { flex: 1, gap: 4 },
+    alertTexts: { gap: 4 },
     alertTitle: {
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.sm,
@@ -150,10 +162,7 @@ function buildStyles(c: AppColors) {
       lineHeight: 18,
     },
     actionBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[2],
-      alignSelf: 'flex-start',
+      alignSelf: 'flex-start' as const,
       paddingHorizontal: spacing[3],
       paddingVertical: spacing[2],
       borderRadius: radius.lg,
@@ -172,15 +181,3 @@ function buildStyles(c: AppColors) {
     },
   };
 }
-
-const styles = new Proxy({} as Record<string, unknown>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles(
-        'features_appointments_detail_components_patient_PatientEngagementSections_tsx_styles',
-        buildStyles,
-      )[prop];
-    }
-    return undefined;
-  },
-});

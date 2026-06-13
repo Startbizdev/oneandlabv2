@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { ChevronDown } from 'lucide-react-native';
 import { BottomSheet } from './BottomSheet';
 import { useInBottomSheet } from './sheet-keyboard-context';
@@ -30,6 +32,8 @@ export function SelectField({
   error,
   sheetTitle,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_ui_SelectField_tsx_styles');
   const inSheet = useInBottomSheet();
   const [open, setOpen] = useState(false);
   const selectedLabel = useMemo(
@@ -68,15 +72,17 @@ export function SelectField({
         accessibilityLabel={`${label}, ${selectedLabel ?? placeholder}`}
         accessibilityState={{ expanded: open }}
       >
-        <Text
-          style={[styles.triggerText, !selectedLabel && styles.placeholder]}
-          numberOfLines={2}
-        >
-          {selectedLabel ?? placeholder}
-        </Text>
-        <View style={open && inSheet ? styles.chevronOpen : undefined}>
-          <ChevronDown size={18} color={colors.textSecondary} strokeWidth={2} />
-        </View>
+        <Row gap={spacing[2]}>
+          <Text
+            style={[styles.triggerText, !selectedLabel && styles.placeholder]}
+            numberOfLines={2}
+          >
+            {selectedLabel ?? placeholder}
+          </Text>
+          <View style={open && inSheet ? styles.chevronOpen : undefined}>
+            <ChevronDown size={18} color={c.textSecondary} strokeWidth={2} />
+          </View>
+        </Row>
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -119,9 +125,6 @@ function buildStyles(c: AppColors) {
   },
   trigger: {
     minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: c.border,
@@ -144,10 +147,11 @@ function buildStyles(c: AppColors) {
     borderBottomLeftRadius: radius.lg,
     borderBottomRightRadius: radius.lg,
     backgroundColor: c.surface,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   inlineList: { maxHeight: 220 },
   triggerText: {
+    minWidth: 0,
     flex: 1,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
@@ -162,7 +166,7 @@ function buildStyles(c: AppColors) {
   list: { maxHeight: 360 },
   item: {
     minHeight: 52,
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[1],
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -179,11 +183,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('components_ui_SelectField_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

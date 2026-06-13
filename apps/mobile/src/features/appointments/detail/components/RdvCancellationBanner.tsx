@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { getCancellationMotifLine, isAppointmentCanceled } from '@/utils/appointment-detail-display';
@@ -13,6 +15,8 @@ export function RdvCancellationBanner({
   compact?: boolean;
 }) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvCancellationBanner_tsx_RdvCancellationBanner_styles');
+
   if (!isAppointmentCanceled(apt.status)) return null;
   const motif = getCancellationMotifLine(apt);
 
@@ -30,7 +34,8 @@ export function RdvCancellationBanner({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   bannerCompact: {
     marginHorizontal: spacing[4],
     padding: spacing[3],
@@ -50,4 +55,5 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     lineHeight: fontSize.xs * 1.5,
   },
-});
+};
+}

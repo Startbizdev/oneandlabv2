@@ -1,6 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
+import { Cluster, Row } from '@/components/layout/primitives';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
@@ -16,17 +18,25 @@ export function PatientListCard({
   Icon?: LucideIcon;
   children: ReactNode;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_patient_PatientListPrimitives_tsx_styles');
   return (
     <View style={styles.card}>
       {title ? (
-        <View style={styles.cardHead}>
-          {Icon ? (
-            <View style={styles.iconWrap}>
-              <Icon size={15} color={colors.primary} strokeWidth={2} />
-            </View>
-          ) : null}
+        <Cluster
+          gap={spacing[2]}
+          align="center"
+          style={styles.cardHead}
+          leading={
+            Icon ? (
+              <View style={styles.iconWrap}>
+                <Icon size={15} color={c.primary} strokeWidth={2} />
+              </View>
+            ) : undefined
+          }
+        >
           <Text style={styles.cardTitle}>{title}</Text>
-        </View>
+        </Cluster>
       ) : null}
       <View style={styles.cardBody}>{children}</View>
     </View>
@@ -44,8 +54,11 @@ export function PatientListRow({
   last?: boolean;
   highlight?: boolean;
 }) {
+  const styles = useThemedStyles(buildStyles, 'PatientListPrimitives.PatientListRow');
   return (
-    <View
+    <Row
+      align="start"
+      gap={spacing[3]}
       style={[
         styles.row,
         !last && styles.rowBorder,
@@ -54,7 +67,7 @@ export function PatientListRow({
     >
       <Text style={styles.rowLabel}>{label}</Text>
       <View style={styles.rowValue}>{children}</View>
-    </View>
+    </Row>
   );
 }
 
@@ -67,6 +80,7 @@ export function PatientRowValue({
   sub?: string;
   muted?: boolean;
 }) {
+  const styles = useThemedStyles(buildStyles, 'PatientListPrimitives.PatientRowValue');
   return (
     <View style={styles.valueStack}>
       <Text style={[styles.valueText, muted && styles.valueMuted]}>{text}</Text>
@@ -80,15 +94,16 @@ export function PatientActionChips({
 }: {
   actions: { label: string; onPress: () => void }[];
 }) {
+  const styles = useThemedStyles(buildStyles, 'PatientListPrimitives.PatientActionChips');
   if (!actions.length) return null;
   return (
-    <View style={styles.chips}>
+    <Row wrap gap={spacing[2]} style={styles.chips}>
       {actions.map((a) => (
         <Pressable key={a.label} onPress={a.onPress} style={styles.chip}>
           <Text style={styles.chipText}>{a.label}</Text>
         </Pressable>
       ))}
-    </View>
+    </Row>
   );
 }
 
@@ -99,12 +114,9 @@ function buildStyles(c: AppColors) {
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: c.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   cardHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3.5],
     paddingBottom: spacing[2],
@@ -116,8 +128,8 @@ function buildStyles(c: AppColors) {
     height: 28,
     borderRadius: radius.sm,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   cardTitle: {
     fontFamily: fontFamily.bold,
@@ -127,11 +139,8 @@ function buildStyles(c: AppColors) {
   },
   cardBody: {},
   row: {
-    flexDirection: 'row',
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-    gap: spacing[3],
-    alignItems: 'flex-start',
   },
   rowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -170,9 +179,6 @@ function buildStyles(c: AppColors) {
     lineHeight: fontSize.xs * 1.4,
   },
   chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
     marginTop: spacing[1],
   },
   chip: {
@@ -191,11 +197,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_patient_PatientListPrimitives_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -1,5 +1,5 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
@@ -9,8 +9,9 @@ import {
   formatBirthDateFr,
   parseBirthDateParts,
 } from '@oneandlab/shared-utils';
+import { Row } from '@/components/layout/primitives';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type PickerField = 'day' | 'month' | 'year' | null;
@@ -30,6 +31,7 @@ export function BirthDatePicker({
   error,
   disabled,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'components_ui_BirthDatePicker_tsx_styles');
   const [day, setDay] = useState<number | null>(null);
   const [month, setMonth] = useState<number | null>(null);
   const [year, setYear] = useState<number | null>(null);
@@ -108,7 +110,7 @@ export function BirthDatePicker({
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <View style={styles.row}>
+      <Row gap={spacing[2]} style={styles.row}>
         {(['day', 'month', 'year'] as const).map((field) => {
           const text =
             field === 'day' ? dayLabel : field === 'month' ? monthLabel : yearLabel;
@@ -125,7 +127,7 @@ export function BirthDatePicker({
             </Pressable>
           );
         })}
-      </View>
+      </Row>
       {summary ? <Text style={styles.summary}>{summary}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -155,14 +157,14 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
   },
   row: {
-    flexDirection: 'row',
-    gap: spacing[2],
+    minWidth: 0,
   },
   field: {
+    minWidth: 0,
     flex: 1,
     minHeight: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: c.border,
@@ -207,11 +209,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('components_ui_BirthDatePicker_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -1,7 +1,10 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View } from 'react-native';
 import { Stethoscope } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
 import {
@@ -15,7 +18,7 @@ import {
   PatientListRow,
   PatientRowValue,
 } from './PatientListPrimitives';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function actTitle(appt: Appointment, index: number): string {
@@ -65,6 +68,8 @@ interface Props {
 }
 
 export function PatientCareSection({ batch, isMultiBatch }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_patient_PatientCareSection_tsx_PatientCareSection_styles');
+
   const categoriesQ = useAppointmentCareCategories();
   const categories = categoriesQ.data;
 
@@ -88,10 +93,10 @@ export function PatientCareSection({ batch, isMultiBatch }: Props) {
     >
       {batch.map((appt, idx) => (
         <View key={appt.id} style={[styles.act, idx > 0 && styles.actBorder]}>
-          <View style={styles.actHead}>
+          <Row justify="between" align="center" gap={spacing[2]} style={styles.actHead}>
             <Text style={styles.actTitle}>{actTitle(appt, idx)}</Text>
             <StatusBadge status={appt.status} size="sm" />
-          </View>
+          </Row>
           {isAppointmentCanceled(appt.status) ? (
             <View style={styles.actCancel}>
               <RdvCancellationBanner apt={appt} compact />
@@ -104,31 +109,30 @@ export function PatientCareSection({ batch, isMultiBatch }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[3] },
   act: { paddingBottom: spacing[1] },
   actBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
     paddingTop: spacing[2],
   },
   actHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3],
     paddingBottom: spacing[2],
-    gap: spacing[2],
   },
   actTitle: {
+    minWidth: 0,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     flex: 1,
   },
   actCancel: {
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[2],
   },
-});
+};
+}

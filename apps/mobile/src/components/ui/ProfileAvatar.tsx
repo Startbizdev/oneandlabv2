@@ -11,7 +11,7 @@ import {
 import { BlurView } from 'expo-blur';
 import { avatarDisplaySeed, personasAvatarUrl } from '@/lib/images/dicebear-personas-url';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { colors } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 
 interface Props {
   profileImageUrl?: string | null;
@@ -35,6 +35,7 @@ function ProfileAvatarComponent({
   style,
   imageStyle,
 }: Props) {
+  const c = useAppColors();
   const [photoFailed, setPhotoFailed] = useState(false);
   const displaySeed = avatarDisplaySeed(seed ?? 'cary-user');
   const photoUri = useMemo(() => resolveProfileImageUrl(profileImageUrl), [profileImageUrl]);
@@ -57,7 +58,7 @@ function ProfileAvatarComponent({
           height: size,
           borderRadius: radius,
           overflow: 'hidden',
-          backgroundColor: colors.primaryLight,
+          backgroundColor: c.primaryLight,
         },
         style,
       ]}

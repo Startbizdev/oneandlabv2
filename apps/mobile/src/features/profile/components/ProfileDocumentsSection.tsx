@@ -1,11 +1,15 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { ProfileDocumentsEmbedded } from '@/features/profile/screens/ProfileDocumentsScreen';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Bloc documents médicaux patient — aligné web `ProfileDocuments` sur /patient/profile */
 export function ProfileDocumentsSection() {
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileDocumentsSection_tsx_ProfileDocumentsSection_styles');
+
   return (
     <View style={styles.wrap}>
       <Animated.View entering={FadeInDown.delay(240).duration(280).springify()}>
@@ -19,17 +23,19 @@ export function ProfileDocumentsSection() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[2] },
   sectionTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   sectionHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     marginBottom: spacing[2],
   },
-});
+};
+}

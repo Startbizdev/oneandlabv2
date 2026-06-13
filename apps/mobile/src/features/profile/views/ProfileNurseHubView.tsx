@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -23,12 +25,14 @@ import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { nursePublicProfilePath } from '@/features/profile/utils/nurse-public-profile';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 
 export function ProfileNurseHubView() {
-  const router = useRouter();
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_views_ProfileNurseHubView_tsx_ProfileNurseHubView_styles');
+
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
@@ -151,8 +155,8 @@ export function ProfileNurseHubView() {
             title="Types de soins"
             subtitle={summary.careTypesSubtitle}
             onPress={() => push('/profile/nurse/care-types')}
-            iconColor={colors.error}
-            iconBg={colors.errorLight}
+            iconColor={c.error}
+            iconBg={c.errorLight}
           />
           <View style={styles.divider} />
           <ProfileNavRow
@@ -160,8 +164,8 @@ export function ProfileNurseHubView() {
             title="Zone de couverture"
             subtitle={summary.coverageSubtitle}
             onPress={() => push('/profile/nurse/coverage')}
-            iconColor={colors.primary}
-            iconBg={colors.primaryLight}
+            iconColor={c.primary}
+            iconBg={c.primaryLight}
           />
           {publicSlug ? (
             <>
@@ -210,7 +214,8 @@ export function ProfileNurseHubView() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   scroll: {
     padding: spacing[4],
     gap: spacing[4],
@@ -218,11 +223,12 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     marginLeft: spacing[4] + 40 + spacing[3],
   },
   sheetBody: {
     paddingTop: spacing[2],
     paddingBottom: spacing[6],
   },
-});
+};
+}

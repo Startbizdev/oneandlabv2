@@ -1,7 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { CircleCheck } from 'lucide-react-native';
 import type { SelectedServiceInput } from '@oneandlab/shared-utils';
 import { formatDateCompact } from '@/utils/appointment-display';
@@ -33,6 +35,8 @@ export function BookingWizardSegmentContext({
   lotServices,
   previousRecaps,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingWizardSegmentContext_tsx_styles');
   const kind: BookingWizardLotKind = bookingWizardLotKind(activeService);
   const stepLabel = bookingWizardLotStepLabel(kind);
   const title = bookingWizardLotTitle(lotServices, kind);
@@ -41,10 +45,10 @@ export function BookingWizardSegmentContext({
     <View style={styles.wrap}>
       {previousRecaps.length > 0 ? (
         <View style={styles.doneBlock}>
-          <View style={styles.doneHeader}>
-            <CircleCheck size={14} color={colors.primary} strokeWidth={2.5} />
+          <Row gap={spacing[1.5]} align="center">
+            <CircleCheck size={14} color={c.primary} strokeWidth={2.5} />
             <Text style={styles.doneTitle}>Déjà planifié</Text>
-          </View>
+          </Row>
           {previousRecaps.map((r) => (
             <Text key={r.serviceId} style={styles.doneLine} numberOfLines={2}>
               <Text style={styles.doneBold}>{r.shortLabel}</Text>
@@ -54,7 +58,7 @@ export function BookingWizardSegmentContext({
         </View>
       ) : null}
 
-      <View style={styles.card}>
+      <Row style={styles.card}>
         <View style={styles.accent} />
         <View style={styles.copy}>
           <Text style={styles.badge}>{stepLabel}</Text>
@@ -62,7 +66,7 @@ export function BookingWizardSegmentContext({
             {title}
           </Text>
           {lotServices.length > 1 ? (
-            <View style={styles.pillRow}>
+            <Row wrap gap={spacing[1.5]}>
               {lotServices.map((s) => (
                 <View key={s.id} style={styles.pill}>
                   <Text style={styles.pillText} numberOfLines={1}>
@@ -70,10 +74,10 @@ export function BookingWizardSegmentContext({
                   </Text>
                 </View>
               ))}
-            </View>
+            </Row>
           ) : null}
         </View>
-      </View>
+      </Row>
     </View>
   );
 }
@@ -90,16 +94,11 @@ function buildStyles(c: AppColors) {
     gap: spacing[1],
     paddingVertical: spacing[1],
   },
-  doneHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1.5],
-  },
   doneTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
     color: c.primary,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.4,
   },
   doneLine: {
@@ -111,12 +110,11 @@ function buildStyles(c: AppColors) {
   doneBold: { fontFamily: fontFamily.semiBold, color: c.textPrimary },
   doneDate: { color: c.textTertiary },
   card: {
-    flexDirection: 'row',
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: c.borderLight,
     backgroundColor: c.surface,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   accent: {
     width: 4,
@@ -132,7 +130,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
     color: c.primaryDark,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.35,
   },
   title: {
@@ -141,13 +139,8 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.35,
   },
-  pillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[1.5],
-  },
   pill: {
-    maxWidth: '100%',
+    maxWidth: '100%' as const,
     paddingHorizontal: spacing[2],
     paddingVertical: spacing[1],
     borderRadius: radius.md,
@@ -161,11 +154,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_BookingWizardSegmentContext_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

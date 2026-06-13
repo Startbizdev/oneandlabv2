@@ -1,8 +1,6 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { FolderOpen } from 'lucide-react-native';
+import { Text, View } from 'react-native';
 import {
   medicalDocumentPickErrorMessage,
   pickMedicalDocumentFile,
@@ -30,8 +28,6 @@ import {
 } from '@/features/documents/components/medical-documents-stack';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import { fontFamily, fontSize } from '@/theme/typography';
-
-const STAFF_DOSSIER_ROLES = new Set(['pro', 'nurse']);
 
 const PATIENT_TYPES = [
   'carte_vitale',
@@ -75,7 +71,6 @@ export function RdvDocumentsPremiumPanel({
   omitCarePhotos = true,
 }: Props) {
   const c = useAppColors();
-  const router = useRouter();
   const section = getRdvDetailSectionStyles();
   const headStyles = useMedicalDocumentsStackHeadStyles();
   const { show: toast } = useToast();
@@ -168,15 +163,6 @@ export function RdvDocumentsPremiumPanel({
     return 'Appuyez sur une ligne pour ajouter, télécharger ou prévisualiser';
   }, [list.length]);
 
-  const patientId = apt.patient_id?.trim();
-  const dossierRoute =
-    role === 'pro' && patientId
-      ? (`/(pro)/patient/${patientId}/documents` as const)
-      : role === 'nurse' && patientId
-        ? (`/(nurse)/patient/${patientId}/documents` as const)
-        : null;
-  const showDossierLink = STAFF_DOSSIER_ROLES.has(role) && Boolean(dossierRoute);
-
   const hasProfileNewerAlert = useMemo(
     () => list.some((d) => d.profile_newer_than_appointment),
     [list],
@@ -204,18 +190,6 @@ export function RdvDocumentsPremiumPanel({
               attachée au rendez-vous.
             </Text>
           </View>
-        ) : null}
-
-        {showDossierLink && dossierRoute ? (
-          <Pressable
-            onPress={() => router.push(dossierRoute as never)}
-            style={({ pressed }) => [dossierStyles.linkRow, pressed && { opacity: 0.85 }]}
-            accessibilityRole="button"
-            accessibilityLabel="Voir le dossier complet du patient"
-          >
-            <FolderOpen size={16} color={c.primary} strokeWidth={2.25} />
-            <Text style={[dossierStyles.linkText, { color: c.primary }]}>Voir dossier complet</Text>
-          </Pressable>
         ) : null}
 
         {stackRows.length === 0 ? (
@@ -278,16 +252,5 @@ const dossierStyles = {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
     lineHeight: fontSize.xs * 1.45,
-  },
-  linkRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-  },
-  linkText: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
   },
 };

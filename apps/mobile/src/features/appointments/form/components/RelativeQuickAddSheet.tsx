@@ -1,7 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
@@ -15,7 +16,7 @@ import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { RELATIONSHIP_OPTIONS } from '@/features/patient-relatives/constants/relationship-types';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_RelativeQuickAddSheet_tsx_styles');
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [firstName, setFirstName] = useState('');
@@ -83,7 +85,7 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
         <Input label="Nom" value={lastName} onChangeText={setLastName} />
         <View>
           <Text style={styles.label}>Lien de parenté</Text>
-          <View style={styles.pills}>
+          <Row wrap gap={spacing[2]}>
             {RELATIONSHIP_OPTIONS.map((o) => {
               const active = relationshipType === o.value;
               return (
@@ -99,7 +101,7 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
                 </Pressable>
               );
             })}
-          </View>
+          </Row>
         </View>
         <GenderSelect value={gender} onChange={setGender} />
         <BirthDatePicker value={birthDate} onChange={setBirthDate} />
@@ -124,10 +126,9 @@ function buildStyles(c: AppColors) {
     marginBottom: spacing[2],
     lineHeight: fontSize.base * 1.3,
   },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   pill: {
     minHeight: 44,
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2.5],
     borderRadius: 999,
@@ -152,11 +153,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_RelativeQuickAddSheet_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

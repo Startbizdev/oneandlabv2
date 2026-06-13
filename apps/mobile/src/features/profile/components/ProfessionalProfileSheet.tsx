@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useMemo } from 'react';
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Camera,
@@ -34,7 +36,10 @@ interface Props {
   title?: string;
 }
 
-export function ProfessionalProfileSheet({ visible, onClose, profile, title }: Props) {
+export function ProfessionalProfileSheet({
+  visible, onClose, profile, title }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfessionalProfileSheet_tsx_styles');
   const displayName = professionalProfileDisplayName(profile);
   const sheetTitle = title?.trim() || displayName;
   const coverSrc = resolveProfileImageUrl(profile.coverImageUrl);
@@ -89,7 +94,7 @@ export function ProfessionalProfileSheet({ visible, onClose, profile, title }: P
           <Image source={{ uri: coverSrc }} style={styles.coverImage} resizeMode="cover" />
         ) : (
           <LinearGradient
-            colors={[colors.gradientStart, colors.gradientEnd]}
+            colors={[c.gradientStart, c.gradientEnd]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -112,27 +117,27 @@ export function ProfessionalProfileSheet({ visible, onClose, profile, title }: P
         </View>
         <Text style={styles.roleEyebrow}>Professionnel de santé</Text>
         <Text style={styles.name}>{displayName}</Text>
-        <View style={styles.badges}>
+        <Row wrap justify="center" gap={spacing[2]} style={styles.badges}>
           {profile.emploi ? (
-            <View style={styles.badge}>
+            <Row wrap style={styles.badge}>
               <Text style={styles.badgeMuted}>Profession</Text>
               <Text style={styles.badgeValue}> · {profile.emploi}</Text>
-            </View>
+            </Row>
           ) : null}
-          <View style={styles.badge}>
+          <Row wrap style={styles.badge}>
             <Text style={styles.badgeMuted}>N° Adeli</Text>
             <Text style={styles.badgeValue}> · {profile.adeli?.trim() || '—'}</Text>
-          </View>
-        </View>
+          </Row>
+        </Row>
       </View>
 
       {phone ? (
-        <View style={styles.contactRow}>
+        <Row justify="center" gap={spacing[2]} style={styles.contactRow}>
           <Button
             title="Appeler"
             variant="outline"
             size="sm"
-            leftIcon={<Phone size={16} color={colors.primary} strokeWidth={2} />}
+            leftIcon={<Phone size={16} color={c.primary} strokeWidth={2} />}
             onPress={() => void Linking.openURL(`tel:${phone}`)}
             style={styles.contactBtn}
           />
@@ -140,11 +145,11 @@ export function ProfessionalProfileSheet({ visible, onClose, profile, title }: P
             title="Message"
             variant="outline"
             size="sm"
-            leftIcon={<MessageCircle size={16} color={colors.primary} strokeWidth={2} />}
+            leftIcon={<MessageCircle size={16} color={c.primary} strokeWidth={2} />}
             onPress={() => void Linking.openURL(`sms:${phone}`)}
             style={styles.contactBtn}
           />
-        </View>
+        </Row>
       ) : null}
 
       <View style={styles.section}>
@@ -153,7 +158,7 @@ export function ProfessionalProfileSheet({ visible, onClose, profile, title }: P
           <Text style={styles.bio}>{profile.biography.trim()}</Text>
         ) : (
           <View style={styles.emptyBox}>
-            <Stethoscope size={20} color={colors.textTertiary} strokeWidth={2} />
+            <Stethoscope size={20} color={c.textTertiary} strokeWidth={2} />
             <Text style={styles.emptyText}>Aucune présentation renseignée sur le profil.</Text>
           </View>
         )}
@@ -168,16 +173,22 @@ export function ProfessionalProfileSheet({ visible, onClose, profile, title }: P
               onPress={() => void Linking.openURL(websiteUrl)}
               accessibilityRole="link"
             >
-              <View style={styles.linkIcon}>
-                <Globe size={18} color={colors.primary} strokeWidth={2} />
-              </View>
-              <View style={styles.linkText}>
-                <Text style={styles.linkLabel}>Site internet</Text>
-                <Text style={styles.linkUrl} numberOfLines={2}>
-                  {profile.websiteUrl}
-                </Text>
-              </View>
-              <ExternalLink size={16} color={colors.textTertiary} strokeWidth={2} />
+              <Cluster
+                gap={spacing[3]}
+                leading={
+                  <View style={styles.linkIcon}>
+                    <Globe size={18} color={c.primary} strokeWidth={2} />
+                  </View>
+                }
+                actions={<ExternalLink size={16} color={c.textTertiary} strokeWidth={2} />}
+              >
+                <View style={styles.linkText}>
+                  <Text style={styles.linkLabel}>Site internet</Text>
+                  <Text style={styles.linkUrl} numberOfLines={2}>
+                    {profile.websiteUrl}
+                  </Text>
+                </View>
+              </Cluster>
             </Pressable>
           ) : null}
           {socialRows.map((row) => (
@@ -187,16 +198,22 @@ export function ProfessionalProfileSheet({ visible, onClose, profile, title }: P
               onPress={() => void Linking.openURL(row.url)}
               accessibilityRole="link"
             >
-              <View style={styles.linkIcon}>
-                <row.Icon size={18} color={colors.primary} strokeWidth={2} />
-              </View>
-              <View style={styles.linkText}>
-                <Text style={styles.linkLabel}>{row.label}</Text>
-                <Text style={styles.linkUrl} numberOfLines={1}>
-                  {row.url.replace(/^https?:\/\//i, '')}
-                </Text>
-              </View>
-              <ExternalLink size={16} color={colors.textTertiary} strokeWidth={2} />
+              <Cluster
+                gap={spacing[3]}
+                leading={
+                  <View style={styles.linkIcon}>
+                    <row.Icon size={18} color={c.primary} strokeWidth={2} />
+                  </View>
+                }
+                actions={<ExternalLink size={16} color={c.textTertiary} strokeWidth={2} />}
+              >
+                <View style={styles.linkText}>
+                  <Text style={styles.linkLabel}>{row.label}</Text>
+                  <Text style={styles.linkUrl} numberOfLines={1}>
+                    {row.url.replace(/^https?:\/\//i, '')}
+                  </Text>
+                </View>
+              </Cluster>
             </Pressable>
           ))}
         </View>
@@ -213,20 +230,20 @@ function buildStyles(c: AppColors) {
   },
   coverWrap: {
     height: 140,
-    width: '100%',
+    width: '100%' as const,
     backgroundColor: c.surfaceAlt,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     marginBottom: spacing[2],
   },
   coverImage: {
-    width: '100%',
-    height: '100%',
+    width: '100%' as const,
+    height: '100%' as const,
   },
   coverFade: {
     ...StyleSheet.absoluteFillObject,
   },
   identity: {
-    alignItems: 'center',
+    alignItems: 'center' as const,
     paddingHorizontal: spacing[4],
     marginTop: -AVATAR / 2,
     gap: spacing[2],
@@ -251,7 +268,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
     letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     color: c.textTertiary,
     marginTop: spacing[1],
   },
@@ -259,19 +276,13 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.xl,
     color: c.textPrimary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   badges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: spacing[2],
     marginTop: spacing[1],
   },
   badge: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    maxWidth: '100%',
+    maxWidth: '100%' as const,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[1],
     borderRadius: radius.full,
@@ -290,9 +301,6 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
   },
   contactRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing[2],
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[4],
     marginTop: spacing[2],
@@ -312,7 +320,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     color: c.textTertiary,
   },
   bio: {
@@ -322,12 +330,12 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
   },
   emptyBox: {
-    alignItems: 'center',
+    alignItems: 'center' as const,
     gap: spacing[2],
     padding: spacing[4],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderStyle: 'dashed',
+    borderStyle: 'dashed' as const,
     borderColor: c.borderLight,
     backgroundColor: c.surfaceAlt,
   },
@@ -335,12 +343,9 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[3],
     borderRadius: radius.lg,
@@ -353,11 +358,10 @@ function buildStyles(c: AppColors) {
     height: 36,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   linkText: {
-    flex: 1,
     gap: 2,
   },
   linkLabel: {
@@ -373,11 +377,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_components_ProfessionalProfileSheet_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

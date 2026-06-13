@@ -1,8 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, User } from 'lucide-react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
@@ -41,6 +41,7 @@ export function ProfileHero({
   onEditPhotos,
 }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileHero_tsx_styles');
   const name = `${firstName} ${lastName}`.trim() || 'Mon profil';
   const coverSrc = resolveProfileImageUrl(coverImageUrl);
 
@@ -52,7 +53,7 @@ export function ProfileHero({
             <Image source={{ uri: coverSrc }} style={styles.coverImage} resizeMode="cover" />
           ) : (
             <LinearGradient
-              colors={[colors.gradientStart, colors.gradientEnd]}
+              colors={[c.gradientStart, c.gradientEnd]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}
@@ -80,16 +81,16 @@ export function ProfileHero({
             style={styles.avatarClip}
           />
           <View style={styles.cameraBadge}>
-            <Camera size={15} color={colors.textInverse} strokeWidth={2.5} />
+            <Camera size={15} color={c.textInverse} strokeWidth={2.5} />
           </View>
         </Pressable>
 
         <Text style={styles.name}>{name}</Text>
         {role && ROLE_LABEL[role] ? (
-          <View style={styles.rolePill}>
-            <User size={12} color={colors.primary} strokeWidth={2} />
+          <Row gap={spacing[1]} align="center" style={styles.rolePill}>
+            <User size={12} color={c.primary} strokeWidth={2} />
             <Text style={styles.roleText}>{ROLE_LABEL[role]}</Text>
-          </View>
+          </Row>
         ) : null}
         {email ? <Text style={styles.email}>{email}</Text> : null}
       </View>
@@ -106,20 +107,20 @@ function buildStyles(c: AppColors) {
   },
   coverWrap: {
     height: 120,
-    width: '100%',
+    width: '100%' as const,
     backgroundColor: c.surfaceAlt,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   coverImage: {
-    width: '100%',
-    height: '100%',
+    width: '100%' as const,
+    height: '100%' as const,
   },
   coverPlaceholder: {
     height: 56,
-    width: '100%',
+    width: '100%' as const,
   },
   identity: {
-    alignItems: 'center',
+    alignItems: 'center' as const,
     marginTop: -AVATAR / 2,
     paddingHorizontal: spacing[4],
     gap: spacing[2],
@@ -127,8 +128,8 @@ function buildStyles(c: AppColors) {
   avatarOuter: {
     width: AVATAR + 12,
     height: AVATAR + 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   avatarClip: {
     width: AVATAR,
@@ -136,19 +137,19 @@ function buildStyles(c: AppColors) {
     borderRadius: AVATAR / 2,
     borderWidth: 3,
     borderColor: c.surface,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     backgroundColor: c.primaryLight,
   },
   cameraBadge: {
-    position: 'absolute',
+    position: 'absolute' as const,
     right: 2,
     bottom: 2,
     width: 30,
     height: 30,
     borderRadius: 15,
     backgroundColor: c.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     borderWidth: 3,
     borderColor: c.surface,
     zIndex: 2,
@@ -163,12 +164,9 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize['2xl'],
     color: c.textPrimary,
     letterSpacing: -0.5,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   rolePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[1],
     borderRadius: radius.full,
@@ -185,16 +183,8 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_components_ProfileHero_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

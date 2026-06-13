@@ -1,8 +1,11 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import React, { type ReactNode } from 'react';
 import { View, StyleSheet, type ScrollViewProps, type ViewStyle } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { KeyboardScrollView } from './KeyboardScrollView';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 /**
  * Conteneur d'écran sans SafeAreaView.
@@ -33,10 +36,12 @@ type ScreenProps = StaticScreenProps | ScrollScreenProps;
 export function Screen({
   children,
   style,
-  backgroundColor = colors.background,
+  backgroundColor,
   ...rest
 }: ScreenProps) {
-  const bg = { backgroundColor };
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_layout_Screen_tsx_Screen_styles');
+  const bg = { backgroundColor: backgroundColor ?? c.background };
 
   if ('scroll' in rest && rest.scroll) {
     const { contentStyle, scrollProps, keyboardAvoiding = true } = rest as ScrollScreenProps;
@@ -88,8 +93,10 @@ export function Screen({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   flex: {
+    minWidth: 0,
     flex: 1,
   },
   scrollContent: {
@@ -99,7 +106,9 @@ const styles = StyleSheet.create({
     gap: spacing[3],
   },
   staticContent: {
+    minWidth: 0,
     flex: 1,
     paddingHorizontal: spacing[4],
   },
-});
+};
+}

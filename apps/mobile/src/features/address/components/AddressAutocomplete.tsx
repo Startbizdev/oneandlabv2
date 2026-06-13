@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MapPin, X } from 'lucide-react-native';
@@ -25,6 +27,9 @@ export function AddressAutocomplete({
   label = 'Adresse',
   error,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_address_components_AddressAutocomplete_tsx_AddressAutocomplete_styles');
+
   const [query, setQuery] = useState(value?.label ?? '');
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -89,13 +94,13 @@ export function AddressAutocomplete({
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           placeholder="Tapez au moins 3 caractères…"
           editable={!value}
-          leftIcon={<MapPin size={16} color={colors.textTertiary} strokeWidth={2} />}
+          leftIcon={<MapPin size={16} color={c.textTertiary} strokeWidth={2} />}
           rightIcon={
             loading ? (
-              <ActivityIndicator size="small" color={colors.primary} />
+              <ActivityIndicator size="small" color={c.primary} />
             ) : value ? (
               <Pressable onPress={clear} hitSlop={8}>
-                <X size={16} color={colors.textTertiary} strokeWidth={2} />
+                <X size={16} color={c.textTertiary} strokeWidth={2} />
               </Pressable>
             ) : null
           }
@@ -138,39 +143,41 @@ export function AddressAutocomplete({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrapper: { gap: spacing[2] },
-  inputWrap: { position: 'relative' },
+  inputWrap: { position: 'relative' as const },
   dropdown: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    overflow: 'hidden',
+    borderColor: c.borderLight,
+    overflow: 'hidden' as const,
     maxHeight: 220,
   },
   suggestion: {
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
     gap: 2,
   },
   suggestionFirst: { borderTopWidth: 0 },
   suggestionLabel: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   suggestionMeta: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   noResult: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     paddingHorizontal: spacing[1],
   },
-});
+};
+}

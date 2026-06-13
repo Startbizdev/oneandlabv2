@@ -38,13 +38,3 @@ function buildAppointmentListCardStyles(c: AppColors) {
 export function getAppointmentListCardStyles() {
   return getThemedStyles('appointment-list-card', buildAppointmentListCardStyles);
 }
-
-/** @deprecated Préférer getAppointmentListCardStyles() au rendu. */
-export const appointmentListCardStyles = new Proxy({} as Record<string, unknown>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getAppointmentListCardStyles()[prop];
-    }
-    return undefined;
-  },
-});

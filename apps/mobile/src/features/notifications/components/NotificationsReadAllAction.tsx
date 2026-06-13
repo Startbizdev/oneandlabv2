@@ -1,7 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { CheckCheck } from 'lucide-react-native';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -12,7 +14,10 @@ interface Props {
   loading?: boolean;
 }
 
-export function NotificationsReadAllAction({ onPress, loading }: Props) {
+export function NotificationsReadAllAction({
+  onPress, loading }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_notifications_components_NotificationsReadAllAction_tsx_styles');
   return (
     <View style={styles.wrap}>
       <Pressable
@@ -24,12 +29,12 @@ export function NotificationsReadAllAction({ onPress, loading }: Props) {
         style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
       >
         {loading ? (
-          <ActivityIndicator size="small" color={colors.primary} />
+          <ActivityIndicator size="small" color={c.primary} />
         ) : (
-          <>
-            <CheckCheck size={15} color={colors.primary} strokeWidth={2.2} />
+          <Row gap={spacing[1.5]} align="center">
+            <CheckCheck size={15} color={c.primary} strokeWidth={2.2} />
             <Text style={styles.label}>Tout lu</Text>
-          </>
+          </Row>
         )}
       </Pressable>
     </View>
@@ -43,9 +48,6 @@ function buildStyles(c: AppColors) {
     paddingLeft: spacing[1],
   },
   btn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1.5],
     minHeight: 44,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2.5],
@@ -65,11 +67,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_notifications_components_NotificationsReadAllAction_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

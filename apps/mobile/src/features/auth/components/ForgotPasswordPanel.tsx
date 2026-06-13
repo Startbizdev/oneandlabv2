@@ -1,9 +1,12 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { ArrowLeft } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { webAppUrl } from '@/config/env';
 
@@ -18,6 +21,8 @@ interface Props {
 
 export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSubmit, onBack }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_auth_components_ForgotPasswordPanel_tsx_ForgotPasswordPanel_styles');
+
 
   if (sent) {
     return (
@@ -30,9 +35,11 @@ export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSub
         <Pressable onPress={() => Linking.openURL(webAppUrl('/reset-password'))}>
           <Text style={[styles.link, { color: c.primary }]}>Réinitialiser sur le web</Text>
         </Pressable>
-        <Pressable onPress={onBack} style={styles.backBtn}>
-          <ArrowLeft size={14} color={colors.textSecondary} strokeWidth={2} />
-          <Text style={styles.backText}>Retour à la connexion</Text>
+        <Pressable onPress={onBack}>
+          <Row gap={spacing[2]} align="center" justify="center" style={styles.backBtn}>
+            <ArrowLeft size={14} color={c.textSecondary} strokeWidth={2} />
+            <Text style={styles.backText}>Retour à la connexion</Text>
+          </Row>
         </Pressable>
       </View>
     );
@@ -50,28 +57,28 @@ export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSub
         placeholder="prenom@exemple.fr"
       />
       <Button title="Envoyer" loading={loading} onPress={onSubmit} fullWidth size="lg" />
-      <Pressable onPress={onBack} style={styles.backBtn}>
-        <ArrowLeft size={14} color={colors.textSecondary} strokeWidth={2} />
-        <Text style={styles.backText}>Retour à la connexion</Text>
+      <Pressable onPress={onBack}>
+        <Row gap={spacing[2]} align="center" justify="center" style={styles.backBtn}>
+          <ArrowLeft size={14} color={c.textSecondary} strokeWidth={2} />
+          <Text style={styles.backText}>Retour à la connexion</Text>
+        </Row>
       </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[3] },
   body: { fontFamily: fontFamily.regular, fontSize: fontSize.sm, lineHeight: fontSize.sm * 1.45 },
-  link: { textAlign: 'center', fontFamily: fontFamily.semiBold, fontSize: fontSize.sm, paddingVertical: spacing[2] },
+  link: { textAlign: 'center' as const, fontFamily: fontFamily.semiBold, fontSize: fontSize.sm, paddingVertical: spacing[2] },
   backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
     paddingVertical: spacing[1],
   },
   backText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
-});
+};
+}

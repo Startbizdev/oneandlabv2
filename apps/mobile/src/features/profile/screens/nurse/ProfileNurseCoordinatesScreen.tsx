@@ -1,5 +1,9 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Mail } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
@@ -13,41 +17,43 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-const fieldStyles = {
-  fieldLabel: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-  },
-  fieldHint: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: colors.textTertiary,
-    marginTop: spacing[1],
-  },
-  emailRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: spacing[2],
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[3],
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surfaceAlt,
-  },
-  emailText: {
-    flex: 1,
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
-};
+function buildFieldStyles(c: AppColors) {
+  return {
+    fieldLabel: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.sm,
+      color: c.textPrimary,
+    },
+    fieldHint: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.xs,
+      color: c.textTertiary,
+      marginTop: spacing[1],
+    },
+    emailRow: {
+      paddingVertical: spacing[3],
+      paddingHorizontal: spacing[3],
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.borderLight,
+      backgroundColor: c.surfaceAlt,
+    },
+    emailText: {
+      minWidth: 0,
+      flex: 1,
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+    },
+  };
+}
 
 export function ProfileNurseCoordinatesScreen() {
+  const c = useAppColors();
+  const fieldStyles = useThemedStyles(buildFieldStyles, 'ProfileNurseCoordinatesScreen.fieldStyles');
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
@@ -132,10 +138,13 @@ export function ProfileNurseCoordinatesScreen() {
       <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
       <View>
         <Text style={fieldStyles.fieldLabel}>Email</Text>
-        <View style={fieldStyles.emailRow}>
-          <Mail size={16} color={colors.textTertiary} strokeWidth={2} />
+        <Cluster
+          gap={spacing[2]}
+          leading={<Mail size={16} color={c.textTertiary} strokeWidth={2} />}
+          style={fieldStyles.emailRow}
+        >
           <Text style={fieldStyles.emailText}>{user?.email ?? '—'}</Text>
-        </View>
+        </Cluster>
         <Text style={fieldStyles.fieldHint}>L'email ne peut pas être modifié depuis l'application.</Text>
       </View>
       <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />

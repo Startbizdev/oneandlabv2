@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -30,6 +32,9 @@ function filterReviews(list: Review[], filter: ReviewFilter): Review[] {
 }
 
 export function NurseReviewsScreen() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_nurse_screens_NurseReviewsScreen_tsx_NurseReviewsScreen_styles');
+
   const user = useAuthStore((s) => s.user);
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -123,7 +128,7 @@ export function NurseReviewsScreen() {
                 void reviewsQ.refetch();
                 void statsQ.refetch();
               }}
-              tintColor={colors.primary}
+              tintColor={c.primary}
             />
           }
           ListHeaderComponent={ListHeader}
@@ -175,10 +180,12 @@ export function NurseReviewsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   loading: { padding: spacing[4], paddingTop: spacing[2] },
   list: {
+    minWidth: 0,
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[8],
     flexGrow: 1,
@@ -191,12 +198,12 @@ const styles = StyleSheet.create({
   sectionHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.5,
   },
   separator: { height: spacing[3] },
   filterEmpty: {
-    alignItems: 'center',
+    alignItems: 'center' as const,
     paddingVertical: spacing[10],
     paddingHorizontal: spacing[6],
     gap: spacing[2],
@@ -204,12 +211,13 @@ const styles = StyleSheet.create({
   filterEmptyTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   filterEmptyDesc: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textTertiary,
-    textAlign: 'center',
+    color: c.textTertiary,
+    textAlign: 'center' as const,
   },
-});
+};
+}

@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import {
   ActivityIndicator,
   Image,
@@ -38,6 +39,8 @@ export function ProfilePhotosSheetContent({
   onChangeProfile,
   onChangeCover,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfilePhotosSheetContent_tsx_styles');
   const { picking, pickImage, isPicking } = usePickProfileImage();
 
   const profileSrc = resolveProfileImageUrl(profileImageUrl);
@@ -75,7 +78,7 @@ export function ProfilePhotosSheetContent({
               <Image source={{ uri: coverSrc }} style={styles.coverImage} resizeMode="cover" />
             ) : (
               <LinearGradient
-                colors={[colors.gradientStart, colors.gradientEnd]}
+                colors={[c.gradientStart, c.gradientEnd]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.coverFill}
@@ -83,7 +86,7 @@ export function ProfilePhotosSheetContent({
             )}
             {picking === 'cover' ? (
               <View style={styles.coverLoading}>
-                <ActivityIndicator color={colors.textInverse} />
+                <ActivityIndicator color={c.textInverse} />
               </View>
             ) : null}
           </View>
@@ -101,15 +104,15 @@ export function ProfilePhotosSheetContent({
                 <Image source={{ uri: profileSrc }} style={styles.avatarImage} />
               ) : (
                 <View style={styles.avatarPlaceholder}>
-                  <User size={28} color={colors.primary} strokeWidth={1.75} />
+                  <User size={28} color={c.primary} strokeWidth={1.75} />
                 </View>
               )}
             </View>
             <View style={styles.cameraBadge}>
               {picking === 'profile' ? (
-                <ActivityIndicator color={colors.textInverse} size="small" />
+                <ActivityIndicator color={c.textInverse} size="small" />
               ) : (
-                <Camera size={13} color={colors.textInverse} strokeWidth={2.5} />
+                <Camera size={13} color={c.textInverse} strokeWidth={2.5} />
               )}
             </View>
           </Pressable>
@@ -156,6 +159,8 @@ function PhotoActions({
   onPick,
   onRemove,
 }: PhotoActionsProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'ProfilePhotosSheetContent.PhotoActions');
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -167,7 +172,7 @@ function PhotoActions({
           loading={loading}
           disabled={disabled}
           onPress={onPick}
-          leftIcon={<ImagePlus size={18} color={colors.textInverse} strokeWidth={2.25} />}
+          leftIcon={<ImagePlus size={18} color={c.textInverse} strokeWidth={2.25} />}
         />
         {hasImage ? (
           <Button
@@ -177,7 +182,7 @@ function PhotoActions({
             size="md"
             disabled={disabled || loading}
             onPress={onRemove}
-            leftIcon={<Trash2 size={16} color={colors.error} strokeWidth={2} />}
+            leftIcon={<Trash2 size={16} color={c.error} strokeWidth={2} />}
             style={styles.removeOutline}
           />
         ) : null}
@@ -189,50 +194,52 @@ function PhotoActions({
 function buildStyles(c: AppColors) {
   return {
   root: {
-    width: '100%',
+    width: '100%' as const,
   },
   preview: {
-    width: '100%',
+    width: '100%' as const,
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: c.borderLight,
     backgroundColor: c.surfaceAlt,
     marginBottom: spacing[5],
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   coverPressable: {
-    width: '100%',
+    width: '100%' as const,
     height: COVER_H,
   },
   coverFrame: {
+    minWidth: 0,
     flex: 1,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     backgroundColor: c.surfaceAlt,
   },
   coverFill: {
+    minWidth: 0,
     flex: 1,
   },
   coverImage: {
-    width: '100%',
-    height: '100%',
+    width: '100%' as const,
+    height: '100%' as const,
   },
   coverLoading: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
   avatarRow: {
-    width: '100%',
-    alignItems: 'center',
+    width: '100%' as const,
+    alignItems: 'center' as const,
     paddingVertical: spacing[4],
     backgroundColor: c.surface,
   },
   avatarPressable: {
     width: AVATAR + 12,
     height: AVATAR + 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   avatarRing: {
     width: AVATAR,
@@ -240,33 +247,34 @@ function buildStyles(c: AppColors) {
     borderRadius: AVATAR / 2,
     borderWidth: 4,
     borderColor: c.surface,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     backgroundColor: c.primaryLight,
   },
   avatarImage: {
-    width: '100%',
-    height: '100%',
+    width: '100%' as const,
+    height: '100%' as const,
   },
   avatarPlaceholder: {
+    minWidth: 0,
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   cameraBadge: {
-    position: 'absolute',
+    position: 'absolute' as const,
     right: 2,
     bottom: 2,
     width: 28,
     height: 28,
     borderRadius: 14,
     backgroundColor: c.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     borderWidth: 3,
     borderColor: c.surface,
   },
   section: {
-    width: '100%',
+    width: '100%' as const,
     marginBottom: spacing[4],
   },
   sectionTitle: {
@@ -276,7 +284,7 @@ function buildStyles(c: AppColors) {
     marginBottom: spacing[2],
   },
   sectionButtons: {
-    width: '100%',
+    width: '100%' as const,
     rowGap: spacing[2],
   },
   removeOutline: {
@@ -286,11 +294,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_components_ProfilePhotosSheetContent_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

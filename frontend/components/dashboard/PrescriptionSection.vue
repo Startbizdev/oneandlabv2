@@ -55,7 +55,7 @@
           Générer le PDF
         </UButton>
         <UButton
-          v-if="generatedPdfBase64"
+          v-if="generatedPdfBase64 && !hasExistingOrdonnance"
           color="neutral"
           variant="soft"
           leading-icon="i-lucide-eye"
@@ -64,7 +64,7 @@
           Aperçu
         </UButton>
         <UButton
-          v-if="generatedPdfBase64"
+          v-if="generatedPdfBase64 && !hasExistingOrdonnance && saveFailed"
           color="success"
           variant="soft"
           leading-icon="i-lucide-upload"
@@ -120,6 +120,7 @@ const textareaPlaceholder = computed(() =>
 const prescriptionText = ref(props.initialPrescriptionText ?? '');
 const generating = ref(false);
 const uploading = ref(false);
+const saveFailed = ref(false);
 const generatedPdfBase64 = ref<string | null>(null);
 const generatedMeta = ref<{ file_name?: string; prescription_number?: string; prescription_kind?: string } | null>(null);
 const downloadingExisting = ref(false);
@@ -174,11 +175,29 @@ function openBlobPreview(blob: Blob, fileName: string) {
   previewOpen.value = true;
 }
 
+async function uploadGeneratedPrescription(base64: string, fileName: string) {
+  const blob = base64ToBlob(base64, 'application/pdf');
+  const formData = new FormData();
+  formData.append('file', blob, fileName);
+  formData.append('document_type', 'ordonnance');
+  formData.append('patient_id', props.patientId);
+  if (props.appointment?.id) {
+    formData.append('appointment_id', props.appointment.id);
+  }
+  formData.append('prescription_kind', generatedMeta.value?.prescription_kind || kind.value);
+  formData.append('prescription_text', prescriptionText.value.trim());
+  if (generatedMeta.value?.prescription_number) {
+    formData.append('prescription_number', generatedMeta.value.prescription_number);
+  }
+  return apiFetch('/medical-documents', { method: 'POST', body: formData });
+}
+
 async function generatePdf() {
   if (!canGenerate.value) return;
   generating.value = true;
   generatedPdfBase64.value = null;
   generatedMeta.value = null;
+  saveFailed.value = false;
   try {
     const body: Record<string, string> = {
       patient_id: props.patientId,
@@ -202,13 +221,28 @@ async function generatePdf() {
       prescription_number: res.data.prescription_number,
       prescription_kind: res.data.prescription_kind,
     };
-    toast.add({
-      title: 'PDF généré',
-      description: linkedToAppointment.value
-        ? 'Consultez l\'aperçu ou enregistrez sur le RDV.'
-        : 'Consultez l\'aperçu ou enregistrez l\'ordonnance.',
-      color: 'success',
-    });
+    const fileName = res.data.file_name || 'ordonnance.pdf';
+    openBlobPreview(base64ToBlob(res.data.pdf_base64, 'application/pdf'), fileName);
+
+    const saveRes = await uploadGeneratedPrescription(res.data.pdf_base64, fileName);
+    if (saveRes?.success) {
+      saveFailed.value = false;
+      toast.add({
+        title: 'Ordonnance enregistrée',
+        description: linkedToAppointment.value
+          ? "L'ordonnance a été enregistrée sur le rendez-vous."
+          : "L'ordonnance a été enregistrée dans l'historique.",
+        color: 'success',
+      });
+      await props.loadDocuments?.();
+    } else {
+      saveFailed.value = true;
+      toast.add({
+        title: 'Erreur',
+        description: (saveRes as any)?.error ?? 'PDF généré — enregistrement impossible, réessayez',
+        color: 'error',
+      });
+    }
   } catch (e: any) {
     toast.add({ title: 'Erreur', description: e?.message ?? 'Génération impossible', color: 'error' });
   } finally {
@@ -275,27 +309,15 @@ async function savePrescription() {
   if (!generatedPdfBase64.value || !props.patientId) return;
   uploading.value = true;
   try {
-    const blob = base64ToBlob(generatedPdfBase64.value, 'application/pdf');
     const fileName = generatedMeta.value?.file_name || 'ordonnance.pdf';
-    const formData = new FormData();
-    formData.append('file', blob, fileName);
-    formData.append('document_type', 'ordonnance');
-    formData.append('patient_id', props.patientId);
-    if (props.appointment?.id) {
-      formData.append('appointment_id', props.appointment.id);
-    }
-    formData.append('prescription_kind', generatedMeta.value?.prescription_kind || kind.value);
-    formData.append('prescription_text', prescriptionText.value.trim());
-    if (generatedMeta.value?.prescription_number) {
-      formData.append('prescription_number', generatedMeta.value.prescription_number);
-    }
-    const res = await apiFetch('/medical-documents', { method: 'POST', body: formData });
+    const res = await uploadGeneratedPrescription(generatedPdfBase64.value, fileName);
     if (res?.success) {
+      saveFailed.value = false;
       toast.add({
         title: 'Ordonnance enregistrée',
         description: linkedToAppointment.value
-          ? "L'ordonnance a été ajoutée aux documents du RDV."
-          : "L'ordonnance a été enregistrée dans l'historique du patient.",
+          ? "L'ordonnance a été enregistrée sur le rendez-vous."
+          : "L'ordonnance a été enregistrée dans l'historique.",
         color: 'success',
       });
       generatedPdfBase64.value = null;

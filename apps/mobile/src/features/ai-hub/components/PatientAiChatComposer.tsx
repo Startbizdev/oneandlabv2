@@ -2,6 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { Mic, Send } from 'lucide-react-native';
 import { elevation, H_PADDING, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -46,7 +47,7 @@ export function PatientAiChatComposer({
         },
       ]}
     >
-        <View
+        <Row
           style={[
             styles.bar,
             { backgroundColor: c.surfaceAlt, borderColor: c.borderLight },
@@ -103,7 +104,7 @@ export function PatientAiChatComposer({
               </View>
             </Pressable>
           )}
-        </View>
+        </Row>
     </View>
   );
 }
@@ -118,8 +119,6 @@ function buildStyles(_c: AppColors) {
       ...elevation.sm,
     },
     bar: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
       minHeight: BAR_HEIGHT,
       maxHeight: 120,
       borderRadius: radius.xl,
@@ -129,6 +128,7 @@ function buildStyles(_c: AppColors) {
       paddingVertical: Platform.OS === 'ios' ? spacing[1] : spacing[0.5],
     },
     input: {
+      minWidth: 0,
       flex: 1,
       fontFamily: fontFamily.regular,
       fontSize: fontSize.sm,

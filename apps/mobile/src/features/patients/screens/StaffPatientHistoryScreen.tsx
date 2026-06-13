@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -26,6 +28,9 @@ interface Props {
 }
 
 export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_patients_screens_StaffPatientHistoryScreen_tsx_StaffPatientHistoryScreen_styles');
+
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -105,7 +110,7 @@ export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
             void historyQ.refetch();
             void profileQ.refetch();
           }}
-          tintColor={colors.primary}
+          tintColor={c.primary}
         />
       }
       renderItem={renderItem}
@@ -135,19 +140,23 @@ export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   loading: {
+    minWidth: 0,
     flex: 1,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   list: {
+    minWidth: 0,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
     paddingBottom: spacing[10],
     flexGrow: 1,
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   footer: { marginTop: spacing[4] },
-});
+};
+}

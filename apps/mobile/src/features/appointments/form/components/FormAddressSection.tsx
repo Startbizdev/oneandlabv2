@@ -1,7 +1,10 @@
-import { StyleSheet, Text, View } from 'react-native';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { Input } from '@/components/ui/Input';
 import type { AddressPayload } from '../types';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -27,6 +30,8 @@ export function FormAddressSection({
   onChangeComplement,
   existingAddress,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_FormAddressSection_tsx_FormAddressSection_styles');
+
   return (
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>Adresse</Text>
@@ -39,14 +44,14 @@ export function FormAddressSection({
         onChangeText={onChangeLabel}
         placeholder="12 rue de la Paix, Paris"
       />
-      <View style={styles.coordRow}>
+      <Row gap={spacing[2]}>
         <View style={styles.coordField}>
           <Input label="Latitude" value={lat} onChangeText={onChangeLat} keyboardType="decimal-pad" />
         </View>
         <View style={styles.coordField}>
           <Input label="Longitude" value={lng} onChangeText={onChangeLng} keyboardType="decimal-pad" />
         </View>
-      </View>
+      </Row>
       <Input label="Complément" value={complement} onChangeText={onChangeComplement} />
       <Text style={styles.hint}>
         Saisissez l'adresse et les coordonnées GPS (comme sur le web après géolocalisation).
@@ -55,30 +60,29 @@ export function FormAddressSection({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   container: {
     gap: spacing[2],
   },
   sectionTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   existingAddress: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
-  },
-  coordRow: {
-    flexDirection: 'row',
-    gap: spacing[2],
+    color: c.textSecondary,
   },
   coordField: {
+    minWidth: 0,
     flex: 1,
   },
   hint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
-});
+};
+}

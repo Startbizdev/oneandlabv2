@@ -1,8 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { Lock } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -15,6 +16,7 @@ import { fontFamily, fontSize } from '@/theme/typography';
 
 export function PasswordManagementPanel() {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'PasswordManagementPanel_styles');
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
@@ -70,17 +72,23 @@ export function PasswordManagementPanel() {
 
   return (
     <View style={[styles.card, elevation.xs]}>
-      <View style={styles.header}>
-        <View style={[styles.iconWrap, { backgroundColor: c.primaryLight }]}>
-          <Lock size={20} color={c.primary} strokeWidth={2.25} />
-        </View>
+      <Cluster
+        gap={spacing[3]}
+        align="start"
+        leading={
+          <View style={[styles.iconWrap, { backgroundColor: c.primaryLight }]}>
+            <Lock size={20} color={c.primary} strokeWidth={2.25} />
+          </View>
+        }
+        style={styles.header}
+      >
         <View style={styles.headerText}>
           <Text style={[styles.title, { color: c.textPrimary }]}>Mot de passe</Text>
           <Text style={[styles.sub, { color: c.textSecondary }]}>
             Facultatif — le code email reste disponible
           </Text>
         </View>
-      </View>
+      </Cluster>
       {hasPassword ? (
         <Input label="Mot de passe actuel" value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry />
       ) : null}
@@ -114,7 +122,7 @@ function buildStyles(c: AppColors) {
       padding: spacing[4],
       gap: spacing[3],
     },
-    header: { flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: spacing[3] },
+    header: {},
     iconWrap: {
       width: 44,
       height: 44,
@@ -122,17 +130,9 @@ function buildStyles(c: AppColors) {
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
-    headerText: { flex: 1, gap: spacing[0.5] },
+    headerText: { gap: spacing[0.5] },
     title: { fontFamily: fontFamily.semiBold, fontSize: fontSize.base },
     sub: { fontFamily: fontFamily.regular, fontSize: fontSize.xs, lineHeight: fontSize.xs * 1.4 },
   };
 }
 
-const styles = new Proxy({} as Record<string, unknown>, {
-  get(_t, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('PasswordManagementPanel_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

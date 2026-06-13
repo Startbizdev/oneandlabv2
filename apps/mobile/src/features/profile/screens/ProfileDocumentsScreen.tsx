@@ -1,5 +1,5 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ProfileDocumentsPremiumPanel } from '@/features/profile/components/ProfileDocumentsPremiumPanel';
@@ -8,6 +8,7 @@ import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Page dédiée documents (route /profile/documents) — patient uniquement */
 export function ProfileDocumentsScreen() {
+  const styles = useThemedStyles(buildStyles, 'features_profile_screens_ProfileDocumentsScreen_tsx_styles');
   return (
     <View style={styles.container}>
       <ScrollView
@@ -36,8 +37,8 @@ export function ProfileDocumentsEmbedded() {
 
 function buildStyles(c: AppColors) {
   return {
-    container: { flex: 1, backgroundColor: c.background },
-    scroll: { flex: 1 },
+    container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+    scroll: { minWidth: 0, flex: 1 },
     content: {
       padding: spacing[4],
       gap: spacing[4],
@@ -58,13 +59,3 @@ function buildStyles(c: AppColors) {
   };
 }
 
-const styles = new Proxy({} as Record<string, object>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_screens_ProfileDocumentsScreen_tsx_styles', buildStyles)[
-        prop
-      ];
-    }
-    return undefined;
-  },
-});

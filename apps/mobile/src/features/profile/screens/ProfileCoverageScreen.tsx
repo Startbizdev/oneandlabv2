@@ -1,9 +1,13 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ProfileCoverageEditor } from '@/features/profile/components/ProfileCoverageEditor';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function ProfileCoverageScreen() {
+  const styles = useThemedStyles(buildStyles, 'features_profile_screens_ProfileCoverageScreen_tsx_ProfileCoverageScreen_styles');
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -22,9 +26,10 @@ export function ProfileCoverageScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scroll: { flex: 1 },
+function buildStyles(c: AppColors) {
+  return {
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+  scroll: { minWidth: 0, flex: 1 },
   content: {
     padding: spacing[4],
     gap: spacing[4],
@@ -33,7 +38,8 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,
   },
-});
+};
+}

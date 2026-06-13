@@ -1,7 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
+import { Pressable, Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { MessageSquare } from 'lucide-react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
@@ -23,7 +25,10 @@ interface Props {
   onReply?: () => void;
 }
 
-export function ReviewReceivedCard({ review, onReply }: Props) {
+export function ReviewReceivedCard({
+  review, onReply }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_reviews_components_ReviewReceivedCard_tsx_styles');
   const name = reviewerDisplayName(review);
   const date = formatReviewDate(review.created_at);
   const aptMeta = [
@@ -39,27 +44,30 @@ export function ReviewReceivedCard({ review, onReply }: Props) {
 
   return (
     <View style={[styles.card, elevation.xs]}>
-      <View style={styles.topRow}>
-        <View style={styles.authorRow}>
+      <Cluster
+        gap={spacing[2]}
+        align="start"
+        leading={
           <ProfileAvatar
             profileImageUrl={null}
             seed={name}
             size={36}
             style={styles.avatar}
           />
-          <View style={styles.authorText}>
-            <Text style={styles.authorName}>{name}</Text>
-            {aptMeta || aptDate ? (
-              <Text style={styles.meta} numberOfLines={2}>
-                {aptMeta}
-                {aptMeta && aptDate ? ' — ' : ''}
-                {aptDate ? `RDV du ${aptDate}` : ''}
-              </Text>
-            ) : null}
-          </View>
+        }
+        actions={date ? <Text style={styles.date}>{date}</Text> : undefined}
+      >
+        <View style={styles.authorText}>
+          <Text style={styles.authorName}>{name}</Text>
+          {aptMeta || aptDate ? (
+            <Text style={styles.meta} numberOfLines={2}>
+              {aptMeta}
+              {aptMeta && aptDate ? ' — ' : ''}
+              {aptDate ? `RDV du ${aptDate}` : ''}
+            </Text>
+          ) : null}
         </View>
-        {date ? <Text style={styles.date}>{date}</Text> : null}
-      </View>
+      </Cluster>
 
       <ReviewStars rating={review.rating ?? 0} size={18} />
 
@@ -73,16 +81,18 @@ export function ReviewReceivedCard({ review, onReply }: Props) {
 
       {hasResponse ? (
         <View style={styles.responseBox}>
-          <View style={styles.responseHeader}>
-            <MessageSquare size={14} color={colors.primary} strokeWidth={2} />
+          <Row gap={spacing[1.5]}>
+            <MessageSquare size={14} color={c.primary} strokeWidth={2} />
             <Text style={styles.responseLabel}>Votre réponse</Text>
-          </View>
+          </Row>
           <Text style={styles.responseText}>{review.response!.trim()}</Text>
         </View>
       ) : onReply ? (
         <Pressable onPress={onReply} style={styles.replyBtn}>
-          <MessageSquare size={16} color={colors.primary} strokeWidth={2} />
-          <Text style={styles.replyBtnText}>Répondre à cet avis</Text>
+          <Row justify="center" gap={spacing[2]}>
+            <MessageSquare size={16} color={c.primary} strokeWidth={2} />
+            <Text style={styles.replyBtnText}>Répondre à cet avis</Text>
+          </Row>
         </Pressable>
       ) : null}
     </View>
@@ -99,28 +109,15 @@ function buildStyles(c: AppColors) {
     padding: spacing[4],
     gap: spacing[3],
   },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: spacing[2],
-  },
-  authorRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2],
-    minWidth: 0,
-  },
   avatar: {
     width: 36,
     height: 36,
     borderRadius: radius.full,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
-  authorText: { flex: 1, gap: 2, minWidth: 0 },
+  authorText: { gap: 2 },
   authorName: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
@@ -156,7 +153,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: c.textTertiary,
-    fontStyle: 'italic',
+    fontStyle: 'italic' as const,
   },
   responseBox: {
     backgroundColor: c.primaryLight,
@@ -166,16 +163,11 @@ function buildStyles(c: AppColors) {
     borderWidth: 1,
     borderColor: c.primaryMid,
   },
-  responseHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1.5],
-  },
   responseLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
     color: c.primary,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.4,
   },
   responseText: {
@@ -185,10 +177,6 @@ function buildStyles(c: AppColors) {
     lineHeight: fontSize.sm * 1.5,
   },
   replyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
     paddingVertical: spacing[3],
     borderRadius: radius.lg,
     borderWidth: 1.5,
@@ -203,11 +191,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_reviews_components_ReviewReceivedCard_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

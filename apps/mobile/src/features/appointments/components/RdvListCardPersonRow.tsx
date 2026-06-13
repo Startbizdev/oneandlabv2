@@ -12,6 +12,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { CompactAssigneeRating } from '@/features/appointments/detail/components/CompactAssigneeRating';
 import type { RdvMaquetteCounterparty } from '@/utils/rdv-maquette-card-display';
@@ -35,13 +36,15 @@ interface Props {
 
 function AssignmentPulseDots() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildPendingStyles);
+  const styles = useThemedStyles(buildPendingDotsStyles, 'RdvListCardPersonRow.dots');
 
   return (
-    <View style={styles.dots} accessibilityElementsHidden importantForAccessibility="no">
-      {[0, 1, 2].map((index) => (
-        <AssignmentDot key={index} index={index} color={c.primary} />
-      ))}
+    <View style={styles.dots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Row gap={spacing[1]} align="center">
+        {[0, 1, 2].map((index) => (
+          <AssignmentDot key={index} index={index} color={c.primary} />
+        ))}
+      </Row>
     </View>
   );
 }
@@ -96,7 +99,10 @@ function AssignmentDot({ index, color }: { index: number; color: string }) {
 }
 
 function AssignmentPendingRow({ size }: { size: keyof typeof AVATAR_BY_SIZE }) {
-  const styles = useThemedStyles((c) => buildPendingStyles(c, size));
+  const styles = useThemedStyles(
+    size === 'footer' ? buildPendingStylesFooter : buildPendingStylesCompact,
+    'RdvListCardPersonRow.pending',
+  );
   const labelOpacity = useSharedValue(0.72);
 
   useEffect(() => {
@@ -115,11 +121,13 @@ function AssignmentPendingRow({ size }: { size: keyof typeof AVATAR_BY_SIZE }) {
   }));
 
   return (
-    <View style={styles.pendingRow} accessibilityRole="text" accessibilityLabel={ASSIGNMENT_LABEL}>
-      <AssignmentPulseDots />
-      <Animated.Text style={[styles.pendingLabel, labelAnimStyle]} numberOfLines={1}>
-        {ASSIGNMENT_LABEL}
-      </Animated.Text>
+    <View accessibilityRole="text" accessibilityLabel={ASSIGNMENT_LABEL}>
+      <Row gap={spacing[2]} align="center" style={styles.pendingRow}>
+        <AssignmentPulseDots />
+        <Animated.Text style={[styles.pendingLabel, labelAnimStyle]} numberOfLines={1}>
+          {ASSIGNMENT_LABEL}
+        </Animated.Text>
+      </Row>
     </View>
   );
 }
@@ -130,7 +138,10 @@ export function RdvListCardPersonRow({
   seed,
   size = 'compact',
 }: Props) {
-  const styles = useThemedStyles((c) => buildStyles(c, size));
+  const styles = useThemedStyles(
+    size === 'footer' ? buildPersonStylesFooter : buildPersonStylesCompact,
+    'RdvListCardPersonRow',
+  );
 
   if (person.assignmentPending) {
     return <AssignmentPendingRow size={size} />;
@@ -141,15 +152,19 @@ export function RdvListCardPersonRow({
   const roleLabel = person.subtitle?.trim();
 
   return (
-    <View style={styles.row}>
-      <ProfileAvatar
-        profileImageUrl={person.profileImageUrl}
-        seed={seed ?? name}
-        gender={person.gender}
-        size={AVATAR_BY_SIZE[size]}
-        blurred={blurred}
-        style={styles.avatar}
-      />
+    <Cluster
+      gap={spacing[size === 'footer' ? 2.5 : 2]}
+      leading={
+        <ProfileAvatar
+          profileImageUrl={person.profileImageUrl}
+          seed={seed ?? name}
+          gender={person.gender}
+          size={AVATAR_BY_SIZE[size]}
+          blurred={blurred}
+          style={styles.avatar}
+        />
+      }
+    >
       <View style={styles.metaCol}>
         <Text style={styles.nameLine} numberOfLines={1} ellipsizeMode="tail">
           <Text style={styles.name}>{name}</Text>
@@ -164,32 +179,38 @@ export function RdvListCardPersonRow({
           <CompactAssigneeRating summary={person.reviewSummary} showNewWhenEmpty />
         ) : null}
       </View>
-    </View>
+    </Cluster>
   );
 }
 
-function buildPendingStyles(c: AppColors, size: keyof typeof AVATAR_BY_SIZE = 'footer') {
+function buildPendingDotsStyles(_c: AppColors) {
+  return {
+    dots: {
+      flexShrink: 0,
+    },
+  };
+}
+
+function buildPendingStylesCompact(c: AppColors) {
+  return buildPendingStyles(c, 'compact');
+}
+
+function buildPendingStylesFooter(c: AppColors) {
+  return buildPendingStyles(c, 'footer');
+}
+
+function buildPendingStyles(c: AppColors, size: keyof typeof AVATAR_BY_SIZE) {
   const isFooter = size === 'footer';
-  return StyleSheet.create({
+  return {
     pendingRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      alignSelf: 'flex-start',
-      gap: spacing[2],
-      minWidth: 0,
-      maxWidth: '100%',
+      alignSelf: 'flex-start' as const,
+      maxWidth: '100%' as const,
       paddingVertical: spacing[isFooter ? 1.5 : 1],
       paddingHorizontal: spacing[2.5],
       borderRadius: radius.full,
       backgroundColor: c.primaryLight,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: c.primaryMid,
-    },
-    dots: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[1],
-      flexShrink: 0,
     },
     pendingLabel: {
       flexShrink: 1,
@@ -200,26 +221,25 @@ function buildPendingStyles(c: AppColors, size: keyof typeof AVATAR_BY_SIZE = 'f
       color: c.primaryDark,
       letterSpacing: -0.05,
     },
-  });
+  };
 }
 
-function buildStyles(c: AppColors, size: keyof typeof AVATAR_BY_SIZE) {
+function buildPersonStylesCompact(c: AppColors) {
+  return buildPersonStyles(c, 'compact');
+}
+
+function buildPersonStylesFooter(c: AppColors) {
+  return buildPersonStyles(c, 'footer');
+}
+
+function buildPersonStyles(c: AppColors, size: keyof typeof AVATAR_BY_SIZE) {
   const isFooter = size === 'footer';
-  return StyleSheet.create({
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[isFooter ? 2.5 : 2],
-      minWidth: 0,
-    },
+  return {
     avatar: {
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: c.borderLight,
-      flexShrink: 0,
     },
     metaCol: {
-      flex: 1,
-      minWidth: 0,
       gap: spacing[0.5],
     },
     nameLine: {
@@ -238,5 +258,5 @@ function buildStyles(c: AppColors, size: keyof typeof AVATAR_BY_SIZE) {
       lineHeight: lh(isFooter ? fontSize.sm : fontSize.xs),
       color: c.textTertiary,
     },
-  });
+  };
 }

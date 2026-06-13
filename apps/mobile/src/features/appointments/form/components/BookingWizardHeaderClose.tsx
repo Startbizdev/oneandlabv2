@@ -1,6 +1,8 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet } from 'react-native';
 import { X } from 'lucide-react-native';
-import { colors } from '@/theme';
 
 interface Props {
   onPress: () => void;
@@ -8,6 +10,9 @@ interface Props {
 
 /** Fermer le wizard (étape 1 — sélection des soins). */
 export function BookingWizardHeaderClose({ onPress }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingWizardHeaderClose_tsx_BookingWizardHeaderClose_styles');
+
   return (
     <Pressable
       onPress={onPress}
@@ -16,16 +21,18 @@ export function BookingWizardHeaderClose({ onPress }: Props) {
       accessibilityRole="button"
       accessibilityLabel="Fermer"
     >
-      <X size={22} color={colors.primary} strokeWidth={2.25} />
+      <X size={22} color={c.primary} strokeWidth={2.25} />
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   btn: {
     marginLeft: 4,
     padding: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
-});
+};
+}

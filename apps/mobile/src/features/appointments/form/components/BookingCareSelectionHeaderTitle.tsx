@@ -1,5 +1,5 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Text, View } from 'react-native';
 import type { ReactElement } from 'react';
 import { bookingCareSelectionTitle } from '../utils/booking-wizard-titles';
@@ -11,6 +11,7 @@ interface Props {
 }
 
 export function BookingCareSelectionHeaderTitle({ role, embedded }: Props) {
+  const styles = useThemedStyles(buildStyles, 'BookingCareSelectionHeaderTitle');
   return (
     <View style={embedded ? styles.wrapEmbedded : styles.wrap}>
       <Text
@@ -49,15 +50,3 @@ function buildStyles(c: AppColors) {
     },
   };
 }
-
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles(
-        'features_appointments_form_components_BookingCareSelectionHeaderTitle_tsx_styles',
-        buildStyles,
-      )[prop];
-    }
-    return undefined;
-  },
-});

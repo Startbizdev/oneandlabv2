@@ -1,8 +1,11 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import { Map, Navigation } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
+import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/skeletons';
 import {
@@ -10,7 +13,7 @@ import {
   resolveAppointmentDetailAddressLine,
   resolveAppointmentMapCoords,
 } from '../utils/appointment-address-display';
-import { rdvDetailSectionStyles } from './layout/rdv-detail-section-styles';
+import { getRdvDetailSectionStyles } from './layout/rdv-detail-section-styles';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -29,6 +32,9 @@ export function RdvAddressFieldRow({
   showMapActions = false,
   rowIndex = 0,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvAddressFieldRow_tsx_RdvAddressFieldRow_styles');
+
   const line = resolveAppointmentDetailAddressLine(apt, batch);
   const complement = resolveAppointmentAddressComplement(apt);
   const coords = resolveAppointmentMapCoords(apt);
@@ -66,9 +72,9 @@ export function RdvAddressFieldRow({
   return (
     <View
       style={[
-        rdvDetailSectionStyles.sectionRow,
+        getRdvDetailSectionStyles().sectionRow,
         styles.row,
-        rowIndex > 0 && rdvDetailSectionStyles.rowBorder,
+        rowIndex > 0 && getRdvDetailSectionStyles().rowBorder,
       ]}
     >
       <Text style={styles.label}>Adresse</Text>
@@ -81,12 +87,12 @@ export function RdvAddressFieldRow({
             <Text style={styles.complement}>Complément : {complement}</Text>
           ) : null}
           {showMapActions && line ? (
-            <View style={styles.mapActions}>
+            <Row gap={4} align="center" style={styles.mapActions}>
               <Button
                 title="Carte"
                 variant="muted"
                 size="sm"
-                leftIcon={<Map size={11} color={colors.textSecondary} strokeWidth={2.25} />}
+                leftIcon={<Map size={11} color={c.textSecondary} strokeWidth={2.25} />}
                 onPress={openGoogleMaps}
               />
               <Button
@@ -94,12 +100,12 @@ export function RdvAddressFieldRow({
                 variant="muted"
                 size="sm"
                 leftIcon={
-                  <Navigation size={11} color={colors.textSecondary} strokeWidth={2.25} />
+                  <Navigation size={11} color={c.textSecondary} strokeWidth={2.25} />
                 }
                 onPress={openWaze}
                 accessibilityLabel="Itinéraire Waze"
               />
-            </View>
+            </Row>
           ) : null}
         </View>
       )}
@@ -107,38 +113,38 @@ export function RdvAddressFieldRow({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   row: {
     gap: spacing[1],
   },
   label: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
-    textTransform: 'uppercase',
+    color: c.textTertiary,
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.4,
   },
   valueBlock: {
     gap: spacing[1],
   },
   value: {
+    minWidth: 0,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.base * 1.4,
     flexShrink: 1,
   },
   complement: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.35,
   },
   mapActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     paddingTop: spacing[1],
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-start' as const,
   },
-});
+};
+}

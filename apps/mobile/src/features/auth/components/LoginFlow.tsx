@@ -1,7 +1,9 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import type { AuthUser } from '@oneandlab/shared-types';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
@@ -46,6 +48,8 @@ interface Props {
 
 export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_auth_components_LoginFlow_tsx_LoginFlow_styles');
+
   const [mode, setMode] = useState<LoginMode>('code');
   const [step, setStep] = useState<Step>('email');
   const [passwordView, setPasswordView] = useState<PasswordView>('login');
@@ -266,7 +270,7 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
   return (
     <View style={styles.step}>
       {showTabs ? (
-        <View style={[styles.tabs, { backgroundColor: c.surfaceAlt, borderColor: c.borderLight }]}>
+        <Row gap={spacing[0.5]} style={[styles.tabs, { backgroundColor: c.surfaceAlt, borderColor: c.borderLight }]}>
           <Pressable
             accessibilityRole="tab"
             accessibilityState={{ selected: mode === 'code' }}
@@ -287,7 +291,7 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
               Mot de passe
             </Text>
           </Pressable>
-        </View>
+        </Row>
       ) : null}
 
       {mode === 'code' && step === 'email' ? (
@@ -334,9 +338,11 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
             placeholder="000000"
           />
           <Button title="Se connecter" loading={loading} onPress={onOtpSubmit} fullWidth size="lg" />
-          <Pressable onPress={goToEmail} style={styles.backBtn}>
-            <ArrowLeft size={14} color={colors.textSecondary} strokeWidth={2} />
-            <Text style={styles.backText}>Changer d&apos;email</Text>
+          <Pressable onPress={goToEmail}>
+            <Row gap={spacing[2]} align="center" justify="center" style={styles.backBtn}>
+              <ArrowLeft size={14} color={c.textSecondary} strokeWidth={2} />
+              <Text style={styles.backText}>Changer d&apos;email</Text>
+            </Row>
           </Pressable>
         </>
       ) : null}
@@ -410,20 +416,21 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   step: { gap: spacing[3] },
   tabs: {
-    flexDirection: 'row',
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     padding: spacing[0.5],
     gap: spacing[0.5],
   },
   tab: {
+    minWidth: 0,
     flex: 1,
     borderRadius: radius.md,
     paddingVertical: spacing[2],
-    alignItems: 'center',
+    alignItems: 'center' as const,
   },
   tabText: {
     fontFamily: fontFamily.semiBold,
@@ -432,9 +439,9 @@ const styles = StyleSheet.create({
   devBanner: {
     borderRadius: radius.lg,
     borderWidth: 1.5,
-    borderStyle: 'dashed',
+    borderStyle: 'dashed' as const,
     padding: spacing[3],
-    alignItems: 'center',
+    alignItems: 'center' as const,
     gap: 4,
   },
   devCode: {
@@ -447,18 +454,14 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
   },
   backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
     paddingVertical: spacing[1],
   },
   backText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
-  forgotBtn: { alignItems: 'center', paddingVertical: spacing[1] },
+  forgotBtn: { alignItems: 'center' as const, paddingVertical: spacing[1] },
   forgotText: { fontFamily: fontFamily.semiBold, fontSize: fontSize.sm },
   infoBox: {
     borderRadius: radius.lg,
@@ -468,4 +471,5 @@ const styles = StyleSheet.create({
   },
   infoText: { fontFamily: fontFamily.regular, fontSize: fontSize.xs, lineHeight: fontSize.xs * 1.45 },
   infoLink: { fontFamily: fontFamily.semiBold, fontSize: fontSize.sm },
-});
+};
+}

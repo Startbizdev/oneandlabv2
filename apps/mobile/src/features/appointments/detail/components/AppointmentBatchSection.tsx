@@ -1,12 +1,15 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { RdvCancellationBanner } from './RdvCancellationBanner';
 import { RdvFieldRows } from './RdvFieldRows';
 import { RdvInfoCard } from './RdvInfoCard';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function batchLineTitle(appt: Appointment, index: number, isMulti: boolean): string | null {
@@ -23,6 +26,8 @@ interface Props {
 }
 
 export function AppointmentBatchSection({ appointments, role, isMultiBatch }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_AppointmentBatchSection_tsx_AppointmentBatchSection_styles');
+
   if (!isMultiBatch) {
     const apt = appointments[0];
     if (!apt) return null;
@@ -45,10 +50,10 @@ export function AppointmentBatchSection({ appointments, role, isMultiBatch }: Pr
         return (
           <View key={appt.id} style={styles.batchBlock}>
             {title ? (
-              <View style={styles.batchTitleRow}>
+              <Row justify="between" align="center" gap={spacing[2]} style={styles.batchTitleRow}>
                 <Text style={styles.batchTitle}>{title}</Text>
                 <StatusBadge status={appt.status} size="sm" />
-              </View>
+              </Row>
             ) : null}
             <RdvCancellationBanner apt={appt} compact />
             <View style={styles.batchFields}>
@@ -61,45 +66,44 @@ export function AppointmentBatchSection({ appointments, role, isMultiBatch }: Pr
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   mergedHeader: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],
     paddingBottom: spacing[2],
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: c.borderLight,
     gap: 2,
   },
   mergedTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   mergedSub: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   batchBlock: {
     borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
     paddingVertical: spacing[3],
   },
   batchTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing[4],
     marginBottom: spacing[2],
-    gap: spacing[2],
   },
   batchTitle: {
+    minWidth: 0,
+    flex: 1,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
-    flex: 1,
+    color: c.textPrimary,
   },
   batchFields: {
     paddingHorizontal: spacing[2],
   },
-});
+};
+}

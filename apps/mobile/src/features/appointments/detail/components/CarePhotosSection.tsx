@@ -1,13 +1,16 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Row } from '@/components/layout/primitives';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { api } from '@/api/client';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface CarePhoto {
@@ -18,6 +21,8 @@ interface CarePhoto {
 }
 
 export function CarePhotosSection({ appointmentId }: { appointmentId: string }) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_CarePhotosSection_tsx_CarePhotosSection_styles');
+
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [comment, setComment] = useState('');
@@ -48,7 +53,7 @@ export function CarePhotosSection({ appointmentId }: { appointmentId: string }) 
 
   return (
     <Card shadow="sm" padding="md">
-      <View style={styles.photoGrid}>
+      <Row wrap gap={spacing[2]}>
         {q.data.map((p) => (
           <View key={p.id} style={styles.photoWrap}>
             {p.url || p.thumbnail_url ? (
@@ -69,7 +74,7 @@ export function CarePhotosSection({ appointmentId }: { appointmentId: string }) 
             ) : null}
           </View>
         ))}
-      </View>
+      </Row>
       <View style={styles.commentSection}>
         <Input label="Commentaire" value={comment} onChangeText={setComment} multiline />
         <Button
@@ -87,12 +92,8 @@ export function CarePhotosSection({ appointmentId }: { appointmentId: string }) 
 
 const PHOTO_SIZE = 96;
 
-const styles = StyleSheet.create({
-  photoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
-  },
+function buildStyles(c: AppColors) {
+  return {
   photoWrap: {
     width: PHOTO_SIZE,
   },
@@ -105,23 +106,24 @@ const styles = StyleSheet.create({
     width: PHOTO_SIZE,
     height: PHOTO_SIZE,
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: c.surfaceAlt,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   photoPlaceholderText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   caption: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     marginTop: spacing[1],
   },
   commentSection: {
     marginTop: spacing[3],
     gap: spacing[2],
   },
-});
+};
+}

@@ -1,5 +1,8 @@
-import { colors } from '@/theme';
-import { StyleSheet, Text, View } from 'react-native';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+import { Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { MessageSquare } from 'lucide-react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
@@ -20,6 +23,9 @@ interface Props {
 }
 
 export function ReviewGivenCard({ review }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_reviews_components_ReviewGivenCard_tsx_ReviewGivenCard_styles');
+
   const proName = review.reviewee_name?.trim() || 'Professionnel';
   const date = formatReviewDate(review.created_at);
   const aptMeta = [
@@ -34,22 +40,26 @@ export function ReviewGivenCard({ review }: Props) {
 
   return (
     <View style={[styles.card, elevation.xs]}>
-      <View style={styles.header}>
-        <ProfileAvatar
-          profileImageUrl={review.reviewee_profile_image_url}
-          seed={review.reviewee_id ?? proName}
-          gender={review.reviewee_gender}
-          size={40}
-          style={styles.proAvatar}
-        />
-        <View style={styles.headerText}>
+      <Cluster
+        gap={spacing[2]}
+        leading={
+          <ProfileAvatar
+            profileImageUrl={review.reviewee_profile_image_url}
+            seed={review.reviewee_id ?? proName}
+            gender={review.reviewee_gender}
+            size={40}
+            style={styles.proAvatar}
+          />
+        }
+        actions={date ? <Text style={styles.date}>{date}</Text> : undefined}
+      >
+        <View>
           <Text style={styles.proLabel}>Pour</Text>
           <Text style={styles.proName} numberOfLines={1}>
             {proName}
           </Text>
         </View>
-        {date ? <Text style={styles.date}>{date}</Text> : null}
-      </View>
+      </Cluster>
 
       <ReviewStars rating={review.rating ?? 0} size={18} />
 
@@ -67,10 +77,10 @@ export function ReviewGivenCard({ review }: Props) {
 
       {review.response?.trim() ? (
         <View style={styles.responseBox}>
-          <View style={styles.responseHeader}>
-            <MessageSquare size={12} color={colors.textSecondary} strokeWidth={2} />
+          <Row gap={spacing[1.5]}>
+            <MessageSquare size={12} color={c.textSecondary} strokeWidth={2} />
             <Text style={styles.responseLabel}>Réponse du professionnel</Text>
-          </View>
+          </Row>
           <Text style={styles.responseText}>{review.response.trim()}</Text>
         </View>
       ) : null}
@@ -84,84 +94,74 @@ export function ReviewGivenCard({ review }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[3],
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
   },
   proAvatar: {
     width: 40,
     height: 40,
     borderRadius: radius.lg,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     flexShrink: 0,
   },
-  headerText: { flex: 1, minWidth: 0 },
   proLabel: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   proName: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   date: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   context: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.4,
   },
   comment: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.base * 1.55,
   },
   responseBox: {
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderRadius: radius.lg,
     padding: spacing[3],
     gap: spacing[2],
     borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  responseHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1.5],
+    borderColor: c.borderLight,
   },
   responseLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
+    color: c.textSecondary,
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.3,
   },
   responseText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.sm * 1.5,
   },
   hiddenPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surfaceAlt,
+    alignSelf: 'flex-start' as const,
+    backgroundColor: c.surfaceAlt,
     paddingHorizontal: spacing[2],
     paddingVertical: 4,
     borderRadius: radius.sm,
@@ -169,6 +169,7 @@ const styles = StyleSheet.create({
   hiddenText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
-});
+};
+}

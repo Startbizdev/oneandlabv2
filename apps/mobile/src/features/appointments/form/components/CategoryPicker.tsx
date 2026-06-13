@@ -1,8 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import type { CareCategory } from '@/features/categories/api/categories.service';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -12,10 +13,12 @@ interface Props {
 }
 
 export function CategoryPicker({ categories, selectedId, onSelect }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_CategoryPicker_tsx_styles');
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>Type de soin</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <Row gap={spacing[2]}>
         {categories.map((c) => {
           const on = selectedId === c.id;
           return (
@@ -28,6 +31,7 @@ export function CategoryPicker({ categories, selectedId, onSelect }: Props) {
             </Pressable>
           );
         })}
+        </Row>
       </ScrollView>
     </View>
   );
@@ -42,13 +46,11 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
   },
   scroll: {
-    flexDirection: 'row',
-    gap: spacing[2],
     paddingRight: spacing[4],
   },
   chip: {
     minHeight: 44,
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2.5],
     borderRadius: radius.lg,
@@ -70,11 +72,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_CategoryPicker_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

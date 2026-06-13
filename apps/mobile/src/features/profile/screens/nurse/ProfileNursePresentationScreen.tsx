@@ -1,7 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/Input';
 import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
@@ -12,7 +13,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const YEARS_OPTIONS = [
@@ -24,6 +25,7 @@ const YEARS_OPTIONS = [
 ];
 
 export function ProfileNursePresentationScreen() {
+  const styles = useThemedStyles(buildStyles, 'features_profile_screens_nurse_ProfileNursePresentationScreen_tsx_styles');
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
@@ -91,11 +93,11 @@ export function ProfileNursePresentationScreen() {
         onChangeText={setBiography}
         multiline
         numberOfLines={5}
-        style={{ minHeight: 120, textAlignVertical: 'top' }}
+        style={{ minHeight: 120, textAlignVertical: 'top' as const }}
         placeholder="Présentez votre parcours et votre zone d'intervention…"
       />
       <Text style={styles.fieldLabel}>Années d&apos;expérience</Text>
-      <View style={styles.chipsRow}>
+      <Row wrap gap={spacing[2]}>
         {YEARS_OPTIONS.map((o) => (
           <Pressable key={o.value} onPress={() => setYearsExperience(o.value)}>
             <Text style={[styles.chip, yearsExperience === o.value && styles.chipActive]}>
@@ -103,7 +105,7 @@ export function ProfileNursePresentationScreen() {
             </Text>
           </Pressable>
         ))}
-      </View>
+      </Row>
 
       <Text style={[styles.sectionKicker, styles.sectionKickerSpaced]}>Visibilité & activité</Text>
       <View style={styles.card}>
@@ -146,7 +148,7 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   sectionKickerSpaced: {
     marginTop: spacing[2],
@@ -156,7 +158,6 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   chip: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
@@ -190,11 +191,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_screens_nurse_ProfileNursePresentationScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

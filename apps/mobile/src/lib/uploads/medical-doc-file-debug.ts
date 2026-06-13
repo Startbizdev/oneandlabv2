@@ -55,7 +55,7 @@ export function logMedDoc(step: string, data?: Record<string, unknown>): void {
 }
 
 export async function inspectMedDocFile(uri: string, label: string): Promise<MedDocFileInspect> {
-  const info = await FileSystem.getInfoAsync(uri, { size: true });
+  const info = await FileSystem.getInfoAsync(uri);
   const exists = info.exists;
   const size = exists && 'size' in info && info.size != null ? info.size : null;
 

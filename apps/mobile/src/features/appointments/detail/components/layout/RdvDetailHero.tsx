@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -9,6 +10,7 @@ import 'dayjs/locale/fr';
 import { CalendarDays, Clock, Layers, Mail, MapPin, MessageCircle, Phone } from 'lucide-react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
@@ -51,6 +53,8 @@ export function RdvDetailHero({
   onAddressPress,
   footer,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_RdvDetailHero_tsx_styles');
   const scheduled = primary.scheduled_at ? dayjs(primary.scheduled_at) : null;
   const fd = (primary.form_data ?? {}) as Record<string, unknown>;
   const timeLabel = formatAvailabilityDisplayFr(fd.availability, primary.scheduled_at);
@@ -83,50 +87,55 @@ export function RdvDetailHero({
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.top}>
+      <Row justify="between" align="start" gap={spacing[3]}>
         {!hideTitle ? (
-          <View style={styles.titleCol}>
-            {isMulti ? <Layers size={16} color={colors.primary} strokeWidth={2} /> : null}
+          <Row align="start" gap={spacing[2]} style={styles.titleCol}>
+            {isMulti ? <Layers size={16} color={c.primary} strokeWidth={2} /> : null}
             <Text style={styles.title} numberOfLines={2}>
               {title}
             </Text>
-          </View>
+          </Row>
         ) : (
           <View style={styles.titleCol}>
             <Text style={styles.typeOnly}>{typeLabel}</Text>
           </View>
         )}
         <StatusBadge status={primary.status} size="sm" />
-      </View>
+      </Row>
 
       {!hideTitle ? <Text style={styles.type}>{typeLabel}</Text> : null}
 
       {dateLine || timeLabel ? (
-        <View style={styles.scheduleRow}>
+        <Row wrap gap={spacing[3]} align="center">
           {dateLine ? (
-            <View style={styles.scheduleItem}>
-              <CalendarDays size={13} color={colors.textTertiary} strokeWidth={2} />
+            <Row gap={5} align="center">
+              <CalendarDays size={13} color={c.textTertiary} strokeWidth={2} />
               <Text style={styles.scheduleText}>{dateLine}</Text>
-            </View>
+            </Row>
           ) : null}
           {timeLabel ? (
-            <View style={styles.scheduleItem}>
-              <Clock size={13} color={colors.textTertiary} strokeWidth={2} />
+            <Row gap={5} align="center">
+              <Clock size={13} color={c.textTertiary} strokeWidth={2} />
               <Text style={styles.scheduleText}>{timeLabel}</Text>
-            </View>
+            </Row>
           ) : null}
-        </View>
+        </Row>
       ) : null}
 
       {name ? (
         <View style={styles.patientBlock}>
-          <View style={styles.patientHeadRow}>
-            <ProfileAvatar
-              profileImageUrl={patientAvatar.profileImageUrl}
-              seed={patientAvatar.seed}
-              gender={patientAvatar.gender}
-              size={44}
-            />
+          <Cluster
+            gap={spacing[3]}
+            align="center"
+            leading={
+              <ProfileAvatar
+                profileImageUrl={patientAvatar.profileImageUrl}
+                seed={patientAvatar.seed}
+                gender={patientAvatar.gender}
+                size={44}
+              />
+            }
+          >
             <View style={styles.patientHeadText}>
               <Text style={styles.patientName}>{name}</Text>
               {birth ? <Text style={styles.patientSub}>{birth}</Text> : null}
@@ -134,9 +143,9 @@ export function RdvDetailHero({
                 <Text style={[styles.patientSub, !email.href && styles.muted]}>{email.text}</Text>
               ) : null}
             </View>
-          </View>
+          </Cluster>
           {contactButtons.length > 0 ? (
-            <View style={styles.buttonRow}>
+            <Row gap={spacing[1.5]} style={styles.buttonRow}>
               {contactButtons.map((btn) => {
                 const Icon = CONTACT_ICONS[btn.icon];
                 return (
@@ -145,14 +154,14 @@ export function RdvDetailHero({
                       title={btn.label}
                       size="sm"
                       variant="primary"
-                      leftIcon={<Icon size={14} color={colors.textInverse} strokeWidth={2.5} />}
+                      leftIcon={<Icon size={14} color={c.textInverse} strokeWidth={2.5} />}
                       onPress={btn.onPress}
-                      style={{ backgroundColor: btn.color, width: '100%' }}
+                      style={{ backgroundColor: btn.color, width: '100%' as const }}
                     />
                   </View>
                 );
               })}
-            </View>
+            </Row>
           ) : null}
         </View>
       ) : null}
@@ -161,10 +170,14 @@ export function RdvDetailHero({
         <Pressable
           onPress={onAddressPress}
           disabled={!onAddressPress}
-          style={styles.addressRow}
         >
-          <MapPin size={13} color={colors.primary} strokeWidth={2} />
-          <Text style={styles.addressText}>{address}</Text>
+          <Cluster
+            gap={6}
+            align="start"
+            leading={<MapPin size={13} color={c.primary} strokeWidth={2} />}
+          >
+            <Text style={styles.addressText}>{address}</Text>
+          </Cluster>
         </Pressable>
       ) : null}
 
@@ -184,20 +197,12 @@ function buildStyles(c: AppColors) {
     padding: spacing[4],
     gap: spacing[2.5],
   },
-  top: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: spacing[3],
-  },
   titleCol: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2],
     minWidth: 0,
   },
   title: {
+    minWidth: 0,
     flex: 1,
     fontFamily: fontFamily.bold,
     fontSize: fontSize.xl,
@@ -215,17 +220,6 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.primary,
   },
-  scheduleRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[3],
-    alignItems: 'center',
-  },
-  scheduleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
   scheduleText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
@@ -237,14 +231,7 @@ function buildStyles(c: AppColors) {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: c.borderLight,
   },
-  patientHeadRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-  },
   patientHeadText: {
-    flex: 1,
-    minWidth: 0,
     gap: spacing[0.5],
   },
   patientName: {
@@ -261,23 +248,13 @@ function buildStyles(c: AppColors) {
     color: c.textTertiary,
   },
   buttonRow: {
-    flexDirection: 'row',
-    gap: spacing[1.5],
     marginTop: spacing[1],
   },
   buttonCell: {
     flex: 1,
     minWidth: 0,
   },
-  addressRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-  },
   addressText: {
-    flex: 1,
-    flexShrink: 1,
-    minWidth: 0,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
@@ -291,11 +268,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_layout_RdvDetailHero_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

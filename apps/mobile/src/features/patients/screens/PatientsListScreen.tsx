@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { Fragment, useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActionSheetIOS,
@@ -52,6 +54,8 @@ interface Props {
 }
 
 export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'PatientsListScreen');
   const navigation = useNavigation();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -186,7 +190,7 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.primary} />
           }
         >
           <View style={styles.listCard}>
@@ -218,47 +222,53 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    paddingBottom: spacing[24],
-    flexGrow: 1,
-  },
-  listCard: {
-    width: '100%',
-    alignSelf: 'stretch',
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    overflow: 'hidden',
-  },
-  sectionKicker: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.xs,
-    color: colors.textTertiary,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[3.5],
-    paddingBottom: spacing[2],
-  },
-  rowDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
-    marginLeft: spacing[4] + 40 + spacing[3],
-  },
-  emptyWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing[4],
-  },
-});
+function buildStyles(c: AppColors) {
+  return {
+    screen: {
+      minWidth: 0,
+      flex: 1,
+      backgroundColor: c.background,
+    },
+    list: {
+      minWidth: 0,
+      flex: 1,
+    },
+    listContent: {
+      minWidth: 0,
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[2],
+      paddingBottom: spacing[24],
+      flexGrow: 1,
+    },
+    listCard: {
+      width: '100%' as const,
+      alignSelf: 'stretch' as const,
+      backgroundColor: c.surface,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: c.borderLight,
+      overflow: 'hidden' as const,
+    },
+    sectionKicker: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.xs,
+      color: c.textTertiary,
+      letterSpacing: 0.6,
+      textTransform: 'uppercase' as const,
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[3.5],
+      paddingBottom: spacing[2],
+    },
+    rowDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: c.borderLight,
+      marginLeft: spacing[4] + 40 + spacing[3],
+    },
+    emptyWrap: {
+      minWidth: 0,
+      flex: 1,
+      justifyContent: 'center' as const,
+      paddingHorizontal: spacing[4],
+    },
+  };
+}

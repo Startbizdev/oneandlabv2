@@ -1,8 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -34,6 +35,7 @@ const PATIENT_APPOINTMENTS_FILTERS = {
 } as const;
 
 function PatientReviewsSummary({ reviews }: { reviews: Review[] }) {
+  const summaryStyles = useThemedStyles(buildSummaryStyles, 'PatientReviewsSummary');
   if (reviews.length === 0) return null;
   const withRating = reviews.filter((r) => r.rating != null);
   const avg =
@@ -42,7 +44,7 @@ function PatientReviewsSummary({ reviews }: { reviews: Review[] }) {
       : 0;
 
   return (
-    <View style={summaryStyles.wrap}>
+    <Row justify="between" align="center" gap={spacing[3]} style={summaryStyles.wrap}>
       <View style={summaryStyles.left}>
         <Text style={summaryStyles.count}>{reviews.length}</Text>
         <Text style={summaryStyles.countLabel}>
@@ -55,22 +57,18 @@ function PatientReviewsSummary({ reviews }: { reviews: Review[] }) {
           <ReviewStars rating={avg} size={16} />
         </View>
       ) : null}
-    </View>
+    </Row>
   );
 }
 
 function buildSummaryStyles(c: AppColors) {
   return {
   wrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: c.borderLight,
     padding: spacing[4],
-    gap: spacing[3],
   },
   left: { gap: 2 },
   count: {
@@ -84,7 +82,7 @@ function buildSummaryStyles(c: AppColors) {
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
-  right: { alignItems: 'flex-end', gap: spacing[1] },
+  right: { alignItems: 'flex-end' as const, gap: spacing[1] },
   avgLabel: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
@@ -93,16 +91,10 @@ function buildSummaryStyles(c: AppColors) {
 };
 }
 
-const summaryStyles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_patient_screens_PatientReviewsScreen_tsx_summaryStyles', buildSummaryStyles)[prop];
-    }
-    return undefined;
-  },
-});
-
 export function PatientReviewsScreen() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildScreenStyles, 'PatientReviewsScreen');
+
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
 
@@ -165,7 +157,7 @@ export function PatientReviewsScreen() {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.primary} />
           }
           ListEmptyComponent={
             <EmptyState
@@ -184,24 +176,27 @@ export function PatientReviewsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  loading: { padding: spacing[4] },
-  list: {
-    paddingHorizontal: spacing[4],
-    paddingBottom: spacing[8],
-    flexGrow: 1,
-  },
-  headerBlock: {
-    gap: spacing[4],
-    paddingTop: spacing[2],
-    paddingBottom: spacing[3],
-  },
-  intro: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: fontSize.sm * 1.5,
-  },
-  separator: { height: spacing[3] },
-});
+function buildScreenStyles(c: AppColors) {
+  return {
+    container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+    loading: { padding: spacing[4] },
+    list: {
+      minWidth: 0,
+      paddingHorizontal: spacing[4],
+      paddingBottom: spacing[8],
+      flexGrow: 1,
+    },
+    headerBlock: {
+      gap: spacing[4],
+      paddingTop: spacing[2],
+      paddingBottom: spacing[3],
+    },
+    intro: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+      lineHeight: fontSize.sm * 1.5,
+    },
+    separator: { height: spacing[3] },
+  };
+}

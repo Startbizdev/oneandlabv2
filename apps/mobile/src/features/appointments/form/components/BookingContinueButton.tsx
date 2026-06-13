@@ -1,14 +1,16 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  StyleSheet,
   Text,
   View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -43,6 +45,9 @@ export function BookingContinueButton({
   fill,
   style,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingContinueButton_tsx_BookingContinueButton_styles');
+
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -86,22 +91,22 @@ export function BookingContinueButton({
         ]}
       >
         <LinearGradient
-          colors={[colors.gradientStart, colors.gradientEnd]}
+          colors={[c.gradientStart, c.gradientEnd]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={[styles.gradient, fill && styles.gradientFill]}
         >
           {loading ? (
-            <ActivityIndicator color={colors.textInverse} size="small" />
+            <ActivityIndicator color={c.textInverse} size="small" />
           ) : (
-            <View style={styles.content}>
+            <Row gap={spacing[2]} justify="center">
               <Text style={styles.label} numberOfLines={1}>
                 {title}
               </Text>
               <View style={styles.iconCircle}>
-                <ArrowRight size={18} color={colors.textInverse} strokeWidth={2.5} />
+                <ArrowRight size={18} color={c.textInverse} strokeWidth={2.5} />
               </View>
-            </View>
+            </Row>
           )}
         </LinearGradient>
       </Pressable>
@@ -109,23 +114,24 @@ export function BookingContinueButton({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   root: {
-    alignSelf: 'stretch',
+    alignSelf: 'stretch' as const,
     ...elevation.md,
     shadowColor: '#16B6D6',
   },
   rootFill: {
-    width: '100%',
+    width: '100%' as const,
     ...elevation.md,
     shadowColor: '#16B6D6',
   },
   pressable: {
     borderRadius: radius.lg,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   pressableFill: {
-    width: '100%',
+    width: '100%' as const,
   },
   pressableDim: {
     opacity: 0.55,
@@ -134,22 +140,16 @@ const styles = StyleSheet.create({
     minHeight: 52,
     paddingHorizontal: spacing[4],
     borderRadius: radius.lg,
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
   },
   gradientFill: {
-    width: '100%',
+    width: '100%' as const,
     minHeight: 52,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
   },
   label: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textInverse,
+    color: c.textInverse,
     letterSpacing: 0.15,
   },
   iconCircle: {
@@ -157,7 +157,8 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: radius.full,
     backgroundColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
-});
+};
+}

@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { User } from 'lucide-react-native';
+import { Row } from '@/components/layout/primitives';
 import { FormScreen } from '@/components/layout/FormScreen';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -25,13 +27,16 @@ interface Props {
   basePath: string;
 }
 
-export function RescheduleAppointmentScreen({ appointmentId, role, basePath }: Props) {
+export function RescheduleAppointmentScreen({
+  appointmentId, role, basePath }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_reschedule_screens_RescheduleAppointmentScreen_tsx_styles');
   const r = useRescheduleAppointment({ appointmentId, role, basePath });
 
   if (r.loading || !r.appointment) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
@@ -85,11 +90,11 @@ export function RescheduleAppointmentScreen({ appointmentId, role, basePath }: P
         <Text style={styles.backLinkText}>← Retour au choix</Text>
       </Pressable>
 
-      <View style={styles.patientBanner}>
-        <User size={16} color={colors.textSecondary} strokeWidth={2} />
+      <Row wrap align="center" gap={spacing[2]} style={styles.patientBanner}>
+        <User size={16} color={c.textSecondary} strokeWidth={2} />
         <Text style={styles.patientName}>{patientName}</Text>
         {patientPhone ? <Text style={styles.patientPhone}>· {patientPhone}</Text> : null}
-      </View>
+      </Row>
 
       <CategoryPicker
         categories={r.categories}
@@ -128,9 +133,10 @@ export function RescheduleAppointmentScreen({ appointmentId, role, basePath }: P
 function buildStyles(c: AppColors) {
   return {
   loading: {
+    minWidth: 0,
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     backgroundColor: c.background,
   },
   content: {
@@ -148,7 +154,7 @@ function buildStyles(c: AppColors) {
     borderTopColor: c.border,
   },
   backLink: {
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-start' as const,
   },
   backLinkText: {
     fontFamily: fontFamily.medium,
@@ -156,10 +162,7 @@ function buildStyles(c: AppColors) {
     color: c.primary,
   },
   patientBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing[2],
+    minWidth: 0,
     padding: spacing[3],
     borderRadius: radius.lg,
     backgroundColor: c.surfaceAlt,
@@ -177,11 +180,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_reschedule_screens_RescheduleAppointmentScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

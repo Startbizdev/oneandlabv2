@@ -1,4 +1,7 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { radius, spacing } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
@@ -25,11 +28,21 @@ export function ProfileToggleRow({
   onValueChange,
 }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileToggleRow_tsx_ProfileToggleRow_styles');
+
   const inactive = busy || disabled;
   const showActiveHighlight = highlightWhenOn && value && !disabled;
 
   return (
-    <View
+    <Cluster
+      gap={spacing[3]}
+      actions={
+        <ToggleSwitch
+          value={value}
+          disabled={inactive}
+          onValueChange={onValueChange}
+        />
+      }
       style={[
         styles.row,
         showActiveHighlight && { backgroundColor: c.primaryLight },
@@ -47,22 +60,15 @@ export function ProfileToggleRow({
           {hint}
         </Text>
       </View>
-      <ToggleSwitch
-        value={value}
-        disabled={inactive}
-        onValueChange={onValueChange}
-      />
-    </View>
+    </Cluster>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    width: '100%',
-    gap: spacing[3],
+    alignSelf: 'stretch' as const,
+    width: '100%' as const,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[2],
     borderRadius: radius.lg,
@@ -77,4 +83,5 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
   },
-});
+};
+}

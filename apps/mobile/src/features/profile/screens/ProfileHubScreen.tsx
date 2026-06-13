@@ -1,9 +1,10 @@
 import type { AppColors } from '@/theme/colors';
 import { getAppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback, useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -46,10 +47,12 @@ interface MenuItemProps {
 }
 
 function MenuItem({ icon: Icon, label, onPress, destructive, iconColor, iconBg }: MenuItemProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'ProfileHubScreen.MenuItem');
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const ic = iconColor ?? (destructive ? colors.error : colors.primary);
-  const ib = iconBg ?? (destructive ? colors.errorLight : colors.primaryLight);
+  const ic = iconColor ?? (destructive ? c.error : c.primary);
+  const ib = iconBg ?? (destructive ? c.errorLight : c.primaryLight);
 
   return (
     <Animated.View style={animStyle}>
@@ -62,13 +65,21 @@ function MenuItem({ icon: Icon, label, onPress, destructive, iconColor, iconBg }
         }}
         style={styles.menuItem}
       >
-        <View style={[styles.menuIconWrap, { backgroundColor: ib }]}>
-          <Icon size={18} color={ic} strokeWidth={2} />
-        </View>
-        <Animated.Text style={[styles.menuLabel, destructive && styles.menuLabelDestructive]}>
-          {label}
-        </Animated.Text>
-        <ChevronRight size={16} color={destructive ? colors.error : colors.textTertiary} strokeWidth={2} />
+        <Cluster
+          gap={spacing[3]}
+          leading={
+            <View style={[styles.menuIconWrap, { backgroundColor: ib }]}>
+              <Icon size={18} color={ic} strokeWidth={2} />
+            </View>
+          }
+          actions={
+            <ChevronRight size={16} color={destructive ? c.error : c.textTertiary} strokeWidth={2} />
+          }
+        >
+          <Animated.Text style={[styles.menuLabel, destructive && styles.menuLabelDestructive]}>
+            {label}
+          </Animated.Text>
+        </Cluster>
       </Pressable>
     </Animated.View>
   );
@@ -218,6 +229,7 @@ function getSections(
 }
 
 export function ProfileHubScreen() {
+  const styles = useThemedStyles(buildStyles, 'features_profile_screens_ProfileHubScreen_tsx_styles');
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.clearSession);
@@ -278,6 +290,7 @@ export function ProfileHubScreen() {
 function buildStyles(c: AppColors) {
   return {
   container: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: c.background,
   },
@@ -294,7 +307,7 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     paddingHorizontal: spacing[1],
   },
   sectionCard: {
@@ -302,25 +315,21 @@ function buildStyles(c: AppColors) {
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: c.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-    gap: spacing[3],
   },
   menuIconWrap: {
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   menuLabel: {
-    flex: 1,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
@@ -330,17 +339,9 @@ function buildStyles(c: AppColors) {
   },
   itemDivider: {
     height: 1,
-    alignSelf: 'stretch',
+    alignSelf: 'stretch' as const,
     backgroundColor: c.borderLight,
   },
   };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_screens_ProfileHubScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

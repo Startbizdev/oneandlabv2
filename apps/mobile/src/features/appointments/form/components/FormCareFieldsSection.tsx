@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { Pressable, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { Input } from '@/components/ui/Input';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import {
@@ -8,7 +9,7 @@ import {
   NURSING_FREQUENCY_OPTIONS,
   showNursingFrequency,
 } from '@oneandlab/shared-constants';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const BLOOD_TYPE_OPTIONS = [
@@ -43,10 +44,11 @@ function OptionPills({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const styles = useThemedStyles(buildStyles, 'FormCareFieldsSection.OptionPills');
   return (
     <View style={styles.group}>
       <Text style={styles.groupLabel}>{label}</Text>
-      <View style={styles.pillRow}>
+      <Row wrap gap={spacing[2]}>
         {options.map((o) => {
           const on = value === o.value;
           return (
@@ -59,7 +61,7 @@ function OptionPills({
             </Pressable>
           );
         })}
-      </View>
+      </Row>
     </View>
   );
 }
@@ -87,6 +89,7 @@ export function FormCareFieldsSection({
   onChange,
   hidePreferredNurseGender,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_FormCareFieldsSection_tsx_styles');
   if (isBloodTestAppointment(type)) {
     return (
       <View style={styles.wrapper}>
@@ -168,7 +171,6 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   pill: {
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
@@ -190,11 +192,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_FormCareFieldsSection_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

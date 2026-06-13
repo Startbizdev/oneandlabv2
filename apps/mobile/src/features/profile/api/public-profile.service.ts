@@ -4,19 +4,11 @@ import type {
   PublicNurseProfile,
 } from '@/features/profile/types/public-profile.types';
 
-type PublicProfileResponse<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-  redirect?: boolean;
-  new_slug?: string;
-};
-
 export async function fetchPublicNurseProfile(slug: string): Promise<PublicNurseProfile> {
   const trimmed = slug.trim();
   if (!trimmed) throw new Error('Slug requis');
 
-  const res = await api.get<PublicProfileResponse<PublicNurseProfile>>(
+  const res = await api.get<PublicNurseProfile>(
     `/public/nurse/${encodeURIComponent(trimmed)}`,
   );
   if (!res.success || !res.data) {
@@ -25,23 +17,29 @@ export async function fetchPublicNurseProfile(slug: string): Promise<PublicNurse
   return res.data;
 }
 
+type LabProfileApiResponse = PublicLabProfile & {
+  redirect?: boolean;
+  new_slug?: string;
+};
+
 export async function fetchPublicLabProfile(slug: string): Promise<PublicLabProfile> {
   const trimmed = slug.trim();
   if (!trimmed) throw new Error('Slug requis');
 
-  const res = await api.get<PublicProfileResponse<PublicLabProfile>>(
+  const res = await api.get<LabProfileApiResponse>(
     `/public/lab/${encodeURIComponent(trimmed)}`,
   );
   if (!res.success) {
     throw new Error(res.error ?? 'Profil introuvable');
   }
-  if (res.redirect && res.new_slug?.trim()) {
-    return fetchPublicLabProfile(res.new_slug.trim());
-  }
-  if (!res.data) {
+  const payload = res.data;
+  if (!payload) {
     throw new Error('Profil introuvable');
   }
-  return res.data;
+  if (payload.redirect && payload.new_slug?.trim()) {
+    return fetchPublicLabProfile(payload.new_slug.trim());
+  }
+  return payload;
 }
 
 export async function fetchPublicProviderProfile(

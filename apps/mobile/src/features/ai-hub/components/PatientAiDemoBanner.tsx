@@ -2,6 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { Sparkles } from 'lucide-react-native';
 import { H_PADDING, spacing } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
@@ -12,7 +13,9 @@ export function PatientAiDemoBanner() {
   const styles = useThemedStyles(buildStyles);
 
   return (
-    <View
+    <Row
+      align="center"
+      gap={spacing[1.5]}
       style={[
         styles.strip,
         {
@@ -29,16 +32,13 @@ export function PatientAiDemoBanner() {
       <Text style={[styles.message, { color: c.textSecondary }]} numberOfLines={1}>
         Votre assistant santé Cary arrive bientôt
       </Text>
-    </View>
+    </Row>
   );
 }
 
 function buildStyles(_c: AppColors) {
   return {
     strip: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: spacing[1.5],
       paddingHorizontal: H_PADDING,
       paddingVertical: spacing[2],
       borderTopWidth: StyleSheet.hairlineWidth,
@@ -57,6 +57,7 @@ function buildStyles(_c: AppColors) {
     },
     message: {
       flex: 1,
+      minWidth: 0,
       fontFamily: fontFamily.medium,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs, 1.35),

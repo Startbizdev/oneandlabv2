@@ -11,6 +11,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import {
   catalogGroupFilterEmoji,
   catalogGroupTheme,
@@ -65,6 +66,7 @@ export function CareCategoryFilterBar({ tabs, value, onChange }: Props) {
         contentContainerStyle={styles.row}
         keyboardShouldPersistTaps="handled"
       >
+        <Row gap={CHIP_GAP} align="center">
         {tabs.map((tab) => {
           const active = value === tab.value;
           const theme = catalogGroupTheme(tab.value);
@@ -93,7 +95,7 @@ export function CareCategoryFilterBar({ tabs, value, onChange }: Props) {
                 pressed && styles.chipHitPressed,
               ]}
             >
-              <View style={[styles.chip, chipStyle]}>
+              <Row align="center" style={[styles.chip, chipStyle]}>
                 <View style={[styles.emojiOrb, { backgroundColor: theme.orb }]}>
                   <Text style={styles.emojiGlyph} accessibilityElementsHidden>
                     {emoji}
@@ -109,10 +111,11 @@ export function CareCategoryFilterBar({ tabs, value, onChange }: Props) {
                 >
                   {tab.label}
                 </Text>
-              </View>
+              </Row>
             </Pressable>
           );
         })}
+        </Row>
       </ScrollView>
     </View>
   );
@@ -124,9 +127,6 @@ function buildStyles(c: AppColors) {
       marginHorizontal: -H_PAD,
     },
     row: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: CHIP_GAP,
       paddingHorizontal: H_PAD,
       paddingVertical: spacing[1],
     },
@@ -139,9 +139,8 @@ function buildStyles(c: AppColors) {
       transform: [{ scale: 0.98 }],
     },
     chip: {
+      minWidth: 0,
       flex: 1,
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
       minHeight: 52,
       paddingLeft: spacing[2.5],
       paddingRight: spacing[3],

@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,7 +28,10 @@ interface Props {
   bare?: boolean;
 }
 
-export function ProfileNurseQualificationsSection({ bare }: Props) {
+export function ProfileNurseQualificationsSection({
+  bare }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileNurseQualificationsSection_tsx_styles');
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
@@ -125,19 +130,22 @@ export function ProfileNurseQualificationsSection({ bare }: Props) {
           const on =
             item.code === 'AUTRE' ? showOtherFields : qualificationCodes.includes(item.code);
           return (
-            <View
+            <Cluster
               key={item.code}
+              gap={spacing[3]}
+              actions={
+                <ToggleSwitch
+                  value={on}
+                  disabled={busy}
+                  onValueChange={(v) => toggleQualification(item.code, v)}
+                />
+              }
               style={[styles.row, on && styles.rowEnabled, busy && styles.rowBusy]}
             >
               <Text style={styles.rowTitle} numberOfLines={1}>
                 {item.label}
               </Text>
-              <ToggleSwitch
-                value={on}
-                disabled={busy}
-                onValueChange={(v) => toggleQualification(item.code, v)}
-              />
-            </View>
+            </Cluster>
           );
         })}
       </View>
@@ -145,7 +153,7 @@ export function ProfileNurseQualificationsSection({ bare }: Props) {
         <View style={[styles.otherBlock, bare && styles.otherBlockBare]}>
           <Text style={styles.otherTitle}>Autres formations (précisez)</Text>
           {otherFormations.map((val, idx) => (
-            <View key={idx} style={styles.otherRow}>
+            <Row key={idx} gap={spacing[2]} align="start" style={styles.otherRow}>
               <View style={styles.otherInput}>
                 <Input
                   value={val}
@@ -166,19 +174,20 @@ export function ProfileNurseQualificationsSection({ bare }: Props) {
                 hitSlop={8}
                 style={styles.trashBtn}
               >
-                <Trash2 size={18} color={colors.error} strokeWidth={2} />
+                <Trash2 size={18} color={c.error} strokeWidth={2} />
               </Pressable>
-            </View>
+            </Row>
           ))}
           <Pressable
             onPress={() => {
               const next = [...otherFormations, ''];
               setOtherFormations(next);
             }}
-            style={styles.addBtn}
           >
-            <Plus size={16} color={colors.primary} strokeWidth={2.5} />
-            <Text style={styles.addText}>Ajouter une formation</Text>
+            <Row gap={spacing[2]} align="center" style={styles.addBtn}>
+              <Plus size={16} color={c.primary} strokeWidth={2.5} />
+              <Text style={styles.addText}>Ajouter une formation</Text>
+            </Row>
           </Pressable>
         </View>
       ) : null}
@@ -213,10 +222,8 @@ function buildStyles(c: AppColors) {
   list: { gap: spacing[2] },
   listBare: { paddingHorizontal: spacing[4] },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    width: '100%',
+    alignSelf: 'stretch' as const,
+    width: '100%' as const,
     minHeight: 52,
     paddingVertical: spacing[2],
     paddingHorizontal: spacing[3],
@@ -231,10 +238,6 @@ function buildStyles(c: AppColors) {
   },
   rowBusy: { opacity: 0.55 },
   rowTitle: {
-    flex: 1,
-    flexShrink: 1,
-    minWidth: 0,
-    marginRight: spacing[3],
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
@@ -254,17 +257,10 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
-  otherRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2],
-  },
-  otherInput: { flex: 1 },
+  otherRow: {},
+  otherInput: { minWidth: 0, flex: 1 },
   trashBtn: { paddingTop: spacing[3] },
   addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
     paddingVertical: spacing[2],
   },
   addText: {
@@ -275,11 +271,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_components_ProfileNurseQualificationsSection_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

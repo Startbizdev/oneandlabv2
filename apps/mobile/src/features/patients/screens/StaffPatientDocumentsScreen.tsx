@@ -1,16 +1,16 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
-  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, FileText, Shield } from 'lucide-react-native';
@@ -89,6 +89,8 @@ function AddDocumentSection({
   existingTypes: Set<string>;
   onPick: (docType: PatientProfileUploadType) => void;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'StaffPatientDocumentsScreen.AddDocumentSection');
   return (
     <View style={styles.addCard}>
       <Text style={styles.addKicker}>Ajouter</Text>
@@ -108,7 +110,7 @@ function AddDocumentSection({
               icon={slot.Icon}
               title={getDocumentTypeLabel(slot.key)}
               subtitle={subtitle}
-              iconBg={hasType ? colors.successLight : colors.primaryLight}
+              iconBg={hasType ? c.successLight : c.primaryLight}
               disabled={Boolean(uploading)}
               onPress={() => onPick(slot.key)}
             />
@@ -134,28 +136,39 @@ function SavedDocumentRow({
   downloaded: boolean;
   onDownload: () => void;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'StaffPatientDocumentsScreen.SavedDocumentRow');
   return (
-    <View style={styles.docCard}>
-      <View style={styles.docIcon}>
-        <Icon size={18} color={colors.primary} strokeWidth={2} />
-      </View>
+    <Cluster
+      gap={spacing[3]}
+      style={styles.docCard}
+      leading={
+        <View style={styles.docIcon}>
+          <Icon size={18} color={c.primary} strokeWidth={2} />
+        </View>
+      }
+      actions={
+        <DocumentDownloadButton
+          downloaded={downloaded}
+          downloading={downloading}
+          onPress={onDownload}
+          accessibilityLabel={`Télécharger ${label}`}
+        />
+      }
+    >
       <View style={styles.docText}>
         <Text style={styles.docLabel}>{label}</Text>
         <Text style={styles.docFile} numberOfLines={1}>
           {sub}
         </Text>
       </View>
-      <DocumentDownloadButton
-        downloaded={downloaded}
-        downloading={downloading}
-        onPress={onDownload}
-        accessibilityLabel={`Télécharger ${label}`}
-      />
-    </View>
+    </Cluster>
   );
 }
 
 export function StaffPatientDocumentsScreen() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_patients_screens_StaffPatientDocumentsScreen_tsx_styles');
   const { id } = useLocalSearchParams<{ id: string }>();
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -289,7 +302,7 @@ export function StaffPatientDocumentsScreen() {
             <RefreshControl
               refreshing={docsQ.isRefetching}
               onRefresh={() => void docsQ.refetch()}
-              tintColor={colors.primary}
+              tintColor={c.primary}
             />
           }
           renderItem={({ item }) => {
@@ -330,36 +343,37 @@ export function StaffPatientDocumentsScreen() {
 
 function buildStyles(c: AppColors) {
   return {
-  container: { flex: 1, backgroundColor: c.background },
-  loading: { flex: 1, padding: spacing[4] },
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+  loading: { minWidth: 0, flex: 1, padding: spacing[4] },
   list: {
+    minWidth: 0,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3],
     paddingBottom: spacing[10],
     flexGrow: 1,
-    width: '100%',
+    width: '100%' as const,
   },
   header: {
     gap: spacing[4],
     marginBottom: spacing[2],
-    width: '100%',
-    alignSelf: 'stretch',
+    width: '100%' as const,
+    alignSelf: 'stretch' as const,
   },
   addCard: {
-    width: '100%',
-    alignSelf: 'stretch',
+    width: '100%' as const,
+    alignSelf: 'stretch' as const,
     backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: c.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   addKicker: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3.5],
     paddingBottom: spacing[2],
@@ -374,7 +388,7 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   emptyHint: {
     fontFamily: fontFamily.regular,
@@ -385,11 +399,8 @@ function buildStyles(c: AppColors) {
   },
   sep: { height: spacing[2] },
   docCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    width: '100%',
-    gap: spacing[3],
+    alignSelf: 'stretch' as const,
+    width: '100%' as const,
     backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -402,11 +413,11 @@ function buildStyles(c: AppColors) {
     height: 40,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
-  docText: { flex: 1, minWidth: 0, gap: 2 },
+  docText: { gap: 2 },
   docLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
@@ -423,19 +434,11 @@ function buildStyles(c: AppColors) {
     height: 40,
     borderRadius: radius.full,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
-  footer: { marginTop: spacing[4], width: '100%' },
+  footer: { marginTop: spacing[4], width: '100%' as const },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_patients_screens_StaffPatientDocumentsScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

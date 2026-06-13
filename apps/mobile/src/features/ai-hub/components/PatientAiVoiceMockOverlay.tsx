@@ -21,6 +21,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mic, Square, X } from 'lucide-react-native';
+import { Row } from '@/components/layout/primitives';
 import { PATIENT_AI_VOICE_MOCK_HINT } from '../constants/patient-ai-mock';
 import { animation, elevation, H_PADDING, radius, spacing } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
@@ -299,7 +300,7 @@ export function PatientAiVoiceMockOverlay({ visible, onClose }: Props) {
         />
 
         <View style={[styles.shell, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-          <View style={styles.header}>
+          <Row justify="end" style={styles.header}>
             <Pressable
               onPress={handleClose}
               hitSlop={12}
@@ -309,7 +310,7 @@ export function PatientAiVoiceMockOverlay({ visible, onClose }: Props) {
             >
               <X size={22} color={c.textSecondary} strokeWidth={2.25} />
             </Pressable>
-          </View>
+          </Row>
 
           <Animated.View entering={FadeIn.duration(360)} style={styles.centerColumn}>
             <View style={styles.statusBlock}>
@@ -328,9 +329,11 @@ export function PatientAiVoiceMockOverlay({ visible, onClose }: Props) {
             <View style={styles.waveZone}>
               {listening ? (
                 <Animated.View entering={FadeIn.duration(280)} style={styles.waveRow}>
-                  {Array.from({ length: WAVEFORM_BAR_COUNT }, (_, i) => (
-                    <WaveformBar key={i} index={i} active styles={styles} />
-                  ))}
+                  <Row justify="center" gap={spacing[1.5]} style={styles.waveRowInner}>
+                    {Array.from({ length: WAVEFORM_BAR_COUNT }, (_, i) => (
+                      <WaveformBar key={i} index={i} active styles={styles} />
+                    ))}
+                  </Row>
                 </Animated.View>
               ) : (
                 <Text style={[styles.waveHint, { color: c.textTertiary }]}>
@@ -353,14 +356,14 @@ export function PatientAiVoiceMockOverlay({ visible, onClose }: Props) {
 function buildStyles(_c: AppColors) {
   return {
     root: {
+      minWidth: 0,
       flex: 1,
     },
     shell: {
+      minWidth: 0,
       flex: 1,
     },
     header: {
-      flexDirection: 'row' as const,
-      justifyContent: 'flex-end' as const,
       paddingHorizontal: H_PADDING,
       paddingBottom: spacing[2],
     },
@@ -372,6 +375,7 @@ function buildStyles(_c: AppColors) {
       justifyContent: 'center' as const,
     },
     centerColumn: {
+      minWidth: 0,
       flex: 1,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
@@ -436,10 +440,11 @@ function buildStyles(_c: AppColors) {
       justifyContent: 'center' as const,
     },
     waveRow: {
-      flexDirection: 'row' as const,
+      height: 56,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-      gap: spacing[1.5],
+    },
+    waveRowInner: {
       height: 56,
     },
     waveBar: {

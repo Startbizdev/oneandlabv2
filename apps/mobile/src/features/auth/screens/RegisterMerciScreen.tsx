@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle2 } from 'lucide-react-native';
@@ -9,6 +10,8 @@ import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function RegisterMerciScreen() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_auth_screens_RegisterMerciScreen_tsx_styles');
   const { type } = useLocalSearchParams<{ type?: string }>();
   const router = useRouter();
 
@@ -19,7 +22,7 @@ export function RegisterMerciScreen() {
     <View style={styles.container}>
       <View style={[styles.card, elevation.sm]}>
         <View style={styles.iconWrap}>
-          <CheckCircle2 size={40} color={colors.primary} strokeWidth={2} />
+          <CheckCircle2 size={40} color={c.primary} strokeWidth={2} />
         </View>
         <Text style={styles.title}>Demande bien reçue</Text>
         <Text style={styles.sub}>Merci pour votre inscription sur Cary.</Text>
@@ -48,10 +51,11 @@ export function RegisterMerciScreen() {
 function buildStyles(c: AppColors) {
   return {
   container: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: c.background,
     padding: spacing[5],
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
   },
   card: {
     backgroundColor: c.surface,
@@ -59,7 +63,7 @@ function buildStyles(c: AppColors) {
     borderWidth: 1,
     borderColor: c.borderLight,
     padding: spacing[6],
-    alignItems: 'center',
+    alignItems: 'center' as const,
     gap: spacing[3],
   },
   iconWrap: {
@@ -67,49 +71,41 @@ function buildStyles(c: AppColors) {
     height: 72,
     borderRadius: radius.full,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     marginBottom: spacing[2],
   },
   title: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize['2xl'],
     color: c.textPrimary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   sub: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.base,
     color: c.textSecondary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   body: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: c.textPrimary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     lineHeight: fontSize.sm * 1.55,
   },
   hint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     lineHeight: fontSize.xs * 1.5,
   },
   actions: {
-    width: '100%',
+    width: '100%' as const,
     gap: spacing[3],
     marginTop: spacing[4],
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_auth_screens_RegisterMerciScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

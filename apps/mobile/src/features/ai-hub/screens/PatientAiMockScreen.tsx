@@ -9,6 +9,7 @@ import {
   type ListRenderItem,
 } from 'react-native';
 import { Smile } from 'lucide-react-native';
+import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
 import {
   PATIENT_AI_FOOTER_HEIGHT_WITH_BANNER,
@@ -61,22 +62,22 @@ function MessageBubble({
 
   if (isUser) {
     return (
-      <View style={styles.userRow}>
+      <Row justify="end" style={styles.userRow}>
         <View style={[styles.bubble, styles.bubbleUser, { backgroundColor: c.primary }]}>
           <Text style={[styles.bodyText, styles.bodyTextOnPrimary]}>{message.text}</Text>
         </View>
-      </View>
+      </Row>
     );
   }
 
   if (welcome) {
     return (
-      <View style={styles.assistantPlainRow}>
+      <Row align="start" gap={spacing[2]} style={styles.assistantPlainRow}>
         <AssistantAvatar styles={styles} />
         <View style={styles.plainContent}>
           <Text style={styles.assistantText}>{message.text}</Text>
           {suggestions?.length ? (
-            <View style={styles.suggestionChips}>
+            <Row wrap gap={spacing[2]} style={styles.suggestionChips}>
               {suggestions.map((item) => (
                 <View key={item.id} style={styles.suggestionChipWrap}>
                   <Button
@@ -88,15 +89,15 @@ function MessageBubble({
                   />
                 </View>
               ))}
-            </View>
+            </Row>
           ) : null}
         </View>
-      </View>
+      </Row>
     );
   }
 
   return (
-    <View style={styles.assistantRow}>
+    <Row align="end" gap={spacing[2]} style={styles.assistantRow}>
       <AssistantAvatar styles={styles} />
       <View
         style={[
@@ -107,7 +108,7 @@ function MessageBubble({
       >
         <Text style={styles.assistantText}>{message.text}</Text>
       </View>
-    </View>
+    </Row>
   );
 }
 
@@ -212,12 +213,12 @@ export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: Screen
   );
 
   const ListFooter = awaitingReply ? (
-    <View style={styles.typingRow}>
+    <Row align="end" gap={spacing[2]} style={styles.typingRow}>
       <AssistantAvatar styles={styles} />
       <View style={[styles.typingBubble, { backgroundColor: c.surfaceAlt, borderColor: c.borderLight }]}>
         <Text style={[styles.typingText, { color: c.textSecondary }]}>Cary réfléchit…</Text>
       </View>
-    </View>
+    </Row>
   ) : null;
 
   return (
@@ -274,11 +275,12 @@ function buildStyles(c: AppColors) {
 
   return {
     screen: {
+      minWidth: 0,
       flex: 1,
       minHeight: 0,
       position: 'relative' as const,
     },
-    list: { flex: 1 },
+    list: { minWidth: 0, flex: 1 },
     listContent: {
       paddingHorizontal: H_PADDING,
       paddingTop: spacing[2],
@@ -288,18 +290,13 @@ function buildStyles(c: AppColors) {
       height: spacing[3],
     },
     assistantRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'flex-end' as const,
-      gap: spacing[2],
       maxWidth: '100%' as const,
     },
     assistantPlainRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'flex-start' as const,
-      gap: spacing[2],
       maxWidth: '100%' as const,
     },
     plainContent: {
+      minWidth: 0,
       flex: 1,
       paddingTop: spacing[1],
     },
@@ -319,10 +316,6 @@ function buildStyles(c: AppColors) {
       color: c.textInverse,
     },
     suggestionChips: {
-      flexDirection: 'row' as const,
-      flexWrap: 'wrap' as const,
-      alignItems: 'flex-start' as const,
-      gap: spacing[2],
       marginTop: spacing[2.5],
     },
     suggestionChipWrap: {
@@ -330,8 +323,7 @@ function buildStyles(c: AppColors) {
       maxWidth: '100%' as const,
     },
     userRow: {
-      flexDirection: 'row' as const,
-      justifyContent: 'flex-end' as const,
+      minWidth: 0,
     },
     avatar: {
       width: 36,
@@ -355,9 +347,6 @@ function buildStyles(c: AppColors) {
       borderBottomRightRadius: radius.sm,
     },
     typingRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'flex-end' as const,
-      gap: spacing[2],
       paddingTop: spacing[1],
     },
     typingBubble: {

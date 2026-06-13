@@ -1,9 +1,12 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { MapPin, ExternalLink } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
+import { Cluster } from '@/components/layout/primitives';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import {
@@ -16,10 +19,13 @@ import { fontFamily, fontSize } from '@/theme/typography';
 export function AddressCard({
   apt,
   wazePreferred,
-}: {
+} : {
   apt: Appointment;
   wazePreferred?: boolean;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_AddressCard_tsx_AddressCard_styles');
+
   const label = resolveAppointmentDetailAddressLine(apt);
   const coords = resolveAppointmentMapCoords(apt);
 
@@ -51,18 +57,24 @@ export function AddressCard({
 
   return (
     <Card shadow="sm" padding="md">
-      <View style={styles.addressRow}>
-        <View style={styles.iconWrap}>
-          <MapPin size={16} color={colors.primary} strokeWidth={2} />
-        </View>
+      <Cluster
+        gap={spacing[3]}
+        align="start"
+        style={styles.addressRow}
+        leading={
+          <View style={styles.iconWrap}>
+            <MapPin size={16} color={c.primary} strokeWidth={2} />
+          </View>
+        }
+      >
         <Animated.Text style={styles.addressText}>{label}</Animated.Text>
-      </View>
+      </Cluster>
       <View style={styles.action}>
         <Button
           title={wazePreferred ? 'Itinéraire Waze' : 'Ouvrir dans Maps'}
           variant="outline"
           size="sm"
-          rightIcon={<ExternalLink size={13} color={colors.primary} strokeWidth={2} />}
+          rightIcon={<ExternalLink size={13} color={c.primary} strokeWidth={2} />}
           onPress={openMaps}
         />
       </View>
@@ -70,26 +82,22 @@ export function AddressCard({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   addressRow: {
-    flexDirection: 'row',
-    gap: spacing[3],
-    alignItems: 'flex-start',
     marginBottom: spacing[3],
   },
   iconWrap: {
     marginTop: 2,
   },
   addressText: {
-    flex: 1,
-    flexShrink: 1,
-    minWidth: 0,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.base * 1.5,
   },
   action: {
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-start' as const,
   },
-});
+};
+}

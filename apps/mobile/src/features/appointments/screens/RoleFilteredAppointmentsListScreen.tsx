@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -26,7 +28,7 @@ import {
   type ProStatusFilter,
 } from '@/constants/appointments-list-filters';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import type { Href } from 'expo-router';
 
 const PENDING = new Set(['pending', 'assigned', 'offered']);
@@ -47,7 +49,7 @@ function matchesSearch(apt: Appointment, q: string): boolean {
 
 /** Aligné web — missions assignées + offres entrantes (pas les RDV créés par le préleveur). */
 function isVisibleToPreleveur(apt: Appointment, userId: string | undefined): boolean {
-  if (!isBloodTestAppointment(apt)) return false;
+  if (!isBloodTestAppointment(apt.type)) return false;
   if (userId && String(apt.assigned_to ?? '') === String(userId)) return true;
   return isPendingIncomingOffer(apt, userId);
 }
@@ -83,6 +85,8 @@ export function RoleFilteredAppointmentsListScreen({
   bookHref,
   bookLabel,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_screens_RoleFilteredAppointmentsListScreen_tsx_RoleFilteredAppointmentsListScreen_styles');
+
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
   const statusOptions = role === 'pro' ? PRO_STATUS_OPTIONS : PRELEVEUR_STATUS_OPTIONS;
@@ -227,9 +231,11 @@ export function RoleFilteredAppointmentsListScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   listContent: {
+    minWidth: 0,
     paddingHorizontal: spacing[4],
     paddingTop: 0,
     paddingBottom: spacing[8],
@@ -237,11 +243,12 @@ const styles = StyleSheet.create({
   },
   scrollHeader: {
     marginTop: 0,
-    alignSelf: 'stretch',
-    width: '100%',
+    alignSelf: 'stretch' as const,
+    width: '100%' as const,
   },
   listHeaderComponent: {
     paddingTop: 0,
     marginTop: 0,
   },
-});
+};
+}

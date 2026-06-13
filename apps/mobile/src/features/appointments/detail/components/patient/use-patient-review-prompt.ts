@@ -18,7 +18,7 @@ export type ReviewRow = {
 export type ReviewFormState = { rating: number; comment: string };
 
 export function revieweeFirstName(appt: Appointment): string {
-  const ext = appt as Record<string, unknown>;
+  const ext = appt as unknown as Record<string, unknown>;
   if (isNursingAppointment(appt.type)) {
     const full = String(ext.assigned_nurse_display_name ?? '').trim();
     const first = full.split(/\s+/).filter(Boolean)[0];

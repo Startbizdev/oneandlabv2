@@ -10,7 +10,7 @@ import { AppThemeProvider } from './AppThemeProvider';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ minWidth: 0, flex: 1 }}>
       <SafeAreaProvider>
         <PersistQueryClientProvider client={queryClient} persistOptions={persistQueryOptions}>
           <AppThemeProvider>

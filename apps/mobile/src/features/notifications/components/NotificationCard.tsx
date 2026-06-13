@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+import { ListRowShell } from '@/components/ui/ListRowShell';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight } from 'lucide-react-native';
 import type { AppNotification } from '@/features/notifications/api/notifications.service';
@@ -19,12 +21,10 @@ interface Props {
   onPress: () => void;
 }
 
-/**
- * Carte notification — layout row strict (doc RN flexbox) :
- * [icône fixe] [colonne texte flex:1 minWidth:0] [chevron fixe]
- * `minWidth: 0` sur la colonne texte est indispensable pour le retour à la ligne.
- */
 export const NotificationCard = React.memo(function NotificationCard({ item, onPress }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'NotificationCard');
+
   const { label, message } = resolveNotificationDisplayLines(item);
   const isUnread = !item.read_at;
   const time = formatNotificationTime(item.created_at);
@@ -45,129 +45,92 @@ export const NotificationCard = React.memo(function NotificationCard({ item, onP
     >
       {isUnread ? <View style={styles.unreadStripe} /> : null}
 
-      <View style={styles.row}>
-        <View style={[styles.iconBox, { backgroundColor: bg }]}>
-          <Icon size={18} color={color} strokeWidth={2} />
-        </View>
-
-        <View style={styles.content}>
-          <View style={styles.titleLine}>
-            <View style={styles.titleWrap}>
-              <Text style={[styles.title, isUnread && styles.titleUnread]} numberOfLines={2}>
-                {label}
-              </Text>
-            </View>
-            {time ? <Text style={styles.time}>{time}</Text> : null}
+      <ListRowShell
+        leading={
+          <View style={[styles.iconBox, { backgroundColor: bg }]}>
+            <Icon size={18} color={color} strokeWidth={2} />
           </View>
-          {message ? (
-            <Text style={styles.body}>{message}</Text>
-          ) : null}
-        </View>
-
-        <View style={styles.chevron}>
-          <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} />
-        </View>
-      </View>
+        }
+        body={
+          <>
+            <Row align="start">
+              <View style={styles.titleWrap}>
+                <Text style={[styles.title, isUnread && styles.titleUnread]} numberOfLines={2}>
+                  {label}
+                </Text>
+              </View>
+              {time ? <Text style={styles.time}>{time}</Text> : null}
+            </Row>
+            {message ? <Text style={styles.body}>{message}</Text> : null}
+          </>
+        }
+        trailing={<ChevronRight size={16} color={c.textTertiary} strokeWidth={2} />}
+      />
     </Pressable>
   );
 });
 
-const ICON = 40;
-const CHEVRON = 16;
-
 function buildStyles(c: AppColors) {
   return {
-  card: {
-    alignSelf: 'stretch',
-    backgroundColor: c.surface,
-    borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: c.borderLight,
-    overflow: 'hidden',
-  },
-  cardUnread: {
-    backgroundColor: c.primaryLight,
-  },
-  cardPressed: {
-    opacity: 0.88,
-  },
-  unreadStripe: {
-    position: 'absolute',
-    left: 0,
-    top: spacing[3],
-    bottom: spacing[3],
-    width: 3,
-    borderTopRightRadius: radius.full,
-    borderBottomRightRadius: radius.full,
-    backgroundColor: c.primary,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing[3.5],
-    paddingHorizontal: spacing[4],
-  },
-  iconBox: {
-    width: ICON,
-    height: ICON,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing[3],
-    flexShrink: 0,
-  },
-  content: {
-    flex: 1,
-    minWidth: 0,
-    marginRight: spacing[2],
-  },
-  titleLine: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
+    card: {
+      alignSelf: 'stretch' as const,
+      backgroundColor: c.surface,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.borderLight,
+      overflow: 'hidden' as const,
+    },
+    cardUnread: {
+      backgroundColor: c.primaryLight,
+    },
+    cardPressed: {
+      opacity: 0.88,
+    },
+    unreadStripe: {
+      position: 'absolute' as const,
+      left: 0,
+      top: spacing[3],
+      bottom: spacing[3],
+      width: 3,
+      borderTopRightRadius: radius.full,
+      borderBottomRightRadius: radius.full,
+      backgroundColor: c.primary,
+    },
+    iconBox: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.md,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    },
   titleWrap: {
     flex: 1,
     minWidth: 0,
     marginRight: spacing[2],
   },
-  title: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-    letterSpacing: -0.15,
-  },
-  titleUnread: {
-    fontFamily: fontFamily.bold,
-  },
-  time: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    lineHeight: 14,
-    flexShrink: 0,
-    paddingTop: 1,
-  },
-  body: {
-    marginTop: spacing[1],
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
-    lineHeight: fontSize.xs * 1.5,
-  },
-  chevron: {
-    width: CHEVRON,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-};
+    title: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.sm,
+      color: c.textPrimary,
+      letterSpacing: -0.15,
+    },
+    titleUnread: {
+      fontFamily: fontFamily.bold,
+    },
+    time: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSize.xs,
+      color: c.textTertiary,
+      lineHeight: 14,
+      flexShrink: 0,
+      paddingTop: 1,
+    },
+    body: {
+      marginTop: spacing[1],
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.xs,
+      color: c.textSecondary,
+      lineHeight: fontSize.xs * 1.5,
+    },
+  };
 }
-
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_notifications_components_NotificationCard_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

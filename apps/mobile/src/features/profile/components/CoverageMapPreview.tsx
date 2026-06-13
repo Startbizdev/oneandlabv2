@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { radius } from '@/theme';
@@ -10,6 +12,9 @@ interface Props {
 
 /** Aperçu visuel du rayon (sans dépendance carte native). */
 export function CoverageMapPreview({ radiusKm, maxRadiusKm }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_CoverageMapPreview_tsx_CoverageMapPreview_styles');
+
   const size = 200;
   const cx = size / 2;
   const cy = size / 2;
@@ -19,31 +24,33 @@ export function CoverageMapPreview({ radiusKm, maxRadiusKm }: Props) {
   return (
     <View style={styles.wrap}>
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <Circle cx={cx} cy={cy} r={maxR} fill={colors.primaryLight} opacity={0.35} />
+        <Circle cx={cx} cy={cy} r={maxR} fill={c.primaryLight} opacity={0.35} />
         <Circle
           cx={cx}
           cy={cy}
           r={circleR}
-          fill={colors.primary}
+          fill={c.primary}
           fillOpacity={0.22}
-          stroke={colors.primary}
+          stroke={c.primary}
           strokeWidth={2}
         />
-        <Circle cx={cx} cy={cy} r={6} fill={colors.primary} />
-        <Circle cx={cx} cy={cy} r={3} fill={colors.surface} />
+        <Circle cx={cx} cy={cy} r={6} fill={c.primary} />
+        <Circle cx={cx} cy={cy} r={3} fill={c.surface} />
       </Svg>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     minHeight: 200,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
-});
+};
+}

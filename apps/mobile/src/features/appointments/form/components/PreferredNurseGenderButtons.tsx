@@ -1,7 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { Pressable, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const OPTIONS = [
@@ -16,10 +17,11 @@ interface Props {
 }
 
 export function PreferredNurseGenderButtons({ value, onChange }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_PreferredNurseGenderButtons_tsx_styles');
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>Préférence pour l&apos;infirmier(ère)</Text>
-      <View style={styles.row}>
+      <Row wrap gap={spacing[2]}>
         {OPTIONS.map((o) => {
           const on = (value || 'any') === o.value;
           return (
@@ -32,7 +34,7 @@ export function PreferredNurseGenderButtons({ value, onChange }: Props) {
             </Pressable>
           );
         })}
-      </View>
+      </Row>
     </View>
   );
 }
@@ -45,7 +47,6 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   pill: {
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
@@ -60,11 +61,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_PreferredNurseGenderButtons_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -14,7 +14,7 @@ interface Props {
 /** Bouton « + » header Cary — ouvre l’historique des conversations. */
 export function PatientAiHeaderMenuButton({ onPress }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useThemedStyles(buildStyles, 'PatientAiHeaderMenuButton');
 
   return (
     <Pressable
@@ -32,12 +32,12 @@ export function PatientAiHeaderMenuButton({ onPress }: Props) {
 }
 
 function buildStyles(_c: AppColors) {
-  return StyleSheet.create({
+  return {
     host: {
       width: BTN_SIZE + 8,
       height: BTN_SIZE + 8,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
     },
     pressed: {
       opacity: 0.9,
@@ -47,8 +47,8 @@ function buildStyles(_c: AppColors) {
       width: BTN_SIZE,
       height: BTN_SIZE,
       borderRadius: BTN_SIZE / 2,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
       ...Platform.select({
         ios: {
           shadowColor: '#0F172A',
@@ -59,5 +59,5 @@ function buildStyles(_c: AppColors) {
         android: { elevation: 4 },
       }),
     },
-  });
+  };
 }

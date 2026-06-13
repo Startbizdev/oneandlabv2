@@ -13,6 +13,7 @@ require_once __DIR__ . '/../../lib/EmailQueue.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/LabTeamAccess.php';
 require_once __DIR__ . '/../../lib/UploadMimeTypes.php';
+require_once __DIR__ . '/../../lib/AppTimezone.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -493,7 +494,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         }
         $generatedAt = ($documentType === 'ordonnance' && ($prescriptionKind || $prescriptionText || $prescriptionNumber))
-            ? date('Y-m-d H:i:s')
+            ? AppTimezone::sqlDateTime()
             : null;
 
         $patientIdForDoc = $standaloneOrdonnance

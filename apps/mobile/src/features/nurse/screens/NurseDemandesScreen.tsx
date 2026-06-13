@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
@@ -15,9 +17,11 @@ import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-st
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { useAuthStore } from '@/store/auth-store';
 import { EMPTY_DEMANDE_IMAGE, EMPTY_DEMANDE_IMAGE_HEIGHT, EMPTY_DEMANDE_IMAGE_WIDTH } from '@/constants/empty-state-images';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 export function NurseDemandesScreen() {
+  const styles = useThemedStyles(buildStyles, 'features_nurse_screens_NurseDemandesScreen_tsx_NurseDemandesScreen_styles');
+
   const user = useAuthStore((s) => s.user);
   const { show: toast } = useToast();
 
@@ -109,12 +113,15 @@ export function NurseDemandesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   listContent: {
+    minWidth: 0,
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[8],
     flexGrow: 1,
   },
   listHeader: { marginBottom: spacing[2] },
-});
+};
+}

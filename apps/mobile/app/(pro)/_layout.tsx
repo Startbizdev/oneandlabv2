@@ -1,10 +1,13 @@
-import { StyleSheet, View } from 'react-native';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { View } from 'react-native';
 import { Stack } from 'expo-router';
-import { APP_HEADER_CHROME } from '@/components/navigation/header-layout';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
 import { bookingWizardScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
 
 export default function ProLayout() {
+  const styles = useThemedStyles(buildStyles, 'ProLayout');
+
   return (
     <View style={styles.stackHost}>
       <Stack screenOptions={stackHeaderOptions()}>
@@ -28,6 +31,8 @@ export default function ProLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  stackHost: { flex: 1, backgroundColor: APP_HEADER_CHROME },
-});
+function buildStyles(c: AppColors) {
+  return {
+    stackHost: { flex: 1, backgroundColor: c.primaryLight },
+  };
+}

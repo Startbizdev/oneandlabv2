@@ -1,15 +1,22 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { useQuery } from '@tanstack/react-query';
 import { Star } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { api } from '@/api/client';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Review = { rating?: number; comment?: string };
 
 export function ProPatientReviewSection({ apt }: { apt: Appointment }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_ProPatientReviewSection_tsx_ProPatientReviewSection_styles');
+
   if (apt.status !== 'completed') return null;
 
   const { data: review, isLoading } = useQuery({
@@ -24,10 +31,10 @@ export function ProPatientReviewSection({ apt }: { apt: Appointment }) {
 
   return (
     <View style={styles.card}>
-      <View style={styles.header}>
-        <Star size={18} color={colors.star} fill={colors.starFill} strokeWidth={1.5} />
+      <Row gap={spacing[2]} align="center">
+        <Star size={18} color={c.star} fill={c.starFill} strokeWidth={1.5} />
         <Text style={styles.title}>Avis patient</Text>
-      </View>
+      </Row>
       <ReviewStars rating={review.rating ?? 0} size={20} showValue={false} />
       <Text style={styles.comment}>
         {review.comment?.trim() || 'Pas de commentaire'}
@@ -36,29 +43,26 @@ export function ProPatientReviewSection({ apt }: { apt: Appointment }) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[3],
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
   },
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   comment: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: 20,
   },
-});
+};
+}

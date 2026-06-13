@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,6 +16,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { ImageOff, RefreshCw } from 'lucide-react-native';
+import { Row } from '@/components/layout/primitives';
 import { loadCarePhotoLocalUri } from '../../utils/care-photo-image';
 import { radius } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -38,6 +40,8 @@ export function CarePhotoImage({
   accessibilityLabel,
   children,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_blocks_CarePhotoImage_tsx_styles');
   const [uri, setUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -67,16 +71,16 @@ export function CarePhotoImage({
     <View style={[styles.wrap, style]}>
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="small" color={colors.primary} />
+          <ActivityIndicator size="small" color={c.primary} />
         </View>
       ) : failed || !uri ? (
         <Pressable style={styles.center} onPress={retry} accessibilityRole="button">
-          <ImageOff size={22} color={colors.textTertiary} strokeWidth={1.75} />
+          <ImageOff size={22} color={c.textTertiary} strokeWidth={1.75} />
           <Text style={styles.failText}>Photo indisponible</Text>
-          <View style={styles.retryRow}>
-            <RefreshCw size={12} color={colors.primary} strokeWidth={2.5} />
+          <Row gap={4} align="center" style={styles.retryRow}>
+            <RefreshCw size={12} color={c.primary} strokeWidth={2.5} />
             <Text style={styles.retryText}>Réessayer</Text>
-          </View>
+          </Row>
         </Pressable>
       ) : (
         <Image source={{ uri }} style={[styles.image, imageStyle]} resizeMode={resizeMode} />
@@ -104,17 +108,18 @@ export function CarePhotoImage({
 function buildStyles(c: AppColors) {
   return {
   wrap: {
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     backgroundColor: c.surfaceAlt,
   },
   image: {
-    width: '100%',
-    height: '100%',
+    width: '100%' as const,
+    height: '100%' as const,
   },
   center: {
+    minWidth: 0,
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     gap: 6,
     padding: 8,
   },
@@ -122,12 +127,9 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   retryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     marginTop: 2,
   },
   retryText: {
@@ -139,11 +141,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_blocks_CarePhotoImage_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

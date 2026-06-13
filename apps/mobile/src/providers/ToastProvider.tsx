@@ -1,3 +1,6 @@
+import { Row } from '@/components/layout/primitives';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, {
   createContext,
   useCallback,
@@ -24,7 +27,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -79,6 +82,7 @@ function ToastCard({
   onDismiss: () => void;
 }) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'ToastProvider.ToastCard');
   const meta = toastMetaFor(toast.type, c);
   const { Icon } = meta;
   const progress = useSharedValue(1);
@@ -115,12 +119,12 @@ function ToastCard({
         style={({ pressed }) => [styles.pressable, pressed && styles.pressablePressed]}
       >
         <Shell {...shellProps} style={styles.card}>
-          <View style={styles.row}>
+          <Row gap={spacing[2.5]} align="center" style={styles.rowInner}>
             <Icon size={17} color={meta.iconColor} strokeWidth={2.35} />
             <Text style={styles.line} numberOfLines={1} ellipsizeMode="tail">
               {toast.line}
             </Text>
-          </View>
+          </Row>
           <View
             style={styles.progressTrack}
             onLayout={(e) => {
@@ -138,6 +142,8 @@ function ToastCard({
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const styles = useThemedStyles(buildStyles, 'providers_ToastProvider_tsx_ToastProvider_styles');
+
   const { top } = useSafeAreaInsets();
   const [toast, setToast] = useState<ToastState | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -185,25 +191,27 @@ export function useToast() {
   return ctx;
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   root: {
+    minWidth: 0,
     flex: 1,
   },
   host: {
-    position: 'absolute',
+    position: 'absolute' as const,
     left: spacing[5],
     right: spacing[5],
     zIndex: 9999,
-    alignItems: 'center',
+    alignItems: 'center' as const,
   },
   toastWrap: {
-    width: '100%',
+    width: '100%' as const,
     maxWidth: 360,
   },
   pressable: {
-    width: '100%',
+    width: '100%' as const,
     borderRadius: radius.full,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     ...elevation.md,
   },
   pressablePressed: {
@@ -211,18 +219,15 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: radius.full,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(15, 23, 42, 0.07)',
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.82)' : colors.surface,
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.82)' : c.surface,
   },
   androidShell: {
     backgroundColor: 'rgba(255, 255, 255, 0.98)',
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2.5],
+  rowInner: {
     paddingVertical: spacing[2.5],
     paddingHorizontal: spacing[3.5],
   },
@@ -231,16 +236,17 @@ const styles = StyleSheet.create({
     minWidth: 0,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.15,
   },
   progressTrack: {
     height: 1.5,
     backgroundColor: 'rgba(15, 23, 42, 0.05)',
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   progressFill: {
-    height: '100%',
+    height: '100%' as const,
     opacity: 0.45,
   },
-});
+};
+}

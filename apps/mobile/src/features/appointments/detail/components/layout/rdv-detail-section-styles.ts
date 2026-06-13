@@ -19,9 +19,6 @@ function buildRdvDetailSectionStyles(c: AppColors) {
       borderRightWidth: 0,
     },
     sectionHead: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: spacing[2.5],
       paddingHorizontal: spacing[4],
       paddingTop: spacing[4],
       paddingBottom: spacing[2],
@@ -35,6 +32,7 @@ function buildRdvDetailSectionStyles(c: AppColors) {
       justifyContent: 'center' as const,
     },
     sectionTitle: {
+      minWidth: 0,
       flex: 1,
       fontFamily: fontFamily.bold,
       fontSize: fontSize.sm,
@@ -54,16 +52,3 @@ function buildRdvDetailSectionStyles(c: AppColors) {
 export function getRdvDetailSectionStyles() {
   return getThemedStyles('rdv-detail-section', buildRdvDetailSectionStyles);
 }
-
-/** @deprecated Préférer getRdvDetailSectionStyles() au rendu. */
-export const rdvDetailSectionStyles = new Proxy(
-  {} as ReturnType<typeof buildRdvDetailSectionStyles>,
-  {
-    get(_target, prop: string | symbol) {
-      if (typeof prop === 'string') {
-        return getRdvDetailSectionStyles()[prop as keyof ReturnType<typeof buildRdvDetailSectionStyles>];
-      }
-      return undefined;
-    },
-  },
-);

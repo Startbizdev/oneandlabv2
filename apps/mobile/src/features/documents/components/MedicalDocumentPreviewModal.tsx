@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -12,13 +14,25 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Download, X } from 'lucide-react-native';
+import { Cluster } from '@/components/layout/primitives';
+import { IconActionButton } from '@/components/ui/IconActionButton';
 import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
 import { exportLocalFile } from '@/lib/downloads/open-local-file';
 import { resolveDocumentPreviewKind } from '@/lib/downloads/document-file-kind';
 import { inspectMedDocFile, logMedDoc } from '@/lib/uploads/medical-doc-file-debug';
 import { useToast } from '@/providers/ToastProvider';
-import { colors, iconSize, spacing } from '@/theme';
+import { iconSize, spacing } from '@/theme';
+import { layoutRow } from '@/theme/layout-styles';
 import { fontFamily, fontSize } from '@/theme/typography';
+
+const VIEWER_ACTION_SIZE = 44;
+
+function pdfPreviewTitle(fileName?: string): string {
+  const name = fileName?.trim();
+  if (!name) return 'Ordonnance';
+  if (/^ordonnance/i.test(name)) return 'Ordonnance';
+  return name.length > 28 ? `${name.slice(0, 25)}…` : name;
+}
 
 interface Props {
   visible: boolean;
@@ -27,32 +41,9 @@ interface Props {
   onClose: () => void;
 }
 
-function PreviewHeaderButton({
-  label,
-  onPress,
-  busy,
-  children,
-}: {
-  label: string;
-  onPress: () => void;
-  busy?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={busy}
-      style={({ pressed }) => [styles.headerBtn, pressed && !busy && styles.headerBtnPressed]}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={8}
-    >
-      {busy ? <ActivityIndicator size="small" color={colors.textPrimary} /> : children}
-    </Pressable>
-  );
-}
-
 function PdfPreviewBody({ localUri, fileName }: { localUri: string; fileName?: string }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'MedicalDocumentPreviewModal.PdfPreviewBody');
   const [html, setHtml] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -104,7 +95,7 @@ function PdfPreviewBody({ localUri, fileName }: { localUri: string; fileName?: s
   if (!html) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={c.primary} />
         <Text style={styles.loadingText}>Chargement du PDF…</Text>
       </View>
     );
@@ -120,7 +111,7 @@ function PdfPreviewBody({ localUri, fileName }: { localUri: string; fileName?: s
       startInLoadingState
       renderLoading={() => (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={c.primary} />
         </View>
       )}
     />
@@ -129,6 +120,9 @@ function PdfPreviewBody({ localUri, fileName }: { localUri: string; fileName?: s
 
 /** Visionneuse in-app : image plein écran ou PDF intégré. */
 export function MedicalDocumentPreviewModal({ visible, localUri, fileName, onClose }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_documents_components_MedicalDocumentPreviewModal_tsx_MedicalDocumentPreviewModal_styles');
+
   const insets = useSafeAreaInsets();
   const { show: toast } = useToast();
   const [exportBusy, setExportBusy] = useState(false);
@@ -172,80 +166,102 @@ export function MedicalDocumentPreviewModal({ visible, localUri, fileName, onClo
       presentationStyle="fullScreen"
     >
       <View style={[styles.pdfShell, { paddingTop: insets.top }]}>
-        <View style={styles.pdfHeader}>
+        <Cluster
+          gap={spacing[3]}
+          style={styles.pdfHeader}
+          actions={
+            <View style={styles.headerActions}>
+              <IconActionButton
+                label="Télécharger le document"
+                onPress={() => void handleExport()}
+                loading={exportBusy}
+                disabled={exportBusy}
+                variant="secondary"
+                backgroundColor={c.primaryLight}
+                style={styles.headerActionBtn}
+              >
+                <Download size={iconSize.sm} color={c.primary} strokeWidth={2.25} />
+              </IconActionButton>
+              <IconActionButton
+                label="Fermer l’aperçu"
+                onPress={onClose}
+                variant="muted"
+                backgroundColor={c.surfaceAlt}
+                style={styles.headerActionBtn}
+              >
+                <X size={iconSize.sm} color={c.textSecondary} strokeWidth={2.5} />
+              </IconActionButton>
+            </View>
+          }
+        >
           <Text style={styles.pdfTitle} numberOfLines={1}>
-            {fileName?.trim() || 'Document PDF'}
+            {pdfPreviewTitle(fileName)}
           </Text>
-          <PreviewHeaderButton
-            label="Enregistrer le PDF"
-            onPress={() => void handleExport()}
-            busy={exportBusy}
-          >
-            <Download size={iconSize.md} color={colors.textPrimary} strokeWidth={2.25} />
-          </PreviewHeaderButton>
-          <PreviewHeaderButton label="Fermer l’aperçu" onPress={onClose}>
-            <X size={iconSize.md} color={colors.textPrimary} strokeWidth={2.5} />
-          </PreviewHeaderButton>
-        </View>
+        </Cluster>
         <PdfPreviewBody localUri={localUri} fileName={fileName} />
       </View>
     </Modal>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   pdfShell: {
+    minWidth: 0,
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   pdfHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    gap: spacing[2],
+    paddingVertical: spacing[3.5],
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: c.border,
+    backgroundColor: c.background,
+    zIndex: 10,
+    ...(Platform.OS === 'android' ? { elevation: 4 } : null),
+  },
+  headerActions: {
+    ...layoutRow(spacing[2]),
+    flexShrink: 0,
+    alignItems: 'center' as const,
+  },
+  headerActionBtn: {
+    width: VIEWER_ACTION_SIZE,
+    height: VIEWER_ACTION_SIZE,
+    minWidth: VIEWER_ACTION_SIZE,
+    minHeight: VIEWER_ACTION_SIZE,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.borderLight,
   },
   pdfTitle: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: fontFamily.semiBold,
+    fontFamily: fontFamily.medium,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
-  },
-  headerBtn: {
-    width: spacing[12],
-    height: spacing[12],
-    borderRadius: spacing[12] / 2,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerBtnPressed: {
-    opacity: 0.85,
+    color: c.textPrimary,
   },
   webview: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: '#1a1a1a',
   },
   center: {
+    minWidth: 0,
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     gap: spacing[3],
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   loadingText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   failText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
+    color: c.textSecondary,
+    textAlign: 'center' as const,
     paddingHorizontal: spacing[6],
   },
-});
+};
+}

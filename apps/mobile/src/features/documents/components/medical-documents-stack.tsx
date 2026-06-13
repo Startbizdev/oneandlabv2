@@ -21,6 +21,7 @@ import {
   Shield,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { getDocumentTypeLabel } from '@/features/appointments/detail/utils/document-labels';
 import {
   formatDocumentFileSubtitle,
@@ -36,6 +37,8 @@ import { exportLocalFile } from '@/lib/downloads/open-local-file';
 import { inspectMedDocFile, logMedDoc } from '@/lib/uploads/medical-doc-file-debug';
 import { useToast } from '@/providers/ToastProvider';
 import { Button } from '@/components/ui/Button';
+import { IconActionButton } from '@/components/ui/IconActionButton';
+import { ListRowShell } from '@/components/ui/ListRowShell';
 import { useDownloadedDocumentIds } from '@/features/documents/hooks/use-downloaded-document-ids';
 import { radius, spacing, iconSize } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -136,15 +139,21 @@ export function MedicalDocumentsStackHead({
   }
 
   return (
-    <View style={styles.head}>
-      <View style={[styles.headIcon, { backgroundColor: c.primaryLight }]}>
-        <FileText size={16} color={c.primary} strokeWidth={2.25} />
-      </View>
+    <Cluster
+      align="start"
+      gap={spacing[3]}
+      style={styles.head}
+      leading={
+        <View style={[styles.headIcon, { backgroundColor: c.primaryLight }]}>
+          <FileText size={16} color={c.primary} strokeWidth={2.25} />
+        </View>
+      }
+    >
       <View style={styles.headText}>
         <Text style={[styles.title, { color: c.textPrimary }]}>{title}</Text>
         <Text style={[styles.sub, { color: c.textSecondary }]}>{subtitle}</Text>
       </View>
-    </View>
+    </Cluster>
   );
 }
 
@@ -180,7 +189,6 @@ function DocumentStackRow({
   actions: ReactNode;
 }) {
   const c = useAppColors();
-  const section = getRdvDetailSectionStyles();
   const styles = useThemedStyles(buildRowStyles);
 
   const iconBg =
@@ -190,78 +198,34 @@ function DocumentStackRow({
   const hintColor = tone === 'ready' ? c.success : c.textSecondary;
 
   return (
-    <View
-      style={[
-        styles.row,
-        rowExtraStyle,
-        topBorder && section.rowBorder,
-        disabled && styles.rowDisabled,
-      ]}
-    >
-      <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
-        <Icon size={iconSize.md} color={iconColor} strokeWidth={2.25} />
-      </View>
-
-      <Pressable
-        onPress={onLeadingPress}
-        disabled={disabled}
-        style={({ pressed }) => [
-          styles.rowBody,
-          pressed && !disabled && styles.rowBodyPressed,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={leadingLabel}
-      >
-        <Text
-          style={[styles.label, styles.shrinkText, { color: c.textPrimary }]}
-          numberOfLines={2}
-        >
-          {label}
-        </Text>
-        <Text
-          style={[styles.hint, styles.shrinkText, { color: hintColor }]}
-          numberOfLines={2}
-        >
-          {hint}
-        </Text>
-      </Pressable>
-
-      <View style={styles.actions}>{actions}</View>
-    </View>
-  );
-}
-
-function DocRowActionButton({
-  label,
-  onPress,
-  disabled,
-  loading,
-  variant = 'muted',
-  bg,
-  children,
-}: {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  loading?: boolean;
-  variant?: 'muted' | 'secondary';
-  bg?: string;
-  children: ReactNode;
-}) {
-  const styles = useThemedStyles(buildRowStyles);
-
-  return (
-    <Button
-      title=""
-      variant={variant}
-      size="mini"
-      iconOnly
-      disabled={disabled}
-      loading={loading}
-      onPress={onPress}
-      accessibilityLabel={label}
-      leftIcon={children}
-      style={[styles.actionBtn, bg ? { backgroundColor: bg } : null]}
+    <ListRowShell
+      topBorder={topBorder}
+      style={[rowExtraStyle, disabled && styles.rowDisabled]}
+      leading={
+        <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
+          <Icon size={iconSize.md} color={iconColor} strokeWidth={2.25} />
+        </View>
+      }
+      onBodyPress={onLeadingPress}
+      bodyAccessibilityLabel={leadingLabel}
+      bodyDisabled={disabled}
+      body={
+        <>
+          <Text
+            style={[styles.label, styles.shrinkText, { color: c.textPrimary }]}
+            numberOfLines={2}
+          >
+            {label}
+          </Text>
+          <Text
+            style={[styles.hint, styles.shrinkText, { color: hintColor }]}
+            numberOfLines={2}
+          >
+            {hint}
+          </Text>
+        </>
+      }
+      actions={actions}
     />
   );
 }
@@ -308,35 +272,35 @@ export function MedicalDocumentOpenRow({
       hint={hint}
       actions={
         <>
-          <DocRowActionButton
+          <IconActionButton
             label={`Aperçu ${label}`}
             onPress={onPreview}
             disabled={busy}
-            bg={pillBg}
+            backgroundColor={pillBg}
           >
             <Eye size={iconSize.sm} color={pillColor} strokeWidth={2.25} />
-          </DocRowActionButton>
+          </IconActionButton>
           {canReplace ? (
-            <DocRowActionButton
+            <IconActionButton
               label={`Remplacer ${label}`}
               onPress={onReplace}
               disabled={busy}
               loading={busyAction === 'replace'}
-              bg={pillBg}
+              backgroundColor={pillBg}
             >
               <RefreshCw size={iconSize.sm} color={pillColor} strokeWidth={2.25} />
-            </DocRowActionButton>
+            </IconActionButton>
           ) : null}
-          <DocRowActionButton
+          <IconActionButton
             label={`Enregistrer ${label}`}
             onPress={onDownload}
             disabled={busy}
             loading={busyAction === 'download'}
             variant="secondary"
-            bg={pillBg}
+            backgroundColor={pillBg}
           >
             <Download size={iconSize.sm} color={pillColor} strokeWidth={2.25} />
-          </DocRowActionButton>
+          </IconActionButton>
         </>
       }
     />
@@ -494,16 +458,16 @@ export function MedicalDocumentAddRow({
       label={label}
       hint={uploading ? 'Envoi en cours…' : 'Appareil photo, galerie ou fichier'}
       actions={
-        <DocRowActionButton
+        <IconActionButton
           label={`Ajouter ${label}`}
           onPress={pick}
           disabled={uploading}
           loading={uploading}
           variant="secondary"
-          bg={c.primaryLight}
+          backgroundColor={c.primaryLight}
         >
           <Plus size={iconSize.sm} color={c.primary} strokeWidth={2.5} />
-        </DocRowActionButton>
+        </IconActionButton>
       }
     />
   );
@@ -514,9 +478,6 @@ export function MedicalDocumentAddRow({
 function buildHeadStyles(c: AppColors) {
   return {
     head: {
-      flexDirection: 'row' as const,
-      alignItems: 'flex-start' as const,
-      gap: spacing[3],
       paddingHorizontal: spacing[4],
       paddingTop: spacing[4],
       paddingBottom: spacing[3],
@@ -560,12 +521,6 @@ function buildHeadStyles(c: AppColors) {
 
 function buildRowStyles(c: AppColors) {
   return {
-    row: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[3],
-    },
     rowAdd: { backgroundColor: c.surfaceSubtle },
     rowReady: { backgroundColor: c.successSurface },
     rowDisabled: { opacity: 0.65 },
@@ -578,13 +533,7 @@ function buildRowStyles(c: AppColors) {
       marginRight: spacing[3],
       flexShrink: 0,
     },
-    rowBody: {
-      flex: 1,
-      minWidth: 0,
-      justifyContent: 'center' as const,
-    },
-    rowBodyPressed: { opacity: 0.92 },
-    shrinkText: { flexShrink: 1 },
+    shrinkText: { minWidth: 0, flexShrink: 1 },
     label: {
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.base,
@@ -595,15 +544,6 @@ function buildRowStyles(c: AppColors) {
       fontFamily: fontFamily.regular,
       fontSize: fontSize.xs,
       lineHeight: fontSize.xs * 1.35,
-    },
-    actions: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'flex-end' as const,
-      gap: spacing[1.5],
-      flexShrink: 0,
-      marginLeft: 'auto' as const,
-      paddingLeft: spacing[1.5],
     },
     actionBtn: {
       minWidth: spacing[9],

@@ -1,5 +1,7 @@
 import { formatAvailabilityDisplayFr } from '~/utils/appointment-datetime-fr';
 
+const PARIS_TZ = 'Europe/Paris';
+
 export interface PrescriptionHistoryRow {
   id: string;
   appointment_id?: string | null;
@@ -44,16 +46,26 @@ export function formatPrescriptionRecordedCompact(iso: string | null | undefined
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+  return d.toLocaleString('fr-FR', {
+    timeZone: PARIS_TZ,
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
 }
 
 export function formatAppointmentDateCompact(iso: string | null | undefined): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  const today = new Date();
-  if (d.toDateString() === today.toDateString()) return "Aujourd'hui";
-  const s = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  const todayParis = new Date().toLocaleDateString('en-CA', { timeZone: PARIS_TZ });
+  const dayParis = d.toLocaleDateString('en-CA', { timeZone: PARIS_TZ });
+  if (dayParis === todayParis) return "Aujourd'hui";
+  const s = d.toLocaleDateString('fr-FR', {
+    timeZone: PARIS_TZ,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '—';
 }
 

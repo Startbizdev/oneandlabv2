@@ -3,6 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ListFilter, Search, X } from 'lucide-react-native';
+import { Cluster, Row, Stack } from '@/components/layout/primitives';
 import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -41,16 +42,32 @@ export function AppointmentsListFilterBar({
   const hasChips = chips.length > 0;
 
   return (
-    <View
+    <Stack
+      gap={spacing[2]}
       style={[
         styles.wrap,
         embedded && styles.wrapEmbedded,
         embedded && followedByBookCta && styles.wrapEmbeddedBeforeBookCta,
       ]}
     >
-      <View style={styles.searchRow}>
-        <View style={[styles.searchField, elevation.xs]}>
-          <Search size={16} color={c.textTertiary} strokeWidth={2} />
+      <Row gap={spacing[2]} align="center" style={styles.searchRow}>
+        <Cluster
+          gap={spacing[2]}
+          align="center"
+          style={[styles.searchField, elevation.xs]}
+          leading={<Search size={16} color={c.textTertiary} strokeWidth={2} />}
+          actions={
+            search.length > 0 ? (
+              <Pressable
+                onPress={() => onSearchChange('')}
+                hitSlop={8}
+                accessibilityLabel="Effacer la recherche"
+              >
+                <X size={16} color={c.textTertiary} strokeWidth={2} />
+              </Pressable>
+            ) : undefined
+          }
+        >
           <TextInput
             value={search}
             onChangeText={onSearchChange}
@@ -62,16 +79,7 @@ export function AppointmentsListFilterBar({
             autoCorrect={false}
             autoCapitalize="none"
           />
-          {search.length > 0 ? (
-            <Pressable
-              onPress={() => onSearchChange('')}
-              hitSlop={8}
-              accessibilityLabel="Effacer la recherche"
-            >
-              <X size={16} color={c.textTertiary} strokeWidth={2} />
-            </Pressable>
-          ) : null}
-        </View>
+        </Cluster>
 
         {showAdvanced ? (
           <Pressable
@@ -91,62 +99,56 @@ export function AppointmentsListFilterBar({
             ) : null}
           </Pressable>
         ) : null}
-      </View>
+      </Row>
 
       {hasChips ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-        >
-          {chips.map((chip) => (
-            <Pressable
-              key={chip.key}
-              onPress={chip.onRemove}
-              style={styles.chip}
-              accessibilityLabel={`Retirer le filtre ${chip.label}`}
-            >
-              <Text style={styles.chipLabel}>{chip.label}</Text>
-              <X size={14} color={c.primary} strokeWidth={2.5} />
-            </Pressable>
-          ))}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <Row gap={spacing[2]} style={styles.chipsRow}>
+            {chips.map((chip) => (
+              <Pressable
+                key={chip.key}
+                onPress={chip.onRemove}
+                style={styles.chip}
+                accessibilityLabel={`Retirer le filtre ${chip.label}`}
+              >
+                <Row gap={spacing[1]} align="center">
+                  <Text style={styles.chipLabel}>{chip.label}</Text>
+                  <X size={14} color={c.primary} strokeWidth={2.5} />
+                </Row>
+              </Pressable>
+            ))}
+          </Row>
         </ScrollView>
       ) : null}
-    </View>
+    </Stack>
   );
 }
 
 function buildStyles(c: AppColors) {
   return {
   wrap: {
-    gap: spacing[2],
     marginHorizontal: spacing[4],
     marginTop: spacing[2],
     marginBottom: spacing[2],
-    alignSelf: 'stretch',
+    alignSelf: 'stretch' as const,
   },
   wrapEmbedded: {
     marginHorizontal: 0,
     marginTop: spacing[2],
     marginBottom: spacing[2],
-    width: '100%',
+    width: '100%' as const,
   },
   wrapEmbeddedBeforeBookCta: {
     marginBottom: 0,
   },
   searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    alignSelf: 'stretch',
-    width: '100%',
+    minWidth: 0,
+    alignSelf: 'stretch' as const,
+    width: '100%' as const,
   },
   searchField: {
     flex: 1,
     minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
     backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -170,23 +172,23 @@ function buildStyles(c: AppColors) {
     borderWidth: 1,
     borderColor: c.borderLight,
     backgroundColor: c.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   filterBtnActive: {
     borderColor: c.primaryMid,
     backgroundColor: c.primaryLight,
   },
   filterBadge: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: 6,
     right: 6,
     minWidth: 16,
     height: 16,
     borderRadius: 8,
     backgroundColor: c.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     paddingHorizontal: 4,
   },
   filterBadgeText: {
@@ -195,14 +197,11 @@ function buildStyles(c: AppColors) {
     color: c.textInverse,
   },
   chipsRow: {
-    flexDirection: 'row',
-    gap: spacing[2],
+    minWidth: 0,
     paddingBottom: spacing[0.5],
   },
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1],
+    minWidth: 0,
     paddingLeft: spacing[3],
     paddingRight: spacing[2],
     paddingVertical: spacing[1.5],

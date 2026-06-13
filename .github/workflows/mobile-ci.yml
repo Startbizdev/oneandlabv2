@@ -1,0 +1,47 @@
+name: Mobile CI
+
+on:
+  push:
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'package-lock.json'
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        working-directory: .
+        run: npm ci --workspace=@oneandlab/mobile --include-workspace-root
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint layout (ratchet)
+        run: npm run lint:layout
+
+      - name: Lint themed styles
+        run: npm run lint:styles -- --strict-colors
+
+      - name: ESLint
+        run: npm run lint -- --max-warnings 9999

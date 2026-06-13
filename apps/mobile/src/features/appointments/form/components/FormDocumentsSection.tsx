@@ -1,5 +1,5 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { View, StyleSheet, Text } from 'react-native';
 import { SERVICE_DOC_FIELDS } from '../constants/appointment-document-fields';
 import type { PatientDocumentRow } from '@/features/patients/api/patient-profile.service';
@@ -9,7 +9,6 @@ import type { DocumentFileRef } from '../types/document-file-ref';
 import { hasDocumentFile } from '../types/document-file-ref';
 import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
-import { colors } from '@/theme';
 
 interface Props {
   serviceName?: string;
@@ -33,6 +32,7 @@ export function FormDocumentsSection({
   skipPrescription,
   showProfileSummary,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_FormDocumentsSection_tsx_styles');
   const fields = skipPrescription
     ? SERVICE_DOC_FIELDS.filter((f) => f.key !== 'ordonnance')
     : SERVICE_DOC_FIELDS;
@@ -90,11 +90,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_FormDocumentsSection_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

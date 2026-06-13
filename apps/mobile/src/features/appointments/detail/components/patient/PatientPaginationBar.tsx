@@ -1,7 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -14,18 +16,21 @@ interface Props {
   onNext: () => void;
 }
 
-export function PatientPaginationBar({ page, pages, total, onPrev, onNext }: Props) {
+export function PatientPaginationBar({
+  page, pages, total, onPrev, onNext }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_patient_PatientPaginationBar_tsx_styles');
   if (pages <= 1 && total <= 0) return null;
 
   return (
-    <View style={styles.wrap}>
+    <Row justify="between" align="center" style={styles.wrap}>
       <Pressable
         onPress={onPrev}
         disabled={page <= 1}
         style={[styles.btn, page <= 1 && styles.btnDisabled]}
         accessibilityLabel="Page précédente"
       >
-        <ChevronLeft size={18} color={page <= 1 ? colors.textTertiary : colors.primary} />
+        <ChevronLeft size={18} color={page <= 1 ? c.textTertiary : c.primary} />
       </Pressable>
       <Text style={styles.label}>
         Page {page} / {Math.max(1, pages)}
@@ -37,18 +42,15 @@ export function PatientPaginationBar({ page, pages, total, onPrev, onNext }: Pro
         style={[styles.btn, page >= pages && styles.btnDisabled]}
         accessibilityLabel="Page suivante"
       >
-        <ChevronRight size={18} color={page >= pages ? colors.textTertiary : colors.primary} />
+        <ChevronRight size={18} color={page >= pages ? c.textTertiary : c.primary} />
       </Pressable>
-    </View>
+    </Row>
   );
 }
 
 function buildStyles(c: AppColors) {
   return {
   wrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -63,26 +65,19 @@ function buildStyles(c: AppColors) {
     height: 40,
     borderRadius: radius.full,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   btnDisabled: { opacity: 0.45 },
   label: {
+    minWidth: 0,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
     color: c.textSecondary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     flex: 1,
     paddingHorizontal: spacing[2],
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_patient_PatientPaginationBar_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

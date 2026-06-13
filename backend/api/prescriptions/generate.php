@@ -7,14 +7,14 @@
  */
 
 header('Content-Type: application/json');
-require_once __DIR__ . '/../middleware/AuthMiddleware.php';
-require_once __DIR__ . '/../middleware/CSRFMiddleware.php';
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/cors.php';
-require_once __DIR__ . '/../lib/Crypto.php';
-require_once __DIR__ . '/../lib/PrescriptionService.php';
+require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/cors.php';
+require_once __DIR__ . '/../../lib/Crypto.php';
+require_once __DIR__ . '/../../lib/PrescriptionService.php';
 
-$corsConfig = require __DIR__ . '/../config/cors.php';
+$corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $corsConfig['allowed_origins'], true) || strpos($origin, 'http://localhost:') === 0) {
     header('Access-Control-Allow-Origin: ' . $origin);
@@ -75,7 +75,7 @@ if ($textError !== null) {
     exit;
 }
 
-$config = require __DIR__ . '/../config/database.php';
+$config = require __DIR__ . '/../../config/database.php';
 $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
 $crypto = new Crypto();

@@ -1,6 +1,5 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +8,7 @@ import 'dayjs/locale/fr';
 import { CalendarDays, Clock, Layers } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
 import { radius, spacing } from '@/theme';
@@ -24,6 +24,7 @@ interface Props {
 
 export function DetailHero({ primary, batch, isMultiBatch }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_DetailHero_tsx_styles');
   const scheduled = primary.scheduled_at ? dayjs(primary.scheduled_at) : null;
   const fd = (primary.form_data ?? {}) as Record<string, unknown>;
   const timeLabel = formatAvailabilityDisplayFr(fd.availability, primary.scheduled_at);
@@ -45,42 +46,46 @@ export function DetailHero({ primary, batch, isMultiBatch }: Props) {
       end={{ x: 1, y: 1 }}
       style={styles.wrap}
     >
-      <View style={styles.top}>
-        <View style={styles.titleBlock}>
+      <Row justify="between" align="start" gap={spacing[3]}>
+        <Row align="start" gap={spacing[2]} style={styles.titleBlock}>
           {isMultiBatch ? (
-            <Layers size={18} color={colors.primary} strokeWidth={2} style={styles.titleIcon} />
+            <Layers size={18} color={c.primary} strokeWidth={2} style={styles.titleIcon} />
           ) : null}
           <Text style={styles.title} numberOfLines={2}>
             {title}
           </Text>
-        </View>
+        </Row>
         {!isMultiBatch ? <StatusBadge status={primary.status} size="md" /> : null}
-      </View>
+      </Row>
 
-      <View style={styles.metaRow}>
+      <Row wrap gap={spacing[2]} align="center">
         <View style={styles.typePill}>
           <Text style={styles.typePillText}>{typeLabel}</Text>
         </View>
         {isMultiBatch ? (
           <Text style={styles.batchHint}>{batch.length} actes liés · détails ci-dessous</Text>
         ) : null}
-      </View>
+      </Row>
 
       {!isMultiBatch && (scheduled || timeLabel) ? (
-        <View style={styles.schedule}>
-          <CalendarDays size={16} color={colors.primary} strokeWidth={2} />
+        <Cluster
+          gap={spacing[2.5]}
+          align="start"
+          style={styles.schedule}
+          leading={<CalendarDays size={16} color={c.primary} strokeWidth={2} />}
+        >
           <View style={styles.scheduleTexts}>
             {scheduled ? (
               <Text style={styles.dateLine}>{scheduled.format('dddd D MMMM YYYY')}</Text>
             ) : null}
             {timeLabel ? (
-              <View style={styles.timeRow}>
-                <Clock size={12} color={colors.textTertiary} strokeWidth={2} />
+              <Row gap={4} align="center">
+                <Clock size={12} color={c.textTertiary} strokeWidth={2} />
                 <Text style={styles.timeLine}>{timeLabel}</Text>
-              </View>
+              </Row>
             ) : null}
           </View>
-        </View>
+        </Cluster>
       ) : null}
     </LinearGradient>
   );
@@ -95,32 +100,19 @@ function buildStyles(c: AppColors) {
     padding: spacing[4],
     gap: spacing[3],
   },
-  top: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: spacing[3],
-  },
   titleBlock: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2],
+    minWidth: 0,
   },
   titleIcon: { marginTop: 4 },
   title: {
+    minWidth: 0,
     flex: 1,
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize.xl,
     color: c.textPrimary,
     letterSpacing: -0.4,
     lineHeight: fontSize.xl * 1.2,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing[2],
   },
   typePill: {
     backgroundColor: c.primaryLight,
@@ -135,28 +127,21 @@ function buildStyles(c: AppColors) {
     letterSpacing: 0.3,
   },
   batchHint: {
+    minWidth: 0,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     flex: 1,
   },
   schedule: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2.5],
     paddingTop: spacing[1],
   },
-  scheduleTexts: { flex: 1, gap: 4 },
+  scheduleTexts: { gap: 4 },
   dateLine: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
-    textTransform: 'capitalize',
-  },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    textTransform: 'capitalize' as const,
   },
   timeLine: {
     fontFamily: fontFamily.medium,
@@ -166,11 +151,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_layout_DetailHero_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

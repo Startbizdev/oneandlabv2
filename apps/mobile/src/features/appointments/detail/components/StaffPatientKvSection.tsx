@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { radius, spacing } from '@/theme';
@@ -11,6 +13,8 @@ interface Props {
 /** Alertes proche uniquement (bénéficiaire + titulaire sont dans « Informations du rendez-vous »). */
 export function StaffPatientKvSection({ apt }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_StaffPatientKvSection_tsx_StaffPatientKvSection_styles');
+
   const ext = apt as Appointment & {
     relative?: { is_minor?: boolean; age_years?: number };
   };
@@ -38,7 +42,8 @@ export function StaffPatientKvSection({ apt }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[3] },
   minor: {
     borderRadius: radius.lg,
@@ -50,4 +55,5 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     lineHeight: fontSize.xs * 1.45,
   },
-});
+};
+}

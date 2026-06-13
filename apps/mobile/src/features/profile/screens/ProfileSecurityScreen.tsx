@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useLayoutEffect, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { useFocusEffect, useNavigation } from 'expo-router';
 import { ScanFace } from 'lucide-react-native';
 import { PasswordManagementPanel } from '@/features/profile/components/PasswordManagementPanel';
@@ -28,6 +30,8 @@ function openDeviceBiometricSettings() {
 }
 
 export function ProfileSecurityScreen() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_screens_ProfileSecurityScreen_tsx_styles');
   const navigation = useNavigation();
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
@@ -109,9 +113,9 @@ export function ProfileSecurityScreen() {
   }
 
   const card = (
-    <View style={[styles.card, elevation.xs]}>
+    <Row gap={spacing[2]} align="center" style={[styles.card, elevation.xs]}>
       <View style={[styles.iconWrap, enabled && styles.iconWrapActive]}>
-        <ScanFace size={22} color={colors.primary} strokeWidth={2} />
+        <ScanFace size={22} color={c.primary} strokeWidth={2} />
       </View>
       <View style={styles.rowWrap}>
         <ProfileToggleRow
@@ -124,7 +128,7 @@ export function ProfileSecurityScreen() {
           onValueChange={(v) => void onToggle(v)}
         />
       </View>
-    </View>
+    </Row>
   );
 
   return (
@@ -144,9 +148,6 @@ export function ProfileSecurityScreen() {
 function buildStyles(c: AppColors) {
   return {
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
     backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -159,8 +160,8 @@ function buildStyles(c: AppColors) {
     height: 44,
     borderRadius: radius.lg,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   iconWrapActive: {
@@ -174,7 +175,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.base,
     color: c.textSecondary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   stack: {
     gap: spacing[4],
@@ -182,11 +183,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_screens_ProfileSecurityScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

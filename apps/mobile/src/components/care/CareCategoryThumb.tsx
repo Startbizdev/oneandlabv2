@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { Image, StyleSheet, View } from 'react-native';
 import { Droplet, Stethoscope } from 'lucide-react-native';
 import { isBloodTestAppointment } from '@oneandlab/shared-utils';
@@ -12,6 +14,9 @@ interface Props {
 }
 
 export function CareCategoryThumb({ imageUrl, appointmentType, size = 28 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_care_CareCategoryThumb_tsx_CareCategoryThumb_styles');
+
   const src = resolveCareCategoryImageSrc(imageUrl);
   const box = { width: size, height: size, borderRadius: radius.md };
 
@@ -29,20 +34,22 @@ export function CareCategoryThumb({ imageUrl, appointmentType, size = 28 }: Prop
   const Icon = isBloodTestAppointment(appointmentType) ? Droplet : Stethoscope;
   return (
     <View style={[box, styles.fallback]}>
-      <Icon size={size * 0.48} color={colors.textSecondary} strokeWidth={2} />
+      <Icon size={size * 0.48} color={c.textSecondary} strokeWidth={2} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   img: {
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
   },
   fallback: {
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: c.surfaceAlt,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
   },
-});
+};
+}

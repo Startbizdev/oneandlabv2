@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import React from 'react';
 import { Image, type ImageSourcePropType, Text, View, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -34,6 +36,9 @@ function EmptyStateComponent({
   actionLabel,
   onAction,
 }: EmptyStateProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_ui_EmptyState_tsx_EmptyStateComponent_styles');
+
   return (
     <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.container}>
       {imageSource ? (
@@ -58,7 +63,7 @@ function EmptyStateComponent({
         </Text>
       ) : Icon ? (
         <View style={styles.iconWrap}>
-          <Icon size={28} color={colors.textTertiary} strokeWidth={1.5} />
+          <Icon size={28} color={c.textTertiary} strokeWidth={1.5} />
         </View>
       ) : null}
 
@@ -79,10 +84,11 @@ function EmptyStateComponent({
 
 export const EmptyState = React.memo(EmptyStateComponent);
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   container: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     paddingVertical: spacing[12],
     paddingHorizontal: spacing[6],
     gap: spacing[3],
@@ -97,29 +103,30 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: radius['2xl'],
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: c.surfaceAlt,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     marginBottom: spacing[1],
   },
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
-    textAlign: 'center',
+    color: c.textPrimary,
+    textAlign: 'center' as const,
     letterSpacing: -0.3,
   },
   description: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
+    color: c.textSecondary,
+    textAlign: 'center' as const,
     lineHeight: fontSize.sm * 1.55,
     maxWidth: 260,
   },
   action: {
     marginTop: spacing[2],
-    width: '100%',
+    width: '100%' as const,
     maxWidth: 240,
   },
-});
+};
+}

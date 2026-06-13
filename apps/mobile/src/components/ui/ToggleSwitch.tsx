@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import Animated, {
@@ -24,6 +26,8 @@ const TRAVEL = TRACK_W - THUMB - PAD * 2;
 /** Toggle custom taille fixe — ne casse pas le flex row (contrairement au Switch natif iOS). */
 export function ToggleSwitch({ value, onValueChange, disabled }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_ui_ToggleSwitch_tsx_ToggleSwitch_styles');
+
   const trackOff = palette.slate[200];
   const trackOn = c.primary;
   const progress = useSharedValue(value ? 1 : 0);
@@ -61,7 +65,8 @@ export function ToggleSwitch({ value, onValueChange, disabled }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   root: {
     width: TRACK_W,
     height: TRACK_H,
@@ -75,7 +80,7 @@ const styles = StyleSheet.create({
     height: TRACK_H,
     borderRadius: TRACK_H / 2,
     padding: PAD,
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
   },
   thumb: {
     width: THUMB,
@@ -88,4 +93,5 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-});
+};
+}

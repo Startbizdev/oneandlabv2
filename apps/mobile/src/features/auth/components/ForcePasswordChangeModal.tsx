@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
@@ -17,6 +19,8 @@ interface Props {
 
 export function ForcePasswordChangeModal({ visible, onDone }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_auth_components_ForcePasswordChangeModal_tsx_ForcePasswordChangeModal_styles');
+
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
   const [newPassword, setNewPassword] = useState('');
@@ -69,9 +73,11 @@ export function ForcePasswordChangeModal({ visible, onDone }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  shell: { flex: 1, padding: spacing[6], paddingTop: spacing[16], gap: spacing[3] },
+function buildStyles(c: AppColors) {
+  return {
+  shell: { minWidth: 0, flex: 1, padding: spacing[6], paddingTop: spacing[16], gap: spacing[3] },
   title: { fontFamily: fontFamily.bold, fontSize: fontSize.lg },
   sub: { fontFamily: fontFamily.regular, fontSize: fontSize.sm, lineHeight: fontSize.sm * 1.45 },
   form: { marginTop: spacing[4], gap: spacing[3] },
-});
+};
+}

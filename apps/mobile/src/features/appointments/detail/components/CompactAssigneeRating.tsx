@@ -1,4 +1,7 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+import { Row } from '@/components/layout/primitives';
 import { StyleSheet, Text, View } from 'react-native';
 import { Star } from 'lucide-react-native';
 import { spacing } from '@/theme';
@@ -14,29 +17,33 @@ interface Props {
 }
 
 function EmptyAssigneeRating({ label = 'Nouveau' }: { label?: string }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'CompactAssigneeRating.Empty');
   return (
-    <View
-      style={styles.row}
-      accessibilityLabel={`${label}, pas encore d'avis`}
-    >
-      <View style={styles.stars}>
-        {Array.from({ length: 5 }, (_, index) => (
-          <Star
-            key={index}
-            size={11}
-            color={colors.border}
-            fill="transparent"
-            strokeWidth={1.5}
-          />
-        ))}
-      </View>
-      <Text style={styles.newLabel}>{label}</Text>
+    <View accessibilityLabel={`${label}, pas encore d'avis`}>
+      <Row wrap gap={spacing[1]}>
+        <Row gap={1} align="center">
+          {Array.from({ length: 5 }, (_, index) => (
+            <Star
+              key={index}
+              size={11}
+              color={c.border}
+              fill="transparent"
+              strokeWidth={1.5}
+            />
+          ))}
+        </Row>
+        <Text style={styles.newLabel}>{label}</Text>
+      </Row>
     </View>
   );
 }
 
 /** Note + nombre d'avis sous le nom d'un intervenant. */
 export function CompactAssigneeRating({ summary, showNewWhenEmpty = false }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_CompactAssigneeRating_tsx_CompactAssigneeRating_styles');
+
   if (!summary) {
     return showNewWhenEmpty ? <EmptyAssigneeRating /> : null;
   }
@@ -45,58 +52,50 @@ export function CompactAssigneeRating({ summary, showNewWhenEmpty = false }: Pro
 
   return (
     <View
-      style={styles.row}
       accessibilityLabel={`Note ${averageRating.toFixed(1)} sur 5, ${formatReviewsCount(reviewsCount)}`}
     >
-      <View style={styles.stars}>
-        {Array.from({ length: 5 }, (_, index) => (
-          <Star
-            key={index}
-            size={11}
-            color={index < filledStars ? colors.star : colors.border}
-            fill={index < filledStars ? colors.starFill : 'transparent'}
-            strokeWidth={1.5}
-          />
-        ))}
-      </View>
-      <Text style={styles.rating}>{averageRating.toFixed(1)}</Text>
-      <Text style={styles.separator}>·</Text>
-      <Text style={styles.count}>{formatReviewsCount(reviewsCount)}</Text>
+      <Row wrap gap={spacing[1]}>
+        <Row gap={1} align="center">
+          {Array.from({ length: 5 }, (_, index) => (
+            <Star
+              key={index}
+              size={11}
+              color={index < filledStars ? c.star : c.border}
+              fill={index < filledStars ? c.starFill : 'transparent'}
+              strokeWidth={1.5}
+            />
+          ))}
+        </Row>
+        <Text style={styles.rating}>{averageRating.toFixed(1)}</Text>
+        <Text style={styles.separator}>·</Text>
+        <Text style={styles.count}>{formatReviewsCount(reviewsCount)}</Text>
+      </Row>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1],
-    flexWrap: 'wrap',
-  },
-  stars: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 1,
-  },
+function buildStyles(c: AppColors) {
+  return {
   rating: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textPrimary,
-    fontVariant: ['tabular-nums'],
+    color: c.textPrimary,
+    fontVariant: ['tabular-nums' as const],
   },
   separator: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   count: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   newLabel: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
-});
+};
+}

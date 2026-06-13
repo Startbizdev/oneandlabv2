@@ -1,4 +1,7 @@
-import { colors, spacing } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+import { spacing } from '@/theme';
 import { useEffect, useMemo, useState } from 'react';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { RefreshControl, StyleSheet, View } from 'react-native';
@@ -26,6 +29,9 @@ import { batchHasReviewableAppointment } from '@/utils/can-leave-review';
 type SegmentId = 'infos' | 'documents';
 
 export function PatientAppointmentDetailScreen() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_screens_PatientAppointmentDetailScreen_tsx_PatientAppointmentDetailScreen_styles');
+
   const { id, segment: segmentParam } = useLocalSearchParams<{
     id: string;
     segment?: string;
@@ -98,7 +104,7 @@ export function PatientAppointmentDetailScreen() {
           <RefreshControl
             refreshing={pullRefresh.refreshing}
             onRefresh={pullRefresh.onRefresh}
-            tintColor={colors.primary}
+            tintColor={c.primary}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -170,8 +176,9 @@ export function PatientAppointmentDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   scroll: { paddingBottom: spacing[10] },
   content: {
     paddingHorizontal: spacing[4],
@@ -182,4 +189,5 @@ const styles = StyleSheet.create({
   edgeBleed: {
     marginHorizontal: -spacing[4],
   },
-});
+};
+}

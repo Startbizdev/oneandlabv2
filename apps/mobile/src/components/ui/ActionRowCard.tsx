@@ -1,6 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
+import { Cluster } from '@/components/layout/primitives';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -36,6 +38,8 @@ export function ActionRowCard({
   accessibilityLabel,
   accessibilityHint,
 }: ActionRowCardProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_ui_ActionRowCard_tsx_styles');
   return (
     <Pressable
       onPress={() => {
@@ -53,22 +57,27 @@ export function ActionRowCard({
     >
       {highlighted ? <View style={styles.highlightStripe} /> : null}
 
-      <View style={styles.row}>
-        <View style={[styles.iconBox, { backgroundColor: iconBg }]}>
-          <Icon size={18} color={iconColor} strokeWidth={2} />
-        </View>
-
+      <Cluster
+        gap={spacing[3]}
+        style={styles.row}
+        leading={
+          <View style={[styles.iconBox, { backgroundColor: iconBg }]}>
+            <Icon size={18} color={iconColor} strokeWidth={2} />
+          </View>
+        }
+        actions={
+          <View style={styles.chevron}>
+            <ChevronRight size={16} color={c.textTertiary} strokeWidth={2} />
+          </View>
+        }
+      >
         <View style={styles.content}>
           <Text style={[styles.title, highlighted && styles.titleHighlighted]} numberOfLines={2}>
             {title}
           </Text>
           {body ? <Text style={styles.body}>{body}</Text> : null}
         </View>
-
-        <View style={styles.chevron}>
-          <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} />
-        </View>
-      </View>
+      </Cluster>
     </Pressable>
   );
 }
@@ -79,12 +88,12 @@ const CHEVRON = 16;
 function buildStyles(c: AppColors) {
   return {
   card: {
-    alignSelf: 'stretch',
+    alignSelf: 'stretch' as const,
     backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: c.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   cardHighlighted: {
     backgroundColor: c.primaryLight,
@@ -94,7 +103,7 @@ function buildStyles(c: AppColors) {
     opacity: 0.88,
   },
   highlightStripe: {
-    position: 'absolute',
+    position: 'absolute' as const,
     left: 0,
     top: spacing[3],
     bottom: spacing[3],
@@ -104,8 +113,6 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.primary,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: spacing[3.5],
     paddingHorizontal: spacing[4],
   },
@@ -113,15 +120,12 @@ function buildStyles(c: AppColors) {
     width: ICON,
     height: ICON,
     borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing[3],
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   content: {
-    flex: 1,
     minWidth: 0,
-    marginRight: spacing[2],
   },
   title: {
     fontFamily: fontFamily.semiBold,
@@ -142,18 +146,10 @@ function buildStyles(c: AppColors) {
   },
   chevron: {
     width: CHEVRON,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('components_ui_ActionRowCard_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

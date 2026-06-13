@@ -1,8 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { Pressable, ScrollView, Text } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import type { ReviewFilter } from '@/features/reviews/types';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const FILTERS: { id: ReviewFilter; label: string }[] = [
@@ -18,12 +19,14 @@ interface Props {
 }
 
 export function ReviewFilterChips({ value, onChange, counts }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_reviews_components_ReviewFilterChips_tsx_styles');
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.row}
     >
+      <Row gap={spacing[2]}>
       {FILTERS.map((f) => {
         const active = value === f.id;
         const count = counts?.[f.id];
@@ -38,6 +41,7 @@ export function ReviewFilterChips({ value, onChange, counts }: Props) {
           </Pressable>
         );
       })}
+      </Row>
     </ScrollView>
   );
 }
@@ -45,8 +49,6 @@ export function ReviewFilterChips({ value, onChange, counts }: Props) {
 function buildStyles(c: AppColors) {
   return {
   row: {
-    flexDirection: 'row',
-    gap: spacing[2],
     paddingVertical: spacing[1],
   },
   chip: {
@@ -72,11 +74,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_reviews_components_ReviewFilterChips_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { Users } from 'lucide-react-native';
@@ -57,6 +59,8 @@ interface Props {
 
 export function PatientInfoSection({ apt, viewer }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_patient_PatientInfoSection_tsx_PatientInfoSection_styles');
+
   const ext = apt as AptExt;
   const hasRelative = Boolean(ext.relative);
   const birth = beneficiaryBirthLine(apt);
@@ -126,7 +130,8 @@ export function PatientInfoSection({ apt, viewer }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   minorBanner: {
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
@@ -140,4 +145,5 @@ const styles = StyleSheet.create({
   minorBold: {
     fontFamily: fontFamily.semiBold,
   },
-});
+};
+}

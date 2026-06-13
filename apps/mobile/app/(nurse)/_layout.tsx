@@ -1,13 +1,15 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Fragment } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { Stack } from 'expo-router';
-import { APP_HEADER_CHROME } from '@/components/navigation/header-layout';
 import { OfferQueueHost } from '@/features/appointments/components/OfferQueueHost';
 import { useGlobalOfferPolling } from '@/features/appointments/hooks/use-global-offer-polling';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
 import { bookingWizardScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
 
 export default function NurseLayout() {
+  const styles = useThemedStyles(buildStyles, 'NurseLayout');
   useGlobalOfferPolling();
 
   return (
@@ -39,6 +41,8 @@ export default function NurseLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  stackHost: { flex: 1, backgroundColor: APP_HEADER_CHROME },
-});
+function buildStyles(c: AppColors) {
+  return {
+    stackHost: { flex: 1, backgroundColor: c.primaryLight },
+  };
+}

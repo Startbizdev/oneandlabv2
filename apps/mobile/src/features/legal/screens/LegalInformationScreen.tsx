@@ -1,10 +1,12 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Scale } from 'lucide-react-native';
 import { LEGAL_PAGES } from '@/constants/legal-pages';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { ProfileStackBackButton } from '@/navigation/ProfileStackBackButton';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -13,6 +15,8 @@ interface Props {
 }
 
 export function LegalInformationScreen({ rolePrefix }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_legal_screens_LegalInformationScreen_tsx_LegalInformationScreen_styles');
+
   const router = useRouter();
   return (
     <>
@@ -54,7 +58,8 @@ export function LegalInformationScreen({ rolePrefix }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   scroll: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],
@@ -64,19 +69,20 @@ const styles = StyleSheet.create({
   lead: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    overflow: 'hidden',
+    borderColor: c.borderLight,
+    overflow: 'hidden' as const,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     marginLeft: spacing[4] + 40 + spacing[3],
   },
-});
+};
+}

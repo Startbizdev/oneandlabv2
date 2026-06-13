@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface FilterChipOption<T extends string = string> {
@@ -18,6 +18,7 @@ interface Props<T extends string> {
 
 /** Pills de filtre — même style que la barre liste (compact, wrap). */
 export function FilterOptionChips<T extends string>({ options, value, onChange }: Props<T>) {
+  const styles = useThemedStyles(buildStyles, 'FilterOptionChips');
   return (
     <View style={styles.wrap}>
       {options.map((opt) => {
@@ -47,13 +48,14 @@ export function FilterOptionChips<T extends string>({ options, value, onChange }
 function buildStyles(c: AppColors) {
   return {
   wrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    minWidth: 0,
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
     gap: spacing[2],
   },
   chip: {
     minHeight: 44,
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2.5],
     borderRadius: radius.full,
@@ -74,7 +76,7 @@ function buildStyles(c: AppColors) {
     color: c.primaryDark,
   },
   hint: {
-    width: '100%',
+    width: '100%' as const,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
@@ -83,12 +85,3 @@ function buildStyles(c: AppColors) {
   },
 };
 }
-
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('components_ui_FilterOptionChips_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

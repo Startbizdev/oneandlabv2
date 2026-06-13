@@ -1,7 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -12,16 +13,17 @@ interface Props {
 }
 
 export function BookingWizardProgress({ current, total, label, hint }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingWizardProgress_tsx_styles');
   const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.row}>
+      <Row gap={spacing[2]} justify="between">
         <Text style={styles.stepText}>
           Étape {current} sur {total}
         </Text>
         {label ? <Text style={styles.label}>{label}</Text> : null}
-      </View>
+      </Row>
       {hint ? <Text style={styles.hint}>{hint}</Text> : null}
       <View style={styles.track}>
         <View style={[styles.fill, { width: `${pct}%` }]} />
@@ -33,22 +35,17 @@ export function BookingWizardProgress({ current, total, label, hint }: Props) {
 function buildStyles(c: AppColors) {
   return {
   wrap: { gap: spacing[2] },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
   stepText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
     color: c.primary,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.35,
   },
   label: {
+    minWidth: 0,
     flex: 1,
-    textAlign: 'right',
+    textAlign: 'right' as const,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
@@ -63,21 +60,13 @@ function buildStyles(c: AppColors) {
     height: 5,
     borderRadius: radius.full,
     backgroundColor: c.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   fill: {
-    height: '100%',
+    height: '100%' as const,
     backgroundColor: c.primary,
     borderRadius: radius.full,
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_BookingWizardProgress_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

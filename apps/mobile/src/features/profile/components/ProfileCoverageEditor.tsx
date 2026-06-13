@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -56,6 +58,8 @@ export function ProfileCoverageEditor({
   onRadiusKmChange,
   savingRadius = false,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileCoverageEditor_tsx_styles');
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
@@ -174,12 +178,17 @@ export function ProfileCoverageEditor({
     <>
       {!hasAddress ? (
         <View style={styles.alert}>
-          <AlertCircle size={16} color={colors.warning} strokeWidth={2} />
-          <Text style={styles.alertText}>
-            {hideAddressCard
-              ? 'Renseignez une adresse professionnelle valide dans Coordonnées (suggestion avec GPS).'
-              : "Définissez d'abord votre adresse pour configurer votre zone de couverture."}
-          </Text>
+          <Cluster
+            gap={spacing[2]}
+            align="start"
+            leading={<AlertCircle size={16} color={c.warning} strokeWidth={2} />}
+          >
+            <Text style={styles.alertText}>
+              {hideAddressCard
+                ? 'Renseignez une adresse professionnelle valide dans Coordonnées (suggestion avec GPS).'
+                : "Définissez d'abord votre adresse pour configurer votre zone de couverture."}
+            </Text>
+          </Cluster>
         </View>
       ) : (
         <>
@@ -236,8 +245,10 @@ export function ProfileCoverageEditor({
       {!hideAddressCard ? (
         <Animated.View entering={FadeInDown.duration(280).springify()} style={[styles.card, elevation.xs]}>
           <View style={styles.cardHeader}>
-            <MapPin size={18} color={colors.primary} strokeWidth={2} />
-            <Text style={styles.cardTitle}>Adresse professionnelle</Text>
+            <Row gap={spacing[2]} align="center">
+              <MapPin size={18} color={c.primary} strokeWidth={2} />
+              <Text style={styles.cardTitle}>Adresse professionnelle</Text>
+            </Row>
           </View>
           <Text style={styles.cardDesc}>Centre de votre zone d'intervention.</Text>
           <AddressAutocomplete
@@ -249,10 +260,15 @@ export function ProfileCoverageEditor({
           />
           {!hasAddress && address?.label ? (
             <View style={styles.alert}>
-              <AlertCircle size={16} color={colors.warning} strokeWidth={2} />
-              <Text style={styles.alertText}>
-                Sélectionnez une adresse dans les suggestions pour activer la carte et le rayon.
-              </Text>
+              <Cluster
+                gap={spacing[2]}
+                align="start"
+                leading={<AlertCircle size={16} color={c.warning} strokeWidth={2} />}
+              >
+                <Text style={styles.alertText}>
+                  Sélectionnez une adresse dans les suggestions pour activer la carte et le rayon.
+                </Text>
+              </Cluster>
             </View>
           ) : null}
         </Animated.View>
@@ -278,11 +294,7 @@ function buildStyles(c: AppColors) {
     padding: spacing[4],
     gap: spacing[3],
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
+  cardHeader: {},
   cardTitle: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
@@ -295,9 +307,6 @@ function buildStyles(c: AppColors) {
     lineHeight: fontSize.sm * 1.45,
   },
   alert: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2],
     backgroundColor: c.warningLight,
     borderRadius: radius.md,
     padding: spacing[3],
@@ -305,7 +314,6 @@ function buildStyles(c: AppColors) {
     borderColor: c.warningMid,
   },
   alertText: {
-    flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: c.warning,
@@ -326,22 +334,14 @@ function buildStyles(c: AppColors) {
   },
   discoveryLink: {
     fontFamily: fontFamily.semiBold,
-    textDecorationLine: 'underline',
+    textDecorationLine: 'underline' as const,
   },
   savingHint: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
     color: c.primary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_components_ProfileCoverageEditor_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

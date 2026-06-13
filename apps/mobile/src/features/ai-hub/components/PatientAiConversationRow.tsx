@@ -2,6 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import * as Haptics from 'expo-haptics';
 import { MessageSquare } from 'lucide-react-native';
 import { radius, spacing } from '@/theme';
@@ -34,15 +35,19 @@ export function PatientAiConversationRow({ title, active = false, onPress }: Pro
     >
       {active ? <View style={styles.activeStripe} /> : null}
 
-      <View style={styles.row}>
-        <View style={[styles.iconBox, active ? styles.iconBoxActive : styles.iconBoxIdle]}>
-          <MessageSquare
-            size={17}
-            color={active ? c.primary : c.textSecondary}
-            strokeWidth={2}
-          />
-        </View>
-
+      <Cluster
+        gap={spacing[2.5]}
+        style={styles.row}
+        leading={
+          <View style={[styles.iconBox, active ? styles.iconBoxActive : styles.iconBoxIdle]}>
+            <MessageSquare
+              size={17}
+              color={active ? c.primary : c.textSecondary}
+              strokeWidth={2}
+            />
+          </View>
+        }
+      >
         <View style={styles.textCol}>
           <Text
             style={[styles.title, active && styles.titleActive]}
@@ -52,7 +57,7 @@ export function PatientAiConversationRow({ title, active = false, onPress }: Pro
             {title}
           </Text>
         </View>
-      </View>
+      </Cluster>
     </Pressable>
   );
 }
@@ -88,11 +93,8 @@ function buildStyles(c: AppColors) {
       backgroundColor: c.primary,
     },
     row: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
       paddingVertical: spacing[3],
       paddingHorizontal: spacing[3.5],
-      minWidth: 0,
     },
     iconBox: {
       width: 36,
@@ -100,7 +102,6 @@ function buildStyles(c: AppColors) {
       borderRadius: radius.md,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-      marginRight: spacing[2.5],
       flexShrink: 0,
     },
     iconBoxIdle: {

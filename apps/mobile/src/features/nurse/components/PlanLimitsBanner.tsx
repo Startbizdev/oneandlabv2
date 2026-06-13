@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -18,6 +20,8 @@ import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function PlanLimitsBanner() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_nurse_components_PlanLimitsBanner_tsx_styles');
   const router = useRouter();
   const { data } = useQuery({
     queryKey: queryKeys.planLimits.current,
@@ -35,17 +39,21 @@ export function PlanLimitsBanner() {
 
   return (
     <Animated.View entering={FadeInDown.duration(350).springify()} style={[styles.card, elevation.sm]}>
-      <View style={styles.header}>
-        <View style={styles.iconWrap}>
-          <Zap size={16} color={full ? colors.warning : colors.primary} strokeWidth={2} />
-        </View>
-        <View style={styles.headerText}>
+      <Cluster
+        gap={spacing[3]}
+        leading={
+          <View style={styles.iconWrap}>
+            <Zap size={16} color={full ? c.warning : c.primary} strokeWidth={2} />
+          </View>
+        }
+      >
+        <Row justify="between" align="center" flex={1}>
           <Animated.Text style={styles.title}>Offre Découverte</Animated.Text>
           <Animated.Text style={[styles.pill, full ? styles.pillFull : styles.pillActive]}>
             {full ? 'Quota atteint' : 'Ce mois-ci'}
           </Animated.Text>
-        </View>
-      </View>
+        </Row>
+      </Cluster>
 
       <Animated.Text style={styles.countText}>
         <Animated.Text style={[styles.countBig, full && styles.countBigFull]}>{used}</Animated.Text>
@@ -83,25 +91,14 @@ function buildStyles(c: AppColors) {
     padding: spacing[4],
     gap: spacing[3],
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-  },
   iconWrap: {
     width: 36,
     height: 36,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
-  },
-  headerText: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
   },
   title: {
     fontFamily: fontFamily.bold,
@@ -112,7 +109,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.xs,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     paddingHorizontal: spacing[2],
     paddingVertical: 3,
     borderRadius: radius.full,
@@ -142,10 +139,10 @@ function buildStyles(c: AppColors) {
     height: 6,
     backgroundColor: c.surfaceAlt,
     borderRadius: radius.full,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   trackFill: {
-    height: '100%',
+    height: '100%' as const,
     backgroundColor: c.primary,
     borderRadius: radius.full,
   },
@@ -155,11 +152,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_nurse_components_PlanLimitsBanner_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

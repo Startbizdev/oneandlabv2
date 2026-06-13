@@ -1,5 +1,9 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { Stack } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { UserCircle2 } from 'lucide-react-native';
@@ -14,7 +18,7 @@ import { handleApiError } from '@/lib/errors/handle-api-error';
 import { ProfileStackBackButton } from '@/navigation/ProfileStackBackButton';
 import { useToast } from '@/providers/ToastProvider';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -30,6 +34,9 @@ function displayName(first?: string, last?: string, email?: string) {
 }
 
 export function SupportScreen() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_help_screens_SupportScreen_tsx_SupportScreen_styles');
+
   const { show: toast } = useToast();
   const user = useAuthStore((s) => s.user);
   const appMeta = useMemo(() => getAppMeta(), []);
@@ -114,12 +121,16 @@ export function SupportScreen() {
         </Text>
 
         <View style={[styles.card, elevation.xs]}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardIcon}>
-              <UserCircle2 size={22} color={colors.primary} strokeWidth={2} />
-            </View>
+          <Cluster
+            gap={spacing[3]}
+            leading={
+              <View style={styles.cardIcon}>
+                <UserCircle2 size={22} color={c.primary} strokeWidth={2} />
+              </View>
+            }
+          >
             <Text style={styles.cardTitle}>Informations du compte</Text>
-          </View>
+          </Cluster>
           <Text style={styles.cardHint}>
             Ces données sont jointes automatiquement — vous n’avez pas besoin de les recopier dans
             votre message.
@@ -168,43 +179,39 @@ export function SupportScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   lead: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[2],
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
   },
   cardIcon: {
     width: 40,
     height: 40,
     borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: c.primaryLight,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   cardTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   cardHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     lineHeight: fontSize.xs * 1.45,
     marginBottom: spacing[1],
   },
@@ -215,24 +222,25 @@ const styles = StyleSheet.create({
   metaLabel: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     letterSpacing: 0.2,
   },
   metaValue: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.sm * 1.4,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
   },
   form: {
     gap: spacing[4],
   },
   textarea: {
     minHeight: 140,
-    textAlignVertical: 'top',
+    textAlignVertical: 'top' as const,
   },
-});
+};
+}
