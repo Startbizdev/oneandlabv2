@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, forwardRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import WebView, { type WebViewMessageEvent } from 'react-native-webview';
-import { SIGNATURE_HTML } from '@/features/prescriptions/lib/signature-pad-html';
+import {
+  SIGNATURE_HTML,
+  normalizeSignaturePngBase64,
+} from '@/features/prescriptions/lib/signature-pad-html';
 
 export type PrescriptionSignaturePadHandle = {
   clear: () => void;
@@ -20,22 +23,47 @@ export const PrescriptionSignaturePad = forwardRef<PrescriptionSignaturePadHandl
   function PrescriptionSignaturePad({ onReady, onExport, initialPng, height = 180 }, ref) {
     const webRef = useRef<WebView>(null);
     const readyRef = useRef(false);
+    const layoutReadyRef = useRef(false);
+    const initialPngRef = useRef(normalizeSignaturePngBase64(initialPng));
+
+    useEffect(() => {
+      initialPngRef.current = normalizeSignaturePngBase64(initialPng);
+    }, [initialPng]);
 
     const post = useCallback((payload: object) => {
       webRef.current?.postMessage(JSON.stringify(payload));
     }, []);
 
+    const loadIntoPad = useCallback(
+      (pngBase64: string | null) => {
+        post({ type: 'load', payload: pngBase64 ?? '' });
+      },
+      [post],
+    );
+
+    const tryLoadInitial = useCallback(() => {
+      if (!readyRef.current || !layoutReadyRef.current) return;
+      const png = initialPngRef.current;
+      if (png) loadIntoPad(png);
+    }, [loadIntoPad]);
+
     useImperativeHandle(ref, () => ({
       clear: () => post({ type: 'clear' }),
       export: () => post({ type: 'export' }),
-      load: (pngBase64: string | null) => post({ type: 'load', payload: pngBase64 ?? '' }),
+      load: (pngBase64: string | null) => loadIntoPad(normalizeSignaturePngBase64(pngBase64)),
     }));
 
     useEffect(() => {
-      if (readyRef.current && initialPng) {
-        post({ type: 'load', payload: initialPng });
-      }
-    }, [initialPng, post]);
+      tryLoadInitial();
+    }, [initialPng, tryLoadInitial]);
+
+    const onLayout = useCallback(
+      (_event: LayoutChangeEvent) => {
+        layoutReadyRef.current = true;
+        tryLoadInitial();
+      },
+      [tryLoadInitial],
+    );
 
     const onMessage = useCallback(
       (event: WebViewMessageEvent) => {
@@ -46,9 +74,7 @@ export const PrescriptionSignaturePad = forwardRef<PrescriptionSignaturePadHandl
           };
           if (data.type === 'ready') {
             readyRef.current = true;
-            if (initialPng) {
-              post({ type: 'load', payload: initialPng });
-            }
+            tryLoadInitial();
             onReady?.();
             return;
           }
@@ -65,16 +91,17 @@ export const PrescriptionSignaturePad = forwardRef<PrescriptionSignaturePadHandl
           /* ignore */
         }
       },
-      [initialPng, onExport, onReady, post],
+      [onExport, onReady, tryLoadInitial],
     );
 
     return (
-      <View style={[styles.wrap, { height }]}>
+      <View style={[styles.wrap, { height }]} onLayout={onLayout}>
         <WebView
           ref={webRef}
           originWhitelist={['*']}
           source={{ html: SIGNATURE_HTML }}
           onMessage={onMessage}
+          onLoadEnd={tryLoadInitial}
           scrollEnabled={false}
           bounces={false}
           style={styles.web}

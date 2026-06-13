@@ -380,29 +380,30 @@ class User
                 } else {
                     $user['emploi'] = null;
                 }
-                if (
-                    $this->hasPrescriptionSignatureColumn()
-                    && $requesterId === $id
-                    && in_array($user['role'] ?? '', ['pro', 'nurse'], true)
-                ) {
-                    if (!empty($user['prescription_signature_encrypted']) && !empty($user['prescription_signature_dek'])) {
-                        require_once __DIR__ . '/../lib/PrescriptionSignature.php';
-                        $user['prescription_signature_png'] = PrescriptionSignature::normalizePngBase64(
-                            (string) $this->crypto->decryptField(
-                                (string) $user['prescription_signature_encrypted'],
-                                (string) $user['prescription_signature_dek']
-                            )
-                        );
-                    } else {
-                        $user['prescription_signature_png'] = null;
-                    }
-                }
             } else {
                 $user['rpps'] = null;
                 $user['company_name'] = null;
                 $user['siret'] = null;
                 $user['adeli'] = null;
                 $user['emploi'] = null;
+            }
+
+            if (
+                $this->hasPrescriptionSignatureColumn()
+                && $requesterId === $id
+                && in_array($user['role'] ?? '', ['pro', 'nurse'], true)
+            ) {
+                if (!empty($user['prescription_signature_encrypted']) && !empty($user['prescription_signature_dek'])) {
+                    require_once __DIR__ . '/../lib/PrescriptionSignature.php';
+                    $user['prescription_signature_png'] = PrescriptionSignature::normalizePngBase64(
+                        (string) $this->crypto->decryptField(
+                            (string) $user['prescription_signature_encrypted'],
+                            (string) $user['prescription_signature_dek']
+                        )
+                    );
+                } else {
+                    $user['prescription_signature_png'] = null;
+                }
             }
             
             // Logger le déchiffrement (obligatoire HDS)
