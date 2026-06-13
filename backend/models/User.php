@@ -344,6 +344,23 @@ class User
                 } else {
                     $user['emploi'] = null;
                 }
+                if (
+                    $this->hasPrescriptionSignatureColumn()
+                    && $requesterId === $id
+                    && in_array($user['role'] ?? '', ['pro', 'nurse'], true)
+                ) {
+                    if (!empty($user['prescription_signature_encrypted']) && !empty($user['prescription_signature_dek'])) {
+                        require_once __DIR__ . '/../lib/PrescriptionSignature.php';
+                        $user['prescription_signature_png'] = PrescriptionSignature::normalizePngBase64(
+                            (string) $this->crypto->decryptField(
+                                (string) $user['prescription_signature_encrypted'],
+                                (string) $user['prescription_signature_dek']
+                            )
+                        );
+                    } else {
+                        $user['prescription_signature_png'] = null;
+                    }
+                }
             } else {
                 $user['rpps'] = null;
                 $user['company_name'] = null;
@@ -376,6 +393,7 @@ class User
         unset($user['gender_encrypted'], $user['gender_dek']);
         unset($user['birth_date_encrypted'], $user['birth_date_dek']);
         unset($user['rpps_encrypted'], $user['rpps_dek']);
+        unset($user['prescription_signature_encrypted'], $user['prescription_signature_dek']);
         unset($user['email_hash']);
         if ($this->hasPasswordColumn()) {
             $flags = $this->getPasswordFlagsForUser($id);
@@ -649,6 +667,28 @@ class User
             $updates[] = 'emploi = ?';
             $params[] = $emploiVal !== '' ? $emploiVal : null;
         }
+
+        if (
+            $this->hasPrescriptionSignatureColumn()
+            && array_key_exists('prescription_signature_png', $data)
+            && $actorId === $id
+            && in_array($actorRole, ['pro', 'nurse'], true)
+        ) {
+            require_once __DIR__ . '/../lib/PrescriptionSignature.php';
+            if ($data['prescription_signature_png'] === null || trim((string) $data['prescription_signature_png']) === '') {
+                $updates[] = 'prescription_signature_encrypted = NULL, prescription_signature_dek = NULL';
+            } else {
+                $sigError = PrescriptionSignature::validateForStorage((string) $data['prescription_signature_png']);
+                if ($sigError !== null) {
+                    throw new InvalidArgumentException($sigError);
+                }
+                $normalized = PrescriptionSignature::normalizePngBase64((string) $data['prescription_signature_png']);
+                $sigEncrypted = $this->crypto->encryptField($normalized ?? '');
+                $updates[] = 'prescription_signature_encrypted = ?, prescription_signature_dek = ?';
+                $params[] = $sigEncrypted['encrypted'];
+                $params[] = $sigEncrypted['dek'];
+            }
+        }
         
         if ($this->hasLabIdColumn() && array_key_exists('lab_id', $data)) {
             $updates[] = 'lab_id = ?';
@@ -883,6 +923,16 @@ class User
         static $hasColumn = null;
         if ($hasColumn === null) {
             $stmt = $this->db->query("SHOW COLUMNS FROM profiles LIKE 'emploi'");
+            $hasColumn = $stmt->rowCount() > 0;
+        }
+        return $hasColumn;
+    }
+
+    private function hasPrescriptionSignatureColumn(): bool
+    {
+        static $hasColumn = null;
+        if ($hasColumn === null) {
+            $stmt = $this->db->query("SHOW COLUMNS FROM profiles LIKE 'prescription_signature_encrypted'");
             $hasColumn = $stmt->rowCount() > 0;
         }
         return $hasColumn;

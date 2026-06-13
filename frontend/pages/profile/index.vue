@@ -886,6 +886,14 @@
               />
             </UCard>
 
+            <PrescriptionSignatureProfileBlock
+              v-if="canManagePrescriptionSignature && user?.id"
+              :user-id="user.id"
+              :signature-png="prescriptionSignaturePng"
+              show
+              @saved="() => loadProfile()"
+            />
+
             <!-- Mini carte + Rayon (nurse, lab, subaccount) -->
             <UCard v-if="hasCoverageZone" class="overflow-hidden">
               <template #header>
@@ -1226,6 +1234,12 @@ const hasProfilePhotoCard = computed(
 const isProOwnProfile = computed(
   () => user.value?.role === 'pro' && !editingUserId.value && !newPatientMode.value
 )
+const canManagePrescriptionSignature = computed(
+  () =>
+    (isProOwnProfile.value ||
+      (isNurse.value && !editingUserId.value && !newPatientMode.value)) &&
+    !newPreleveurMode.value
+)
 /** Pro/Nurse en édition d'un patient : documents à droite, bouton Enregistrer en dessous */
 const isProEditingPatient = computed(
   () =>
@@ -1404,6 +1418,7 @@ function getDefaultProfileForm(): import('~/types/profile').ProfileForm {
   }
 }
 const profileForm = ref<import('~/types/profile').ProfileForm>(getDefaultProfileForm())
+const prescriptionSignaturePng = ref<string | null>(null)
 const initialForm = ref<import('~/types/profile').ProfileForm>({ ...profileForm.value })
 
 // En Nuxt/ClientOnly, garantir que l'enfant reçoit toujours un objet (jamais undefined) pour éviter Object.assign(target, null) côté enfant
@@ -1770,6 +1785,8 @@ const loadProfile = async () => {
       address: userData.address || null,
       address_complement: userData.address?.complement || null,
     }
+    prescriptionSignaturePng.value =
+      (userData as { prescription_signature_png?: string | null }).prescription_signature_png ?? null
     initialForm.value = { ...profileForm.value }
 
     if (isNurse.value) {

@@ -50,4 +50,23 @@ class AppTimezone
     {
         return self::format('T', $instant);
     }
+
+    /** Date ordonnance au format Y-m-d (Europe/Paris). */
+    public static function parseDateYmd(string $raw): ?DateTimeImmutable
+    {
+        $raw = trim($raw);
+        if ($raw === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+            return null;
+        }
+        $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $raw, new DateTimeZone(self::TZ));
+        if ($dt === false) {
+            return null;
+        }
+        $errors = DateTimeImmutable::getLastErrors();
+        if (($errors['warning_count'] ?? 0) > 0 || ($errors['error_count'] ?? 0) > 0) {
+            return null;
+        }
+
+        return $dt;
+    }
 }

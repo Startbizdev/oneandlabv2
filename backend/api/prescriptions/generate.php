@@ -87,7 +87,9 @@ $result = PrescriptionService::generatePrescriptionRequest(
     $prescriptionText,
     $prescriptionKind,
     $patientId,
-    $appointmentId
+    $appointmentId,
+    isset($input['prescription_date']) ? trim((string) $input['prescription_date']) : null,
+    !empty($input['include_handwritten_signature'])
 );
 
 if (!$result['success']) {

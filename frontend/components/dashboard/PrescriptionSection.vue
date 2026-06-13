@@ -36,6 +36,31 @@
       </div>
     </div>
     <div class="space-y-4">
+      <UFormField label="Date de l'ordonnance" name="prescription_date">
+        <UInput v-model="prescriptionDate" type="date" class="w-full max-w-xs" />
+      </UFormField>
+
+      <label class="flex items-start gap-3 cursor-pointer">
+        <UCheckbox v-model="includeSignature" />
+        <span class="text-sm">
+          <span class="font-medium text-gray-900 dark:text-gray-100">Inclure ma signature manuscrite</span>
+          <span class="block text-muted">
+            {{ hasStoredSignature ? 'Signature enregistrée sur votre compte' : 'Vous serez invité à signer avant génération' }}
+          </span>
+        </span>
+      </label>
+
+      <UButton
+        v-if="includeSignature && hasStoredSignature"
+        size="sm"
+        color="neutral"
+        variant="soft"
+        leading-icon="i-lucide-pen-line"
+        @click="openSignatureModal(true)"
+      >
+        Modifier ma signature
+      </UButton>
+
       <UFormField :label="textareaLabel" name="prescription">
         <UTextarea
           v-model="prescriptionText"
@@ -50,7 +75,7 @@
           leading-icon="i-lucide-file-output"
           :loading="generating"
           :disabled="!canGenerate"
-          @click="generatePdf"
+          @click="onGenerateClick"
         >
           Générer le PDF
         </UButton>
@@ -82,10 +107,28 @@
       :file-name="previewFileName"
       :title="sectionTitle"
     />
+
+    <UModal v-model:open="signatureModalOpen" title="Signer l'ordonnance">
+      <template #body>
+        <p class="text-sm text-muted mb-3">
+          Votre signature sera enregistrée sur votre compte professionnel.
+        </p>
+        <PrescriptionSignaturePad ref="signaturePadRef" />
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <UButton color="neutral" variant="ghost" @click="signatureModalOpen = false">Annuler</UButton>
+          <UButton color="primary" :loading="signatureSaving" @click="saveSignatureAndGenerate">
+            Enregistrer et générer
+          </UButton>
+        </div>
+      </template>
+    </UModal>
   </UCard>
 </template>
 
 <script setup lang="ts">
+import PrescriptionSignaturePad from '~/components/prescription/PrescriptionSignaturePad.vue';
 const props = defineProps<{
   patientId: string;
   appointment?: { id: string } | null;
@@ -97,6 +140,7 @@ const props = defineProps<{
 
 const toast = useAppToast();
 const config = useRuntimeConfig();
+const { user } = useAuth();
 
 const kind = computed(() => props.prescriptionKind ?? 'medical');
 const linkedToAppointment = computed(() => Boolean(props.appointment?.id));
@@ -118,6 +162,13 @@ const textareaPlaceholder = computed(() =>
 );
 
 const prescriptionText = ref(props.initialPrescriptionText ?? '');
+const prescriptionDate = ref(new Date().toISOString().slice(0, 10));
+const includeSignature = ref(true);
+const signatureModalOpen = ref(false);
+const signaturePadRef = ref<InstanceType<typeof PrescriptionSignaturePad> | null>(null);
+const signatureSaving = ref(false);
+const pendingGenerateAfterSignature = ref(false);
+const storedSignaturePng = ref<string | null>(null);
 const generating = ref(false);
 const uploading = ref(false);
 const saveFailed = ref(false);
@@ -133,6 +184,68 @@ let previewBlobUrl: string | null = null;
 const canGenerate = computed(() =>
   Boolean(props.patientId?.trim()) && Boolean(prescriptionText.value.trim()),
 );
+
+const hasStoredSignature = computed(() => Boolean(storedSignaturePng.value?.trim()));
+
+onMounted(async () => {
+  await loadUserSignature();
+});
+
+async function loadUserSignature() {
+  const userId = user.value?.id;
+  if (!userId) return;
+  try {
+    const res = await apiFetch(`/users/${userId}`);
+    if (res?.success && res?.data) {
+      storedSignaturePng.value = (res.data as any).prescription_signature_png ?? null;
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+function openSignatureModal(pendingGenerate = false) {
+  pendingGenerateAfterSignature.value = pendingGenerate;
+  signatureModalOpen.value = true;
+  nextTick(() => signaturePadRef.value?.loadFromBase64(storedSignaturePng.value));
+}
+
+async function saveSignatureAndGenerate() {
+  const userId = user.value?.id;
+  const png = signaturePadRef.value?.exportPngBase64();
+  if (!userId || !png) {
+    toast.add({ title: 'Signature requise', description: 'Dessinez votre signature.', color: 'warning' });
+    return;
+  }
+  signatureSaving.value = true;
+  try {
+    const res = await apiFetch(`/users/${userId}`, {
+      method: 'PUT',
+      body: { prescription_signature_png: png },
+    });
+    if (!res?.success) throw new Error((res as any)?.error ?? 'Enregistrement impossible');
+    storedSignaturePng.value = png;
+    signatureModalOpen.value = false;
+    if (pendingGenerateAfterSignature.value) {
+      pendingGenerateAfterSignature.value = false;
+      await generatePdf();
+    } else {
+      toast.add({ title: 'Signature enregistrée', color: 'success' });
+    }
+  } catch (e: any) {
+    toast.add({ title: 'Erreur', description: e?.message ?? 'Enregistrement impossible', color: 'error' });
+  } finally {
+    signatureSaving.value = false;
+  }
+}
+
+async function onGenerateClick() {
+  if (includeSignature.value && !hasStoredSignature.value) {
+    openSignatureModal(true);
+    return;
+  }
+  await generatePdf();
+}
 
 watch(() => props.initialPrescriptionText, (v) => {
   if (v != null && v !== prescriptionText.value) prescriptionText.value = v;
@@ -203,9 +316,13 @@ async function generatePdf() {
       patient_id: props.patientId,
       prescription_text: prescriptionText.value.trim(),
       prescription_kind: kind.value,
+      prescription_date: prescriptionDate.value,
     };
     if (props.appointment?.id) {
       body.appointment_id = props.appointment.id;
+    }
+    if (includeSignature.value) {
+      body.include_handwritten_signature = '1';
     }
     const res = await apiFetch('/prescriptions/generate', {
       method: 'POST',

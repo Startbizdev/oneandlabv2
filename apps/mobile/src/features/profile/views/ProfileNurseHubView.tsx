@@ -18,6 +18,7 @@ import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
 import { ProfileNavCard } from '@/features/profile/components/ProfileNavCard';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
+import { ProfilePrescriptionSignatureSection } from '@/features/profile/components/ProfilePrescriptionSignatureSection';
 import { useNurseProfileSummary } from '@/features/profile/hooks/use-nurse-profile-summary';
 import { fetchUser, updateProfileImages } from '@/features/profile/api/profile.service';
 import { queryKeys } from '@/lib/query-keys';
@@ -181,6 +182,13 @@ export function ProfileNurseHubView() {
             </>
           ) : null}
         </ProfileNavCard>
+
+        {user?.id ? (
+          <ProfilePrescriptionSignatureSection
+            userId={user.id}
+            signaturePng={profileQ.data?.prescription_signature_png}
+          />
+        ) : null}
 
         <ProfileNavCard title="Compte">
           <ProfileNavRow
