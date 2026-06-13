@@ -18,7 +18,6 @@ import {
 import {
   buildSubscriptionPurchaseRequest,
 } from '@/features/nurse/lib/iap-purchase';
-import { resolveNurseProPriceDisplay } from '@/features/nurse/lib/format-nurse-pro-price';
 import { loadStoreProductFromStore, requestSubscriptionPurchase } from '@/features/nurse/lib/iap-store';
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -135,10 +134,7 @@ export function useNurseIap() {
     [subscriptions],
   );
 
-  const proPriceDisplay = useMemo(
-    () => resolveNurseProPriceDisplay(storeProduct),
-    [storeProduct],
-  );
+  const localizedProPrice = storeProduct?.displayPrice ?? null;
 
   const purchasePro = useCallback(async () => {
     if (!connected) {
@@ -238,7 +234,7 @@ export function useNurseIap() {
     subscription: subscriptionQ.data,
     subscriptionLoading: subscriptionQ.isLoading,
     refetchSubscription: subscriptionQ.refetch,
-    proPriceDisplay,
+    localizedProPrice,
     purchasePro,
     purchaseLoading,
     restore,

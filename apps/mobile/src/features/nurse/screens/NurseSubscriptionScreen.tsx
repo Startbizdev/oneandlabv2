@@ -1,6 +1,6 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { NURSE_PLAN_LIST } from '@oneandlab/shared-constants';
+import { NURSE_PLAN_LIST, NURSE_PLANS } from '@oneandlab/shared-constants';
 import { useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -45,7 +45,7 @@ export function NurseSubscriptionScreen() {
     subscription,
     subscriptionLoading,
     refetchSubscription,
-    proPriceDisplay,
+    localizedProPrice,
     purchasePro,
     purchaseLoading,
     restore,
@@ -59,8 +59,7 @@ export function NurseSubscriptionScreen() {
   const canPurchaseStore = subscription?.can_purchase_store !== false;
   const billingLabel = billingSourceLabel(subscription?.billing_source);
 
-  const proPriceLabel = proPriceDisplay.price;
-  const proPriceNote = proPriceDisplay.priceNote;
+  const proPriceLabel = localizedProPrice ?? NURSE_PLANS.nurse_pro.priceLabel;
 
   const cards = useMemo(
     () =>
@@ -94,7 +93,6 @@ export function NurseSubscriptionScreen() {
             name={plan.name}
             price={isProPlan ? proPriceLabel : plan.priceLabel}
             priceSuffix={plan.priceSuffix}
-            priceNote={isProPlan ? proPriceNote : undefined}
             tagline={plan.tagline}
             features={plan.features}
             recommended={plan.recommended}
@@ -112,7 +110,6 @@ export function NurseSubscriptionScreen() {
       canPurchaseStore,
       connected,
       proPriceLabel,
-      proPriceNote,
       purchaseLoading,
       purchasePro,
       storeLoading,

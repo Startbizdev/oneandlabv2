@@ -13,7 +13,6 @@ export type SubscriptionPlanCardProps = {
   name: string;
   price: string;
   priceSuffix?: string;
-  priceNote?: string;
   tagline: string;
   features: string[];
   isCurrent?: boolean;
@@ -29,7 +28,6 @@ export function SubscriptionPlanCard({
   name,
   price,
   priceSuffix = '/mois',
-  priceNote,
   tagline,
   features,
   isCurrent,
@@ -67,7 +65,6 @@ export function SubscriptionPlanCard({
         <Text style={styles.price}>{price}</Text>
         <Text style={styles.priceSuffix}>{priceSuffix}</Text>
       </Row>
-      {priceNote ? <Text style={styles.priceNote}>{priceNote}</Text> : null}
       <Text style={styles.tagline}>{tagline}</Text>
 
       <View style={styles.features}>
@@ -157,12 +154,6 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
-  },
-  priceNote: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    lineHeight: 16,
   },
   tagline: {
     fontFamily: fontFamily.regular,
