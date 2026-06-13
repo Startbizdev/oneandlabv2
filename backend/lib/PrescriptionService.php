@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/PrescriptionPdf.php';
 require_once __DIR__ . '/AppTimezone.php';
+require_once __DIR__ . '/PrescriptionSignature.php';
 
 class PrescriptionService
 {
@@ -75,6 +76,7 @@ class PrescriptionService
     }
 
     /**
+     * @param array<string, mixed> $pdfOptions prescription_date, include_handwritten_signature
      * @return array{pdf_base64: string, file_name: string, prescription_number: string, prescription_kind: string}
      */
     public static function generatePdf(
@@ -82,13 +84,24 @@ class PrescriptionService
         array $patient,
         string $prescriptionText,
         string $kind,
-        ?string $prescriptionNumber = null
+        ?string $prescriptionNumber = null,
+        array $pdfOptions = []
     ): array {
         $number = $prescriptionNumber ?: self::generatePrescriptionNumber();
-        $pdfContent = PrescriptionPdf::generate($prescriber, $patient, $prescriptionText, [
+        $options = array_merge([
             'kind' => $kind,
             'prescription_number' => $number,
-        ]);
+            'signed_at' => AppTimezone::now(),
+        ], $pdfOptions);
+
+        if (!empty($options['include_handwritten_signature'])) {
+            $png = PrescriptionSignature::normalizePngBase64($prescriber['prescription_signature_png'] ?? null);
+            if ($png !== null) {
+                $options['handwritten_signature_png'] = $png;
+            }
+        }
+
+        $pdfContent = PrescriptionPdf::generate($prescriber, $patient, $prescriptionText, $options);
 
         return [
             'pdf_base64' => base64_encode($pdfContent),
@@ -110,7 +123,9 @@ class PrescriptionService
         string $prescriptionText,
         string $prescriptionKind,
         string $patientId,
-        ?string $appointmentId = null
+        ?string $appointmentId = null,
+        ?string $prescriptionDate = null,
+        bool $includeHandwrittenSignature = false
     ): array {
         $role = $user['role'] ?? '';
 
@@ -169,8 +184,31 @@ class PrescriptionService
             return ['success' => false, 'http' => 400, 'error' => 'Identité patient indisponible pour l\'ordonnance'];
         }
 
+        if ($prescriptionDate !== null && $prescriptionDate !== '') {
+            if (AppTimezone::parseDateYmd($prescriptionDate) === null) {
+                return ['success' => false, 'http' => 400, 'error' => 'Date de prescription invalide (format YYYY-MM-DD attendu).'];
+            }
+        }
+
+        if ($includeHandwrittenSignature) {
+            $sig = PrescriptionSignature::normalizePngBase64($prescriber['prescription_signature_png'] ?? null);
+            if ($sig === null) {
+                return [
+                    'success' => false,
+                    'http' => 400,
+                    'error' => 'Aucune signature manuscrite enregistrée. Signez votre ordonnance depuis votre profil ou la fenêtre de signature.',
+                ];
+            }
+        }
+
         try {
-            $result = self::generatePdf($prescriber, $patient, $prescriptionText, $prescriptionKind);
+            $pdfOpts = [
+                'include_handwritten_signature' => $includeHandwrittenSignature,
+            ];
+            if ($prescriptionDate !== null && $prescriptionDate !== '') {
+                $pdfOpts['prescription_date'] = $prescriptionDate;
+            }
+            $result = self::generatePdf($prescriber, $patient, $prescriptionText, $prescriptionKind, null, $pdfOpts);
         } catch (Throwable $e) {
             error_log('PrescriptionPdf error: ' . $e->getMessage());
 
@@ -239,9 +277,24 @@ class PrescriptionService
      */
     public static function loadPrescriber(PDO $db, Crypto $crypto, string $userId, string $role): array
     {
-        $stmt = $db->prepare('SELECT first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek, address_encrypted, address_dek, rpps_encrypted, rpps_dek, adeli_encrypted, adeli_dek, emploi FROM profiles WHERE id = ?');
+        $fields = self::prescriberSelectFields($db);
+        $stmt = $db->prepare("SELECT {$fields} FROM profiles WHERE id = ?");
         $stmt->execute([$userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $signaturePng = '';
+        if (array_key_exists('prescription_signature_encrypted', $row)
+            && !empty($row['prescription_signature_encrypted'])
+            && !empty($row['prescription_signature_dek'])) {
+            try {
+                $signaturePng = (string) $crypto->decryptField(
+                    (string) $row['prescription_signature_encrypted'],
+                    (string) $row['prescription_signature_dek']
+                );
+            } catch (Throwable $e) {
+                $signaturePng = '';
+            }
+        }
 
         return [
             'first_name' => self::safeDecrypt($crypto, $row['first_name_encrypted'] ?? null, $row['first_name_dek'] ?? null),
@@ -250,6 +303,7 @@ class PrescriptionService
             'address' => self::safeDecrypt($crypto, $row['address_encrypted'] ?? null, $row['address_dek'] ?? null) ?: null,
             'rpps' => self::safeDecrypt($crypto, $row['rpps_encrypted'] ?? null, $row['rpps_dek'] ?? null),
             'adeli' => self::safeDecrypt($crypto, $row['adeli_encrypted'] ?? null, $row['adeli_dek'] ?? null),
+            'prescription_signature_png' => PrescriptionSignature::normalizePngBase64($signaturePng),
         ];
     }
 
@@ -603,5 +657,19 @@ class PrescriptionService
         }
 
         return $hasAccess;
+    }
+
+    private static function prescriberSelectFields(PDO $db): string
+    {
+        $base = 'first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek, address_encrypted, address_dek, rpps_encrypted, rpps_dek, adeli_encrypted, adeli_dek, emploi';
+        static $withSignature = null;
+        if ($withSignature === null) {
+            $stmt = $db->query("SHOW COLUMNS FROM profiles LIKE 'prescription_signature_encrypted'");
+            $withSignature = $stmt && $stmt->rowCount() > 0;
+        }
+
+        return $withSignature
+            ? $base . ', prescription_signature_encrypted, prescription_signature_dek'
+            : $base;
     }
 }

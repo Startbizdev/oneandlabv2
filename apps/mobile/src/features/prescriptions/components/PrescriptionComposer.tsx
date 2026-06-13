@@ -3,10 +3,11 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Download, Eye, FileOutput, Upload } from 'lucide-react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, Download, Eye, FileOutput, PenLine, Upload } from 'lucide-react-native';
+import dayjs from 'dayjs';
 import type { MedicalDocumentRow } from '@/features/appointments/detail/api/appointment-detail.service';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -21,6 +22,10 @@ import {
   savePrescriptionPdf,
   type PrescriptionKind,
 } from '../api/prescriptions.service';
+import { PrescriptionSignatureSheet } from '@/features/prescriptions/components/PrescriptionSignatureSheet';
+import { fetchUser } from '@/features/profile/api/profile.service';
+import { queryKeys } from '@/lib/query-keys';
+import { useAuthStore } from '@/store/auth-store';
 import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -47,7 +52,12 @@ export function PrescriptionComposer({
   const styles = useThemedStyles(buildStyles, 'features_prescriptions_components_PrescriptionComposer_tsx_styles');
   const { show: toast } = useToast();
   const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
   const [text, setText] = useState(initialText);
+  const [prescriptionDate, setPrescriptionDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const [includeSignature, setIncludeSignature] = useState(true);
+  const [signatureSheetOpen, setSignatureSheetOpen] = useState(false);
+  const [pendingGenerate, setPendingGenerate] = useState(false);
   const [pdfUri, setPdfUri] = useState<string | undefined>();
   const [pdfFileName, setPdfFileName] = useState('ordonnance.pdf');
   const [pdfMeta, setPdfMeta] = useState<{
@@ -66,6 +76,27 @@ export function PrescriptionComposer({
   const hasExisting = Boolean(existingOrdonnance);
   const canGenerate = Boolean(patientId?.trim()) && text.trim().length > 0;
 
+  const profileQ = useQuery({
+    queryKey: queryKeys.profile.user(user?.id ?? ''),
+    queryFn: async () => (await fetchUser(user!.id, 'full')).data,
+    enabled: !!user?.id,
+  });
+
+  const hasSignature = Boolean(profileQ.data?.prescription_signature_png);
+
+  const runGenerate = () => {
+    generateMut.mutate();
+  };
+
+  const onPressGenerate = () => {
+    if (includeSignature && !hasSignature) {
+      setPendingGenerate(true);
+      setSignatureSheetOpen(true);
+      return;
+    }
+    runGenerate();
+  };
+
   const generateMut = useMutation({
     mutationFn: async () => {
       const res = await generatePrescriptionPdf({
@@ -73,6 +104,8 @@ export function PrescriptionComposer({
         prescriptionText: text,
         prescriptionKind,
         appointmentId: appointmentId ?? undefined,
+        prescriptionDate,
+        includeHandwrittenSignature: includeSignature,
       });
       if (!res.success || !res.data?.pdf_base64) {
         throw new Error(res.error ?? 'Impossible de générer le PDF');
@@ -215,6 +248,43 @@ export function PrescriptionComposer({
       ) : null}
 
       <Input
+        label="Date de l’ordonnance"
+        value={prescriptionDate}
+        onChangeText={setPrescriptionDate}
+        placeholder="YYYY-MM-DD"
+        autoCapitalize="none"
+      />
+
+      <Pressable
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: includeSignature }}
+        onPress={() => setIncludeSignature((v) => !v)}
+        style={styles.signRow}
+      >
+        <View style={[styles.checkbox, includeSignature && styles.checkboxOn]}>
+          {includeSignature ? <Text style={styles.checkMark}>✓</Text> : null}
+        </View>
+        <View style={styles.signRowText}>
+          <Text style={styles.signLabel}>Inclure ma signature manuscrite</Text>
+          <Text style={styles.signHint}>
+            {hasSignature
+              ? 'Signature enregistrée sur votre compte'
+              : 'Vous serez invité à signer avant génération'}
+          </Text>
+        </View>
+        <PenLine size={18} color={c.textSecondary} strokeWidth={2} />
+      </Pressable>
+
+      {includeSignature && hasSignature && user?.id ? (
+        <Button
+          title="Modifier ma signature"
+          variant="outline"
+          size="sm"
+          onPress={() => setSignatureSheetOpen(true)}
+        />
+      ) : null}
+
+      <Input
         label={
           isNursing
             ? 'Actes de soins infirmiers'
@@ -237,7 +307,7 @@ export function PrescriptionComposer({
           leftIcon={<FileOutput size={16} color={c.textInverse} strokeWidth={2} />}
           loading={generateMut.isPending}
           disabled={!canGenerate}
-          onPress={() => generateMut.mutate()}
+          onPress={onPressGenerate}
         />
         {pdfUri && !hasExisting && saveFailed ? (
           <>
@@ -271,6 +341,24 @@ export function PrescriptionComposer({
         fileName={pdfFileName}
         onClose={() => setPreviewOpen(false)}
       />
+
+      {user?.id ? (
+        <PrescriptionSignatureSheet
+          visible={signatureSheetOpen}
+          onClose={() => {
+            setSignatureSheetOpen(false);
+            setPendingGenerate(false);
+          }}
+          userId={user.id}
+          initialPng={profileQ.data?.prescription_signature_png}
+          onSaved={() => {
+            if (pendingGenerate) {
+              setPendingGenerate(false);
+              runGenerate();
+            }
+          }}
+        />
+      ) : null}
     </View>
   );
 
@@ -311,6 +399,42 @@ function buildStyles(c: AppColors) {
       minWidth: 0,
     },
     textarea: { minHeight: 140, textAlignVertical: 'top' as const },
+    signRow: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: spacing[2.5],
+      paddingVertical: spacing[1],
+    },
+    checkbox: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: c.borderLight,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    },
+    checkboxOn: {
+      backgroundColor: c.primary,
+      borderColor: c.primary,
+    },
+    checkMark: {
+      color: c.textInverse,
+      fontSize: 14,
+      fontFamily: fontFamily.bold,
+    },
+    signRowText: { flex: 1, minWidth: 0 },
+    signLabel: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.sm,
+      color: c.textPrimary,
+    },
+    signHint: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.xs,
+      color: c.textSecondary,
+      marginTop: 2,
+    },
     actions: { gap: spacing[2] },
   };
 }

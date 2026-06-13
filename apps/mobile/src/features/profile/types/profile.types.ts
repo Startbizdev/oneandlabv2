@@ -28,6 +28,7 @@ export interface ProfileUserData {
     linkedin?: string;
     instagram?: string;
   } | null;
+  prescription_signature_png?: string | null;
 }
 
 export interface NurseCategoryPreference {

@@ -50,6 +50,8 @@ export async function generatePrescriptionPdf(options: {
   prescriptionText: string;
   prescriptionKind?: PrescriptionKind;
   appointmentId?: string | null;
+  prescriptionDate?: string;
+  includeHandwrittenSignature?: boolean;
 }) {
   const body: Record<string, string> = {
     patient_id: options.patientId,
@@ -58,6 +60,12 @@ export async function generatePrescriptionPdf(options: {
   };
   if (options.appointmentId) {
     body.appointment_id = options.appointmentId;
+  }
+  if (options.prescriptionDate) {
+    body.prescription_date = options.prescriptionDate;
+  }
+  if (options.includeHandwrittenSignature) {
+    body.include_handwritten_signature = '1';
   }
   return api.post<{
     pdf_base64: string;

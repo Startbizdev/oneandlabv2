@@ -246,6 +246,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'code' => 'NO_UPDATE',
             ]);
         }
+    } catch (InvalidArgumentException $e) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'code' => 'VALIDATION_ERROR',
+        ]);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode([

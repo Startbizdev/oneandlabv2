@@ -15,6 +15,7 @@ import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProEmploiSelect } from '@/features/auth/components/ProEmploiSelect';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
 import { ProfileSecurityLinkRow } from '@/features/profile/components/ProfileSecurityLinkRow';
+import { ProfilePrescriptionSignatureSection } from '@/features/profile/components/ProfilePrescriptionSignatureSection';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import { fetchUser, updateProfileImages, updateUser } from '@/features/profile/api/profile.service';
 import {
@@ -230,6 +231,13 @@ export function ProfileProView() {
             leftIcon={<Camera size={16} color={c.textTertiary} strokeWidth={2} />}
           />
         </ProfileSection>
+
+        {user?.id ? (
+          <ProfilePrescriptionSignatureSection
+            userId={user.id}
+            signaturePng={q.data?.prescription_signature_png}
+          />
+        ) : null}
 
         <ProfileSecurityLinkRow />
 
