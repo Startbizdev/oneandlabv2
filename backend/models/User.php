@@ -145,6 +145,13 @@ class User
             $insertParams[] = $birthDateEnc['encrypted'];
             $insertParams[] = $birthDateEnc['dek'];
         }
+        if ($role === 'patient' && $this->hasNirColumn() && !empty(trim((string)($data['nir'] ?? '')))) {
+            $nirEnc = $this->crypto->encryptField(trim((string) $data['nir']));
+            $insertFields .= ', nir_encrypted, nir_dek';
+            $insertPlaceholders .= ', ?, ?';
+            $insertParams[] = $nirEnc['encrypted'];
+            $insertParams[] = $nirEnc['dek'];
+        }
         if ($role === 'patient' && !empty(trim((string)($data['gender'] ?? '')))) {
             $genderEnc = $this->crypto->encryptField(trim((string)$data['gender']));
             $insertFields .= ', gender_encrypted, gender_dek';
@@ -312,6 +319,13 @@ class User
             } else {
                 $user['birth_date'] = null;
             }
+
+            if ($this->hasNirColumn() && !empty($user['nir_encrypted'] ?? '') && !empty($user['nir_dek'] ?? '')) {
+                $user['nir'] = $this->crypto->decryptField($user['nir_encrypted'], $user['nir_dek']);
+                $decryptedFields[] = 'nir';
+            } else {
+                $user['nir'] = null;
+            }
             
             if (!$lightScope) {
                 if ($user['rpps_encrypted']) {
@@ -392,6 +406,9 @@ class User
         unset($user['address_encrypted'], $user['address_dek']);
         unset($user['gender_encrypted'], $user['gender_dek']);
         unset($user['birth_date_encrypted'], $user['birth_date_dek']);
+        if (array_key_exists('nir_encrypted', $user)) {
+            unset($user['nir_encrypted'], $user['nir_dek']);
+        }
         unset($user['rpps_encrypted'], $user['rpps_dek']);
         unset($user['prescription_signature_encrypted'], $user['prescription_signature_dek']);
         unset($user['email_hash']);
@@ -615,6 +632,18 @@ class User
                 $params[] = $birthDateEncrypted['dek'];
             } else {
                 $updates[] = 'birth_date_encrypted = NULL, birth_date_dek = NULL';
+            }
+        }
+
+        if ($this->hasNirColumn() && array_key_exists('nir', $data)) {
+            $nirVal = trim((string) ($data['nir'] ?? ''));
+            if ($nirVal !== '') {
+                $nirEncrypted = $this->crypto->encryptField($nirVal);
+                $updates[] = 'nir_encrypted = ?, nir_dek = ?';
+                $params[] = $nirEncrypted['encrypted'];
+                $params[] = $nirEncrypted['dek'];
+            } else {
+                $updates[] = 'nir_encrypted = NULL, nir_dek = NULL';
             }
         }
         
@@ -933,6 +962,16 @@ class User
         static $hasColumn = null;
         if ($hasColumn === null) {
             $stmt = $this->db->query("SHOW COLUMNS FROM profiles LIKE 'prescription_signature_encrypted'");
+            $hasColumn = $stmt->rowCount() > 0;
+        }
+        return $hasColumn;
+    }
+
+    private function hasNirColumn(): bool
+    {
+        static $hasColumn = null;
+        if ($hasColumn === null) {
+            $stmt = $this->db->query("SHOW COLUMNS FROM profiles LIKE 'nir_encrypted'");
             $hasColumn = $stmt->rowCount() > 0;
         }
         return $hasColumn;

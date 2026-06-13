@@ -13,6 +13,7 @@ export interface ProfileUserData {
   adeli?: string | null;
   emploi?: string | null;
   birth_date?: string | null;
+  nir?: string | null;
   address?: AddressPayload | Record<string, unknown> | string | null;
   profile_image_url?: string | null;
   cover_image_url?: string | null;

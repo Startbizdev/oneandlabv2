@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Download, Eye, FileOutput, PenLine, Upload } from 'lucide-react-native';
@@ -23,6 +23,7 @@ import {
   type PrescriptionKind,
 } from '../api/prescriptions.service';
 import { PrescriptionSignatureSheet } from '@/features/prescriptions/components/PrescriptionSignatureSheet';
+import { PrescriptionDatePicker } from '@/features/prescriptions/components/PrescriptionDatePicker';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
@@ -88,10 +89,15 @@ export function PrescriptionComposer({
     generateMut.mutate();
   };
 
+  const openSignatureSheet = () => {
+    Keyboard.dismiss();
+    setSignatureSheetOpen(true);
+  };
+
   const onPressGenerate = () => {
     if (includeSignature && !hasSignature) {
       setPendingGenerate(true);
-      setSignatureSheetOpen(true);
+      openSignatureSheet();
       return;
     }
     runGenerate();
@@ -247,13 +253,7 @@ export function PrescriptionComposer({
         </View>
       ) : null}
 
-      <Input
-        label="Date de l’ordonnance"
-        value={prescriptionDate}
-        onChangeText={setPrescriptionDate}
-        placeholder="YYYY-MM-DD"
-        autoCapitalize="none"
-      />
+      <PrescriptionDatePicker value={prescriptionDate} onChange={setPrescriptionDate} />
 
       <Pressable
         accessibilityRole="checkbox"
@@ -280,7 +280,7 @@ export function PrescriptionComposer({
           title="Modifier ma signature"
           variant="outline"
           size="sm"
-          onPress={() => setSignatureSheetOpen(true)}
+          onPress={openSignatureSheet}
         />
       ) : null}
 
@@ -341,7 +341,40 @@ export function PrescriptionComposer({
         fileName={pdfFileName}
         onClose={() => setPreviewOpen(false)}
       />
+    </View>
+  );
 
+  if (embedded) {
+    return (
+      <>
+        {content}
+        {user?.id ? (
+          <PrescriptionSignatureSheet
+            visible={signatureSheetOpen}
+            onClose={() => {
+              setSignatureSheetOpen(false);
+              setPendingGenerate(false);
+            }}
+            userId={user.id}
+            initialPng={profileQ.data?.prescription_signature_png}
+            onSaved={() => {
+              if (pendingGenerate) {
+                setPendingGenerate(false);
+                runGenerate();
+              }
+            }}
+          />
+        ) : null}
+      </>
+    );
+  }
+
+  return (
+    <Card>
+      <Text style={styles.cardTitle}>
+        {isNursing ? "Prescription d'actes infirmiers" : 'Créer une ordonnance'}
+      </Text>
+      {content}
       {user?.id ? (
         <PrescriptionSignatureSheet
           visible={signatureSheetOpen}
@@ -359,17 +392,6 @@ export function PrescriptionComposer({
           }}
         />
       ) : null}
-    </View>
-  );
-
-  if (embedded) return content;
-
-  return (
-    <Card>
-      <Text style={styles.cardTitle}>
-        {isNursing ? "Prescription d'actes infirmiers" : 'Créer une ordonnance'}
-      </Text>
-      {content}
     </Card>
   );
 }

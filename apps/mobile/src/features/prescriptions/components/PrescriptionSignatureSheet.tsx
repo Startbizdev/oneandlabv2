@@ -1,8 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { useRef, useState, useEffect } from 'react';
+import { Keyboard, Text, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
@@ -39,6 +39,10 @@ export function PrescriptionSignatureSheet({
   const padRef = useRef<PrescriptionSignaturePadHandle>(null);
   const [exporting, setExporting] = useState(false);
 
+  useEffect(() => {
+    if (visible) Keyboard.dismiss();
+  }, [visible]);
+
   const saveMut = useMutation({
     mutationFn: (png: string | null) =>
       updateUser(userId, { prescription_signature_png: png }),
@@ -73,6 +77,10 @@ export function PrescriptionSignatureSheet({
       onClose={onClose}
       title="Signer l’ordonnance"
       subtitle="Votre signature sera enregistrée sur votre compte"
+      disableScroll
+      stackBehavior="push"
+      snapPoints={['72%']}
+      keyboardBehavior="fillParent"
       footer={
         <View style={styles.footer}>
           <Button
@@ -84,7 +92,7 @@ export function PrescriptionSignatureSheet({
       }
     >
       <Text style={styles.hint}>Signez dans la zone ci-dessous avec votre doigt ou un stylet.</Text>
-      <PrescriptionSignaturePad ref={padRef} initialPng={initialPng} onExport={onExport} />
+      <PrescriptionSignaturePad ref={padRef} initialPng={initialPng} onExport={onExport} height={220} />
       <Button
         title="Effacer"
         variant="outline"

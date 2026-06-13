@@ -312,16 +312,35 @@ class PrescriptionService
      */
     public static function loadPatient(PDO $db, Crypto $crypto, string $patientId): array
     {
-        $stmt = $db->prepare('SELECT first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek, birth_date_encrypted, birth_date_dek, address_encrypted, address_dek FROM profiles WHERE id = ?');
+        $nirSelect = '';
+        try {
+            $colCheck = $db->query("SHOW COLUMNS FROM profiles LIKE 'nir_encrypted'");
+            if ($colCheck && $colCheck->rowCount() > 0) {
+                $nirSelect = ', nir_encrypted, nir_dek';
+            }
+        } catch (Throwable $e) {
+            $nirSelect = '';
+        }
+
+        $stmt = $db->prepare(
+            'SELECT first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek, birth_date_encrypted, birth_date_dek, address_encrypted, address_dek'
+            . $nirSelect
+            . ' FROM profiles WHERE id = ?',
+        );
         $stmt->execute([$patientId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $nir = '';
+        if ($nirSelect !== '' && !empty($row['nir_encrypted'] ?? '') && !empty($row['nir_dek'] ?? '')) {
+            $nir = trim((string) self::safeDecrypt($crypto, $row['nir_encrypted'], $row['nir_dek']));
+        }
 
         return [
             'first_name' => self::safeDecrypt($crypto, $row['first_name_encrypted'] ?? null, $row['first_name_dek'] ?? null),
             'last_name' => self::safeDecrypt($crypto, $row['last_name_encrypted'] ?? null, $row['last_name_dek'] ?? null),
             'birth_date' => self::safeDecrypt($crypto, $row['birth_date_encrypted'] ?? null, $row['birth_date_dek'] ?? null),
             'address' => self::safeDecrypt($crypto, $row['address_encrypted'] ?? null, $row['address_dek'] ?? null) ?: null,
-            'nir' => '',
+            'nir' => $nir,
         ];
     }
 

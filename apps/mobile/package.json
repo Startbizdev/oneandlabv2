@@ -40,6 +40,7 @@
     "@oneandlab/shared-types": "*",
     "@oneandlab/shared-utils": "*",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "8.4.4",
     "@react-navigation/elements": "^2.6.4",
     "@shopify/flash-list": "2.0.2",
     "@tanstack/query-async-storage-persister": "^5.100.14",
