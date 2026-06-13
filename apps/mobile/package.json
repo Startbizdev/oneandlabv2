@@ -7,7 +7,7 @@
     "eas-build-pre-install": "cd ../.. && npm ci --workspace=@oneandlab/mobile --include-workspace-root",
     "eas-build-post-install": "node scripts/eas-chmod-pod-scripts.cjs",
     "bundle:ios:verify": "expo export --platform ios",
-    "verify:eas": "node scripts/verify-eas-preflight.cjs",
+    "verify:eas": "node scripts/verify-eas-archive-size.cjs && node scripts/verify-eas-preflight.cjs",
     "start": "node scripts/start-expo-dev.cjs",
     "start:localhost": "expo start",
     "start:tunnel": "node scripts/start-expo-dev.cjs --tunnel",

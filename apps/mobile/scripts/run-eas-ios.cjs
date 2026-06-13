@@ -8,6 +8,7 @@ const { spawnSync } = require('child_process');
 const path = require('path');
 
 const mobileDir = path.resolve(__dirname, '..');
+const repoRoot = path.resolve(mobileDir, '../..');
 
 function prependGitToPath() {
   if (process.platform !== 'win32') return;
@@ -38,6 +39,10 @@ function prependGitToPath() {
 }
 
 prependGitToPath();
+
+// Évite d'uploader .git (~2 Go) et respecte .easignore à la racine du monorepo (Windows).
+process.env.EAS_NO_VCS = '1';
+process.env.EAS_PROJECT_ROOT = repoRoot;
 
 const passthrough = process.argv.slice(2);
 const easArgs =
