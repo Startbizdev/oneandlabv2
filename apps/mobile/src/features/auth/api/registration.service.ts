@@ -10,8 +10,8 @@ export interface RegistrationRequestPayload {
   phone?: string;
   address?: string;
   rpps?: string;
-  gender?: string;
   adeli?: string;
+  gender?: string;
   emploi?: string;
 }
 

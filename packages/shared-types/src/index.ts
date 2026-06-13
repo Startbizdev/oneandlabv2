@@ -1,6 +1,7 @@
 export * from './appointments';
 export * from './lab-results';
 export * from './staff-hub-search';
+export * from './professional-id';
 export {
   GENDER_OPTIONS,
   type ProfileForm,

@@ -983,6 +983,7 @@
 
 <script setup lang="ts">
 import { nextTick } from 'vue'
+import { splitProfessionalId } from '@oneandlab/shared-types'
 import { apiFetch } from '~/utils/api'
 
 definePageMeta({
@@ -1777,7 +1778,7 @@ const loadProfile = async () => {
       email_display: (userData as { email_display?: string | null }).email_display ?? null,
       phone: userData.phone || '',
       name: userData.name || userData.company_name || '',
-      rpps: userData.rpps || '',
+      rpps: userData.rpps || userData.adeli || '',
       siret: userData.siret || '',
       adeli: userData.adeli || '',
       emploi: userData.emploi || null,
@@ -1994,7 +1995,9 @@ const saveProfile = async (fromSaveAll = false) => {
 
     // Champs spécifiques par rôle
     if (isNurse.value) {
-      body.rpps = profileForm.value.rpps
+      const split = splitProfessionalId(profileForm.value.rpps || '')
+      body.rpps = split.rpps
+      body.adeli = split.adeli
       body.is_accepting_appointments = isAcceptingAppointments.value
       body.gender = profileForm.value.gender?.trim() || null
     }

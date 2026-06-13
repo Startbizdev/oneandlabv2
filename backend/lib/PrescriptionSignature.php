@@ -53,4 +53,63 @@ class PrescriptionSignature
 
         return 'data:image/png;base64,' . $normalized;
     }
+
+    /**
+     * Convertit une signature PNG/JPEG (base64) en data URI JPEG pour Dompdf (évite GD sur PNG embarqué).
+     *
+     * @throws RuntimeException si GD absent
+     */
+    public static function toJpegDataUriForPdf(?string $input): ?string
+    {
+        $normalized = self::normalizePngBase64($input);
+        if ($normalized === null) {
+            return null;
+        }
+        if (!function_exists('imagecreatefromstring') || !function_exists('imagejpeg')) {
+            throw new RuntimeException(
+                'Extension PHP GD requise pour inclure la signature manuscrite dans le PDF.',
+            );
+        }
+
+        $bytes = base64_decode($normalized, true);
+        if ($bytes === false || $bytes === '') {
+            return null;
+        }
+
+        $image = @imagecreatefromstring($bytes);
+        if ($image === false) {
+            return null;
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        if ($width <= 0 || $height <= 0) {
+            imagedestroy($image);
+
+            return null;
+        }
+
+        $canvas = imagecreatetruecolor($width, $height);
+        if ($canvas === false) {
+            imagedestroy($image);
+
+            return null;
+        }
+
+        $white = imagecolorallocate($canvas, 255, 255, 255);
+        imagefill($canvas, 0, 0, $white);
+        imagecopy($canvas, $image, 0, 0, 0, 0, $width, $height);
+        imagedestroy($image);
+
+        ob_start();
+        $ok = imagejpeg($canvas, null, 88);
+        imagedestroy($canvas);
+        $jpeg = ob_get_clean();
+
+        if (!$ok || !is_string($jpeg) || $jpeg === '') {
+            return null;
+        }
+
+        return 'data:image/jpeg;base64,' . base64_encode($jpeg);
+    }
 }

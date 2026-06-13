@@ -46,10 +46,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode(['success' => false, 'error' => 'Le numéro Adeli est obligatoire pour un professionnel de santé.']);
         exit;
     }
-    if ($role === 'nurse' && empty(trim((string)($body['rpps'] ?? '')))) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Le numéro RPPS est obligatoire pour un infirmier.']);
-        exit;
+    if ($role === 'nurse') {
+        require_once __DIR__ . '/../../lib/ProfessionalId.php';
+        $profErr = ProfessionalId::validate(ProfessionalId::fromRequestBody($body));
+        if ($profErr !== null) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => $profErr]);
+            exit;
+        }
+        $split = ProfessionalId::split(ProfessionalId::fromRequestBody($body));
+        $body['rpps'] = $split['rpps'] ?? '';
+        $body['adeli'] = $split['adeli'] ?? '';
     }
     if ($role === 'nurse') {
         $g = strtolower(trim((string)($body['gender'] ?? '')));

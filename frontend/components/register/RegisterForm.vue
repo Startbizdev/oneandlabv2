@@ -119,7 +119,7 @@
           </UFormField>
         </template>
 
-        <!-- Nurse: genre + RPPS -->
+        <!-- Nurse: genre + RPPS ou Adeli -->
         <template v-if="role === 'nurse'">
           <UFormField label="Genre" name="gender" required class="w-full">
             <USelect
@@ -133,16 +133,16 @@
               <span class="text-xs text-muted">Indispensable pour le matching avec les préférences des patients.</span>
             </template>
           </UFormField>
-          <UFormField label="Numéro RPPS" name="rpps" required class="w-full">
+          <UFormField label="RPPS ou Adeli" name="rpps" required class="w-full">
             <UInput
               v-model="form.rpps"
-              placeholder="12345678901"
+              placeholder="123456789 ou 12345678901"
               size="lg"
               class="w-full font-mono"
               maxlength="11"
             />
             <template #hint>
-              <span class="text-xs text-muted">11 chiffres — Répertoire partagé des professionnels de santé</span>
+              <span class="text-xs text-muted">9 chiffres (Adeli) ou 11 chiffres (RPPS) — un seul numéro</span>
             </template>
           </UFormField>
         </template>
@@ -182,6 +182,7 @@
 
 <script setup lang="ts">
 import { PRO_SANTE_EMPLOIS } from '~/constants/proEmploi';
+import { validateProfessionalId, splitProfessionalId } from '@oneandlab/shared-types';
 
 const proEmploiItems = [...PRO_SANTE_EMPLOIS];
 
@@ -250,7 +251,7 @@ const canSubmit = computed(() => {
   if (!form.email?.trim() || !form.first_name?.trim() || !form.last_name?.trim()) return false;
   if (props.role === 'lab' && !form.siret?.replace(/\s/g, '')) return false;
   if (props.role === 'pro' && (!form.adeli?.replace(/\s/g, '') || !form.emploi?.trim())) return false;
-  if (props.role === 'nurse' && (!form.rpps?.replace(/\s/g, '') || !form.gender?.trim())) return false;
+  if (props.role === 'nurse' && (validateProfessionalId(form.rpps || '') || !form.gender?.trim())) return false;
   return true;
 });
 
@@ -272,7 +273,9 @@ function onSubmit() {
     if (form.emploi?.trim()) payload.emploi = form.emploi.trim();
   }
   if (props.role === 'nurse') {
-    payload.rpps = (form.rpps || '').replace(/\s/g, '');
+    const split = splitProfessionalId(form.rpps || '');
+    if (split.rpps) payload.rpps = split.rpps;
+    if (split.adeli) payload.adeli = split.adeli;
     payload.gender = form.gender.trim();
   }
   emit('submit', payload);

@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -9,13 +9,17 @@ import {
   View,
 } from 'react-native';
 import { FlashList, type ListRenderItem } from '@shopify/flash-list';
+import { Search } from 'lucide-react-native';
+import type { Appointment } from '@oneandlab/shared-types';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { navigateAppointmentForListRow } from '@/utils/appointment-batch';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Input } from '@/components/ui/Input';
 import {
   PrescriptionAppointmentPickerRow,
   appointmentPickerRowKey,
 } from './PrescriptionAppointmentPickerRow';
+import { prescriptionAppointmentMatchesSearch } from '../utils/prescription-display';
 import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -35,14 +39,14 @@ interface Props {
   selectedId: string;
   onSelect: (id: string) => void;
   loading?: boolean;
-  query: string;
   totalCount?: number;
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   onLoadMore?: () => void;
+  searchPlaceholder?: string;
 }
 
-/** Bottom sheet — FlashList + infinite scroll (lots, statut, badges). */
+/** Bottom sheet — recherche intégrée + FlashList + infinite scroll. */
 export function PrescriptionAppointmentSelectSheet({
   visible,
   onClose,
@@ -50,17 +54,37 @@ export function PrescriptionAppointmentSelectSheet({
   selectedId,
   onSelect,
   loading = false,
-  query,
   totalCount,
   hasNextPage = false,
   isFetchingNextPage = false,
   onLoadMore,
+  searchPlaceholder = 'Rechercher par date, créneau ou soin…',
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'PrescriptionAppointmentSelectSheet');
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    if (!visible) setQuery('');
+  }, [visible]);
+
+  const filteredRows = useMemo(() => {
+    const q = query.trim();
+    if (!q) return rows;
+    return rows.filter((row) => {
+      const apts: Appointment[] =
+        row.kind === 'batch' ? row.appointments : [row.appointment];
+      return apts.some((a) => prescriptionAppointmentMatchesSearch(a, q));
+    });
+  }, [rows, query]);
 
   const resolvedTotal = totalCount ?? rows.length;
   const initialLoading = loading && rows.length === 0;
+
+  const handleClose = useCallback(() => {
+    setQuery('');
+    onClose();
+  }, [onClose]);
 
   const handlePick = useCallback(
     (row: AppointmentListRow) => {
@@ -101,19 +125,29 @@ export function PrescriptionAppointmentSelectSheet({
   }, [c.primary, isFetchingNextPage, styles.footerLoader, styles.footerSpacer]);
 
   const countLabel = query.trim()
-    ? `${rows.length} résultat${rows.length > 1 ? 's' : ''}`
+    ? `${filteredRows.length} résultat${filteredRows.length > 1 ? 's' : ''}`
     : `${resolvedTotal} rendez-vous`;
 
   return (
     <BottomSheet
       visible={visible}
-      onClose={onClose}
+      onClose={handleClose}
       title="Choisir un rendez-vous"
       subtitle={countLabel}
       stackBehavior="push"
       disableScroll
       contentStyle={styles.body}
     >
+      <View style={styles.searchWrap}>
+        <Input
+          value={query}
+          onChangeText={setQuery}
+          placeholder={searchPlaceholder}
+          leftIcon={<Search size={16} color={c.textTertiary} strokeWidth={2} />}
+          autoCorrect={false}
+        />
+      </View>
+
       {initialLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={c.primary} />
@@ -123,7 +157,7 @@ export function PrescriptionAppointmentSelectSheet({
         <Text style={styles.empty}>
           Aucun rendez-vous pour ce patient. Créez-en un ou passez en mode « Sans RDV ».
         </Text>
-      ) : rows.length === 0 ? (
+      ) : filteredRows.length === 0 ? (
         <Text style={styles.empty}>
           {query.trim()
             ? `Aucun résultat pour « ${query.trim()} ».`
@@ -132,7 +166,7 @@ export function PrescriptionAppointmentSelectSheet({
       ) : (
         <View style={styles.listPanel}>
           <FlashList
-            data={rows}
+            data={filteredRows}
             extraData={selectedId}
             keyExtractor={keyExtractor}
             renderItem={renderItem}
@@ -169,6 +203,10 @@ function buildStyles(c: AppColors) {
       gap: 0,
       paddingBottom: spacing[2],
       flexGrow: 1,
+    },
+    searchWrap: {
+      paddingHorizontal: H_PAD,
+      paddingBottom: spacing[2],
     },
     listPanel: {
       alignSelf: 'stretch' as const,

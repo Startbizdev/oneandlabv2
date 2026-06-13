@@ -299,6 +299,19 @@ class RegistrationRequest
                 $createData['gender'] = $g;
             }
         }
+        if ($req['role'] === 'nurse') {
+            require_once __DIR__ . '/../lib/ProfessionalId.php';
+            $rawId = ProfessionalId::display($req['rpps'] ?? null, $req['adeli'] ?? null);
+            if ($rawId !== '') {
+                $split = ProfessionalId::split($rawId);
+                if (!empty($split['rpps'])) {
+                    $createData['rpps'] = $split['rpps'];
+                }
+                if (!empty($split['adeli'])) {
+                    $createData['adeli'] = $split['adeli'];
+                }
+            }
+        }
         $userId = $userModel->create($createData, $actorId, 'super_admin');
         $this->db->prepare('UPDATE registration_requests SET status = ?, reviewed_at = NOW(), reviewed_by = ? WHERE id = ?')
             ->execute(['accepted', $actorId, $id]);

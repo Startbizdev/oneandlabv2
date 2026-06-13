@@ -44,8 +44,16 @@ assertTrue(
     'pro requires RPPS'
 );
 assertTrue(
-    PrescriptionService::validatePrescriberCredentials('nurse', ['adeli' => '123']) === null,
+    PrescriptionService::validatePrescriberCredentials('nurse', ['adeli' => '123456789']) === null,
     'nurse with ADELI OK'
+);
+assertTrue(
+    PrescriptionService::validatePrescriberCredentials('nurse', ['rpps' => '12345678901']) === null,
+    'nurse with RPPS OK'
+);
+assertTrue(
+    PrescriptionService::validatePrescriberCredentials('nurse', ['rpps' => '', 'adeli' => '']) !== null,
+    'nurse requires RPPS or Adeli'
 );
 
 $pdf = PrescriptionPdf::generate(

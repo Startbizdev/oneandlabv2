@@ -40,26 +40,26 @@
         <UInput v-model="prescriptionDate" type="date" class="w-full max-w-xs" />
       </UFormField>
 
-      <label class="flex items-start gap-3 cursor-pointer">
-        <UCheckbox v-model="includeSignature" />
-        <span class="text-sm">
-          <span class="font-medium text-gray-900 dark:text-gray-100">Inclure ma signature manuscrite</span>
-          <span class="block text-muted">
-            {{ hasStoredSignature ? 'Signature enregistrée sur votre compte' : 'Vous serez invité à signer avant génération' }}
+      <div class="flex items-start justify-between gap-3">
+        <label class="flex flex-1 items-start gap-3 cursor-pointer min-w-0">
+          <UCheckbox v-model="includeSignature" />
+          <span class="text-sm min-w-0">
+            <span class="font-medium text-gray-900 dark:text-gray-100">Inclure ma signature manuscrite</span>
+            <span class="block text-muted">
+              {{ hasStoredSignature ? 'Signature enregistrée sur votre compte' : 'Vous serez invité à signer avant génération' }}
+            </span>
           </span>
-        </span>
-      </label>
-
-      <UButton
-        v-if="includeSignature && hasStoredSignature"
-        size="sm"
-        color="neutral"
-        variant="soft"
-        leading-icon="i-lucide-pen-line"
-        @click="openSignatureModal(true)"
-      >
-        Modifier ma signature
-      </UButton>
+        </label>
+        <UButton
+          v-if="hasStoredSignature || includeSignature"
+          size="xs"
+          color="primary"
+          variant="ghost"
+          icon="i-lucide-pen-line"
+          aria-label="Modifier ma signature manuscrite"
+          @click="openSignatureModal(false)"
+        />
+      </div>
 
       <UFormField :label="textareaLabel" name="prescription">
         <UTextarea

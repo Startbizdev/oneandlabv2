@@ -1,5 +1,10 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
+import {
+  PROFESSIONAL_ID_LABEL,
+  splitProfessionalId,
+  validateProfessionalId,
+} from '@oneandlab/shared-types';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
@@ -55,7 +60,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState('');
   const [address, setAddress] = useState<AddressPayload | null>(null);
-  const [rpps, setRpps] = useState('');
+  const [professionalId, setProfessionalId] = useState('');
   const [adeli, setAdeli] = useState('');
   const [emploi, setEmploi] = useState('');
   const [otp, setOtp] = useState('');
@@ -86,7 +91,11 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
   const canSubmitPatient =
     email.trim() && firstName.trim() && lastName.trim() && birthDate.trim() && gender;
   const canSubmitNurse =
-    email.trim() && firstName.trim() && lastName.trim() && rpps.replace(/\s/g, '').length >= 9 && gender;
+    email.trim() &&
+    firstName.trim() &&
+    lastName.trim() &&
+    !validateProfessionalId(professionalId) &&
+    gender;
   const canSubmitPro =
     email.trim() && firstName.trim() && lastName.trim() && adeli.replace(/\s/g, '').length >= 9 && emploi.trim();
   const canSubmit =
@@ -130,7 +139,14 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
           phone: phone.trim() || undefined,
           address: address?.label?.trim() || undefined,
           ...(role === 'nurse'
-            ? { rpps: rpps.replace(/\s/g, ''), gender }
+            ? (() => {
+                const split = splitProfessionalId(professionalId);
+                return {
+                  ...(split.rpps ? { rpps: split.rpps } : {}),
+                  ...(split.adeli ? { adeli: split.adeli } : {}),
+                  gender,
+                };
+              })()
             : { adeli: adeli.replace(/\s/g, ''), emploi: emploi.trim() }),
         };
         const res = await submitRegistrationRequest(payload);
@@ -229,13 +245,13 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
             <>
               <GenderSelect value={gender} onChange={setGender} label="Genre" />
               <Input
-                label="Numéro RPPS"
-                value={rpps}
-                onChangeText={setRpps}
+                label={PROFESSIONAL_ID_LABEL}
+                value={professionalId}
+                onChangeText={setProfessionalId}
                 keyboardType="number-pad"
                 maxLength={11}
-                placeholder="12345678901"
-                hint="11 chiffres"
+                placeholder="123456789 ou 12345678901"
+                hint="9 chiffres (Adeli) ou 11 chiffres (RPPS)"
               />
             </>
           ) : null}

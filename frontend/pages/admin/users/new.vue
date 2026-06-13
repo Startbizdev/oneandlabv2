@@ -223,13 +223,14 @@
               <h2 class="text-sm font-bold uppercase tracking-wider text-zinc-400">Expertise & Soins</h2>
 
               <div v-if="roleStr === 'nurse'">
-                <label class="block text-sm font-medium text-zinc-700 mb-1.5">Numéro ADELI</label>
+                <label class="block text-sm font-medium text-zinc-700 mb-1.5">RPPS ou Adeli</label>
                 <div class="relative">
                   <UIcon name="i-lucide-id-card" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
                   <input
-                    v-model="form.adeli"
+                    v-model="form.rpps"
                     type="text"
-                    placeholder="139012345"
+                    placeholder="9 chiffres (Adeli) ou 11 chiffres (RPPS)"
+                    maxlength="11"
                     class="w-full rounded-lg border border-zinc-300 bg-white pl-10 pr-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
                   />
                 </div>
@@ -304,6 +305,7 @@
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api'
 import { PRO_SANTE_EMPLOIS } from '~/constants/proEmploi'
+import { splitProfessionalId } from '@oneandlab/shared-types'
 
 definePageMeta({
   layout: 'dashboard',
@@ -323,6 +325,7 @@ const form = reactive({
   company_name: '',
   phone: '',
   adeli: '',
+  rpps: '',
   emploi: '' as string,
   lab_id: '',
   address: null as { label: string; lat?: number; lng?: number; street?: string; city?: string; postcode?: string } | null,
@@ -439,7 +442,11 @@ async function submit() {
     if (newUserId) {
       const updates = []
       const updateBody: Record<string, unknown> = {}
-      if (currentRole === 'nurse' && form.adeli?.trim()) updateBody.adeli = form.adeli.trim()
+      if (currentRole === 'nurse' && form.rpps?.trim()) {
+        const split = splitProfessionalId(form.rpps)
+        updateBody.rpps = split.rpps
+        updateBody.adeli = split.adeli
+      }
       if (currentRole === 'pro') {
         if (form.adeli?.trim()) updateBody.adeli = form.adeli.trim()
         if (form.emploi?.trim()) updateBody.emploi = form.emploi.trim()

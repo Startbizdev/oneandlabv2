@@ -1,11 +1,10 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useAppColors } from '@/theme/use-app-colors';
-import dayjs from 'dayjs';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
+import dayjs from 'dayjs';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { spacing } from '@/theme';
@@ -19,6 +18,11 @@ interface Props {
   disabled?: boolean;
 }
 
+function parseValueToDate(iso: string): Date {
+  const parsed = dayjs(iso, 'YYYY-MM-DD', true);
+  return parsed.isValid() ? parsed.toDate() : new Date();
+}
+
 export function PrescriptionDatePicker({
   label = 'Date de l’ordonnance',
   value,
@@ -26,43 +30,40 @@ export function PrescriptionDatePicker({
   error,
   disabled,
 }: Props) {
-  const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'PrescriptionDatePicker');
   const [iosOpen, setIosOpen] = useState(false);
   const [androidOpen, setAndroidOpen] = useState(false);
-  const [pickerDate, setPickerDate] = useState(() => new Date());
+  /** État local du spinner iOS — ne pas resynchroniser via useEffect (boucle infinie). */
+  const [pickerDate, setPickerDate] = useState(() => parseValueToDate(value));
 
-  const parsed = dayjs(value, 'YYYY-MM-DD', true);
-  const dateValue = useMemo(
-    () => (parsed.isValid() ? parsed.toDate() : new Date()),
-    [parsed],
-  );
+  const maxDate = useMemo(() => new Date(), []);
 
-  useEffect(() => {
-    if (iosOpen) setPickerDate(dateValue);
-  }, [iosOpen, dateValue]);
+  const parsedValid = useMemo(() => dayjs(value, 'YYYY-MM-DD', true).isValid(), [value]);
+  const display = parsedValid && value ? formatBirthDateFr(value) : 'Choisir une date';
 
-  const display = value && parsed.isValid() ? formatBirthDateFr(value) : 'Choisir une date';
-
-  const applyDate = (selected?: Date) => {
-    if (!selected) return;
-    onChange(dayjs(selected).format('YYYY-MM-DD'));
-  };
-
-  const onAndroidChange = (event: DateTimePickerEvent, selected?: Date) => {
-    setAndroidOpen(false);
-    if (event.type === 'dismissed') return;
-    applyDate(selected);
-  };
-
-  const openPicker = () => {
+  const openPicker = useCallback(() => {
     if (disabled) return;
+    setPickerDate(parseValueToDate(value));
     if (Platform.OS === 'android') {
       setAndroidOpen(true);
     } else {
       setIosOpen(true);
     }
-  };
+  }, [disabled, value]);
+
+  const onAndroidChange = useCallback(
+    (event: DateTimePickerEvent, selected?: Date) => {
+      setAndroidOpen(false);
+      if (event.type === 'dismissed' || !selected) return;
+      onChange(dayjs(selected).format('YYYY-MM-DD'));
+    },
+    [onChange],
+  );
+
+  const confirmIos = useCallback(() => {
+    onChange(dayjs(pickerDate).format('YYYY-MM-DD'));
+    setIosOpen(false);
+  }, [onChange, pickerDate]);
 
   return (
     <View style={styles.wrap}>
@@ -74,16 +75,16 @@ export function PrescriptionDatePicker({
         accessibilityRole="button"
         accessibilityLabel={`${label}, ${display}`}
       >
-        <Text style={[styles.value, !value && styles.placeholder]}>{display}</Text>
+        <Text style={[styles.value, !parsedValid && styles.placeholder]}>{display}</Text>
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {androidOpen ? (
         <DateTimePicker
-          value={dateValue}
+          value={parseValueToDate(value)}
           mode="date"
           display="default"
-          maximumDate={new Date()}
+          maximumDate={maxDate}
           onChange={onAndroidChange}
         />
       ) : null}
@@ -94,21 +95,13 @@ export function PrescriptionDatePicker({
         title={label}
         disableScroll
         snapPoints={['42%']}
-        footer={
-          <Button
-            title="Confirmer"
-            onPress={() => {
-              onChange(dayjs(pickerDate).format('YYYY-MM-DD'));
-              setIosOpen(false);
-            }}
-          />
-        }
+        footer={<Button title="Confirmer" onPress={confirmIos} />}
       >
         <DateTimePicker
-          value={dateValue}
+          value={pickerDate}
           mode="date"
           display="spinner"
-          maximumDate={new Date()}
+          maximumDate={maxDate}
           locale="fr-FR"
           onChange={(_, selected) => {
             if (selected) setPickerDate(selected);
