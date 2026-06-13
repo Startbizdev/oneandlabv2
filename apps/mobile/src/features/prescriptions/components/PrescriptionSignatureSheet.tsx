@@ -17,6 +17,7 @@ import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
 import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+import { normalizeSignaturePngBase64 } from '@/features/prescriptions/lib/signature-pad-html';
 
 export type OpenPrescriptionSignatureOptions = {
   /** Ouvre la sheet puis génère le PDF après enregistrement */
@@ -34,12 +35,7 @@ type Props = {
 };
 
 function normalizePngBase64(raw: string): string {
-  const trimmed = raw.trim();
-  if (trimmed.startsWith('data:')) {
-    const idx = trimmed.indexOf(',');
-    return idx >= 0 ? trimmed.slice(idx + 1) : trimmed;
-  }
-  return trimmed.replace(/\s/g, '');
+  return normalizeSignaturePngBase64(raw) ?? '';
 }
 
 export function PrescriptionSignatureSheet({
@@ -61,6 +57,7 @@ export function PrescriptionSignatureSheet({
   const [presentKey, setPresentKey] = useState(0);
 
   const hasStoredSignature = Boolean(initialPng?.trim());
+  const normalizedInitial = normalizeSignaturePngBase64(initialPng);
 
   useEffect(() => {
     if (visible) {
@@ -73,6 +70,14 @@ export function PrescriptionSignatureSheet({
       setExporting(false);
     }
   }, [visible]);
+
+  useEffect(() => {
+    if (!visible || !normalizedInitial) return;
+    const timer = setTimeout(() => {
+      padRef.current?.load(normalizedInitial);
+    }, 320);
+    return () => clearTimeout(timer);
+  }, [visible, normalizedInitial, presentKey]);
 
   const saveMut = useMutation({
     mutationFn: (png: string | null) =>
@@ -158,7 +163,7 @@ export function PrescriptionSignatureSheet({
       <PrescriptionSignaturePad
         key={presentKey}
         ref={padRef}
-        initialPng={initialPng}
+        initialPng={normalizedInitial}
         onExport={onExport}
         height={220}
       />
