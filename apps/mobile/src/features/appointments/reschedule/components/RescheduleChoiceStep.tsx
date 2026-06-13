@@ -1,9 +1,11 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Cluster, Row } from '@/components/layout/primitives';
 import {
   ArrowRight,
   CalendarPlus,
@@ -67,6 +69,7 @@ interface Props {
 }
 
 function FlowChipView({ chip }: { chip: FlowChip }) {
+  const styles = useThemedStyles(buildStyles, 'RescheduleChoiceStep.FlowChipView');
   const chipStyle =
     chip.tone === 'accent'
       ? styles.flowChipAccent
@@ -105,6 +108,8 @@ function RescheduleChoiceCard({
   index: number;
   onPress: () => void;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'RescheduleChoiceStep.RescheduleChoiceCard');
   const Icon = choice.icon;
 
   return (
@@ -134,39 +139,45 @@ function RescheduleChoiceCard({
           />
 
           <View style={styles.cardBody}>
-            <View style={styles.cardTopRow}>
-              <View style={[styles.iconOrb, { backgroundColor: choice.orbBg }]}>
-                <Icon
-                  size={22}
-                  color={selected ? colors.primaryDark : colors.textSecondary}
-                  strokeWidth={2}
-                />
-              </View>
-
+            <Cluster
+              gap={spacing[2]}
+              align="center"
+              style={styles.cardTopRow}
+              leading={
+                <View style={[styles.iconOrb, { backgroundColor: choice.orbBg }]}>
+                  <Icon
+                    size={22}
+                    color={selected ? c.primaryDark : c.textSecondary}
+                    strokeWidth={2}
+                  />
+                </View>
+              }
+              actions={
+                <View style={[styles.radio, selected && styles.radioSelected]}>
+                  {selected ? <Check size={14} color={c.textInverse} strokeWidth={3} /> : null}
+                </View>
+              }
+            >
               <View style={styles.cardTitles}>
                 {choice.badge ? (
-                  <View style={styles.badge}>
-                    <Sparkles size={11} color={colors.primaryDark} strokeWidth={2.25} />
+                  <Row align="center" gap={4} style={styles.badge}>
+                    <Sparkles size={11} color={c.primaryDark} strokeWidth={2.25} />
                     <Text style={styles.badgeText}>{choice.badge}</Text>
-                  </View>
+                  </Row>
                 ) : null}
                 <Text style={[styles.cardTitle, selected && styles.cardTitleSelected]}>
                   {choice.title}
                 </Text>
               </View>
-
-              <View style={[styles.radio, selected && styles.radioSelected]}>
-                {selected ? <Check size={14} color={colors.textInverse} strokeWidth={3} /> : null}
-              </View>
-            </View>
+            </Cluster>
 
             <Text style={styles.cardDescription}>{choice.description}</Text>
 
-            <View style={styles.flowRow}>
+            <Row wrap align="center" gap={spacing[2]} style={styles.flowRow}>
               <FlowChipView chip={choice.flow[0]!} />
-              <ArrowRight size={14} color={colors.textTertiary} strokeWidth={2.25} />
+              <ArrowRight size={14} color={c.textTertiary} strokeWidth={2.25} />
               <FlowChipView chip={choice.flow[1]!} />
-            </View>
+            </Row>
           </View>
         </View>
       </Pressable>
@@ -174,7 +185,10 @@ function RescheduleChoiceCard({
   );
 }
 
-export function RescheduleChoiceStep({ patientName, choiceMode, onSelect }: Props) {
+export function RescheduleChoiceStep({
+  patientName, choiceMode, onSelect }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_reschedule_components_RescheduleChoiceStep_tsx_styles');
   return (
     <View style={styles.root}>
       <Animated.View entering={FadeInUp.duration(320)} style={styles.hero}>
@@ -219,7 +233,7 @@ function buildStyles(c: AppColors) {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3],
     paddingBottom: spacing[3],
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     gap: 2,
     ...elevation.xs,
   },
@@ -228,7 +242,7 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.primaryDark,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   heroTitle: {
     fontFamily: fontFamily.bold,
@@ -258,7 +272,7 @@ function buildStyles(c: AppColors) {
     borderWidth: 1.5,
     borderColor: c.border,
     backgroundColor: c.surface,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     ...elevation.xs,
   },
   cardSelected: {
@@ -266,7 +280,7 @@ function buildStyles(c: AppColors) {
     ...elevation.sm,
   },
   cardAccentBar: {
-    position: 'absolute',
+    position: 'absolute' as const,
     left: 0,
     top: 0,
     bottom: 0,
@@ -278,16 +292,14 @@ function buildStyles(c: AppColors) {
     gap: spacing[2],
   },
   cardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
+    minWidth: 0,
   },
   iconOrb: {
     width: 40,
     height: 40,
     borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   cardTitles: {
@@ -296,10 +308,8 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   badge: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    minWidth: 0,
+    alignSelf: 'flex-start' as const,
     paddingHorizontal: spacing[2],
     paddingVertical: 3,
     borderRadius: radius.full,
@@ -325,8 +335,8 @@ function buildStyles(c: AppColors) {
     borderRadius: radius.full,
     borderWidth: 2,
     borderColor: c.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
     marginTop: 2,
   },
@@ -341,10 +351,7 @@ function buildStyles(c: AppColors) {
     lineHeight: fontSize.xs * 1.45,
   },
   flowRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing[2],
+    minWidth: 0,
   },
   flowChip: {
     paddingHorizontal: spacing[2],
@@ -379,11 +386,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_reschedule_components_RescheduleChoiceStep_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

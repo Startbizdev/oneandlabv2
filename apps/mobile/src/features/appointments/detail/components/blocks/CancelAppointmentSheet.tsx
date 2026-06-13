@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,6 +11,7 @@ import {
   staffCancellationCanSubmit,
 } from '@oneandlab/shared-constants';
 import type { Appointment } from '@oneandlab/shared-types';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { queryKeys } from '@/lib/query-keys';
@@ -52,7 +54,10 @@ function cancelSheetSubtitle(isPatient: boolean, isBatch: boolean, count: number
   return 'Indiquez la raison avant de confirmer l’annulation.';
 }
 
-export function CancelAppointmentSheet({ visible, role, targets, onDone, onClose }: Props) {
+export function CancelAppointmentSheet({
+  visible, role, targets, onDone, onClose }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_blocks_CancelAppointmentSheet_tsx_styles');
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [staff, setStaff] = useState<StaffCancellationValues>(EMPTY_STAFF);
@@ -185,29 +190,39 @@ export function CancelAppointmentSheet({ visible, role, targets, onDone, onClose
       footer={footer}
     >
       <View style={styles.summaryCard}>
-        <View style={styles.warningStrip}>
-          <AlertTriangle size={16} color={colors.error} strokeWidth={2.25} />
+        <Cluster
+          gap={spacing[2]}
+          align="center"
+          style={styles.warningStrip}
+          leading={<AlertTriangle size={16} color={c.error} strokeWidth={2.25} />}
+        >
           <Text style={styles.warningText}>
             {isBatch
               ? `${targets.length} rendez-vous seront définitivement annulés.`
               : 'Cette action est irréversible.'}
           </Text>
-        </View>
+        </Cluster>
 
         {targetLabel && !isBatch ? (
           <>
             <View style={styles.summaryDivider} />
-            <View style={styles.targetRow}>
-              <View style={styles.targetIcon}>
-                <CalendarX2 size={16} color={colors.primary} strokeWidth={2.25} />
-              </View>
+            <Cluster
+              gap={spacing[3]}
+              align="center"
+              style={styles.targetRow}
+              leading={
+                <View style={styles.targetIcon}>
+                  <CalendarX2 size={16} color={c.primary} strokeWidth={2.25} />
+                </View>
+              }
+            >
               <View style={styles.targetCopy}>
                 <Text style={styles.targetKicker}>Rendez-vous concerné</Text>
                 <Text style={styles.targetName} numberOfLines={2}>
                   {targetLabel}
                 </Text>
               </View>
-            </View>
+            </Cluster>
           </>
         ) : null}
       </View>
@@ -228,19 +243,15 @@ function buildStyles(c: AppColors) {
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: c.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     backgroundColor: c.surface,
   },
   warningStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     backgroundColor: c.errorLight,
   },
   warningText: {
-    flex: 1,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
     color: c.error,
@@ -251,9 +262,6 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.borderLight,
   },
   targetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     padding: spacing[3],
   },
   targetIcon: {
@@ -261,13 +269,11 @@ function buildStyles(c: AppColors) {
     height: 36,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   targetCopy: {
-    flex: 1,
-    minWidth: 0,
     gap: 2,
   },
   targetKicker: {
@@ -275,7 +281,7 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.3,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   targetName: {
     fontFamily: fontFamily.semiBold,
@@ -296,11 +302,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_blocks_CancelAppointmentSheet_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -113,12 +113,6 @@ export function stackHeaderOptions(
 
   return {
     ...sharedHeaderVisualOptions(),
-    headerLeftContainerStyle: {
-      paddingLeft: 0,
-      flexShrink: 1,
-      minWidth: 0,
-      ...stackSlot,
-    },
     headerTitleContainerStyle: {
       marginLeft: 0,
       marginRight: 0,
@@ -132,7 +126,7 @@ export function stackHeaderOptions(
     header: CaryStackHeader as NativeStackNavigationOptions['header'],
     contentStyle: appStackContentStyle(),
     ...overrides,
-  };
+  } as NativeStackNavigationOptions;
 }
 
 /** Écrans plein écran (login, wizard merci) — pas de header. */

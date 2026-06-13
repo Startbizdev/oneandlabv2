@@ -1,5 +1,5 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
@@ -28,10 +28,11 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function PatientRelativeDetailScreen() {
+  const styles = useThemedStyles(buildStyles, 'features_patient_relatives_screens_PatientRelativeDetailScreen_tsx_styles');
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { show: toast } = useToast();
@@ -203,11 +204,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_patient_relatives_screens_PatientRelativeDetailScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

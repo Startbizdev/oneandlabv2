@@ -1,7 +1,10 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Phone, MessageSquare, Mail } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
+import { Row } from '@/components/layout/primitives';
 import { Card } from '@/components/ui/Card';
 import {
   getRelationshipLabel,
@@ -16,6 +19,9 @@ interface Props {
 
 /** Bloc patient / proche — équivalent `#patientPortalFooter` + infos compte sur le web. */
 export function RdvPatientPortalSection({ apt }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvPatientPortalSection_tsx_RdvPatientPortalSection_styles');
+
   const fd = (apt.form_data ?? {}) as Record<string, unknown>;
   const rel = (
     apt as Appointment & {
@@ -42,80 +48,76 @@ export function RdvPatientPortalSection({ apt }: Props) {
       <View style={styles.block}>
         <Text style={styles.label}>{rel ? 'Titulaire du compte' : 'Patient'}</Text>
         <Text style={styles.value}>{accountName}</Text>
-        <View style={styles.actions}>
+        <Row wrap gap={spacing[2]} style={styles.actions}>
           {phone ? (
-            <Pressable onPress={() => void Linking.openURL(`tel:${phone}`)} style={styles.chip}>
-              <Phone size={14} color={colors.primary} strokeWidth={2} />
-              <Text style={styles.chipText}>Appeler</Text>
+            <Pressable onPress={() => void Linking.openURL(`tel:${phone}`)}>
+              <Row gap={6} align="center" style={styles.chip}>
+                <Phone size={14} color={c.primary} strokeWidth={2} />
+                <Text style={styles.chipText}>Appeler</Text>
+              </Row>
             </Pressable>
           ) : null}
           {phone ? (
-            <Pressable
-              onPress={() => void Linking.openURL(`sms:${phone}`)}
-              style={styles.chip}
-            >
-              <MessageSquare size={14} color={colors.primary} strokeWidth={2} />
-              <Text style={styles.chipText}>Message</Text>
+            <Pressable onPress={() => void Linking.openURL(`sms:${phone}`)}>
+              <Row gap={6} align="center" style={styles.chip}>
+                <MessageSquare size={14} color={c.primary} strokeWidth={2} />
+                <Text style={styles.chipText}>Message</Text>
+              </Row>
             </Pressable>
           ) : null}
           {email ? (
-            <Pressable
-              onPress={() => void Linking.openURL(`mailto:${email}`)}
-              style={styles.chip}
-            >
-              <Mail size={14} color={colors.primary} strokeWidth={2} />
-              <Text style={styles.chipText}>E-mail</Text>
+            <Pressable onPress={() => void Linking.openURL(`mailto:${email}`)}>
+              <Row gap={6} align="center" style={styles.chip}>
+                <Mail size={14} color={c.primary} strokeWidth={2} />
+                <Text style={styles.chipText}>E-mail</Text>
+              </Row>
             </Pressable>
           ) : null}
-        </View>
+        </Row>
       </View>
     </Card>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   block: {
     paddingTop: spacing[2],
     borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
     gap: spacing[1],
   },
   label: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   value: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   hint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
     marginTop: spacing[2],
   },
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[1.5],
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
   chipText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
-});
+};
+}

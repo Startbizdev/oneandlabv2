@@ -1,4 +1,7 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+import { Row } from '@/components/layout/primitives';
 import { Mail, MessageCircle, Phone } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
@@ -21,6 +24,9 @@ interface Props {
 }
 
 export function DetailPersonBlock({ title, name, subtitle, detail, buttons }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_DetailPersonBlock_tsx_DetailPersonBlock_styles');
+
   return (
     <View style={styles.wrap}>
       {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
@@ -28,7 +34,7 @@ export function DetailPersonBlock({ title, name, subtitle, detail, buttons }: Pr
       {subtitle ? <Text style={styles.sub}>{subtitle}</Text> : null}
       {detail ? <Text style={styles.detail}>{detail}</Text> : null}
       {buttons && buttons.length > 0 ? (
-        <View style={styles.buttonRow}>
+        <Row gap={spacing[1.5]} style={styles.buttonRow}>
           {buttons.map((btn) => {
             const Icon = CONTACT_ICONS[btn.icon];
             return (
@@ -37,20 +43,21 @@ export function DetailPersonBlock({ title, name, subtitle, detail, buttons }: Pr
                   title={btn.label}
                   size="sm"
                   variant="primary"
-                  leftIcon={<Icon size={14} color={colors.textInverse} strokeWidth={2.5} />}
+                  leftIcon={<Icon size={14} color={c.textInverse} strokeWidth={2.5} />}
                   onPress={btn.onPress}
-                  style={{ backgroundColor: btn.color, width: '100%' }}
+                  style={{ backgroundColor: btn.color, width: '100%' as const }}
                 />
               </View>
             );
           })}
-        </View>
+        </Row>
       ) : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
     gap: spacing[2],
     paddingVertical: spacing[1],
@@ -58,34 +65,33 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     letterSpacing: 0.3,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     marginBottom: 2,
   },
   name: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   sub: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   detail: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,
   },
   buttonRow: {
-    flexDirection: 'row',
-    gap: spacing[1.5],
     marginTop: spacing[1],
   },
   buttonCell: {
     flex: 1,
     minWidth: 0,
   },
-});
+};
+}

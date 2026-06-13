@@ -32,7 +32,7 @@ export function enrichPatientHistoryAppointments(
         beneficiary_profile_image_url:
           ext.beneficiary_profile_image_url ?? profile.profile_image_url ?? null,
         beneficiary_gender: ext.beneficiary_gender ?? profile.gender ?? null,
-      } as Appointment;
+      } as unknown as Appointment;
     }
 
     if (ext.beneficiary_profile_image_url == null && profile.profile_image_url) {
@@ -40,7 +40,7 @@ export function enrichPatientHistoryAppointments(
         ...apt,
         beneficiary_profile_image_url: profile.profile_image_url,
         beneficiary_gender: ext.beneficiary_gender ?? profile.gender ?? null,
-      } as Appointment;
+      } as unknown as Appointment;
     }
 
     return apt;

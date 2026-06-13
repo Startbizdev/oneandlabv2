@@ -1,4 +1,5 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View } from 'react-native';
 import { APP_HEADER_INNER_H_PADDING } from '@/components/navigation/header-layout';
 import { useAuthStore } from '@/store/auth-store';
@@ -13,6 +14,8 @@ function formatFirstName(raw?: string | null): string {
 
 /** Salutation à gauche du header (remplace le logo Cary sur l’onglet RDV). */
 export function HeaderGreeting() {
+  const styles = useThemedStyles(buildStyles, 'navigation_HeaderGreeting_tsx_HeaderGreeting_styles');
+
   const firstName = useAuthStore((s) => s.user?.first_name);
 
   return (
@@ -24,14 +27,16 @@ export function HeaderGreeting() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
     paddingLeft: APP_HEADER_INNER_H_PADDING,
   },
   text: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize['2xl'],
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.5,
   },
-});
+};
+}

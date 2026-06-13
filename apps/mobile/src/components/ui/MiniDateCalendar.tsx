@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { spacing } from '@/theme';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -47,8 +47,8 @@ const textBoxReset = StyleSheet.create({
   base: {
     margin: 0,
     padding: 0,
-    textAlign: 'center',
-    maxWidth: '100%',
+    textAlign: 'center' as const,
+    maxWidth: '100%' as const,
     ...(Platform.OS === 'android'
       ? { includeFontPadding: false, textAlignVertical: 'center' as const }
       : null),
@@ -66,7 +66,11 @@ export function MiniDateCalendar({
 }: Props) {
   const layout = getMiniDateCalendarLayout(size);
   const parts = partsProp ?? formatMiniDateCalendarParts(date);
-  const styles = useThemedStyles((c) => buildStyles(c, layout, variant));
+  const styleFactory = useMemo(
+    () => (c: AppColors) => buildStyles(c, layout, variant),
+    [layout, variant],
+  );
+  const styles = useThemedStyles(styleFactory, `MiniDateCalendar.${size}.${variant}`);
 
   if (!parts) return null;
 
@@ -186,7 +190,7 @@ function DayNumberGlyph({
               height: lineBoxHeight,
               letterSpacing: typography.letterSpacing,
               color,
-              fontVariant: ['tabular-nums'],
+              fontVariant: ['tabular-nums' as const],
               fontWeight: typography.fontWeight,
             },
           ]}
@@ -202,23 +206,24 @@ function DayNumberGlyph({
 
 const glyphStyles = StyleSheet.create({
   section: {
+    minWidth: 0,
     flex: 1,
-    alignSelf: 'stretch',
+    alignSelf: 'stretch' as const,
     minHeight: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
   lineBox: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    maxWidth: '100%',
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    maxWidth: '100%' as const,
   },
 });
 
 function buildStyles(c: AppColors, layout: MiniDateCalendarLayout, variant: MiniDateCalendarVariant) {
   const palette = getMiniDateCalendarColors(variant, c);
 
-  return StyleSheet.create({
+  return {
     root: {
       width: layout.outerSize,
       height: layout.outerSize,
@@ -229,26 +234,26 @@ function buildStyles(c: AppColors, layout: MiniDateCalendarLayout, variant: Mini
       flexGrow: 0,
       flexShrink: 0,
       aspectRatio: 1,
-      alignSelf: 'flex-start',
-      flexDirection: 'column',
+      alignSelf: 'flex-start' as const,
+      flexDirection: 'column' as const,
       borderRadius: layout.borderRadius,
       borderWidth: layout.borderWidth,
       borderColor: palette.border,
       backgroundColor: palette.bodyBg,
-      overflow: 'hidden',
+      overflow: 'hidden' as const,
     },
     band: {
       minHeight: 0,
-      width: '100%',
-      alignItems: 'center',
-      justifyContent: 'center',
+      width: '100%' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
       paddingHorizontal: spacing[0.5],
     },
     headerBand: {
       backgroundColor: palette.headerBg,
     },
     bodyBand: {
-      alignItems: 'stretch',
+      alignItems: 'stretch' as const,
       backgroundColor: palette.bodyBg,
     },
     footerBand: {
@@ -259,5 +264,5 @@ function buildStyles(c: AppColors, layout: MiniDateCalendarLayout, variant: Mini
     weekdayColor: { color: palette.headerText },
     dayColor: { color: palette.dayText },
     monthColor: { color: palette.footerText },
-  });
+  };
 }

@@ -1,3 +1,6 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -11,11 +14,11 @@ import {
   User,
   type LucideIcon,
 } from 'lucide-react-native';
-import { getHelpFaqForRole } from '@/features/help/help-faq-content';
+import { getHelpFaqForRole, type HelpFaqItem } from '@/features/help/help-faq-content';
 import { ProfileNavCard } from '@/features/profile/components/ProfileNavCard';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
@@ -43,6 +46,9 @@ function answerPreview(answer: string, max = 72): string {
 }
 
 export function HelpScreen() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_help_screens_HelpScreen_tsx_HelpScreen_styles');
+
   const router = useRouter();
   const role = useAuthStore((s) => s.user?.role);
   const faq = getHelpFaqForRole(role);
@@ -57,7 +63,7 @@ export function HelpScreen() {
 
       {faq.sections.map((section) => (
         <ProfileNavCard key={section.slug} title={section.title}>
-          {section.items.map((item, index) => (
+          {section.items.map((item: HelpFaqItem, index) => (
             <View key={item.slug}>
               {index > 0 ? <View style={styles.divider} /> : null}
               <ProfileNavRow
@@ -65,8 +71,8 @@ export function HelpScreen() {
                 title={item.question}
                 subtitle={answerPreview(item.answer)}
                 onPress={() => router.push(`/profile/help/${item.slug}` as never)}
-                iconColor={colors.textSecondary}
-                iconBg={colors.surfaceAlt}
+                iconColor={c.textSecondary}
+                iconBg={c.surfaceAlt}
               />
             </View>
           ))}
@@ -85,7 +91,8 @@ export function HelpScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   scroll: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],
@@ -95,12 +102,13 @@ const styles = StyleSheet.create({
   lead: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     marginLeft: spacing[4] + 40 + spacing[3],
   },
-});
+};
+}

@@ -1,10 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Skeleton } from './Skeleton';
-import { colors, radius, spacing } from '@/theme';
-import { rdvDetailSectionStyles } from '@/features/appointments/detail/components/layout/rdv-detail-section-styles';
+import { radius, spacing } from '@/theme';
+import { getRdvDetailSectionStyles } from '@/features/appointments/detail/components/layout/rdv-detail-section-styles';
 
 /** Ligne label + valeur (fiche KV, profil, etc.). */
 export function SkeletonKvRow({
@@ -16,6 +16,7 @@ export function SkeletonKvRow({
   valueWidth?: number | `${number}%`;
   style?: StyleProp<ViewStyle>;
 }) {
+  const styles = useThemedStyles(buildStyles, 'components_ui_skeleton_presets_tsx_styles');
   return (
     <View style={[styles.kvRow, style]}>
       <Skeleton height={10} width={labelWidth} borderRadius={radius.xs} />
@@ -24,14 +25,17 @@ export function SkeletonKvRow({
   );
 }
 
+const SKELETON_CTX = 'skeleton-presets';
+
 /** Placeholder lignes soin pendant chargement catalogue / lot. */
 export function SkeletonRdvCarePlaceholder({ count = 3 }: { count?: number }) {
+  const styles = useThemedStyles(buildStyles, SKELETON_CTX);
   return (
     <View style={styles.careBlock}>
       {Array.from({ length: count }).map((_, i) => (
         <View
           key={i}
-          style={[rdvDetailSectionStyles.sectionRow, i > 0 && rdvDetailSectionStyles.rowBorder]}
+          style={[getRdvDetailSectionStyles().sectionRow, i > 0 && getRdvDetailSectionStyles().rowBorder]}
         >
           <SkeletonKvRow labelWidth="38%" valueWidth="85%" />
         </View>
@@ -50,25 +54,26 @@ export function SkeletonRdvInfoCard({
   carePlaceholderCount?: number;
   showContactButtons?: boolean;
 }) {
+  const styles = useThemedStyles(buildStyles, SKELETON_CTX);
   return (
-    <View style={[rdvDetailSectionStyles.card, edgeToEdge && rdvDetailSectionStyles.cardEdge]}>
-      <View style={rdvDetailSectionStyles.sectionRow}>
+    <View style={[getRdvDetailSectionStyles().card, edgeToEdge && getRdvDetailSectionStyles().cardEdge]}>
+      <View style={getRdvDetailSectionStyles().sectionRow}>
         <SkeletonKvRow labelWidth="22%" valueWidth="92%" />
       </View>
-      <View style={[rdvDetailSectionStyles.sectionRow, rdvDetailSectionStyles.rowBorder]}>
+      <View style={[getRdvDetailSectionStyles().sectionRow, getRdvDetailSectionStyles().rowBorder]}>
         <SkeletonKvRow labelWidth="36%" valueWidth="78%" />
       </View>
       {carePlaceholderCount > 0 ? (
         <SkeletonRdvCarePlaceholder count={carePlaceholderCount} />
       ) : null}
-      <View style={[rdvDetailSectionStyles.sectionRow, rdvDetailSectionStyles.rowBorder]}>
+      <View style={[getRdvDetailSectionStyles().sectionRow, getRdvDetailSectionStyles().rowBorder]}>
         <SkeletonKvRow labelWidth="24%" valueWidth="55%" />
       </View>
-      <View style={[rdvDetailSectionStyles.sectionRow, rdvDetailSectionStyles.rowBorder]}>
+      <View style={[getRdvDetailSectionStyles().sectionRow, getRdvDetailSectionStyles().rowBorder]}>
         <SkeletonKvRow labelWidth="42%" valueWidth="68%" />
       </View>
       {showContactButtons ? (
-        <View style={[rdvDetailSectionStyles.sectionRow, rdvDetailSectionStyles.rowBorder, styles.actionsRow]}>
+        <View style={[getRdvDetailSectionStyles().sectionRow, getRdvDetailSectionStyles().rowBorder, styles.actionsRow]}>
           <View style={styles.buttonRow}>
             <Skeleton height={44} style={styles.buttonCell} borderRadius={radius.md} />
             <Skeleton height={44} style={styles.buttonCell} borderRadius={radius.md} />
@@ -82,6 +87,7 @@ export function SkeletonRdvInfoCard({
 
 /** Barre d’onglets segmentés (Informations / Documents…). */
 export function SkeletonSegmentBar({ segments = 2 }: { segments?: number }) {
+  const styles = useThemedStyles(buildStyles, SKELETON_CTX);
   return (
     <View style={styles.segmentBar}>
       {Array.from({ length: segments }).map((_, i) => (
@@ -93,6 +99,7 @@ export function SkeletonSegmentBar({ segments = 2 }: { segments?: number }) {
 
 /** Ligne intervenant (avatar + texte + mini boutons). */
 export function SkeletonEntityRow({ showDivider = false }: { showDivider?: boolean }) {
+  const styles = useThemedStyles(buildStyles, SKELETON_CTX);
   return (
     <View style={[styles.entityRow, showDivider && styles.entityDivider]}>
       <Skeleton height={36} width={36} borderRadius={radius.full} />
@@ -107,7 +114,7 @@ export function SkeletonEntityRow({ showDivider = false }: { showDivider?: boole
 
 export function SkeletonAssigneeCard({ rows = 2 }: { rows?: number }) {
   return (
-    <View style={rdvDetailSectionStyles.card}>
+    <View style={getRdvDetailSectionStyles().card}>
       {Array.from({ length: rows }).map((_, i) => (
         <SkeletonEntityRow key={i} showDivider={i < rows - 1} />
       ))}
@@ -117,6 +124,7 @@ export function SkeletonAssigneeCard({ rows = 2 }: { rows?: number }) {
 
 /** Ligne action sidebar (icône + titre + chevron). */
 export function SkeletonDetailActionRow({ destructive = false }: { destructive?: boolean }) {
+  const styles = useThemedStyles(buildStyles, SKELETON_CTX);
   return (
     <View style={[styles.actionRow, destructive && styles.actionRowDestructive]}>
       <Skeleton height={40} width={40} borderRadius={radius.md} />
@@ -130,9 +138,9 @@ export function SkeletonDetailActionRow({ destructive = false }: { destructive?:
 
 export function SkeletonDetailActionsCard({ count = 2 }: { count?: number }) {
   return (
-    <View style={rdvDetailSectionStyles.card}>
+    <View style={getRdvDetailSectionStyles().card}>
       {Array.from({ length: count }).map((_, i) => (
-        <View key={i} style={i > 0 ? rdvDetailSectionStyles.rowBorder : undefined}>
+        <View key={i} style={i > 0 ? getRdvDetailSectionStyles().rowBorder : undefined}>
           <SkeletonDetailActionRow destructive={i === count - 1 && count > 1} />
         </View>
       ))}
@@ -142,6 +150,7 @@ export function SkeletonDetailActionsCard({ count = 2 }: { count?: number }) {
 
 /** Carte liste générique (RDV, patient, notification…). */
 export function SkeletonListCard({ height = 116 }: { height?: number }) {
+  const styles = useThemedStyles(buildStyles, SKELETON_CTX);
   return (
     <View style={styles.listCard}>
       <Skeleton height={height - spacing[3] * 2} borderRadius={radius.lg} />
@@ -165,6 +174,7 @@ export function SkeletonList({ count = 4, itemHeight = 116, gap = spacing[3] }: 
 
 /** Ligne liste Patients staff (avatar 44 + nom + sous-titre + chevron). */
 export function SkeletonPatientListRow({ showDivider = true }: { showDivider?: boolean }) {
+  const styles = useThemedStyles(buildStyles, SKELETON_CTX);
   return (
     <View>
       <View style={styles.patientRow}>
@@ -181,6 +191,7 @@ export function SkeletonPatientListRow({ showDivider = true }: { showDivider?: b
 }
 
 export function SkeletonPatientList({ count = 8 }: { count?: number }) {
+  const styles = useThemedStyles(buildStyles, SKELETON_CTX);
   return (
     <View style={styles.patientList}>
       {Array.from({ length: count }).map((_, i) => (
@@ -231,6 +242,7 @@ export function SkeletonPatientAppointmentDetail({
 
 /** Profil : hero + cartes empilées. */
 export function SkeletonProfileScreen({ cards = 2 }: { cards?: number }) {
+  const styles = useThemedStyles(buildStyles, SKELETON_CTX);
   return (
     <SkeletonScreen>
       <View style={styles.profileHero}>
@@ -249,6 +261,7 @@ export function SkeletonProfileScreen({ cards = 2 }: { cards?: number }) {
 
 /** Dashboard stats (pro). */
 export function SkeletonDashboardStats() {
+  const styles = useThemedStyles(buildStyles, SKELETON_CTX);
   return (
     <View style={styles.statsRow}>
       <Skeleton height={110} style={styles.statCell} borderRadius={radius.xl} />
@@ -260,6 +273,7 @@ export function SkeletonDashboardStats() {
 
 /** Wizard booking — étape choix des soins (chips + liste cartes). */
 export function SkeletonCareSelectionStep({ count = 6 }: { count?: number }) {
+  const styles = useThemedStyles(buildStyles, SKELETON_CTX);
   return (
     <View style={styles.careSelectionRoot}>
       <View style={styles.careSelectionProgress}>
@@ -294,12 +308,14 @@ export function SkeletonScreen({
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
+  const styles = useThemedStyles(buildStyles, SKELETON_CTX);
   return <View style={[styles.screen, style]}>{children}</View>;
 }
 
 function buildStyles(c: AppColors) {
   return {
   screen: {
+    minWidth: 0,
     flex: 1,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
@@ -314,22 +330,27 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[3],
   },
   buttonRow: {
-    flexDirection: 'row',
+    minWidth: 0,
+    flexDirection: 'row' as const,
     gap: spacing[1.5],
   },
   buttonCell: {
+    minWidth: 0,
     flex: 1,
   },
   segmentBar: {
-    flexDirection: 'row',
+    minWidth: 0,
+    flexDirection: 'row' as const,
     gap: spacing[2],
   },
   segmentItem: {
+    minWidth: 0,
     flex: 1,
   },
   entityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    minWidth: 0,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
     gap: spacing[2.5],
     paddingVertical: spacing[2.5],
     paddingHorizontal: spacing[4],
@@ -339,12 +360,14 @@ function buildStyles(c: AppColors) {
     borderBottomColor: c.borderLight,
   },
   entityText: {
+    minWidth: 0,
     flex: 1,
     gap: spacing[1],
   },
   actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    minWidth: 0,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
     gap: spacing[3],
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
@@ -353,6 +376,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.errorLight,
   },
   actionText: {
+    minWidth: 0,
     flex: 1,
     gap: spacing[1],
   },
@@ -360,19 +384,22 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[1],
   },
   patientList: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: c.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: c.borderLight,
   },
   patientRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    minWidth: 0,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     backgroundColor: c.surface,
   },
   patientInfo: {
+    minWidth: 0,
     flex: 1,
     marginLeft: spacing[3],
     marginRight: spacing[2],
@@ -386,22 +413,27 @@ function buildStyles(c: AppColors) {
     marginLeft: 68,
   },
   profileHero: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    minWidth: 0,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
     gap: spacing[3],
   },
   profileHeroText: {
+    minWidth: 0,
     flex: 1,
     gap: spacing[1],
   },
   statsRow: {
-    flexDirection: 'row',
+    minWidth: 0,
+    flexDirection: 'row' as const,
     gap: spacing[2],
   },
   statCell: {
+    minWidth: 0,
     flex: 1,
   },
   careSelectionRoot: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: c.bookingCanvas,
     paddingHorizontal: spacing[4],
@@ -415,7 +447,8 @@ function buildStyles(c: AppColors) {
     gap: spacing[3],
   },
   careSelectionSegments: {
-    flexDirection: 'row',
+    minWidth: 0,
+    flexDirection: 'row' as const,
     gap: spacing[2],
   },
   careSelectionMeta: {
@@ -427,11 +460,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('components_ui_skeleton_presets_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

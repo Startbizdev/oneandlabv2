@@ -1,4 +1,7 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+import { Cluster, Row } from '@/components/layout/primitives';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { MessageCircle, Phone, User } from 'lucide-react-native';
@@ -44,15 +47,52 @@ export function DetailEntityRow({
   profileAccessibilityLabel,
   showDivider = false,
 }: DetailEntityRowProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_ui_DetailEntityRow_tsx_DetailEntityRow_styles');
+
   const hasContact = contactActions.length > 0;
   const hasProfile = Boolean(onProfilePress);
   const hasTrailing = hasContact || Boolean(trailing) || hasProfile;
 
   return (
     <View style={styles.item}>
-      <View style={styles.row}>
-        {leading ? <View style={styles.leading}>{leading}</View> : null}
-
+      <Cluster
+        gap={spacing[2]}
+        style={styles.row}
+        leading={leading ? <View style={styles.leading}>{leading}</View> : undefined}
+        actions={
+          hasTrailing ? (
+            <Row gap={4} style={styles.trailing}>
+              {trailing}
+              {contactActions.map((action) => {
+                const Icon = CONTACT_ICONS[action.icon];
+                return (
+                  <Button
+                    key={action.key}
+                    title={action.label}
+                    variant="muted"
+                    size="sm"
+                    leftIcon={<Icon size={11} color={c.textSecondary} strokeWidth={2.25} />}
+                    onPress={action.onPress}
+                  />
+                );
+              })}
+              {hasProfile ? (
+                <Button
+                  title="Profil"
+                  variant="muted"
+                  size="sm"
+                  leftIcon={<User size={11} color={c.textSecondary} strokeWidth={2.25} />}
+                  onPress={onProfilePress}
+                  accessibilityLabel={
+                    profileAccessibilityLabel ?? `Voir le profil de ${title}`
+                  }
+                />
+              ) : null}
+            </Row>
+          ) : undefined
+        }
+      >
         <View style={styles.text}>
           {eyebrow ? (
             <Text style={styles.eyebrow} numberOfLines={1}>
@@ -69,52 +109,20 @@ export function DetailEntityRow({
             </Text>
           ) : null}
         </View>
-
-        {hasTrailing ? (
-          <View style={styles.trailing}>
-            {trailing}
-            {contactActions.map((action) => {
-              const Icon = CONTACT_ICONS[action.icon];
-              return (
-                <Button
-                  key={action.key}
-                  title={action.label}
-                  variant="muted"
-                  size="sm"
-                  leftIcon={<Icon size={11} color={colors.textSecondary} strokeWidth={2.25} />}
-                  onPress={action.onPress}
-                />
-              );
-            })}
-            {hasProfile ? (
-              <Button
-                title="Profil"
-                variant="muted"
-                size="sm"
-                leftIcon={<User size={11} color={colors.textSecondary} strokeWidth={2.25} />}
-                onPress={onProfilePress}
-                accessibilityLabel={
-                  profileAccessibilityLabel ?? `Voir le profil de ${title}`
-                }
-              />
-            ) : null}
-          </View>
-        ) : null}
-      </View>
+      </Cluster>
 
       {showDivider ? <View style={styles.divider} /> : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   item: {
     paddingVertical: spacing[2.5],
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
+    minWidth: 0,
   },
   leading: {
     flexShrink: 0,
@@ -126,29 +134,27 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     letterSpacing: 0.2,
   },
   title: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   subtitle: {
     marginTop: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   trailing: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flexShrink: 0,
-    gap: 4,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     marginTop: spacing[2.5],
   },
-});
+};
+}

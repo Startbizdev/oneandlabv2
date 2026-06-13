@@ -1,6 +1,6 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback, useState } from 'react';
 import {
   Platform,
@@ -10,6 +10,7 @@ import {
   StyleSheet,
   type TextInputProps,
 } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { useSheetTextInputComponent } from './sheet-keyboard-context';
@@ -61,15 +62,17 @@ function InputComponent(
   }: InputProps,
   ref: React.ForwardedRef<TextInput>,
 ) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'Input');
   const [isFocused, setIsFocused] = useState(false);
   const TextField = useSheetTextInputComponent();
   const resolvedReturnKeyType = resolveReturnKeyType(keyboardType, returnKeyType);
 
   const borderColor = error
-    ? colors.borderError
+    ? c.borderError
     : isFocused
-      ? colors.borderFocus
-      : colors.border;
+      ? c.borderFocus
+      : c.border;
 
   const handleFocus = useCallback(
     (e: Parameters<NonNullable<TextInputProps['onFocus']>>[0]) => {
@@ -93,7 +96,7 @@ function InputComponent(
         <Text style={[styles.label, isFocused && styles.labelFocused]}>{label}</Text>
       ) : null}
 
-      <View
+      <Row
         style={[
           styles.container,
           { borderColor, borderWidth: isFocused ? 1.5 : 1 },
@@ -102,7 +105,7 @@ function InputComponent(
         {leftIcon ? <View style={styles.iconLeft}>{leftIcon}</View> : null}
 
         <TextField
-          ref={ref}
+          ref={ref as never}
           onFocus={handleFocus}
           onBlur={handleBlur}
           keyboardType={keyboardType}
@@ -114,14 +117,14 @@ function InputComponent(
             rightIcon ? styles.inputWithRightIcon : null,
             style,
           ]}
-          placeholderTextColor={colors.textTertiary}
-          selectionColor={colors.primary}
-          cursorColor={colors.primary}
+          placeholderTextColor={c.textTertiary}
+          selectionColor={c.primary}
+          cursorColor={c.primary}
           {...props}
         />
 
         {rightIcon ? <View style={styles.iconRight}>{rightIcon}</View> : null}
-      </View>
+      </Row>
 
       {error ? <Text style={styles.error}>{error}</Text> : hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
@@ -146,16 +149,15 @@ function buildStyles(c: AppColors) {
     color: c.primary,
   },
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: c.border,
     minHeight: 52,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   input: {
+    minWidth: 0,
     flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.base,
@@ -189,12 +191,3 @@ function buildStyles(c: AppColors) {
   },
 };
 }
-
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('components_ui_Input_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { CreditCard, FileText, FlaskConical, Shield, Camera } from 'lucide-react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { DocumentDownloadButton } from '@/features/documents/components/DocumentDownloadButton';
 import { useDownloadedDocumentIds } from '@/features/documents/hooks/use-downloaded-document-ids';
 import type { LucideIcon } from 'lucide-react-native';
@@ -45,10 +47,12 @@ interface Props {
 }
 
 function DocIcon({ type }: { type: string }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'DocumentsBlock.DocIcon');
   const Icon = DOC_ICONS[type] ?? FileText;
   return (
     <View style={styles.docIcon}>
-      <Icon size={16} color={colors.primary} strokeWidth={2} />
+      <Icon size={16} color={c.primary} strokeWidth={2} />
     </View>
   );
 }
@@ -62,6 +66,7 @@ function DocumentRow({
   downloading: boolean;
   onOpen: (doc: MedicalDocumentRow) => void;
 }) {
+  const styles = useThemedStyles(buildStyles, 'DocumentsBlock.DocumentRow');
   const label = getDocumentTypeLabel(doc.document_type);
   const sub = formatDocumentFileSubtitle(doc.document_type, null, doc.created_at);
 
@@ -73,18 +78,24 @@ function DocumentRow({
       accessibilityRole="button"
       accessibilityLabel={`Ouvrir ${label}`}
     >
-      <DocIcon type={doc.document_type} />
-      <View style={styles.docBody}>
-        <Text style={styles.docLabel}>{label}</Text>
-        <Text style={styles.docFile} numberOfLines={1}>
-          {sub}
-        </Text>
-      </View>
-      <DocumentDownloadButton
-        downloading={downloading}
-        onPress={() => onOpen(doc)}
-        accessibilityLabel={`Ouvrir ${label}`}
-      />
+      <Cluster
+        gap={spacing[3]}
+        leading={<DocIcon type={doc.document_type} />}
+        actions={
+          <DocumentDownloadButton
+            downloading={downloading}
+            onPress={() => onOpen(doc)}
+            accessibilityLabel={`Ouvrir ${label}`}
+          />
+        }
+      >
+        <View style={styles.docBody}>
+          <Text style={styles.docLabel}>{label}</Text>
+          <Text style={styles.docFile} numberOfLines={1}>
+            {sub}
+          </Text>
+        </View>
+      </Cluster>
     </Pressable>
   );
 }
@@ -95,6 +106,7 @@ export function DocumentsBlock({
   omitCarePhotos = true,
   appointmentId,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_DocumentsBlock_tsx_styles');
   const { show: toast } = useToast();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const scopeKey = appointmentId
@@ -162,9 +174,6 @@ function buildStyles(c: AppColors) {
     borderTopColor: c.borderLight,
   },
   docRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     paddingVertical: spacing[3],
   },
   docRowPressed: {
@@ -175,13 +184,11 @@ function buildStyles(c: AppColors) {
     height: 36,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   docBody: {
-    flex: 1,
-    minWidth: 0,
     gap: 2,
   },
   docLabel: {
@@ -199,8 +206,8 @@ function buildStyles(c: AppColors) {
     height: 40,
     borderRadius: radius.full,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   downloadBtnPressed: {
@@ -212,11 +219,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_DocumentsBlock_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

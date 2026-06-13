@@ -1,8 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
@@ -35,6 +36,8 @@ function triggerHaptic() {
 }
 
 export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingTimeRangeSlider_tsx_styles');
   const [trackWidth, setTrackWidth] = useState(0);
   const trackWidthSv = useSharedValue(0);
   const minSv = useSharedValue(min);
@@ -146,17 +149,17 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.timeRow}>
+      <Row gap={spacing[2]} justify="center">
         <Text style={styles.timeValue}>{formatBookingHour(range[0])}</Text>
         <Text style={styles.timeSep}>—</Text>
         <Text style={styles.timeValue}>{formatBookingHour(range[1])}</Text>
-      </View>
+      </Row>
 
       <View style={styles.trackShell} onLayout={onLayout}>
         <View style={styles.trackBase} />
         <Animated.View style={[styles.trackFill, rangeFillStyle]}>
           <LinearGradient
-            colors={[colors.gradientStart, colors.gradientEnd]}
+            colors={[c.gradientStart, c.gradientEnd]}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={StyleSheet.absoluteFill}
@@ -176,13 +179,13 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
         </GestureDetector>
       </View>
 
-      <View style={styles.ticksRow}>
+      <Row justify="between">
         {ticks.map((h) => (
           <Text key={h} style={styles.tick}>
             {formatBookingHour(h)}
           </Text>
         ))}
-      </View>
+      </Row>
 
       {!valid ? (
         <Text style={styles.warn}>Minimum {AVAILABILITY_MIN_SPAN_HOURS} h</Text>
@@ -197,17 +200,11 @@ function buildStyles(c: AppColors) {
     gap: spacing[2],
     paddingTop: spacing[1],
   },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
-  },
   timeValue: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
     color: c.textPrimary,
-    fontVariant: ['tabular-nums'],
+    fontVariant: ['tabular-nums' as const],
   },
   timeSep: {
     fontFamily: fontFamily.medium,
@@ -216,7 +213,7 @@ function buildStyles(c: AppColors) {
   },
   trackShell: {
     height: THUMB + 4,
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
   },
   trackBase: {
     height: 4,
@@ -224,13 +221,13 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.border,
   },
   trackFill: {
-    position: 'absolute',
+    position: 'absolute' as const,
     height: 4,
     borderRadius: radius.full,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   thumb: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: 2,
     width: THUMB,
     height: THUMB,
@@ -238,8 +235,8 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.surface,
     borderWidth: 2,
     borderColor: c.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.12,
@@ -252,10 +249,6 @@ function buildStyles(c: AppColors) {
     borderRadius: 4,
     backgroundColor: c.primary,
   },
-  ticksRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
   tick: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
@@ -265,16 +258,8 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
     color: c.error,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_BookingTimeRangeSlider_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

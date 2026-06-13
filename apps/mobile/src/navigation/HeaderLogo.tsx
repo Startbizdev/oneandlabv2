@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Image, StyleSheet, View } from 'react-native';
 const LOGO = require('../../assets/logo-cary.png');
 
@@ -12,6 +14,8 @@ interface Props {
 }
 
 export function HeaderLogo({ size = 'default' }: Props) {
+  const styles = useThemedStyles(buildStyles, 'navigation_HeaderLogo_tsx_HeaderLogo_styles');
+
   const dims = LOGO_SIZES[size];
   return (
     <View style={styles.wrap}>
@@ -25,9 +29,11 @@ export function HeaderLogo({ size = 'default' }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
   },
   logo: {},
-});
+};
+}

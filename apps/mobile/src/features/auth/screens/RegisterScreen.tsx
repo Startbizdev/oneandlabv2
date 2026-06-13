@@ -1,7 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Shield } from 'lucide-react-native';
 import { FormScreen } from '@/components/layout/FormScreen';
@@ -25,7 +26,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
 import { offerBiometricEnrollment } from '@/features/auth/utils/offer-biometric-enrollment';
 import { registerHeaderTitle } from '@/navigation/RegisterHeaderTitle';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface RegisterScreenProps {
@@ -33,6 +34,7 @@ interface RegisterScreenProps {
 }
 
 export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
+  const styles = useThemedStyles(buildStyles, 'features_auth_screens_RegisterScreen_tsx_styles');
   const { email: emailParam } = useLocalSearchParams<{ email?: string }>();
   const role = roleProp ?? 'patient';
   const router = useRouter();
@@ -200,14 +202,14 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
             autoCapitalize="none"
             autoComplete="email"
           />
-          <View style={styles.row2}>
+          <Row gap={spacing[3]}>
             <View style={styles.half}>
               <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
             </View>
             <View style={styles.half}>
               <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
             </View>
-          </View>
+          </Row>
           <Input
             label="Téléphone"
             value={phone}
@@ -284,9 +286,8 @@ function buildStyles(c: AppColors) {
   form: {
     gap: spacing[3],
   },
-  row2: { flexDirection: 'row', gap: spacing[3] },
-  half: { flex: 1 },
-  loginLink: { alignItems: 'center', paddingTop: spacing[2] },
+  half: { minWidth: 0, flex: 1 },
+  loginLink: { alignItems: 'center' as const, paddingTop: spacing[2] },
   loginLinkText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
@@ -299,11 +300,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_auth_screens_RegisterScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

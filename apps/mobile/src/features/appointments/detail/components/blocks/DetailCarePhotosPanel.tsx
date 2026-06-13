@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -45,6 +46,8 @@ export function DetailCarePhotosPanel({
   readOnly,
   viewerRole = 'nurse',
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_blocks_DetailCarePhotosPanel_tsx_styles');
   const router = useRouter();
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -198,7 +201,7 @@ export function DetailCarePhotosPanel({
 
       {showEmptyReadOnly ? (
         <View style={styles.emptyCard}>
-          <Camera size={32} color={colors.textTertiary} strokeWidth={1.75} />
+          <Camera size={32} color={c.textTertiary} strokeWidth={1.75} />
           <Text style={styles.emptyTitle}>Aucune photo pour l’instant</Text>
           <Text style={styles.emptySub}>
             {viewerRole === 'pro'
@@ -222,9 +225,9 @@ export function DetailCarePhotosPanel({
               loading={uploadMut.isPending}
               leftIcon={
                 showOpenCta ? (
-                  <MessageCircle size={20} color={colors.textInverse} strokeWidth={2.25} />
+                  <MessageCircle size={20} color={c.textInverse} strokeWidth={2.25} />
                 ) : (
-                  <Upload size={20} color={colors.textInverse} strokeWidth={2.25} />
+                  <Upload size={20} color={c.textInverse} strokeWidth={2.25} />
                 )
               }
               onPress={onPrimaryPress}
@@ -282,12 +285,11 @@ function buildStyles(c: AppColors) {
     lineHeight: fontSize.sm * 1.5,
   },
   previewRail: {
-    flexDirection: 'row',
     gap: spacing[2.5],
     paddingVertical: spacing[1],
   },
   previewItem: {
-    alignItems: 'center',
+    alignItems: 'center' as const,
     gap: spacing[1.5],
     width: 72,
   },
@@ -304,7 +306,7 @@ function buildStyles(c: AppColors) {
     color: c.textTertiary,
   },
   emptyCard: {
-    alignItems: 'center',
+    alignItems: 'center' as const,
     gap: spacing[2.5],
     padding: spacing[6],
     backgroundColor: c.surface,
@@ -316,31 +318,31 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   emptySub: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: c.textTertiary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     lineHeight: fontSize.sm * 1.45,
   },
   ctaWrap: {
     gap: spacing[2],
   },
   ctaBadgeHost: {
-    position: 'relative',
+    position: 'relative' as const,
   },
   unreadBadge: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: -6,
     right: -4,
     minWidth: 22,
     height: 22,
     borderRadius: 11,
     backgroundColor: c.error,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     paddingHorizontal: 6,
     borderWidth: 2,
     borderColor: c.background,
@@ -355,18 +357,10 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     lineHeight: fontSize.xs * 1.45,
     paddingHorizontal: spacing[2],
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_blocks_DetailCarePhotosPanel_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

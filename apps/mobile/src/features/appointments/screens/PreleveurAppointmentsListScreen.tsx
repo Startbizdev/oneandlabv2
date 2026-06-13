@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -17,7 +19,7 @@ import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { appointmentAddressLine } from '@/utils/appointment-display';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 const CONFIRMED_STATUSES = new Set(['confirmed', 'in_progress', 'on_the_way']);
 
@@ -46,6 +48,8 @@ interface Props {
 }
 
 export function PreleveurAppointmentsListScreen({ detailPathPrefix }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_screens_PreleveurAppointmentsListScreen_tsx_PreleveurAppointmentsListScreen_styles');
+
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
   const [search, setSearch] = useState('');
@@ -125,9 +129,11 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   listContent: {
+    minWidth: 0,
     paddingHorizontal: spacing[4],
     paddingTop: 0,
     paddingBottom: spacing[8],
@@ -137,4 +143,5 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     marginTop: 0,
   },
-});
+};
+}

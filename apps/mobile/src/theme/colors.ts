@@ -194,7 +194,11 @@ export function getAppColors(): AppColors {
   return buildAppColorsSync(getColorblindType());
 }
 
-/** Compat : accès dynamique aux tokens (StyleSheet statiques inchangés). */
+/**
+ * Compat : accès dynamique aux tokens via Proxy.
+ * @deprecated Dans les composants React, préférer `useAppColors()` pour réagir au mode daltonien.
+ * OK pour config statique (navigation) et StyleSheet module-level en cours de migration.
+ */
 export const colors: AppColors = new Proxy({} as AppColors, {
   get(_target, prop: string | symbol) {
     if (typeof prop === 'string') {

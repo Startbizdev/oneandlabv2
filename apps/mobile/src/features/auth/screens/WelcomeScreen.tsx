@@ -1,6 +1,5 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
@@ -21,6 +20,7 @@ const LOGO = require('../../../../assets/logo-cary.png');
 
 export function WelcomeScreen() {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_auth_screens_WelcomeScreen_tsx_styles');
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -130,20 +130,21 @@ export function WelcomeScreen() {
 function buildStyles(c: AppColors) {
   return {
   root: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: c.background,
   },
   glowTop: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: -80,
-    alignSelf: 'center',
+    alignSelf: 'center' as const,
     width: 280,
     height: 280,
     borderRadius: 140,
     backgroundColor: 'rgba(28, 199, 181, 0.14)',
   },
   glowBottom: {
-    position: 'absolute',
+    position: 'absolute' as const,
     bottom: 120,
     right: -40,
     width: 200,
@@ -151,16 +152,18 @@ function buildStyles(c: AppColors) {
     borderRadius: 100,
     backgroundColor: 'rgba(22, 182, 214, 0.08)',
   },
-  safe: { flex: 1 },
+  safe: { minWidth: 0, flex: 1 },
   main: {
+    minWidth: 0,
     flex: 1,
     paddingHorizontal: spacing[6],
-    justifyContent: 'space-between',
+    justifyContent: 'space-between' as const,
   },
   hero: {
+    minWidth: 0,
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
     paddingTop: spacing[8],
     gap: spacing[5],
   },
@@ -172,7 +175,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize['2xl'],
     color: c.textPrimary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     lineHeight: fontSize['2xl'] * 1.3,
     letterSpacing: -0.4,
     maxWidth: 300,
@@ -204,18 +207,10 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     lineHeight: fontSize.xs * 1.55,
     paddingHorizontal: spacing[4],
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_auth_screens_WelcomeScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

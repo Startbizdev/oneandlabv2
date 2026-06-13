@@ -1,8 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { GENDER_OPTIONS } from '@/constants/pro-emploi';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -13,10 +14,11 @@ interface Props {
 }
 
 export function GenderSelect({ label = 'Genre', value, onChange, error }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_auth_components_GenderSelect_tsx_styles');
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <View style={styles.row}>
+      <Row wrap gap={spacing[2]}>
         {GENDER_OPTIONS.map((g) => {
           const active = value === g.value;
           return (
@@ -29,7 +31,7 @@ export function GenderSelect({ label = 'Genre', value, onChange, error }: Props)
             </Pressable>
           );
         })}
-      </View>
+      </Row>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
@@ -44,10 +46,9 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
     lineHeight: fontSize.base * 1.3,
   },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   chip: {
     minHeight: 44,
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[2.5],
     borderRadius: radius.full,
@@ -77,11 +78,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_auth_components_GenderSelect_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -1,14 +1,20 @@
-import { StyleSheet, View } from 'react-native';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+import { View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react-native';
+import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { updateAppointment } from '../../api/appointments.service';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 export function OfferActions({ appointmentId, onDone }: { appointmentId: string; onDone?: () => void }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'OfferActions');
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const mut = useMutation({
@@ -23,12 +29,12 @@ export function OfferActions({ appointmentId, onDone }: { appointmentId: string;
   });
 
   return (
-    <View style={styles.row}>
+    <Row gap={spacing[3]} style={styles.row}>
       <View style={styles.btn}>
         <Button
           title="Accepter"
           loading={mut.isPending}
-          leftIcon={<Check size={16} color={colors.textInverse} strokeWidth={2.5} />}
+          leftIcon={<Check size={16} color={c.textInverse} strokeWidth={2.5} />}
           onPress={() => mut.mutate('confirmed')}
           fullWidth
         />
@@ -38,19 +44,20 @@ export function OfferActions({ appointmentId, onDone }: { appointmentId: string;
           title="Refuser"
           variant="outline"
           loading={mut.isPending}
-          leftIcon={<X size={16} color={colors.error} strokeWidth={2.5} />}
+          leftIcon={<X size={16} color={c.error} strokeWidth={2.5} />}
           onPress={() => mut.mutate('refused')}
           fullWidth
         />
       </View>
-    </View>
+    </Row>
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    gap: spacing[3],
-  },
-  btn: { flex: 1 },
-});
+function buildStyles(_c: AppColors) {
+  return {
+    row: {
+      minWidth: 0,
+    },
+    btn: { minWidth: 0, flex: 1 },
+  };
+}

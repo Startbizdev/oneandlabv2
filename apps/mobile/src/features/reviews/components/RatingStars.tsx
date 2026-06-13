@@ -1,8 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { Star } from 'lucide-react-native';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { spacing } from '@/theme';
@@ -74,6 +75,7 @@ export function RatingStars({
   style,
 }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_reviews_components_RatingStars_tsx_styles');
   const starSize = SIZE_MAP[size];
   const gap = GAP_MAP[size];
   const touch = dense ? starSize + 2 : TOUCH_MAP[size];
@@ -81,7 +83,12 @@ export function RatingStars({
   const clamped = Math.min(max, Math.max(0, Math.round(value)));
 
   return (
-    <View style={[styles.row, centered && styles.rowCenter, { gap }, style]}>
+    <Row
+      align="center"
+      gap={gap}
+      justify={centered ? 'center' : undefined}
+      style={style}
+    >
       {Array.from({ length: max }, (_, i) => {
         const index = i + 1;
         const filled = !placeholder && index <= clamped;
@@ -128,19 +135,12 @@ export function RatingStars({
           {clamped}/{max}
         </Text>
       ) : null}
-    </View>
+    </Row>
   );
 }
 
 function buildStyles(c: AppColors) {
   return {
-    row: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-    },
-    rowCenter: {
-      justifyContent: 'center' as const,
-    },
     cell: {
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
@@ -158,13 +158,3 @@ function buildStyles(c: AppColors) {
   };
 }
 
-const styles = new Proxy({} as ReturnType<typeof buildStyles>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_reviews_components_RatingStars_tsx_styles', buildStyles)[
-        prop as keyof ReturnType<typeof buildStyles>
-      ];
-    }
-    return undefined;
-  },
-});

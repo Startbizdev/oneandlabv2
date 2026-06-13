@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -17,7 +19,7 @@ import {
   EMPTY_RDV_IMAGE_WIDTH,
 } from '@/constants/empty-state-images';
 import { fetchLabResults } from '../api/lab-results.service';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 type RoleMode = 'patient' | 'nurse' | 'pro';
 
@@ -27,6 +29,8 @@ interface Props {
 }
 
 export function LabResultsScreen({ role, rolePrefix }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_lab_results_screens_LabResultsScreen_tsx_LabResultsScreen_styles');
+
   const router = useRouter();
   const { show: toast } = useToast();
   const [search, setSearch] = useState('');
@@ -125,8 +129,9 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   searchWrap: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
@@ -134,8 +139,10 @@ const styles = StyleSheet.create({
   },
   loading: { paddingHorizontal: spacing[4] },
   empty: {
+    minWidth: 0,
     flex: 1,
     paddingHorizontal: spacing[4],
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
   },
-});
+};
+}

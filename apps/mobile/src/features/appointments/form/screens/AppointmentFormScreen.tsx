@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { spacing } from '@/theme';
@@ -23,19 +25,23 @@ interface Props {
   patientEmailOptional?: boolean;
 }
 
+
 export function AppointmentFormScreen(props: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_screens_AppointmentFormScreen_tsx_AppointmentFormScreen_styles');
+
   const f = useAppointmentForm(props);
 
   if (f.loading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
 
   return (
-    <FormScreen contentContainerStyle={styles.content} backgroundColor={colors.background}>
+    <FormScreen contentContainerStyle={styles.content} backgroundColor={c.background}>
       <FormPatientSection
         patients={f.patientOptions}
         patientMode={
@@ -97,7 +103,7 @@ export function AppointmentFormScreen(props: Props) {
           f.setValues((prev) => ({
             ...prev,
             files: { ...(prev.files ?? {}), [key]: file },
-          }))
+          } as typeof prev))
         }
       />
 
@@ -112,12 +118,14 @@ export function AppointmentFormScreen(props: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   loading: {
+    minWidth: 0,
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: c.background,
   },
   content: {
     paddingHorizontal: spacing[4],
@@ -125,4 +133,5 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[10],
     gap: spacing[5],
   },
-});
+};
+}

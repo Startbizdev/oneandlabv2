@@ -1,10 +1,11 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { type ReactElement, type ReactNode, useCallback } from 'react';
 import {
   ActivityIndicator,
   type FlatListProps,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   View,
 } from 'react-native';
 import { FlashList, type ListRenderItem } from '@shopify/flash-list';
@@ -43,6 +44,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
   ...flatListProps
 }: Props<TPage, Item>) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'InfiniteQueryFlatList');
   const { refreshing, onRefresh } = useManualRefresh(query.refetch);
 
   const loadMore = useCallback(() => {
@@ -142,22 +144,27 @@ export function InfiniteQueryFlatList<TPage, Item>({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  skeleton: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    flex: 1,
-  },
-  listContent: {
-    flexGrow: 1,
-  },
-  emptyScrollContent: {
-    flexGrow: 1,
-    paddingBottom: spacing[8],
-  },
-  footerLoader: {
-    paddingVertical: spacing[4],
-    alignItems: 'center',
-  },
-});
+function buildStyles(_c: AppColors) {
+  return {
+    root: { minWidth: 0, flex: 1 },
+    skeleton: {
+      minWidth: 0,
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[2],
+      flex: 1,
+    },
+    listContent: {
+      minWidth: 0,
+      flexGrow: 1,
+    },
+    emptyScrollContent: {
+      minWidth: 0,
+      flexGrow: 1,
+      paddingBottom: spacing[8],
+    },
+    footerLoader: {
+      paddingVertical: spacing[4],
+      alignItems: 'center' as const,
+    },
+  };
+}

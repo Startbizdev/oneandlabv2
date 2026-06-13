@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import React, { useCallback, useState } from 'react';
 import {
   Platform,
@@ -24,13 +25,16 @@ function TextareaComponent(
   { label, error, hint, onFocus, onBlur, style, ...props }: TextareaProps,
   ref: React.ForwardedRef<TextInput>,
 ) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_ui_Textarea_tsx_styles');
+
   const [isFocused, setIsFocused] = useState(false);
   const TextField = useSheetTextInputComponent();
   const borderColor = error
-    ? colors.borderError
+    ? c.borderError
     : isFocused
-      ? colors.borderFocus
-      : colors.border;
+      ? c.borderFocus
+      : c.border;
 
   const handleFocus = useCallback(
     (e: Parameters<NonNullable<TextInputProps['onFocus']>>[0]) => {
@@ -61,7 +65,7 @@ function TextareaComponent(
         ]}
       >
         <TextField
-          ref={ref}
+          ref={ref as never}
           multiline
           numberOfLines={5}
           textAlignVertical="top"
@@ -69,9 +73,9 @@ function TextareaComponent(
           onBlur={handleBlur}
           accessibilityLabel={props.accessibilityLabel ?? label}
           style={[styles.input, style]}
-          placeholderTextColor={colors.textTertiary}
-          selectionColor={colors.primary}
-          cursorColor={colors.primary}
+          placeholderTextColor={c.textTertiary}
+          selectionColor={c.primary}
+          cursorColor={c.primary}
           {...props}
         />
       </View>
@@ -108,9 +112,10 @@ function buildStyles(c: AppColors) {
     borderWidth: 1,
     borderColor: c.border,
     minHeight: 128,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   input: {
+    minWidth: 0,
     flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.base,
@@ -135,11 +140,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('components_ui_Textarea_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

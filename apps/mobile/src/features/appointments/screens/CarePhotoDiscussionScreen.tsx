@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -21,6 +22,7 @@ import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Maximize2, Plus, Send } from 'lucide-react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { ScreenActionLayout } from '@/components/layout/ScreenActionLayout';
 import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
@@ -89,7 +91,10 @@ function sortedComments(comments: CarePhotoComment[] | undefined): CarePhotoComm
   );
 }
 
-export function CarePhotoDiscussionScreen({ role }: Props) {
+export function CarePhotoDiscussionScreen({
+  role }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_screens_CarePhotoDiscussionScreen_tsx_styles');
   const { id: appointmentId } = useLocalSearchParams<{ id: string; photoId?: string }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -243,17 +248,17 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
   if (detailBlock) {
     return (
       <View style={styles.root}>
-        <View style={[styles.header, { paddingTop: insets.top + spacing[1] }]}>
+        <Row align="center" style={[styles.header, { paddingTop: insets.top + spacing[1] }]}>
           <Pressable
             onPress={() => router.back()}
             style={styles.backBtn}
             accessibilityRole="button"
             accessibilityLabel="Retour"
           >
-            <ChevronLeft size={24} color={colors.textPrimary} strokeWidth={2.25} />
+            <ChevronLeft size={24} color={c.textPrimary} strokeWidth={2.25} />
           </Pressable>
           <View style={styles.headerSpacer} />
-        </View>
+        </Row>
         <AppointmentDetailBlockedEmptyState
           onBack={() => router.back()}
           block={detailBlock}
@@ -264,18 +269,21 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
 
   return (
     <View style={styles.root}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing[1] }]}>
+      <Row align="center" style={[styles.header, { paddingTop: insets.top + spacing[1] }]}>
         <Pressable
           onPress={() => router.back()}
           style={styles.backBtn}
           accessibilityRole="button"
           accessibilityLabel="Retour"
         >
-          <ChevronLeft size={24} color={colors.textPrimary} strokeWidth={2.25} />
+          <ChevronLeft size={24} color={c.textPrimary} strokeWidth={2.25} />
         </Pressable>
-        <View style={styles.headerIdentity}>
-          {patientHeader?.name ? (
-            <>
+        <Cluster
+          gap={spacing[3]}
+          align="center"
+          style={styles.headerIdentity}
+          leading={
+            patientHeader?.name ? (
               <ProfileAvatar
                 profileImageUrl={patientHeader.profileImageUrl}
                 seed={patientHeader.name || apt?.id || appointmentId}
@@ -283,29 +291,32 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
                 size={HEADER_AVATAR}
                 style={styles.headerAvatar}
               />
-              <View style={styles.headerCopy}>
-                <Text style={styles.headerPatientName} numberOfLines={1}>
-                  {patientHeader.name}
-                </Text>
-                <Text style={styles.headerSub}>{headerSubtitle}</Text>
-              </View>
-            </>
+            ) : undefined
+          }
+        >
+          {patientHeader?.name ? (
+            <View style={styles.headerCopy}>
+              <Text style={styles.headerPatientName} numberOfLines={1}>
+                {patientHeader.name}
+              </Text>
+              <Text style={styles.headerSub}>{headerSubtitle}</Text>
+            </View>
           ) : (
             <View style={styles.headerCopy}>
               <Text style={styles.headerTitle}>Échanges</Text>
               <Text style={styles.headerSub}>{headerSubtitle}</Text>
             </View>
           )}
-        </View>
+        </Cluster>
         <View style={styles.headerSpacer} />
-      </View>
+      </Row>
 
       <ScreenActionLayout
         style={styles.flex}
         footer={
           showComposer ? (
             <KeyboardStickyView offset={{ closed: 0, opened: footerInset }}>
-              <View style={[styles.composerBar, { paddingBottom: footerInset }]}>
+              <Row align="end" gap={spacing[2]} style={[styles.composerBar, { paddingBottom: footerInset }]}>
                 {canUpload ? (
                   <Pressable
                     style={styles.attachBtn}
@@ -315,9 +326,9 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
                     accessibilityLabel="Ajouter une photo ou un document"
                   >
                     {uploadMut.isPending ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
+                      <ActivityIndicator size="small" color={c.primary} />
                     ) : (
-                      <Plus size={24} color={colors.primary} strokeWidth={2.25} />
+                      <Plus size={24} color={c.primary} strokeWidth={2.25} />
                     )}
                   </Pressable>
                 ) : null}
@@ -326,7 +337,7 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
                     <TextInput
                       style={styles.input}
                       placeholder={carePhotoComposerPlaceholder(role)}
-                      placeholderTextColor={colors.textTertiary}
+                      placeholderTextColor={c.textTertiary}
                       value={draft}
                       onChangeText={setDraft}
                       multiline
@@ -346,16 +357,16 @@ export function CarePhotoDiscussionScreen({ role }: Props) {
                       accessibilityLabel="Envoyer le message"
                     >
                       {sendMut.isPending ? (
-                        <ActivityIndicator size="small" color={colors.textInverse} />
+                        <ActivityIndicator size="small" color={c.textInverse} />
                       ) : (
-                        <Send size={20} color={colors.textInverse} strokeWidth={2.25} />
+                        <Send size={20} color={c.textInverse} strokeWidth={2.25} />
                       )}
                     </Pressable>
                   </>
                 ) : (
                   <Text style={styles.readOnlyHint}>Lecture seule</Text>
                 )}
-              </View>
+              </Row>
             </KeyboardStickyView>
           ) : undefined
         }
@@ -434,6 +445,8 @@ function PhotoThreadBlock({
   isMine: (authorId: string) => boolean;
   onZoom: () => void;
 }) {
+  const appColors = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'CarePhotoDiscussionScreen.PhotoThreadBlock');
   const comments = sortedComments(photo.comments);
 
   return (
@@ -451,10 +464,10 @@ function PhotoThreadBlock({
         accessibilityLabel={`Ouvrir le fichier ${index + 1}`}
       >
         {!isCarePhotoPdf(photo) ? (
-          <View style={styles.zoomPill}>
-            <Maximize2 size={14} color={colors.textInverse} strokeWidth={2.5} />
+          <Row align="center" gap={5} style={styles.zoomPill}>
+            <Maximize2 size={14} color={appColors.textInverse} strokeWidth={2.5} />
             <Text style={styles.zoomPillText}>Agrandir</Text>
-          </View>
+          </Row>
         ) : null}
       </CarePhotoAttachment>
 
@@ -469,12 +482,12 @@ function PhotoThreadBlock({
                 key={c.id}
                 style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
               >
-                <View style={styles.bubbleMeta}>
+                <Row justify="between" gap={spacing[2]} style={styles.bubbleMeta}>
                   <Text style={[styles.author, mine && styles.authorMine]}>{c.author_name}</Text>
                   <Text style={[styles.time, mine && styles.timeMine]}>
                     {formatShortDate(c.created_at)}
                   </Text>
-                </View>
+                </Row>
                 <Text style={[styles.body, mine && styles.bodyMine]}>{c.body}</Text>
               </View>
             );
@@ -488,14 +501,16 @@ function PhotoThreadBlock({
 function buildStyles(c: AppColors) {
   return {
   root: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: c.background,
   },
-  flex: { flex: 1 },
+  flex: { minWidth: 0, flex: 1 },
   errorWrap: {
+    minWidth: 0,
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     padding: spacing[6],
   },
   errorText: {
@@ -504,8 +519,7 @@ function buildStyles(c: AppColors) {
     color: c.textSecondary,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    minWidth: 0,
     paddingHorizontal: spacing[2],
     paddingBottom: spacing[3],
     backgroundColor: c.surface,
@@ -514,9 +528,6 @@ function buildStyles(c: AppColors) {
   },
   headerIdentity: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     minWidth: 0,
     paddingRight: spacing[1],
   },
@@ -526,13 +537,13 @@ function buildStyles(c: AppColors) {
   backBtn: {
     width: 44,
     height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   headerCopy: {
     flex: 1,
     minWidth: 0,
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
     gap: 2,
   },
   headerSpacer: { width: 44 },
@@ -565,7 +576,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.surface,
     borderWidth: 1,
     borderColor: c.borderLight,
-    alignItems: 'center',
+    alignItems: 'center' as const,
     gap: spacing[2],
   },
   emptyTitle: {
@@ -577,7 +588,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: c.textTertiary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     lineHeight: fontSize.sm * 1.45,
   },
   photoBlock: {
@@ -595,7 +606,7 @@ function buildStyles(c: AppColors) {
     marginTop: -4,
   },
   heroImageWrap: {
-    width: '100%',
+    width: '100%' as const,
     aspectRatio: 1,
     borderRadius: radius['2xl'],
     ...Platform.select({
@@ -609,12 +620,10 @@ function buildStyles(c: AppColors) {
     }),
   },
   zoomPill: {
-    position: 'absolute',
+    minWidth: 0,
+    position: 'absolute' as const,
     bottom: spacing[3],
     right: spacing[3],
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
     paddingHorizontal: spacing[3],
     paddingVertical: 6,
     borderRadius: radius.full,
@@ -633,27 +642,25 @@ function buildStyles(c: AppColors) {
   },
   thread: { gap: spacing[2] },
   bubble: {
-    maxWidth: '88%',
+    maxWidth: '88%' as const,
     borderRadius: radius.xl,
     paddingHorizontal: spacing[3.5],
     paddingVertical: spacing[2.5],
   },
   bubbleMine: {
-    alignSelf: 'flex-end',
+    alignSelf: 'flex-end' as const,
     backgroundColor: c.primary,
     borderBottomRightRadius: radius.sm,
   },
   bubbleOther: {
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-start' as const,
     backgroundColor: c.surface,
     borderWidth: 1,
     borderColor: c.borderLight,
     borderBottomLeftRadius: radius.sm,
   },
   bubbleMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing[2],
+    minWidth: 0,
     marginBottom: 4,
   },
   author: {
@@ -676,9 +683,7 @@ function buildStyles(c: AppColors) {
   },
   bodyMine: { color: c.textInverse },
   composerBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing[2],
+    minWidth: 0,
     paddingHorizontal: spacing[3],
     paddingTop: spacing[2],
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -690,11 +695,12 @@ function buildStyles(c: AppColors) {
     height: 44,
     borderRadius: radius.lg,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     marginBottom: 2,
   },
   input: {
+    minWidth: 0,
     flex: 1,
     minHeight: 44,
     maxHeight: 120,
@@ -713,27 +719,20 @@ function buildStyles(c: AppColors) {
     height: 44,
     borderRadius: radius.lg,
     backgroundColor: c.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     marginBottom: 2,
   },
   sendDisabled: { opacity: 0.45 },
   readOnlyHint: {
+    minWidth: 0,
     flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     paddingVertical: spacing[3],
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_screens_CarePhotoDiscussionScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

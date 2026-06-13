@@ -1,7 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import {
   NURSING_DURATION_OPTIONS,
   NURSING_FREQUENCY_OPTIONS,
@@ -19,7 +20,7 @@ import { Input } from '@/components/ui/Input';
 import type { CareCategory, CareCategoryOption } from '@/features/categories/api/categories.service';
 import type { BookingServiceFormSlice } from '../utils/booking-service-form-slice';
 import { resolveRdvCareDisplayLabel } from '@/utils/rdv-care-display-label';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const BLOOD_TEST_TYPE_OPTIONS = [
@@ -60,13 +61,14 @@ function OptionSelect({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const styles = useThemedStyles(buildStyles, 'CareServiceQuickOptionsSheet.OptionSelect');
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>
         {label}
         {required ? ' *' : ''}
       </Text>
-      <View style={styles.pillRow}>
+      <Row wrap gap={spacing[2]}>
         {items.map((item) => {
           const on = value === item.value;
           return (
@@ -82,7 +84,7 @@ function OptionSelect({
             </Pressable>
           );
         })}
-      </View>
+      </Row>
     </View>
   );
 }
@@ -96,6 +98,7 @@ export function CareServiceQuickOptionsSheet({
   onDismissed,
   onConfirm,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_CareServiceQuickOptionsSheet_tsx_styles');
   const [localError, setLocalError] = useState('');
   const [careOptions, setCareOptions] = useState<Record<string, string | number>>({});
   const [bloodTestType, setBloodTestType] = useState('single');
@@ -384,10 +387,9 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
     lineHeight: fontSize.base * 1.3,
   },
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   pill: {
     minHeight: 44,
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2.5],
     borderRadius: radius.lg,
@@ -410,11 +412,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_CareServiceQuickOptionsSheet_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

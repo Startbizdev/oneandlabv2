@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -26,6 +28,8 @@ export function PatientAiChatFooter({
   canSend,
   disabled,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_ai_hub_components_PatientAiChatFooter_tsx_PatientAiChatFooter_styles');
+
   const tabBarHeight = useBottomTabBarHeight();
   const [inputFocused, setInputFocused] = useState(false);
 
@@ -54,17 +58,7 @@ export function PatientAiChatFooter({
   );
 }
 
-const styles = StyleSheet.create({
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  footerInner: {
-    width: '100%',
-  },
-});
+
 
 /** Hauteur footer avec bandeau démo (référence padding liste). */
 export const PATIENT_AI_FOOTER_HEIGHT_WITH_BANNER =
@@ -72,3 +66,17 @@ export const PATIENT_AI_FOOTER_HEIGHT_WITH_BANNER =
 
 /** Hauteur footer clavier ouvert (sans bandeau). */
 export const PATIENT_AI_FOOTER_HEIGHT_COMPACT = PATIENT_AI_COMPOSER_DOCK_HEIGHT;
+
+function buildStyles(c: AppColors) {
+  return {
+  footer: {
+    position: 'absolute' as const,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  footerInner: {
+    width: '100%' as const,
+  },
+};
+}

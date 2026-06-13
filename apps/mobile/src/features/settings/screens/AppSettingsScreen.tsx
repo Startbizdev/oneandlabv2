@@ -1,5 +1,8 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import { Eye, Smartphone, Type } from 'lucide-react-native';
@@ -24,8 +27,10 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function AppSettingsScreen() {
-  const { show: toast } = useToast();
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_settings_screens_AppSettingsScreen_tsx_AppSettingsScreen_styles');
+
+  const { show: toast } = useToast();
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
   const colorblindMode = colorblindType !== 'off';
   const pushEnabled = useAppPreferencesStore((s) => s.pushNotificationsEnabled);
@@ -149,12 +154,17 @@ export function AppSettingsScreen() {
   return (
     <ProfileSubScreenLayout hideSave>
       <View style={[previewStyles(c).card, elevation.xs]}>
-        <View style={styles.cardHeader}>
-          <View style={previewStyles(c).iconWrap}>
-            <Smartphone size={20} color={c.primary} strokeWidth={2} />
-          </View>
+        <Cluster
+          gap={spacing[3]}
+          style={styles.cardHeader}
+          leading={
+            <View style={previewStyles(c).iconWrap}>
+              <Smartphone size={20} color={c.primary} strokeWidth={2} />
+            </View>
+          }
+        >
           <Text style={previewStyles(c).cardTitle}>Application</Text>
-        </View>
+        </Cluster>
 
         <ProfileToggleRow
           label="Notifications push"
@@ -167,10 +177,10 @@ export function AppSettingsScreen() {
         <View style={[styles.divider, { backgroundColor: c.border }]} />
 
         <View style={styles.typeBlock}>
-          <View style={styles.textScaleHeader}>
+          <Row gap={spacing[2]} align="center">
             <Type size={18} color={c.primary} strokeWidth={2} />
             <Text style={[styles.typeLabel, { color: c.textSecondary }]}>Taille du texte</Text>
-          </View>
+          </Row>
           <View style={styles.typeRow}>
             {TEXT_SCALE_OPTIONS.map((opt) => {
               const active = textScale === opt.value;
@@ -255,7 +265,7 @@ export function AppSettingsScreen() {
           </View>
         ) : null}
 
-        <View style={previewStyles(c).swatchRow}>
+        <Row wrap gap={spacing[2]} style={previewStyles(c).swatchRow}>
           <View style={[previewStyles(c).swatch, { backgroundColor: c.successLight }]}>
             <Text style={[previewStyles(c).swatchLabel, { color: c.success }]}>Succès</Text>
             <Text style={[previewStyles(c).swatchValue, { color: c.success }]}>●</Text>
@@ -272,17 +282,20 @@ export function AppSettingsScreen() {
             <Text style={[previewStyles(c).swatchLabel, { color: c.primary }]}>Primaire</Text>
             <Text style={[previewStyles(c).swatchValue, { color: c.primary }]}>●</Text>
           </View>
-        </View>
+        </Row>
       </View>
 
-      <View style={[styles.infoCard, elevation.xs, { backgroundColor: c.surfaceSubtle }]}>
-        <Eye size={18} color={c.textSecondary} strokeWidth={2} />
+      <Cluster
+        gap={spacing[3]}
+        style={[styles.infoCard, elevation.xs, { backgroundColor: c.surfaceSubtle }]}
+        leading={<Eye size={18} color={c.textSecondary} strokeWidth={2} />}
+      >
         <Text style={[styles.infoText, { color: c.textSecondary }]}>
           Cary ajuste les couleurs des statuts, badges et boutons pour les rendre plus faciles à
           lire. Chaque statut reste aussi décrit par un libellé texte — la couleur n’est qu’un
           complément visuel.
         </Text>
-      </View>
+      </Cluster>
 
       {Platform.OS === 'ios' && pushEnabled ? (
         <Text
@@ -319,9 +332,6 @@ function previewStyles(c: ReturnType<typeof useAppColors>) {
       color: c.textPrimary,
     },
     swatchRow: {
-      flexDirection: 'row' as const,
-      flexWrap: 'wrap' as const,
-      gap: spacing[2],
       marginTop: spacing[2],
     },
     swatch: {
@@ -342,11 +352,9 @@ function previewStyles(c: ReturnType<typeof useAppColors>) {
   };
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     marginBottom: spacing[2],
   },
   divider: {
@@ -356,11 +364,6 @@ const styles = StyleSheet.create({
   typeBlock: {
     gap: spacing[2],
     marginTop: spacing[2],
-  },
-  textScaleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
   },
   typeLabel: {
     fontFamily: fontFamily.medium,
@@ -385,22 +388,20 @@ const styles = StyleSheet.create({
     lineHeight: fontSize.xs * 1.4,
   },
   infoCard: {
-    flexDirection: 'row',
-    gap: spacing[3],
     borderRadius: radius.lg,
     padding: spacing[4],
     marginTop: spacing[4],
   },
   infoText: {
-    flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     lineHeight: 20,
   },
   link: {
     marginTop: spacing[4],
-    textAlign: 'center',
+    textAlign: 'center' as const,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
   },
-});
+};
+}

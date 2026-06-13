@@ -10,7 +10,7 @@ import {
   type ReviewFormState,
   type ReviewRow,
 } from './use-patient-review-prompt';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { AppColors } from '@/theme/colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { spacing } from '@/theme';
@@ -36,6 +36,7 @@ export function PatientReviewPromptSheet({
   onCommentChange,
   submitReview,
 }: Props) {
+  const sheetStyles = useThemedStyles(buildSheetStyles, 'PatientReviewPromptSheet');
   if (!appt) return null;
 
   const proName = revieweeFirstName(appt);
@@ -127,15 +128,3 @@ function buildSheetStyles(c: AppColors) {
     },
   };
 }
-
-const sheetStyles = new Proxy({} as ReturnType<typeof buildSheetStyles>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles(
-        'features_appointments_detail_components_patient_PatientReviewPromptSheet_tsx_styles',
-        buildSheetStyles,
-      )[prop as keyof ReturnType<typeof buildSheetStyles>];
-    }
-    return undefined;
-  },
-});

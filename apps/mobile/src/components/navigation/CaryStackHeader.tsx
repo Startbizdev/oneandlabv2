@@ -1,6 +1,9 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { getDefaultHeaderHeight, getHeaderTitle } from '@react-navigation/elements';
 import { Platform, StyleSheet, Text, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import type { NativeStackHeaderProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaryHeaderBackground } from '@/components/navigation/CaryHeaderBackground';
@@ -19,6 +22,9 @@ const STATUS_BAR_OFFSET = Platform.select({ ios: -7, default: 0 });
  * Header stack Cary — layout pleine largeur pour le titre (pas de coupure à 50 %).
  */
 export function CaryStackHeader({ options, route, back, navigation }: NativeStackHeaderProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_navigation_CaryStackHeader_tsx_CaryStackHeader_styles');
+
   const insets = useSafeAreaInsets();
   const layout = useWindowDimensions();
   const innerBottom = APP_HEADER_INNER_BOTTOM;
@@ -26,14 +32,13 @@ export function CaryStackHeader({ options, route, back, navigation }: NativeStac
   const statusBarSpacing = Math.max(insets.top + (STATUS_BAR_OFFSET ?? 0), 0);
 
   const titleText = getHeaderTitle(options, route.name);
-  const tintColor = options.headerTintColor ?? colors.primary;
+  const tintColor = options.headerTintColor ?? c.primary;
 
   const headerLeftNode =
     options.headerLeft !== undefined
       ? options.headerLeft({
           tintColor,
           canGoBack: Boolean(back),
-          onPress: back ? () => navigation.goBack() : undefined,
           label: back?.title,
         })
       : back
@@ -45,7 +50,6 @@ export function CaryStackHeader({ options, route, back, navigation }: NativeStac
       ? options.headerTitle({
           children: titleText,
           tintColor,
-          style: options.headerTitleStyle,
         })
       : (options.headerTitle ?? titleText);
 
@@ -65,7 +69,7 @@ export function CaryStackHeader({ options, route, back, navigation }: NativeStac
     <View style={[styles.root, { height: headerHeight }]}>
       <CaryHeaderBackground style={StyleSheet.absoluteFillObject as StyleProp<ViewStyle>} />
       <View style={[styles.content, { marginTop: statusBarSpacing, paddingBottom: innerBottom }]}>
-        <View style={[styles.row, { paddingRight: padRight }]}>
+        <Row align="center" gap={APP_HEADER_BACK_TITLE_GAP} style={[styles.row, { paddingRight: padRight }]}>
           {headerLeftNode ? (
             <View style={[styles.side, { paddingLeft: padLeft }]}>{headerLeftNode}</View>
           ) : null}
@@ -85,25 +89,24 @@ export function CaryStackHeader({ options, route, back, navigation }: NativeStac
           </View>
 
           {headerRightNode ? <View style={styles.side}>{headerRightNode}</View> : null}
-        </View>
+        </Row>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   root: {
-    width: '100%',
+    width: '100%' as const,
     backgroundColor: 'transparent',
   },
   content: {
+    minWidth: 0,
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: APP_HEADER_BACK_TITLE_GAP,
     minHeight: 44,
   },
   side: {
@@ -112,12 +115,13 @@ const styles = StyleSheet.create({
   titleSlot: {
     flex: 1,
     minWidth: 0,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
+    justifyContent: 'center' as const,
+    alignItems: 'flex-start' as const,
   },
   titleText: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
-});
+};
+}

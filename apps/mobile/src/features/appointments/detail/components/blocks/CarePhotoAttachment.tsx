@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,6 +16,7 @@ import { Download, FileText, ImageOff, Maximize2, RefreshCw } from 'lucide-react
 import type { CarePhotoRow } from '../../api/appointment-detail.service';
 import { carePhotoAttachmentLabel, isCarePhotoPdf } from '../../utils/care-photo-file';
 import { loadCarePhotoLocalUri } from '../../utils/care-photo-image';
+import { Row } from '@/components/layout/primitives';
 import { CarePhotoImage } from './CarePhotoImage';
 import { exportLocalFile } from '@/lib/downloads/open-local-file';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
@@ -37,6 +39,7 @@ export function CarePhotoAttachment({
   accessibilityLabel,
   children,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_blocks_CarePhotoAttachment_tsx_styles');
   const { show: toast } = useToast();
   const isPdf = isCarePhotoPdf(photo);
 
@@ -80,6 +83,8 @@ function CarePhotoPdfCard({
   toast: (msg: string, opts?: { type?: 'success' | 'warning' | 'error' }) => void;
   children?: React.ReactNode;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'CarePhotoPdfCard');
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -152,29 +157,29 @@ function CarePhotoPdfCard({
       >
         {loading ? (
           <View style={styles.center}>
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color={c.primary} />
           </View>
         ) : failed ? (
           <Pressable style={styles.center} onPress={retry} accessibilityRole="button">
-            <ImageOff size={22} color={colors.textTertiary} strokeWidth={1.75} />
+            <ImageOff size={22} color={c.textTertiary} strokeWidth={1.75} />
             <Text style={styles.failText}>Document indisponible</Text>
-            <View style={styles.retryRow}>
-              <RefreshCw size={12} color={colors.primary} strokeWidth={2.5} />
+            <Row gap={4} align="center" style={styles.retryRow}>
+              <RefreshCw size={12} color={c.primary} strokeWidth={2.5} />
               <Text style={styles.retryText}>Réessayer</Text>
-            </View>
+            </Row>
           </Pressable>
         ) : (
           <View style={styles.pdfBody}>
             <View style={styles.pdfIconBox}>
-              <FileText size={32} color={colors.primary} strokeWidth={1.75} />
+              <FileText size={32} color={c.primary} strokeWidth={1.75} />
             </View>
             <Text style={styles.pdfName} numberOfLines={2}>
               {label}
             </Text>
-            <View style={styles.openRow}>
-              <Maximize2 size={14} color={colors.primary} strokeWidth={2.5} />
+            <Row gap={6} align="center" style={styles.openRow}>
+              <Maximize2 size={14} color={c.primary} strokeWidth={2.5} />
               <Text style={styles.openText}>Aperçu</Text>
-            </View>
+            </Row>
             <Pressable
               style={styles.downloadBtn}
               onPress={(e) => {
@@ -186,21 +191,21 @@ function CarePhotoPdfCard({
               accessibilityLabel={`Télécharger ${label}`}
             >
               {downloading ? (
-                <ActivityIndicator size="small" color={colors.textSecondary} />
+                <ActivityIndicator size="small" color={c.textSecondary} />
               ) : (
-                <>
-                  <Download size={14} color={colors.textSecondary} strokeWidth={2.5} />
+                <Row gap={6} align="center">
+                  <Download size={14} color={c.textSecondary} strokeWidth={2.5} />
                   <Text style={styles.downloadText}>Télécharger</Text>
-                </>
+                </Row>
               )}
             </Pressable>
           </View>
         )}
         {!loading && !failed ? (
-          <View style={styles.zoomPill}>
-            <Maximize2 size={14} color={colors.textInverse} strokeWidth={2.5} />
+          <Row gap={5} align="center" style={styles.zoomPill}>
+            <Maximize2 size={14} color={c.textInverse} strokeWidth={2.5} />
             <Text style={styles.zoomPillText}>Aperçu</Text>
-          </View>
+          </Row>
         ) : null}
         {children}
       </Pressable>
@@ -220,7 +225,7 @@ function CarePhotoPdfCard({
 function buildStyles(c: AppColors) {
   return {
   pdfWrap: {
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     backgroundColor: c.surfaceAlt,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -228,10 +233,11 @@ function buildStyles(c: AppColors) {
     minHeight: 160,
   },
   center: {
+    minWidth: 0,
     flex: 1,
     minHeight: 160,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     gap: 6,
     padding: spacing[4],
   },
@@ -239,12 +245,9 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   retryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     marginTop: 2,
   },
   retryText: {
@@ -253,10 +256,11 @@ function buildStyles(c: AppColors) {
     color: c.primary,
   },
   pdfBody: {
+    minWidth: 0,
     flex: 1,
     minHeight: 160,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     padding: spacing[5],
     gap: spacing[2],
   },
@@ -265,19 +269,16 @@ function buildStyles(c: AppColors) {
     height: 64,
     borderRadius: radius.xl,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   pdfName: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   openRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     marginTop: spacing[1],
   },
   openText: {
@@ -286,9 +287,6 @@ function buildStyles(c: AppColors) {
     color: c.primary,
   },
   downloadBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     marginTop: spacing[2],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[1.5],
@@ -303,12 +301,9 @@ function buildStyles(c: AppColors) {
     color: c.textSecondary,
   },
   zoomPill: {
-    position: 'absolute',
+    position: 'absolute' as const,
     bottom: spacing[3],
     right: spacing[3],
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
     paddingHorizontal: spacing[3],
     paddingVertical: 6,
     borderRadius: radius.full,
@@ -322,11 +317,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_blocks_CarePhotoAttachment_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

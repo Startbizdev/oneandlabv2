@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -9,6 +11,7 @@ import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { MessageSquare } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 
 interface Props {
   visible: boolean;
@@ -29,6 +32,9 @@ export function ReviewReplySheet({
   onSubmit,
   submitting,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_reviews_components_ReviewReplySheet_tsx_ReviewReplySheet_styles');
+
   if (!review) return null;
 
   return (
@@ -37,7 +43,7 @@ export function ReviewReplySheet({
       onClose={onClose}
       title="Répondre à l'avis"
       subtitle={reviewerDisplayName(review)}
-      headerIcon={<MessageSquare size={20} color={colors.primary} strokeWidth={2} />}
+      headerIcon={<MessageSquare size={20} color={c.primary} strokeWidth={2} />}
     >
       <View style={styles.preview}>
         <ReviewStars rating={review.rating ?? 0} size={14} />
@@ -55,7 +61,7 @@ export function ReviewReplySheet({
         style={styles.input}
       />
       <Text style={styles.hint}>Votre réponse sera visible sur votre fiche publique Cary.</Text>
-      <View style={styles.actions}>
+      <Row gap={spacing[3]} style={styles.actions}>
         <View style={styles.actionBtn}>
           <Button title="Annuler" variant="outline" onPress={onClose} fullWidth size="lg" />
         </View>
@@ -68,41 +74,41 @@ export function ReviewReplySheet({
             fullWidth
           />
         </View>
-      </View>
+      </Row>
     </BottomSheet>
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   preview: {
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surfaceAlt,
     borderRadius: radius.lg,
     padding: spacing[3],
     gap: spacing[2],
     borderLeftWidth: 3,
-    borderLeftColor: colors.star,
+    borderLeftColor: c.star,
   },
   previewComment: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.sm * 1.5,
-    fontStyle: 'italic',
+    fontStyle: 'italic' as const,
   },
-  input: { minHeight: 120, textAlignVertical: 'top' },
+  input: { minHeight: 120, textAlignVertical: 'top' as const },
   hint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     lineHeight: fontSize.xs * 1.45,
   },
   actions: {
-    flexDirection: 'row',
-    gap: spacing[3],
     marginTop: spacing[2],
     paddingTop: spacing[3],
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
-  actionBtn: { flex: 1 },
-});
+  actionBtn: { minWidth: 0, flex: 1 },
+};
+}

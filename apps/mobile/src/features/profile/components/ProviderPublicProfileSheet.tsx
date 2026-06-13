@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -11,6 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -96,6 +98,7 @@ function ProfileSection({
   title: string;
   children: React.ReactNode;
 }) {
+  const styles = useThemedStyles(buildStyles, 'ProviderPublicProfileSheet.ProfileSection');
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -112,6 +115,8 @@ export function ProviderPublicProfileSheet({
   title,
   phone,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProviderPublicProfileSheet_tsx_styles');
   const trimmedSlug = slug.trim();
   const profileQ = useQuery({
     queryKey: queryKeys.profile.publicProvider(providerType, trimmedSlug),
@@ -182,7 +187,7 @@ export function ProviderPublicProfileSheet({
     >
       {profileQ.isLoading ? (
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={c.primary} />
           <Text style={styles.stateText}>Chargement du profil…</Text>
         </View>
       ) : null}
@@ -212,7 +217,7 @@ export function ProviderPublicProfileSheet({
               <Image source={{ uri: coverSrc }} style={styles.coverImage} resizeMode="cover" />
             ) : (
               <LinearGradient
-                colors={[colors.gradientStart, colors.gradientEnd]}
+                colors={[c.gradientStart, c.gradientEnd]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
@@ -232,7 +237,7 @@ export function ProviderPublicProfileSheet({
                 />
               ) : (
                 <View style={[styles.avatar, styles.avatarFallback]}>
-                  <FallbackIcon size={36} color={colors.textTertiary} strokeWidth={1.75} />
+                  <FallbackIcon size={36} color={c.textTertiary} strokeWidth={1.75} />
                 </View>
               )}
               {providerType === 'nurse' && nurseMeta ? (
@@ -270,12 +275,12 @@ export function ProviderPublicProfileSheet({
           </View>
 
           {dialPhone ? (
-            <View style={styles.contactRow}>
+            <Row justify="center" gap={spacing[2]} style={styles.contactRow}>
               <Button
                 title="Appeler"
                 variant="outline"
                 size="sm"
-                leftIcon={<Phone size={16} color={colors.primary} strokeWidth={2} />}
+                leftIcon={<Phone size={16} color={c.primary} strokeWidth={2} />}
                 onPress={() => void Linking.openURL(`tel:${dialPhone}`)}
                 style={styles.contactBtn}
               />
@@ -283,11 +288,11 @@ export function ProviderPublicProfileSheet({
                 title="Message"
                 variant="outline"
                 size="sm"
-                leftIcon={<MessageCircle size={16} color={colors.primary} strokeWidth={2} />}
+                leftIcon={<MessageCircle size={16} color={c.primary} strokeWidth={2} />}
                 onPress={() => void Linking.openURL(`sms:${dialPhone}`)}
                 style={styles.contactBtn}
               />
-            </View>
+            </Row>
           ) : null}
 
           <ProfileSection title={providerType === 'nurse' ? 'Présentation' : 'Le laboratoire'}>
@@ -295,7 +300,7 @@ export function ProviderPublicProfileSheet({
               <Text style={styles.bio}>{profile.biography.trim()}</Text>
             ) : (
               <View style={styles.emptyBox}>
-                <Stethoscope size={20} color={colors.textTertiary} strokeWidth={2} />
+                <Stethoscope size={20} color={c.textTertiary} strokeWidth={2} />
                 <Text style={styles.emptyText}>Aucune présentation renseignée.</Text>
               </View>
             )}
@@ -305,16 +310,16 @@ export function ProviderPublicProfileSheet({
             <ProfileSection
               title={providerType === 'nurse' ? 'Expertises & soins' : 'Prélèvements disponibles'}
             >
-              <View style={styles.chipWrap}>
+              <Row wrap gap={spacing[2]} style={styles.chipWrap}>
                 {services.map((item) => (
-                  <View key={String(item.id)} style={styles.chip}>
+                  <Row key={String(item.id)} gap={spacing[1]} align="center" style={styles.chip}>
                     <Text style={styles.chipEmoji}>{specializationEmoji(item)}</Text>
                     <Text style={styles.chipLabel} numberOfLines={2}>
                       {item.name}
                     </Text>
-                  </View>
+                  </Row>
                 ))}
-              </View>
+              </Row>
             </ProfileSection>
           ) : null}
 
@@ -324,10 +329,13 @@ export function ProviderPublicProfileSheet({
             >
               <View style={styles.infoCard}>
                 {addressLabel ? (
-                  <View style={styles.infoRow}>
-                    <MapPin size={16} color={colors.primary} strokeWidth={2} />
+                  <Cluster
+                    gap={spacing[2]}
+                    align="start"
+                    leading={<MapPin size={16} color={c.primary} strokeWidth={2} />}
+                  >
                     <Text style={styles.infoText}>{addressLabel}</Text>
-                  </View>
+                  </Cluster>
                 ) : null}
                 {nurseMeta?.radius_km ? (
                   <Text style={styles.infoHint}>
@@ -340,7 +348,7 @@ export function ProviderPublicProfileSheet({
                     title="Itinéraire"
                     variant="ghost"
                     size="sm"
-                    leftIcon={<Navigation size={14} color={colors.primary} strokeWidth={2} />}
+                    leftIcon={<Navigation size={14} color={c.primary} strokeWidth={2} />}
                     onPress={() => void Linking.openURL(itinerary)}
                     style={styles.itineraryBtn}
                   />
@@ -353,13 +361,13 @@ export function ProviderPublicProfileSheet({
             <ProfileSection title="Heures d'ouverture">
               <View style={styles.infoCard}>
                 {hoursRows.map((row) => (
-                  <View key={row.key} style={styles.hoursRow}>
-                    <View style={styles.hoursDay}>
-                      <Clock size={14} color={colors.textTertiary} strokeWidth={2} />
+                  <Row key={row.key} justify="between" align="center" gap={spacing[3]} style={styles.hoursRow}>
+                    <Row gap={spacing[2]} align="center" flex={1} style={styles.hoursDay}>
+                      <Clock size={14} color={c.textTertiary} strokeWidth={2} />
                       <Text style={styles.hoursDayText}>{row.label}</Text>
-                    </View>
+                    </Row>
                     <Text style={styles.hoursValue}>{row.value}</Text>
-                  </View>
+                  </Row>
                 ))}
               </View>
             </ProfileSection>
@@ -369,10 +377,15 @@ export function ProviderPublicProfileSheet({
             <ProfileSection title="Diplômes & formations">
               <View style={styles.qualList}>
                 {nurseMeta.qualifications.map((q) => (
-                  <View key={q.code} style={styles.qualRow}>
-                    <GraduationCap size={16} color={colors.textTertiary} strokeWidth={2} />
+                  <Cluster
+                    key={q.code}
+                    gap={spacing[2]}
+                    align="start"
+                    leading={<GraduationCap size={16} color={c.textTertiary} strokeWidth={2} />}
+                    style={styles.qualRow}
+                  >
                     <Text style={styles.qualText}>{q.label}</Text>
-                  </View>
+                  </Cluster>
                 ))}
               </View>
             </ProfileSection>
@@ -386,16 +399,22 @@ export function ProviderPublicProfileSheet({
                   onPress={() => void Linking.openURL(websiteUrl)}
                   accessibilityRole="link"
                 >
-                  <View style={styles.linkIcon}>
-                    <Globe size={18} color={colors.primary} strokeWidth={2} />
-                  </View>
-                  <View style={styles.linkText}>
-                    <Text style={styles.linkLabel}>Site internet</Text>
-                    <Text style={styles.linkUrl} numberOfLines={2}>
-                      {profile.website_url}
-                    </Text>
-                  </View>
-                  <ExternalLink size={16} color={colors.textTertiary} strokeWidth={2} />
+                  <Cluster
+                    gap={spacing[3]}
+                    leading={
+                      <View style={styles.linkIcon}>
+                        <Globe size={18} color={c.primary} strokeWidth={2} />
+                      </View>
+                    }
+                    actions={<ExternalLink size={16} color={c.textTertiary} strokeWidth={2} />}
+                  >
+                    <View style={styles.linkText}>
+                      <Text style={styles.linkLabel}>Site internet</Text>
+                      <Text style={styles.linkUrl} numberOfLines={2}>
+                        {profile.website_url}
+                      </Text>
+                    </View>
+                  </Cluster>
                 </Pressable>
               ) : null}
               {socialRows.map((row) => (
@@ -405,16 +424,22 @@ export function ProviderPublicProfileSheet({
                   onPress={() => void Linking.openURL(row.url)}
                   accessibilityRole="link"
                 >
-                  <View style={styles.linkIcon}>
-                    <row.Icon size={18} color={colors.primary} strokeWidth={2} />
-                  </View>
-                  <View style={styles.linkText}>
-                    <Text style={styles.linkLabel}>{row.label}</Text>
-                    <Text style={styles.linkUrl} numberOfLines={1}>
-                      {row.url.replace(/^https?:\/\//i, '')}
-                    </Text>
-                  </View>
-                  <ExternalLink size={16} color={colors.textTertiary} strokeWidth={2} />
+                  <Cluster
+                    gap={spacing[3]}
+                    leading={
+                      <View style={styles.linkIcon}>
+                        <row.Icon size={18} color={c.primary} strokeWidth={2} />
+                      </View>
+                    }
+                    actions={<ExternalLink size={16} color={c.textTertiary} strokeWidth={2} />}
+                  >
+                    <View style={styles.linkText}>
+                      <Text style={styles.linkLabel}>{row.label}</Text>
+                      <Text style={styles.linkUrl} numberOfLines={1}>
+                        {row.url.replace(/^https?:\/\//i, '')}
+                      </Text>
+                    </View>
+                  </Cluster>
                 </Pressable>
               ))}
             </ProfileSection>
@@ -430,12 +455,12 @@ export function ProviderPublicProfileSheet({
                         « {item.comment.trim()} »
                       </Text>
                     ) : null}
-                    <View style={styles.reviewFooter}>
+                    <Row justify="between" align="center" gap={spacing[2]} style={styles.reviewFooter}>
                       <Text style={styles.reviewAuthor}>
                         {item.patient_name?.trim() || 'Patient'}
                       </Text>
                       <ReviewStars rating={item.rating ?? 0} size={12} showValue={false} />
-                    </View>
+                    </Row>
                   </View>
                 ))}
               </View>
@@ -454,8 +479,8 @@ function buildStyles(c: AppColors) {
     paddingTop: 0,
   },
   centerState: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     paddingVertical: spacing[10],
     paddingHorizontal: spacing[4],
     gap: spacing[3],
@@ -464,7 +489,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     lineHeight: fontSize.sm * 1.45,
   },
   errorTitle: {
@@ -477,26 +502,26 @@ function buildStyles(c: AppColors) {
   },
   coverWrap: {
     height: 140,
-    width: '100%',
+    width: '100%' as const,
     backgroundColor: c.surfaceAlt,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     marginBottom: spacing[2],
   },
   coverImage: {
-    width: '100%',
-    height: '100%',
+    width: '100%' as const,
+    height: '100%' as const,
   },
   coverFade: {
     ...StyleSheet.absoluteFillObject,
   },
   identity: {
-    alignItems: 'center',
+    alignItems: 'center' as const,
     paddingHorizontal: spacing[4],
     marginTop: -AVATAR / 2,
     gap: spacing[2],
   },
   avatarRing: {
-    position: 'relative',
+    position: 'relative' as const,
     borderRadius: radius.full,
     padding: 3,
     backgroundColor: c.surface,
@@ -515,11 +540,11 @@ function buildStyles(c: AppColors) {
     height: AVATAR,
     borderRadius: AVATAR / 2,
     backgroundColor: c.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   statusDot: {
-    position: 'absolute',
+    position: 'absolute' as const,
     right: 4,
     bottom: 4,
     width: 14,
@@ -538,7 +563,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
     letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     color: c.textTertiary,
     marginTop: spacing[1],
   },
@@ -546,10 +571,10 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.xl,
     color: c.textPrimary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   identityMeta: {
-    alignItems: 'center',
+    alignItems: 'center' as const,
     gap: spacing[1],
     marginTop: spacing[0.5],
   },
@@ -565,9 +590,6 @@ function buildStyles(c: AppColors) {
     color: c.primaryDark,
   },
   contactRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing[2],
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[4],
     marginTop: spacing[2],
@@ -587,7 +609,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     color: c.textTertiary,
   },
   bio: {
@@ -597,12 +619,12 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
   },
   emptyBox: {
-    alignItems: 'center',
+    alignItems: 'center' as const,
     gap: spacing[2],
     padding: spacing[4],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderStyle: 'dashed',
+    borderStyle: 'dashed' as const,
     borderColor: c.borderLight,
     backgroundColor: c.surfaceAlt,
   },
@@ -610,18 +632,11 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
-  chipWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
-  },
+  chipWrap: {},
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1],
-    maxWidth: '100%',
+    maxWidth: '100%' as const,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderRadius: radius.full,
@@ -633,6 +648,7 @@ function buildStyles(c: AppColors) {
     fontSize: 14,
   },
   chipLabel: {
+    minWidth: 0,
     flexShrink: 1,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
@@ -646,13 +662,8 @@ function buildStyles(c: AppColors) {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: c.borderLight,
   },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2],
-  },
+  infoRow: {},
   infoText: {
-    flex: 1,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
     color: c.textPrimary,
@@ -668,22 +679,13 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
   },
   itineraryBtn: {
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-start' as const,
     marginTop: spacing[1],
   },
   hoursRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing[3],
     paddingVertical: spacing[1],
   },
-  hoursDay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    flex: 1,
-  },
+  hoursDay: {},
   hoursDayText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
@@ -698,27 +700,20 @@ function buildStyles(c: AppColors) {
     gap: spacing[2],
   },
   qualRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2],
     padding: spacing[3],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderStyle: 'dashed',
+    borderStyle: 'dashed' as const,
     borderColor: c.borderLight,
     backgroundColor: c.surfaceAlt,
   },
   qualText: {
-    flex: 1,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.4,
   },
   linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[3],
     borderRadius: radius.lg,
@@ -731,11 +726,10 @@ function buildStyles(c: AppColors) {
     height: 36,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   linkText: {
-    flex: 1,
     gap: 2,
   },
   linkLabel: {
@@ -762,15 +756,11 @@ function buildStyles(c: AppColors) {
   reviewComment: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    fontStyle: 'italic',
+    fontStyle: 'italic' as const,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,
   },
   reviewFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing[2],
     paddingTop: spacing[2],
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: c.borderLight,
@@ -783,11 +773,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_components_ProviderPublicProfileSheet_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

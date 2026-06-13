@@ -1,11 +1,14 @@
 import { Platform, StyleSheet, type ViewStyle } from 'react-native';
-import { colors, elevation, spacing, radius } from '@/theme';
+import { getAppColors } from '@/theme/colors';
+import { elevation, spacing, radius } from '@/theme';
 
 /** Padding horizontal interne (titres, actions). */
 export const APP_HEADER_INNER_H_PADDING = spacing[4];
 
 /** Teinte latérale sous le header (visible dans les coins arrondis du contenu). */
-export const APP_HEADER_CHROME = colors.primaryLight;
+export function getAppHeaderChrome(): string {
+  return getAppColors().primaryLight;
+}
 
 /** Coins arrondis en haut de la feuille de contenu. */
 export const APP_CONTENT_TOP_RADIUS = radius['2xl'];
@@ -27,9 +30,11 @@ const contentSheetTopRadius = (): Pick<
 
 /** Calque externe — ombre vers le haut, sans bordure ni overflow (shadow derrière la feuille). */
 export function appContentSheetShadowStyle(): ViewStyle {
+  const c = getAppColors();
   return {
+    minWidth: 0,
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
     ...contentSheetTopRadius(),
     ...elevation.contentSheetTop,
   };
@@ -37,10 +42,12 @@ export function appContentSheetShadowStyle(): ViewStyle {
 
 /** Surface intérieure — bordure hairline + clip des coins arrondis. */
 export function appContentSheetSurfaceStyle(): ViewStyle {
+  const c = getAppColors();
   return {
+    minWidth: 0,
     flex: 1,
     overflow: 'hidden',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: 0,
     borderColor: APP_CONTENT_SHEET_BORDER,
@@ -75,8 +82,9 @@ export const APP_HEADER_TITLE_ICON_SIZE = 18;
 /** Onglets — fond chrome derrière la feuille (TabScreenShell). */
 export function appTabSceneStyle(): ViewStyle {
   return {
+    minWidth: 0,
     flex: 1,
-    backgroundColor: APP_HEADER_CHROME,
+    backgroundColor: getAppHeaderChrome(),
   };
 }
 
@@ -84,7 +92,7 @@ export function appTabSceneStyle(): ViewStyle {
 export function appStackContentStyle(opts?: { rounded?: boolean }): ViewStyle {
   const rounded = opts?.rounded !== false;
   if (!rounded) {
-    return { flex: 1, backgroundColor: colors.background };
+    return { minWidth: 0, flex: 1, backgroundColor: getAppColors().background };
   }
   return appContentSheetFrameStyle();
 }

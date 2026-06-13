@@ -1,11 +1,12 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import {
   resolveMoreMenuIconColors,
   type MoreMenuIconAccent,
 } from '@/navigation/more-menu-icon-colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -40,6 +41,8 @@ export function MoreMenuItem({
   iconBg,
 }: MoreMenuItemProps) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildMoreMenuStyles, 'MoreMenuItem');
+
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const accent = iconAccent ? resolveMoreMenuIconColors(c, iconAccent) : null;
@@ -61,23 +64,31 @@ export function MoreMenuItem({
         }}
         style={styles.menuItem}
       >
-        <View style={[styles.menuIconWrap, { backgroundColor: ib }]}>
-          <Icon size={18} color={ic} strokeWidth={2} />
-        </View>
-        <Animated.Text style={[styles.menuLabel, destructive && styles.menuLabelDestructive]}>
-          {label}
-        </Animated.Text>
-        {badge != null && badge > 0 ? (
-          <View style={styles.badge}>
-            <Animated.Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Animated.Text>
-          </View>
-        ) : (
-          <ChevronRight
-            size={16}
-            color={destructive ? c.error : c.textTertiary}
-            strokeWidth={2}
-          />
-        )}
+        <Cluster
+          gap={spacing[3]}
+          leading={
+            <View style={[styles.menuIconWrap, { backgroundColor: ib }]}>
+              <Icon size={18} color={ic} strokeWidth={2} />
+            </View>
+          }
+          actions={
+            badge != null && badge > 0 ? (
+              <View style={styles.badge}>
+                <Animated.Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Animated.Text>
+              </View>
+            ) : (
+              <ChevronRight
+                size={16}
+                color={destructive ? c.error : c.textTertiary}
+                strokeWidth={2}
+              />
+            )
+          }
+        >
+          <Animated.Text style={[styles.menuLabel, destructive && styles.menuLabelDestructive]}>
+            {label}
+          </Animated.Text>
+        </Cluster>
       </Pressable>
     </Animated.View>
   );
@@ -98,25 +109,21 @@ export function buildMoreMenuStyles(c: AppColors) {
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: c.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-    gap: spacing[3],
   },
   menuIconWrap: {
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   menuLabel: {
-    flex: 1,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
@@ -124,7 +131,7 @@ export function buildMoreMenuStyles(c: AppColors) {
   menuLabelDestructive: { color: c.error },
   divider: {
     height: 1,
-    alignSelf: 'stretch',
+    alignSelf: 'stretch' as const,
     backgroundColor: c.borderLight,
   },
   badge: {
@@ -132,8 +139,8 @@ export function buildMoreMenuStyles(c: AppColors) {
     height: 22,
     borderRadius: radius.full,
     backgroundColor: c.error,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     paddingHorizontal: spacing[1],
   },
   badgeText: {
@@ -143,14 +150,3 @@ export function buildMoreMenuStyles(c: AppColors) {
   },
 };
 }
-
-export const moreMenuStyles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_components_MoreMenuItem_tsx_moreMenuStyles', buildMoreMenuStyles)[prop];
-    }
-    return undefined;
-  },
-});
-
-const styles = moreMenuStyles;

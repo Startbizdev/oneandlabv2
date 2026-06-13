@@ -1,6 +1,9 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Mail } from 'lucide-react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
@@ -27,6 +30,9 @@ import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function ProfilePatientView() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_views_ProfilePatientView_tsx_ProfilePatientView_styles');
+
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
@@ -136,10 +142,13 @@ export function ProfilePatientView() {
           {emailShown ? (
             <View>
               <Text style={styles.fieldLabel}>Email</Text>
-              <View style={styles.emailRow}>
-                <Mail size={16} color={colors.textTertiary} strokeWidth={2} />
+              <Cluster
+                gap={spacing[2]}
+                leading={<Mail size={16} color={c.textTertiary} strokeWidth={2} />}
+                style={styles.emailRow}
+              >
                 <Text style={styles.emailText}>{emailShown}</Text>
-              </View>
+              </Cluster>
               <Text style={styles.fieldHint}>
                 L'email ne peut pas être modifié depuis l'application.
               </Text>
@@ -180,34 +189,34 @@ export function ProfilePatientView() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   scroll: { padding: spacing[4], gap: spacing[4], paddingBottom: spacing[12] },
   fieldLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   fieldHint: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     marginTop: spacing[1],
   },
   emailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[3],
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surfaceAlt,
+    borderColor: c.borderLight,
+    backgroundColor: c.surfaceAlt,
   },
   emailText: {
+    minWidth: 0,
     flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
-});
+};
+}

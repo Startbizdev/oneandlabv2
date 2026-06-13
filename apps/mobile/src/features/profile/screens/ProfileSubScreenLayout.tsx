@@ -1,9 +1,11 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 interface Props {
   children: ReactNode;
@@ -21,6 +23,8 @@ export function ProfileSubScreenLayout({
   saving,
   hideSave,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_profile_screens_ProfileSubScreenLayout_tsx_ProfileSubScreenLayout_styles');
+
   const { bottom } = useSafeAreaInsets();
   const bottomInset = Math.max(bottom, spacing[2]);
   const showSave = !hideSave && !!onSave;
@@ -46,12 +50,15 @@ export function ProfileSubScreenLayout({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   scroll: {
+    minWidth: 0,
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   content: {
+    minWidth: 0,
     padding: spacing[4],
     gap: spacing[4],
     flexGrow: 1,
@@ -60,6 +67,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[2],
     paddingTop: spacing[3],
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
-});
+};
+}

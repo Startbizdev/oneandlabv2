@@ -1,6 +1,6 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { FilterOptionChips, type FilterChipOption } from '@/components/ui/FilterOptionChips';
@@ -63,6 +63,8 @@ export function AppointmentsFilterSheet<
   closeOnPick = false,
   onReset,
 }: Props<TTab, TSegment, TSecondary>) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'AppointmentsFilterSheet');
   const pick = <T extends string>(onChange: (v: T) => void) => (v: T) => {
     onChange(v);
     if (closeOnPick) onClose();
@@ -75,7 +77,7 @@ export function AppointmentsFilterSheet<
           value={search}
           onChangeText={onSearchChange}
           placeholder={searchPlaceholder}
-          leftIcon={<Search size={16} color={colors.textTertiary} strokeWidth={2} />}
+          leftIcon={<Search size={16} color={c.textTertiary} strokeWidth={2} />}
         />
       ) : null}
 
@@ -123,10 +125,10 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.4,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   resetBtn: {
-    alignSelf: 'center',
+    alignSelf: 'center' as const,
     paddingVertical: spacing[2],
   },
   resetText: {
@@ -136,12 +138,3 @@ function buildStyles(c: AppColors) {
   },
 };
 }
-
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_components_AppointmentsFilterSheet_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback } from 'react';
 import { Pressable, ActivityIndicator, StyleSheet, type PressableProps } from 'react-native';
 import Animated, {
@@ -110,6 +112,8 @@ function ButtonComponent({
   ...props
 }: ButtonProps) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_ui_Button_tsx_ButtonComponent_styles');
+
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
@@ -208,18 +212,19 @@ function ButtonComponent({
 
 export const Button = React.memo(ButtonComponent);
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   base: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   inlineWrap: {
     flexShrink: 0,
-    alignSelf: 'center',
+    alignSelf: 'center' as const,
   },
   fullWidth: {
-    width: '100%',
+    width: '100%' as const,
   },
   text: {
     fontFamily: fontFamily.semiBold,
@@ -238,4 +243,5 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.45,
   },
-});
+};
+}

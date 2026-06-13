@@ -2,7 +2,8 @@ import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Clock } from 'lucide-react-native';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { buildRdvListCardTypography } from '@/features/appointments/components/rdv-list-card-typography';
 import { spacing } from '@/theme';
@@ -16,26 +17,30 @@ interface Props {
 
 export function RdvListCardCreneauRow({ label, status }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useThemedStyles(buildStyles, 'RdvListCardCreneauRow');
 
   return (
-    <View style={styles.row}>
+    <Cluster
+      gap={spacing[2]}
+      align="start"
+      style={styles.row}
+      actions={
+        <View accessible={false} importantForAccessibility="no" style={styles.statusWrap}>
+          <StatusBadge status={status} size="sm" dotOnly />
+        </View>
+      }
+    >
       {label ? (
-        <View style={styles.main}>
+        <Row gap={spacing[1.5]} align="start">
           <View style={styles.iconWrap}>
             <Clock size={CLOCK_SIZE} color={c.textTertiary} strokeWidth={2} />
           </View>
           <Text style={styles.label} numberOfLines={2}>
             {label}
           </Text>
-        </View>
-      ) : (
-        <View style={styles.main} />
-      )}
-      <View accessible={false} importantForAccessibility="no" style={styles.statusWrap}>
-        <StatusBadge status={status} size="sm" dotOnly />
-      </View>
-    </View>
+        </Row>
+      ) : null}
+    </Cluster>
   );
 }
 
@@ -43,19 +48,10 @@ function buildStyles(c: AppColors) {
   const type = buildRdvListCardTypography(c);
   const labelLine = type.slot.lineHeight;
 
-  return StyleSheet.create({
+  return {
     row: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      width: '100%',
-      gap: spacing[2],
-    },
-    main: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'flex-start',
       minWidth: 0,
-      gap: spacing[1.5],
+      width: '100%' as const,
     },
     iconWrap: {
       flexShrink: 0,
@@ -68,8 +64,7 @@ function buildStyles(c: AppColors) {
     },
     statusWrap: {
       flexShrink: 0,
-      marginLeft: 'auto',
       marginTop: Math.max(0, (labelLine - 12) / 2),
     },
-  });
+  };
 }

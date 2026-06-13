@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
   type ViewStyle,
 } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { BottomSheetModalContainer } from './BottomSheetModalContainer';
 import {
   BottomSheetBackdrop,
@@ -131,7 +132,7 @@ export function SheetModal({
     () => (
       <View style={styles.handleZone}>
         <View style={styles.handle} />
-        <View style={styles.header}>
+        <Row gap={spacing[2]} style={styles.header}>
           {onBack ? (
             <Pressable onPress={onBack} hitSlop={12} style={styles.backBtn} accessibilityLabel="Retour">
               <ChevronLeft size={22} color={getAppColors().primary} strokeWidth={2.5} />
@@ -141,7 +142,7 @@ export function SheetModal({
             <Text style={styles.title}>{title}</Text>
             {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
           </View>
-        </View>
+        </Row>
       </View>
     ),
     [onBack, styles, subtitle, title],
@@ -218,7 +219,7 @@ function buildStyles(c: AppColors) {
       borderTopRightRadius: radius['2xl'],
     },
     handle: {
-      alignSelf: 'center',
+      alignSelf: 'center' as const,
       width: 40,
       height: 5,
       borderRadius: 3,
@@ -227,8 +228,6 @@ function buildStyles(c: AppColors) {
       marginBottom: spacing[2],
     },
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
       paddingHorizontal: spacing[4],
       paddingBottom: spacing[3],
       gap: spacing[2],
@@ -238,8 +237,8 @@ function buildStyles(c: AppColors) {
     backBtn: {
       width: 44,
       height: 44,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
     },
     headerText: {
       flex: 1,
@@ -273,6 +272,7 @@ function buildStyles(c: AppColors) {
       borderTopColor: c.borderLight,
     },
     fixedSnapBody: {
+      minWidth: 0,
       flex: 1,
     },
   };

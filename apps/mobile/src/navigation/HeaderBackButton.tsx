@@ -4,7 +4,7 @@ import {
   HeaderOrbIconSize,
   HeaderOrbIconStroke,
 } from '@/components/navigation/HeaderGradientOrbButton';
-import { colors } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 
 interface Props {
   onPress: () => void;
@@ -12,6 +12,8 @@ interface Props {
 
 /** Retour — anneau gradient + fond verre. */
 export function HeaderBackButton({ onPress }: Props) {
+  const c = useAppColors();
+
   return (
     <HeaderGradientOrbButton
       onPress={onPress}
@@ -20,7 +22,7 @@ export function HeaderBackButton({ onPress }: Props) {
     >
       <ChevronLeft
         size={HeaderOrbIconSize()}
-        color={colors.primaryDark}
+        color={c.primaryDark}
         strokeWidth={HeaderOrbIconStroke()}
       />
     </HeaderGradientOrbButton>

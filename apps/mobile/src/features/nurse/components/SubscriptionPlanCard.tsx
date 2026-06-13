@@ -1,7 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
-import { StyleSheet, Text, View } from 'react-native';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
+import { Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { Check } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { elevation, radius, spacing } from '@/theme';
@@ -36,6 +38,8 @@ export function SubscriptionPlanCard({
   onCtaPress,
   disabled,
 }: SubscriptionPlanCardProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_nurse_components_SubscriptionPlanCard_tsx_styles');
   return (
     <View
       style={[
@@ -57,20 +61,26 @@ export function SubscriptionPlanCard({
       ) : null}
 
       <Text style={styles.name}>{name}</Text>
-      <View style={styles.priceRow}>
+      <Row align="baseline" gap={spacing[1]}>
         <Text style={styles.price}>{price}</Text>
         <Text style={styles.priceSuffix}>{priceSuffix}</Text>
-      </View>
+      </Row>
       <Text style={styles.tagline}>{tagline}</Text>
 
       <View style={styles.features}>
         {features.map((f) => (
-          <View key={f} style={styles.featureRow}>
-            <View style={styles.check}>
-              <Check size={12} color={colors.primary} strokeWidth={3} />
-            </View>
+          <Cluster
+            key={f}
+            gap={spacing[2.5]}
+            align="start"
+            leading={
+              <View style={styles.check}>
+                <Check size={12} color={c.primary} strokeWidth={3} />
+              </View>
+            }
+          >
             <Text style={styles.featureText}>{f}</Text>
-          </View>
+          </Cluster>
         ))}
       </View>
 
@@ -98,7 +108,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.borderLight,
     padding: spacing[5],
     gap: spacing[3],
-    overflow: 'visible',
+    overflow: 'visible' as const,
   },
   cardRecommended: {
     borderColor: c.primary,
@@ -108,7 +118,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.textTertiary,
   },
   badge: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: spacing[3],
     right: spacing[3],
     backgroundColor: c.primary,
@@ -134,11 +144,6 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
     paddingRight: 72,
   },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing[1],
-  },
   price: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize['3xl'],
@@ -159,22 +164,16 @@ function buildStyles(c: AppColors) {
     gap: spacing[2.5],
     marginTop: spacing[1],
   },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[2.5],
-  },
   check: {
     width: 22,
     height: 22,
     borderRadius: radius.full,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     marginTop: 1,
   },
   featureText: {
-    flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
@@ -183,11 +182,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_nurse_components_SubscriptionPlanCard_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

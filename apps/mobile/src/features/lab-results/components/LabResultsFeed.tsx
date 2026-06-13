@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
@@ -35,6 +37,9 @@ export function LabResultsFeed({
   onOpenDocument,
   onOpenAppointment,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_lab_results_components_LabResultsFeed_tsx_LabResultsFeed_styles');
+
   const renderItem: ListRenderItem<LabResultListItem> = useCallback(
     ({ item }) => {
       const medicalId = item.medical_document_id ?? item.id;
@@ -79,12 +84,12 @@ export function LabResultsFeed({
       contentInsetAdjustmentBehavior="automatic"
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />
       }
       ListFooterComponent={
         openingId ? (
           <View style={styles.footerLoader}>
-            <ActivityIndicator color={colors.primary} />
+            <ActivityIndicator color={c.primary} />
           </View>
         ) : null
       }
@@ -92,8 +97,10 @@ export function LabResultsFeed({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   listContent: {
+    minWidth: 0,
     flexGrow: 1,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
@@ -102,9 +109,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     paddingHorizontal: spacing[1],
     marginBottom: spacing[2],
   },
@@ -113,6 +120,7 @@ const styles = StyleSheet.create({
   },
   footerLoader: {
     paddingVertical: spacing[3],
-    alignItems: 'center',
+    alignItems: 'center' as const,
   },
-});
+};
+}

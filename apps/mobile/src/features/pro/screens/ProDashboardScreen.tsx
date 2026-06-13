@@ -1,7 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useQuery } from '@tanstack/react-query';
 import { Activity, CalendarCheck, Clock } from 'lucide-react-native';
@@ -27,13 +29,16 @@ interface StatCardProps {
   index: number;
 }
 
-function StatCard({ label, value, icon, accent = colors.primary, index }: StatCardProps) {
+function StatCard({ label, value, icon, accent, index }: StatCardProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'ProDashboardScreen.StatCard');
+  const accentColor = accent ?? c.primary;
   return (
     <Animated.View
       entering={FadeInDown.delay(index * 60).duration(300).springify()}
       style={[styles.statCard, elevation.xs]}
     >
-      <View style={[styles.statIcon, { backgroundColor: accent + '18' }]}>{icon}</View>
+      <View style={[styles.statIcon, { backgroundColor: accentColor + '18' }]}>{icon}</View>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </Animated.View>
@@ -41,6 +46,8 @@ function StatCard({ label, value, icon, accent = colors.primary, index }: StatCa
 }
 
 export function ProDashboardScreen() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_pro_screens_ProDashboardScreen_tsx_styles');
   const user = useAuthStore((s) => s.user);
 
   const statsQ = useQuery({
@@ -79,28 +86,28 @@ export function ProDashboardScreen() {
         {statsQ.isLoading ? (
           <SkeletonDashboardStats />
         ) : (
-          <View style={styles.statsGrid}>
+          <Row gap={spacing[3]} style={styles.statsGrid}>
             <StatCard
               index={0}
               label="Total RDV"
               value={statsQ.data?.total ?? 0}
-              icon={<Activity size={18} color={colors.primary} strokeWidth={2} />}
+              icon={<Activity size={18} color={c.primary} strokeWidth={2} />}
             />
             <StatCard
               index={1}
               label="En attente"
               value={statsQ.data?.pending ?? 0}
-              accent={colors.warning}
-              icon={<Clock size={18} color={colors.warning} strokeWidth={2} />}
+              accent={c.warning}
+              icon={<Clock size={18} color={c.warning} strokeWidth={2} />}
             />
             <StatCard
               index={2}
               label="Aujourd'hui"
               value={statsQ.data?.today ?? 0}
-              accent={colors.success}
-              icon={<CalendarCheck size={18} color={colors.success} strokeWidth={2} />}
+              accent={c.success}
+              icon={<CalendarCheck size={18} color={c.success} strokeWidth={2} />}
             />
-          </View>
+          </Row>
         )}
 
         {/* Today date */}
@@ -115,8 +122,8 @@ export function ProDashboardScreen() {
 
 function buildStyles(c: AppColors) {
   return {
-  container: { flex: 1, backgroundColor: c.background },
-  scroll: { flex: 1 },
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+  scroll: { minWidth: 0, flex: 1 },
   content: {
     padding: spacing[4],
     gap: spacing[4],
@@ -136,11 +143,9 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
     letterSpacing: -0.8,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: spacing[3],
-  },
+  statsGrid: {},
   statCard: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: c.surface,
     borderRadius: radius.xl,
@@ -148,14 +153,14 @@ function buildStyles(c: AppColors) {
     borderColor: c.borderLight,
     padding: spacing[4],
     gap: spacing[2],
-    alignItems: 'flex-start',
+    alignItems: 'flex-start' as const,
   },
   statIcon: {
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   statValue: {
     fontFamily: fontFamily.extraBold,
@@ -180,22 +185,14 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.lg,
     color: c.primary,
-    textTransform: 'capitalize',
+    textTransform: 'capitalize' as const,
   },
   dateLabel: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.base,
     color: c.textSecondary,
-    textTransform: 'capitalize',
+    textTransform: 'capitalize' as const,
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_pro_screens_ProDashboardScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

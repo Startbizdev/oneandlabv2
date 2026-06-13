@@ -1,7 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -11,7 +12,7 @@ import type { AddressPayload } from '@/features/appointments/form/types';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { RELATIONSHIP_OPTIONS } from '../constants/relationship-types';
 import type { PatientRelative } from '../api/patient-relatives.service';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -38,6 +39,7 @@ export function PatientRelativeFormSheet({
   onClose,
   onSubmit,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_patient_relatives_components_PatientRelativeFormSheet_tsx_styles');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [relationshipType, setRelationshipType] = useState('child');
@@ -106,7 +108,7 @@ export function PatientRelativeFormSheet({
         <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
         <View>
           <Text style={styles.label}>Lien de parenté</Text>
-          <View style={styles.pills}>
+          <Row wrap gap={spacing[2]}>
             {RELATIONSHIP_OPTIONS.map((o) => {
               const active = relationshipType === o.value;
               return (
@@ -122,7 +124,7 @@ export function PatientRelativeFormSheet({
                 </Pressable>
               );
             })}
-          </View>
+          </Row>
         </View>
         <GenderSelect value={gender} onChange={setGender} />
         <BirthDatePicker value={birthDate} onChange={setBirthDate} />
@@ -143,7 +145,7 @@ export function PatientRelativeFormSheet({
         />
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <View style={styles.actions}>
+      <Row gap={spacing[3]} style={styles.actions}>
         <View style={styles.actionBtn}>
           <Button title="Annuler" variant="outline" onPress={onClose} fullWidth size="lg" />
         </View>
@@ -156,7 +158,7 @@ export function PatientRelativeFormSheet({
             size="lg"
           />
         </View>
-      </View>
+      </Row>
     </BottomSheet>
   );
 }
@@ -171,10 +173,9 @@ function buildStyles(c: AppColors) {
     marginBottom: spacing[2],
     lineHeight: fontSize.base * 1.3,
   },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   pill: {
     minHeight: 44,
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2.5],
     borderRadius: 999,
@@ -202,22 +203,12 @@ function buildStyles(c: AppColors) {
     color: c.error,
   },
   actions: {
-    flexDirection: 'row',
-    gap: spacing[3],
     marginTop: spacing[2],
     paddingTop: spacing[3],
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: c.borderLight,
   },
-  actionBtn: { flex: 1 },
+  actionBtn: { minWidth: 0, flex: 1 },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_patient_relatives_components_PatientRelativeFormSheet_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

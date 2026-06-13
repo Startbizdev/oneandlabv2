@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
@@ -9,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, FileText, Shield } from 'lucide-react-native';
@@ -26,7 +28,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { pickMedicalDocumentFile } from '@/lib/uploads/pick-medical-document';
-import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
+import { downloadMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { getDocumentTypeLabel } from '@/features/appointments/detail/utils/document-labels';
 import {
   formatDocumentFileSubtitle,
@@ -62,6 +64,8 @@ function AddDocumentSection({
   existingTypes: Set<string>;
   onPick: (docType: RelativeProfileUploadType) => void;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'PatientRelativeDocumentsScreen.AddDocumentSection');
   return (
     <View style={styles.addCard}>
       <Text style={styles.addKicker}>Ajouter</Text>
@@ -84,7 +88,7 @@ function AddDocumentSection({
               icon={slot.Icon}
               title={getDocumentTypeLabel(slot.key)}
               subtitle={subtitle}
-              iconBg={hasType ? colors.successLight : colors.primaryLight}
+              iconBg={hasType ? c.successLight : c.primaryLight}
               disabled={Boolean(uploading)}
               onPress={() => onPick(slot.key)}
             />
@@ -110,28 +114,39 @@ function SavedDocumentRow({
   downloaded: boolean;
   onDownload: () => void;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'PatientRelativeDocumentsScreen.SavedDocumentRow');
   return (
-    <View style={styles.docCard}>
-      <View style={styles.docIcon}>
-        <Icon size={18} color={colors.primary} strokeWidth={2} />
-      </View>
+    <Cluster
+      gap={spacing[3]}
+      style={styles.docCard}
+      leading={
+        <View style={styles.docIcon}>
+          <Icon size={18} color={c.primary} strokeWidth={2} />
+        </View>
+      }
+      actions={
+        <DocumentDownloadButton
+          downloaded={downloaded}
+          downloading={downloading}
+          onPress={onDownload}
+          accessibilityLabel={`Télécharger ${label}`}
+        />
+      }
+    >
       <View style={styles.docText}>
         <Text style={styles.docLabel}>{label}</Text>
         <Text style={styles.docFile} numberOfLines={1}>
           {sub}
         </Text>
       </View>
-      <DocumentDownloadButton
-        downloaded={downloaded}
-        downloading={downloading}
-        onPress={onDownload}
-        accessibilityLabel={`Télécharger ${label}`}
-      />
-    </View>
+    </Cluster>
   );
 }
 
 export function PatientRelativeDocumentsScreen() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_patient_relatives_screens_PatientRelativeDocumentsScreen_tsx_styles');
   const { id } = useLocalSearchParams<{ id: string }>();
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -255,7 +270,7 @@ export function PatientRelativeDocumentsScreen() {
           <RefreshControl
             refreshing={docsQ.isRefetching}
             onRefresh={() => void docsQ.refetch()}
-            tintColor={colors.primary}
+            tintColor={c.primary}
           />
         }
         renderItem={({ item }) => {
@@ -299,9 +314,9 @@ export function PatientRelativeDocumentsScreen() {
 
 function buildStyles(c: AppColors) {
   return {
-  container: { flex: 1, backgroundColor: c.background },
-  loading: { flex: 1, padding: spacing[4] },
-  list: { paddingHorizontal: spacing[4], paddingBottom: spacing[12], flexGrow: 1 },
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+  loading: { minWidth: 0, flex: 1, padding: spacing[4] },
+  list: { minWidth: 0, paddingHorizontal: spacing[4], paddingBottom: spacing[12], flexGrow: 1 },
   header: { gap: spacing[2], marginBottom: spacing[3] },
   introTitle: {
     fontFamily: fontFamily.bold,
@@ -319,7 +334,7 @@ function buildStyles(c: AppColors) {
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: c.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     marginTop: spacing[1],
   },
   addKicker: {
@@ -327,7 +342,7 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3],
   },
@@ -349,7 +364,7 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     marginTop: spacing[2],
   },
   emptyHint: {
@@ -361,9 +376,6 @@ function buildStyles(c: AppColors) {
   },
   sep: { height: spacing[2] },
   docCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -375,10 +387,10 @@ function buildStyles(c: AppColors) {
     height: 40,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
-  docText: { flex: 1, minWidth: 0, gap: 2 },
+  docText: { gap: 2 },
   docLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
@@ -393,11 +405,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_patient_relatives_screens_PatientRelativeDocumentsScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -1,6 +1,7 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { forwardRef } from 'react';
-import { StyleSheet } from 'react-native';
 import type { ScrollView, ScrollViewProps } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,13 +23,16 @@ export const FormScreen = forwardRef<ScrollView, Props>(function FormScreen(
   {
     children,
     contentContainerStyle,
-    backgroundColor = colors.background,
+    backgroundColor,
     footer,
     style,
     ...scrollProps
   },
   ref,
 ) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'FormScreen');
+  const bg = backgroundColor ?? c.background;
   const { bottom } = useSafeAreaInsets();
   const footerInset = Math.max(bottom, spacing[2]);
   const footerPad = footer
@@ -44,7 +48,7 @@ export const FormScreen = forwardRef<ScrollView, Props>(function FormScreen(
           </KeyboardStickyView>
         ) : undefined
       }
-      style={[styles.container, { backgroundColor }, style]}
+      style={[styles.container, { backgroundColor: bg }, style]}
     >
       <KeyboardScrollView
         ref={ref}
@@ -63,16 +67,21 @@ export const FormScreen = forwardRef<ScrollView, Props>(function FormScreen(
   );
 });
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    minHeight: 0,
-    backgroundColor: colors.background,
-  },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    flexGrow: 1,
-  },
-});
+function buildStyles(c: AppColors) {
+  return {
+    container: {
+      minWidth: 0,
+      flex: 1,
+      minHeight: 0,
+      backgroundColor: c.background,
+    },
+    scroll: {
+      minWidth: 0,
+      flex: 1,
+    },
+    content: {
+      minWidth: 0,
+      flexGrow: 1,
+    },
+  };
+}

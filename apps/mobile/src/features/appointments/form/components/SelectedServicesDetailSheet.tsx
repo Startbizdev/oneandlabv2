@@ -1,6 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { Trash2 } from 'lucide-react-native';
 import type { SelectedServiceInput } from '@oneandlab/shared-utils';
 import { SheetModal } from '@/components/ui/SheetModal';
@@ -11,7 +13,7 @@ import {
   detailLinesForSelectedService,
   selectionModalTitle,
 } from '../utils/selected-service-detail-lines';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -32,6 +34,8 @@ export function SelectedServicesDetailSheet({
   onClose,
   onRemove,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'SelectedServicesDetailSheet');
   const handleRemove = (svc: SelectedServiceInput) => {
     Alert.alert('Retirer ce soin ?', svc.name, [
       { text: 'Annuler', style: 'cancel' },
@@ -61,20 +65,25 @@ export function SelectedServicesDetailSheet({
 
         return (
           <View key={svc.id} style={[styles.item, !isLast && styles.itemBorder]}>
-            <View style={styles.itemTop}>
+            <Cluster
+              align="start"
+              gap={spacing[2]}
+              actions={
+                <Pressable
+                  onPress={() => handleRemove(svc)}
+                  hitSlop={8}
+                  style={styles.removeBtn}
+                  accessibilityLabel={`Retirer ${svc.name}`}
+                  accessibilityRole="button"
+                >
+                  <Trash2 size={20} color={c.error} strokeWidth={2} />
+                </Pressable>
+              }
+            >
               <Text style={styles.itemName} numberOfLines={2}>
                 {svc.name}
               </Text>
-              <Pressable
-                onPress={() => handleRemove(svc)}
-                hitSlop={8}
-                style={styles.removeBtn}
-                accessibilityLabel={`Retirer ${svc.name}`}
-                accessibilityRole="button"
-              >
-                <Trash2 size={20} color={colors.error} strokeWidth={2} />
-              </Pressable>
-            </View>
+            </Cluster>
             {lines.length > 0 ? (
               <View style={styles.details}>
                 {lines.map((ln, i) => (
@@ -104,13 +113,7 @@ function buildStyles(c: AppColors) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.borderLight,
     },
-    itemTop: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: spacing[2],
-    },
     itemName: {
-      flex: 1,
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
@@ -119,8 +122,8 @@ function buildStyles(c: AppColors) {
     removeBtn: {
       width: 44,
       height: 44,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
       marginTop: -spacing[2],
       marginRight: -spacing[2],
     },
@@ -152,15 +155,3 @@ function buildStyles(c: AppColors) {
     },
   };
 }
-
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles(
-        'features_appointments_form_components_SelectedServicesDetailSheet_tsx_styles',
-        buildStyles,
-      )[prop];
-    }
-    return undefined;
-  },
-});

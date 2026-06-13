@@ -1,6 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
+import { Cluster } from '@/components/layout/primitives';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
@@ -17,18 +19,26 @@ interface Props {
   compact?: boolean;
 }
 
-export function DetailSection({ title, Icon, children, plain, compact }: Props) {
+export function DetailSection({
+  title, Icon, children, plain, compact }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_DetailSection_tsx_styles');
   return (
     <View style={[styles.wrap, plain && styles.plain, compact && styles.compact]}>
       {title ? (
-        <View style={styles.head}>
-          {Icon ? (
-            <View style={styles.iconWrap}>
-              <Icon size={14} color={colors.primary} strokeWidth={2} />
-            </View>
-          ) : null}
+        <Cluster
+          gap={spacing[2]}
+          align="center"
+          leading={
+            Icon ? (
+              <View style={styles.iconWrap}>
+                <Icon size={14} color={c.primary} strokeWidth={2} />
+              </View>
+            ) : undefined
+          }
+        >
           <Text style={styles.title}>{title}</Text>
-        </View>
+        </Cluster>
       ) : null}
       <View style={[styles.body, compact && styles.bodyCompact]}>{children}</View>
     </View>
@@ -58,18 +68,13 @@ function buildStyles(c: AppColors) {
   bodyCompact: {
     gap: 0,
   },
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
   iconWrap: {
     width: 26,
     height: 26,
     borderRadius: radius.sm,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   title: {
     fontFamily: fontFamily.bold,
@@ -82,11 +87,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_layout_DetailSection_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -1,9 +1,11 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import type { ReactElement } from 'react';
 import type { Href } from 'expo-router';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { useRouter } from 'expo-router';
 import { Bell } from 'lucide-react-native';
 import { HeaderActionButton, type HeaderActionKind } from '@/navigation/HeaderActionButton';
@@ -23,6 +25,8 @@ export function tabHeaderNotificationRight(): () => ReactElement {
 
 /** Cloche — cercle blanc, ombre légère, icône primary. */
 export function HeaderNotificationBell() {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'navigation_HeaderNotificationButton_tsx_styles');
   const router = useRouter();
   const role = useAuthStore((s) => s.user?.role);
   const badgeCount = useHeaderBellBadgeCount();
@@ -41,7 +45,7 @@ export function HeaderNotificationBell() {
       style={({ pressed }) => [styles.host, pressed && styles.pressed]}
     >
       <View style={styles.circle}>
-        <Bell size={BELL_ICON} color={colors.primary} strokeWidth={2.25} />
+        <Bell size={BELL_ICON} color={c.primary} strokeWidth={2.25} />
       </View>
       {showBadge ? (
         <View style={styles.badge} pointerEvents="none">
@@ -58,11 +62,12 @@ export function HeaderBarActions({
 }: {
   action?: ReactElement | null;
 }) {
+  const styles = useThemedStyles(buildStyles, 'HeaderNotificationButton.HeaderBarActions');
   return (
-    <View style={styles.row}>
+    <Row gap={spacing[2.5]} align="center" style={styles.row}>
       <HeaderNotificationBell />
       {action}
-    </View>
+    </Row>
   );
 }
 
@@ -96,9 +101,9 @@ function buildStyles(c: AppColors) {
   host: {
     width: BELL_SIZE + 8,
     height: BELL_SIZE + 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'visible',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    overflow: 'visible' as const,
   },
   pressed: {
     opacity: 0.9,
@@ -109,8 +114,8 @@ function buildStyles(c: AppColors) {
     height: BELL_SIZE,
     borderRadius: BELL_SIZE / 2,
     backgroundColor: c.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     ...Platform.select({
       ios: {
         shadowColor: '#0F172A',
@@ -122,7 +127,7 @@ function buildStyles(c: AppColors) {
     }),
   },
   badge: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: 0,
     right: 0,
     minWidth: BADGE,
@@ -130,8 +135,8 @@ function buildStyles(c: AppColors) {
     borderRadius: BADGE / 2,
     paddingHorizontal: 4,
     backgroundColor: c.error,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     borderWidth: 2,
     borderColor: c.surface,
   },
@@ -142,19 +147,7 @@ function buildStyles(c: AppColors) {
     color: c.textInverse,
     includeFontPadding: false,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2.5],
-  },
+  row: {},
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('navigation_HeaderNotificationButton_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

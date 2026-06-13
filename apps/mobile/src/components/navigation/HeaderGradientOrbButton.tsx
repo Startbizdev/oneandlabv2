@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import type { ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,6 +32,8 @@ export function HeaderGradientOrbButton({
   badgeCount = 0,
   variant = 'gradient',
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_navigation_HeaderGradientOrbButton_tsx_styles');
   const showBadge = badgeCount > 0;
 
   return (
@@ -44,7 +47,7 @@ export function HeaderGradientOrbButton({
       {variant === 'glass' ? (
         <View style={styles.glassRing}>
           <LinearGradient
-            colors={[colors.gradientStart, colors.primary, colors.gradientEnd]}
+            colors={[c.gradientStart, c.primary, c.gradientEnd]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.glassRingGradient}
@@ -53,7 +56,7 @@ export function HeaderGradientOrbButton({
         </View>
       ) : (
         <LinearGradient
-          colors={[colors.gradientStart, colors.primary, colors.gradientEnd]}
+          colors={[c.gradientStart, c.primary, c.gradientEnd]}
           locations={[0, 0.45, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -67,7 +70,7 @@ export function HeaderGradientOrbButton({
       {showBadge ? (
         <View style={styles.badgeAnchor} pointerEvents="none">
           <LinearGradient
-            colors={[colors.errorMid, colors.error]}
+            colors={[c.errorMid, c.error]}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={styles.badge}
@@ -95,9 +98,9 @@ function buildStyles(c: AppColors) {
   host: {
     width: APP_HEADER_ORB_SIZE,
     height: APP_HEADER_ORB_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'visible',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    overflow: 'visible' as const,
   },
   pressed: {
     opacity: 0.92,
@@ -107,8 +110,8 @@ function buildStyles(c: AppColors) {
     width: APP_HEADER_ORB_SIZE,
     height: APP_HEADER_ORB_SIZE,
     borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     ...Platform.select({
       ios: {
         shadowColor: c.gradientEnd,
@@ -120,7 +123,7 @@ function buildStyles(c: AppColors) {
     }),
   },
   orbHighlight: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: 3,
     left: 5,
     right: 5,
@@ -142,14 +145,15 @@ function buildStyles(c: AppColors) {
     borderRadius: radius.lg,
   },
   glassInner: {
+    minWidth: 0,
     flex: 1,
     borderRadius: radius.lg - 1,
     backgroundColor: 'rgba(255, 255, 255, 0.94)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   badgeAnchor: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: -2,
     right: -2,
     zIndex: 20,
@@ -168,8 +172,8 @@ function buildStyles(c: AppColors) {
     height: BADGE_SIZE,
     borderRadius: BADGE_SIZE / 2,
     paddingHorizontal: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     borderWidth: 2.5,
     borderColor: c.surface,
   },
@@ -183,11 +187,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('components_navigation_HeaderGradientOrbButton_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

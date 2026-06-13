@@ -1,9 +1,12 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
-import { Mail, MessageCircle, Phone } from 'lucide-react-native';
+import { Mail, MessageCircle, Phone, User } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { SkeletonRdvCarePlaceholder } from '@/components/ui/skeletons';
@@ -20,7 +23,7 @@ import {
 import { buildPatientContactButtons } from '@/utils/contact-actions';
 import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
-import { rdvDetailSectionStyles } from './rdv-detail-section-styles';
+import { getRdvDetailSectionStyles } from './rdv-detail-section-styles';
 
 interface Props {
   apt: Appointment;
@@ -34,6 +37,8 @@ interface Props {
   batchLoading?: boolean;
   /** Boutons carte / Waze (pro, infirmier). */
   showMapActions?: boolean;
+  /** Bouton « Voir le profil » (pro / infirmier). */
+  onViewPatientProfile?: () => void;
 }
 
 const CONTACT_ICONS = {
@@ -69,42 +74,59 @@ function hasBatchSiblings(apt: Appointment): boolean {
 function InfoRow({
   row,
   index,
+  onViewPatientProfile,
 }: {
   row: RdvInfoRow;
   index: number;
+  onViewPatientProfile?: () => void;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'RdvAppointmentInfoSection.InfoRow');
   if (row.kind === 'address') return null;
 
   return (
     <View
       style={[
-        rdvDetailSectionStyles.sectionRow,
+        getRdvDetailSectionStyles().sectionRow,
         styles.infoRow,
-        index > 0 && rdvDetailSectionStyles.rowBorder,
+        index > 0 && getRdvDetailSectionStyles().rowBorder,
       ]}
     >
       {row.kind === 'identity' ? (
         <>
           <Text style={styles.label}>{row.identityLabel ?? 'Patient'}</Text>
-          <View style={styles.identityValueRow}>
-            <ProfileAvatar
-              profileImageUrl={row.profileImageUrl}
-              seed={
-                row.avatarSeed ??
-                [row.firstName, row.lastName].filter((p) => p && p !== '—').join(' ')
-              }
-              gender={row.gender}
-              size={40}
-            />
-            <Text style={styles.value}>
-              {[row.firstName, row.lastName].filter(Boolean).join(' ')}
-            </Text>
+          <View style={styles.identityBlock}>
+            <Row gap={spacing[2.5]} align="center">
+              <ProfileAvatar
+                profileImageUrl={row.profileImageUrl}
+                seed={
+                  row.avatarSeed ??
+                  [row.firstName, row.lastName].filter((p) => p && p !== '—').join(' ')
+                }
+                gender={row.gender}
+                size={40}
+              />
+              <Text style={styles.value}>
+                {[row.firstName, row.lastName].filter(Boolean).join(' ')}
+              </Text>
+            </Row>
+            {onViewPatientProfile ? (
+              <Button
+                title="Voir le profil"
+                variant="muted"
+                size="sm"
+                leftIcon={<User size={13} color={c.textSecondary} strokeWidth={2.25} />}
+                onPress={onViewPatientProfile}
+                style={styles.profileButton}
+                accessibilityLabel={`Voir le profil de ${[row.firstName, row.lastName].filter(Boolean).join(' ')}`}
+              />
+            ) : null}
           </View>
         </>
       ) : (
         <>
           <Text style={styles.label}>{row.label}</Text>
-          <View style={styles.valueRow}>
+          <Row align="start" wrap gap={6}>
             {row.emoji ? (
               <Text style={styles.valueEmoji} accessibilityElementsHidden>
                 {row.emoji}
@@ -113,7 +135,7 @@ function InfoRow({
             <Text style={[styles.value, row.strikethrough && styles.valueMuted]}>
               {row.value}
             </Text>
-          </View>
+          </Row>
         </>
       )}
     </View>
@@ -128,7 +150,11 @@ export function RdvAppointmentInfoSection({
   batch,
   batchLoading = false,
   showMapActions = false,
+  onViewPatientProfile,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_RdvAppointmentInfoSection_tsx_RdvAppointmentInfoSection_styles');
+
   const categoriesQ = useAppointmentCareCategories();
   const categories = categoriesQ.data;
   const catalogReady = categoriesQ.isFetched;
@@ -181,7 +207,7 @@ export function RdvAppointmentInfoSection({
   let rowIndex = addressRowVisible ? 1 : 0;
 
   return (
-    <View style={[rdvDetailSectionStyles.card, edgeToEdge && rdvDetailSectionStyles.cardEdge]}>
+    <View style={[getRdvDetailSectionStyles().card, edgeToEdge && getRdvDetailSectionStyles().cardEdge]}>
       <View>
         {addressRowVisible ? (
           <RdvAddressFieldRow
@@ -195,7 +221,12 @@ export function RdvAppointmentInfoSection({
 
         {beforeCare.map((row) => {
           const el = (
-            <InfoRow key={`${row.kind}-${rowIndex}`} row={row} index={rowIndex} />
+            <InfoRow
+              key={`${row.kind}-${rowIndex}`}
+              row={row}
+              index={rowIndex}
+              onViewPatientProfile={row.kind === 'identity' ? onViewPatientProfile : undefined}
+            />
           );
           rowIndex += 1;
           return el;
@@ -221,6 +252,7 @@ export function RdvAppointmentInfoSection({
               key={`${row.kind}-${rowIndex}-${'label' in row ? row.label : ''}`}
               row={row}
               index={rowIndex}
+              onViewPatientProfile={row.kind === 'identity' ? onViewPatientProfile : undefined}
             />
           );
           rowIndex += 1;
@@ -230,12 +262,12 @@ export function RdvAppointmentInfoSection({
         {contactButtons.length > 0 ? (
           <View
             style={[
-              rdvDetailSectionStyles.sectionRow,
+              getRdvDetailSectionStyles().sectionRow,
               styles.actionsRow,
-              rowIndex > 0 && rdvDetailSectionStyles.rowBorder,
+              rowIndex > 0 && getRdvDetailSectionStyles().rowBorder,
             ]}
           >
-            <View style={styles.buttonRow}>
+            <Row gap={spacing[1.5]}>
               {contactButtons.map((btn) => {
                 const Icon = CONTACT_ICONS[btn.icon];
                 return (
@@ -244,14 +276,14 @@ export function RdvAppointmentInfoSection({
                       title={btn.label}
                       size="sm"
                       variant="primary"
-                      leftIcon={<Icon size={14} color={colors.textInverse} strokeWidth={2.5} />}
+                      leftIcon={<Icon size={14} color={c.textInverse} strokeWidth={2.5} />}
                       onPress={btn.onPress}
-                      style={{ backgroundColor: btn.color, width: '100%' }}
+                      style={{ backgroundColor: btn.color, width: '100%' as const }}
                     />
                   </View>
                 );
               })}
-            </View>
+            </Row>
           </View>
         ) : null}
       </View>
@@ -259,21 +291,19 @@ export function RdvAppointmentInfoSection({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   infoRow: {
     gap: spacing[1],
   },
-  identityValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2.5],
+  identityBlock: {
+    gap: spacing[2],
+  },
+  profileButton: {
+    alignSelf: 'flex-start' as const,
   },
   actionsRow: {
     paddingVertical: spacing[3],
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: spacing[1.5],
   },
   buttonCell: {
     flex: 1,
@@ -282,30 +312,26 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
-    textTransform: 'uppercase',
+    color: c.textTertiary,
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.4,
-  },
-  valueRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    flexWrap: 'wrap',
-    gap: 6,
   },
   valueEmoji: {
     fontSize: 20,
     lineHeight: 24,
   },
   value: {
+    minWidth: 0,
     flexShrink: 1,
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.base * 1.35,
   },
   valueMuted: {
-    textDecorationLine: 'line-through',
-    color: colors.textSecondary,
+    textDecorationLine: 'line-through' as const,
+    color: c.textSecondary,
     fontFamily: fontFamily.regular,
   },
-});
+};
+}

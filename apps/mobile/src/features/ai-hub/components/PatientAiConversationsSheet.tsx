@@ -21,6 +21,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { Smile, X } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { PatientAiConversationRow } from './PatientAiConversationRow';
@@ -172,11 +173,16 @@ export function PatientAiConversationsSheet({
               },
             ]}
           >
-            <View style={styles.header}>
-              <View style={styles.headerBrand}>
-                <View style={styles.headerAvatar}>
-                  <Smile size={18} color={c.primary} strokeWidth={2.25} />
-                </View>
+            <Row justify="between" style={styles.header}>
+              <Cluster
+                gap={spacing[3]}
+                style={styles.headerBrand}
+                leading={
+                  <View style={styles.headerAvatar}>
+                    <Smile size={18} color={c.primary} strokeWidth={2.25} />
+                  </View>
+                }
+              >
                 <View style={styles.headerText}>
                   <Text style={styles.headerTitle} numberOfLines={1}>
                     Conversations
@@ -185,7 +191,7 @@ export function PatientAiConversationsSheet({
                     Historique Cary
                   </Text>
                 </View>
-              </View>
+              </Cluster>
 
               <Pressable
                 onPress={onClose}
@@ -196,7 +202,7 @@ export function PatientAiConversationsSheet({
               >
                 <X size={18} color={c.textSecondary} strokeWidth={2.25} />
               </Pressable>
-            </View>
+            </Row>
 
             <View style={styles.ctaWrap}>
               <Button
@@ -245,6 +251,7 @@ function useStateVisible(visible: boolean) {
 function buildStyles(c: AppColors) {
   return {
     root: {
+      minWidth: 0,
       flex: 1,
     },
     backdrop: {
@@ -276,9 +283,6 @@ function buildStyles(c: AppColors) {
       minWidth: 0,
     },
     header: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'space-between' as const,
       paddingHorizontal: H_PADDING,
       paddingTop: spacing[3],
       paddingBottom: spacing[3],
@@ -289,8 +293,6 @@ function buildStyles(c: AppColors) {
     },
     headerBrand: {
       flex: 1,
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
       minWidth: 0,
       marginRight: spacing[2],
     },
@@ -301,7 +303,6 @@ function buildStyles(c: AppColors) {
       backgroundColor: c.primaryLight,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-      marginRight: spacing[3],
       flexShrink: 0,
     },
     headerText: {

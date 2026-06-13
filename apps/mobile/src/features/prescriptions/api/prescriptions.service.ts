@@ -13,7 +13,10 @@ export interface ProPrescriptionRow {
   appointment_status?: string | null;
   appointment_type?: string | null;
   appointment_category_name?: string | null;
+  appointment_creation_batch_id?: string | null;
+  appointment_batch_count?: number | null;
   appointment_availability?: unknown;
+  appointment_care_items?: Array<Record<string, unknown>> | null;
   patient_first_name?: string | null;
   patient_last_name?: string | null;
 }

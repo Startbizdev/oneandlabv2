@@ -1,6 +1,9 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import type { ReactElement } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { LucideIcon } from 'lucide-react-native';
 import {
@@ -20,24 +23,32 @@ interface HeaderTitleProps {
 }
 
 export function HeaderTitleWithIcon({ title, Icon }: HeaderTitleProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'navigation_HeaderTitle_tsx_HeaderTitleWithIcon_styles');
+
   return (
-    <View style={styles.row}>
-      <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={styles.iconChip}
-      >
-        <Icon
-          size={HEADER_TAB_ICON_SIZE}
-          color={colors.textInverse}
-          strokeWidth={HEADER_TAB_ICON_STROKE}
-        />
-      </LinearGradient>
+    <Cluster
+      gap={spacing[2.5]}
+      leading={
+        <LinearGradient
+          colors={[c.gradientStart, c.gradientEnd]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={styles.iconChip}
+        >
+          <Icon
+            size={HEADER_TAB_ICON_SIZE}
+            color={c.textInverse}
+            strokeWidth={HEADER_TAB_ICON_STROKE}
+          />
+        </LinearGradient>
+      }
+      style={styles.row}
+    >
       <Text style={styles.title} numberOfLines={1}>
         {title}
       </Text>
-    </View>
+    </Cluster>
   );
 }
 
@@ -51,26 +62,26 @@ export function tabHeaderTitle(
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2.5],
-    maxWidth: '100%',
+    maxWidth: '100%' as const,
   },
   iconChip: {
     width: 32,
     height: 32,
     borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: -0.3,
     flexShrink: 1,
+    minWidth: 0,
   },
-});
+};
+}

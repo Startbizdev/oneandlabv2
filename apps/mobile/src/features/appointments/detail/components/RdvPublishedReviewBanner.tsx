@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppColors } from '@/theme/use-app-colors';
 import { radius, spacing } from '@/theme';
@@ -12,6 +14,8 @@ interface Props {
 /** Alerte avis publié — même pattern que RdvCancellationBanner. */
 export function RdvPublishedReviewBanner({ message, compact, onPress }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvPublishedReviewBanner_tsx_RdvPublishedReviewBanner_styles');
+
 
   const banner = (
     <View
@@ -40,7 +44,8 @@ export function RdvPublishedReviewBanner({ message, compact, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   bannerCompact: {
     marginHorizontal: spacing[4],
     padding: spacing[3],
@@ -63,4 +68,5 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.92,
   },
-});
+};
+}

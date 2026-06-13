@@ -1,11 +1,15 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { MessageCircle, Phone, User } from 'lucide-react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { Button } from '@/components/ui/Button';
 import { CompactAssigneeRating } from '@/features/appointments/detail/components/CompactAssigneeRating';
 import type { AssigneeReviewSummary } from '@/features/appointments/detail/utils/assignee-review-display';
 import { buildPhoneContactActions } from '@/utils/contact-actions';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -42,6 +46,9 @@ export function AssigneeProfileRow({
   brandLogo,
   showDivider = true,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_AssigneeProfileRow_tsx_AssigneeProfileRow_styles');
+
   const contactActions = buildPhoneContactActions(phone);
 
   const avatar =
@@ -63,9 +70,11 @@ export function AssigneeProfileRow({
 
   return (
     <View style={styles.block}>
-      <View style={styles.profileRow}>
-        <View style={styles.avatarWrap}>{avatar}</View>
-
+      <Cluster
+        gap={spacing[3]}
+        align="start"
+        leading={<View style={styles.avatarWrap}>{avatar}</View>}
+      >
         <View style={styles.meta}>
           <Text style={styles.name} numberOfLines={2}>
             {name}
@@ -82,16 +91,16 @@ export function AssigneeProfileRow({
             </Text>
           ) : null}
         </View>
-      </View>
+      </Cluster>
 
       {onViewProfile || contactActions.length > 0 ? (
-        <View style={styles.actionsRow}>
+        <Row wrap gap={spacing[1.5]} style={styles.actionsRow}>
           {onViewProfile ? (
             <Button
               title="Voir le profil"
               variant="muted"
               size="sm"
-              leftIcon={<User size={13} color={colors.textSecondary} strokeWidth={2.25} />}
+              leftIcon={<User size={13} color={c.textSecondary} strokeWidth={2.25} />}
               onPress={onViewProfile}
               style={styles.actionButton}
               accessibilityLabel={`Voir le profil de ${name}`}
@@ -105,13 +114,13 @@ export function AssigneeProfileRow({
                 title={action.label}
                 variant="muted"
                 size="sm"
-                leftIcon={<Icon size={13} color={colors.textSecondary} strokeWidth={2.25} />}
+                leftIcon={<Icon size={13} color={c.textSecondary} strokeWidth={2.25} />}
                 onPress={action.onPress}
                 style={styles.actionButton}
               />
             );
           })}
-        </View>
+        </Row>
       ) : null}
 
       {showDivider ? <View style={styles.divider} /> : null}
@@ -119,49 +128,40 @@ export function AssigneeProfileRow({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   block: {
     paddingVertical: spacing[2.5],
     gap: spacing[2],
-  },
-  profileRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[3],
   },
   avatarWrap: {
     flexShrink: 0,
     paddingTop: 1,
   },
   meta: {
-    flex: 1,
-    minWidth: 0,
     gap: 2,
   },
   name: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     lineHeight: fontSize.base * 1.2,
   },
   role: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     lineHeight: fontSize.sm * 1.25,
   },
   subtitle: {
     marginTop: spacing[0.5],
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     lineHeight: fontSize.xs * 1.45,
   },
   actionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[1.5],
-    width: '100%',
+    width: '100%' as const,
   },
   actionButton: {
     flex: 1,
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     borderRadius: radius.full,
   },
   logo: {
@@ -180,13 +180,14 @@ const styles = StyleSheet.create({
     height: AVATAR_SIZE,
     borderRadius: radius.full,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surface,
-    resizeMode: 'contain',
+    borderColor: c.borderLight,
+    backgroundColor: c.surface,
+    resizeMode: 'contain' as const,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderLight,
+    backgroundColor: c.borderLight,
     marginTop: spacing[1],
   },
-});
+};
+}

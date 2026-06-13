@@ -1,9 +1,12 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { CalendarPlus } from 'lucide-react-native';
 import { BookingPremiumStepCta } from '@/features/appointments/form/components/BookingPremiumStepCta';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 interface Props {
   href: Href;
@@ -13,6 +16,9 @@ interface Props {
 const DEFAULT_LABEL = 'Nouveau rendez-vous';
 
 function AppointmentsBookCtaComponent({ href, label = DEFAULT_LABEL }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_components_AppointmentsBookCta_tsx_AppointmentsBookCtaComponent_styles');
+
   const router = useRouter();
 
   const onPress = useCallback(() => {
@@ -25,7 +31,7 @@ function AppointmentsBookCtaComponent({ href, label = DEFAULT_LABEL }: Props) {
         variant="list"
         showStepBadge={false}
         title={label}
-        leadingIcon={<CalendarPlus size={18} color={colors.primary} strokeWidth={2.25} />}
+        leadingIcon={<CalendarPlus size={18} color={c.primary} strokeWidth={2.25} />}
         onPress={onPress}
       />
     </View>
@@ -34,9 +40,11 @@ function AppointmentsBookCtaComponent({ href, label = DEFAULT_LABEL }: Props) {
 
 export const AppointmentsBookCta = React.memo(AppointmentsBookCtaComponent);
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
     marginTop: spacing[2],
     marginBottom: spacing[2],
   },
-});
+};
+}

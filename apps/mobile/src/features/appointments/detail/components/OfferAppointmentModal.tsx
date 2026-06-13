@@ -1,9 +1,11 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import { Row } from '@/components/layout/primitives';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useQueryClient } from '@tanstack/react-query';
@@ -45,7 +47,10 @@ function rowFromAppointment(apt: Appointment): AppointmentListRow {
   return { kind: 'batch', key, appointments: all };
 }
 
-export function OfferAppointmentModal({ detailPathPrefix }: Props) {
+export function OfferAppointmentModal({
+  detailPathPrefix }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_OfferAppointmentModal_tsx_styles');
   const router = useRouter();
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -239,7 +244,7 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
       <Button
         title={batchCount > 1 ? `Accepter (${batchCount} soins)` : 'Accepter'}
         loading={loading}
-        leftIcon={<Check size={16} color={colors.textInverse} strokeWidth={2.5} />}
+        leftIcon={<Check size={16} color={c.textInverse} strokeWidth={2.5} />}
         onPress={() => void handleAccept()}
         fullWidth
         size="lg"
@@ -248,7 +253,7 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
         title={batchCount > 1 ? 'Refuser le lot' : 'Refuser'}
         variant="outline"
         loading={loading}
-        leftIcon={<X size={16} color={colors.error} strokeWidth={2} />}
+        leftIcon={<X size={16} color={c.error} strokeWidth={2} />}
         onPress={() => void handleRefuse()}
         fullWidth
       />
@@ -280,12 +285,12 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
           ) : (
             <OfferAppointmentPreviewBody primary={selected!} batch={batchSorted} />
           )}
-          <View style={styles.termsRow}>
+          <Row align="start" gap={spacing[3]} style={styles.termsRow}>
             <ToggleSwitch value={termsAccepted} onValueChange={setTermsAccepted} />
             <Text style={styles.termsText}>
               J’accepte la prise en charge et m’engage à respecter la confidentialité du patient.
             </Text>
-          </View>
+          </Row>
           {footer}
         </BottomSheet>
       ) : null}
@@ -301,7 +306,7 @@ export function OfferAppointmentModal({ detailPathPrefix }: Props) {
 function buildStyles(c: AppColors) {
   return {
   lotPill: {
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-start' as const,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderRadius: 12,
@@ -317,9 +322,7 @@ function buildStyles(c: AppColors) {
   },
   loading: { gap: spacing[2] },
   termsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[3],
+    minWidth: 0,
     marginTop: spacing[2],
   },
   termsText: {
@@ -332,7 +335,7 @@ function buildStyles(c: AppColors) {
     lineHeight: fontSize.sm * 1.45,
   },
   footer: { gap: spacing[2] },
-  laterBtn: { alignItems: 'center', paddingVertical: spacing[1] },
+  laterBtn: { alignItems: 'center' as const, paddingVertical: spacing[1] },
   laterText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
@@ -341,11 +344,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_OfferAppointmentModal_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -1,6 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
+import { Cluster } from '@/components/layout/primitives';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronRight, FileText } from 'lucide-react-native';
 import { radius, spacing } from '@/theme';
@@ -11,22 +13,36 @@ interface Props {
   onDocuments: () => void;
 }
 
-export function PatientDetailHubCard({ documentsCount, onDocuments }: Props) {
+export function PatientDetailHubCard({
+  documentsCount, onDocuments }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_patient_PatientDetailHubCard_tsx_styles');
   return (
     <Pressable onPress={onDocuments} style={styles.card}>
-      <View style={styles.iconWrap}>
-        <FileText size={18} color={colors.primary} strokeWidth={2} />
-      </View>
-      <View style={styles.body}>
-        <Text style={styles.title}>Documents</Text>
-        <Text style={styles.subtitle}>Pièces jointes et ordonnances</Text>
-      </View>
-      {documentsCount > 0 ? (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{documentsCount}</Text>
+      <Cluster
+        gap={spacing[3]}
+        align="center"
+        leading={
+          <View style={styles.iconWrap}>
+            <FileText size={18} color={c.primary} strokeWidth={2} />
+          </View>
+        }
+        actions={
+          <>
+            {documentsCount > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{documentsCount}</Text>
+              </View>
+            ) : null}
+            <ChevronRight size={16} color={c.textTertiary} strokeWidth={2} />
+          </>
+        }
+      >
+        <View style={styles.body}>
+          <Text style={styles.title}>Documents</Text>
+          <Text style={styles.subtitle}>Pièces jointes et ordonnances</Text>
         </View>
-      ) : null}
-      <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} />
+      </Cluster>
     </Pressable>
   );
 }
@@ -34,28 +50,22 @@ export function PatientDetailHubCard({ documentsCount, onDocuments }: Props) {
 function buildStyles(c: AppColors) {
   return {
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: c.borderLight,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3.5],
-    gap: spacing[3],
   },
   iconWrap: {
     width: 36,
     height: 36,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
-  body: {
-    flex: 1,
-    minWidth: 0,
-  },
+  body: {},
   title: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
@@ -73,8 +83,8 @@ function buildStyles(c: AppColors) {
     borderRadius: 12,
     paddingHorizontal: 7,
     backgroundColor: c.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   badgeText: {
     fontFamily: fontFamily.bold,
@@ -84,11 +94,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_patient_PatientDetailHubCard_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

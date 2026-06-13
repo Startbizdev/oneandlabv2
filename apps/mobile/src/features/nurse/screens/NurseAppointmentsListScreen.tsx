@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -38,7 +40,7 @@ import {
   EMPTY_RDV_IMAGE_HEIGHT,
   EMPTY_RDV_IMAGE_WIDTH,
 } from '@/constants/empty-state-images';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 function matchesSearch(apt: Appointment, q: string): boolean {
   const s = q.toLowerCase().trim();
@@ -56,6 +58,8 @@ function matchesSearch(apt: Appointment, q: string): boolean {
 }
 
 export function NurseAppointmentsListScreen() {
+  const styles = useThemedStyles(buildStyles, 'features_nurse_screens_NurseAppointmentsListScreen_tsx_NurseAppointmentsListScreen_styles');
+
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { show: toast } = useToast();
@@ -234,9 +238,11 @@ export function NurseAppointmentsListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   listContent: {
+    minWidth: 0,
     paddingHorizontal: spacing[4],
     paddingTop: 0,
     paddingBottom: spacing[8],
@@ -244,11 +250,12 @@ const styles = StyleSheet.create({
   },
   scrollHeader: {
     marginTop: 0,
-    alignSelf: 'stretch',
-    width: '100%',
+    alignSelf: 'stretch' as const,
+    width: '100%' as const,
   },
   listHeaderComponent: {
     paddingTop: 0,
     marginTop: 0,
   },
-});
+};
+}

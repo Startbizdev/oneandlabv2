@@ -1,13 +1,14 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
+import { Row } from '@/components/layout/primitives';
 import { Card } from '@/components/ui/Card';
 import type { AppointmentHistoryEntry } from '../api/appointment-detail.service';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -23,6 +24,7 @@ const actionLabels: Record<string, string> = {
 };
 
 export function HistoryTimeline({ entries }: { entries: AppointmentHistoryEntry[] }) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_HistoryTimeline_tsx_styles');
   if (!entries.length) return null;
 
   return (
@@ -37,28 +39,28 @@ export function HistoryTimeline({ entries }: { entries: AppointmentHistoryEntry[
             <Animated.View
               key={entry.id}
               entering={FadeInDown.delay(index * 60).duration(300)}
-              style={styles.timelineItem}
             >
-              {/* Dot + line */}
-              <View style={styles.timelineLeft}>
-                <View style={[styles.dot, index === 0 && styles.dotActive]} />
-                {!isLast && <View style={styles.line} />}
-              </View>
-
-              {/* Content */}
-              <View style={[styles.timelineContent, !isLast && styles.timelineContentGap]}>
-                <Animated.Text style={styles.actionLabel}>{actionLabel}</Animated.Text>
-                <View style={styles.metaRow}>
-                  {entry.created_at ? (
-                    <Animated.Text style={styles.metaText}>
-                      {dayjs(entry.created_at).format('D MMM YYYY · HH:mm')}
-                    </Animated.Text>
-                  ) : null}
-                  {entry.user_name ? (
-                    <Animated.Text style={styles.metaText}> · {entry.user_name}</Animated.Text>
-                  ) : null}
+              <Row gap={spacing[3]} align="start">
+                <View style={styles.timelineLeft}>
+                  <View style={[styles.dot, index === 0 && styles.dotActive]} />
+                  {!isLast && <View style={styles.line} />}
                 </View>
-              </View>
+
+                {/* Content */}
+                <View style={[styles.timelineContent, !isLast && styles.timelineContentGap]}>
+                  <Animated.Text style={styles.actionLabel}>{actionLabel}</Animated.Text>
+                  <Row wrap>
+                    {entry.created_at ? (
+                      <Animated.Text style={styles.metaText}>
+                        {dayjs(entry.created_at).format('D MMM YYYY · HH:mm')}
+                      </Animated.Text>
+                    ) : null}
+                    {entry.user_name ? (
+                      <Animated.Text style={styles.metaText}> · {entry.user_name}</Animated.Text>
+                    ) : null}
+                  </Row>
+                </View>
+              </Row>
             </Animated.View>
           );
         })}
@@ -72,12 +74,8 @@ function buildStyles(c: AppColors) {
   timeline: {
     gap: 0,
   },
-  timelineItem: {
-    flexDirection: 'row',
-    gap: spacing[3],
-  },
   timelineLeft: {
-    alignItems: 'center',
+    alignItems: 'center' as const,
     width: 12,
   },
   dot: {
@@ -95,6 +93,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primaryLight,
   },
   line: {
+    minWidth: 0,
     flex: 1,
     width: 1.5,
     backgroundColor: c.borderLight,
@@ -102,6 +101,7 @@ function buildStyles(c: AppColors) {
     marginBottom: 0,
   },
   timelineContent: {
+    minWidth: 0,
     flex: 1,
     gap: 3,
   },
@@ -113,10 +113,6 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
   metaText: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.xs,
@@ -125,11 +121,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_HistoryTimeline_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

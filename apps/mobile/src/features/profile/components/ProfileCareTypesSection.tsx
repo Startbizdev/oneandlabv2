@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,7 +16,7 @@ import type { NurseCategoryPreference } from '@/features/profile/types/profile.t
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { colors, palette, radius, spacing } from '@/theme';
+import { palette, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -32,6 +33,7 @@ function preferenceEmoji(p: NurseCategoryPreference): string {
 }
 
 export function ProfileCareTypesSection({ bare }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileCareTypesSection_tsx_styles');
   const { show: toast } = useToast();
   const qc = useQueryClient();
 
@@ -73,27 +75,32 @@ export function ProfileCareTypesSection({ bare }: Props) {
         const enabled = Boolean(p.is_enabled);
         const busy = updatingId === p.category_id;
         return (
-          <View
+          <Cluster
             key={p.category_id}
+            gap={spacing[3]}
+            leading={
+              <View style={[styles.emojiTile, enabled && styles.emojiTileEnabled]}>
+                <Text style={styles.emoji} accessibilityElementsHidden>
+                  {preferenceEmoji(p)}
+                </Text>
+              </View>
+            }
+            actions={
+              <ToggleSwitch
+                value={enabled}
+                disabled={busy}
+                onValueChange={(v) => toggle.mutate({ categoryId: p.category_id, enabled: v })}
+              />
+            }
             style={[styles.row, enabled && styles.rowEnabled, busy && styles.rowBusy]}
           >
-            <View style={[styles.emojiTile, enabled && styles.emojiTileEnabled]}>
-              <Text style={styles.emoji} accessibilityElementsHidden>
-                {preferenceEmoji(p)}
-              </Text>
-            </View>
             <Text
               style={[styles.rowTitle, !enabled && styles.rowTitleOff]}
               numberOfLines={1}
             >
               {p.name ?? p.category_id}
             </Text>
-            <ToggleSwitch
-              value={enabled}
-              disabled={busy}
-              onValueChange={(v) => toggle.mutate({ categoryId: p.category_id, enabled: v })}
-            />
-          </View>
+          </Cluster>
         );
       })}
     </View>
@@ -118,17 +125,15 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: c.textTertiary,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     paddingVertical: spacing[2],
   },
   emptyBare: { paddingVertical: spacing[6] },
   list: { gap: spacing[2] },
   listBare: { paddingTop: spacing[1] },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    width: '100%',
+    alignSelf: 'stretch' as const,
+    width: '100%' as const,
     minHeight: 52,
     paddingVertical: spacing[2],
     paddingHorizontal: spacing[3],
@@ -147,8 +152,8 @@ function buildStyles(c: AppColors) {
     height: 36,
     flexShrink: 0,
     borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     backgroundColor: c.surfaceSubtle,
     borderWidth: 1,
     borderColor: c.borderLight,
@@ -162,10 +167,6 @@ function buildStyles(c: AppColors) {
     lineHeight: 24,
   },
   rowTitle: {
-    flex: 1,
-    flexShrink: 1,
-    minWidth: 0,
-    marginHorizontal: spacing[3],
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
@@ -176,11 +177,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_components_ProfileCareTypesSection_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

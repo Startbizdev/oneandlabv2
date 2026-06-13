@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
@@ -12,6 +13,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -75,6 +77,8 @@ function DayCell({
   height: number;
   onPress: () => void;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'BookingDateCarousel.DayCell');
   const scale = useSharedValue(1);
   const { weekday, day: dayNum } = formatBookingDayCell(day);
   const isToday = day.isSame(dayjs(), 'day');
@@ -111,7 +115,7 @@ function DayCell({
     >
       {selected ? (
         <LinearGradient
-          colors={[colors.gradientStart, colors.gradientEnd]}
+          colors={[c.gradientStart, c.gradientEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.cellInner, styles.cellInnerSelected]}
@@ -174,12 +178,13 @@ function DayGrid({
   acceptSunday: boolean;
   onChange: (iso: string) => void;
 }) {
+  const styles = useThemedStyles(buildStyles, 'BookingDateCarousel.DayGrid');
   const rows = [slide.slice(0, COLS), slide.slice(COLS, DAYS_PER_SLIDE)];
 
   return (
     <View style={[styles.slide, { width: slideWidth }]}>
       {rows.map((row, rowIdx) => (
-        <View key={rowIdx} style={[styles.row, { gap, marginBottom: rowIdx === 0 ? gap : 0 }]}>
+        <Row key={rowIdx} gap={gap} style={{ marginBottom: rowIdx === 0 ? gap : 0 }}>
           {row.map((d) => {
             const iso = dateToIsoDay(d);
             const disabled = isBookingDayDisabled(d, minLeadTimeHours, {
@@ -198,7 +203,7 @@ function DayGrid({
               />
             );
           })}
-        </View>
+        </Row>
       ))}
     </View>
   );
@@ -217,11 +222,13 @@ function PeriodNavigator({
   onPrev: () => void;
   onNext: () => void;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'BookingDateCarousel.PeriodNavigator');
   const canPrev = page > 0;
   const canNext = page < pageCount - 1;
 
   return (
-    <View style={styles.periodNav}>
+    <Row gap={spacing[2]} align="center">
       <Pressable
         onPress={onPrev}
         disabled={!canPrev}
@@ -230,7 +237,7 @@ function PeriodNavigator({
         accessibilityRole="button"
         accessibilityLabel="Période précédente"
       >
-        <ChevronLeft size={18} color={canPrev ? colors.primary : colors.textTertiary} strokeWidth={2.5} />
+        <ChevronLeft size={18} color={canPrev ? c.primary : c.textTertiary} strokeWidth={2.5} />
       </Pressable>
 
       <View style={styles.periodCenter}>
@@ -252,9 +259,9 @@ function PeriodNavigator({
         accessibilityRole="button"
         accessibilityLabel="Période suivante"
       >
-        <ChevronRight size={18} color={canNext ? colors.primary : colors.textTertiary} strokeWidth={2.5} />
+        <ChevronRight size={18} color={canNext ? c.primary : c.textTertiary} strokeWidth={2.5} />
       </Pressable>
-    </View>
+    </Row>
   );
 }
 
@@ -266,6 +273,7 @@ export function BookingDateCarousel({
   acceptSaturday = true,
   acceptSunday = true,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingDateCarousel_tsx_styles');
   const listRef = useRef<FlatList<Dayjs[]>>(null);
   const [slideWidth, setSlideWidth] = useState(0);
   const [page, setPage] = useState(0);
@@ -429,34 +437,30 @@ function buildStyles(c: AppColors) {
       borderColor: c.borderLight,
       ...elevation.xs,
     },
-    periodNav: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[2],
-    },
     navBtn: {
       width: 34,
       height: 34,
       borderRadius: radius.md,
       backgroundColor: c.primaryLight,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
     },
     navBtnDisabled: {
       backgroundColor: c.surfaceSubtle,
       opacity: 0.7,
     },
     periodCenter: {
+      minWidth: 0,
       flex: 1,
-      alignItems: 'center',
+      alignItems: 'center' as const,
       gap: 2,
     },
     periodLabel: {
       fontFamily: fontFamily.bold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
-      textAlign: 'center',
-      textTransform: 'capitalize',
+      textAlign: 'center' as const,
+      textTransform: 'capitalize' as const,
       letterSpacing: -0.2,
     },
     periodHint: {
@@ -465,16 +469,13 @@ function buildStyles(c: AppColors) {
       color: c.textTertiary,
     },
     sliderHost: {
-      overflow: 'hidden',
+      overflow: 'hidden' as const,
     },
     listContent: {
       paddingVertical: spacing[0.5],
     },
     slide: {
       paddingHorizontal: 0,
-    },
-    row: {
-      flexDirection: 'row',
     },
     cellOuter: {
       borderRadius: radius.md,
@@ -491,14 +492,15 @@ function buildStyles(c: AppColors) {
       opacity: 0.42,
     },
     cellInner: {
+      minWidth: 0,
       flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
       paddingVertical: spacing[1.5],
       paddingHorizontal: spacing[0.5],
       gap: 2,
       borderRadius: radius.md,
-      overflow: 'hidden',
+      overflow: 'hidden' as const,
     },
     cellInnerSelected: {
       borderWidth: 0,
@@ -517,7 +519,7 @@ function buildStyles(c: AppColors) {
       fontFamily: fontFamily.semiBold,
       fontSize: weekdaySize,
       color: c.textTertiary,
-      textTransform: 'capitalize',
+      textTransform: 'capitalize' as const,
       letterSpacing: 0.2,
       lineHeight: lh(weekdaySize, 1.35),
     },
@@ -529,7 +531,7 @@ function buildStyles(c: AppColors) {
       fontSize: daySize,
       color: c.textPrimary,
       lineHeight: lh(daySize, 1.22),
-      fontVariant: ['tabular-nums'],
+      fontVariant: ['tabular-nums' as const],
     },
     dayNumToday: {
       color: c.primary,
@@ -537,7 +539,7 @@ function buildStyles(c: AppColors) {
     textOn: { color: c.textInverse },
     textOff: { color: c.textTertiary },
     selectedRecap: {
-      alignItems: 'center',
+      alignItems: 'center' as const,
       paddingTop: spacing[1],
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: c.borderLight,
@@ -546,16 +548,8 @@ function buildStyles(c: AppColors) {
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.sm,
       color: c.primary,
-      textTransform: 'capitalize',
+      textTransform: 'capitalize' as const,
     },
   };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_BookingDateCarousel_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

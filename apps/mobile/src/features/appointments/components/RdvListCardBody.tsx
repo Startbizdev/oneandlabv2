@@ -13,13 +13,10 @@ import {
   isNursingOnlyBatchRow,
 } from '@/utils/appointment-batch';
 import { offerAppointmentNotes } from '@/features/appointments/detail/utils/offer-appointment-display';
-import { RdvListCardCreneauRow } from '@/features/appointments/components/RdvListCardCreneauRow';
-import { RdvCareTagsRow } from '@/features/appointments/components/RdvCareTagsRow';
-import { MiniDateCalendar, miniDateCalendarOuterSize } from '@/components/ui/MiniDateCalendar';
 import { RdvListCardPersonRow } from '@/features/appointments/components/RdvListCardPersonRow';
+import { RdvScheduleCompactRow } from '@/features/appointments/components/RdvScheduleCompactRow';
 import {
   rdvMaquetteAvatarCounterparty,
-  rdvMaquetteTimeLabel,
   type RdvListCardViewerRole,
 } from '@/utils/rdv-maquette-card-display';
 import { buildRdvListCardTypography } from './rdv-list-card-typography';
@@ -27,9 +24,6 @@ import { maskOfferCounterparty } from '@/utils/offer-privacy-display';
 import { spacing } from '@/theme';
 import { fontFamily } from '@/theme/typography';
 
-const LIST_CARD_CALENDAR_SIZE = 'xs' as const;
-const LIST_CARD_CALENDAR_PX = miniDateCalendarOuterSize(LIST_CARD_CALENDAR_SIZE);
-/** Aligné sur `AppointmentListRowCard` inner padding — séparateur bord à bord. */
 const LIST_CARD_INSET_X = spacing[4];
 
 function MaquetteCardBlock({
@@ -42,7 +36,6 @@ function MaquetteCardBlock({
   status: string;
 }) {
   const styles = useThemedStyles(buildStyles);
-  const creneau = rdvMaquetteTimeLabel(apt);
   const maskIdentity = role === 'demande';
   const counterparty = maskIdentity
     ? maskOfferCounterparty(rdvMaquetteAvatarCounterparty(apt, role))
@@ -51,20 +44,11 @@ function MaquetteCardBlock({
 
   return (
     <View style={styles.block}>
-      <View style={styles.scheduleRow}>
-        <View style={styles.calendarSlot}>
-          <MiniDateCalendar
-            date={apt.scheduled_at}
-            size={LIST_CARD_CALENDAR_SIZE}
-            variant="brand"
-            accessibilityHidden
-          />
-        </View>
-        <View style={styles.mainCol}>
-          <RdvListCardCreneauRow label={creneau} status={status} />
-          <RdvCareTagsRow apt={apt} hideStaffOnlyCares={role === 'patient'} tone="neutral" density="compact" />
-        </View>
-      </View>
+      <RdvScheduleCompactRow
+        apt={apt}
+        status={status}
+        hideStaffOnlyCares={role === 'patient'}
+      />
 
       {counterparty ? (
         <View style={styles.personSection}>
@@ -183,22 +167,6 @@ function buildStyles(c: AppColors) {
       paddingHorizontal: LIST_CARD_INSET_X,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: palette.slate[300],
-    },
-    scheduleRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'flex-start' as const,
-      gap: spacing[2.5],
-    },
-    calendarSlot: {
-      width: LIST_CARD_CALENDAR_PX,
-      height: LIST_CARD_CALENDAR_PX,
-      flexGrow: 0,
-      flexShrink: 0,
-    },
-    mainCol: {
-      flex: 1,
-      minWidth: 0,
-      gap: spacing[1.5],
     },
     chevronCorner: {
       position: 'absolute' as const,

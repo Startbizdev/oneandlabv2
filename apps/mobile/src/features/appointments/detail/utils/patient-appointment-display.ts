@@ -40,7 +40,7 @@ export function appointmentBeneficiaryGender(apt: Appointment): string | null {
   const fd = (apt.form_data ?? {}) as Record<string, unknown>;
   const fromForm = fd.gender ?? fd.beneficiary_gender;
   if (fromForm) return String(fromForm).trim() || null;
-  const fromApi = (apt as Record<string, unknown>).beneficiary_gender;
+  const fromApi = (apt as unknown as Record<string, unknown>).beneficiary_gender;
   if (fromApi) return String(fromApi).trim() || null;
   return null;
 }
@@ -64,7 +64,7 @@ export function appointmentAssigneeGender(
   apt: Appointment,
   kind: 'nurse' | 'lab' | 'preleveur',
 ): string | null {
-  const ext = apt as Record<string, unknown>;
+  const ext = apt as unknown as Record<string, unknown>;
   const key =
     kind === 'nurse'
       ? 'assigned_nurse_gender'
@@ -95,8 +95,8 @@ export function beneficiaryBirthLine(apt: Appointment): string {
   const gender = ext.relative?.gender ?? (apt.form_data as { gender?: string })?.gender;
   const prefix =
     gender === 'female' ? 'Née le ' : gender === 'male' ? 'Né le ' : gender === 'other' ? 'Né(e) le ' : 'Né le ';
-  let age = ext.relative?.age_years;
-  if (age == null || age < 0) age = ageFromBirthDate(String(d)) ?? null;
+  let age: number | undefined = ext.relative?.age_years ?? undefined;
+  if (age == null || age < 0) age = ageFromBirthDate(String(d)) ?? undefined;
   const agePart =
     age != null && age >= 0 ? ` · ${age} an${age === 1 ? '' : 's'}` : '';
   return `${prefix}${formatted}${agePart}`;

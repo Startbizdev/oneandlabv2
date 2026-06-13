@@ -1,9 +1,12 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { getAppColors } from '@/theme/colors';
-import { colors, radius } from '@/theme';
+import { radius } from '@/theme';
 
 interface Props {
   lat: number;
@@ -68,6 +71,9 @@ function buildMapHtml(lat: number, lng: number, radiusKm: number, primary: strin
 }
 
 export function CoverageMapLive({ lat, lng, radiusKm, height = 260 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_CoverageMapLive_tsx_CoverageMapLive_styles');
+
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
   const html = useMemo(() => {
     const c = getAppColors();
@@ -89,17 +95,20 @@ export function CoverageMapLive({ lat, lng, radiusKm, height = 260 }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: {
-    width: '100%',
+    width: '100%' as const,
     borderRadius: radius.lg,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.surfaceAlt,
+    borderColor: c.borderLight,
+    backgroundColor: c.surfaceAlt,
   },
   webview: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: 'transparent',
   },
-});
+};
+}

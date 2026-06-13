@@ -1,5 +1,6 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { Row } from '@/components/layout/primitives';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
@@ -7,7 +8,7 @@ import { api } from '@/api/client';
 import { StaffPatientKvSection } from '../StaffPatientKvSection';
 import { DetailSection } from '../layout/DetailSection';
 import { canLeaveReview } from '@/utils/can-leave-review';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -37,6 +38,7 @@ export function PatientRdvUnifiedCard({
   withHero = false,
   hideCareDetails: _hideCareDetails = true,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_patient_PatientRdvUnifiedCard_tsx_styles');
   const extraContacts = withHero ? (
     <StaffPatientKvSection apt={primary} />
   ) : null;
@@ -89,13 +91,13 @@ export function PatientRdvUnifiedCard({
       ) : null}
 
       {!canceled && actionItems.length > 0 ? (
-        <View style={styles.actions}>
+        <Row wrap gap={spacing[2]}>
           {actionItems.map((a) => (
             <Pressable key={a.key} onPress={a.onPress} style={styles.actionBtn}>
               <Text style={styles.actionBtnText}>{a.label}</Text>
             </Pressable>
           ))}
-        </View>
+        </Row>
       ) : null}
     </View>
   );
@@ -104,11 +106,6 @@ export function PatientRdvUnifiedCard({
 function buildStyles(c: AppColors) {
   return {
   wrap: { gap: spacing[3] },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
-  },
   actionBtn: {
     paddingHorizontal: spacing[3.5],
     paddingVertical: spacing[2.5],
@@ -125,11 +122,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_patient_PatientRdvUnifiedCard_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

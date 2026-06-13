@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -38,6 +40,7 @@ import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-st
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
 import { filterListDocuments } from '../detail/utils/document-labels';
+import { staffPatientProfilePath } from '@/features/patients/utils/staff-hub-navigation';
 import { spacing } from '@/theme';
 
 interface Props {
@@ -47,6 +50,9 @@ interface Props {
 type SegmentId = 'infos' | 'documents' | 'photos';
 
 export function AppointmentDetailScreen({ role }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_screens_AppointmentDetailScreen_tsx_AppointmentDetailScreen_styles');
+
   const { id, careGallery, carePhoto, segment: segmentParam } = useLocalSearchParams<{
     id: string;
     careGallery?: string;
@@ -203,6 +209,10 @@ export function AppointmentDetailScreen({ role }: Props) {
 
   const { batchSorted, isMultiBatch, canceled } = s;
   const editPath = config.canReschedule && id ? reschedulePathForRole(role, id) : null;
+  const patientProfilePath = staffPatientProfilePath(role, primary?.patient_id);
+  const openPatientProfile = patientProfilePath
+    ? () => router.push(patientProfilePath as never)
+    : undefined;
   const showPrescription =
     role === 'pro' && config.showPrescriptionBlock && !isAppointmentCanceled(primary.status);
 
@@ -215,7 +225,7 @@ export function AppointmentDetailScreen({ role }: Props) {
           <RefreshControl
             refreshing={pullRefresh.refreshing}
             onRefresh={pullRefresh.onRefresh}
-            tintColor={colors.primary}
+            tintColor={c.primary}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -251,6 +261,7 @@ export function AppointmentDetailScreen({ role }: Props) {
                   batch={isMultiBatch ? batchSorted : undefined}
                   batchLoading={s.siblingsLoading}
                   showMapActions={role !== 'patient'}
+                  onViewPatientProfile={openPatientProfile}
                 />
               </View>
               <StaffPatientKvSection apt={primary} />
@@ -319,13 +330,15 @@ export function AppointmentDetailScreen({ role }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function buildStyles(c: AppColors) {
+  return {
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   loading: {
+    minWidth: 0,
     flex: 1,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
   },
   scroll: { paddingBottom: spacing[10] },
   content: {
@@ -338,8 +351,10 @@ const styles = StyleSheet.create({
     marginHorizontal: -spacing[4],
   },
   blocked: {
+    minWidth: 0,
     flex: 1,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
+    backgroundColor: c.background,
+    justifyContent: 'center' as const,
   },
-});
+};
+}

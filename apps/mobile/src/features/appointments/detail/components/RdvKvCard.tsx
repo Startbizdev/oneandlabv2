@@ -1,13 +1,17 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { Card } from '@/components/ui/Card';
 import type { DetailKvRow } from '@/utils/appointment-detail-display';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function KvRow({ label, value, strikethrough }: DetailKvRow) {
+  const styles = useThemedStyles(buildStyles, 'RdvKvCard.KvRow');
   if (!value) return null;
   return (
-    <View style={styles.row}>
+    <Row justify="between" align="start" gap={spacing[3]} style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
       <Text
         style={[styles.rowValue, strikethrough && styles.strikethrough]}
@@ -15,7 +19,7 @@ function KvRow({ label, value, strikethrough }: DetailKvRow) {
       >
         {value}
       </Text>
-    </View>
+    </Row>
   );
 }
 
@@ -31,6 +35,8 @@ export function RdvKvCard({
   title = 'Informations',
   rows,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvKvCard_tsx_RdvKvCard_styles');
+
   const visible = rows.filter((r) => r.value);
   if (!visible.length) return null;
 
@@ -51,13 +57,14 @@ export function RdvKvCard({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   overline: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],
     paddingBottom: spacing[2],
@@ -67,35 +74,33 @@ const styles = StyleSheet.create({
   },
   rowBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
+    borderTopColor: c.borderLight,
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
     paddingVertical: spacing[3],
-    gap: spacing[3],
   },
   rowLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     flexShrink: 0,
-    maxWidth: '40%',
+    maxWidth: '40%' as const,
   },
   rowValue: {
+    minWidth: 0,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     flex: 1,
-    textAlign: 'right',
+    textAlign: 'right' as const,
     lineHeight: fontSize.sm * 1.45,
   },
   strikethrough: {
-    textDecorationLine: 'line-through',
-    color: colors.textTertiary,
+    textDecorationLine: 'line-through' as const,
+    color: c.textTertiary,
     opacity: 0.85,
   },
-});
+};
+}

@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { Keyboard, StyleSheet, Text, View } from 'react-native';
 import { Image as ImageIcon } from 'lucide-react-native';
 import {
@@ -29,6 +31,9 @@ interface Props {
 }
 
 export function StaffCancellationFields({ values, onChange, onPickPhoto }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_blocks_StaffCancellationFields_tsx_StaffCancellationFields_styles');
+
   const { reason, comment, photoUri } = values;
   const showPhoto = cancellationReasonRequiresPhoto(reason);
   const commentLen = comment.trim().length;
@@ -74,7 +79,7 @@ export function StaffCancellationFields({ values, onChange, onPickPhoto }: Props
             title={photoUri ? 'Photo ajoutée ✓' : 'Choisir une photo'}
             variant="outline"
             size="sm"
-            leftIcon={<ImageIcon size={14} color={colors.primary} strokeWidth={2} />}
+            leftIcon={<ImageIcon size={14} color={c.primary} strokeWidth={2} />}
             onPress={onPickPhoto}
           />
           {photoUri ? (
@@ -99,29 +104,31 @@ export function StaffCancellationFields({ values, onChange, onPickPhoto }: Props
 
 export { staffCancellationCanSubmit };
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   form: { gap: spacing[3] },
   counter: {
     marginTop: -spacing[2],
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   photoBlock: { gap: spacing[2] },
   photoTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   photoHint: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     lineHeight: fontSize.xs * 1.45,
   },
   hint: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
-});
+};
+}

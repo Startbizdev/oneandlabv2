@@ -1,7 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { Camera, ImagePlus, Trash2, Upload, User } from 'lucide-react-native';
 import { usePickProfileImage } from '@/features/profile/hooks/use-pick-profile-image';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
@@ -25,6 +27,8 @@ export function ProfileImagesBlock({
   onChangeProfile,
   onChangeCover,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileImagesBlock_tsx_styles');
   const { picking, pickImage, isPicking } = usePickProfileImage();
 
   const profileSrc = resolveProfileImageUrl(profileImageUrl);
@@ -43,7 +47,7 @@ export function ProfileImagesBlock({
     <View style={[styles.card, elevation.xs]}>
       <Text style={styles.cardTitle}>Photo de profil</Text>
 
-      <View style={styles.profileRow}>
+      <Cluster gap={spacing[4]} leading={
         <Pressable
           onPress={() => handlePick('profile')}
           disabled={busy}
@@ -54,26 +58,28 @@ export function ProfileImagesBlock({
             <Image source={{ uri: profileSrc }} style={styles.avatarImage} />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <User size={36} color={colors.textTertiary} strokeWidth={1.75} />
+              <User size={36} color={c.textTertiary} strokeWidth={1.75} />
             </View>
           )}
           <View style={styles.avatarOverlay}>
             {picking === 'profile' ? (
-              <ActivityIndicator color={colors.textInverse} size="small" />
+              <ActivityIndicator color={c.textInverse} size="small" />
             ) : (
-              <Camera size={22} color={colors.textInverse} strokeWidth={2} />
+              <Camera size={22} color={c.textInverse} strokeWidth={2} />
             )}
           </View>
         </Pressable>
-
+      }>
         <View style={styles.actionsCol}>
           <Pressable
             onPress={() => handlePick('profile')}
             disabled={busy}
             style={styles.actionBtn}
           >
-            <Upload size={14} color={colors.primary} strokeWidth={2} />
-            <Text style={styles.actionLabel}>{profileSrc ? 'Changer' : 'Ajouter'}</Text>
+            <Row gap={spacing[2]} align="center">
+              <Upload size={14} color={c.primary} strokeWidth={2} />
+              <Text style={styles.actionLabel}>{profileSrc ? 'Changer' : 'Ajouter'}</Text>
+            </Row>
           </Pressable>
           {profileSrc ? (
             <Pressable
@@ -81,12 +87,14 @@ export function ProfileImagesBlock({
               disabled={busy}
               style={[styles.actionBtn, styles.actionBtnDanger]}
             >
-              <Trash2 size={14} color={colors.error} strokeWidth={2} />
-              <Text style={[styles.actionLabel, styles.actionLabelDanger]}>Supprimer</Text>
+              <Row gap={spacing[2]} align="center">
+                <Trash2 size={14} color={c.error} strokeWidth={2} />
+                <Text style={[styles.actionLabel, styles.actionLabelDanger]}>Supprimer</Text>
+              </Row>
             </Pressable>
           ) : null}
         </View>
-      </View>
+      </Cluster>
 
       {showCover && onChangeCover ? (
         <View style={styles.coverSection}>
@@ -101,19 +109,21 @@ export function ProfileImagesBlock({
               <Image source={{ uri: coverSrc }} style={styles.coverImage} resizeMode="cover" />
             ) : (
               <View style={styles.coverPlaceholder}>
-                <ImagePlus size={28} color={colors.textTertiary} strokeWidth={1.75} />
+                <ImagePlus size={28} color={c.textTertiary} strokeWidth={1.75} />
               </View>
             )}
             {picking === 'cover' ? (
               <View style={styles.coverOverlay}>
-                <ActivityIndicator color={colors.textInverse} />
+                <ActivityIndicator color={c.textInverse} />
               </View>
             ) : null}
           </Pressable>
-          <View style={styles.coverActions}>
+          <Row wrap gap={spacing[2]} style={styles.coverActions}>
             <Pressable onPress={() => pickImage('cover')} disabled={busy} style={styles.actionBtn}>
-              <Upload size={14} color={colors.primary} strokeWidth={2} />
-              <Text style={styles.actionLabel}>{coverSrc ? 'Changer' : 'Ajouter'}</Text>
+              <Row gap={spacing[2]} align="center">
+                <Upload size={14} color={c.primary} strokeWidth={2} />
+                <Text style={styles.actionLabel}>{coverSrc ? 'Changer' : 'Ajouter'}</Text>
+              </Row>
             </Pressable>
             {coverSrc ? (
               <Pressable
@@ -121,11 +131,13 @@ export function ProfileImagesBlock({
                 disabled={busy}
                 style={[styles.actionBtn, styles.actionBtnDanger]}
               >
-                <Trash2 size={14} color={colors.error} strokeWidth={2} />
-                <Text style={[styles.actionLabel, styles.actionLabelDanger]}>Supprimer</Text>
+                <Row gap={spacing[2]} align="center">
+                  <Trash2 size={14} color={c.error} strokeWidth={2} />
+                  <Text style={[styles.actionLabel, styles.actionLabelDanger]}>Supprimer</Text>
+                </Row>
               </Pressable>
             ) : null}
-          </View>
+          </Row>
         </View>
       ) : null}
     </View>
@@ -149,44 +161,36 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
-  profileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[4],
-  },
   avatarBtn: {
     width: AVATAR,
     height: AVATAR,
     borderRadius: AVATAR / 2,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     borderWidth: 2,
     borderColor: c.borderLight,
   },
   avatarImage: {
-    width: '100%',
-    height: '100%',
+    width: '100%' as const,
+    height: '100%' as const,
   },
   avatarPlaceholder: {
+    minWidth: 0,
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     backgroundColor: c.surfaceAlt,
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   actionsCol: {
-    flex: 1,
     gap: spacing[2],
   },
   actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-start' as const,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderRadius: radius.md,
@@ -218,43 +222,32 @@ function buildStyles(c: AppColors) {
     color: c.textSecondary,
   },
   coverBtn: {
-    width: '100%',
+    width: '100%' as const,
     aspectRatio: 2,
     maxHeight: 120,
     borderRadius: radius.lg,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
     borderWidth: 1,
     borderColor: c.borderLight,
     backgroundColor: c.surfaceAlt,
   },
   coverImage: {
-    width: '100%',
-    height: '100%',
+    width: '100%' as const,
+    height: '100%' as const,
   },
   coverPlaceholder: {
+    minWidth: 0,
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   coverOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
-  coverActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
-  },
+  coverActions: {},
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_components_ProfileImagesBlock_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

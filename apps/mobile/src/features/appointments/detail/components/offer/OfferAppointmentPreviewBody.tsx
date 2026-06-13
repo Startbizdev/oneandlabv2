@@ -8,6 +8,7 @@ import {
   resolveRdvCareTagColors,
 } from '@/features/appointments/form/utils/booking-care-catalog';
 import { StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import {
   Calendar,
   CalendarDays,
@@ -59,12 +60,14 @@ function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
 
   return (
     <View style={tagStyles.careTagsBlock}>
-      <View style={tagStyles.careTagsWrap}>
+      <Row wrap align="center" gap={5} style={tagStyles.careTagsWrap}>
         {lines.map((line, idx) => {
           const tagColors = resolveRdvCareTagColors(line, primaryType, categories, orbColorMap);
           return (
-            <View
+            <Row
               key={`${line.category_id ?? 'noid'}-${idx}-${line.label}`}
+              align="center"
+              gap={4}
               style={[
                 tagStyles.careTag,
                 {
@@ -79,10 +82,10 @@ function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
               <Text style={tagStyles.careTagLabel} numberOfLines={1}>
                 {line.label}
               </Text>
-            </View>
+            </Row>
           );
         })}
-      </View>
+      </Row>
     </View>
   );
 }
@@ -139,10 +142,10 @@ function OfferCard({ primary, batch }: { primary: Appointment; batch: Appointmen
       ))}
       {notes ? (
         <View style={styles.notesBlock}>
-          <View style={styles.notesHead}>
+          <Row align="center" gap={spacing[2]} style={styles.notesHead}>
             <MessageSquare size={14} color={c.textTertiary} strokeWidth={2} />
             <Text style={styles.notesLabel}>Message</Text>
-          </View>
+          </Row>
           <Text style={styles.notesText}>{notes}</Text>
         </View>
       ) : null}
@@ -173,17 +176,12 @@ function buildCareTagStyles(c: AppColors) {
       borderBottomColor: c.borderLight,
     },
     careTagsWrap: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      gap: 5,
-      alignSelf: 'stretch',
+      minWidth: 0,
+      alignSelf: 'stretch' as const,
     },
     careTag: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      maxWidth: '100%',
+      minWidth: 0,
+      maxWidth: '100%' as const,
       paddingHorizontal: 7,
       paddingVertical: 3,
       borderRadius: radius.full,
@@ -212,9 +210,7 @@ function buildCardStyles(c: AppColors) {
       borderTopColor: c.borderLight,
     },
     notesHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[2],
+      minWidth: 0,
     },
     notesLabel: {
       fontFamily: fontFamily.semiBold,

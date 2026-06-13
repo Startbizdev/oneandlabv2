@@ -1,5 +1,8 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import Animated from 'react-native-reanimated';
 import { STATUS_BADGE_COLOR, STATUS_LABELS } from '@oneandlab/shared-utils';
 import { useAppColors } from '@/theme/use-app-colors';
@@ -55,6 +58,8 @@ function BadgeComponent({
   shape = 'rounded',
 }: BadgeProps) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_ui_Badge_tsx_BadgeComponent_styles');
+
   const config = variantConfigFor(variant, c);
   const isSmall = size === 'sm';
 
@@ -76,17 +81,19 @@ function BadgeComponent({
   }
 
   return (
-    <View
+    <Row
+      align="center"
+      gap={5}
       style={[
         styles.base,
         isSmall ? styles.sm : styles.md,
         shape === 'square' ? styles.square : null,
         { backgroundColor: config.bg },
       ]}
-      accessibilityLabel={dot ? `Statut : ${label}` : label}
     >
       {dot && <View style={[styles.dot, { backgroundColor: config.dot }]} />}
       <Animated.Text
+        accessibilityLabel={dot ? `Statut : ${label}` : label}
         style={[
           styles.label,
           isSmall ? styles.labelSm : styles.labelMd,
@@ -96,7 +103,7 @@ function BadgeComponent({
       >
         {label}
       </Animated.Text>
-    </View>
+    </Row>
   );
 }
 
@@ -125,12 +132,10 @@ function StatusBadgeComponent({
 
 export const StatusBadge = React.memo(StatusBadgeComponent);
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   base: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 5,
+    alignSelf: 'flex-start' as const,
   },
   sm: {
     paddingHorizontal: spacing[2],
@@ -151,8 +156,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   dotOnlyWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   dotOnlyWrapSm: {
     width: 12,
@@ -183,4 +188,5 @@ const styles = StyleSheet.create({
   labelMd: {
     fontSize: fontSize.sm,
   },
-});
+};
+}

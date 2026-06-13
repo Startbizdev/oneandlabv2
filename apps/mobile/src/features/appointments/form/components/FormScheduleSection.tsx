@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import { BookingAvailabilitySection } from './BookingAvailabilitySection';
 import { BookingDateCarousel } from './BookingDateCarousel';
@@ -22,6 +24,8 @@ export function FormScheduleSection({
   onAvailabilityType,
   onRange,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_FormScheduleSection_tsx_FormScheduleSection_styles');
+
   return (
     <View style={styles.wrapper}>
       <BookingDateCarousel value={scheduledAt} onChange={onScheduledAt} />
@@ -37,6 +41,8 @@ export function FormScheduleSection({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrapper: { gap: spacing[4] },
-});
+};
+}

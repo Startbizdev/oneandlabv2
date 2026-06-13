@@ -1,12 +1,15 @@
-import { StyleSheet, View } from 'react-native';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { Star } from 'lucide-react-native';
-import { APP_HEADER_CHROME } from '@/components/navigation/header-layout';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
 import { bookingWizardScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
 
 export default function PatientLayout() {
+  const styles = useThemedStyles(buildStyles, 'PatientLayout');
+
   return (
     <View style={styles.stackHost}>
       <Stack screenOptions={stackHeaderOptions()}>
@@ -42,6 +45,8 @@ export default function PatientLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  stackHost: { flex: 1, backgroundColor: APP_HEADER_CHROME },
-});
+function buildStyles(c: AppColors) {
+  return {
+    stackHost: { flex: 1, backgroundColor: c.primaryLight },
+  };
+}

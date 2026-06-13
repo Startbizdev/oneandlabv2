@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { NURSE_PLAN_LIST, NURSE_PLANS } from '@oneandlab/shared-constants';
 import { useMemo } from 'react';
 import {
@@ -36,6 +38,8 @@ function openManageSubscriptions() {
 
 export function NurseSubscriptionScreen() {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_nurse_screens_NurseSubscriptionScreen_tsx_NurseSubscriptionScreen_styles');
+
   const insets = useSafeAreaInsets();
   const {
     subscription,
@@ -178,8 +182,9 @@ export function NurseSubscriptionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: { flex: 1 },
+function buildStyles(c: AppColors) {
+  return {
+  scroll: { minWidth: 0, flex: 1 },
   content: {
     padding: spacing[4],
     gap: spacing[4],
@@ -206,7 +211,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
   },
   restore: {
-    alignItems: 'center',
+    alignItems: 'center' as const,
     paddingVertical: spacing[2],
   },
   restoreText: {
@@ -218,4 +223,5 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     lineHeight: 18,
   },
-});
+};
+}

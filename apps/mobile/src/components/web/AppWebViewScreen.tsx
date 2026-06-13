@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
@@ -21,7 +23,11 @@ function buildAuthInjectionScript(token: string): string {
   return `(function(){try{localStorage.setItem('auth_token',${encoded});}catch(e){}})();true;`;
 }
 
-export function AppWebViewScreen({ path, title = 'Cary', requireAuth = false }: Props) {
+export function AppWebViewScreen(
+{ path, title = 'Cary', requireAuth = false }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_web_AppWebViewScreen_tsx_AppWebViewScreen_styles');
+
   const token = useAuthStore((s) => s.token);
   const uri = webAppUrl(path);
   const [loading, setLoading] = useState(true);
@@ -43,7 +49,7 @@ export function AppWebViewScreen({ path, title = 'Cary', requireAuth = false }: 
       <View style={styles.container}>
         {loading ? (
           <View style={styles.loader}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={c.primary} />
           </View>
         ) : null}
         <WebView
@@ -62,14 +68,16 @@ export function AppWebViewScreen({ path, title = 'Cary', requireAuth = false }: 
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  webview: { flex: 1, backgroundColor: colors.surface },
+function buildStyles(c: AppColors) {
+  return {
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+  webview: { minWidth: 0, flex: 1, backgroundColor: c.surface },
   loader: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: c.background,
     zIndex: 2,
   },
-});
+};
+}

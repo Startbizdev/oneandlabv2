@@ -1,3 +1,5 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
@@ -11,6 +13,8 @@ interface Props {
 /** Fond header Cary — pleine largeur, bord bas droit (coins arrondis sur le contenu). */
 export function CaryHeaderBackground({ style }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_navigation_CaryHeaderBackground_tsx_CaryHeaderBackground_styles');
+
 
   return (
     <View style={[styles.root, style, Platform.OS === 'android' ? { backgroundColor: c.background } : null]}>
@@ -41,12 +45,15 @@ export function CaryHeaderBackground({ style }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   root: {
+    minWidth: 0,
     flex: 1,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   frost: {
     ...StyleSheet.absoluteFillObject,
   },
-});
+};
+}

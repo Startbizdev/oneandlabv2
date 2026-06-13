@@ -1,4 +1,5 @@
-import { StyleSheet, View, type ReactNode } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import type { ReactNode } from 'react';
 import type { Href } from 'expo-router';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
@@ -65,17 +66,19 @@ export function AppointmentsRdvListBookHeader({
 
 function buildRdvListChromeStyles(c: AppColors) {
   return {
-    container: { flex: 1, backgroundColor: c.background },
+    container: { minWidth: 0, flex: 1, backgroundColor: c.background },
     listContent: {
+      minWidth: 0,
       paddingHorizontal: spacing[4],
       paddingBottom: spacing[8],
       flexGrow: 1,
     },
     listHeader: {
       alignSelf: 'stretch' as const,
-      width: '100%',
+      width: '100%' as const,
     },
     errorWrap: {
+      minWidth: 0,
       flex: 1,
       paddingHorizontal: spacing[4],
       justifyContent: 'center' as const,
@@ -89,20 +92,22 @@ export function useRdvListChromeStyles() {
 
 /** @deprecated Préférer useRdvListChromeStyles() dans les écrans fonctionnels. */
 export const rdvListChromeStyles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { minWidth: 0, flex: 1 },
   listContent: {
+    minWidth: 0,
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[8],
     flexGrow: 1,
   },
   listHeader: {
-    alignSelf: 'stretch',
-    width: '100%',
+    alignSelf: 'stretch' as const,
+    width: '100%' as const,
   },
   errorWrap: {
+    minWidth: 0,
     flex: 1,
     paddingHorizontal: spacing[4],
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
   },
 });
 

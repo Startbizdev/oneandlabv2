@@ -1,8 +1,8 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Linking, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -53,26 +53,33 @@ function InfoRow({
   value: string;
   secondary?: string;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'PatientDetailScreen.InfoRow');
   return (
     <View style={styles.infoRow}>
-      <View style={styles.infoIconWrap}>
-        <Icon size={16} color={colors.primary} strokeWidth={2.25} />
-      </View>
-      <View style={styles.infoBody}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue}>{value}</Text>
-        {secondary ? (
-          <Text style={styles.infoSecondary} numberOfLines={2}>
-            {secondary}
-          </Text>
-        ) : null}
-      </View>
+      <Cluster gap={spacing[3]} align="start" leading={
+        <View style={styles.infoIconWrap}>
+          <Icon size={16} color={c.primary} strokeWidth={2.25} />
+        </View>
+      }>
+        <View style={styles.infoBody}>
+          <Text style={styles.infoLabel}>{label}</Text>
+          <Text style={styles.infoValue}>{value}</Text>
+          {secondary ? (
+            <Text style={styles.infoSecondary} numberOfLines={2}>
+              {secondary}
+            </Text>
+          ) : null}
+        </View>
+      </Cluster>
     </View>
   );
 }
 
 export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_patients_screens_PatientDetailScreen_tsx_styles');
+
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -162,7 +169,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
           key: 'phone',
           label: 'Appeler',
           icon: 'phone',
-          color: colors.success,
+          color: c.success,
           onPress: () => void Linking.openURL(`tel:${tel}`),
         }
       : null,
@@ -171,7 +178,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
           key: 'sms',
           label: 'Message',
           icon: 'message',
-          color: colors.primary,
+          color: c.primary,
           onPress: () => void Linking.openURL(`sms:${tel}`),
         }
       : null,
@@ -180,7 +187,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
           key: 'email',
           label: 'E-mail',
           icon: 'email',
-          color: colors.gradientEnd,
+          color: c.gradientEnd,
           onPress: () => void Linking.openURL(email.href!),
         }
       : null,
@@ -216,23 +223,27 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
               void historyQ.refetch();
               void docsQ.refetch();
             }}
-            tintColor={colors.primary}
+            tintColor={c.primary}
           />
         }
       >
-        <View style={styles.hero}>
-          <ProfileAvatar
-            profileImageUrl={p.profile_image_url}
-            seed={p.id ?? name}
-            gender={p.gender}
-            size={56}
-            style={styles.avatar}
-          />
+        <Cluster
+          gap={spacing[3]}
+          leading={
+            <ProfileAvatar
+              profileImageUrl={p.profile_image_url}
+              seed={p.id ?? name}
+              gender={p.gender}
+              size={56}
+              style={styles.avatar}
+            />
+          }
+        >
           <View style={styles.heroText}>
             <Text style={styles.heroName}>{name}</Text>
             {age != null ? <Text style={styles.heroMeta}>{age} ans</Text> : null}
           </View>
-        </View>
+        </Cluster>
 
         {infoRows.length > 0 ? (
           <View style={styles.card}>
@@ -252,7 +263,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
         ) : null}
 
         {contactButtons.length > 0 ? (
-          <View style={styles.buttonRow}>
+          <Row gap={spacing[1.5]}>
             {contactButtons.map((btn) => {
               const Icon =
                 btn.icon === 'phone' ? Phone : btn.icon === 'message' ? MessageCircle : Mail;
@@ -262,14 +273,14 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
                     title={btn.label}
                     size="sm"
                     variant="primary"
-                    leftIcon={<Icon size={14} color={colors.textInverse} strokeWidth={2.5} />}
+                    leftIcon={<Icon size={14} color={c.textInverse} strokeWidth={2.5} />}
                     onPress={btn.onPress}
-                    style={{ backgroundColor: btn.color, width: '100%' }}
+                    style={{ backgroundColor: btn.color, width: '100%' as const }}
                   />
                 </View>
               );
             })}
-          </View>
+          </Row>
         ) : null}
 
         <View style={styles.card}>
@@ -334,10 +345,12 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
 function buildStyles(c: AppColors) {
   return {
   screen: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: c.background,
   },
   loading: {
+    minWidth: 0,
     flex: 1,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
@@ -348,18 +361,13 @@ function buildStyles(c: AppColors) {
     paddingBottom: spacing[8],
     gap: spacing[4],
   },
-  hero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-  },
   avatar: {
     width: 52,
     height: 52,
     borderRadius: 26,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   heroText: {
@@ -379,28 +387,25 @@ function buildStyles(c: AppColors) {
     color: c.textSecondary,
   },
   card: {
-    width: '100%',
-    alignSelf: 'stretch',
+    width: '100%' as const,
+    alignSelf: 'stretch' as const,
     backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: c.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   cardKicker: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3.5],
     paddingBottom: spacing[2],
   },
   infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[3],
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3.5],
   },
@@ -409,8 +414,8 @@ function buildStyles(c: AppColors) {
     height: 36,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
     marginTop: 1,
   },
@@ -423,7 +428,7 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.4,
   },
   infoValue: {
@@ -448,10 +453,6 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.borderLight,
     marginLeft: spacing[4] + 40 + spacing[3],
   },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: spacing[1.5],
-  },
   buttonCell: {
     flex: 1,
     minWidth: 0,
@@ -459,11 +460,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_patients_screens_PatientDetailScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

@@ -1,7 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
+import { Row } from '@/components/layout/primitives';
 import { Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -33,6 +34,7 @@ function PendingReviewCard({
   onPress: () => void;
 }) {
   const c = useAppColors();
+  const cardStyles = useThemedStyles(buildCardStyles, 'PatientCompletedReviewPrompt.card');
   const headline = proName
     ? `Comment s'est passé votre soin avec ${proName} ?`
     : "Comment s'est passé votre soin ?";
@@ -53,12 +55,12 @@ function PendingReviewCard({
           style={cardStyles.gradient}
         >
           <View style={cardStyles.content}>
-            <View style={cardStyles.topRow}>
+            <Row justify="between" align="center" gap={spacing[2]}>
               <Text style={[cardStyles.kicker, { color: c.primaryDark }]}>Votre avis compte</Text>
               <View style={[cardStyles.timePill, { backgroundColor: c.primary }]}>
                 <Text style={[cardStyles.timePillText, { color: c.textInverse }]}>2 min</Text>
               </View>
-            </View>
+            </Row>
 
             <Text style={cardStyles.headline}>{headline}</Text>
             <Text style={cardStyles.subline}>
@@ -73,7 +75,10 @@ function PendingReviewCard({
               </View>
             ) : null}
 
-            <View
+            <Row
+              gap={spacing[2]}
+              align="center"
+              justify="center"
               style={[
                 cardStyles.cta,
                 {
@@ -84,7 +89,7 @@ function PendingReviewCard({
             >
               <Star size={20} color={c.star} fill={c.starFill} strokeWidth={1.5} />
               <Text style={[cardStyles.ctaText, { color: c.warning }]}>Noter mon soin</Text>
-            </View>
+            </Row>
           </View>
         </LinearGradient>
       </View>
@@ -116,6 +121,8 @@ function PublishedReviewAlert({
 
 /** Encart avis post-RDV — carte visible & cliquable → bottom sheet. */
 export function PatientCompletedReviewPrompt({ batch, onRefresh }: Props) {
+  const c = useAppColors();
+  const cardStyles = useThemedStyles(buildCardStyles, 'PatientCompletedReviewPrompt.card');
   const {
     reviewable,
     reviewsByAppt,
@@ -205,15 +212,10 @@ function buildCardStyles(c: AppColors) {
       width: '100%' as const,
     },
     content: {
+      minWidth: 0,
       flex: 1,
       padding: spacing[4],
       gap: spacing[2.5],
-    },
-    topRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'space-between' as const,
-      gap: spacing[2],
     },
     kicker: {
       fontFamily: fontFamily.bold,
@@ -253,10 +255,6 @@ function buildCardStyles(c: AppColors) {
       fontSize: fontSize.xs,
     },
     cta: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      gap: spacing[2],
       marginTop: spacing[1],
       paddingVertical: spacing[3],
       paddingHorizontal: spacing[4],
@@ -276,15 +274,3 @@ function buildCardStyles(c: AppColors) {
     },
   };
 }
-
-const cardStyles = new Proxy({} as ReturnType<typeof buildCardStyles>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles(
-        'features_appointments_detail_components_patient_PatientCompletedReviewPrompt_tsx_v3_styles',
-        buildCardStyles,
-      )[prop as keyof ReturnType<typeof buildCardStyles>];
-    }
-    return undefined;
-  },
-});

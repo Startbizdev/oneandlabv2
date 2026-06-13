@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useEffect, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { Clock, Sun } from 'lucide-react-native';
 import { BookingTimeRangeSlider } from './BookingTimeRangeSlider';
 import {
@@ -35,6 +37,8 @@ export function BookingAvailabilitySection({
   onAvailabilityType,
   onRange,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingAvailabilitySection_tsx_styles');
   const maxHour = availabilityMaxHour(serviceType);
   const minHour = useMemo(
     () => availabilitySliderMinHour(scheduledAt, maxHour),
@@ -53,7 +57,7 @@ export function BookingAvailabilitySection({
     <View style={styles.wrap}>
       <Text style={styles.label}>Disponibilité</Text>
 
-      <View style={styles.segmentShell}>
+      <Row gap={spacing[1]} style={styles.segmentShell}>
         {TABS.map((tab) => {
           const on = availabilityType === tab.id;
           const Icon = tab.icon;
@@ -63,18 +67,20 @@ export function BookingAvailabilitySection({
               onPress={() => onAvailabilityType(tab.id)}
               style={[styles.segment, on && styles.segmentActive]}
             >
-              <Icon
-                size={15}
-                color={on ? colors.primaryDark : colors.textTertiary}
-                strokeWidth={2.2}
-              />
-              <Text style={[styles.segmentLabel, on && styles.segmentLabelActive]} numberOfLines={1}>
-                {tab.label}
-              </Text>
+              <Row gap={spacing[1.5]} align="center" justify="center">
+                <Icon
+                  size={15}
+                  color={on ? c.primaryDark : c.textTertiary}
+                  strokeWidth={2.2}
+                />
+                <Text style={[styles.segmentLabel, on && styles.segmentLabelActive]} numberOfLines={1}>
+                  {tab.label}
+                </Text>
+              </Row>
             </Pressable>
           );
         })}
-      </View>
+      </Row>
 
       {availabilityType === 'custom' ? (
         <BookingTimeRangeSlider
@@ -97,18 +103,13 @@ function buildStyles(c: AppColors) {
     color: c.textPrimary,
   },
   segmentShell: {
-    flexDirection: 'row',
-    gap: spacing[1],
     padding: spacing[0.5],
     borderRadius: radius.lg,
     backgroundColor: c.surfaceSubtle,
   },
   segment: {
+    minWidth: 0,
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[1.5],
     minHeight: 40,
     borderRadius: radius.md,
     paddingHorizontal: spacing[2],
@@ -129,11 +130,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_BookingAvailabilitySection_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

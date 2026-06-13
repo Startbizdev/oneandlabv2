@@ -8,7 +8,7 @@ import {
   formatParisWeekdayDate,
   parseParisWallClock,
 } from '@/utils/paris-datetime';
-import { colors } from '@/theme';
+import { getAppColors } from '@/theme/colors';
 
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
@@ -33,12 +33,13 @@ export function notificationVisual(type?: string): {
   color: string;
   bg: string;
 } {
+  const c = getAppColors();
   const t = (type ?? '').toLowerCase();
   if (t.includes('appointment') || t.includes('rdv') || t.includes('booking')) {
-    return { Icon: CalendarClock, color: colors.primary, bg: colors.primaryLight };
+    return { Icon: CalendarClock, color: c.primary, bg: c.primaryLight };
   }
   if (t.includes('message') || t.includes('chat')) {
-    return { Icon: MessageSquare, color: colors.primaryDark, bg: colors.primaryLight };
+    return { Icon: MessageSquare, color: c.primaryDark, bg: c.primaryLight };
   }
-  return { Icon: Bell, color: colors.primary, bg: colors.primaryLight };
+  return { Icon: Bell, color: c.primary, bg: c.primaryLight };
 }

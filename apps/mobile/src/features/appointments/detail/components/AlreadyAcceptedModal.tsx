@@ -1,10 +1,14 @@
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Modal, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
-import { colors, elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function AlreadyAcceptedModal() {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_AlreadyAcceptedModal_tsx_AlreadyAcceptedModal_styles');
+
   const router = useRouter();
   return (
     <Modal transparent animationType="fade">
@@ -24,21 +28,23 @@ export function AlreadyAcceptedModal() {
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   backdrop: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: 'rgba(15,23,42,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     padding: spacing[6],
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius['2xl'],
     padding: spacing[5],
     gap: spacing[3],
-    alignItems: 'center',
-    width: '100%',
+    alignItems: 'center' as const,
+    width: '100%' as const,
   },
   emoji: {
     fontSize: 56,
@@ -48,14 +54,15 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.xl,
-    color: colors.textPrimary,
-    textAlign: 'center',
+    color: c.textPrimary,
+    textAlign: 'center' as const,
   },
   message: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.base,
-    color: colors.textSecondary,
-    textAlign: 'center',
+    color: c.textSecondary,
+    textAlign: 'center' as const,
     lineHeight: fontSize.base * 1.55,
   },
-});
+};
+}

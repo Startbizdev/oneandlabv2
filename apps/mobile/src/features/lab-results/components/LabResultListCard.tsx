@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight, FlaskConical } from 'lucide-react-native';
 import type { LabResultListItem } from '@oneandlab/shared-types';
@@ -64,6 +66,9 @@ export const LabResultListCard = React.memo(function LabResultListCard({
   onOpenDocument,
   onOpenAppointment,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_lab_results_components_LabResultListCard_tsx_styles');
+
   const time = formatTime(item.created_at ?? item.appointment_scheduled_at);
   const body = formatBody(item, role);
 
@@ -79,35 +84,40 @@ export const LabResultListCard = React.memo(function LabResultListCard({
       accessibilityRole="button"
       accessibilityLabel={`Ouvrir les résultats d’analyses. ${body}`}
     >
-      <View style={styles.row}>
-        <View style={styles.iconBox}>
-          <FlaskConical size={18} color={colors.primary} strokeWidth={2} />
-        </View>
-
+      <Cluster
+        gap={spacing[3]}
+        style={styles.row}
+        leading={
+          <View style={styles.iconBox}>
+            <FlaskConical size={18} color={c.primary} strokeWidth={2} />
+          </View>
+        }
+        actions={
+          <Pressable
+            onPress={onOpenAppointment}
+            hitSlop={10}
+            style={styles.chevron}
+            accessibilityRole="button"
+            accessibilityLabel="Voir le rendez-vous"
+          >
+            <ChevronRight size={16} color={c.textTertiary} strokeWidth={2} />
+          </Pressable>
+        }
+      >
         <View style={styles.content}>
-          <View style={styles.titleLine}>
+          <Row align="start">
             <View style={styles.titleWrap}>
               <Text style={styles.title} numberOfLines={2}>
                 Résultats d&apos;analyses
               </Text>
             </View>
             {time ? <Text style={styles.time}>{time}</Text> : null}
-          </View>
+          </Row>
           <Text style={styles.body} numberOfLines={3}>
             {body}
           </Text>
         </View>
-
-        <Pressable
-          onPress={onOpenAppointment}
-          hitSlop={10}
-          style={styles.chevron}
-          accessibilityRole="button"
-          accessibilityLabel="Voir le rendez-vous"
-        >
-          <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} />
-        </Pressable>
-      </View>
+      </Cluster>
     </Pressable>
   );
 });
@@ -118,19 +128,17 @@ const CHEVRON = 16;
 function buildStyles(c: AppColors) {
   return {
   card: {
-    alignSelf: 'stretch',
+    alignSelf: 'stretch' as const,
     backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: c.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   cardPressed: {
     opacity: 0.88,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: spacing[3.5],
     paddingHorizontal: spacing[4],
   },
@@ -139,19 +147,13 @@ function buildStyles(c: AppColors) {
     height: ICON,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     marginRight: spacing[3],
     flexShrink: 0,
   },
   content: {
-    flex: 1,
-    minWidth: 0,
     marginRight: spacing[2],
-  },
-  titleLine: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
   },
   titleWrap: {
     flex: 1,
@@ -181,18 +183,10 @@ function buildStyles(c: AppColors) {
   },
   chevron: {
     width: CHEVRON,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_lab_results_components_LabResultListCard_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

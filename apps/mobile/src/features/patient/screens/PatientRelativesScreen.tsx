@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
@@ -11,6 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -56,41 +58,50 @@ const RelativeCard = React.memo(function RelativeCard({
   onPress,
   onLongPress,
 }: RelativeCardProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'PatientRelativesScreen.RelativeCard');
   const rel = relationshipLabel(relativeRelationshipType(item)) || item.relationship;
   return (
     <Animated.View entering={FadeInDown.delay(index * 50).duration(300).springify()}>
       <Pressable onPress={onPress} onLongPress={onLongPress} style={[styles.card, elevation.xs]}>
-        <ProfileAvatar
-          profileImageUrl={null}
-          seed={item.id ?? displayName(item)}
-          gender={item.gender}
-          size={48}
-          style={styles.avatar}
-        />
-        <View style={styles.info}>
-          <Text style={styles.name}>{displayName(item)}</Text>
-          {rel ? (
-            <View style={styles.relationPill}>
-              <Heart size={10} color={colors.error} strokeWidth={2.5} fill={colors.error} />
-              <Text style={styles.relationText}>{rel}</Text>
-            </View>
-          ) : null}
-          {item.phone ? <Text style={styles.meta}>{item.phone}</Text> : null}
-          {item.email ? (
-            <Text style={styles.meta} numberOfLines={1}>
-              {item.email}
-            </Text>
-          ) : null}
-          {item.birth_date ? (
-            <Text style={styles.birth}>Né(e) le {formatBirthDateFr(item.birth_date)}</Text>
-          ) : null}
-        </View>
+        <Cluster
+          gap={spacing[3]}
+          leading={
+            <ProfileAvatar
+              profileImageUrl={null}
+              seed={item.id ?? displayName(item)}
+              gender={item.gender}
+              size={48}
+              style={styles.avatar}
+            />
+          }
+        >
+          <View style={styles.info}>
+            <Text style={styles.name}>{displayName(item)}</Text>
+            {rel ? (
+              <Row gap={4} align="center" style={styles.relationPill}>
+                <Heart size={10} color={c.error} strokeWidth={2.5} fill={c.error} />
+                <Text style={styles.relationText}>{rel}</Text>
+              </Row>
+            ) : null}
+            {item.phone ? <Text style={styles.meta}>{item.phone}</Text> : null}
+            {item.email ? (
+              <Text style={styles.meta} numberOfLines={1}>
+                {item.email}
+              </Text>
+            ) : null}
+            {item.birth_date ? (
+              <Text style={styles.birth}>Né(e) le {formatBirthDateFr(item.birth_date)}</Text>
+            ) : null}
+          </View>
+        </Cluster>
       </Pressable>
     </Animated.View>
   );
 });
 
 export function PatientRelativesScreen() {
+  const styles = useThemedStyles(buildStyles, 'features_patient_screens_PatientRelativesScreen_tsx_styles');
   const router = useRouter();
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -193,7 +204,7 @@ export function PatientRelativesScreen() {
 
 function buildStyles(c: AppColors) {
   return {
-  container: { flex: 1, backgroundColor: c.background },
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   subtitle: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
@@ -205,15 +216,13 @@ function buildStyles(c: AppColors) {
     gap: spacing[2],
   },
   list: {
+    minWidth: 0,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
     paddingBottom: spacing[24],
     flexGrow: 1,
   },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -225,21 +234,18 @@ function buildStyles(c: AppColors) {
     height: 46,
     borderRadius: radius.full,
     backgroundColor: c.errorLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
-  info: { flex: 1, gap: spacing[1] },
+  info: { gap: spacing[1] },
   name: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   relationPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-start' as const,
   },
   relationText: {
     fontFamily: fontFamily.medium,
@@ -259,11 +265,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_patient_screens_PatientRelativesScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

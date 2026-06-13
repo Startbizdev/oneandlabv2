@@ -4,14 +4,12 @@ import { TabBar } from '@/components/navigation/TabBar';
 import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { useTabScreenOptions } from '@/navigation/screen-options';
-import { colors } from '@/theme';
-
-function isFocused(color: string) {
-  return color === colors.primary;
-}
+import { useAppColors } from '@/theme/use-app-colors';
 
 export default function PatientTabsLayout() {
+  const c = useAppColors();
   const screenOptions = useTabScreenOptions();
+  const isFocused = (color: string) => color === c.primary;
 
   return (
     <Tabs
@@ -19,8 +17,8 @@ export default function PatientTabsLayout() {
       screenOptions={{
         ...screenOptions,
         lazy: true,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarActiveTintColor: c.primary,
+        tabBarInactiveTintColor: c.textTertiary,
         headerRight: tabHeaderNotificationRight(),
       }}
     >

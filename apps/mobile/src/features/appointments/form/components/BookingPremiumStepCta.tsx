@@ -1,16 +1,16 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  StyleSheet,
   Text,
   View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -64,6 +64,8 @@ export function BookingPremiumStepCta({
   disabled,
   style,
 }: BookingPremiumStepCtaProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingPremiumStepCta_tsx_styles');
   const isList = variant === 'list';
   const cornerRadius = isList ? radius.lg : radius.full;
   const badgeValue =
@@ -113,7 +115,7 @@ export function BookingPremiumStepCta({
         ]}
       >
         <LinearGradient
-          colors={[colors.gradientStart, colors.gradientEnd]}
+          colors={[c.gradientStart, c.gradientEnd]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={[
@@ -123,6 +125,7 @@ export function BookingPremiumStepCta({
             badgeValue == null && !leadingIcon && styles.gradientNoBadge,
           ]}
         >
+          <Row gap={isList ? spacing[2.5] : spacing[3]} align="center">
           {badgeValue != null ? (
             onSelectionBadgePress ? (
               <Pressable
@@ -167,15 +170,16 @@ export function BookingPremiumStepCta({
 
           <View style={[styles.arrowOrb, isList && styles.arrowOrbList]}>
             {loading ? (
-              <ActivityIndicator color={colors.textInverse} size="small" />
+              <ActivityIndicator color={c.textInverse} size="small" />
             ) : (
               <ArrowRight
                 size={isList ? 18 : 20}
-                color={colors.textInverse}
+                color={c.textInverse}
                 strokeWidth={2.5}
               />
             )}
           </View>
+          </Row>
         </LinearGradient>
       </Pressable>
     </Animated.View>
@@ -189,7 +193,7 @@ const LIST_ORB = 36;
 function buildStyles(c: AppColors) {
   return {
   root: {
-    width: '100%',
+    width: '100%' as const,
     ...elevation.lg,
     shadowColor: c.gradientEnd,
     shadowOpacity: 0.28,
@@ -202,7 +206,7 @@ function buildStyles(c: AppColors) {
     shadowOffset: { width: 0, height: 4 },
   },
   hit: {
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   hitDim: {
     opacity: 0.6,
@@ -211,18 +215,15 @@ function buildStyles(c: AppColors) {
     opacity: 0.75,
   },
   gradient: {
+    minWidth: 0,
     minHeight: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: spacing[3],
     paddingLeft: spacing[2.5],
     paddingRight: spacing[2],
-    gap: spacing[3],
   },
   gradientList: {
     minHeight: 52,
     paddingVertical: spacing[2.5],
-    gap: spacing[2.5],
   },
   gradientNoBadge: {
     paddingLeft: spacing[4],
@@ -232,10 +233,10 @@ function buildStyles(c: AppColors) {
     height: STEP_BADGE,
     borderRadius: radius.full,
     backgroundColor: c.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   stepBadgeList: {
     width: LIST_ORB,
@@ -255,7 +256,7 @@ function buildStyles(c: AppColors) {
     flex: 1,
     minWidth: 0,
     gap: 2,
-    justifyContent: 'center',
+    justifyContent: 'center' as const,
   },
   title: {
     fontFamily: fontFamily.bold,
@@ -277,10 +278,10 @@ function buildStyles(c: AppColors) {
     height: ARROW_ORB,
     borderRadius: radius.full,
     backgroundColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   arrowOrbList: {
     width: LIST_ORB,
@@ -290,11 +291,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_BookingPremiumStepCta_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

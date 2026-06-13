@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View, type ScrollView } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useLocalSearchParams } from 'expo-router';
 import { useBookingWizardHeader } from '../hooks/useBookingWizardHeader';
@@ -41,7 +43,10 @@ interface Props {
   basePath: string;
 }
 
-export function BookingWizardScreen({ mode, role, basePath }: Props) {
+export function BookingWizardScreen({
+  mode, role, basePath }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_screens_BookingWizardScreen_tsx_styles');
   const { patient_id: patientIdParam, relative_id: relativeIdParam } = useLocalSearchParams<{
     patient_id?: string;
     relative_id?: string;
@@ -155,7 +160,7 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
       <FormScreen
         ref={formScrollRef}
         contentContainerStyle={styles.formContent}
-        backgroundColor={colors.bookingCanvasLight}
+        backgroundColor={c.bookingCanvasLight}
         footer={
           <BookingActionBar
             {...bookingWizardFooterCtaCopy(bw.isFinalWizardStep)}
@@ -224,7 +229,7 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
             {mode === 'patient' ? (
               <>
                 <Text style={styles.sectionLabel}>Pour qui est ce rendez-vous ?</Text>
-                <View style={styles.relativeRow}>
+                <Row wrap gap={spacing[2]} align="center">
                   <Pressable
                     onPress={() => bw.setSelectedRelativeId(null)}
                     style={[styles.relativePill, !bw.selectedRelativeId && styles.relativePillActive]}
@@ -257,10 +262,12 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
                     onPress={() => setRelativeSheetOpen(true)}
                     style={styles.addRelativeBtn}
                   >
-                    <Plus size={14} color={colors.primary} strokeWidth={2.5} />
-                    <Text style={styles.addRelativeText}>Proche</Text>
+                    <Row gap={4} align="center">
+                      <Plus size={14} color={c.primary} strokeWidth={2.5} />
+                      <Text style={styles.addRelativeText}>Proche</Text>
+                    </Row>
                   </Pressable>
-                </View>
+                </Row>
                 {bw.selectedRelativeId ? (
                   <View style={styles.selfCard}>
                     <Text style={styles.selfName}>
@@ -353,28 +360,32 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
                 onPress={() => bw.setConsent(!bw.consent)}
                 style={[styles.consentRow, consentError && styles.consentRowError]}
               >
-                <View style={[styles.checkbox, bw.consent && styles.checkboxActive]}>
-                  {bw.consent ? <Text style={styles.checkmark}>✓</Text> : null}
-                </View>
-                <Text style={styles.consentText}>
-                  J&apos;accepte la politique de confidentialité et consens au traitement de mes données de
-                  santé. J&apos;autorise Cary à partager les informations de mon profil et les éléments
-                  nécessaires à la prise de rendez-vous avec les professionnels de santé de mon secteur.
-                </Text>
+                <Row align="start" gap={spacing[3]}>
+                  <View style={[styles.checkbox, bw.consent && styles.checkboxActive]}>
+                    {bw.consent ? <Text style={styles.checkmark}>✓</Text> : null}
+                  </View>
+                  <Text style={styles.consentText}>
+                    J&apos;accepte la politique de confidentialité et consens au traitement de mes données de
+                    santé. J&apos;autorise Cary à partager les informations de mon profil et les éléments
+                    nécessaires à la prise de rendez-vous avec les professionnels de santé de mon secteur.
+                  </Text>
+                </Row>
               </Pressable>
             ) : (
               <Pressable
                 onPress={() => bw.setConsent(!bw.consent)}
                 style={[styles.consentRow, consentError && styles.consentRowError]}
               >
-                <View style={[styles.checkbox, bw.consent && styles.checkboxActive]}>
-                  {bw.consent ? <Text style={styles.checkmark}>✓</Text> : null}
-                </View>
-                <Text style={styles.consentText}>
-                  J&apos;accepte les conditions RGPD et consens au traitement des données de santé du
-                  patient. J&apos;autorise Cary à communiquer les informations du profil et les éléments
-                  nécessaires aux professionnels de santé concernés par ce rendez-vous.
-                </Text>
+                <Row align="start" gap={spacing[3]}>
+                  <View style={[styles.checkbox, bw.consent && styles.checkboxActive]}>
+                    {bw.consent ? <Text style={styles.checkmark}>✓</Text> : null}
+                  </View>
+                  <Text style={styles.consentText}>
+                    J&apos;accepte les conditions RGPD et consens au traitement des données de santé du
+                    patient. J&apos;autorise Cary à communiquer les informations du profil et les éléments
+                    nécessaires aux professionnels de santé concernés par ce rendez-vous.
+                  </Text>
+                </Row>
               </Pressable>
             )}
           </Animated.View>
@@ -395,8 +406,8 @@ export function BookingWizardScreen({ mode, role, basePath }: Props) {
 
 function buildStyles(c: AppColors) {
   return {
-  screenWizard: { flex: 1, minHeight: 0, backgroundColor: c.bookingCanvasLight },
-  screenCare: { flex: 1, minHeight: 0, backgroundColor: c.bookingCanvas },
+  screenWizard: { minWidth: 0, flex: 1, minHeight: 0, backgroundColor: c.bookingCanvasLight },
+  screenCare: { minWidth: 0, flex: 1, minHeight: 0, backgroundColor: c.bookingCanvas },
   formContent: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],
@@ -421,12 +432,6 @@ function buildStyles(c: AppColors) {
     color: c.error,
     lineHeight: fontSize.sm * 1.45,
   },
-  relativeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
-    alignItems: 'center',
-  },
   relativePill: {
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
@@ -446,15 +451,12 @@ function buildStyles(c: AppColors) {
   },
   relativePillTextActive: { color: c.textInverse },
   addRelativeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: c.primaryMid,
-    borderStyle: 'dashed',
+    borderStyle: 'dashed' as const,
   },
   addRelativeText: {
     fontFamily: fontFamily.semiBold,
@@ -484,7 +486,7 @@ function buildStyles(c: AppColors) {
     color: c.textSecondary,
   },
   genderRow: { gap: spacing[2] },
-  genderPills: { flexDirection: 'row', gap: spacing[2] },
+  genderPills: { minWidth: 0 },
   genderPill: {
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[2],
@@ -504,9 +506,6 @@ function buildStyles(c: AppColors) {
   },
   genderPillTextActive: { color: c.textInverse },
   consentRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[3],
     padding: spacing[3],
     marginHorizontal: -spacing[3],
     borderRadius: radius.lg,
@@ -524,8 +523,8 @@ function buildStyles(c: AppColors) {
     borderWidth: 1.5,
     borderColor: c.border,
     backgroundColor: c.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     marginTop: 1,
     flexShrink: 0,
   },
@@ -539,6 +538,7 @@ function buildStyles(c: AppColors) {
     color: c.textInverse,
   },
   consentText: {
+    minWidth: 0,
     flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
@@ -548,11 +548,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_screens_BookingWizardScreen_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

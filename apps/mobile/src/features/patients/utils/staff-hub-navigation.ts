@@ -3,6 +3,15 @@ import { carePhotoDiscussionHref } from '@/features/appointments/detail/utils/ca
 
 type RolePrefix = '/(nurse)' | '/(pro)';
 
+/** Fiche patient staff (pro / infirmier). */
+export function staffPatientProfilePath(role: string, patientId?: string | null): string | null {
+  const id = patientId?.trim();
+  if (!id) return null;
+  if (role === 'pro') return `/(pro)/patient/${id}`;
+  if (role === 'nurse') return `/(nurse)/patient/${id}`;
+  return null;
+}
+
 /** Route expo-router pour un item du hub Patients. */
 export function staffHubItemRoute(
   item: StaffHubSearchItem,

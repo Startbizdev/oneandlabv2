@@ -2,8 +2,9 @@ import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
+import { Row } from '@/components/layout/primitives';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
 import {
   buildCareTileOrbColorMap,
@@ -38,10 +39,14 @@ export function RdvCareTagsRow({
   tone = 'neutral',
   density = 'default',
 }: Props) {
-  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
   const c = useAppColors();
+  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
   const { data: categories = [] } = useAppointmentCareCategories();
-  const styles = useThemedStyles((colors) => buildStyles(colors, density));
+  const styleFactory = useMemo(
+    () => (colors: AppColors) => buildStyles(colors, density),
+    [density],
+  );
+  const styles = useThemedStyles(styleFactory, 'RdvCareTagsRow');
   const orbColorMap = useMemo(
     () => buildCareTileOrbColorMap(categories),
     [categories, colorblindType],
@@ -64,16 +69,25 @@ export function RdvCareTagsRow({
   if (!items.length) return null;
 
   const useNeutral = tone === 'neutral';
+  const compact = density === 'compact';
 
   return (
-    <View style={styles.wrap} key={colorblindType}>
+    <Row
+      wrap
+      align="center"
+      gap={compact ? spacing[1] : spacing[1.5]}
+      style={styles.wrap}
+      key={colorblindType}
+    >
       {items.map((line, idx) => {
         const tagColors = useNeutral
           ? listCareTagColors(c)
           : resolveRdvCareTagColors(line, apt.type, categories, orbColorMap);
         return (
-          <View
+          <Row
             key={`${line.category_id ?? 'noid'}-${idx}-${line.label}`}
+            align="center"
+            gap={compact ? 3 : spacing[1]}
             style={[
               styles.tag,
               {
@@ -88,10 +102,10 @@ export function RdvCareTagsRow({
             <Text style={styles.label} numberOfLines={1}>
               {line.label}
             </Text>
-          </View>
+          </Row>
         );
       })}
-    </View>
+    </Row>
   );
 }
 
@@ -100,19 +114,14 @@ function buildStyles(c: AppColors, density: 'default' | 'compact') {
   const compact = density === 'compact';
   const labelSize = compact ? fontSize.xs : fontSize.sm;
 
-  return StyleSheet.create({
+  return {
     wrap: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      gap: compact ? spacing[1] : spacing[1.5],
-      alignSelf: 'stretch',
+      minWidth: 0,
+      alignSelf: 'stretch' as const,
     },
     tag: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: compact ? 3 : spacing[1],
-      maxWidth: '100%',
+      minWidth: 0,
+      maxWidth: '100%' as const,
       paddingHorizontal: compact ? spacing[1.5] : spacing[2],
       paddingVertical: compact ? spacing[0.5] : spacing[1],
       borderRadius: radius.sm,
@@ -128,5 +137,5 @@ function buildStyles(c: AppColors, density: 'default' | 'compact') {
       lineHeight: lh(labelSize),
       color: c.textSecondary,
     },
-  });
+  };
 }

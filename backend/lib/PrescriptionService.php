@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/PrescriptionPdf.php';
+require_once __DIR__ . '/AppTimezone.php';
 
 class PrescriptionService
 {
@@ -70,7 +71,7 @@ class PrescriptionService
 
     public static function generatePrescriptionNumber(): string
     {
-        return 'RX-' . date('Ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
+        return 'RX-' . AppTimezone::format('Ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
     }
 
     /**
@@ -346,6 +347,112 @@ class PrescriptionService
     }
 
     /**
+     * Actes affichables pour l'historique ordonnances (lots fusionnés comme liste RDV).
+     *
+     * @param list<array<string, mixed>> $rows
+     */
+    private static function enrichPrescriptionAppointmentCareItems(PDO $db, array &$rows): void
+    {
+        if (empty($rows)) {
+            return;
+        }
+
+        require_once __DIR__ . '/../models/Appointment.php';
+        $appointmentModel = new Appointment();
+
+        $bloodBatchStmt = $db->prepare('
+            SELECT id FROM appointments
+            WHERE creation_batch_id = ?
+              AND patient_id = ?
+              AND type = \'blood_test\'
+            ORDER BY scheduled_at ASC, created_at ASC, id ASC
+        ');
+        $nursingBatchStmt = $db->prepare('
+            SELECT id FROM appointments
+            WHERE creation_batch_id = ?
+              AND patient_id = ?
+              AND type = \'nursing\'
+            ORDER BY scheduled_at ASC, created_at ASC, id ASC
+        ');
+        $bloodBatchCache = [];
+        $nursingBatchCache = [];
+
+        foreach ($rows as &$row) {
+            $aptId = (string) ($row['appointment_id'] ?? '');
+            if ($aptId === '') {
+                $row['appointment_care_items'] = [];
+                continue;
+            }
+
+            $type = (string) ($row['appointment_type'] ?? '');
+            $patientId = (string) ($row['patient_id'] ?? '');
+            $batchId = $row['appointment_creation_batch_id'] ?? null;
+            $batchCount = (int) ($row['appointment_batch_count'] ?? 0);
+            $items = [];
+
+            try {
+                if ($type === 'blood_test') {
+                    $pre = $appointmentModel->loadBloodTestItemsForAppointments([$aptId]);
+                    $preRows = $pre[$aptId] ?? [];
+                    $slices = $appointmentModel->loadBloodTestResolveSlicesById([$aptId]);
+                    $slice = $slices[$aptId] ?? null;
+                    if ($slice) {
+                        $items = $appointmentModel->resolveBloodTestItemsForAppointment($slice, $preRows);
+                    }
+                    if ($batchId && $batchCount > 1 && $patientId !== '') {
+                        $cacheKey = (string) $batchId . '|' . $patientId;
+                        if (!array_key_exists($cacheKey, $bloodBatchCache)) {
+                            $bloodBatchStmt->execute([(string) $batchId, $patientId]);
+                            $bloodBatchCache[$cacheKey] = array_column(
+                                $bloodBatchStmt->fetchAll(PDO::FETCH_ASSOC),
+                                'id'
+                            );
+                        }
+                        $batchIds = $bloodBatchCache[$cacheKey];
+                        if (count($batchIds) > 1) {
+                            $merged = $appointmentModel->mergeBloodTestItemsAcrossBatchAppointmentIds($batchIds);
+                            if (!empty($merged)) {
+                                $items = $merged;
+                            }
+                        }
+                    }
+                } elseif ($type === 'nursing') {
+                    $pre = $appointmentModel->loadNursingItemsForAppointments([$aptId]);
+                    $preRows = $pre[$aptId] ?? [];
+                    $slices = $appointmentModel->loadNursingResolveSlicesById([$aptId]);
+                    $slice = $slices[$aptId] ?? null;
+                    if ($slice) {
+                        $items = $appointmentModel->resolveNursingItemsForAppointment($slice, $preRows);
+                    }
+                    if ($batchId && $batchCount > 1 && $patientId !== '') {
+                        $cacheKey = (string) $batchId . '|' . $patientId;
+                        if (!array_key_exists($cacheKey, $nursingBatchCache)) {
+                            $nursingBatchStmt->execute([(string) $batchId, $patientId]);
+                            $nursingBatchCache[$cacheKey] = array_column(
+                                $nursingBatchStmt->fetchAll(PDO::FETCH_ASSOC),
+                                'id'
+                            );
+                        }
+                        $batchIds = $nursingBatchCache[$cacheKey];
+                        if (count($batchIds) > 1) {
+                            $merged = $appointmentModel->mergeNursingItemsAcrossBatchAppointmentIds($batchIds);
+                            if (!empty($merged)) {
+                                $items = $merged;
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable $e) {
+                error_log('prescription appointment_care_items: ' . $e->getMessage());
+                $items = [];
+            }
+
+            $row['appointment_care_items'] = $items;
+        }
+        unset($row);
+    }
+
+    /**
      * @return array{data: array<int, array<string, mixed>>, pagination: array<string, int>}
      */
     public static function listPrescriptions(
@@ -402,6 +509,14 @@ class PrescriptionService
                 a.status AS appointment_status,
                 a.type AS appointment_type,
                 cc.name AS appointment_category_name,
+                a.creation_batch_id AS appointment_creation_batch_id,
+                (
+                    SELECT COUNT(*)
+                    FROM appointments ab
+                    WHERE ab.creation_batch_id = a.creation_batch_id
+                      AND a.creation_batch_id IS NOT NULL
+                      AND ab.creation_batch_id IS NOT NULL
+                ) AS appointment_batch_count,
                 a.form_data_encrypted AS appointment_form_data_enc,
                 a.form_data_dek AS appointment_form_data_dek,
                 COALESCE(a.patient_id, md.patient_id) AS patient_id,
@@ -440,6 +555,8 @@ class PrescriptionService
             unset($row['appointment_form_data_enc'], $row['appointment_form_data_dek']);
             $out[] = $row;
         }
+
+        self::enrichPrescriptionAppointmentCareItems($db, $out);
 
         return [
             'data' => $out,

@@ -7,24 +7,22 @@ import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { useTabScreenOptions } from '@/navigation/screen-options';
 import { useNurseDemandesBadgeCount } from '@/features/nurse/hooks/use-nurse-demandes-badge';
 import { useAuthStore } from '@/store/auth-store';
-import { colors } from '@/theme';
-
-function isFocused(color: string) {
-  return color === colors.primary;
-}
+import { useAppColors } from '@/theme/use-app-colors';
 
 export default function NurseTabsLayout() {
+  const c = useAppColors();
   const isHydrated = useAuthStore((s) => s.isHydrated);
   const { count: demandesBadge } = useNurseDemandesBadgeCount(isHydrated);
   const screenOptions = useTabScreenOptions();
+  const isFocused = (color: string) => color === c.primary;
 
   return (
     <Tabs
       tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
         ...screenOptions,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarActiveTintColor: c.primary,
+        tabBarInactiveTintColor: c.textTertiary,
         headerRight: tabHeaderNotificationRight(),
       }}
     >

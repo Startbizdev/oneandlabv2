@@ -1,12 +1,13 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { Row } from '@/components/layout/primitives';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { updateAppointment } from '../../api/appointments.service';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const NURSE_STATUSES = ['pending', 'confirmed', 'in_progress', 'completed', 'canceled'] as const;
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export function AppointmentStatusSelect({ appointmentId, currentStatus, role }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_AppointmentStatusSelect_tsx_styles');
   const { show: toast } = useToast();
   const qc = useQueryClient();
 
@@ -44,7 +46,7 @@ export function AppointmentStatusSelect({ appointmentId, currentStatus, role }: 
   return (
     <View style={styles.wrapper}>
       <Text style={styles.overline}>Statut</Text>
-      <View style={styles.pillRow}>
+      <Row wrap gap={spacing[2]}>
         {NURSE_STATUSES.map((s) => {
           const on = currentStatus === s;
           return (
@@ -60,7 +62,7 @@ export function AppointmentStatusSelect({ appointmentId, currentStatus, role }: 
             </Pressable>
           );
         })}
-      </View>
+      </Row>
     </View>
   );
 }
@@ -73,12 +75,7 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  pillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
+    textTransform: 'uppercase' as const,
   },
   pill: {
     paddingHorizontal: spacing[3],
@@ -101,11 +98,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_detail_components_AppointmentStatusSelect_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

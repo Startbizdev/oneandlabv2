@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import React, { useCallback } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import type { BottomTabBarProps, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -30,6 +32,8 @@ function TabItem({
   options: BottomTabBarProps['descriptors'][string]['options'];
   routeName: string;
 }) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'TabBar.TabItem');
   const label =
     typeof options.tabBarLabel === 'string'
       ? options.tabBarLabel
@@ -39,7 +43,7 @@ function TabItem({
 
   const icon = options.tabBarIcon?.({
     focused: isFocused,
-    color: isFocused ? colors.primary : colors.textTertiary,
+    color: isFocused ? c.primary : c.textTertiary,
     size: 22,
   });
 
@@ -75,12 +79,15 @@ function TabItem({
  * Tab bar — insets bas via `useSafeAreaInsets` (recommandation React Navigation 2026).
  * @see https://reactnavigation.org/docs/handling-safe-area/
  */
-export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+export function TabBar({
+  state, descriptors, navigation }: BottomTabBarProps) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'components_navigation_TabBar_tsx_styles');
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing[1]) }]}>
-      <View style={styles.row}>
+      <Row align="center" style={styles.row}>
         {state.routes.map((route, routeIndex) => {
           const { options } = descriptors[route.key];
           if (!isTabVisible(options)) return null;
@@ -109,7 +116,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             />
           );
         })}
-      </View>
+      </Row>
     </View>
   );
 }
@@ -122,21 +129,20 @@ function buildStyles(c: AppColors) {
     borderTopColor: c.border,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
     minHeight: TAB_CONTENT_HEIGHT,
     paddingTop: spacing[1.5],
   },
   tabItem: {
+    minWidth: 0,
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     paddingBottom: spacing[1],
   },
   iconSlot: {
     height: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     marginBottom: spacing[0.5],
   },
   label: {
@@ -155,11 +161,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('components_navigation_TabBar_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

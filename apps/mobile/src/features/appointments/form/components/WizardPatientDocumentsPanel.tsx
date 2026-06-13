@@ -1,8 +1,10 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { useCallback } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { FolderOpen } from 'lucide-react-native';
@@ -27,7 +29,10 @@ function dossierSubtitle(count: number): string {
   return `${count} documents enregistrés`;
 }
 
-export function WizardPatientDocumentsPanel({ patientUserId, documentsRoute }: Props) {
+export function WizardPatientDocumentsPanel({
+  patientUserId, documentsRoute }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_WizardPatientDocumentsPanel_tsx_styles');
   const router = useRouter();
 
   const docsQ = useQuery({
@@ -53,15 +58,20 @@ export function WizardPatientDocumentsPanel({ patientUserId, documentsRoute }: P
   return (
     <View style={styles.card}>
       {loading ? (
-        <View style={styles.loadingRow}>
-          <View style={styles.iconWrap}>
-            <FolderOpen size={20} color={colors.primary} strokeWidth={2.25} />
-          </View>
-          <View style={styles.loadingTextCol}>
-            <Text style={styles.loadingTitle}>Dossier patient</Text>
-            <ActivityIndicator size="small" color={colors.textTertiary} style={styles.spinner} />
-          </View>
-        </View>
+        <Cluster
+          gap={spacing[3]}
+          style={styles.loadingRow}
+          leading={
+            <View style={styles.iconWrap}>
+              <FolderOpen size={20} color={c.primary} strokeWidth={2.25} />
+            </View>
+          }
+          actions={
+            <ActivityIndicator size="small" color={c.textTertiary} style={styles.spinner} />
+          }
+        >
+          <Text style={styles.loadingTitle}>Dossier patient</Text>
+        </Cluster>
       ) : (
         <ProfileNavRow
           icon={FolderOpen}
@@ -77,18 +87,15 @@ export function WizardPatientDocumentsPanel({ patientUserId, documentsRoute }: P
 function buildStyles(c: AppColors) {
   return {
   card: {
-    width: '100%',
-    alignSelf: 'stretch',
+    width: '100%' as const,
+    alignSelf: 'stretch' as const,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: c.borderLight,
     backgroundColor: c.surface,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[4],
   },
@@ -97,16 +104,9 @@ function buildStyles(c: AppColors) {
     height: 40,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     flexShrink: 0,
-  },
-  loadingTextCol: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minWidth: 0,
   },
   loadingTitle: {
     fontFamily: fontFamily.semiBold,
@@ -119,11 +119,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_appointments_form_components_WizardPatientDocumentsPanel_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

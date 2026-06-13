@@ -1,5 +1,5 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -22,6 +22,7 @@ export function LoginBottomSheet({
   onEmailNotFound,
   onRegisterPress,
 }: Props) {
+  const styles = useThemedStyles(buildStyles, 'features_auth_components_LoginBottomSheet_tsx_styles');
   const [meta, setMeta] = useState<LoginFlowMeta>({
     mode: 'code',
     step: 'email',
@@ -71,18 +72,18 @@ export function LoginBottomSheet({
 function buildStyles(c: AppColors) {
   return {
     content: {
-      width: '100%',
+      width: '100%' as const,
       gap: spacing[4],
     },
     registerLink: {
-      alignItems: 'center',
+      alignItems: 'center' as const,
       paddingTop: spacing[1],
     },
     registerText: {
       fontFamily: fontFamily.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
-      textAlign: 'center',
+      textAlign: 'center' as const,
     },
     registerAccent: {
       fontFamily: fontFamily.bold,
@@ -91,11 +92,3 @@ function buildStyles(c: AppColors) {
   };
 }
 
-const styles = new Proxy({} as Record<string, unknown>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_auth_components_LoginBottomSheet_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

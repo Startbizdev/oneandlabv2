@@ -1,4 +1,6 @@
-import { colors } from '@/theme';
+import type { AppColors } from '@/theme/colors';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { pickMedicalDocumentFile } from '@/lib/uploads/pick-medical-document';
@@ -13,6 +15,7 @@ import {
   canUploadMedicalDocumentsForAppointmentStatus,
 } from '@/utils/appointment-documents-upload';
 import type { Appointment } from '@oneandlab/shared-types';
+import { Row } from '@/components/layout/primitives';
 import { DocumentsBlock } from './DocumentsBlock';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
 import { getDocumentTypeLabel } from '../utils/document-labels';
@@ -48,6 +51,9 @@ export function DetailDocumentsSection({
   loading,
   omitCarePhotos,
 }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_DetailDocumentsSection_tsx_DetailDocumentsSection_styles');
+
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [uploading, setUploading] = useState<string | null>(null);
@@ -130,14 +136,15 @@ export function DetailDocumentsSection({
           {uploadTypes.map((t) => (
             <Pressable
               key={t}
-              style={styles.uploadRow}
               disabled={uploading === t}
               onPress={() => void pickAndUpload(t)}
             >
-              <Upload size={16} color={colors.primary} strokeWidth={2} />
-              <Text style={styles.uploadLabel}>
-                {uploading === t ? 'Envoi…' : getDocumentTypeLabel(t)}
-              </Text>
+              <Row gap={spacing[2]} align="center" style={styles.uploadRow}>
+                <Upload size={16} color={c.primary} strokeWidth={2} />
+                <Text style={styles.uploadLabel}>
+                  {uploading === t ? 'Envoi…' : getDocumentTypeLabel(t)}
+                </Text>
+              </Row>
             </Pressable>
           ))}
         </View>
@@ -146,32 +153,31 @@ export function DetailDocumentsSection({
   );
 }
 
-const styles = StyleSheet.create({
+function buildStyles(c: AppColors) {
+  return {
   wrap: { gap: spacing[3] },
   uploadZone: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: c.borderLight,
     padding: spacing[3],
     gap: spacing[2],
   },
   uploadTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
+    color: c.textSecondary,
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.4,
   },
   uploadRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
     paddingVertical: spacing[2],
   },
   uploadLabel: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
-});
+};
+}

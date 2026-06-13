@@ -1,7 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { getThemedStyles } from '@/theme/use-themed-styles';
-import { colors } from '@/theme';
+import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+
 import { StyleSheet, Text, View, type ViewProps } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
 import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -13,20 +15,29 @@ interface Props extends ViewProps {
   children: React.ReactNode;
 }
 
-export function ProfileSection({ title, description, Icon, children, style, ...rest }: Props) {
+export function ProfileSection({
+  title, description, Icon, children, style, ...rest }: Props) {
+  const c = useAppColors();
+  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileSection_tsx_styles');
   return (
     <View style={[styles.card, elevation.xs, style]} {...rest}>
-      <View style={styles.header}>
-        {Icon ? (
-          <View style={styles.iconWrap}>
-            <Icon size={18} color={colors.primary} strokeWidth={2} />
-          </View>
-        ) : null}
+      <Cluster
+        gap={spacing[3]}
+        align="start"
+        leading={
+          Icon ? (
+            <View style={styles.iconWrap}>
+              <Icon size={18} color={c.primary} strokeWidth={2} />
+            </View>
+          ) : undefined
+        }
+        style={styles.header}
+      >
         <View style={styles.headerText}>
           <Text style={styles.title}>{title}</Text>
           {description ? <Text style={styles.description}>{description}</Text> : null}
         </View>
-      </View>
+      </Cluster>
       <View style={styles.body}>{children}</View>
     </View>
   );
@@ -39,12 +50,9 @@ function buildStyles(c: AppColors) {
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: c.borderLight,
-    overflow: 'hidden',
+    overflow: 'hidden' as const,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[3],
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],
     paddingBottom: spacing[2],
@@ -54,10 +62,10 @@ function buildStyles(c: AppColors) {
     height: 36,
     borderRadius: radius.md,
     backgroundColor: c.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
-  headerText: { flex: 1, gap: 4 },
+  headerText: { minWidth: 0, flex: 1, gap: 4 },
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.base,
@@ -77,11 +85,3 @@ function buildStyles(c: AppColors) {
 };
 }
 
-const styles = new Proxy({} as Record<string, any>, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getThemedStyles('features_profile_components_ProfileSection_tsx_styles', buildStyles)[prop];
-    }
-    return undefined;
-  },
-});

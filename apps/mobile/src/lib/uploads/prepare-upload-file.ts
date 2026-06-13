@@ -4,7 +4,7 @@ import type { UploadFileInput } from './upload-file';
 import { inspectMedDocFile, inspectMedDocFilePair, logMedDoc } from './medical-doc-file-debug';
 
 async function getFileSize(uri: string): Promise<number | null> {
-  const info = await FileSystem.getInfoAsync(uri, { size: true });
+  const info = await FileSystem.getInfoAsync(uri);
   if (!info.exists || !('size' in info) || info.size == null) return null;
   return info.size;
 }
