@@ -9,8 +9,8 @@ apps/web/
 /docs/
 /scripts/
 /vendor/
-uploads/
-data/
+/uploads/
+/data/
 
 # --- Git / IDE / outils locaux ---
 .git/
@@ -46,8 +46,8 @@ dist/
 .nitro/
 web-build/
 coverage/
-*.log
-logs/
+**/*.log
+/logs/
 **/*.tsbuildinfo
 .metro-health-check*
 npm-debug.*
