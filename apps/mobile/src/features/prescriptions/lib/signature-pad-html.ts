@@ -9,7 +9,7 @@ canvas{display:block;width:100%;height:100%;background:#fff}
 <script>
 const canvas=document.getElementById('c');
 const ctx=canvas.getContext('2d');
-let drawing=false,lastX=0,lastY=0;
+let drawing=false,lastX=0,lastY=0,hasInk=false;
 function resize(){
   const r=canvas.getBoundingClientRect();
   canvas.width=Math.max(1,Math.floor(r.width*2));
@@ -17,8 +17,9 @@ function resize(){
   ctx.setTransform(2,0,0,2,0,0);
   ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#111';ctx.lineWidth=2.2;
 }
-function clearPad(){ctx.clearRect(0,0,canvas.width,canvas.height);post('cleared');}
+function clearPad(){ctx.clearRect(0,0,canvas.width,canvas.height);hasInk=false;post('cleared');}
 function isEmpty(){
+  if(hasInk)return false;
   const d=ctx.getImageData(0,0,canvas.width,canvas.height).data;
   for(let i=3;i<d.length;i+=4){if(d[i])return false;}
   return true;
@@ -31,7 +32,7 @@ function loadPng(b64){
   clearPad();
   if(!b64)return;
   const img=new Image();
-  img.onload=()=>{ctx.drawImage(img,0,0,canvas.width/2,canvas.height/2);};
+  img.onload=()=>{ctx.drawImage(img,0,0,canvas.width/2,canvas.height/2);hasInk=true;};
   img.src=b64.startsWith('data:')?b64:'data:image/png;base64,'+b64;
 }
 function post(type,payload){
@@ -51,6 +52,7 @@ function onMove(e){
   const x=(e.clientX||e.touches?.[0]?.clientX)-r.left;
   const y=(e.clientY||e.touches?.[0]?.clientY)-r.top;
   ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(x,y);ctx.stroke();
+  hasInk=true;
   lastX=x;lastY=y;
 }
 function onUp(){drawing=false;}

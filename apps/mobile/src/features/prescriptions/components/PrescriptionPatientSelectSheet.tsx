@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -11,9 +11,10 @@ import {
   type ListRenderItem,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Check } from 'lucide-react-native';
+import { Check, Search } from 'lucide-react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Input } from '@/components/ui/Input';
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import {
   patientDisplayName,
@@ -24,7 +25,7 @@ import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const H_PAD = spacing[4];
-const LIST_MAX_HEIGHT = 420;
+const LIST_MAX_HEIGHT = 400;
 const ROW_DRAW_DISTANCE = 72 * 4;
 
 function ListSeparator() {
@@ -50,11 +51,11 @@ interface Props {
   selectedId: string;
   onSelect: (id: string) => void;
   loading?: boolean;
-  query: string;
   totalCount?: number;
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   onLoadMore?: () => void;
+  searchPlaceholder?: string;
 }
 
 export function PrescriptionPatientSelectSheet({
@@ -64,14 +65,19 @@ export function PrescriptionPatientSelectSheet({
   selectedId,
   onSelect,
   loading = false,
-  query,
   totalCount,
   hasNextPage = false,
   isFetchingNextPage = false,
   onLoadMore,
+  searchPlaceholder = 'Rechercher un patient…',
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'PrescriptionPatientSelectSheet');
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    if (!visible) setQuery('');
+  }, [visible]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return patients;
@@ -81,9 +87,15 @@ export function PrescriptionPatientSelectSheet({
   const resolvedTotal = totalCount ?? patients.length;
   const initialLoading = loading && patients.length === 0;
 
+  const handleClose = useCallback(() => {
+    setQuery('');
+    onClose();
+  }, [onClose]);
+
   const handlePick = useCallback(
     (id: string) => {
       onSelect(id);
+      setQuery('');
       onClose();
     },
     [onClose, onSelect],
@@ -128,27 +140,37 @@ export function PrescriptionPatientSelectSheet({
     </View>
   ) : null;
 
+  const countLabel = query.trim()
+    ? `${filtered.length} résultat${filtered.length > 1 ? 's' : ''}`
+    : `${resolvedTotal} patient${resolvedTotal > 1 ? 's' : ''}`;
+
   return (
     <BottomSheet
       visible={visible}
-      onClose={onClose}
+      onClose={handleClose}
       title="Choisir un patient"
-      subtitle={
-        resolvedTotal > 0
-          ? `${filtered.length} affiché(s) · ${resolvedTotal} patient(s) au total`
-          : undefined
-      }
+      subtitle={countLabel}
       contentStyle={styles.sheetBody}
       disableScroll
       stackBehavior="push"
     >
+      <View style={styles.searchWrap}>
+        <Input
+          value={query}
+          onChangeText={setQuery}
+          placeholder={searchPlaceholder}
+          leftIcon={<Search size={16} color={c.textTertiary} strokeWidth={2} />}
+          autoCorrect={false}
+        />
+      </View>
+
       {initialLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={c.primary} />
         </View>
       ) : filtered.length === 0 ? (
         <Text style={styles.empty}>
-          {query.trim() ? 'Aucun patient pour cette recherche' : 'Aucun patient'}
+          {query.trim() ? `Aucun résultat pour « ${query.trim()} »` : 'Aucun patient'}
         </Text>
       ) : (
         <View style={styles.listPanel}>
@@ -158,7 +180,7 @@ export function PrescriptionPatientSelectSheet({
             renderItem={renderItem}
             estimatedItemSize={72}
             drawDistance={ROW_DRAW_DISTANCE}
-            style={{ maxHeight: LIST_MAX_HEIGHT }}
+            keyboardShouldPersistTaps="handled"
             ItemSeparatorComponent={ListSeparator}
             onEndReached={() => {
               if (hasNextPage && !isFetchingNextPage) onLoadMore?.();
@@ -177,15 +199,33 @@ function buildSeparatorStyles(c: AppColors) {
     separator: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: c.borderLight,
-      marginHorizontal: H_PAD,
     },
   };
 }
 
 function buildStyles(c: AppColors) {
   return {
-    sheetBody: { paddingHorizontal: 0 },
-    listPanel: { minHeight: 120 },
+    sheetBody: {
+      minWidth: 0,
+      padding: 0,
+      gap: 0,
+      paddingBottom: spacing[2],
+      flexGrow: 1,
+    },
+    searchWrap: {
+      paddingHorizontal: H_PAD,
+      paddingBottom: spacing[2],
+    },
+    listPanel: {
+      alignSelf: 'stretch' as const,
+      width: '100%' as const,
+      height: LIST_MAX_HEIGHT,
+      maxHeight: LIST_MAX_HEIGHT,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.border,
+      backgroundColor: c.surface,
+      overflow: 'hidden' as const,
+    },
     row: {
       paddingVertical: spacing[3],
       paddingHorizontal: H_PAD,

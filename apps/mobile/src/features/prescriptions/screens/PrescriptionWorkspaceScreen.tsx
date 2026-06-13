@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -25,6 +25,8 @@ import { useToast } from '@/providers/ToastProvider';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import type { ProPrescriptionRow, PrescriptionLinkMode } from '../api/prescriptions.service';
 import { PrescriptionComposer } from '../components/PrescriptionComposer';
+import type { OpenPrescriptionSignatureOptions } from '../components/PrescriptionSignatureSheet';
+import { PrescriptionSignatureSheet } from '../components/PrescriptionSignatureSheet';
 import { PrescriptionHistoryCard } from '../components/PrescriptionHistoryCard';
 import { PrescriptionAppointmentSelectField } from '../components/PrescriptionAppointmentSelectField';
 import { PrescriptionComposerAwaitingRdv } from '../components/PrescriptionComposerAwaitingRdv';
@@ -41,6 +43,8 @@ import {
   usePrescriptionPatientPickerInfinite,
 } from '../hooks/use-prescription-patient-picker-infinite';
 import { usePrescriptionsHistoryInfinite } from '../hooks/use-prescriptions-history-infinite';
+import { fetchUser } from '@/features/profile/api/profile.service';
+import { useAuthStore } from '@/store/auth-store';
 import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -75,6 +79,22 @@ export function PrescriptionWorkspaceScreen({
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [previewFileName, setPreviewFileName] = useState('ordonnance.pdf');
   const [editPatientId, setEditPatientId] = useState<string | null>(null);
+  const [signatureSheetOpen, setSignatureSheetOpen] = useState(false);
+  const [signaturePendingGenerate, setSignaturePendingGenerate] = useState(false);
+  const afterSignatureSaveRef = useRef<(() => void) | null>(null);
+
+  const user = useAuthStore((s) => s.user);
+  const profileQ = useQuery({
+    queryKey: queryKeys.profile.user(user?.id ?? ''),
+    queryFn: async () => (await fetchUser(user!.id, 'full')).data,
+    enabled: !!user?.id,
+  });
+
+  const handleOpenSignatureSheet = useCallback((options?: OpenPrescriptionSignatureOptions) => {
+    afterSignatureSaveRef.current = options?.afterSave ?? null;
+    setSignaturePendingGenerate(Boolean(options?.pendingGenerate));
+    setSignatureSheetOpen(true);
+  }, []);
 
   const effectivePatientId = fixedPatientId ?? patientId;
 
@@ -194,27 +214,10 @@ export function PrescriptionWorkspaceScreen({
           />
         }
       >
-        {!fixedPatientId ? (
-          <View style={styles.hero}>
-            <Text style={styles.heroTitle}>
-              {prescriptionKind === 'nursing' ? 'Prescriptions d\'actes' : 'Ordonnances'}
-            </Text>
-            <Text style={styles.heroDesc}>
-              Créez une ordonnance pour un patient ou consultez l’historique complet.
-            </Text>
-          </View>
-        ) : null}
-
         <FullWidthSegmentBar segments={segments} value={tab} onChange={setTab} />
 
         {tab === 'create' ? (
           <View style={[styles.section, elevation.xs]}>
-            <Text style={styles.sectionHint}>
-              {fixedPatientId
-                ? 'Générez une ordonnance pour ce patient, avec ou sans lien vers un rendez-vous.'
-                : 'Recherchez un patient, puis rédigez l’ordonnance.'}
-            </Text>
-
             {!fixedPatientId ? (
               <PrescriptionPatientSelectField
                 patients={patientOptions}
@@ -242,6 +245,7 @@ export function PrescriptionWorkspaceScreen({
                   onDocumentsChanged={refreshAll}
                   prescriptionKind={prescriptionKind}
                   embedded
+                  onOpenSignatureSheet={handleOpenSignatureSheet}
                 />
               </View>
             ) : null}
@@ -260,14 +264,15 @@ export function PrescriptionWorkspaceScreen({
                 />
                 {appointmentId ? (
                   <View style={styles.composerWrap}>
-                    <PrescriptionComposer
-                      patientId={effectivePatientId}
-                      appointmentId={appointmentId}
-                      documents={docsQ.data ?? []}
-                      onDocumentsChanged={refreshAll}
-                      prescriptionKind={prescriptionKind}
-                      embedded
-                    />
+                  <PrescriptionComposer
+                    patientId={effectivePatientId}
+                    appointmentId={appointmentId}
+                    documents={docsQ.data ?? []}
+                    onDocumentsChanged={refreshAll}
+                    prescriptionKind={prescriptionKind}
+                    embedded
+                    onOpenSignatureSheet={handleOpenSignatureSheet}
+                  />
                   </View>
                 ) : (
                   <PrescriptionComposerAwaitingRdv />
@@ -323,6 +328,24 @@ export function PrescriptionWorkspaceScreen({
           onSaved={() => void patientsQ.refetch()}
         />
       ) : null}
+
+      {user?.id ? (
+        <PrescriptionSignatureSheet
+          visible={signatureSheetOpen}
+          onClose={() => {
+            setSignatureSheetOpen(false);
+            setSignaturePendingGenerate(false);
+            afterSignatureSaveRef.current = null;
+          }}
+          userId={user.id}
+          initialPng={profileQ.data?.prescription_signature_png}
+          pendingGenerate={signaturePendingGenerate}
+          onSaved={() => {
+            afterSignatureSaveRef.current?.();
+            afterSignatureSaveRef.current = null;
+          }}
+        />
+      ) : null}
     </View>
   );
 }
@@ -336,18 +359,6 @@ function buildStyles(c: AppColors) {
       gap: spacing[4],
       paddingBottom: spacing[10],
     },
-    hero: { gap: spacing[1] },
-    heroTitle: {
-      fontFamily: fontFamily.bold,
-      fontSize: fontSize['2xl'],
-      color: c.textPrimary,
-    },
-    heroDesc: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.5,
-    },
     section: {
       backgroundColor: c.surface,
       borderRadius: radius.xl,
@@ -359,12 +370,6 @@ function buildStyles(c: AppColors) {
     historySection: {
       padding: spacing[3],
       gap: spacing[2],
-    },
-    sectionHint: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.45,
     },
     composerWrap: {
       marginTop: spacing[2],

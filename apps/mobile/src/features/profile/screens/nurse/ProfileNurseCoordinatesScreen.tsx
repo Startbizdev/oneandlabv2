@@ -1,6 +1,12 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
+import {
+  getProfessionalIdDisplay,
+  splitProfessionalId,
+  validateProfessionalId,
+  PROFESSIONAL_ID_LABEL,
+} from '@oneandlab/shared-types';
 import { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
@@ -63,7 +69,7 @@ export function ProfileNurseCoordinatesScreen() {
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [gender, setGender] = useState('');
-  const [rpps, setRpps] = useState('');
+  const [professionalId, setProfessionalId] = useState('');
   const [address, setAddress] = useState<AddressPayload | null>(null);
   const [addressComplement, setAddressComplement] = useState('');
 
@@ -80,7 +86,7 @@ export function ProfileNurseCoordinatesScreen() {
     setLastName(d.last_name ?? '');
     setPhone(d.phone ?? '');
     setGender(d.gender ?? '');
-    setRpps(d.rpps ?? '');
+    setProfessionalId(getProfessionalIdDisplay(d.rpps, d.adeli));
     const parsed = parseProfileAddress(d.address);
     setAddress(parsed);
     setAddressComplement(parsed?.complement ?? '');
@@ -94,6 +100,9 @@ export function ProfileNurseCoordinatesScreen() {
   const save = useMutation({
     mutationFn: async () => {
       if (!gender.trim()) throw new Error('GENDER_REQUIRED');
+      const profErr = validateProfessionalId(professionalId);
+      if (profErr) throw new Error(`PROFESSIONAL_ID:${profErr}`);
+      const split = splitProfessionalId(professionalId);
       const addr = address?.label
         ? {
             label: address.label.trim(),
@@ -107,7 +116,8 @@ export function ProfileNurseCoordinatesScreen() {
         last_name: lastName.trim(),
         phone: phone.trim() || null,
         gender: gender || null,
-        rpps: rpps.replace(/\s/g, '') || null,
+        rpps: split.rpps,
+        adeli: split.adeli,
         address: addr,
       });
     },
@@ -121,6 +131,13 @@ export function ProfileNurseCoordinatesScreen() {
         toast('Genre requis', {
           type: 'error',
           message: 'Indiquez Homme, Femme ou Autre pour le matching des RDV soins.',
+        });
+        return;
+      }
+      if (e instanceof Error && e.message.startsWith('PROFESSIONAL_ID:')) {
+        toast('Identifiant invalide', {
+          type: 'error',
+          message: e.message.replace('PROFESSIONAL_ID:', ''),
         });
         return;
       }
@@ -150,12 +167,12 @@ export function ProfileNurseCoordinatesScreen() {
       <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
       <GenderSelect value={gender} onChange={setGender} />
       <Input
-        label="Numéro RPPS"
-        value={rpps}
-        onChangeText={setRpps}
+        label={PROFESSIONAL_ID_LABEL}
+        value={professionalId}
+        onChangeText={setProfessionalId}
         keyboardType="number-pad"
         maxLength={11}
-        hint="11 chiffres"
+        hint="9 chiffres (Adeli) ou 11 chiffres (RPPS)"
       />
       <AddressAutocomplete
         value={address}

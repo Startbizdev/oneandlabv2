@@ -10,7 +10,11 @@ export async function fetchUser(id: string, scope: UserFetchScope = 'mobile') {
 }
 
 export async function updateUser(id: string, body: Record<string, unknown>) {
-  return api.put<AuthUser>(`/users/${id}`, body);
+  const res = await api.put<AuthUser>(`/users/${id}`, body);
+  if (!res.success) {
+    throw new Error(res.error ?? 'Mise à jour impossible');
+  }
+  return res;
 }
 
 export async function updateProfileImages(

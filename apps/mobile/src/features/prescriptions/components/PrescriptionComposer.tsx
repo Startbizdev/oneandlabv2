@@ -22,6 +22,7 @@ import {
   savePrescriptionPdf,
   type PrescriptionKind,
 } from '../api/prescriptions.service';
+import type { OpenPrescriptionSignatureOptions } from '@/features/prescriptions/components/PrescriptionSignatureSheet';
 import { PrescriptionSignatureSheet } from '@/features/prescriptions/components/PrescriptionSignatureSheet';
 import { PrescriptionDatePicker } from '@/features/prescriptions/components/PrescriptionDatePicker';
 import { fetchUser } from '@/features/profile/api/profile.service';
@@ -38,6 +39,8 @@ interface Props {
   initialText?: string;
   embedded?: boolean;
   prescriptionKind?: PrescriptionKind;
+  /** Sheet signature au niveau écran (hors scroll) — recommandé */
+  onOpenSignatureSheet?: (options?: OpenPrescriptionSignatureOptions) => void;
 }
 
 export function PrescriptionComposer({
@@ -48,6 +51,7 @@ export function PrescriptionComposer({
   initialText = '',
   embedded = false,
   prescriptionKind = 'medical',
+  onOpenSignatureSheet,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_prescriptions_components_PrescriptionComposer_tsx_styles');
@@ -89,15 +93,24 @@ export function PrescriptionComposer({
     generateMut.mutate();
   };
 
-  const openSignatureSheet = () => {
+  const requestSignatureSheet = (pendingGenerate: boolean) => {
     Keyboard.dismiss();
+    if (onOpenSignatureSheet) {
+      onOpenSignatureSheet({
+        pendingGenerate,
+        afterSave: pendingGenerate ? runGenerate : undefined,
+      });
+      return;
+    }
+    setPendingGenerate(pendingGenerate);
     setSignatureSheetOpen(true);
   };
 
+  const openSignatureSheet = () => requestSignatureSheet(false);
+
   const onPressGenerate = () => {
     if (includeSignature && !hasSignature) {
-      setPendingGenerate(true);
-      openSignatureSheet();
+      requestSignatureSheet(true);
       return;
     }
     runGenerate();
@@ -255,34 +268,41 @@ export function PrescriptionComposer({
 
       <PrescriptionDatePicker value={prescriptionDate} onChange={setPrescriptionDate} />
 
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: includeSignature }}
-        onPress={() => setIncludeSignature((v) => !v)}
-        style={styles.signRow}
-      >
-        <View style={[styles.checkbox, includeSignature && styles.checkboxOn]}>
-          {includeSignature ? <Text style={styles.checkMark}>✓</Text> : null}
-        </View>
-        <View style={styles.signRowText}>
-          <Text style={styles.signLabel}>Inclure ma signature manuscrite</Text>
-          <Text style={styles.signHint}>
-            {hasSignature
-              ? 'Signature enregistrée sur votre compte'
-              : 'Vous serez invité à signer avant génération'}
-          </Text>
-        </View>
-        <PenLine size={18} color={c.textSecondary} strokeWidth={2} />
-      </Pressable>
-
-      {includeSignature && hasSignature && user?.id ? (
-        <Button
-          title="Modifier ma signature"
-          variant="outline"
-          size="sm"
-          onPress={openSignatureSheet}
-        />
-      ) : null}
+      <View style={styles.signRow}>
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: includeSignature }}
+          onPress={() => setIncludeSignature((v) => !v)}
+          style={styles.signRowMain}
+        >
+          <View style={[styles.checkbox, includeSignature && styles.checkboxOn]}>
+            {includeSignature ? <Text style={styles.checkMark}>✓</Text> : null}
+          </View>
+          <View style={styles.signRowText}>
+            <Text style={styles.signLabel}>Inclure ma signature manuscrite</Text>
+            <Text style={styles.signHint}>
+              {hasSignature
+                ? 'Signature enregistrée sur votre compte'
+                : 'Vous serez invité à signer avant génération'}
+            </Text>
+          </View>
+        </Pressable>
+        {hasSignature || includeSignature ? (
+          <Pressable
+            onPress={openSignatureSheet}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={
+              hasSignature ? 'Modifier ma signature manuscrite' : 'Créer ma signature manuscrite'
+            }
+            style={styles.signPenBtn}
+          >
+            <PenLine size={20} color={c.primary} strokeWidth={2} />
+          </Pressable>
+        ) : (
+          <PenLine size={18} color={c.textTertiary} strokeWidth={2} />
+        )}
+      </View>
 
       <Input
         label={
@@ -348,7 +368,7 @@ export function PrescriptionComposer({
     return (
       <>
         {content}
-        {user?.id ? (
+        {!onOpenSignatureSheet && user?.id ? (
           <PrescriptionSignatureSheet
             visible={signatureSheetOpen}
             onClose={() => {
@@ -357,6 +377,7 @@ export function PrescriptionComposer({
             }}
             userId={user.id}
             initialPng={profileQ.data?.prescription_signature_png}
+            pendingGenerate={pendingGenerate}
             onSaved={() => {
               if (pendingGenerate) {
                 setPendingGenerate(false);
@@ -375,7 +396,7 @@ export function PrescriptionComposer({
         {isNursing ? "Prescription d'actes infirmiers" : 'Créer une ordonnance'}
       </Text>
       {content}
-      {user?.id ? (
+      {!onOpenSignatureSheet && user?.id ? (
         <PrescriptionSignatureSheet
           visible={signatureSheetOpen}
           onClose={() => {
@@ -384,6 +405,7 @@ export function PrescriptionComposer({
           }}
           userId={user.id}
           initialPng={profileQ.data?.prescription_signature_png}
+          pendingGenerate={pendingGenerate}
           onSaved={() => {
             if (pendingGenerate) {
               setPendingGenerate(false);
@@ -424,8 +446,18 @@ function buildStyles(c: AppColors) {
     signRow: {
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
-      gap: spacing[2.5],
+      gap: spacing[2],
       paddingVertical: spacing[1],
+    },
+    signRowMain: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: spacing[2.5],
+    },
+    signPenBtn: {
+      padding: spacing[1],
     },
     checkbox: {
       width: 22,

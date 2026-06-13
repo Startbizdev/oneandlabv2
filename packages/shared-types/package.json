@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./appointments": "./src/appointments.ts",
-    "./profile": "./src/profile.ts"
+    "./profile": "./src/profile.ts",
+    "./professional-id": "./src/professional-id.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

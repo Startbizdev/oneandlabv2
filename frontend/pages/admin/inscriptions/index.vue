@@ -14,7 +14,7 @@
     >
       <UInput
         v-model="searchQuery"
-        placeholder="Rechercher (email, nom, SIRET, Adeli, RPPS…)"
+        placeholder="Rechercher (email, nom, SIRET, RPPS, Adeli…)"
         class="min-w-0 flex-1"
         icon="i-lucide-search"
         size="sm"
@@ -134,9 +134,12 @@
               <UIcon name="i-lucide-badge-check" class="mt-0.5 h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
               <span>Adeli {{ req.adeli }}</span>
             </li>
-            <li v-if="req.role === 'nurse' && req.rpps" class="flex items-start gap-2 font-mono text-[13px]">
+            <li
+              v-if="req.role === 'nurse' && (req.rpps || req.adeli)"
+              class="flex items-start gap-2 font-mono text-[13px]"
+            >
               <UIcon name="i-lucide-heart-pulse" class="mt-0.5 h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
-              <span>RPPS {{ req.rpps }}</span>
+              <span>{{ req.rpps ? `RPPS ${req.rpps}` : `Adeli ${req.adeli}` }}</span>
             </li>
             <li v-if="req.address" class="flex min-w-0 items-start gap-2">
               <UIcon name="i-lucide-map-pin" class="mt-0.5 h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />

@@ -30,8 +30,9 @@ class PrescriptionService
     {
         if ($role === 'nurse') {
             $adeli = trim((string) ($prescriber['adeli'] ?? ''));
-            if ($adeli === '') {
-                return 'Numéro ADELI requis pour générer une prescription d\'actes infirmiers.';
+            $rpps = trim((string) ($prescriber['rpps'] ?? ''));
+            if ($adeli === '' && $rpps === '') {
+                return 'Numéro RPPS ou Adeli requis pour générer une prescription d\'actes infirmiers.';
             }
 
             return null;
@@ -211,6 +212,14 @@ class PrescriptionService
             $result = self::generatePdf($prescriber, $patient, $prescriptionText, $prescriptionKind, null, $pdfOpts);
         } catch (Throwable $e) {
             error_log('PrescriptionPdf error: ' . $e->getMessage());
+            $msg = $e->getMessage();
+            if (stripos($msg, 'GD') !== false || stripos($msg, 'imagecreatefromstring') !== false) {
+                return [
+                    'success' => false,
+                    'http' => 500,
+                    'error' => 'Signature PDF indisponible : extension PHP GD requise sur le serveur.',
+                ];
+            }
 
             return ['success' => false, 'http' => 500, 'error' => 'Erreur lors de la génération du PDF.'];
         }

@@ -1,18 +1,13 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useAppColors } from '@/theme/use-app-colors';
-import { useRef, useState, useEffect } from 'react';
-import { Image, Keyboard, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Text, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PenLine } from 'lucide-react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import { updateUser } from '@/features/profile/api/profile.service';
-import {
-  PrescriptionSignaturePad,
-  type PrescriptionSignaturePadHandle,
-} from '@/features/prescriptions/components/PrescriptionSignaturePad';
+import { PrescriptionSignatureSheet } from '@/features/prescriptions/components/PrescriptionSignatureSheet';
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
@@ -25,28 +20,19 @@ type Props = {
 };
 
 export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Props) {
-  const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'ProfilePrescriptionSignatureSection');
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [sheetOpen, setSheetOpen] = useState(false);
-  const padRef = useRef<PrescriptionSignaturePadHandle>(null);
-  const [exporting, setExporting] = useState(false);
-
-  useEffect(() => {
-    if (sheetOpen) Keyboard.dismiss();
-  }, [sheetOpen]);
 
   const saveMut = useMutation({
     mutationFn: (png: string | null) =>
       updateUser(userId, { prescription_signature_png: png }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.profile.user(userId) });
-      toast('Signature enregistrée', { type: 'success' });
-      setSheetOpen(false);
+      toast('Signature supprimée', { type: 'success' });
     },
     onError: (e) => handleApiError(e, toast, 'prescription-signature'),
-    onSettled: () => setExporting(false),
   });
 
   const previewUri = signaturePng
@@ -54,21 +40,6 @@ export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Pr
       ? signaturePng
       : `data:image/png;base64,${signaturePng}`
     : null;
-
-  const handleSave = () => {
-    setExporting(true);
-    padRef.current?.export();
-  };
-
-  const onExport = (png: string | null) => {
-    if (!exporting) return;
-    if (!png) {
-      setExporting(false);
-      toast('Dessinez votre signature avant d’enregistrer', { type: 'error' });
-      return;
-    }
-    saveMut.mutate(png);
-  };
 
   return (
     <>
@@ -102,35 +73,13 @@ export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Pr
         </View>
       </ProfileSection>
 
-      <BottomSheet
+      <PrescriptionSignatureSheet
         visible={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        title="Signature manuscrite"
-        subtitle="Utilisée sur vos ordonnances PDF"
-        disableScroll
-        stackBehavior="push"
-        snapPoints={['72%']}
-        keyboardBehavior="fillParent"
-        footer={
-          <View style={styles.footer}>
-            <Button title="Enregistrer" loading={saveMut.isPending} onPress={handleSave} />
-          </View>
-        }
-      >
-        <PrescriptionSignaturePad
-          ref={padRef}
-          initialPng={signaturePng}
-          onExport={onExport}
-          height={220}
-        />
-        <Button
-          title="Effacer"
-          variant="outline"
-          size="sm"
-          onPress={() => padRef.current?.clear()}
-          style={styles.clearBtn}
-        />
-      </BottomSheet>
+        userId={userId}
+        initialPng={signaturePng}
+        onSaved={() => setSheetOpen(false)}
+      />
     </>
   );
 }
@@ -163,7 +112,5 @@ function buildStyles(c: AppColors) {
       height: 72,
     },
     actions: { flexDirection: 'row' as const, gap: spacing[2], flexWrap: 'wrap' as const },
-    footer: { paddingTop: spacing[2] },
-    clearBtn: { marginTop: spacing[2], alignSelf: 'flex-start' as const },
   };
 }

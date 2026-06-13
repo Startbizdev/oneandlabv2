@@ -12,7 +12,6 @@ import {
 } from '../utils/prescription-display';
 import { prescriptionRowAsAppointment } from '../utils/prescription-row-appointment';
 import { Stack } from '@/components/layout/primitives';
-import { StatusBadge } from '@/components/ui/Badge';
 import { iconSize, radius, spacing } from '@/theme';
 import { layoutRow } from '@/theme/layout-styles';
 import { Download, Eye } from 'lucide-react-native';
@@ -46,7 +45,6 @@ export function PrescriptionHistoryCard({
   const title = prescriptionHistoryRowTitle(row, { showPatient });
   const hint = prescriptionHistoryRowHint(row, { showPatient });
   const busy = downloading || previewing;
-  const status = String(row.appointment_status ?? '').trim();
   const lotLabel = prescriptionLotLabelFromMeta(
     row.appointment_batch_count,
     row.appointment_type,
@@ -57,13 +55,6 @@ export function PrescriptionHistoryCard({
     <ListRowShell
       topBorder={topBorder}
       style={styles.row}
-      leading={
-        status ? (
-          <View style={styles.statusSlot}>
-            <StatusBadge status={status} size="sm" dotOnly />
-          </View>
-        ) : undefined
-      }
       body={
         <Stack gap={spacing[1]} style={styles.textCol}>
           {onOpenAppointment ? (
@@ -142,10 +133,6 @@ function buildRowStyles(c: AppColors) {
       paddingVertical: spacing[2.5],
       paddingHorizontal: spacing[3],
       alignItems: 'flex-start' as const,
-    },
-    statusSlot: {
-      flexShrink: 0,
-      paddingTop: spacing[0.5],
     },
     textCol: {
       minWidth: 0,

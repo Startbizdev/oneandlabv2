@@ -8,6 +8,7 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/AppTimezone.php';
 require_once __DIR__ . '/PrescriptionSignature.php';
+require_once __DIR__ . '/ProfessionalId.php';
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -108,7 +109,11 @@ class PrescriptionPdf
             : '';
 
         $brandHeader = self::buildBrandHeaderHtml();
-        $handwrittenBlock = self::buildHandwrittenSignatureBlock($options['handwritten_signature_png'] ?? null);
+        $handwrittenBlock = self::buildHandwrittenSignatureBlock(
+            $options['handwritten_signature_png'] ?? null,
+            $prescriber,
+            $kind
+        );
         $signatureBlock = self::buildSignatureCertificate(
             $prescriber,
             $patient,
@@ -199,19 +204,27 @@ class PrescriptionPdf
             line-height: 1.5;
         }
 
-        .hand-sign { margin-top: 14px; text-align: right; }
-        .hand-sign img { max-height: 56px; max-width: 220px; }
-        .hand-sign-label { font-size: 7pt; color: {$inkMuted}; margin-top: 2px; }
+        .hand-sign { margin-top: 16px; text-align: right; }
+        .hand-sign img { height: 92px; max-width: 360px; width: auto; }
+        .hand-sign-label { font-size: 7.5pt; color: {$inkMuted}; margin-top: 4px; }
 
         .e-sign {
             border: 1px solid {$line};
             margin-top: 12px;
-            padding: 6px 10px;
+            padding: 8px 10px;
             font-size: 6.5pt;
             color: {$inkMid};
-            line-height: 1.35;
+            line-height: 1.4;
         }
         .e-sign strong { color: {$ink}; }
+        .e-sign-sha {
+            display: block;
+            margin-top: 4px;
+            font-size: 6pt;
+            color: {$inkMuted};
+            word-break: break-all;
+            letter-spacing: 0.02em;
+        }
 
         .page-footer {
             position: fixed;
@@ -341,17 +354,31 @@ HTML;
         return AppTimezone::now();
     }
 
-    private static function buildHandwrittenSignatureBlock(?string $pngBase64): string
+    /**
+     * @param array<string, mixed> $prescriber
+     */
+    private static function buildHandwrittenSignatureBlock(?string $pngBase64, array $prescriber, string $kind): string
     {
-        $normalized = PrescriptionSignature::normalizePngBase64($pngBase64);
-        if ($normalized === null) {
+        if ($pngBase64 === null || trim($pngBase64) === '') {
             return '';
         }
-        $uri = PrescriptionSignature::toDataUri($normalized);
+        $uri = PrescriptionSignature::toJpegDataUriForPdf($pngBase64);
+        if ($uri === null) {
+            return '';
+        }
+
+        $lastName = trim((string) ($prescriber['last_name'] ?? ''));
+        $firstName = trim((string) ($prescriber['first_name'] ?? ''));
+        $name = trim($lastName . ' ' . $firstName);
+        if ($name === '') {
+            $name = trim($firstName . ' ' . $lastName);
+        }
+        $title = trim((string) ($prescriber['title'] ?? ($kind === 'nursing' ? 'Infirmier(ère)' : 'Dr')));
+        $label = 'Signature ' . $name . ' — ' . $title;
 
         return '<div class="hand-sign">'
             . '<img src="' . htmlspecialchars($uri, ENT_QUOTES, 'UTF-8') . '" alt="Signature" />'
-            . '<div class="hand-sign-label">Signature manuscrite</div>'
+            . '<div class="hand-sign-label">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</div>'
             . '</div>';
     }
 
@@ -452,18 +479,32 @@ HTML;
     private static function buildIdBlock(string $kind, string $rpps, string $adeli): string
     {
         $chips = [];
+        $rpps = trim($rpps);
+        $adeli = trim($adeli);
+
         if ($kind === 'nursing') {
-            if ($adeli !== '') {
-                $chips[] = 'ADELI ' . $adeli;
+            $raw = $rpps !== '' ? $rpps : $adeli;
+            if ($raw !== '') {
+                $split = ProfessionalId::split($raw);
+                $line = ProfessionalId::displayWithKind($split['rpps'], $split['adeli']);
+                if ($line !== null) {
+                    $chips[] = $line;
+                }
             }
         } else {
             if ($rpps !== '') {
                 $chips[] = 'RPPS ' . $rpps;
             }
             if ($adeli !== '') {
-                $chips[] = 'ADELI ' . $adeli;
+                $split = ProfessionalId::split($adeli);
+                if ($split['rpps'] !== null) {
+                    $chips[] = 'RPPS ' . $split['rpps'];
+                } else {
+                    $chips[] = 'Adeli ' . $adeli;
+                }
             }
         }
+
         if ($chips === []) {
             return '';
         }
@@ -503,11 +544,12 @@ HTML;
         $esc = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 
         $docPart = $prescriptionNumber !== '' ? ' · N° ' . $esc($prescriptionNumber) : '';
+        $shaFull = $esc(strtoupper(preg_replace('/\s+/', '', $fingerprint) ?? $fingerprint));
         $line = '<strong>' . $esc($prescriberTitle . ' ' . $prescriberName) . '</strong>'
             . $docPart
             . ' · Signé le ' . $esc($displayTimestamp . ' (' . $tzLabel . ')')
             . ' · Réf. ' . $esc($signatureRef)
-            . ' · SHA-256 ' . $esc(self::formatSha256Compact($fingerprint));
+            . '<span class="e-sign-sha">SHA-256 ' . $shaFull . '</span>';
 
         return '<div class="e-sign">' . $line . '</div>';
     }
@@ -551,11 +593,6 @@ HTML;
     private static function signatureReference(string $fingerprint): string
     {
         return 'SIG-' . strtoupper(substr($fingerprint, 0, 8));
-    }
-
-    private static function formatSha256Compact(string $fingerprint): string
-    {
-        return strtoupper(substr(preg_replace('/\s+/', '', $fingerprint) ?? $fingerprint, 0, 16)) . '…';
     }
 
     private static function formatBirthDate(string $raw): string

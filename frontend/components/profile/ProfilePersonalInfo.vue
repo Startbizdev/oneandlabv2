@@ -88,9 +88,9 @@
         <FormInput
           v-if="isNurse"
           v-model="form.rpps"
-          label="RPPS"
+          label="RPPS ou Adeli"
           name="rpps"
-          placeholder="Numéro RPPS"
+          placeholder="9 chiffres (Adeli) ou 11 chiffres (RPPS)"
         />
 
         <UFormField v-if="isPro" label="Profession (emploi)" name="emploi" class="w-full">

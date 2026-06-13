@@ -202,6 +202,28 @@ class User
             $insertPlaceholders .= ', ?';
             $insertParams[] = $emploiVal;
         }
+        // Infirmier : RPPS ou Adeli (un seul identifiant)
+        if ($role === 'nurse') {
+            require_once __DIR__ . '/../lib/ProfessionalId.php';
+            $rawId = ProfessionalId::fromRequestBody($data);
+            if ($rawId !== '') {
+                $split = ProfessionalId::split($rawId);
+                if (!empty($split['rpps'])) {
+                    $rppsEnc = $this->crypto->encryptField($split['rpps']);
+                    $insertFields .= ', rpps_encrypted, rpps_dek';
+                    $insertPlaceholders .= ', ?, ?';
+                    $insertParams[] = $rppsEnc['encrypted'];
+                    $insertParams[] = $rppsEnc['dek'];
+                }
+                if ($this->hasAdeliColumn() && !empty($split['adeli'])) {
+                    $adeliEnc = $this->crypto->encryptField($split['adeli']);
+                    $insertFields .= ', adeli_encrypted, adeli_dek';
+                    $insertPlaceholders .= ', ?, ?';
+                    $insertParams[] = $adeliEnc['encrypted'];
+                    $insertParams[] = $adeliEnc['dek'];
+                }
+            }
+        }
         
         $stmt = $this->db->prepare("INSERT INTO profiles ($insertFields) VALUES ($insertPlaceholders)");
         
@@ -552,6 +574,16 @@ class User
     {
         $updates = [];
         $params = [];
+
+        if (array_key_exists('rpps', $data) || array_key_exists('adeli', $data)) {
+            require_once __DIR__ . '/../lib/ProfessionalId.php';
+            $rawId = ProfessionalId::fromRequestBody($data);
+            if ($rawId !== '') {
+                $split = ProfessionalId::split($rawId);
+                $data['rpps'] = $split['rpps'];
+                $data['adeli'] = $split['adeli'];
+            }
+        }
         
         // Mettre à jour les champs autorisés
         if (isset($data['first_name'])) {
@@ -701,8 +733,11 @@ class User
             $this->hasPrescriptionSignatureColumn()
             && array_key_exists('prescription_signature_png', $data)
             && $actorId === $id
-            && in_array($actorRole, ['pro', 'nurse'], true)
         ) {
+            $targetRole = $this->getRoleById($id);
+            if (!in_array($targetRole, ['pro', 'nurse'], true)) {
+                throw new InvalidArgumentException('Seuls les professionnels de santé peuvent enregistrer une signature d\'ordonnance.');
+            }
             require_once __DIR__ . '/../lib/PrescriptionSignature.php';
             if ($data['prescription_signature_png'] === null || trim((string) $data['prescription_signature_png']) === '') {
                 $updates[] = 'prescription_signature_encrypted = NULL, prescription_signature_dek = NULL';
@@ -717,6 +752,10 @@ class User
                 $params[] = $sigEncrypted['encrypted'];
                 $params[] = $sigEncrypted['dek'];
             }
+        } elseif (array_key_exists('prescription_signature_png', $data)) {
+            throw new InvalidArgumentException(
+                'La signature ordonnance n\'est pas disponible sur ce serveur (migration base de données requise).'
+            );
         }
         
         if ($this->hasLabIdColumn() && array_key_exists('lab_id', $data)) {

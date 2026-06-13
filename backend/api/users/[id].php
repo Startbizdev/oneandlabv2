@@ -140,6 +140,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     CSRFMiddleware::handle();
     $input = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($input)) {
+        $input = [];
+    }
     
     // Vérifier les permissions: propre profil, super_admin, lab modifiant son subaccount/preleveur, ou pro modifiant son patient
     $canEdit = ($id === $user['user_id']) || $user['role'] === 'super_admin';
