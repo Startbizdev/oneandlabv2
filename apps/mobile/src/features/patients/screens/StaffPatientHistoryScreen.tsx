@@ -20,6 +20,12 @@ import {
 } from '../api/patient-profile.service';
 import { enrichPatientHistoryAppointments } from '../utils/enrich-patient-history-appointments';
 import { spacing } from '@/theme';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
 
 const PAGE_SIZE = 8;
 
@@ -35,6 +41,8 @@ export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [page, setPage] = useState(1);
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.list);
   const listRole = rolePrefix === '/(pro)' ? 'pro' : 'nurse';
 
   const profileQ = useQuery({
@@ -90,29 +98,33 @@ export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
 
   if (isLoading) {
     return (
-      <View style={styles.loading}>
-        <SkeletonList count={4} itemHeight={116} gap={12} />
-      </View>
+      <StackChromeScreen>
+        <View style={styles.loading}>
+          <SkeletonList count={4} itemHeight={116} gap={12} />
+        </View>
+      </StackChromeScreen>
     );
   }
 
   return (
-    <FlatList
-      data={items}
-      keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={styles.list}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={historyQ.isRefetching || profileQ.isRefetching}
-          onRefresh={() => {
-            void historyQ.refetch();
-            void profileQ.refetch();
-          }}
-          tintColor={c.primary}
-        />
-      }
+    <StackChromeScreen>
+      <FlatList
+        data={items}
+        keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
+        contentContainerStyle={scrollConfig.contentContainerStyle}
+        {...spreadTabSceneScrollProps(scrollConfig)}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={historyQ.isRefetching || profileQ.isRefetching}
+            onRefresh={() => {
+              void historyQ.refetch();
+              void profileQ.refetch();
+            }}
+            tintColor={c.primary}
+            progressViewOffset={scrollConfig.refreshProgressOffset}
+          />
+        }
       renderItem={renderItem}
       ListEmptyComponent={
         <EmptyState
@@ -137,6 +149,7 @@ export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
         ) : null
       }
     />
+    </StackChromeScreen>
   );
 }
 

@@ -25,6 +25,9 @@ import { filterListDocuments } from '../detail/utils/document-labels';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
 import { batchHasReviewableAppointment } from '@/utils/can-leave-review';
+import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 
 type SegmentId = 'infos' | 'documents';
 
@@ -78,18 +81,25 @@ export function PatientAppointmentDetailScreen() {
   const pullRefresh = useManualRefresh(async () => {
     s.refreshAll();
   });
+  const scrollConfig = useStackScrollConfig([styles.scroll, styles.content]);
 
   if (s.detailBlock) {
     return (
-      <AppointmentDetailBlockedEmptyState
-        onBack={() => router.back()}
-        block={s.detailBlock}
-      />
+      <StackChromeScreen>
+        <AppointmentDetailBlockedEmptyState
+          onBack={() => router.back()}
+          block={s.detailBlock}
+        />
+      </StackChromeScreen>
     );
   }
 
   if (s.isLoading || !s.apt || !primary) {
-    return <SkeletonPatientAppointmentDetail />;
+    return (
+      <StackChromeScreen>
+        <SkeletonPatientAppointmentDetail />
+      </StackChromeScreen>
+    );
   }
 
   const { batchSorted, isMultiBatch, canceled, cancellableForPatient } = s;
@@ -97,21 +107,22 @@ export function PatientAppointmentDetailScreen() {
 
   return (
     <>
-      <KeyboardScrollView
-        style={styles.container}
-        contentInsetAdjustmentBehavior="automatic"
-        refreshControl={
-          <RefreshControl
-            refreshing={pullRefresh.refreshing}
-            onRefresh={pullRefresh.onRefresh}
-            tintColor={c.primary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.content}>
+      <StackChromeScreen>
+        <KeyboardScrollView
+          style={styles.container}
+          refreshControl={
+            <RefreshControl
+              refreshing={pullRefresh.refreshing}
+              onRefresh={pullRefresh.onRefresh}
+              tintColor={c.primary}
+              progressViewOffset={scrollConfig.refreshProgressOffset}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={scrollConfig.contentContainerStyle}
+          {...spreadTabSceneScrollProps(scrollConfig)}
+          keyboardShouldPersistTaps="handled"
+        >
           {terminal ? <DetailTerminalBanner terminal={terminal} /> : null}
 
           {showReviewPrompt ? (
@@ -162,8 +173,8 @@ export function PatientAppointmentDetailScreen() {
               loading={s.docsLoading}
             />
           ) : null}
-        </View>
-      </KeyboardScrollView>
+        </KeyboardScrollView>
+      </StackChromeScreen>
 
       <CancelAppointmentSheet
         visible={cancelOpen && cancellableForPatient.length > 0}
@@ -179,8 +190,14 @@ export function PatientAppointmentDetailScreen() {
 function buildStyles(c: AppColors) {
   return {
   container: { minWidth: 0, flex: 1, backgroundColor: c.background },
-  scroll: { paddingBottom: spacing[10] },
+  scroll: {
+    flexGrow: 1,
+    alignSelf: 'stretch' as const,
+    paddingBottom: spacing[10],
+  },
   content: {
+    alignSelf: 'stretch' as const,
+    width: '100%' as const,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
     gap: spacing[3],

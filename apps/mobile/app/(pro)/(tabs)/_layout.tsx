@@ -1,95 +1,33 @@
-import { Tabs } from 'expo-router';
-import { Calendar, CalendarDays, FileText, LayoutGrid, Users } from 'lucide-react-native';
-import { TabBar } from '@/components/navigation/TabBar';
-import { tabHeaderNotificationRight } from '@/navigation/HeaderNotificationButton';
-import { tabHeaderTitle } from '@/navigation/HeaderTitle';
-import { useTabScreenOptions } from '@/navigation/screen-options';
 import { SHOW_PRESCRIPTIONS_TAB_NAV } from '@/features/prescriptions/constants';
-import { useAppColors } from '@/theme/use-app-colors';
+import {
+  APPOINTMENTS_TAB_TRIGGER,
+  CALENDAR_TAB_TRIGGER,
+  createRoleTabsLayout,
+  MORE_TAB_TRIGGER,
+} from '@/components/navigation/RoleNativeTabsLayout';
 
-export default function ProTabsLayout() {
-  const c = useAppColors();
-  const screenOptions = useTabScreenOptions();
-  const isFocused = (color: string) => color === c.primary;
-
-  return (
-    <Tabs
-      initialRouteName="appointments"
-      tabBar={(props) => <TabBar {...props} />}
-      screenOptions={{
-        ...screenOptions,
-        tabBarActiveTintColor: c.primary,
-        tabBarInactiveTintColor: c.textTertiary,
-        headerRight: tabHeaderNotificationRight(),
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{ href: null }}
-      />
-      <Tabs.Screen
-        name="appointments"
-        options={{
-          title: 'Rendez-vous',
-          headerTitle: tabHeaderTitle('Rendez-vous', CalendarDays),
-          tabBarLabel: 'RDV',
-          tabBarIcon: ({ color, size }) => (
-            <CalendarDays color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="patients"
-        options={{
-          title: 'Patients',
-          headerTitle: tabHeaderTitle('Patients', Users),
-          tabBarLabel: 'Patients',
-          tabBarIcon: ({ color, size }) => (
-            <Users color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="prescriptions"
-        options={
-          SHOW_PRESCRIPTIONS_TAB_NAV
-            ? {
-                title: 'Prescriptions',
-                headerTitle: tabHeaderTitle('Prescriptions', FileText),
-                tabBarLabel: 'Rx',
-                tabBarIcon: ({ color, size }) => (
-                  <FileText
-                    color={color}
-                    size={size}
-                    strokeWidth={isFocused(color) ? 2.5 : 1.75}
-                  />
-                ),
-              }
-            : { href: null }
-        }
-      />
-      <Tabs.Screen
-        name="calendar"
-        options={{
-          title: 'Calendrier',
-          headerTitle: tabHeaderTitle('Calendrier', Calendar),
-          tabBarLabel: 'Calendrier',
-          tabBarIcon: ({ color, size }) => (
-            <Calendar color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{
-          title: 'Plus',
-          headerTitle: tabHeaderTitle('Plus', LayoutGrid),
-          tabBarLabel: 'Plus',
-          tabBarIcon: ({ color, size }) => (
-            <LayoutGrid color={color} size={size} strokeWidth={isFocused(color) ? 2.5 : 1.75} />
-          ),
-        }}
-      />
-    </Tabs>
-  );
-}
+export default createRoleTabsLayout([
+  {
+    name: 'index',
+    hidden: true,
+    accessibilityLabel: 'Accueil',
+    sf: { default: 'house', selected: 'house.fill' },
+    androidIcon: 'home',
+  },
+  { name: 'appointments', ...APPOINTMENTS_TAB_TRIGGER },
+  {
+    name: 'patients',
+    accessibilityLabel: 'Patients',
+    sf: { default: 'person.2', selected: 'person.2.fill' },
+    androidIcon: 'people',
+  },
+  {
+    name: 'prescriptions',
+    hidden: !SHOW_PRESCRIPTIONS_TAB_NAV,
+    accessibilityLabel: 'Prescriptions',
+    sf: { default: 'doc.text', selected: 'doc.text.fill' },
+    androidIcon: 'description',
+  },
+  { name: 'calendar', ...CALENDAR_TAB_TRIGGER },
+  { name: 'more', ...MORE_TAB_TRIGGER },
+]);

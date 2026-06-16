@@ -1,11 +1,21 @@
 import { useRouter } from 'expo-router';
-import { Bell, FileText, FlaskConical, Scale, Settings, Star, User } from 'lucide-react-native';
+import {
+  Bell,
+  FileText,
+  FlaskConical,
+  LayoutGrid,
+  Scale,
+  Settings,
+  Star,
+  User,
+} from 'lucide-react-native';
 import { buildHelpMoreItems } from '@/features/help/help-more-items';
 import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
-import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-unread-count';
+import { TAB_HEADER_SF } from '@/components/navigation/RoleNativeTabsLayout';
 import { getNotificationsPath } from '@/navigation/notifications-route';
+import { TitledTabScreenFrame } from '@/navigation/tab-screen-frames';
 
 export default function PatientMore() {
   const router = useRouter();
@@ -14,7 +24,7 @@ export default function PatientMore() {
   const nav = (href: string) => router.navigate(href as never);
 
   return (
-    <TabScreenShell>
+    <TitledTabScreenFrame title="Plus" symbol={TAB_HEADER_SF.more} fallbackIcon={LayoutGrid}>
       <RoleMoreTabScreen
         roleLabel="Patient"
         sections={[
@@ -81,6 +91,6 @@ export default function PatientMore() {
         ]}
         logoutDelay={300}
       />
-    </TabScreenShell>
+    </TitledTabScreenFrame>
   );
 }

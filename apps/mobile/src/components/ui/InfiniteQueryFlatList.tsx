@@ -12,6 +12,11 @@ import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import type { UseInfiniteQueryResult } from '@tanstack/react-query';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
 import { useAppColors } from '@/theme/use-app-colors';
 import { spacing } from '@/theme';
 
@@ -45,6 +50,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
 }: Props<TPage, Item>) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'InfiniteQueryFlatList');
+  const sceneInsets = useTabSceneInsets();
   const { refreshing, onRefresh } = useManualRefresh(query.refetch);
 
   const loadMore = useCallback(() => {
@@ -62,11 +68,19 @@ export function InfiniteQueryFlatList<TPage, Item>({
     contentInsetAdjustmentBehavior,
   } = flatListProps;
 
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, contentContainerStyle);
+
   if (query.isPending && !query.data) {
     return (
       <View style={styles.root}>
         {header}
-        <View style={styles.skeleton}>
+        <View
+          style={[
+            styles.skeleton,
+            sceneInsets.insetTop > 0 && { paddingTop: sceneInsets.insetTop },
+            sceneInsets.insetBottom > 0 && { paddingBottom: sceneInsets.insetBottom },
+          ]}
+        >
           <SkeletonList count={skeletonCount} itemHeight={skeletonHeight} gap={skeletonGap} />
         </View>
       </View>
@@ -79,6 +93,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
       onRefresh={onRefresh}
       tintColor={c.primary}
       colors={[c.primary]}
+      progressViewOffset={scrollConfig.refreshProgressOffset}
     />
   );
 
@@ -100,9 +115,9 @@ export function InfiniteQueryFlatList<TPage, Item>({
       <View style={styles.root}>
         {header}
         <ScrollView
-          contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}
+          {...spreadTabSceneScrollProps(scrollConfig)}
           showsVerticalScrollIndicator={showsVerticalScrollIndicator}
-          contentContainerStyle={[styles.listContent, styles.emptyScrollContent, contentContainerStyle]}
+          contentContainerStyle={[styles.listContent, styles.emptyScrollContent, scrollConfig.contentContainerStyle]}
           refreshControl={refreshControl}
         >
           {listHeaderNode}
@@ -132,9 +147,9 @@ export function InfiniteQueryFlatList<TPage, Item>({
         keyExtractor={keyExtractor}
         ItemSeparatorComponent={ItemSeparatorComponent}
         ListHeaderComponent={ListHeaderComponent}
+        {...spreadTabSceneScrollProps(scrollConfig)}
         showsVerticalScrollIndicator={showsVerticalScrollIndicator}
-        contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}
-        contentContainerStyle={[styles.listContent, contentContainerStyle]}
+        contentContainerStyle={[styles.listContent, scrollConfig.contentContainerStyle]}
         refreshControl={refreshControl}
         onEndReached={loadMore}
         onEndReachedThreshold={0.35}
@@ -160,7 +175,6 @@ function buildStyles(_c: AppColors) {
     emptyScrollContent: {
       minWidth: 0,
       flexGrow: 1,
-      paddingBottom: spacing[8],
     },
     footerLoader: {
       paddingVertical: spacing[4],

@@ -14,7 +14,7 @@ import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { offerPreviewFromListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
-import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
+import { AppointmentsListSearchHost } from '@/features/appointments/components/AppointmentsListFilterBar';
 import {
   flattenInfiniteAppointments,
   useInfiniteAppointmentsList,
@@ -165,14 +165,17 @@ export function NurseAppointmentsListScreen() {
     [refetch, router, segment, toast, user?.id],
   );
 
+  const onSearchQueryChange = useCallback((value: string) => {
+    setSearch(value);
+  }, []);
+
   const ListHeader = useCallback(
     () => (
       <View style={styles.scrollHeader}>
-        <AppointmentsListFilterBar
+        <AppointmentsListSearchHost
           embedded
           followedByBookCta
-          search={search}
-          onSearchChange={setSearch}
+          onQueryChange={onSearchQueryChange}
           searchPlaceholder="Nom, téléphone, adresse…"
           onOpenFilters={() => setSheetOpen(true)}
           advancedFilterCount={advancedCount}
@@ -182,7 +185,7 @@ export function NurseAppointmentsListScreen() {
         <PlanLimitsBanner />
       </View>
     ),
-    [advancedCount, filterChips, search],
+    [advancedCount, filterChips, onSearchQueryChange],
   );
 
   const isDemandesEmpty = segment === 'en_attente';

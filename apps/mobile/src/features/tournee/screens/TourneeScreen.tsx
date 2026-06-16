@@ -134,43 +134,47 @@ export function TourneeScreen() {
   const dayLabel = dayjs().add(dayOffset, 'day');
   const isToday = dayOffset === 0;
 
-  return (
-    <View style={styles.container}>
-      {/* Date navigator */}
+  const ListHeader = useCallback(
+    () => (
       <Animated.View entering={FadeInDown.duration(280).springify()}>
         <Row justify="between" align="center" style={[styles.dateNav, elevation.xs]}>
-        <Pressable
-          onPress={() => shiftDay(-1)}
-          disabled={dayOffset <= OFFSET_MIN}
-          style={[styles.navBtn, dayOffset <= OFFSET_MIN && styles.navBtnDisabled]}
-          hitSlop={12}
-        >
-          <ChevronLeft size={20} color={dayOffset <= OFFSET_MIN ? c.textTertiary : c.primary} strokeWidth={2.5} />
-        </Pressable>
-        <View style={styles.dateCenter}>
-          {isToday ? <Text style={styles.todayBadge}>Aujourd'hui</Text> : null}
-          <Text style={styles.dateLabel}>{dayLabel.format('dddd D MMMM YYYY')}</Text>
-          {sorted.length > 0 ? (
-            <Text style={styles.stopCount}>{sorted.length} arrêt{sorted.length > 1 ? 's' : ''}</Text>
-          ) : null}
-        </View>
-        <Pressable
-          onPress={() => shiftDay(1)}
-          disabled={dayOffset >= OFFSET_MAX}
-          style={[styles.navBtn, dayOffset >= OFFSET_MAX && styles.navBtnDisabled]}
-          hitSlop={12}
-        >
-          <ChevronRight size={20} color={dayOffset >= OFFSET_MAX ? c.textTertiary : c.primary} strokeWidth={2.5} />
-        </Pressable>
+          <Pressable
+            onPress={() => shiftDay(-1)}
+            disabled={dayOffset <= OFFSET_MIN}
+            style={[styles.navBtn, dayOffset <= OFFSET_MIN && styles.navBtnDisabled]}
+            hitSlop={12}
+          >
+            <ChevronLeft size={20} color={dayOffset <= OFFSET_MIN ? c.textTertiary : c.primary} strokeWidth={2.5} />
+          </Pressable>
+          <View style={styles.dateCenter}>
+            {isToday ? <Text style={styles.todayBadge}>Aujourd'hui</Text> : null}
+            <Text style={styles.dateLabel}>{dayLabel.format('dddd D MMMM YYYY')}</Text>
+            {sorted.length > 0 ? (
+              <Text style={styles.stopCount}>{sorted.length} arrêt{sorted.length > 1 ? 's' : ''}</Text>
+            ) : null}
+          </View>
+          <Pressable
+            onPress={() => shiftDay(1)}
+            disabled={dayOffset >= OFFSET_MAX}
+            style={[styles.navBtn, dayOffset >= OFFSET_MAX && styles.navBtnDisabled]}
+            hitSlop={12}
+          >
+            <ChevronRight size={20} color={dayOffset >= OFFSET_MAX ? c.textTertiary : c.primary} strokeWidth={2.5} />
+          </Pressable>
         </Row>
       </Animated.View>
+    ),
+    [c.primary, c.textTertiary, dayLabel, dayOffset, isToday, shiftDay, sorted.length],
+  );
 
+  return (
+    <View style={styles.container}>
       <QueryFlatList
         query={query}
         items={sorted}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
-        contentInsetAdjustmentBehavior="automatic"
+        ListHeaderComponent={ListHeader}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
         skeletonHeight={80}
@@ -192,7 +196,6 @@ function buildStyles(c: AppColors) {
   return {
   container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   dateNav: {
-    margin: spacing[4],
     marginBottom: spacing[3],
     backgroundColor: c.surface,
     borderRadius: radius.xl,

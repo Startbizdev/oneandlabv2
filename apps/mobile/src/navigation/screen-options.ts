@@ -1,27 +1,27 @@
 import { createElement } from 'react';
-import { Platform, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import type { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { getDefaultHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CaryStackHeader } from '@/components/navigation/CaryStackHeader';
-import { CaryHeaderBackground } from '@/components/navigation/CaryHeaderBackground';
+import { NavChromeBackground } from '@/components/navigation/NavChromeBackground';
+import { StackGlassBackButton } from '@/navigation/StackGlassBackButton';
 import {
   APP_HEADER_INNER_H_PADDING,
   APP_HEADER_INNER_BOTTOM,
   appStackContentStyle,
   appTabSceneStyle,
   headerSlotBottomStyle,
-  headerStackSlotBottomStyle,
 } from '@/components/navigation/header-layout';
 import { colors } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-function renderHeaderBackground(props: {
-  style: StyleProp<ViewStyle> | Parameters<NonNullable<BottomTabNavigationOptions['headerBackground']>>[0]['style'];
-}) {
-  return createElement(CaryHeaderBackground, {
-    style: props.style as StyleProp<ViewStyle>,
+function renderHeaderBackground(
+  props?: { style?: StyleProp<ViewStyle> } | null,
+) {
+  return createElement(NavChromeBackground, {
+    style: (props?.style ?? StyleSheet.absoluteFillObject) as StyleProp<ViewStyle>,
+    variant: 'stack',
   });
 }
 
@@ -89,7 +89,7 @@ export function useTabScreenOptions(
       ...headerSlotBottomStyle(),
     },
     sceneStyle: appTabSceneStyle(),
-    ...overrides,
+    ...(overrides ?? {}),
   };
 }
 
@@ -101,31 +101,27 @@ export function tabScreenOptions(
     ...sharedHeaderVisualOptions(),
     headerBackground: renderHeaderBackground,
     sceneStyle: appTabSceneStyle(),
-    ...overrides,
+    ...(overrides ?? {}),
   };
 }
 
-/** Stack — header `@react-navigation/elements` via CaryStackHeader. */
+/** Stack — headerShown false ; StackChromeScreen affiche le glass flottant. */
 export function stackHeaderOptions(
   overrides?: NativeStackNavigationOptions,
 ): NativeStackNavigationOptions {
-  const stackSlot = headerStackSlotBottomStyle();
-
   return {
-    ...sharedHeaderVisualOptions(),
-    headerTitleContainerStyle: {
-      marginLeft: 0,
-      marginRight: 0,
-      ...stackSlot,
+    headerShown: false,
+    headerShadowVisible: false,
+    headerTintColor: colors.primary,
+    headerTitleStyle: {
+      fontFamily: fontFamily.bold,
+      fontSize: fontSize.lg,
+      color: colors.textPrimary,
     },
-    headerRightContainerStyle: {
-      paddingRight: APP_HEADER_INNER_H_PADDING,
-      overflow: 'visible' as const,
-      ...stackSlot,
-    },
-    header: CaryStackHeader as NativeStackNavigationOptions['header'],
-    contentStyle: appStackContentStyle(),
-    ...overrides,
+    headerTitleAlign: 'left' as const,
+    headerLeft: () => createElement(StackGlassBackButton),
+    contentStyle: appStackContentStyle({ rounded: false }),
+    ...(overrides ?? {}),
   } as NativeStackNavigationOptions;
 }
 

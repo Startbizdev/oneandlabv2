@@ -1,5 +1,10 @@
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { PrescriptionsScreen } from '@/features/prescriptions/screens/PrescriptionsScreen';
 
 export default function NursePrescriptions() {
-  return <PrescriptionsScreen roleBase="nurse" rolePrefix="/(nurse)" />;
+  return (
+    <StackChromeScreen>
+      <PrescriptionsScreen roleBase="nurse" rolePrefix="/(nurse)" />
+    </StackChromeScreen>
+  );
 }

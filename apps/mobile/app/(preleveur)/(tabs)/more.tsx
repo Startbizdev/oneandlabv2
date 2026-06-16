@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
-import { Bell, Scale, Settings, User } from 'lucide-react-native';
+import { Bell, LayoutGrid, Scale, Settings, User } from 'lucide-react-native';
 import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
-import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-unread-count';
 import { getNotificationsPath } from '@/navigation/notifications-route';
 import { buildHelpMoreItems } from '@/features/help/help-more-items';
+import { TitledTabScreenFrame } from '@/navigation/tab-screen-frames';
+import { TAB_HEADER_SF } from '@/components/navigation/RoleNativeTabsLayout';
 
 export default function PreleveurMore() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function PreleveurMore() {
   const nav = (href: string) => router.push(href as never);
 
   return (
-    <TabScreenShell>
+    <TitledTabScreenFrame title="Plus" symbol={TAB_HEADER_SF.more} fallbackIcon={LayoutGrid}>
       <RoleMoreTabScreen
         roleLabel="Préleveur"
         sections={[
@@ -61,6 +62,6 @@ export default function PreleveurMore() {
         ]}
         logoutDelay={300}
       />
-    </TabScreenShell>
+    </TitledTabScreenFrame>
   );
 }

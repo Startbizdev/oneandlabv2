@@ -250,6 +250,15 @@ class User
             $id,
             ['role' => $role]
         );
+
+        if (in_array($role, ['nurse', 'lab', 'subaccount', 'pro'], true)) {
+            try {
+                require_once __DIR__ . '/../lib/QrCodeService.php';
+                (new QrCodeService())->ensureForProfile($id);
+            } catch (Throwable $e) {
+                error_log('QrCodeService ensureForProfile: ' . $e->getMessage());
+            }
+        }
         
         return $id;
     }
@@ -1158,7 +1167,7 @@ class User
         if (!$this->hasPatientProfessionalAccessTable()) {
             return;
         }
-        $allowed = ['created', 'appointment_accepted', 'appointment_linked', 'manual_link'];
+        $allowed = ['created', 'appointment_accepted', 'appointment_linked', 'manual_link', 'qr_booking'];
         if (!in_array($source, $allowed, true)) {
             $source = 'created';
         }

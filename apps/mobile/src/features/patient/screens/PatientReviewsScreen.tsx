@@ -27,6 +27,10 @@ import { ReviewGivenCard } from '@/features/reviews/components/ReviewGivenCard';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import type { Review } from '@/features/reviews/types';
 import { enrichReviewsWithAppointmentProfiles } from '@/features/reviews/utils/enrich-reviews-with-profiles';
+import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
+import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -120,12 +124,12 @@ export function PatientReviewsScreen() {
   );
   const listData = useMemo(() => reviews, [reviews]);
   const isLoading = reviewsQ.isLoading;
-  const isRefetching = reviewsQ.isRefetching || appointmentsQ.isRefetching;
 
-  const refetch = () => {
-    void reviewsQ.refetch();
-    void appointmentsQ.refetch();
+  const refetchAll = async () => {
+    await Promise.all([reviewsQ.refetch(), appointmentsQ.refetch()]);
   };
+  const { refreshing, onRefresh } = useManualRefresh(refetchAll);
+  const scrollConfig = useStackScrollConfig(styles.list);
 
   const ListHeader = () => (
     <View style={styles.headerBlock}>
@@ -137,7 +141,7 @@ export function PatientReviewsScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <StackChromeScreen>
       {isLoading ? (
         <View style={styles.loading}>
           <SkeletonList count={3} itemHeight={130} gap={12} />
@@ -152,12 +156,17 @@ export function PatientReviewsScreen() {
             </Animated.View>
           )}
           ListHeaderComponent={ListHeader}
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.list}
+          {...spreadTabSceneScrollProps(scrollConfig)}
+          contentContainerStyle={scrollConfig.contentContainerStyle}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={c.primary} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={c.primary}
+              progressViewOffset={scrollConfig.refreshProgressOffset}
+            />
           }
           ListEmptyComponent={
             <EmptyState
@@ -172,7 +181,7 @@ export function PatientReviewsScreen() {
           }
         />
       )}
-    </View>
+    </StackChromeScreen>
   );
 }
 

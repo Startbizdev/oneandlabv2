@@ -2,6 +2,12 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -39,6 +45,8 @@ export function ProfileNurseHubView() {
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const summary = useNurseProfileSummary();
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);
 
   const [photosOpen, setPhotosOpen] = useState(false);
   const [profileUrl, setProfileUrl] = useState<string | null>(null);
@@ -107,10 +115,10 @@ export function ProfileNurseHubView() {
   }, [publicSlug, push]);
 
   return (
-    <>
+    <StackChromeScreen>
       <ScrollView
-        contentContainerStyle={styles.scroll}
-        contentInsetAdjustmentBehavior="automatic"
+        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={scrollConfig.contentContainerStyle}
         showsVerticalScrollIndicator={false}
       >
         <ProfileHero
@@ -218,7 +226,7 @@ export function ProfileNurseHubView() {
           onChangeCover={onChangeCoverPhoto}
         />
       </BottomSheet>
-    </>
+    </StackChromeScreen>
   );
 }
 

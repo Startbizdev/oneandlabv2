@@ -1,20 +1,27 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 import {
   appContentSheetShadowStyle,
   appContentSheetSurfaceStyle,
+  appTabSceneFlatContentStyle,
 } from '@/components/navigation/header-layout';
 
 interface Props {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
+  /** Corps plein écran — scroll sous header / tab bar glass (padding sur le scroll, pas ici). */
+  edgeToEdge?: boolean;
 }
 
-/** Feuille arrondie sous le header — ombre externe + surface clipée. */
-export function ContentSheetShell({ children, style }: Props) {
-  const styles = useThemedStyles(buildStyles, 'components_navigation_ContentSheetShell_tsx_ContentSheetShell_styles');
+/** Conteneur onglet bord à bord — la tab bar native flotte par-dessus. */
+export function ContentSheetShell({ children, style, edgeToEdge = false }: Props) {
+  const styles = useThemedStyles(buildStyles, 'ContentSheetShell');
+
+  if (edgeToEdge) {
+    return <View style={[styles.flatBody, style]}>{children}</View>;
+  }
 
   return (
     <View style={[styles.shadow, style]}>
@@ -23,9 +30,10 @@ export function ContentSheetShell({ children, style }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles(_c: AppColors) {
   return {
-  shadow: appContentSheetShadowStyle(),
-  surface: appContentSheetSurfaceStyle(),
-};
+    flatBody: appTabSceneFlatContentStyle(),
+    shadow: appContentSheetShadowStyle(),
+    surface: appContentSheetSurfaceStyle(),
+  };
 }

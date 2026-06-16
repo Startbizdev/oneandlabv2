@@ -22,6 +22,10 @@ import { ReviewReceivedCard } from '@/features/reviews/components/ReviewReceived
 import { ReviewReplySheet } from '@/features/reviews/components/ReviewReplySheet';
 import { ReviewStatsBanner } from '@/features/reviews/components/ReviewStatsBanner';
 import type { Review, ReviewFilter, ReviewStats } from '@/features/reviews/types';
+import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
+import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -91,6 +95,12 @@ export function NurseReviewsScreen() {
     setReplyDraft('');
   };
 
+  const refetchAll = async () => {
+    await Promise.all([reviewsQ.refetch(), statsQ.refetch()]);
+  };
+  const { refreshing, onRefresh } = useManualRefresh(refetchAll);
+  const scrollConfig = useStackScrollConfig(styles.list);
+
   const ListHeader = () => (
     <View style={styles.headerBlock}>
       {statsQ.data && statsQ.data.total_reviews > 0 ? (
@@ -109,7 +119,7 @@ export function NurseReviewsScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <StackChromeScreen>
       {reviewsQ.isLoading ? (
         <View style={styles.loading}>
           <SkeletonList count={4} itemHeight={120} gap={12} />
@@ -118,17 +128,15 @@ export function NurseReviewsScreen() {
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.id}
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.list}
+          {...spreadTabSceneScrollProps(scrollConfig)}
+          contentContainerStyle={scrollConfig.contentContainerStyle}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={reviewsQ.isRefetching}
-              onRefresh={() => {
-                void reviewsQ.refetch();
-                void statsQ.refetch();
-              }}
+              refreshing={refreshing}
+              onRefresh={onRefresh}
               tintColor={c.primary}
+              progressViewOffset={scrollConfig.refreshProgressOffset}
             />
           }
           ListHeaderComponent={ListHeader}
@@ -176,7 +184,7 @@ export function NurseReviewsScreen() {
         }}
         submitting={respond.isPending}
       />
-    </View>
+    </StackChromeScreen>
   );
 }
 

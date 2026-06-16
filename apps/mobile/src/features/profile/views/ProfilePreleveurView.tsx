@@ -5,6 +5,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Mail } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -31,6 +37,8 @@ export function ProfilePreleveurView() {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
   const qc = useQueryClient();
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);
   const [photosOpen, setPhotosOpen] = useState(false);
 
   const [firstName, setFirstName] = useState('');
@@ -92,8 +100,11 @@ export function ProfilePreleveurView() {
   }
 
   return (
-    <>
-      <KeyboardScrollView contentContainerStyle={styles.scroll}>
+    <StackChromeScreen>
+      <KeyboardScrollView
+        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={scrollConfig.contentContainerStyle}
+      >
         <ProfileHero
           firstName={firstName}
           lastName={lastName}
@@ -146,7 +157,7 @@ export function ProfilePreleveurView() {
           onChangeProfile={onChangeProfilePhoto}
         />
       </BottomSheet>
-    </>
+    </StackChromeScreen>
   );
 }
 

@@ -1,22 +1,18 @@
-import { useLayoutEffect, useState } from 'react';
-import { useNavigation } from 'expo-router';
-import { TabScreenShell } from '@/components/navigation/TabScreenShell';
+import { useState } from 'react';
+import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 import { PatientAiHeaderMenuButton } from '@/features/ai-hub/components/PatientAiHeaderMenuButton';
 import { PatientAiMockScreen } from '@/features/ai-hub/screens/PatientAiMockScreen';
+import { HeaderTitleText } from '@/navigation/HeaderTitle';
 
 export default function PatientAiTab() {
-  const navigation = useNavigation();
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => <PatientAiHeaderMenuButton onPress={() => setHistoryOpen(true)} />,
-    });
-  }, [navigation]);
-
   return (
-    <TabScreenShell style={{ flex: 1 }}>
+    <TabScreenFrame
+      title={<HeaderTitleText title="Assistant Cary" />}      headerRight={<PatientAiHeaderMenuButton onPress={() => setHistoryOpen(true)} />}
+      shellStyle={{ flex: 1 }}
+    >
       <PatientAiMockScreen historyOpen={historyOpen} onHistoryOpenChange={setHistoryOpen} />
-    </TabScreenShell>
+    </TabScreenFrame>
   );
 }

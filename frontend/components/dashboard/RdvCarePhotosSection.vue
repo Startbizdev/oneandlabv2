@@ -40,13 +40,55 @@
 
     <template v-else>
       <div
-        v-if="primaryCareDocs.length === 0 && !effectiveEnableUpload"
+        v-if="primaryCareDocs.length === 0 && !canOpenExchange"
         class="px-4 py-8 text-center text-sm text-muted sm:px-5"
       >
         Aucune photo pour ce rendez-vous.
       </div>
 
       <ul v-else class="divide-y divide-gray-100 dark:divide-gray-800/80">
+        <li
+          v-if="primaryCareDocs.length === 0 && canOpenExchange"
+          class="px-4 py-5 sm:px-5"
+        >
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-50">
+                Échange pro ↔ infirmier
+              </p>
+              <p class="mt-0.5 text-xs text-muted">
+                Messages, photos ou PDF — sans envoyer de fichier pour commencer.
+              </p>
+              <p
+                v-if="threadCommentHint"
+                class="mt-1 text-[11px] text-muted/85"
+              >
+                {{ threadCommentHint }}
+              </p>
+            </div>
+            <div class="relative inline-flex shrink-0 justify-end">
+              <UButton
+                color="primary"
+                variant="solid"
+                size="sm"
+                class="relative pr-3 font-medium"
+                icon="i-lucide-message-circle"
+                aria-label="Ouvrir l’échange"
+                :on-click="() => openGeneralExchange()"
+              >
+                Ouvrir l’échange
+              </UButton>
+              <span
+                v-if="threadUnread > 0"
+                class="pointer-events-none absolute -right-1 -top-1 z-10 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none tabular-nums text-white shadow-sm ring-2 ring-white dark:ring-gray-950"
+                aria-hidden="true"
+              >
+                {{ threadUnread > 99 ? '99+' : threadUnread }}
+              </span>
+            </div>
+          </div>
+        </li>
+
         <li
           v-for="(doc, idx) in primaryCareDocs"
           :key="doc.id"
@@ -263,22 +305,42 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const unreadByDoc = ref<Record<string, number>>({});
 const commentCountHint = ref<Record<string, string>>({});
+const threadUnread = ref(0);
+const threadCommentHint = ref('');
+const canCommentFromApi = ref(false);
+const canUploadFromApi = ref(false);
 
-const combinedUnread = computed(() =>
-  primaryCareDocs.value.reduce((n, doc: any) => n + (unreadByDoc.value[String(doc.id)] || 0), 0),
+const canOpenExchange = computed(
+  () => canCommentFromApi.value || effectiveEnableUpload.value,
 );
 
-function applyPollPhotos(photos: { id: string; comments?: { id: string; author_id?: string }[] }[]) {
+const combinedUnread = computed(() => {
+  const photoUnread = primaryCareDocs.value.reduce(
+    (n, doc: any) => n + (unreadByDoc.value[String(doc.id)] || 0),
+    0,
+  );
+  return photoUnread + threadUnread.value;
+});
+
+function applyPollPayload(data: {
+  photos?: { id: string; comments?: { id: string; author_id?: string }[] }[];
+  thread?: { document_id?: string; comments?: { id: string; author_id?: string }[] } | null;
+  can_comment?: boolean;
+  can_upload?: boolean;
+}) {
   const viewer = effectiveViewerId.value ? String(effectiveViewerId.value) : '';
   const aid = aptIdPrimary.value;
   const nextUnread: Record<string, number> = {};
   const nextHint: Record<string, string> = {};
 
+  canCommentFromApi.value = data.can_comment === true;
+  canUploadFromApi.value = data.can_upload === true;
+
   for (const doc of primaryCareDocs.value) {
     nextUnread[String((doc as any).id)] = 0;
   }
 
-  for (const p of photos || []) {
+  for (const p of data.photos || []) {
     const pid = String(p.id);
     const comments = p.comments || [];
     const stored = readCarePhotoSeenDigest(aid, pid) || '';
@@ -300,6 +362,26 @@ function applyPollPhotos(photos: { id: string; comments?: { id: string; author_i
   }
   unreadByDoc.value = nextUnread;
   commentCountHint.value = nextHint;
+
+  const thread = data.thread;
+  if (thread?.document_id) {
+    const comments = thread.comments || [];
+    const stored = readCarePhotoSeenDigest(aid, String(thread.document_id)) || '';
+    const seenIds = new Set(stored.split('|').filter(Boolean));
+    let newFromOthers = 0;
+    for (const c of comments) {
+      const cid = String(c.id || '');
+      if (!cid || seenIds.has(cid)) continue;
+      if (viewer && String(c.author_id || '') === viewer) continue;
+      newFromOthers++;
+    }
+    threadUnread.value = newFromOthers;
+    const n = comments.length;
+    threadCommentHint.value = n > 0 ? `${n} message${n > 1 ? 's' : ''}` : '';
+  } else {
+    threadUnread.value = 0;
+    threadCommentHint.value = '';
+  }
 }
 
 async function pollCarePhotoThreads() {
@@ -308,11 +390,7 @@ async function pollCarePhotoThreads() {
   try {
     const res = await apiFetch(`/appointments/${encodeURIComponent(aid)}/care-photos`, { method: 'GET' });
     if (!res?.success || !res.data) return;
-    applyPollPhotos(
-      Array.isArray(res.data.photos)
-        ? (res.data.photos as { id: string; comments?: { id: string; author_id?: string }[] }[])
-        : [],
-    );
+    applyPollPayload(res.data);
   } catch {
     /* silencieux */
   }
@@ -338,10 +416,17 @@ function openCareDiscussion(doc: any) {
   careDiscussionOpen.value = true;
 }
 
+function openGeneralExchange() {
+  if (!aptIdPrimary.value) return;
+  careDiscussionDocId.value = null;
+  careDiscussionOpen.value = true;
+}
+
 useCareGalleryNotificationDeepLink({
   careDocs: primaryCareDocs,
   documentsLoading: computed(() => props.documentsLoading === true),
   openCareDiscussion,
+  openGeneralExchange,
 });
 
 function onDiscussionCommentPosted() {

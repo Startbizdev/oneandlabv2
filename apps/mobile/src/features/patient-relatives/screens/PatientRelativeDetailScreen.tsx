@@ -5,11 +5,10 @@ import {
   Alert,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
@@ -23,6 +22,13 @@ import {
 } from '../api/patient-relatives.service';
 import { PatientRelativeFormSheet } from '../components/PatientRelativeFormSheet';
 import { relationshipLabel } from '../constants/relationship-types';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { HeaderTitleText } from '@/navigation/HeaderTitle';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
 import { fetchProfileDocuments } from '@/features/patients/api/patient-profile.service';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
@@ -38,6 +44,8 @@ export function PatientRelativeDetailScreen() {
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);
 
   const q = useQuery({
     queryKey: ['patient-relatives', id],
@@ -116,10 +124,9 @@ export function PatientRelativeDetailScreen() {
 
   if (q.isLoading || !q.data) {
     return (
-      <>
-        <Stack.Screen options={{ title: 'Proche' }} />
+      <StackChromeScreen title={<HeaderTitleText title="Proche" />}>
         <SkeletonProfileScreen cards={2} />
-      </>
+      </StackChromeScreen>
     );
   }
 
@@ -127,20 +134,17 @@ export function PatientRelativeDetailScreen() {
   const name = `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim();
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: name || 'Proche',
-          headerRight: () => (
-            <Text onPress={() => setEditOpen(true)} style={styles.headerEdit}>
-              Modifier
-            </Text>
-          ),
-        }}
-      />
+    <StackChromeScreen
+      title={<HeaderTitleText title={name || 'Proche'} />}
+      headerRight={
+        <Text onPress={() => setEditOpen(true)} style={styles.headerEdit}>
+          Modifier
+        </Text>
+      }
+    >
       <ScrollView
-        contentContainerStyle={styles.scroll}
-        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={scrollConfig.contentContainerStyle}
+        {...spreadTabSceneScrollProps(scrollConfig)}
         refreshControl={
           <RefreshControl
             refreshing={q.isRefetching || docsQ.isRefetching}
@@ -148,6 +152,7 @@ export function PatientRelativeDetailScreen() {
               void q.refetch();
               void docsQ.refetch();
             }}
+            progressViewOffset={scrollConfig.refreshProgressOffset}
           />
         }
       >
@@ -177,7 +182,7 @@ export function PatientRelativeDetailScreen() {
         onClose={() => setEditOpen(false)}
         onSubmit={(body) => saveMut.mutate(body)}
       />
-    </>
+    </StackChromeScreen>
   );
 }
 

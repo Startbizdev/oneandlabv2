@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Logger.php';
 require_once __DIR__ . '/../../../lib/CarePhotoGallery.php';
+require_once __DIR__ . '/../../../lib/Crypto.php';
 require_once __DIR__ . '/../../../lib/NotificationService.php';
 require_once __DIR__ . '/../../../models/User.php';
 
@@ -58,9 +59,9 @@ $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $medicalDocumentId = isset($input['medical_document_id']) ? trim((string) $input['medical_document_id']) : '';
 $body = isset($input['body']) ? trim((string) $input['body']) : '';
 
-if ($medicalDocumentId === '' || $body === '') {
+if ($body === '') {
     http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'medical_document_id et body requis']);
+    echo json_encode(['success' => false, 'error' => 'Message requis']);
     exit;
 }
 
@@ -94,6 +95,23 @@ if (!CarePhotoGallery::canComment($user, $appointment)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Vous ne pouvez pas commenter sur ce rendez-vous.']);
     exit;
+}
+
+$crypto = new Crypto();
+
+if ($medicalDocumentId === '') {
+    try {
+        $medicalDocumentId = CarePhotoGallery::ensureThreadDocument(
+            $db,
+            $crypto,
+            (string) $appointmentId,
+            (string) $user['user_id']
+        );
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        exit;
+    }
 }
 
 $docStmt = $db->prepare('

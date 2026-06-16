@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react';
 
+const MIN_REFRESH_VISIBLE_MS = 450;
+
 /**
  * RefreshControl découplé du polling / invalidateQueries :
  * le spinner n’apparaît que lors d’un pull-to-refresh explicite.
@@ -10,9 +12,14 @@ export function useManualRefresh(refetch: () => Promise<unknown>) {
   const onRefresh = useCallback(async () => {
     if (refreshing) return;
     setRefreshing(true);
+    const started = Date.now();
     try {
       await refetch();
     } finally {
+      const remaining = MIN_REFRESH_VISIBLE_MS - (Date.now() - started);
+      if (remaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
       setRefreshing(false);
     }
   }, [refetch, refreshing]);

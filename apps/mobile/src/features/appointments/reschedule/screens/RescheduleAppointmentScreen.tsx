@@ -18,6 +18,9 @@ import {
   reschedulePatientPhone,
   reschedulePatientTitleName,
 } from '../utils/reschedule-patient-display';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
+import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -32,12 +35,15 @@ export function RescheduleAppointmentScreen({
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_appointments_reschedule_screens_RescheduleAppointmentScreen_tsx_styles');
   const r = useRescheduleAppointment({ appointmentId, role, basePath });
+  const scrollConfig = useStackScrollConfig(styles.content);
 
   if (r.loading || !r.appointment) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <StackChromeScreen>
+        <View style={styles.loading}>
+          <ActivityIndicator color={c.primary} />
+        </View>
+      </StackChromeScreen>
     );
   }
 
@@ -45,9 +51,11 @@ export function RescheduleAppointmentScreen({
     const patientTitle = reschedulePatientTitleName(r.appointment);
 
     return (
-      <FormScreen
-        contentContainerStyle={styles.content}
-        footer={
+      <StackChromeScreen>
+        <FormScreen
+          contentContainerStyle={scrollConfig.contentContainerStyle}
+          {...spreadTabSceneScrollProps(scrollConfig)}
+          footer={
           <View style={styles.footer}>
             <Button
               title="Suivant"
@@ -65,6 +73,7 @@ export function RescheduleAppointmentScreen({
           onSelect={r.setChoiceMode}
         />
       </FormScreen>
+      </StackChromeScreen>
     );
   }
 
@@ -72,9 +81,11 @@ export function RescheduleAppointmentScreen({
   const patientPhone = reschedulePatientPhone(r.appointment);
 
   return (
-    <FormScreen
-      contentContainerStyle={styles.content}
-      footer={
+    <StackChromeScreen>
+      <FormScreen
+        contentContainerStyle={scrollConfig.contentContainerStyle}
+        {...spreadTabSceneScrollProps(scrollConfig)}
+        footer={
         <View style={styles.footer}>
           <Button
             title={r.saving ? 'Enregistrement…' : r.submitLabel}
@@ -127,6 +138,7 @@ export function RescheduleAppointmentScreen({
         multiline
       />
     </FormScreen>
+    </StackChromeScreen>
   );
 }
 

@@ -233,4 +233,55 @@ final class AppointmentListPayload
 
         return $decryptedAppointments;
     }
+
+    /**
+     * Photos / noms / genres pour fiche détail (GET /appointments/:id) — aligné liste cartes.
+     *
+     * @param array<string, mixed> $appointment
+     * @return array<string, mixed>
+     */
+    public static function enrichProfileMediaForDetail(array $appointment): array
+    {
+        $userIds = [];
+        foreach (['assigned_lab_id', 'assigned_nurse_id', 'assigned_to', 'patient_id'] as $key) {
+            if (!empty($appointment[$key])) {
+                $userIds[] = (string) $appointment[$key];
+            }
+        }
+        if ($userIds === []) {
+            return $appointment;
+        }
+
+        $userModel = new User();
+        $displayNames = $userModel->getDisplayNamesByIds($userIds);
+        $profileImages = $userModel->getProfileImageUrlsByIds($userIds);
+        $genders = $userModel->getGendersByIds($userIds);
+
+        $labId = (string) ($appointment['assigned_lab_id'] ?? '');
+        $nurseId = (string) ($appointment['assigned_nurse_id'] ?? '');
+        $toId = (string) ($appointment['assigned_to'] ?? '');
+        $patientId = (string) ($appointment['patient_id'] ?? '');
+
+        $appointment['assigned_lab_display_name'] = $displayNames[$labId] ?? null;
+        $appointment['assigned_nurse_display_name'] = $displayNames[$nurseId] ?? null;
+        $appointment['assigned_to_display_name'] = $displayNames[$toId] ?? null;
+        $appointment['assigned_lab_profile_image_url'] = $profileImages[$labId] ?? null;
+        $appointment['assigned_nurse_profile_image_url'] = $profileImages[$nurseId] ?? null;
+        $appointment['assigned_to_profile_image_url'] = $profileImages[$toId] ?? null;
+        $appointment['beneficiary_profile_image_url'] = $profileImages[$patientId] ?? null;
+        $appointment['assigned_lab_gender'] = $genders[$labId] ?? null;
+        $appointment['assigned_nurse_gender'] = $genders[$nurseId] ?? null;
+        $appointment['assigned_to_gender'] = $genders[$toId] ?? null;
+
+        $fdGender = null;
+        if (!empty($appointment['form_data']) && is_array($appointment['form_data'])) {
+            $fg = $appointment['form_data']['gender'] ?? $appointment['form_data']['beneficiary_gender'] ?? null;
+            if (is_string($fg) && trim($fg) !== '') {
+                $fdGender = strtolower(trim($fg));
+            }
+        }
+        $appointment['beneficiary_gender'] = $fdGender ?: ($genders[$patientId] ?? null);
+
+        return $appointment;
+    }
 }

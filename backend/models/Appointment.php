@@ -1124,6 +1124,8 @@ class Appointment
         $assignedLabId = null;
         $assignedNurseId = null;
         $assignedTo = null;
+        $assignedProId = !empty($data['assigned_pro_id']) ? (string) $data['assigned_pro_id'] : null;
+        $attributionQrId = !empty($data['attribution_qr_id']) ? (string) $data['attribution_qr_id'] : null;
         if (!empty($data['type'])) {
             if ($data['type'] === 'blood_test') {
                 if (!empty($data['assigned_lab_id'])) {
@@ -1180,9 +1182,9 @@ class Appointment
                 form_data_encrypted, form_data_dek,
                 guest_token, guest_email_encrypted, guest_email_dek,
                 scheduled_at,
-                assigned_lab_id, assigned_nurse_id, assigned_to,
+                assigned_lab_id, assigned_nurse_id, assigned_to, attribution_qr_id, assigned_pro_id,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         ');
 
         $stmt->execute([
@@ -1209,6 +1211,8 @@ class Appointment
             $assignedLabId,
             $assignedNurseId,
             $assignedTo,
+            $attributionQrId,
+            $assignedProId,
         ]);
 
         if (($data['type'] ?? '') === 'blood_test') {
@@ -1306,6 +1310,24 @@ class Appointment
         $skipDispatch = ($createdByRole === 'nurse' && ($data['type'] ?? '') === 'nursing')
             || (($data['type'] ?? '') === 'blood_test' && !empty($bloodTestAssignedLabId))
             || (($data['type'] ?? '') === 'nursing' && !empty($nursingAssignedNurseId));
+
+        $assignedProId = $data['assigned_pro_id'] ?? null;
+        if (empty($assignedProId) || trim((string) $assignedProId) === '') {
+            try {
+                $stmtPro = $this->db->prepare('SELECT assigned_pro_id FROM appointments WHERE id = ?');
+                $stmtPro->execute([$id]);
+                $rowPro = $stmtPro->fetch(PDO::FETCH_ASSOC);
+                if (!empty($rowPro['assigned_pro_id'])) {
+                    $assignedProId = $rowPro['assigned_pro_id'];
+                }
+            } catch (Exception $e) {
+                // ne pas bloquer
+            }
+        }
+        if (!empty($assignedProId)) {
+            $skipDispatch = true;
+        }
+
         if (!$skipDispatch) {
             $batchIdForDispatch = is_string($data['creation_batch_id'] ?? null) && !empty($data['creation_batch_id']) ? $data['creation_batch_id'] : null;
             $this->dispatchGeographic($id, $data['type'] ?? '', $lat, $lng, $data['scheduled_at'] ?? null, $data['form_data'] ?? null, null, $batchIdForDispatch);
@@ -1322,6 +1344,19 @@ class Appointment
                 (string) $nursingAssignedNurseId,
                 $data['scheduled_at'] ?? null,
                 $data['form_data'] ?? null
+            );
+        }
+
+        if (
+            !empty($assignedProId)
+            && $createdByRole === 'patient'
+        ) {
+            $this->dispatchDirectedProOnly(
+                $id,
+                (string) $assignedProId,
+                $data['scheduled_at'] ?? null,
+                $data['form_data'] ?? null,
+                $data['type'] ?? ''
             );
         }
 
@@ -3836,6 +3871,50 @@ class Appointment
         $scheduledAtStr = $scheduledAt ?? date('Y-m-d H:i:s');
         foreach ($professionals as $professional) {
             SmsQueue::addNewAppointment($professional['id'], $appointmentId, $scheduledAtStr);
+        }
+    }
+
+    /**
+     * Notification ciblée pour un RDV réservé via QR code d'un professionnel de santé (rôle pro).
+     */
+    private function dispatchDirectedProOnly(
+        string $appointmentId,
+        string $proId,
+        ?string $scheduledAt,
+        ?array $formData,
+        string $appointmentType
+    ): void {
+        try {
+            $stmt = $this->db->prepare('SELECT id FROM profiles WHERE id = ? AND role = ? LIMIT 1');
+            $stmt->execute([$proId, 'pro']);
+            if (!$stmt->fetchColumn()) {
+                error_log('dispatchDirectedProOnly: profil pro invalide — id=' . $proId);
+
+                return;
+            }
+        } catch (Throwable $e) {
+            error_log('dispatchDirectedProOnly: ' . $e->getMessage());
+
+            return;
+        }
+
+        $typeLabel = $appointmentType === 'blood_test' ? 'prélèvement' : 'rendez-vous';
+        try {
+            $this->notificationService->createNotification(
+                $proId,
+                'new_appointment_available',
+                'Demande de rendez-vous',
+                "Un patient a pris un {$typeLabel} via votre QR code Cary.",
+                ['appointment_id' => $appointmentId]
+            );
+            EmailQueue::add('new_appointment_pro', null, [
+                'appointment_id' => $appointmentId,
+                'scheduled_at' => $scheduledAt ?? date('Y-m-d H:i:s'),
+                'role' => 'pro',
+                'form_data' => $formData,
+            ], $proId);
+        } catch (Exception $e) {
+            error_log('dispatchDirectedProOnly notify: ' . $e->getMessage());
         }
     }
 

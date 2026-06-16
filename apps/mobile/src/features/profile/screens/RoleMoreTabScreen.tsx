@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { LogOut } from 'lucide-react-native';
 import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
+import { buildTabSceneScrollConfig, spreadTabSceneScrollProps, useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { spacing } from '@/theme';
@@ -38,12 +39,16 @@ export function RoleMoreTabScreen({
   const logout = useAuthStore((s) => s.clearSession);
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
   const textScale = useAppPreferencesStore((s) => s.textScale);
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll, {
+    extraTop: spacing[4],
+  });
 
   return (
     <View style={styles.container} key={`${colorblindType}:${textScale}`}>
       <ScrollView
-        contentContainerStyle={styles.scroll}
-        contentInsetAdjustmentBehavior="automatic"
+        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={scrollConfig.contentContainerStyle}
         showsVerticalScrollIndicator={false}
       >
         <MoreProfileCard
@@ -88,7 +93,6 @@ function buildStyles(c: AppColors) {
   container: { minWidth: 0, flex: 1, backgroundColor: c.surface },
   scroll: {
     paddingHorizontal: spacing[4],
-    paddingTop: spacing[4],
     paddingBottom: spacing[10],
     gap: spacing[4],
   },

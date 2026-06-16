@@ -20,6 +20,11 @@ import { Button } from '@/components/ui/Button';
 import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { useAppColors } from '@/theme/use-app-colors';
+import {
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+  buildTabSceneScrollConfig,
+} from '@/components/navigation/liquid-glass-header-inset';
 
 const IOS_SUBSCRIPTIONS_URL = 'https://apps.apple.com/account/subscriptions';
 const ANDROID_SUBSCRIPTIONS_URL = 'https://play.google.com/store/account/subscriptions';
@@ -41,6 +46,11 @@ export function NurseSubscriptionScreen() {
   const styles = useThemedStyles(buildStyles, 'features_nurse_screens_NurseSubscriptionScreen_tsx_NurseSubscriptionScreen_styles');
 
   const insets = useSafeAreaInsets();
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, [
+    styles.content,
+    { paddingBottom: insets.bottom + spacing[6] },
+  ]);
   const {
     subscription,
     subscriptionLoading,
@@ -119,12 +129,14 @@ export function NurseSubscriptionScreen() {
   return (
     <ScrollView
       style={[styles.scroll, { backgroundColor: c.background }]}
-      contentContainerStyle={[
-        styles.content,
-        { paddingBottom: insets.bottom + spacing[6] },
-      ]}
+      contentContainerStyle={scrollConfig.contentContainerStyle}
+      {...spreadTabSceneScrollProps(scrollConfig)}
       refreshControl={
-        <RefreshControl refreshing={subscriptionLoading} onRefresh={() => void refetchSubscription()} />
+        <RefreshControl
+          refreshing={subscriptionLoading}
+          onRefresh={() => void refetchSubscription()}
+          progressViewOffset={scrollConfig.refreshProgressOffset}
+        />
       }
     >
       <Text style={[styles.lead, { color: c.textSecondary }]}>

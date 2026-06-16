@@ -15,7 +15,6 @@ import { SUPPORT_CONTACT_TYPES } from '@/features/help/constants/support-contact
 import { getAppMeta } from '@/features/help/utils/app-meta';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { ProfileStackBackButton } from '@/navigation/ProfileStackBackButton';
 import { useToast } from '@/providers/ToastProvider';
 import { useAuthStore } from '@/store/auth-store';
 import { elevation, radius, spacing } from '@/theme';
@@ -107,7 +106,6 @@ export function SupportScreen() {
       <Stack.Screen
         options={{
           title: 'Contacter le support',
-          headerLeft: () => <ProfileStackBackButton />,
         }}
       />
       <ProfileSubScreenLayout

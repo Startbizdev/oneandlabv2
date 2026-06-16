@@ -38,6 +38,12 @@ import {
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
 
 interface Props {
   rolePrefix?: '/(nurse)' | '/(pro)';
@@ -85,6 +91,8 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { show: toast } = useToast();
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.content);
 
   const profileQ = useQuery({
     queryKey: queryKeys.profile.user(id ?? ''),
@@ -121,10 +129,10 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
 
   if (profileQ.isLoading || !p) {
     return (
-      <>
+      <StackChromeScreen>
         <Stack.Screen options={{ title: 'Patient' }} />
         <SkeletonProfileScreen cards={2} />
-      </>
+      </StackChromeScreen>
     );
   }
 
@@ -212,12 +220,12 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
         : `${histCount} rendez-vous passés`;
 
   return (
-    <>
+    <StackChromeScreen>
       <Stack.Screen options={{ title: name, headerLargeTitle: false }} />
       <ScrollView
         style={styles.screen}
-        contentContainerStyle={styles.content}
-        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={scrollConfig.contentContainerStyle}
+        {...spreadTabSceneScrollProps(scrollConfig)}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -228,6 +236,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
               void docsQ.refetch();
             }}
             tintColor={c.primary}
+            progressViewOffset={scrollConfig.refreshProgressOffset}
           />
         }
       >
@@ -342,7 +351,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
           />
         ) : null}
       </ScrollView>
-    </>
+    </StackChromeScreen>
   );
 }
 

@@ -10,6 +10,13 @@ export function careExchangeTabLabel(): string {
   return 'Échange';
 }
 
+/** Libellés onglets fiche RDV mobile (pro / infirmier). */
+export const appointmentDetailTabLabels = {
+  infos: 'Infos',
+  documents: 'Documents',
+  exchange: 'Échange',
+} as const;
+
 export type CareExchangeHintContent = {
   title: string;
   body: string;

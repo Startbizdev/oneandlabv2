@@ -3,12 +3,87 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/Crypto.php';
+require_once __DIR__ . '/Crypto.php';
 
 /**
  * Galerie photos de soins : RDV nursing créés par un professionnel de santé (pro).
  */
 final class CarePhotoGallery
 {
+    /** Fil texte sans pièce jointe (ancre des commentaires avant la 1re photo). */
+    public const THREAD_MIME = 'application/vnd.cary.exchange-thread';
+
+    public static function isThreadAnchor(array $doc): bool
+    {
+        return ($doc['mime_type'] ?? '') === self::THREAD_MIME;
+    }
+
+    /**
+     * Crée ou retourne le document « fil de discussion » pour un RDV (commentaires texte sans photo).
+     */
+    public static function ensureThreadDocument(
+        PDO $db,
+        Crypto $crypto,
+        string $appointmentId,
+        string $userId
+    ): string {
+        $stmt = $db->prepare('
+            SELECT id FROM medical_documents
+            WHERE appointment_id = ? AND document_type = \'care_photo\' AND mime_type = ?
+            LIMIT 1
+        ');
+        $stmt->execute([$appointmentId, self::THREAD_MIME]);
+        $existing = $stmt->fetchColumn();
+        if ($existing) {
+            return (string) $existing;
+        }
+
+        $encryptedData = $crypto->encryptFile('');
+        $backendDir = realpath(__DIR__ . '/..');
+        if ($backendDir === false) {
+            $backendDir = dirname(__DIR__);
+        }
+        $uploadDir = rtrim($backendDir, DIRECTORY_SEPARATOR) . '/uploads/medical/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $id = self::newUuid();
+        $documentDir = $uploadDir . $id . '/';
+        if (!is_dir($documentDir)) {
+            mkdir($documentDir, 0755, true);
+        }
+        $fileName = 'Fil de discussion';
+        $filePath = $documentDir . 'thread.encrypted';
+        $decryptedContent = base64_decode($encryptedData['encrypted'], true);
+        if ($decryptedContent === false) {
+            throw new RuntimeException('Décodage fil de discussion');
+        }
+        if (file_put_contents($filePath, $decryptedContent) === false) {
+            throw new RuntimeException('Écriture fil de discussion');
+        }
+        $relativePath = '/uploads/medical/' . $id . '/thread.encrypted';
+
+        $ins = $db->prepare('
+            INSERT INTO medical_documents (
+                id, appointment_id, uploaded_by, file_name, file_path,
+                file_size, mime_type, document_type, encrypted, file_dek, created_at
+            ) VALUES (?, ?, ?, ?, ?, 0, ?, \'care_photo\', 1, ?, NOW())
+        ');
+        $ins->execute([
+            $id,
+            $appointmentId,
+            $userId,
+            $fileName,
+            $relativePath,
+            self::THREAD_MIME,
+            $encryptedData['dek'],
+        ]);
+
+        return $id;
+    }
+
     public static function isEligibleContext(array $appointment): bool
     {
         $type = $appointment['type'] ?? '';

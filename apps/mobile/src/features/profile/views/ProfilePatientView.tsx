@@ -7,6 +7,12 @@ import { Cluster } from '@/components/layout/primitives';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Mail } from 'lucide-react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
@@ -37,6 +43,8 @@ export function ProfilePatientView() {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
   const qc = useQueryClient();
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -127,8 +135,11 @@ export function ProfilePatientView() {
   }
 
   return (
-    <>
-      <KeyboardScrollView contentContainerStyle={styles.scroll}>
+    <StackChromeScreen>
+      <KeyboardScrollView
+        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={scrollConfig.contentContainerStyle}
+      >
         <ProfileHero
           firstName={firstName}
           lastName={lastName}
@@ -195,7 +206,7 @@ export function ProfilePatientView() {
           onChangeProfile={onChangeProfilePhoto}
         />
       </BottomSheet>
-    </>
+    </StackChromeScreen>
   );
 }
 

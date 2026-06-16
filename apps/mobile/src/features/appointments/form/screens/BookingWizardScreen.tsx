@@ -7,7 +7,7 @@ import { Alert, Pressable, StyleSheet, Text, View, type ScrollView } from 'react
 import { Row } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useLocalSearchParams } from 'expo-router';
-import { useBookingWizardHeader } from '../hooks/useBookingWizardHeader';
+import { BookingWizardChrome } from '../components/BookingWizardChrome';
 import { Plus } from 'lucide-react-native';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { FormScreen } from '@/components/layout/FormScreen';
@@ -31,9 +31,11 @@ import { BookingWizardSegmentContext } from '../components/BookingWizardSegmentC
 import { RelativeQuickAddSheet } from '../components/RelativeQuickAddSheet';
 import { useBookingWizard } from '../hooks/useBookingWizard';
 import { NEW_PATIENT_ID } from '../types';
-import { buildAvailabilityPayload } from '../utils/availability';
+import { buildAvailabilityFormPatch, parseAvailabilityField } from '../utils/availability';
 import type { PatientRelative } from '@/features/patient-relatives/api/patient-relatives.service';
 import { SkeletonCareSelectionStep } from '@/components/ui/skeletons';
+import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
+import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -41,10 +43,12 @@ interface Props {
   mode: 'patient' | 'dashboard';
   role: string;
   basePath: string;
+  /** Onglet Réserver patient — header glass onglet au lieu du stack natif. */
+  embeddedInTab?: boolean;
 }
 
 export function BookingWizardScreen({
-  mode, role, basePath }: Props) {
+  mode, role, basePath, embeddedInTab = false }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_appointments_form_screens_BookingWizardScreen_tsx_styles');
   const { patient_id: patientIdParam, relative_id: relativeIdParam } = useLocalSearchParams<{
@@ -77,65 +81,62 @@ export function BookingWizardScreen({
     onConsentMissing,
   });
   const w = bw.wizard;
+  const scrollConfig = useStackScrollConfig(styles.formContent);
 
-  useBookingWizardHeader({
+  const chromeProps = {
     step: bw.step,
-    mode,
     role,
     wizardPageTitle: bw.wizardPageTitle,
     onWizardBack: bw.wizardPrev,
-  });
+    embeddedInTab,
+  } as const;
 
   if (w.loading) {
     return (
-      <View style={styles.screenCare}>
-        <SkeletonCareSelectionStep />
-      </View>
+      <BookingWizardChrome {...chromeProps}>
+        <View style={styles.screenCare}>
+          <SkeletonCareSelectionStep />
+        </View>
+      </BookingWizardChrome>
     );
   }
 
   if (bw.step === 0) {
     return (
-      <View style={styles.screenCare}>
-        <CareSelectionStep
-        nursingCategories={w.nursingCategories}
-        bloodCategories={w.bloodCategories}
-        allCategories={w.allCategories}
-        selectedServices={w.selectedServices}
-        onlyCategoryOptionsFor={w.onlyCategoryOptionsFor}
-        onQuickAdd={w.quickAddService}
-        onRemove={w.removeService}
-        onContinue={bw.confirmStep0}
-        onEnsureCategoryReady={w.ensureCategoryReady}
-        formDataByService={w.formDataByService}
-        loading={w.saving}
-        progressTotal={Math.max(3, bw.wizardStepCount)}
-        />
-      </View>
+      <BookingWizardChrome {...chromeProps}>
+        <View style={styles.screenCare}>
+          <CareSelectionStep
+            nursingCategories={w.nursingCategories}
+            bloodCategories={w.bloodCategories}
+            allCategories={w.allCategories}
+            selectedServices={w.selectedServices}
+            onlyCategoryOptionsFor={w.onlyCategoryOptionsFor}
+            onQuickAdd={w.quickAddService}
+            onRemove={w.removeService}
+            onContinue={bw.confirmStep0}
+            onEnsureCategoryReady={w.ensureCategoryReady}
+            formDataByService={w.formDataByService}
+            loading={w.saving}
+            progressTotal={Math.max(3, bw.wizardStepCount)}
+          />
+        </View>
+      </BookingWizardChrome>
     );
   }
 
   const svc = bw.activeService;
   const svcId = svc?.id ?? '';
   const fd = (w.formDataByService[svcId] ?? {}) as Record<string, unknown>;
+  const availability = parseAvailabilityField(fd.availability, {
+    availability_type: fd.availability_type,
+    availabilityRange: fd.availabilityRange,
+  });
   const setFd = (patch: Record<string, unknown>) => {
     w.setFormDataByService((prev) => ({ ...prev, [svcId]: { ...prev[svcId], ...patch } }));
   };
-
-  let avType: 'all_day' | 'custom' = 'all_day';
-  let avRange: [number, number] = [8, 12];
-  try {
-    const a = JSON.parse(String(fd.availability ?? '{"type":"all_day"}')) as {
-      type?: string;
-      range?: number[];
-    };
-    if (a.type === 'custom' && a.range?.length === 2) {
-      avType = 'custom';
-      avRange = [a.range[0], a.range[1]];
-    }
-  } catch {
-    /* default */
-  }
+  const setAvailability = (type: 'all_day' | 'custom', range: [number, number]) => {
+    setFd(buildAvailabilityFormPatch(type, range));
+  };
 
   const skipRx = svc ? bw.careSkipsPrescription(svc.category_id) : false;
   const hideNurseGender = mode === 'dashboard' && role === 'nurse';
@@ -156,11 +157,13 @@ export function BookingWizardScreen({
     );
 
   return (
-    <View style={styles.screenWizard}>
-      <FormScreen
-        ref={formScrollRef}
-        contentContainerStyle={styles.formContent}
-        backgroundColor={c.bookingCanvasLight}
+    <BookingWizardChrome {...chromeProps}>
+      <View style={styles.screenWizard}>
+        <FormScreen
+          ref={formScrollRef}
+          contentContainerStyle={scrollConfig.contentContainerStyle}
+          {...spreadTabSceneScrollProps(scrollConfig)}
+          backgroundColor={c.bookingCanvasLight}
         footer={
           <BookingActionBar
             {...bookingWizardFooterCtaCopy(bw.isFinalWizardStep)}
@@ -195,11 +198,11 @@ export function BookingWizardScreen({
             <FormScheduleSection
               scheduledAt={String(fd.scheduled_at ?? '')}
               serviceType={svc.type}
-              availabilityType={avType}
-              range={avRange}
+              availabilityType={availability.type}
+              range={availability.range}
               onScheduledAt={(v) => setFd({ scheduled_at: v })}
-              onAvailabilityType={(t) => setFd({ availability: buildAvailabilityPayload(t, avRange) })}
-              onRange={(r) => setFd({ availability: buildAvailabilityPayload(avType, r) })}
+              onAvailabilityType={(t) => setAvailability(t, availability.range)}
+              onRange={(r) => setAvailability(availability.type, r)}
             />
             {showNurseGenderOnSlot ? (
               <PreferredNurseGenderButtons
@@ -400,7 +403,8 @@ export function BookingWizardScreen({
           if (created) void bw.applyRelativeToForm(id, created);
         }}
       />
-    </View>
+      </View>
+    </BookingWizardChrome>
   );
 }
 

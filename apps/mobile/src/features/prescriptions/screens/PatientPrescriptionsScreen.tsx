@@ -1,4 +1,5 @@
-import { Stack } from 'expo-router';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { HeaderTitleText } from '@/navigation/HeaderTitle';
 import { PrescriptionWorkspaceScreen } from './PrescriptionWorkspaceScreen';
 
 interface Props {
@@ -9,13 +10,12 @@ interface Props {
 
 export function PatientPrescriptionsScreen({ patientId, rolePrefix, roleBase }: Props) {
   return (
-    <>
-      <Stack.Screen options={{ title: 'Ordonnances' }} />
+    <StackChromeScreen title={<HeaderTitleText title="Ordonnances" />}>
       <PrescriptionWorkspaceScreen
         roleBase={roleBase}
         rolePrefix={rolePrefix}
         fixedPatientId={patientId}
       />
-    </>
+    </StackChromeScreen>
   );
 }

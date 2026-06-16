@@ -852,6 +852,12 @@ const navigationItems = computed(() => {
           to: "/admin/logs",
           active: active("/admin/logs"),
         },
+        {
+          label: "QR code",
+          icon: "i-lucide-qr-code",
+          to: "/admin/qr-code",
+          active: active("/admin/qr-code"),
+        },
       ],
       [      ],
     ],
@@ -900,6 +906,12 @@ const navigationItems = computed(() => {
           active: active("/nurse/reviews"),
         },
         {
+          label: "QR code",
+          icon: "i-lucide-qr-code",
+          to: "/nurse/qr-code",
+          active: active("/nurse/qr-code"),
+        },
+        {
           label: "Mon profil",
           icon: "i-lucide-user",
           to: "/profile",
@@ -939,6 +951,12 @@ const navigationItems = computed(() => {
           icon: "i-lucide-star",
           to: "/subaccount/reviews",
           active: active("/subaccount/reviews"),
+        },
+        {
+          label: "QR code",
+          icon: "i-lucide-qr-code",
+          to: "/subaccount/qr-code",
+          active: active("/subaccount/qr-code"),
         },
         {
           label: "Préleveurs",
@@ -986,6 +1004,12 @@ const navigationItems = computed(() => {
           icon: "i-lucide-star",
           to: "/lab/reviews",
           active: active("/lab/reviews"),
+        },
+        {
+          label: "QR code",
+          icon: "i-lucide-qr-code",
+          to: "/lab/qr-code",
+          active: active("/lab/qr-code"),
         },
         {
           label: "Statistiques",
@@ -1080,6 +1104,12 @@ const navigationItems = computed(() => {
           icon: "i-lucide-calendar-days",
           to: "/pro/calendar",
           active: active("/pro/calendar"),
+        },
+        {
+          label: "QR code",
+          icon: "i-lucide-qr-code",
+          to: "/pro/qr-code",
+          active: active("/pro/qr-code"),
         },
         {
           label: "Mon profil",

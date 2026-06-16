@@ -3,13 +3,19 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback, useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query';
 import { Bell } from 'lucide-react-native';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
 import { NOTIFICATION_POLL_INTERVAL_MS } from '@oneandlab/shared-constants';
 import { queryKeys } from '@/lib/query-keys';
 import {
@@ -28,6 +34,7 @@ import {
 } from '../lib/notifications-cache';
 import { resolveNotificationNavigation } from '../utils/notification-navigation';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { spacing } from '@/theme';
 
 const FEED_QUERY_KEY = queryKeys.notifications.feed(NOTIFICATIONS_PAGE_SIZE);
@@ -123,16 +130,12 @@ export function NotificationsScreen() {
     onSettled: invalidateFeed,
   });
 
-  const headerRight = useCallback(
-    () =>
-      hasUnread ? (
-        <NotificationsReadAllAction
-          onPress={() => markAllRead.mutate()}
-          loading={markAllRead.isPending}
-        />
-      ) : null,
-    [hasUnread, markAllRead],
-  );
+  const headerRightNode = hasUnread ? (
+    <NotificationsReadAllAction
+      onPress={() => markAllRead.mutate()}
+      loading={markAllRead.isPending}
+    />
+  ) : null;
 
   const onPressItem = useCallback(
     (n: AppNotification) => {
@@ -154,14 +157,12 @@ export function NotificationsScreen() {
     }
   }, [feedQ]);
 
+  const { refreshing, onRefresh } = useManualRefresh(() => feedQ.refetch());
+  const sceneInsets = useTabSceneInsets();
+  const listScrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.listContent);
+
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: 'Notifications',
-          headerRight,
-        }}
-      />
+    <StackChromeScreen headerRight={headerRightNode}>
       <View style={styles.container}>
         {feedQ.isLoading ? (
           <View style={styles.centered}>
@@ -180,16 +181,20 @@ export function NotificationsScreen() {
             items={items}
             hasUnread={hasUnread}
             hasMore={hasMore}
-            refreshing={feedQ.isRefetching && !feedQ.isFetchingNextPage}
+            refreshing={refreshing}
             loadingMore={feedQ.isFetchingNextPage}
-            onRefresh={() => void feedQ.refetch()}
+            onRefresh={onRefresh}
             onPressItem={onPressItem}
             onLoadMore={loadMore}
             pageSize={NOTIFICATIONS_PAGE_SIZE}
+            contentContainerStyle={listScrollConfig.contentContainerStyle}
+            scrollIndicatorInsets={listScrollConfig.scrollIndicatorInsets}
+            contentInsetAdjustmentBehavior={listScrollConfig.contentInsetAdjustmentBehavior}
+            refreshProgressOffset={listScrollConfig.refreshProgressOffset}
           />
         )}
       </View>
-    </>
+    </StackChromeScreen>
   );
 }
 
@@ -208,6 +213,11 @@ function buildStyles(c: AppColors) {
   },
   emptyPad: {
     paddingHorizontal: spacing[4],
+  },
+  listContent: {
+    paddingHorizontal: spacing[4],
+    paddingTop: spacing[2],
+    paddingBottom: spacing[10],
   },
 };
 }

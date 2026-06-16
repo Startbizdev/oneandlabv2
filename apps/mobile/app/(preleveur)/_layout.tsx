@@ -4,12 +4,14 @@ import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
 import { stackHeaderOptions } from '@/navigation/screen-options';
+import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
 
 export default function PreleveurLayout() {
   const styles = useThemedStyles(buildStyles, 'PreleveurLayout');
 
   return (
     <View style={styles.stackHost}>
+      <StackSceneInsetLayout>
       <Stack screenOptions={stackHeaderOptions()}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="appointment/[id]" options={{ title: 'Détail du rendez-vous' }} />
@@ -18,6 +20,7 @@ export default function PreleveurLayout() {
         <Stack.Screen name="informations-legales" options={{ headerTitleAlign: 'left' }} />
         <Stack.Screen name="web" options={{ headerTitleAlign: 'left' }} />
       </Stack>
+      </StackSceneInsetLayout>
     </View>
   );
 }

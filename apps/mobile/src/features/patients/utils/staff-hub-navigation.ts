@@ -23,7 +23,7 @@ export function staffHubItemRoute(
   }
   if (item.kind === 'document') {
     if (item.document_type === 'care_photo' && item.appointment_id) {
-      return `${rolePrefix}/appointment/${item.appointment_id}?segment=photos`;
+      return `${rolePrefix}/appointment/${item.appointment_id}?segment=exchange`;
     }
     return `${rolePrefix}/patient/${item.patient_id}/documents`;
   }
