@@ -25,6 +25,8 @@ import {
 import type { OpenPrescriptionSignatureOptions } from '@/features/prescriptions/components/PrescriptionSignatureSheet';
 import { PrescriptionSignatureSheet } from '@/features/prescriptions/components/PrescriptionSignatureSheet';
 import { PrescriptionDatePicker } from '@/features/prescriptions/components/PrescriptionDatePicker';
+import { PrescriptionProfileGapsAlert } from '@/features/prescriptions/components/PrescriptionProfileGapsAlert';
+import { getPrescriptionProfileGaps } from '@/features/prescriptions/utils/prescription-profile-gaps';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
@@ -41,6 +43,8 @@ interface Props {
   prescriptionKind?: PrescriptionKind;
   /** Sheet signature au niveau écran (hors scroll) — recommandé */
   onOpenSignatureSheet?: (options?: OpenPrescriptionSignatureOptions) => void;
+  /** Ouvre la fiche patient (alerte champs manquants). */
+  onEditPatient?: () => void;
 }
 
 export function PrescriptionComposer({
@@ -52,6 +56,7 @@ export function PrescriptionComposer({
   embedded = false,
   prescriptionKind = 'medical',
   onOpenSignatureSheet,
+  onEditPatient,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_prescriptions_components_PrescriptionComposer_tsx_styles');
@@ -86,6 +91,24 @@ export function PrescriptionComposer({
     queryFn: async () => (await fetchUser(user!.id, 'full')).data,
     enabled: !!user?.id,
   });
+
+  const patientQ = useQuery({
+    queryKey: queryKeys.profile.user(patientId),
+    queryFn: async () => (await fetchUser(patientId, 'full')).data,
+    enabled: Boolean(patientId?.trim()),
+  });
+
+  const profileGaps = useMemo(
+    () =>
+      getPrescriptionProfileGaps({
+        patient: patientQ.data,
+        prescriber: profileQ.data,
+        prescriptionKind,
+        prescriberRole: user?.role,
+        includeSignature,
+      }),
+    [includeSignature, patientQ.data, prescriptionKind, profileQ.data, user?.role],
+  );
 
   const hasSignature = Boolean(profileQ.data?.prescription_signature_png);
 
@@ -265,6 +288,13 @@ export function PrescriptionComposer({
           </Row>
         </View>
       ) : null}
+
+      <PrescriptionProfileGapsAlert
+        gaps={profileGaps}
+        onEditPatient={onEditPatient}
+        onSignPrescriber={() => requestSignatureSheet(false)}
+        prescriberRole={user?.role}
+      />
 
       <PrescriptionDatePicker value={prescriptionDate} onChange={setPrescriptionDate} />
 

@@ -10,9 +10,6 @@ final class PatientDossierDocuments
     /** @var list<string> */
     private const PROFILE_DOC_TYPES = ['carte_vitale', 'carte_mutuelle', 'autres_assurances'];
 
-    /** @var list<string> */
-    private const EXCLUDED_RDV_TYPES = ['care_photo', 'cancellation_photo'];
-
     /**
      * @return list<array<string, mixed>>
      */
@@ -38,62 +35,17 @@ final class PatientDossierDocuments
         $stmt->execute([$patientId]);
         $profileRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $profileTypesPresent = [];
-        $linkedMedicalIds = [];
         $merged = [];
 
         foreach ($profileRows as $row) {
             if (empty($row['medical_document_id'])) {
                 continue;
             }
+            $type = (string) ($row['document_type'] ?? '');
+            if ($type !== '' && !in_array($type, self::PROFILE_DOC_TYPES, true)) {
+                continue;
+            }
             $row['source'] = 'profile';
-            $merged[] = $row;
-            $type = (string) ($row['document_type'] ?? '');
-            if ($type !== '') {
-                $profileTypesPresent[$type] = true;
-            }
-            $linkedMedicalIds[(string) $row['medical_document_id']] = true;
-        }
-
-        $placeholders = implode(',', array_fill(0, count(self::EXCLUDED_RDV_TYPES), '?'));
-        $rdvStmt = $db->prepare("
-            SELECT
-                md.id,
-                md.id as medical_document_id,
-                md.document_type,
-                md.created_at,
-                md.updated_at,
-                md.file_name,
-                md.file_size,
-                md.mime_type,
-                md.created_at as uploaded_at,
-                md.appointment_id,
-                a.scheduled_at as appointment_scheduled_at
-            FROM medical_documents md
-            INNER JOIN appointments a ON a.id = md.appointment_id
-            WHERE a.patient_id = ?
-              AND (a.relative_id IS NULL OR a.relative_id = '')
-              AND md.document_type IS NOT NULL
-              AND md.document_type NOT IN ($placeholders)
-            ORDER BY md.created_at DESC
-        ");
-        $rdvStmt->execute(array_merge([$patientId], self::EXCLUDED_RDV_TYPES));
-        $rdvRows = $rdvStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($rdvRows as $row) {
-            $medicalId = (string) ($row['medical_document_id'] ?? '');
-            if ($medicalId === '' || isset($linkedMedicalIds[$medicalId])) {
-                continue;
-            }
-            $type = (string) ($row['document_type'] ?? '');
-            if (
-                $type !== ''
-                && isset($profileTypesPresent[$type])
-                && in_array($type, self::PROFILE_DOC_TYPES, true)
-            ) {
-                continue;
-            }
-            $row['source'] = 'appointment';
             $merged[] = $row;
         }
 

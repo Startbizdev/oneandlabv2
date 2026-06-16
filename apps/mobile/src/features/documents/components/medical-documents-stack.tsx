@@ -64,7 +64,6 @@ export type MedicalDocumentStackItem = {
 function buildDocumentRowHint(doc: MedicalDocumentStackItem): string {
   const base = formatDocumentFileSubtitle(doc.document_type, null, doc.created_at);
   const tags: string[] = [];
-  if (doc.source === 'patient_profile') tags.push('Compte patient');
   if (doc.profile_newer_than_appointment) tags.push('Version profil à jour');
   if (tags.length === 0) return base;
   return `${base} · ${tags.join(' · ')}`;

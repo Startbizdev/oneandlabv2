@@ -1,7 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useState } from 'react';
+import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ListFilter, Search, X } from 'lucide-react-native';
 import { Cluster, Row, Stack } from '@/components/layout/primitives';
@@ -40,14 +41,15 @@ export function AppointmentsListSearchHost({
   ...barProps
 }: SearchHostProps) {
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search, 280);
 
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearch(value);
-      onQueryChange(value);
-    },
-    [onQueryChange],
-  );
+  useEffect(() => {
+    onQueryChange(debouncedSearch);
+  }, [debouncedSearch, onQueryChange]);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+  }, []);
 
   return (
     <AppointmentsListFilterBar
@@ -107,7 +109,6 @@ export function AppointmentsListFilterBar({
             placeholderTextColor={c.textTertiary}
             style={styles.searchInput}
             returnKeyType="search"
-            clearButtonMode="while-editing"
             autoCorrect={false}
             autoCapitalize="none"
           />

@@ -24,6 +24,7 @@ import {
 import { CancelAppointmentSheet } from '../detail/components/blocks/CancelAppointmentSheet';
 import { OfferActions } from '../detail/components/OfferActions';
 import { PrescriptionSection } from '../detail/components/PrescriptionSection';
+import { StaffPatientEditSheet } from '@/features/patients/components/StaffPatientEditSheet';
 import { ProPatientReviewSection } from '../detail/components/ProPatientReviewSection';
 import { StaffPatientKvSection } from '../detail/components/StaffPatientKvSection';
 import { PatientAssigneeRows } from '../detail/components/patient/PatientAssigneeRows';
@@ -69,6 +70,7 @@ export function AppointmentDetailScreen({ role }: Props) {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [editPatientOpen, setEditPatientOpen] = useState(false);
   const [segment, setSegment] = useState<SegmentId>('infos');
 
   const s = useAppointmentDetailScreen(role, id, user?.id);
@@ -302,6 +304,7 @@ export function AppointmentDetailScreen({ role }: Props) {
                   role={role}
                   documents={s.allDocuments}
                   onDocumentsChanged={s.refreshAll}
+                  onEditPatient={() => setEditPatientOpen(true)}
                 />
               ) : null}
               {config.showProReviewBlock && primary.status === 'completed' ? (
@@ -355,6 +358,15 @@ export function AppointmentDetailScreen({ role }: Props) {
         onDone={() => router.back()}
         onClose={() => setCancelOpen(false)}
       />
+
+      {primary.patient_id && showPrescription ? (
+        <StaffPatientEditSheet
+          visible={editPatientOpen}
+          patientId={primary.patient_id}
+          onClose={() => setEditPatientOpen(false)}
+          onSaved={() => void s.refreshAll()}
+        />
+      ) : null}
     </>
   );
 }

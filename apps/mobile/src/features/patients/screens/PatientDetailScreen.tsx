@@ -23,7 +23,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { Skeleton, SkeletonList, SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/Button';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
-import { fetchPatientDocuments, fetchPatientProfile, fetchStaffPatientHistoryAppointments } from '../api/patient-profile.service';
+import { fetchPatientDocuments, fetchPatientProfile, fetchStaffPatientHistoryAppointments, filterCoverageProfileDocuments } from '../api/patient-profile.service';
 import { useAuthStore } from '@/store/auth-store';
 import { deletePatient } from '../api/patients.service';
 import { useToast } from '@/providers/ToastProvider';
@@ -118,7 +118,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
     queryFn: async () => {
       const res = await fetchPatientDocuments(id!);
       if (!res.success) throw new Error(res.error ?? 'Impossible de charger les documents');
-      return res.data ?? [];
+      return filterCoverageProfileDocuments(res.data);
     },
     enabled: !!id,
   });

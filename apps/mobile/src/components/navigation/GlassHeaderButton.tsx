@@ -12,7 +12,7 @@ import {
   LIQUID_GLASS_HEADER_CONTROL_SIZE,
   LIQUID_GLASS_HEADER_SYMBOL_SIZE,
 } from '@/components/navigation/nav-chrome-tokens';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { fontFamily } from '@/theme/typography';
 
 type Props = {
   symbol: SFSymbol;
@@ -41,6 +41,7 @@ export function GlassHeaderButton({
   const nativeGlass = useNativeGlassControls();
   const size = LIQUID_GLASS_HEADER_CONTROL_SIZE;
   const showBadge = badge !== undefined && badge > 0;
+  const badgeLabel = showBadge ? (badge! > 99 ? '99+' : String(badge!)) : '';
   const tint = iconColor ?? c.textPrimary;
 
   const icon = (
@@ -80,8 +81,23 @@ export function GlassHeaderButton({
         </View>
       )}
       {showBadge ? (
-        <View style={styles.badge} pointerEvents="none">
-          <Text style={styles.badgeText}>{badge! > 99 ? '99+' : badge}</Text>
+        <View
+          style={[
+            styles.badgeAnchor,
+            badgeLabel.length >= 3 && styles.badgeAnchorWide,
+            badgeLabel.length === 2 && styles.badgeAnchorMedium,
+          ]}
+          pointerEvents="none"
+        >
+          <View
+            style={[
+              styles.badge,
+              badgeLabel.length >= 3 && styles.badgeExtraWide,
+              badgeLabel.length === 2 && styles.badgeWide,
+            ]}
+          >
+            <Text style={styles.badgeText}>{badgeLabel}</Text>
+          </View>
         </View>
       ) : null}
     </Pressable>
@@ -90,10 +106,11 @@ export function GlassHeaderButton({
 
 function buildStyles(c: AppColors) {
   const size = LIQUID_GLASS_HEADER_CONTROL_SIZE;
+  const badgeSize = 20;
   return {
     host: {
-      width: size + 4,
-      height: size + 4,
+      width: size,
+      height: size,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       overflow: 'visible' as const,
@@ -118,26 +135,66 @@ function buildStyles(c: AppColors) {
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
-    badge: {
+    badgeAnchor: {
       position: 'absolute' as const,
-      top: 0,
-      right: 0,
-      minWidth: 18,
-      height: 18,
-      borderRadius: 9,
-      paddingHorizontal: 4,
+      top: -3,
+      right: -3,
+      zIndex: 10,
+      ...Platform.select({
+        ios: {
+          shadowColor: c.error,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.35,
+          shadowRadius: 3,
+        },
+        android: { elevation: 6 },
+      }),
+    },
+    badgeAnchorMedium: {
+      right: -7,
+    },
+    badgeAnchorWide: {
+      right: -11,
+    },
+    badge: {
+      minWidth: badgeSize,
+      height: badgeSize,
+      borderRadius: badgeSize / 2,
+      paddingHorizontal: 5,
+      paddingVertical: 0,
       backgroundColor: c.error,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       borderWidth: 2,
       borderColor: c.surface,
+      overflow: 'hidden' as const,
+    },
+    badgeWide: {
+      minWidth: 24,
+      paddingHorizontal: 5,
+    },
+    badgeExtraWide: {
+      minWidth: 30,
+      paddingHorizontal: 6,
     },
     badgeText: {
       fontFamily: fontFamily.extraBold,
-      fontSize: fontSize.xs,
+      fontSize: 10,
       lineHeight: 12,
+      textAlign: 'center' as const,
       color: c.textInverse,
       includeFontPadding: false,
+      allowFontScaling: false,
+      ...Platform.select({
+        android: {
+          textAlignVertical: 'center' as const,
+          height: 12,
+          transform: [{ translateY: -0.5 }],
+        },
+        ios: {
+          transform: [{ translateY: -0.5 }],
+        },
+      }),
     },
   };
 }

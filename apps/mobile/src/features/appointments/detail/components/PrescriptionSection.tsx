@@ -9,6 +9,7 @@ interface Props {
   documents?: MedicalDocumentRow[];
   onDocumentsChanged?: () => void | Promise<void>;
   initialPrescriptionText?: string;
+  onEditPatient?: () => void;
 }
 
 export function PrescriptionSection({
@@ -18,6 +19,7 @@ export function PrescriptionSection({
   documents = [],
   onDocumentsChanged,
   initialPrescriptionText,
+  onEditPatient,
 }: Props) {
   if (role !== 'pro' && role !== 'nurse') return null;
 
@@ -31,6 +33,7 @@ export function PrescriptionSection({
       onDocumentsChanged={onDocumentsChanged}
       initialText={initialPrescriptionText}
       prescriptionKind={prescriptionKind}
+      onEditPatient={onEditPatient}
     />
   );
 }
