@@ -198,6 +198,7 @@ export function StaffPatientDocumentsScreen() {
     queryKey: queryKeys.documents.patient(id ?? ''),
     queryFn: async () => {
       const res = await fetchPatientDocuments(id!);
+      if (!res.success) throw new Error(res.error ?? 'Impossible de charger les documents');
       return res.data ?? [];
     },
     enabled: Boolean(id),
