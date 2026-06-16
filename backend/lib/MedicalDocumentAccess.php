@@ -88,22 +88,48 @@ class MedicalDocumentAccess
             $hasAccess = self::userHasProfessionalPatientAccess($db, $user, (string) $document['apt_patient_id']);
         }
 
+        if (!$hasAccess && !empty($document['apt_patient_id']) && $user['role'] === 'pro') {
+            $hasAccess = self::userHasAppointmentAsCreatorWithPatient(
+                $db,
+                (string) $user['user_id'],
+                (string) $document['apt_patient_id'],
+            );
+        }
+
         return $hasAccess;
     }
 
+    /**
+     * Dossier patient (GET /patient-documents) — même périmètre que la vue documents d'un RDV.
+     */
     public static function userHasProfileDocumentAccess(PDO $db, array $user, string $docPatientId): bool
     {
-        if ($docPatientId === $user['user_id']) {
+        if ($docPatientId === ($user['user_id'] ?? '')) {
             return true;
         }
 
-        if (in_array($user['role'], ['pro', 'subaccount'], true)) {
+        $role = (string) ($user['role'] ?? '');
+        $userId = (string) ($user['user_id'] ?? '');
+
+        if (in_array($role, ['pro', 'subaccount', 'nurse'], true)) {
             if (self::userHasProfessionalPatientAccess($db, $user, $docPatientId)) {
                 return true;
             }
         }
 
-        if (in_array($user['role'], ['lab', 'subaccount', 'preleveur', 'nurse'], true)) {
+        if ($role === 'pro' && self::userHasAppointmentAsCreatorWithPatient($db, $userId, $docPatientId)) {
+            return true;
+        }
+
+        if ($role === 'nurse' && self::userHasNurseAppointmentWithPatient($db, $userId, $docPatientId)) {
+            return true;
+        }
+
+        if ($role === 'lab' && self::userHasLabPatientDossierAccess($db, $userId, $docPatientId)) {
+            return true;
+        }
+
+        if (in_array($role, ['subaccount', 'preleveur'], true)) {
             return self::userHasAssignedAppointmentWithPatient($db, $user, $docPatientId);
         }
 
@@ -124,18 +150,76 @@ class MedicalDocumentAccess
         return $prof && ($prof['created_by'] ?? '') === $user['user_id'];
     }
 
+    /** Pro : au moins un RDV créé pour ce patient (sans PPA obligatoire). */
+    public static function userHasAppointmentAsCreatorWithPatient(
+        PDO $db,
+        string $userId,
+        string $patientId,
+    ): bool {
+        $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND created_by = ? LIMIT 1');
+        $chk->execute([$patientId, $userId]);
+
+        return (bool) $chk->fetchColumn();
+    }
+
+    /** Infirmier : assignée ou créatrice d'au moins un RDV du patient. */
+    public static function userHasNurseAppointmentWithPatient(
+        PDO $db,
+        string $userId,
+        string $patientId,
+    ): bool {
+        $chk = $db->prepare('
+            SELECT 1 FROM appointments
+            WHERE patient_id = ?
+              AND (assigned_nurse_id = ? OR created_by = ?)
+            LIMIT 1
+        ');
+        $chk->execute([$patientId, $userId, $userId]);
+
+        return (bool) $chk->fetchColumn();
+    }
+
+    /** Lab : créateur du patient, lab parent du créateur, PPA, ou RDV équipe. */
+    public static function userHasLabPatientDossierAccess(
+        PDO $db,
+        string $userId,
+        string $patientId,
+    ): bool {
+        $userModel = new User();
+        if ($userModel->hasProfessionalAccessToPatient($userId, $patientId)) {
+            return true;
+        }
+
+        $createdStmt = $db->prepare('SELECT created_by FROM profiles WHERE id = ? LIMIT 1');
+        $createdStmt->execute([$patientId]);
+        $prof = $createdStmt->fetch(PDO::FETCH_ASSOC);
+        $createdBy = (string) ($prof['created_by'] ?? '');
+
+        if ($createdBy === $userId) {
+            return true;
+        }
+
+        $creatorLabId = $userModel->getLabId($createdBy);
+        if ($creatorLabId === $userId) {
+            return true;
+        }
+
+        return self::userHasAssignedAppointmentWithPatient(
+            $db,
+            ['user_id' => $userId, 'role' => 'lab'],
+            $patientId,
+        );
+    }
+
     public static function userHasAssignedAppointmentWithPatient(PDO $db, array $user, string $docPatientId): bool
     {
         if ($user['role'] === 'nurse') {
-            $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND assigned_nurse_id = ? LIMIT 1');
-            $chk->execute([$docPatientId, $user['user_id']]);
-
-            return (bool) $chk->fetch();
+            return self::userHasNurseAppointmentWithPatient($db, (string) $user['user_id'], $docPatientId);
         }
 
         if (in_array($user['role'], ['lab', 'subaccount', 'preleveur'], true)) {
             $teamIds = LabTeamAccess::teamMemberIds($db, $user['user_id'], $user['role']);
-            if (empty($teamIds)) {
+            if ($teamIds === []) {
                 return false;
             }
             $placeholders = implode(',', array_fill(0, count($teamIds), '?'));
@@ -144,7 +228,7 @@ class MedicalDocumentAccess
             );
             $chk->execute(array_merge([$docPatientId], $teamIds, $teamIds));
 
-            return (bool) $chk->fetch();
+            return (bool) $chk->fetchColumn();
         }
 
         return false;

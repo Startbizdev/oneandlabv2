@@ -762,8 +762,8 @@
               @download="(id, fileName) => downloadDocument(id, fileName)"
               @update:error="documentError = $event"
             />
-            <!-- Pro édition patient : documents médicaux + bouton Enregistrer en dessous -->
-            <template v-if="isProEditingPatient">
+            <!-- Staff / admin édition patient : documents médicaux + bouton Enregistrer en dessous -->
+            <template v-if="isProEditingPatient || (isAdmin && editingUserId && role === 'patient')">
               <ProfileDocuments
                 :documents="documents"
                 :is-loading="loadingDocuments"
@@ -780,7 +780,7 @@
                 :role-base="staffPrescriptionsRoleBase"
                 :prescription-kind="staffPrescriptionKind"
               />
-              <div class="pt-2 w-full shrink-0">
+              <div v-if="isProEditingPatient" class="pt-2 w-full shrink-0">
                 <UButton
                   size="xl"
                   color="primary"
@@ -1263,6 +1263,13 @@ const showStaffPatientPrescriptions = computed(
     role.value === 'patient' &&
     (user.value?.role === 'pro' || user.value?.role === 'nurse')
 )
+/** Charge les documents profil patient (soi-même ou dossier staff). */
+const shouldLoadPatientDossierDocuments = computed(
+  () =>
+    (isPatient.value && !newPatientMode.value && !editingUserId.value) ||
+    isProEditingPatient.value ||
+    (isAdmin.value && !!editingUserId.value && role.value === 'patient')
+)
 const staffPrescriptionsRoleBase = computed(() =>
   user.value?.role === 'nurse' ? '/nurse' : '/pro'
 )
@@ -1651,6 +1658,7 @@ watch(
       editingUserId.value = uid
       loadProfile().then(() => {
         if (hasAppointmentsSection.value) loadProfileAppointments()
+        if (shouldLoadPatientDossierDocuments.value) void loadDocuments()
       })
     } else {
       editingUserId.value = null
@@ -1728,7 +1736,7 @@ onMounted(async () => {
   const promises: Promise<void>[] = []
   if (hasCoverageZone.value && !newPreleveurMode.value && (!editingUserId.value || isAdmin.value)) promises.push(loadCoverage())
   if (isNurse.value || (isDisplayedProfileLab.value && isAdmin.value && editingUserId.value) || ((isDisplayedProfileLab.value || isSubaccount.value) && !editingUserId.value)) promises.push(loadCategoryPreferences())
-  if (isPatient.value && !newPatientMode.value) promises.push(loadDocuments())
+  if (shouldLoadPatientDossierDocuments.value) promises.push(loadDocuments())
   if (hasAppointmentsSection.value) promises.push(loadProfileAppointments())
   await Promise.all(promises)
   if (import.meta.client && route.hash === '#securite') {
@@ -1847,6 +1855,9 @@ const loadProfile = async () => {
       }
     } else if (user.value?.role === 'super_admin') {
       adminPreleveurLabId.value = ''
+    }
+    if (shouldLoadPatientDossierDocuments.value) {
+      await loadDocuments()
     }
     if (userData.role === 'lab' || userData.role === 'subaccount') {
       const defaultHours = Object.fromEntries(DAYS.map((d) => [d.key, { start: '', end: '' }]))
@@ -2391,17 +2402,20 @@ const loadDocuments = async () => {
   documentError.value = null
   try {
     const url =
-      (isAdmin.value && editingUserId.value) || (isProEditingPatient.value && editingUserId.value)
+      editingUserId.value &&
+      (isProEditingPatient.value || (isAdmin.value && role.value === 'patient'))
         ? `/patient-documents?user_id=${editingUserId.value}`
         : '/patient-documents'
     const response = await apiFetch(url, { method: 'GET' })
-    if (response.success) {
-      documents.value = {}
-      if (response.data && Array.isArray(response.data)) {
-        response.data.forEach((doc: any) => {
-          if (doc.document_type) documents.value[doc.document_type] = doc
-        })
-      }
+    if (!response.success) {
+      throw new Error(response.error || 'Impossible de charger les documents')
+    }
+    documents.value = {}
+    if (response.data && Array.isArray(response.data)) {
+      response.data.forEach((doc: any) => {
+        if (!doc.document_type) return
+        documents.value[doc.document_type] = doc
+      })
     }
   } catch (err: any) {
     documentError.value = err.message || 'Erreur lors du chargement des documents'

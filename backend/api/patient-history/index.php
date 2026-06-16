@@ -79,7 +79,14 @@ function patientHistoryHasAccess(PDO $db, string $role, string $userId, string $
 
     if ($role === 'pro') {
         $userModel = new User();
-        return $userModel->hasProfessionalAccessToPatient($userId, $patientId);
+        if ($userModel->hasProfessionalAccessToPatient($userId, $patientId)) {
+            return true;
+        }
+
+        $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND created_by = ? LIMIT 1');
+        $chk->execute([$patientId, $userId]);
+
+        return (bool) $chk->fetchColumn();
     }
 
     if ($role === 'nurse') {
