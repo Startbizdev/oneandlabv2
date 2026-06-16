@@ -12,16 +12,32 @@
 
 $backendDir = dirname(__DIR__);
 
-$sqlPath = $backendDir . '/../database/migrations/074_confirm_direct_nurse_qr_bookings.sql';
-if (!is_file($sqlPath)) {
-    fwrite(STDERR, "Fichier SQL introuvable: $sqlPath\n");
-    exit(1);
+$sqlCandidates = [
+    $backendDir . '/../database/migrations/074_confirm_direct_nurse_qr_bookings.sql',
+    $backendDir . '/database/migrations/074_confirm_direct_nurse_qr_bookings.sql',
+];
+
+$sql = null;
+foreach ($sqlCandidates as $sqlPath) {
+    if (!is_file($sqlPath)) {
+        continue;
+    }
+    $sql = file_get_contents($sqlPath);
+    if ($sql !== false && trim($sql) !== '') {
+        break;
+    }
 }
 
-$sql = file_get_contents($sqlPath);
-if ($sql === false || trim($sql) === '') {
-    fwrite(STDERR, "Lecture SQL impossible.\n");
-    exit(1);
+if ($sql === null || trim($sql) === '') {
+    $sql = <<<'SQL'
+UPDATE appointments
+SET status = 'confirmed', updated_at = NOW()
+WHERE type = 'nursing'
+  AND status = 'pending'
+  AND assigned_nurse_id IS NOT NULL
+  AND TRIM(assigned_nurse_id) <> ''
+  AND (created_by IS NULL OR created_by <> assigned_nurse_id);
+SQL;
 }
 
 $config = require $backendDir . '/config/database.php';
