@@ -726,6 +726,12 @@ function formatBatchRdvLabel(apt: any, index: number): string {
   return `Soins prévus #${n} · ${cat}`;
 }
 
+function appointmentScopedDocuments(list: any[]): any[] {
+  return (list || []).filter(
+    (doc) => doc?.source !== 'patient_profile' && doc?.source !== 'profile',
+  );
+}
+
 const loadDocuments = async () => {
   const ids = batchAppointmentIds.value;
   if (!ids.length) return;
@@ -735,7 +741,7 @@ const loadDocuments = async () => {
     const lists = await Promise.all(
       ids.map((id) =>
         apiFetch(`/medical-documents?appointment_id=${encodeURIComponent(id)}`, { method: 'GET' }).then((r) =>
-          r.success && Array.isArray(r.data) ? r.data : [],
+          appointmentScopedDocuments(r.success && Array.isArray(r.data) ? r.data : []),
         ),
       ),
     );

@@ -5,8 +5,7 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
 import { HeaderBackButton } from '@/navigation/HeaderBackButton';
 import { useAuthStore } from '@/store/auth-store';
-import { fetchProfileDocuments, fetchPatientProfile } from '@/features/patients/api/patient-profile.service';
-import { mergeProfileDocumentsIntoAppointmentDocs } from '@/features/documents/utils/merge-profile-documents';
+import { fetchPatientProfile } from '@/features/patients/api/patient-profile.service';
 import { useAppointmentDetail } from '../../hooks/use-appointment-detail';
 import {
   APPOINTMENT_ALREADY_ACCEPTED,
@@ -36,12 +35,6 @@ function patientCanCancelStatus(status: unknown): boolean {
 
 const STAFF_PROFILE_MERGE_ROLES = new Set(['pro', 'nurse', 'preleveur']);
 
-function shouldMergeProfileDocuments(role: string, relativeId?: string): boolean {
-  if (role === 'patient') return true;
-  if (relativeId) return false;
-  return STAFF_PROFILE_MERGE_ROLES.has(role);
-}
-
 export function useAppointmentDetailScreen(
   role: string,
   id: string | undefined,
@@ -63,7 +56,6 @@ export function useAppointmentDetailScreen(
     apt ?? batchSorted.find((a) => String(a.id) === String(id)) ?? batchSorted[0];
   const relativeId = primary?.relative_id?.trim() || undefined;
   const patientId = primary?.patient_id?.trim() || undefined;
-  const mergeProfileDocs = shouldMergeProfileDocuments(role, relativeId);
 
   const needsPatientAvatarEnrichment = useMemo(() => {
     if (!primary || !patientId || relativeId) return false;
@@ -99,28 +91,6 @@ export function useAppointmentDetailScreen(
     } as Appointment;
   }, [primary, patientProfileQ.data]);
 
-  const profileDocsQ = useQuery({
-    queryKey: relativeId
-      ? queryKeys.documents.relative(relativeId)
-      : queryKeys.documents.patient(role === 'patient' ? (user?.id ?? '') : (patientId ?? '')),
-    queryFn: async () => {
-      const params =
-        role === 'patient'
-          ? relativeId
-            ? { relativeId }
-            : {}
-          : { userId: patientId };
-      const res = await fetchProfileDocuments(params);
-      if (!res.success) throw new Error(res.error ?? 'Erreur chargement documents profil');
-      return res.data ?? [];
-    },
-    enabled:
-      Boolean(primary) &&
-      mergeProfileDocs &&
-      (role === 'patient' ? Boolean(user?.id) : Boolean(patientId)),
-    staleTime: 30_000,
-  });
-
   /** Pas de prefetch : GET share-for-nurse ne doit pas être appelé à l’ouverture (effet de bord historique côté API). */
   const shareQ = useShareForNurse(id, false);
 
@@ -135,18 +105,15 @@ export function useAppointmentDetailScreen(
   const allDocuments = useMemo(() => {
     const merged = docQueries.flatMap((q) => q.data ?? []);
     const seen = new Set<string>();
-    const aptDocs = merged.filter((d) => {
+    return merged.filter((d) => {
       if (seen.has(d.id)) return false;
       seen.add(d.id);
+      if (d.source === 'patient_profile' || d.source === 'profile') return false;
       return true;
     });
-    if (!mergeProfileDocs) return aptDocs;
-    return mergeProfileDocumentsIntoAppointmentDocs(aptDocs, profileDocsQ.data ?? []);
-  }, [docQueries, mergeProfileDocs, profileDocsQ.data]);
+  }, [docQueries]);
 
-  const docsLoading =
-    docQueries.some((q) => q.isLoading) ||
-    (mergeProfileDocs && profileDocsQ.isLoading && profileDocsQ.data === undefined);
+  const docsLoading = docQueries.some((q) => q.isLoading);
   const canceled = primary ? isAppointmentCanceled(primary.status) : false;
 
   const cancellableForPatient = useMemo(
@@ -169,14 +136,11 @@ export function useAppointmentDetailScreen(
     void detailQ.refetch();
     void refetchSiblings();
     docQueries.forEach((q) => void q.refetch());
-    if (mergeProfileDocs) void profileDocsQ.refetch();
     if (needsPatientAvatarEnrichment) void patientProfileQ.refetch();
   }, [
     detailQ,
     refetchSiblings,
     docQueries,
-    profileDocsQ,
-    mergeProfileDocs,
     needsPatientAvatarEnrichment,
     patientProfileQ,
   ]);
@@ -184,8 +148,7 @@ export function useAppointmentDetailScreen(
   const isRefreshing =
     detailQ.isRefetching ||
     siblingsLoading ||
-    docQueries.some((q) => q.isRefetching) ||
-    (mergeProfileDocs && profileDocsQ.isRefetching);
+    docQueries.some((q) => q.isRefetching);
 
   const handleHeaderBack = useCallback(() => {
     if (navigation.canGoBack()) {
@@ -226,6 +189,14 @@ export function useAppointmentDetailScreen(
     handleHeaderBack,
   ]);
 
+  const headerTitleNode = useMemo(() => {
+    if (!primary) return 'Rendez-vous';
+    const title = appointmentPatientHeaderTitle(primary, batchSorted.length);
+    const displayStatus = effectiveAppointmentStatus(primary, { role, viewerId });
+    const status = displayStatus ?? primary.status;
+    return createElement(RdvDetailNavTitle, { title, status });
+  }, [primary, batchSorted.length, role, viewerId]);
+
   useEffect(() => {
     if (!config.enablePolling || !id) return;
     const terminal = new Set(['canceled', 'cancelled', 'completed', 'refused', 'expired']);
@@ -259,5 +230,6 @@ export function useAppointmentDetailScreen(
     siblingsLoading,
     isRefreshing,
     refreshAll,
+    headerTitleNode,
   };
 }

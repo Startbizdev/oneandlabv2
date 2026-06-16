@@ -1151,6 +1151,15 @@ class Appointment
             $assignedNurseId = $createdBy;
         }
 
+        // Patient / invité réserve chez un infirmier identifié (QR, fiche publique) : confirmé directement
+        if (
+            ($data['type'] ?? '') === 'nursing'
+            && !empty($assignedNurseId)
+            && $createdByRole !== 'nurse'
+        ) {
+            $status = 'confirmed';
+        }
+
         // Validation paramètres lab pour RDV prise de sang (création par pro ou assignation à un lab)
         if ($data['type'] === 'blood_test') {
             $effectiveLabId = $assignedLabId;

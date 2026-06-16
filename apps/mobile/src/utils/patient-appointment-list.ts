@@ -25,13 +25,18 @@ function appointmentParisYmd(iso: string | undefined | null): string {
   return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
 }
 
-/** À venir : date (Paris) ≥ aujourd'hui et statut non terminal. */
-export function isPatientUpcomingAppointment(apt: Appointment): boolean {
+/** Passé / terminé : statut terminal ou date (Paris) strictement avant aujourd'hui. */
+export function isAppointmentPastForList(apt: Appointment): boolean {
   const st = normalizeAppointmentStatus(apt.status);
-  if (TERMINAL_STATUSES.has(st)) return false;
+  if (TERMINAL_STATUSES.has(st)) return true;
   const day = appointmentParisYmd(apt.scheduled_at);
-  if (!day) return true;
-  return day >= parisYmd(new Date());
+  if (!day) return false;
+  return day < parisYmd(new Date());
+}
+
+/** À venir : complément de {@link isAppointmentPastForList} (sans date = encore à planifier). */
+export function isPatientUpcomingAppointment(apt: Appointment): boolean {
+  return !isAppointmentPastForList(apt);
 }
 
 export function isAppointmentForRelative(apt: Appointment): boolean {

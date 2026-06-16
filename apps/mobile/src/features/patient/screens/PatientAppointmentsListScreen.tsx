@@ -160,7 +160,7 @@ export function PatientAppointmentsListScreen() {
               imageSource={EMPTY_RDV_IMAGE}
               imageWidth={EMPTY_RDV_IMAGE_WIDTH}
               imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-              title={tab === 'upcoming' ? 'Aucun rendez-vous à venir' : 'Aucun rendez-vous passé'}
+              title={tab === 'upcoming' ? 'Aucun rendez-vous à venir' : 'Aucun rendez-vous terminé'}
               description="Réservez un nouveau rendez-vous avec le bouton ci-dessus."
             />
           ) : null

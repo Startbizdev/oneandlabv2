@@ -116,14 +116,22 @@ interface StatusBadgeProps {
   dotOnly?: boolean;
 }
 
+function normalizeAppointmentStatusKey(status: string): string {
+  const s = status.trim();
+  if (s === 'in_progress') return 'inProgress';
+  if (s === 'cancelled') return 'canceled';
+  return s;
+}
+
 function StatusBadgeComponent({
   status,
   size = 'sm',
   shape = 'rounded',
   dotOnly = false,
 }: StatusBadgeProps) {
-  const colorKey = STATUS_BADGE_COLOR[status] ?? 'neutral';
-  const label = STATUS_LABELS[status] ?? status;
+  const normalized = normalizeAppointmentStatusKey(status);
+  const colorKey = STATUS_BADGE_COLOR[normalized] ?? 'neutral';
+  const label = STATUS_LABELS[normalized] ?? status;
   const variant = statusToVariant[colorKey] ?? 'neutral';
   return (
     <Badge label={label} variant={variant} dot size={size} shape={shape} dotOnly={dotOnly} />

@@ -248,7 +248,7 @@ export function AppointmentDetailScreen({ role }: Props) {
 
   return (
     <>
-      <StackChromeScreen>
+      <StackChromeScreen title={s.headerTitleNode}>
         <ScrollView
           style={styles.container}
           refreshControl={
@@ -269,6 +269,7 @@ export function AppointmentDetailScreen({ role }: Props) {
           {config.showOfferBlock && isPendingIncomingOffer(primary, user?.id) ? (
             <OfferActions appointmentId={id!} onDone={() => router.back()} />
           ) : null}
+
 
           <DetailSegmentBar
             segments={segments}

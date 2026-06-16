@@ -21,6 +21,7 @@ export function filterListDocuments(
   opts: { omitCarePhotos?: boolean } = {},
 ): MedicalDocumentRow[] {
   return docs.filter((d) => {
+    if (d.source === 'patient_profile' || d.source === 'profile') return false;
     if (opts.omitCarePhotos && d.document_type === 'care_photo') return false;
     return true;
   });

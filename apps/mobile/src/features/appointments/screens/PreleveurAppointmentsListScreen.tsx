@@ -18,6 +18,7 @@ import { useAuthStore } from '@/store/auth-store';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { appointmentAddressLine } from '@/utils/appointment-display';
+import { isAppointmentPastForList } from '@/utils/patient-appointment-list';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { spacing } from '@/theme';
 
@@ -64,8 +65,8 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix }: Props) {
   const { refetch } = query;
 
   const displayRows = useMemo(() => {
-    let list = flattenInfiniteAppointments(query.data?.pages).filter((a) =>
-      isAssignedConfirmed(a, userId),
+    let list = flattenInfiniteAppointments(query.data?.pages).filter(
+      (a) => isAssignedConfirmed(a, userId) && !isAppointmentPastForList(a),
     );
     if (search.trim()) list = list.filter((a) => matchesSearch(a, search));
     return buildAppointmentDisplayRows(list, { direction: 'upcoming' });
