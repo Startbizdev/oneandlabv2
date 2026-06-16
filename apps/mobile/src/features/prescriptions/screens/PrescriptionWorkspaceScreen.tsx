@@ -255,6 +255,7 @@ export function PrescriptionWorkspaceScreen({
                   prescriptionKind={prescriptionKind}
                   embedded
                   onOpenSignatureSheet={handleOpenSignatureSheet}
+                  onEditPatient={() => setEditPatientId(effectivePatientId)}
                 />
               </View>
             ) : null}
@@ -281,6 +282,7 @@ export function PrescriptionWorkspaceScreen({
                     prescriptionKind={prescriptionKind}
                     embedded
                     onOpenSignatureSheet={handleOpenSignatureSheet}
+                    onEditPatient={() => setEditPatientId(effectivePatientId)}
                   />
                   </View>
                 ) : (
@@ -334,7 +336,10 @@ export function PrescriptionWorkspaceScreen({
           visible={Boolean(editPatientId)}
           patientId={editPatientId}
           onClose={() => setEditPatientId(null)}
-          onSaved={() => void patientsQ.refetch()}
+          onSaved={() => {
+            void patientsQ.refetch();
+            void qc.invalidateQueries({ queryKey: queryKeys.profile.user(editPatientId ?? '') });
+          }}
         />
       ) : null}
 

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@oneandlab/shared-types": "*",
+    "@oneandlab/shared-utils": "*",
     "@iconify-json/lucide": "^1.2.89",
     "@nuxt/ui": "^3.3.7",
     "@tanstack/vue-table": "^8.21.3",

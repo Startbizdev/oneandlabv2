@@ -1,5 +1,5 @@
 import { api } from '@/api/client';
-import { uploadMedicalDocument } from '@/lib/uploads/upload-file';
+import { uploadMedicalDocument, type UploadedMedicalDocument } from '@/lib/uploads/upload-file';
 import { fetchAppointmentsPaginated } from '@/features/appointments/api/appointments.service';
 import type { Appointment } from '@oneandlab/shared-types';
 
@@ -41,8 +41,8 @@ export async function uploadPatientProfileDocument(
   patientUserId: string,
   docType: PatientProfileUploadType,
   file: { uri: string; fileName: string; mimeType: string },
-): Promise<void> {
-  await uploadMedicalDocument(
+): Promise<UploadedMedicalDocument | null> {
+  return uploadMedicalDocument(
     { uri: file.uri, fileName: file.fileName, mimeType: file.mimeType },
     { user_id: patientUserId, document_type: docType },
     '/patient-documents/upload',
@@ -128,6 +128,14 @@ export async function fetchProfileDocuments(params: FetchProfileDocumentsParams 
   const query = qs.toString();
   return api.get<PatientDocumentRow[]>(
     query ? `/patient-documents?${query}` : '/patient-documents',
+  );
+}
+
+export function filterCoverageProfileDocuments(
+  rows: PatientDocumentRow[] | undefined,
+): PatientDocumentRow[] {
+  return (rows ?? []).filter((row) =>
+    PATIENT_PROFILE_UPLOAD_TYPES.includes(row.document_type as PatientProfileUploadType),
   );
 }
 

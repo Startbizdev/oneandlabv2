@@ -36,6 +36,13 @@
       </div>
     </div>
     <div class="space-y-4">
+      <PrescriptionProfileGapsAlert
+        :gaps="profileGaps"
+        :patient-id="patientId"
+        :prescriber-role="user?.role"
+        @sign-prescriber="openSignatureModal(false)"
+      />
+
       <UFormField label="Date de l'ordonnance" name="prescription_date">
         <UInput v-model="prescriptionDate" type="date" class="w-full max-w-xs" />
       </UFormField>
@@ -129,6 +136,11 @@
 
 <script setup lang="ts">
 import PrescriptionSignaturePad from '~/components/prescription/PrescriptionSignaturePad.vue';
+import PrescriptionProfileGapsAlert from '~/components/prescription/PrescriptionProfileGapsAlert.vue';
+import {
+  getPrescriptionProfileGaps,
+  type PrescriptionProfileSnapshot,
+} from '@oneandlab/shared-utils';
 const props = defineProps<{
   patientId: string;
   appointment?: { id: string } | null;
@@ -169,6 +181,8 @@ const signaturePadRef = ref<InstanceType<typeof PrescriptionSignaturePad> | null
 const signatureSaving = ref(false);
 const pendingGenerateAfterSignature = ref(false);
 const storedSignaturePng = ref<string | null>(null);
+const prescriberProfile = ref<PrescriptionProfileSnapshot | null>(null);
+const patientProfile = ref<PrescriptionProfileSnapshot | null>(null);
 const generating = ref(false);
 const uploading = ref(false);
 const saveFailed = ref(false);
@@ -187,22 +201,70 @@ const canGenerate = computed(() =>
 
 const hasStoredSignature = computed(() => Boolean(storedSignaturePng.value?.trim()));
 
-onMounted(async () => {
-  await loadUserSignature();
-});
+const profileGaps = computed(() =>
+  getPrescriptionProfileGaps({
+    patient: patientProfile.value,
+    prescriber: prescriberProfile.value,
+    prescriptionKind: kind.value,
+    prescriberRole: user.value?.role,
+    includeSignature: includeSignature.value,
+  }),
+);
 
-async function loadUserSignature() {
+function profileSnapshotFromApi(data: Record<string, unknown>): PrescriptionProfileSnapshot {
+  return {
+    first_name: (data.first_name as string | null | undefined) ?? null,
+    last_name: (data.last_name as string | null | undefined) ?? null,
+    birth_date: (data.birth_date as string | null | undefined) ?? null,
+    nir: (data.nir as string | null | undefined) ?? null,
+    address: data.address,
+    rpps: (data.rpps as string | null | undefined) ?? null,
+    adeli: (data.adeli as string | null | undefined) ?? null,
+    prescription_signature_png: (data.prescription_signature_png as string | null | undefined) ?? null,
+  };
+}
+
+async function loadPrescriberProfile() {
   const userId = user.value?.id;
   if (!userId) return;
   try {
     const res = await apiFetch(`/users/${userId}`);
     if (res?.success && res?.data) {
-      storedSignaturePng.value = (res.data as any).prescription_signature_png ?? null;
+      const data = res.data as Record<string, unknown>;
+      prescriberProfile.value = profileSnapshotFromApi(data);
+      storedSignaturePng.value = (data.prescription_signature_png as string | null | undefined) ?? null;
     }
   } catch {
     /* ignore */
   }
 }
+
+async function loadPatientProfile() {
+  const id = props.patientId?.trim();
+  if (!id) {
+    patientProfile.value = null;
+    return;
+  }
+  try {
+    const res = await apiFetch(`/users/${id}`);
+    if (res?.success && res?.data) {
+      patientProfile.value = profileSnapshotFromApi(res.data as Record<string, unknown>);
+    } else {
+      patientProfile.value = null;
+    }
+  } catch {
+    patientProfile.value = null;
+  }
+}
+
+onMounted(async () => {
+  await loadPrescriberProfile();
+  await loadPatientProfile();
+});
+
+watch(() => props.patientId, () => {
+  void loadPatientProfile();
+});
 
 function openSignatureModal(pendingGenerate = false) {
   pendingGenerateAfterSignature.value = pendingGenerate;
@@ -225,6 +287,10 @@ async function saveSignatureAndGenerate() {
     });
     if (!res?.success) throw new Error((res as any)?.error ?? 'Enregistrement impossible');
     storedSignaturePng.value = png;
+    prescriberProfile.value = {
+      ...(prescriberProfile.value ?? {}),
+      prescription_signature_png: png,
+    };
     signatureModalOpen.value = false;
     if (pendingGenerateAfterSignature.value) {
       pendingGenerateAfterSignature.value = false;

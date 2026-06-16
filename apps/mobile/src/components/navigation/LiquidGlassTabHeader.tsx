@@ -84,6 +84,7 @@ function buildStyles(_c: AppColors) {
     },
     row: {
       minHeight: LIQUID_GLASS_HEADER_ROW_MIN_HEIGHT,
+      overflow: 'visible' as const,
     },
     leading: {
       flex: 1,
@@ -103,6 +104,7 @@ function buildStyles(_c: AppColors) {
     trailing: {
       flexShrink: 0,
       marginLeft: 4,
+      overflow: 'visible' as const,
     },
   };
 }

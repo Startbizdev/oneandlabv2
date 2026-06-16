@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   type FlatListProps,
   RefreshControl,
-  ScrollView,
   View,
 } from 'react-native';
 import { FlashList, type ListRenderItem } from '@shopify/flash-list';
@@ -97,36 +96,6 @@ export function InfiniteQueryFlatList<TPage, Item>({
     />
   );
 
-  const listHeaderNode = ListHeaderComponent
-    ? React.isValidElement(ListHeaderComponent)
-      ? ListHeaderComponent
-      : React.createElement(ListHeaderComponent as React.ComponentType)
-    : null;
-
-  const emptyNode =
-    ListEmptyComponent == null
-      ? null
-      : typeof ListEmptyComponent === 'function'
-        ? <ListEmptyComponent />
-        : ListEmptyComponent;
-
-  if (items.length === 0 && emptyNode) {
-    return (
-      <View style={styles.root}>
-        {header}
-        <ScrollView
-          {...spreadTabSceneScrollProps(scrollConfig)}
-          showsVerticalScrollIndicator={showsVerticalScrollIndicator}
-          contentContainerStyle={[styles.listContent, styles.emptyScrollContent, scrollConfig.contentContainerStyle]}
-          refreshControl={refreshControl}
-        >
-          {listHeaderNode}
-          {emptyNode}
-        </ScrollView>
-      </View>
-    );
-  }
-
   const footer = (
     <>
       {query.isFetchingNextPage ? (
@@ -147,6 +116,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
         keyExtractor={keyExtractor}
         ItemSeparatorComponent={ItemSeparatorComponent}
         ListHeaderComponent={ListHeaderComponent}
+        ListEmptyComponent={ListEmptyComponent}
         {...spreadTabSceneScrollProps(scrollConfig)}
         showsVerticalScrollIndicator={showsVerticalScrollIndicator}
         contentContainerStyle={[styles.listContent, scrollConfig.contentContainerStyle]}
@@ -169,10 +139,6 @@ function buildStyles(_c: AppColors) {
       flex: 1,
     },
     listContent: {
-      minWidth: 0,
-      flexGrow: 1,
-    },
-    emptyScrollContent: {
       minWidth: 0,
       flexGrow: 1,
     },

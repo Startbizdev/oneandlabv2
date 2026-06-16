@@ -9,11 +9,12 @@ import {
 import {
   PATIENT_PROFILE_UPLOAD_TYPES,
   fetchProfileDocuments,
+  filterCoverageProfileDocuments,
   mergePatientDocumentRow,
+  uploadPatientProfileDocument,
   type PatientDocumentRow,
   type PatientProfileUploadType,
 } from '@/features/patients/api/patient-profile.service';
-import { uploadMedicalDocument } from '@/lib/uploads/upload-file';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { useAuthStore } from '@/store/auth-store';
@@ -38,14 +39,17 @@ function toStackItem(row: PatientDocumentRow): MedicalDocumentStackItem {
     document_type: row.document_type ?? 'other',
     file_name: row.file_name,
     created_at: row.created_at,
+    source: 'patient_profile',
   };
 }
 
 interface Props {
   embedded?: boolean;
+  /** Dossier patient staff (pro / infirmier). Sinon patient connecté. */
+  patientUserId?: string;
 }
 
-export function ProfileDocumentsPremiumPanel({ embedded }: Props) {
+export function ProfileDocumentsPremiumPanel({ embedded, patientUserId }: Props) {
   const c = useAppColors();
   const section = getRdvDetailSectionStyles();
   const headStyles = useMedicalDocumentsStackHeadStyles();
@@ -56,28 +60,23 @@ export function ProfileDocumentsPremiumPanel({ embedded }: Props) {
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ uri: string; fileName?: string } | null>(null);
 
-  const userId = user?.id ?? '';
+  const targetUserId = patientUserId ?? user?.id ?? '';
+  const isStaffDossier = Boolean(patientUserId);
 
   const docsQ = useQuery({
-    queryKey: queryKeys.documents.patient(userId),
+    queryKey: queryKeys.documents.patient(targetUserId),
     queryFn: async () => {
-      const res = await fetchProfileDocuments();
+      const res = await fetchProfileDocuments(
+        isStaffDossier ? { userId: targetUserId } : {},
+      );
       if (!res.success) throw new Error(res.error ?? 'Erreur chargement documents');
-      return res.data ?? [];
+      return filterCoverageProfileDocuments(res.data);
     },
-    enabled: isHydrated && Boolean(userId),
+    enabled: isStaffDossier ? Boolean(targetUserId) : isHydrated && Boolean(targetUserId),
     staleTime: 30_000,
   });
 
-  const list = useMemo(
-    () =>
-      (docsQ.data ?? [])
-        .filter((d) =>
-          PROFILE_DOC_TYPES.includes(d.document_type as PatientProfileUploadType),
-        )
-        .map(toStackItem),
-    [docsQ.data],
-  );
+  const list = useMemo(() => (docsQ.data ?? []).map(toStackItem), [docsQ.data]);
 
   const existingTypes = useMemo(
     () => new Set(list.map((d) => d.document_type)),
@@ -106,18 +105,18 @@ export function ProfileDocumentsPremiumPanel({ embedded }: Props) {
       name: string;
       mimeType: string;
     }) => {
-      if (!userId) throw new Error('Session expirée — reconnectez-vous.');
-      const uploaded = await uploadMedicalDocument(
-        { uri, fileName: name, mimeType },
-        { user_id: userId, document_type: docType },
-        '/patient-documents/upload',
-      );
+      if (!targetUserId) throw new Error('Session expirée — reconnectez-vous.');
+      const uploaded = await uploadPatientProfileDocument(targetUserId, docType, {
+        uri,
+        fileName: name,
+        mimeType,
+      });
       if (!uploaded?.id) throw new Error('Réponse upload invalide');
       return { ...uploaded, document_type: uploaded.document_type ?? docType };
     },
     onSuccess: (uploaded, vars) => {
       qc.setQueryData<PatientDocumentRow[]>(
-        queryKeys.documents.patient(userId),
+        queryKeys.documents.patient(targetUserId),
         (prev) =>
           mergePatientDocumentRow(prev, {
             id: uploaded.id,
@@ -125,7 +124,7 @@ export function ProfileDocumentsPremiumPanel({ embedded }: Props) {
             document_type: uploaded.document_type ?? vars.docType,
           }),
       );
-      void qc.invalidateQueries({ queryKey: queryKeys.documents.patient(userId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.documents.patient(targetUserId) });
       void qc.invalidateQueries({ queryKey: ['documents', 'medical'] });
       const hadDoc = (docsQ.data ?? []).some((d) => d.document_type === vars.docType);
       toast(hadDoc ? 'Document mis à jour' : 'Document envoyé', { type: 'success' });
@@ -136,8 +135,8 @@ export function ProfileDocumentsPremiumPanel({ embedded }: Props) {
 
   const runUploadForType = useCallback(
     async (docType: string) => {
-      if (!userId || uploadingType) {
-        if (!userId) toast('Session expirée — reconnectez-vous.', { type: 'error' });
+      if (!targetUserId || uploadingType) {
+        if (!targetUserId) toast('Session expirée — reconnectez-vous.', { type: 'error' });
         return;
       }
       if (!PROFILE_DOC_TYPES.includes(docType as PatientProfileUploadType)) return;
@@ -163,7 +162,7 @@ export function ProfileDocumentsPremiumPanel({ embedded }: Props) {
         /* toast via onError */
       }
     },
-    [uploadMut, uploadingType, toast, userId],
+    [uploadMut, uploadingType, toast, targetUserId],
   );
 
   const handlePreview = useCallback((localUri: string, fileName?: string) => {
@@ -177,7 +176,7 @@ export function ProfileDocumentsPremiumPanel({ embedded }: Props) {
     if (list.length > 0) {
       return `${list.length} pièce${list.length > 1 ? 's' : ''} enregistrée${list.length > 1 ? 's' : ''} · l’ordonnance se gère sur chaque rendez-vous`;
     }
-    return 'Carte Vitale, mutuelle et assurances — appuyez sur une ligne pour ajouter';
+    return 'Carte Vitale, mutuelle et autre prescription — appuyez sur une ligne pour ajouter';
   }, [docsQ.data, docsQ.isFetching, list.length]);
 
   const showEmptyHint = stackRows.length === 0 && !docsQ.isFetching;
@@ -192,7 +191,8 @@ export function ProfileDocumentsPremiumPanel({ embedded }: Props) {
         {showEmptyHint ? (
           <View style={headStyles.emptyRow}>
             <Text style={[headStyles.emptyText, { color: c.textSecondary }]}>
-              Aucun document enregistré — ajoutez votre Carte Vitale ou mutuelle ci-dessous.
+              Aucun document enregistré — ajoutez la Carte Vitale, la mutuelle ou une autre prescription
+              ci-dessous.
             </Text>
           </View>
         ) : null}
@@ -205,7 +205,7 @@ export function ProfileDocumentsPremiumPanel({ embedded }: Props) {
                 key={row.key}
                 doc={row.doc}
                 topBorder={topBorder}
-                cacheScopeKey={`patient:${userId}`}
+                cacheScopeKey={`patient:${targetUserId}`}
                 canReplace
                 onPreview={handlePreview}
                 onReplace={() => runUploadForType(row.doc.document_type)}
