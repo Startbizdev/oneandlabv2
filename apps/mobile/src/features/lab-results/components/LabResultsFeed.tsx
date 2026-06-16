@@ -26,6 +26,10 @@ interface Props {
   onRefresh: () => void;
   onOpenDocument: (item: LabResultListItem) => void;
   onOpenAppointment: (appointmentId: string) => void;
+  contentContainerStyle?: object | object[];
+  scrollIndicatorInsets?: { top: number; bottom: number };
+  contentInsetAdjustmentBehavior?: 'automatic' | 'never';
+  refreshProgressOffset?: number;
 }
 
 export function LabResultsFeed({
@@ -36,6 +40,10 @@ export function LabResultsFeed({
   onRefresh,
   onOpenDocument,
   onOpenAppointment,
+  contentContainerStyle: contentContainerStyleProp,
+  scrollIndicatorInsets,
+  contentInsetAdjustmentBehavior = 'automatic',
+  refreshProgressOffset = 0,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_lab_results_components_LabResultsFeed_tsx_LabResultsFeed_styles');
@@ -80,11 +88,17 @@ export function LabResultsFeed({
       renderItem={renderItem}
       ItemSeparatorComponent={ItemSeparator}
       ListHeaderComponent={ListHeader}
-      contentContainerStyle={styles.listContent}
-      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={contentContainerStyleProp ?? styles.listContent}
+      contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}
+      scrollIndicatorInsets={scrollIndicatorInsets}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={c.primary}
+          progressViewOffset={refreshProgressOffset}
+        />
       }
       ListFooterComponent={
         openingId ? (

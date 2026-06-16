@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
+import type { AvailabilityType } from '../utils/availability';
 import { BookingAvailabilitySection } from './BookingAvailabilitySection';
 import { BookingDateCarousel } from './BookingDateCarousel';
 import { spacing } from '@/theme';
@@ -8,10 +9,10 @@ import { spacing } from '@/theme';
 interface Props {
   scheduledAt: string;
   serviceType?: string;
-  availabilityType: 'all_day' | 'custom';
+  availabilityType: AvailabilityType;
   range: [number, number];
   onScheduledAt: (v: string) => void;
-  onAvailabilityType: (t: 'all_day' | 'custom') => void;
+  onAvailabilityType: (t: AvailabilityType) => void;
   onRange: (r: [number, number]) => void;
 }
 

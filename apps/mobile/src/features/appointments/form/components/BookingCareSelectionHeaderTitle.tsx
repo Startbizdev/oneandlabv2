@@ -43,10 +43,10 @@ function buildStyles(c: AppColors) {
     },
     title: {
       fontFamily: fontFamily.bold,
-      fontSize: fontSize.xl,
+      fontSize: fontSize.lg,
       color: c.textPrimary,
-      letterSpacing: -0.45,
-      lineHeight: fontSize.xl * 1.15,
+      letterSpacing: -0.35,
+      lineHeight: fontSize.lg * 1.2,
     },
   };
 }

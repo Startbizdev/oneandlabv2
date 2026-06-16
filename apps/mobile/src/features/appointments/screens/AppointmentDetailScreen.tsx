@@ -18,8 +18,8 @@ import { DetailCarePhotosPanel } from '../detail/components/blocks/DetailCarePho
 import { fetchCarePhotos } from '../detail/api/appointment-detail.service';
 import { useCarePhotoUnread } from '../detail/hooks/use-care-photo-unread';
 import {
+  appointmentDetailTabLabels,
   careExchangeInformativeHint,
-  careExchangeTabLabel,
 } from '../detail/utils/care-photo-copy';
 import { CancelAppointmentSheet } from '../detail/components/blocks/CancelAppointmentSheet';
 import { OfferActions } from '../detail/components/OfferActions';
@@ -41,13 +41,20 @@ import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
 import { filterListDocuments } from '../detail/utils/document-labels';
 import { staffPatientProfilePath } from '@/features/patients/utils/staff-hub-navigation';
+import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { spacing } from '@/theme';
 
 interface Props {
   role: string;
 }
 
-type SegmentId = 'infos' | 'documents' | 'photos';
+type SegmentId = 'infos' | 'documents' | 'exchange';
+
+function isStaffExchangeRole(role: string): boolean {
+  return role === 'pro' || role === 'nurse';
+}
 
 export function AppointmentDetailScreen({ role }: Props) {
   const c = useAppColors();
@@ -80,8 +87,11 @@ export function AppointmentDetailScreen({ role }: Props) {
       router.replace('/(nurse)/(tabs)/demandes' as never);
     })();
   }, [id, openIncomingOffer, primary, role, router, s.detailFetching, user?.id]);
-  const showCarePhotos = Boolean(
-    config.showCarePhotosBlock && primary && isCarePhotoGalleryContext(primary),
+  const showExchangeTab = Boolean(
+    config.showCarePhotosBlock && primary && isStaffExchangeRole(role),
+  );
+  const hasCareGallery = Boolean(
+    showExchangeTab && primary && isCarePhotoGalleryContext(primary),
   );
 
   const carePhotosQ = useQuery({
@@ -91,17 +101,22 @@ export function AppointmentDetailScreen({ role }: Props) {
       if (!res.success || !res.data) throw new Error(res.error ?? 'Chargement impossible');
       return res.data;
     },
-    enabled: Boolean(showCarePhotos && id),
+    enabled: Boolean(hasCareGallery && id),
     refetchInterval: 8000,
   });
 
   const carePhotos = carePhotosQ.data?.photos ?? [];
-  const { unread: careExchangeUnread } = useCarePhotoUnread(id, carePhotos, user?.id);
+  const { unread: careExchangeUnread } = useCarePhotoUnread(
+    id,
+    carePhotos,
+    user?.id,
+    carePhotosQ.data?.thread,
+  );
 
   const careExchangeHint = useMemo(() => {
-    if (!showCarePhotos || (role !== 'pro' && role !== 'nurse')) return null;
+    if (!showExchangeTab) return null;
     return careExchangeInformativeHint(role, careExchangeUnread);
-  }, [showCarePhotos, role, careExchangeUnread]);
+  }, [showExchangeTab, role, careExchangeUnread]);
 
   useEffect(() => {
     const parsed = parseCarePhotoDeepLinkParams({ careGallery, carePhoto });
@@ -111,13 +126,15 @@ export function AppointmentDetailScreen({ role }: Props) {
       router.push(carePhotoDiscussionHref(role, id, parsed.photoId) as never);
       return;
     }
-    setSegment('photos');
+    setSegment('exchange');
   }, [careGallery, carePhoto, id, role, router]);
 
   useEffect(() => {
     const raw = Array.isArray(segmentParam) ? segmentParam[0] : segmentParam;
-    if (raw !== 'documents' && raw !== 'photos') return;
-    setSegment(raw);
+    const normalized =
+      raw === 'photos' || raw === 'exchange' ? 'exchange' : raw === 'documents' ? 'documents' : null;
+    if (!normalized) return;
+    setSegment(normalized);
     router.setParams({ segment: undefined } as never);
   }, [segmentParam, id, router]);
   const terminal = primary
@@ -131,31 +148,31 @@ export function AppointmentDetailScreen({ role }: Props) {
         s.allDocuments.filter((d) =>
           role === 'patient' ? d.document_type !== 'cancellation_photo' : true,
         ),
-        { omitCarePhotos: showCarePhotos },
+        { omitCarePhotos: hasCareGallery },
       ),
-    [s.allDocuments, role, showCarePhotos],
+    [s.allDocuments, role, hasCareGallery],
   );
 
   const segments = useMemo(() => {
     const items: { id: SegmentId; label: string; badge?: number }[] = [
-      { id: 'infos', label: 'Informations' },
+      { id: 'infos', label: appointmentDetailTabLabels.infos },
     ];
     if (config.showDocumentsBlock) {
       items.push({
         id: 'documents',
-        label: 'Documents',
+        label: appointmentDetailTabLabels.documents,
         badge: docList.length || undefined,
       });
     }
-    if (showCarePhotos) {
+    if (showExchangeTab) {
       items.push({
-        id: 'photos',
-        label: careExchangeTabLabel(),
+        id: 'exchange',
+        label: appointmentDetailTabLabels.exchange,
         badge: careExchangeUnread > 0 ? careExchangeUnread : undefined,
       });
     }
     return items;
-  }, [config.showDocumentsBlock, docList.length, showCarePhotos, careExchangeUnread]);
+  }, [config.showDocumentsBlock, docList.length, showExchangeTab, careExchangeUnread]);
 
   const activeSegment = segments.some((x) => x.id === segment) ? segment : 'infos';
 
@@ -168,13 +185,16 @@ export function AppointmentDetailScreen({ role }: Props) {
   const pullRefresh = useManualRefresh(async () => {
     s.refreshAll();
   });
+  const scrollConfig = useStackScrollConfig([styles.scroll, styles.content]);
 
   if (s.detailBlock) {
     return (
-      <AppointmentDetailBlockedEmptyState
-        onBack={() => router.back()}
-        block={s.detailBlock}
-      />
+      <StackChromeScreen>
+        <AppointmentDetailBlockedEmptyState
+          onBack={() => router.back()}
+          block={s.detailBlock}
+        />
+      </StackChromeScreen>
     );
   }
 
@@ -184,27 +204,35 @@ export function AppointmentDetailScreen({ role }: Props) {
         ? s.detailError.message
         : 'Impossible d’ouvrir ce rendez-vous.';
     return (
-      <View style={styles.blocked}>
-        <AppointmentDetailBlockedEmptyState
-          onBack={() => router.back()}
-          description={blockedMessage}
-        />
-      </View>
+      <StackChromeScreen>
+        <View style={styles.blocked}>
+          <AppointmentDetailBlockedEmptyState
+            onBack={() => router.back()}
+            description={blockedMessage}
+          />
+        </View>
+      </StackChromeScreen>
     );
   }
 
   if (s.isLoading || !s.apt || !primary) {
     return (
-      <SkeletonStaffAppointmentDetail
-        showPhotosTab={config.showCarePhotosBlock}
-        showAssignees
-        showActions={config.showActionsBlock}
-      />
+      <StackChromeScreen>
+        <SkeletonStaffAppointmentDetail
+          showPhotosTab={config.showCarePhotosBlock}
+          showAssignees
+          showActions={config.showActionsBlock}
+        />
+      </StackChromeScreen>
     );
   }
 
   if (isIncomingOffer) {
-    return <SkeletonStaffAppointmentDetail showAssignees={false} showActions={false} />;
+    return (
+      <StackChromeScreen>
+        <SkeletonStaffAppointmentDetail showAssignees={false} showActions={false} />
+      </StackChromeScreen>
+    );
   }
 
   const { batchSorted, isMultiBatch, canceled } = s;
@@ -218,21 +246,22 @@ export function AppointmentDetailScreen({ role }: Props) {
 
   return (
     <>
-      <ScrollView
-        style={styles.container}
-        contentInsetAdjustmentBehavior="automatic"
-        refreshControl={
-          <RefreshControl
-            refreshing={pullRefresh.refreshing}
-            onRefresh={pullRefresh.onRefresh}
-            tintColor={c.primary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.content}>
+      <StackChromeScreen>
+        <ScrollView
+          style={styles.container}
+          refreshControl={
+            <RefreshControl
+              refreshing={pullRefresh.refreshing}
+              onRefresh={pullRefresh.onRefresh}
+              tintColor={c.primary}
+              progressViewOffset={scrollConfig.refreshProgressOffset}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={scrollConfig.contentContainerStyle}
+          {...spreadTabSceneScrollProps(scrollConfig)}
+          keyboardShouldPersistTaps="handled"
+        >
           {terminal ? <DetailTerminalBanner terminal={terminal} /> : null}
 
           {config.showOfferBlock && isPendingIncomingOffer(primary, user?.id) ? (
@@ -250,7 +279,7 @@ export function AppointmentDetailScreen({ role }: Props) {
               {careExchangeHint ? (
                 <CareExchangeHintBanner
                   hint={careExchangeHint}
-                  onPress={() => setSegment('photos')}
+                  onPress={() => setSegment('exchange')}
                 />
               ) : null}
               <View style={styles.edgeBleed}>
@@ -305,19 +334,19 @@ export function AppointmentDetailScreen({ role }: Props) {
               role={role}
               docs={s.allDocuments}
               loading={s.docsLoading}
-              omitCarePhotos={showCarePhotos}
+              omitCarePhotos={hasCareGallery}
             />
           ) : null}
 
-          {activeSegment === 'photos' && showCarePhotos ? (
+          {activeSegment === 'exchange' && showExchangeTab ? (
             <DetailCarePhotosPanel
               apt={primary}
               userId={user?.id}
               viewerRole={role}
             />
           ) : null}
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </StackChromeScreen>
 
       <CancelAppointmentSheet
         visible={cancelOpen && !canceled}
@@ -340,8 +369,14 @@ function buildStyles(c: AppColors) {
     paddingTop: spacing[2],
     backgroundColor: c.background,
   },
-  scroll: { paddingBottom: spacing[10] },
+  scroll: {
+    flexGrow: 1,
+    alignSelf: 'stretch' as const,
+    paddingBottom: spacing[10],
+  },
   content: {
+    alignSelf: 'stretch' as const,
+    width: '100%' as const,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
     gap: spacing[3],

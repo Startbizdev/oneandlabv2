@@ -1,0 +1,70 @@
+---
+description: Barres d'onglets / segmented controls pleine largeur (mobile RN)
+globs: apps/mobile/**/*.{tsx,ts}
+alwaysApply: false
+---
+
+# Segmented controls pleine largeur (mobile)
+
+Quand tu ajoutes ou modifies des onglets segmentés, **ne réinvente pas** : copie un pattern qui marche déjà.
+
+## Références validées (dans cet ordre)
+
+1. **Fiche RDV** → `DetailTabBar` (`components/ui/DetailTabBar.tsx`) via `DetailSegmentBar`
+2. **Formulaire RDV** → `BookingAvailabilitySection` (`features/appointments/form/components/BookingAvailabilitySection.tsx`)
+3. **Autres écrans** → `FullWidthSegmentBar` (`components/ui/FullWidthSegmentBar.tsx`)
+4. **Squelette** → `SkeletonSegmentBar` (`components/ui/skeleton-presets.tsx`) — mêmes contraintes flex
+
+## Pattern obligatoire
+
+```tsx
+// Host + shell View (pas Box/Stack empilés, pas Row seul comme conteneur racine)
+host: { width: '100%', alignSelf: 'stretch' }
+shell: { width: '100%', flexDirection: 'row', gap: spacing[1], padding: spacing[0.5], borderRadius: radius.lg, backgroundColor: c.surfaceSubtle }
+
+// Chaque onglet : Pressable avec style STATIQUE (pas de fonction style)
+tab: { flex: 1, flexBasis: 0, minWidth: 0, borderRadius: radius.md }
+tabActive: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.primaryMid }
+```
+
+- Icône + label **en ligne** (`Row` à l'intérieur du `Pressable`), pas empilés verticalement sauf besoin explicite.
+- Tokens : `surfaceSubtle` (fond), `surface` + `primaryMid` (actif), `primaryDark` / `textTertiary` (icônes & texte).
+
+## Conteneur parent (ScrollView)
+
+Si les onglets restent groupés à gauche, le bug est souvent **en amont** :
+
+```tsx
+scroll: { flexGrow: 1, alignSelf: 'stretch', paddingBottom: spacing[10] }
+content: { alignSelf: 'stretch', width: '100%', paddingHorizontal: spacing[4], gap: spacing[3] }
+```
+
+## Sous-vues stack (header glass + safe area)
+
+Tout écran poussé dans le `Stack` (`headerShown: false` via `stackHeaderOptions`) doit utiliser :
+
+```tsx
+const scrollConfig = useStackScrollConfig([styles.scroll, styles.content]);
+
+<StackChromeScreen>
+  <ScrollView
+    contentContainerStyle={scrollConfig.contentContainerStyle}
+    {...spreadTabSceneScrollProps(scrollConfig)}
+    refreshControl={<RefreshControl progressViewOffset={scrollConfig.refreshProgressOffset} />}
+  />
+</StackChromeScreen>
+```
+
+Références : `LegalInformationScreen`, `PatientDetailScreen`, `AppointmentDetailScreen`. Le titre dynamique passe par `navigation.setOptions` dans le hook — `StackChromeScreen` le relit via `getCurrentOptions()`.
+
+## Interdit (causes le bug « compacté à gauche »)
+
+- `Pressable` avec `style={({ pressed }) => [...]}` pour le `flex: 1` — préférer un tableau statique `[styles.tab, active && styles.tabActive]`
+- Oublier `flexBasis: 0` sur les onglets (3+ segments)
+- Wrapper parasite (`Box`, `Stack`, double `View`) autour de la barre sans `width: '100%'`
+- `alignSelf: 'flex-start'` ou largeur implicite sur le parent direct
+- Empiler des correctifs sur un ancien composant — **réécrire** en copiant une référence ci-dessus
+
+## Avant de livrer
+
+Comparer visuellement avec `BookingAvailabilitySection` (2 onglets) ou `DetailTabBar` (3 onglets) : chaque segment occupe une part égale sur toute la largeur utile.

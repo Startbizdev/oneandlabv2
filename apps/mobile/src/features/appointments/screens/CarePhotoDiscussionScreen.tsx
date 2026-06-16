@@ -47,6 +47,7 @@ import { loadCarePhotoLocalUri } from '../detail/utils/care-photo-image';
 import {
   latestCarePhoto,
   markAllCarePhotoThreadsSeen,
+  markCarePhotoThreadSeen,
   sortPhotosChronologically,
 } from '../detail/utils/care-photo-thread-digest';
 import type { AppointmentDetailRole } from '../detail/utils/appointment-detail-role-config';
@@ -141,12 +142,25 @@ export function CarePhotoDiscussionScreen({
   );
   const canComment = threadQ.data?.can_comment ?? false;
   const canUpload = threadQ.data?.can_upload ?? false;
-  const commentTargetId = latestCarePhoto(photos)?.id ?? null;
+  const threadDocumentId = threadQ.data?.thread?.document_id ?? null;
+  const commentTargetId = threadDocumentId ?? latestCarePhoto(photos)?.id ?? null;
 
   const markSeen = useCallback(async () => {
-    if (!appointmentId || photos.length === 0) return;
-    await markAllCarePhotoThreadsSeen(appointmentId, photos);
-  }, [appointmentId, photos]);
+    if (!appointmentId) return;
+    const tasks: Promise<void>[] = [];
+    if (photos.length > 0) {
+      tasks.push(markAllCarePhotoThreadsSeen(appointmentId, photos));
+    }
+    if (threadDocumentId && threadQ.data?.thread?.comments) {
+      tasks.push(
+        markCarePhotoThreadSeen(appointmentId, {
+          id: threadDocumentId,
+          comments: threadQ.data.thread.comments,
+        }),
+      );
+    }
+    if (tasks.length > 0) await Promise.all(tasks);
+  }, [appointmentId, photos, threadDocumentId, threadQ.data?.thread?.comments]);
 
   useFocusEffect(
     useCallback(() => {
@@ -170,8 +184,12 @@ export function CarePhotoDiscussionScreen({
 
   const sendMut = useMutation({
     mutationFn: async () => {
-      if (!commentTargetId || !draft.trim() || !appointmentId) return;
-      const res = await postCarePhotoComment(appointmentId, commentTargetId, draft.trim());
+      if (!draft.trim() || !appointmentId) return;
+      const res = await postCarePhotoComment(
+        appointmentId,
+        draft.trim(),
+        commentTargetId ?? undefined,
+      );
       if (!res.success) throw new Error(res.error ?? 'Envoi impossible');
     },
     onSuccess: async () => {
@@ -343,16 +361,16 @@ export function CarePhotoDiscussionScreen({
                       multiline
                       maxLength={2000}
                       textAlignVertical="center"
-                      editable={Boolean(commentTargetId)}
+                      editable={canComment}
                     />
                     <Pressable
                       style={[
                         styles.sendBtn,
-                        (!draft.trim() || sendMut.isPending || !commentTargetId) &&
+                        (!draft.trim() || sendMut.isPending || !canComment) &&
                           styles.sendDisabled,
                       ]}
                       onPress={() => sendMut.mutate()}
-                      disabled={!draft.trim() || sendMut.isPending || !commentTargetId}
+                      disabled={!draft.trim() || sendMut.isPending || !canComment}
                       accessibilityRole="button"
                       accessibilityLabel="Envoyer le message"
                     >
@@ -388,25 +406,50 @@ export function CarePhotoDiscussionScreen({
                 {threadQ.error instanceof Error ? threadQ.error.message : 'Erreur de chargement'}
               </Text>
             </View>
-          ) : photos.length === 0 ? (
+          ) : photos.length === 0 && !threadQ.data?.thread?.comments?.length ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>Aucun fichier</Text>
+              <Text style={styles.emptyTitle}>Démarrez la conversation</Text>
               <Text style={styles.emptySub}>
                 {canUpload
-                  ? 'Utilisez le bouton + pour envoyer une photo ou un PDF.'
-                  : 'Les fichiers partagés apparaîtront ici.'}
+                  ? 'Envoyez un message ou utilisez le bouton + pour partager une photo ou un PDF.'
+                  : 'Les messages et fichiers partagés apparaîtront ici.'}
               </Text>
             </View>
           ) : (
-            photos.map((photo, idx) => (
-              <PhotoThreadBlock
-                key={photo.id}
-                photo={photo}
-                index={idx}
-                isMine={isMine}
-                onZoom={() => void openLightbox(photo)}
-              />
-            ))
+            <>
+              {threadQ.data?.thread?.comments?.length ? (
+                <View style={styles.thread}>
+                  {sortedComments(threadQ.data.thread.comments).map((c) => {
+                    const mine = isMine(c.author_id);
+                    return (
+                      <View
+                        key={c.id}
+                        style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
+                      >
+                        <Row justify="between" gap={spacing[2]} style={styles.bubbleMeta}>
+                          <Text style={[styles.author, mine && styles.authorMine]}>
+                            {c.author_name}
+                          </Text>
+                          <Text style={[styles.time, mine && styles.timeMine]}>
+                            {formatShortDate(c.created_at)}
+                          </Text>
+                        </Row>
+                        <Text style={[styles.body, mine && styles.bodyMine]}>{c.body}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null}
+              {photos.map((photo, idx) => (
+                <PhotoThreadBlock
+                  key={photo.id}
+                  photo={photo}
+                  index={idx}
+                  isMine={isMine}
+                  onZoom={() => void openLightbox(photo)}
+                />
+              ))}
+            </>
           )}
         </KeyboardScrollView>
       </ScreenActionLayout>

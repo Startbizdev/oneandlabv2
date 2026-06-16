@@ -39,6 +39,7 @@ export interface CarePhotoRow {
 
 export interface CarePhotosPayload {
   photos: CarePhotoRow[];
+  thread?: { document_id: string; comments: CarePhotoComment[] } | null;
   can_upload: boolean;
   can_comment: boolean;
 }
@@ -65,11 +66,11 @@ export async function fetchCarePhotos(appointmentId: string) {
 
 export async function postCarePhotoComment(
   appointmentId: string,
-  medicalDocumentId: string,
   body: string,
+  medicalDocumentId?: string,
 ) {
   return api.post(`/appointments/${appointmentId}/care-photo-comments`, {
-    medical_document_id: medicalDocumentId,
+    ...(medicalDocumentId ? { medical_document_id: medicalDocumentId } : {}),
     body,
   });
 }

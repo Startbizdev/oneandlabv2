@@ -498,10 +498,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 }
             }
         } elseif ($role === 'pro') {
-            // Pro : uniquement les RDV qu'il a créés. Le lien patient_professional_access sert
-            // à « Mes patients », documents et historique patient — pas à afficher les RDV
-            // créés par un autre soignant (infirmier, autre pro, labo) pour le même patient.
-            $sql .= ' AND a.created_by = ?';
+            $sql .= ' AND (a.created_by = ? OR a.assigned_pro_id = ?)';
+            $params[] = $userId;
             $params[] = $userId;
         }
         // super_admin sans user_id voit tout (pas de filtre supplémentaire)
@@ -1023,6 +1021,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $inputForCreate = $input;
     unset($inputForCreate['reschedule_from_appointment_id']);
 
+    if (!empty($inputForCreate['utm_qr']) && empty($inputForCreate['attribution_qr_id'])) {
+        require_once __DIR__ . '/../../lib/QrCodeService.php';
+        $qrResolve = new QrCodeService();
+        $resolvedQrId = $qrResolve->resolveAttributionQrId((string) $inputForCreate['utm_qr']);
+        if ($resolvedQrId !== null) {
+            $inputForCreate['attribution_qr_id'] = $resolvedQrId;
+        }
+    }
+
+    if (!empty($inputForCreate['assigned_pro_id']) && !Validation::uuid((string) $inputForCreate['assigned_pro_id'])) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => 'assigned_pro_id invalide',
+            'code' => 'VALIDATION_ERROR',
+        ]);
+        exit;
+    }
+
+    if (!empty($inputForCreate['attribution_qr_id']) && !Validation::uuid((string) $inputForCreate['attribution_qr_id'])) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => 'attribution_qr_id invalide',
+            'code' => 'VALIDATION_ERROR',
+        ]);
+        exit;
+    }
+
     if (($inputForCreate['type'] ?? '') === 'nursing') {
         $ni = $inputForCreate['nursing_items'] ?? ($inputForCreate['form_data']['nursing_items'] ?? null);
         if ($ni !== null && !is_array($ni)) {
@@ -1058,9 +1085,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $id = $appointmentModel->create($inputForCreate, $user['user_id'], $user['role']);
         logAppointment('Rendez-vous créé avec succès', ['appointment_id' => $id]);
 
+        if (!empty($inputForCreate['attribution_qr_id'])) {
+            require_once __DIR__ . '/../../lib/QrCodeService.php';
+            $qrService = new QrCodeService();
+            try {
+                $qrService->recordConversion((string) $inputForCreate['attribution_qr_id'], $id);
+            } catch (Throwable $e) {
+                error_log('qr_conversion: ' . $e->getMessage());
+            }
+        }
+
         if (!empty($input['patient_id'])) {
             require_once __DIR__ . '/../../models/User.php';
             $userModel = new User();
+            $qrBooking = !empty($inputForCreate['attribution_qr_id']) || !empty($inputForCreate['utm_qr']);
+            $assignedProfId = $inputForCreate['assigned_pro_id']
+                ?? $inputForCreate['assigned_nurse_id']
+                ?? $inputForCreate['assigned_lab_id']
+                ?? null;
+            if ($qrBooking && $assignedProfId) {
+                try {
+                    $userModel->linkPatientProfessional(
+                        (string) $input['patient_id'],
+                        (string) $assignedProfId,
+                        $id,
+                        'qr_booking'
+                    );
+                } catch (Throwable $e) {
+                    error_log('PatientProfessionalAccess (qr_booking): ' . $e->getMessage());
+                }
+            }
             if (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'], true)) {
                 try {
                     $userModel->linkPatientProfessional((string) $input['patient_id'], $user['user_id'], $id, 'appointment_linked');
@@ -1195,6 +1249,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             });
         }
     } catch (Exception $e) {
+        logAppointmentError('ERREUR lors de la création du rendez-vous', [
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ]);
         logAppointment('ERREUR lors de la création du rendez-vous', [
             'error' => $e->getMessage(),
             'file' => $e->getFile(),

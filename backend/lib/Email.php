@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Classe d'envoi d'emails via SMTP OVH
+ * Classe d'envoi d'emails via SMTP (IONOS / Cary)
  * Template de base minimal (Stripe/Linear/Notion) avec logo.
  */
 

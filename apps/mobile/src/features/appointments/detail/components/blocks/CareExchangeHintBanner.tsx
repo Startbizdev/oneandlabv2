@@ -19,7 +19,7 @@ export function CareExchangeHintBanner({ hint, onPress }: Props) {
       iconBg={c.primaryLight}
       highlighted
       onPress={onPress}
-      accessibilityHint="Ouvre l’onglet Échange"
+      accessibilityHint="Ouvre l’échange"
     />
   );
 }

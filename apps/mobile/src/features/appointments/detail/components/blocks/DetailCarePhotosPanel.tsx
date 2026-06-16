@@ -5,11 +5,11 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Camera, MessageCircle, Upload } from 'lucide-react-native';
+import { useQuery } from '@tanstack/react-query';
+import { Camera, MessageCircle } from 'lucide-react-native';
 import { CarePhotoAttachment } from './CarePhotoAttachment';
 import type { Appointment } from '@oneandlab/shared-types';
-import { fetchCarePhotos, uploadCarePhoto } from '../../api/appointment-detail.service';
+import { fetchCarePhotos } from '../../api/appointment-detail.service';
 import {
   canUploadCarePhotos,
   isCarePhotoGalleryContext,
@@ -19,15 +19,12 @@ import { carePhotoDiscussionHref } from '../../utils/care-photo-navigation';
 import { latestCarePhoto } from '../../utils/care-photo-thread-digest';
 import { useCarePhotoUnread } from '../../hooks/use-care-photo-unread';
 import type { AppointmentDetailRole } from '../../utils/appointment-detail-role-config';
-import { carePhotoPickErrorMessage, pickCarePhoto } from '@/lib/uploads/pick-care-photo';
 import { Button } from '@/components/ui/Button';
 import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import type { CarePhotoRow } from '../../api/appointment-detail.service';
 import { isCarePhotoPdf } from '../../utils/care-photo-file';
-import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
-import { handleApiError } from '@/lib/errors/handle-api-error';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { loadCarePhotoLocalUri } from '../../utils/care-photo-image';
 import { radius, spacing } from '@/theme';
@@ -50,7 +47,6 @@ export function DetailCarePhotosPanel({
   const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_blocks_DetailCarePhotosPanel_tsx_styles');
   const router = useRouter();
   const { show: toast } = useToast();
-  const qc = useQueryClient();
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
@@ -72,15 +68,20 @@ export function DetailCarePhotosPanel({
     !readOnly &&
     (q.data?.can_upload === true ||
       (q.data?.can_upload == null && canUploadCarePhotos(apt, userId, viewerRole)));
+  const canComment = q.data?.can_comment === true;
 
   const photos = q.data?.photos ?? [];
   const hasPhotos = photos.length > 0;
-  const { unread, refreshUnread } = useCarePhotoUnread(apt.id, photos, userId);
+  const { unread } = useCarePhotoUnread(
+    apt.id,
+    photos,
+    userId,
+    q.data?.thread,
+  );
 
   const openExchange = useCallback(
     (photoId?: string) => {
       const target = photoId ?? latestCarePhoto(photos)?.id;
-      if (!target) return;
       router.push(carePhotoDiscussionHref(viewerRole, apt.id, target) as never);
     },
     [router, viewerRole, apt.id, photos],
@@ -105,40 +106,11 @@ export function DetailCarePhotosPanel({
     [toast],
   );
 
-  const uploadMut = useMutation({
-    mutationFn: async (file: { uri: string; fileName: string; mimeType: string }) => {
-      const r = await uploadCarePhoto(apt.id, file);
-      if (!r.ok) throw new Error(r.error ?? 'Upload échoué');
-    },
-    onSuccess: async () => {
-      toast('Fichier envoyé', { type: 'success' });
-      await qc.invalidateQueries({ queryKey: ['appointments', 'care-photos', apt.id] });
-      await qc.invalidateQueries({ queryKey: queryKeys.documents.medical(apt.id) });
-      const res = await fetchCarePhotos(apt.id);
-      const list = res.data?.photos ?? [];
-      const newest = latestCarePhoto(list);
-      if (newest?.id) openExchange(newest.id);
-      void refreshUnread();
-    },
-    onError: (e) => handleApiError(e, toast, 'care-photo-upload'),
-  });
-
-  const pickAndUpload = useCallback(async () => {
-    try {
-      const picked = await pickCarePhoto();
-      if (picked) uploadMut.mutate(picked);
-    } catch (e) {
-      toast(carePhotoPickErrorMessage(e), { type: 'warning' });
-    }
-  }, [toast, uploadMut]);
-
   const onPrimaryPress = useCallback(() => {
-    if (hasPhotos) {
-      openExchange();
-      return;
-    }
-    if (canUpload) void pickAndUpload();
-  }, [hasPhotos, canUpload, openExchange, pickAndUpload]);
+    openExchange();
+  }, [openExchange]);
+
+  const showExchangeCta = hasPhotos || canUpload || canComment;
 
   if (!isCarePhotoGalleryContext(apt)) {
     return (
@@ -170,8 +142,8 @@ export function DetailCarePhotosPanel({
     );
   }
 
-  const showOpenCta = hasPhotos;
-  const showEmptyReadOnly = !hasPhotos && !canUpload;
+  const showOpenCta = showExchangeCta;
+  const showEmptyReadOnly = !showExchangeCta;
 
   return (
     <View style={styles.wrap}>
@@ -213,22 +185,11 @@ export function DetailCarePhotosPanel({
         <View style={styles.ctaWrap}>
           <View style={styles.ctaBadgeHost}>
             <Button
-              title={
-                uploadMut.isPending
-                  ? 'Envoi en cours…'
-                  : showOpenCta
-                    ? 'Ouvrir l’échange'
-                    : 'Télécharger une photo'
-              }
+              title="Ouvrir l’échange"
               size="lg"
               fullWidth
-              loading={uploadMut.isPending}
               leftIcon={
-                showOpenCta ? (
-                  <MessageCircle size={20} color={c.textInverse} strokeWidth={2.25} />
-                ) : (
-                  <Upload size={20} color={c.textInverse} strokeWidth={2.25} />
-                )
+                <MessageCircle size={20} color={c.textInverse} strokeWidth={2.25} />
               }
               onPress={onPrimaryPress}
             />
@@ -239,9 +200,7 @@ export function DetailCarePhotosPanel({
             ) : null}
           </View>
           <Text style={styles.ctaHint}>
-            {showOpenCta
-              ? 'Consultez la discussion et envoyez d’autres photos depuis l’échange.'
-              : 'Appareil, galerie ou fichier (image, PDF) · max 25 Mo · ouvre l’échange après envoi.'}
+            Messages, photos ou PDF — tout se fait depuis l’échange.
           </Text>
         </View>
       )}

@@ -306,6 +306,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             exit;
         }
 
+        require_once __DIR__ . '/../../lib/AppointmentListPayload.php';
+        $appointment = AppointmentListPayload::enrichProfileMediaForDetail($appointment);
+        if (!empty($appointment['batch_appointments']) && is_array($appointment['batch_appointments'])) {
+            foreach ($appointment['batch_appointments'] as $idx => $batchApt) {
+                if (is_array($batchApt)) {
+                    $appointment['batch_appointments'][$idx] = AppointmentListPayload::enrichProfileMediaForDetail($batchApt);
+                }
+            }
+        }
+
         // Logger la consultation de rendez-vous (HDS)
         require_once __DIR__ . '/../../lib/Logger.php';
         $logger = new Logger();

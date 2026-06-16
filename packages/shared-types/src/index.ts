@@ -1,5 +1,6 @@
 export * from './appointments';
 export * from './lab-results';
+export * from './qr';
 export * from './staff-hub-search';
 export * from './professional-id';
 export {

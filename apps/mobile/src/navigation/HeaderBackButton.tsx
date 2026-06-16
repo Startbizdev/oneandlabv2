@@ -1,30 +1,31 @@
 import { ChevronLeft } from 'lucide-react-native';
+import { GlassHeaderButton } from '@/components/navigation/GlassHeaderButton';
 import {
-  HeaderGradientOrbButton,
-  HeaderOrbIconSize,
-  HeaderOrbIconStroke,
-} from '@/components/navigation/HeaderGradientOrbButton';
+  LIQUID_GLASS_HEADER_SYMBOL_SIZE,
+} from '@/components/navigation/nav-chrome-tokens';
 import { useAppColors } from '@/theme/use-app-colors';
 
 interface Props {
   onPress: () => void;
 }
 
-/** Retour — anneau gradient + fond verre. */
+/** Retour header onglets flottants — GlassView (pas pour stacks). */
 export function HeaderBackButton({ onPress }: Props) {
   const c = useAppColors();
 
   return (
-    <HeaderGradientOrbButton
-      onPress={onPress}
+    <GlassHeaderButton
+      symbol="chevron.backward"
       accessibilityLabel="Retour"
-      variant="glass"
-    >
-      <ChevronLeft
-        size={HeaderOrbIconSize()}
-        color={c.primaryDark}
-        strokeWidth={HeaderOrbIconStroke()}
-      />
-    </HeaderGradientOrbButton>
+      onPress={onPress}
+      iconColor={c.primaryDark}
+      fallback={
+        <ChevronLeft
+          size={LIQUID_GLASS_HEADER_SYMBOL_SIZE}
+          color={c.primaryDark}
+          strokeWidth={2.25}
+        />
+      }
+    />
   );
 }

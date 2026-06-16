@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ListFilter, Search, X } from 'lucide-react-native';
 import { Cluster, Row, Stack } from '@/components/layout/primitives';
@@ -24,6 +25,37 @@ interface Props {
   embedded?: boolean;
   /** Recherche suivie du CTA « Prendre RDV » — évite le double espacement vertical. */
   followedByBookCta?: boolean;
+}
+
+type SearchHostProps = Omit<Props, 'search' | 'onSearchChange'> & {
+  onQueryChange: (value: string) => void;
+};
+
+/**
+ * État de recherche local — à utiliser dans un ListHeader stable (sans `search` dans les deps),
+ * sinon FlashList remonte le champ et le clavier perd le focus à chaque lettre.
+ */
+export function AppointmentsListSearchHost({
+  onQueryChange,
+  ...barProps
+}: SearchHostProps) {
+  const [search, setSearch] = useState('');
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearch(value);
+      onQueryChange(value);
+    },
+    [onQueryChange],
+  );
+
+  return (
+    <AppointmentsListFilterBar
+      {...barProps}
+      search={search}
+      onSearchChange={handleSearchChange}
+    />
+  );
 }
 
 export function AppointmentsListFilterBar({

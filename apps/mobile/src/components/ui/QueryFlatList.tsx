@@ -7,6 +7,11 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useQueryListUi } from '@/lib/hooks/use-query-list-ui';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
 import { spacing } from '@/theme';
 
 type QuerySlice<T> = Pick<
@@ -42,14 +47,22 @@ export function QueryFlatList<T, Item>({
 }: Props<T, Item>) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'QueryFlatList');
+  const sceneInsets = useTabSceneInsets();
   const ui = useQueryListUi(query);
   const { refreshing, onRefresh } = useManualRefresh(query.refetch);
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, contentContainerStyle);
 
   if (ui.showInitialPlaceholder) {
     return (
       <View style={styles.root}>
         {header}
-        <View style={styles.skeleton}>
+        <View
+          style={[
+            styles.skeleton,
+            sceneInsets.insetTop > 0 && { paddingTop: sceneInsets.insetTop },
+            sceneInsets.insetBottom > 0 && { paddingBottom: sceneInsets.insetBottom },
+          ]}
+        >
           <SkeletonList count={skeletonCount} itemHeight={skeletonHeight} gap={skeletonGap} />
         </View>
       </View>
@@ -63,13 +76,15 @@ export function QueryFlatList<T, Item>({
         {...flatListProps}
         data={items}
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={[styles.listContent, contentContainerStyle]}
+        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={[styles.listContent, scrollConfig.contentContainerStyle]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={c.primary}
             colors={[c.primary]}
+            progressViewOffset={scrollConfig.refreshProgressOffset}
           />
         }
       />

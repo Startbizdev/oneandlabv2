@@ -1,18 +1,32 @@
 import { Alert, Share } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { Bell, CalendarPlus, CreditCard, FilePenLine, FlaskConical, Scale, Settings, Share2, Star, User } from 'lucide-react-native';
+import {
+  Bell,
+  CalendarPlus,
+  CreditCard,
+  FilePenLine,
+  FlaskConical,
+  LayoutGrid,
+  QrCode,
+  Scale,
+  Settings,
+  Share2,
+  Star,
+  User,
+} from 'lucide-react-native';
 import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { nursePublicProfilePath } from '@/features/profile/utils/nurse-public-profile';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
-import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { webAppUrl } from '@/config/env';
 import { queryKeys } from '@/lib/query-keys';
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-unread-count';
 import { useAuthStore } from '@/store/auth-store';
 import { getNotificationsPath } from '@/navigation/notifications-route';
 import { buildHelpMoreItems } from '@/features/help/help-more-items';
+import { TitledTabScreenFrame } from '@/navigation/tab-screen-frames';
+import { TAB_HEADER_SF } from '@/components/navigation/RoleNativeTabsLayout';
 
 export default function NurseMore() {
   const router = useRouter();
@@ -51,7 +65,7 @@ export default function NurseMore() {
   };
 
   return (
-    <TabScreenShell>
+    <TitledTabScreenFrame title="Plus" symbol={TAB_HEADER_SF.more} fallbackIcon={LayoutGrid}>
       <RoleMoreTabScreen
         roleLabel="Infirmier(ère)"
         sections={[
@@ -76,6 +90,12 @@ export default function NurseMore() {
                 icon: Share2,
                 label: 'Partager mon profil',
                 onPress: () => void sharePublicProfile(),
+                iconAccent: 'teal',
+              },
+              {
+                icon: QrCode,
+                label: 'QR code',
+                onPress: () => nav('/(nurse)/qr-code'),
                 iconAccent: 'teal',
               },
               {
@@ -141,6 +161,6 @@ export default function NurseMore() {
           },
         ]}
       />
-    </TabScreenShell>
+    </TitledTabScreenFrame>
   );
 }

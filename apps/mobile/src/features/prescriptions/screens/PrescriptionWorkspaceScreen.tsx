@@ -45,6 +45,11 @@ import {
 import { usePrescriptionsHistoryInfinite } from '../hooks/use-prescriptions-history-infinite';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { useAuthStore } from '@/store/auth-store';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
 import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -64,6 +69,8 @@ export function PrescriptionWorkspaceScreen({
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'PrescriptionWorkspaceScreen');
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.content);
   const prescriptionKind = roleBase === 'nurse' ? 'nursing' : 'medical';
   const router = useRouter();
   const qc = useQueryClient();
@@ -206,11 +213,13 @@ export function PrescriptionWorkspaceScreen({
     <View style={styles.container}>
       <KeyboardScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={scrollConfig.contentContainerStyle}
+        {...spreadTabSceneScrollProps(scrollConfig)}
         refreshControl={
           <RefreshControl
             refreshing={historyQ.isRefetching && tab === 'history'}
             onRefresh={() => void refreshAll()}
+            progressViewOffset={scrollConfig.refreshProgressOffset}
           />
         }
       >

@@ -60,4 +60,7 @@ export const queryKeys = {
   labResults: {
     list: (query: string) => ['lab-results', 'list', query] as const,
   },
+  qr: {
+    me: (userId: string) => ['qr', 'me', userId] as const,
+  },
 } as const;

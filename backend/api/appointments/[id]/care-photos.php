@@ -112,7 +112,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
 
         $photos = [];
+        $threadDocumentId = null;
+        $threadComments = [];
         foreach ($docs as $d) {
+            if (CarePhotoGallery::isThreadAnchor($d)) {
+                $threadDocumentId = (string) $d['id'];
+                $threadComments = $commentsByPhoto[$d['id']] ?? [];
+                continue;
+            }
             $photos[] = [
                 'id' => $d['id'],
                 'uploaded_by' => $d['uploaded_by'],
@@ -128,6 +135,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'success' => true,
             'data' => [
                 'photos' => $photos,
+                'thread' => $threadDocumentId !== null
+                    ? ['document_id' => $threadDocumentId, 'comments' => $threadComments]
+                    : null,
                 'can_upload' => CarePhotoGallery::canUpload($user, $appointment),
                 'can_comment' => CarePhotoGallery::canComment($user, $appointment),
             ],

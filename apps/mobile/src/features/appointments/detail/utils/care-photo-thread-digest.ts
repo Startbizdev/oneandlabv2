@@ -48,17 +48,18 @@ export async function markAllCarePhotoThreadsSeen(
   await Promise.all(photos.map((p) => markCarePhotoThreadSeen(appointmentId, p)));
 }
 
-/** Messages d’autres auteurs non encore « vus » sur une photo. */
-export async function countUnreadOnPhoto(
+/** Messages d’autres auteurs non encore « vus » sur un fil (photo ou fil texte). */
+export async function countUnreadOnComments(
   appointmentId: string,
-  photo: CarePhotoRow,
+  documentId: string,
+  comments: ReadonlyArray<CarePhotoComment>,
   viewerUserId?: string,
 ): Promise<number> {
-  const stored = (await readCarePhotoSeenDigest(appointmentId, photo.id)) ?? '';
+  const stored = (await readCarePhotoSeenDigest(appointmentId, documentId)) ?? '';
   const seenIds = new Set(stored.split('|').filter(Boolean));
   const viewer = viewerUserId != null ? String(viewerUserId) : '';
   let n = 0;
-  for (const c of photo.comments ?? []) {
+  for (const c of comments) {
     const cid = String(c.id ?? '');
     if (!cid || seenIds.has(cid)) continue;
     if (viewer && String(c.author_id) === viewer) continue;
@@ -67,14 +68,32 @@ export async function countUnreadOnPhoto(
   return n;
 }
 
+/** Messages d’autres auteurs non encore « vus » sur une photo. */
+export async function countUnreadOnPhoto(
+  appointmentId: string,
+  photo: CarePhotoRow,
+  viewerUserId?: string,
+): Promise<number> {
+  return countUnreadOnComments(appointmentId, photo.id, photo.comments ?? [], viewerUserId);
+}
+
 export async function countUnreadCarePhotos(
   appointmentId: string,
   photos: ReadonlyArray<CarePhotoRow>,
   viewerUserId?: string,
+  thread?: { document_id: string; comments: CarePhotoComment[] } | null,
 ): Promise<number> {
   let total = 0;
   for (const p of photos) {
     total += await countUnreadOnPhoto(appointmentId, p, viewerUserId);
+  }
+  if (thread?.document_id) {
+    total += await countUnreadOnComments(
+      appointmentId,
+      thread.document_id,
+      thread.comments ?? [],
+      viewerUserId,
+    );
   }
   return total;
 }

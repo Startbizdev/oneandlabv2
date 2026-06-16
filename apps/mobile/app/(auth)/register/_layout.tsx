@@ -1,6 +1,5 @@
 import { Stack } from 'expo-router';
 import { REGISTER_META } from '@/features/auth/constants/register-meta';
-import { ProfileStackBackButton } from '@/navigation/ProfileStackBackButton';
 import { registerHeaderTitle } from '@/navigation/RegisterHeaderTitle';
 import { stackHeaderOptions } from '@/navigation/screen-options';
 
@@ -14,7 +13,6 @@ export default function RegisterLayout() {
       screenOptions={{
         ...stackHeaderOptions(),
         headerShown: true,
-        headerLeft: () => <ProfileStackBackButton />,
       }}
     >
       <Stack.Screen

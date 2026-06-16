@@ -6,6 +6,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { AppointmentsBookCta } from '@/features/appointments/components/AppointmentsBookCta';
 import {
   AppointmentsListFilterBar,
+  AppointmentsListSearchHost,
   type FilterChip,
 } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { spacing } from '@/theme';
@@ -43,6 +44,31 @@ export function AppointmentsRdvListFilterHeader({
       followedByBookCta
       search={search}
       onSearchChange={onSearchChange}
+      searchPlaceholder={searchPlaceholder}
+      onOpenFilters={onOpenFilters}
+      advancedFilterCount={advancedFilterCount}
+      chips={chips}
+    />
+  );
+}
+
+type FilterHeaderHostProps = Omit<FilterHeaderProps, 'search' | 'onSearchChange'> & {
+  onQueryChange: (value: string) => void;
+};
+
+/** Variante focus-safe pour ListHeader FlashList (état local). */
+export function AppointmentsRdvListFilterHeaderHost({
+  onQueryChange,
+  searchPlaceholder = APPOINTMENTS_RDV_SEARCH_PLACEHOLDER,
+  onOpenFilters,
+  advancedFilterCount,
+  chips,
+}: FilterHeaderHostProps) {
+  return (
+    <AppointmentsListSearchHost
+      embedded
+      followedByBookCta
+      onQueryChange={onQueryChange}
       searchPlaceholder={searchPlaceholder}
       onOpenFilters={onOpenFilters}
       advancedFilterCount={advancedFilterCount}

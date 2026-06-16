@@ -7,7 +7,7 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
-import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
+import { AppointmentsListSearchHost } from '@/features/appointments/components/AppointmentsListFilterBar';
 import {
   flattenInfiniteAppointments,
   useInfiniteAppointmentsList,
@@ -89,16 +89,19 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix }: Props) {
     [detailPathPrefix, router],
   );
 
+  const onSearchQueryChange = useCallback((value: string) => {
+    setSearch(value);
+  }, []);
+
   const ListHeader = useCallback(
     () => (
-      <AppointmentsListFilterBar
+      <AppointmentsListSearchHost
         embedded
-        search={search}
-        onSearchChange={setSearch}
+        onQueryChange={onSearchQueryChange}
         searchPlaceholder="Nom, adresse, soin…"
       />
     ),
-    [search],
+    [onSearchQueryChange],
   );
 
   return (

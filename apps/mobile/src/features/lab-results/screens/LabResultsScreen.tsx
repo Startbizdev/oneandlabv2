@@ -19,6 +19,10 @@ import {
   EMPTY_RDV_IMAGE_WIDTH,
 } from '@/constants/empty-state-images';
 import { fetchLabResults } from '../api/lab-results.service';
+import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
+import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { spacing } from '@/theme';
 
 type RoleMode = 'patient' | 'nurse' | 'pro';
@@ -84,48 +88,57 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
 
   const items = resultsQ.data ?? [];
   const isSearching = debouncedSearch.trim().length > 0;
+  const listScrollConfig = useStackScrollConfig(styles.listContent);
+  const sceneInsets = useTabSceneInsets();
+  const { refreshing, onRefresh } = useManualRefresh(() => resultsQ.refetch());
 
   return (
-    <View style={styles.container}>
-      <View style={styles.searchWrap}>
-        <AppointmentsListFilterBar
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Rechercher un patient, une analyse…"
-          embedded
-        />
-      </View>
-
-      {resultsQ.isLoading && !resultsQ.data ? (
-        <View style={styles.loading}>
-          <SkeletonList count={5} itemHeight={88} gap={10} />
-        </View>
-      ) : items.length === 0 ? (
-        <View style={styles.empty}>
-          <EmptyState
-            imageSource={EMPTY_RDV_IMAGE}
-            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-            title={isSearching ? 'Aucun résultat trouvé' : emptyCopy.title}
-            description={
-              isSearching
-                ? 'Essayez un autre mot-clé (patient, type d’analyse, fichier…).'
-                : emptyCopy.description
-            }
+    <StackChromeScreen>
+      <View style={styles.container}>
+        <View style={[styles.searchWrap, { paddingTop: sceneInsets.insetTop + spacing[2] }]}>
+          <AppointmentsListFilterBar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Rechercher un patient, une analyse…"
+            embedded
           />
         </View>
-      ) : (
-        <LabResultsFeed
-          items={items}
-          role={role}
-          openingId={openingId}
-          refreshing={resultsQ.isRefetching}
-          onRefresh={() => void resultsQ.refetch()}
-          onOpenDocument={handleOpenDocument}
-          onOpenAppointment={openAppointment}
-        />
-      )}
-    </View>
+
+        {resultsQ.isLoading && !resultsQ.data ? (
+          <View style={styles.loading}>
+            <SkeletonList count={5} itemHeight={88} gap={10} />
+          </View>
+        ) : items.length === 0 ? (
+          <View style={styles.empty}>
+            <EmptyState
+              imageSource={EMPTY_RDV_IMAGE}
+              imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+              imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
+              title={isSearching ? 'Aucun résultat trouvé' : emptyCopy.title}
+              description={
+                isSearching
+                  ? 'Essayez un autre mot-clé (patient, type d’analyse, fichier…).'
+                  : emptyCopy.description
+              }
+            />
+          </View>
+        ) : (
+          <LabResultsFeed
+            items={items}
+            role={role}
+            openingId={openingId}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            onOpenDocument={handleOpenDocument}
+            onOpenAppointment={openAppointment}
+            contentContainerStyle={listScrollConfig.contentContainerStyle}
+            scrollIndicatorInsets={listScrollConfig.scrollIndicatorInsets}
+            contentInsetAdjustmentBehavior={listScrollConfig.contentInsetAdjustmentBehavior}
+            refreshProgressOffset={listScrollConfig.refreshProgressOffset}
+          />
+        )}
+      </View>
+    </StackChromeScreen>
   );
 }
 
@@ -143,6 +156,11 @@ function buildStyles(c: AppColors) {
     flex: 1,
     paddingHorizontal: spacing[4],
     justifyContent: 'center' as const,
+  },
+  listContent: {
+    paddingHorizontal: spacing[4],
+    paddingTop: spacing[2],
+    paddingBottom: spacing[10],
   },
 };
 }

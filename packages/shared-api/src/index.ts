@@ -16,6 +16,8 @@ export const PUBLIC_API_ROUTES = [
   '/ban/search',
   '/registration-requests',
   '/contact',
+  '/qr/resolve',
+  '/qr/visit',
 ] as const;
 
 export const CSRF_ERROR_CODES = [

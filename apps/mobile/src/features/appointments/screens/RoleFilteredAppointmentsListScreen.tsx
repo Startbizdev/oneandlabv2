@@ -12,7 +12,7 @@ import { AppointmentsFilterSheet } from '@/features/appointments/components/Appo
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
-import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
+import { AppointmentsListSearchHost } from '@/features/appointments/components/AppointmentsListFilterBar';
 import {
   flattenInfiniteAppointments,
   useInfiniteAppointmentsList,
@@ -164,6 +164,10 @@ export function RoleFilteredAppointmentsListScreen({
     [detailPathPrefix, role, router],
   );
 
+  const onSearchQueryChange = useCallback((value: string) => {
+    setSearch(value);
+  }, []);
+
   const ListHeader = useCallback(() => {
     const bookBlock =
       bookHref != null ? (
@@ -175,11 +179,10 @@ export function RoleFilteredAppointmentsListScreen({
 
     return (
       <View style={styles.scrollHeader}>
-        <AppointmentsListFilterBar
+        <AppointmentsListSearchHost
           embedded
           followedByBookCta={bookHref != null}
-          search={search}
-          onSearchChange={setSearch}
+          onQueryChange={onSearchQueryChange}
           searchPlaceholder="Nom, soin, adresse…"
           onOpenFilters={() => setSheetOpen(true)}
           advancedFilterCount={advancedCount}
@@ -188,7 +191,7 @@ export function RoleFilteredAppointmentsListScreen({
         {bookBlock}
       </View>
     );
-  }, [advancedCount, bookHref, bookLabel, filterChips, search]);
+  }, [advancedCount, bookHref, bookLabel, filterChips, onSearchQueryChange]);
 
   return (
     <View style={styles.container}>

@@ -6,17 +6,18 @@ import { Platform, StyleSheet, Text, useWindowDimensions, View, type StyleProp, 
 import { Row } from '@/components/layout/primitives';
 import type { NativeStackHeaderProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CaryHeaderBackground } from '@/components/navigation/CaryHeaderBackground';
+import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
+import { LiquidGlassChrome } from '@/components/navigation/LiquidGlassChrome';
 import {
   APP_HEADER_BACK_TITLE_GAP,
   APP_HEADER_INNER_BOTTOM,
   APP_HEADER_INNER_H_PADDING,
 } from '@/components/navigation/header-layout';
-import { HeaderBackButton } from '@/navigation/HeaderBackButton';
+import { StackHeaderBackButton } from '@/navigation/StackHeaderBackButton';
 
 import { fontFamily, fontSize } from '@/theme/typography';
 
-const STATUS_BAR_OFFSET = Platform.select({ ios: -7, default: 0 });
+const STATUS_BAR_OFFSET = 0;
 
 /**
  * Header stack Cary — layout pleine largeur pour le titre (pas de coupure à 50 %).
@@ -42,7 +43,7 @@ export function CaryStackHeader({ options, route, back, navigation }: NativeStac
           label: back?.title,
         })
       : back
-        ? <HeaderBackButton onPress={() => navigation.goBack()} />
+        ? <StackHeaderBackButton onPress={() => navigation.goBack()} />
         : null;
 
   const headerTitleNode =
@@ -64,10 +65,19 @@ export function CaryStackHeader({ options, route, back, navigation }: NativeStac
   const padH = APP_HEADER_INNER_H_PADDING;
   const padLeft = insets.left + padH;
   const padRight = insets.right + padH;
+  const nativeGlass = Platform.OS === 'ios' && isGlassEffectAPIAvailable();
 
   return (
     <View style={[styles.root, { height: headerHeight }]}>
-      <CaryHeaderBackground style={StyleSheet.absoluteFillObject as StyleProp<ViewStyle>} />
+      {nativeGlass ? (
+        <GlassView
+          pointerEvents="none"
+          style={StyleSheet.absoluteFillObject as StyleProp<ViewStyle>}
+          glassEffectStyle="regular"
+        />
+      ) : (
+        <LiquidGlassChrome variant="stack" style={StyleSheet.absoluteFillObject as StyleProp<ViewStyle>} />
+      )}
       <View style={[styles.content, { marginTop: statusBarSpacing, paddingBottom: innerBottom }]}>
         <Row align="center" gap={APP_HEADER_BACK_TITLE_GAP} style={[styles.row, { paddingRight: padRight }]}>
           {headerLeftNode ? (

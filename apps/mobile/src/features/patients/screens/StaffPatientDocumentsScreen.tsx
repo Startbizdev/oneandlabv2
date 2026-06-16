@@ -25,7 +25,12 @@ import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { patientFolderHeaderTitle } from '@/navigation/PatientFolderHeaderTitle';
-import { ProfileStackBackButton } from '@/navigation/ProfileStackBackButton';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
 import { getDocumentTypeLabel } from '@/features/appointments/detail/utils/document-labels';
 import dayjs from 'dayjs';
 import {
@@ -175,6 +180,8 @@ export function StaffPatientDocumentsScreen() {
   const [page, setPage] = useState(1);
   const [uploading, setUploading] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.list);
   const { isDownloaded, markDownloaded } = useDownloadedDocumentIds(`patient:${id ?? ''}`);
 
   const profileQ = useQuery({
@@ -209,7 +216,6 @@ export function StaffPatientDocumentsScreen() {
     () => ({
       headerTitle: patientFolderHeaderTitle(patientFullName),
       headerTitleAlign: 'left' as const,
-      headerLeft: () => <ProfileStackBackButton />,
     }),
     [patientFullName],
   );
@@ -261,24 +267,24 @@ export function StaffPatientDocumentsScreen() {
 
   if (docsQ.isLoading && !docsQ.data) {
     return (
-      <>
+      <StackChromeScreen>
         <Stack.Screen options={screenOptions} />
         <View style={styles.loading}>
           <SkeletonList count={4} itemHeight={72} gap={10} />
         </View>
-      </>
+      </StackChromeScreen>
     );
   }
 
   return (
-    <>
+    <StackChromeScreen>
       <Stack.Screen options={screenOptions} />
       <View style={styles.container}>
         <FlatList
           data={pageDocs}
           keyExtractor={(d) => d.medical_document_id ?? d.id}
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.list}
+          contentContainerStyle={scrollConfig.contentContainerStyle}
+          {...spreadTabSceneScrollProps(scrollConfig)}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <View style={styles.header}>
@@ -303,6 +309,7 @@ export function StaffPatientDocumentsScreen() {
               refreshing={docsQ.isRefetching}
               onRefresh={() => void docsQ.refetch()}
               tintColor={c.primary}
+              progressViewOffset={scrollConfig.refreshProgressOffset}
             />
           }
           renderItem={({ item }) => {
@@ -337,7 +344,7 @@ export function StaffPatientDocumentsScreen() {
           }
         />
       </View>
-    </>
+    </StackChromeScreen>
   );
 }
 

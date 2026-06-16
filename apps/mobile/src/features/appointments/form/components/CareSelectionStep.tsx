@@ -37,6 +37,11 @@ import { CareCategoryFilterBar } from './CareCategoryFilterBar';
 import { CareServiceQuickOptionsSheet } from './CareServiceQuickOptionsSheet';
 import { SelectedServicesDetailSheet } from './SelectedServicesDetailSheet';
 import { useToast } from '@/providers/ToastProvider';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -246,6 +251,12 @@ export function CareSelectionStep({
     ? PREMIUM_CTA_HEIGHT + spacing[4] + floatingCtaBottom
     : spacing[3];
 
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, [
+    styles.listContent,
+    { paddingBottom: scrollBottomPad },
+  ]);
+
   const isSelected = useCallback(
     (catId: string) => selectedServices.some((s) => s.id === catId),
     [selectedServices],
@@ -408,8 +419,8 @@ export function CareSelectionStep({
       <View style={styles.root}>
         <ScrollView
           style={styles.listScroll}
-          contentContainerStyle={[styles.listContent, { paddingBottom: scrollBottomPad }]}
-          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={scrollConfig.contentContainerStyle}
+          {...spreadTabSceneScrollProps(scrollConfig)}
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"

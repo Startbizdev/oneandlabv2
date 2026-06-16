@@ -2,6 +2,12 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useRouter } from 'expo-router';
 import {
   Bell,
@@ -52,13 +58,16 @@ export function HelpScreen() {
   const router = useRouter();
   const role = useAuthStore((s) => s.user?.role);
   const faq = getHelpFaqForRole(role);
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.scroll}
-      contentInsetAdjustmentBehavior="automatic"
-      showsVerticalScrollIndicator={false}
-    >
+    <StackChromeScreen>
+      <ScrollView
+        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={scrollConfig.contentContainerStyle}
+        showsVerticalScrollIndicator={false}
+      >
       <Text style={styles.lead}>{faq.intro}</Text>
 
       {faq.sections.map((section) => (
@@ -88,6 +97,7 @@ export function HelpScreen() {
         />
       </ProfileNavCard>
     </ScrollView>
+    </StackChromeScreen>
   );
 }
 

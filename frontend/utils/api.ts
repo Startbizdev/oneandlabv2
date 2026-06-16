@@ -23,7 +23,8 @@ const PUBLIC_ROUTES = [
   '/auth/logout',
   '/ban/search',
   '/registration-requests',
-  '/contact',
+  '/qr/resolve',
+  '/qr/visit',
 ];
 
 async function fetchCsrfTokenFromNetwork(apiBase: string): Promise<string | null> {

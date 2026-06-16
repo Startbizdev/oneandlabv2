@@ -4,6 +4,12 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback, useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { Cluster } from '@/components/layout/primitives';
 import Animated, {
   FadeInDown,
@@ -239,6 +245,8 @@ export function ProfileHubScreen() {
     () => getSections(user?.role, router, logout),
     [user?.role, router, logout, colorblindType],
   );
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);
 
   const roleLabel: Record<string, string> = {
     nurse: 'Infirmier(ère)',
@@ -248,10 +256,10 @@ export function ProfileHubScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <StackChromeScreen>
       <ScrollView
-        contentContainerStyle={styles.scroll}
-        contentInsetAdjustmentBehavior="automatic"
+        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={scrollConfig.contentContainerStyle}
         showsVerticalScrollIndicator={false}
       >
         <MoreProfileCard
@@ -283,17 +291,12 @@ export function ProfileHubScreen() {
           </Animated.View>
         ))}
       </ScrollView>
-    </View>
+    </StackChromeScreen>
   );
 }
 
 function buildStyles(c: AppColors) {
   return {
-  container: {
-    minWidth: 0,
-    flex: 1,
-    backgroundColor: c.background,
-  },
   scroll: {
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[8],

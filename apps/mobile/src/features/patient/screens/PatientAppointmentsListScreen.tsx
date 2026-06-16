@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
 import {
   AppointmentsRdvListBookHeader,
-  AppointmentsRdvListFilterHeader,
+  AppointmentsRdvListFilterHeaderHost,
   useRdvListChromeStyles,
 } from '@/features/appointments/components/AppointmentsRdvListToolbar';
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
@@ -106,12 +106,15 @@ export function PatientAppointmentsListScreen() {
     [router],
   );
 
+  const onSearchQueryChange = useCallback((value: string) => {
+    setSearch(value);
+  }, []);
+
   const ListHeader = useCallback(
     () => (
       <View style={chromeStyles.listHeader}>
-        <AppointmentsRdvListFilterHeader
-          search={search}
-          onSearchChange={setSearch}
+        <AppointmentsRdvListFilterHeaderHost
+          onQueryChange={onSearchQueryChange}
           onOpenFilters={() => setSheetOpen(true)}
           advancedFilterCount={advancedCount}
           chips={filterChips}
@@ -119,7 +122,7 @@ export function PatientAppointmentsListScreen() {
         <AppointmentsRdvListBookHeader href="/(patient)/booking/new" />
       </View>
     ),
-    [advancedCount, filterChips, search, chromeStyles],
+    [advancedCount, filterChips, chromeStyles, onSearchQueryChange],
   );
 
   if (query.isError) {

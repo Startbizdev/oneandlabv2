@@ -18,7 +18,12 @@ import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Heart } from 'lucide-react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { ScreenFab } from '@/components/ui/ScreenFab';
+import { ScreenFab, useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
 import {
   EMPTY_PROCHE_IMAGE,
   EMPTY_PROCHE_IMAGE_HEIGHT,
@@ -36,6 +41,7 @@ import {
 import { relationshipLabel } from '@/features/patient-relatives/constants/relationship-types';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
+import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
 import { elevation, radius, spacing } from '@/theme';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
@@ -101,13 +107,19 @@ const RelativeCard = React.memo(function RelativeCard({
 });
 
 export function PatientRelativesScreen() {
+  const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_patient_screens_PatientRelativesScreen_tsx_styles');
+  const sceneInsets = useTabSceneInsets();
+  const fabClearance = useScreenFabScrollClearance();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.list, {
+    extraBottom: fabClearance,
+  });
   const router = useRouter();
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { data, isLoading, refetch, isRefetching } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['patient-relatives'],
     queryFn: async () => {
       const res = await fetchPatientRelatives();
@@ -115,6 +127,8 @@ export function PatientRelativesScreen() {
       return res.data ?? [];
     },
   });
+
+  const { refreshing, onRefresh } = useManualRefresh(refetch);
 
   const createMut = useMutation({
     mutationFn: createPatientRelative,
@@ -171,10 +185,17 @@ export function PatientRelativesScreen() {
               Touchez une carte pour modifier · appui long pour supprimer
             </Text>
           }
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.list}
+          {...spreadTabSceneScrollProps(scrollConfig)}
+          contentContainerStyle={scrollConfig.contentContainerStyle}
           ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={c.primary}
+              progressViewOffset={scrollConfig.refreshProgressOffset}
+            />
+          }
           ListEmptyComponent={
             <EmptyState
               title="Aucun proche"
@@ -219,7 +240,7 @@ function buildStyles(c: AppColors) {
     minWidth: 0,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
-    paddingBottom: spacing[24],
+    paddingBottom: spacing[4],
     flexGrow: 1,
   },
   card: {

@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useNativeTabBarInset } from '@/navigation/use-native-tab-bar-inset';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { PatientAiChatComposer, PATIENT_AI_COMPOSER_DOCK_HEIGHT } from './PatientAiChatComposer';
 import { PatientAiDemoBanner } from './PatientAiDemoBanner';
@@ -30,13 +30,13 @@ export function PatientAiChatFooter({
 }: Props) {
   const styles = useThemedStyles(buildStyles, 'features_ai_hub_components_PatientAiChatFooter_tsx_PatientAiChatFooter_styles');
 
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarInset = useNativeTabBarInset(0);
   const [inputFocused, setInputFocused] = useState(false);
 
   return (
     <KeyboardStickyView
-      style={styles.footer}
-      offset={{ closed: 0, opened: tabBarHeight }}
+      style={[styles.footer, { bottom: tabBarInset }]}
+      offset={{ closed: 0, opened: tabBarInset }}
     >
       <View style={styles.footerInner}>
         {!inputFocused ? <PatientAiDemoBanner /> : null}
@@ -73,7 +73,6 @@ function buildStyles(c: AppColors) {
     position: 'absolute' as const,
     left: 0,
     right: 0,
-    bottom: 0,
   },
   footerInner: {
     width: '100%' as const,

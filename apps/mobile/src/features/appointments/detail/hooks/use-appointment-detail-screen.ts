@@ -5,7 +5,7 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
 import { HeaderBackButton } from '@/navigation/HeaderBackButton';
 import { useAuthStore } from '@/store/auth-store';
-import { fetchProfileDocuments } from '@/features/patients/api/patient-profile.service';
+import { fetchProfileDocuments, fetchPatientProfile } from '@/features/patients/api/patient-profile.service';
 import { mergeProfileDocumentsIntoAppointmentDocs } from '@/features/documents/utils/merge-profile-documents';
 import { useAppointmentDetail } from '../../hooks/use-appointment-detail';
 import {
@@ -64,6 +64,40 @@ export function useAppointmentDetailScreen(
   const relativeId = primary?.relative_id?.trim() || undefined;
   const patientId = primary?.patient_id?.trim() || undefined;
   const mergeProfileDocs = shouldMergeProfileDocuments(role, relativeId);
+
+  const needsPatientAvatarEnrichment = useMemo(() => {
+    if (!primary || !patientId || relativeId) return false;
+    if (!STAFF_PROFILE_MERGE_ROLES.has(role)) return false;
+    const ext = primary as { beneficiary_profile_image_url?: string | null };
+    return !ext.beneficiary_profile_image_url;
+  }, [primary, patientId, relativeId, role]);
+
+  const patientProfileQ = useQuery({
+    queryKey: queryKeys.patients.detail(patientId ?? ''),
+    queryFn: async () => {
+      const res = await fetchPatientProfile(patientId!);
+      if (!res.success) return null;
+      return res.data ?? null;
+    },
+    enabled: needsPatientAvatarEnrichment,
+    staleTime: 60_000,
+  });
+
+  const primaryForDisplay = useMemo((): Appointment | undefined => {
+    if (!primary) return undefined;
+    const ext = primary as Appointment & {
+      beneficiary_profile_image_url?: string | null;
+      beneficiary_gender?: string | null;
+    };
+    if (ext.beneficiary_profile_image_url) return primary;
+    const profile = patientProfileQ.data;
+    if (!profile?.profile_image_url) return primary;
+    return {
+      ...primary,
+      beneficiary_profile_image_url: profile.profile_image_url,
+      beneficiary_gender: ext.beneficiary_gender ?? profile.gender ?? null,
+    } as Appointment;
+  }, [primary, patientProfileQ.data]);
 
   const profileDocsQ = useQuery({
     queryKey: relativeId
@@ -136,7 +170,16 @@ export function useAppointmentDetailScreen(
     void refetchSiblings();
     docQueries.forEach((q) => void q.refetch());
     if (mergeProfileDocs) void profileDocsQ.refetch();
-  }, [detailQ, refetchSiblings, docQueries, profileDocsQ, mergeProfileDocs]);
+    if (needsPatientAvatarEnrichment) void patientProfileQ.refetch();
+  }, [
+    detailQ,
+    refetchSiblings,
+    docQueries,
+    profileDocsQ,
+    mergeProfileDocs,
+    needsPatientAvatarEnrichment,
+    patientProfileQ,
+  ]);
 
   const isRefreshing =
     detailQ.isRefetching ||
@@ -197,7 +240,7 @@ export function useAppointmentDetailScreen(
     id,
     config,
     apt,
-    primary: primary as Appointment | undefined,
+    primary: primaryForDisplay,
     batchSorted,
     isMultiBatch,
     canceled,

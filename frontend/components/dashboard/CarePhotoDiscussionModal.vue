@@ -23,9 +23,9 @@
                   </span>
                   <div class="min-w-0 leading-tight">
                     <h2 class="truncate text-sm font-semibold text-gray-900 dark:text-white">
-                      Photo — échanges
+                      {{ isThreadOnlyMode ? 'Échange' : 'Photo — échanges' }}
                     </h2>
-                    <p v-if="photoDateSubtitle" class="truncate text-[11px] text-muted">
+                    <p v-if="photoDateSubtitle && !isThreadOnlyMode" class="truncate text-[11px] text-muted">
                       {{ photoDateSubtitle }}
                     </p>
                   </div>
@@ -49,7 +49,10 @@
                 class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-y-contain px-3 pb-3 pt-3 [-webkit-overflow-scrolling:touch] sm:gap-3 sm:px-4 sm:pb-3 sm:pt-4"
               >
                 <!-- Fichier dans le fil (image ou PDF) -->
-                <div class="flex shrink-0 w-full justify-center px-0.5 pb-1">
+                <div
+                  v-if="!isThreadOnlyMode"
+                  class="flex shrink-0 w-full justify-center px-0.5 pb-1"
+                >
                   <button
                     v-if="!isPreviewPdf"
                     type="button"
@@ -145,10 +148,10 @@
                 <div v-if="loading" class="flex min-h-[5rem] flex-1 items-center justify-center py-6">
                   <UIcon name="i-lucide-loader-2" class="h-7 w-7 animate-spin text-primary-500" />
                 </div>
-                <div v-else-if="!photo" class="py-4 text-center text-xs text-muted">
-                  Indisponible
+                <div v-else-if="!hasDiscussionContent" class="py-4 text-center text-xs text-muted">
+                  Démarrez la conversation — envoyez un message ou ajoutez une photo.
                 </div>
-                <template v-else-if="photo.comments?.length">
+                <template v-else-if="orderedComments.length">
                   <div
                     v-for="c in orderedComments"
                     :key="c.id"
@@ -285,7 +288,7 @@
                 </div>
               </div>
               <div
-                v-else-if="photo && !canComment && !loading"
+                v-else-if="hasDiscussionContent && !canComment && !canUpload && !loading"
                 class="shrink-0 border-t border-gray-100 px-3 py-1.5 text-center text-[10px] text-muted dark:border-gray-800"
               >
                 Lecture seule
@@ -374,6 +377,7 @@ import {
   CARE_PHOTO_ACCEPT_ATTR,
   CARE_PHOTO_ALLOWED_MIME,
   isCarePhotoPdf,
+  isCarePhotoThreadAnchor,
 } from '~/utils/care-photo-file';
 
 type CarePhotoComment = {
@@ -433,6 +437,18 @@ const zoomOpen = ref(false);
 const pdfDownloading = ref(false);
 
 const isPreviewPdf = computed(() => isCarePhotoPdf(photo.value));
+
+const isThreadOnlyMode = computed(() => {
+  if (!photo.value) return !effectiveDocumentId();
+  return isCarePhotoThreadAnchor(photo.value);
+});
+
+const hasDiscussionContent = computed(
+  () =>
+    canComment.value ||
+    canUpload.value ||
+    (photo.value?.comments?.length ?? 0) > 0,
+);
 
 const previewFileName = computed(
   () => photo.value?.file_name?.trim() || 'Document PDF',
@@ -680,11 +696,11 @@ onUnmounted(() => {
 
 async function loadThread(silent = false) {
   const aid = props.appointmentId;
-  const did = effectiveDocumentId();
-  if (!aid || !did) {
+  if (!aid) {
     photo.value = null;
     return;
   }
+  const did = effectiveDocumentId();
   if (!silent) loading.value = true;
   try {
     const res = await apiFetch(`/appointments/${encodeURIComponent(aid)}/care-photos`, { method: 'GET' });
@@ -694,20 +710,36 @@ async function loadThread(silent = false) {
     canComment.value = !!res.data.can_comment;
     canUpload.value = !!res.data.can_upload;
     const rows = (res.data.photos || []) as CarePhotoRow[];
-    const nextPhoto = rows.find((p) => String(p.id) === String(did)) ?? null;
+    const thread = res.data.thread as { document_id?: string; comments?: CarePhotoComment[] } | null;
     const prevLen = photo.value?.comments?.length ?? 0;
-    photo.value = nextPhoto;
+
+    if (did) {
+      const nextPhoto = rows.find((p) => String(p.id) === String(did)) ?? null;
+      photo.value = nextPhoto;
+      if (!silent) void loadPreview(String(did));
+    } else if (thread?.document_id) {
+      activeDocumentId.value = String(thread.document_id);
+      photo.value = {
+        id: String(thread.document_id),
+        comments: thread.comments || [],
+        created_at: '',
+        mime_type: 'application/vnd.cary.exchange-thread',
+      };
+    } else {
+      photo.value = {
+        id: '',
+        comments: [],
+        created_at: '',
+      };
+    }
 
     emitThreadSeen();
 
-    if (silent && nextPhoto && (nextPhoto.comments?.length ?? 0) > prevLen) {
+    const nextLen = photo.value?.comments?.length ?? 0;
+    if (silent && nextLen > prevLen) {
       await scrollToBottom();
     } else if (!silent) {
       await scrollToBottom();
-    }
-
-    if (!silent) {
-      void loadPreview(String(did));
     }
   } catch (e: any) {
     if (!silent) {
@@ -752,14 +784,18 @@ async function sendComment() {
   const body = draft.value.trim();
   const aid = props.appointmentId;
   const did = effectiveDocumentId();
-  if (!body || !aid || !did) return;
+  if (!body || !aid || !canComment.value) return;
   sending.value = true;
   try {
+    const payload: { body: string; medical_document_id?: string } = { body };
+    if (did) payload.medical_document_id = did;
     const res = await apiFetch(`/appointments/${encodeURIComponent(aid)}/care-photo-comments`, {
       method: 'POST',
-      body: { medical_document_id: did, body },
+      body: payload,
     });
     if (res?.success) {
+      const newDocId = (res as any)?.data?.medical_document_id;
+      if (newDocId) activeDocumentId.value = String(newDocId);
       draft.value = '';
       toast.add({ title: 'Envoyé', color: 'success' });
       await loadThread(false);

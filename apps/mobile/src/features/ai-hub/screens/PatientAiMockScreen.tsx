@@ -25,6 +25,11 @@ import {
   type PatientAiQuickSuggestion,
 } from '../constants/patient-ai-mock';
 import type { PatientAiChatMessage } from '../types/patient-ai-conversation';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
 import { H_PADDING, radius, spacing } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
@@ -120,6 +125,10 @@ function ListSeparator({ styles }: { styles: ScreenStyles }) {
 export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: ScreenProps) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.listContent, {
+    extraBottom: PATIENT_AI_FOOTER_HEIGHT_WITH_BANNER + spacing[2],
+  });
   const listRef = useRef<FlatList<PatientAiChatMessage>>(null);
   const user = useAuthStore((s) => s.user);
   const firstName = user?.first_name?.trim() ?? '';
@@ -232,10 +241,8 @@ export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: Screen
           renderItem={renderItem}
           extraData={`${showSuggestions}-${activeId}`}
           ItemSeparatorComponent={() => <ListSeparator styles={styles} />}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: PATIENT_AI_FOOTER_HEIGHT_WITH_BANNER + spacing[2] },
-          ]}
+          {...spreadTabSceneScrollProps(scrollConfig)}
+          contentContainerStyle={scrollConfig.contentContainerStyle}
           showsVerticalScrollIndicator={false}
           ListFooterComponent={ListFooter}
           onContentSizeChange={scrollToEnd}

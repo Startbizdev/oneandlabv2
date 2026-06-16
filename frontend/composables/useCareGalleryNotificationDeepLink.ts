@@ -12,6 +12,7 @@ export function useCareGalleryNotificationDeepLink(options: {
   careDocs: Ref<{ id?: string }[]>;
   documentsLoading: Ref<boolean>;
   openCareDiscussion: (doc: { id?: string }) => void;
+  openGeneralExchange?: () => void;
 }) {
   const route = useRoute();
   const router = useRouter();
@@ -27,7 +28,18 @@ export function useCareGalleryNotificationDeepLink(options: {
       if (!isCareGalleryDeepLinkQuery(q)) return;
       if (loading) return;
       const availableIds = ids.split(',').filter(Boolean);
-      if (availableIds.length === 0) return;
+      if (availableIds.length === 0) {
+        if (options.openGeneralExchange) {
+          options.openGeneralExchange();
+          await nextTick();
+          document.getElementById('rdv-care-photos-section')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+          });
+          stripCareGalleryQuery(route, router);
+        }
+        return;
+      }
 
       const targetId = parseCarePhotoIdFromQuery(carePhoto, availableIds);
       if (!targetId) return;

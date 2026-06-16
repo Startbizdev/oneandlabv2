@@ -27,6 +27,10 @@ interface Props {
   onPressItem: (item: AppNotification) => void;
   onLoadMore: () => void;
   pageSize: number;
+  contentContainerStyle?: object | object[];
+  scrollIndicatorInsets?: { top: number; bottom: number };
+  contentInsetAdjustmentBehavior?: 'automatic' | 'never';
+  refreshProgressOffset?: number;
 }
 
 export function NotificationsFeed({
@@ -39,6 +43,10 @@ export function NotificationsFeed({
   onPressItem,
   onLoadMore,
   pageSize,
+  contentContainerStyle: contentContainerStyleProp,
+  scrollIndicatorInsets,
+  contentInsetAdjustmentBehavior = 'automatic',
+  refreshProgressOffset = 0,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_notifications_components_NotificationsFeed_tsx_NotificationsFeed_styles');
@@ -90,11 +98,17 @@ export function NotificationsFeed({
       ItemSeparatorComponent={ItemSeparator}
       ListHeaderComponent={ListHeader}
       ListFooterComponent={ListFooter}
-      contentContainerStyle={styles.listContent}
-      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={contentContainerStyleProp ?? styles.listContent}
+      contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}
+      scrollIndicatorInsets={scrollIndicatorInsets}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={c.primary}
+          progressViewOffset={refreshProgressOffset}
+        />
       }
       onEndReached={hasMore && !loadingMore ? onLoadMore : undefined}
       onEndReachedThreshold={0.4}

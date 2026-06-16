@@ -88,6 +88,15 @@ export function appTabSceneStyle(): ViewStyle {
   };
 }
 
+/** Onglets edge-to-edge — corps plat, sans coins arrondis ni ombre. */
+export function appTabSceneFlatContentStyle(): ViewStyle {
+  return {
+    minWidth: 0,
+    flex: 1,
+    backgroundColor: getAppColors().surface,
+  };
+}
+
 /** Stack — feuille blanche à coins haut arrondis sous le header. */
 export function appStackContentStyle(opts?: { rounded?: boolean }): ViewStyle {
   const rounded = opts?.rounded !== false;

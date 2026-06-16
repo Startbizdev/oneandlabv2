@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import { useNavigation } from 'expo-router';
-import { HeaderBackButton } from '@/navigation/HeaderBackButton';
+import { stackCustomBackOptions } from '@/navigation/stack-header-items';
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import { bookingCareSelectionHeaderTitle } from '../components/BookingCareSelectionHeaderTitle';
 import { bookingCareSelectionTitle } from '../utils/booking-wizard-titles';
@@ -13,7 +13,7 @@ interface Options {
   onWizardBack: () => void;
 }
 
-/** Titre navigation sticky — pas de bouton header à l’étape 0, retour ensuite. */
+/** @deprecated Header géré par `BookingWizardChrome` (glass flottant). */
 export function useBookingWizardHeader({
   step,
   role,
@@ -32,14 +32,11 @@ export function useBookingWizardHeader({
       title,
       headerTitle: step === 0 ? bookingCareSelectionHeaderTitle(role) : title,
       headerBackTitle: '',
-      headerBackVisible: false,
+      headerBackVisible: step === 0 ? false : undefined,
       headerRight: undefined,
-      headerLeft:
-        step === 0
-          ? undefined
-          : () => (
-              <HeaderBackButton onPress={() => onWizardBackRef.current()} />
-            ),
+      ...(step === 0
+        ? { headerLeft: () => null }
+        : stackCustomBackOptions(() => onWizardBackRef.current())),
     };
 
     navigation.setOptions(options);

@@ -315,15 +315,20 @@ const careSelectionInitialFilterTab = computed((): 'all' | 'analyses' | 'domicil
 });
 
 // Provider (profil public) : URL en priorité + brouillon sessionStorage si la query a été perdue (login, refresh, lien interne)
-const stickyProviderBooking = ref<{ provider_id: string; provider_type: string } | null>(null);
+const stickyProviderBooking = ref<{ provider_id: string; provider_type: string; utm_qr?: string } | null>(null);
+const stickyUtmQr = ref<string | null>(null);
 watch(
-  () => [route.query.provider_id, route.query.provider_type] as const,
-  ([pid, pty]) => {
+  () => [route.query.provider_id, route.query.provider_type, route.query.utm_qr] as const,
+  ([pid, pty, utm]) => {
     if (pid && pty) {
       stickyProviderBooking.value = {
         provider_id: String(pid),
         provider_type: String(pty),
+        ...(utm ? { utm_qr: String(utm) } : {}),
       };
+    }
+    if (utm) {
+      stickyUtmQr.value = String(utm);
     }
   },
   { immediate: true },
@@ -335,6 +340,10 @@ const providerId = computed(
 const providerType = computed(
   () =>
     ((route.query.provider_type as string) || '').trim() || stickyProviderBooking.value?.provider_type || null,
+);
+const utmQr = computed(
+  () =>
+    ((route.query.utm_qr as string) || '').trim() || stickyUtmQr.value || stickyProviderBooking.value?.utm_qr || null,
 );
 const providerName = ref<string | null>(null);
 /** Délai min du lab (heures) pour griser les dates quand RDV depuis fiche publique */
@@ -1033,10 +1042,17 @@ function buildAppointmentPayloads(patientId: string): any[] {
           payload.assigned_nurse_id = providerId.value;
         } else if (providerType.value === 'lab' && isBloodTestAppointment(svc.type)) {
           payload.assigned_lab_id = providerId.value;
+        } else if (providerType.value === 'pro') {
+          payload.assigned_pro_id = providerId.value;
         }
       } else if (providerType.value === 'lab') {
         payload.assigned_lab_id = providerId.value;
+      } else if (providerType.value === 'pro') {
+        payload.assigned_pro_id = providerId.value;
       }
+    }
+    if (utmQr.value) {
+      payload.utm_qr = utmQr.value;
     }
   }
 
@@ -1485,7 +1501,11 @@ const saveFormState = () => {
       otpCode: otpCode.value,
       providerBooking:
         providerId.value && providerType.value
-          ? { provider_id: providerId.value, provider_type: providerType.value }
+          ? {
+              provider_id: providerId.value,
+              provider_type: providerType.value,
+              ...(utmQr.value ? { utm_qr: utmQr.value } : {}),
+            }
           : null,
     };
     sessionStorage.setItem(BOOKING_STATE_KEY, JSON.stringify(state, bookingStateReplacer));
@@ -1745,6 +1765,9 @@ onMounted(async () => {
           !route.query.provider_id
         ) {
           stickyProviderBooking.value = state.providerBooking;
+          if (state.providerBooking?.utm_qr) {
+            stickyUtmQr.value = state.providerBooking.utm_qr;
+          }
         }
         restoredFromDraft = true;
         // Ne pas supprimer le brouillon ici : permet retour login/refresh sans perdre les champs ;
@@ -1762,6 +1785,22 @@ onMounted(async () => {
   if (isProviderBooking.value) {
     loadProviderName();
   }
+
+  if (utmQr.value && import.meta.client) {
+    try {
+      const sessionKey = `qr_visit_${utmQr.value}`;
+      if (!sessionStorage.getItem(sessionKey)) {
+        await apiFetch('/qr/visit', {
+          method: 'POST',
+          body: { token: utmQr.value, session_id: sessionKey },
+        });
+        sessionStorage.setItem(sessionKey, '1');
+      }
+    } catch {
+      /* non bloquant */
+    }
+  }
+
   await loadCareCategories();
 
   /** Recale l’index wizard une fois les catégories connues (sous-étapes « documents » variables). */

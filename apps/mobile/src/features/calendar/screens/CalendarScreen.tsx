@@ -4,6 +4,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -30,6 +31,12 @@ import {
 import { CalendarFilterSheet } from '@/features/calendar/components/CalendarFilterSheet';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { EmptyState } from '@/components/ui/EmptyState';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
+import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { DayAppointmentsSheet } from '@/components/ui/DayAppointmentsSheet';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import {
@@ -87,6 +94,8 @@ export function CalendarScreen({
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.content);
   const listRole = listRoleProp ?? listRoleFromDetailPrefix(detailPathPrefix);
   const { width } = useWindowDimensions();
   const router = useRouter();
@@ -130,6 +139,8 @@ export function CalendarScreen({
       return items;
     },
   });
+
+  const { refreshing, onRefresh } = useManualRefresh(listQ.refetch);
 
   const byDay = useMemo(() => {
     const map = new Map<string, Appointment[]>();
@@ -239,9 +250,17 @@ export function CalendarScreen({
     <View style={styles.container}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
-        contentInsetAdjustmentBehavior="automatic"
+        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={scrollConfig.contentContainerStyle}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={c.primary}
+            progressViewOffset={scrollConfig.refreshProgressOffset}
+          />
+        }
       >
         <Animated.View entering={FadeInDown.duration(280).springify()}>
           <AppointmentsListFilterBar

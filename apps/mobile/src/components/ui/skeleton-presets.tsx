@@ -85,14 +85,16 @@ export function SkeletonRdvInfoCard({
   );
 }
 
-/** Barre d’onglets segmentés (Informations / Documents…). */
+/** Barre d’onglets segmentés (Infos / Documents / Échange). */
 export function SkeletonSegmentBar({ segments = 2 }: { segments?: number }) {
   const styles = useThemedStyles(buildStyles, SKELETON_CTX);
   return (
-    <View style={styles.segmentBar}>
-      {Array.from({ length: segments }).map((_, i) => (
-        <Skeleton key={i} height={40} style={styles.segmentItem} borderRadius={radius.lg} />
-      ))}
+    <View style={styles.segmentBarHost}>
+      <View style={styles.segmentBar}>
+        {Array.from({ length: segments }).map((_, i) => (
+          <Skeleton key={i} height={56} style={styles.segmentItem} borderRadius={radius.md} />
+        ))}
+      </View>
     </View>
   );
 }
@@ -338,14 +340,22 @@ function buildStyles(c: AppColors) {
     minWidth: 0,
     flex: 1,
   },
+  segmentBarHost: {
+    width: '100%' as const,
+    alignSelf: 'stretch' as const,
+  },
   segmentBar: {
-    minWidth: 0,
+    width: '100%' as const,
     flexDirection: 'row' as const,
-    gap: spacing[2],
+    gap: spacing[1],
+    padding: spacing[0.5],
+    borderRadius: radius.lg,
+    backgroundColor: c.surfaceSubtle,
   },
   segmentItem: {
-    minWidth: 0,
     flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
   },
   entityRow: {
     minWidth: 0,
