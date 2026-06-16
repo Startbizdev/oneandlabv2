@@ -107,7 +107,7 @@ export function PatientAppointmentDetailScreen() {
 
   return (
     <>
-      <StackChromeScreen>
+      <StackChromeScreen title={s.headerTitleNode}>
         <KeyboardScrollView
           style={styles.container}
           refreshControl={

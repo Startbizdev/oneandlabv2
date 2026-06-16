@@ -45,7 +45,7 @@ export type PatientListTab = 'upcoming' | 'past';
 
 export const PATIENT_TAB_OPTIONS: Array<{ label: string; value: PatientListTab }> = [
   { label: 'Prochains', value: 'upcoming' },
-  { label: 'Passés', value: 'past' },
+  { label: 'Terminés', value: 'past' },
 ];
 
 /** Pro — statuts simplifiés. */

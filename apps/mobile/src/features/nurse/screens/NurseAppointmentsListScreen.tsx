@@ -40,6 +40,7 @@ import {
   EMPTY_RDV_IMAGE_HEIGHT,
   EMPTY_RDV_IMAGE_WIDTH,
 } from '@/constants/empty-state-images';
+import { isAppointmentPastForList } from '@/utils/patient-appointment-list';
 import { spacing } from '@/theme';
 
 function matchesSearch(apt: Appointment, q: string): boolean {
@@ -83,19 +84,24 @@ export function NurseAppointmentsListScreen() {
   const { refetch } = query;
 
   const filtered = useMemo(() => {
-    const list = data ?? [];
-    if (search.trim()) return list.filter((a) => matchesSearch(a, search));
+    let list = data ?? [];
+    if (segment !== 'historique') {
+      list = list.filter((a) => !isAppointmentPastForList(a));
+    }
+    if (search.trim()) list = list.filter((a) => matchesSearch(a, search));
     return list;
-  }, [data, search]);
+  }, [data, search, segment]);
+
+  const sortDirection = segment === 'historique' ? ('past' as const) : ('upcoming' as const);
 
   const displayRows = useMemo(
     (): AppointmentListRow[] =>
       buildAppointmentDisplayRows(filtered, {
-        direction: 'upcoming',
+        direction: sortDirection,
         groupMode:
           tab === 'soins' && segment === 'en_attente' ? 'nurse-demandes' : 'batch',
       }),
-    [filtered, tab, segment],
+    [filtered, tab, segment, sortDirection],
   );
 
   useAppointmentsCacheSyncOnFocus();

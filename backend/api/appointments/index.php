@@ -293,21 +293,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $sql .= " AND a.type = 'blood_test' AND a.created_by = ?";
                 $params[] = $userId;
             } elseif ($nurseSegment === 'en_attente') {
-                $sql .= " AND a.type = 'nursing' AND a.status = 'pending' AND (
-                    (
-                        a.assigned_nurse_id IS NULL
-                        AND EXISTS (SELECT 1 FROM appointment_offers o2 WHERE o2.appointment_id = a.id AND o2.profile_id = ?)
-                    )
-                    OR a.assigned_nurse_id = ?
-                )";
-                $params[] = $userId;
+                $sql .= " AND a.type = 'nursing' AND a.status = 'pending'
+                    AND a.assigned_nurse_id IS NULL
+                    AND EXISTS (SELECT 1 FROM appointment_offers o2 WHERE o2.appointment_id = a.id AND o2.profile_id = ?)";
                 $params[] = $userId;
             } elseif ($nurseSegment === 'acceptes') {
-                $sql .= " AND a.type = 'nursing' AND a.assigned_nurse_id = ? AND a.status IN ('confirmed','inProgress','planned','completed')";
+                $parisStart = new DateTime('today', new DateTimeZone('Europe/Paris'));
+                $parisStart->setTimezone(new DateTimeZone('UTC'));
+                $sql .= " AND a.type = 'nursing' AND a.assigned_nurse_id = ? AND a.status IN ('confirmed','inProgress','planned')
+                    AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?)";
                 $params[] = $userId;
+                $params[] = $parisStart->format('Y-m-d H:i:s');
             } elseif ($nurseSegment === 'historique') {
-                $sql .= " AND a.type = 'nursing' AND a.assigned_nurse_id = ? AND a.status IN ('completed','canceled','cancelled','refused')";
+                $parisStart = new DateTime('today', new DateTimeZone('Europe/Paris'));
+                $parisStart->setTimezone(new DateTimeZone('UTC'));
+                $sql .= " AND a.type = 'nursing' AND a.assigned_nurse_id = ? AND (
+                    a.status IN ('completed','canceled','cancelled','refused')
+                    OR (a.scheduled_at IS NOT NULL AND a.scheduled_at < ?)
+                )";
                 $params[] = $userId;
+                $params[] = $parisStart->format('Y-m-d H:i:s');
             } elseif ($nurseSegment === 'relais') {
                 // Relais : créés par l’infirmier, encore à prendre par un confrère — pas ceux qu’il a lui-même redispatchés
                 $sql .= " AND a.type = 'nursing' AND a.created_by = ? AND a.status = 'pending' AND (a.assigned_nurse_id IS NULL OR a.assigned_nurse_id <> ?)

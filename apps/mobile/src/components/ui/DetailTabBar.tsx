@@ -1,11 +1,11 @@
 import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { radius, spacing } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 export type DetailTabBarItem<T extends string = string> = {
   id: T;
@@ -103,7 +103,6 @@ function buildDetailTabBarStyles(c: AppColors) {
       minHeight: 40,
       borderRadius: radius.md,
       paddingHorizontal: spacing[1.5],
-      paddingVertical: spacing[2],
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
@@ -120,7 +119,11 @@ function buildDetailTabBarStyles(c: AppColors) {
       flexShrink: 1,
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.xs,
+      lineHeight: lh(fontSize.xs, 1.15),
       color: c.textTertiary,
+      ...(Platform.OS === 'android'
+        ? { includeFontPadding: false, textAlignVertical: 'center' as const }
+        : null),
     },
     labelActive: {
       color: c.primaryDark,

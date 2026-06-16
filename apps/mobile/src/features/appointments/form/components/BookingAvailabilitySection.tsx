@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useEffect, useMemo } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Clock, Sun } from 'lucide-react-native';
 import { BookingTimeRangeSlider } from './BookingTimeRangeSlider';
@@ -13,7 +13,7 @@ import {
   clampAvailabilityRange,
 } from '../utils/booking-availability-utils';
 import { radius, spacing } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 interface Props {
   scheduledAt: string;
@@ -113,6 +113,8 @@ function buildStyles(c: AppColors) {
     minHeight: 40,
     borderRadius: radius.md,
     paddingHorizontal: spacing[2],
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   segmentActive: {
     backgroundColor: c.surface,
@@ -122,7 +124,11 @@ function buildStyles(c: AppColors) {
   segmentLabel: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.xs,
+    lineHeight: lh(fontSize.xs, 1.15),
     color: c.textTertiary,
+    ...(Platform.OS === 'android'
+      ? { includeFontPadding: false, textAlignVertical: 'center' as const }
+      : null),
   },
   segmentLabelActive: {
     color: c.primaryDark,

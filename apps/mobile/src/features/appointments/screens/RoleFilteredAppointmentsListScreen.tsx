@@ -21,6 +21,7 @@ import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { useAuthStore } from '@/store/auth-store';
 import { appointmentAddressLine } from '@/utils/appointment-display';
+import { isAppointmentPastForList } from '@/utils/patient-appointment-list';
 import {
   PRELEVEUR_STATUS_OPTIONS,
   PRO_STATUS_OPTIONS,
@@ -33,7 +34,6 @@ import type { Href } from 'expo-router';
 
 const PENDING = new Set(['pending', 'assigned', 'offered']);
 const ACTIVE = new Set(['confirmed', 'in_progress', 'on_the_way']);
-const DONE = new Set(['completed', 'canceled', 'cancelled', 'refused']);
 
 function matchesSearch(apt: Appointment, q: string): boolean {
   const s = q.toLowerCase().trim();
@@ -56,18 +56,24 @@ function isVisibleToPreleveur(apt: Appointment, userId: string | undefined): boo
 
 function matchesProStatus(apt: Appointment, filter: ProStatusFilter): boolean {
   const st = String(apt.status ?? '').toLowerCase();
+  const past = isAppointmentPastForList(apt);
+  if (filter === 'done') return past;
+  if (past) return false;
   if (filter === 'all') return true;
   if (filter === 'pending') return PENDING.has(st);
   if (filter === 'active') return ACTIVE.has(st);
-  return DONE.has(st);
+  return false;
 }
 
 function matchesPreleveurStatus(apt: Appointment, filter: PreleveurStatusFilter): boolean {
   const st = String(apt.status ?? '').toLowerCase();
+  const past = isAppointmentPastForList(apt);
+  if (filter === 'done') return past;
+  if (past) return false;
   if (filter === 'all') return true;
   if (filter === 'pending') return PENDING.has(st) || st === 'pending';
   if (filter === 'confirmed') return ACTIVE.has(st);
-  return DONE.has(st);
+  return false;
 }
 
 type RoleKind = 'pro' | 'preleveur';
