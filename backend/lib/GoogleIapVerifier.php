@@ -55,6 +55,46 @@ class GoogleIapVerifier
     }
 
     /**
+     * Achat in-app unique (consommable) — Horaire VIP patient.
+     *
+     * @return array{
+     *   original_transaction_id: string,
+     *   product_id: string,
+     *   status: string,
+     *   trial_ends_at: ?string,
+     *   current_period_end: ?string
+     * }
+     */
+    public function verifyProduct(string $productId, string $purchaseToken): array
+    {
+        if (!empty($this->iapConfig['allow_unverified'])) {
+            return $this->mockProductVerified($productId, $purchaseToken);
+        }
+
+        $package = $this->config['package_name'] ?? '';
+        $accessToken = $this->getAccessToken();
+
+        $url = sprintf(
+            'https://androidpublisher.googleapis.com/androidpublisher/v3/applications/%s/purchases/products/%s/tokens/%s',
+            rawurlencode($package),
+            rawurlencode($productId),
+            rawurlencode($purchaseToken)
+        );
+
+        $response = $this->httpGet($url, ['Authorization: Bearer ' . $accessToken]);
+        if (!$response) {
+            throw new RuntimeException('Validation Google Play produit échouée');
+        }
+
+        $json = json_decode($response, true);
+        if (!is_array($json)) {
+            throw new RuntimeException('Réponse Google Play produit invalide');
+        }
+
+        return $this->normalizeProduct($productId, $purchaseToken, $json);
+    }
+
+    /**
      * RTDN Pub/Sub message (base64 JSON).
      */
     public function parseNotification(array $message): array
@@ -125,6 +165,27 @@ class GoogleIapVerifier
         ];
     }
 
+    private function normalizeProduct(string $productId, string $purchaseToken, array $json): array
+    {
+        $purchaseState = (int) ($json['purchaseState'] ?? 1);
+        $consumptionState = (int) ($json['consumptionState'] ?? 0);
+
+        $status = 'active';
+        if ($purchaseState !== 0) {
+            $status = 'canceled';
+        } elseif ($consumptionState === 1) {
+            $status = 'canceled';
+        }
+
+        return [
+            'original_transaction_id' => $purchaseToken,
+            'product_id' => $productId,
+            'status' => $status,
+            'trial_ends_at' => null,
+            'current_period_end' => null,
+        ];
+    }
+
     private function getAccessToken(): string
     {
         $sa = $this->config['service_account'] ?? null;
@@ -177,6 +238,17 @@ class GoogleIapVerifier
             'status' => 'active',
             'trial_ends_at' => null,
             'current_period_end' => date('Y-m-d H:i:s', strtotime('+30 days')),
+        ];
+    }
+
+    private function mockProductVerified(string $productId, string $purchaseToken): array
+    {
+        return [
+            'original_transaction_id' => 'dev-' . substr(hash('sha256', $purchaseToken), 0, 32),
+            'product_id' => $productId ?: ($this->iapConfig['patient_vip_product_id'] ?? 'cary.patient.blood.vip'),
+            'status' => 'active',
+            'trial_ends_at' => null,
+            'current_period_end' => null,
         ];
     }
 

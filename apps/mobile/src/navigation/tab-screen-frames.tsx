@@ -31,6 +31,7 @@ export function TitledTabScreenFrame({
   headerRight,
   children,
   shellStyle,
+  floatingAction,
 }: {
   title: string;
   symbol: SFSymbol;
@@ -38,6 +39,7 @@ export function TitledTabScreenFrame({
   headerRight?: ReactNode;
   children: ReactNode;
   shellStyle?: object;
+  floatingAction?: ReactNode;
 }) {
   return (
     <TabScreenFrame
@@ -45,6 +47,7 @@ export function TitledTabScreenFrame({
       headerVisual="inline"
       headerRight={headerRight !== undefined ? headerRight : <HeaderNotificationBell />}
       shellStyle={shellStyle}
+      floatingAction={floatingAction}
     >
       {children}
     </TabScreenFrame>

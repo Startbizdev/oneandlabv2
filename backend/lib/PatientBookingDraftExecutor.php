@@ -33,7 +33,8 @@ final class PatientBookingDraftExecutor
         }
 
         $userId = (string) $draftRow['user_id'];
-        $stripeSessionId = (string) ($draftRow['stripe_checkout_session_id'] ?? '');
+        $paymentProvider = (string) ($draftRow['payment_provider'] ?? 'stripe');
+        $paymentRef = (string) ($draftRow['stripe_checkout_session_id'] ?? '');
         $storageDir = PatientBookingDraftStorage::draftDir((string) $draftRow['storage_subdir']);
 
         $appointmentModel = new Appointment();
@@ -55,11 +56,18 @@ final class PatientBookingDraftExecutor
                 $fd = [];
             }
             $existingUrgent = isset($fd['patient_urgency']) && is_array($fd['patient_urgency']) ? $fd['patient_urgency'] : [];
-            $fd['patient_urgency'] = array_merge($existingUrgent, [
+            $urgentPaid = [
                 'paid' => true,
                 'amount_cents' => PatientUrgencyConfig::URGENCY_AMOUNT_CENTS,
-                'stripe_checkout_session_id' => $stripeSessionId,
-            ]);
+            ];
+            if ($paymentProvider === 'apple' || $paymentProvider === 'google') {
+                $urgentPaid['payment_provider'] = $paymentProvider;
+                $urgentPaid['iap_product_id'] = (string) ($draftRow['iap_product_id'] ?? '');
+                $urgentPaid['iap_transaction_id'] = $paymentRef;
+            } else {
+                $urgentPaid['stripe_checkout_session_id'] = $paymentRef;
+            }
+            $fd['patient_urgency'] = array_merge($existingUrgent, $urgentPaid);
             $sanitized['form_data'] = $fd;
 
             $aptId = $appointmentModel->create($sanitized, $userId, 'patient');

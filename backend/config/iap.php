@@ -44,6 +44,7 @@ if ($googleJsonPath && file_exists($googleJsonPath)) {
 
 return [
     'product_id' => $_ENV['IAP_NURSE_PRO_PRODUCT_ID'] ?? 'cary.pro.monthly',
+    'patient_vip_product_id' => $_ENV['IAP_PATIENT_VIP_PRODUCT_ID'] ?? 'cary.patient.blood.vip',
     'plan_slug' => 'nurse_pro',
     'allow_unverified' => filter_var($_ENV['IAP_ALLOW_UNVERIFIED'] ?? 'false', FILTER_VALIDATE_BOOLEAN),
     'apple' => [

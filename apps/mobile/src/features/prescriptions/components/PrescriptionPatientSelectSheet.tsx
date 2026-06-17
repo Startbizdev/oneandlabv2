@@ -11,8 +11,8 @@ import {
   type ListRenderItem,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Check, Search } from 'lucide-react-native';
-import { Cluster } from '@/components/layout/primitives';
+import { Check, Search, UserPlus } from 'lucide-react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
@@ -21,7 +21,7 @@ import {
   patientListSubtitle,
   patientPickerOptionFromRow,
 } from '@/features/patients/utils/patient-contact-display';
-import { spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const H_PAD = spacing[4];
@@ -56,6 +56,7 @@ interface Props {
   isFetchingNextPage?: boolean;
   onLoadMore?: () => void;
   searchPlaceholder?: string;
+  onAddPatient?: () => void;
 }
 
 export function PrescriptionPatientSelectSheet({
@@ -70,6 +71,7 @@ export function PrescriptionPatientSelectSheet({
   isFetchingNextPage = false,
   onLoadMore,
   searchPlaceholder = 'Rechercher un patient…',
+  onAddPatient,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'PrescriptionPatientSelectSheet');
@@ -162,6 +164,19 @@ export function PrescriptionPatientSelectSheet({
           leftIcon={<Search size={16} color={c.textTertiary} strokeWidth={2} />}
           autoCorrect={false}
         />
+        {onAddPatient ? (
+          <Pressable
+            onPress={onAddPatient}
+            style={styles.addPatientBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Ajouter un patient"
+          >
+            <Row gap={spacing[2]} align="center" justify="center">
+              <UserPlus size={18} color={c.primary} strokeWidth={2.25} />
+              <Text style={styles.addPatientText}>Ajouter un patient</Text>
+            </Row>
+          </Pressable>
+        ) : null}
       </View>
 
       {initialLoading ? (
@@ -215,6 +230,20 @@ function buildStyles(c: AppColors) {
     searchWrap: {
       paddingHorizontal: H_PAD,
       paddingBottom: spacing[2],
+      gap: spacing[2],
+    },
+    addPatientBtn: {
+      borderWidth: 1,
+      borderColor: c.primaryMid,
+      borderRadius: radius.lg,
+      backgroundColor: c.primaryLight,
+      paddingVertical: spacing[2.5],
+      paddingHorizontal: spacing[3],
+    },
+    addPatientText: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.sm,
+      color: c.primary,
     },
     listPanel: {
       alignSelf: 'stretch' as const,

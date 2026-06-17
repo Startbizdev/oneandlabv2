@@ -26,7 +26,10 @@ function authClientIp(): string
 
 function authExposeOtpInResponse(): bool
 {
-    // Temporaire : OTP en clair dans la réponse sauf EXPOSE_OTP_IN_API=false explicite.
-    // Remettre le garde-fou prod (APP_ENV) quand les tests auth dual seront terminés.
-    return filter_var($_ENV['EXPOSE_OTP_IN_API'] ?? 'true', FILTER_VALIDATE_BOOLEAN);
+    if (array_key_exists('EXPOSE_OTP_IN_API', $_ENV)) {
+        return filter_var($_ENV['EXPOSE_OTP_IN_API'], FILTER_VALIDATE_BOOLEAN);
+    }
+
+    $env = strtolower(trim((string) ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production')));
+    return in_array($env, ['development', 'dev', 'local'], true);
 }

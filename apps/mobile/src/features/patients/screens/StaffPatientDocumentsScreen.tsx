@@ -1,7 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
+import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
@@ -34,6 +36,8 @@ export function StaffPatientDocumentsScreen() {
     },
     enabled: Boolean(id),
   });
+
+  const pullRefresh = useManualRefresh(() => profileQ.refetch());
 
   const patientFullName = useMemo(() => {
     if (!profileQ.data) return undefined;
@@ -69,10 +73,9 @@ export function StaffPatientDocumentsScreen() {
         {...spreadTabSceneScrollProps(scrollConfig)}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={profileQ.isRefetching}
-            onRefresh={() => void profileQ.refetch()}
-            tintColor={c.primary}
+          <AppRefreshControl
+            refreshing={pullRefresh.refreshing}
+            onRefresh={pullRefresh.onRefresh}
             progressViewOffset={scrollConfig.refreshProgressOffset}
           />
         }

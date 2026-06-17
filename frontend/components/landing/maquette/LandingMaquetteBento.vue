@@ -20,17 +20,9 @@
         <div
           class="relative aspect-[4/3] w-full max-w-[360px] overflow-hidden rounded-[22px] border border-[#E8E8F0] lg:max-w-none lg:justify-self-end dark:border-gray-800"
         >
-          <img
-            src="/images/landing/landing-platform-network.svg"
-            alt="Réseau Cary : infirmiers, laboratoires, médecins et patients"
-            width="800"
-            height="600"
-            class="h-full w-full object-cover"
-            loading="lazy"
-            decoding="async"
-          />
+          <LandingIllustration variant="platform-network" />
           <div
-            class="pointer-events-none absolute inset-0 bg-gradient-to-t from-primary-500/20 via-transparent to-transparent"
+            class="pointer-events-none absolute inset-0 bg-gradient-to-t from-primary-500/15 via-transparent to-transparent"
             aria-hidden="true"
           />
         </div>

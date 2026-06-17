@@ -24,7 +24,6 @@ import {
 } from '@/lib/auth/mobile-access';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
-import { isDevBuild } from '@/config/env';
 import { offerBiometricEnrollment } from '@/features/auth/utils/offer-biometric-enrollment';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -59,7 +58,6 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
   const [hasPassword, setHasPassword] = useState<boolean | null>(null);
   const [forgotSent, setForgotSent] = useState(false);
   const [otp, setOtp] = useState('');
-  const [devOtp, setDevOtp] = useState('');
   const [userId, setUserId] = useState('');
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
@@ -68,7 +66,6 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
   const setSession = useAuthStore((s) => s.setSession);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
-  const showDev = isDevBuild();
 
   function emitMeta(
     nextMode: LoginMode,
@@ -151,16 +148,14 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
         return;
       }
       const res = await requestOtp(trimmed);
-      const { userId: uid, sessionId: sid, otp: code } = parseRequestOtpResponse(res);
+      const { userId: uid, sessionId: sid } = parseRequestOtpResponse(res);
       if (!res.success || !uid) throw new Error(res.error ?? "Impossible d'envoyer le code");
       setUserId(uid);
       setSessionId(sid);
-      setDevOtp(code ?? '');
-      if (code) setOtp(code);
       goToOtp(trimmed);
       setTimeout(() => otpRef.current?.focus(), 400);
       toast('Code envoyé', {
-        message: code ? `Dev · ${code}` : 'Vérifiez votre boîte mail',
+        message: 'Vérifiez votre boîte mail',
         type: 'success',
       });
     } catch (e) {
@@ -316,15 +311,6 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
 
       {mode === 'code' && step === 'otp' ? (
         <>
-          {showDev && devOtp ? (
-            <Pressable
-              onPress={() => setOtp(devOtp)}
-              style={[styles.devBanner, { borderColor: c.success, backgroundColor: c.successLight }]}
-            >
-              <Text style={[styles.devCode, { color: c.success }]}>Dev · {devOtp}</Text>
-              <Text style={[styles.devHint, { color: c.textSecondary }]}>Appuyer pour remplir</Text>
-            </Pressable>
-          ) : null}
           <Input
             ref={otpRef}
             label="Code à 6 chiffres"
@@ -435,23 +421,6 @@ function buildStyles(c: AppColors) {
   tabText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
-  },
-  devBanner: {
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderStyle: 'dashed' as const,
-    padding: spacing[3],
-    alignItems: 'center' as const,
-    gap: 4,
-  },
-  devCode: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.base,
-    letterSpacing: 1,
-  },
-  devHint: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
   },
   backBtn: {
     paddingVertical: spacing[1],

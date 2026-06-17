@@ -47,12 +47,6 @@ if (!in_array($role, ['pro', 'nurse', 'super_admin'], true)) {
 }
 
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
-$prescriptionText = trim($input['prescription_text'] ?? $input['prescription'] ?? '');
-$patientId = trim((string) ($input['patient_id'] ?? ''));
-$appointmentId = isset($input['appointment_id']) ? trim((string) $input['appointment_id']) : null;
-if ($appointmentId === '') {
-    $appointmentId = null;
-}
 
 if ($role === 'nurse' && ($input['prescription_kind'] ?? '') === PrescriptionService::KIND_MEDICAL) {
     http_response_code(403);
@@ -67,6 +61,16 @@ try {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     exit;
 }
+
+$patientId = trim((string) ($input['patient_id'] ?? ''));
+$appointmentId = isset($input['appointment_id']) ? trim((string) $input['appointment_id']) : null;
+if ($appointmentId === '') {
+    $appointmentId = null;
+}
+
+$resolved = PrescriptionService::resolvePrescriptionInput($input, $prescriptionKind);
+$prescriptionText = $resolved['text'];
+$prescriptionSections = $resolved['sections'];
 
 $textError = PrescriptionService::validatePrescriptionText($prescriptionKind, $prescriptionText);
 if ($textError !== null) {
@@ -89,7 +93,8 @@ $result = PrescriptionService::generatePrescriptionRequest(
     $patientId,
     $appointmentId,
     isset($input['prescription_date']) ? trim((string) $input['prescription_date']) : null,
-    !empty($input['include_handwritten_signature'])
+    !empty($input['include_handwritten_signature']),
+    $prescriptionSections
 );
 
 if (!$result['success']) {

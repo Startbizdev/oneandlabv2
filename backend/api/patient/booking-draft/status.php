@@ -34,9 +34,10 @@ if (($user['role'] ?? '') !== 'patient') {
 }
 
 $sessionId = trim((string) ($_GET['session_id'] ?? ''));
-if ($sessionId === '') {
+$draftId = trim((string) ($_GET['draft_id'] ?? ''));
+if ($sessionId === '' && $draftId === '') {
     http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'session_id requis']);
+    echo json_encode(['success' => false, 'error' => 'session_id ou draft_id requis']);
     exit;
 }
 
@@ -44,8 +45,13 @@ $config = require __DIR__ . '/../../../config/database.php';
 $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
 
-$stmt = $db->prepare('SELECT * FROM patient_booking_drafts WHERE stripe_checkout_session_id = ? AND user_id = ? LIMIT 1');
-$stmt->execute([$sessionId, $user['user_id']]);
+if ($draftId !== '') {
+    $stmt = $db->prepare('SELECT * FROM patient_booking_drafts WHERE id = ? AND user_id = ? LIMIT 1');
+    $stmt->execute([$draftId, $user['user_id']]);
+} else {
+    $stmt = $db->prepare('SELECT * FROM patient_booking_drafts WHERE stripe_checkout_session_id = ? AND user_id = ? LIMIT 1');
+    $stmt->execute([$sessionId, $user['user_id']]);
+}
 $draft = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$draft) {
     http_response_code(404);

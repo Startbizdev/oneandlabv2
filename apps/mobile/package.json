@@ -8,6 +8,7 @@
     "eas-build-post-install": "node scripts/eas-chmod-pod-scripts.cjs",
     "bundle:ios:verify": "expo export --platform ios",
     "verify:eas": "node scripts/verify-eas-archive-size.cjs && node scripts/verify-eas-preflight.cjs",
+    "postinstall": "node scripts/patch-expo-ngrok.cjs",
     "start": "node scripts/start-expo-dev.cjs",
     "start:localhost": "expo start",
     "start:tunnel": "node scripts/start-expo-dev.cjs --tunnel",
@@ -92,6 +93,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
+    "@expo/ngrok": "^4.1.3",
     "@types/react": "~19.1.0",
     "@typescript-eslint/eslint-plugin": "^8.18.2",
     "@typescript-eslint/parser": "^8.18.2",

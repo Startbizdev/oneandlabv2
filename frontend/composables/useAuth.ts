@@ -12,7 +12,7 @@ export const useAuth = () => {
     return !!token.value;
   });
   
-  const login = async (email: string): Promise<{ success: boolean; userId?: string; sessionId?: string; otp?: string; error?: string }> => {
+  const login = async (email: string): Promise<{ success: boolean; userId?: string; sessionId?: string; error?: string }> => {
     try {
       const response = await apiFetch('/auth/request-otp', {
         method: 'POST',
@@ -24,7 +24,6 @@ export const useAuth = () => {
           success: true, 
           userId: response.user_id,
           sessionId: response.session_id,
-          otp: response.otp, // En dev, le backend renvoie l'OTP
         };
       }
       

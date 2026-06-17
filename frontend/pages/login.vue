@@ -185,13 +185,6 @@
                 Envoyé à
                 <span class="font-medium text-gray-800 dark:text-gray-200">{{ email }}</span>
               </p>
-              <div
-                v-if="devOtp"
-                class="rounded-md border border-dashed border-emerald-200 bg-emerald-50/80 px-3 py-2 text-center font-mono text-sm font-medium text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-200"
-              >
-                Dev · {{ devOtp }}
-              </div>
-
               <UFormField name="otp" class="[&_[data-slot=label]]:sr-only" label="Code">
                 <div class="flex justify-center">
                   <UPinInput
@@ -294,7 +287,6 @@ const resending = ref(false)
 const userId = ref('')
 const sessionId = ref('')
 const otpDigits = ref<string[]>([])
-const devOtp = ref('') // OTP affiché en dev (fourni par le backend)
 const countdown = ref(0)
 
 const otpString = computed(() => {
@@ -459,11 +451,10 @@ async function sendOTP() {
     if (result.success && result.userId) {
       userId.value = result.userId
       sessionId.value = result.sessionId || ''
-      devOtp.value = result.otp || ''
       otpDigits.value = []
       step.value = 'otp'
       startCountdown()
-      toast.add({ title: 'Code envoyé', description: result.otp ? `Code: ${result.otp}` : 'Vérifiez votre boîte de réception', color: 'green' })
+      toast.add({ title: 'Code envoyé', description: 'Vérifiez votre boîte de réception', color: 'green' })
     } else {
       toast.add({ title: 'Erreur', description: result.error || "Impossible d'envoyer le code", color: 'red' })
     }
@@ -523,10 +514,9 @@ async function resendOTP() {
     if (result.success && result.userId) {
       userId.value = result.userId
       sessionId.value = result.sessionId || ''
-      devOtp.value = result.otp || ''
       otpDigits.value = []
       startCountdown()
-      toast.add({ title: 'Code renvoyé', description: result.otp ? `Code: ${result.otp}` : 'Un nouveau code a été envoyé', color: 'green' })
+      toast.add({ title: 'Code renvoyé', description: 'Un nouveau code a été envoyé', color: 'green' })
     } else {
       toast.add({ title: 'Erreur', description: result.error || "Erreur lors de l'envoi", color: 'red' })
     }
@@ -541,7 +531,6 @@ async function resendOTP() {
 function goBackToEmail() {
   step.value = 'email'
   otpDigits.value = []
-  devOtp.value = ''
   countdown.value = 0
   if (countdownInterval) {
     clearInterval(countdownInterval)

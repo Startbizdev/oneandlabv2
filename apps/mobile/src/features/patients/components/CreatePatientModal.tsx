@@ -22,12 +22,18 @@ import {
 import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
+export type CreatedPatientResult = Pick<PatientRow, 'id' | 'first_name' | 'last_name'> & {
+  phone?: string;
+  email?: string;
+};
+
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated?: (patient: CreatedPatientResult) => void;
   /** Dossier déjà existant — fermer sans effacer (liste rafraîchie côté parent). */
   onExistingPatient?: (patient: PatientRow) => void;
+  stackBehavior?: 'push' | 'switch' | 'replace';
 };
 
 function addressForApi(
@@ -45,7 +51,13 @@ function addressForApi(
   };
 }
 
-export function CreatePatientModal({ visible, onClose, onCreated, onExistingPatient }: Props) {
+export function CreatePatientModal({
+  visible,
+  onClose,
+  onCreated,
+  onExistingPatient,
+  stackBehavior,
+}: Props) {
   const styles = useThemedStyles(buildStyles, 'features_patients_components_CreatePatientModal_tsx_styles');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -120,7 +132,13 @@ export function CreatePatientModal({ visible, onClose, onCreated, onExistingPati
         }
       }
       reset();
-      onCreated();
+      onCreated?.({
+        id: patientId,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        phone: phone.trim(),
+        ...(email.trim() ? { email: email.trim() } : {}),
+      });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur');
@@ -130,7 +148,12 @@ export function CreatePatientModal({ visible, onClose, onCreated, onExistingPati
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Nouveau patient">
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title="Nouveau patient"
+      stackBehavior={stackBehavior}
+    >
       {duplicateOpen && duplicateRow ? (
         <PatientDuplicatePrompt
           patient={duplicateRow}

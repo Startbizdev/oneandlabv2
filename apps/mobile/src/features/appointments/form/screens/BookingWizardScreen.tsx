@@ -18,7 +18,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { CareSelectionStep } from '../components/CareSelectionStep';
 import { FormScheduleSection } from '../components/FormScheduleSection';
 import { PreferredNurseGenderButtons } from '../components/PreferredNurseGenderButtons';
-import { isNursingAppointment } from '@oneandlab/shared-utils';
+import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { FormPatientSection } from '../components/FormPatientSection';
 import { FormDocumentsSection } from '../components/FormDocumentsSection';
 import { WizardDocumentFields } from '../components/WizardDocumentFields';
@@ -31,7 +31,7 @@ import { BookingWizardSegmentContext } from '../components/BookingWizardSegmentC
 import { RelativeQuickAddSheet } from '../components/RelativeQuickAddSheet';
 import { useBookingWizard } from '../hooks/useBookingWizard';
 import { NEW_PATIENT_ID } from '../types';
-import { buildAvailabilityFormPatch, parseAvailabilityField } from '../utils/availability';
+import { buildAvailabilityFormPatch, parseAvailabilityField, type AvailabilityType, type UrgentTimingMode } from '../utils/availability';
 import type { PatientRelative } from '@/features/patient-relatives/api/patient-relatives.service';
 import { SkeletonCareSelectionStep } from '@/components/ui/skeletons';
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
@@ -130,13 +130,48 @@ export function BookingWizardScreen({
   const availability = parseAvailabilityField(fd.availability, {
     availability_type: fd.availability_type,
     availabilityRange: fd.availabilityRange,
+    urgentHour: fd.urgentHour,
+    urgentMinute: fd.urgentMinute,
+    urgentTimingMode: fd.urgentTimingMode,
   });
   const setFd = (patch: Record<string, unknown>) => {
     w.setFormDataByService((prev) => ({ ...prev, [svcId]: { ...prev[svcId], ...patch } }));
   };
-  const setAvailability = (type: 'all_day' | 'custom', range: [number, number]) => {
-    setFd(buildAvailabilityFormPatch(type, range));
+  const patchVipSchedule = (patch: {
+    type?: AvailabilityType;
+    range?: [number, number];
+    mode?: UrgentTimingMode;
+    hour?: number;
+    minute?: number;
+  }) => {
+    w.setFormDataByService((prev) => {
+      const slice = { ...(prev[svcId] ?? {}) };
+      const parsed = parseAvailabilityField(slice.availability, {
+        availability_type: slice.availability_type,
+        availabilityRange: slice.availabilityRange,
+        urgentHour: slice.urgentHour,
+        urgentMinute: slice.urgentMinute,
+        urgentTimingMode: slice.urgentTimingMode,
+      });
+      const type = patch.type ?? parsed.type;
+      const range = patch.range ?? parsed.range;
+      const mode = patch.mode ?? parsed.urgentTimingMode;
+      const hour = patch.hour ?? parsed.urgentHour;
+      const minute = patch.minute ?? parsed.urgentMinute;
+      return {
+        ...prev,
+        [svcId]: {
+          ...slice,
+          ...buildAvailabilityFormPatch(
+            type,
+            range,
+            type === 'urgent' ? { mode, hour, minute } : undefined,
+          ),
+        },
+      };
+    });
   };
+  const showVipTab = mode === 'patient' && svc ? isBloodTestAppointment(svc.type) : false;
 
   const skipRx = svc ? bw.careSkipsPrescription(svc.category_id) : false;
   const hideNurseGender = mode === 'dashboard' && role === 'nurse';
@@ -200,9 +235,32 @@ export function BookingWizardScreen({
               serviceType={svc.type}
               availabilityType={availability.type}
               range={availability.range}
+              showVipTab={showVipTab}
+              urgentHour={availability.urgentHour}
+              urgentMinute={availability.urgentMinute}
+              urgentTimingMode={availability.urgentTimingMode}
               onScheduledAt={(v) => setFd({ scheduled_at: v })}
-              onAvailabilityType={(t) => setAvailability(t, availability.range)}
-              onRange={(r) => setAvailability(availability.type, r)}
+              onAvailabilityType={(t) =>
+                patchVipSchedule({
+                  type: t,
+                  range: availability.range,
+                  mode: availability.urgentTimingMode,
+                  hour: availability.urgentHour,
+                  minute: availability.urgentMinute,
+                })
+              }
+              onRange={(r) =>
+                patchVipSchedule({
+                  type: availability.type,
+                  range: r,
+                  mode: availability.urgentTimingMode,
+                  hour: availability.urgentHour,
+                  minute: availability.urgentMinute,
+                })
+              }
+              onUrgentHour={(h) => patchVipSchedule({ type: 'urgent', hour: h })}
+              onUrgentMinute={(m) => patchVipSchedule({ type: 'urgent', minute: m })}
+              onUrgentTimingMode={(m) => patchVipSchedule({ type: 'urgent', mode: m })}
             />
             {showNurseGenderOnSlot ? (
               <PreferredNurseGenderButtons

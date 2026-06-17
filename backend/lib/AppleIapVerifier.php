@@ -30,7 +30,7 @@ class AppleIapVerifier
     public function verifyPurchase(string $transactionId, ?string $signedTransaction = null): array
     {
         if (!empty($this->iapConfig['allow_unverified'])) {
-            return $this->mockVerified($transactionId);
+            return $this->mockVerified($transactionId, $signedTransaction);
         }
 
         $payload = null;
@@ -167,11 +167,21 @@ class AppleIapVerifier
         ];
     }
 
-    private function mockVerified(string $transactionId): array
+    private function mockVerified(string $transactionId, ?string $signedTransaction = null): array
     {
+        $productId = $this->iapConfig['product_id'] ?? 'cary.pro.monthly';
+        if ($signedTransaction) {
+            $payload = IapJwtHelper::decodeJwsPayload($signedTransaction);
+            if (!empty($payload['productId'])) {
+                $productId = (string) $payload['productId'];
+            } elseif (!empty($payload['product_id'])) {
+                $productId = (string) $payload['product_id'];
+            }
+        }
+
         return [
             'original_transaction_id' => 'dev-' . $transactionId,
-            'product_id' => $this->iapConfig['product_id'] ?? 'cary.pro.monthly',
+            'product_id' => $productId,
             'status' => 'active',
             'trial_ends_at' => null,
             'current_period_end' => date('Y-m-d H:i:s', strtotime('+30 days')),

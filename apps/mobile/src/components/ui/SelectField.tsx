@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { ChevronDown } from 'lucide-react-native';
 import { BottomSheet } from './BottomSheet';
@@ -21,6 +21,8 @@ interface Props {
   placeholder?: string;
   error?: string;
   sheetTitle?: string;
+  /** Masque le libellé au-dessus du champ (ex. sélecteurs Heure / Minutes côte à côte). */
+  hideLabel?: boolean;
 }
 
 export function SelectField({
@@ -31,6 +33,7 @@ export function SelectField({
   placeholder = 'Choisir…',
   error,
   sheetTitle,
+  hideLabel = false,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'components_ui_SelectField_tsx_styles');
@@ -64,7 +67,7 @@ export function SelectField({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+      {hideLabel ? null : <Text style={styles.label}>{label}</Text>}
       <Pressable
         onPress={() => setOpen((prev) => (inSheet ? !prev : true))}
         style={[styles.trigger, error ? styles.triggerError : null, open && inSheet && styles.triggerOpen]}
@@ -72,14 +75,14 @@ export function SelectField({
         accessibilityLabel={`${label}, ${selectedLabel ?? placeholder}`}
         accessibilityState={{ expanded: open }}
       >
-        <Row gap={spacing[2]}>
+        <Row gap={spacing[2]} align="center" style={styles.triggerRow}>
           <Text
             style={[styles.triggerText, !selectedLabel && styles.placeholder]}
-            numberOfLines={2}
+            numberOfLines={1}
           >
             {selectedLabel ?? placeholder}
           </Text>
-          <View style={open && inSheet ? styles.chevronOpen : undefined}>
+          <View style={[styles.chevronWrap, open && inSheet && styles.chevronOpen]}>
             <ChevronDown size={18} color={c.textSecondary} strokeWidth={2} />
           </View>
         </Row>
@@ -130,13 +133,24 @@ function buildStyles(c: AppColors) {
     borderColor: c.border,
     backgroundColor: c.surface,
     paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
+    justifyContent: 'center' as const,
+  },
+  triggerRow: {
+    width: '100%' as const,
+    minHeight: 24,
   },
   triggerError: { borderColor: c.borderError },
   triggerOpen: {
     borderColor: c.primary,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
+  },
+  chevronWrap: {
+    width: 24,
+    height: 24,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    flexShrink: 0,
   },
   chevronOpen: { transform: [{ rotate: '180deg' }] },
   inlinePanel: {
@@ -155,7 +169,11 @@ function buildStyles(c: AppColors) {
     flex: 1,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
+    lineHeight: fontSize.sm * 1.25,
     color: c.textPrimary,
+    ...(Platform.OS === 'android'
+      ? { includeFontPadding: false, textAlignVertical: 'center' as const }
+      : null),
   },
   placeholder: { color: c.textTertiary },
   error: {
@@ -167,8 +185,8 @@ function buildStyles(c: AppColors) {
   item: {
     minHeight: 52,
     justifyContent: 'center' as const,
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[1],
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: c.borderLight,
   },
@@ -176,8 +194,11 @@ function buildStyles(c: AppColors) {
   itemText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.base,
+    lineHeight: fontSize.base * 1.25,
     color: c.textPrimary,
-    lineHeight: fontSize.base * 1.4,
+    ...(Platform.OS === 'android'
+      ? { includeFontPadding: false, textAlignVertical: 'center' as const }
+      : null),
   },
   itemTextActive: { color: c.primary, fontFamily: fontFamily.semiBold },
 };

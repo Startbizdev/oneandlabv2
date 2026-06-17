@@ -477,13 +477,21 @@ Cary — Prélèvement et soins infirmiers à domicile
      */
     public function sendOTP(string $to, string $otp): bool
     {
-        // DEV: Logger l'OTP dans la console
-        error_log("🔐 OTP pour $to: $otp");
-        
-        // MODE DEV: Si pas de config SMTP, skip l'envoi (juste logger)
+        $isDev = in_array(
+            strtolower(trim((string) ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production'))),
+            ['development', 'dev', 'local'],
+            true
+        );
+        if ($isDev) {
+            error_log("🔐 OTP pour $to: $otp");
+        }
+
+        // Si pas de config SMTP, skip l'envoi (dev local uniquement)
         if (empty($this->smtpUser) || empty($this->smtpPass)) {
-            error_log("⚠️ SMTP non configuré - OTP non envoyé (mode DEV)");
-            return true; // Succès simulé
+            if ($isDev) {
+                error_log("⚠️ SMTP non configuré - OTP non envoyé (mode DEV)");
+            }
+            return true;
         }
         
         $subject = 'Votre code de connexion Cary';

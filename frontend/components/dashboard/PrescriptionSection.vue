@@ -68,14 +68,7 @@
         />
       </div>
 
-      <UFormField :label="textareaLabel" name="prescription">
-        <UTextarea
-          v-model="prescriptionText"
-          :placeholder="textareaPlaceholder"
-          :rows="6"
-          class="font-mono text-sm w-full"
-        />
-      </UFormField>
+      <PrescriptionMedicalFields v-model="medicalFields" />
       <div class="flex flex-wrap gap-2">
         <UButton
           color="primary"
@@ -137,9 +130,14 @@
 <script setup lang="ts">
 import PrescriptionSignaturePad from '~/components/prescription/PrescriptionSignaturePad.vue';
 import PrescriptionProfileGapsAlert from '~/components/prescription/PrescriptionProfileGapsAlert.vue';
+import PrescriptionMedicalFields from '~/components/prescription/PrescriptionMedicalFields.vue';
 import {
   getPrescriptionProfileGaps,
   type PrescriptionProfileSnapshot,
+  composeMedicalPrescriptionText,
+  hasMedicalPrescriptionContent,
+  parseMedicalPrescriptionText,
+  type MedicalPrescriptionFields,
 } from '@oneandlab/shared-utils';
 const props = defineProps<{
   patientId: string;
@@ -162,18 +160,13 @@ const sectionTitle = computed(() =>
 const saveButtonLabel = computed(() =>
   linkedToAppointment.value ? 'Enregistrer sur le RDV' : 'Enregistrer l\'ordonnance',
 );
-const textareaLabel = computed(() =>
-  kind.value === 'nursing'
-    ? 'Actes de soins infirmiers (pansements, injections, surveillance…)'
-    : 'Prescription (médicaments, posologie, durée…)',
-);
-const textareaPlaceholder = computed(() =>
-  kind.value === 'nursing'
-    ? 'Ex: Pansement quotidien — surveillance plaie — injection sous-cutanée…'
-    : 'Ex: Doliprane 1000mg - 1 cp x 3/jour pendant 5 jours...',
-);
 
-const prescriptionText = ref(props.initialPrescriptionText ?? '');
+const medicalFields = ref<MedicalPrescriptionFields>(
+  parseMedicalPrescriptionText(props.initialPrescriptionText ?? ''),
+);
+const composedPrescriptionText = computed(() =>
+  composeMedicalPrescriptionText(medicalFields.value),
+);
 const prescriptionDate = ref(new Date().toISOString().slice(0, 10));
 const includeSignature = ref(true);
 const signatureModalOpen = ref(false);
@@ -196,7 +189,7 @@ const previewFileName = ref('ordonnance.pdf');
 let previewBlobUrl: string | null = null;
 
 const canGenerate = computed(() =>
-  Boolean(props.patientId?.trim()) && Boolean(prescriptionText.value.trim()),
+  Boolean(props.patientId?.trim()) && hasMedicalPrescriptionContent(medicalFields.value),
 );
 
 const hasStoredSignature = computed(() => Boolean(storedSignaturePng.value?.trim()));
@@ -314,7 +307,8 @@ async function onGenerateClick() {
 }
 
 watch(() => props.initialPrescriptionText, (v) => {
-  if (v != null && v !== prescriptionText.value) prescriptionText.value = v;
+  if (v == null) return;
+  medicalFields.value = parseMedicalPrescriptionText(v);
 }, { immediate: true });
 
 const hasExistingOrdonnance = computed(() =>
@@ -364,7 +358,7 @@ async function uploadGeneratedPrescription(base64: string, fileName: string) {
     formData.append('appointment_id', props.appointment.id);
   }
   formData.append('prescription_kind', generatedMeta.value?.prescription_kind || kind.value);
-  formData.append('prescription_text', prescriptionText.value.trim());
+  formData.append('prescription_text', composedPrescriptionText.value);
   if (generatedMeta.value?.prescription_number) {
     formData.append('prescription_number', generatedMeta.value.prescription_number);
   }
@@ -380,9 +374,11 @@ async function generatePdf() {
   try {
     const body: Record<string, string> = {
       patient_id: props.patientId,
-      prescription_text: prescriptionText.value.trim(),
       prescription_kind: kind.value,
       prescription_date: prescriptionDate.value,
+      ald_prescription: medicalFields.value.ald.trim(),
+      hors_ald_prescription: medicalFields.value.horsAld.trim(),
+      prescription_text: composedPrescriptionText.value,
     };
     if (props.appointment?.id) {
       body.appointment_id = props.appointment.id;
