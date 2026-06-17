@@ -34,20 +34,12 @@
           "
         >
           <div
-            v-if="card.image && !card.highlight"
+            v-if="card.illustration && !card.highlight"
             class="relative aspect-[4/3] w-full overflow-hidden"
           >
-            <img
-              :src="card.image"
-              :alt="card.imageAlt"
-              width="800"
-              height="600"
-              class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-              loading="lazy"
-              decoding="async"
-            />
+            <LandingIllustration :variant="card.illustration" />
             <div
-              class="pointer-events-none absolute inset-0 bg-gradient-to-t from-primary-500/35 via-primary-500/10 to-transparent"
+              class="pointer-events-none absolute inset-0 bg-gradient-to-t from-primary-500/20 via-transparent to-transparent"
               aria-hidden="true"
             />
           </div>
@@ -97,16 +89,14 @@ const cards = [
     icon: 'i-lucide-check-circle-2',
     title: 'Confirmation immédiate',
     body: 'Un professionnel qualifié disponible dans votre secteur accepte la demande. Vous recevez une confirmation par SMS et par email.',
-    image: '/images/landing/landing-process-confirmation.svg',
-    imageAlt: 'Confirmation de rendez-vous par SMS et email',
+    illustration: 'confirmation' as const,
   },
   {
     highlight: false,
     icon: 'i-lucide-house',
     title: 'Soins à domicile',
     body: "Le professionnel intervient chez vous à l'heure convenue avec le matériel adapté. Qualité hospitalière dans votre foyer.",
-    image: '/images/landing/landing-process-home-care.svg',
-    imageAlt: 'Soins infirmiers à domicile par un professionnel Cary',
+    illustration: 'home-care' as const,
   },
 ] as const;
 </script>

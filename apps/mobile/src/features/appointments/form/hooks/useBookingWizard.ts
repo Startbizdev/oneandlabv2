@@ -12,6 +12,15 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { createMultipleAppointments } from '@/features/appointments/api/create-multiple-appointments';
+import {
+  createPatientBookingDraft,
+} from '@/features/appointments/api/booking-draft.service';
+import { buildPatientBookingDraftFormData } from '../utils/build-booking-draft-form-data';
+import {
+  enrichFormDataByServiceForVip,
+  patientBookingNeedsVipPayment,
+} from '../utils/patient-vip-booking';
+import { usePatientVipIap } from './use-patient-vip-iap';
 import { randomUUID } from '@/lib/uuid';
 import { useAuthStore } from '@/store/auth-store';
 import { fetchPatientRelatives, fetchPatientRelative, type PatientRelative } from '@/features/patient-relatives/api/patient-relatives.service';
@@ -46,6 +55,7 @@ export function useBookingWizard(opts: {
   const router = useRouter();
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
+  const patientVipIap = usePatientVipIap();
 
   const [step, setStep] = useState(0);
   const [wizardIndex, setWizardIndex] = useState(0);
@@ -394,14 +404,17 @@ export function useBookingWizard(opts: {
       if (!patientId) throw new Error('Utilisateur non connecté');
 
       const firstServiceId = documentsSlotRows[0]?.id ?? slotRows[0]?.id;
-      formData.formDataByService = mergePersonalFilesIntoFormData(
+      let formDataByService = mergePersonalFilesIntoFormData(
         wizard.formDataByService,
         personalFiles,
         firstServiceId,
       );
+      formDataByService = enrichFormDataByServiceForVip(formDataByService, wizard.selectedServices);
+
+      const needsVip = patientBookingNeedsVipPayment(formDataByService, wizard.selectedServices);
 
       const batchId = randomUUID();
-      let payloads = buildDashboardAppointmentPayloads(patientId!, formData, wizard.selectedServices, {
+      let payloads = buildDashboardAppointmentPayloads(patientId!, { ...formData, formDataByService }, wizard.selectedServices, {
         creationBatchId: batchId,
         creatorRole: 'patient',
         creatorUserId: user?.id ?? '',
@@ -411,9 +424,25 @@ export function useBookingWizard(opts: {
         payloads = payloads.map((p) => ({ ...p, relative_id: selectedRelativeId }));
       }
 
+      if (needsVip) {
+        const draftFd = await buildPatientBookingDraftFormData(
+          payloads as Array<Record<string, unknown> & { files?: Record<string, unknown> }>,
+        );
+        const draftRes = await createPatientBookingDraft(draftFd);
+        if (!draftRes.success || !draftRes.data?.draft_id) {
+          throw new Error(draftRes.error ?? 'Échec enregistrement du brouillon');
+        }
+        const appointmentIds = await patientVipIap.purchaseVipForDraft(draftRes.data.draft_id);
+        return appointmentIds[0];
+      }
+
       const result = await createMultipleAppointments(payloads);
       if (!result.success) throw new Error(result.error ?? 'Création impossible');
       return result.createdIds[0];
+    },
+    onError: (e) => {
+      if (e instanceof Error && e.message === 'USER_CANCELLED') return;
+      handleApiError(e, toast, 'bookingWizard');
     },
     onSuccess: (id) => {
       toast('Rendez-vous créé', { type: 'success' });
@@ -426,7 +455,6 @@ export function useBookingWizard(opts: {
         router.replace(`${opts.basePath}/appointments` as never);
       }
     },
-    onError: (e) => handleApiError(e, toast, 'bookingWizard'),
   });
 
   const validateCurrentStep = useCallback(() => {
@@ -559,7 +587,7 @@ export function useBookingWizard(opts: {
     applyRelativeToForm,
     relatives: relativesQ.data ?? [],
     relativesLoading: relativesQ.isLoading,
-    saving: wizard.saving || submitMut.isPending,
+    saving: wizard.saving || submitMut.isPending || patientVipIap.purchaseLoading,
     validationError,
     submit: () => submitMut.mutate(),
   };

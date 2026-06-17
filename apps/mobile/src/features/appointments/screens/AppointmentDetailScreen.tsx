@@ -1,10 +1,12 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { useQuery } from '@tanstack/react-query';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
+import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
@@ -188,6 +190,8 @@ export function AppointmentDetailScreen({ role }: Props) {
     s.refreshAll();
   });
   const scrollConfig = useStackScrollConfig([styles.scroll, styles.content]);
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTopOnPop(scrollRef);
 
   if (s.detailBlock) {
     return (
@@ -250,12 +254,12 @@ export function AppointmentDetailScreen({ role }: Props) {
     <>
       <StackChromeScreen title={s.headerTitleNode}>
         <ScrollView
+          ref={scrollRef}
           style={styles.container}
           refreshControl={
-            <RefreshControl
+            <AppRefreshControl
               refreshing={pullRefresh.refreshing}
               onRefresh={pullRefresh.onRefresh}
-              tintColor={c.primary}
               progressViewOffset={scrollConfig.refreshProgressOffset}
             />
           }

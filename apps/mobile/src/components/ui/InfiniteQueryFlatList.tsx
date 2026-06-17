@@ -1,16 +1,17 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import React, { type ReactElement, type ReactNode, useCallback } from 'react';
+import React, { type ReactElement, type ReactNode, useCallback, useRef } from 'react';
 import {
   ActivityIndicator,
   type FlatListProps,
-  RefreshControl,
   View,
 } from 'react-native';
 import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import type { UseInfiniteQueryResult } from '@tanstack/react-query';
 import { SkeletonList } from '@/components/ui/skeletons';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
+import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import {
   buildTabSceneScrollConfig,
   spreadTabSceneScrollProps,
@@ -50,7 +51,9 @@ export function InfiniteQueryFlatList<TPage, Item>({
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'InfiniteQueryFlatList');
   const sceneInsets = useTabSceneInsets();
+  const listRef = useRef<FlashList<Item>>(null);
   const { refreshing, onRefresh } = useManualRefresh(query.refetch);
+  useScrollToTopOnPop(listRef);
 
   const loadMore = useCallback(() => {
     if (query.hasNextPage && !query.isFetchingNextPage) {
@@ -87,11 +90,9 @@ export function InfiniteQueryFlatList<TPage, Item>({
   }
 
   const refreshControl = (
-    <RefreshControl
+    <AppRefreshControl
       refreshing={refreshing}
       onRefresh={onRefresh}
-      tintColor={c.primary}
-      colors={[c.primary]}
       progressViewOffset={scrollConfig.refreshProgressOffset}
     />
   );
@@ -111,6 +112,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
     <View style={styles.root}>
       {header}
       <FlashList
+        ref={listRef}
         data={items}
         renderItem={renderItem as unknown as ListRenderItem<Item>}
         keyExtractor={keyExtractor}

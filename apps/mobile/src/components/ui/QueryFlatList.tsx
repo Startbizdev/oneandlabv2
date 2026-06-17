@@ -1,11 +1,13 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import React, { type ReactElement, type ReactNode } from 'react';
-import { FlatList, type FlatListProps, RefreshControl, View } from 'react-native';
+import React, { type ReactElement, type ReactNode, useRef } from 'react';
+import { FlatList, type FlatListProps, View } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
+import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { useQueryListUi } from '@/lib/hooks/use-query-list-ui';
 import {
   buildTabSceneScrollConfig,
@@ -48,8 +50,10 @@ export function QueryFlatList<T, Item>({
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'QueryFlatList');
   const sceneInsets = useTabSceneInsets();
+  const listRef = useRef<FlatList<Item>>(null);
   const ui = useQueryListUi(query);
   const { refreshing, onRefresh } = useManualRefresh(query.refetch);
+  useScrollToTopOnPop(listRef);
   const scrollConfig = buildTabSceneScrollConfig(sceneInsets, contentContainerStyle);
 
   if (ui.showInitialPlaceholder) {
@@ -73,17 +77,16 @@ export function QueryFlatList<T, Item>({
     <View style={styles.root}>
       {header}
       <FlatList
+        ref={listRef}
         {...flatListProps}
         data={items}
         ListHeaderComponent={ListHeaderComponent}
         {...spreadTabSceneScrollProps(scrollConfig)}
         contentContainerStyle={[styles.listContent, scrollConfig.contentContainerStyle]}
         refreshControl={
-          <RefreshControl
+          <AppRefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={c.primary}
-            colors={[c.primary]}
             progressViewOffset={scrollConfig.refreshProgressOffset}
           />
         }

@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   Alert,
   FlatList,
@@ -18,7 +18,7 @@ import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Heart } from 'lucide-react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { ScreenFab, useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
+import { useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
 import {
   buildTabSceneScrollConfig,
   spreadTabSceneScrollProps,
@@ -106,7 +106,13 @@ const RelativeCard = React.memo(function RelativeCard({
   );
 });
 
-export function PatientRelativesScreen() {
+export function PatientRelativesScreen({
+  createOpen,
+  onCreateOpenChange: setCreateOpen,
+}: {
+  createOpen: boolean;
+  onCreateOpenChange: (open: boolean) => void;
+}) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_patient_screens_PatientRelativesScreen_tsx_styles');
   const sceneInsets = useTabSceneInsets();
@@ -117,8 +123,6 @@ export function PatientRelativesScreen() {
   const router = useRouter();
   const { show: toast } = useToast();
   const qc = useQueryClient();
-  const [createOpen, setCreateOpen] = useState(false);
-
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['patient-relatives'],
     queryFn: async () => {
@@ -207,11 +211,6 @@ export function PatientRelativesScreen() {
           }
         />
       )}
-
-      <ScreenFab
-        onPress={() => setCreateOpen(true)}
-        accessibilityLabel="Ajouter un proche"
-      />
 
       <PatientRelativeFormSheet
         visible={createOpen}

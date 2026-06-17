@@ -105,6 +105,16 @@ export function enrichScheduledAtWithAvailability(
   if (availabilityData?.type === 'all_day') {
     h = 0;
     min = 0;
+  } else if (availabilityData?.type === 'urgent') {
+    const urgent = availabilityData as { asap?: boolean; hour?: number; minute?: number };
+    if (urgent.asap) {
+      h = 6;
+      min = 0;
+    } else {
+      h = Math.floor(Number(urgent.hour) || 9);
+      const rawM = Number(urgent.minute) || 0;
+      min = [0, 15, 30, 45].includes(rawM) ? rawM : 0;
+    }
   } else if (availabilityData?.type === 'custom' && availabilityData.range?.length === 2) {
     h = Math.floor(Number(availabilityData.range[0]) || 9);
     min = 0;
@@ -168,8 +178,25 @@ export function validateUnifiedRdvPayload(
     let availabilityValid = false;
     if (typeof availability === 'string' && availability.trim()) {
       try {
-        const availabilityData = JSON.parse(availability) as { type?: string; range?: number[] };
+        const availabilityData = JSON.parse(availability) as {
+          type?: string;
+          range?: number[];
+          asap?: boolean;
+          hour?: number;
+          minute?: number;
+        };
         if (availabilityData?.type === 'all_day') availabilityValid = true;
+        if (availabilityData?.type === 'urgent') {
+          if (availabilityData.asap) {
+            availabilityValid = true;
+          } else {
+            const hour = Number(availabilityData.hour);
+            const minute = Number(availabilityData.minute);
+            const hourOk = Number.isFinite(hour) && hour >= 6 && hour <= 19;
+            const minuteOk = [0, 15, 30, 45].includes(minute);
+            if (hourOk && minuteOk) availabilityValid = true;
+          }
+        }
         if (availabilityData?.type === 'custom' && availabilityData.range?.length === 2) {
           if (availabilityData.range[1] - availabilityData.range[0] >= AVAILABILITY_MIN_SPAN_HOURS) {
             availabilityValid = true;
@@ -270,6 +297,9 @@ function dashboardSingleServicePayload(
       duration_days: svcData.blood_test_type === 'multiple' ? svcData.duration_days : undefined,
       custom_days: svcData.duration_days === 'custom' ? svcData.custom_days : undefined,
     });
+    if (svcData.patient_urgency && typeof svcData.patient_urgency === 'object') {
+      baseFormData.patient_urgency = svcData.patient_urgency;
+    }
   } else {
     Object.assign(baseFormData, {
       duration_days: svcData.duration_days,
@@ -336,6 +366,9 @@ function dashboardMergedBloodPayload(
     notes: firstData.notes || undefined,
     blood_test_items: bloodTestItems,
   };
+  if (firstData.patient_urgency && typeof firstData.patient_urgency === 'object') {
+    baseFormData.patient_urgency = firstData.patient_urgency;
+  }
   const payload: Record<string, unknown> = {
     type: 'blood_test',
     form_type: 'blood_test',

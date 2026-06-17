@@ -52,12 +52,20 @@ export async function generatePrescriptionPdf(options: {
   appointmentId?: string | null;
   prescriptionDate?: string;
   includeHandwrittenSignature?: boolean;
+  aldPrescription?: string;
+  horsAldPrescription?: string;
 }) {
   const body: Record<string, string> = {
     patient_id: options.patientId,
     prescription_text: options.prescriptionText.trim(),
     prescription_kind: options.prescriptionKind ?? 'medical',
   };
+  if (options.aldPrescription !== undefined) {
+    body.ald_prescription = options.aldPrescription.trim();
+  }
+  if (options.horsAldPrescription !== undefined) {
+    body.hors_ald_prescription = options.horsAldPrescription.trim();
+  }
   if (options.appointmentId) {
     body.appointment_id = options.appointmentId;
   }

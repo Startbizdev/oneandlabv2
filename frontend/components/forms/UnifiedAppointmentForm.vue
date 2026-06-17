@@ -195,7 +195,7 @@
             :max-hour="availabilityMaxHour(svc.type)"
             :range-slider-min-hour="availabilityRangeSliderMinForService(svc)"
             :show-urgent-tab="patientBookingUrgencyStripeFlag && isBloodTestAppointment(svc.type)"
-            :urgency-fee-label="'8,90 € TTC'"
+            :urgency-fee-label="'14,99 € TTC'"
           />
         </UFormField>
       </div>

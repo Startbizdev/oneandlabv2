@@ -12,3 +12,4 @@ export * from './care-category-booking-rules';
 export * from './booking-care-display-order';
 export * from './appointment-address';
 export * from './prescription-profile-gaps';
+export * from './medical-prescription-fields';

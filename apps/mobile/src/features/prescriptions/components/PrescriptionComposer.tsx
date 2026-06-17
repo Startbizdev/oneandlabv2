@@ -22,6 +22,15 @@ import {
   savePrescriptionPdf,
   type PrescriptionKind,
 } from '../api/prescriptions.service';
+import {
+  MEDICAL_PRESCRIPTION_ALD_LABEL,
+  MEDICAL_PRESCRIPTION_FIELD_PLACEHOLDER,
+  MEDICAL_PRESCRIPTION_HORS_ALD_LABEL,
+  composeMedicalPrescriptionText,
+  hasMedicalPrescriptionContent,
+  parseMedicalPrescriptionText,
+  type MedicalPrescriptionFields,
+} from '@oneandlab/shared-utils';
 import type { OpenPrescriptionSignatureOptions } from '@/features/prescriptions/components/PrescriptionSignatureSheet';
 import { PrescriptionSignatureSheet } from '@/features/prescriptions/components/PrescriptionSignatureSheet';
 import { PrescriptionDatePicker } from '@/features/prescriptions/components/PrescriptionDatePicker';
@@ -63,7 +72,15 @@ export function PrescriptionComposer({
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
-  const [text, setText] = useState(initialText);
+  const linkedToAppointment = Boolean(appointmentId);
+  const isNursing = prescriptionKind === 'nursing';
+  const [medicalFields, setMedicalFields] = useState<MedicalPrescriptionFields>(() =>
+    parseMedicalPrescriptionText(initialText),
+  );
+  const composedText = useMemo(
+    () => composeMedicalPrescriptionText(medicalFields),
+    [medicalFields],
+  );
   const [prescriptionDate, setPrescriptionDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [includeSignature, setIncludeSignature] = useState(true);
   const [signatureSheetOpen, setSignatureSheetOpen] = useState(false);
@@ -77,14 +94,12 @@ export function PrescriptionComposer({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
 
-  const linkedToAppointment = Boolean(appointmentId);
-  const isNursing = prescriptionKind === 'nursing';
   const existingOrdonnance = useMemo(
     () => (linkedToAppointment ? documents.find((d) => d.document_type === 'ordonnance') : undefined),
     [documents, linkedToAppointment],
   );
   const hasExisting = Boolean(existingOrdonnance);
-  const canGenerate = Boolean(patientId?.trim()) && text.trim().length > 0;
+  const canGenerate = Boolean(patientId?.trim()) && hasMedicalPrescriptionContent(medicalFields);
 
   const profileQ = useQuery({
     queryKey: queryKeys.profile.user(user?.id ?? ''),
@@ -143,11 +158,13 @@ export function PrescriptionComposer({
     mutationFn: async () => {
       const res = await generatePrescriptionPdf({
         patientId,
-        prescriptionText: text,
+        prescriptionText: composedText,
         prescriptionKind,
         appointmentId: appointmentId ?? undefined,
         prescriptionDate,
         includeHandwrittenSignature: includeSignature,
+        aldPrescription: medicalFields.ald,
+        horsAldPrescription: medicalFields.horsAld,
       });
       if (!res.success || !res.data?.pdf_base64) {
         throw new Error(res.error ?? 'Impossible de générer le PDF');
@@ -168,7 +185,7 @@ export function PrescriptionComposer({
         appointmentId: appointmentId ?? undefined,
         fileName: name,
         prescriptionKind,
-        prescriptionText: text.trim(),
+        prescriptionText: composedText,
         prescriptionNumber: meta.prescription_number,
       });
 
@@ -207,7 +224,7 @@ export function PrescriptionComposer({
         appointmentId: appointmentId ?? undefined,
         fileName: pdfFileName,
         prescriptionKind,
-        prescriptionText: text.trim(),
+        prescriptionText: composedText,
         prescriptionNumber: pdfMeta?.prescription_number,
       });
     },
@@ -335,19 +352,20 @@ export function PrescriptionComposer({
       </View>
 
       <Input
-        label={
-          isNursing
-            ? 'Actes de soins infirmiers'
-            : 'Prescription (médicaments, posologie, durée…)'
-        }
-        value={text}
-        onChangeText={setText}
+        label={MEDICAL_PRESCRIPTION_ALD_LABEL}
+        value={medicalFields.ald}
+        onChangeText={(v) => setMedicalFields((f) => ({ ...f, ald: v }))}
         multiline
-        placeholder={
-          isNursing
-            ? 'Ex. Pansement quotidien — surveillance plaie…'
-            : 'Ex. Doliprane 1000 mg — 1 cp × 3/jour pendant 5 jours…'
-        }
+        placeholder={MEDICAL_PRESCRIPTION_FIELD_PLACEHOLDER}
+        style={styles.textarea}
+      />
+
+      <Input
+        label={MEDICAL_PRESCRIPTION_HORS_ALD_LABEL}
+        value={medicalFields.horsAld}
+        onChangeText={(v) => setMedicalFields((f) => ({ ...f, horsAld: v }))}
+        multiline
+        placeholder={MEDICAL_PRESCRIPTION_FIELD_PLACEHOLDER}
         style={styles.textarea}
       />
 

@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useScenePullRefreshSetter } from '@/components/ui/scene-pull-refresh-context';
 
 const MIN_REFRESH_VISIBLE_MS = 450;
 
@@ -8,10 +9,12 @@ const MIN_REFRESH_VISIBLE_MS = 450;
  */
 export function useManualRefresh(refetch: () => Promise<unknown>) {
   const [refreshing, setRefreshing] = useState(false);
+  const setSceneRefresh = useScenePullRefreshSetter();
 
   const onRefresh = useCallback(async () => {
     if (refreshing) return;
     setRefreshing(true);
+    setSceneRefresh(true);
     const started = Date.now();
     try {
       await refetch();
@@ -21,8 +24,9 @@ export function useManualRefresh(refetch: () => Promise<unknown>) {
         await new Promise((resolve) => setTimeout(resolve, remaining));
       }
       setRefreshing(false);
+      setSceneRefresh(false);
     }
-  }, [refetch, refreshing]);
+  }, [refetch, refreshing, setSceneRefresh]);
 
   return { refreshing, onRefresh };
 }

@@ -1,7 +1,11 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Linking, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRef } from 'react';
+import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
+import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
+import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { Cluster, Row } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -123,6 +127,12 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
     enabled: !!id,
   });
 
+  const pullRefresh = useManualRefresh(async () => {
+    await Promise.all([profileQ.refetch(), historyQ.refetch(), docsQ.refetch()]);
+  });
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTopOnPop(scrollRef);
+
   const p = profileQ.data;
   const canDelete = p?.created_by === user?.id;
   const name = `${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim() || 'Patient';
@@ -224,19 +234,15 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
     <StackChromeScreen>
       <Stack.Screen options={{ title: name, headerLargeTitle: false }} />
       <ScrollView
+        ref={scrollRef}
         style={styles.screen}
         contentContainerStyle={scrollConfig.contentContainerStyle}
         {...spreadTabSceneScrollProps(scrollConfig)}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={profileQ.isRefetching}
-            onRefresh={() => {
-              void profileQ.refetch();
-              void historyQ.refetch();
-              void docsQ.refetch();
-            }}
-            tintColor={c.primary}
+          <AppRefreshControl
+            refreshing={pullRefresh.refreshing}
+            onRefresh={pullRefresh.onRefresh}
             progressViewOffset={scrollConfig.refreshProgressOffset}
           />
         }

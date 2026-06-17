@@ -3,11 +3,17 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { Cluster } from '@/components/layout/primitives';
 import { ChevronDown, PenLine, X } from 'lucide-react-native';
+import {
+  CreatePatientModal,
+  type CreatedPatientResult,
+} from '@/features/patients/components/CreatePatientModal';
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import { PrescriptionPatientSelectSheet } from './PrescriptionPatientSelectSheet';
 import { patientDisplayName } from '@/features/patients/utils/patient-contact-display';
+import { queryKeys } from '@/lib/query-keys';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -25,6 +31,16 @@ interface Props {
   placeholder?: string;
 }
 
+function createdResultToRow(patient: CreatedPatientResult): PatientRow {
+  return {
+    id: patient.id,
+    first_name: patient.first_name,
+    last_name: patient.last_name,
+    phone: patient.phone,
+    email: patient.email,
+  };
+}
+
 export function PrescriptionPatientSelectField({
   patients,
   selectedId,
@@ -40,11 +56,20 @@ export function PrescriptionPatientSelectField({
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'PrescriptionPatientSelectField');
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [pinnedPatient, setPinnedPatient] = useState<PatientRow | null>(null);
+
+  const patientOptions = useMemo(() => {
+    if (!pinnedPatient) return patients;
+    if (patients.some((p) => p.id === pinnedPatient.id)) return patients;
+    return [pinnedPatient, ...patients];
+  }, [patients, pinnedPatient]);
 
   const selectedPatient = useMemo(
-    () => patients.find((p) => p.id === selectedId),
-    [patients, selectedId],
+    () => patientOptions.find((p) => p.id === selectedId),
+    [patientOptions, selectedId],
   );
 
   const displayLabel = selectedPatient ? patientDisplayName(selectedPatient) : placeholder;
@@ -52,6 +77,38 @@ export function PrescriptionPatientSelectField({
   const openSheet = useCallback(() => {
     if (!loading) setOpen(true);
   }, [loading]);
+
+  const refreshPatients = useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['prescriptions', 'patients', 'infinite'] }),
+      qc.invalidateQueries({ queryKey: queryKeys.patients.all }),
+    ]);
+  }, [qc]);
+
+  const adoptPatient = useCallback(
+    async (row: PatientRow) => {
+      setPinnedPatient(row);
+      onSelect(row.id);
+      setOpen(false);
+      setCreateOpen(false);
+      await refreshPatients();
+    },
+    [onSelect, refreshPatients],
+  );
+
+  const handleCreated = useCallback(
+    (patient: CreatedPatientResult) => {
+      void adoptPatient(createdResultToRow(patient));
+    },
+    [adoptPatient],
+  );
+
+  const handleExistingPatient = useCallback(
+    (row: PatientRow) => {
+      void adoptPatient(row);
+    },
+    [adoptPatient],
+  );
 
   return (
     <View style={styles.wrap}>
@@ -112,7 +169,7 @@ export function PrescriptionPatientSelectField({
       <PrescriptionPatientSelectSheet
         visible={open}
         onClose={() => setOpen(false)}
-        patients={patients}
+        patients={patientOptions}
         selectedId={selectedId}
         onSelect={onSelect}
         loading={loading}
@@ -121,6 +178,15 @@ export function PrescriptionPatientSelectField({
         isFetchingNextPage={isFetchingNextPage}
         onLoadMore={onLoadMore}
         searchPlaceholder="Rechercher un patient…"
+        onAddPatient={() => setCreateOpen(true)}
+      />
+
+      <CreatePatientModal
+        visible={createOpen}
+        onClose={() => setCreateOpen(false)}
+        stackBehavior="push"
+        onCreated={handleCreated}
+        onExistingPatient={handleExistingPatient}
       />
     </View>
   );

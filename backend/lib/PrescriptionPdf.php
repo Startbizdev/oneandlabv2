@@ -86,7 +86,7 @@ class PrescriptionPdf
         $prescriptionDate = self::resolvePrescriptionDate($options);
         $date = AppTimezone::displayDate($prescriptionDate);
         $signedAt = self::resolveSignedAt($options, $prescriptionDate);
-        $prescriptionHtml = nl2br(htmlspecialchars($prescriptionText));
+        $prescriptionBodyHtml = self::buildPrescriptionBodyHtml($prescriptionText, $options, $kind, $date);
 
         $idBlock = self::buildIdBlock($kind, $prescriberRpps, $prescriberAdeli);
         $nirRow = $patientNir !== ''
@@ -197,11 +197,45 @@ class PrescriptionPdf
         .rx-label { font-size: 9pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.4px; }
         .rx-date { text-align: right; font-size: 8.5pt; color: {$inkMuted}; }
         .prescription-box {
-            min-height: 140px;
+            min-height: 72px;
             padding: 14px 16px;
             border: 1px solid {$line};
             font-size: 10.5pt;
             line-height: 1.5;
+        }
+        .rx-subsection { margin-bottom: 14px; }
+        .rx-subsection:last-child { margin-bottom: 0; }
+        .rx-framed-block {
+            border: 1px solid {$ink};
+            margin-bottom: 16px;
+            page-break-inside: avoid;
+        }
+        .rx-framed-block:last-child { margin-bottom: 0; }
+        .rx-framed-head {
+            text-align: center;
+            padding: 10px 14px 9px;
+            border-bottom: 1px solid {$line};
+            background: #fafafa;
+        }
+        .rx-framed-title-main {
+            font-size: 7.5pt;
+            font-weight: bold;
+            color: {$ink};
+            line-height: 1.4;
+        }
+        .rx-framed-title-sub {
+            font-size: 7pt;
+            font-weight: bold;
+            color: {$inkMid};
+            margin-top: 4px;
+            line-height: 1.35;
+        }
+        .rx-framed-body {
+            min-height: 64px;
+            padding: 14px 16px;
+            font-size: 10.5pt;
+            line-height: 1.5;
+            color: {$ink};
         }
 
         .hand-sign { margin-top: 16px; text-align: right; }
@@ -298,13 +332,7 @@ class PrescriptionPdf
     </table>
 
     <div class="rx-section">
-        <table class="rx-head-table">
-            <tr>
-                <td class="rx-label">Prescription</td>
-                <td class="rx-date">Date : {$date}</td>
-            </tr>
-        </table>
-        <div class="prescription-box">{$prescriptionHtml}</div>
+        {$prescriptionBodyHtml}
     </div>
 
     {$handwrittenBlock}
@@ -319,6 +347,62 @@ class PrescriptionPdf
 </body>
 </html>
 HTML;
+    }
+
+    private static function buildPrescriptionBodyHtml(
+        string $prescriptionText,
+        array $options,
+        string $kind,
+        string $date
+    ): string {
+        $sections = $options['prescription_sections'] ?? null;
+        if (is_array($sections) && $sections !== []) {
+            $blocks = '';
+            foreach ($sections as $section) {
+                if (!is_array($section)) {
+                    continue;
+                }
+                $title = trim((string) ($section['title'] ?? ''));
+                $body = trim((string) ($section['body'] ?? ''));
+                if ($title === '' || $body === '') {
+                    continue;
+                }
+                $blocks .= '<div class="rx-framed-block">'
+                    . self::buildPrescriptionSectionHeadHtml($title)
+                    . '<div class="rx-framed-body">' . nl2br(htmlspecialchars($body)) . '</div>'
+                    . '</div>';
+            }
+            if ($blocks !== '') {
+                return $blocks;
+            }
+        }
+
+        $prescriptionHtml = nl2br(htmlspecialchars($prescriptionText));
+
+        return '<table class="rx-head-table">'
+            . '<tr><td class="rx-label">Prescription</td>'
+            . '<td class="rx-date">Date : ' . htmlspecialchars($date) . '</td></tr>'
+            . '</table>'
+            . '<div class="prescription-box">' . $prescriptionHtml . '</div>';
+    }
+
+    private static function buildPrescriptionSectionHeadHtml(string $title): string
+    {
+        $title = trim($title);
+        $parenPos = strpos($title, '(');
+        if ($parenPos === false) {
+            return '<div class="rx-framed-head"><div class="rx-framed-title-main">'
+                . htmlspecialchars($title)
+                . '</div></div>';
+        }
+
+        $main = trim(substr($title, 0, $parenPos));
+        $sub = trim(substr($title, $parenPos));
+
+        return '<div class="rx-framed-head">'
+            . '<div class="rx-framed-title-main">' . htmlspecialchars($main) . '</div>'
+            . '<div class="rx-framed-title-sub">' . htmlspecialchars($sub) . '</div>'
+            . '</div>';
     }
 
     /**

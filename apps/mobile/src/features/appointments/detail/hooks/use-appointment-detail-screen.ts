@@ -108,7 +108,6 @@ export function useAppointmentDetailScreen(
     return merged.filter((d) => {
       if (seen.has(d.id)) return false;
       seen.add(d.id);
-      if (d.source === 'patient_profile' || d.source === 'profile') return false;
       return true;
     });
   }, [docQueries]);

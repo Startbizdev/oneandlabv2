@@ -4,7 +4,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { Fragment, useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo, useRef, useState } from 'react';
 
 import {
 
@@ -34,7 +34,7 @@ import { Users } from 'lucide-react-native';
 
 import type { StaffHubPatientItem, StaffHubSearchItem } from '@oneandlab/shared-types';
 
-import { ScreenFab, useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
+import { useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
 
 import {
 
@@ -65,6 +65,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
+import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 
 import { CreatePatientModal } from '../components/CreatePatientModal';
 
@@ -114,11 +115,23 @@ interface Props {
 
   rolePrefix?: '/(nurse)' | '/(pro)';
 
+  createOpen: boolean;
+
+  onCreateOpenChange: (open: boolean) => void;
+
 }
 
 
 
-export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
+export function PatientsListScreen({
+
+  rolePrefix = '/(nurse)',
+
+  createOpen,
+
+  onCreateOpenChange: setCreateOpen,
+
+}: Props) {
 
   const c = useAppColors();
 
@@ -145,8 +158,6 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
   const { show: toast } = useToast();
 
   const qc = useQueryClient();
-
-  const [createOpen, setCreateOpen] = useState(false);
 
   const [search, setSearch] = useState('');
 
@@ -179,6 +190,8 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
   const isLoading = hubQ.isLoading;
 
   const { refreshing, onRefresh } = useManualRefresh(hubQ.refetch);
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTopOnPop(scrollRef);
 
 
 
@@ -334,6 +347,8 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
 
       <ScrollView
 
+        ref={scrollRef}
+
         style={styles.list}
 
         {...spreadTabSceneScrollProps(scrollConfig)}
@@ -425,18 +440,6 @@ export function PatientsListScreen({ rolePrefix = '/(nurse)' }: Props) {
         )}
 
       </ScrollView>
-
-
-
-      <ScreenFab
-
-        onPress={() => setCreateOpen(true)}
-
-        accessibilityLabel="Ajouter un patient"
-
-      />
-
-
 
       <CreatePatientModal
 

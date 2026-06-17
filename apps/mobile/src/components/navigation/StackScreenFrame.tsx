@@ -1,6 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
+import { useCallback, useState } from 'react';
+import { ScenePullRefreshContext } from '@/components/ui/scene-pull-refresh-context';
+import { SceneRefreshIndicator } from '@/components/ui/SceneRefreshIndicator';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { StackHeaderInsetProvider } from '@/components/navigation/liquid-glass-header-inset';
 import { LiquidGlassTabHeader } from '@/components/navigation/LiquidGlassTabHeader';
@@ -24,21 +27,29 @@ export function StackScreenFrame({
   shellStyle,
 }: Props) {
   const styles = useThemedStyles(buildStyles, 'StackScreenFrame');
+  const [sceneRefreshing, setSceneRefreshing] = useState(false);
+  const bindSceneRefresh = useCallback((visible: boolean) => {
+    setSceneRefreshing(visible);
+  }, []);
 
   return (
     <View style={styles.root}>
-      <StackHeaderInsetProvider>
-        <TabScreenShell edgeToEdge style={[styles.body, shellStyle]}>
-          {children}
-        </TabScreenShell>
-      </StackHeaderInsetProvider>
+      <ScenePullRefreshContext.Provider value={bindSceneRefresh}>
+        <StackHeaderInsetProvider>
+          <TabScreenShell edgeToEdge style={[styles.body, shellStyle]}>
+            {children}
+          </TabScreenShell>
+        </StackHeaderInsetProvider>
 
-      <LiquidGlassTabHeader
-        title={title}
-        headerLeft={headerLeft === undefined ? <StackGlassBackButton /> : headerLeft}
-        headerRight={headerRight}
-        visual="inline"
-      />
+        <SceneRefreshIndicator visible={sceneRefreshing} />
+
+        <LiquidGlassTabHeader
+          title={title}
+          headerLeft={headerLeft === undefined ? <StackGlassBackButton /> : headerLeft}
+          headerRight={headerRight}
+          visual="inline"
+        />
+      </ScenePullRefreshContext.Provider>
     </View>
   );
 }

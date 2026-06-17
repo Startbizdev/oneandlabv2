@@ -533,14 +533,7 @@
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-4 ml-7">
               Saisissez le contenu de l'ordonnance. Elle sera générée et enregistrée sur le RDV à la création.
             </p>
-            <UFormField label="Prescription (médicaments, posologie, durée…)" name="prescription_during_create" class="ml-0">
-              <UTextarea
-                v-model="prescriptionTextDuringCreate"
-                placeholder="Ex: Doliprane 1000 mg - 1 cp x 3/jour pendant 5 jours..."
-                :rows="5"
-                class="font-mono text-sm w-full"
-              />
-            </UFormField>
+            <PrescriptionMedicalFields v-model="medicalFieldsDuringCreate" />
           </section>
 
           <!-- Ordonnance en édition (nurse / pro) - à gauche au-dessus des notes -->
@@ -898,6 +891,11 @@ import {
 import DashboardPrescriptionSection from '~/components/dashboard/PrescriptionSection.vue';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
 import { isCareCategoryWithoutBookingOptions } from '@oneandlab/shared-utils';
+import {
+  composeMedicalPrescriptionText,
+  hasMedicalPrescriptionContent,
+  type MedicalPrescriptionFields,
+} from '@oneandlab/shared-utils';
 
 // --- TYPES & INTERFACES ---
 type ServiceType = 'blood_test' | 'nursing';
@@ -1025,8 +1023,14 @@ const postCreateAppointmentId = ref<string | null>(null);
 const postCreateDocuments = ref<any[]>([]);
 const showPrescriptionAfterCreate = computed(() => props.basePath === '/pro');
 
-/** Texte d'ordonnance saisi pendant la création du RDV (pro) — généré et enregistré à la soumission */
-const prescriptionTextDuringCreate = ref('');
+/** Champs ordonnance saisis pendant la création du RDV (pro) — générés et enregistrés à la soumission */
+const medicalFieldsDuringCreate = ref<MedicalPrescriptionFields>({ ald: '', horsAld: '' });
+const prescriptionTextDuringCreate = computed(() =>
+  composeMedicalPrescriptionText(medicalFieldsDuringCreate.value),
+);
+const hasPrescriptionDuringCreate = computed(() =>
+  hasMedicalPrescriptionContent(medicalFieldsDuringCreate.value),
+);
 
 // Patient Data
 const patients = ref<any[]>([]);
@@ -1441,12 +1445,16 @@ async function uploadFormFilesToAppointment(appointmentId: string) {
 
 /** Génère l'ordonnance (PDF) et l'enregistre sur le RDV quand le texte a été saisi pendant la création. */
 async function generateAndAttachPrescriptionDuringCreate(appointmentId: string): Promise<void> {
-  const text = prescriptionTextDuringCreate.value?.trim();
-  if (!text) return;
+  if (!hasPrescriptionDuringCreate.value) return;
+  const text = prescriptionTextDuringCreate.value;
   try {
     const res = await apiFetch(`/appointments/${appointmentId}/generate-prescription`, {
       method: 'POST',
-      body: { prescription_text: text },
+      body: {
+        ald_prescription: medicalFieldsDuringCreate.value.ald.trim(),
+        hors_ald_prescription: medicalFieldsDuringCreate.value.horsAld.trim(),
+        prescription_text: text,
+      },
     });
     if (!res?.success || !(res as any).data?.pdf_base64) {
       toast.add({ title: 'Ordonnance', description: (res as any)?.error ?? 'Génération du PDF impossible', color: 'orange', icon: 'i-lucide-alert-circle' });
@@ -2324,7 +2332,7 @@ async function submitMultiCareBatch(
       color: 'green',
       icon: 'i-lucide-check-circle',
     });
-    if (showPrescriptionAfterCreate.value && showPrescriptionDocumentsForSelectedCare.value && prescriptionTextDuringCreate.value?.trim()) {
+    if (showPrescriptionAfterCreate.value && showPrescriptionDocumentsForSelectedCare.value && hasPrescriptionDuringCreate.value) {
       await generateAndAttachPrescriptionDuringCreate(id);
     }
     await router.push(`${props.basePath}/appointments/${id}`);
@@ -2399,7 +2407,7 @@ async function submitMultiCareBatch(
     if (
       showPrescriptionAfterCreate.value &&
       showPrescriptionDocumentsForSelectedCare.value &&
-      prescriptionTextDuringCreate.value?.trim()
+      hasPrescriptionDuringCreate.value
     ) {
       await generateAndAttachPrescriptionDuringCreate(createdIds[0]!);
     }
@@ -2577,7 +2585,7 @@ async function submit() {
       }
       toast.add({ title: isCreate.value ? 'Rendez-vous créé' : 'Modifications enregistrées', color: 'green', icon: 'i-lucide-check-circle' });
       if (id) {
-        if (isCreate.value && showPrescriptionAfterCreate.value && prescriptionTextDuringCreate.value?.trim()) {
+        if (isCreate.value && showPrescriptionAfterCreate.value && hasPrescriptionDuringCreate.value) {
           await generateAndAttachPrescriptionDuringCreate(id);
         }
         await router.push(`${props.basePath}/appointments/${id}`);

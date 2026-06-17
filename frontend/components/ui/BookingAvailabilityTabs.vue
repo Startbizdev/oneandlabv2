@@ -20,7 +20,7 @@ const props = defineProps<{
 const showUrgent = computed(() => props.showUrgentTab === true);
 const minUrgent = computed(() => (props.minUrgentHour != null ? props.minUrgentHour : 6));
 const maxUrgent = computed(() => (props.maxUrgentHour != null ? props.maxUrgentHour : 19));
-const feeLabel = computed(() => props.urgencyFeeLabel ?? '8,90 € TTC');
+const feeLabel = computed(() => props.urgencyFeeLabel ?? '14,99 € TTC');
 
 /** Aligné sur le slider : pas en dessous de `rangeSliderMinHour` si fourni (jour même Paris). */
 const effectiveRangeSliderMin = computed(() =>

@@ -190,6 +190,108 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         unset($d);
 
+        // Documents perso du dossier patient (vitale, mutuelle…) — pas les ordonnances profil
+        $profileMergeTypes = ['carte_vitale', 'carte_mutuelle', 'autres_assurances'];
+        $canMergeProfileDocs = $patientId && (
+            $user['role'] === 'patient'
+            || in_array($user['role'], ['lab', 'subaccount', 'preleveur', 'nurse', 'pro', 'super_admin'], true)
+        );
+        if ($canMergeProfileDocs && $user['role'] === 'patient' && (string) $patientId !== (string) $user['user_id']) {
+            $canMergeProfileDocs = false;
+        }
+        if ($canMergeProfileDocs) {
+            $patientDocs = [];
+            if ($relativeId) {
+                $tableExists = $db->query("SHOW TABLES LIKE 'patient_relative_documents'")->rowCount() > 0;
+                if ($tableExists) {
+                    $stmtPat = $db->prepare('
+                        SELECT
+                            md.id,
+                            md.appointment_id,
+                            md.uploaded_by,
+                            md.file_name,
+                            md.file_size,
+                            md.mime_type,
+                            COALESCE(prd.document_type, md.document_type) AS document_type,
+                            md.encrypted,
+                            md.created_at
+                        FROM patient_relative_documents prd
+                        JOIN medical_documents md ON prd.medical_document_id = md.id
+                        WHERE prd.patient_id = ? AND prd.relative_id = ?
+                        AND md.document_type <> \'care_photo\'
+                        ORDER BY prd.document_type, md.created_at DESC
+                    ');
+                    $stmtPat->execute([$patientId, $relativeId]);
+                    $patientDocs = $stmtPat->fetchAll(PDO::FETCH_ASSOC);
+                }
+            } else {
+                $stmtPat = $db->prepare('
+                    SELECT
+                        md.id,
+                        md.appointment_id,
+                        md.uploaded_by,
+                        md.file_name,
+                        md.file_size,
+                        md.mime_type,
+                        COALESCE(pd.document_type, md.document_type) AS document_type,
+                        md.encrypted,
+                        md.created_at
+                    FROM patient_documents pd
+                    JOIN medical_documents md ON pd.medical_document_id = md.id
+                    WHERE pd.patient_id = ?
+                    AND md.document_type <> \'care_photo\'
+                    ORDER BY pd.document_type, md.created_at DESC
+                ');
+                $stmtPat->execute([$patientId]);
+                $patientDocs = $stmtPat->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $appointmentDocIds = array_column($documents, 'id');
+            foreach ($patientDocs as $pd) {
+                $canonicalType = (string) ($pd['document_type'] ?? '');
+                if ($canonicalType === 'care_photo' || !in_array($canonicalType, $profileMergeTypes, true)) {
+                    continue;
+                }
+                if (in_array($pd['id'], $appointmentDocIds, true)) {
+                    continue;
+                }
+                $replacedExisting = false;
+                foreach ($documents as $idx => $d) {
+                    if (($d['document_type'] ?? '') !== $canonicalType) {
+                        continue;
+                    }
+                    if (($d['source'] ?? 'appointment') !== 'appointment') {
+                        continue;
+                    }
+                    $aptCreated = strtotime($d['created_at'] ?? '') ?: 0;
+                    $profileCreated = strtotime($pd['created_at'] ?? '') ?: 0;
+                    if ($profileCreated > $aptCreated) {
+                        unset($documents[$idx]);
+                        $documents = array_values($documents);
+                        $pd['source'] = 'patient_profile';
+                        $pd['profile_newer_than_appointment'] = true;
+                        $documents[] = $pd;
+                        $replacedExisting = true;
+                    }
+                    break;
+                }
+                if ($replacedExisting) {
+                    continue;
+                }
+                $typeAlreadyOnAppointment = false;
+                foreach ($documents as $d) {
+                    if (($d['document_type'] ?? '') === $canonicalType) {
+                        $typeAlreadyOnAppointment = true;
+                        break;
+                    }
+                }
+                if ($typeAlreadyOnAppointment) {
+                    continue;
+                }
+                $pd['source'] = 'patient_profile';
+                $documents[] = $pd;
+            }
+        }
+
         // Logger l'accès
         $logger->log(
             $user['user_id'],

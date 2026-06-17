@@ -13,12 +13,21 @@ export type BookingServiceFormSlice = {
   availability?: string;
   availability_type?: string;
   availabilityRange?: [number, number];
+  urgentHour?: number;
+  urgentMinute?: number;
+  urgentTimingMode?: 'asap' | 'scheduled';
+  patient_urgency?: Record<string, unknown>;
   notes?: string;
 };
 
 export function defaultBookingFormSliceForServiceType(serviceType: string): BookingServiceFormSlice {
   const base = isBloodTestAppointment(serviceType)
-    ? { blood_test_type: 'single' as const }
+    ? {
+        blood_test_type: 'single' as const,
+        urgentHour: 9,
+        urgentMinute: 0,
+        urgentTimingMode: 'scheduled' as const,
+      }
     : { duration_days: '1', preferred_nurse_gender: 'any' as const };
 
   return {

@@ -9,6 +9,13 @@ class PrescriptionService
     public const KIND_MEDICAL = 'medical';
     public const KIND_NURSING = 'nursing';
 
+    public const LABEL_ALD = "Prescriptions relatives au traitement de l'ALD";
+    public const LABEL_HORS_ALD = "Prescriptions sans rapport avec l'ALD";
+
+    /** Titres officiels affichés sur le PDF uniquement (formulaire = LABEL_ALD / LABEL_HORS_ALD). */
+    public const LABEL_ALD_PDF = "Prescription relatives au traitement de l'affection de longue durée reconnue (liste ou hors liste) (AFFECTION EXONERANTE)";
+    public const LABEL_HORS_ALD_PDF = "Prescription sans rapport avec l'affection de longue durée (MALADIES INTERCURRENTES)";
+
     /** Mots-clés médicaments interdits en prescription infirmière (actes only). */
     private const NURSING_FORBIDDEN_PATTERNS = [
         '/\b(mg|ml|cp|comprim[eé]|gélule|sirop|antibiotique|doliprane|paracétamol|ibuprofène|amoxicilline)\b/ui',
@@ -71,6 +78,112 @@ class PrescriptionService
         return null;
     }
 
+    /**
+     * @param array<string, mixed> $input
+     * @return array{text: string, sections: list<array{title: string, body: string}>}
+     */
+    public static function resolvePrescriptionInput(array $input, string $kind): array
+    {
+        $ald = trim((string) ($input['ald_prescription'] ?? ''));
+        $horsAld = trim((string) ($input['hors_ald_prescription'] ?? ''));
+
+        if ($ald === '' && $horsAld === '') {
+            $text = trim((string) ($input['prescription_text'] ?? $input['prescription'] ?? ''));
+            $parsed = self::parseMedicalPrescriptionText($text);
+
+            return [
+                'text' => self::composeMedicalPrescriptionText($parsed['ald'], $parsed['hors_ald']),
+                'sections' => self::buildMedicalPrescriptionSections($parsed['ald'], $parsed['hors_ald']),
+            ];
+        }
+
+        return [
+            'text' => self::composeMedicalPrescriptionText($ald, $horsAld),
+            'sections' => self::buildMedicalPrescriptionSections($ald, $horsAld),
+        ];
+    }
+
+    /**
+     * @return array{ald: string, hors_ald: string}
+     */
+    public static function parseMedicalPrescriptionText(string $text): array
+    {
+        $raw = trim($text);
+        if ($raw === '') {
+            return ['ald' => '', 'hors_ald' => ''];
+        }
+
+        $aldLabel = self::LABEL_ALD;
+        $horsLabel = self::LABEL_HORS_ALD;
+        $aldIdx = strpos($raw, $aldLabel);
+        $horsIdx = strpos($raw, $horsLabel);
+        if ($aldIdx === false) {
+            $aldLabel = self::LABEL_ALD_PDF;
+            $aldIdx = strpos($raw, $aldLabel);
+        }
+        if ($horsIdx === false) {
+            $horsLabel = self::LABEL_HORS_ALD_PDF;
+            $horsIdx = strpos($raw, $horsLabel);
+        }
+
+        if ($aldIdx === false && $horsIdx === false) {
+            return ['ald' => $raw, 'hors_ald' => ''];
+        }
+
+        $extract = static function (string $label, int $start, int $end) use ($raw): string {
+            $bodyStart = $start + strlen($label);
+            $chunk = substr($raw, $bodyStart, max(0, $end - $bodyStart));
+
+            return trim(ltrim($chunk, "\r\n"));
+        };
+
+        $ald = '';
+        $horsAld = '';
+
+        if ($aldIdx !== false) {
+            $end = ($horsIdx !== false && $horsIdx > $aldIdx) ? $horsIdx : strlen($raw);
+            $ald = $extract($aldLabel, (int) $aldIdx, $end);
+        }
+        if ($horsIdx !== false) {
+            $horsAld = $extract($horsLabel, (int) $horsIdx, strlen($raw));
+        }
+
+        return ['ald' => $ald, 'hors_ald' => $horsAld];
+    }
+
+    public static function composeMedicalPrescriptionText(string $ald, string $horsAld): string
+    {
+        $parts = [];
+        $ald = trim($ald);
+        $horsAld = trim($horsAld);
+        if ($ald !== '') {
+            $parts[] = self::LABEL_ALD . "\n" . $ald;
+        }
+        if ($horsAld !== '') {
+            $parts[] = self::LABEL_HORS_ALD . "\n" . $horsAld;
+        }
+
+        return implode("\n\n", $parts);
+    }
+
+    /**
+     * @return list<array{title: string, body: string}>
+     */
+    public static function buildMedicalPrescriptionSections(string $ald, string $horsAld): array
+    {
+        $sections = [];
+        $ald = trim($ald);
+        $horsAld = trim($horsAld);
+        if ($ald !== '') {
+            $sections[] = ['title' => self::LABEL_ALD_PDF, 'body' => $ald];
+        }
+        if ($horsAld !== '') {
+            $sections[] = ['title' => self::LABEL_HORS_ALD_PDF, 'body' => $horsAld];
+        }
+
+        return $sections;
+    }
+
     public static function generatePrescriptionNumber(): string
     {
         return 'RX-' . AppTimezone::format('Ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
@@ -126,7 +239,8 @@ class PrescriptionService
         string $patientId,
         ?string $appointmentId = null,
         ?string $prescriptionDate = null,
-        bool $includeHandwrittenSignature = false
+        bool $includeHandwrittenSignature = false,
+        array $prescriptionSections = []
     ): array {
         $role = $user['role'] ?? '';
 
@@ -208,6 +322,9 @@ class PrescriptionService
             ];
             if ($prescriptionDate !== null && $prescriptionDate !== '') {
                 $pdfOpts['prescription_date'] = $prescriptionDate;
+            }
+            if ($prescriptionSections !== []) {
+                $pdfOpts['prescription_sections'] = $prescriptionSections;
             }
             $result = self::generatePdf($prescriber, $patient, $prescriptionText, $prescriptionKind, null, $pdfOpts);
         } catch (Throwable $e) {

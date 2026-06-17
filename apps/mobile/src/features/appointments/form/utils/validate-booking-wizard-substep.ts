@@ -1,4 +1,4 @@
-import { AVAILABILITY_MIN_SPAN_HOURS } from '@oneandlab/shared-constants';
+import { AVAILABILITY_MIN_SPAN_HOURS, PATIENT_VIP_MAX_HOUR, PATIENT_VIP_MIN_HOUR } from '@oneandlab/shared-constants';
 import {
   isBloodTestAppointment,
   isNursingAppointment,
@@ -82,6 +82,18 @@ function pushAvailabilityErrors(
     if (availabilityData) {
       if (availabilityData.type === 'all_day') {
         availabilityValid = true;
+      } else if (availabilityData.type === 'urgent') {
+        const urgent = availabilityData as { asap?: boolean; hour?: number; minute?: number };
+        if (urgent.asap) {
+          availabilityValid = true;
+        } else {
+          const hour = Number(urgent.hour);
+          const minute = Number(urgent.minute);
+          const hourOk = Number.isFinite(hour) && hour >= PATIENT_VIP_MIN_HOUR && hour <= PATIENT_VIP_MAX_HOUR;
+          const minuteOk = [0, 15, 30, 45].includes(minute);
+          if (hourOk && minuteOk) availabilityValid = true;
+          else missing.push(`Créneau Horaire VIP invalide pour ${svcName}`);
+        }
       } else if (availabilityData.type === 'custom' && availabilityData.range?.length === 2) {
         if (availabilityData.range[1] - availabilityData.range[0] >= AVAILABILITY_MIN_SPAN_HOURS) {
           availabilityValid = true;

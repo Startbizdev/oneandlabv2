@@ -65,6 +65,25 @@ function iapRequireNurseAuth(): array
     return $authUser;
 }
 
+function iapRequirePatientAuth(): array
+{
+    try {
+        $authMiddleware = new AuthMiddleware();
+        $authUser = $authMiddleware->handle();
+        if (($authUser['role'] ?? '') !== 'patient') {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Accès réservé aux patients']);
+            exit;
+        }
+    } catch (Exception $e) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        exit;
+    }
+
+    return $authUser;
+}
+
 function iapReadJsonBody(): array
 {
     $raw = file_get_contents('php://input');
