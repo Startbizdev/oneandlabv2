@@ -12,6 +12,7 @@ import {
   Scale,
   Settings,
   Share2,
+  Smile,
   Star,
   User,
 } from 'lucide-react-native';
@@ -77,6 +78,12 @@ export default function NurseMore() {
                 icon: CalendarPlus,
                 label: 'Nouveau rendez-vous',
                 onPress: () => nav('/(nurse)/appointments/new'),
+                iconAccent: 'teal',
+              },
+              {
+                icon: Smile,
+                label: 'Assistant Cary',
+                onPress: () => nav('/(nurse)/ai'),
                 iconAccent: 'teal',
               },
             ],

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Bell, LayoutGrid, Scale, Settings, User } from 'lucide-react-native';
+import { Bell, LayoutGrid, Scale, Settings, Smile, User } from 'lucide-react-native';
 import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
 import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-unread-count';
@@ -20,18 +20,30 @@ export default function PreleveurMore() {
         roleLabel="Préleveur"
         sections={[
           {
-            title: 'Professionnel',
+            title: 'Actions',
             delay: 150,
+            items: [
+              {
+                icon: Smile,
+                label: 'Assistant Cary',
+                onPress: () => nav('/(preleveur)/ai'),
+                iconAccent: 'teal',
+              },
+            ],
+          },
+          {
+            title: 'Professionnel',
+            delay: 180,
             items: [{ icon: User, label: 'Mon profil', onPress: () => nav('/profile') }],
           },
           {
             title: 'Aide',
-            delay: 180,
+            delay: 210,
             items: buildHelpMoreItems(nav),
           },
           {
             title: 'Paramètres',
-            delay: 240,
+            delay: 270,
             items: [
               {
                 icon: Settings,

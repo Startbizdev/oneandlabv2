@@ -11,11 +11,11 @@ export type AiDeepLinkParams = {
 export function aiTabHref(role: UserRole | string): string {
   switch (role) {
     case 'pro':
-      return '/(pro)/(tabs)/ai';
+      return '/(pro)/ai';
     case 'nurse':
-      return '/(nurse)/(tabs)/ai';
+      return '/(nurse)/ai';
     case 'preleveur':
-      return '/(preleveur)/(tabs)/ai';
+      return '/(preleveur)/ai';
     default:
       return '/(patient)/(tabs)/ai';
   }

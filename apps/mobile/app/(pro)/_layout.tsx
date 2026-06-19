@@ -40,6 +40,7 @@ export default function ProLayout() {
           }}
         />
         <Stack.Screen name="resultats" options={{ title: 'Résultats' }} />
+        <Stack.Screen name="ai" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="informations-legales" options={{ headerTitleAlign: 'left' }} />
         <Stack.Screen name="web" options={{ headerTitleAlign: 'left' }} />
       </Stack>

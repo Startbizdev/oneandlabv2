@@ -14,6 +14,7 @@ import {
   patientAiChatListBottomPadding,
 } from '../components/PatientAiChatFooter';
 import { useNativeTabBarInset } from '@/navigation/use-native-tab-bar-inset';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PatientAiConversationsSheet } from '../components/PatientAiConversationsSheet';
 import { PatientAiVoiceMockOverlay } from '../components/PatientAiVoiceMockOverlay';
 import { CaryMarkdown } from '../components/CaryMarkdown';
@@ -36,6 +37,8 @@ interface ScreenProps {
   historyOpen: boolean;
   onHistoryOpenChange: (open: boolean) => void;
   init?: CaryAiHubInit;
+  /** false = écran stack pro/nurse/preleveur (composer collé en bas). */
+  includeTabBarInset?: boolean;
 }
 
 function AssistantAvatar({ styles }: { styles: ScreenStyles }) {
@@ -122,11 +125,18 @@ function MessageBubble({
 }
 
 /** Hub Cary IA branché API (Phase 1). */
-export function CaryAiHubScreen({ historyOpen, onHistoryOpenChange, init }: ScreenProps) {
+export function CaryAiHubScreen({
+  historyOpen,
+  onHistoryOpenChange,
+  init,
+  includeTabBarInset = true,
+}: ScreenProps) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
   const sceneInsets = useTabSceneInsets();
+  const { bottom: safeBottom } = useSafeAreaInsets();
   const tabBarInset = useNativeTabBarInset(0);
+  const bottomInset = includeTabBarInset ? tabBarInset : safeBottom;
   const listRef = useRef<FlashList<PatientAiChatMessage>>(null);
   const [footerHeight, setFooterHeight] = useState(PATIENT_AI_FOOTER_HEIGHT_WITH_DISCLAIMER);
   const [keyboardInset, setKeyboardInset] = useState(0);
@@ -136,9 +146,9 @@ export function CaryAiHubScreen({ historyOpen, onHistoryOpenChange, init }: Scre
       paddingHorizontal: H_PADDING,
       paddingTop: sceneInsets.insetTop + spacing[2],
       paddingBottom:
-        patientAiChatListBottomPadding(footerHeight, tabBarInset) + keyboardInset,
+        patientAiChatListBottomPadding(footerHeight, bottomInset) + keyboardInset,
     }),
-    [footerHeight, tabBarInset, sceneInsets.insetTop, keyboardInset],
+    [footerHeight, bottomInset, sceneInsets.insetTop, keyboardInset],
   );
 
   const onFooterLayout = useCallback((height: number) => {
@@ -322,6 +332,7 @@ export function CaryAiHubScreen({ historyOpen, onHistoryOpenChange, init }: Scre
           canSend={canSend}
           disabled={awaitingReply}
           disclaimer={disclaimer}
+          includeTabBarInset={includeTabBarInset}
         />
       </View>
 
