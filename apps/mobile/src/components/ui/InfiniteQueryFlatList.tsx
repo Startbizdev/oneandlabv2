@@ -74,7 +74,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
   if (query.isPending && !query.data) {
     return (
-      <View style={styles.root}>
+      <View style={styles.root} collapsable={false}>
         {header}
         <View
           style={[
@@ -109,7 +109,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
   );
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} collapsable={false}>
       {header}
       <FlashList
         ref={listRef}

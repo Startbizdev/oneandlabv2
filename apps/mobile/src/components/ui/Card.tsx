@@ -65,8 +65,8 @@ function buildStyles(c: AppColors) {
   return {
   base: {
     backgroundColor: c.surface,
-    borderWidth: 1,
-    borderColor: c.borderLight,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.cardBorder,
     overflow: 'hidden' as const,
   },
   noBorder: {

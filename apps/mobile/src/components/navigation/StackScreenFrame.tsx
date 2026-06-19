@@ -33,7 +33,7 @@ export function StackScreenFrame({
   }, []);
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} collapsable={false}>
       <ScenePullRefreshContext.Provider value={bindSceneRefresh}>
         <StackHeaderInsetProvider>
           <TabScreenShell edgeToEdge style={[styles.body, shellStyle]}>

@@ -111,8 +111,8 @@ function buildStyles(c: AppColors) {
   return {
   card: {
     borderRadius: radius['2xl'],
-    borderWidth: 1,
-    borderColor: c.borderLight,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.cardBorder,
     overflow: 'hidden' as const,
     backgroundColor: c.surface,
   },

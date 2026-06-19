@@ -47,10 +47,10 @@ function RootLayoutInner() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" backgroundColor={c.background} />
+      <StatusBar style="dark" backgroundColor={c.surface} />
       <Stack
         key={`${colorblindType}:${textScale}`}
-        screenOptions={{ headerShown: false, contentStyle: { flex: 1, backgroundColor: c.background } }}
+        screenOptions={{ headerShown: false, contentStyle: { flex: 1, backgroundColor: c.surface } }}
       >
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />

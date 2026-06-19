@@ -28,6 +28,6 @@ export default function PreleveurLayout() {
 
 function buildStyles(c: AppColors) {
   return {
-    stackHost: { flex: 1, backgroundColor: c.primaryLight },
+    stackHost: { flex: 1, backgroundColor: c.surface },
   };
 }

@@ -58,7 +58,7 @@ export function QueryFlatList<T, Item>({
 
   if (ui.showInitialPlaceholder) {
     return (
-      <View style={styles.root}>
+      <View style={styles.root} collapsable={false}>
         {header}
         <View
           style={[
@@ -74,7 +74,7 @@ export function QueryFlatList<T, Item>({
   }
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} collapsable={false}>
       {header}
       <FlatList
         ref={listRef}

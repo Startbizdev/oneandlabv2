@@ -51,6 +51,6 @@ export default function ProLayout() {
 
 function buildStyles(c: AppColors) {
   return {
-    stackHost: { flex: 1, backgroundColor: c.primaryLight },
+    stackHost: { flex: 1, backgroundColor: c.surface },
   };
 }

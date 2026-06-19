@@ -20,7 +20,11 @@ export function ContentSheetShell({ children, style, edgeToEdge = false }: Props
   const styles = useThemedStyles(buildStyles, 'ContentSheetShell');
 
   if (edgeToEdge) {
-    return <View style={[styles.flatBody, style]}>{children}</View>;
+    return (
+      <View style={[styles.flatBody, style]} collapsable={false}>
+        {children}
+      </View>
+    );
   }
 
   return (

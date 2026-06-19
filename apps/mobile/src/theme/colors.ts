@@ -117,7 +117,8 @@ function buildAppColorsSync(type: ColorblindType) {
   const cb = resolveSemantic(type);
 
   return {
-    background: palette.canvas.base,
+    /** Fond principal — blanc pur (onglets, stacks, listes). */
+    background: palette.white,
     surface: palette.white,
     surfaceAlt: palette.canvas.muted,
     surfaceSubtle: palette.brand[50],
@@ -128,7 +129,10 @@ function buildAppColorsSync(type: ColorblindType) {
     gradientEnd: cb?.gradientEnd ?? brand.gradientEnd,
 
     border: palette.slate[200],
+    /** Séparateurs internes (hairlines). */
     borderLight: palette.slate[100],
+    /** Contour carte sur fond blanc. */
+    cardBorder: palette.slate[200],
     borderFocus: cb?.borderFocus ?? brand.primary,
     borderError: cb?.error ?? palette.red[500],
 
