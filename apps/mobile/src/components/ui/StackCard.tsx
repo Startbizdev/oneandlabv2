@@ -4,6 +4,7 @@ import { hairlineBottom, hairlineTop, layoutRow } from '@/theme/layout-styles';
 import type { ReactNode } from 'react';
 import {
   Pressable,
+  StyleSheet,
   Text,
   View,
   type StyleProp,
@@ -115,8 +116,8 @@ function buildStackCardStyles(c: AppColors) {
     card: {
       backgroundColor: c.surface,
       borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: c.borderLight,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
       overflow: 'hidden' as const,
     },
     cardInner: {

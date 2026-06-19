@@ -34,8 +34,8 @@ function buildStyles(c: AppColors) {
   card: {
     backgroundColor: c.surface,
     borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: c.borderLight,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.cardBorder,
     overflow: 'hidden' as const,
   },
 };

@@ -44,7 +44,7 @@ export function TabScreenFrame({
   }, []);
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} collapsable={false}>
       <ScenePullRefreshContext.Provider value={bindSceneRefresh}>
         <LiquidGlassHeaderInsetProvider visual={visual}>
           <TabScreenShell edgeToEdge={edgeToEdge} style={[styles.body, shellStyle]}>

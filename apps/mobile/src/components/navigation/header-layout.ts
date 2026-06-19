@@ -34,7 +34,7 @@ export function appContentSheetShadowStyle(): ViewStyle {
   return {
     minWidth: 0,
     flex: 1,
-    backgroundColor: c.background,
+    backgroundColor: c.surface,
     ...contentSheetTopRadius(),
     ...elevation.contentSheetTop,
   };
@@ -101,7 +101,7 @@ export function appTabSceneFlatContentStyle(): ViewStyle {
 export function appStackContentStyle(opts?: { rounded?: boolean }): ViewStyle {
   const rounded = opts?.rounded !== false;
   if (!rounded) {
-    return { minWidth: 0, flex: 1, backgroundColor: getAppColors().background };
+    return { minWidth: 0, flex: 1, backgroundColor: getAppColors().surface };
   }
   return appContentSheetFrameStyle();
 }

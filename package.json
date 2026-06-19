@@ -8,6 +8,7 @@
     "frontend"
   ],
   "scripts": {
+    "postinstall": "patch-package",
     "web:dev": "npm run dev --workspace=oneandlab-frontend",
     "web:build": "npm run build --workspace=oneandlab-frontend",
     "mobile:dev": "npm run start --workspace=@oneandlab/mobile",
@@ -17,5 +18,8 @@
     "mobile:typecheck": "npm run typecheck --workspace=@oneandlab/mobile",
     "mobile:lint": "npm run lint --workspace=@oneandlab/mobile",
     "mobile:verify": "npm run typecheck --workspace=@oneandlab/mobile && npm run lint:layout --workspace=@oneandlab/mobile && npm run lint:styles --workspace=@oneandlab/mobile -- --strict-colors && npm run lint --workspace=@oneandlab/mobile"
+  },
+  "devDependencies": {
+    "patch-package": "^8.0.1"
   }
 }

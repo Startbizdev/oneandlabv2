@@ -511,9 +511,9 @@ function buildStyles(c: AppColors) {
 
       borderRadius: radius.xl,
 
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
 
-      borderColor: c.borderLight,
+      borderColor: c.cardBorder,
 
       overflow: 'hidden' as const,
 

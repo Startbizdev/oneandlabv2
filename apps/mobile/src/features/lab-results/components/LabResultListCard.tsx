@@ -142,7 +142,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: c.borderLight,
+    borderColor: c.cardBorder,
     overflow: 'hidden' as const,
   },
   cardPressed: {
