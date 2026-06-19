@@ -8,6 +8,7 @@ import {
   QrCode,
   Scale,
   Settings,
+  Smile,
   User,
 } from 'lucide-react-native';
 import { SHOW_PRESCRIPTIONS_TAB_NAV } from '@/features/prescriptions/constants';
@@ -38,6 +39,12 @@ export default function ProMore() {
                 icon: CalendarPlus,
                 label: 'Nouveau rendez-vous',
                 onPress: () => nav('/(pro)/appointments/new'),
+                iconAccent: 'teal',
+              },
+              {
+                icon: Smile,
+                label: 'Assistant Cary',
+                onPress: () => nav('/(pro)/ai'),
                 iconAccent: 'teal',
               },
             ],

@@ -64,6 +64,32 @@ class RegistrationRequest
         }
 
         $emailHash = hash('sha256', strtolower($email));
+
+        // Email déjà utilisé par un compte actif → pas de nouvelle demande
+        $existingProfile = $this->db->prepare('SELECT id, role FROM profiles WHERE email_hash = ? LIMIT 1');
+        $existingProfile->execute([$emailHash]);
+        $profileRow = $existingProfile->fetch(PDO::FETCH_ASSOC);
+        if ($profileRow) {
+            $existingRole = (string) ($profileRow['role'] ?? '');
+            if ($existingRole === $role) {
+                throw new Exception(
+                    'Un compte ' . $role . ' existe déjà avec cet email. Connectez-vous ou utilisez « Mot de passe oublié ».'
+                );
+            }
+            throw new Exception(
+                'Cet email est déjà utilisé par un compte Cary (rôle « ' . $existingRole . ' »).'
+            );
+        }
+
+        // Demande déjà en attente pour cet email
+        $pendingReq = $this->db->prepare(
+            "SELECT id FROM registration_requests WHERE email_hash = ? AND status = 'pending' LIMIT 1"
+        );
+        $pendingReq->execute([$emailHash]);
+        if ($pendingReq->fetch(PDO::FETCH_ASSOC)) {
+            throw new Exception('Une demande d\'inscription est déjà en cours de validation pour cet email.');
+        }
+
         $emailEnc = $this->crypto->encryptField($email);
         $firstEnc = $this->crypto->encryptField($first_name);
         $lastEnc = $this->crypto->encryptField($last_name);
@@ -320,7 +346,28 @@ class RegistrationRequest
                 }
             }
         }
-        $userId = $userModel->create($createData, $actorId, 'super_admin');
+
+        $emailHash = hash('sha256', strtolower(trim((string) $req['email'])));
+        $existingStmt = $this->db->prepare('SELECT id, role FROM profiles WHERE email_hash = ? LIMIT 1');
+        $existingStmt->execute([$emailHash]);
+        $existing = $existingStmt->fetch(PDO::FETCH_ASSOC);
+        $linkedExisting = false;
+
+        if ($existing) {
+            if (($existing['role'] ?? '') !== $req['role']) {
+                throw new Exception(
+                    'Un compte existe déjà avec cet email (rôle « ' . ($existing['role'] ?? '?') . ' »). '
+                    . 'Impossible d\'accepter cette demande « ' . $req['role'] . ' ».'
+                );
+            }
+            $userId = (string) $existing['id'];
+            $linkedExisting = true;
+            unset($createData['email'], $createData['role']);
+            $userModel->update($userId, $createData, $actorId, 'super_admin');
+        } else {
+            $userId = $userModel->create($createData, $actorId, 'super_admin');
+        }
+
         $this->db->prepare('UPDATE registration_requests SET status = ?, reviewed_at = NOW(), reviewed_by = ? WHERE id = ?')
             ->execute(['accepted', $actorId, $id]);
         try {
@@ -332,7 +379,10 @@ class RegistrationRequest
         } catch (Throwable $e) {
             error_log('RegistrationRequest accept welcome notification: ' . $e->getMessage());
         }
-        return ['user_id' => $userId];
+        return [
+            'user_id' => $userId,
+            'linked_existing' => $linkedExisting,
+        ];
     }
 
     /** Refuser. */

@@ -3,6 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNativeTabBarInset } from '@/navigation/use-native-tab-bar-inset';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { PatientAiChatComposer, PATIENT_AI_COMPOSER_DOCK_HEIGHT } from './PatientAiChatComposer';
@@ -23,6 +24,8 @@ interface Props {
   canSend: boolean;
   disabled?: boolean;
   disclaimer?: string;
+  /** false sur écran stack (pas de tab bar) — safe area bas uniquement. */
+  includeTabBarInset?: boolean;
 }
 
 /** Hauteur bandeau disclaimer (estimation — layout réel via onLayout). */
@@ -55,16 +58,19 @@ export function PatientAiChatFooter({
   canSend,
   disabled,
   disclaimer,
+  includeTabBarInset = true,
 }: Props) {
   const styles = useThemedStyles(buildStyles);
   const c = useAppColors();
+  const { bottom: safeBottom } = useSafeAreaInsets();
   const tabBarInset = useNativeTabBarInset(0);
+  const bottomInset = includeTabBarInset ? tabBarInset : safeBottom;
   const [inputFocused, setInputFocused] = useState(false);
 
   return (
     <KeyboardStickyView
-      style={[styles.footer, { bottom: tabBarInset, backgroundColor: 'transparent' }]}
-      offset={{ closed: 0, opened: tabBarInset }}
+      style={[styles.footer, { bottom: bottomInset, backgroundColor: 'transparent' }]}
+      offset={{ closed: 0, opened: bottomInset }}
     >
       <View
         onLayout={(event) => onFooterLayout?.(event.nativeEvent.layout.height)}

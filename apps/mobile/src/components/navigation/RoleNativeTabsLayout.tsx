@@ -38,7 +38,7 @@ export function createRoleTabsLayout(
         tintColor={c.primary}
         rippleColor={c.primaryMid}
         indicatorColor={c.primary}
-        disableTransparentOnScrollEdge={false}
+        disableTransparentOnScrollEdge
       >
         {tabs.map((tab) => (
           <NativeTabs.Trigger key={tab.name} name={tab.name} hidden={tab.hidden}>
