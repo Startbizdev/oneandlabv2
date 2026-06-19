@@ -1,44 +1,47 @@
 ---
 name: Prompt Cary V2 IA
-overview: "Audit OneAndLab/Cary + prompt V2 santé IA (Modules 1–2, 4–5) : hub IA, santé, voix, mémoire — sans refonte. QR code : voir prompt_cary_v2_qr.plan.md"
+overview: "Index plan maître IA Cary — 4 plans exécutables (Copilote → Santé → RAG → Voix/prod). Phase 1 intelligente : contexte SQL + RDV chat. Ouvrir un plan fils à la fois."
 todos:
-  - id: doc-prompt
-    content: Créer docs/cary-v2-sante-ia-prompt.md avec prompt Modules 1–5 + annexes DDL
+  - id: phase1-copilot
+    content: "Plan 1 — cary_v2_ia_phase1_copilot.plan.md (Grok + contexte SQL + RDV §2.7 + hub mobile)"
     status: pending
-  - id: phase-b-ai-hub-ux
-    content: "Phase B : onglet IA + hub + streaming SSE + prise RDV assistée (draft → récap → Valider)"
+  - id: phase2-sante
+    content: "Plan 2 — cary_v2_ia_phase2_sante.plan.md (Apple Health + graphiques + métriques dans IA)"
     status: pending
-  - id: phase-b-ai-booking
-    content: "Phase B : ai_appointment_drafts + confirm réutilisant POST /appointments + création patient pro + ai_booking_audits"
+  - id: phase3-rag
+    content: "Plan 3 — cary_v2_ia_phase3_rag.plan.md (Qdrant RAG + OCR + agent suivi + admin)"
     status: pending
-  - id: phase-a-migrations
-    content: "Phase A : migrations health_*, ai_*, voice_*, connected_devices, ai_reports, ai_routing — schémas extensibles même si UI différée"
-    status: pending
-  - id: phase-a-api
-    content: "Phase A : AIGateway + LLMProviderInterface (6 providers) + routing par tâche + /ai/chat + ai_audits"
-    status: pending
-  - id: phase-b-mobile-health
-    content: "Phase B : health-sync Expo + onglet patient + ingest connected_devices → health_metrics"
-    status: pending
-  - id: phase-b-rag-ocr
-    content: "Phase B : Qdrant RAG + OCR async + comptes rendus draft/validate (Module 2 + 04.3)"
-    status: pending
-  - id: phase-b-agent-suivi
-    content: "Phase B : agent suivi patient (signals → brouillon RDV IA)"
-    status: pending
-  - id: phase-c-hardening
-    content: "Phase C : tests sécurité, charge, cockpit admin IA étendu (Module 04.8)"
-    status: pending
-  - id: phase-d-voice-agents
-    content: "Phase D : assistant vocal patient/pro (STT/TTS), voice_sessions, multilingue FR/EN/AR/ES"
-    status: pending
-  - id: phase-d-trends
-    content: "Phase D : moteur tendances descriptif (ai_trends) + dashboard patient alertes visuelles"
+  - id: phase4-avance
+    content: "Plan 4 — cary_v2_ia_phase4_avance.plan.md (Voix + tendances + hardening prod)"
     status: pending
 isProject: false
 ---
 
 # Audit Cary / OneAndLab et prompt ingénieur V2 santé IA
+
+## Index — 4 plans exécutables (lancer 1 par 1)
+
+| # | Plan | Fichier | Contenu clé |
+|---|------|---------|-------------|
+| **1** | **Copilote intelligent** | [`cary_v2_ia_phase1_copilot.plan.md`](cary_v2_ia_phase1_copilot.plan.md) | Grok + **contexte SQL** (RDV, résultats, profil) + **prise RDV chat** § 2.7 + suggestions dynamiques + hub tous rôles |
+| **2** | Santé connectée | [`cary_v2_ia_phase2_sante.plan.md`](cary_v2_ia_phase2_sante.plan.md) | Apple Health / Health Connect + onglet graphiques + métriques dans l'IA |
+| **3** | RAG & intelligence profonde | [`cary_v2_ia_phase3_rag.plan.md`](cary_v2_ia_phase3_rag.plan.md) | Qdrant, OCR docs, mémoire, agent suivi, admin, pièces jointes |
+| **4** | Voix & production | [`cary_v2_ia_phase4_avance.plan.md`](cary_v2_ia_phase4_avance.plan.md) | STT/TTS, tendances, recherche/archives, tests sécurité/charge |
+
+**Démarrer par le Plan 1** — Cary est déjà utile (RDV + contexte dossier léger), pas un simple chatbot.
+
+**Règle :** un seul plan fils ouvert à la fois. Ce fichier = référence audit, contraintes, § 2.7, infra.
+
+### Numérotation migrations (075+)
+
+| Plan | Migrations |
+|------|------------|
+| 1 | 075–078 (ai core + booking drafts) |
+| 2 | 079–080 (health + devices) |
+| 3 | 081–084 (memory, signals, reports, attachments) |
+| 4 | 085–087 (voice, trends, feedback) |
+
+---
 
 ## 1. Synthèse audit (état au 04/06/2026)
 
@@ -60,10 +63,10 @@ isProject: false
 | **Mobile** | Expo 54, rôles `patient|nurse|pro|preleveur` — voir [`docs/react-native-ingenieur-prompt.md`](docs/react-native-ingenieur-prompt.md) | Onglet « Mes données santé », assistants IA |
 | **Web** | Nuxt 3 dashboards + booking — [`frontend/`](frontend/) | Cockpit IA admin, graphiques santé patient |
 | **Voix / agents / wearables** | — | Module 4 entier (voice_*, connected_devices, agent suivi, tendances) |
-| **UX IA native / hub conversationnel** | Feature `ai-assistant` prévue Module 2 | Module 5 : onglet bottom nav, mémoire, recherche, streaming |
-| **Bottom tabs mobile** | 4 rôles × onglets métier + `more` — [`(patient)/(tabs)/_layout.tsx`](apps/mobile/app/(patient)/(tabs)/_layout.tsx) | Onglet `ai` immédiatement avant `more` |
+| **UX IA native / hub conversationnel** | **Design mobile patient livré (mock)** — [`features/ai-hub/`](apps/mobile/src/features/ai-hub/), onglet [`(patient)/(tabs)/ai.tsx`](apps/mobile/app/(patient)/(tabs)/ai.tsx) | Backend Grok, persistance API, SSE, Markdown ; onglets `ai` pro/nurse/preleveur |
+| **Bottom tabs mobile** | Patient : onglet **`ai`** avant `more` — [`(patient)/(tabs)/_layout.tsx`](apps/mobile/app/(patient)/(tabs)/_layout.tsx) | Onglet `ai` avant `more` pour **nurse, pro, preleveur** (même shell UI) |
 | **Comptes rendus IA** | PDF ordonnance manuel [`PrescriptionPdf`](backend/lib/PrescriptionPdf.php) | Workflow brouillon → validation → `medical_documents` |
-| **Routing multi-LLM par tâche** | — | `ai_task_routing` + `LocalProvider` stub |
+| **Routing multi-LLM par tâche** | — | `ai_task_routing` ; **v1 GrokProvider** + stubs autres |
 
 ```mermaid
 flowchart TB
@@ -176,8 +179,6 @@ Agis comme architecte logiciel senior pour **Cary** (plateforme de soins et pré
 
 **Objectif V2 :** augmenter Cary en plateforme santé intelligente **assistée** (pas autonome médicalement), en branchant IA et sync capteurs sur les modules déjà en production.
 
-> **Module QR professionnel (analytics, poster, RDV)** : plan dédié [prompt_cary_v2_qr.plan.md](prompt_cary_v2_qr.plan.md)
-
 ---
 
 ### CONTRAINTES GLOBALES (inchangées + ancrage Cary)
@@ -197,12 +198,12 @@ interface LLMProviderInterface {
     public function transcribeAudio(string $audioPath, array $options = []): TranscriptionResponse; // Module 4
     public function synthesizeSpeech(string $text, array $options = []): SpeechResponse; // Module 4
 }
-// DeepSeekProvider, GrokProvider, OpenAIProvider, ClaudeProvider, GeminiProvider, LocalProvider (stub)
+// v1 : GrokProvider implémenté ; DeepSeekProvider, OpenAIProvider, ClaudeProvider, GeminiProvider, LocalProvider (stubs)
 ```
 
-- Config runtime : `ACTIVE_AI_PROVIDER=deepseek` (fallback global) + table **`ai_task_routing`** (Module 04.7) — changement sans redéploiement mobile.
+- **Stratégie fournisseurs :** architecture **multi-fournisseurs** extensible — chaque `task_type` peut cibler un provider différent via **`ai_task_routing`** (admin, sans redéploiement mobile). **Démarrage v1 : Grok (xAI) pour tous les types de tâche** ; bascule vers un autre provider = changement admin ou `.env`, pas de refonte feature.
+- Config runtime : `ACTIVE_AI_PROVIDER=grok` (fallback global si routing absent) + clé `XAI_API_KEY` + table **`ai_task_routing`** (Module 04.7).
 - **Règle absolue :** aucun code métier n’appelle un SDK fournisseur ; **100 % des appels IA passent par `AIGateway`** ([`backend/lib/ai/AIGateway.php`](backend/lib/ai/AIGateway.php)).
-- L’app **ne dépend jamais** d’un seul fournisseur.
 
 ---
 
@@ -214,7 +215,7 @@ interface LLMProviderInterface {
 - UX : consentement explicite, sync manuelle / auto / background, historique des syncs, détection révocation permissions.
 - Permissions : ajouter clés dans [`apps/mobile/app.json`](apps/mobile/app.json) / `app.config.js` (`NSHealthShareUsageDescription`, etc.).
 
-**Backend — migrations nouvelles** (préfixe `067+`) :
+**Backend — migrations nouvelles** (préfixe **`075+`** — dernière migration repo : **074** [`073_create_qr_tables`](database/migrations/073_create_qr_tables.sql), [`074_*`](database/migrations/)) :
 - `health_sources` (patient_id, platform, external_source_id, revoked_at)
 - `health_syncs` (source_id, status, started_at, finished_at, error, metrics_count)
 - `health_metrics` (patient_id, metric_type ENUM, value, unit, recorded_at, source_id, external_id UNIQUE pour dédup)
@@ -241,7 +242,7 @@ interface LLMProviderInterface {
 
 Nouveau namespace `backend/lib/ai/` :
 - `AIGateway.php` : `analyzeDocument()`, `chat()`, `summarizePatient()`, `generateAppointmentSuggestion()`, `medicalExplanation()`, `ocrAnalysis()`
-- Routing : DeepSeek par défaut ; feature flags par type de tâche.
+- Routing : **`ai_task_routing`** par type de tâche ; **v1 = Grok partout** (seed migration) ; bascule admin vers autre provider sans toucher au code métier.
 - **OCR** : worker/cron (phase 1 : Tesseract ou API cloud **hors chemin synchrone HTTP**) — entrée = fichiers déjà dans [`medical_documents`](backend/api/medical-documents/index.php) après déchiffrement **en mémoire uniquement**, jamais stocker PDF clair.
 
 #### 2.2 Contexte métier (RAG + prompts)
@@ -301,13 +302,90 @@ Pipeline asynchrone :
 - `GET /admin/ai/settings`, `PUT /admin/ai/settings` — super_admin web
 - `GET /admin/ai/usage` — tokens, coûts, taux erreur
 
-**Mobile :** feature `apps/mobile/src/features/ai-assistant/` — hub conversationnel complet décrit en **Module 5** (onglet dédié, pas un écran secondaire caché).
+**Mobile :** feature existante [`apps/mobile/src/features/ai-hub/`](apps/mobile/src/features/ai-hub/) — **ne pas recréer de vues IA** ; Phase B = brancher `/ai/*` + partager le même shell pour **patient, nurse, pro, preleveur** (voir Module 5 § 05.1–05.2).
 
----
 
-### MODULE 3 — QR professionnel
+#### 2.7 — Prise de RDV assistée par l’IA (brouillon → récap → Valider)
 
-Voir le plan dédié : [prompt_cary_v2_qr.plan.md](prompt_cary_v2_qr.plan.md)
+**Principe :** l’IA **ne crée jamais** de RDV directement. Elle remplit un **`ai_appointment_draft`**, affiche un **récap** dans le fil chat ([`ai-hub`](apps/mobile/src/features/ai-hub/)), et seul un clic **Valider** déclenche la chaîne métier existante (`POST /patients` si besoin → `Appointment::create`).
+
+**Réutilisation obligatoire :**
+- Validation payload : [`validateUnifiedRdvPayload`](packages/shared-utils/src/dashboard-unified-rdv.ts)
+- Création RDV : [`Appointment::create`](backend/models/Appointment.php) via [`appointments/index.php`](backend/api/appointments/index.php)
+- Création patient pro : [`POST /patients`](backend/api/patients/index.php) — **uniquement au `confirm`**, pas pendant le chat
+- Mobile pro : [`useAppointmentForm`](apps/mobile/src/features/appointments/form/hooks/useAppointmentForm.ts) / [`NEW_PATIENT_ID`](apps/mobile/src/features/appointments/form/types.ts)
+- Urgence lab Stripe : flux [`patient/booking-draft`](backend/api/patient/booking-draft/) **inchangé** — l’IA peut pré-remplir le draft Stripe, jamais le contourner
+
+**Tables (migration 078 — Plan 1) :**
+- `ai_appointment_drafts` : `id`, `user_id`, `patient_id` (cible RDV), `conversation_id` nullable, `status` (`collecting`|`ready`|`confirmed`|`expired`|`cancelled`), `payload_json` (aligné unified RDV), `missing_fields_json`, `created_by_role`, timestamps, `expires_at`
+- `ai_booking_audits` : `draft_id`, `action` (`create`|`patch`|`confirm`|`cancel`), `user_id`, `appointment_id` nullable, `ai_audit_id` nullable, `created_at`
+
+```mermaid
+sequenceDiagram
+  participant U as Utilisateur
+  participant Hub as ai-hub CaryAiHubScreen
+  participant AI as AIGateway Grok
+  participant API as POST /ai/booking/drafts
+  participant Appt as Appointment::create
+
+  U->>Hub: "Je veux un RDV prélèvement mardi"
+  Hub->>AI: chat + outil draft booking
+  AI->>API: PATCH draft champs manquants
+  API-->>Hub: draft status collecting ou ready
+  Hub->>U: Récap carte + bouton Valider
+  U->>Hub: Clic Valider
+  Hub->>API: POST /ai/booking/drafts/id/confirm
+  alt Pro + patient inconnu
+    API->>API: POST /patients puis patient_id
+  end
+  API->>Appt: même payload que wizard classique
+  Appt-->>Hub: appointment_id + statut dispatch
+  API->>API: ai_booking_audits + draft confirmed
+```
+
+**API booking :**
+
+| Endpoint | Rôle | Description |
+|----------|------|-------------|
+| `POST /ai/booking/drafts` | patient, nurse, pro | Crée draft vide ou depuis message (`conversation_id`, `initial_intent?`) |
+| `GET /ai/booking/drafts/{id}` | auteur | État + récap lisible + champs manquants |
+| `PATCH /ai/booking/drafts/{id}` | auteur | Merge champs (`payload_json`) — validation partielle shared-utils |
+| `POST /ai/booking/drafts/{id}/confirm` | auteur | **Seule** création RDV ; body optionnel derniers champs |
+
+**Flux `confirm` (backend) :**
+1. Vérifier `status = ready` et draft non expiré (`expires_at`, ex. 24 h)
+2. Si `created_by_role` ∈ {nurse, pro} et `patient_mode = new` : **`POST /patients`** interne (mêmes règles 409 email)
+3. Appeler **`validateUnifiedRdvPayload`** sur le payload final
+4. **`Appointment::create`** — pas de raccourci parallèle
+5. Si pro/nurse créateur : `linkPatientProfessional` si applicable
+6. Mettre draft `confirmed`, lier `appointment_id`, écrire `ai_booking_audits` + `access_logs`
+
+**UX mobile ([`ai-hub`](apps/mobile/src/features/ai-hub/) — design existant, pas nouvelle vue) :**
+1. Chip « Prendre un rendez-vous » ou intent détecté dans le chat → crée/met à jour draft
+2. L’assistant pose les questions manquantes **dans le fil** (adresse, créneau, type soin/prélèvement, proche…)
+3. Quand `ready` : **carte récap** inline (même style bulle assistant) + CTA **Valider** / **Modifier**
+4. **Valider** → loading → message succès avec lien vers détail RDV
+5. **Modifier** → repasse en `collecting` ou deep link wizard [`BookingWizardScreen`](apps/mobile/src/features/appointments/form/screens/BookingWizardScreen.tsx) pré-rempli (`?draft_id=`)
+
+**Différences par rôle au confirm :**
+
+| Rôle | `patient_id` | Création patient | Dispatch |
+|------|--------------|------------------|----------|
+| `patient` | self ou `relative_id` | Non | Standard pending + dispatch |
+| `nurse` / `pro` | existant ou **new au confirm** | Oui si new | Selon règles métier actuelles (souvent confirmed + assignation) |
+| Suggestion agent 04.4 | self | Non | Idem patient |
+
+**Garde-fous :**
+- Jamais `POST /appointments` depuis le worker IA, cron ou `AIGateway` sans HTTP `confirm` utilisateur
+- Disclaimer + mention « vérifiez le récap » sur chaque carte ready
+- Traçabilité : `conversation_id`, `ai_audit_id` du tour LLM qui a finalisé le draft
+
+**Tests obligatoires (Phase B) :**
+- Patient : draft → récap → confirm → `appointment_id` + dispatch
+- Pro + email inconnu : confirm → `POST /patients` → RDV
+- Pro + email existant : confirm → 409 + proposition `existing_patient_id`
+- Draft expiré → 410
+- Non-auteur → 403 sur GET/PATCH/confirm
 
 ---
 
@@ -333,23 +411,23 @@ flowchart LR
     RT[ai_task_routing]
   end
   subgraph providers [Providers]
-    DS[DeepSeek]
-    GK[Grok]
-    OAI[OpenAI]
-    CL[Claude]
-    GM[Gemini]
-    LOC[Local stub]
+    GK["Grok — v1 actif"]
+    DS[DeepSeek — stub]
+    OAI[OpenAI — stub]
+    CL[Claude — stub]
+    GM[Gemini — stub]
+    LOC[Local — stub]
   end
   MP --> GW
   MN --> GW
   AD --> GW
   GW --> RT
-  RT --> DS
   RT --> GK
-  RT --> OAI
-  RT --> CL
-  RT --> GM
-  RT --> LOC
+  RT -.-> DS
+  RT -.-> OAI
+  RT -.-> CL
+  RT -.-> GM
+  RT -.-> LOC
 ```
 
 #### 04.1 — Assistant vocal patient
@@ -357,7 +435,7 @@ flowchart LR
 **Objectif :** communiquer avec l’IA par la voix (ex. « Explique mon résultat », « Mon prochain RDV ? », « Résume mon dossier »).
 
 **Fonctionnalités (Phase D UI, schéma Phase A) :**
-- STT (reconnaissance) + TTS (synthèse) via `AIGateway::transcribe()` / `::synthesize()` — fournisseur routé (ex. Grok pour vocal, configurable admin).
+- STT (reconnaissance) + TTS (synthèse) via `AIGateway::transcribe()` / `::synthesize()` — **v1 : Grok** (même routing `ai_task_routing` ; autre provider possible plus tard via admin).
 - Conversation naturelle : même thread que chat texte ; bascule texte ↔ voix à tout moment.
 - Historique vocal conservé (transcriptions + métadonnées audio chiffrées ou URLs signées courte durée).
 - **Multilingue v1 :** FR (défaut), EN, AR, ES — champ `locale` sur `voice_sessions` ; prompts système i18n dans `platform_settings`.
@@ -476,30 +554,34 @@ flowchart LR
 
 #### 04.7 — IA multi-fournisseurs et routing intelligent
 
-**Objectif :** zéro dépendance code métier à DeepSeek ; migration Grok/GPT/Claude/Gemini/local sans toucher aux features.
+**Objectif :** zéro dépendance code métier à un SDK ; changement Grok → GPT/Claude/DeepSeek/local **par `task_type`** sans toucher aux features.
 
 **Implémentations** (`backend/lib/ai/providers/`) :
-- `DeepSeekProvider` (défaut global)
-- `GrokProvider`, `OpenAIProvider`, `ClaudeProvider`, `GeminiProvider`
-- `LocalProvider` — stub retournant erreur contrôlée ou modèle on-prem futur
+- **`GrokProvider`** — **seul provider fully implémenté en v1** (chat, complete, STT/TTS si API xAI le permet ; sinon STT/TTS reportés Phase D avec même interface)
+- `DeepSeekProvider`, `OpenAIProvider`, `ClaudeProvider`, `GeminiProvider` — **stubs Phase A** (erreur contrôlée « provider non activé ») ; implémentation à la demande
+- `LocalProvider` — stub on-prem futur
 
 **Table `ai_task_routing`** :
 - `task_type` ENUM : `chat_simple`, `chat_complex`, `medical_summary`, `document_analysis`, `ocr`, `voice_agent`, `voice_transcription`, `trend_wording`, `appointment_suggestion`
 - `provider` ENUM, `model` varchar nullable, `priority` int, `enabled`
 
-**Exemple routing par défaut (modifiable admin) :**
+**Seed migration v1 (Grok partout — modifiable admin) :**
 
-| task_type | provider suggéré |
-|-----------|------------------|
-| chat_simple | deepseek |
-| chat_complex | openai |
-| medical_summary | claude |
-| document_analysis | deepseek |
-| voice_agent | grok |
-| voice_transcription | openai |
-| appointment_suggestion | deepseek |
+| task_type | provider | model (ex.) |
+|-----------|----------|-------------|
+| chat_simple | grok | grok-3 |
+| chat_complex | grok | grok-3 |
+| medical_summary | grok | grok-3 |
+| document_analysis | grok | grok-3 |
+| ocr | grok | grok-3 |
+| voice_agent | grok | grok-3 |
+| voice_transcription | grok | grok-3 |
+| trend_wording | grok | grok-3 |
+| appointment_suggestion | grok | grok-3 |
 
-**`AIGateway::resolveProvider(string $taskType)`** — lit `ai_task_routing` + cache ; log chaque choix dans `ai_audits`.
+**Exemple bascule ultérieure (sans redéploiement) :** admin met `medical_summary` → `claude` + `claude-sonnet-4` une fois `ClaudeProvider` activé.
+
+**`AIGateway::resolveProvider(string $taskType)`** — lit `ai_task_routing` + cache ; fallback `ACTIVE_AI_PROVIDER` ; log chaque choix dans `ai_audits`.
 
 #### 04.8 — Agent administrateur IA (cockpit étendu)
 
@@ -539,35 +621,59 @@ flowchart LR
 
 #### 05.1 — Navigation principale mobile (obligatoire)
 
-**Ajout d’un onglet « IA » dans la Bottom Navigation** pour **tous les rôles mobile** (`patient`, `nurse`, `pro`, `preleveur`) :
+**Règle produit : conserver le design IA mobile déjà validé côté patient — aucune refonte UI.**
 
-| Fichier à modifier | Ordre des onglets |
-|--------------------|-------------------|
-| [`apps/mobile/app/(patient)/(tabs)/_layout.tsx`](apps/mobile/app/(patient)/(tabs)/_layout.tsx) | … → **`ai`** → **`more`** |
-| [`apps/mobile/app/(nurse)/(tabs)/_layout.tsx`](apps/mobile/app/(nurse)/(tabs)/_layout.tsx) | … → **`ai`** → **`more`** |
-| [`apps/mobile/app/(pro)/(tabs)/_layout.tsx`](apps/mobile/app/(pro)/(tabs)/_layout.tsx) | … → **`ai`** → **`more`** |
-| [`apps/mobile/app/(preleveur)/(tabs)/_layout.tsx`](apps/mobile/app/(preleveur)/(tabs)/_layout.tsx) | … → **`ai`** → **`more`** |
+**Existant patient (à ne pas refaire) :**
+- Onglet **`ai`** avant **`more`** — [`apps/mobile/app/(patient)/(tabs)/_layout.tsx`](apps/mobile/app/(patient)/(tabs)/_layout.tsx) (icône `face.smiling` / « Assistant Cary »)
+- Route [`apps/mobile/app/(patient)/(tabs)/ai.tsx`](apps/mobile/app/(patient)/(tabs)/ai.tsx) → [`PatientAiMockScreen`](apps/mobile/src/features/ai-hub/screens/PatientAiMockScreen.tsx)
+- Composants partagés : [`PatientAiChatFooter`](apps/mobile/src/features/ai-hub/components/PatientAiChatFooter.tsx), [`PatientAiConversationsSheet`](apps/mobile/src/features/ai-hub/components/PatientAiConversationsSheet.tsx), [`PatientAiVoiceMockOverlay`](apps/mobile/src/features/ai-hub/components/PatientAiVoiceMockOverlay.tsx), etc.
 
-**Règle de position :** l’onglet `ai` est déclaré **immédiatement avant** `more` dans chaque `_layout.tsx` (Expo Router = ordre d’affichage dans [`TabBar`](apps/mobile/src/components/navigation/TabBar.tsx)).
+**À faire — même UI pour les pros :**
 
-**Route :** `apps/mobile/app/(role)/(tabs)/ai.tsx` → stack interne `ai/index` (liste) + `ai/[conversationId]` (chat).
+| Fichier | Action |
+|---------|--------|
+| [`apps/mobile/app/(nurse)/(tabs)/_layout.tsx`](apps/mobile/app/(nurse)/(tabs)/_layout.tsx) | Ajouter onglet **`ai`** immédiatement avant **`more`** (même icône / label) |
+| [`apps/mobile/app/(pro)/(tabs)/_layout.tsx`](apps/mobile/app/(pro)/(tabs)/_layout.tsx) | Idem |
+| [`apps/mobile/app/(preleveur)/(tabs)/_layout.tsx`](apps/mobile/app/(preleveur)/(tabs)/_layout.tsx) | Idem |
+| `apps/mobile/app/(nurse\|pro\|preleveur)/(tabs)/ai.tsx` | Wrapper mince identique au patient — **même écran hub** |
 
-**Icône :** `Sparkles` ou `Bot` (lucide-react-native), label court « IA », cohérent avec tokens Cary [`colors.ts`](apps/mobile/src/theme/colors.ts).
+**Refactor Phase B (nommage, pas redesign) :**
+- Extraire un écran **`CaryAiHubScreen`** (ou renommer `PatientAiMockScreen`) avec prop **`role: MobileRole`**
+- Renommer progressivement `PatientAi*` → **`CaryAi*`** quand le composant est partagé multi-rôles
+- Config par rôle : `getAiHubRoleConfig(role)` — greeting, chips suggestions, `context_scope` API, conversation système (`assistant_health` vs `assistant_professional`)
 
-**Point d’entrée :** ouvre directement le **hub conversationnel** (pas un menu intermédiaire).
+**Point d'entrée :** chat conversationnel direct (fil + footer composer) ; historique via **sheet** latérale (design actuel) — pas de menu intermédiaire.
 
-#### 05.2 — Page d’accueil IA (hub ChatGPT-like)
+**Stack routes v1 :** un seul onglet `(tabs)/ai.tsx` par rôle suffit ; stack `ai/[conversationId]` **optionnel** si deep link nécessaire plus tard.
 
-**Feature :** `apps/mobile/src/features/ai-hub/` (peut fusionner avec `ai-assistant/` — un seul module `features/ai/` recommandé).
+#### 05.2 — Hub conversationnel (design existant — brancher backend)
 
-**Écran liste** (`AiHubScreen`) — contenu :
-- **Mon Assistant Santé** (carte fixe en tête, toujours visible)
-- Conversations **épinglées** (`is_pinned`, tri prioritaire)
-- **Conversations récentes** (tri `updated_at` desc, hors archivées)
-- Barre **recherche globale** (voir 05.8)
-- Bouton **Nouvelle conversation**
-- **Suggestions rapides** (chips) : « Explique mes derniers résultats », « Résume mon dossier », etc.
-- Section **Archives** (lien vers liste `archived_at IS NOT NULL`)
+**Feature unique :** [`apps/mobile/src/features/ai-hub/`](apps/mobile/src/features/ai-hub/) — **source de vérité UI** pour tous les rôles mobile. **Interdit :** dupliquer les vues dans `ai-assistant/` ou recréer un second design chat.
+
+**Écran actuel (patient, mock Phase B-0) — à conserver tel quel visuellement :**
+- Fil chat : bulles user/assistant, avatar Cary, chips suggestions welcome
+- Footer : composer + bouton voix + bannière demo ([`PatientAiDemoBanner`](apps/mobile/src/features/ai-hub/components/PatientAiDemoBanner.tsx))
+- Historique : [`PatientAiConversationsSheet`](apps/mobile/src/features/ai-hub/components/PatientAiConversationsSheet.tsx) (menu header)
+- Voix : overlay mock [`PatientAiVoiceMockOverlay`](apps/mobile/src/features/ai-hub/components/PatientAiVoiceMockOverlay.tsx) → brancher Module 4 Phase D
+- Suggestions mock : [`patient-ai-mock.ts`](apps/mobile/src/features/ai-hub/constants/patient-ai-mock.ts) → remplacer par `GET /ai/quick-suggestions` + config pro
+
+**Différences par rôle (données / contexte uniquement — pas de layout différent) :**
+
+| Rôle | Titre header | Conversation système | Suggestions chips (ex.) | Contexte RAG |
+|------|--------------|----------------------|---------------------------|--------------|
+| `patient` | Assistant Cary | `assistant_health` | RDV, résultats, dossier, tendances santé | Dossier self + proches |
+| `nurse` | Assistant Cary | `assistant_professional` | Synthèse patient, prep RDV, dictée (Phase D) | Patients via `PatientDossierAccess` |
+| `pro` | Assistant Cary | `assistant_professional` | RDV patient, créer patient, résumer dossier | Idem pro |
+| `preleveur` | Assistant Cary | `assistant_professional` (périmètre limité) | Prep tournée, RDV assignés | Sous-ensemble métier |
+
+**Phase B — travail UI = câblage, pas redesign :**
+1. Remplacer `use-patient-ai-conversations` mock → `useAiConversations` API
+2. Remplacer `pickPatientAiMockReply` → `POST /ai/chat` puis **SSE** `POST /ai/chat/stream`
+3. Ajouter rendu **Markdown** dans les bulles assistant (composant existant, pas nouveau layout)
+4. Disclaimer footer (texte admin) — intégrer dans [`PatientAiChatFooter`](apps/mobile/src/features/ai-hub/components/PatientAiChatFooter.tsx)
+5. Retirer bannière demo quand backend live
+
+**Extensions ultérieures dans le même shell (pas nouvel écran) :** épinglage, recherche globale, section Archives — enrichir la sheet historique ou header, sans changer le fil chat.
 
 **Web patient (phase ultérieure) :** miroir optionnel `frontend/pages/patient/ia/` — mobile prioritaire Phase B.
 
@@ -716,18 +822,20 @@ flowchart TB
 - `voice` — Phase D (Module 4)
 - `image` / `pdf` / doc médical — Phase B attachments, analyse async
 
-#### 05.10 — Expérience chat (ChatGPT-like)
+#### 05.10 — Expérience chat (design existant + backend)
 
-**Écran chat** `AiChatScreen` :
-- **Streaming SSE** : `POST /ai/chat/stream` — chunks token par token (Phase B ; fallback polling si infra limite)
-- Rendu **Markdown** (`react-native-markdown-display` ou équivalent)
-- **Scroll intelligent** (auto-scroll si user en bas, pause si scroll up)
-- Bulles user/assistant, indicateur « Cary réfléchit… »
-- **Citations** : liens vers doc/RDV source (ouvre sheet document existant)
-- Toggle **texte ↔ voix** (Module 4) dans barre de saisie
+**Écran chat :** [`PatientAiMockScreen`](apps/mobile/src/features/ai-hub/screens/PatientAiMockScreen.tsx) → **`CaryAiHubScreen`** partagé — **ne pas créer `AiChatScreen` parallèle**.
+
+**Déjà en place (UI) :** bulles user/assistant, scroll auto, indicateur « Cary réfléchit… », chips suggestions, composer sticky clavier.
+
+**Phase B — à brancher sur le design existant :**
+- **Streaming SSE** : `POST /ai/chat/stream` — chunks token par token (fallback polling si infra limite)
+- Rendu **Markdown** dans bulles assistant (`react-native-markdown-display` ou équivalent)
+- **Citations** : liens cliquables dans bulle → sheet doc/RDV existants
+- Toggle **texte ↔ voix** (Module 4) — bouton voix déjà dans le footer
 - Disclaimer en footer + première réponse de session
 
-**Composants réutilisables :** s’inspirer de patterns messagerie [`CarePhotoDiscussionScreen`](apps/mobile/src/features/appointments/screens/CarePhotoDiscussionScreen.tsx) pour fil scroll, pas pour UI médicale.
+**Patterns scroll :** réutiliser [`liquid-glass-header-inset`](apps/mobile/src/components/navigation/liquid-glass-header-inset.ts) déjà branché sur l'écran patient.
 
 #### 05.11 — Entrées contextuelles depuis les autres parcours
 
@@ -743,7 +851,7 @@ L’IA doit être joignable **hors de l’onglet IA** via deep links :
 | Onglet santé Module 1 | « Mes tendances » | `health_tracking` |
 | Notification agent 04.4 | Ouvre hub + signal | `suggestion_id` |
 
-**Implémentation :** `router.push('/(patient)/(tabs)/ai?...')` ou stack `ai/[conversationId]` avec `initialMessage` query.
+**Implémentation :** `router.push('/(role)/(tabs)/ai?...')` — même onglet pour patient et pro ; paramètres `conversation_type`, `initialMessage`, `appointment_id`, etc.
 
 #### 05.12 — Suggestions intelligentes (hub)
 
@@ -769,13 +877,14 @@ Génération : `GET /ai/quick-suggestions` — règles métier + optionnel LLM p
 
 #### 05.14 — Architecture obligatoire Module 5 (checklist)
 
-1. Onglet **`ai` avant `more`** sur les 4 layouts tabs mobile.
-2. Conversation système créée **automatiquement** — jamais supprimable/archivable.
-3. **Aucune perte de contexte** : messages persistés ; résumés = compression LLM seulement.
-4. Tous les appels LLM → `AIGateway` + `MemoryComposer` + disclaimer.
-5. Types `@oneandlab/shared-types` : `AiConversation`, `ConversationType`, `AiHubPayload`, `AiMessage`, `AiAttachment`.
-6. WebSocket optionnel Phase C ; **SSE suffit** pour streaming Phase B.
-7. Prise de RDV : toujours **brouillon → récap → Valider** (§ 2.7) ; cartes récap dans le fil de chat.
+1. **Un seul module UI** [`features/ai-hub/`](apps/mobile/src/features/ai-hub/) — patient + nurse + pro + preleveur ; **pas de second design chat**.
+2. Onglet **`ai` avant `more`** — patient ✅ ; **à ajouter** nurse, pro, preleveur.
+3. Conversation système créée **automatiquement** — jamais supprimable/archivable.
+4. **Aucune perte de contexte** : messages persistés ; résumés = compression LLM seulement.
+5. Tous les appels LLM → `AIGateway` + `MemoryComposer` + disclaimer.
+6. Types `@oneandlab/shared-types` : `AiConversation`, `ConversationType`, `AiHubPayload`, `AiMessage`, `AiAttachment`.
+7. WebSocket optionnel Phase C ; **SSE suffit** pour streaming Phase B.
+8. Prise de RDV : toujours **brouillon → récap → Valider** (§ 2.7) ; cartes récap dans le fil de chat existant.
 
 ---
 
@@ -823,13 +932,13 @@ Téléconsultation, analyse d’imagerie assistée, agent vocal temps réel full
 
 **Phase A — Fondations (4–6 sem.)**
 - Migrations : `health_*`, `ai_*` **étendu Module 5**, **`ai_appointment_drafts`, `ai_booking_audits`**, `voice_*`, `connected_devices`, `ai_reports`, `ai_patient_signals`, `ai_trends`, `ai_task_routing`, `ai_conversation_summaries`, `ai_user_memory`, `ai_medical_memory`, `ai_conversation_attachments`
-- `LLMProviderInterface` (6 providers) + `AIGateway` + `MemoryComposer` + routing par tâche
+- `LLMProviderInterface` + **`GrokProvider` v1** + stubs autres providers + `AIGateway` + `MemoryComposer` + seed `ai_task_routing` (Grok tous task_type)
 - API `/health/*`, `/ai/conversations` CRUD, `ensure-system`, `/ai/chat` (non-stream), tables audit
-- Doc : schéma DB complet Modules 1–5, `docs/cary-v2-sante-ia-prompt.md`
+- Doc : schéma DB complet Modules 1–2, 4–5, `docs/cary-v2-sante-ia-prompt.md`
 
 **Phase B — Produit (6–8 sem.) — priorité UX IA native (Module 5)**
-- **Onglet IA** (avant Plus) + hub ChatGPT-like + **Mon Assistant Santé** + chat Markdown + **SSE streaming**
-- Recherche globale, épinglage, rename, archive, suggestions rapides, deep links depuis lab-results/RDV/docs
+- **Réutiliser `ai-hub` patient** : brancher Grok/SSE + onglet `ai` **pro/nurse/preleveur** (même composants, config par rôle)
+- Épinglage / recherche / archives : extensions sheet historique (pas nouvel écran)
 - Health sync + `connected_devices` → `health_metrics`
 - RAG Qdrant + OCR async + pièces jointes conversation + citations
 - `ai_reports` workflow + agent suivi (Module 04.4)
@@ -860,7 +969,7 @@ Téléconsultation, analyse d’imagerie assistée, agent vocal temps réel full
 
 1. **Migrations** : un fichier numéroté dans [`database/migrations/`](database/migrations/) + entrée dans `all-migrations.sql`.
 2. **API** : nouveau dossier sous `backend/api/` ; enregistrement routage dans [`backend/api/index.php`](backend/api/index.php).
-3. **Mobile** : feature folder + routes Expo Router sous `app/(patient)/` ; pas de logique métier dans les écrans.
+3. **Mobile** : **un seul** feature folder [`features/ai-hub/`](apps/mobile/src/features/ai-hub/) ; routes `(role)/(tabs)/ai.tsx` = wrappers minces ; pas de logique métier dans les écrans route.
 4. **Types** : ajouter dans `@oneandlab/shared-types` avant usage mobile/web.
 5. **Ne pas casser** : OTP, CSRF web, Stripe [`subscriptions`](database/migrations/026_create_subscriptions.sql), dispatch RDV.
 6. **Nom produit UI** : « Cary » ; packages npm restent `@oneandlab/*`.
@@ -872,7 +981,7 @@ Téléconsultation, analyse d’imagerie assistée, agent vocal temps réel full
 | Bloc prompt original | Statut | Action |
 |---------------------|--------|--------|
 | HealthKit / Health Connect | 0 % | Module 1 greenfield |
-| AI Gateway / multi-LLM | 0 % | Module 2 `backend/lib/ai/` |
+| AI Gateway / multi-LLM | 0 % | Module 2 — `GrokProvider` v1 + `AIGateway` |
 | RAG Qdrant | 0 % | Sidecar + workers |
 | Assistants patient/pro | 0 % | S’appuie sur lab-results, medical-docs, appointments |
 | OCR / analyse docs | 0 % | Hook post-upload `medical_documents` |
@@ -888,14 +997,41 @@ Téléconsultation, analyse d’imagerie assistée, agent vocal temps réel full
 | Agent suivi patient | 0 % | Module 04.4 — Phase B (cron + signals) |
 | Objets connectés multi-marques | 0 % | Module 04.5 — schéma Phase A, sync Phase B |
 | Moteur tendances descriptif | 0 % | Module 04.6 — Phase D |
-| Routing multi-LLM par tâche | 0 % | Module 04.7 — Phase A |
+| Routing multi-LLM par tâche | 0 % | Module 04.7 — seed Grok, bascule admin |
 | Cockpit admin IA étendu | 0 % | Module 04.8 — Phase B/C |
-| Hub IA / onglet bottom nav | 0 % | Module 05 — Phase B (prioritaire) |
+| Hub IA / onglet bottom nav | **~40 % UI patient mock** | Module 05 — brancher API ; onglets pro/nurse/preleveur ; **pas de redesign** |
 | Mon Assistant Santé système | 0 % | Module 05.3 — `ensure-system` à la connexion |
 | Mémoire 3 niveaux + résumés conv. | 0 % | Module 05.5–05.6 — Phase A schema, Phase B jobs |
 | Streaming SSE chat | 0 % | Module 05.10 — Phase B |
 | Recherche conversations IA | 0 % | Module 05.8 — Phase B |
 | Prise RDV brouillon → Valider | 0 % | § 2.7 + `ai_booking_audits` — Phase B |
+
+---
+
+## 4 bis. Infra IA v1 (Grok + Qdrant)
+
+**Dernière migration appliquée en prod : 074** — toutes nouvelles tables IA/santé en **075+** (un fichier numéroté par migration dans [`database/migrations/`](database/migrations/) + `all-migrations.sql`).
+
+### Grok (xAI) — v1 actif
+
+| Variable | Description |
+|----------|-------------|
+| `XAI_API_KEY` | Clé API xAI — **`.env` serveur + local uniquement**, jamais dans le plan ni git |
+| `ACTIVE_AI_PROVIDER` | `grok` (fallback global) |
+| `XAI_MODEL` | ex. `grok-3` (seed `ai_task_routing`) |
+
+### Qdrant (RAG — Phase B)
+
+Sidecar sur l’EC2 Cary (`ubuntu@ec2-15-188-11-249.eu-west-3.compute.amazonaws.com`) — **non exposé publiquement**.
+
+**État prod (audit SSH juin 2026) :** pas de Docker, pas de Qdrant, port 6333 libre → **installation requise Phase B** (Docker + `qdrant/qdrant` ou binaire systemd).
+
+| Variable | Description |
+|----------|-------------|
+| `QDRANT_URL` | `http://127.0.0.1:6333` (localhost EC2 uniquement) |
+| `QDRANT_API_KEY` | optionnel si auth activée |
+
+**Déploiement cible :** bind `127.0.0.1:6333` ; volume persistant `/var/lib/qdrant` ; collections par `patient_id` ; ACL côté `AIGateway` avant requête vectorielle.
 
 ---
 
@@ -913,4 +1049,4 @@ Téléconsultation, analyse d’imagerie assistée, agent vocal temps réel full
 
 ## 5. Prochaine étape après validation du plan
 
-Créer le fichier [`docs/cary-v2-sante-ia-prompt.md`](docs/cary-v2-sante-ia-prompt.md) contenant le prompt **Modules 1 à 5** (section 3) + schémas SQL détaillés (DDL : `ai_conversations` étendu, `ai_conversation_summaries`, `ai_user_memory`, `ai_medical_memory`, `ai_conversation_attachments`, etc.) et checklist de non-régression sur les 86 endpoints existants.
+Créer le fichier [`docs/cary-v2-sante-ia-prompt.md`](docs/cary-v2-sante-ia-prompt.md) contenant le prompt **Modules 1–2, 4–5** (section 3) + schémas SQL détaillés (DDL : `ai_conversations` étendu, `ai_conversation_summaries`, `ai_user_memory`, `ai_medical_memory`, `ai_conversation_attachments`, etc.) et checklist de non-régression sur les 86 endpoints existants.

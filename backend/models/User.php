@@ -259,6 +259,27 @@ class User
                 error_log('QrCodeService ensureForProfile: ' . $e->getMessage());
             }
         }
+
+        if (
+            $role === 'patient'
+            && $actorId === 'system'
+            && $actorRole === 'system'
+            && !str_ends_with(strtolower((string) ($data['email'] ?? '')), '@patients.internal.local')
+        ) {
+            try {
+                require_once __DIR__ . '/../lib/AdminEmailNotifier.php';
+                AdminEmailNotifier::patientRegistered($id, $data);
+            } catch (Throwable $e) {
+                error_log('User create admin email (patient): ' . $e->getMessage());
+            }
+        } elseif ($actorRole === 'super_admin' && $actorId !== 'system') {
+            try {
+                require_once __DIR__ . '/../lib/AdminEmailNotifier.php';
+                AdminEmailNotifier::userCreatedByAdmin($id, $role, $data);
+            } catch (Throwable $e) {
+                error_log('User create admin email (admin): ' . $e->getMessage());
+            }
+        }
         
         return $id;
     }

@@ -1,4 +1,5 @@
 export * from './appointments';
+export * from './ai';
 export * from './lab-results';
 export * from './qr';
 export * from './staff-hub-search';

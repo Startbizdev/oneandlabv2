@@ -177,6 +177,19 @@ try {
 
     $db->commit();
 
+    try {
+        require_once __DIR__ . '/../../../lib/AdminEmailNotifier.php';
+        $providerLabel = $paymentProvider === 'apple' ? 'Apple' : 'Google Play';
+        AdminEmailNotifier::vipPayment(
+            $uid,
+            PatientUrgencyConfig::URGENCY_AMOUNT_CENTS / 100,
+            count($createdIds),
+            $providerLabel
+        );
+    } catch (Throwable $adminMailErr) {
+        error_log('iap-complete admin email: ' . $adminMailErr->getMessage());
+    }
+
     echo json_encode([
         'success' => true,
         'data' => [

@@ -16,7 +16,7 @@ class EmailQueue
 
     /**
      * Ajoute un email à la queue (envoyé après la réponse HTTP).
-     * @param string $type review_invitation | appointment_created | appointment_confirmation | appointment_canceled_patient | new_appointment_pro | assigned_to_preleveur | welcome | incident_warning | suspension | ban
+     * @param string $type review_invitation | appointment_created | appointment_confirmation | appointment_canceled_patient | new_appointment_pro | assigned_to_preleveur | welcome | incident_warning | suspension | ban | admin_alert
      * @param string|null $toEmail Adresse email du destinataire
      * @param array $payload Données pour le template (selon le type)
      * @param string|null $toProfileId Si pas d'email, on récupère l'email du profil (ex. préleveur, lab)
@@ -113,6 +113,19 @@ class EmailQueue
                 break;
             case 'results_ready':
                 $email->sendResultsReadyToPatient($to, (string)($p['appointment_id'] ?? ''));
+                break;
+            case 'admin_alert':
+                $email->sendStaffAlert(
+                    $to,
+                    (string) ($p['subject'] ?? '[Cary Admin] Alerte'),
+                    (string) ($p['title'] ?? 'Alerte Cary'),
+                    (string) ($p['inner_html'] ?? ''),
+                    [
+                        'preheader' => (string) ($p['preheader'] ?? ''),
+                        'ctaUrl' => (string) ($p['cta_url'] ?? ''),
+                        'ctaLabel' => (string) ($p['cta_label'] ?? ''),
+                    ]
+                );
                 break;
             default:
                 break;

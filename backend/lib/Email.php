@@ -284,9 +284,57 @@ Cary — Prélèvement et soins infirmiers à domicile
      */
     public function buildStaffInquiryBody(string $title, string $innerHtml): string
     {
+        return $this->buildStaffAlertBody($title, $innerHtml);
+    }
+
+    /**
+     * Alertes internes admin (même base visuelle que le formulaire contact, CTA optionnel).
+     *
+     * @param array{preheader?:string,ctaUrl?:string,ctaLabel?:string} $options
+     */
+    public function buildStaffAlertBody(string $title, string $innerHtml, array $options = []): string
+    {
+        $preheader = (string) ($options['preheader'] ?? $title);
         $h1 = '<h1 style="margin:0 0 18px 0;font-size:20px;font-weight:600;line-height:1.3;letter-spacing:-0.02em;color:' . $this->emailText() . ';">' . $this->escapeHtml($title) . '</h1>';
         $block = '<div style="font-size:15px;line-height:1.6;color:' . $this->emailMuted() . ';">' . $innerHtml . '</div>';
-        return $this->emailWrap($title, $this->emailLogoBlock() . $h1 . $block);
+        $ctaUrl = (string) ($options['ctaUrl'] ?? '');
+        $ctaLabel = (string) ($options['ctaLabel'] ?? '');
+        $ctaBlock = ($ctaUrl !== '' && $ctaLabel !== '') ? $this->emailPrimaryCta($ctaUrl, $ctaLabel) : '';
+
+        return $this->emailWrap($preheader, $this->emailLogoBlock() . $h1 . $block . $ctaBlock);
+    }
+
+    /**
+     * Encadré détails pour alertes équipe (RDV, inscription, etc.).
+     *
+     * @param array<string, string|null> $lines
+     */
+    public function staffDetailBox(array $lines): string
+    {
+        $inner = '';
+        foreach ($lines as $label => $value) {
+            $v = trim((string) $value);
+            if ($v === '') {
+                continue;
+            }
+            $inner .= '<p style="margin:0 0 8px 0;"><strong>' . $this->escapeHtml((string) $label) . ' :</strong> '
+                . $this->escapeHtml($v) . '</p>';
+        }
+        if ($inner === '') {
+            return '';
+        }
+
+        return $this->emailInfoBox($inner);
+    }
+
+    /**
+     * @param array{preheader?:string,ctaUrl?:string,ctaLabel?:string} $options
+     */
+    public function sendStaffAlert(string $to, string $subject, string $title, string $innerHtml, array $options = []): bool
+    {
+        $body = $this->buildStaffAlertBody($title, $innerHtml, $options);
+
+        return $this->send($to, $subject, $body, true);
     }
 
     /**

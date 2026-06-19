@@ -1,11 +1,13 @@
 import { Alert, Linking, Share } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import {
   CalendarPlus,
   MessageSquare,
   Navigation,
   RefreshCcw,
   Share2,
+  Smile,
   XCircle,
 } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
@@ -33,6 +35,7 @@ import {
   DetailActionList,
   type DetailActionItem,
 } from './layout/DetailActionList';
+import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
 
 function patientPhone(apt: Appointment): string | null {
   const ext = apt as Appointment & {
@@ -83,6 +86,7 @@ export function DetailSidebarActions({
   onShareDone,
 }: Props) {
   const { show: toast } = useToast();
+  const router = useRouter();
   const qc = useQueryClient();
   const status = effectiveAppointmentStatus(apt, { role, viewerId });
   const terminal = getAppointmentSidebarTerminalEmpty(status);
@@ -154,6 +158,26 @@ export function DetailSidebarActions({
   };
 
   const actions: DetailActionItem[] = [];
+
+  if (role === 'patient' || role === 'pro' || role === 'nurse') {
+    actions.push({
+      key: 'ask-cary',
+      label: 'Demander à Cary',
+      hint: 'Assistant IA — contexte de ce RDV',
+      icon: Smile,
+      tone: 'neutral',
+      onPress: () => {
+        router.push(
+          buildAiDeepLink(role, {
+            conversation_type: 'appointment',
+            appointment_id: apt.id,
+            patient_id: apt.patient_id ?? undefined,
+            initial_message: 'Parle-moi de ce rendez-vous et aide-moi à le préparer.',
+          }) as never,
+        );
+      },
+    });
+  }
 
   if (showRescheduleNurse || showRescheduleOther) {
     actions.push({

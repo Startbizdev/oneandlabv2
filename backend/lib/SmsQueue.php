@@ -15,13 +15,20 @@ class SmsQueue
     /**
      * Ajoute un SMS "nouveau RDV" à la queue (envoyé en shutdown).
      */
-    public static function addNewAppointment(string $profileId, string $appointmentId, string $scheduledAt): void
-    {
+    public static function addNewAppointment(
+        string $profileId,
+        string $appointmentId,
+        string $scheduledAt,
+        string $role = 'nurse',
+        string $appointmentType = 'nursing'
+    ): void {
         self::$queue[] = [
             'type' => 'new_appointment',
             'profile_id' => $profileId,
             'appointment_id' => $appointmentId,
             'scheduled_at' => $scheduledAt,
+            'role' => $role,
+            'appointment_type' => $appointmentType,
         ];
         if (!self::$shutdownRegistered) {
             self::$shutdownRegistered = true;
@@ -56,7 +63,10 @@ class SmsQueue
                 continue;
             }
             try {
-                $stmt = $db->prepare('SELECT phone_encrypted, phone_dek FROM profiles WHERE id = ?');
+                $stmt = $db->prepare(
+                    'SELECT phone_encrypted, phone_dek, first_name_encrypted, first_name_dek, role
+                     FROM profiles WHERE id = ?'
+                );
                 $stmt->execute([$item['profile_id']]);
                 $profile = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$profile || empty($profile['phone_encrypted']) || empty($profile['phone_dek'])) {
@@ -66,9 +76,23 @@ class SmsQueue
                 if (empty($phone)) {
                     continue;
                 }
+                $firstName = '';
+                if (!empty($profile['first_name_encrypted']) && !empty($profile['first_name_dek'])) {
+                    try {
+                        $firstName = trim((string) $crypto->decryptField(
+                            $profile['first_name_encrypted'],
+                            $profile['first_name_dek']
+                        ));
+                    } catch (Exception $e) {
+                        $firstName = '';
+                    }
+                }
                 $twilio->sendNewAppointmentNotification($phone, [
                     'id' => $item['appointment_id'],
                     'scheduled_at' => $item['scheduled_at'],
+                    'first_name' => $firstName,
+                    'role' => (string) ($item['role'] ?? $profile['role'] ?? 'nurse'),
+                    'appointment_type' => (string) ($item['appointment_type'] ?? 'nursing'),
                 ]);
             } catch (Exception $e) {
                 error_log('SmsQueue flush: ' . $e->getMessage());

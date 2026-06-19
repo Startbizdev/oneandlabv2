@@ -191,16 +191,53 @@ class SubscriptionService
             $currentPeriodEnd,
         ]);
 
+        try {
+            require_once __DIR__ . '/AdminEmailNotifier.php';
+            require_once __DIR__ . '/../models/User.php';
+            $userModel = new User();
+            $profile = $userModel->getById($userId, 'system', 'system');
+            $userEmail = is_array($profile) ? ($profile['email'] ?? null) : null;
+            AdminEmailNotifier::storeSubscriptionActivated($userId, $billingSource, $planSlug, $status, $userEmail);
+        } catch (Throwable $e) {
+            error_log('upsertStoreSubscription admin email: ' . $e->getMessage());
+        }
+
         return $this->getSubscriptionById($id);
     }
 
     public function updateStoreSubscriptionStatus(string $originalTransactionId, string $status): void
     {
         $stmt = $this->pdo->prepare(
+            'SELECT user_id, plan_slug, billing_source FROM subscriptions WHERE store_original_transaction_id = ? LIMIT 1'
+        );
+        $stmt->execute([$originalTransactionId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $stmt = $this->pdo->prepare(
             'UPDATE subscriptions SET status = ?, updated_at = NOW()
              WHERE store_original_transaction_id = ?'
         );
         $stmt->execute([$status, $originalTransactionId]);
+
+        if (!$row || !in_array($status, ['canceled', 'expired', 'revoked'], true)) {
+            return;
+        }
+
+        try {
+            require_once __DIR__ . '/AdminEmailNotifier.php';
+            require_once __DIR__ . '/../models/User.php';
+            $userModel = new User();
+            $profile = $userModel->getById((string) $row['user_id'], 'system', 'system');
+            $userEmail = is_array($profile) ? ($profile['email'] ?? null) : null;
+            AdminEmailNotifier::storeSubscriptionEnded(
+                (string) $row['user_id'],
+                (string) ($row['billing_source'] ?? ''),
+                $row['plan_slug'] ?? null,
+                $userEmail
+            );
+        } catch (Throwable $e) {
+            error_log('updateStoreSubscriptionStatus admin email: ' . $e->getMessage());
+        }
     }
 
     private function getSubscriptionById(string $id): array

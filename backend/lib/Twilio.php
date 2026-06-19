@@ -9,17 +9,55 @@ class Twilio
 {
     private string $accountSid;
     private string $authToken;
-    private string $fromNumber;
+    /** Expéditeur Twilio : identifiant alphanumérique (ex. CaryBio) ou numéro E.164. */
+    private string $from;
+
+    /** Libellé marque dans le corps du SMS (ex. Cary.bio). */
+    private function brandLabel(): string
+    {
+        $brand = trim((string) ($_ENV['TWILIO_SMS_BRAND'] ?? 'Cary.bio'));
+        return $brand !== '' ? $brand : 'Cary.bio';
+    }
+
+    /** Identifiant alphanumérique Twilio pour le champ From (max 11, sans ponctuation). */
+    private static function twilioAlphanumericFrom(string $senderId): string
+    {
+        $sanitized = preg_replace('/[^A-Za-z0-9 ]/', '', $senderId) ?? '';
+        $sanitized = trim($sanitized);
+        if ($sanitized === '') {
+            return 'CaryBio';
+        }
+        return substr($sanitized, 0, 11);
+    }
 
     public function __construct()
     {
         $this->accountSid = $_ENV['TWILIO_ACCOUNT_SID'] ?? '';
         $this->authToken = $_ENV['TWILIO_AUTH_TOKEN'] ?? '';
-        $this->fromNumber = $_ENV['TWILIO_PHONE_NUMBER'] ?? $_ENV['TWILIO_FROM_NUMBER'] ?? '';
-        
-        if (empty($this->accountSid) || empty($this->authToken) || empty($this->fromNumber)) {
+        $senderId = trim((string) ($_ENV['TWILIO_SENDER_ID'] ?? 'CaryBio'));
+        $phoneNumber = trim((string) ($_ENV['TWILIO_PHONE_NUMBER'] ?? $_ENV['TWILIO_FROM_NUMBER'] ?? ''));
+        $this->from = $senderId !== ''
+            ? self::twilioAlphanumericFrom($senderId)
+            : $phoneNumber;
+
+        if (empty($this->accountSid) || empty($this->authToken) || empty($this->from)) {
             throw new Exception('Configuration Twilio incomplète');
         }
+    }
+
+    private function brandPrefix(): string
+    {
+        return $this->brandLabel();
+    }
+
+    private function formatMessage(string $message): string
+    {
+        $brand = $this->brandPrefix();
+        $prefix = $brand . ': ';
+        if (stripos($message, $prefix) === 0 || stripos($message, $brand . ' :') === 0) {
+            return $message;
+        }
+        return $prefix . ltrim($message);
     }
 
     private function frontendBaseUrl(): string
@@ -38,9 +76,9 @@ class Twilio
         );
         
         $data = [
-            'From' => $this->fromNumber,
+            'From' => $this->from,
             'To' => $to,
-            'Body' => $message,
+            'Body' => $this->formatMessage($message),
         ];
         
         $ch = curl_init($url);
@@ -62,16 +100,34 @@ class Twilio
     }
 
     /**
-     * Envoie une notification SMS pour un nouveau rendez-vous (infirmier)
+     * Envoie une notification SMS pour un nouveau rendez-vous (infirmier / labo).
+     *
+     * @param array{id: string, scheduled_at?: string, first_name?: string, role?: string, appointment_type?: string} $appointmentData
      */
     public function sendNewAppointmentNotification(string $to, array $appointmentData): bool
     {
-        $date = date('d/m/Y à H:i', strtotime($appointmentData['scheduled_at']));
-        $appointmentId = $appointmentData['id'];
-        $url = $this->frontendBaseUrl() . '/nurse/appointments/' . $appointmentId;
-        
-        $message = "[NOUVEAU] Nouveau RDV dans votre secteur le {$date}.\nVoir détails : {$url}";
-        
+        $appointmentId = (string) ($appointmentData['id'] ?? '');
+        $scheduledAt = $appointmentData['scheduled_at'] ?? null;
+        $firstName = trim((string) ($appointmentData['first_name'] ?? ''));
+        $role = (string) ($appointmentData['role'] ?? 'nurse');
+        $appointmentType = (string) ($appointmentData['appointment_type'] ?? 'nursing');
+
+        $greeting = $firstName !== '' ? "Bonjour {$firstName}," : 'Bonjour,';
+        $when = '';
+        if (!empty($scheduledAt)) {
+            $when = ' pour le ' . date('d/m/Y à H:i', strtotime((string) $scheduledAt));
+        }
+
+        $base = $this->frontendBaseUrl();
+        $isLab = in_array($role, ['lab', 'subaccount'], true) || $appointmentType === 'blood_test';
+        if ($isLab) {
+            $url = $base . '/lab/appointments?openAppointment=' . rawurlencode($appointmentId);
+            $message = "{$greeting} une demande de prélèvement est disponible dans votre secteur{$when}. Consultez-la : {$url}";
+        } else {
+            $url = $base . '/nurse/demandes?openAppointment=' . rawurlencode($appointmentId);
+            $message = "{$greeting} vous avez reçu une demande de soin pour un patient dans votre secteur{$when}. Vous pouvez l'accepter : {$url}";
+        }
+
         try {
             $this->sendSMS($to, $message);
             return true;
@@ -105,7 +161,7 @@ class Twilio
      */
     public function sendAppointmentCanceled(string $to): bool
     {
-        $message = 'Cary : Votre rendez-vous a été annulé.';
+        $message = 'Votre rendez-vous a été annulé.';
         try {
             $this->sendSMS($to, $message);
             return true;
@@ -121,7 +177,7 @@ class Twilio
     {
         $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
         $rebookUrl = $baseUrl . '/rendez-vous/nouveau';
-        $message = 'Cary : Désolé, aucun professionnel disponible. Vous pouvez reprendre rendez-vous : ' . $rebookUrl;
+        $message = 'Désolé, aucun professionnel disponible. Vous pouvez reprendre rendez-vous : ' . $rebookUrl;
         try {
             $this->sendSMS($to, $message);
             return true;

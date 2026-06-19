@@ -674,6 +674,154 @@ ALTER TABLE patient_professional_access
     MODIFY COLUMN source ENUM('created', 'appointment_accepted', 'appointment_linked', 'manual_link', 'qr_booking') NOT NULL DEFAULT 'created';
 
 -- ============================================================================
+-- Migration 075 : routing IA + paramètres plateforme
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS platform_settings (
+    setting_key VARCHAR(64) PRIMARY KEY,
+    setting_value TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO platform_settings (setting_key, setting_value) VALUES
+    ('ai_disclaimer_fr', 'Cary est un assistant informatif. Il ne remplace pas un avis médical. En cas d''urgence, contactez le 15 ou le 112.'),
+    ('ai_temperature', '0.4')
+ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
+
+CREATE TABLE IF NOT EXISTS ai_task_routing (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    task_type VARCHAR(64) NOT NULL,
+    provider ENUM('grok','deepseek','openai','claude','gemini','local') NOT NULL DEFAULT 'grok',
+    model VARCHAR(64) NULL,
+    priority INT NOT NULL DEFAULT 0,
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    UNIQUE KEY uq_ai_task_routing_type (task_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO ai_task_routing (task_type, provider, model, priority, enabled) VALUES
+    ('chat_simple', 'grok', 'grok-3', 0, 1),
+    ('chat_complex', 'grok', 'grok-3', 0, 1),
+    ('medical_summary', 'grok', 'grok-3', 0, 1),
+    ('document_analysis', 'grok', 'grok-3', 0, 1),
+    ('ocr', 'grok', 'grok-3', 0, 1),
+    ('voice_agent', 'grok', 'grok-3', 0, 1),
+    ('voice_transcription', 'grok', 'grok-3', 0, 1),
+    ('trend_wording', 'grok', 'grok-3', 0, 1),
+    ('appointment_suggestion', 'grok', 'grok-3', 0, 1)
+ON DUPLICATE KEY UPDATE provider = VALUES(provider), model = VALUES(model), enabled = VALUES(enabled);
+
+-- ============================================================================
+-- Migration 076 : conversations et messages IA
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS ai_conversations (
+    id CHAR(36) PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    patient_id CHAR(36) NULL,
+    conversation_type ENUM(
+        'general','assistant_health','lab_results','medical_document',
+        'appointment','health_tracking','professional','voice'
+    ) NOT NULL DEFAULT 'general',
+    channel ENUM('text','voice') NOT NULL DEFAULT 'text',
+    custom_title VARCHAR(255) NULL,
+    is_pinned TINYINT(1) NOT NULL DEFAULT 0,
+    is_system TINYINT(1) NOT NULL DEFAULT 0,
+    system_key VARCHAR(64) NULL,
+    archived_at DATETIME NULL,
+    deleted_at DATETIME NULL,
+    last_message_at DATETIME NULL,
+    message_count INT UNSIGNED NOT NULL DEFAULT 0,
+    metadata_json JSON NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_ai_conv_user (user_id),
+    KEY idx_ai_conv_patient (patient_id),
+    KEY idx_ai_conv_system (user_id, system_key),
+    KEY idx_ai_conv_updated (updated_at),
+    CONSTRAINT fk_ai_conv_user FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ai_conv_patient FOREIGN KEY (patient_id) REFERENCES profiles(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS ai_messages (
+    id CHAR(36) PRIMARY KEY,
+    conversation_id CHAR(36) NOT NULL,
+    role ENUM('user','assistant','system') NOT NULL,
+    content TEXT NOT NULL,
+    metadata_json JSON NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_ai_msg_conv (conversation_id, created_at),
+    CONSTRAINT fk_ai_msg_conv FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- Migration 077 : audits IA
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS ai_audits (
+    id CHAR(36) PRIMARY KEY,
+    user_id CHAR(36) NULL,
+    patient_id CHAR(36) NULL,
+    conversation_id CHAR(36) NULL,
+    task_type VARCHAR(64) NOT NULL,
+    provider VARCHAR(32) NOT NULL,
+    model VARCHAR(64) NULL,
+    prompt_hash CHAR(64) NULL,
+    latency_ms INT UNSIGNED NULL,
+    tokens_input INT UNSIGNED NULL,
+    tokens_output INT UNSIGNED NULL,
+    error_message VARCHAR(512) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_ai_audits_user (user_id, created_at),
+    KEY idx_ai_audits_conv (conversation_id),
+    CONSTRAINT fk_ai_audits_user FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE SET NULL,
+    CONSTRAINT fk_ai_audits_conv FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS ai_conversation_summaries (
+    id CHAR(36) PRIMARY KEY,
+    conversation_id CHAR(36) NOT NULL,
+    summary_text TEXT NOT NULL,
+    covers_message_id_until CHAR(36) NULL,
+    token_count_estimate INT UNSIGNED NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_ai_conv_sum_conv (conversation_id, created_at),
+    CONSTRAINT fk_ai_conv_sum_conv FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- Migration 078 : brouillons RDV assistés par IA
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS ai_appointment_drafts (
+    id CHAR(36) PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    patient_id CHAR(36) NULL,
+    conversation_id CHAR(36) NULL,
+    status ENUM('collecting','ready','confirmed','expired','cancelled') NOT NULL DEFAULT 'collecting',
+    payload_json JSON NOT NULL,
+    missing_fields_json JSON NULL,
+    created_by_role VARCHAR(32) NOT NULL,
+    appointment_id CHAR(36) NULL,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_ai_draft_user (user_id, status),
+    KEY idx_ai_draft_conv (conversation_id),
+    CONSTRAINT fk_ai_draft_user FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ai_draft_conv FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE SET NULL,
+    CONSTRAINT fk_ai_draft_appt FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS ai_booking_audits (
+    id CHAR(36) PRIMARY KEY,
+    draft_id CHAR(36) NOT NULL,
+    action ENUM('create','patch','confirm','cancel') NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    appointment_id CHAR(36) NULL,
+    ai_audit_id CHAR(36) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_ai_booking_audit_draft (draft_id),
+    CONSTRAINT fk_ai_booking_audit_draft FOREIGN KEY (draft_id) REFERENCES ai_appointment_drafts(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ai_booking_audit_user FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
 -- FIN DES MIGRATIONS
 -- ============================================================================
 -- Pour créer les utilisateurs de test avec chiffrement, exécutez :

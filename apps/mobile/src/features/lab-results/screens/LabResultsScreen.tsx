@@ -19,6 +19,7 @@ import {
   EMPTY_RDV_IMAGE_WIDTH,
 } from '@/constants/empty-state-images';
 import { fetchLabResults } from '../api/lab-results.service';
+import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
 import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
@@ -86,6 +87,20 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
     [rolePrefix, router],
   );
 
+  const askCaryAboutResult = useCallback(
+    (item: LabResultListItem) => {
+      router.push(
+        buildAiDeepLink(role, {
+          conversation_type: 'lab_results',
+          lab_result_id: item.medical_document_id ?? item.id,
+          patient_id: item.patient_id ?? undefined,
+          initial_message: 'Explique-moi ce résultat de labo (sans interprétation médicale).',
+        }) as never,
+      );
+    },
+    [role, router],
+  );
+
   const items = resultsQ.data ?? [];
   const isSearching = debouncedSearch.trim().length > 0;
   const listScrollConfig = useStackScrollConfig(styles.listContent);
@@ -131,6 +146,7 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
             onRefresh={onRefresh}
             onOpenDocument={handleOpenDocument}
             onOpenAppointment={openAppointment}
+            onAskCary={askCaryAboutResult}
             contentContainerStyle={listScrollConfig.contentContainerStyle}
             scrollIndicatorInsets={listScrollConfig.scrollIndicatorInsets}
             contentInsetAdjustmentBehavior={listScrollConfig.contentInsetAdjustmentBehavior}
