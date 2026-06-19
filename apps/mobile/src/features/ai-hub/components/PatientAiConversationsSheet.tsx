@@ -45,6 +45,8 @@ interface Props {
   activeId: string;
   onSelectConversation: (id: string) => void;
   onNewConversation: () => void;
+  onDeleteConversation?: (id: string) => void;
+  onRefresh?: () => void;
 }
 
 function groupConversations(conversations: PatientAiConversation[]): ConversationSection[] {
@@ -78,6 +80,8 @@ export function PatientAiConversationsSheet({
   activeId,
   onSelectConversation,
   onNewConversation,
+  onDeleteConversation,
+  onRefresh,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
@@ -98,6 +102,12 @@ export function PatientAiConversationsSheet({
   useEffect(() => {
     translateX.value = -sheetWidth;
   }, [sheetWidth, translateX]);
+
+  useEffect(() => {
+    if (visible) {
+      onRefresh?.();
+    }
+  }, [visible, onRefresh]);
 
   useEffect(() => {
     if (visible) {
@@ -146,13 +156,24 @@ export function PatientAiConversationsSheet({
     <PatientAiConversationRow
       title={item.title}
       active={item.id === activeId}
+      deletable={!item.isSystem}
       onPress={() => handleSelect(item.id)}
+      onDelete={onDeleteConversation ? () => onDeleteConversation(item.id) : undefined}
     />
   );
 
   const renderSectionHeader = ({ section }: { section: ConversationSection }) => (
-    <Text style={styles.sectionLabel}>{section.title}</Text>
+    <Text style={[styles.sectionLabel, section.key === sections[0]?.key && styles.sectionLabelFirst]}>
+      {section.title}
+    </Text>
   );
+
+  useEffect(() => {
+    if (!visible && mounted) {
+      const safety = setTimeout(() => setMounted(false), 500);
+      return () => clearTimeout(safety);
+    }
+  }, [visible, mounted, setMounted]);
 
   if (!mounted) return null;
 
@@ -355,8 +376,11 @@ function buildStyles(c: AppColors) {
       letterSpacing: 0.5,
       textTransform: 'uppercase' as const,
       color: c.textTertiary,
-      paddingTop: spacing[3],
-      paddingBottom: spacing[2],
+      paddingTop: spacing[2],
+      paddingBottom: spacing[1],
+    },
+    sectionLabelFirst: {
+      paddingTop: spacing[1],
     },
     emptyWrap: {
       alignItems: 'center' as const,

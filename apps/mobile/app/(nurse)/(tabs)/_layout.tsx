@@ -29,6 +29,12 @@ export default createRoleTabsLayout(() => {
       sf: { default: 'person.2', selected: 'person.2.fill' },
       androidIcon: 'people',
     },
+    {
+      name: 'ai',
+      accessibilityLabel: 'Assistant Cary',
+      sf: { default: 'face.smiling', selected: 'face.smiling' },
+      androidIcon: 'sentiment-satisfied',
+    },
     { name: 'more', ...MORE_TAB_TRIGGER },
   ];
 });

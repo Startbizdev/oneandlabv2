@@ -56,6 +56,7 @@ interface Props {
   opening: boolean;
   onOpenDocument: () => void;
   onOpenAppointment: () => void;
+  onAskCary?: () => void;
 }
 
 /** Carte résultat labo — même layout row que NotificationCard (flex + minWidth:0). */
@@ -65,6 +66,7 @@ export const LabResultListCard = React.memo(function LabResultListCard({
   opening,
   onOpenDocument,
   onOpenAppointment,
+  onAskCary,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_lab_results_components_LabResultListCard_tsx_styles');
@@ -79,6 +81,14 @@ export const LabResultListCard = React.memo(function LabResultListCard({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onOpenDocument();
       }}
+      onLongPress={
+        onAskCary
+          ? () => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onAskCary();
+            }
+          : undefined
+      }
       disabled={opening}
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       accessibilityRole="button"

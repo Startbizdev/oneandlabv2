@@ -1481,7 +1481,7 @@ class Appointment
             'scheduled_at' => $data['scheduled_at'] ?? null,
             'form_data' => $data['form_data'] ?? null,
         ], $notifyPatientExtras));
-        $this->notifyAllAdmins($id, $data['type'] ?? '', $data['scheduled_at'] ?? '');
+        $this->notifyAllAdmins($id, $data['type'] ?? '', $data['scheduled_at'] ?? '', $data['form_data'] ?? null);
     }
 
     /**
@@ -3699,7 +3699,13 @@ class Appointment
         // SMS en file (shutdown) pour ne pas bloquer la réponse
         $scheduledAtStr = $scheduledAt ?? date('Y-m-d H:i:s');
         foreach ($professionals as $professional) {
-            SmsQueue::addNewAppointment($professional['id'], $appointmentId, $scheduledAtStr);
+            SmsQueue::addNewAppointment(
+                $professional['id'],
+                $appointmentId,
+                $scheduledAtStr,
+                (string) ($professional['role'] ?? 'nurse'),
+                $type
+            );
         }
     }
 
@@ -3738,7 +3744,7 @@ class Appointment
     /**
      * Notifie tous les administrateurs super_admin de la création d'un nouveau rendez-vous
      */
-    private function notifyAllAdmins(string $appointmentId, string $appointmentType, string $scheduledAt): void
+    private function notifyAllAdmins(string $appointmentId, string $appointmentType, string $scheduledAt, ?array $formData = null): void
     {
         try {
             // Récupérer tous les profils avec le rôle super_admin
@@ -3772,6 +3778,13 @@ class Appointment
                     // Logger l'erreur mais continuer avec les autres admins
                     error_log("Erreur lors de la notification admin {$admin['id']}: " . $e->getMessage());
                 }
+            }
+
+            try {
+                require_once __DIR__ . '/../lib/AdminEmailNotifier.php';
+                AdminEmailNotifier::newAppointment($appointmentId, $appointmentType, $scheduledAt, $formData);
+            } catch (Throwable $e) {
+                error_log('notifyAllAdmins admin email: ' . $e->getMessage());
             }
         } catch (Exception $e) {
             // Logger l'erreur mais ne pas bloquer la création du rendez-vous
@@ -3879,7 +3892,13 @@ class Appointment
 
         $scheduledAtStr = $scheduledAt ?? date('Y-m-d H:i:s');
         foreach ($professionals as $professional) {
-            SmsQueue::addNewAppointment($professional['id'], $appointmentId, $scheduledAtStr);
+            SmsQueue::addNewAppointment(
+                $professional['id'],
+                $appointmentId,
+                $scheduledAtStr,
+                (string) ($professional['role'] ?? 'nurse'),
+                $type
+            );
         }
     }
 

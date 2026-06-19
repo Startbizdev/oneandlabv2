@@ -26,6 +26,7 @@ interface Props {
   onRefresh: () => void;
   onOpenDocument: (item: LabResultListItem) => void;
   onOpenAppointment: (appointmentId: string) => void;
+  onAskCary?: (item: LabResultListItem) => void;
   contentContainerStyle?: object | object[];
   scrollIndicatorInsets?: { top: number; bottom: number };
   contentInsetAdjustmentBehavior?: 'automatic' | 'never';
@@ -40,6 +41,7 @@ export function LabResultsFeed({
   onRefresh,
   onOpenDocument,
   onOpenAppointment,
+  onAskCary,
   contentContainerStyle: contentContainerStyleProp,
   scrollIndicatorInsets,
   contentInsetAdjustmentBehavior = 'automatic',
@@ -58,10 +60,11 @@ export function LabResultsFeed({
           opening={openingId === medicalId}
           onOpenDocument={() => onOpenDocument(item)}
           onOpenAppointment={() => onOpenAppointment(item.appointment_id)}
+          onAskCary={onAskCary ? () => onAskCary(item) : undefined}
         />
       );
     },
-    [role, openingId, onOpenDocument, onOpenAppointment],
+    [role, openingId, onOpenDocument, onOpenAppointment, onAskCary],
   );
 
   const keyExtractor = useCallback(

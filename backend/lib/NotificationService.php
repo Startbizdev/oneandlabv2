@@ -278,6 +278,18 @@ class NotificationService
             error_log('notifyBatchAppointmentCreationCompleted admins list: ' . $e->getMessage());
         }
 
+        try {
+            require_once __DIR__ . '/AdminEmailNotifier.php';
+            AdminEmailNotifier::newAppointmentsBatch(
+                $n,
+                $ids[0],
+                $batchSummaries,
+                (string) ($rows[0]['type'] ?? '')
+            );
+        } catch (Throwable $e) {
+            error_log('notifyBatchAppointmentCreationCompleted admin email: ' . $e->getMessage());
+        }
+
         $allPending = true;
         foreach ($rows as $r) {
             if (($r['status'] ?? '') !== 'pending') {
@@ -1023,6 +1035,8 @@ class NotificationService
                         $cancelData[$ck] = $appointmentData[$ck];
                     }
                 }
+                $cancelData['scheduled_at'] = $appointmentData['scheduled_at'] ?? null;
+                $cancelData['form_data'] = $appointmentData['form_data'] ?? null;
                 $this->notifyAllAdmins('appointment_canceled_by_pro', 'RDV annulé', $messageToPros, $cancelData);
                 $this->notifyAssignees(
                     $appointmentData['assigned_lab_id'] ?? null,
@@ -1127,6 +1141,18 @@ class NotificationService
             if (!empty($appointmentData['assigned_to'])) {
                 $this->createNotification($appointmentData['assigned_to'], 'appointment_canceled', 'RDV annulé', $messageLab, $dataLab);
             }
+
+            $messageAdmin = ($patientName !== '' ? $patientName : 'Un patient') . ' a annulé son RDV.';
+            $this->notifyAllAdmins(
+                'appointment_canceled_by_patient',
+                'RDV annulé',
+                $messageAdmin,
+                [
+                    'appointment_id' => $appointmentId,
+                    'scheduled_at' => $appointmentData['scheduled_at'] ?? null,
+                    'form_data' => $appointmentData['form_data'] ?? null,
+                ]
+            );
         }
         
         // Notification à l'infirmier qu'il a annulé le RDV (confirmation)
@@ -1311,6 +1337,34 @@ class NotificationService
                 } catch (Exception $e) {
                     error_log("Erreur notification admin {$admin['id']}: " . $e->getMessage());
                 }
+            }
+
+            $appointmentId = (string) ($data['appointment_id'] ?? '');
+            if ($appointmentId === '') {
+                return;
+            }
+
+            try {
+                require_once __DIR__ . '/AdminEmailNotifier.php';
+                if ($type === 'appointment_canceled_by_pro') {
+                    AdminEmailNotifier::appointmentCanceledByPro(
+                        $appointmentId,
+                        $message,
+                        isset($data['scheduled_at']) ? (string) $data['scheduled_at'] : null,
+                        is_array($data['form_data'] ?? null) ? $data['form_data'] : null
+                    );
+                } elseif ($type === 'appointment_completed_by_pro') {
+                    AdminEmailNotifier::appointmentCompletedByPro($appointmentId, $message);
+                } elseif ($type === 'appointment_canceled_by_patient') {
+                    AdminEmailNotifier::appointmentCanceledByPatient(
+                        $appointmentId,
+                        $message,
+                        isset($data['scheduled_at']) ? (string) $data['scheduled_at'] : null,
+                        is_array($data['form_data'] ?? null) ? $data['form_data'] : null
+                    );
+                }
+            } catch (Throwable $e) {
+                error_log('notifyAllAdmins admin email: ' . $e->getMessage());
             }
         } catch (Exception $e) {
             error_log("Erreur récupération admins pour notification: " . $e->getMessage());

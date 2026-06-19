@@ -167,6 +167,14 @@ class RegistrationRequest
         $sql = 'INSERT INTO registration_requests (' . implode(', ', $fields) . ') VALUES (' . implode(', ', $placeholders) . ')';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
+
+        try {
+            require_once __DIR__ . '/../lib/AdminEmailNotifier.php';
+            AdminEmailNotifier::registrationRequestSubmitted($id, $role, $data);
+        } catch (Throwable $e) {
+            error_log('RegistrationRequest admin email: ' . $e->getMessage());
+        }
+
         return $id;
     }
 

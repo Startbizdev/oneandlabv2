@@ -1,23 +1,46 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import * as Haptics from 'expo-haptics';
-import { MessageSquare } from 'lucide-react-native';
+import { MessageSquare, Trash2 } from 'lucide-react-native';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 interface Props {
   title: string;
   active?: boolean;
+  deletable?: boolean;
   onPress: () => void;
+  onDelete?: () => void;
 }
 
 /** Ligne conversation Cary — carte compacte, une ligne, tokens app. */
-export function PatientAiConversationRow({ title, active = false, onPress }: Props) {
+export function PatientAiConversationRow({
+  title,
+  active = false,
+  deletable = true,
+  onPress,
+  onDelete,
+}: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
+
+  const handleDelete = () => {
+    if (!onDelete) return;
+    Alert.alert('Supprimer la conversation', 'Cette action est irréversible.', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          onDelete();
+        },
+      },
+    ]);
+  };
 
   return (
     <Pressable
@@ -47,16 +70,30 @@ export function PatientAiConversationRow({ title, active = false, onPress }: Pro
             />
           </View>
         }
+        actions={
+          deletable && onDelete ? (
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation?.();
+                handleDelete();
+              }}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Supprimer la conversation"
+              style={({ pressed }) => [styles.deleteBtn, pressed && styles.deleteBtnPressed]}
+            >
+              <Trash2 size={16} color={c.textTertiary} strokeWidth={2} />
+            </Pressable>
+          ) : null
+        }
       >
-        <View style={styles.textCol}>
-          <Text
-            style={[styles.title, active && styles.titleActive]}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {title}
-          </Text>
-        </View>
+        <Text
+          style={[styles.title, active && styles.titleActive]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {title}
+        </Text>
       </Cluster>
     </Pressable>
   );
@@ -69,7 +106,7 @@ function buildStyles(c: AppColors) {
       borderRadius: radius.lg,
       borderWidth: StyleSheet.hairlineWidth,
       overflow: 'hidden' as const,
-      marginBottom: spacing[2],
+      marginBottom: spacing[1.5],
     },
     cardIdle: {
       backgroundColor: c.surface,
@@ -85,20 +122,20 @@ function buildStyles(c: AppColors) {
     activeStripe: {
       position: 'absolute' as const,
       left: 0,
-      top: spacing[2.5],
-      bottom: spacing[2.5],
+      top: spacing[2],
+      bottom: spacing[2],
       width: 3,
       borderTopRightRadius: radius.full,
       borderBottomRightRadius: radius.full,
       backgroundColor: c.primary,
     },
     row: {
-      paddingVertical: spacing[3],
-      paddingHorizontal: spacing[3.5],
+      paddingVertical: spacing[2.5],
+      paddingHorizontal: spacing[3],
     },
     iconBox: {
-      width: 36,
-      height: 36,
+      width: 34,
+      height: 34,
       borderRadius: radius.md,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
@@ -110,19 +147,28 @@ function buildStyles(c: AppColors) {
     iconBoxActive: {
       backgroundColor: c.surface,
     },
-    textCol: {
+    title: {
       flex: 1,
       minWidth: 0,
-    },
-    title: {
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.sm,
-      lineHeight: lh(fontSize.sm),
+      lineHeight: lh(fontSize.sm, 1.2),
       color: c.textPrimary,
       letterSpacing: -0.15,
     },
     titleActive: {
       color: c.primaryDark,
+    },
+    deleteBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: radius.md,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    },
+    deleteBtnPressed: {
+      opacity: 0.65,
+      backgroundColor: c.surfaceAlt,
     },
   };
 }
