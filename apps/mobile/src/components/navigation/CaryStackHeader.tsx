@@ -2,12 +2,11 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { getDefaultHeaderHeight, getHeaderTitle } from '@react-navigation/elements';
-import { Platform, StyleSheet, Text, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import type { NativeStackHeaderProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
-import { LiquidGlassChrome } from '@/components/navigation/LiquidGlassChrome';
+import { OpaqueHeaderChrome } from '@/components/navigation/OpaqueHeaderChrome';
 import {
   APP_HEADER_BACK_TITLE_GAP,
   APP_HEADER_INNER_BOTTOM,
@@ -65,19 +64,10 @@ export function CaryStackHeader({ options, route, back, navigation }: NativeStac
   const padH = APP_HEADER_INNER_H_PADDING;
   const padLeft = insets.left + padH;
   const padRight = insets.right + padH;
-  const nativeGlass = Platform.OS === 'ios' && isGlassEffectAPIAvailable();
 
   return (
     <View style={[styles.root, { height: headerHeight }]}>
-      {nativeGlass ? (
-        <GlassView
-          pointerEvents="none"
-          style={StyleSheet.absoluteFillObject as StyleProp<ViewStyle>}
-          glassEffectStyle="regular"
-        />
-      ) : (
-        <LiquidGlassChrome variant="stack" style={StyleSheet.absoluteFillObject as StyleProp<ViewStyle>} />
-      )}
+      <OpaqueHeaderChrome style={StyleSheet.absoluteFillObject} />
       <View style={[styles.content, { marginTop: statusBarSpacing, paddingBottom: innerBottom }]}>
         <Row align="center" gap={APP_HEADER_BACK_TITLE_GAP} style={[styles.row, { paddingRight: padRight }]}>
           {headerLeftNode ? (
