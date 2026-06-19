@@ -33,12 +33,13 @@ export function createRoleTabsLayout(
 
     return (
       <NativeTabs
-        minimizeBehavior={minimizeOnScroll ? 'onScrollDown' : 'never'}
+        minimizeBehavior="never"
         labelVisibilityMode="unlabeled"
         tintColor={c.primary}
         rippleColor={c.primaryMid}
         indicatorColor={c.primary}
         backgroundColor={c.surface}
+        blurEffect="none"
         disableTransparentOnScrollEdge
       >
         {tabs.map((tab) => (

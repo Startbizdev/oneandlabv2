@@ -15,7 +15,7 @@ export const LIQUID_GLASS_LARGE_TITLE_ROW_MIN_HEIGHT = 52;
 /** Bouton d’action header — diamètre iOS 26. */
 export const LIQUID_GLASS_HEADER_CONTROL_SIZE = 44;
 
-/** Style GlassView des boutons header (cloche, retour) — aligné tab bar iOS 26. */
+/** Style GlassView des boutons header (cloche, retour) — pas le fond pleine largeur (expo #42224). */
 export const LIQUID_GLASS_CONTROL_EFFECT = 'regular' as const;
 
 /** FAB flottant — diamètre standard. */
