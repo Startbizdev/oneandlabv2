@@ -86,7 +86,7 @@
         </template>
 
         <!-- Pro: Emploi (profession de santé) + Numéro RPPS -->
-        <template v-if="role === ‘pro’">
+        <template v-if="role === 'pro'">
           <UFormField label="Profession (emploi)" name="emploi" required class="w-full">
             <USelectMenu
               v-model="form.emploi"
@@ -95,7 +95,7 @@
               placeholder="Rechercher votre profession..."
               size="lg"
               class="w-full"
-              :ui="{ rounded: ‘rounded-xl’ }"
+              :ui="{ rounded: 'rounded-xl' }"
               searchable
               by="value"
             >
