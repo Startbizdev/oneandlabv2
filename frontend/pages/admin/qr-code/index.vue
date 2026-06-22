@@ -22,15 +22,15 @@
               size="xs"
               variant="ghost"
               icon="i-lucide-download"
-              :to="pngUrl(row.original.profile_id, false)"
-              target="_blank"
+              :loading="downloadingKey === `${row.original.profile_id}-poster`"
+              @click="downloadPng(row.original.profile_id, false)"
             />
             <UButton
               size="xs"
               variant="ghost"
               icon="i-lucide-qr-code"
-              :to="pngUrl(row.original.profile_id, true)"
-              target="_blank"
+              :loading="downloadingKey === `${row.original.profile_id}-raw`"
+              @click="downloadPng(row.original.profile_id, true)"
             />
           </div>
         </template>
@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { apiFetch } from '~/utils/api';
+import { apiFetch, apiFetchBlob } from '~/utils/api';
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' });
 
@@ -53,10 +53,11 @@ type AdminQrRow = {
 };
 
 const loading = ref(true);
+const downloadingKey = ref<string | null>(null);
 const items = ref<AdminQrRow[]>([]);
 const roleFilter = ref<string | null>(null);
 const search = ref('');
-const config = useRuntimeConfig();
+const toast = useAppToast();
 
 const roleOptions = [
   { label: 'Tous', value: null },
@@ -83,10 +84,33 @@ const columns = [
   { id: 'actions', header: '' },
 ];
 
-function pngUrl(profileId: string, raw: boolean) {
-  const base = (config.public as { apiBase?: string }).apiBase || '/api';
-  const q = raw ? '?raw=1' : '';
-  return `${base}/admin/qr/${profileId}/png${q}`;
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+async function downloadPng(profileId: string, raw: boolean) {
+  const key = `${profileId}-${raw ? 'raw' : 'poster'}`;
+  if (downloadingKey.value) return;
+  downloadingKey.value = key;
+  try {
+    const q = raw ? '?raw=1' : '';
+    const { blob } = await apiFetchBlob(`/admin/qr/${encodeURIComponent(profileId)}/png${q}`);
+    const name = raw ? `cary-qr-${profileId}.png` : `cary-affiche-${profileId}.png`;
+    triggerBlobDownload(blob, name);
+  } catch (e: unknown) {
+    toast.add({
+      title: 'Téléchargement impossible',
+      description: e instanceof Error ? e.message : 'Accès refusé ou session expirée.',
+      color: 'error',
+    });
+  } finally {
+    downloadingKey.value = null;
+  }
 }
 
 async function load() {

@@ -41,10 +41,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode(['success' => false, 'error' => 'Le SIRET est obligatoire pour un laboratoire.']);
         exit;
     }
-    if ($role === 'pro' && empty(trim((string)($body['adeli'] ?? '')))) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Le numéro Adeli est obligatoire pour un professionnel de santé.']);
-        exit;
+    if ($role === 'pro') {
+        require_once __DIR__ . '/../../lib/ProfessionalId.php';
+        $proRpps = trim((string)($body['rpps'] ?? ''));
+        if (strlen($proRpps) !== 11 || !ctype_digit($proRpps)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Le numéro RPPS est obligatoire pour un professionnel de santé (11 chiffres).']);
+            exit;
+        }
     }
     if ($role === 'nurse') {
         require_once __DIR__ . '/../../lib/ProfessionalId.php';

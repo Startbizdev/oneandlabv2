@@ -2013,7 +2013,7 @@ const saveProfile = async (fromSaveAll = false) => {
       body.gender = profileForm.value.gender?.trim() || null
     }
     if (role.value === 'pro') {
-      if (profileForm.value.adeli?.trim()) body.adeli = profileForm.value.adeli.trim()
+      if (profileForm.value.rpps?.replace(/\s/g, '')) body.rpps = profileForm.value.rpps.replace(/\s/g, '')
       body.emploi = profileForm.value.emploi?.trim() || null
       if (!editingUserId.value) {
         body.profile_image_url = publicProfileForm.value.profile_image_url || null

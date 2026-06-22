@@ -310,6 +310,9 @@ class RegistrationRequest
             $createData['company_name'] = trim((string)$req['company_name']);
         }
         if ($req['role'] === 'pro') {
+            if (!empty(trim((string)($req['rpps'] ?? '')))) {
+                $createData['rpps'] = trim((string)$req['rpps']);
+            }
             if (!empty(trim((string)($req['adeli'] ?? '')))) {
                 $createData['adeli'] = trim((string)$req['adeli']);
             }
@@ -370,6 +373,21 @@ class RegistrationRequest
 
         $this->db->prepare('UPDATE registration_requests SET status = ?, reviewed_at = NOW(), reviewed_by = ? WHERE id = ?')
             ->execute(['accepted', $actorId, $id]);
+
+        // Activer toutes les catégories de soins selon le rôle
+        try {
+            $this->enableAllCategories($userId, $req['role']);
+        } catch (Throwable $e) {
+            error_log('RegistrationRequest accept enableAllCategories: ' . $e->getMessage());
+        }
+
+        // Créer la zone de couverture à partir de l'adresse d'inscription
+        try {
+            $this->createCoverageZoneFromAddress($userId, $req['role'], $req['address'] ?? null);
+        } catch (Throwable $e) {
+            error_log('RegistrationRequest accept createCoverageZone: ' . $e->getMessage());
+        }
+
         try {
             require_once __DIR__ . '/Notification.php';
             $notificationModel = new Notification();
@@ -379,10 +397,119 @@ class RegistrationRequest
         } catch (Throwable $e) {
             error_log('RegistrationRequest accept welcome notification: ' . $e->getMessage());
         }
+
+        // Email de confirmation à l'utilisateur
+        try {
+            require_once __DIR__ . '/../lib/Email.php';
+            $emailLib = new Email();
+            $emailLib->sendRegistrationAccepted((string)$req['email'], [
+                'first_name' => (string)($req['first_name'] ?? ''),
+                'role'       => (string)$req['role'],
+            ]);
+        } catch (Throwable $e) {
+            error_log('RegistrationRequest accept email: ' . $e->getMessage());
+        }
+
+        // SMS si numéro disponible
+        if (!empty(trim((string)($req['phone'] ?? '')))) {
+            try {
+                require_once __DIR__ . '/../lib/Twilio.php';
+                $twilio = new Twilio();
+                $firstName = trim((string)($req['first_name'] ?? ''));
+                $greeting = $firstName !== '' ? "Bonjour {$firstName}," : 'Bonjour,';
+                $baseUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? 'https://cary.bio'), '/');
+                $roleLabel = $req['role'] === 'nurse' ? 'infirmier(e)' : 'professionnel de santé';
+                $twilio->sendSMS(
+                    trim((string)$req['phone']),
+                    "{$greeting} votre compte Cary en tant que {$roleLabel} a été approuvé ! Connectez-vous dès maintenant : {$baseUrl}"
+                );
+            } catch (Throwable $e) {
+                error_log('RegistrationRequest accept SMS: ' . $e->getMessage());
+            }
+        }
+
         return [
             'user_id' => $userId,
             'linked_existing' => $linkedExisting,
         ];
+    }
+
+    /**
+     * Crée automatiquement une zone de couverture depuis l'adresse d'inscription.
+     * Si une zone existe déjà pour cet utilisateur, elle n'est pas écrasée.
+     */
+    private function createCoverageZoneFromAddress(string $userId, string $role, $rawAddress): void
+    {
+        if (!in_array($role, ['nurse', 'lab', 'subaccount'], true)) return;
+
+        // Décoder l'adresse (peut être JSON string ou array)
+        $addr = null;
+        if (is_array($rawAddress)) {
+            $addr = $rawAddress;
+        } elseif (is_string($rawAddress) && $rawAddress !== '') {
+            $decoded = json_decode($rawAddress, true);
+            $addr = is_array($decoded) ? $decoded : null;
+        }
+
+        if (!$addr || empty($addr['lat']) || empty($addr['lng'])) {
+            error_log("createCoverageZoneFromAddress: pas de lat/lng pour user {$userId}");
+            return;
+        }
+
+        $lat = (float) $addr['lat'];
+        $lng = (float) $addr['lng'];
+
+        // Rayon par défaut : 10 km pour infirmier (plan discovery), 25 km pour labo
+        $radiusKm = $role === 'nurse' ? 10.0 : 25.0;
+
+        // Ne pas écraser une zone existante
+        $check = $this->db->prepare('SELECT id FROM coverage_zones WHERE owner_id = ? AND role = ? LIMIT 1');
+        $check->execute([$userId, $role]);
+        if ($check->fetch()) return;
+
+        $id = bin2hex(random_bytes(16));
+        $this->db->prepare(
+            'INSERT INTO coverage_zones (id, owner_id, role, center_lat, center_lng, radius_km, is_active, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), NOW())'
+        )->execute([$id, $userId, $role, $lat, $lng, $radiusKm]);
+    }
+
+    /**
+     * Active toutes les catégories de soins pour un infirmier ou un laboratoire.
+     * Nurse  → care_categories.type = 'nursing'  → nurse_category_preferences
+     * Lab    → care_categories.type = 'blood_test' → lab_category_preferences
+     */
+    private function enableAllCategories(string $userId, string $role): void
+    {
+        if ($role === 'nurse') {
+            $cats = $this->db->prepare(
+                "SELECT id FROM care_categories WHERE is_active = TRUE AND type = 'nursing'"
+            );
+            $cats->execute();
+            $insert = $this->db->prepare(
+                'INSERT INTO nurse_category_preferences (id, nurse_id, category_id, is_enabled)
+                 VALUES (?, ?, ?, 1)
+                 ON DUPLICATE KEY UPDATE is_enabled = 1'
+            );
+            foreach ($cats->fetchAll(PDO::FETCH_COLUMN) as $catId) {
+                $insert->execute([bin2hex(random_bytes(18)), $userId, $catId]);
+            }
+        } elseif (in_array($role, ['lab', 'subaccount'], true)) {
+            $tableCheck = $this->db->query("SHOW TABLES LIKE 'lab_category_preferences'");
+            if ($tableCheck->rowCount() === 0) return;
+            $cats = $this->db->prepare(
+                "SELECT id FROM care_categories WHERE is_active = TRUE AND type = 'blood_test'"
+            );
+            $cats->execute();
+            $insert = $this->db->prepare(
+                'INSERT INTO lab_category_preferences (id, lab_id, category_id, is_enabled)
+                 VALUES (?, ?, ?, 1)
+                 ON DUPLICATE KEY UPDATE is_enabled = 1'
+            );
+            foreach ($cats->fetchAll(PDO::FETCH_COLUMN) as $catId) {
+                $insert->execute([bin2hex(random_bytes(18)), $userId, $catId]);
+            }
+        }
     }
 
     /** Refuser. */

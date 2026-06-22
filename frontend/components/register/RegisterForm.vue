@@ -85,8 +85,8 @@
           </UFormField>
         </template>
 
-        <!-- Pro: Emploi (profession de santé) + Numéro Adeli -->
-        <template v-if="role === 'pro'">
+        <!-- Pro: Emploi (profession de santé) + Numéro RPPS -->
+        <template v-if="role === ‘pro’">
           <UFormField label="Profession (emploi)" name="emploi" required class="w-full">
             <USelectMenu
               v-model="form.emploi"
@@ -95,7 +95,7 @@
               placeholder="Rechercher votre profession..."
               size="lg"
               class="w-full"
-              :ui="{ rounded: 'rounded-xl' }"
+              :ui="{ rounded: ‘rounded-xl’ }"
               searchable
               by="value"
             >
@@ -105,16 +105,16 @@
               </template>
             </USelectMenu>
           </UFormField>
-          <UFormField label="Numéro Adeli" name="adeli" required class="w-full">
+          <UFormField label="Numéro RPPS" name="rpps" required class="w-full">
             <UInput
-              v-model="form.adeli"
-              placeholder="123456789"
+              v-model="form.rpps"
+              placeholder="12345678901"
               size="lg"
               class="w-full font-mono"
-              maxlength="9"
+              maxlength="11"
             />
             <template #hint>
-              <span class="text-xs text-muted">9 chiffres — numéro d’enregistrement auprès de l’ARS</span>
+              <span class="text-xs text-muted">11 chiffres — numéro RPPS du professionnel de santé</span>
             </template>
           </UFormField>
         </template>
@@ -250,7 +250,7 @@ const loading = ref(false);
 const canSubmit = computed(() => {
   if (!form.email?.trim() || !form.first_name?.trim() || !form.last_name?.trim()) return false;
   if (props.role === 'lab' && !form.siret?.replace(/\s/g, '')) return false;
-  if (props.role === 'pro' && (!form.adeli?.replace(/\s/g, '') || !form.emploi?.trim())) return false;
+  if (props.role === 'pro' && (form.rpps?.replace(/\s/g, '').length !== 11 || !form.emploi?.trim())) return false;
   if (props.role === 'nurse' && (validateProfessionalId(form.rpps || '') || !form.gender?.trim())) return false;
   return true;
 });
@@ -262,14 +262,16 @@ function onSubmit() {
     first_name: form.first_name.trim(),
     last_name: form.last_name.trim(),
     phone: form.phone?.trim() || '',
-    address: (form.address || '').trim(),
+    address: form.addressSelection?.label?.trim()
+      ? JSON.stringify({ label: form.addressSelection.label.trim(), lat: form.addressSelection.lat, lng: form.addressSelection.lng })
+      : (form.address || '').trim(),
   };
   if (props.role === 'lab') {
     payload.siret = (form.siret || '').replace(/\s/g, '');
     payload.company_name = form.company_name?.trim() || '';
   }
   if (props.role === 'pro') {
-    payload.adeli = (form.adeli || '').replace(/\s/g, '');
+    payload.rpps = (form.rpps || '').replace(/\s/g, '');
     if (form.emploi?.trim()) payload.emploi = form.emploi.trim();
   }
   if (props.role === 'nurse') {

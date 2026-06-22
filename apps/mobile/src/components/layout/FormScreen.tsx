@@ -53,7 +53,7 @@ export const FormScreen = forwardRef<ScrollView, Props>(function FormScreen(
       <KeyboardScrollView
         ref={ref}
         style={styles.scroll}
-        bottomOffset={footer ? FORM_ACTION_BAR_HEIGHT + footerInset : footerInset}
+        bottomOffset={footer ? FORM_ACTION_BAR_HEIGHT + footerInset : Math.max(footerInset, 80)}
         contentContainerStyle={[
           styles.content,
           footerPad > 0 && { paddingBottom: footerPad },
