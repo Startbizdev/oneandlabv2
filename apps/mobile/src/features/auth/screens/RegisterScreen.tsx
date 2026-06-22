@@ -61,7 +61,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
   const [gender, setGender] = useState('');
   const [address, setAddress] = useState<AddressPayload | null>(null);
   const [professionalId, setProfessionalId] = useState('');
-  const [adeli, setAdeli] = useState('');
+  const [proRpps, setProRpps] = useState('');
   const [emploi, setEmploi] = useState('');
   const [otp, setOtp] = useState('');
   const [userId, setUserId] = useState('');
@@ -97,7 +97,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
     !validateProfessionalId(professionalId) &&
     gender;
   const canSubmitPro =
-    email.trim() && firstName.trim() && lastName.trim() && adeli.replace(/\s/g, '').length >= 9 && emploi.trim();
+    email.trim() && firstName.trim() && lastName.trim() && proRpps.replace(/\s/g, '').length >= 11 && emploi.trim();
   const canSubmit =
     role === 'patient' ? canSubmitPatient : role === 'nurse' ? canSubmitNurse : canSubmitPro;
 
@@ -137,7 +137,9 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           phone: phone.trim() || undefined,
-          address: address?.label?.trim() || undefined,
+          address: address?.label?.trim()
+            ? { label: address.label.trim(), lat: address.lat, lng: address.lng }
+            : undefined,
           ...(role === 'nurse'
             ? (() => {
                 const split = splitProfessionalId(professionalId);
@@ -147,7 +149,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
                   gender,
                 };
               })()
-            : { adeli: adeli.replace(/\s/g, ''), emploi: emploi.trim() }),
+            : { rpps: proRpps.replace(/\s/g, ''), emploi: emploi.trim() }),
         };
         const res = await submitRegistrationRequest(payload);
         if (!res.success) throw new Error(res.error ?? "Impossible d'envoyer la demande");
@@ -260,13 +262,13 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
             <>
               <ProEmploiSelect value={emploi} onChange={setEmploi} />
               <Input
-                label="Numéro Adeli"
-                value={adeli}
-                onChangeText={setAdeli}
+                label="Numéro RPPS"
+                value={proRpps}
+                onChangeText={setProRpps}
                 keyboardType="number-pad"
-                maxLength={9}
-                placeholder="123456789"
-                hint="9 chiffres"
+                maxLength={11}
+                placeholder="12345678901"
+                hint="11 chiffres"
               />
             </>
           ) : null}

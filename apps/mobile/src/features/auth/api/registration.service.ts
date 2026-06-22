@@ -8,7 +8,7 @@ export interface RegistrationRequestPayload {
   first_name: string;
   last_name: string;
   phone?: string;
-  address?: string;
+  address?: { label: string; lat?: number; lng?: number } | string;
   rpps?: string;
   adeli?: string;
   gender?: string;

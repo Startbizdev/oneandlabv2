@@ -113,10 +113,10 @@
 
         <FormInput
           v-if="isPro"
-          v-model="form.adeli"
-          label="Numéro Adeli"
-          name="adeli"
-          placeholder="123456789"
+          v-model="form.rpps"
+          label="Numéro RPPS"
+          name="rpps"
+          placeholder="12345678901"
         />
 
         <FormInput

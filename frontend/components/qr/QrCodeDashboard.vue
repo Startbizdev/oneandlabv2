@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { apiFetch } from '~/utils/api';
+import { apiFetch, apiFetchBlob } from '~/utils/api';
 
 type FunnelStats = {
   scans: number;
@@ -28,16 +28,28 @@ type QrPayload = {
 
 const loading = ref(true);
 const saving = ref(false);
+const downloadingPoster = ref(false);
+const downloadingRaw = ref(false);
 const error = ref('');
 const payload = ref<QrPayload | null>(null);
 const taglineDraft = ref('');
 const posterUrl = ref<string | null>(null);
 
-const config = useRuntimeConfig();
-const apiBase = computed(() => {
-  const base = (config.public as { apiBase?: string }).apiBase || '/api';
-  return base.startsWith('http') ? base : `${window.location.origin}${base}`;
-});
+function revokePosterUrl() {
+  if (posterUrl.value) {
+    URL.revokeObjectURL(posterUrl.value);
+    posterUrl.value = null;
+  }
+}
+
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
 async function load() {
   loading.value = true;
@@ -57,16 +69,13 @@ async function load() {
 }
 
 async function refreshPoster() {
-  if (posterUrl.value) {
-    URL.revokeObjectURL(posterUrl.value);
-    posterUrl.value = null;
+  revokePosterUrl();
+  try {
+    const { blob } = await apiFetchBlob('/qr/me/png?format=a4');
+    posterUrl.value = URL.createObjectURL(blob);
+  } catch {
+    /* affiche vide — le bouton télécharger affichera l’erreur */
   }
-  const res = await fetch(`${apiBase.value}/qr/me/png?format=a4`, {
-    credentials: 'include',
-  });
-  if (!res.ok) return;
-  const blob = await res.blob();
-  posterUrl.value = URL.createObjectURL(blob);
 }
 
 async function saveTagline() {
@@ -84,9 +93,25 @@ async function saveTagline() {
   }
 }
 
-function downloadUrl(raw: boolean, format = 'a4') {
+async function downloadPng(raw: boolean, format = 'a4') {
   const q = raw ? '&raw=1' : '';
-  return `${apiBase.value}/qr/me/png?format=${format}${q}`;
+  const path = `/qr/me/png?format=${format}${q}`;
+  const filename = raw ? 'cary-qr-code.png' : 'cary-qr-affiche.png';
+  if (raw) {
+    downloadingRaw.value = true;
+  } else {
+    downloadingPoster.value = true;
+  }
+  error.value = '';
+  try {
+    const { blob } = await apiFetchBlob(path);
+    triggerBlobDownload(blob, filename);
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'Téléchargement impossible';
+  } finally {
+    downloadingPoster.value = false;
+    downloadingRaw.value = false;
+  }
 }
 
 async function copyLink() {
@@ -104,7 +129,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  if (posterUrl.value) URL.revokeObjectURL(posterUrl.value);
+  revokePosterUrl();
 });
 </script>
 
@@ -136,20 +161,18 @@ onBeforeUnmount(() => {
         </p>
         <div class="flex w-full max-w-md flex-wrap justify-center gap-2">
           <UButton
-            as="a"
-            :href="downloadUrl(false, 'a4')"
-            target="_blank"
             icon="i-lucide-download"
             color="primary"
+            :loading="downloadingPoster"
+            @click="downloadPng(false, 'a4')"
           >
             Télécharger l'affiche
           </UButton>
           <UButton
-            as="a"
-            :href="downloadUrl(true)"
-            target="_blank"
             variant="outline"
             icon="i-lucide-qr-code"
+            :loading="downloadingRaw"
+            @click="downloadPng(true)"
           >
             QR seul
           </UButton>

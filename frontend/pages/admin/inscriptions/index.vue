@@ -130,9 +130,9 @@
                 <span class="min-w-0 truncate">{{ req.company_name }}</span>
               </li>
             </template>
-            <li v-if="req.role === 'pro' && req.adeli" class="flex items-start gap-2 font-mono text-[13px]">
+            <li v-if="req.role === 'pro' && req.rpps" class="flex items-start gap-2 font-mono text-[13px]">
               <UIcon name="i-lucide-badge-check" class="mt-0.5 h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
-              <span>Adeli {{ req.adeli }}</span>
+              <span>RPPS {{ req.rpps }}</span>
             </li>
             <li
               v-if="req.role === 'nurse' && (req.rpps || req.adeli)"

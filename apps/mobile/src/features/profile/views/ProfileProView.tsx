@@ -50,7 +50,7 @@ export function ProfileProView() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
-  const [adeli, setAdeli] = useState('');
+  const [rpps, setRpps] = useState('');
   const [emploi, setEmploi] = useState('');
   const [biography, setBiography] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -72,7 +72,7 @@ export function ProfileProView() {
     setFirstName(d.first_name ?? '');
     setLastName(d.last_name ?? '');
     setPhone(d.phone ?? '');
-    setAdeli(d.adeli ?? '');
+    setRpps(d.rpps ?? '');
     setEmploi(d.emploi ?? '');
     setBiography(d.biography ?? '');
     setWebsiteUrl(d.website_url ?? '');
@@ -117,7 +117,7 @@ export function ProfileProView() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         phone: phone.trim() || null,
-        adeli: adeli.replace(/\s/g, '') || null,
+        rpps: rpps.replace(/\s/g, '') || null,
         emploi: emploi.trim() || null,
         biography: biography.trim() || null,
         website_url: websiteUrl.trim() || null,
@@ -176,11 +176,11 @@ export function ProfileProView() {
           <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
           <ProEmploiSelect value={emploi} onChange={setEmploi} label="Profession (emploi)" />
           <Input
-            label="Numéro Adeli"
-            value={adeli}
-            onChangeText={setAdeli}
+            label="Numéro RPPS"
+            value={rpps}
+            onChangeText={setRpps}
             keyboardType="number-pad"
-            maxLength={9}
+            maxLength={11}
           />
         </ProfileSection>
 

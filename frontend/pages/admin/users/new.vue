@@ -162,13 +162,14 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-zinc-700 mb-1.5">Numéro ADELI</label>
+                  <label class="block text-sm font-medium text-zinc-700 mb-1.5">Numéro RPPS</label>
                   <div class="relative">
                     <UIcon name="i-lucide-id-card" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
                     <input
-                      v-model="form.adeli"
+                      v-model="form.rpps"
                       type="text"
-                      placeholder="123456789"
+                      placeholder="12345678901"
+                      maxlength="11"
                       class="w-full rounded-lg border border-zinc-300 bg-white pl-10 pr-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
@@ -448,7 +449,7 @@ async function submit() {
         updateBody.adeli = split.adeli
       }
       if (currentRole === 'pro') {
-        if (form.adeli?.trim()) updateBody.adeli = form.adeli.trim()
+        if (form.rpps?.replace(/\s/g, '')) updateBody.rpps = form.rpps.replace(/\s/g, '')
         if (form.emploi?.trim()) updateBody.emploi = form.emploi.trim()
       }
       if (form.address && typeof form.address === 'object' && form.address.label?.trim()) {

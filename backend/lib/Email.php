@@ -568,6 +568,51 @@ Cary — Prélèvement et soins infirmiers à domicile
     }
 
     /**
+     * Email de confirmation d'acceptation de compte (pro / nurse).
+     *
+     * @param array{first_name?: string, role?: string} $p
+     */
+    public function sendRegistrationAccepted(string $to, array $p): bool
+    {
+        if (empty($this->smtpUser) || empty($this->smtpPass)) {
+            error_log('⚠️ SMTP non configuré - sendRegistrationAccepted skipped');
+            return true;
+        }
+        $firstName = trim((string)($p['first_name'] ?? ''));
+        $role = (string)($p['role'] ?? '');
+        $baseUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? 'https://cary.bio'), '/');
+
+        $greeting = $firstName !== '' ? 'Bonjour ' . $this->escapeHtml($firstName) . ',' : 'Bonjour,';
+
+        if ($role === 'nurse') {
+            $roleLabel = 'infirmier(e)';
+            $dashboardUrl = $baseUrl . '/nurse/demandes';
+            $dashboardLabel = 'Accéder à mon espace infirmier';
+        } else {
+            $roleLabel = 'professionnel de santé';
+            $dashboardUrl = $baseUrl . '/pro/dashboard';
+            $dashboardLabel = 'Accéder à mon espace';
+        }
+
+        $inner = '<div style="font-size:15px;line-height:1.6;color:' . $this->emailMuted() . ';">'
+            . '<p style="margin:0 0 14px 0;">' . $greeting . '</p>'
+            . '<p style="margin:0 0 14px 0;">Votre demande d\'inscription en tant que <strong style="color:' . $this->emailText() . ';">' . $this->escapeHtml($roleLabel) . '</strong> sur Cary a été <strong style="color:' . $this->emailText() . ';">approuvée</strong>.</p>'
+            . '<p style="margin:0;">Vous pouvez dès à présent vous connecter et accéder à votre espace.</p>'
+            . '</div>';
+
+        $body = $this->baseLayout($inner, [
+            'title'        => 'Compte approuvé',
+            'preheader'    => 'Votre compte Cary a été approuvé. Connectez-vous dès maintenant.',
+            'ctaUrl'       => $dashboardUrl,
+            'ctaLabel'     => $dashboardLabel,
+            'ctaSecondaryUrl'   => $baseUrl . '/login',
+            'ctaSecondaryLabel' => 'Se connecter',
+        ]);
+
+        return $this->send($to, 'Votre compte Cary a été approuvé', $body, true);
+    }
+
+    /**
      * Email réinitialisation mot de passe — lien + code 6 chiffres (charte Cary).
      */
     public function sendPasswordReset(string $to, string $plainToken, string $code, int $expiresMinutes = 60): bool
