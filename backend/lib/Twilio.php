@@ -5,6 +5,9 @@
  * Utilisé uniquement pour les notifications (pas pour l'authentification)
  */
 
+require_once __DIR__ . '/NotificationMessageFormatter.php';
+require_once __DIR__ . '/../models/User.php';
+
 class Twilio
 {
     private string $accountSid;
@@ -65,11 +68,33 @@ class Twilio
         return rtrim((string) ($_ENV['FRONTEND_URL'] ?? 'https://cary.bio'), '/');
     }
 
+    /** Normalise un numéro FR (06… / +33…) en E.164 pour Twilio. */
+    public static function normalizeRecipientE164(string $phone): ?string
+    {
+        $cleaned = preg_replace('/[\s\-\.]/', '', trim($phone));
+        if ($cleaned === '') {
+            return null;
+        }
+        if (preg_match('/^\+[1-9]\d{6,14}$/', $cleaned)) {
+            return $cleaned;
+        }
+        $digits = User::normalizeFrenchPatientPhoneDigits($cleaned);
+        if ($digits !== null) {
+            return '+33' . substr($digits, 1);
+        }
+        return null;
+    }
+
     /**
      * Envoie un SMS
      */
     public function sendSMS(string $to, string $message): array
     {
+        $toE164 = self::normalizeRecipientE164($to);
+        if ($toE164 === null) {
+            throw new Exception('Numéro SMS invalide: ' . $to);
+        }
+
         $url = sprintf(
             'https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json',
             $this->accountSid
@@ -77,7 +102,7 @@ class Twilio
         
         $data = [
             'From' => $this->from,
-            'To' => $to,
+            'To' => $toE164,
             'Body' => $this->formatMessage($message),
         ];
         
@@ -102,7 +127,15 @@ class Twilio
     /**
      * Envoie une notification SMS pour un nouveau rendez-vous (infirmier / labo).
      *
-     * @param array{id: string, scheduled_at?: string, first_name?: string, role?: string, appointment_type?: string} $appointmentData
+     * @param array{
+     *   id: string,
+     *   scheduled_at?: string,
+     *   first_name?: string,
+     *   role?: string,
+     *   appointment_type?: string,
+     *   category_name?: string|null,
+     *   form_data?: array<string,mixed>|null
+     * } $appointmentData
      */
     public function sendNewAppointmentNotification(string $to, array $appointmentData): bool
     {
@@ -111,27 +144,36 @@ class Twilio
         $firstName = trim((string) ($appointmentData['first_name'] ?? ''));
         $role = (string) ($appointmentData['role'] ?? 'nurse');
         $appointmentType = (string) ($appointmentData['appointment_type'] ?? 'nursing');
+        $formData = $appointmentData['form_data'] ?? null;
 
         $greeting = $firstName !== '' ? "Bonjour {$firstName}," : 'Bonjour,';
-        $when = '';
-        if (!empty($scheduledAt)) {
-            $when = ' pour le ' . date('d/m/Y à H:i', strtotime((string) $scheduledAt));
-        }
+        $optionMeta = is_array($appointmentData['option_meta'] ?? null)
+            ? $appointmentData['option_meta']
+            : [];
+        $details = NotificationMessageFormatter::appointmentContextShort(
+            is_array($formData) ? $formData : [],
+            $appointmentData['category_name'] ?? null,
+            $appointmentType,
+            is_string($scheduledAt) ? $scheduledAt : null,
+            $optionMeta
+        );
+        $detailsPart = $details !== '' ? " ({$details})" : '';
 
         $base = $this->frontendBaseUrl();
         $isLab = in_array($role, ['lab', 'subaccount'], true) || $appointmentType === 'blood_test';
         if ($isLab) {
             $url = $base . '/lab/appointments?openAppointment=' . rawurlencode($appointmentId);
-            $message = "{$greeting} une demande de prélèvement est disponible dans votre secteur{$when}. Consultez-la : {$url}";
+            $message = "{$greeting} demande de prélèvement disponible dans votre secteur{$detailsPart}. Consultez : {$url}";
         } else {
             $url = $base . '/nurse/demandes?openAppointment=' . rawurlencode($appointmentId);
-            $message = "{$greeting} vous avez reçu une demande de soin pour un patient dans votre secteur{$when}. Vous pouvez l'accepter : {$url}";
+            $message = "{$greeting} nouvelle demande de soin dans votre secteur{$detailsPart}. Accepter : {$url}";
         }
 
         try {
             $this->sendSMS($to, $message);
             return true;
         } catch (Exception $e) {
+            error_log('Twilio sendNewAppointmentNotification: ' . $e->getMessage());
             return false;
         }
     }
@@ -142,16 +184,48 @@ class Twilio
     public function sendAppointmentConfirmation(string $to, array $appointmentData): bool
     {
         $professionalName = $appointmentData['professional_name'] ?? 'votre professionnel';
-        $date = date('d/m/Y à H:i', strtotime($appointmentData['scheduled_at']));
-        $appointmentId = $appointmentData['id'];
+        $appointmentId = (string) ($appointmentData['id'] ?? '');
         $url = $this->frontendBaseUrl() . '/patient/appointments/' . $appointmentId;
-        
-        $message = "[CONFIRME] Votre rendez-vous est confirmé avec {$professionalName} le {$date}.\nVoir détails : {$url}";
+        $optionMeta = is_array($appointmentData['option_meta'] ?? null)
+            ? $appointmentData['option_meta']
+            : [];
+        $details = NotificationMessageFormatter::appointmentContextShort(
+            is_array($appointmentData['form_data'] ?? null) ? $appointmentData['form_data'] : [],
+            $appointmentData['category_name'] ?? null,
+            ($appointmentData['type'] ?? '') === 'nursing' ? 'nursing' : 'blood_test',
+            isset($appointmentData['scheduled_at']) ? (string) $appointmentData['scheduled_at'] : null,
+            $optionMeta
+        );
+        $whenPart = $details !== '' ? $details : NotificationMessageFormatter::whenShort(
+            $appointmentData['form_data'] ?? null,
+            $appointmentData['scheduled_at'] ?? null
+        );
+
+        $message = "[CONFIRME] RDV confirmé avec {$professionalName}";
+        if ($whenPart !== '') {
+            $message .= " · {$whenPart}";
+        }
+        $message .= ".\nVoir détails : {$url}";
         
         try {
             $this->sendSMS($to, $message);
             return true;
         } catch (Exception $e) {
+            error_log('Twilio sendAppointmentConfirmation: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * SMS pro (infirmier / labo) : RDV confirmé ou accepté.
+     */
+    public function sendProfessionalAppointmentUpdate(string $to, string $message): bool
+    {
+        try {
+            $this->sendSMS($to, $message);
+            return true;
+        } catch (Exception $e) {
+            error_log('Twilio sendProfessionalAppointmentUpdate: ' . $e->getMessage());
             return false;
         }
     }

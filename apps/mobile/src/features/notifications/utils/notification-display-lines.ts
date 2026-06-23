@@ -57,5 +57,5 @@ export function resolveNotificationDisplayLines(item: AppNotification): {
       ? normalizeCompletedAppointmentLines(title, body)
       : { title: title ?? '', message: body ?? '' };
 
-  return formatBellNotificationLines(normalized.title, normalized.message);
+  return formatBellNotificationLines(normalized.title, normalized.message, { type: item.type });
 }

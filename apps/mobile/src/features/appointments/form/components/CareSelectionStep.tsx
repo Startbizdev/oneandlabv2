@@ -246,12 +246,16 @@ export function CareSelectionStep({
   const selectionCount = selectedServices.length;
   const hasSelection = selectionCount > 0;
 
-  const floatingCtaBottom = Math.max(insets.bottom, spacing[2]) + spacing[3];
-  const scrollBottomPad = hasSelection
-    ? PREMIUM_CTA_HEIGHT + spacing[4] + floatingCtaBottom
-    : spacing[3];
-
   const sceneInsets = useTabSceneInsets();
+  const floatingCtaBottom =
+    sceneInsets.insetBottom > 0
+      ? sceneInsets.insetBottom + spacing[3]
+      : Math.max(insets.bottom, spacing[2]) + spacing[3];
+  const scrollBottomPad = hasSelection
+    ? PREMIUM_CTA_HEIGHT +
+      spacing[4] +
+      (sceneInsets.insetBottom > 0 ? spacing[3] : floatingCtaBottom)
+    : spacing[3];
   const scrollConfig = buildTabSceneScrollConfig(sceneInsets, [
     styles.listContent,
     { paddingBottom: scrollBottomPad },

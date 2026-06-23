@@ -2994,6 +2994,9 @@ class Appointment
                 // Ignorer les erreurs
             }
         }
+        if (empty($patientPhone) && is_array($formData) && !empty($formData['phone'])) {
+            $patientPhone = trim((string) $formData['phone']);
+        }
         
         // Libellé de l'acteur (labo, sous-compte, préleveur, infirmier) pour les messages de notification
         $actorDisplayLabel = null;
@@ -3077,6 +3080,7 @@ class Appointment
                         'id' => $appointmentId,
                         'scheduled_at' => $appointment['scheduled_at'] ?? null,
                         'type' => $appointment['type'] ?? 'blood_test',
+                        'category_id' => $appointment['category_id'] ?? null,
                         'category_name' => $appointment['category_name'] ?? null,
                         'form_data' => $formData,
                     ]);
@@ -3095,6 +3099,7 @@ class Appointment
                             'patient_first_name' => $patientFirstName,
                             'patient_last_name' => $patientLastName,
                             'scheduled_at' => $appointment['scheduled_at'] ?? null,
+                            'category_id' => $appointment['category_id'] ?? null,
                             'category_name' => $appointment['category_name'] ?? null,
                             'form_data' => $formData,
                         ]
@@ -3111,6 +3116,7 @@ class Appointment
                             'patient_last_name' => $patientLastName,
                             'scheduled_at' => $appointment['scheduled_at'],
                             'address' => $address,
+                            'category_id' => $appointment['category_id'] ?? null,
                             'category_name' => $appointment['category_name'] ?? 'Soins infirmiers',
                             'type' => $appointment['type'] ?? 'nursing',
                             'form_data' => $formData,
@@ -3897,7 +3903,7 @@ class Appointment
                 $appointmentId,
                 $scheduledAtStr,
                 (string) ($professional['role'] ?? 'nurse'),
-                $type
+                'nursing'
             );
         }
     }

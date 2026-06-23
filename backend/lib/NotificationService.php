@@ -49,6 +49,72 @@ class NotificationService
         }
     }
 
+    /** Téléphone déchiffré d'un profil (infirmier, labo, patient…). */
+    private function resolveProfilePhone(string $profileId): ?string
+    {
+        try {
+            require_once __DIR__ . '/../models/User.php';
+            $user = (new User())->getById($profileId, 'system', 'system');
+            $phone = trim((string) ($user['phone'] ?? ''));
+            return $phone !== '' ? $phone : null;
+        } catch (Exception $e) {
+            error_log('resolveProfilePhone: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /** Envoie un SMS à un professionnel si Twilio + numéro disponibles. */
+    private function sendProfileSms(string $profileId, string $message): void
+    {
+        if ($this->twilio === null) {
+            return;
+        }
+        $phone = $this->resolveProfilePhone($profileId);
+        if ($phone === null) {
+            error_log('sendProfileSms: pas de téléphone pour ' . $profileId);
+            return;
+        }
+        $this->twilio->sendProfessionalAppointmentUpdate($phone, $message);
+    }
+
+    private function resolveProfileRole(string $profileId): string
+    {
+        try {
+            require_once __DIR__ . '/../models/User.php';
+            $user = (new User())->getById($profileId, 'system', 'system');
+            return (string) ($user['role'] ?? 'nurse');
+        } catch (Exception $e) {
+            return 'nurse';
+        }
+    }
+
+    private function professionalAppointmentSmsUrl(string $role, string $appointmentId): string
+    {
+        $base = rtrim((string) ($_ENV['FRONTEND_URL'] ?? 'https://cary.bio'), '/');
+        if ($role === 'preleveur') {
+            return $base . '/preleveur/appointments/' . rawurlencode($appointmentId);
+        }
+        if (in_array($role, ['lab', 'subaccount'], true)) {
+            return $base . '/lab/appointments/' . rawurlencode($appointmentId);
+        }
+        return $base . '/nurse/appointments/' . rawurlencode($appointmentId);
+    }
+
+    /** @return array<string, array{label: string, valueLabels: array<string,string>}> */
+    private function fetchCareOptionMeta(?string $categoryId): array
+    {
+        if ($categoryId === null || trim($categoryId) === '') {
+            return [];
+        }
+        try {
+            require_once __DIR__ . '/../models/Appointment.php';
+            return (new Appointment())->fetchCareCategoryOptionMeta($categoryId);
+        } catch (Exception $e) {
+            error_log('fetchCareOptionMeta: ' . $e->getMessage());
+            return [];
+        }
+    }
+
     /**
      * Crée une notification web
      */
@@ -452,12 +518,16 @@ class NotificationService
         // SMS au patient (si Twilio est configuré)
         if (!empty($appointmentData['patient_phone']) && $this->twilio !== null) {
             try {
+                $smsPayload = $appointmentData;
+                $smsPayload['option_meta'] = $this->fetchCareOptionMeta(
+                    isset($appointmentData['category_id']) ? (string) $appointmentData['category_id'] : null
+                );
                 $this->twilio->sendAppointmentConfirmation(
                     $appointmentData['patient_phone'],
-                    $appointmentData
+                    $smsPayload
                 );
             } catch (Exception $e) {
-                // Ne pas bloquer le processus si l'envoi SMS échoue
+                error_log('notifyAppointmentConfirmed SMS patient: ' . $e->getMessage());
             }
         }
     }
@@ -594,6 +664,13 @@ class NotificationService
             } catch (Exception $e) {
                 error_log('notifyNursingBatchConfirmed nurse: ' . $e->getMessage());
             }
+            $nurseSms = NotificationMessageFormatter::joinParts([
+                'Lot confirmé',
+                "{$n} soins",
+                $patientName !== 'le patient' ? $patientName : null,
+            ]);
+            $url = $this->professionalAppointmentSmsUrl('nurse', $ids[0]);
+            $this->sendProfileSms((string) $assignedNurseId, $nurseSms . '. Détail : ' . $url);
         }
 
         // Créateur (pro / infirmier / lab) — pas l’acteur qui vient d’accepter, pas le patient si c’est lui seul
@@ -731,6 +808,14 @@ class NotificationService
             } catch (Exception $e) {
                 error_log('notifyBloodTestBatchConfirmed lab: ' . $e->getMessage());
             }
+            $labSms = NotificationMessageFormatter::joinParts([
+                'Lot confirmé',
+                "{$n} prélèvements",
+                $patientName !== 'le patient' ? $patientName : null,
+            ]);
+            $role = $this->resolveProfileRole((string) $assignedLabId);
+            $url = $this->professionalAppointmentSmsUrl($role, $ids[0]);
+            $this->sendProfileSms((string) $assignedLabId, $labSms . '. Détail : ' . $url);
         }
 
         $createdBy = $createdBy !== null ? (string) $createdBy : '';
@@ -823,15 +908,20 @@ class NotificationService
             $care = isset($appointmentData['category_name']) && trim((string) $appointmentData['category_name']) !== ''
                 ? trim((string) $appointmentData['category_name'])
                 : 'Prélèvement';
-            $when = NotificationMessageFormatter::whenShort(
-                $appointmentData['form_data'] ?? null,
-                $appointmentData['scheduled_at'] ?? null
+            $optionMeta = $this->fetchCareOptionMeta(
+                isset($appointmentData['category_id']) ? (string) $appointmentData['category_id'] : null
+            );
+            $details = NotificationMessageFormatter::appointmentContextShort(
+                is_array($appointmentData['form_data'] ?? null) ? $appointmentData['form_data'] : [],
+                $appointmentData['category_name'] ?? null,
+                'blood_test',
+                isset($appointmentData['scheduled_at']) ? (string) $appointmentData['scheduled_at'] : null,
+                $optionMeta
             );
             $message = NotificationMessageFormatter::joinParts([
                 'Prélèvement confirmé',
                 $patientName !== 'le patient' ? $patientName : null,
-                $care,
-                $when ?: null,
+                $details !== '' ? $details : $care,
             ]);
 
             $this->createNotification(
@@ -841,6 +931,10 @@ class NotificationService
                 $message,
                 ['appointment_id' => $appointmentId]
             );
+
+            $role = $this->resolveProfileRole($recipientId);
+            $url = $this->professionalAppointmentSmsUrl($role, $appointmentId);
+            $this->sendProfileSms($recipientId, $message . '. Détail : ' . $url);
         } catch (Exception $e) {
             error_log('notifyLabBloodTestAccepted: ' . $e->getMessage());
         }
@@ -921,15 +1015,20 @@ class NotificationService
             $appointmentData['category_name'] ?? null,
             $appointmentData['type'] ?? 'nursing'
         );
-        $when = NotificationMessageFormatter::whenShort(
-            $appointmentData['form_data'] ?? null,
-            $appointmentData['scheduled_at'] ?? null
+        $optionMeta = $this->fetchCareOptionMeta(
+            isset($appointmentData['category_id']) ? (string) $appointmentData['category_id'] : null
+        );
+        $details = NotificationMessageFormatter::appointmentContextShort(
+            is_array($appointmentData['form_data'] ?? null) ? $appointmentData['form_data'] : [],
+            $appointmentData['category_name'] ?? null,
+            $appointmentData['type'] ?? 'nursing',
+            isset($appointmentData['scheduled_at']) ? (string) $appointmentData['scheduled_at'] : null,
+            $optionMeta
         );
         $message = NotificationMessageFormatter::joinParts([
             'RDV accepté',
             $patientName,
-            $careType,
-            $when ?: null,
+            $details !== '' ? $details : $careType,
         ]);
 
         $address = '';
@@ -952,6 +1051,9 @@ class NotificationService
                 'care_type' => $careType,
             ]
         );
+
+        $url = $this->professionalAppointmentSmsUrl('nurse', $appointmentId);
+        $this->sendProfileSms($nurseId, $message . '. Détail : ' . $url);
     }
 
     /**
