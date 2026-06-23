@@ -10,8 +10,7 @@ import {
   collectLotNursingItems,
 } from '@/utils/batch-appointment-detail-display';
 import { rdvCatalogDisplayLines, type RdvCatalogLine } from '@/utils/rdv-catalog-lines';
-import { appointmentAddressLine } from '@/utils/appointment-display';
-import { formatStreetAndDistrictWithoutStreetNumber } from '@/utils/offer-address-display';
+import { appointmentOfferAddressLine } from '@oneandlab/shared-utils';
 import {
   formatBloodTestSeriesDurationDays,
   getAppointmentNotes,
@@ -72,9 +71,7 @@ export function offerDurationLabel(appt: Appointment): string {
 }
 
 export function offerAddressLine(appt: Appointment): string {
-  const raw = (appointmentAddressLine(appt) || '').trim();
-  if (!raw) return '—';
-  return formatStreetAndDistrictWithoutStreetNumber(raw) || raw;
+  return appointmentOfferAddressLine(appt) || '—';
 }
 
 export function offerAvailabilityLabel(appt: Appointment): string {

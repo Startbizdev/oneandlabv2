@@ -37,25 +37,7 @@
       @card-click="(a) => openAppointmentModal(a.id)"
     />
 
-  <!-- Modal RDV déjà accepté par un confrère -->
-  <ClientOnly>
-    <Teleport to="body">
-      <UModal v-model:open="showAlreadyAcceptedModal" :ui="{ content: 'max-w-md w-full' }">
-        <template #content>
-          <UCard class="w-full border-0">
-            <div class="p-4 text-center space-y-4">
-              <p class="text-lg text-gray-700 dark:text-gray-300">
-                Ce RDV a déjà été accepté par un confrère 😢 D'autres arrivent !
-              </p>
-              <UButton color="primary" block :on-click="closeAlreadyAcceptedModal">
-                Voir mes rendez-vous
-              </UButton>
-            </div>
-          </UCard>
-        </template>
-      </UModal>
-    </Teleport>
-  </ClientOnly>
+  <DashboardAppointmentListAccessModals list-path="/lab/appointments" />
   </AppPageShell>
 </template>
 
@@ -76,7 +58,6 @@ const { openAppointmentModalById: openAppointmentModal } = useAppointmentModal()
 function pendingIncoming(appointment: { status?: string; created_by?: string | null }) {
   return isPendingIncomingOffer(appointment, user.value?.id);
 }
-const showAlreadyAcceptedModal = ref(false);
 
 const filterByPreleveur = computed(() => !!(route.query.assigned_to as string)?.trim());
 const filterBySubaccount = computed(() => !!(route.query.assigned_lab_id as string)?.trim());
@@ -123,19 +104,6 @@ watch(
 function clearAssigneeFilter() {
   navigateTo('/lab/appointments');
 }
-
-function closeAlreadyAcceptedModal() {
-  showAlreadyAcceptedModal.value = false;
-  navigateTo('/lab/appointments');
-}
-
-watch(
-  () => route.query.alreadyAccepted,
-  (val) => {
-    if (val === '1' || val === 'true') showAlreadyAcceptedModal.value = true;
-  },
-  { immediate: true },
-);
 
 useHead({
   title: 'Rendez-vous – Laboratoire',

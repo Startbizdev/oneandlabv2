@@ -125,6 +125,66 @@ function formDataAddressPostcodeCity(fd: unknown): { postcode: string; city: str
   return { postcode: pc, city };
 }
 
+/** Libellé d’arrondissement (Paris, Lyon, Marseille) à partir du code postal. */
+export function frenchArrondissementLabelFromPostcode(postcode: string): string | null {
+  const pc = (postcode || '').replace(/\D/g, '').slice(0, 5);
+  if (pc.length !== 5) return null;
+  if (pc.startsWith('75')) {
+    const n = parseInt(pc.slice(3, 5), 10);
+    if (n >= 1 && n <= 20) return n === 1 ? '1er arrondissement' : `${n}e arrondissement`;
+    return null;
+  }
+  if (pc >= '69001' && pc <= '69009') {
+    const n = parseInt(pc.slice(3, 5), 10);
+    if (n >= 1 && n <= 9) return n === 1 ? '1er arrondissement' : `${n}e arrondissement`;
+    return null;
+  }
+  if (pc >= '13001' && pc <= '13016') {
+    const n = parseInt(pc.slice(3, 5), 10);
+    if (n >= 1 && n <= 16) return n === 1 ? '1er arrondissement' : `${n}e arrondissement`;
+    return null;
+  }
+  return null;
+}
+
+function cityLabelForOfferPostcode(pc: string, fdCity?: string): string {
+  if (pc.startsWith('75')) return 'Paris';
+  if (pc.startsWith('69')) return 'Lyon';
+  if (pc.startsWith('13')) return 'Marseille';
+  return (fdCity || '').trim();
+}
+
+/**
+ * Modal offre (avant acceptation) : arrondissement / ville — jamais rue ni numéro.
+ */
+export function appointmentOfferAddressLine(apt: AppointmentLikeForAddress | null | undefined): string {
+  if (!apt) return '';
+
+  const full = appointmentListAddressLine(apt).trim();
+  const fdMeta = formDataAddressPostcodeCity(apt?.form_data?.address);
+  const pc = extractFrenchPostcodeFromLine(full) ?? fdMeta?.postcode ?? null;
+
+  if (pc) {
+    const arr = frenchArrondissementLabelFromPostcode(pc);
+    if (arr) {
+      const city = cityLabelForOfferPostcode(pc, fdMeta?.city);
+      return city ? `${arr}, ${city}` : arr;
+    }
+    const city = fdMeta?.city?.trim();
+    if (city) return `${pc} ${city}`;
+    return pc;
+  }
+
+  const parts = full
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length >= 2) {
+    return parts.slice(1).join(', ');
+  }
+  return '';
+}
+
 /** Ligne d’adresse pour listes et fiche détail RDV. */
 export function appointmentDetailAddressLine(apt: AppointmentLikeForAddress | null | undefined): string {
   let line = appointmentListAddressLine(apt).trim();

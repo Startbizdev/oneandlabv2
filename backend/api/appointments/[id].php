@@ -219,44 +219,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         
         if (!$hasAccess) {
-            // Infirmier : RDV déjà accepté par un confrère → réponse dédiée (pas de détail, pas 403)
-            if ($user['role'] === 'nurse' && $appointmentCheck['type'] === 'nursing') {
-                $alreadyTaken = $appointmentCheck['status'] !== 'pending'
-                    || (!empty($appointmentCheck['assigned_nurse_id']) && $appointmentCheck['assigned_nurse_id'] !== $user['user_id']);
-                if ($alreadyTaken) {
-                    http_response_code(200);
-                    echo json_encode([
-                        'success' => true,
-                        'alreadyAccepted' => true,
-                    ]);
-                    exit;
-                }
-            }
-            // Lab / sous-compte : RDV prise de sang déjà accepté par un confrère → même approche
-            if (($user['role'] === 'lab' || $user['role'] === 'subaccount') && $appointmentCheck['type'] === 'blood_test') {
-                $alreadyTaken = $appointmentCheck['status'] !== 'pending'
-                    || (!empty($appointmentCheck['assigned_lab_id']) && $appointmentCheck['assigned_lab_id'] !== $user['user_id']);
-                if ($alreadyTaken) {
-                    http_response_code(200);
-                    echo json_encode([
-                        'success' => true,
-                        'alreadyAccepted' => true,
-                    ]);
-                    exit;
-                }
-            }
-            if ($user['role'] === 'preleveur' && $appointmentCheck['type'] === 'blood_test') {
-                $alreadyTaken = $appointmentCheck['status'] !== 'pending'
-                    || (!empty($appointmentCheck['assigned_to']) && $appointmentCheck['assigned_to'] !== $user['user_id']);
-                if ($alreadyTaken) {
-                    http_response_code(200);
-                    echo json_encode([
-                        'success' => true,
-                        'alreadyAccepted' => true,
-                    ]);
-                    exit;
-                }
-            }
+            require_once __DIR__ . '/../../lib/AppointmentDetailGate.php';
+            AppointmentDetailGate::respondWhenForbidden(
+                $db,
+                $appointmentCheck,
+                (string) $user['user_id'],
+                (string) $user['role'],
+            );
             http_response_code(403);
             echo json_encode([
                 'success' => false,

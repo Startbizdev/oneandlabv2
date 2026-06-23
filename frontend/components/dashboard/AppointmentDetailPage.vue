@@ -328,6 +328,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
+import { parseAppointmentAccessResponse } from '~/utils/appointment-access-response';
 import { CANCELLATION_REASONS } from '~/config/cancellation-reasons';
 import { canViewCancellationPhoto } from '~/utils/appointment-cancellation';
 
@@ -661,7 +662,8 @@ const loadAppointment = async (
   const gen = ++appointmentLoadGeneration;
   try {
     const response = await apiFetch(appointmentGetUrl(String(route.params.id)), { method: 'GET' });
-    if (response.success && response.alreadyAccepted) {
+    const parsed = parseAppointmentAccessResponse(response);
+    if (parsed.kind === 'already_accepted') {
       const dest =
         props.basePath === '/patient'
           ? `${props.basePath}?alreadyAccepted=1`
@@ -669,10 +671,18 @@ const loadAppointment = async (
       await navigateTo(dest);
       return;
     }
-    if (response.success && response.data) {
-      appointment.value = response.data;
-      emit('appointment-loaded', response.data);
-      const appType = (response.data.type === 'nursing' || response.data.type === 'nurse') ? 'nursing' : 'blood_test';
+    if (parsed.kind === 'unavailable') {
+      const dest =
+        props.basePath === '/patient'
+          ? `${props.basePath}?appointmentUnavailable=${encodeURIComponent(parsed.reason)}`
+          : `${props.basePath}/appointments?appointmentUnavailable=${encodeURIComponent(parsed.reason)}`;
+      await navigateTo(dest);
+      return;
+    }
+    if (parsed.kind === 'data') {
+      appointment.value = parsed.data;
+      emit('appointment-loaded', parsed.data);
+      const appType = (parsed.data.type === 'nursing' || parsed.data.type === 'nurse') ? 'nursing' : 'blood_test';
       try {
         const catRes = await apiFetch(`/categories?type=${appType}`, { method: 'GET' });
         if (catRes.success && Array.isArray(catRes.data)) {
@@ -684,7 +694,7 @@ const loadAppointment = async (
         categoriesForDetail.value = [];
       }
 
-      const sibs = response.data.batch_siblings;
+      const sibs = parsed.data.batch_siblings;
       if (Array.isArray(sibs) && sibs.length > 0) {
         const full = await Promise.all(
           sibs.map(async (s: { id: string }) => {
@@ -705,7 +715,8 @@ const loadAppointment = async (
         batchSiblingsFull.value = [];
       }
     } else if (!silent) {
-      toast.add({ title: 'Erreur', description: response.error || 'Impossible de charger le rendez-vous', color: 'error' });
+      const err = response && typeof response === 'object' ? (response as { error?: string }).error : undefined;
+      toast.add({ title: 'Erreur', description: err || 'Impossible de charger le rendez-vous', color: 'error' });
     }
   } catch (error: any) {
     if (!silent) {

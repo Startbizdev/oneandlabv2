@@ -55,25 +55,7 @@
       </UCard>
     </UModal>
 
-    <!-- Modal RDV déjà accepté par un confrère -->
-    <ClientOnly>
-      <Teleport to="body">
-        <UModal v-model:open="showAlreadyAcceptedModal" :ui="{ content: 'max-w-md w-full' }">
-          <template #content>
-            <UCard class="w-full border-0">
-              <div class="p-4 text-center space-y-4">
-                <p class="text-lg text-gray-700 dark:text-gray-300">
-                  Ce RDV a déjà été accepté par un confrère 😢 D'autres arrivent !
-                </p>
-                <UButton color="primary" block :on-click="closeAlreadyAcceptedModal">
-                  Voir mes rendez-vous
-                </UButton>
-              </div>
-            </UCard>
-          </template>
-        </UModal>
-      </Teleport>
-    </ClientOnly>
+    <DashboardAppointmentListAccessModals list-path="/subaccount/appointments" />
   </AppPageShell>
 </template>
 
@@ -86,26 +68,11 @@ definePageMeta({
 
 import { apiFetch } from '~/utils/api';
 
-const route = useRoute();
 const { openAppointmentModalById: openAppointmentModal } = useAppointmentModal();
 const { user } = useAuth();
 const listRef = ref<{ fetchAppointments: () => void } | null>(null);
 
 const showAssignModal = ref(false);
-const showAlreadyAcceptedModal = ref(false);
-
-function closeAlreadyAcceptedModal() {
-  showAlreadyAcceptedModal.value = false;
-  navigateTo('/subaccount/appointments');
-}
-
-watch(
-  () => route.query.alreadyAccepted,
-  (val) => {
-    if (val === '1' || val === 'true') showAlreadyAcceptedModal.value = true;
-  },
-  { immediate: true },
-);
 const selectedPreleveur = ref('');
 const currentAppointment = ref<any>(null);
 const assigning = ref(false);

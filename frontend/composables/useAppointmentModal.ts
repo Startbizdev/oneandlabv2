@@ -1,10 +1,27 @@
 import { nextTick } from 'vue'
 import { isPendingIncomingOffer } from '~/utils/appointment-offer'
 import { isBloodTestAppointment } from '~/utils/appointment-type-rules'
+import {
+  isTakenByColleagueFromDetail,
+  parseAppointmentAccessResponse,
+  type AppointmentUnavailableReason,
+} from '~/utils/appointment-access-response'
 
 /** Affiche immédiatement l’état « déjà pris par un confrère » (aucune donnée patient / pas d’actions accepter). */
 export function appointmentModalAlreadyTakenPayload(appointmentId: string) {
   return { id: appointmentId, __modalPresetTaken: true as const }
+}
+
+function appointmentsListPath(role: string | undefined): string {
+  if (role === 'nurse') return '/nurse/appointments'
+  if (role === 'subaccount') return '/subaccount/appointments'
+  if (role === 'preleveur') return '/preleveur'
+  return '/lab/appointments'
+}
+
+function appointmentsDetailPath(appointmentId: string, role: string | undefined): string {
+  const base = role === 'nurse' ? '/nurse' : role === 'subaccount' ? '/subaccount' : role === 'preleveur' ? '/preleveur' : '/lab'
+  return `${base}/appointments/${appointmentId}`
 }
 
 /**
@@ -24,17 +41,10 @@ export function useAppointmentModal(options?: { onDisplayed?: (appointment: any)
     onModalClosed,
   } = useAppointmentModalQueue(options)
 
-  function appointmentsDetailPath(appointmentId: string): string {
-    const role = user.value?.role
-    const base = role === 'nurse' ? '/nurse' : role === 'subaccount' ? '/subaccount' : role === 'preleveur' ? '/preleveur' : '/lab'
-    return `${base}/appointments/${appointmentId}`
-  }
-
   /** Aligné sur useAppointmentModalQueue.processNext : modal seulement si le RDV est encore « prenable ». */
   function canOpenAcceptModal(data: any, role: string | undefined, myId: string | undefined): boolean {
     if (!data || data.status !== 'pending' || !myId) return false
     if (role === 'nurse') {
-      // Les prises de sang sont acceptées par lab / sous-compte, pas par l'infirmier
       if (isBloodTestAppointment(data.type)) return false
       if (!isPendingIncomingOffer(data, myId)) return false
       const alreadyTaken =
@@ -57,120 +67,69 @@ export function useAppointmentModal(options?: { onDisplayed?: (appointment: any)
     return false
   }
 
-  /** Un autre pro a déjà accepté : afficher la modal « déjà pris », pas la fiche détail. */
-  function isTakenByOther(data: any, role: string | undefined, myId: string | undefined): boolean {
-    if (!data || !myId) return false
-    const my = String(myId)
-    if (role === 'nurse') {
-      const nid =
-        data.assigned_nurse_id != null && data.assigned_nurse_id !== ''
-          ? String(data.assigned_nurse_id)
-          : ''
-      // Prise de sang : seul un autre infirmier « prend » l’offre ; le labo assigné est le déroulé normal.
-      if (isBloodTestAppointment(data.type)) {
-        return !!(nid && nid !== my)
-      }
-      if (nid && nid !== my) return true
-      if (data.assigned_lab_id != null && String(data.assigned_lab_id) !== '') return true
-      return false
-    }
-    if (role === 'lab' || role === 'subaccount') {
-      const lid =
-        data.assigned_lab_id != null && data.assigned_lab_id !== ''
-          ? String(data.assigned_lab_id)
-          : ''
-      return !!(lid && lid !== my)
-    }
-    if (role === 'preleveur') {
-      const pid =
-        data.assigned_to != null && data.assigned_to !== ''
-          ? String(data.assigned_to)
-          : ''
-      return !!(pid && pid !== my)
-    }
-    return false
+  async function navigateUnavailable(reason: AppointmentUnavailableReason) {
+    const listPath = appointmentsListPath(user.value?.role)
+    await navigateTo(`${listPath}?appointmentUnavailable=${encodeURIComponent(reason)}`)
   }
 
-  async function openAppointmentModalById(appointmentId: string) {
+  async function resolveAppointmentOpen(appointmentId: string, options?: { fallbackToDetail?: boolean }) {
     const role = user.value?.role
     const myId = user.value?.id
-    const detailPath = appointmentsDetailPath(appointmentId)
+    const detailPath = appointmentsDetailPath(appointmentId, role)
     if (!appointmentId || !['nurse', 'lab', 'subaccount', 'preleveur'].includes(role ?? '')) return
+
     try {
       const { apiFetch } = await import('~/utils/api')
       const detailRes = await apiFetch(`/appointments/${appointmentId}`, { method: 'GET' })
-      if (!detailRes?.success) {
-        await navigateTo(detailPath)
-        return
-      }
-      if ((detailRes as { alreadyAccepted?: boolean }).alreadyAccepted) {
+      const parsed = parseAppointmentAccessResponse(detailRes)
+
+      if (parsed.kind === 'already_accepted') {
         openDirectly(appointmentModalAlreadyTakenPayload(appointmentId))
         return
       }
-      const data = detailRes.data
-      if (!data) {
-        await navigateTo(detailPath)
+      if (parsed.kind === 'unavailable') {
+        await navigateUnavailable(parsed.reason)
         return
       }
+      if (parsed.kind !== 'data') {
+        if (options?.fallbackToDetail !== false) await navigateTo(detailPath)
+        return
+      }
+
+      const data = parsed.data
       if (canOpenAcceptModal(data, role, myId)) {
         openDirectly(data)
         return
       }
-      if (isTakenByOther(data, role, myId)) {
+      if (isTakenByColleagueFromDetail(data, role, myId)) {
         openDirectly({ ...data, __modalPresetTaken: true as const })
         return
       }
-      await navigateTo(detailPath)
+      if (options?.fallbackToDetail !== false) {
+        await navigateTo(detailPath)
+      }
     } catch (e) {
-      console.error('[useAppointmentModal] openAppointmentModalById', e)
-      await navigateTo(detailPath)
+      console.error('[useAppointmentModal] resolveAppointmentOpen', e)
+      if (options?.fallbackToDetail !== false) await navigateTo(detailPath)
     }
+  }
+
+  async function openAppointmentModalById(appointmentId: string) {
+    await resolveAppointmentOpen(appointmentId, { fallbackToDetail: true })
   }
 
   /** Ouvre la modal d’acceptation si le RDV est encore offert ; si déjà pris par un confrère, modal « déjà pris » ; sinon fiche détail. */
   async function openAppointmentModalByIdIfEligible(appointmentId: string) {
     const role = user.value?.role
     const myId = user.value?.id
-    const detailPath = appointmentsDetailPath(appointmentId)
+    const detailPath = appointmentsDetailPath(appointmentId, role)
     if (!appointmentId || !['nurse', 'lab', 'subaccount', 'preleveur'].includes(role ?? '') || !myId) {
       await navigateTo(detailPath)
       return
     }
-    try {
-      const { apiFetch } = await import('~/utils/api')
-      const detailRes = await apiFetch(`/appointments/${appointmentId}`, { method: 'GET' })
-      if (!detailRes?.success) {
-        await navigateTo(detailPath)
-        return
-      }
-      if ((detailRes as { alreadyAccepted?: boolean }).alreadyAccepted) {
-        openDirectly(appointmentModalAlreadyTakenPayload(appointmentId))
-        return
-      }
-      const data = detailRes.data
-      if (!data) {
-        await navigateTo(detailPath)
-        return
-      }
-      if (canOpenAcceptModal(data, role, myId)) {
-        openDirectly(data)
-        return
-      }
-      if (isTakenByOther(data, role, myId)) {
-        openDirectly({ ...data, __modalPresetTaken: true as const })
-        return
-      }
-      await navigateTo(detailPath)
-    } catch (e) {
-      console.error('[useAppointmentModal] openAppointmentModalByIdIfEligible', e)
-      await navigateTo(detailPath)
-    }
+    await resolveAppointmentOpen(appointmentId, { fallbackToDetail: true })
   }
 
-  /**
-   * Lien partagé (WhatsApp) : GET `/appointments/:id?share_token=` (même agrégat que sans token : `Appointment::getById`, donc `batch_siblings` si lot).
-   * Puis `openDirectly(data)` : la modal reçoit ce détail complet.
-   */
   async function openAppointmentModalFromShareLink(appointmentId: string, shareToken: string) {
     const role = user.value?.role
     const myId = user.value?.id
@@ -182,19 +141,19 @@ export function useAppointmentModal(options?: { onDisplayed?: (appointment: any)
         `/appointments/${encodeURIComponent(appointmentId)}?share_token=${encodeURIComponent(shareToken)}`,
         { method: 'GET' },
       )
-      if (!detailRes?.success) {
-        shareTokenForAccept.value = null
-        return
-      }
-      if ((detailRes as { alreadyAccepted?: boolean }).alreadyAccepted) {
+      const parsed = parseAppointmentAccessResponse(detailRes)
+      if (parsed.kind === 'already_accepted') {
         openDirectly(appointmentModalAlreadyTakenPayload(appointmentId))
         return
       }
-      const data = detailRes.data
-      if (data) {
+      if (parsed.kind === 'unavailable') {
+        shareTokenForAccept.value = null
+        await navigateUnavailable(parsed.reason)
+        return
+      }
+      if (parsed.kind === 'data') {
         await nextTick()
-        openDirectly(data)
-        // GET /appointments/:id?share_token= a matérialisé les offres côté API : rafraîchir « Mes demandes »
+        openDirectly(parsed.data)
         const listRefreshTrigger = useState<number>('appointments.listRefreshTrigger', () => 0)
         listRefreshTrigger.value += 1
       } else {

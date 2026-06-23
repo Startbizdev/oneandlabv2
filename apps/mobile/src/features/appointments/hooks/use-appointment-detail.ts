@@ -5,6 +5,7 @@ import { fetchAppointment } from '../api/appointments.service';
 import {
   APPOINTMENT_ACCESS_DENIED,
   APPOINTMENT_ALREADY_ACCEPTED,
+  APPOINTMENT_UNAVAILABLE,
   isAppointmentAccessDeniedMessage,
   type AppointmentDetailData,
 } from './appointment-detail-result';
@@ -17,6 +18,9 @@ export function useAppointmentDetail(id: string | undefined) {
       const res = await fetchAppointment(id, { includeBatch: true });
       if (res.success && (res as { alreadyAccepted?: boolean }).alreadyAccepted) {
         return APPOINTMENT_ALREADY_ACCEPTED;
+      }
+      if (res.success && (res as { appointmentUnavailable?: boolean }).appointmentUnavailable) {
+        return APPOINTMENT_UNAVAILABLE;
       }
       if (!res.success) {
         const err = res.error ?? 'RDV introuvable';
