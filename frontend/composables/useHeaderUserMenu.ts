@@ -5,6 +5,8 @@
  */
 import { HEADER_NAV_LINKS_BY_ROLE } from '~/constants/header-nav-links';
 import { isTechnicalPatientEmail } from '~/utils/patient-address-rdv';
+import { isTutorialRole } from '@oneandlab/onboarding';
+import { getOnboardingPath } from '~/utils/onboarding-storage';
 
 export function useHeaderUserMenu() {
   const { user, logout } = useAuth();
@@ -55,6 +57,14 @@ export function useHeaderUserMenu() {
       icon: 'i-lucide-lock',
       click: () => navigateTo('/profile#securite'),
     });
+
+    if (isTutorialRole(role)) {
+      items.push({
+        label: 'Découvrir Cary',
+        icon: 'i-lucide-sparkles',
+        click: () => navigateTo(getOnboardingPath(role, true)),
+      });
+    }
 
     items.push({ type: 'divider' } as { type: string });
     items.push({

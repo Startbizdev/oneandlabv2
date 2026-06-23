@@ -9,7 +9,7 @@ import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { OfferQueueHost } from '@/features/appointments/components/OfferQueueHost';
 import { useGlobalOfferPolling } from '@/features/appointments/hooks/use-global-offer-polling';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
-import { bookingWizardScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
+import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
 import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
 
 export default function NurseLayout() {
@@ -22,6 +22,7 @@ export default function NurseLayout() {
     <StackSceneInsetLayout>
     <Stack screenOptions={stackHeaderOptions()}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="onboarding" options={onboardingScreenOptions()} />
       <Stack.Screen name="appointment/[id]" options={{ title: 'Détail du rendez-vous' }} />
       <Stack.Screen
         name="appointment/[id]/care-photo/[photoId]"

@@ -6,7 +6,7 @@ import { FileText, Star } from 'lucide-react-native';
 import { PROFILE_HEADER_SF } from '@/components/navigation/RoleNativeTabsLayout';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
-import { bookingWizardScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
+import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
 import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
 
 export default function PatientLayout() {
@@ -17,6 +17,7 @@ export default function PatientLayout() {
       <StackSceneInsetLayout>
       <Stack screenOptions={stackHeaderOptions()}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={onboardingScreenOptions()} />
         <Stack.Screen name="appointment/[id]" options={{ title: 'Détail du rendez-vous' }} />
         <Stack.Screen
           name="appointment/[id]/documents"

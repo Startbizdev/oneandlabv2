@@ -15,6 +15,12 @@ import { useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, FileText, Shield } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
 import { DocumentDownloadButton } from '@/features/documents/components/DocumentDownloadButton';
 import { useDownloadedDocumentIds } from '@/features/documents/hooks/use-downloaded-document-ids';
 import { fetchPatientRelative } from '../api/patient-relatives.service';
@@ -150,6 +156,8 @@ export function PatientRelativeDocumentsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { show: toast } = useToast();
   const qc = useQueryClient();
+  const sceneInsets = useTabSceneInsets();
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.list);
   const [page, setPage] = useState(1);
   const [uploading, setUploading] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -226,9 +234,11 @@ export function PatientRelativeDocumentsScreen() {
 
   if ((docsQ.isLoading && !docsQ.data) || (relativeQ.isLoading && !relativeQ.data)) {
     return (
-      <View style={styles.loading}>
-        <SkeletonList count={4} itemHeight={72} gap={10} />
-      </View>
+      <StackChromeScreen>
+        <View style={styles.loading}>
+          <SkeletonList count={4} itemHeight={72} gap={10} />
+        </View>
+      </StackChromeScreen>
     );
   }
 
@@ -237,12 +247,13 @@ export function PatientRelativeDocumentsScreen() {
     : '';
 
   return (
-    <View style={styles.container}>
+    <StackChromeScreen>
       <FlatList
+        style={styles.container}
         data={pageDocs}
         keyExtractor={(d) => d.id}
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.list}
+        contentContainerStyle={scrollConfig.contentContainerStyle}
+        {...spreadTabSceneScrollProps(scrollConfig)}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View style={styles.header}>
@@ -271,6 +282,7 @@ export function PatientRelativeDocumentsScreen() {
             refreshing={docsQ.isRefetching}
             onRefresh={() => void docsQ.refetch()}
             tintColor={c.primary}
+            progressViewOffset={scrollConfig.refreshProgressOffset}
           />
         }
         renderItem={({ item }) => {
@@ -308,7 +320,7 @@ export function PatientRelativeDocumentsScreen() {
           ) : null
         }
       />
-    </View>
+    </StackChromeScreen>
   );
 }
 

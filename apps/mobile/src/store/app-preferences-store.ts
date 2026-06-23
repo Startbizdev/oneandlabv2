@@ -8,8 +8,11 @@ import {
 import { syncColorblindTheme } from '@/theme/colors';
 import { syncTextScale, type TextScale } from '@/theme/text-scale';
 import { clearThemedStyleCache } from '@/theme/themed-style-cache';
+import type { TutorialRole } from '@oneandlab/onboarding';
 
 export const APP_PREFERENCES_STORAGE_KEY = '@oneandlab/app-preferences';
+
+export type OnboardingCompletionMap = Partial<Record<TutorialRole, boolean>>;
 
 export interface AppPreferencesState {
   colorblindType: ColorblindType;
@@ -18,11 +21,14 @@ export interface AppPreferencesState {
   textScale: TextScale;
   pushNotificationsEnabled: boolean;
   expoPushToken: string | null;
+  onboardingCompleted: OnboardingCompletionMap;
   setColorblindType: (type: ColorblindType) => void;
   setColorblindMode: (enabled: boolean) => void;
   setTextScale: (scale: TextScale) => void;
   setPushNotificationsEnabled: (enabled: boolean) => void;
   setExpoPushToken: (token: string | null) => void;
+  setOnboardingCompleted: (role: TutorialRole, completed: boolean) => void;
+  isOnboardingCompleted: (role: TutorialRole) => boolean;
 }
 
 function applyColorblindType(type: ColorblindType) {
@@ -43,6 +49,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       textScale: 'normal',
       pushNotificationsEnabled: true,
       expoPushToken: null,
+      onboardingCompleted: {},
       setColorblindType: (colorblindType) => {
         applyColorblindType(colorblindType);
         set({ colorblindType, colorblindMode: colorblindType !== 'off' });
@@ -63,10 +70,18 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setPushNotificationsEnabled: (pushNotificationsEnabled) =>
         set({ pushNotificationsEnabled }),
       setExpoPushToken: (expoPushToken) => set({ expoPushToken }),
+      setOnboardingCompleted: (role, completed) =>
+        set((state) => ({
+          onboardingCompleted: {
+            ...state.onboardingCompleted,
+            [role]: completed,
+          },
+        })),
+      isOnboardingCompleted: (role) => Boolean(get().onboardingCompleted[role]),
     }),
     {
       name: APP_PREFERENCES_STORAGE_KEY,
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         colorblindType: state.colorblindType,
@@ -74,6 +89,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         textScale: state.textScale,
         pushNotificationsEnabled: state.pushNotificationsEnabled,
         expoPushToken: state.expoPushToken,
+        onboardingCompleted: state.onboardingCompleted,
       }),
       migrate: (persisted, version) => {
         const state = persisted as Partial<AppPreferencesState>;
@@ -87,6 +103,9 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         }
         if (version < 2 && !state.textScale) {
           state.textScale = 'normal';
+        }
+        if (version < 3 && !state.onboardingCompleted) {
+          state.onboardingCompleted = {};
         }
         return state as AppPreferencesState;
       },
