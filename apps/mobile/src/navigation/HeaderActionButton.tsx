@@ -6,7 +6,7 @@ import type { NativeStackHeaderRightProps } from '@react-navigation/native-stack
 import type { Href } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CalendarPlus, Plus, UserPlus, type LucideIcon } from 'lucide-react-native';
+import { CalendarPlus, Heart, Plus, UserPlus, type LucideIcon } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { elevation, radius, spacing } from '@/theme';
@@ -14,7 +14,7 @@ import { fontFamily, fontSize } from '@/theme/typography';
 
 const ICON_SIZE = 16;
 
-export type HeaderActionKind = 'add' | 'book' | 'add-person';
+export type HeaderActionKind = 'add' | 'book' | 'add-person' | 'add-relative';
 
 const CONFIG: Record<
   HeaderActionKind,
@@ -27,6 +27,7 @@ const CONFIG: Record<
     accessibilityLabel: 'Prendre un rendez-vous',
   },
   'add-person': { Icon: UserPlus, label: 'Ajouter', accessibilityLabel: 'Ajouter un patient' },
+  'add-relative': { Icon: Heart, label: 'Ajouter', accessibilityLabel: 'Ajouter un proche' },
 };
 
 interface Props {
