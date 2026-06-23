@@ -317,10 +317,16 @@
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api'
+import {
+  isTakenByColleagueFromDetail,
+  parseAppointmentAccessResponse,
+  unavailableNoticeMessage,
+  unavailableNoticeTitle,
+} from '~/utils/appointment-access-response'
 import { useAuth } from '~/composables/useAuth'
 import { useAppointmentModalQueue } from '~/composables/useAppointmentModalQueue'
 import { useAppToast } from '~/composables/useAppToast'
-import { formatStreetAndDistrictWithoutStreetNumber, appointmentListAddressLine } from '~/utils/address-display'
+import { appointmentOfferAddressLine, appointmentDetailAddressLine } from '@oneandlab/shared-utils'
 import { getNursingDurationLabel } from '~/constants/nursing-duration'
 import { formatBloodTestSeriesDurationDays } from '~/utils/duration-display'
 import { patientUiEmailLine } from '~/utils/patient-address-rdv'
@@ -517,12 +523,10 @@ function durationLabelFor(appt: any) {
 
 function addressLineFor(appt: any) {
   if (!appt) return '-'
-  const raw = (appointmentListAddressLine(appt) || '').trim()
-  if (!raw) return '-'
   if (isAccepted.value) {
-    return raw
+    return appointmentDetailAddressLine(appt) || '-'
   }
-  return formatStreetAndDistrictWithoutStreetNumber(raw) || raw || '-'
+  return appointmentOfferAddressLine(appt) || '-'
 }
 
 /**
@@ -563,35 +567,50 @@ const checkIfAlreadyAccepted = async (appointment: any): Promise<any | null> => 
   }
   isAlreadyAccepted.value = false
   const res = await apiFetch(appointmentGetUrl(appointment.id))
-  /** Réponse dédiée infirmier/lab : pas de fiche détail si un confrère a déjà accepté */
-  if (res?.success && (res as any).alreadyAccepted) {
+  const parsed = parseAppointmentAccessResponse(res)
+  if (parsed.kind === 'already_accepted') {
     isAlreadyAccepted.value = true
     return null
   }
-  const curr = res?.data
-  if (!curr) return null
+  if (parsed.kind === 'unavailable') {
+    toast.add({
+      title: unavailableNoticeTitle(parsed.reason),
+      description: unavailableNoticeMessage(parsed.reason),
+      color: 'neutral',
+    })
+    return null
+  }
+  if (parsed.kind !== 'data') return null
+  const curr = parsed.data
+  if (['canceled', 'cancelled', 'refused', 'expired'].includes(String(curr.status ?? ''))) {
+    toast.add({
+      title: unavailableNoticeTitle(String(curr.status) === 'cancelled' ? 'canceled' : String(curr.status)),
+      description: unavailableNoticeMessage(String(curr.status) === 'cancelled' ? 'canceled' : String(curr.status)),
+      color: 'neutral',
+    })
+    return null
+  }
 
   const myId = user.value?.id != null && user.value?.id !== '' ? String(user.value.id) : ''
+
+  if (isTakenByColleagueFromDetail(curr, props.role, myId)) {
+    isAlreadyAccepted.value = true
+    if (props.role === 'nurse') {
+      acceptedBy.value = { name: curr.assigned_nurse_name }
+    } else if (props.role === 'preleveur') {
+      acceptedBy.value = { name: curr.assigned_to_display_name }
+    } else {
+      acceptedBy.value = { name: curr.assigned_lab_name }
+    }
+    return null
+  }
 
   if (props.role === 'nurse') {
     const aid =
       curr.assigned_nurse_id != null && curr.assigned_nurse_id !== ''
         ? String(curr.assigned_nurse_id)
         : ''
-    const labTaken = curr.assigned_lab_id != null && String(curr.assigned_lab_id).length > 0
-    const isBlood = String(curr.type || '') === 'blood_test'
-    if (isBlood) {
-      // Prise de sang : labo confirmé ⇒ assigned_lab_id est attendu, pas « un confrère vous a battu ».
-      if (aid && myId && aid !== myId) {
-        isAlreadyAccepted.value = true
-        acceptedBy.value = { name: curr.assigned_nurse_name }
-      } else if (aid && myId && aid === myId && curr.status === 'confirmed') {
-        isAccepted.value = true
-      }
-    } else if (labTaken || (aid && myId && aid !== myId)) {
-      isAlreadyAccepted.value = true
-      acceptedBy.value = { name: curr.assigned_nurse_name }
-    } else if (aid && myId && aid === myId && curr.status === 'confirmed') {
+    if (aid && myId && aid === myId && curr.status === 'confirmed') {
       isAccepted.value = true
     }
   }
@@ -606,15 +625,9 @@ const checkIfAlreadyAccepted = async (appointment: any): Promise<any | null> => 
         ? String(curr.assigned_to)
         : ''
     if (props.role === 'preleveur') {
-      if (pid && myId && pid !== myId) {
-        isAlreadyAccepted.value = true
-        acceptedBy.value = { name: curr.assigned_to_display_name }
-      } else if (pid && myId && pid === myId && curr.status === 'confirmed') {
+      if (pid && myId && pid === myId && curr.status === 'confirmed') {
         isAccepted.value = true
       }
-    } else if (lid && myId && lid !== myId) {
-      isAlreadyAccepted.value = true
-      acceptedBy.value = { name: curr.assigned_lab_name }
     } else if (lid && myId && lid === myId && curr.status === 'confirmed') {
       isAccepted.value = true
     }

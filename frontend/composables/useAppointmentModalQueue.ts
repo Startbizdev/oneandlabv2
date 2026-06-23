@@ -1,5 +1,11 @@
 import { isPendingIncomingOffer } from '~/utils/appointment-offer';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules'
+import {
+  isTakenByColleagueFromDetail,
+  parseAppointmentAccessResponse,
+  unavailableNoticeMessage,
+  unavailableNoticeTitle,
+} from '~/utils/appointment-access-response'
 
 /**
  * File d'attente FIFO pour les modals RDV en attente (Lab, Sub Lab, Préleveur, Nurse).
@@ -108,13 +114,35 @@ export function useAppointmentModalQueue(options?: {
 
     try {
       const detailRes = await apiFetch(`/appointments/${appId}`, { method: 'GET' })
-      if (!detailRes?.success || !detailRes.data) {
+      const parsed = parseAppointmentAccessResponse(detailRes)
+
+      if (parsed.kind === 'already_accepted') {
+        queue.value = queue.value.slice(1)
+        selectedAppointment.value = { id: appId, __modalPresetTaken: true }
+        showAppointmentModal.value = true
+        onDisplayed?.(selectedAppointment.value)
+        return
+      }
+
+      if (parsed.kind === 'unavailable') {
+        queue.value = queue.value.slice(1)
+        const toast = useAppToast()
+        toast.add({
+          title: unavailableNoticeTitle(parsed.reason),
+          description: unavailableNoticeMessage(parsed.reason),
+          color: 'neutral',
+        })
+        await processNext()
+        return
+      }
+
+      if (parsed.kind !== 'data') {
         queue.value = queue.value.slice(1)
         await processNext()
         return
       }
 
-      const data = detailRes.data
+      const data = parsed.data
       if (['canceled', 'refused', 'expired'].includes(String(data.status ?? ''))) {
         queue.value = queue.value.slice(1)
         if (data.status === 'canceled') {
@@ -139,15 +167,7 @@ export function useAppointmentModalQueue(options?: {
         await processNext()
         return
       }
-      const my = String(myId)
-      const alreadyAcceptedByOther =
-        role === 'nurse'
-          ? (data.assigned_nurse_id != null &&
-              String(data.assigned_nurse_id) !== my) ||
-            (data.assigned_lab_id != null && String(data.assigned_lab_id) !== '')
-          : role === 'preleveur'
-            ? data.assigned_to != null && String(data.assigned_to) !== my
-            : data.assigned_lab_id != null && String(data.assigned_lab_id) !== my
+      const alreadyAcceptedByOther = isTakenByColleagueFromDetail(data, role, myId)
 
       if (alreadyAcceptedByOther) {
         queue.value = queue.value.slice(1)

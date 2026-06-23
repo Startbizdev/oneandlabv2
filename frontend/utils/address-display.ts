@@ -138,29 +138,6 @@ function formDataAddressPostcodeCity(fd: unknown): { postcode: string; city: str
   return { postcode: pc, city };
 }
 
-/**
- * Libellé d’arrondissement à partir du code postal (Paris, Lyon, Marseille uniquement ; plages CP officielles).
- */
-export function frenchArrondissementLabelFromPostcode(postcode: string): string | null {
-  const pc = (postcode || '').replace(/\D/g, '').slice(0, 5);
-  if (pc.length !== 5) return null;
-  if (pc.startsWith('75')) {
-    const n = parseInt(pc.slice(3, 5), 10);
-    if (n >= 1 && n <= 20) return n === 1 ? '1er arrondissement' : `${n}e arrondissement`;
-    return null;
-  }
-  if (pc >= '69001' && pc <= '69009') {
-    const n = parseInt(pc.slice(3, 5), 10);
-    if (n >= 1 && n <= 9) return n === 1 ? '1er arrondissement' : `${n}e arrondissement`;
-    return null;
-  }
-  if (pc >= '13001' && pc <= '13016') {
-    const n = parseInt(pc.slice(3, 5), 10);
-    if (n >= 1 && n <= 16) return n === 1 ? '1er arrondissement' : `${n}e arrondissement`;
-    return null;
-  }
-  return null;
-}
 
 /**
  * Ligne d’adresse pour listes (infirmier « Mes demandes », etc.) : `address` déchiffrée + enrichissement `form_data.address.street`.
@@ -197,3 +174,5 @@ export function appointmentDetailAddressLine(apt: AppointmentLikeForAddress | nu
 
   return line;
 }
+
+export { appointmentOfferAddressLine, frenchArrondissementLabelFromPostcode } from '@oneandlab/shared-utils';

@@ -119,6 +119,10 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
           set({ queue: state.queue.slice(1) });
           return;
         }
+        if (res.success && (res as { appointmentUnavailable?: boolean }).appointmentUnavailable) {
+          set({ queue: state.queue.slice(1) });
+          return;
+        }
         set({ queue: state.queue.slice(1) });
         return;
       }
@@ -166,6 +170,10 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
       if (res.success && (res as { alreadyAccepted?: boolean }).alreadyAccepted) {
         set({ visible: false, selected: null });
         return { ok: false, reason: 'already_accepted' };
+      }
+      if (res.success && (res as { appointmentUnavailable?: boolean }).appointmentUnavailable) {
+        set({ visible: false, selected: null });
+        return { ok: false, reason: 'unavailable' };
       }
       if (!res.success || !res.data) {
         if (previewData) return { ok: true };
