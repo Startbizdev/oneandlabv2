@@ -67,9 +67,11 @@ export function WelcomeScreen() {
               accessibilityLabel="Cary"
             />
 
+            <Text style={styles.audienceKicker}>Patients et professionnels de santé</Text>
+
             <Text style={styles.tagline}>
-              le soin, chez vous{' '}
-              <Text style={styles.taglineAccent}>rapidement</Text>
+              Soins et prélèvements{'\n'}
+              <Text style={styles.taglineAccent}>à domicile</Text>
             </Text>
 
             <View style={styles.taglineRule} />
@@ -171,6 +173,14 @@ function buildStyles(c: AppColors) {
     width: 220,
     height: 80,
   },
+  audienceKicker: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.sm,
+    color: c.textSecondary,
+    textAlign: 'center' as const,
+    letterSpacing: 0.2,
+    maxWidth: 320,
+  },
   tagline: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize['2xl'],
@@ -178,7 +188,7 @@ function buildStyles(c: AppColors) {
     textAlign: 'center' as const,
     lineHeight: fontSize['2xl'] * 1.3,
     letterSpacing: -0.4,
-    maxWidth: 300,
+    maxWidth: 320,
   },
   taglineAccent: {
     fontFamily: fontFamily.extraBold,

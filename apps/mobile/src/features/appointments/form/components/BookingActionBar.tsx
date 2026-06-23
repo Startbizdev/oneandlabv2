@@ -3,6 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Platform, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabSceneInsetBottom } from '@/components/navigation/liquid-glass-header-inset';
 import { BookingPremiumStepCta } from './BookingPremiumStepCta';
 import { elevation, spacing } from '@/theme';
 
@@ -25,7 +26,9 @@ export function BookingActionBar({
   const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingActionBar_tsx_BookingActionBar_styles');
 
   const { bottom } = useSafeAreaInsets();
-  const bottomPad = Math.max(bottom, spacing[2]);
+  const tabSceneBottom = useTabSceneInsetBottom();
+  const bottomPad =
+    tabSceneBottom > 0 ? tabSceneBottom : Math.max(bottom, spacing[2]);
 
   const content = (
     <View style={[styles.bar, { paddingBottom: bottomPad }]}>

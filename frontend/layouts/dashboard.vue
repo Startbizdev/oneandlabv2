@@ -1236,6 +1236,7 @@ const notificationItems = computed(() => {
     const { label: notifLabel, message: notifMessage } = formatBellNotificationLines(
       notif.title,
       notif.message,
+      { type: notif.type },
     );
     items.push({
       label: notifLabel,

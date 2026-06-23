@@ -5,6 +5,7 @@ import { forwardRef } from 'react';
 import type { ScrollView, ScrollViewProps } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabSceneInsetBottom } from '@/components/navigation/liquid-glass-header-inset';
 import { KeyboardScrollView } from './KeyboardScrollView';
 import { ScreenActionLayout } from './ScreenActionLayout';
 import { spacing } from '@/theme';
@@ -34,7 +35,9 @@ export const FormScreen = forwardRef<ScrollView, Props>(function FormScreen(
   const styles = useThemedStyles(buildStyles, 'FormScreen');
   const bg = backgroundColor ?? c.background;
   const { bottom } = useSafeAreaInsets();
-  const footerInset = Math.max(bottom, spacing[2]);
+  const tabSceneBottom = useTabSceneInsetBottom();
+  const footerInset =
+    tabSceneBottom > 0 ? tabSceneBottom : Math.max(bottom, spacing[2]);
   const footerPad = footer
     ? FORM_ACTION_BAR_HEIGHT + footerInset + spacing[2]
     : 0;

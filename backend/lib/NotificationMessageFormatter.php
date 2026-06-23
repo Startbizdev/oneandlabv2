@@ -111,6 +111,216 @@ class NotificationMessageFormatter
         return $date !== '' ? $date : $slot;
     }
 
+    /**
+     * Résumé compact pour SMS / push : soin, options catalogue, durée, fréquence, date/créneau.
+     *
+     * @param array<string,mixed>|string|null $formData
+     * @param array<string, array{label: string, valueLabels: array<string,string>}> $optionMeta
+     */
+    public static function appointmentContextShort(
+        $formData,
+        ?string $categoryName,
+        ?string $appointmentType,
+        ?string $scheduledAt = null,
+        array $optionMeta = []
+    ): string {
+        if (!is_array($formData)) {
+            $formData = [];
+        }
+        $type = ($appointmentType ?? '') === 'blood_test' ? 'blood_test' : 'nursing';
+
+        $parts = [];
+        $care = self::careShortLabel($categoryName, $type);
+        if ($care !== '') {
+            $parts[] = $care;
+        }
+
+        $opts = self::careOptionsSummary($formData, $optionMeta);
+        if ($opts !== '') {
+            $parts[] = $opts;
+        }
+
+        if ($type === 'nursing') {
+            $dur = self::nursingDurationLabel($formData);
+            if ($dur !== '') {
+                $parts[] = $dur;
+            }
+            $freq = self::nursingFrequencyLabel($formData);
+            if ($freq !== '') {
+                $parts[] = $freq;
+            }
+        } else {
+            $bloodDur = self::bloodDurationLabel($formData);
+            if ($bloodDur !== '') {
+                $parts[] = $bloodDur;
+            }
+            $bt = self::bloodTestTypeLabel($formData);
+            if ($bt !== '') {
+                $parts[] = $bt;
+            }
+        }
+
+        $when = self::whenShort($formData, $scheduledAt);
+        if ($when !== '') {
+            $parts[] = $when;
+        }
+
+        return self::joinParts($parts);
+    }
+
+    /**
+     * @param array<string,mixed> $formData
+     * @param array<string, array{label: string, valueLabels: array<string,string>}> $optionMeta
+     */
+    public static function careOptionsSummary(array $formData, array $optionMeta = []): string
+    {
+        $careOpts = $formData['care_options'] ?? null;
+        if (!is_array($careOpts) || $careOpts === []) {
+            return '';
+        }
+
+        $chunks = [];
+        foreach ($careOpts as $key => $val) {
+            $keyStr = (string) $key;
+            if ($val === null || $val === '' || str_ends_with($keyStr, '_autre_detail')) {
+                continue;
+            }
+
+            $meta = $optionMeta[$keyStr] ?? null;
+
+            if (is_array($val)) {
+                $parts = [];
+                foreach ($val as $vi) {
+                    if ($vi === null || $vi === '') {
+                        continue;
+                    }
+                    $sv = is_scalar($vi) ? trim((string) $vi) : '';
+                    if ($sv === '') {
+                        continue;
+                    }
+                    $parts[] = (is_array($meta) && isset($meta['valueLabels'][$sv]))
+                        ? $meta['valueLabels'][$sv]
+                        : $sv;
+                }
+                if ($parts !== []) {
+                    $chunks[] = implode(', ', $parts);
+                }
+                continue;
+            }
+
+            $displayVal = is_scalar($val) ? trim((string) $val) : '';
+            if ($displayVal === '') {
+                continue;
+            }
+
+            if ($displayVal === 'autre') {
+                $detailKey = $keyStr . '_autre_detail';
+                $detail = isset($careOpts[$detailKey]) ? trim((string) $careOpts[$detailKey]) : '';
+                if ($detail !== '') {
+                    $chunks[] = $detail;
+                    continue;
+                }
+            }
+
+            if (is_array($meta) && isset($meta['valueLabels'][$displayVal])) {
+                $chunks[] = $meta['valueLabels'][$displayVal];
+            } else {
+                $chunks[] = $displayVal;
+            }
+        }
+
+        return self::joinParts($chunks);
+    }
+
+    /** @param array<string,mixed> $formData */
+    public static function nursingFrequencyLabel(array $formData): string
+    {
+        $durationDays = (string) ($formData['duration_days'] ?? '');
+        if ($durationDays === '1' || $durationDays === '' || $durationDays === 'to_define') {
+            return '';
+        }
+        $freq = (string) ($formData['frequency'] ?? '');
+        return self::mapFrequencyCode($freq);
+    }
+
+    /** @param array<string,mixed> $formData */
+    public static function nursingDurationLabel(array $formData): string
+    {
+        $durationDays = $formData['duration_days'] ?? null;
+        $customDays = $formData['custom_days'] ?? null;
+        if ($durationDays === null || $durationDays === '') {
+            return '';
+        }
+        $dd = (string) $durationDays;
+        if ($dd === 'to_define') {
+            return 'À préciser avec le pro';
+        }
+        if ($dd === 'custom') {
+            $n = (int) $customDays;
+            return $n > 0 ? $n . ' jours' : 'Durée personnalisée';
+        }
+        $map = [
+            '1' => 'Une seule fois',
+            '7' => 'Environ 1 semaine',
+            '10' => 'Environ 10 jours',
+            '15' => 'Environ 2 semaines',
+            '30' => 'Environ 1 mois',
+            '60+' => 'Longue durée',
+        ];
+        return $map[$dd] ?? $dd;
+    }
+
+    /** @param array<string,mixed> $formData */
+    public static function bloodDurationLabel(array $formData): string
+    {
+        $dd = (string) ($formData['duration_days'] ?? '');
+        if ($dd === 'custom') {
+            $n = isset($formData['custom_days']) ? (int) $formData['custom_days'] : 0;
+            return $n > 0 ? $n . ' jours' : '';
+        }
+        $map = [
+            '7' => 'environ 1 semaine',
+            '10' => 'environ 10 jours',
+            '15' => 'environ 2 semaines',
+            '30' => 'environ 1 mois',
+            '60+' => 'plusieurs semaines',
+            'to_define' => 'à préciser',
+        ];
+        return $map[$dd] ?? '';
+    }
+
+    /** @param array<string,mixed> $formData */
+    public static function bloodTestTypeLabel(array $formData): string
+    {
+        $t = (string) ($formData['blood_test_type'] ?? '');
+        if ($t === 'single') {
+            return '1 prélèvement';
+        }
+        if ($t === 'multiple') {
+            $d = self::bloodDurationLabel($formData);
+            return $d !== '' ? 'Plusieurs prélèvements · ' . $d : 'Plusieurs prélèvements';
+        }
+        return '';
+    }
+
+    public static function mapFrequencyCode(string $code): string
+    {
+        if ($code === '') {
+            return '';
+        }
+        $map = [
+            'once_daily' => '1 fois par jour',
+            'twice_daily' => '2 fois par jour',
+            'thrice_daily' => '3 fois par jour',
+            'twice_weekly' => '2 fois par semaine',
+            'thrice_weekly' => '3 fois par semaine',
+            'to_define' => 'Fréquence à définir',
+            'daily' => '1 fois par jour',
+            'every_other_day' => '1 jour sur 2',
+        ];
+        return $map[$code] ?? $code;
+    }
+
     /** @param list<string|null> $parts */
     public static function joinParts(array $parts): string
     {

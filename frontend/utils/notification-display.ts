@@ -24,20 +24,34 @@ export function truncateForNotificationBody(s: string, maxLen = 140): string | u
 }
 
 /** Titre + ligne secondaire optionnelle pour le menu cloche (évite doublon titre = corps). */
+export type BellNotificationFormatOptions = {
+  /** Type backend (ex. `welcome`) — règles d'affichage spécifiques. */
+  type?: string
+  titleMaxLen?: number
+  bodyMaxLen?: number
+}
+
+const WELCOME_NOTIFICATION_BODY_MAX_LEN = 320
+
 export function formatBellNotificationLines(
   title: string | null | undefined,
   message: string | null | undefined,
+  options?: BellNotificationFormatOptions,
 ): { label: string; message?: string } {
+  const titleMaxLen = options?.titleMaxLen ?? 54
+  const bodyMaxLen =
+    options?.bodyMaxLen ?? (options?.type === 'welcome' ? WELCOME_NOTIFICATION_BODY_MAX_LEN : 140)
+
   const hasTitle = Boolean(title?.trim())
   const hasMessage = Boolean(message?.trim())
   const rawLabel = hasTitle ? String(title) : hasMessage ? String(message) : 'Notification'
-  const label = truncateForNotificationTitle(sanitizeNotificationText(rawLabel))
+  const label = truncateForNotificationTitle(sanitizeNotificationText(rawLabel), titleMaxLen)
 
   const tSan = hasTitle ? sanitizeNotificationText(title) : ''
   const mSan = hasMessage ? sanitizeNotificationText(message) : ''
   let secondary: string | undefined
   if (hasTitle && hasMessage && mSan !== tSan) {
-    secondary = truncateForNotificationBody(mSan)
+    secondary = truncateForNotificationBody(mSan, bodyMaxLen)
   }
   return { label, message: secondary }
 }
