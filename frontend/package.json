@@ -11,6 +11,7 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@oneandlab/onboarding": "*",
     "@oneandlab/shared-types": "*",
     "@oneandlab/shared-utils": "*",
     "@iconify-json/lucide": "^1.2.89",

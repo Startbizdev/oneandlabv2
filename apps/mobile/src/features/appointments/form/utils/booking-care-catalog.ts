@@ -112,107 +112,107 @@ function accentFromColors(c: AppColors, key: AccentKey) {
 function buildThemeFromAccent(c: AppColors, accent: AccentKey): CatalogGroupTheme {
   const a = accentFromColors(c, accent);
   return {
-    orb: a.light,
+    orb: a.mid,
     surface: c.surface,
-    surfaceActive: a.light,
+    surfaceActive: a.mid,
     border: c.border,
     borderActive: a.active,
     label: c.textTertiary,
     labelActive: a.dark,
-    gradient: [a.light, a.mid] as const,
+    gradient: [a.mid, a.active] as const,
     glow: hexToRgba(a.active, 0.22),
   };
 }
 
 const DEFAULT_GROUP_THEME: CatalogGroupTheme = {
-  orb: palette.brand[50],
+  orb: palette.brand[200],
   surface: palette.white,
-  surfaceActive: palette.brand[50],
+  surfaceActive: palette.brand[100],
   border: palette.slate[200],
   borderActive: palette.brand[500],
   label: palette.slate[500],
   labelActive: palette.brand[900],
-  gradient: [palette.brand[50], palette.brand[100]],
+  gradient: [palette.brand[100], palette.brand[200]],
   glow: hexToRgba(palette.brand[500], 0.22),
 };
 
 /** Thèmes marque d’origine (mode standard). */
 const STANDARD_CATALOG_THEMES: Record<string, CatalogGroupTheme> = {
   all: {
-    orb: palette.brand[50],
+    orb: palette.brand[200],
     surface: '#F8FFFE',
-    surfaceActive: palette.brand[50],
+    surfaceActive: palette.brand[100],
     border: palette.brand[200],
     borderActive: palette.brand[500],
     label: '#5B7A75',
     labelActive: palette.brand[900],
-    gradient: ['#F0FDFB', palette.brand[100]],
+    gradient: [palette.brand[100], palette.brand[200]],
     glow: hexToRgba(palette.brand[500], 0.28),
   },
   examens: {
-    orb: '#CCFBF1',
+    orb: '#99F6E4',
     surface: '#F8FFFE',
-    surfaceActive: '#ECFDF9',
+    surfaceActive: '#CCFBF1',
     border: palette.brand[200],
     borderActive: '#0D9488',
     label: '#5B7A75',
     labelActive: '#0F766E',
-    gradient: ['#F0FDFA', '#CCFBF1'],
+    gradient: ['#CCFBF1', '#99F6E4'],
     glow: hexToRgba('#0D9488', 0.28),
   },
   soins: {
-    orb: '#FCE7F3',
+    orb: '#F9A8D4',
     surface: '#FFFBFC',
-    surfaceActive: '#FFF1F5',
-    border: '#FBCFE8',
+    surfaceActive: '#FCE7F3',
+    border: '#F9A8D4',
     borderActive: '#DB2777',
     label: '#9D6B82',
     labelActive: '#9D174D',
-    gradient: ['#FFF5F8', '#FCE7F3'],
+    gradient: ['#FCE7F3', '#F9A8D4'],
     glow: hexToRgba('#DB2777', 0.22),
   },
   suivi: {
-    orb: '#DBEAFE',
+    orb: '#93C5FD',
     surface: '#FAFCFF',
-    surfaceActive: '#EFF6FF',
-    border: '#BFDBFE',
+    surfaceActive: '#DBEAFE',
+    border: '#93C5FD',
     borderActive: '#2563EB',
     label: '#5C6F8A',
     labelActive: '#1D4ED8',
-    gradient: ['#F5F9FF', '#DBEAFE'],
+    gradient: ['#DBEAFE', '#93C5FD'],
     glow: hexToRgba('#2563EB', 0.22),
   },
   hygiene: {
-    orb: '#E0F2FE',
+    orb: '#7DD3FC',
     surface: '#F8FCFF',
-    surfaceActive: '#F0F9FF',
-    border: '#BAE6FD',
+    surfaceActive: '#E0F2FE',
+    border: '#7DD3FC',
     borderActive: '#0284C7',
     label: '#5C7A8F',
     labelActive: '#0369A1',
-    gradient: ['#F0F9FF', '#E0F2FE'],
+    gradient: ['#E0F2FE', '#7DD3FC'],
     glow: hexToRgba('#0284C7', 0.22),
   },
   prevention: {
-    orb: palette.green[100],
+    orb: palette.green[200],
     surface: '#FAFFFB',
-    surfaceActive: palette.green[50],
-    border: '#BBF7D0',
+    surfaceActive: palette.green[100],
+    border: palette.green[200],
     borderActive: palette.green[600],
     label: '#5F7A68',
     labelActive: palette.green[700],
-    gradient: ['#F6FEF8', palette.green[100]],
+    gradient: [palette.green[100], palette.green[200]],
     glow: hexToRgba(palette.green[600], 0.22),
   },
   divers: {
-    orb: palette.amber[100],
+    orb: '#FCD34D',
     surface: '#FFFDF8',
-    surfaceActive: palette.amber[50],
-    border: '#FDE68A',
+    surfaceActive: palette.amber[100],
+    border: '#FCD34D',
     borderActive: palette.amber[600],
     label: '#8A7A5C',
     labelActive: palette.amber[700],
-    gradient: [palette.amber[50], palette.amber[100]],
+    gradient: [palette.amber[100], '#FCD34D'],
     glow: hexToRgba(palette.amber[600], 0.2),
   },
 };
@@ -241,22 +241,22 @@ export function catalogGroupTheme(key: string): CatalogGroupTheme {
 function careTileOrbPalette(c: AppColors): readonly string[] {
   if (!isColorblindModeEnabled()) {
     return [
-      '#FCE7F3',
-      '#DBEAFE',
-      '#DCFCE7',
-      '#FEF3C7',
-      '#EDE9FE',
-      '#FFEDD5',
-      '#CFFAFE',
-      '#FFE4E6',
-      '#E0E7FF',
-      '#FDE68A',
-      '#FBCFE8',
-      '#D1FAE5',
-      '#FED7AA',
-      '#F3E8FF',
-      palette.brand[200],
-      '#FECDD3',
+      '#F9A8D4',
+      '#93C5FD',
+      '#86EFAC',
+      '#FCD34D',
+      '#C4B5FD',
+      '#FDBA74',
+      '#67E8F9',
+      '#FDA4AF',
+      '#A5B4FC',
+      '#FBBF24',
+      '#F472B6',
+      '#4ADE80',
+      '#FB923C',
+      '#D8B4FE',
+      palette.brand[300],
+      '#FB7185',
     ] as const;
   }
   return [
@@ -285,7 +285,7 @@ function careTileOrbColorAtIndex(index: number): string {
     return paletteOrbs[index]!;
   }
   const hue = (index * 41) % 360;
-  return `hsl(${hue}, 52%, 90%)`;
+  return `hsl(${hue}, 48%, 80%)`;
 }
 
 /**
@@ -425,11 +425,11 @@ export function resolveRdvCareTagColors(
 ): RdvCareTagColors {
   const c = getAppColors();
 
-  // Mode standard : pastilles turquoise Cary (comme avant le mode accessible).
+  // Mode standard : pastilles Cary (teinte marque, fond plus marqué).
   if (!isColorblindModeEnabled()) {
     return {
-      backgroundColor: c.primaryLight,
-      borderColor: c.primaryMid,
+      backgroundColor: c.primaryMid,
+      borderColor: palette.brand[300],
     };
   }
 

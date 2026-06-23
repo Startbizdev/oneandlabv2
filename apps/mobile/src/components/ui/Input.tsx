@@ -15,8 +15,8 @@ import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { useSheetTextInputComponent } from './sheet-keyboard-context';
 
-/** Claviers iOS sans touche retour — RN injecte une barre « Done » si returnKeyType="done". */
-const IOS_ACCESSORY_DONE_KEYBOARDS = new Set([
+/** Claviers iOS sans touche retour — RN injecte une barre anglaise (Next/Done) si returnKeyType est défini. */
+const IOS_NO_RETURN_KEY_KEYBOARDS = new Set([
   'number-pad',
   'phone-pad',
   'decimal-pad',
@@ -29,9 +29,9 @@ function resolveReturnKeyType(
 ): TextInputProps['returnKeyType'] {
   if (
     Platform.OS === 'ios' &&
-    returnKeyType === 'done' &&
+    returnKeyType &&
     keyboardType &&
-    IOS_ACCESSORY_DONE_KEYBOARDS.has(String(keyboardType))
+    IOS_NO_RETURN_KEY_KEYBOARDS.has(String(keyboardType))
   ) {
     return undefined;
   }

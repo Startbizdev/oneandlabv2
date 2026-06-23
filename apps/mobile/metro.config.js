@@ -1,10 +1,31 @@
+const path = require('path');
 const { getDefaultConfig } = require('expo/metro-config');
 const { withNativeWind } = require('nativewind/metro');
 
+const projectRoot = __dirname;
+const monorepoRoot = path.resolve(projectRoot, '../..');
+
 /**
- * SDK 52+ : Expo configure automatiquement watchFolders / nodeModulesPaths.
- * Ne pas les redéfinir manuellement (risque d’erreurs Metro « Got unexpected undefined »).
+ * Monorepo npm : les packages @oneandlab/* sont hoistés à la racine.
+ * Metro (cwd apps/mobile) doit voir node_modules du workspace + packages/.
  */
-const config = getDefaultConfig(__dirname);
+const config = getDefaultConfig(projectRoot);
+
+config.watchFolders = [...new Set([...(config.watchFolders ?? []), monorepoRoot])];
+config.resolver = {
+  ...config.resolver,
+  nodeModulesPaths: [
+    path.resolve(projectRoot, 'node_modules'),
+    path.resolve(monorepoRoot, 'node_modules'),
+  ],
+  extraNodeModules: {
+    ...(config.resolver?.extraNodeModules ?? {}),
+    '@oneandlab/onboarding': path.resolve(monorepoRoot, 'packages/onboarding'),
+    '@oneandlab/shared-api': path.resolve(monorepoRoot, 'packages/shared-api'),
+    '@oneandlab/shared-constants': path.resolve(monorepoRoot, 'packages/shared-constants'),
+    '@oneandlab/shared-types': path.resolve(monorepoRoot, 'packages/shared-types'),
+    '@oneandlab/shared-utils': path.resolve(monorepoRoot, 'packages/shared-utils'),
+  },
+};
 
 module.exports = withNativeWind(config, { input: './global.css' });

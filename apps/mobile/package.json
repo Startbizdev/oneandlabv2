@@ -36,6 +36,7 @@
     "@expo-google-fonts/nunito": "^0.4.2",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@hookform/resolvers": "^3.9.1",
+    "@oneandlab/onboarding": "*",
     "@oneandlab/shared-api": "*",
     "@oneandlab/shared-constants": "*",
     "@oneandlab/shared-types": "*",

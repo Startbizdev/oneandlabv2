@@ -17,9 +17,12 @@ import {
   LayoutGrid,
   LifeBuoy,
   Settings,
+  Sparkles,
   User,
   type LucideIcon,
 } from 'lucide-react-native';
+import { getOnboardingHref } from '@/features/onboarding/utils/onboarding-route';
+import { isTutorialRole } from '@oneandlab/onboarding';
 import { getHelpFaqForRole, type HelpFaqItem } from '@/features/help/help-faq-content';
 import { ProfileNavCard } from '@/features/profile/components/ProfileNavCard';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
@@ -69,6 +72,19 @@ export function HelpScreen() {
         showsVerticalScrollIndicator={false}
       >
       <Text style={styles.lead}>{faq.intro}</Text>
+
+      {role && isTutorialRole(role) ? (
+        <ProfileNavCard title="Prise en main">
+          <ProfileNavRow
+            icon={Sparkles}
+            title="Découvrir Cary en 2 minutes"
+            subtitle="Revoir le tutoriel de démarrage avec les onglets principaux."
+            onPress={() => router.push(getOnboardingHref(role, true) as never)}
+            iconColor={c.primary}
+            iconBg={c.primaryLight}
+          />
+        </ProfileNavCard>
+      ) : null}
 
       {faq.sections.map((section) => (
         <ProfileNavCard key={section.slug} title={section.title}>

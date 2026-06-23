@@ -21,6 +21,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { useAuthGuard } from '@/features/auth/hooks/use-auth-guard';
+import { useOnboardingGate } from '@/features/onboarding/hooks/use-onboarding-gate';
 import { MustChangePasswordGate } from '@/features/auth/components/MustChangePasswordGate';
 import { registerNotificationHandlers } from '@/features/notifications/handlers/register-handlers';
 import { useDeepLinks } from '@/features/navigation/hooks/use-deep-links';
@@ -42,6 +43,7 @@ function RootLayoutInner() {
   }, [hydrate]);
 
   useAuthGuard();
+  useOnboardingGate();
   useDeepLinks();
   usePushTokenRegistration();
 

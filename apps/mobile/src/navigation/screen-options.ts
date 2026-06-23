@@ -139,3 +139,8 @@ export function bookingWizardScreenOptions(): NativeStackNavigationOptions {
     presentation: 'fullScreenModal',
   });
 }
+
+/** Tutoriel startup — plein écran, sans header stack. */
+export function onboardingScreenOptions(): NativeStackNavigationOptions {
+  return fullScreenOptions();
+}

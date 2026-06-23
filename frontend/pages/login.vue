@@ -248,7 +248,7 @@
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api'
-import { resolvePostLoginPath } from '~/utils/postLoginRedirect'
+import { resolvePostLoginPathWithOnboarding } from '~/utils/onboarding-redirect'
 
 definePageMeta({
   layout: false,
@@ -261,7 +261,7 @@ const toast = useAppToast()
 
 function redirectIfAuthenticated() {
   if (!isAuthenticated.value || !user.value) return
-  const target = resolvePostLoginPath(route.query.returnTo, user.value.role)
+  const target = resolvePostLoginPathWithOnboarding(route.query.returnTo, user.value.role)
   router.replace(target)
 }
 
@@ -377,11 +377,9 @@ onUnmounted(() => {
 })
 
 function redirectAfterLogin(mustChangePassword?: boolean) {
-  if (mustChangePassword) {
-    router.replace('/profile?changePassword=1')
-    return
-  }
-  const target = resolvePostLoginPath(route.query.returnTo, user.value?.role)
+  const target = resolvePostLoginPathWithOnboarding(route.query.returnTo, user.value?.role, {
+    mustChangePassword,
+  })
   router.replace(target)
 }
 
