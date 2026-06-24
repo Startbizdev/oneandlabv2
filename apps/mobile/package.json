@@ -1,6 +1,6 @@
 {
   "name": "@oneandlab/mobile",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "main": "index.js",
   "scripts": {
@@ -23,7 +23,10 @@
     "ios:dev-build": "expo run:ios",
     "icons:generate": "bash scripts/generate-brand-icons.sh",
     "build:ios:store": "node scripts/run-eas-ios.cjs",
+    "build:store": "node scripts/run-eas.cjs build --platform all --profile production",
+    "build:store:submit": "node scripts/run-eas.cjs build --platform all --profile production --auto-submit",
     "submit:ios:latest": "node scripts/run-eas-ios.cjs submit --platform ios --profile production --latest --non-interactive",
+    "submit:store:latest": "node scripts/run-eas.cjs submit --platform all --profile production --latest --non-interactive",
     "typecheck": "tsc --noEmit",
     "simulate:iap": "node scripts/simulate-iap-purchase.cjs",
     "lint": "eslint . --ext .ts,.tsx",
