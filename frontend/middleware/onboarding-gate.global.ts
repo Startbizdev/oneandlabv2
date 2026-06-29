@@ -2,7 +2,10 @@ import {
   getOnboardingPath,
   isOnboardingCompleted,
 } from '~/utils/onboarding-storage'
-import { shouldApplyOnboardingGate } from '~/utils/onboarding-redirect'
+import {
+  rememberNurseShareBeforeOnboarding,
+  shouldApplyOnboardingGate,
+} from '~/utils/onboarding-redirect'
 
 export default defineNuxtRouteMiddleware((to) => {
   if (!import.meta.client) return
@@ -13,9 +16,11 @@ export default defineNuxtRouteMiddleware((to) => {
 
   const pathname = to.path.split('?')[0]
   const role = user.value.role
+  const query = to.query as Record<string, unknown>
 
-  if (!shouldApplyOnboardingGate(pathname, role)) return
+  if (!shouldApplyOnboardingGate(pathname, role, query)) return
   if (isOnboardingCompleted(role)) return
 
+  rememberNurseShareBeforeOnboarding(query)
   return navigateTo(getOnboardingPath(role))
 })

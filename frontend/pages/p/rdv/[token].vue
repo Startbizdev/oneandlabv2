@@ -147,6 +147,7 @@
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api';
+import { storePendingNurseShareLink } from '~/utils/nurse-share-pending';
 
 definePageMeta({
   layout: 'patient',
@@ -297,6 +298,7 @@ watch(
       return;
     }
 
+    storePendingNurseShareLink(token.value, String(data.value.appointmentId));
     await navigateTo({
       path: '/nurse/demandes',
       query: {

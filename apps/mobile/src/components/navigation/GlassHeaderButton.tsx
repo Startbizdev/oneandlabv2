@@ -76,7 +76,11 @@ export function GlassHeaderButton({
         </GlassView>
       ) : (
         <View style={[styles.fallbackOrb, { width: size, height: size, borderRadius: size / 2 }]}>
-          <LiquidGlassChrome variant="tab" style={StyleSheet.absoluteFillObject} />
+          {Platform.OS === 'android' ? (
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: c.surfaceAlt }]} />
+          ) : (
+            <LiquidGlassChrome variant="tab" style={StyleSheet.absoluteFillObject} />
+          )}
           <View style={styles.fallbackIcon}>{icon}</View>
         </View>
       )}

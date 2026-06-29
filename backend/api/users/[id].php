@@ -211,6 +211,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         exit;
     }
 
+    if (($user['role'] ?? '') !== 'super_admin' && array_key_exists('prescription_generation_enabled', $input)) {
+        unset($input['prescription_generation_enabled']);
+    }
+
     // Lab modifiant un préleveur/sous-compte : lab_id ne peut être que le lab principal ou un de ses sous-comptes
     if ($user['role'] === 'lab' && isset($input['lab_id'])) {
         $newLabId = !empty(trim((string)$input['lab_id'])) ? trim((string)$input['lab_id']) : null;

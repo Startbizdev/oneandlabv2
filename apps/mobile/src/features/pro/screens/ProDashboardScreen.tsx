@@ -4,13 +4,14 @@ import { useAppColors } from '@/theme/use-app-colors';
 
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useQuery } from '@tanstack/react-query';
 import { Activity, CalendarCheck, Clock } from 'lucide-react-native';
 import dayjs from 'dayjs';
 import { api } from '@/api/client';
 import { SkeletonDashboardStats } from '@/components/ui/skeletons';
 import { useAuthStore } from '@/store/auth-store';
+import { scrollChildEntering, scrollSectionEntering } from '@/lib/platform/list-entering-animation';
 import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -33,15 +34,17 @@ function StatCard({ label, value, icon, accent, index }: StatCardProps) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'ProDashboardScreen.StatCard');
   const accentColor = accent ?? c.primary;
+  const entering = scrollChildEntering(index, 60, 300);
+  const Shell = entering ? Animated.View : View;
   return (
-    <Animated.View
-      entering={FadeInDown.delay(index * 60).duration(300).springify()}
+    <Shell
+      entering={entering}
       style={[styles.statCard, elevation.xs]}
     >
       <View style={[styles.statIcon, { backgroundColor: accentColor + '18' }]}>{icon}</View>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </Animated.View>
+    </Shell>
   );
 }
 
@@ -68,19 +71,24 @@ export function ProDashboardScreen() {
 
   const firstName = user?.first_name ?? user?.email?.split('@')[0] ?? 'Docteur';
 
+  const headerEntering = scrollSectionEntering(0, 280);
+  const dateEntering = scrollSectionEntering(220, 280);
+  const HeaderShell = headerEntering ? Animated.View : View;
+  const DateShell = dateEntering ? Animated.View : View;
+
   return (
-    <View style={styles.container}>
+    <View style={styles.container} collapsable={false}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
-        contentInsetAdjustmentBehavior="automatic"
+        collapsable={false}
+        nestedScrollEnabled
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <Animated.View entering={FadeInDown.duration(280).springify()} style={styles.header}>
+        <HeaderShell entering={headerEntering} style={styles.header}>
           <Text style={styles.greeting}>{greeting()},</Text>
           <Text style={styles.name}>{firstName} 👋</Text>
-        </Animated.View>
+        </HeaderShell>
 
         {/* Stats grid */}
         {statsQ.isLoading ? (
@@ -111,10 +119,10 @@ export function ProDashboardScreen() {
         )}
 
         {/* Today date */}
-        <Animated.View entering={FadeInDown.delay(220).duration(280).springify()} style={[styles.dateCard, elevation.xs]}>
+        <DateShell entering={dateEntering} style={[styles.dateCard, elevation.xs]}>
           <Text style={styles.dateDay}>{dayjs().format('dddd')}</Text>
           <Text style={styles.dateLabel}>{dayjs().format('D MMMM YYYY')}</Text>
-        </Animated.View>
+        </DateShell>
       </ScrollView>
     </View>
   );

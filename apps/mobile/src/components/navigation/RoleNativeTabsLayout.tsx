@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Platform } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {
   Badge,
@@ -31,16 +32,28 @@ export function createRoleTabsLayout(
     const c = useAppColors();
     const tabs = typeof tabsOrFactory === 'function' ? tabsOrFactory() : tabsOrFactory;
 
+    const androidTabProps = Platform.OS === 'android'
+      ? {
+          disableIndicator: true as const,
+          iconColor: { default: c.textSecondary, selected: c.primary } as const,
+          rippleColor: c.primaryMid,
+          backgroundColor: c.surface,
+          tabBarRespectsIMEInsets: true as const,
+        }
+      : {
+          tintColor: c.primary,
+          rippleColor: c.primaryMid,
+          indicatorColor: c.primary,
+          blurEffect: 'none' as const,
+          backgroundColor: c.surface,
+        };
+
     return (
       <NativeTabs
         minimizeBehavior="never"
         labelVisibilityMode="unlabeled"
-        tintColor={c.primary}
-        rippleColor={c.primaryMid}
-        indicatorColor={c.primary}
-        backgroundColor={c.surface}
-        blurEffect="none"
         disableTransparentOnScrollEdge
+        {...androidTabProps}
       >
         {tabs.map((tab) => (
           <NativeTabs.Trigger

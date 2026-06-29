@@ -66,7 +66,11 @@
               :hide-audit-dates="isPatientPortal"
             >
               <template v-if="batchIdx === 0 && !isPatientPortal" #infoExtras>
-                <AppointmentDetailRdvPatientKvSection :appointment="appointment" :is-admin="isAdmin">
+                <AppointmentDetailRdvPatientKvSection
+                  :appointment="appointment"
+                  :is-admin="isAdmin"
+                  :show-staff-patient-profile-link="!isPatientPortal"
+                >
                   <template v-if="$slots.patientCardActions" #actions>
                     <slot name="patientCardActions" :appointment="appointment" />
                   </template>
@@ -130,7 +134,12 @@
         >
           <div class="space-y-4">
             <div class="divide-y divide-default">
-              <AppointmentDetailRdvPatientKvSection v-if="!isPatientPortal" :appointment="appointment" :is-admin="isAdmin">
+              <AppointmentDetailRdvPatientKvSection
+                v-if="!isPatientPortal"
+                :appointment="appointment"
+                :is-admin="isAdmin"
+                :show-staff-patient-profile-link="true"
+              >
                 <template v-if="$slots.patientCardActions" #actions>
                   <slot name="patientCardActions" :appointment="appointment" />
                 </template>

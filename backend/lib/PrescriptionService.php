@@ -244,6 +244,14 @@ class PrescriptionService
     ): array {
         $role = $user['role'] ?? '';
 
+        if ($role === 'pro' && !self::isPrescriptionGenerationEnabled($db, (string) ($user['user_id'] ?? ''))) {
+            return [
+                'success' => false,
+                'http' => 403,
+                'error' => 'La génération d\'ordonnances est désactivée pour votre compte. Contactez l\'administration.',
+            ];
+        }
+
         if ($patientId === '') {
             return ['success' => false, 'http' => 400, 'error' => 'patient_id requis'];
         }
@@ -425,7 +433,11 @@ class PrescriptionService
         return [
             'first_name' => self::safeDecrypt($crypto, $row['first_name_encrypted'] ?? null, $row['first_name_dek'] ?? null),
             'last_name' => self::safeDecrypt($crypto, $row['last_name_encrypted'] ?? null, $row['last_name_dek'] ?? null),
-            'title' => (isset($row['emploi']) && trim((string) $row['emploi']) !== '') ? trim((string) $row['emploi']) : ($role === 'nurse' ? 'Infirmier(ère)' : 'Dr'),
+            'title' => self::prescriberPdfTitle(
+                $role,
+                isset($row['emploi']) ? trim((string) $row['emploi']) : '',
+            ),
+            'emploi' => isset($row['emploi']) ? trim((string) $row['emploi']) : '',
             'address' => self::safeDecrypt($crypto, $row['address_encrypted'] ?? null, $row['address_dek'] ?? null) ?: null,
             'rpps' => self::safeDecrypt($crypto, $row['rpps_encrypted'] ?? null, $row['rpps_dek'] ?? null),
             'adeli' => self::safeDecrypt($crypto, $row['adeli_encrypted'] ?? null, $row['adeli_dek'] ?? null),
@@ -802,6 +814,52 @@ class PrescriptionService
         }
 
         return $hasAccess;
+    }
+
+    /** Titre affiché devant le nom sur l'ordonnance PDF (ex. Dr pour les médecins). */
+    public static function prescriberPdfTitle(string $role, ?string $emploi): string
+    {
+        if ($role === 'nurse') {
+            return 'Infirmier(ère)';
+        }
+
+        $e = trim((string) $emploi);
+        if ($e === '') {
+            return 'Dr';
+        }
+
+        $lower = mb_strtolower($e, 'UTF-8');
+        if (str_starts_with($lower, 'médecin') || str_starts_with($lower, 'medecin')) {
+            return 'Dr';
+        }
+
+        return $e;
+    }
+
+    /** Pro : génération d'ordonnances activée (défaut oui si colonne absente). */
+    public static function isPrescriptionGenerationEnabled(PDO $db, string $userId): bool
+    {
+        if ($userId === '') {
+            return true;
+        }
+
+        try {
+            $colCheck = $db->query("SHOW COLUMNS FROM profiles LIKE 'prescription_generation_enabled'");
+            if (!$colCheck || $colCheck->rowCount() === 0) {
+                return true;
+            }
+        } catch (Throwable $e) {
+            return true;
+        }
+
+        $stmt = $db->prepare('SELECT prescription_generation_enabled, role FROM profiles WHERE id = ? LIMIT 1');
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row || ($row['role'] ?? '') !== 'pro') {
+            return true;
+        }
+
+        return (bool) ($row['prescription_generation_enabled'] ?? true);
     }
 
     private static function prescriberSelectFields(PDO $db): string

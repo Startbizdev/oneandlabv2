@@ -841,6 +841,18 @@
             </div>
           </section>
 
+          <div
+            v-if="requiresStaffPatientConsent"
+            id="appointment-form-patient-consent"
+            class="scroll-mt-28 rounded-xl border border-default/60 bg-elevated/40 p-4"
+          >
+            <UCheckbox
+              v-model="patientBookingConsent"
+              :label="STAFF_PATIENT_BOOKING_CONSENT_LABEL"
+              :ui="{ label: 'text-sm font-medium leading-snug text-default' }"
+            />
+          </div>
+
           <div class="pt-2">
             <UButton
               block
@@ -891,6 +903,10 @@ import {
 import DashboardPrescriptionSection from '~/components/dashboard/PrescriptionSection.vue';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
 import { isCareCategoryWithoutBookingOptions } from '@oneandlab/shared-utils';
+import {
+  STAFF_PATIENT_BOOKING_CONSENT_LABEL,
+  STAFF_PATIENT_BOOKING_CONSENT_ERROR,
+} from '~/constants/staff-patient-booking-consent';
 import {
   composeMedicalPrescriptionText,
   hasMedicalPrescriptionContent,
@@ -1004,6 +1020,17 @@ const isNurseForm = computed(() => props.basePath === '/nurse');
 const isLabForm = computed(() => props.basePath === '/lab');
 /** Mode subaccount : prise de sang uniquement, assigné à ce sous-compte */
 const isSubaccountForm = computed(() => props.basePath === '/subaccount');
+
+const requiresStaffPatientConsent = computed(
+  () =>
+    isCreate.value &&
+    (isProForm.value || isNurseForm.value || isLabForm.value || isSubaccountForm.value),
+);
+const patientBookingConsent = ref(false);
+
+function staffConsentPayloadFields(): Record<string, unknown> {
+  return requiresStaffPatientConsent.value ? { patient_booking_consent: true } : {};
+}
 
 /** Créneau horaire : jusqu'à 22h pour les soins infirmiers (tous espaces), 17h pour prises de sang. */
 const availabilitySliderMax = computed(() =>
@@ -2072,6 +2099,14 @@ function validateMultiCareBlocks(): ClientValidationFail | null {
 }
 
 function validateAppointmentFormClient(): ClientValidationFail | null {
+  if (requiresStaffPatientConsent.value && !patientBookingConsent.value) {
+    return {
+      sectionId: 'appointment-form-patient-consent',
+      title: 'Consentement requis',
+      description: STAFF_PATIENT_BOOKING_CONSENT_ERROR,
+    };
+  }
+
   if (multiCareEnabled.value && supportsMultiCareCreate.value) {
     return validateMultiCareBlocks();
   }
@@ -2266,7 +2301,7 @@ async function submitMultiCareBatch(
     if (em) bodyPatient.email = em;
     const patientRes = await apiFetch('/patients', {
       method: 'POST',
-      body: bodyPatient,
+      body: { ...bodyPatient, ...staffConsentPayloadFields() },
     });
     if (patientRes.success && (patientRes as any).data?.id) {
       patientId = (patientRes as any).data.id;
@@ -2304,6 +2339,7 @@ async function submitMultiCareBatch(
       patient_id: patientId,
       category_id: categoryId,
       blood_test_items: bloodTestItems,
+      ...staffConsentPayloadFields(),
     };
     if (!patientId && form.form_data.email?.trim()) {
       createBody.guest_email = form.form_data.email.trim();
@@ -2357,6 +2393,7 @@ async function submitMultiCareBatch(
       patient_id: patientId,
       category_id: categoryId,
       creation_batch_id: batchId,
+      ...staffConsentPayloadFields(),
     };
     if (careBlocks.value.length > 1) {
       createBody.creation_batch_size = careBlocks.value.length;
@@ -2552,6 +2589,7 @@ async function submit() {
         status: 'pending',
         patient_id: patientId,
         category_id: categoryId,
+        ...staffConsentPayloadFields(),
       };
       // Backend exige patient_id OU guest_email : si toujours pas de patient_id, envoyer guest_email
       if (!patientId && form.form_data.email?.trim()) {

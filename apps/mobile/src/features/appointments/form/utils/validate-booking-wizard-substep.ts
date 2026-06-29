@@ -1,4 +1,5 @@
 import { AVAILABILITY_MIN_SPAN_HOURS, PATIENT_VIP_MAX_HOUR, PATIENT_VIP_MIN_HOUR } from '@oneandlab/shared-constants';
+import { STAFF_PATIENT_BOOKING_CONSENT_ERROR } from '@oneandlab/shared-constants';
 import {
   isBloodTestAppointment,
   isNursingAppointment,
@@ -43,7 +44,7 @@ export function validateBookingWizardSubstep(
       missing.push(
         opts.mode === 'patient'
           ? 'Veuillez accepter la politique de confidentialité.'
-          : 'Veuillez accepter les conditions RGPD.',
+          : STAFF_PATIENT_BOOKING_CONSENT_ERROR,
       );
     }
     if (opts.mode === 'dashboard' && opts.patientMode === 'existing' && !opts.selectedPatientId) {

@@ -2702,6 +2702,20 @@ class Appointment
             );
             $this->notifyActorAppointmentRedispatched($id, $appointment, $actorId, $actorRole);
 
+            if (!empty($appointment['patient_id']) && in_array($actorRole, ['nurse', 'lab', 'subaccount'], true)) {
+                require_once __DIR__ . '/User.php';
+                try {
+                    $userModel = new User();
+                    $userModel->revokePatientProfessionalAccessAfterRedispatch(
+                        (string) $appointment['patient_id'],
+                        $actorId,
+                        $actorRole
+                    );
+                } catch (Throwable $e) {
+                    error_log('PatientProfessionalAccess (redispatch revoke): ' . $e->getMessage());
+                }
+            }
+
             // Lot multisoins : même redispatch pour les autres RDV nursing assignés au même infirmier
             if ($appointment['type'] === 'nursing' && $actorRole === 'nurse') {
                 $batchIdRd = $appointment['creation_batch_id'] ?? null;

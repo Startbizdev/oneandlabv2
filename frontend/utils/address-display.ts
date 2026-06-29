@@ -1,4 +1,5 @@
 import { parseRawPatientAddress } from '~/utils/patient-address-rdv';
+import { formatStreetAndPostcodeOfferLine } from '@oneandlab/shared-utils';
 
 /**
  * Libellé d’affichage pour un champ adresse brut (objet API, chaîne libre ou JSON stringifié).
@@ -54,37 +55,17 @@ export function formatAddressWithArrondissement(address: string | null | undefin
 }
 
 /**
- * Rue + arrondissement (Paris) ou ville, sans numéro de rue — pour partage / modal avant acceptation.
+ * Rue + code postal (arrondissement), sans numéro de rue — pour partage / modal avant acceptation.
+ * Ex. « rue de la paix 75015 ».
  */
 export function formatStreetAndDistrictWithoutStreetNumber(address: string | null | undefined): string {
   if (!address || typeof address !== 'string') return '';
   const trimmed = address.trim();
   if (!trimmed) return '';
 
-  const postalMatch = trimmed.match(/\b(75\d{3})\b/);
-  const parisArr =
-    postalMatch && postalMatch[1].startsWith('75')
-      ? parseInt(postalMatch[1].substring(3, 5), 10)
-      : null;
-
-  let rest = trimmed.replace(/^\d+[a-zA-Zàâäéèêëïîôùûç\-]*\s+/u, '').trim();
-
-  const parts = rest
-    .split(',')
-    .map((p) => p.trim())
-    .filter(Boolean);
-  if (parts.length === 0) return trimmed;
-
-  const streetLine = parts[0];
-  if (parisArr !== null && !Number.isNaN(parisArr)) {
-    const arrLabel = parisArr === 1 ? '1er arrondissement' : `${parisArr}e arrondissement`;
-    return `${streetLine}, ${arrLabel}, Paris`;
-  }
-
-  if (parts.length >= 2) {
-    return `${streetLine}, ${parts.slice(1).join(', ')}`;
-  }
-  return streetLine;
+  const pc = extractFrenchPostcodeFromLine(trimmed);
+  const streetPart = trimmed.split(',')[0]?.trim() ?? '';
+  return formatStreetAndPostcodeOfferLine(streetPart, pc) || streetPart;
 }
 
 /**

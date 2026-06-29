@@ -36,7 +36,8 @@ const PROTECTED_PREFIXES: Rule[] = [
   { test: (p) => p === '/preleveur' || p.startsWith('/preleveur/'), roles: ['preleveur'] },
   { test: (p) => p === '/pro' || p.startsWith('/pro/'), roles: ['pro'] },
   { test: (p) => p === '/patient' || p.startsWith('/patient/'), roles: ['patient'] },
-  { test: (p) => p.startsWith('/p/'), roles: ['patient'] },
+  { test: (p) => p.startsWith('/p/rdv/'), roles: ['nurse', 'patient'] },
+  { test: (p) => p.startsWith('/p/') && !p.startsWith('/p/rdv/'), roles: ['patient'] },
 ]
 
 function requiredRolesForPathname(pathname: string): string[] | null {
@@ -66,8 +67,17 @@ export function resolvePostLoginPath(returnToRaw: unknown, role: string | undefi
     return backFull
   }
 
-  // Réservation / lien patient : garder le deep link pour les patients uniquement
-  if (pathname.startsWith('/rendez-vous') || pathname.startsWith('/p/')) {
+  if (pathname.startsWith('/rendez-vous')) {
+    if (role === 'patient') return backFull
+    return home
+  }
+
+  if (pathname.startsWith('/p/rdv/')) {
+    if (role === 'patient' || role === 'nurse') return backFull
+    return home
+  }
+
+  if (pathname.startsWith('/p/')) {
     if (role === 'patient') return backFull
     return home
   }

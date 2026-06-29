@@ -1,4 +1,5 @@
 import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot';
+import { STAFF_ROLES_REQUIRING_PATIENT_BOOKING_CONSENT } from '~/constants/staff-patient-booking-consent';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import { isTechnicalPatientEmail } from '~/utils/patient-address-rdv';
 
@@ -235,6 +236,20 @@ type DashboardPayloadCtx = {
   creatorUserId: string;
 };
 
+function applyStaffPatientBookingConsent(
+  payload: Record<string, unknown>,
+  ctx: DashboardPayloadCtx,
+): Record<string, unknown> {
+  if (
+    STAFF_ROLES_REQUIRING_PATIENT_BOOKING_CONSENT.includes(
+      ctx.creatorRole as (typeof STAFF_ROLES_REQUIRING_PATIENT_BOOKING_CONSENT)[number],
+    )
+  ) {
+    payload.patient_booking_consent = true;
+  }
+  return payload;
+}
+
 function dashboardSingleServicePayload(
   patientId: string,
   svc: SelectedServiceInput,
@@ -289,7 +304,7 @@ function dashboardSingleServicePayload(
     payload.assigned_lab_id = ctx.creatorUserId;
   }
 
-  return payload;
+  return applyStaffPatientBookingConsent(payload, ctx);
 }
 
 function dashboardMergedBloodPayload(
@@ -338,7 +353,7 @@ function dashboardMergedBloodPayload(
   if (ctx.creatorRole === 'lab' || ctx.creatorRole === 'subaccount') {
     payload.assigned_lab_id = ctx.creatorUserId;
   }
-  return payload;
+  return applyStaffPatientBookingConsent(payload, ctx);
 }
 
 function dashboardMergedNursingPayload(
@@ -389,7 +404,7 @@ function dashboardMergedNursingPayload(
   if (ctx.creationBatchId) {
     payload.creation_batch_id = ctx.creationBatchId;
   }
-  return payload;
+  return applyStaffPatientBookingConsent(payload, ctx);
 }
 
 export function buildDashboardAppointmentPayloads(

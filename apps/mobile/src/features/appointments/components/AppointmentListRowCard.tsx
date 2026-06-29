@@ -1,9 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
-  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -19,6 +18,7 @@ import {
 import { appointmentStatusForDisplay } from '@/utils/effective-appointment-status';
 import { useAppColors } from '@/theme/use-app-colors';
 import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
+import { listItemEntering, enteringShell } from '@/lib/platform/list-entering-animation';
 import { RdvListCardBody } from './RdvListCardBody';
 import { buildRdvListCardAccessibilityLabel } from './rdv-list-card-accessibility';
 import { spacing, animation } from '@/theme';
@@ -86,9 +86,15 @@ function AppointmentListRowCardComponent({
     cardStatus,
   );
 
+  const entering = listItemEntering(index);
+  const EnterShell = enteringShell(entering);
+  const CardShell = Platform.OS === 'android' ? View : Animated.View;
+  const cardShellProps =
+    Platform.OS === 'android' ? { style: cardStyles.cardShell } : { style: [animStyle, cardStyles.cardShell] };
+
   return (
-    <Animated.View entering={FadeIn.delay(index * 50).duration(350)}>
-      <Animated.View style={[animStyle, cardStyles.cardShell]}>
+    <EnterShell entering={entering}>
+      <CardShell {...cardShellProps}>
       <Pressable
         onPressIn={() => {
           scale.value = withSpring(0.978, animation.spring.snappy);
@@ -118,8 +124,8 @@ function AppointmentListRowCardComponent({
           />
         </View>
       </Pressable>
-      </Animated.View>
-    </Animated.View>
+      </CardShell>
+    </EnterShell>
   );
 }
 

@@ -1,13 +1,14 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import { Row } from '@/components/layout/primitives';
 import { Card } from '@/components/ui/Card';
 import type { AppointmentHistoryEntry } from '../api/appointment-detail.service';
+import { scrollChildEntering } from '@/lib/platform/list-entering-animation';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -34,34 +35,32 @@ export function HistoryTimeline({ entries }: { entries: AppointmentHistoryEntry[
           const isLast = index === entries.length - 1;
           const actionLabel =
             actionLabels[entry.action?.toLowerCase() ?? ''] ?? (entry.action ?? 'Événement');
+          const entering = scrollChildEntering(index, 60, 300);
+          const Shell = entering ? Animated.View : View;
 
           return (
-            <Animated.View
-              key={entry.id}
-              entering={FadeInDown.delay(index * 60).duration(300)}
-            >
+            <Shell key={entry.id} entering={entering}>
               <Row gap={spacing[3]} align="start">
                 <View style={styles.timelineLeft}>
                   <View style={[styles.dot, index === 0 && styles.dotActive]} />
                   {!isLast && <View style={styles.line} />}
                 </View>
 
-                {/* Content */}
                 <View style={[styles.timelineContent, !isLast && styles.timelineContentGap]}>
-                  <Animated.Text style={styles.actionLabel}>{actionLabel}</Animated.Text>
+                  <Text style={styles.actionLabel}>{actionLabel}</Text>
                   <Row wrap>
                     {entry.created_at ? (
-                      <Animated.Text style={styles.metaText}>
+                      <Text style={styles.metaText}>
                         {dayjs(entry.created_at).format('D MMM YYYY · HH:mm')}
-                      </Animated.Text>
+                      </Text>
                     ) : null}
                     {entry.user_name ? (
-                      <Animated.Text style={styles.metaText}> · {entry.user_name}</Animated.Text>
+                      <Text style={styles.metaText}> · {entry.user_name}</Text>
                     ) : null}
                   </Row>
                 </View>
               </Row>
-            </Animated.View>
+            </Shell>
           );
         })}
       </View>
@@ -120,4 +119,3 @@ function buildStyles(c: AppColors) {
   },
 };
 }
-

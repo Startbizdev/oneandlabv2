@@ -3,7 +3,6 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
-  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -19,6 +18,7 @@ import {
 import { RdvListCardBody } from '@/features/appointments/components/RdvListCardBody';
 import { buildRdvListCardAccessibilityLabel } from '@/features/appointments/components/rdv-list-card-accessibility';
 import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
+import { listItemEntering, enteringShell } from '@/lib/platform/list-entering-animation';
 import { spacing, animation } from '@/theme';
 
 interface Props {
@@ -62,8 +62,11 @@ function NurseDemandesOfferCardComponent({ row, index = 0, onPress }: Props) {
     'pending',
   );
 
+  const entering = listItemEntering(index);
+  const EnterShell = enteringShell(entering);
+
   return (
-    <Animated.View entering={FadeIn.delay(index * 50).duration(350)}>
+    <EnterShell entering={entering}>
       <Animated.View style={[animStyle, cardStyles.cardShell]}>
       <Pressable
         onPressIn={() => {
@@ -95,7 +98,7 @@ function NurseDemandesOfferCardComponent({ row, index = 0, onPress }: Props) {
         </View>
       </Pressable>
       </Animated.View>
-    </Animated.View>
+    </EnterShell>
   );
 }
 

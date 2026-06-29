@@ -3,6 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
 import {
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -250,6 +251,9 @@ export function CalendarScreen({
     <View style={styles.container}>
       <ScrollView
         style={styles.scroll}
+        collapsable={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={Platform.OS === 'android'}
         {...spreadTabSceneScrollProps(scrollConfig)}
         contentContainerStyle={scrollConfig.contentContainerStyle}
         showsVerticalScrollIndicator={false}

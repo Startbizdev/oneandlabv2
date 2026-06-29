@@ -84,15 +84,26 @@ if ($user['role'] !== 'patient' && $user['role'] !== 'super_admin') {
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
-        if ($relativeId && $user['role'] === 'patient') {
-            $checkRel = $db->prepare('SELECT id FROM patient_relatives WHERE id = ? AND patient_id = ?');
-            $checkRel->execute([$relativeId, $user['user_id']]);
-            if (!$checkRel->fetch()) {
-                http_response_code(403);
-                echo json_encode(['success' => false, 'error' => 'Proche introuvable ou accès refusé']);
-                exit;
+        if ($relativeId) {
+            if ($user['role'] === 'patient') {
+                $checkRel = $db->prepare('SELECT id FROM patient_relatives WHERE id = ? AND patient_id = ?');
+                $checkRel->execute([$relativeId, $user['user_id']]);
+                if (!$checkRel->fetch()) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'error' => 'Proche introuvable ou accès refusé']);
+                    exit;
+                }
+                $validDocuments = PatientDossierDocuments::listForRelative($db, $user['user_id'], $relativeId);
+            } else {
+                $checkRel = $db->prepare('SELECT id FROM patient_relatives WHERE id = ? AND patient_id = ?');
+                $checkRel->execute([$relativeId, $targetPatientId]);
+                if (!$checkRel->fetch()) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'error' => 'Proche introuvable ou accès refusé']);
+                    exit;
+                }
+                $validDocuments = PatientDossierDocuments::listForRelative($db, $targetPatientId, $relativeId);
             }
-            $validDocuments = PatientDossierDocuments::listForRelative($db, $user['user_id'], $relativeId);
         } else {
             $validDocuments = PatientDossierDocuments::listForPatient($db, $targetPatientId);
         }

@@ -30,7 +30,7 @@ import { BookingWizardProgress } from '../components/BookingWizardProgress';
 import { BookingWizardSegmentContext } from '../components/BookingWizardSegmentContext';
 import { RelativeQuickAddSheet } from '../components/RelativeQuickAddSheet';
 import { useBookingWizard } from '../hooks/useBookingWizard';
-import { NEW_PATIENT_ID } from '../types';
+import { STAFF_PATIENT_BOOKING_CONSENT_LABEL } from '@oneandlab/shared-constants';
 import { buildAvailabilityFormPatch, parseAvailabilityField, type AvailabilityType, type UrgentTimingMode } from '../utils/availability';
 import type { PatientRelative } from '@/features/patient-relatives/api/patient-relatives.service';
 import { SkeletonCareSelectionStep } from '@/components/ui/skeletons';
@@ -67,7 +67,7 @@ export function BookingWizardScreen({
       'Consentement requis',
       mode === 'patient'
         ? 'Veuillez accepter la politique de confidentialité avant de confirmer votre rendez-vous.'
-        : 'Veuillez accepter les conditions RGPD avant de confirmer le rendez-vous.',
+        : 'Veuillez confirmer le consentement du patient avant de confirmer le rendez-vous.',
       [{ text: 'OK' }],
     );
   }, [mode]);
@@ -188,7 +188,8 @@ export function BookingWizardScreen({
       bw.validationError &&
         (bw.validationError.includes('RGPD') ||
           bw.validationError.includes('politique de confidentialité') ||
-          bw.validationError.includes('confidentialité')),
+          bw.validationError.includes('confidentialité') ||
+          bw.validationError.includes('consentement')),
     );
 
   return (
@@ -441,11 +442,7 @@ export function BookingWizardScreen({
                   <View style={[styles.checkbox, bw.consent && styles.checkboxActive]}>
                     {bw.consent ? <Text style={styles.checkmark}>✓</Text> : null}
                   </View>
-                  <Text style={styles.consentText}>
-                    J&apos;accepte les conditions RGPD et consens au traitement des données de santé du
-                    patient. J&apos;autorise Cary à communiquer les informations du profil et les éléments
-                    nécessaires aux professionnels de santé concernés par ce rendez-vous.
-                  </Text>
+                  <Text style={styles.consentText}>{STAFF_PATIENT_BOOKING_CONSENT_LABEL}</Text>
                 </Row>
               </Pressable>
             )}

@@ -664,13 +664,7 @@ class NotificationService
             } catch (Exception $e) {
                 error_log('notifyNursingBatchConfirmed nurse: ' . $e->getMessage());
             }
-            $nurseSms = NotificationMessageFormatter::joinParts([
-                'Lot confirmé',
-                "{$n} soins",
-                $patientName !== 'le patient' ? $patientName : null,
-            ]);
-            $url = $this->professionalAppointmentSmsUrl('nurse', $ids[0]);
-            $this->sendProfileSms((string) $assignedNurseId, $nurseSms . '. Détail : ' . $url);
+            // Pas de SMS à l’infirmier accepteur (déjà dans l’app).
         }
 
         // Créateur (pro / infirmier / lab) — pas l’acteur qui vient d’accepter, pas le patient si c’est lui seul
@@ -808,14 +802,7 @@ class NotificationService
             } catch (Exception $e) {
                 error_log('notifyBloodTestBatchConfirmed lab: ' . $e->getMessage());
             }
-            $labSms = NotificationMessageFormatter::joinParts([
-                'Lot confirmé',
-                "{$n} prélèvements",
-                $patientName !== 'le patient' ? $patientName : null,
-            ]);
-            $role = $this->resolveProfileRole((string) $assignedLabId);
-            $url = $this->professionalAppointmentSmsUrl($role, $ids[0]);
-            $this->sendProfileSms((string) $assignedLabId, $labSms . '. Détail : ' . $url);
+            // Pas de SMS au pro accepteur (déjà dans l’app).
         }
 
         $createdBy = $createdBy !== null ? (string) $createdBy : '';
@@ -932,9 +919,7 @@ class NotificationService
                 ['appointment_id' => $appointmentId]
             );
 
-            $role = $this->resolveProfileRole($recipientId);
-            $url = $this->professionalAppointmentSmsUrl($role, $appointmentId);
-            $this->sendProfileSms($recipientId, $message . '. Détail : ' . $url);
+            // Pas de SMS à l’acteur : il est déjà dans l’app au moment de l’acceptation.
         } catch (Exception $e) {
             error_log('notifyLabBloodTestAccepted: ' . $e->getMessage());
         }
@@ -1052,8 +1037,7 @@ class NotificationService
             ]
         );
 
-        $url = $this->professionalAppointmentSmsUrl('nurse', $appointmentId);
-        $this->sendProfileSms($nurseId, $message . '. Détail : ' . $url);
+        // Pas de SMS à l’acteur : il est déjà dans l’app au moment de l’acceptation.
     }
 
     /**

@@ -7,7 +7,7 @@ SSH_KEY="${SSH_KEY:-$HOME/Desktop/oneandlab-key.pem}"
 if [[ ! -f "$SSH_KEY" && -f "$HOME/.ssh/oneandlab-key.pem" ]]; then
   SSH_KEY="$HOME/.ssh/oneandlab-key.pem"
 fi
-SSH_HOST="${SSH_HOST:-ubuntu@ec2-15-188-11-249.eu-west-3.compute.amazonaws.com}"
+SSH_HOST="${SSH_HOST:-ubuntu@15.236.73.7}"
 REMOTE_BASE="/var/www/oneandlab"
 REMOTE_DIR="$REMOTE_BASE/frontend"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -84,7 +84,7 @@ ensure_ssh_target
 
 echo "==> Nettoyage du cache (Nuxt + Vite)..."
 cd "$FRONTEND_DIR"
-rm -rf .nuxt node_modules/.vite 2>/dev/null || true
+rm -rf .nuxt .output node_modules/.vite 2>/dev/null || true
 
 echo "==> Build local (production)..."
 export NUXT_PUBLIC_API_BASE="https://cary.bio/api"

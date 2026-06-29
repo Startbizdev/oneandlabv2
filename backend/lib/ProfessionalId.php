@@ -80,11 +80,13 @@ class ProfessionalId
         if ($direct !== '') {
             return $direct;
         }
-        $rpps = trim((string) ($body['rpps'] ?? ''));
+        $rpps = array_key_exists('rpps', $body) ? trim((string) $body['rpps']) : '';
         if ($rpps !== '') {
-            return $rpps;
+            return self::normalize($rpps);
         }
 
-        return trim((string) ($body['adeli'] ?? ''));
+        $adeli = array_key_exists('adeli', $body) ? trim((string) $body['adeli']) : '';
+
+        return $adeli !== '' ? self::normalize($adeli) : '';
     }
 }

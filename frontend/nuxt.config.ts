@@ -6,6 +6,10 @@ export default defineNuxtConfig({
     srcDir: '.',
   
     modules: ['@nuxt/ui'],
+
+    build: {
+      transpile: ['@oneandlab/onboarding'],
+    },
   
     css: ['~/assets/css/main.css', 'leaflet/dist/leaflet.css'],
   

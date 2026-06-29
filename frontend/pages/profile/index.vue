@@ -12,7 +12,7 @@
             v-if="(editingUserId || newPreleveurMode) && user?.role === 'super_admin'"
             variant="ghost"
             size="sm"
-            to="/admin/users"
+            to="/admin/users?restore=1"
             icon="i-lucide-arrow-left"
           >
             Retour aux utilisateurs
@@ -98,7 +98,17 @@
               @download="(id, fileName) => downloadDocument(id, fileName)"
               @update:error="documentError = $event"
             />
-            <div class="pt-2 flex flex-col gap-2">
+            <div class="pt-2 flex flex-col gap-3">
+              <div
+                id="profile-new-patient-consent"
+                class="rounded-xl border border-default/60 bg-elevated/40 p-4 scroll-mt-28"
+              >
+                <UCheckbox
+                  v-model="newPatientBookingConsent"
+                  :label="STAFF_PATIENT_BOOKING_CONSENT_LABEL"
+                  :ui="{ label: 'text-sm font-medium leading-snug text-default' }"
+                />
+              </div>
               <UButton
                 form="pro-create-patient-form"
                 type="submit"
@@ -127,7 +137,10 @@
             v-if="showPatientProfileHistory"
             class="order-2 min-w-0 lg:order-1 lg:self-start lg:sticky lg:top-6 lg:max-h-[min(calc(100dvh-5rem),72rem)] lg:overflow-x-hidden lg:overflow-y-auto lg:overscroll-contain lg:pr-2 lg:[scrollbar-gutter:stable]"
           >
-            <PatientAppointmentHistorySection :patient-id="effectiveUserId" />
+            <PatientAppointmentHistorySection
+              :patient-id="effectiveUserId"
+              :relative-id="editingRelativeId"
+            />
           </aside>
 
           <!-- Colonne formulaire et sections principales -->
@@ -830,6 +843,26 @@
                   Incidents : {{ adminIncidents.length }}
                   <span v-if="adminEditedUser?.last_incident_at"> · Dernier : {{ formatDateShort(adminEditedUser.last_incident_at) }}</span>
                 </p>
+                <div
+                  v-if="role === 'pro'"
+                  class="rounded-lg border border-default/50 bg-muted/10 p-3 space-y-2"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-gray-900 dark:text-white">
+                        Génération d'ordonnances
+                      </p>
+                      <p class="text-xs text-muted mt-0.5 leading-relaxed">
+                        Si désactivé, le pro ne peut plus créer des ordonnances (onglet Prescriptions masqué).
+                      </p>
+                    </div>
+                    <USwitch
+                      :model-value="adminEditedUser?.prescription_generation_enabled !== false"
+                      :loading="adminPrescriptionToggleLoading"
+                      @update:model-value="adminTogglePrescriptionGeneration"
+                    />
+                  </div>
+                </div>
                 <div v-if="adminIncidents.length > 0" class="space-y-2 max-h-40 overflow-y-auto rounded-lg border border-default/50 p-3 bg-muted/10">
                   <div
                     v-for="incident in adminIncidents"
@@ -983,8 +1016,11 @@
 
 <script setup lang="ts">
 import { nextTick } from 'vue'
-import { splitProfessionalId } from '@oneandlab/shared-types'
+import { splitProfessionalId, validateProfessionalId } from '@oneandlab/shared-types'
 import { apiFetch } from '~/utils/api'
+import {
+  STAFF_PATIENT_BOOKING_CONSENT_LABEL,
+} from '~/constants/staff-patient-booking-consent'
 
 definePageMeta({
   layout: false,
@@ -999,6 +1035,9 @@ const toast = useAppToast()
 
 // Lab édite le profil d'un préleveur : ?userId=xxx
 const editingUserId = ref<string | null>(null)
+/** Proche bénéficiaire (staff) : ?relativeId=xxx avec userId = titulaire du compte */
+const editingRelativeId = ref<string | null>(null)
+const editingRelativeRelationship = ref<string | null>(null)
 const editedUserRole = ref<string | null>(null)
 // Lab crée un préleveur : ?newPreleveur=1 → formulaire vierge, sauvegarde = POST /lab/preleveurs
 const newPreleveurMode = ref(false)
@@ -1006,6 +1045,7 @@ const labSubaccountsForPreleveur = ref<any[]>([])
 const preleveurLabId = ref('')
 // Pro crée un patient : ?newPatient=1 → formulaire vierge, sauvegarde = POST /patients
 const newPatientMode = ref(false)
+const newPatientBookingConsent = ref(false)
 const patientsListPath = computed(() => {
   const r = user.value?.role
   if (r === 'nurse') return '/nurse/patients'
@@ -1029,12 +1069,22 @@ const proCanSubmitCreatePatient = computed(() => {
     user.value?.role === 'nurse' ||
     user.value?.role === 'lab' ||
     user.value?.role === 'subaccount'
-  if (emailOptional) return true
-  return !!(f.email?.trim())
+  if (emailOptional) return newPatientBookingConsent.value
+  return !!(f.email?.trim() && newPatientBookingConsent.value)
 })
+const isEditingRelativeProfile = computed(
+  () =>
+    !!editingRelativeId.value &&
+    !!editingUserId.value &&
+    (user.value?.role === 'pro' ||
+      user.value?.role === 'nurse' ||
+      user.value?.role === 'lab' ||
+      user.value?.role === 'subaccount'),
+)
 const profilePageTitle = computed(() => {
   if (newPatientMode.value) return 'Créer un patient'
   if (newPreleveurMode.value) return 'Créer un préleveur'
+  if (isEditingRelativeProfile.value) return 'Profil du proche'
   if (editingUserId.value && user.value?.role === 'super_admin') return 'Profil utilisateur'
   if (editingUserId.value && (user.value?.role === 'pro' || user.value?.role === 'nurse' || user.value?.role === 'lab' || user.value?.role === 'subaccount')) return 'Profil du patient'
   if (editingUserId.value && effectiveRole.value === 'subaccount') return 'Profil du sous-compte'
@@ -1044,12 +1094,39 @@ const profilePageTitle = computed(() => {
 const profilePageDescription = computed(() => {
   if (newPatientMode.value) return 'Renseignez les informations du nouveau patient.'
   if (newPreleveurMode.value) return 'Renseignez les informations du nouveau préleveur.'
+  if (isEditingRelativeProfile.value) {
+    const rel = editingRelativeRelationship.value
+    const relLabel = rel ? getRelativeRelationshipLabel(rel) : null
+    return relLabel
+      ? `Proche rattaché au titulaire du compte · lien : ${relLabel}.`
+      : 'Proche rattaché au titulaire du compte patient.'
+  }
   if (editingUserId.value && user.value?.role === 'super_admin') return 'Consultez et modifiez les informations de cet utilisateur.'
   if (editingUserId.value && (user.value?.role === 'pro' || user.value?.role === 'nurse' || user.value?.role === 'lab' || user.value?.role === 'subaccount')) return 'Consultez et modifiez les informations de ce patient.'
   if (editingUserId.value && effectiveRole.value === 'subaccount') return 'Consultez et modifiez les informations de ce sous-compte.'
   if (editingUserId.value) return 'Consultez et modifiez les informations de ce préleveur'
   return 'Consultez et modifiez vos informations personnelles'
 })
+
+function getRelativeRelationshipLabel(r: string) {
+  const map: Record<string, string> = {
+    child: 'Enfant',
+    parent: 'Parent',
+    spouse: 'Conjoint(e)',
+    sibling: 'Frère/Sœur',
+    grandparent: 'Grand-parent',
+    grandchild: 'Petit-enfant',
+    other: 'Autre',
+  }
+  return map[r] || r
+}
+
+function syncEditingRelativeIdFromRoute() {
+  const raw = route.query.relativeId
+  const rid = typeof raw === 'string' ? raw.trim() : Array.isArray(raw) ? String(raw[0] ?? '').trim() : ''
+  editingRelativeId.value = rid || null
+  if (!rid) editingRelativeRelationship.value = null
+}
 
 // Synchroniser la photo de profil avec l'avatar du header (layout dashboard)
 const profileImageForHeader = useState<string | null>('profileImageForHeader', () => null)
@@ -1118,6 +1195,7 @@ async function loadAdminCreateDependencies() {
 const adminEditedUser = ref<any>(null)
 const adminIncidents = ref<any[]>([])
 const adminModerationLoading = ref(false)
+const adminPrescriptionToggleLoading = ref(false)
 const formatDateShort = (date: string) => new Date(date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
 const adminIsSuspended = (u: any) => u?.banned_until && new Date(u.banned_until) > new Date() && new Date(u.banned_until) < new Date('9999-12-31')
 const adminGetIncidentLabel = (action: string) => {
@@ -1128,6 +1206,31 @@ const adminGetIncidentLabel = (action: string) => {
     unban_user: 'Utilisateur débanni',
   }
   return labels[action] || action
+}
+const adminTogglePrescriptionGeneration = async (enabled: boolean) => {
+  if (!editingUserId.value || role.value !== 'pro') return
+  adminPrescriptionToggleLoading.value = true
+  try {
+    const res = await apiFetch(`/users/${editingUserId.value}`, {
+      method: 'PUT',
+      body: { prescription_generation_enabled: enabled },
+    })
+    if (res?.success) {
+      if (adminEditedUser.value) {
+        adminEditedUser.value.prescription_generation_enabled = enabled
+      }
+      toast.add({
+        title: enabled ? 'Ordonnances activées' : 'Ordonnances désactivées',
+        color: 'green',
+      })
+    } else {
+      toast.add({ title: 'Erreur', description: (res as any)?.error, color: 'red' })
+    }
+  } catch (e: any) {
+    toast.add({ title: 'Erreur', description: e?.message, color: 'red' })
+  } finally {
+    adminPrescriptionToggleLoading.value = false
+  }
 }
 const adminSuspendUser = async (days: number) => {
   if (!editingUserId.value || !confirm(`Suspendre cet utilisateur pendant ${days} jours ?`)) return
@@ -1644,9 +1747,10 @@ const loadPlanLimits = async () => {
 }
 
 watch(
-  () => route.query.userId as string | undefined,
-  (uid) => {
+  () => [route.query.userId, route.query.relativeId] as const,
+  ([uid]) => {
     newPatientMode.value = false
+    syncEditingRelativeIdFromRoute()
     if (
       (user.value?.role === 'lab' ||
         user.value?.role === 'super_admin' ||
@@ -1655,13 +1759,15 @@ watch(
         user.value?.role === 'subaccount') &&
       uid
     ) {
-      editingUserId.value = uid
+      editingUserId.value = typeof uid === 'string' ? uid : String(uid)
       loadProfile().then(() => {
         if (hasAppointmentsSection.value) loadProfileAppointments()
         if (shouldLoadPatientDossierDocuments.value) void loadDocuments()
       })
     } else {
       editingUserId.value = null
+      editingRelativeId.value = null
+      editingRelativeRelationship.value = null
       editedUserRole.value = null
       newPreleveurMode.value = false
       loadProfile().then(() => {
@@ -1674,6 +1780,7 @@ watch(
 
 onMounted(async () => {
   const uid = route.query.userId as string | undefined
+  syncEditingRelativeIdFromRoute()
   const newPreleveur = route.query.newPreleveur === '1' || route.query.newPreleveur === 'true'
   if (newPreleveur && !user.value?.role) {
     await fetchCurrentUser()
@@ -1697,6 +1804,7 @@ onMounted(async () => {
   ) {
     newPreleveurMode.value = false
     newPatientMode.value = true
+    newPatientBookingConsent.value = false
     editingUserId.value = null
     editedUserRole.value = null
     documents.value = {}
@@ -1744,6 +1852,47 @@ onMounted(async () => {
     document.getElementById('securite')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 })
+
+const loadRelativeProfileForStaff = async () => {
+  if (!editingUserId.value || !editingRelativeId.value) return
+  try {
+    const res = await apiFetch(
+      `/patient-relatives/${encodeURIComponent(editingRelativeId.value)}?patient_id=${encodeURIComponent(editingUserId.value)}`,
+      { method: 'GET' },
+    )
+    if (!res?.success || !res.data) {
+      toast.add({
+        title: 'Proche introuvable',
+        description: res?.error || 'Impossible de charger la fiche du proche.',
+        color: 'red',
+      })
+      editingRelativeId.value = null
+      editingRelativeRelationship.value = null
+      return
+    }
+    const r = res.data as Record<string, unknown>
+    editingRelativeRelationship.value =
+      typeof r.relationship_type === 'string' ? r.relationship_type : null
+    profileForm.value = {
+      ...profileForm.value,
+      first_name: String(r.first_name ?? ''),
+      last_name: String(r.last_name ?? ''),
+      email: String(r.email ?? ''),
+      phone: String(r.phone ?? ''),
+      birth_date: (r.birth_date as string | null) ?? null,
+      gender: (r.gender as string | null) ?? null,
+      address: (r.address as import('~/types/profile').ProfileForm['address']) ?? null,
+      address_complement:
+        (r.address as { complement?: string | null } | null)?.complement ?? null,
+    }
+    initialForm.value = { ...profileForm.value }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Impossible de charger la fiche du proche'
+    toast.add({ title: 'Erreur', description: message, color: 'red' })
+    editingRelativeId.value = null
+    editingRelativeRelationship.value = null
+  }
+}
 
 const loadProfile = async () => {
   if (newPreleveurMode.value || newPatientMode.value) return
@@ -1874,6 +2023,9 @@ const loadProfile = async () => {
       acceptRdvSaturday.value = userData.accept_rdv_saturday !== false && userData.accept_rdv_saturday !== 0
       acceptRdvSunday.value = userData.accept_rdv_sunday !== false && userData.accept_rdv_sunday !== 0
     }
+    if (isEditingRelativeProfile.value) {
+      await loadRelativeProfileForStaff()
+    }
   } catch (err: any) {
     toast.add({ title: 'Erreur', description: err.message || 'Impossible de charger le profil', color: 'red' })
   } finally {
@@ -1928,6 +2080,14 @@ const saveProfile = async (fromSaveAll = false) => {
         toast.add({ title: 'Champs requis', description: 'Email, prénom, nom et téléphone sont obligatoires.', color: 'red' })
         return
       }
+      if (!newPatientBookingConsent.value) {
+        toast.add({
+          title: 'Consentement requis',
+          description: 'Veuillez confirmer le consentement du patient pour la prise de rendez-vous.',
+          color: 'red',
+        })
+        return
+      }
       const addressBody = address && typeof address === 'object' && address.label?.trim()
         ? { label: address.label.trim(), lat: address.lat, lng: address.lng }
         : null
@@ -1941,6 +2101,7 @@ const saveProfile = async (fromSaveAll = false) => {
         address: addressBody,
       }
       if (email?.trim()) bodyPatient.email = email.trim()
+      bodyPatient.patient_booking_consent = true
       const res = await apiFetch('/patients', {
         method: 'POST',
         body: bodyPatient,
@@ -1988,6 +2149,46 @@ const saveProfile = async (fromSaveAll = false) => {
     const targetId = effectiveUserId.value
     if (!targetId) return
 
+    if (isEditingRelativeProfile.value && editingRelativeId.value) {
+      const relativeBody: Record<string, unknown> = {
+        first_name: profileForm.value.first_name,
+        last_name: profileForm.value.last_name,
+        phone: profileForm.value.phone || null,
+        birth_date: profileForm.value.birth_date || null,
+        gender: profileForm.value.gender || null,
+        email: profileForm.value.email || null,
+      }
+      if (profileForm.value.address) {
+        relativeBody.address = {
+          ...profileForm.value.address,
+          complement: profileForm.value.address_complement || null,
+        }
+      } else {
+        relativeBody.address = null
+      }
+      const relativeRes = await apiFetch(
+        `/patient-relatives/${encodeURIComponent(editingRelativeId.value)}?patient_id=${encodeURIComponent(editingUserId.value!)}`,
+        { method: 'PUT', body: relativeBody },
+      )
+      if (relativeRes.success) {
+        if (!fromSaveAll) {
+          toast.add({
+            title: 'Profil mis à jour',
+            description: 'Les informations du proche ont été enregistrées.',
+            color: 'green',
+          })
+        }
+        await loadRelativeProfileForStaff()
+      } else {
+        toast.add({
+          title: 'Erreur',
+          description: relativeRes.error || 'Impossible de sauvegarder',
+          color: 'red',
+        })
+      }
+      return
+    }
+
     if (isNurse.value && !profileForm.value.gender?.trim()) {
       toast.add({
         title: 'Genre requis',
@@ -1996,6 +2197,19 @@ const saveProfile = async (fromSaveAll = false) => {
       })
       if (!fromSaveAll) saving.value = false
       return
+    }
+
+    if (isNurse.value) {
+      const profErr = validateProfessionalId(profileForm.value.rpps || '')
+      if (profErr) {
+        toast.add({
+          title: 'Identifiant invalide',
+          description: profErr,
+          color: 'red',
+        })
+        if (!fromSaveAll) saving.value = false
+        return
+      }
     }
 
     const body: any = {
@@ -2007,6 +2221,7 @@ const saveProfile = async (fromSaveAll = false) => {
     // Champs spécifiques par rôle
     if (isNurse.value) {
       const split = splitProfessionalId(profileForm.value.rpps || '')
+      body.professional_id = profileForm.value.rpps?.replace(/\s/g, '') || null
       body.rpps = split.rpps
       body.adeli = split.adeli
       body.is_accepting_appointments = isAcceptingAppointments.value
@@ -2084,8 +2299,8 @@ const saveProfile = async (fromSaveAll = false) => {
           color: 'green',
         })
       }
-      if (!editingUserId.value) await fetchCurrentUser()
-      initialForm.value = { ...profileForm.value }
+      if (!editingUserId.value) await loadProfile()
+      else initialForm.value = { ...profileForm.value }
     } else {
       toast.add({ title: 'Erreur', description: response.error || 'Impossible de sauvegarder', color: 'red' })
     }
@@ -2404,7 +2619,9 @@ const loadDocuments = async () => {
     const url =
       editingUserId.value &&
       (isProEditingPatient.value || (isAdmin.value && role.value === 'patient'))
-        ? `/patient-documents?user_id=${editingUserId.value}`
+        ? editingRelativeId.value
+          ? `/patient-documents?user_id=${editingUserId.value}&relative_id=${encodeURIComponent(editingRelativeId.value)}`
+          : `/patient-documents?user_id=${editingUserId.value}`
         : '/patient-documents'
     const response = await apiFetch(url, { method: 'GET' })
     if (!response.success) {
@@ -2450,6 +2667,9 @@ const handleDocumentChange = async (documentType: string, file: File | null) => 
     formData.append('document_type', documentType)
     if ((isAdmin.value || isProEditingPatient.value) && editingUserId.value) {
       formData.append('user_id', editingUserId.value)
+    }
+    if (isEditingRelativeProfile.value && editingRelativeId.value) {
+      formData.append('relative_id', editingRelativeId.value)
     }
 
     const result = await apiFetch('/patient-documents/upload', { method: 'POST', body: formData })

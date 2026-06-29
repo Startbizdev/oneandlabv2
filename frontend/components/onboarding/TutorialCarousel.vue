@@ -2,6 +2,10 @@
 import { getTutorialConfig, type TutorialRole } from '@oneandlab/onboarding'
 import { ROLE_HOME_PATHS } from '~/utils/postLoginRedirect'
 import { setOnboardingCompleted } from '~/utils/onboarding-storage'
+import {
+  clearPendingNurseShareLink,
+  pendingNurseShareDemandesPath,
+} from '~/utils/nurse-share-pending'
 
 const props = defineProps<{
   role: TutorialRole
@@ -20,6 +24,12 @@ const isLast = computed(() => index.value >= lastIndex.value)
 function finish() {
   if (!isReplay.value) {
     setOnboardingCompleted(props.role, true)
+  }
+  const pendingShare = pendingNurseShareDemandesPath()
+  if (pendingShare) {
+    clearPendingNurseShareLink()
+    router.replace(pendingShare)
+    return
   }
   router.replace(ROLE_HOME_PATHS[props.role] || '/patient')
 }
@@ -64,7 +74,7 @@ const currentSlide = computed(() => slides.value[index.value])
             :key="currentSlide.id"
             class="flex w-full max-w-md flex-col items-center justify-center gap-5"
           >
-            <OnboardingTutorialIllustration :illustration="currentSlide.illustration" />
+            <TutorialIllustration :illustration="currentSlide.illustration" />
             <div class="w-full space-y-2 px-1 text-center">
               <h2 class="text-xl font-bold tracking-tight text-slate-900">{{ currentSlide.title }}</h2>
               <p class="text-base leading-relaxed text-slate-500">{{ currentSlide.body }}</p>
@@ -104,6 +114,13 @@ const currentSlide = computed(() => slides.value[index.value])
         </div>
       </footer>
     </div>
+  </div>
+  <div
+    v-else
+    class="flex min-h-screen flex-col items-center justify-center gap-4 bg-app-canvas px-6 text-center"
+  >
+    <p class="text-sm text-slate-600">Impossible d’afficher le tutoriel.</p>
+    <UButton label="Continuer" color="primary" @click="finish" />
   </div>
 </template>
 

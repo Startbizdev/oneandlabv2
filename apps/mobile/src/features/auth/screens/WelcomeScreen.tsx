@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -62,7 +62,7 @@ export function WelcomeScreen() {
           <View style={styles.hero}>
             <Image
               source={LOGO}
-              style={styles.logo}
+              style={[styles.logo, Platform.OS === 'android' && styles.logoAndroid]}
               resizeMode="contain"
               accessibilityLabel="Cary"
             />
@@ -172,6 +172,11 @@ function buildStyles(c: AppColors) {
   logo: {
     width: 220,
     height: 80,
+  },
+  logoAndroid: {
+    width: '88%' as const,
+    maxWidth: 260,
+    height: 72,
   },
   audienceKicker: {
     fontFamily: fontFamily.semiBold,

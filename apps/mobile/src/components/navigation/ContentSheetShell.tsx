@@ -7,21 +7,27 @@ import {
   appContentSheetSurfaceStyle,
   appTabSceneFlatContentStyle,
 } from '@/components/navigation/header-layout';
+import { tabSceneLayoutHandler } from '@/lib/debug/tab-scene-layout-debug';
 
 interface Props {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   /** Corps plein écran — scroll sous header / tab bar glass (padding sur le scroll, pas ici). */
   edgeToEdge?: boolean;
+  debugLabel?: string;
 }
 
 /** Conteneur onglet bord à bord — la tab bar native flotte par-dessus. */
-export function ContentSheetShell({ children, style, edgeToEdge = false }: Props) {
+export function ContentSheetShell({ children, style, edgeToEdge = false, debugLabel }: Props) {
   const styles = useThemedStyles(buildStyles, 'ContentSheetShell');
 
   if (edgeToEdge) {
     return (
-      <View style={[styles.flatBody, style]} collapsable={false}>
+      <View
+        style={[styles.flatBody, style]}
+        collapsable={false}
+        onLayout={debugLabel ? tabSceneLayoutHandler(debugLabel) : undefined}
+      >
         {children}
       </View>
     );

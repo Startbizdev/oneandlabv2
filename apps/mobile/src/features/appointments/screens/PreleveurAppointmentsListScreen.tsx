@@ -106,7 +106,7 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix }: Props) {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} collapsable={false}>
       <InfiniteQueryFlatList
         query={query}
         items={displayRows}

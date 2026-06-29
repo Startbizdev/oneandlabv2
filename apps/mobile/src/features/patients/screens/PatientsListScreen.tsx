@@ -4,7 +4,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { Fragment, useCallback, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 
 import {
 
@@ -13,10 +13,6 @@ import {
   Alert,
 
   Platform,
-
-  RefreshControl,
-
-  ScrollView,
 
   StyleSheet,
 
@@ -36,15 +32,7 @@ import type { StaffHubPatientItem, StaffHubSearchItem } from '@oneandlab/shared-
 
 import { useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
 
-import {
-
-  buildTabSceneScrollConfig,
-
-  spreadTabSceneScrollProps,
-
-  useTabSceneInsets,
-
-} from '@/components/navigation/liquid-glass-header-inset';
+import { TabSceneScrollView } from '@/components/navigation/TabSceneScrollView';
 
 import { queryKeys } from '@/lib/query-keys';
 
@@ -65,7 +53,6 @@ import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
-import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 
 import { CreatePatientModal } from '../components/CreatePatientModal';
 
@@ -137,15 +124,7 @@ export function PatientsListScreen({
 
   const styles = useThemedStyles(buildStyles, 'PatientsListScreen');
 
-  const sceneInsets = useTabSceneInsets();
-
   const fabClearance = useScreenFabScrollClearance();
-
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.listContent, {
-
-    extraBottom: fabClearance,
-
-  });
 
   const router = useRouter();
 
@@ -190,9 +169,6 @@ export function PatientsListScreen({
   const isLoading = hubQ.isLoading;
 
   const { refreshing, onRefresh } = useManualRefresh(hubQ.refetch);
-  const scrollRef = useRef<ScrollView>(null);
-  useScrollToTopOnPop(scrollRef);
-
 
 
   const removeMut = useMutation({
@@ -345,34 +321,11 @@ export function PatientsListScreen({
 
     <View style={styles.screen}>
 
-      <ScrollView
-
-        ref={scrollRef}
-
-        style={styles.list}
-
-        {...spreadTabSceneScrollProps(scrollConfig)}
-
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-
-        showsVerticalScrollIndicator={false}
-
-        refreshControl={
-
-          <RefreshControl
-
-            refreshing={refreshing}
-
-            onRefresh={onRefresh}
-
-            tintColor={c.primary}
-
-            progressViewOffset={scrollConfig.refreshProgressOffset}
-
-          />
-
-        }
-
+      <TabSceneScrollView
+        contentContainerStyle={styles.listContent}
+        scrollPaddingOptions={{ extraBottom: fabClearance }}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
       >
 
         <AppointmentsListFilterBar
@@ -439,7 +392,7 @@ export function PatientsListScreen({
 
         )}
 
-      </ScrollView>
+      </TabSceneScrollView>
 
       <CreatePatientModal
 

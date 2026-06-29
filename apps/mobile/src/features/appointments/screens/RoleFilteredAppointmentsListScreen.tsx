@@ -200,7 +200,7 @@ export function RoleFilteredAppointmentsListScreen({
   }, [advancedCount, bookHref, bookLabel, filterChips, onSearchQueryChange]);
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} collapsable={false}>
       <InfiniteQueryFlatList
         query={query}
         items={displayRows}

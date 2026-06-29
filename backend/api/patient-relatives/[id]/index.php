@@ -25,8 +25,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
-// Seuls les patients peuvent gérer leurs proches
-if ($user['role'] !== 'patient') {
+require_once __DIR__ . '/../../../config/database.php';
+require_once __DIR__ . '/../../../lib/PatientDossierAccess.php';
+require_once __DIR__ . '/../../../models/User.php';
+
+$config = require __DIR__ . '/../../../config/database.php';
+$dsn = sprintf(
+    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+    $config['host'],
+    $config['port'],
+    $config['database'],
+    $config['charset']
+);
+$db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
+$userModel = new User();
+
+$role = (string) ($user['role'] ?? '');
+$staffRoles = ['pro', 'nurse', 'lab', 'subaccount', 'preleveur', 'super_admin'];
+$isPatient = $role === 'patient';
+$isStaffRelativeAccess = in_array($role, $staffRoles, true);
+
+if (!$isPatient && !$isStaffRelativeAccess) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Accès refusé']);
     exit;
@@ -35,6 +54,9 @@ if ($user['role'] !== 'patient') {
 // Extraire l'ID depuis l'URL
 $urlParts = explode('/', trim($_SERVER['REQUEST_URI'], '/'));
 $id = end($urlParts);
+if (str_contains((string) $id, '?')) {
+    $id = strstr((string) $id, '?', true) ?: $id;
+}
 
 if (!$id || $id === 'index.php') {
     http_response_code(400);
@@ -42,12 +64,26 @@ if (!$id || $id === 'index.php') {
     exit;
 }
 
+$patientIdForRelative = $isPatient ? (string) $user['user_id'] : trim((string) ($_GET['patient_id'] ?? ''));
+if (!$isPatient) {
+    if ($patientIdForRelative === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Paramètre patient_id requis']);
+        exit;
+    }
+    if (!PatientDossierAccess::canAccess($db, $userModel, $user, $patientIdForRelative)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Accès refusé']);
+        exit;
+    }
+}
+
 $relativeModel = new PatientRelative();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Détails d'un proche
     try {
-        $relative = $relativeModel->getById($id, $user['user_id']);
+        $relative = $relativeModel->getById($id, $patientIdForRelative);
 
         if (!$relative) {
             http_response_code(404);
@@ -113,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $allowedKeys = ['first_name', 'last_name', 'relationship_type', 'gender', 'birth_date', 'email', 'phone', 'address'];
         $safeData = array_intersect_key($data, array_flip($allowedKeys));
 
-        $success = $relativeModel->update($id, $safeData, $user['user_id']);
+        $success = $relativeModel->update($id, $safeData, $patientIdForRelative);
 
         if (!$success) {
             http_response_code(404);
@@ -126,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
 
         // Récupérer le proche mis à jour
-        $relative = $relativeModel->getById($id, $user['user_id']);
+        $relative = $relativeModel->getById($id, $patientIdForRelative);
 
         echo json_encode([
             'success' => true,
@@ -141,6 +177,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ]);
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    if (!$isPatient) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Accès refusé']);
+        exit;
+    }
     // Supprimer un proche
     CSRFMiddleware::handle();
 

@@ -1,12 +1,12 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { TabSceneScrollView } from '@/components/navigation/TabSceneScrollView';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { LogOut } from 'lucide-react-native';
 import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
-import { buildTabSceneScrollConfig, spreadTabSceneScrollProps, useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { spacing } from '@/theme';
@@ -39,17 +39,12 @@ export function RoleMoreTabScreen({
   const logout = useAuthStore((s) => s.clearSession);
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
   const textScale = useAppPreferencesStore((s) => s.textScale);
-  const sceneInsets = useTabSceneInsets();
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll, {
-    extraTop: spacing[4],
-  });
 
   return (
     <View style={styles.container} key={`${colorblindType}:${textScale}`}>
-      <ScrollView
-        {...spreadTabSceneScrollProps(scrollConfig)}
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-        showsVerticalScrollIndicator={false}
+      <TabSceneScrollView
+        contentContainerStyle={styles.scroll}
+        scrollPaddingOptions={{ extraTop: spacing[4] }}
       >
         <MoreProfileCard
           roleLabel={roleLabel}
@@ -83,7 +78,7 @@ export function RoleMoreTabScreen({
             ]}
           />
         </Animated.View>
-      </ScrollView>
+      </TabSceneScrollView>
     </View>
   );
 }

@@ -1,16 +1,14 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useAppColors } from '@/theme/use-app-colors';
 import { spacing } from '@/theme';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { View, type ScrollView } from 'react-native';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
-import { StyleSheet, View, type ScrollView } from 'react-native';
-import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
-import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth-store';
 import { SkeletonPatientAppointmentDetail } from '@/components/ui/skeletons';
+import { StackKeyboardScrollView } from '@/components/navigation/StackKeyboardScrollView';
 import { useAppointmentDetailScreen } from '../detail/hooks/use-appointment-detail-screen';
 import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
 import { CancelAppointmentSheet } from '../detail/components/blocks/CancelAppointmentSheet';
@@ -27,14 +25,11 @@ import { filterListDocuments } from '../detail/utils/document-labels';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
 import { batchHasReviewableAppointment } from '@/utils/can-leave-review';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 
 type SegmentId = 'infos' | 'documents';
 
 export function PatientAppointmentDetailScreen() {
-  const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_appointments_screens_PatientAppointmentDetailScreen_tsx_PatientAppointmentDetailScreen_styles');
 
   const { id, segment: segmentParam } = useLocalSearchParams<{
@@ -83,7 +78,6 @@ export function PatientAppointmentDetailScreen() {
   const pullRefresh = useManualRefresh(async () => {
     s.refreshAll();
   });
-  const scrollConfig = useStackScrollConfig([styles.scroll, styles.content]);
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTopOnPop(scrollRef);
 
@@ -112,20 +106,11 @@ export function PatientAppointmentDetailScreen() {
   return (
     <>
       <StackChromeScreen title={s.headerTitleNode}>
-        <KeyboardScrollView
-          ref={scrollRef}
-          style={styles.container}
-          refreshControl={
-            <AppRefreshControl
-              refreshing={pullRefresh.refreshing}
-              onRefresh={pullRefresh.onRefresh}
-              progressViewOffset={scrollConfig.refreshProgressOffset}
-            />
-          }
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={scrollConfig.contentContainerStyle}
-          {...spreadTabSceneScrollProps(scrollConfig)}
-          keyboardShouldPersistTaps="handled"
+        <StackKeyboardScrollView
+          scrollRef={scrollRef}
+          contentContainerStyle={[styles.scroll, styles.content]}
+          refreshing={pullRefresh.refreshing}
+          onRefresh={pullRefresh.onRefresh}
         >
           {terminal ? <DetailTerminalBanner terminal={terminal} /> : null}
 
@@ -177,7 +162,7 @@ export function PatientAppointmentDetailScreen() {
               loading={s.docsLoading}
             />
           ) : null}
-        </KeyboardScrollView>
+        </StackKeyboardScrollView>
       </StackChromeScreen>
 
       <CancelAppointmentSheet
@@ -191,9 +176,8 @@ export function PatientAppointmentDetailScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles(_c: AppColors) {
   return {
-  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   scroll: {
     flexGrow: 1,
     alignSelf: 'stretch' as const,

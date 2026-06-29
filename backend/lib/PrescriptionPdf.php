@@ -73,13 +73,18 @@ class PrescriptionPdf
 
         $prescriptionNumber = htmlspecialchars((string) ($options['prescription_number'] ?? ''));
         $prescriberName = htmlspecialchars(trim(($prescriber['first_name'] ?? '') . ' ' . ($prescriber['last_name'] ?? '')));
-        $prescriberTitle = htmlspecialchars($prescriber['title'] ?? ($kind === 'nursing' ? 'Infirmier(ère)' : 'Dr'));
+        $prescriberTitle = htmlspecialchars(trim((string) ($prescriber['title'] ?? ($kind === 'nursing' ? 'Infirmier(ère)' : 'Dr')));
+        $prescriberEmploi = htmlspecialchars(trim((string) ($prescriber['emploi'] ?? '')));
+        $prescriberRoleLine = $prescriberEmploi !== '' ? $prescriberEmploi : 'Professionnel de santé';
         $prescriberAddress = htmlspecialchars(self::formatAddress($prescriber['address'] ?? null));
         $prescriberRpps = htmlspecialchars(trim($prescriber['rpps'] ?? ''));
         $prescriberAdeli = htmlspecialchars(trim($prescriber['adeli'] ?? ''));
 
         $patientName = htmlspecialchars(trim(($patient['first_name'] ?? '') . ' ' . ($patient['last_name'] ?? '')));
-        $patientBirthDate = htmlspecialchars(self::formatBirthDate($patient['birth_date'] ?? ''));
+        $patientBirthDateRaw = trim((string) ($patient['birth_date'] ?? ''));
+        $patientBirthDateRow = $patientBirthDateRaw !== ''
+            ? '<tr><td class="label">Date de naissance</td><td class="value">' . htmlspecialchars(self::formatBirthDate($patientBirthDateRaw)) . '</td></tr>'
+            : '';
         $patientAddress = htmlspecialchars(self::formatAddress($patient['address'] ?? null));
         $patientNir = htmlspecialchars(trim((string) ($patient['nir'] ?? '')));
 
@@ -309,7 +314,7 @@ class PrescriptionPdf
                     <div class="party-head">Prescripteur</div>
                     <div class="party-body">
                         <div class="party-name">{$prescriberTitle} {$prescriberName}</div>
-                        <div class="party-role">Professionnel de santé</div>
+                        <div class="party-role">{$prescriberRoleLine}</div>
                         {$prescriberAddressRow}
                         {$idBlock}
                     </div>
@@ -321,7 +326,7 @@ class PrescriptionPdf
                     <div class="party-body">
                         <table class="info-table">
                             <tr><td class="label">Nom</td><td class="value">{$patientName}</td></tr>
-                            <tr><td class="label">Date de naissance</td><td class="value">{$patientBirthDate}</td></tr>
+                            {$patientBirthDateRow}
                             {$nirRow}
                             {$patientAddressRow}
                         </table>

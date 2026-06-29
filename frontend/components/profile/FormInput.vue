@@ -11,6 +11,7 @@
       :placeholder="placeholder"
       :disabled="disabled"
       :readonly="readonly"
+      :maxlength="maxlength"
       size="xl"
       class="w-full"
     >
@@ -46,6 +47,7 @@ interface Props {
   required?: boolean
   disabled?: boolean
   readonly?: boolean
+  maxlength?: number
 }
 
 interface Emits {

@@ -18,6 +18,7 @@ export function AppointmentsTabScreenFrame({
       title={<HeaderGreeting />}
       headerVisual="inline"
       headerRight={headerRight !== undefined ? headerRight : <HeaderNotificationBell />}
+      debugLabel="nurse-appointments-tab"
     >
       {children}
     </TabScreenFrame>

@@ -14,6 +14,7 @@ import {
   type LiquidGlassHeaderVisual,
 } from '@/components/navigation/nav-chrome-tokens';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { tabSceneLayoutHandler } from '@/lib/debug/tab-scene-layout-debug';
 
 type Props = {
   title?: ReactNode;
@@ -21,6 +22,8 @@ type Props = {
   headerRight?: ReactNode;
   visual?: LiquidGlassHeaderVisual;
   style?: StyleProp<ViewStyle>;
+  /** __DEV__ — logs layout Metro. */
+  debugLabel?: string;
 };
 
 /** Header onglets flottant — fond blanc opaque, orbes glass sur les actions. */
@@ -30,6 +33,7 @@ export function LiquidGlassTabHeader({
   headerRight,
   visual = 'inline',
   style,
+  debugLabel,
 }: Props) {
   const styles = useThemedStyles(buildStyles, 'LiquidGlassTabHeader');
   const insets = useSafeAreaInsets();
@@ -38,7 +42,11 @@ export function LiquidGlassTabHeader({
     visual === 'large' ? LIQUID_GLASS_LARGE_TITLE_ROW_MIN_HEIGHT : LIQUID_GLASS_HEADER_ROW_MIN_HEIGHT;
 
   return (
-    <View style={[styles.root, style]} pointerEvents="box-none">
+    <View
+      style={[styles.root, style]}
+      pointerEvents="box-none"
+      onLayout={debugLabel ? tabSceneLayoutHandler(debugLabel) : undefined}
+    >
       <OpaqueHeaderChrome style={StyleSheet.absoluteFillObject as StyleProp<ViewStyle>} />
 
       <View

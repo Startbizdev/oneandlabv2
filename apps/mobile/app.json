@@ -45,7 +45,7 @@
           },
           "android": {
             "image": "./assets/splash-logo.png",
-            "imageWidth": 250,
+            "imageWidth": 200,
             "resizeMode": "contain",
             "backgroundColor": "#F4FAFA"
           }

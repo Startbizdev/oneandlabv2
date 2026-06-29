@@ -306,7 +306,7 @@
               >
                 <UCheckbox
                   v-model="rgpdConsent"
-                  label="J’accepte les conditions RGPD/HDS et consens au traitement des données de santé du patient dans le cadre de ce rendez-vous."
+                  :label="STAFF_PATIENT_BOOKING_CONSENT_LABEL"
                   :ui="{ label: 'text-xs font-medium leading-snug text-default' }"
                 />
               </div>
@@ -370,6 +370,10 @@ import {
   buildPatientSelectRow,
 } from '~/utils/patient-select-menu';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
+import {
+  STAFF_PATIENT_BOOKING_CONSENT_LABEL,
+  STAFF_PATIENT_BOOKING_CONSENT_ERROR,
+} from '~/constants/staff-patient-booking-consent';
 
 const PATIENT_EMAIL_LOOKUP_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -629,8 +633,7 @@ const bookingCelebrationImageUrls = computed(() => {
 
 const bookingCelebrationRotateIcons = computed(() => celebrationRotateIconsFromServices(selectedServices.value));
 const formData = ref<Record<string, any>>({});
-/** Professionnel connecté : consentement précoché (compte déjà sous CGU / cadre pro). */
-const rgpdConsent = ref(true);
+const rgpdConsent = ref(false);
 
 /** Réglages admin : création avec statut libre et assignations optionnelles. */
 const adminRdvStatus = ref<string>('pending');
@@ -889,7 +892,10 @@ function extractPatientCreateBody(payload: Record<string, any>): Record<string, 
 }
 
 async function createPatientRecord(payload: Record<string, any>): Promise<string> {
-  const body = extractPatientCreateBody(payload);
+  const body = {
+    ...extractPatientCreateBody(payload),
+    patient_booking_consent: true,
+  };
   try {
     const res = (await apiFetch('/patients', { method: 'POST', body })) as {
       success?: boolean;
@@ -1244,8 +1250,7 @@ async function onUnifiedSubmit(payload: any) {
   formData.value = payload;
 
   if (!rgpdConsent.value) {
-    validationError.value =
-      'Veuillez accepter les conditions RGPD/HDS et le traitement des données de santé avant d’enregistrer le rendez-vous.';
+    validationError.value = STAFF_PATIENT_BOOKING_CONSENT_ERROR;
     scrollToValidationError('wizard-rgpd-consent');
     return;
   }

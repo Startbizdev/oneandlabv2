@@ -4,7 +4,6 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, {
-  FadeIn,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -12,6 +11,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { MapPin, Clock } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
+import { listItemEntering, enteringShell } from '@/lib/platform/list-entering-animation';
 import { Box, Cluster, Row, Stack } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
@@ -74,8 +74,11 @@ function AppointmentCardComponent({
   const fd = appointment.form_data as { availability?: unknown } | undefined;
   const timeLabel = formatAvailabilityDisplayFr(fd?.availability, appointment.scheduled_at);
 
+  const entering = listItemEntering(index);
+  const EnterShell = enteringShell(entering);
+
   return (
-    <Animated.View entering={FadeIn.delay(index * 50).duration(350)}>
+    <EnterShell entering={entering}>
       <Animated.View style={animStyle}>
         <Pressable
           onPressIn={handlePressIn}
@@ -167,7 +170,7 @@ function AppointmentCardComponent({
           ) : null}
         </Pressable>
       </Animated.View>
-    </Animated.View>
+    </EnterShell>
   );
 }
 

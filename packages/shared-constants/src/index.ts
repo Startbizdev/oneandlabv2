@@ -47,3 +47,4 @@ export * from './care-category-autre-detail';
 export * from './cancellation-reasons';
 export * from './nurse-subscription-plans';
 export * from './patient-vip-iap';
+export * from './staff-patient-booking-consent';

@@ -33,29 +33,8 @@
               />
             </div>
           </div>
-          <div class="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
-            <UButton
-              v-if="proOriginTelHref(appointment.assigned_nurse_phone)"
-              size="xs"
-              variant="outline"
-              color="neutral"
-              leading-icon="i-lucide-phone"
-              class="shrink-0"
-              :href="proOriginTelHref(appointment.assigned_nurse_phone)"
-            >
-              Appeler
-            </UButton>
-            <UButton
-              v-if="proOriginSmsHref(appointment.assigned_nurse_phone)"
-              size="xs"
-              variant="outline"
-              color="neutral"
-              leading-icon="i-lucide-message-square"
-              class="shrink-0"
-              :href="proOriginSmsHref(appointment.assigned_nurse_phone)"
-            >
-              Message
-            </UButton>
+          <div class="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto">
+            <AppointmentDetailContactPhoneRow :phone="appointment.assigned_nurse_phone" />
             <UButton
               v-if="appointment.assigned_nurse_public_slug"
               size="xs"
@@ -111,29 +90,8 @@
               />
             </div>
           </div>
-          <div class="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
-            <UButton
-              v-if="proOriginTelHref(appointment.assigned_lab_phone)"
-              size="xs"
-              variant="outline"
-              color="neutral"
-              leading-icon="i-lucide-phone"
-              class="shrink-0"
-              :href="proOriginTelHref(appointment.assigned_lab_phone)"
-            >
-              Appeler
-            </UButton>
-            <UButton
-              v-if="proOriginSmsHref(appointment.assigned_lab_phone)"
-              size="xs"
-              variant="outline"
-              color="neutral"
-              leading-icon="i-lucide-message-square"
-              class="shrink-0"
-              :href="proOriginSmsHref(appointment.assigned_lab_phone)"
-            >
-              Message
-            </UButton>
+          <div class="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto">
+            <AppointmentDetailContactPhoneRow :phone="appointment.assigned_lab_phone" />
             <UButton
               v-if="appointment.assigned_lab_public_slug"
               size="xs"
@@ -178,33 +136,7 @@
               <CompactAssigneeRating
                 :summary="assigneeReviewFromPrefix(appointment, 'assigned_to')"
               />
-              <div
-                v-if="proOriginTelHref(appointment.assigned_to_phone) || proOriginSmsHref(appointment.assigned_to_phone)"
-                class="flex flex-wrap items-center gap-2 pt-1.5"
-              >
-                <UButton
-                  v-if="proOriginTelHref(appointment.assigned_to_phone)"
-                  size="xs"
-                  variant="outline"
-                  color="neutral"
-                  leading-icon="i-lucide-phone"
-                  class="shrink-0"
-                  :href="proOriginTelHref(appointment.assigned_to_phone)"
-                >
-                  Appeler
-                </UButton>
-                <UButton
-                  v-if="proOriginSmsHref(appointment.assigned_to_phone)"
-                  size="xs"
-                  variant="outline"
-                  color="neutral"
-                  leading-icon="i-lucide-message-square"
-                  class="shrink-0"
-                  :href="proOriginSmsHref(appointment.assigned_to_phone)"
-                >
-                  Message
-                </UButton>
-              </div>
+              <AppointmentDetailContactPhoneRow :phone="appointment.assigned_to_phone" />
             </div>
           </div>
         </div>
@@ -395,31 +327,7 @@
                 </UBadge>
               </div>
             </div>
-            <div
-              v-if="appointment.creator_origin.phone"
-              class="flex flex-wrap items-center gap-2 pt-0.5"
-            >
-              <UButton
-                size="xs"
-                variant="outline"
-                color="neutral"
-                leading-icon="i-lucide-phone"
-                class="shrink-0"
-                :href="proOriginTelHref(appointment.creator_origin.phone)"
-              >
-                Appeler
-              </UButton>
-              <UButton
-                size="xs"
-                variant="outline"
-                color="neutral"
-                leading-icon="i-lucide-message-square"
-                class="shrink-0"
-                :href="proOriginSmsHref(appointment.creator_origin.phone)"
-              >
-                Message
-              </UButton>
-            </div>
+            <AppointmentDetailContactPhoneRow :phone="appointment.creator_origin.phone" />
             <div class="flex flex-wrap gap-2 pt-1">
               <UButton
                 variant="outline"
@@ -556,18 +464,6 @@ defineProps<{
   openAssigneeSheet: (type: 'nurse' | 'lab', slug: string) => void;
   openCreatorSheet: (type: 'nurse' | 'lab', slug: string) => void;
 }>();
-
-function proOriginTelHref(phone: string | null | undefined) {
-  const t = String(phone ?? '').trim();
-  if (!t) return undefined;
-  return `tel:${t.replace(/\s/g, '')}`;
-}
-
-function proOriginSmsHref(phone: string | null | undefined) {
-  const t = String(phone ?? '').trim();
-  if (!t) return undefined;
-  return `sms:${t.replace(/\s/g, '')}`;
-}
 
 const kvRow =
   'grid grid-cols-1 gap-x-4 gap-y-1 px-4 py-3 sm:px-6 sm:grid-cols-[minmax(9.5rem,11rem)_minmax(0,1fr)] sm:items-start sm:py-2.5';

@@ -3,6 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import {
   getProfessionalIdDisplay,
+  normalizeProfessionalId,
   splitProfessionalId,
   validateProfessionalId,
   PROFESSIONAL_ID_LABEL,
@@ -116,6 +117,7 @@ export function ProfileNurseCoordinatesScreen() {
         last_name: lastName.trim(),
         phone: phone.trim() || null,
         gender: gender || null,
+        professional_id: normalizeProfessionalId(professionalId) || null,
         rpps: split.rpps,
         adeli: split.adeli,
         address: addr,
