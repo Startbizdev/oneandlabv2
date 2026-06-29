@@ -73,7 +73,7 @@ class PrescriptionPdf
 
         $prescriptionNumber = htmlspecialchars((string) ($options['prescription_number'] ?? ''));
         $prescriberName = htmlspecialchars(trim(($prescriber['first_name'] ?? '') . ' ' . ($prescriber['last_name'] ?? '')));
-        $prescriberTitle = htmlspecialchars(trim((string) ($prescriber['title'] ?? ($kind === 'nursing' ? 'Infirmier(ère)' : 'Dr')));
+        $prescriberTitle = htmlspecialchars(trim((string) ($prescriber['title'] ?? ($kind === 'nursing' ? 'Infirmier(ère)' : 'Dr'))));
         $prescriberEmploi = htmlspecialchars(trim((string) ($prescriber['emploi'] ?? '')));
         $prescriberRoleLine = $prescriberEmploi !== '' ? $prescriberEmploi : 'Professionnel de santé';
         $prescriberAddress = htmlspecialchars(self::formatAddress($prescriber['address'] ?? null));
