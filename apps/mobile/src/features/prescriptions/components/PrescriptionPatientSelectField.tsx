@@ -4,8 +4,8 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { Cluster } from '@/components/layout/primitives';
-import { ChevronDown, PenLine, X } from 'lucide-react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
+import { ChevronDown, PenLine, UserPlus, X } from 'lucide-react-native';
 import {
   CreatePatientModal,
   type CreatedPatientResult,
@@ -166,6 +166,18 @@ export function PrescriptionPatientSelectField({
         </Cluster>
       </Pressable>
 
+      <Pressable
+        onPress={() => setCreateOpen(true)}
+        style={styles.addPatientBtn}
+        accessibilityRole="button"
+        accessibilityLabel="Ajouter un patient"
+      >
+        <Row gap={spacing[2]} align="center" justify="center">
+          <UserPlus size={18} color={c.primary} strokeWidth={2.25} />
+          <Text style={styles.addPatientText}>Ajouter un patient</Text>
+        </Row>
+      </Pressable>
+
       <PrescriptionPatientSelectSheet
         visible={open}
         onClose={() => setOpen(false)}
@@ -178,7 +190,6 @@ export function PrescriptionPatientSelectField({
         isFetchingNextPage={isFetchingNextPage}
         onLoadMore={onLoadMore}
         searchPlaceholder="Rechercher un patient…"
-        onAddPatient={() => setCreateOpen(true)}
       />
 
       <CreatePatientModal
@@ -227,6 +238,19 @@ function buildStyles(c: AppColors) {
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
       gap: spacing[2],
+    },
+    addPatientBtn: {
+      borderWidth: 1,
+      borderColor: c.primaryMid,
+      borderRadius: radius.lg,
+      backgroundColor: c.primaryLight,
+      paddingVertical: spacing[2.5],
+      paddingHorizontal: spacing[3],
+    },
+    addPatientText: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.sm,
+      color: c.primary,
     },
   };
 }
