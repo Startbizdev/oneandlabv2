@@ -20,6 +20,7 @@ import {
   type PatientProfileUploadType,
 } from '../api/patient-profile.service';
 import { StaffPatientBookingConsentRow } from '@/features/patients/components/StaffPatientBookingConsentRow';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type CreatedPatientResult = Pick<PatientRow, 'id' | 'first_name' | 'last_name'> & {
