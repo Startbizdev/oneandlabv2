@@ -60,6 +60,10 @@ export function useBookingWizard(opts: {
   const [step, setStep] = useState(0);
   const [wizardIndex, setWizardIndex] = useState(0);
   const [consent, setConsent] = useState(false);
+  const consentRef = useRef(false);
+  useEffect(() => {
+    consentRef.current = consent;
+  }, [consent]);
   const [selectedRelativeId, setSelectedRelativeId] = useState<string | null>(
     opts.initialRelativeId ?? null,
   );
@@ -77,6 +81,8 @@ export function useBookingWizard(opts: {
     initialPatientId: opts.initialPatientId,
     syncPatientSelfAddress: opts.mode === 'patient',
     bookingMode: opts.mode,
+    getPatientBookingConsent:
+      opts.mode === 'dashboard' ? () => consentRef.current : undefined,
   });
 
   const patientProfileQ = useQuery({
@@ -488,7 +494,8 @@ export function useBookingWizard(opts: {
           (m) =>
             m.includes('RGPD') ||
             m.includes('politique de confidentialité') ||
-            m.includes('confidentialité'),
+            m.includes('confidentialité') ||
+            m.includes('consentement'),
         );
       if (needsConsent) {
         opts.onConsentMissing?.();

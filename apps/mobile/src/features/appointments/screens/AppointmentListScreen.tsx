@@ -80,7 +80,7 @@ export function AppointmentListScreen({
   );
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} collapsable={false}>
       <InfiniteQueryFlatList
         query={query}
         items={displayRows}

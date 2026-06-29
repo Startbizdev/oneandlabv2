@@ -111,7 +111,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if ($page < 1) {
         $page = 1;
     }
-    if ($limit < 1 || $limit > 100) {
+    $isSuperAdmin = ($user['role'] ?? '') === 'super_admin';
+    $maxLimit = $isSuperAdmin ? 500 : 100;
+    if ($limit < 1 || $limit > $maxLimit) {
         $limit = 20;
     }
     

@@ -76,7 +76,7 @@ export function SheetModal({
   onDismissed,
   snapPoints,
   stackBehavior = 'switch',
-  keyboardBehavior = 'interactive',
+  keyboardBehavior = Platform.OS === 'android' ? 'fillParent' : 'interactive',
 }: Props) {
   const styles = useThemedStyles(buildStyles);
   const modalRef = useRef<BottomSheetModal>(null);

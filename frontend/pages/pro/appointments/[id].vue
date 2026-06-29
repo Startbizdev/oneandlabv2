@@ -2,7 +2,7 @@
   <AppointmentDetailPage ref="detailRef" base-path="/pro" :show-sidebar-actions-card="standardSidebarActionsCardVisible">
     <template #prescriptionSection="{ appointment, documents, loadDocuments }">
       <PrescriptionSection
-        v-if="appointment && !['canceled'].includes(appointment.status)"
+        v-if="appointment && !['canceled'].includes(appointment.status) && proCanGeneratePrescription"
         :patient-id="appointment.patient_id"
         :appointment="{ id: appointment.id }"
         :documents="documents"
@@ -128,10 +128,12 @@ import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
 import { standardAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
 import { isCarePhotoGalleryContext, canUploadCarePhotos } from '~/utils/care-photo-gallery-context';
+import { proPrescriptionGenerationEnabled } from '~/utils/prescription-access';
 
 const route = useRoute();
 const toast = useAppToast();
 const { user } = useAuth();
+const proCanGeneratePrescription = computed(() => proPrescriptionGenerationEnabled(user.value));
 const patientReview = ref<Record<string, unknown> | null>(null);
 
 async function loadPatientReviewForRoute() {

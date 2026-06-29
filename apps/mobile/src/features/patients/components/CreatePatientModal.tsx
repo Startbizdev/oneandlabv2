@@ -19,7 +19,7 @@ import {
   uploadPatientProfileDocument,
   type PatientProfileUploadType,
 } from '../api/patient-profile.service';
-import { spacing } from '@/theme';
+import { StaffPatientBookingConsentRow } from '@/features/patients/components/StaffPatientBookingConsentRow';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type CreatedPatientResult = Pick<PatientRow, 'id' | 'first_name' | 'last_name'> & {
@@ -70,6 +70,7 @@ export function CreatePatientModal({
   const [personalFiles, setPersonalFiles] = useState<
     Record<string, DocumentFileRef | undefined>
   >({});
+  const [patientBookingConsent, setPatientBookingConsent] = useState(false);
   const {
     duplicateOpen,
     duplicateRow,
@@ -85,6 +86,7 @@ export function CreatePatientModal({
     setAddress(null);
     setAddressComplement('');
     setPersonalFiles({});
+    setPatientBookingConsent(false);
     setError(null);
     resetDuplicate();
   };
@@ -102,6 +104,10 @@ export function CreatePatientModal({
       setError('Prénom, nom et téléphone sont requis.');
       return;
     }
+    if (!patientBookingConsent) {
+      setError('Veuillez confirmer le consentement du patient pour la prise de rendez-vous.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -112,6 +118,7 @@ export function CreatePatientModal({
         phone: phone.trim(),
         ...(email.trim() ? { email: email.trim() } : {}),
         ...(addr ? { address: addr } : {}),
+        patient_booking_consent: true,
       });
       if (!res.success || !res.data?.id) throw new Error(res.error ?? 'Création impossible');
       const patientId = res.data.id;
@@ -198,6 +205,12 @@ export function CreatePatientModal({
         fields={PERSONAL_DOC_FIELDS}
         files={personalFiles}
         onChange={(key, file) => setPersonalFiles((prev) => ({ ...prev, [key]: file }))}
+      />
+
+      <StaffPatientBookingConsentRow
+        checked={patientBookingConsent}
+        onToggle={() => setPatientBookingConsent((v) => !v)}
+        error={error?.includes('consentement') ?? false}
       />
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}

@@ -57,9 +57,9 @@ export default function NurseMore() {
     }
     const url = webAppUrl(nursePublicProfilePath(publicSlug));
     const message =
-      `Voici mon profil Cary — si vous souhaitez prendre rendez-vous, cliquez sur le lien : ${url}`;
+      'Voici mon profil Cary — si vous souhaitez prendre rendez-vous, cliquez sur le lien :\n' + url;
     try {
-      await Share.share({ message, url });
+      await Share.share({ message });
     } catch {
       Alert.alert('Partage impossible', 'Le partage n’a pas pu être ouvert. Réessayez.');
     }

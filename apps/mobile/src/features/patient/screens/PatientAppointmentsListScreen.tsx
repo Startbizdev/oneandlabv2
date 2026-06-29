@@ -143,7 +143,7 @@ export function PatientAppointmentsListScreen() {
   }
 
   return (
-    <View style={chromeStyles.container}>
+    <View style={chromeStyles.container} collapsable={false}>
       <InfiniteQueryFlatList
         query={query}
         items={displayRows}

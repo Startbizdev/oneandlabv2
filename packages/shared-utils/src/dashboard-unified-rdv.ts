@@ -2,6 +2,7 @@
  * Port TypeScript de frontend/utils/dashboard-unified-rdv.ts
  */
 import { AVAILABILITY_MIN_SPAN_HOURS } from '@oneandlab/shared-constants';
+import { STAFF_ROLES_REQUIRING_PATIENT_BOOKING_CONSENT } from '@oneandlab/shared-constants';
 import { isBloodTestAppointment, isNursingAppointment } from './appointment-type-rules';
 
 export type SelectedServiceInput = {
@@ -271,6 +272,20 @@ type DashboardPayloadCtx = {
   creatorUserId: string;
 };
 
+function applyStaffPatientBookingConsent(
+  payload: Record<string, unknown>,
+  ctx: DashboardPayloadCtx,
+): Record<string, unknown> {
+  if (
+    STAFF_ROLES_REQUIRING_PATIENT_BOOKING_CONSENT.includes(
+      ctx.creatorRole as (typeof STAFF_ROLES_REQUIRING_PATIENT_BOOKING_CONSENT)[number],
+    )
+  ) {
+    payload.patient_booking_consent = true;
+  }
+  return payload;
+}
+
 function dashboardSingleServicePayload(
   patientId: string,
   svc: SelectedServiceInput,
@@ -331,7 +346,7 @@ function dashboardSingleServicePayload(
     payload.status = 'confirmed';
     payload.assigned_nurse_id = ctx.creatorUserId;
   }
-  return payload;
+  return applyStaffPatientBookingConsent(payload, ctx);
 }
 
 function dashboardMergedBloodPayload(
@@ -388,7 +403,7 @@ function dashboardMergedBloodPayload(
     payload.status = 'confirmed';
     payload.assigned_nurse_id = ctx.creatorUserId;
   }
-  return payload;
+  return applyStaffPatientBookingConsent(payload, ctx);
 }
 
 function dashboardMergedNursingPayload(
@@ -445,7 +460,7 @@ function dashboardMergedNursingPayload(
     payload.status = 'confirmed';
     payload.assigned_nurse_id = ctx.creatorUserId;
   }
-  return payload;
+  return applyStaffPatientBookingConsent(payload, ctx);
 }
 
 export function buildDashboardAppointmentPayloads(

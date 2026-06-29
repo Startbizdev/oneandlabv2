@@ -3,6 +3,7 @@ export const PRO_SANTE_EMPLOIS = [
   { label: 'Médecin généraliste', value: 'Médecin généraliste' },
   { label: 'Médecin spécialiste', value: 'Médecin spécialiste' },
   { label: 'Sage-femme', value: 'Sage-femme' },
+  { label: 'Infirmier IPA', value: 'Infirmier IPA' },
   { label: 'Pharmacien', value: 'Pharmacien' },
   { label: 'Chirurgien-dentiste', value: 'Chirurgien-dentiste' },
 ] as const;

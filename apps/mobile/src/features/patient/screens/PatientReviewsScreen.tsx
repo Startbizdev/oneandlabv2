@@ -1,10 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
-import { FlatList, RefreshControl, Text, View } from 'react-native';
-import { Row } from '@/components/layout/primitives';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import type { Appointment } from '@oneandlab/shared-types';
@@ -14,7 +12,6 @@ import {
   EMPTY_AVIS_IMAGE_HEIGHT,
   EMPTY_AVIS_IMAGE_WIDTH,
 } from '@/constants/empty-state-images';
-import { SkeletonList } from '@/components/ui/skeletons';
 import { api } from '@/api/client';
 import {
   flattenInfiniteAppointments,
@@ -27,10 +24,10 @@ import { ReviewGivenCard } from '@/features/reviews/components/ReviewGivenCard';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import type { Review } from '@/features/reviews/types';
 import { enrichReviewsWithAppointmentProfiles } from '@/features/reviews/utils/enrich-reviews-with-profiles';
-import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
+import { QueryFlatList } from '@/components/ui/QueryFlatList';
+import { scrollChildEntering } from '@/lib/platform/list-entering-animation';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
+import { Row } from '@/components/layout/primitives';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -96,9 +93,7 @@ function buildSummaryStyles(c: AppColors) {
 }
 
 export function PatientReviewsScreen() {
-  const c = useAppColors();
   const styles = useThemedStyles(buildScreenStyles, 'PatientReviewsScreen');
-
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
 
@@ -122,14 +117,10 @@ export function PatientReviewsScreen() {
     () => enrichReviewsWithAppointmentProfiles(reviewsQ.data ?? [], appointmentPages),
     [reviewsQ.data, appointmentPages],
   );
-  const listData = useMemo(() => reviews, [reviews]);
-  const isLoading = reviewsQ.isLoading;
 
   const refetchAll = async () => {
     await Promise.all([reviewsQ.refetch(), appointmentsQ.refetch()]);
   };
-  const { refreshing, onRefresh } = useManualRefresh(refetchAll);
-  const scrollConfig = useStackScrollConfig(styles.list);
 
   const ListHeader = () => (
     <View style={styles.headerBlock}>
@@ -142,53 +133,45 @@ export function PatientReviewsScreen() {
 
   return (
     <StackChromeScreen>
-      {isLoading ? (
-        <View style={styles.loading}>
-          <SkeletonList count={3} itemHeight={130} gap={12} />
-        </View>
-      ) : (
-        <FlatList
-          data={listData}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item, index }) => (
-            <Animated.View entering={FadeInDown.delay(index * 45).duration(280).springify()}>
+      <QueryFlatList
+        query={{
+          ...reviewsQ,
+          refetch: refetchAll,
+        }}
+        items={reviews}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
+        skeletonHeight={130}
+        ListHeaderComponent={ListHeader}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item, index }) => {
+          const entering = scrollChildEntering(index, 45, 280);
+          const Shell = entering ? Animated.View : View;
+          return (
+            <Shell entering={entering}>
               <ReviewGivenCard review={item} />
-            </Animated.View>
-          )}
-          ListHeaderComponent={ListHeader}
-          {...spreadTabSceneScrollProps(scrollConfig)}
-          contentContainerStyle={scrollConfig.contentContainerStyle}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={c.primary}
-              progressViewOffset={scrollConfig.refreshProgressOffset}
-            />
-          }
-          ListEmptyComponent={
-            <EmptyState
-              title="Aucun avis disponible"
-              description="Il n'y a pas encore d'avis. Après un rendez-vous terminé, vous pourrez noter votre expérience."
-              imageSource={EMPTY_AVIS_IMAGE}
-              imageWidth={EMPTY_AVIS_IMAGE_WIDTH}
-              imageHeight={EMPTY_AVIS_IMAGE_HEIGHT}
-              actionLabel="Voir mes rendez-vous"
-              onAction={() => router.push('/(patient)/(tabs)/appointments' as never)}
-            />
-          }
-        />
-      )}
+            </Shell>
+          );
+        }}
+        ListEmptyComponent={
+          <EmptyState
+            title="Aucun avis disponible"
+            description="Il n'y a pas encore d'avis. Après un rendez-vous terminé, vous pourrez noter votre expérience."
+            imageSource={EMPTY_AVIS_IMAGE}
+            imageWidth={EMPTY_AVIS_IMAGE_WIDTH}
+            imageHeight={EMPTY_AVIS_IMAGE_HEIGHT}
+            actionLabel="Voir mes rendez-vous"
+            onAction={() => router.push('/(patient)/(tabs)/appointments' as never)}
+          />
+        }
+      />
     </StackChromeScreen>
   );
 }
 
 function buildScreenStyles(c: AppColors) {
   return {
-    container: { minWidth: 0, flex: 1, backgroundColor: c.background },
-    loading: { padding: spacing[4] },
     list: {
       minWidth: 0,
       paddingHorizontal: spacing[4],

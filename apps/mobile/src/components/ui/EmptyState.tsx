@@ -3,10 +3,11 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React from 'react';
 import { Image, type ImageSourcePropType, Text, View, StyleSheet } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import type { LucideIcon } from 'lucide-react-native';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+import { emptyStateEntering } from '@/lib/platform/list-entering-animation';
 import { Button } from './Button';
 
 interface EmptyStateProps {
@@ -39,8 +40,11 @@ function EmptyStateComponent({
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'components_ui_EmptyState_tsx_EmptyStateComponent_styles');
 
+  const entering = emptyStateEntering();
+  const Shell = entering ? Animated.View : View;
+
   return (
-    <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.container}>
+    <Shell entering={entering} style={styles.container}>
       {imageSource ? (
         <Image
           source={imageSource}
@@ -67,18 +71,16 @@ function EmptyStateComponent({
         </View>
       ) : null}
 
-      <Animated.Text style={styles.title}>{title}</Animated.Text>
+      <Text style={styles.title}>{title}</Text>
 
-      {description ? (
-        <Animated.Text style={styles.description}>{description}</Animated.Text>
-      ) : null}
+      {description ? <Text style={styles.description}>{description}</Text> : null}
 
       {actionLabel && onAction ? (
         <View style={styles.action}>
           <Button title={actionLabel} onPress={onAction} size="lg" fullWidth />
         </View>
       ) : null}
-    </Animated.View>
+    </Shell>
   );
 }
 

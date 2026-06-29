@@ -17,44 +17,18 @@
         <p v-if="appointment.relative" class="text-xs text-muted">
           Lien : {{ getRelationshipLabel(appointment.relative.relationship_type) }}
         </p>
-        <div
-          v-if="patientContactTelHref || patientContactSmsHref || patientContactEmailDisplay.href"
-          class="flex flex-wrap items-center gap-2 pt-1.5"
+        <AppointmentDetailContactPhoneRow :phone="patientContactPhone" />
+        <UButton
+          v-if="patientContactEmailDisplay.href"
+          size="xs"
+          variant="outline"
+          color="neutral"
+          leading-icon="i-lucide-mail"
+          class="shrink-0 mt-1.5"
+          :href="patientContactEmailDisplay.href"
         >
-          <UButton
-            v-if="patientContactTelHref"
-            size="xs"
-            variant="outline"
-            color="neutral"
-            leading-icon="i-lucide-phone"
-            class="shrink-0"
-            :href="patientContactTelHref"
-          >
-            Appeler
-          </UButton>
-          <UButton
-            v-if="patientContactSmsHref"
-            size="xs"
-            variant="outline"
-            color="neutral"
-            leading-icon="i-lucide-message-square"
-            class="shrink-0"
-            :href="patientContactSmsHref"
-          >
-            Message
-          </UButton>
-          <UButton
-            v-if="patientContactEmailDisplay.href"
-            size="xs"
-            variant="outline"
-            color="neutral"
-            leading-icon="i-lucide-mail"
-            class="shrink-0"
-            :href="patientContactEmailDisplay.href"
-          >
-            E-mail
-          </UButton>
-        </div>
+          E-mail
+        </UButton>
       </div>
     </div>
     <div
@@ -81,44 +55,18 @@
           <p class="text-xs text-muted">
             Titulaire du compte · personne qui a pris le rendez-vous
           </p>
-          <div
-            v-if="bookingContactTelHref || bookingContactSmsHref || bookingContactEmailDisplay.href"
-            class="flex flex-wrap items-center gap-2 pt-1.5"
+          <AppointmentDetailContactPhoneRow :phone="bookingContactPhone" />
+          <UButton
+            v-if="bookingContactEmailDisplay.href"
+            size="xs"
+            variant="outline"
+            color="neutral"
+            leading-icon="i-lucide-mail"
+            class="shrink-0 mt-1.5"
+            :href="bookingContactEmailDisplay.href"
           >
-            <UButton
-              v-if="bookingContactTelHref"
-              size="xs"
-              variant="outline"
-              color="neutral"
-              leading-icon="i-lucide-phone"
-              class="shrink-0"
-              :href="bookingContactTelHref"
-            >
-              Appeler
-            </UButton>
-            <UButton
-              v-if="bookingContactSmsHref"
-              size="xs"
-              variant="outline"
-              color="neutral"
-              leading-icon="i-lucide-message-square"
-              class="shrink-0"
-              :href="bookingContactSmsHref"
-            >
-              Message
-            </UButton>
-            <UButton
-              v-if="bookingContactEmailDisplay.href"
-              size="xs"
-              variant="outline"
-              color="neutral"
-              leading-icon="i-lucide-mail"
-              class="shrink-0"
-              :href="bookingContactEmailDisplay.href"
-            >
-              E-mail
-            </UButton>
-          </div>
+            E-mail
+          </UButton>
           <p
             v-else-if="bookingContactEmailDisplay.text"
             class="text-xs text-muted break-all pt-0.5"
@@ -128,7 +76,20 @@
         </div>
       </div>
     </template>
-    <div v-if="$slots.actions" class="px-4 sm:px-6 py-3">
+    <div
+      v-if="patientProfileHref || $slots.actions"
+      class="px-4 sm:px-6 py-3 flex flex-wrap items-center gap-2"
+    >
+      <UButton
+        v-if="patientProfileHref"
+        size="sm"
+        variant="outline"
+        color="neutral"
+        leading-icon="i-lucide-user"
+        :to="patientProfileHref"
+      >
+        Voir la fiche patient
+      </UButton>
       <slot name="actions" />
     </div>
   </template>
@@ -142,11 +103,20 @@ import {
   patientUiEmailLine,
 } from '~/utils/patient-address-rdv';
 import { appointmentPatientDisplayName } from '~/utils/appointment-patient-display';
+import { staffAppointmentPatientProfileHref } from '~/utils/staff-appointment-patient-profile';
 
 const props = defineProps<{
   appointment: any;
   isAdmin: boolean;
+  showStaffPatientProfileLink?: boolean;
 }>();
+
+const { user } = useAuth();
+
+const patientProfileHref = computed(() => {
+  if (!props.showStaffPatientProfileLink) return null;
+  return staffAppointmentPatientProfileHref(user.value?.role, props.appointment);
+});
 
 const kvRow =
   'grid grid-cols-1 gap-x-4 gap-y-1 px-4 py-3 sm:px-6 sm:grid-cols-[minmax(9.5rem,11rem)_minmax(0,1fr)] sm:items-start sm:py-2.5';
@@ -221,22 +191,10 @@ const patientBirthDisplayLine = computed(() => {
   }
 });
 
-const patientContactTelHref = computed(() => {
+const patientContactPhone = computed(() => {
   const a = props.appointment;
   if (!a) return '';
-  const raw = (a.relative?.phone || a.form_data?.phone || '') as string;
-  const trimmed = String(raw).trim();
-  if (!trimmed) return '';
-  return `tel:${trimmed.replace(/\s/g, '')}`;
-});
-
-const patientContactSmsHref = computed(() => {
-  const a = props.appointment;
-  if (!a) return '';
-  const raw = (a.relative?.phone || a.form_data?.phone || '') as string;
-  const trimmed = String(raw).trim();
-  if (!trimmed) return '';
-  return `sms:${trimmed.replace(/\s/g, '')}`;
+  return String(a.relative?.phone || a.form_data?.phone || '').trim();
 });
 
 const patientContactEmailDisplay = computed(() => {
@@ -270,19 +228,9 @@ const bookingContactFullName = computed(() => {
   return [bc.first_name, bc.last_name].filter(Boolean).join(' ').trim();
 });
 
-const bookingContactTelHref = computed(() => {
-  const raw = (props.appointment?.booking_contact?.phone || '') as string;
-  const trimmed = String(raw).trim();
-  if (!trimmed) return '';
-  return `tel:${trimmed.replace(/\s/g, '')}`;
-});
-
-const bookingContactSmsHref = computed(() => {
-  const raw = (props.appointment?.booking_contact?.phone || '') as string;
-  const trimmed = String(raw).trim();
-  if (!trimmed) return '';
-  return `sms:${trimmed.replace(/\s/g, '')}`;
-});
+const bookingContactPhone = computed(() =>
+  String(props.appointment?.booking_contact?.phone || '').trim(),
+);
 
 const bookingContactEmailDisplay = computed(() => {
   const bc = props.appointment?.booking_contact;

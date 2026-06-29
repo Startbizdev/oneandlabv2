@@ -5,32 +5,26 @@ import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback } from 'react';
 import {
   Alert,
-  FlatList,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Heart } from 'lucide-react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
+import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import {
   EMPTY_PROCHE_IMAGE,
   EMPTY_PROCHE_IMAGE_HEIGHT,
   EMPTY_PROCHE_IMAGE_WIDTH,
 } from '@/constants/empty-state-images';
-import { SkeletonList } from '@/components/ui/skeletons';
 import { PatientRelativeFormSheet } from '@/features/patient-relatives/components/PatientRelativeFormSheet';
+import { scrollChildEntering } from '@/lib/platform/list-entering-animation';
 import {
   createPatientRelative,
   deletePatientRelative,
@@ -41,7 +35,6 @@ import {
 import { relationshipLabel } from '@/features/patient-relatives/constants/relationship-types';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
 import { elevation, radius, spacing } from '@/theme';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
@@ -67,8 +60,10 @@ const RelativeCard = React.memo(function RelativeCard({
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'PatientRelativesScreen.RelativeCard');
   const rel = relationshipLabel(relativeRelationshipType(item)) || item.relationship;
+  const entering = scrollChildEntering(index, 50, 300);
+  const Shell = entering ? Animated.View : View;
   return (
-    <Animated.View entering={FadeInDown.delay(index * 50).duration(300).springify()}>
+    <Shell entering={entering}>
       <Pressable onPress={onPress} onLongPress={onLongPress} style={[styles.card, elevation.xs]}>
         <Cluster
           gap={spacing[3]}
@@ -102,7 +97,7 @@ const RelativeCard = React.memo(function RelativeCard({
           </View>
         </Cluster>
       </Pressable>
-    </Animated.View>
+    </Shell>
   );
 });
 
@@ -113,17 +108,12 @@ export function PatientRelativesScreen({
   createOpen: boolean;
   onCreateOpenChange: (open: boolean) => void;
 }) {
-  const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_patient_screens_PatientRelativesScreen_tsx_styles');
-  const sceneInsets = useTabSceneInsets();
   const fabClearance = useScreenFabScrollClearance();
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.list, {
-    extraBottom: fabClearance,
-  });
   const router = useRouter();
   const { show: toast } = useToast();
   const qc = useQueryClient();
-  const { data, isLoading, refetch } = useQuery({
+  const relativesQ = useQuery({
     queryKey: ['patient-relatives'],
     queryFn: async () => {
       const res = await fetchPatientRelatives();
@@ -132,7 +122,7 @@ export function PatientRelativesScreen({
     },
   });
 
-  const { refreshing, onRefresh } = useManualRefresh(refetch);
+  const items = relativesQ.data ?? [];
 
   const createMut = useMutation({
     mutationFn: createPatientRelative,
@@ -176,41 +166,33 @@ export function PatientRelativesScreen({
   );
 
   return (
-    <View style={styles.container}>
-      {isLoading ? (
-        <SkeletonList count={2} itemHeight={80} />
-      ) : (
-        <FlatList
-          data={data ?? []}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          ListHeaderComponent={
-            <Text style={styles.subtitle}>
-              Touchez une carte pour modifier · appui long pour supprimer
-            </Text>
-          }
-          {...spreadTabSceneScrollProps(scrollConfig)}
-          contentContainerStyle={scrollConfig.contentContainerStyle}
-          ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={c.primary}
-              progressViewOffset={scrollConfig.refreshProgressOffset}
-            />
-          }
-          ListEmptyComponent={
-            <EmptyState
-              title="Aucun proche"
-              description="Ajoutez un proche pour prendre rendez-vous en son nom."
-              imageSource={EMPTY_PROCHE_IMAGE}
-              imageWidth={EMPTY_PROCHE_IMAGE_WIDTH}
-              imageHeight={EMPTY_PROCHE_IMAGE_HEIGHT}
-            />
-          }
-        />
-      )}
+    <View style={styles.container} collapsable={false}>
+      <QueryFlatList
+        query={relativesQ}
+        items={items}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
+        scrollPaddingOptions={{ extraBottom: fabClearance }}
+        skeletonHeight={80}
+        skeletonCount={2}
+        ListHeaderComponent={
+          <Text style={styles.subtitle}>
+            Touchez une carte pour modifier · appui long pour supprimer
+          </Text>
+        }
+        ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <EmptyState
+            title="Aucun proche"
+            description="Ajoutez un proche pour prendre rendez-vous en son nom."
+            imageSource={EMPTY_PROCHE_IMAGE}
+            imageWidth={EMPTY_PROCHE_IMAGE_WIDTH}
+            imageHeight={EMPTY_PROCHE_IMAGE_HEIGHT}
+          />
+        }
+      />
 
       <PatientRelativeFormSheet
         visible={createOpen}

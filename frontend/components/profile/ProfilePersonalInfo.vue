@@ -91,6 +91,8 @@
           label="RPPS ou Adeli"
           name="rpps"
           placeholder="9 chiffres (Adeli) ou 11 chiffres (RPPS)"
+          hint="9 chiffres (Adeli) ou 11 chiffres (RPPS) — un seul numéro"
+          maxlength="11"
         />
 
         <UFormField v-if="isPro" label="Profession (emploi)" name="emploi" class="w-full">

@@ -5,7 +5,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react-native';
@@ -15,6 +15,7 @@ import { fetchAppointments } from '@/features/appointments/api/appointments.serv
 import { StatusBadge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
+import { enteringShell, scrollChildEntering, scrollSectionEntering } from '@/lib/platform/list-entering-animation';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import type { Appointment } from '@oneandlab/shared-types';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
@@ -52,8 +53,11 @@ const StopCard = React.memo(function StopCard({ item, index, onPress }: StopCard
   const address = appointmentAddressLine(item);
   const timeLabel = formatAvailabilityDisplayFr(fd?.availability, item.scheduled_at);
 
+  const entering = scrollChildEntering(index, 50, 300);
+  const EnterShell = enteringShell(entering);
+
   return (
-    <Animated.View entering={FadeInDown.delay(index * 50).duration(300).springify()}>
+    <EnterShell entering={entering}>
       <Pressable onPress={onPress} style={[styles.stopCardShell, elevation.md]}>
         <Cluster
           gap={spacing[3]}
@@ -81,7 +85,7 @@ const StopCard = React.memo(function StopCard({ item, index, onPress }: StopCard
           </View>
         </Cluster>
       </Pressable>
-    </Animated.View>
+    </EnterShell>
   );
 });
 
@@ -134,9 +138,12 @@ export function TourneeScreen() {
   const dayLabel = dayjs().add(dayOffset, 'day');
   const isToday = dayOffset === 0;
 
+  const headerEntering = scrollSectionEntering(0, 280);
+  const HeaderShell = headerEntering ? Animated.View : View;
+
   const ListHeader = useCallback(
     () => (
-      <Animated.View entering={FadeInDown.duration(280).springify()}>
+      <HeaderShell entering={headerEntering}>
         <Row justify="between" align="center" style={[styles.dateNav, elevation.xs]}>
           <Pressable
             onPress={() => shiftDay(-1)}
@@ -162,13 +169,13 @@ export function TourneeScreen() {
             <ChevronRight size={20} color={dayOffset >= OFFSET_MAX ? c.textTertiary : c.primary} strokeWidth={2.5} />
           </Pressable>
         </Row>
-      </Animated.View>
+      </HeaderShell>
     ),
     [c.primary, c.textTertiary, dayLabel, dayOffset, isToday, shiftDay, sorted.length],
   );
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} collapsable={false}>
       <QueryFlatList
         query={query}
         items={sorted}

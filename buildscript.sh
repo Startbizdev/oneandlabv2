@@ -8,7 +8,7 @@ SSH_KEY="${SSH_KEY:-$HOME/Desktop/oneandlab-key.pem}"
 if [[ ! -f "$SSH_KEY" && -f "$HOME/.ssh/oneandlab-key.pem" ]]; then
   SSH_KEY="$HOME/.ssh/oneandlab-key.pem"
 fi
-SSH_HOST="${SSH_HOST:-ubuntu@ec2-15-188-11-249.eu-west-3.compute.amazonaws.com}"
+SSH_HOST="${SSH_HOST:-ubuntu@15.236.73.7}"
 REMOTE_BASE="${REMOTE_BASE:-/var/www/oneandlab}"
 REMOTE_DIR="$REMOTE_BASE/frontend"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

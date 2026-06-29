@@ -39,14 +39,12 @@ const profileLabel = computed(() =>
   props.profileType === 'nurse' ? 'Infirmier(e) à domicile' : 'Laboratoire — Prélèvement à domicile'
 )
 
-/** Message court pour SMS (infos utiles + lien, ~160 caractères si possible) */
+/** Message court pour SMS (infos utiles + lien unique) */
 const smsMessage = computed(() => {
-  const parts = [
-    `${props.profileName} - ${profileLabel.value}.`,
-    props.address ? `Zone : ${props.address}.` : '',
-    `Prendre RDV : ${props.shareUrl}`,
-  ]
-  return parts.filter(Boolean).join(' ')
+  const intro = `${props.profileName} - ${profileLabel.value}.`;
+  const zone = props.address ? `Zone : ${props.address}.` : '';
+  const cta = `Prendre RDV : ${props.shareUrl}`;
+  return [intro, zone, cta].filter(Boolean).join(' ');
 })
 
 /** Sujet email */
@@ -119,11 +117,11 @@ function openWhatsApp() {
 
 function openShare(platform: 'facebook' | 'x') {
   const url = encodeURIComponent(props.shareUrl)
-  const text = encodeURIComponent(`${props.profileName} - ${profileLabel.value}`)
+  const textOnly = encodeURIComponent(`${props.profileName} - ${profileLabel.value}`)
   if (platform === 'facebook') {
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'noopener,noreferrer,width=600,height=400')
   } else {
-    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'noopener,noreferrer,width=600,height=400')
+    window.open(`https://twitter.com/intent/tweet?text=${textOnly}&url=${url}`, '_blank', 'noopener,noreferrer,width=600,height=400')
   }
 }
 </script>

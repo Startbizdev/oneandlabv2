@@ -14,7 +14,7 @@ import { FormCareFieldsSection } from '../components/FormCareFieldsSection';
 import { FormDocumentsSection } from '../components/FormDocumentsSection';
 import { CategoryPicker } from '../components/CategoryPicker';
 import { useAppointmentForm } from '../hooks/useAppointmentForm';
-import { NEW_PATIENT_ID } from '../types';
+import { StaffPatientBookingConsentRow } from '@/features/patients/components/StaffPatientBookingConsentRow';
 
 interface Props {
   mode: 'create' | 'edit';
@@ -106,6 +106,13 @@ export function AppointmentFormScreen(props: Props) {
           } as typeof prev))
         }
       />
+
+      {f.staffRequiresPatientConsent ? (
+        <StaffPatientBookingConsentRow
+          checked={f.patientBookingConsent}
+          onToggle={() => f.setPatientBookingConsent(!f.patientBookingConsent)}
+        />
+      ) : null}
 
       <Button
         title={f.saving ? 'Enregistrement…' : 'Enregistrer'}

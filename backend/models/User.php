@@ -500,7 +500,7 @@ class User
         }
 
         // Normaliser les booléens lab/subaccount pour que le front reçoive toujours true/false (évite 0/1)
-        foreach (['is_accepting_appointments', 'accept_rdv_saturday', 'accept_rdv_sunday'] as $boolCol) {
+        foreach (['is_accepting_appointments', 'accept_rdv_saturday', 'accept_rdv_sunday', 'prescription_generation_enabled'] as $boolCol) {
             if (array_key_exists($boolCol, $user)) {
                 $user[$boolCol] = (bool) ($user[$boolCol] ?? false);
             }
@@ -606,9 +606,20 @@ class User
         $updates = [];
         $params = [];
 
-        if (array_key_exists('rpps', $data) || array_key_exists('adeli', $data)) {
+        if (
+            array_key_exists('rpps', $data)
+            || array_key_exists('adeli', $data)
+            || array_key_exists('professional_id', $data)
+        ) {
             require_once __DIR__ . '/../lib/ProfessionalId.php';
             $rawId = ProfessionalId::fromRequestBody($data);
+            $targetRole = $this->getRoleById($id);
+            if ($rawId !== '' && $targetRole === 'nurse') {
+                $profErr = ProfessionalId::validate($rawId);
+                if ($profErr !== null) {
+                    throw new InvalidArgumentException($profErr);
+                }
+            }
             if ($rawId !== '') {
                 $split = ProfessionalId::split($rawId);
                 $data['rpps'] = $split['rpps'];
@@ -710,7 +721,7 @@ class User
             }
         }
         
-        if (isset($data['rpps'])) {
+        if (array_key_exists('rpps', $data)) {
             if (!empty($data['rpps'])) {
                 $rppsEncrypted = $this->crypto->encryptField($data['rpps']);
                 $updates[] = 'rpps_encrypted = ?, rpps_dek = ?';
@@ -862,6 +873,10 @@ class User
         if (array_key_exists('accept_rdv_sunday', $data)) {
             $updates[] = 'accept_rdv_sunday = ?';
             $params[] = $data['accept_rdv_sunday'] ? 1 : 0;
+        }
+        if ($this->hasPrescriptionGenerationEnabledColumn() && array_key_exists('prescription_generation_enabled', $data)) {
+            $updates[] = 'prescription_generation_enabled = ?';
+            $params[] = $data['prescription_generation_enabled'] ? 1 : 0;
         }
 
         if (empty($updates)) {
@@ -1022,6 +1037,16 @@ class User
         static $hasColumn = null;
         if ($hasColumn === null) {
             $stmt = $this->db->query("SHOW COLUMNS FROM profiles LIKE 'emploi'");
+            $hasColumn = $stmt->rowCount() > 0;
+        }
+        return $hasColumn;
+    }
+
+    private function hasPrescriptionGenerationEnabledColumn(): bool
+    {
+        static $hasColumn = null;
+        if ($hasColumn === null) {
+            $stmt = $this->db->query("SHOW COLUMNS FROM profiles LIKE 'prescription_generation_enabled'");
             $hasColumn = $stmt->rowCount() > 0;
         }
         return $hasColumn;
@@ -1216,6 +1241,66 @@ class User
         ');
         $stmt->execute([$patientId, $requesterId]);
         return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Après redispatch : retire le patient de « Mes patients » s’il n’a été lié que via l’acceptation du RDV.
+     */
+    public function revokePatientProfessionalAccessAfterRedispatch(
+        string $patientId,
+        string $professionalId,
+        string $professionalRole
+    ): void {
+        if (!$this->hasPatientProfessionalAccessTable() || $patientId === '' || $professionalId === '') {
+            return;
+        }
+        if ($this->hasCreatedByColumn()) {
+            $stmt = $this->db->prepare('SELECT created_by FROM profiles WHERE id = ? AND role = ? LIMIT 1');
+            $stmt->execute([$patientId, 'patient']);
+            $createdBy = (string) ($stmt->fetchColumn() ?: '');
+            if ($createdBy === $professionalId) {
+                return;
+            }
+        }
+        if ($this->professionalHasActiveCareWithPatient($patientId, $professionalId, $professionalRole)) {
+            return;
+        }
+        try {
+            $del = $this->db->prepare(
+                'DELETE FROM patient_professional_access WHERE patient_id = ? AND professional_id = ?'
+            );
+            $del->execute([$patientId, $professionalId]);
+        } catch (PDOException $e) {
+            error_log('revokePatientProfessionalAccessAfterRedispatch: ' . $e->getMessage());
+        }
+    }
+
+    private function professionalHasActiveCareWithPatient(
+        string $patientId,
+        string $professionalId,
+        string $professionalRole
+    ): bool {
+        if ($professionalRole === 'nurse') {
+            $stmt = $this->db->prepare(
+                'SELECT 1 FROM appointments
+                 WHERE patient_id = ? AND assigned_nurse_id = ?
+                 AND status IN (\'confirmed\', \'planned\', \'inProgress\')
+                 LIMIT 1'
+            );
+            $stmt->execute([$patientId, $professionalId]);
+            return (bool) $stmt->fetchColumn();
+        }
+        if (in_array($professionalRole, ['lab', 'subaccount'], true)) {
+            $stmt = $this->db->prepare(
+                'SELECT 1 FROM appointments
+                 WHERE patient_id = ? AND assigned_lab_id = ?
+                 AND status IN (\'confirmed\', \'planned\', \'inProgress\')
+                 LIMIT 1'
+            );
+            $stmt->execute([$patientId, $professionalId]);
+            return (bool) $stmt->fetchColumn();
+        }
+        return false;
     }
 
     /**

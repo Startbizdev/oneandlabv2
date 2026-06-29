@@ -780,7 +780,6 @@ const navigationItems = computed(() => {
     const b = norm(base);
     return path === b || path.startsWith(`${b}/`);
   };
-  // "Mon profil" actif uniquement sur son propre profil (pas en édition préleveur/sous-compte)
   const isOwnProfilePage = p === "/profile" && !route.query.userId && route.query.newPreleveur !== "1" && route.query.newPreleveur !== "true";
 
   const menus: Record<string, NavigationMenuItem[][]> = {
@@ -1122,7 +1121,14 @@ const navigationItems = computed(() => {
     ],
   };
 
-  return menus[role] || [[], []];
+  const base = menus[role] || [[], []];
+  if (role === 'pro' && user.value?.prescription_generation_enabled === false) {
+    return [
+      base[0].filter((item) => item.to !== '/pro/prescriptions'),
+      base[1] ?? [],
+    ];
+  }
+  return base;
 });
 
 const headerUserDisplayName = computed(() => {

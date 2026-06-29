@@ -11,6 +11,7 @@ import {
 import type { LiquidGlassHeaderVisual } from '@/components/navigation/nav-chrome-tokens';
 import { LiquidGlassTabHeader } from '@/components/navigation/LiquidGlassTabHeader';
 import { TabScreenShell } from '@/components/navigation/TabScreenShell';
+import { tabSceneLayoutHandler } from '@/lib/debug/tab-scene-layout-debug';
 
 type Props = {
   title?: ReactNode;
@@ -22,6 +23,8 @@ type Props = {
   edgeToEdge?: boolean;
   /** FAB ou overlay flottant (rendu au-dessus du contenu, sous le header). */
   floatingAction?: ReactNode;
+  /** __DEV__ — logs layout Metro (`[tab-scene]`). */
+  debugLabel?: string;
 };
 
 /** Écran d’onglet — header glass flottant iOS 26 + corps plat edge-to-edge. */
@@ -34,6 +37,7 @@ export function TabScreenFrame({
   shellStyle,
   edgeToEdge = true,
   floatingAction,
+  debugLabel,
 }: Props) {
   const styles = useThemedStyles(buildStyles, 'TabScreenFrame');
   const visual: LiquidGlassHeaderVisual =
@@ -42,12 +46,21 @@ export function TabScreenFrame({
   const bindSceneRefresh = useCallback((visible: boolean) => {
     setSceneRefreshing(visible);
   }, []);
+  const dbg = debugLabel ? `${debugLabel}/TabScreenFrame` : null;
 
   return (
-    <View style={styles.root} collapsable={false}>
+    <View
+      style={styles.root}
+      collapsable={false}
+      onLayout={dbg ? tabSceneLayoutHandler(`${dbg}:root`) : undefined}
+    >
       <ScenePullRefreshContext.Provider value={bindSceneRefresh}>
         <LiquidGlassHeaderInsetProvider visual={visual}>
-          <TabScreenShell edgeToEdge={edgeToEdge} style={[styles.body, shellStyle]}>
+          <TabScreenShell
+            edgeToEdge={edgeToEdge}
+            style={[styles.body, shellStyle]}
+            debugLabel={dbg ? `${dbg}:shell` : undefined}
+          >
             {children}
           </TabScreenShell>
 
@@ -65,6 +78,7 @@ export function TabScreenFrame({
           headerLeft={headerLeft}
           headerRight={headerRight}
           visual={visual}
+          debugLabel={dbg ? `${dbg}:header` : undefined}
         />
       </ScenePullRefreshContext.Provider>
     </View>

@@ -60,9 +60,10 @@ if ($user['role'] === 'super_admin') {
     exit;
 }
 
-// Patient / préleveur : optionnellement relative_id pour uploader les documents d'un proche
+// Patient / staff : optionnellement relative_id pour les documents d'un proche
 $relativeId = null;
-if ($user['role'] === 'patient' || $user['role'] === 'preleveur') {
+$rolesWithRelativeUpload = ['patient', 'preleveur', 'pro', 'nurse', 'lab', 'subaccount'];
+if (in_array($user['role'], $rolesWithRelativeUpload, true)) {
     $relativeId = isset($_POST['relative_id']) ? trim((string) $_POST['relative_id']) : null;
     if ($relativeId !== null && $relativeId === '') {
         $relativeId = null;
@@ -272,7 +273,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Sauvegarder dans patient_documents ou patient_relative_documents
         $relativeOwnerPatientId = $user['role'] === 'patient' ? $user['user_id'] : $targetPatientId;
-        if ($relativeId && ($user['role'] === 'patient' || $user['role'] === 'preleveur')) {
+        if ($relativeId && in_array($user['role'], $rolesWithRelativeUpload, true)) {
             // Documents d'un proche : vérifier que le proche appartient au patient
             $checkRel = $db->prepare('SELECT id FROM patient_relatives WHERE id = ? AND patient_id = ?');
             $checkRel->execute([$relativeId, $relativeOwnerPatientId]);

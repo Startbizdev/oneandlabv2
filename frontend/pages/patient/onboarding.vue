@@ -7,5 +7,5 @@ definePageMeta({
 </script>
 
 <template>
-  <OnboardingTutorialCarousel role="patient" />
+  <TutorialCarousel role="patient" />
 </template>

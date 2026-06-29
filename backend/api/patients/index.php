@@ -3,6 +3,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../../lib/StaffPatientConsent.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -97,6 +98,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         exit;
     }
 
+    StaffPatientConsent::validateOrFail($input, $user);
+
     $emailTrim = isset($input['email']) ? trim((string) $input['email']) : '';
     if ($emailTrim !== '') {
         $dupHash = hash('sha256', strtolower($emailTrim));
@@ -128,6 +131,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ];
         
         $patientId = $userModel->create($patientData, $user['user_id'], $user['role']);
+
+        StaffPatientConsent::logRecorded($user, $patientId, 'patient_create');
         
         // Récupérer le patient créé
         $newPatient = $userModel->getById($patientId, $user['user_id'], $user['role']);

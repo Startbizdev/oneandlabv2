@@ -8,6 +8,16 @@
       />
     </template>
 
+    <UEmpty
+      v-if="prescriptionAccessBlocked"
+      icon="i-lucide-file-pen-line"
+      title="Génération d'ordonnances désactivée"
+      description="La création d'ordonnances n'est pas activée pour votre compte. Contactez l'administration Cary si vous souhaitez l'activer."
+      variant="outline"
+      class="py-16"
+    />
+
+    <template v-else>
     <div class="flex gap-2 p-1 rounded-lg bg-muted/40 ring-1 ring-default/50">
       <UButton
         size="md"
@@ -136,6 +146,22 @@
           </div>
         </UFormField>
 
+        <div v-if="!initialPatientId" class="max-w-xl">
+          <UButton
+            variant="outline"
+            color="neutral"
+            size="md"
+            icon="i-lucide-user-plus"
+            :to="newPatientProfilePath"
+            class="w-full sm:w-auto justify-center"
+          >
+            Créer un patient
+          </UButton>
+          <p class="mt-2 text-xs text-muted leading-relaxed">
+            Ajoutez un nouveau patient à votre liste, puis sélectionnez-le ci-dessus pour générer l'ordonnance.
+          </p>
+        </div>
+
         <UFormField v-if="selectedPatientId" label="Lien rendez-vous" name="link-mode">
           <div class="flex flex-wrap gap-2">
             <UButton
@@ -199,12 +225,14 @@
       :file-name="previewFileName"
       title="Aperçu ordonnance"
     />
+    </template>
   </AppPageShell>
 </template>
 
 <script setup lang="ts">
 import PrescriptionHistoryRow from '~/components/dashboard/PrescriptionHistoryRow.vue';
 import { PATIENT_SELECT_SEARCH_PLACEHOLDER, buildPatientSelectRow } from '~/utils/patient-select-menu';
+import { proPrescriptionGenerationEnabled } from '~/utils/prescription-access';
 import type { Appointment } from '~/types/appointments';
 
 const props = defineProps<{
@@ -215,6 +243,12 @@ const props = defineProps<{
 }>();
 
 const prescriptionKind = computed(() => props.prescriptionKind ?? 'medical');
+
+const { user } = useAuth();
+const prescriptionAccessBlocked = computed(
+  () => user.value?.role === 'pro' && !proPrescriptionGenerationEnabled(user.value),
+);
+const newPatientProfilePath = '/profile?newPatient=1';
 
 const toast = useAppToast();
 

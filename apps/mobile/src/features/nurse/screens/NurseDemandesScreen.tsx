@@ -88,7 +88,7 @@ export function NurseDemandesScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} collapsable={false}>
       <QueryFlatList
         query={query}
         items={displayRows}

@@ -1,17 +1,30 @@
 <template>
-  <AppPageShell class="space-y-6">
+  <AppPageShell class="space-y-4 sm:space-y-6">
     <template #pageHeader>
-    <AppPageHeader :edge-bleed="false" title="Gestion des utilisateurs" description="Gérez les utilisateurs : nom, prénom, email, rôle et types de soins.">
-      <template #actions>
-        <UButton color="primary" icon="i-lucide-plus" to="/admin/users/new">
-          Créer un utilisateur
-        </UButton>
-      </template>
-    </AppPageHeader>
-  </template>
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Gestion des utilisateurs"
+        description="Gérez les utilisateurs : nom, prénom, email, rôle et types de soins."
+      >
+        <template #actions>
+          <UButton
+            color="primary"
+            icon="i-lucide-plus"
+            to="/admin/users/new"
+            class="min-h-10 w-full justify-center sm:w-auto sm:min-h-9"
+          >
+            <span class="sm:hidden">Créer</span>
+            <span class="hidden sm:inline">Créer un utilisateur</span>
+          </UButton>
+        </template>
+      </AppPageHeader>
+    </template>
 
+  <div
+    class="sticky top-0 z-20 -mx-1 px-1 pb-2 pt-0.5 backdrop-blur-md supports-[backdrop-filter]:bg-app-canvas/85 sm:static sm:z-auto sm:mx-0 sm:px-0 sm:pb-0 sm:pt-0 sm:backdrop-blur-none"
+  >
     <div
-      class="flex flex-col gap-2.5 rounded-xl border border-default/90 bg-default p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:flex-row sm:flex-wrap sm:items-center"
+      class="flex flex-col gap-2.5 rounded-xl border border-gray-200/90 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-gray-800 dark:bg-gray-950 sm:flex-row sm:flex-wrap sm:items-center"
     >
       <UInput
         v-model="searchQuery"
@@ -22,14 +35,14 @@
         class="min-w-0 flex-1"
         :ui="{ rounded: 'rounded-lg' }"
       />
-      <div class="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+      <div class="grid grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
         <USelect
           v-model="roleFilter"
           :items="roleOptions"
           value-key="value"
           placeholder="Rôle"
           size="sm"
-          class="min-w-[10rem] flex-1 sm:flex-none sm:min-w-[11rem]"
+          class="min-w-0 sm:min-w-[11rem]"
         />
         <USelect
           v-model="statusFilter"
@@ -37,165 +50,97 @@
           value-key="value"
           placeholder="Statut"
           size="sm"
-          class="min-w-[10rem] flex-1 sm:flex-none sm:min-w-[11rem]"
+          class="min-w-0 sm:min-w-[11rem]"
         />
       </div>
     </div>
+  </div>
 
-    <div class="overflow-hidden rounded-xl border border-default/90 bg-default shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-      <div v-if="loading" class="divide-y divide-default">
-        <div
-          v-for="i in 8"
-          :key="i"
-          class="flex animate-pulse flex-col gap-3 p-4 sm:flex-row sm:items-center"
-        >
-          <div class="flex flex-1 gap-3">
-            <div class="h-9 w-9 shrink-0 rounded-full bg-muted/60" />
-            <div class="min-w-0 flex-1 space-y-2">
-              <div class="h-4 w-44 max-w-full rounded bg-muted/50" />
-              <div class="h-3 w-56 max-w-full rounded bg-muted/40" />
-              <div class="flex gap-2">
-                <div class="h-5 w-16 rounded-full bg-muted/50" />
-                <div class="h-5 w-20 rounded-full bg-muted/40" />
-              </div>
+  <div
+    class="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-gray-800 dark:bg-gray-950"
+  >
+    <div v-if="loading" class="divide-y divide-gray-100 dark:divide-gray-800">
+      <div
+        v-for="i in 8"
+        :key="i"
+        class="flex animate-pulse flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:p-4"
+      >
+        <div class="flex flex-1 gap-3">
+          <div class="h-10 w-10 shrink-0 rounded-full bg-gray-100 dark:bg-gray-800" />
+          <div class="min-w-0 flex-1 space-y-2">
+            <div class="h-4 w-44 max-w-full rounded bg-gray-100 dark:bg-gray-800" />
+            <div class="h-3 w-56 max-w-full rounded bg-gray-100 dark:bg-gray-800" />
+            <div class="flex gap-2">
+              <div class="h-5 w-16 rounded-full bg-gray-100 dark:bg-gray-800" />
+              <div class="h-5 w-20 rounded-full bg-gray-100 dark:bg-gray-800" />
             </div>
-          </div>
-          <div
-            class="flex w-full shrink-0 flex-row items-center justify-start gap-2 sm:w-auto sm:justify-end"
-          >
-            <div class="h-7 w-[4.25rem] shrink-0 rounded-full bg-muted/50 sm:w-20" />
-            <div class="h-7 w-[4.75rem] shrink-0 rounded-full bg-muted/40" />
           </div>
         </div>
-      </div>
-
-      <div
-        v-else-if="filteredUsers.length === 0"
-        class="px-4 py-12 sm:py-14"
-      >
-        <UEmpty
-          icon="i-lucide-users"
-          title="Aucun utilisateur"
-          description="Aucun utilisateur ne correspond à vos critères. Modifiez les filtres ou la recherche."
-          variant="naked"
-          :actions="[
-            {
-              label: 'Réinitialiser les filtres',
-              variant: 'outline',
-              onClick: resetUserListFilters,
-            },
-          ]"
-        />
-      </div>
-
-      <div v-else class="divide-y divide-default">
-        <article
-          v-for="u in filteredUsers"
-          :key="u.id"
-          class="transition-colors hover:bg-muted/25"
-        >
-          <div
-            class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-4 sm:py-3.5"
-          >
-            <div class="flex min-w-0 flex-1 gap-3">
-              <UAvatar
-                :src="u.profile_image_url ?? undefined"
-                :alt="getUserDisplayName(u)"
-                size="sm"
-                class="shrink-0"
-              />
-              <div class="min-w-0 flex-1 space-y-2">
-                <div>
-                  <p class="truncate text-sm font-semibold text-foreground">
-                    {{ getUserDisplayName(u) || '—' }}
-                  </p>
-                  <p class="truncate text-xs text-muted">
-                    {{ u.email_display || u.email || '—' }}
-                  </p>
-                </div>
-                <div class="flex flex-wrap items-center gap-1.5">
-                  <UBadge :color="getRoleColor(u.role)" variant="soft" size="xs" class="font-medium shrink-0">
-                    {{ getRoleLabel(u.role) }}
-                  </UBadge>
-                  <template v-if="hasCareTypes(u.role)">
-                    <UBadge v-if="showPriseDeSang(u.role)" color="error" variant="outline" size="xs" leading-icon="i-lucide-syringe">
-                      Prélèvement
-                    </UBadge>
-                    <UBadge v-if="showSoinsInfirmiers(u.role)" color="info" variant="outline" size="xs" leading-icon="i-lucide-stethoscope">
-                      Soins infirmiers
-                    </UBadge>
-                  </template>
-                  <UBadge v-else color="neutral" variant="outline" size="xs" class="text-muted">
-                    Non applicable
-                  </UBadge>
-                  <UBadge
-                    v-if="u.banned_until && new Date(u.banned_until) > new Date('9999-12-30')"
-                    color="error"
-                    variant="outline"
-                    size="xs"
-                  >
-                    Banni
-                  </UBadge>
-                  <UBadge v-else-if="isSuspended(u)" color="warning" variant="outline" size="xs">
-                    Suspendu
-                  </UBadge>
-                  <UBadge v-else color="success" variant="outline" size="xs">
-                    Actif
-                  </UBadge>
-                </div>
-                <p class="text-[11px] tabular-nums text-muted">
-                  Inscrit le {{ u.created_at ? formatDateShort(u.created_at) : '—' }}
-                </p>
-              </div>
-            </div>
-
-            <div
-              class="flex w-full shrink-0 flex-row flex-wrap items-center justify-start gap-2 sm:w-auto sm:flex-nowrap sm:justify-end"
-            >
-              <UButton
-                size="xs"
-                variant="outline"
-                color="neutral"
-                leading-icon="i-lucide-eye"
-                class="inline-flex shrink-0 rounded-full px-3 py-1.5 font-medium shadow-none whitespace-nowrap"
-                :to="`/profile?userId=${u.id}`"
-              >
-                Voir
-              </UButton>
-              <UDropdownMenu :items="getActionItems(u)">
-                <UButton
-                  size="xs"
-                  variant="outline"
-                  color="neutral"
-                  trailing-icon="i-lucide-chevron-down"
-                  class="inline-flex shrink-0 rounded-full px-3 py-1.5 font-medium shadow-none whitespace-nowrap"
-                >
-                  Plus
-                </UButton>
-              </UDropdownMenu>
-            </div>
-          </div>
-        </article>
-      </div>
-
-      <div
-        v-if="totalPages > 1"
-        class="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t border-default/50"
-      >
-        <p class="text-sm text-muted">
-          Affichage de <span class="font-medium">{{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, totalItems) }}</span>
-          sur <span class="font-medium">{{ totalItems }}</span>
-        </p>
-        <UPagination
-          v-model:page="currentPage"
-          :total="totalItems"
-          :items-per-page="pageSize"
-          :sibling-count="2"
-          show-edges
-          :ui="{ wrapper: 'gap-1', rounded: 'rounded-lg' }"
-        />
+        <div class="flex w-full gap-2 sm:w-auto">
+          <div class="h-10 flex-1 rounded-lg bg-gray-100 dark:bg-gray-800 sm:h-9 sm:w-20 sm:flex-none sm:rounded-full" />
+          <div class="h-10 flex-1 rounded-lg bg-gray-100 dark:bg-gray-800 sm:h-9 sm:w-24 sm:flex-none sm:rounded-full" />
+        </div>
       </div>
     </div>
+
+    <div v-else-if="filteredUsers.length === 0" class="px-4 py-12 sm:py-14">
+      <UEmpty
+        icon="i-lucide-users"
+        title="Aucun utilisateur"
+        description="Aucun utilisateur ne correspond à vos critères. Modifiez les filtres ou la recherche."
+        variant="naked"
+        :actions="[
+          {
+            label: 'Réinitialiser les filtres',
+            variant: 'outline',
+            onClick: resetUserListFilters,
+          },
+        ]"
+      />
+    </div>
+
+    <div v-else class="divide-y divide-gray-100 dark:divide-gray-800">
+      <AdminUserListRow
+        v-for="u in filteredUsers"
+        :key="u.id"
+        :user="u"
+        :display-name="getUserDisplayName(u)"
+        :role-label="getRoleLabel(u.role)"
+        :role-color="getRoleColor(u.role)"
+        :created-label="u.created_at ? formatDateShort(u.created_at) : '—'"
+        :has-care-types="hasCareTypes(u.role)"
+        :show-prise-de-sang="showPriseDeSang(u.role)"
+        :show-soins-infirmiers="showSoinsInfirmiers(u.role)"
+        :is-banned="Boolean(u.banned_until && new Date(u.banned_until) > new Date('9999-12-30'))"
+        :is-suspended="isSuspended(u)"
+        :highlighted="highlightedUserId === String(u.id)"
+        :action-items="getActionItems(u)"
+        @view="openUserProfile"
+        @row-activate="openUserProfile"
+      />
+    </div>
+
+    <div
+      v-if="totalPages > 1"
+      class="flex flex-col items-center justify-between gap-3 border-t border-gray-100 px-3 py-3 dark:border-gray-800 sm:flex-row sm:gap-4 sm:px-4 sm:py-3"
+    >
+      <p class="text-center text-xs text-gray-500 dark:text-gray-400 sm:text-left sm:text-sm">
+        <span class="font-medium text-gray-700 dark:text-gray-300">
+          {{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, totalItems) }}
+        </span>
+        sur
+        <span class="font-medium text-gray-700 dark:text-gray-300">{{ totalItems }}</span>
+      </p>
+      <UPagination
+        v-model:page="currentPage"
+        :total="totalItems"
+        :items-per-page="pageSize"
+        :sibling-count="paginationSiblings"
+        show-edges
+        :ui="{ wrapper: 'gap-1', rounded: 'rounded-lg' }"
+      />
+    </div>
+  </div>
   </AppPageShell>
 </template>
 
@@ -207,17 +152,31 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
-import { labelFromAppointmentAddressField } from '~/utils/address-display';
+import { useListViewRestore } from '~/composables/useListViewRestore';
+
 const toast = useAppToast();
+const route = useRoute();
+const router = useRouter();
+const { prepareDetailNavigation, consumeRestore, restoreScrollTop } = useListViewRestore('admin-users');
 
 const users = ref<any[]>([]);
 const loading = ref(true);
 const searchQuery = ref('');
+const debouncedSearch = ref('');
 const roleFilter = ref('all');
 const statusFilter = ref('all');
 const currentPage = ref(1);
 const pageSize = 20;
 const totalItems = ref(0);
+const highlightedUserId = ref<string | null>(null);
+
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+watch(searchQuery, (q) => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    debouncedSearch.value = q;
+  }, 220);
+}, { immediate: true });
 
 const roleOptions = [
   { label: 'Tous les rôles', value: 'all' },
@@ -243,7 +202,6 @@ function resetUserListFilters() {
   searchQuery.value = '';
 }
 
-/** Lab, sous-compte, préleveur = Prélèvement uniquement. Infirmier = Soins infirmiers uniquement. */
 const ROLES_PRISE_DE_SANG = ['lab', 'subaccount', 'preleveur'];
 const ROLES_SOINS_INFIRMIERS = ['nurse'];
 
@@ -257,7 +215,6 @@ function hasCareTypes(role: string): boolean {
   return showPriseDeSang(role) || showSoinsInfirmiers(role);
 }
 
-/** USelect peut retourner l'objet ou la valeur */
 const roleVal = computed(() => {
   const v = roleFilter.value;
   return (typeof v === 'object' && v?.value != null) ? v.value : v;
@@ -267,17 +224,16 @@ const statusVal = computed(() => {
   return (typeof v === 'object' && v?.value != null) ? v.value : v;
 });
 
-/** Filtre client-side uniquement par recherche (rôle et statut sont envoyés à l'API) */
 const filteredUsers = computed(() => {
   let filtered = [...(users.value || [])];
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    filtered = filtered.filter(u =>
-      u.email?.toLowerCase().includes(query) ||
-      u.email_display?.toLowerCase().includes(query) ||
-      u.first_name?.toLowerCase().includes(query) ||
-      u.last_name?.toLowerCase().includes(query) ||
-      (u.company_name && u.company_name.toLowerCase().includes(query))
+  const query = debouncedSearch.value.trim().toLowerCase();
+  if (query) {
+    filtered = filtered.filter((u) =>
+      u.email?.toLowerCase().includes(query)
+      || u.email_display?.toLowerCase().includes(query)
+      || u.first_name?.toLowerCase().includes(query)
+      || u.last_name?.toLowerCase().includes(query)
+      || (u.company_name && u.company_name.toLowerCase().includes(query))
     );
   }
   return filtered;
@@ -285,8 +241,68 @@ const filteredUsers = computed(() => {
 
 const totalPages = computed(() => Math.ceil(Math.max(0, totalItems.value) / pageSize));
 
+const paginationSiblings = computed(() => {
+  if (!import.meta.client) return 1;
+  return window.matchMedia('(max-width: 640px)').matches ? 0 : 2;
+});
+
+function listStateSnapshot() {
+  return {
+    searchQuery: searchQuery.value,
+    roleFilter: roleFilter.value,
+    statusFilter: statusFilter.value,
+    currentPage: currentPage.value,
+  };
+}
+
+function applyListState(state: Record<string, unknown>) {
+  if (typeof state.searchQuery === 'string') searchQuery.value = state.searchQuery;
+  if (state.roleFilter != null) roleFilter.value = state.roleFilter as string;
+  if (state.statusFilter != null) statusFilter.value = state.statusFilter as string;
+  if (typeof state.currentPage === 'number' && state.currentPage >= 1) {
+    currentPage.value = state.currentPage;
+  }
+}
+
+function openUserProfile(userId: string) {
+  prepareDetailNavigation(listStateSnapshot(), userId);
+  void navigateTo(`/profile?userId=${userId}`);
+}
+
+async function scrollToHighlightedUser(viewedId?: string) {
+  if (!viewedId) return;
+  highlightedUserId.value = viewedId;
+  await nextTick();
+  requestAnimationFrame(() => {
+    const el = document.getElementById(`admin-user-row-${viewedId}`);
+    if (el) el.scrollIntoView({ block: 'center', behavior: 'auto' });
+  });
+  setTimeout(() => {
+    if (highlightedUserId.value === viewedId) highlightedUserId.value = null;
+  }, 2800);
+}
+
 onMounted(async () => {
+  const fromProfile =
+    import.meta.client
+    && (route.query.restore === '1' || document.referrer.includes('/profile'));
+  const restored = fromProfile ? consumeRestore() : null;
+  if (route.query.restore === '1') {
+    await router.replace({ path: '/admin/users' });
+  }
+  if (restored?.state) applyListState(restored.state);
   await fetchUsers();
+  if (restored) {
+    if (restored.viewedId) {
+      await scrollToHighlightedUser(restored.viewedId);
+    } else {
+      await restoreScrollTop(restored.scrollTop);
+    }
+  }
+});
+
+onUnmounted(() => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
 });
 
 watch([roleFilter, statusFilter], () => {
@@ -359,7 +375,6 @@ const getRoleLabel = (role: string): string => {
   return labels[role] || role;
 };
 
-/** Nom affiché : pour lab/subaccount = company_name ; sinon prénom + nom, ou email */
 function getUserDisplayName(user: any): string {
   if (!user) return '';
   if (user.role === 'lab' || user.role === 'subaccount') {
@@ -372,25 +387,14 @@ function getUserDisplayName(user: any): string {
   return name || (user.email ?? '').trim() || '';
 }
 
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleString('fr-FR');
-};
-
 const formatDateShort = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-/** Libellé d'adresse utilisateur (objet, chaîne ou JSON stringifié) */
-function getAddressLabel(address: any): string {
-  const line = labelFromAppointmentAddressField(address);
-  return line || '—';
-}
-
 const getActionItems = (user: any) => {
-  const profileUrl = `/profile?userId=${user.id}`;
   const main: any[] = [
-    { label: 'Voir le détail', icon: 'i-lucide-eye', onSelect: () => navigateTo(profileUrl) },
-    { label: 'Historique des incidents', icon: 'i-lucide-shield-alert', onSelect: () => navigateTo(profileUrl) },
+    { label: 'Voir le détail', icon: 'i-lucide-eye', onSelect: () => openUserProfile(String(user.id)) },
+    { label: 'Historique des incidents', icon: 'i-lucide-shield-alert', onSelect: () => openUserProfile(String(user.id)) },
     { label: 'Envoyer reset mot de passe', icon: 'i-lucide-mail', onSelect: () => sendPasswordResetEmail(user.id) },
     { label: 'Mot de passe temporaire', icon: 'i-lucide-key-round', onSelect: () => setTemporaryPassword(user.id) },
   ];
@@ -512,15 +516,5 @@ const deleteUser = async (id: string) => {
   } catch (error: any) {
     toast.add({ title: 'Erreur', description: (error as Error)?.message ?? 'Erreur réseau', color: 'error' });
   }
-};
-
-const getIncidentLabel = (action: string) => {
-  const labels: Record<string, string> = {
-    incident: 'Incident enregistré',
-    suspend_user: 'Utilisateur suspendu',
-    ban_user: 'Utilisateur banni',
-    unban_user: 'Utilisateur débanni',
-  };
-  return labels[action] || action;
 };
 </script>

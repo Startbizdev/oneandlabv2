@@ -22,6 +22,7 @@ import {
   type CareCategory,
 } from '@/features/categories/api/categories.service';
 import { CACHE_STALE_CATEGORIES_MS } from '@oneandlab/shared-constants';
+import { STAFF_PATIENT_BOOKING_CONSENT_ERROR } from '@oneandlab/shared-constants';
 import {
   formDataSliceForQuickAddedService,
   type BookingServiceFormSlice,
@@ -80,6 +81,10 @@ export function useAppointmentForm(opts: {
   const router = useRouter();
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
+  const staffRequiresPatientConsent =
+    opts.mode === 'create' &&
+    (opts.role === 'pro' || opts.role === 'nurse' || opts.role === 'lab' || opts.role === 'subaccount');
+  const [patientBookingConsent, setPatientBookingConsent] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [addressComplement, setAddressComplement] = useState('');
 
@@ -162,6 +167,9 @@ export function useAppointmentForm(opts: {
 
   const createMut = useMutation({
     mutationFn: async (data: AppointmentFormSchema) => {
+      if (staffRequiresPatientConsent && !patientBookingConsent) {
+        throw new Error(STAFF_PATIENT_BOOKING_CONSENT_ERROR);
+      }
       if (!isAvailabilityValid(data.availability_type, data.availability_range)) {
         throw new Error('Plage horaire trop courte (minimum 1 h)');
       }
@@ -186,6 +194,7 @@ export function useAppointmentForm(opts: {
           gender: data.gender,
           address,
           ...(data.email?.trim() ? { email: data.email.trim() } : {}),
+          ...(staffRequiresPatientConsent ? { patient_booking_consent: true } : {}),
         });
         if (!pRes.success || !pRes.data?.id) throw new Error(pRes.error ?? 'Création patient impossible');
         patientId = pRes.data.id;
@@ -199,6 +208,9 @@ export function useAppointmentForm(opts: {
         }
       }
       const body = buildSingleAppointmentPayload(merged, patientId, createStatus);
+      if (staffRequiresPatientConsent) {
+        body.patient_booking_consent = true;
+      }
       if (opts.role === 'nurse' && user?.id && createStatus === 'confirmed') {
         body.assigned_nurse_id = user.id;
       }
@@ -324,6 +336,9 @@ export function useAppointmentForm(opts: {
       setValue('type', cat.type);
     },
     onSelectPatient,
+    patientBookingConsent,
+    setPatientBookingConsent,
+    staffRequiresPatientConsent,
     setValues: (fn: (prev: AppointmentFormValues) => AppointmentFormValues) => {
       const next = fn(values as AppointmentFormValues);
       reset(next as AppointmentFormSchema);
@@ -338,6 +353,7 @@ export function useMultiAppointmentWizard(opts: {
   /** Parcours patient connecté : sync adresse sur /users/:id */
   syncPatientSelfAddress?: boolean;
   bookingMode?: 'patient' | 'dashboard';
+  getPatientBookingConsent?: () => boolean;
 }) {
   const { show: toast } = useToast();
   const router = useRouter();
@@ -561,6 +577,14 @@ export function useMultiAppointmentWizard(opts: {
 
   const submitMut = useMutation({
     mutationFn: async () => {
+      if (
+        opts.bookingMode === 'dashboard' &&
+        opts.getPatientBookingConsent &&
+        !opts.getPatientBookingConsent()
+      ) {
+        throw new Error(STAFF_PATIENT_BOOKING_CONSENT_ERROR);
+      }
+
       const patient = form.getValues();
       const address = patient.address
         ? { ...patient.address, complement: addressComplement || undefined }
@@ -593,6 +617,7 @@ export function useMultiAppointmentWizard(opts: {
           gender: patient.gender,
           address: address ?? undefined,
           ...(patient.email?.trim() ? { email: patient.email.trim() } : {}),
+          patient_booking_consent: true,
         });
         if (!pRes.success || !pRes.data?.id) throw new Error(pRes.error ?? 'Création patient impossible');
         patientId = pRes.data.id;

@@ -1,9 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import {
@@ -14,7 +13,7 @@ import {
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonList } from '@/components/ui/skeletons';
+import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { ReviewFilterChips } from '@/features/reviews/components/ReviewFilterChips';
@@ -22,10 +21,8 @@ import { ReviewReceivedCard } from '@/features/reviews/components/ReviewReceived
 import { ReviewReplySheet } from '@/features/reviews/components/ReviewReplySheet';
 import { ReviewStatsBanner } from '@/features/reviews/components/ReviewStatsBanner';
 import type { Review, ReviewFilter, ReviewStats } from '@/features/reviews/types';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
+import { scrollChildEntering } from '@/lib/platform/list-entering-animation';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -36,7 +33,6 @@ function filterReviews(list: Review[], filter: ReviewFilter): Review[] {
 }
 
 export function NurseReviewsScreen() {
-  const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_nurse_screens_NurseReviewsScreen_tsx_NurseReviewsScreen_styles');
 
   const user = useAuthStore((s) => s.user);
@@ -98,8 +94,6 @@ export function NurseReviewsScreen() {
   const refetchAll = async () => {
     await Promise.all([reviewsQ.refetch(), statsQ.refetch()]);
   };
-  const { refreshing, onRefresh } = useManualRefresh(refetchAll);
-  const scrollConfig = useStackScrollConfig(styles.list);
 
   const ListHeader = () => (
     <View style={styles.headerBlock}>
@@ -120,54 +114,51 @@ export function NurseReviewsScreen() {
 
   return (
     <StackChromeScreen>
-      {reviewsQ.isLoading ? (
-        <View style={styles.loading}>
-          <SkeletonList count={4} itemHeight={120} gap={12} />
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          {...spreadTabSceneScrollProps(scrollConfig)}
-          contentContainerStyle={scrollConfig.contentContainerStyle}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={c.primary}
-              progressViewOffset={scrollConfig.refreshProgressOffset}
-            />
-          }
-          ListHeaderComponent={ListHeader}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          renderItem={({ item, index }) => (
-            <Animated.View entering={FadeInDown.delay(index * 40).duration(280).springify()}>
-              <ReviewReceivedCard review={item} onReply={item.response?.trim() ? undefined : () => openReply(item)} />
-            </Animated.View>
-          )}
-          ListEmptyComponent={
-            allReviews.length === 0 ? (
-              <EmptyState
-                title="Aucun avis disponible"
-                description="Il n'y a pas encore d'avis. Dès qu'un patient laissera une note après un soin, elle s'affichera ici."
-                imageSource={EMPTY_AVIS_IMAGE}
-                imageWidth={EMPTY_AVIS_IMAGE_WIDTH}
-                imageHeight={EMPTY_AVIS_IMAGE_HEIGHT}
+      <QueryFlatList
+        query={{
+          ...reviewsQ,
+          refetch: refetchAll,
+        }}
+        items={filtered}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
+        skeletonHeight={120}
+        ListHeaderComponent={ListHeader}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item, index }) => {
+          const entering = scrollChildEntering(index, 40, 280);
+          const Shell = entering ? Animated.View : View;
+          return (
+            <Shell entering={entering}>
+              <ReviewReceivedCard
+                review={item}
+                onReply={item.response?.trim() ? undefined : () => openReply(item)}
               />
-            ) : (
-              <View style={styles.filterEmpty}>
-                <Text style={styles.filterEmptyTitle}>
-                  {filter === 'pending' ? 'Aucun avis en attente' : 'Aucun avis répondu'}
-                </Text>
-                <Text style={styles.filterEmptyDesc}>
-                  Changez de filtre pour voir les autres avis.
-                </Text>
-              </View>
-            )
-          }
-        />
-      )}
+            </Shell>
+          );
+        }}
+        ListEmptyComponent={
+          allReviews.length === 0 ? (
+            <EmptyState
+              title="Aucun avis disponible"
+              description="Il n'y a pas encore d'avis. Dès qu'un patient laissera une note après un soin, elle s'affichera ici."
+              imageSource={EMPTY_AVIS_IMAGE}
+              imageWidth={EMPTY_AVIS_IMAGE_WIDTH}
+              imageHeight={EMPTY_AVIS_IMAGE_HEIGHT}
+            />
+          ) : (
+            <View style={styles.filterEmpty}>
+              <Text style={styles.filterEmptyTitle}>
+                {filter === 'pending' ? 'Aucun avis en attente' : 'Aucun avis répondu'}
+              </Text>
+              <Text style={styles.filterEmptyDesc}>
+                Changez de filtre pour voir les autres avis.
+              </Text>
+            </View>
+          )
+        }
+      />
 
       <ReviewReplySheet
         visible={replyTarget != null}

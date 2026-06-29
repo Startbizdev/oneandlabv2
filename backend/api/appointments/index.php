@@ -8,7 +8,7 @@ require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../../lib/LabTeamAccess.php';
 require_once __DIR__ . '/../../lib/Validation.php';
 require_once __DIR__ . '/../../config/cors.php';
-require_once __DIR__ . '/../../lib/DbSchemaCache.php';
+require_once __DIR__ . '/../../lib/StaffPatientConsent.php';
 
 /** Logs verbeux : désactivés si APP_ENV=production (après chargement .env par config/database.php). */
 function appointmentsVerboseLoggingEnabled(): bool
@@ -931,6 +931,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $input['category_id'] = $input['form_data']['category_id'];
     }
 
+    StaffPatientConsent::validateOrFail($input, $user);
+
     if ($user['role'] === 'preleveur') {
         $t = isset($input['type']) ? (string) $input['type'] : '';
         $ft = isset($input['form_type']) ? (string) $input['form_type'] : '';
@@ -1089,6 +1091,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         logAppointment('Appel à appointmentModel->create', ['user_id' => $user['user_id'], 'role' => $user['role']]);
         $id = $appointmentModel->create($inputForCreate, $user['user_id'], $user['role']);
         logAppointment('Rendez-vous créé avec succès', ['appointment_id' => $id]);
+
+        if (StaffPatientConsent::requiresConsent((string) ($user['role'] ?? ''))) {
+            $consentPatientId = isset($input['patient_id']) ? (string) $input['patient_id'] : null;
+            StaffPatientConsent::logRecorded($user, $consentPatientId, 'appointment_create');
+        }
 
         if (!empty($inputForCreate['attribution_qr_id'])) {
             require_once __DIR__ . '/../../lib/QrCodeService.php';

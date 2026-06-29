@@ -72,129 +72,12 @@
       />
     </template>
 
-    <!-- Assignation : même système que détail lab (lab + préleveur pour prise de sang, infirmier pour soins) -->
     <template #assignationSection="{ appointment, loadAppointment }">
-      <UCard v-if="appointment && ['pending', 'confirmed', 'inProgress'].includes(appointment.status)" class="overflow-hidden">
-        <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-user-cog" class="w-5 h-5 text-primary" />
-            <span class="font-semibold text-gray-900 dark:text-white">Assignation</span>
-          </div>
-        </template>
-        <div class="space-y-4">
-          <template v-if="appointment.type === 'blood_test'">
-            <p class="text-sm text-gray-500 dark:text-gray-400">Laboratoire (ou sous-compte) puis optionnellement un préleveur.</p>
-            <div class="space-y-2">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Laboratoire assigné</label>
-              <USelectMenu
-                v-model="reassignLabId"
-                :items="labSelectItems"
-                value-key="value"
-                :placeholder="labSelectPlaceholder"
-                size="md"
-                class="w-full min-w-0"
-                :loading="labsLoading"
-                :search-input="{ placeholder: 'Rechercher un labo...' }"
-                :filter-fields="['label']"
-              >
-                <template #empty>
-                  <div class="py-6 px-4">
-                    <UEmpty
-                      icon="i-lucide-building-2"
-                      title="Aucun laboratoire trouvé"
-                      description="Aucun laboratoire ne correspond à votre recherche."
-                      variant="naked"
-                      size="sm"
-                    />
-                  </div>
-                </template>
-              </USelectMenu>
-            </div>
-            <div class="space-y-2">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Préleveur assigné</label>
-              <USelectMenu
-                v-model="reassignPreleveurId"
-                :items="preleveurSelectItems"
-                value-key="value"
-                :placeholder="reassignLabId ? 'Choisir un préleveur (optionnel)' : 'Sélectionnez d\'abord un laboratoire'"
-                size="md"
-                class="w-full min-w-0"
-                :loading="preleveursLoading"
-                :disabled="!reassignLabId"
-                :search-input="{ placeholder: 'Rechercher...' }"
-                :filter-fields="['label']"
-              >
-                <template #empty>
-                  <div class="py-6 px-4">
-                    <UEmpty
-                      icon="i-lucide-user-check"
-                      title="Aucun préleveur trouvé"
-                      description="Aucun préleveur ne correspond à votre recherche. Laissez vide si non assigné."
-                      variant="naked"
-                      size="sm"
-                    />
-                  </div>
-                </template>
-              </USelectMenu>
-            </div>
-            <UButton
-              type="button"
-              color="primary"
-              variant="soft"
-              size="md"
-              leading-icon="i-lucide-check"
-              :loading="reassigning"
-              :disabled="!reassignLabId"
-              block
-              :on-click="() => reassignAppointment(appointment, loadAppointment)"
-            >
-              Appliquer l’assignation
-            </UButton>
-          </template>
-          <template v-else-if="appointment.type === 'nursing'">
-            <p class="text-sm text-gray-500 dark:text-gray-400">Assigner ce rendez-vous à un infirmier.</p>
-            <div class="space-y-2">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Infirmier assigné</label>
-              <USelectMenu
-                v-model="reassignNurseId"
-                :items="nurseSelectItems"
-                value-key="value"
-                :placeholder="nurseSelectPlaceholder"
-                size="md"
-                class="w-full min-w-0"
-                :loading="nursesLoading"
-                :search-input="{ placeholder: 'Rechercher un infirmier...' }"
-                :filter-fields="['label']"
-              >
-                <template #empty>
-                  <div class="py-6 px-4">
-                    <UEmpty
-                      icon="i-lucide-stethoscope"
-                      title="Aucun infirmier trouvé"
-                      description="Aucun infirmier ne correspond à votre recherche."
-                      variant="naked"
-                      size="sm"
-                    />
-                  </div>
-                </template>
-              </USelectMenu>
-            </div>
-            <UButton
-              type="button"
-              color="primary"
-              variant="soft"
-              size="md"
-              leading-icon="i-lucide-check"
-              :loading="reassigning"
-              :disabled="!reassignNurseId"
-              block
-              :on-click="() => reassignAppointment(appointment, loadAppointment)"
-            >
-              Appliquer l’assignation
-            </UButton>
-          </template>
-        </div>
-      </UCard>
+      <AdminAppointmentAssignmentCard
+        :appointment="appointment"
+        :load-appointment="loadAppointment"
+        :batch-count="assignBatchCount(appointment)"
+      />
     </template>
 
     <template #mainExtra="{ appointment, loadAppointment }">
@@ -416,143 +299,18 @@ function getDocTypeIconClass(color: string) {
 }
 
 const updatingStatus = ref(false);
-const reassigning = ref(false);
-const reassignLabId = ref('');
-const reassignNurseId = ref('');
-const reassignPreleveurId = ref('');
-const labs = ref<any[]>([]);
-const nurses = ref<any[]>([]);
-const preleveurs = ref<any[]>([]);
-const labsLoading = ref(false);
-const nursesLoading = ref(false);
-const preleveursLoading = ref(false);
 
-const labSelectItems = computed(() =>
-  labs.value.map((p) => ({
-    label: (p.company_name && String(p.company_name).trim()) || `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email || p.id,
-    value: p.id,
-  }))
-);
-const nurseSelectItems = computed(() => {
-  const items = nurses.value.map((p) => ({
-    label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email || p.id,
-    value: p.id,
-  }));
-  const apt = loadedAppointmentForAssign.value ?? getAppointmentFromDetailRef(detailRef);
-  const nurseId = apt?.assigned_nurse_id ? String(apt.assigned_nurse_id) : '';
-  const displayName = apt?.assigned_nurse_display_name;
-  if (nurseId && displayName && !items.some((i) => i.value === nurseId)) {
-    items.unshift({ label: displayName, value: nurseId });
-  }
-  return items;
-});
-const preleveurSelectItems = computed(() => {
-  const labId = reassignLabId.value;
-  return preleveurs.value
-    .filter((p) => !labId || String(p.lab_id || '') === String(labId))
-    .map((p) => ({
-      label: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email || p.id,
-      value: p.id,
-    }));
-});
-function assignationIdAsString(val: unknown): string {
-  if (val == null || val === '') return '';
-  if (typeof val === 'string') return val;
-  if (typeof val === 'object' && val !== null && 'value' in val) return String((val as { value: unknown }).value);
-  return String(val);
-}
-const currentLabName = computed(() => {
-  const id = assignationIdAsString(reassignLabId.value);
-  if (!id) return '';
-  const lab = labs.value.find((p) => p.id === id);
-  if (!lab) return id;
-  return (lab.company_name && String(lab.company_name).trim()) || `${(lab.first_name || '').trim()} ${(lab.last_name || '').trim()}`.trim() || lab.email || id;
-});
-const currentNurseName = computed(() => {
-  const id = assignationIdAsString(reassignNurseId.value);
-  if (!id) return '';
-  const nurse = nurses.value.find((p) => p.id === id);
-  const name = nurse ? `${(nurse.first_name || '').trim()} ${(nurse.last_name || '').trim()}`.trim() || nurse.email || '' : '';
-  return name || ((loadedAppointmentForAssign.value ?? getAppointmentFromDetailRef(detailRef))?.assigned_nurse_display_name ?? '');
-});
-const labSelectPlaceholder = computed(() => {
-  if (labsLoading.value) return 'Chargement...';
-  if (currentLabName.value) return `Laboratoire assigné : ${currentLabName.value}`;
-  return 'Rechercher un laboratoire...';
-});
-const nurseSelectPlaceholder = computed(() => {
-  if (nursesLoading.value) return 'Chargement...';
-  if (currentNurseName.value) return `Infirmier assigné : ${currentNurseName.value}`;
-  return 'Rechercher un infirmier...';
-});
-
-const DEBUG_ASSIGN = true; // TODO: retirer après debug — logs console assignation admin
-function syncAssignationFromAppointment(appointment: any) {
-  if (DEBUG_ASSIGN) console.log('[Admin RDV Assignation] syncAssignationFromAppointment', appointment ? { id: appointment.id, type: appointment.type, assigned_lab_id: appointment.assigned_lab_id, assigned_to: appointment.assigned_to, assigned_nurse_id: appointment.assigned_nurse_id } : null);
-  if (!appointment) return;
-  const labId = appointment.assigned_lab_id != null ? String(appointment.assigned_lab_id) : '';
-  const toId = appointment.assigned_to != null ? String(appointment.assigned_to) : '';
-  const nurseId = appointment.assigned_nurse_id != null ? String(appointment.assigned_nurse_id) : '';
-  if (appointment.type === 'blood_test') {
-    reassignLabId.value = labId;
-    reassignPreleveurId.value = toId;
-    reassignNurseId.value = '';
-    if (DEBUG_ASSIGN) console.log('[Admin RDV Assignation] sync blood_test →', { reassignLabId: labId, reassignPreleveurId: toId });
-  } else if (appointment.type === 'nursing') {
-    reassignNurseId.value = nurseId;
-    reassignLabId.value = '';
-    reassignPreleveurId.value = '';
-    if (DEBUG_ASSIGN) console.log('[Admin RDV Assignation] sync nursing →', { reassignNurseId: nurseId });
-  }
+function assignBatchCount(appointment: any): number {
+  const size = Number(appointment?.creation_batch_size ?? 0);
+  return size > 1 ? size : 1;
 }
 
-// Une seule règle : synchroniser les dropdowns d’assignation quand on a à la fois
-// le RDV (référence) et les listes (labos, infirmiers, préleveurs). Ainsi après
-// refresh ou navigation, les selects affichent le bon libellé sans nextTick ni double watch.
-const loadedAppointmentForAssign = ref<any>(null);
-const allListsLoaded = computed(() => !labsLoading.value && !nursesLoading.value && !preleveursLoading.value);
-
-function trySyncAssignation() {
-  if (!loadedAppointmentForAssign.value || !allListsLoaded.value) return;
-  if (DEBUG_ASSIGN) console.log('[Admin RDV Assignation] trySyncAssignation → sync');
-  syncAssignationFromAppointment(loadedAppointmentForAssign.value);
+function onAppointmentLoaded(_appointment: any) {
+  /* assignation gérée par AdminAppointmentAssignmentCard */
 }
 
-function onAppointmentLoaded(appointment: any) {
-  if (DEBUG_ASSIGN) console.log('[Admin RDV Assignation] appointment-loaded', appointment?.id);
-  loadedAppointmentForAssign.value = appointment ?? null;
-  trySyncAssignation();
-}
-
-watch(allListsLoaded, (loaded) => {
-  if (loaded) trySyncAssignation();
-}, { immediate: true });
-
-onMounted(async () => {
+onMounted(() => {
   loadStatusHistory();
-  labsLoading.value = true;
-  nursesLoading.value = true;
-  preleveursLoading.value = true;
-  try {
-    const [labRes, subRes, nurseRes, prelRes] = await Promise.all([
-      apiFetch('/users?role=lab&limit=500', { method: 'GET' }),
-      apiFetch('/users?role=subaccount&limit=500', { method: 'GET' }),
-      apiFetch('/users?role=nurse&limit=500', { method: 'GET' }),
-      apiFetch('/users?role=preleveur&limit=500', { method: 'GET' }),
-    ]);
-    labs.value = [
-      ...(labRes.success && labRes.data ? (labRes.data as any[]) : []),
-      ...(subRes.success && subRes.data ? (subRes.data as any[]) : []),
-    ];
-    nurses.value = nurseRes.success && nurseRes.data ? (nurseRes.data as any[]) : [];
-    preleveurs.value = prelRes.success && prelRes.data ? (prelRes.data as any[]) : [];
-  } catch (error) {
-    console.error('Erreur chargement labos/infirmiers/préleveurs:', error);
-  } finally {
-    labsLoading.value = false;
-    nursesLoading.value = false;
-    preleveursLoading.value = false;
-  }
 });
 
 const appointmentId = computed(() => route.params.id as string);
@@ -606,54 +364,6 @@ function getStatusLabel(status: string) {
     refused: 'Refusé',
   };
   return labels[status] || status;
-}
-
-function toId(v: unknown): string {
-  if (v == null || v === '') return '';
-  if (typeof v === 'string') return v;
-  if (typeof v === 'object' && v !== null && 'value' in v) return String((v as { value: unknown }).value);
-  if (typeof v === 'object' && v !== null && 'id' in v) return String((v as { id: unknown }).id);
-  return String(v);
-}
-
-async function reassignAppointment(apt: { id: string; type?: string } | null, loadAppointment: () => Promise<void>) {
-  const appointment = apt ?? getAppointmentFromDetailRef(detailRef);
-  if (!appointment?.id) return;
-  const isBloodTest = appointment.type === 'blood_test';
-  const isNursing = appointment.type === 'nursing';
-  const body: Record<string, string> = {};
-  const labId = toId(reassignLabId.value);
-  const preleveurId = toId(reassignPreleveurId.value);
-  const nurseId = toId(reassignNurseId.value);
-  if (isBloodTest && labId) {
-    body.assigned_lab_id = labId;
-    if (preleveurId) body.assigned_to = preleveurId;
-  } else if (isNursing && nurseId) {
-    body.assigned_nurse_id = nurseId;
-  }
-  if (Object.keys(body).length === 0) {
-    toast.add({ title: 'Sélection requise', description: 'Choisissez un laboratoire ou un infirmier selon le type de rendez-vous.', color: 'amber' });
-    return;
-  }
-  reassigning.value = true;
-  try {
-    const response = await apiFetch(`/appointments/${appointment.id}/reassign`, {
-      method: 'POST',
-      body,
-    });
-    if (response?.success) {
-      toast.add({ title: 'Rendez-vous réassigné', color: 'green' });
-      await loadAppointment();
-    } else {
-      const errMsg = (response as any)?.error ?? (response as any)?.message ?? 'Impossible de réassigner.';
-      toast.add({ title: 'Erreur', description: errMsg, color: 'red' });
-    }
-  } catch (error: any) {
-    const errMsg = error?.message ?? (error?.data?.error ?? 'Impossible de réassigner.');
-    toast.add({ title: 'Erreur', description: errMsg, color: 'red' });
-  } finally {
-    reassigning.value = false;
-  }
 }
 
 async function onConfirmCancel(payload: { reason: string; comment: string; photoFile: File | null }) {

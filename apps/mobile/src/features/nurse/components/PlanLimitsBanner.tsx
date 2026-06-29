@@ -2,10 +2,10 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import React from 'react';
-import { View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import React from 'react';
+import { Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Zap } from 'lucide-react-native';
@@ -16,6 +16,7 @@ import {
   normalizeNursePlanLimits,
   type NursePlanLimitsApi,
 } from '@/features/nurse/utils/nurse-plan-limits';
+import { scrollSectionEntering } from '@/lib/platform/list-entering-animation';
 import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -37,8 +38,11 @@ export function PlanLimitsBanner() {
   const { used, max, quotaFull: full } = limits;
   const pct = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
 
+  const entering = scrollSectionEntering(0, 350);
+  const Shell = entering ? Animated.View : View;
+
   return (
-    <Animated.View entering={FadeInDown.duration(350).springify()} style={[styles.card, elevation.sm]}>
+    <Shell entering={entering} style={[styles.card, elevation.sm]}>
       <Cluster
         gap={spacing[3]}
         leading={
@@ -48,20 +52,20 @@ export function PlanLimitsBanner() {
         }
       >
         <Row justify="between" align="center" flex={1}>
-          <Animated.Text style={styles.title}>Offre Découverte</Animated.Text>
-          <Animated.Text style={[styles.pill, full ? styles.pillFull : styles.pillActive]}>
+          <Text style={styles.title}>Offre Découverte</Text>
+          <Text style={[styles.pill, full ? styles.pillFull : styles.pillActive]}>
             {full ? 'Quota atteint' : 'Ce mois-ci'}
-          </Animated.Text>
+          </Text>
         </Row>
       </Cluster>
 
-      <Animated.Text style={styles.countText}>
-        <Animated.Text style={[styles.countBig, full && styles.countBigFull]}>{used}</Animated.Text>
+      <Text style={styles.countText}>
+        <Text style={[styles.countBig, full && styles.countBigFull]}>{used}</Text>
         {' / '}{max} rendez-vous
-      </Animated.Text>
+      </Text>
 
       <View style={styles.trackBg}>
-        <Animated.View
+        <View
           style={[
             styles.trackFill,
             { width: `${pct}%` as `${number}%` },
@@ -77,7 +81,7 @@ export function PlanLimitsBanner() {
         onPress={() => router.push('/(nurse)/abonnement')}
         fullWidth
       />
-    </Animated.View>
+    </Shell>
   );
 }
 

@@ -1,9 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
+import { View, type ScrollView } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
@@ -44,9 +42,8 @@ import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
 import { filterListDocuments } from '../detail/utils/document-labels';
 import { staffPatientProfilePath } from '@/features/patients/utils/staff-hub-navigation';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
+import { StackScrollView } from '@/components/navigation/StackScrollView';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { spacing } from '@/theme';
 
 interface Props {
@@ -60,7 +57,6 @@ function isStaffExchangeRole(role: string): boolean {
 }
 
 export function AppointmentDetailScreen({ role }: Props) {
-  const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_appointments_screens_AppointmentDetailScreen_tsx_AppointmentDetailScreen_styles');
 
   const { id, careGallery, carePhoto, segment: segmentParam } = useLocalSearchParams<{
@@ -189,7 +185,6 @@ export function AppointmentDetailScreen({ role }: Props) {
   const pullRefresh = useManualRefresh(async () => {
     s.refreshAll();
   });
-  const scrollConfig = useStackScrollConfig([styles.scroll, styles.content]);
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTopOnPop(scrollRef);
 
@@ -253,27 +248,17 @@ export function AppointmentDetailScreen({ role }: Props) {
   return (
     <>
       <StackChromeScreen title={s.headerTitleNode}>
-        <ScrollView
-          ref={scrollRef}
-          style={styles.container}
-          refreshControl={
-            <AppRefreshControl
-              refreshing={pullRefresh.refreshing}
-              onRefresh={pullRefresh.onRefresh}
-              progressViewOffset={scrollConfig.refreshProgressOffset}
-            />
-          }
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={scrollConfig.contentContainerStyle}
-          {...spreadTabSceneScrollProps(scrollConfig)}
-          keyboardShouldPersistTaps="handled"
+        <StackScrollView
+          scrollRef={scrollRef}
+          contentContainerStyle={[styles.scroll, styles.content]}
+          refreshing={pullRefresh.refreshing}
+          onRefresh={pullRefresh.onRefresh}
         >
           {terminal ? <DetailTerminalBanner terminal={terminal} /> : null}
 
           {config.showOfferBlock && isPendingIncomingOffer(primary, user?.id) ? (
             <OfferActions appointmentId={id!} onDone={() => router.back()} />
           ) : null}
-
 
           <DetailSegmentBar
             segments={segments}
@@ -353,7 +338,7 @@ export function AppointmentDetailScreen({ role }: Props) {
               viewerRole={role}
             />
           ) : null}
-        </ScrollView>
+        </StackScrollView>
       </StackChromeScreen>
 
       <CancelAppointmentSheet
@@ -378,14 +363,6 @@ export function AppointmentDetailScreen({ role }: Props) {
 
 function buildStyles(c: AppColors) {
   return {
-  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
-  loading: {
-    minWidth: 0,
-    flex: 1,
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    backgroundColor: c.background,
-  },
   scroll: {
     flexGrow: 1,
     alignSelf: 'stretch' as const,
