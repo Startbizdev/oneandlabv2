@@ -80,6 +80,35 @@ if [[ -f "$ENV_FILE" ]] && ! grep -q '^NURSE_SHARE_REDISPATCH_MINUTES=' "$ENV_FI
   echo "NURSE_SHARE_REDISPATCH_MINUTES=30 ajouté dans $ENV_FILE."
 fi
 
+EXPIRE_PENDING_SCRIPT="$REMOTE_BASE/backend/cron/expire-pending-offers.php"
+EXPIRE_PENDING_LOG="/var/log/oneandlab-expire-pending-offers.log"
+EXPIRE_PENDING_CRON_NAME="oneandlab-expire-pending-offers"
+if [[ -f "$EXPIRE_PENDING_SCRIPT" ]]; then
+  CRON_FILE4="/etc/cron.d/${EXPIRE_PENDING_CRON_NAME}"
+  "${SUDO[@]}" tee "$CRON_FILE4" > /dev/null <<EOF4
+# Expiration RDV pending non acceptés (TTL depuis created_at) — OneAndLab
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+TZ=Europe/Paris
+*/10 * * * * $WWW_USER $PHP_BIN $EXPIRE_PENDING_SCRIPT >> $EXPIRE_PENDING_LOG 2>&1
+EOF4
+  "${SUDO[@]}" chmod 644 "$CRON_FILE4"
+  "${SUDO[@]}" touch "$EXPIRE_PENDING_LOG"
+  "${SUDO[@]}" chown "$WWW_USER:$WWW_USER" "$EXPIRE_PENDING_LOG"
+  echo "OK : $CRON_FILE4 (toutes les 10 min, utilisateur $WWW_USER)."
+  echo "Test manuel : sudo -u $WWW_USER $PHP_BIN $EXPIRE_PENDING_SCRIPT"
+else
+  echo "Ignoré : $EXPIRE_PENDING_SCRIPT absent."
+fi
+
+if [[ -f "$ENV_FILE" ]] && ! grep -q '^PENDING_OFFER_EXPIRY_HOURS=' "$ENV_FILE"; then
+  {
+    echo ""
+    echo "PENDING_OFFER_EXPIRY_HOURS=2"
+  } >> "$ENV_FILE"
+  echo "PENDING_OFFER_EXPIRY_HOURS=2 ajouté dans $ENV_FILE."
+fi
+
 PRELEVEUR_PATIENT_NOTIFS_SCRIPT="$REMOTE_BASE/backend/scripts/send-preleveur-patient-notifications.php"
 PRELEVEUR_PATIENT_NOTIFS_LOG="/var/log/oneandlab-preleveur-patient-notifications.log"
 PRELEVEUR_PATIENT_NOTIFS_CRON_NAME="oneandlab-preleveur-patient-notifications"

@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../lib/LabTeamAccess.php';
 require_once __DIR__ . '/../../lib/Validation.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/StaffPatientConsent.php';
+require_once __DIR__ . '/../../lib/PendingOfferExpiry.php';
 
 /** Logs verbeux : désactivés si APP_ENV=production (après chargement .env par config/database.php). */
 function appointmentsVerboseLoggingEnabled(): bool
@@ -295,6 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             } elseif ($nurseSegment === 'en_attente') {
                 $sql .= " AND a.type = 'nursing' AND a.status = 'pending'
                     AND a.assigned_nurse_id IS NULL
+                    AND " . PendingOfferExpiry::sqlCreatedWithinTtl('a') . "
                     AND EXISTS (SELECT 1 FROM appointment_offers o2 WHERE o2.appointment_id = a.id AND o2.profile_id = ?)";
                 $params[] = $userId;
             } elseif ($nurseSegment === 'acceptes') {
@@ -508,6 +510,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $params[] = $userId;
         }
         // super_admin sans user_id voit tout (pas de filtre supplémentaire)
+    }
+
+    if (
+        $user
+        && $status === 'pending'
+        && in_array($role ?? '', ['nurse', 'lab', 'subaccount', 'preleveur'], true)
+    ) {
+        $sql .= ' AND ' . PendingOfferExpiry::sqlCreatedWithinTtl('a');
     }
     
     // Compter le total - construire la requête COUNT à partir de la requête principale

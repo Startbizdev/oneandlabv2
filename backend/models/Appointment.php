@@ -2795,6 +2795,11 @@ class Appointment
         }
         
         // Envoyer notifications selon le nouveau statut (sauf pour redispatch)
+        if ($newStatus === 'expired' && $oldStatus === 'pending') {
+            $delExpiredOffers = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ?');
+            $delExpiredOffers->execute([$id]);
+        }
+
         if (!$redispatch) {
             $this->sendStatusNotifications($id, $newStatus, $actorId, $actorRole);
         }
