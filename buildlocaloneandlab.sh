@@ -121,9 +121,9 @@ retry_cmd 3 deploy_sync_dir \
   "$SCRIPT_DIR/database/" \
   "$SSH_TARGET:$REMOTE_BASE/database/"
 
-echo "==> Permissions uploads (www-data)..."
+echo "==> Permissions uploads + storage (www-data)..."
 retry_cmd 2 ssh "${SSH_OPTS[@]}" "$SSH_TARGET" \
-  "sudo mkdir -p $REMOTE_BASE/backend/uploads/medical && sudo chown -R www-data:www-data $REMOTE_BASE/backend/uploads && sudo chmod -R 775 $REMOTE_BASE/backend/uploads"
+  "sudo mkdir -p $REMOTE_BASE/backend/uploads/medical $REMOTE_BASE/backend/storage/patient-booking-drafts && sudo chown -R www-data:www-data $REMOTE_BASE/backend/uploads $REMOTE_BASE/backend/storage && sudo chmod -R 775 $REMOTE_BASE/backend/uploads $REMOTE_BASE/backend/storage"
 
 echo "==> Redemarrage PM2 sur le serveur..."
 retry_cmd 2 ssh "${SSH_OPTS[@]}" "$SSH_TARGET" \
