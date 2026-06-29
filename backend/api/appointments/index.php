@@ -10,6 +10,7 @@ require_once __DIR__ . '/../../lib/Validation.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/StaffPatientConsent.php';
 require_once __DIR__ . '/../../lib/PendingOfferExpiry.php';
+require_once __DIR__ . '/../../lib/DbSchemaCache.php';
 
 /** Logs verbeux : désactivés si APP_ENV=production (après chargement .env par config/database.php). */
 function appointmentsVerboseLoggingEnabled(): bool
@@ -510,16 +511,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $params[] = $userId;
         }
         // super_admin sans user_id voit tout (pas de filtre supplémentaire)
+
+        if (
+            $status === 'pending'
+            && in_array($role, ['nurse', 'lab', 'subaccount', 'preleveur'], true)
+        ) {
+            $sql .= ' AND ' . PendingOfferExpiry::sqlCreatedWithinTtl('a');
+        }
     }
 
-    if (
-        $user
-        && $status === 'pending'
-        && in_array($role ?? '', ['nurse', 'lab', 'subaccount', 'preleveur'], true)
-    ) {
-        $sql .= ' AND ' . PendingOfferExpiry::sqlCreatedWithinTtl('a');
-    }
-    
     // Compter le total - construire la requête COUNT à partir de la requête principale
     logAppointment('Construction de la requête COUNT');
     logAppointment('SQL avant COUNT', ['sql' => $sql, 'params' => $params]);
