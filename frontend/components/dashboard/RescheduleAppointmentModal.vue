@@ -271,6 +271,15 @@ const emit = defineEmits<{
 
 const { user } = useAuth()
 
+const requiresStaffPatientConsent = computed(() => {
+  const r = user.value?.role ?? ''
+  return r === 'pro' || r === 'nurse' || r === 'lab' || r === 'subaccount'
+})
+
+function staffConsentPayloadFields(): Record<string, unknown> {
+  return requiresStaffPatientConsent.value ? { patient_booking_consent: true } : {}
+}
+
 const isOpen = computed({
   get: () => props.modelValue,
   set: (v) => emit('update:modelValue', v),
@@ -531,25 +540,33 @@ async function submit() {
   }
   saving.value = true
   try {
+    const createRes = await apiFetch('/appointments', {
+      method: 'POST',
+      body: { ...payload, ...staffConsentPayloadFields() },
+    })
+    if (!createRes?.success || !createRes?.data?.id) {
+      toast.add({ title: 'Erreur', description: (createRes as { error?: string })?.error || 'Impossible de créer le rendez-vous', color: 'error' })
+      return
+    }
+    const newId = createRes.data.id as string
+
     if (choiceMode.value === 'cancel_and_new') {
       const cancelRes = await apiFetch(`/appointments/${a.id}`, {
         method: 'PUT',
         body: { status: 'canceled', cancellation_reason: 'reschedule', cancellation_comment: 'Remplacé par un nouveau rendez-vous (reprise).' },
       })
       if (!cancelRes?.success) {
-        toast.add({ title: 'Erreur', description: cancelRes?.error || 'Impossible d\'annuler l\'ancien rendez-vous', color: 'error' })
-        return
+        toast.add({
+          title: 'Attention',
+          description: cancelRes?.error || 'Le nouveau RDV est créé, mais l\'ancien n\'a pas pu être annulé automatiquement.',
+          color: 'warning',
+        })
       }
     }
-    const createRes = await apiFetch('/appointments', { method: 'POST', body: payload })
-    if (createRes?.success && createRes?.data?.id) {
-      const newId = createRes.data.id as string
-      toast.add({ title: 'Rendez-vous créé', description: 'Le nouveau rendez-vous a été enregistré.', color: 'success' })
-      close()
-      emit('done', newId)
-    } else {
-      toast.add({ title: 'Erreur', description: (createRes as { error?: string })?.error || 'Impossible de créer le rendez-vous', color: 'error' })
-    }
+
+    toast.add({ title: 'Rendez-vous créé', description: 'Le nouveau rendez-vous a été enregistré.', color: 'success' })
+    close()
+    emit('done', newId)
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Une erreur est survenue'
     toast.add({ title: 'Erreur', description: msg, color: 'error' })

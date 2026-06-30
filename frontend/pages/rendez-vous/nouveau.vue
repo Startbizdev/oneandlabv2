@@ -225,7 +225,7 @@ import {
   type SelectedServiceInput,
 } from '~/utils/dashboard-unified-rdv';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
-import { filterStaffOnlyCareCategoriesForPatient } from '@oneandlab/shared-utils';
+import { filterStaffOnlyCareCategoriesForPatient, formSliceNeedsVipPayment } from '@oneandlab/shared-utils';
 import {
   type BookingServiceFormSlice,
   formDataSliceForQuickAddedService,
@@ -1211,9 +1211,9 @@ function buildAppointmentPayloads(patientId: string): any[] {
 function patientBookingNeedsUrgentStripePayment(): boolean {
   const fds = formData.value?.formDataByService ?? {};
   for (const svc of selectedServices.value) {
-    if (!isBloodTestAppointment(svc.type)) continue;
-    const d = fds[svc.id] as { availability_type?: string } | undefined;
-    if (d?.availability_type === 'urgent') return true;
+    if (formSliceNeedsVipPayment(svc.type, fds[svc.id] as Record<string, unknown> | undefined)) {
+      return true;
+    }
   }
   return false;
 }

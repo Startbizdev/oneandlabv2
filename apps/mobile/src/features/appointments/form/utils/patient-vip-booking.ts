@@ -3,7 +3,7 @@ import {
   PATIENT_VIP_MIN_HOUR,
   PATIENT_VIP_MINUTE_STEPS,
 } from '@oneandlab/shared-constants';
-import { isBloodTestAppointment, type SelectedServiceInput } from '@oneandlab/shared-utils';
+import { formSliceRequestsPatientUrgency, isBloodTestAppointment, type SelectedServiceInput } from '@oneandlab/shared-utils';
 
 export type UrgentTimingMode = 'asap' | 'scheduled';
 
@@ -76,7 +76,7 @@ export function patientBookingNeedsVipPayment(
   for (const svc of selectedServices) {
     if (!isBloodTestAppointment(svc.type)) continue;
     const slice = formDataByService[svc.id];
-    if (slice?.availability_type === 'urgent') return true;
+    if (formSliceRequestsPatientUrgency(slice)) return true;
   }
   return false;
 }

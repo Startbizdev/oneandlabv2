@@ -10,6 +10,7 @@ require_once __DIR__ . '/../lib/NotificationMessageFormatter.php';
 require_once __DIR__ . '/../lib/EmailQueue.php';
 require_once __DIR__ . '/../lib/SmsQueue.php';
 require_once __DIR__ . '/../lib/Validation.php';
+require_once __DIR__ . '/../lib/PatientUrgencyGuard.php';
 
 /**
  * Modèle Appointment
@@ -1039,6 +1040,8 @@ class Appointment
         if (!empty($data['guest_email']) && !Validation::email($data['guest_email'])) {
             throw new Exception('Email invité invalide.');
         }
+
+        PatientUrgencyGuard::assertPaidOrNotRequired($data, $createdByRole);
         
         // Validation category_id si présent
         if (!empty($data['category_id']) && !Validation::uuid($data['category_id'])) {

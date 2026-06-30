@@ -112,6 +112,7 @@ retry_cmd 3 deploy_sync_dir \
   --exclude=vendor \
   --exclude=.env \
   --exclude=uploads \
+  --exclude=storage \
   --exclude=scripts/migration \
   --exclude=scripts/test-*.php \
   --exclude=scripts/run-test-*.sh

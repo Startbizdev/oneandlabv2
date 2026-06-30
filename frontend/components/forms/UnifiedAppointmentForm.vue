@@ -817,7 +817,7 @@ import {
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { getBloodTestPremiumDayKind, type PremiumDayKind } from '~/utils/french-public-holidays';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
-import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils';
+import { careCategoryEmojiForCategory, isCareCategoryEmoji, stripStalePatientUrgencyFromSlice } from '@oneandlab/shared-utils';
 import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
 import {
   careAutreDetailKey,
@@ -1631,10 +1631,11 @@ function buildDraftModelValue() {
   const addressWithComplement = form.address ? { ...form.address, complement: form.address_complement || null } : null;
   const formDataByServiceDraft: Record<string, ServiceFormData & { availability?: string }> = {};
   for (const svc of props.selectedServices) {
-    const data = formDataByService[svc.id];
-    if (!data) continue;
+    const raw = formDataByService[svc.id];
+    if (!raw) continue;
+    const cleaned = stripStalePatientUrgencyFromSlice({ ...raw });
     formDataByServiceDraft[svc.id] = {
-      ...data,
+      ...cleaned,
       availability: buildAvailabilityForService(svc.id),
     };
   }
@@ -1785,7 +1786,8 @@ function commitBookingSubmit() {
 
   const formDataByServiceSerialized: Record<string, ServiceFormData & { availability?: string; form_data_files?: Record<string, any> }> = {};
   for (const svc of props.selectedServices) {
-    const data = formDataByService[svc.id];
+    const rawData = formDataByService[svc.id];
+    const data = rawData ? stripStalePatientUrgencyFromSlice({ ...rawData }) : undefined;
     let scheduledAt = data?.scheduled_at ?? '';
     if (scheduledAt && !scheduledAt.includes('T') && !scheduledAt.includes(' ')) {
       let h = (data?.availabilityRange ?? [9, 11])[0] ?? 9;
@@ -1832,8 +1834,9 @@ function commitBookingSubmit() {
       careOptSerialized = { ...coSrc };
       stripOrphanAutreDetailKeys(careOptSerialized);
     }
+    const { patient_urgency: _dropStaleUrgency, ...dataWithoutUrgency } = (data ?? {}) as ServiceFormData;
     formDataByServiceSerialized[svc.id] = {
-      ...data,
+      ...dataWithoutUrgency,
       ...(patientUrgentMeta ? { patient_urgency: patientUrgentMeta } : {}),
       ...(isNursingAppointment(svc.type) ? { preferred_nurse_gender: nursingPref } : {}),
       availability: buildAvailabilityForService(svc.id),
