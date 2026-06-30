@@ -81,7 +81,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $input = json_decode(file_get_contents('php://input'), true);
     
     $emailOptional = in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'super_admin'], true);
-    $required = ['first_name', 'last_name', 'phone'];
+    $phoneOptional = $user['role'] === 'super_admin';
+    $required = ['first_name', 'last_name'];
+    if (!$phoneOptional) {
+        $required[] = 'phone';
+    }
     if (!$emailOptional) {
         $required[] = 'email';
     }
@@ -122,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'email' => $emailTrim,
             'first_name' => $input['first_name'],
             'last_name' => $input['last_name'],
-            'phone' => $input['phone'],
+            'phone' => isset($input['phone']) ? trim((string) $input['phone']) : '',
             'birth_date' => $birthDate ? trim((string) $birthDate) : null,
             'gender' => isset($input['gender']) && trim((string) $input['gender']) !== '' ? trim((string) $input['gender']) : null,
             'address' => $input['address'] ?? null,

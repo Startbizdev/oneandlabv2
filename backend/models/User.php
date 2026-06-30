@@ -55,8 +55,8 @@ class User
             throw new Exception('Rôle invalide: ' . $role . '. Rôles autorisés: ' . implode(', ', self::ALLOWED_ROLES));
         }
 
-        // Pro / infirmier / lab / sous-compte : email patient optionnel → email technique stable (même patient + même pro = même fiche, pas de doublons RDV)
-        if ($role === 'patient' && in_array($actorRole, ['pro', 'nurse', 'lab', 'subaccount'], true)) {
+        // Pro / infirmier / lab / sous-compte / admin : email patient optionnel → email technique stable
+        if ($role === 'patient' && in_array($actorRole, ['pro', 'nurse', 'lab', 'subaccount', 'super_admin'], true)) {
             $emailRaw = isset($data['email']) ? trim((string) $data['email']) : '';
             if ($emailRaw === '') {
                 $data['email'] = $this->buildStableDelegatedPatientEmail($actorId, $data);

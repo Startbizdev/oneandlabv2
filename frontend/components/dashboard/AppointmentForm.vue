@@ -155,13 +155,13 @@
               </UFormField>
 
               <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5 pt-2 border-t border-gray-100 dark:border-gray-800">
-                 <UFormField label="Email" name="email" :required="!isProForm">
+                 <UFormField label="Email" name="email" :required="!isProForm && !isAdminForm">
                   <UInput v-model="form.form_data.email" type="email" icon="i-lucide-mail" placeholder="email@exemple.fr" size="md" class="w-full" />
-                  <p v-if="isProForm" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  <p v-if="isProForm || isAdminForm" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     Optionnel : si le patient n’a pas d’e-mail, les notifications peuvent utiliser votre adresse professionnelle.
                   </p>
                 </UFormField>
-                <UFormField label="Téléphone" name="phone" required>
+                <UFormField label="Téléphone" name="phone" :required="!isAdminForm">
                   <UInput v-model="form.form_data.phone" type="tel" icon="i-lucide-phone" placeholder="06 12 34 56 78" size="md" class="w-full" />
                 </UFormField>
               </div>
@@ -1005,6 +1005,7 @@ const toast = useAppToast();
 const { user } = useAuth();
 /** Formulaire utilisé par un pro ou nurse (basePath /pro ou /nurse) : patients via /patients */
 const isProForm = computed(() => props.basePath === '/pro' || props.basePath === '/nurse');
+const isAdminForm = computed(() => props.basePath === '/admin');
 /** Pro, nurse ou admin : peuvent créer des patients (POST /patients) pour les lier au RDV */
 const canCreatePatientForAppointment = computed(
   () =>
@@ -1983,14 +1984,14 @@ function validateIdentityAndPlanningShared(): ClientValidationFail | null {
       description: 'Indiquez le jour, le mois et l’année de naissance.',
     };
   }
-  if (!form.form_data.phone?.trim()) {
+  if (!isAdminForm.value && !form.form_data.phone?.trim()) {
     return {
       sectionId: 'appointment-form-section-identity',
       title: 'Téléphone requis',
       description: 'Renseignez un numéro de téléphone pour joindre le patient.',
     };
   }
-  const emailRequired = !isProForm.value;
+  const emailRequired = !isProForm.value && !isAdminForm.value;
   if (emailRequired && !form.form_data.email?.trim()) {
     return {
       sectionId: 'appointment-form-section-identity',
@@ -2282,8 +2283,8 @@ async function submitMultiCareBatch(
     selectedPatientId.value === NEW_PATIENT_VALUE &&
     form.form_data.first_name?.trim() &&
     form.form_data.last_name?.trim() &&
-    form.form_data.phone?.trim() &&
-    (form.form_data.email?.trim() || isProForm.value);
+    (isAdminForm.value || form.form_data.phone?.trim()) &&
+    (form.form_data.email?.trim() || isProForm.value || isAdminForm.value);
 
   if (shouldCreatePatient) {
     const addressForPatient = form.address?.label
@@ -2292,11 +2293,12 @@ async function submitMultiCareBatch(
     const bodyPatient: Record<string, unknown> = {
       first_name: form.form_data.first_name.trim(),
       last_name: form.form_data.last_name.trim(),
-      phone: form.form_data.phone.trim(),
       birth_date: form.form_data.birth_date || undefined,
       gender: form.form_data.gender || undefined,
       address: addressForPatient,
     };
+    const ph = form.form_data.phone?.trim();
+    if (ph) bodyPatient.phone = ph;
     const em = form.form_data.email?.trim();
     if (em) bodyPatient.email = em;
     const patientRes = await apiFetch('/patients', {
@@ -2558,8 +2560,8 @@ async function submit() {
         selectedPatientId.value === NEW_PATIENT_VALUE &&
         form.form_data.first_name?.trim() &&
         form.form_data.last_name?.trim() &&
-        form.form_data.phone?.trim() &&
-        (form.form_data.email?.trim() || isProForm.value);
+        (isAdminForm.value || form.form_data.phone?.trim()) &&
+        (form.form_data.email?.trim() || isProForm.value || isAdminForm.value);
 
       if (shouldCreatePatient) {
         const addressForPatient = form.address?.label
@@ -2568,11 +2570,12 @@ async function submit() {
         const bodyPatient: Record<string, unknown> = {
           first_name: form.form_data.first_name.trim(),
           last_name: form.form_data.last_name.trim(),
-          phone: form.form_data.phone.trim(),
           birth_date: form.form_data.birth_date || undefined,
           gender: form.form_data.gender || undefined,
           address: addressForPatient,
         };
+        const ph = form.form_data.phone?.trim();
+        if (ph) bodyPatient.phone = ph;
         const em = form.form_data.email?.trim();
         if (em) bodyPatient.email = em;
         const patientRes = await apiFetch('/patients', {
