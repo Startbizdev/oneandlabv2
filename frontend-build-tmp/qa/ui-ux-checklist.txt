@@ -1,0 +1,24 @@
+Grille QA UI/UX (réf. UPDATE/UI-UX-RENDEZ-VOUS-DASHBOARD-ET-PATIENT.md)
+
+Implémentation (code) — statut : aligné avec le document §1–§11 pour la vague courante.
+La « dette » open coding listée dans ce fichier est traitée : shells, détail patient §9, notifs backend,
+typo · sur parcours sensibles, landings hero/tarifs, modale lot, liste RDV (barre + sheet), cloche utils.
+
+À valider uniquement en recette manuelle (smartphones / tablettes / desktop) :
+- Breakpoints 320, 390, 768, 1024 : pas de double header, CTA accessibles, scroll utilisable.
+
+Cases recette (cocher après test réel si besoin de traçabilité release) :
+- [ ] Parcours /rendez-vous/nouveau : 0 services · 1 formulaire + consentement · 2 OTP invité (pas d’étape récap dédiée)
+- [ ] /patient : lots + libellés cohérents avec le reste du produit
+- [ ] /patient/appointments/:id : frise + équipe (déjà compact si équipe présente)
+- [ ] Détail RDV (AppointmentDetailPage / RdvInfoCard) : bloc prise de sang unique
+- [ ] Listes RDV : filtres via sheet mobile depuis la barre
+- [ ] Modale acceptation : corps scroll + pied avec bordure
+- [ ] Cloche : titres/corps lisibles (troncature côté layout)
+- [ ] Landings lab/infirmiers : CTA patient + avis · Cary
+- [ ] Admin : tableaux utilisables ; /admin/test-table inaccessible hors dev (createError 404)
+
+Réf. code utile :
+- utils/notification-display.ts (cloche §4.7)
+- components/shell/README.md (AppPageShell / AppPageHeader)
+- pages/pour-les-laboratoires/index.vue, pour-les-infirmiers/index.vue (CTA /rendez-vous/nouveau)

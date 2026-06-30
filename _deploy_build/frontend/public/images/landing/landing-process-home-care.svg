@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Soins infirmiers à domicile">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F8FCFC"/>
+      <stop offset="55%" stop-color="#EEF8F7"/>
+      <stop offset="100%" stop-color="#E2F3F1"/>
+    </linearGradient>
+    <linearGradient id="primary2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2FD4C2"/>
+      <stop offset="100%" stop-color="#149E90"/>
+    </linearGradient>
+    <filter id="shadow2">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#0C6B61" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg2)"/>
+  <circle cx="700" cy="80" r="120" fill="#1CC7B5" opacity="0.07"/>
+
+  <!-- Room -->
+  <rect x="40" y="48" width="220" height="160" rx="12" fill="#DCE9E8"/>
+  <line x1="90" y1="58" x2="90" y2="198" stroke="#fff" stroke-width="5"/>
+  <line x1="150" y1="58" x2="150" y2="198" stroke="#fff" stroke-width="5"/>
+  <line x1="50" y1="128" x2="250" y2="128" stroke="#fff" stroke-width="5"/>
+
+  <!-- Sofa -->
+  <rect x="72" y="318" width="340" height="130" rx="28" fill="#E6ECED"/>
+  <rect x="92" y="298" width="300" height="90" rx="24" fill="#D5DDE0"/>
+  <rect x="400" y="348" width="90" height="70" rx="18" fill="#E8FBF9"/>
+
+  <!-- Patient -->
+  <ellipse cx="210" cy="290" rx="52" ry="52" fill="#E8DDD4"/>
+  <path d="M160 340 Q210 420 260 340 L260 430 Q210 460 160 430 Z" fill="#C8E8E4"/>
+  <path d="M188 302 Q210 318 232 302" fill="none" stroke="#3D3D52" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Nurse -->
+  <g filter="url(#shadow2)">
+    <ellipse cx="480" cy="248" rx="50" ry="50" fill="#E0D0C4"/>
+    <path d="M420 300 L420 470 Q480 490 540 470 L540 300 Z" fill="#fff"/>
+    <path d="M420 300 L540 300 L540 360 L420 360 Z" fill="url(#primary2)"/>
+    <rect x="455" y="360" width="24" height="110" rx="8" fill="#149E90"/>
+    <rect x="485" y="360" width="24" height="110" rx="8" fill="#149E90"/>
+  </g>
+
+  <!-- BP cuff -->
+  <path d="M250 368 Q310 348 340 368" fill="none" stroke="#1CC7B5" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="348" cy="368" r="12" fill="#0C6B61"/>
+
+  <!-- Medical bag -->
+  <rect x="560" y="360" width="96" height="100" rx="18" fill="url(#primary2)"/>
+  <rect x="592" y="340" width="32" height="28" rx="6" fill="#0C6B61"/>
+  <rect x="580" y="400" width="24" height="24" rx="6" fill="#fff" opacity="0.9"/>
+  <rect x="616" y="408" width="24" height="16" rx="4" fill="#fff" opacity="0.9"/>
+
+  <!-- Stethoscope -->
+  <path d="M520 310 Q560 280 580 340" fill="none" stroke="#3D3D52" stroke-width="4"/>
+  <circle cx="586" cy="348" r="10" fill="#1CC7B5"/>
+
+  <!-- Plant -->
+  <ellipse cx="690" cy="440" rx="36" ry="48" fill="#7CB69E"/>
+  <rect x="686" y="472" width="8" height="56" rx="3" fill="#5A9070"/>
+  <rect x="620" y="500" width="72" height="28" rx="8" fill="#1CC7B5" opacity="0.85"/>
+</svg>
