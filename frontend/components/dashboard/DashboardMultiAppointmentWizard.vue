@@ -202,6 +202,7 @@
             :skip-logged-in-patient-prefill="true"
             :hide-preferred-nurse-gender="isNurseDashboard"
             :patient-email-optional="patientEmailOptional"
+            :patient-phone-optional="patientPhoneOptional"
             :accept-saturday="true"
             :accept-sunday="true"
             :min-lead-time-hours="0"
@@ -705,11 +706,17 @@ const selectedPatientId = ref<string | undefined>(undefined);
 /** Patient existant (liste) ou création inline. */
 const patientMode = ref<'existing' | 'new'>('existing');
 
-/** Nouveau patient (wizard) : email patient facultatif pour pro, infirmier, lab, sous-compte. */
+/** Nouveau patient (wizard) : email patient facultatif pour pro, infirmier, lab, sous-compte, admin. */
 const patientEmailOptional = computed(() => {
   if (patientMode.value !== 'new') return false;
   const r = user.value?.role ?? '';
   return r === 'nurse' || r === 'pro' || r === 'lab' || r === 'subaccount' || r === 'super_admin';
+});
+
+/** Admin : téléphone patient facultatif à la création. */
+const patientPhoneOptional = computed(() => {
+  if (patientMode.value !== 'new') return false;
+  return (user.value?.role ?? '') === 'super_admin';
 });
 
 /** Id patient stable pour GET /patient-documents (évite ref/objet mal sérialisé par le select). */
@@ -883,7 +890,7 @@ function extractPatientCreateBody(payload: Record<string, any>): Record<string, 
   return {
     first_name: payload.first_name,
     last_name: payload.last_name,
-    phone: payload.phone,
+    ...(String(payload.phone ?? '').trim() !== '' ? { phone: String(payload.phone).trim() } : {}),
     email: (payload.email != null ? String(payload.email) : '').trim(),
     birth_date: payload.birth_date || null,
     gender: payload.gender || null,
@@ -1263,6 +1270,7 @@ async function onUnifiedSubmit(payload: any) {
 
   const err = validateUnifiedRdvPayload(payload, selectedServices.value, {
     patientEmailOptional: patientEmailOptional.value,
+    patientPhoneOptional: patientPhoneOptional.value,
   });
   if (err) {
     validationError.value = err.message;

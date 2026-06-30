@@ -94,8 +94,10 @@ function addressIsIncomplete(address: unknown): boolean {
  * Retourne `null` si OK, sinon message + ancrage pour faire défiler vers le bloc concerné.
  */
 export type ValidateUnifiedRdvOptions = {
-  /** Infirmier / pro : email du patient peut être vide à la création (API patients). */
+  /** Infirmier / pro / admin : email du patient peut être vide à la création (API patients). */
   patientEmailOptional?: boolean;
+  /** Admin : téléphone du patient peut être vide à la création. */
+  patientPhoneOptional?: boolean;
 };
 
 export function validateUnifiedRdvPayload(
@@ -123,6 +125,11 @@ export function validateUnifiedRdvPayload(
         const v = value != null ? String(value).trim() : '';
         if (v === '') continue;
       }
+    }
+    if (field === 'phone' && options?.patientPhoneOptional) {
+      const value = getField(field);
+      const v = value != null ? String(value).trim() : '';
+      if (v === '') continue;
     }
     const value = getField(field);
     if (

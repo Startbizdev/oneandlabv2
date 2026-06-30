@@ -642,7 +642,7 @@
               </span>
             </div>
           </UFormField>
-          <UFormField label="Téléphone" name="phone" required>
+          <UFormField label="Téléphone" name="phone" :required="!patientPhoneOptional">
             <UInput v-model="form.phone" type="tel" placeholder="Entrez votre numéro" size="xl" class="w-full">
               <template #leading>
                 <UIcon name="i-lucide-phone" class="size-5 text-gray-400 dark:text-gray-500" aria-hidden="true" />
@@ -866,8 +866,10 @@ const props = defineProps<{
   allowPatientEmailEdit?: boolean;
   /** Wizard dashboard : ne pas préremplir nom/adresse avec le profil du professionnel connecté. */
   skipLoggedInPatientPrefill?: boolean;
-  /** Wizard pro / infirmier / lab / sous-compte : champ email patient non obligatoire (nouveau patient). */
+  /** Wizard pro / infirmier / lab / sous-compte / admin : champ email patient non obligatoire (nouveau patient). */
   patientEmailOptional?: boolean;
+  /** Wizard admin : champ téléphone patient non obligatoire (nouveau patient). */
+  patientPhoneOptional?: boolean;
   /** Espace infirmier : pas de choix patient (le RDV est pour un de ses patients, assigné à lui — pas de file d’attente pour les autres). */
   hidePreferredNurseGender?: boolean;
   minLeadTimeHours?: number | null;

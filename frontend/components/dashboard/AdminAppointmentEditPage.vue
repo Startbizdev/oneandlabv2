@@ -329,7 +329,7 @@ function requestSave() {
 async function onUnifiedSubmit(payload: Record<string, unknown>) {
   if (!appointment.value?.id || saving.value) return;
 
-  const v = validateUnifiedRdvPayload(payload, selectedServices.value, { patientEmailOptional: true });
+  const v = validateUnifiedRdvPayload(payload, selectedServices.value, { patientEmailOptional: true, patientPhoneOptional: true });
   if (v) {
     toast.add({ title: 'Formulaire incomplet', description: v.message, color: 'error' });
     const el = v.scrollAnchor ? document.getElementById(v.scrollAnchor) : document.getElementById('admin-edit-rdv-patient');
