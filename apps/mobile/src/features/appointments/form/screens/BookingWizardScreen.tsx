@@ -30,6 +30,7 @@ import { BookingWizardProgress } from '../components/BookingWizardProgress';
 import { BookingWizardSegmentContext } from '../components/BookingWizardSegmentContext';
 import { RelativeQuickAddSheet } from '../components/RelativeQuickAddSheet';
 import { useBookingWizard } from '../hooks/useBookingWizard';
+import { NEW_PATIENT_ID } from '../types';
 import { STAFF_PATIENT_BOOKING_CONSENT_LABEL } from '@oneandlab/shared-constants';
 import { buildAvailabilityFormPatch, parseAvailabilityField, type AvailabilityType, type UrgentTimingMode } from '../utils/availability';
 import type { PatientRelative } from '@/features/patient-relatives/api/patient-relatives.service';
