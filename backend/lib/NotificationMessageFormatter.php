@@ -149,6 +149,12 @@ class NotificationMessageFormatter
             if ($freq !== '') {
                 $parts[] = $freq;
             }
+            $pref = self::preferredNurseGenderLabel(
+                isset($formData['preferred_nurse_gender']) ? (string) $formData['preferred_nurse_gender'] : ''
+            );
+            if ($pref !== '') {
+                $parts[] = $pref;
+            }
         } else {
             $bloodDur = self::bloodDurationLabel($formData);
             if ($bloodDur !== '') {
@@ -268,6 +274,16 @@ class NotificationMessageFormatter
             '60+' => 'Longue durée',
         ];
         return $map[$dd] ?? $dd;
+    }
+
+    public static function preferredNurseGenderLabel(?string $gender): string
+    {
+        $g = trim((string) ($gender ?? ''));
+        if ($g === '' || $g === 'any') {
+            return '';
+        }
+        $map = ['female' => 'Une infirmière', 'male' => 'Un infirmier'];
+        return $map[$g] ?? '';
     }
 
     /** @param array<string,mixed> $formData */

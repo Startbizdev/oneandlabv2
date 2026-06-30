@@ -14,6 +14,7 @@ import { FormCareFieldsSection } from '../components/FormCareFieldsSection';
 import { FormDocumentsSection } from '../components/FormDocumentsSection';
 import { CategoryPicker } from '../components/CategoryPicker';
 import { useAppointmentForm } from '../hooks/useAppointmentForm';
+import { NEW_PATIENT_ID } from '../types';
 import { StaffPatientBookingConsentRow } from '@/features/patients/components/StaffPatientBookingConsentRow';
 
 interface Props {

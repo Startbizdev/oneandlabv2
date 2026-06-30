@@ -638,9 +638,16 @@ class NotificationService
             try {
                 $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
                 $url = rtrim($baseUrl, '/') . '/patient/appointments/' . $ids[0];
+                $fd0 = isset($batchRows[0]['form_data']) && is_array($batchRows[0]['form_data'])
+                    ? $batchRows[0]['form_data']
+                    : [];
+                $genderLabel = NotificationMessageFormatter::preferredNurseGenderLabel(
+                    isset($fd0['preferred_nurse_gender']) ? (string) $fd0['preferred_nurse_gender'] : ''
+                );
+                $genderPart = $genderLabel !== '' ? " · {$genderLabel}" : '';
                 $this->twilio->sendSMS(
                     $patientPhone,
-                    "[CONFIRME] Vos {$n} rendez-vous sont confirmés. Détail : {$url}"
+                    "[CONFIRME] Vos {$n} rendez-vous sont confirmés{$genderPart}. Détail : {$url}"
                 );
             } catch (Exception $e) {
                 // Ne pas bloquer
