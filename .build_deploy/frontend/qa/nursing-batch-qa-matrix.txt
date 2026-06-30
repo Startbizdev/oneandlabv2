@@ -1,0 +1,27 @@
+Matrice QA — batch nursing fusionné (parité sang)
+================================================
+
+À exécuter après migration SQL `060_appointment_nursing_items.sql` sur la base cible.
+
+Patient (nouveau.vue + UnifiedAppointmentForm)
+- Panier : 1 soin infirmier → 1 POST, `category_id` + `care_options` racine OK.
+- Panier : 2+ soins infirmiers, même carte date/créneau → 1 POST, `nursing_items[]`, pas de `care_options` racine si >1 acte.
+- Mix : 2 sang + 2 soins → 2 POST (sang fusionné + soins fusionnés), `creation_batch_id` inchangé si présent sur le wizard.
+- Fichiers : ordonnances distinctes par acte → présents dans le payload fusionné (clés combinées depuis chaque bloc).
+
+Professionnel / wizard (dashboard-unified-rdv + AppointmentForm si applicable)
+- Même règle de comptage `countGroupedAppointmentPayloads` que patient pour sang + nursing.
+- Créneau unique représenté par le premier acte nursing dans l’ordre du panier.
+
+Infirmier
+- Liste : lot legacy plusieurs lignes nursing (`creation_batch_id`) → carte fusionnée (comme sang).
+- RDV canonique avec `nursing_items` multiples → titre / badges « multi-actes ».
+- Modal / file : un seul item file pour `creation_batch_id` nursing ou blood ; pas de régression préleveur/lab sang.
+- Acceptation : `PUT` sur l’id canonique pour le nouveau format ; ancien format N ids toujours supporté.
+
+Rôles sans nursing
+- Lab / préleveur / subaccount : uniquement régression flux sang.
+
+Données
+- Anciens lots multi-lignes : `nursing_items_display` agrégé côté API liste + getById.
+- Nouveau : lignes dans `appointment_nursing_items`.

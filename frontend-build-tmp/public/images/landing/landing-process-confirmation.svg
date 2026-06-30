@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Confirmation par SMS et email">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8FBF9"/>
+      <stop offset="100%" stop-color="#F4FAFA"/>
+    </linearGradient>
+    <linearGradient id="primary" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2FD4C2"/>
+      <stop offset="100%" stop-color="#1CC7B5"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#1CC7B5" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <circle cx="640" cy="120" r="140" fill="#1CC7B5" opacity="0.08"/>
+  <circle cx="120" cy="520" r="110" fill="#1CC7B5" opacity="0.1"/>
+
+  <!-- Professional -->
+  <ellipse cx="190" cy="210" rx="72" ry="72" fill="#D8EEEB"/>
+  <rect x="130" y="268" width="120" height="150" rx="36" fill="#fff"/>
+  <rect x="148" y="286" width="84" height="72" rx="18" fill="#E8FBF9"/>
+  <circle cx="190" cy="318" r="18" fill="url(#primary)"/>
+  <path d="M182 318l6 8 12-16" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Phone -->
+  <g filter="url(#shadow)">
+    <rect x="360" y="90" width="250" height="430" rx="36" fill="#1E2433"/>
+    <rect x="374" y="138" width="222" height="360" rx="24" fill="#fff"/>
+    <rect x="388" y="158" width="194" height="52" rx="14" fill="url(#primary)"/>
+    <circle cx="412" cy="184" r="12" fill="#fff" opacity="0.9"/>
+    <rect x="436" y="176" width="90" height="10" rx="5" fill="#fff" opacity="0.55"/>
+
+    <rect x="388" y="228" width="194" height="108" rx="18" fill="#E8FBF9" stroke="#1CC7B5" stroke-width="2"/>
+    <circle cx="432" cy="282" r="30" fill="url(#primary)"/>
+    <path d="M418 282l10 12 22-28" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="476" y="258" width="88" height="12" rx="6" fill="#1CC7B5"/>
+    <rect x="476" y="282" width="72" height="10" rx="5" fill="#B8E8E2"/>
+
+    <rect x="388" y="352" width="194" height="52" rx="14" fill="#fff" stroke="#E8E8F0"/>
+    <circle cx="420" cy="378" r="16" fill="url(#primary)"/>
+    <rect x="448" y="370" width="110" height="10" rx="5" fill="#DDECEA"/>
+
+    <rect x="388" y="418" width="194" height="52" rx="14" fill="#fff" stroke="#E8E8F0"/>
+    <circle cx="420" cy="444" r="16" fill="#16A34A"/>
+    <rect x="448" y="436" width="96" height="10" rx="5" fill="#DDECEA"/>
+
+    <circle cx="590" cy="108" r="16" fill="#DC2626"/>
+    <text x="585" y="114" fill="#fff" font-family="system-ui,sans-serif" font-size="14" font-weight="700">1</text>
+  </g>
+
+  <!-- Pulse arcs -->
+  <path d="M300 240 A80 80 0 0 1 360 180" fill="none" stroke="#1CC7B5" stroke-width="3" opacity="0.35"/>
+  <path d="M300 240 A110 110 0 0 1 380 150" fill="none" stroke="#1CC7B5" stroke-width="2" opacity="0.2"/>
+</svg>
