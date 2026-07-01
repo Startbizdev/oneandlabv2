@@ -146,7 +146,27 @@ final class AiChatService
         }
         $messages[] = ['role' => 'user', 'content' => $message];
 
-        $this->conversations->addMessage($conversationId, 'user', $message);
+        $userMetadata = $this->buildUserMessageAttachmentMetadata($chatAttachments);
+        $userMsg = $this->conversations->addMessage(
+            $conversationId,
+            'user',
+            $message,
+            $userMetadata,
+        );
+        if ($userMetadata !== null && $medicalIds = array_values(array_filter(array_map(
+            static fn (array $a): string => trim((string) ($a['medical_document_id'] ?? '')),
+            $chatAttachments,
+        )))) {
+            try {
+                $attachmentService->linkAttachmentsToMessage(
+                    $conversationId,
+                    (string) ($userMsg['id'] ?? ''),
+                    $medicalIds,
+                );
+            } catch (Throwable $e) {
+                error_log('AiChatService linkAttachmentsToMessage: ' . $e->getMessage());
+            }
+        }
 
         $draftId = isset($input['draft_id']) ? trim((string) $input['draft_id']) : null;
         if ($draftId === '') {
@@ -361,8 +381,7 @@ final class AiChatService
                 if ($excerpt !== '') {
                     $excerpt = mb_substr($excerpt, 0, 8000);
                 }
-                $analysisReady = $excerpt !== ''
-                    && !str_starts_with($excerpt, 'Aucun texte extractible');
+                $analysisReady = $this->isUsefulDocumentExcerpt($excerpt);
             } catch (Throwable $e) {
                 error_log('AiChatService ensureAnalyzed: ' . $e->getMessage());
             }
@@ -464,8 +483,7 @@ final class AiChatService
                 if ($excerpt !== '') {
                     $excerpt = mb_substr($excerpt, 0, 8000);
                 }
-                $analysisReady = $excerpt !== ''
-                    && !str_starts_with($excerpt, 'Aucun texte extractible');
+                $analysisReady = $this->isUsefulDocumentExcerpt($excerpt);
             } catch (Throwable $e) {
                 error_log('AiChatService followup ensureAnalyzed: ' . $e->getMessage());
             }
@@ -487,5 +505,48 @@ final class AiChatService
         }
 
         return $chatAttachments;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $chatAttachments
+     */
+    private function buildUserMessageAttachmentMetadata(array $chatAttachments): ?array
+    {
+        if ($chatAttachments === []) {
+            return null;
+        }
+        $first = $chatAttachments[0];
+        $medicalDocumentId = trim((string) ($first['medical_document_id'] ?? ''));
+        if ($medicalDocumentId === '') {
+            return null;
+        }
+
+        return [
+            'attachment' => [
+                'medicalDocumentId' => $medicalDocumentId,
+                'fileName' => (string) ($first['file_name'] ?? 'document'),
+                'mimeType' => (string) ($first['mime_type'] ?? 'application/octet-stream'),
+                'documentType' => (string) ($first['document_type'] ?? 'other'),
+            ],
+        ];
+    }
+
+    private function isUsefulDocumentExcerpt(string $excerpt): bool
+    {
+        $trimmed = trim($excerpt);
+        if ($trimmed === '') {
+            return false;
+        }
+        if (str_starts_with($trimmed, 'Aucun texte extractible')) {
+            return false;
+        }
+        if (str_contains($trimmed, 'analyse visuelle requise')) {
+            return false;
+        }
+        if (preg_match('/(j[\'’]ai bien reçu|ne contient pas de texte lisible|photo plus nette)/ui', $trimmed)) {
+            return false;
+        }
+
+        return true;
     }
 }

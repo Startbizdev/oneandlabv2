@@ -66,13 +66,12 @@ final class AiDocumentJobService
         $stmt->execute([$medicalDocumentId, 'document_analysis']);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($row && ($row['status'] ?? '') === 'completed') {
+        if ($row && ($row['status'] ?? '') === 'completed' && !$this->isUselessSummary($row)) {
             return [
                 'summary_text' => (string) ($row['summary_text'] ?? ''),
                 'ocr_text' => (string) ($row['ocr_text'] ?? ''),
                 'title' => (string) ($row['title'] ?? 'Document'),
-                'analysis_ready' => trim((string) ($row['summary_text'] ?? '')) !== ''
-                    || trim((string) ($row['ocr_text'] ?? '')) !== '',
+                'analysis_ready' => true,
             ];
         }
 
@@ -188,15 +187,23 @@ final class AiDocumentJobService
         $intent = AiDocumentIntent::classify($doc, $ocrText);
         $mime = strtolower((string) ($doc['mime_type'] ?? ''));
         $ext = strtolower(pathinfo($title, PATHINFO_EXTENSION));
-        $isImage = str_starts_with($mime, 'image/') || in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true);
+        $isImage = str_starts_with($mime, 'image/') || in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'], true);
         $isPdf = str_contains($mime, 'pdf') || $ext === 'pdf';
 
         $visionUsed = false;
-        if ($this->ocrNeedsVision($ocrText) && in_array($intent['category'], ['medical', 'unclear'], true)) {
-            $vision = new DocumentVisionService($this->ocr);
+        $vision = new DocumentVisionService($this->ocr);
+
+        if ($isImage) {
+            $visionText = $vision->analyzeMedicalImage($doc, (string) $intent['label_fr']);
+            if ($visionText !== '') {
+                $ocrText = $visionText;
+                $visionUsed = true;
+                $intent = AiDocumentIntent::classify($doc, $ocrText);
+            }
+        } elseif ($this->ocrNeedsVision($ocrText) && in_array($intent['category'], ['medical', 'unclear'], true)) {
             $visionText = $isPdf
                 ? $vision->analyzeMedicalPdf($doc, (string) $intent['label_fr'])
-                : ($isImage ? $vision->analyzeMedicalImage($doc, (string) $intent['label_fr']) : '');
+                : '';
             if ($visionText !== '') {
                 $ocrText = $visionText;
                 $visionUsed = true;
@@ -349,6 +356,9 @@ final class AiDocumentJobService
             return true;
         }
         if (str_starts_with($summary, 'Aucun texte extractible')) {
+            return true;
+        }
+        if (str_contains($summary, 'analyse visuelle requise') || str_contains($ocr, 'analyse visuelle requise')) {
             return true;
         }
         if ($this->ocrNeedsVision($ocr) && $this->ocrNeedsVision($summary)) {

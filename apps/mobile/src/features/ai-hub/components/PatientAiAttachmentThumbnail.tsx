@@ -48,6 +48,7 @@ export function PatientAiAttachmentThumbnail({
   const styles = useThemedStyles(buildStyles);
   const isPdf = isPdfMime(attachment.mimeType, attachment.fileName);
   const isMessage = variant === 'message';
+  const hasImageUri = Boolean(attachment.uri?.trim());
 
   const body = (
     <View
@@ -58,9 +59,9 @@ export function PatientAiAttachmentThumbnail({
         { backgroundColor: c.surfaceAlt, borderColor: c.borderLight },
       ]}
     >
-      {isPdf ? (
-        <View style={[styles.pdfIconWrap, { backgroundColor: c.errorLight }]}>
-          <FileText size={isMessage ? 28 : 24} color={c.error} strokeWidth={2} />
+      {isPdf || !hasImageUri ? (
+        <View style={[styles.pdfIconWrap, { backgroundColor: isPdf ? c.errorLight : c.surface }]}>
+          <FileText size={isMessage ? 28 : 24} color={isPdf ? c.error : c.textSecondary} strokeWidth={2} />
         </View>
       ) : (
         <Image
@@ -70,7 +71,7 @@ export function PatientAiAttachmentThumbnail({
           accessibilityIgnoresInvertColors
         />
       )}
-      {isPdf ? (
+      {isPdf || !hasImageUri ? (
         <Text
           style={[styles.pdfName, { color: c.textSecondary }]}
           numberOfLines={2}

@@ -299,6 +299,7 @@ export function PatientAiConversationsSheet({
               renderItem={renderItem}
               renderSectionHeader={renderSectionHeader}
               stickySectionHeadersEnabled={false}
+              removeClippedSubviews={false}
               style={styles.list}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}

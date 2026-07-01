@@ -29,7 +29,11 @@ import { resolveMessageRecap } from '../utils/resolve-message-recap';
 import { useCaryAiHub, type CaryAiHubInit } from '../hooks/use-cary-ai-hub';
 import { searchAiConversations } from '../api/ai.service';
 import { useCaryAiChatScroll } from '../hooks/use-cary-ai-chat-scroll';
-import type { PatientAiChatMessage } from '../types/patient-ai-conversation';
+import type { PatientAiChatAttachment, PatientAiChatMessage } from '../types/patient-ai-conversation';
+import {
+  cacheMedicalDocument,
+  getCachedMedicalDocumentUri,
+} from '@/lib/downloads/download-medical-document';
 import type { AiQuickSuggestion } from '@oneandlab/shared-types';
 import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
 import { H_PADDING, radius, spacing } from '@/theme';
@@ -72,7 +76,7 @@ function MessageBubble({
   onSuggestionPick?: (item: AiQuickSuggestion) => void;
   disclaimer?: string;
   recapSlot?: ReactNode;
-  onAttachmentPress?: (uri: string, fileName?: string) => void;
+  onAttachmentPress?: (attachment: PatientAiChatAttachment) => void;
 }) {
   const c = useAppColors();
   const isUser = message.role === 'user';
@@ -97,7 +101,7 @@ function MessageBubble({
               compact={mediaOnly}
               onPress={
                 onAttachmentPress
-                  ? () => onAttachmentPress(attachment.uri, attachment.fileName)
+                  ? () => onAttachmentPress(attachment)
                   : undefined
               }
             />
@@ -260,8 +264,22 @@ export function CaryAiHubScreen({
     !attaching &&
     (draft.trim().length > 0 || Boolean(pendingAttachment?.medicalDocumentId));
 
-  const handleAttachmentPress = useCallback((uri: string, fileName?: string) => {
-    setAttachmentPreview({ uri, fileName });
+  const handleAttachmentPress = useCallback(async (attachment: PatientAiChatAttachment) => {
+    let uri = attachment.uri;
+    if (attachment.medicalDocumentId) {
+      const cached = await getCachedMedicalDocumentUri(attachment.medicalDocumentId, attachment.fileName);
+      if (cached) {
+        uri = cached;
+      } else {
+        const downloaded = await cacheMedicalDocument(attachment.medicalDocumentId, attachment.fileName);
+        if (downloaded.ok && downloaded.localUri) {
+          uri = downloaded.localUri;
+        }
+      }
+    }
+    if (uri) {
+      setAttachmentPreview({ uri, fileName: attachment.fileName });
+    }
   }, []);
 
   useEffect(() => {
