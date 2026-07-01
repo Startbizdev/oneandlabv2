@@ -33,6 +33,7 @@ export const HEADER_NAV_LINKS_BY_ROLE: Record<string, HeaderNavLink[]> = {
     { label: 'Rendez-vous', icon: 'i-lucide-calendar', to: '/nurse/appointments' },
     { label: 'Mes demandes', icon: 'i-lucide-inbox', to: '/nurse/demandes' },
     { label: 'Calendrier', icon: 'i-lucide-calendar-days', to: '/nurse/calendar' },
+    { label: 'Ma tournée', icon: 'i-lucide-list-ordered', to: '/nurse/tournee' },
     { label: 'Patients', icon: 'i-lucide-users', to: '/nurse/patients' },
     { label: 'Résultats', icon: 'i-lucide-flask-conical', to: '/nurse/resultats' },
     { label: 'Ordonnances', icon: 'i-lucide-file-pen-line', to: '/nurse/prescriptions' },

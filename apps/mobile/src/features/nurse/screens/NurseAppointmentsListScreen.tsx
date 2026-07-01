@@ -21,6 +21,7 @@ import {
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { BookAppointmentCta } from '@/features/nurse/components/BookAppointmentCta';
+import { NurseTourBanner } from '@/features/nurse/components/NurseTourBanner';
 import { PlanLimitsBanner } from '@/features/nurse/components/PlanLimitsBanner';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
@@ -242,6 +243,9 @@ export function NurseAppointmentsListScreen() {
             chips={filterChips}
           />
           <BookAppointmentCta href="/(nurse)/appointments/new" />
+          {tab === 'soins' && (segment === 'acceptes' || segment === 'tous') ? (
+            <NurseTourBanner stopCount={filtered.length || undefined} />
+          ) : null}
           <PlanLimitsBanner />
         </View>
 

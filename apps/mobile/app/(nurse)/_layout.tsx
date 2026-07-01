@@ -58,6 +58,10 @@ export default function NurseLayout() {
         headerTitle: tabHeaderTitle('Résultats', 'doc.text.magnifyingglass', FileText),
       }} />
       <Stack.Screen name="ai" options={{ headerShown: false, animation: 'slide_from_right' }} />
+      <Stack.Screen
+        name="tournee/index"
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+      />
     </Stack>
     </StackSceneInsetLayout>
     </View>

@@ -21,13 +21,14 @@
         "NSFaceIDUsageDescription": "Cary utilise Face ID pour vous connecter sans saisir de code à chaque ouverture.",
         "NSHealthShareUsageDescription": "Cary lit vos données Apple Santé (poids, activité, fréquence cardiaque) pour afficher vos graphiques et enrichir l’assistant.",
         "NSHealthUpdateUsageDescription": "Cary peut enregistrer des données santé que vous choisissez de partager.",
+        "NSLocationWhenInUseUsageDescription": "Cary utilise votre position pour optimiser l’ordre de votre tournée et afficher les distances entre vos passages.",
         "NSMicrophoneUsageDescription": "Cary utilise le micro pour le mode vocal de l’assistant.",
         "NSSpeechRecognitionUsageDescription": "Cary transcrit votre voix pour répondre en conversation.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
       },
-      "buildNumber": "1"
+      "buildNumber": "3"
     },
     "android": {
       "adaptiveIcon": {
@@ -36,8 +37,10 @@
       },
       "package": "com.carybioapp.app",
       "edgeToEdgeEnabled": true,
-      "versionCode": 7,
+      "versionCode": 9,
       "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.RECORD_AUDIO",
         "android.permission.health.READ_STEPS",
         "android.permission.health.READ_HEART_RATE",

@@ -4,55 +4,55 @@ overview: "Tournée infirmier — gagner du temps terrain : ordre intelligent (H
 todos:
   - id: tour-migrations
     content: "Migration 092 : nurse_tour_plans, nurse_tour_stops, prefs navigation + sort_mode + manual_order_locked"
-    status: pending
+    status: completed
   - id: tour-geo-utils
     content: "shared-utils : haversineKm, estimateDriveMin, nearestNeighborOrder — 0 € API"
-    status: pending
+    status: completed
   - id: tour-backend
     content: NurseTourService, TourOrderEngine, TourVisitService — cache jour + ACL nurse
-    status: pending
+    status: completed
   - id: tour-api
-    content: "API GET/PATCH /nurse/tour, POST optimize, POST stop status, PATCH reschedule slot"
-    status: pending
+    content: API GET/PATCH /nurse/tour, POST optimize, POST stop status, PATCH reschedule slot
+    status: completed
   - id: tour-nav-utils
-    content: "Package shared openNavigation (Waze/Maps/Apple) + addToCalendar ICS/deep link"
-    status: pending
+    content: Package shared openNavigation (Waze/Maps/Apple) + addToCalendar ICS/deep link
+    status: completed
   - id: tour-mobile-geo
-    content: "expo-location, badges distance, CTA Optimiser depuis ici, prochain stop proche"
-    status: pending
+    content: expo-location, badges distance, CTA Optimiser depuis ici, prochain stop proche
+    status: completed
   - id: tour-mobile-calendar
-    content: "TourDayStrip — aujourd’hui / demain / J+N comme mini-calendrier horizontal"
-    status: pending
+    content: TourDayStrip — aujourd’hui / demain / J+N comme mini-calendrier horizontal
+    status: completed
   - id: tour-mobile-reorder
-    content: "↑↓ drag léger + ordre manuel persisté (jamais écrasé par smart sauf reset explicite)"
-    status: pending
+    content: ↑↓ drag léger + ordre manuel persisté (jamais écrasé par smart sauf reset explicite)
+    status: completed
   - id: tour-mobile-reschedule
-    content: "Déplacer un RDV (créneau) depuis la carte stop — flow rapide infirmier"
-    status: pending
+    content: Déplacer un RDV (créneau) depuis la carte stop — flow rapide infirmier
+    status: completed
   - id: tour-mobile-skeleton
-    content: "Animation ouverture (skeleton + stagger stops) pendant GET /nurse/tour + tri"
-    status: pending
+    content: Animation ouverture (skeleton + stagger stops) pendant GET /nurse/tour + tri
+    status: completed
   - id: tour-mobile-feature
-    content: "Feature tournee-nurse/ — écran, StopCard, actions 1-tap, hero prochain stop"
-    status: pending
+    content: Feature tournee-nurse/ — écran, StopCard, actions 1-tap, hero prochain stop
+    status: completed
   - id: tour-mobile-nav
-    content: "Entrée Plus + bandeau RDV acceptés + route expo /(nurse)/tournee"
-    status: pending
+    content: Entrée Plus + bandeau RDV acceptés + route expo /(nurse)/tournee
+    status: completed
   - id: tour-web
-    content: "Page /nurse/tournee — calendrier jours, drag-drop, carte, distances, ICS"
-    status: pending
+    content: Page /nurse/tournee — calendrier jours, drag-drop, carte, distances, ICS
+    status: completed
   - id: tour-smart
     content: "TourOrderEngine v1 : créneaux + proximité Haversine + regroupement adresse"
-    status: pending
+    status: completed
   - id: tour-perf
-    content: "Prefetch jour, staleTime, virtualisation liste, pas de géocodage client lourd"
-    status: pending
+    content: Prefetch jour, staleTime, virtualisation liste, pas de géocodage client lourd
+    status: completed
   - id: tour-tests-prod
     content: PHPUnit TourOrderEngine + haversine + ordre manuel sticky + déploiement prod + EAS
-    status: pending
+    status: completed
   - id: tour-v2-osrm
     content: "v2 backlog : OSRM self-hosted si KPI Haversine insuffisant"
-    status: pending
+    status: completed
 isProject: false
 ---
 

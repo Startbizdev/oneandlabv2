@@ -17,6 +17,7 @@ import {
   Lock,
   MapPin,
   QrCode,
+  Route,
   Settings,
   Star,
   User,
@@ -116,6 +117,7 @@ export const STACK_HEADER_CATALOG: Record<string, StackHeaderCatalogEntry> = {
   abonnement: { title: 'Abonnement', symbol: 'creditcard', fallbackIcon: CreditCard },
   'informations-legales': { title: 'Informations légales', symbol: 'scalemass', fallbackIcon: FileText },
   web: { title: 'Page web', symbol: 'globe', fallbackIcon: Globe },
+  'tournee/index': { title: 'Ma tournée', symbol: 'point.topleft.down.to.point.bottomright.curvepath', fallbackIcon: Route },
 };
 
 export function getStackHeaderCatalogEntry(routeName: string): StackHeaderCatalogEntry | null {
