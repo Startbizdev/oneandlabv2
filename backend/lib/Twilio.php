@@ -217,6 +217,46 @@ class Twilio
     }
 
     /**
+     * SMS patient : créneau déplacé par l'infirmier.
+     *
+     * @param array<string, mixed> $appointmentData
+     */
+    public function sendAppointmentRescheduled(string $to, array $appointmentData, ?string $professionalName = null): bool
+    {
+        $professionalName = trim((string) ($professionalName ?? 'votre infirmier'));
+        $appointmentId = (string) ($appointmentData['id'] ?? '');
+        $url = $this->frontendBaseUrl() . '/patient/appointments/' . $appointmentId;
+        $optionMeta = is_array($appointmentData['option_meta'] ?? null)
+            ? $appointmentData['option_meta']
+            : [];
+        $details = NotificationMessageFormatter::appointmentContextShort(
+            is_array($appointmentData['form_data'] ?? null) ? $appointmentData['form_data'] : [],
+            $appointmentData['category_name'] ?? null,
+            ($appointmentData['type'] ?? '') === 'nursing' ? 'nursing' : 'blood_test',
+            isset($appointmentData['scheduled_at']) ? (string) $appointmentData['scheduled_at'] : null,
+            $optionMeta
+        );
+        $whenPart = $details !== '' ? $details : NotificationMessageFormatter::whenShort(
+            $appointmentData['form_data'] ?? null,
+            $appointmentData['scheduled_at'] ?? null
+        );
+
+        $message = "[CARY] Votre RDV a été déplacé par {$professionalName}";
+        if ($whenPart !== '') {
+            $message .= " · {$whenPart}";
+        }
+        $message .= ".\nVoir détails : {$url}";
+
+        try {
+            $this->sendSMS($to, $message);
+            return true;
+        } catch (Exception $e) {
+            error_log('Twilio sendAppointmentRescheduled: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * SMS pro (infirmier / labo) : RDV confirmé ou accepté.
      */
     public function sendProfessionalAppointmentUpdate(string $to, string $message): bool

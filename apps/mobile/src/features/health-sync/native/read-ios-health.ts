@@ -3,8 +3,8 @@ import type { HealthReadResult } from './read-health-metrics';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function sinceIso(days: number): string {
-  return new Date(Date.now() - days * DAY_MS).toISOString();
+function sinceDate(days: number): Date {
+  return new Date(Date.now() - days * DAY_MS);
 }
 
 /**
@@ -17,8 +17,18 @@ export async function readIosHealthMetrics(days: number): Promise<HealthReadResu
       requestAuthorization?: (types: { toRead: string[] }) => Promise<boolean>;
       queryQuantitySamples?: (
         type: string,
-        options: { from: string; to: string; limit: number },
-      ) => Promise<Array<{ quantity: number; unit: string; startDate: string; uuid?: string }>>;
+        options: {
+          limit: number;
+          filter?: { date?: { startDate?: Date; endDate?: Date } };
+        },
+      ) => Promise<
+        Array<{
+          quantity: number;
+          unit: string;
+          startDate: Date | string;
+          uuid?: string;
+        }>
+      >;
     };
 
     if (!Healthkit?.requestAuthorization || !Healthkit?.queryQuantitySamples) {
@@ -44,8 +54,8 @@ export async function readIosHealthMetrics(days: number): Promise<HealthReadResu
       return { available: false, reason: 'Autorisation Apple Santé refusée', permissions, metrics: [] };
     }
 
-    const from = sinceIso(days);
-    const to = new Date().toISOString();
+    const startDate = sinceDate(days);
+    const endDate = new Date();
     const metrics: HealthBatchMetricInput[] = [];
 
     const queries: Array<{ hk: string; metric: HealthBatchMetricInput['metric_type']; unit: string }> = [
@@ -58,10 +68,19 @@ export async function readIosHealthMetrics(days: number): Promise<HealthReadResu
     ];
 
     for (const q of queries) {
-      const samples = await Healthkit.queryQuantitySamples(q.hk, { from, to, limit: 500 });
+      const samples = await Healthkit.queryQuantitySamples(q.hk, {
+        limit: 500,
+        filter: { date: { startDate, endDate } },
+      });
       if (!Array.isArray(samples)) continue;
       for (const sample of samples) {
-        const recordedAt = sample.startDate ? new Date(sample.startDate).toISOString() : to;
+        const rawStart = sample.startDate;
+        const recordedAt =
+          rawStart instanceof Date
+            ? rawStart.toISOString()
+            : rawStart
+              ? new Date(rawStart).toISOString()
+              : endDate.toISOString();
         const externalId = `ios:${q.metric}:${sample.uuid ?? `${recordedAt}:${sample.quantity}`}`;
         let value = Number(sample.quantity);
         if (q.metric === 'weight' && (sample.unit === 'lb' || sample.unit === 'pound')) {

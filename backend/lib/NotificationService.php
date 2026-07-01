@@ -533,6 +533,111 @@ class NotificationService
     }
 
     /**
+     * Patient prévenu quand l'infirmier déplace un créneau depuis la tournée (ou mise à jour horaire).
+     */
+    public function notifyAppointmentRescheduled(string $appointmentId, ?string $nurseActorId = null): void
+    {
+        $stmt = $this->db->prepare('
+            SELECT a.patient_id, a.type, a.scheduled_at, a.category_id,
+                   a.form_data_encrypted, a.form_data_dek,
+                   c.name AS category_name
+            FROM appointments a
+            LEFT JOIN care_categories c ON c.id = a.category_id
+            WHERE a.id = ?
+            LIMIT 1
+        ');
+        $stmt->execute([$appointmentId]);
+        $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$appointment || empty($appointment['patient_id'])) {
+            return;
+        }
+
+        $formData = null;
+        if (!empty($appointment['form_data_encrypted']) && !empty($appointment['form_data_dek'])) {
+            try {
+                require_once __DIR__ . '/Crypto.php';
+                $crypto = new Crypto();
+                $formDataJson = $crypto->decryptField(
+                    $appointment['form_data_encrypted'],
+                    $appointment['form_data_dek'],
+                );
+                $decoded = json_decode($formDataJson, true);
+                $formData = is_array($decoded) ? $decoded : null;
+            } catch (Exception $e) {
+                $formData = null;
+            }
+        }
+
+        $patientId = (string) $appointment['patient_id'];
+        $scheduledAt = $appointment['scheduled_at'] ?? null;
+        $when = NotificationMessageFormatter::whenShort($formData, is_string($scheduledAt) ? $scheduledAt : null);
+        $message = $when !== '' ? 'Nouveau créneau · ' . $when : 'Votre rendez-vous a été déplacé.';
+
+        $this->createNotification(
+            $patientId,
+            'appointment_rescheduled',
+            'RDV déplacé',
+            $message,
+            ['appointment_id' => $appointmentId],
+        );
+
+        $patientEmail = null;
+        $patientPhone = null;
+        if (is_array($formData) && !empty($formData['phone'])) {
+            $patientPhone = trim((string) $formData['phone']);
+        }
+        try {
+            require_once __DIR__ . '/../models/User.php';
+            $userModel = new User();
+            $patient = $userModel->getById($patientId, 'system', 'system');
+            if ($patient) {
+                $patientEmail = $patient['email'] ?? null;
+                if (empty($patientPhone)) {
+                    $patientPhone = $patient['phone'] ?? null;
+                }
+            }
+        } catch (Exception $e) {
+            /* ignore */
+        }
+
+        if (!empty($patientEmail)) {
+            EmailQueue::add('appointment_confirmation', $patientEmail, [
+                'id' => $appointmentId,
+                'scheduled_at' => $scheduledAt,
+                'appointment_type' => ($appointment['type'] ?? 'blood_test') === 'nursing' ? 'nursing' : 'blood_test',
+                'category_name' => $appointment['category_name'] ?? null,
+            ]);
+        }
+
+        if (!empty($patientPhone) && $this->twilio !== null) {
+            try {
+                $professionalName = 'votre infirmier';
+                if ($nurseActorId) {
+                    require_once __DIR__ . '/../models/User.php';
+                    $nurse = (new User())->getById($nurseActorId, 'system', 'system');
+                    $first = trim((string) ($nurse['first_name'] ?? ''));
+                    if ($first !== '') {
+                        $professionalName = $first;
+                    }
+                }
+                $smsPayload = [
+                    'id' => $appointmentId,
+                    'type' => $appointment['type'] ?? 'nursing',
+                    'scheduled_at' => $scheduledAt,
+                    'category_name' => $appointment['category_name'] ?? null,
+                    'form_data' => $formData,
+                    'option_meta' => $this->fetchCareOptionMeta(
+                        isset($appointment['category_id']) ? (string) $appointment['category_id'] : null,
+                    ),
+                ];
+                $this->twilio->sendAppointmentRescheduled($patientPhone, $smsPayload, $professionalName);
+            } catch (Exception $e) {
+                error_log('notifyAppointmentRescheduled SMS: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
      * Notifie le créateur du RDV (pro, infirmier, lab, sous-compte) que la prise en charge est confirmée.
      */
     public function notifyCreatorAppointmentConfirmed(

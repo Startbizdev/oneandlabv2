@@ -43,7 +43,15 @@ module.exports = {
         {
           android: {
             usesCleartextTraffic: true,
+            minSdkVersion: 26,
           },
+        },
+      ],
+      [
+        'expo-location',
+        {
+          locationWhenInUsePermission:
+            'Cary utilise votre position pour optimiser l’ordre de votre tournée et afficher les distances entre vos passages.',
         },
       ],
     ],

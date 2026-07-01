@@ -637,6 +637,7 @@ const breadcrumbItems = computed(() => {
     "/nurse/appointments": { label: "Rendez-vous", icon: "i-lucide-calendar" },
     "/nurse/demandes": { label: "Mes demandes", icon: "i-lucide-inbox" },
     "/nurse/calendar": { label: "Calendrier", icon: "i-lucide-calendar-days" },
+    "/nurse/tournee": { label: "Ma tournée", icon: "i-lucide-list-ordered" },
     "/nurse/soins": { label: "Plans récurrents", icon: "i-lucide-calendar-range" },
     "/nurse/prescriptions": { label: "Ordonnances", icon: "i-lucide-file-pen-line" },
     "/nurse/reviews": { label: "Mes avis", icon: "i-lucide-star" },
@@ -886,6 +887,12 @@ const navigationItems = computed(() => {
           icon: "i-lucide-calendar-days",
           to: "/nurse/calendar",
           active: active("/nurse/calendar"),
+        },
+        {
+          label: "Ma tournée",
+          icon: "i-lucide-list-ordered",
+          to: "/nurse/tournee",
+          active: active("/nurse/tournee"),
         },
         {
           label: "Patients",

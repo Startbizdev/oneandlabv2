@@ -9,6 +9,7 @@ import {
   FlaskConical,
   LayoutGrid,
   QrCode,
+  Route,
   Scale,
   Settings,
   Share2,
@@ -78,6 +79,12 @@ export default function NurseMore() {
                 icon: CalendarPlus,
                 label: 'Nouveau rendez-vous',
                 onPress: () => nav('/(nurse)/appointments/new'),
+                iconAccent: 'teal',
+              },
+              {
+                icon: Route,
+                label: 'Ma tournée',
+                onPress: () => nav('/(nurse)/tournee'),
                 iconAccent: 'teal',
               },
               {
