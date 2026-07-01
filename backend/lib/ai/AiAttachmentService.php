@@ -118,6 +118,114 @@ final class AiAttachmentService
     }
 
     /**
+     * Lie les pièces jointes d'un message utilisateur (après INSERT ai_messages).
+     *
+     * @param list<string> $medicalDocumentIds
+     */
+    public function linkAttachmentsToMessage(string $conversationId, string $messageId, array $medicalDocumentIds): void
+    {
+        foreach ($medicalDocumentIds as $medicalDocumentId) {
+            $medicalDocumentId = trim($medicalDocumentId);
+            if ($medicalDocumentId === '') {
+                continue;
+            }
+            $sel = $this->db->prepare('
+                SELECT id FROM ai_conversation_attachments
+                WHERE conversation_id = ? AND medical_document_id = ? AND message_id IS NULL
+                ORDER BY created_at DESC
+                LIMIT 1
+            ');
+            $sel->execute([$conversationId, $medicalDocumentId]);
+            $row = $sel->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                continue;
+            }
+            $upd = $this->db->prepare('UPDATE ai_conversation_attachments SET message_id = ? WHERE id = ?');
+            $upd->execute([$messageId, (string) $row['id']]);
+        }
+    }
+
+    /**
+     * @param list<array<string, mixed>> $messages
+     * @return list<array<string, mixed>>
+     */
+    public function enrichMessagesWithAttachments(string $conversationId, string $userId, array $messages): array
+    {
+        if ($messages === []) {
+            return $messages;
+        }
+
+        try {
+            $attachments = $this->listForConversation($conversationId, $userId);
+        } catch (Throwable) {
+            return $messages;
+        }
+
+        $byMessageId = [];
+        $orphans = [];
+        foreach ($attachments as $row) {
+            $msgId = trim((string) ($row['message_id'] ?? ''));
+            if ($msgId !== '') {
+                $byMessageId[$msgId][] = $row;
+            } else {
+                $orphans[] = $row;
+            }
+        }
+
+        $enriched = [];
+        foreach ($messages as $message) {
+            $meta = is_array($message['metadata'] ?? null) ? $message['metadata'] : [];
+            if (empty($meta['attachment']) && ($message['role'] ?? '') === 'user') {
+                $msgId = (string) ($message['id'] ?? '');
+                $rows = $byMessageId[$msgId] ?? [];
+                if ($rows === [] && $orphans !== []) {
+                    $msgTime = strtotime((string) ($message['created_at'] ?? '')) ?: 0;
+                    $bestIdx = null;
+                    $bestDelta = PHP_INT_MAX;
+                    foreach ($orphans as $idx => $orphan) {
+                        $attTime = strtotime((string) ($orphan['created_at'] ?? '')) ?: 0;
+                        $delta = abs($msgTime - $attTime);
+                        if ($delta < $bestDelta && $delta <= 120) {
+                            $bestDelta = $delta;
+                            $bestIdx = $idx;
+                        }
+                    }
+                    if ($bestIdx !== null) {
+                        $rows = [$orphans[$bestIdx]];
+                        unset($orphans[$bestIdx]);
+                        $orphans = array_values($orphans);
+                    }
+                }
+                if ($rows !== []) {
+                    $meta['attachment'] = $this->mapAttachmentMeta($rows[0], $meta['attachment'] ?? null);
+                }
+            }
+            $message['metadata'] = $meta !== [] ? $meta : ($message['metadata'] ?? null);
+            $enriched[] = $message;
+        }
+
+        return $enriched;
+    }
+
+    /**
+     * @param array<string, mixed>|null $existing
+     * @return array<string, mixed>
+     */
+    private function mapAttachmentMeta(array $row, ?array $existing = null): array
+    {
+        $doc = $this->getDocument((string) ($row['medical_document_id'] ?? ''));
+        $documentType = (string) ($doc['document_type'] ?? 'other');
+
+        return [
+            'medicalDocumentId' => (string) ($row['medical_document_id'] ?? ''),
+            'fileName' => (string) ($row['file_name'] ?? $existing['fileName'] ?? $existing['file_name'] ?? 'document'),
+            'mimeType' => (string) ($row['mime_type'] ?? $existing['mimeType'] ?? $existing['mime_type'] ?? 'application/octet-stream'),
+            'documentType' => (string) ($existing['documentType'] ?? $existing['document_type'] ?? $documentType),
+            'attachmentType' => (string) ($row['attachment_type'] ?? 'other'),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     private function findExistingAttachment(string $conversationId, string $medicalDocumentId): ?array

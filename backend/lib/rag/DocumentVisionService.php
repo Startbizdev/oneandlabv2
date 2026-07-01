@@ -102,7 +102,7 @@ final class DocumentVisionService
             return '';
         }
 
-        $model = rag_env('XAI_VISION_MODEL', 'grok-2-vision-1212') ?? 'grok-2-vision-1212';
+        $model = rag_env('XAI_VISION_MODEL', 'grok-4.3') ?? 'grok-4.3';
         $kindLabel = $kind === 'pdf' ? 'document PDF' : 'photo';
         $isLab = (bool) preg_match('/r[ée]sultat|analyse|bilan|biolog/i', $intentLabel . ' ' . $fileName);
         $instruction = $isLab

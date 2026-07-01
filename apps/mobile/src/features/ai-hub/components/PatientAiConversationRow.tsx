@@ -1,12 +1,14 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 import { Cluster } from '@/components/layout/primitives';
 import * as Haptics from 'expo-haptics';
 import { MessageSquare, Pin } from 'lucide-react-native';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { showConversationRowActions } from '../utils/conversation-row-actions';
 
 interface Props {
   title: string;
@@ -34,45 +36,30 @@ export function PatientAiConversationRow({
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'PatientAiConversationRow');
 
-  const showActions = Boolean(onTogglePin || onArchive || (deletable && onDelete));
+  const canLongPress = Boolean(onTogglePin || onArchive || (deletable && onDelete));
 
   const handleLongPress = () => {
-    if (!showActions) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!canLongPress) return;
 
-    const buttons: Array<{ text: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void }> = [];
-
+    const actions = [];
     if (onTogglePin) {
-      buttons.push({
+      actions.push({
         text: pinned ? 'Désépingler' : 'Épingler',
         onPress: onTogglePin,
       });
     }
     if (onArchive) {
-      buttons.push({ text: archiveLabel, onPress: onArchive });
+      actions.push({ text: archiveLabel, onPress: onArchive });
     }
     if (deletable && onDelete) {
-      buttons.push({
+      actions.push({
         text: 'Supprimer',
-        style: 'destructive',
-        onPress: () => {
-          Alert.alert('Supprimer la conversation', 'Cette action est irréversible.', [
-            { text: 'Annuler', style: 'cancel' },
-            {
-              text: 'Supprimer',
-              style: 'destructive',
-              onPress: () => {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                onDelete();
-              },
-            },
-          ]);
-        },
+        style: 'destructive' as const,
+        onPress: onDelete,
       });
     }
-    buttons.push({ text: 'Annuler', style: 'cancel' });
 
-    Alert.alert(title, undefined, buttons);
+    showConversationRowActions(title, actions);
   };
 
   return (
@@ -81,8 +68,8 @@ export function PatientAiConversationRow({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}
-      onLongPress={showActions ? handleLongPress : undefined}
-      delayLongPress={400}
+      onLongPress={canLongPress ? handleLongPress : undefined}
+      delayLongPress={420}
       style={({ pressed }) => [
         styles.card,
         active && styles.cardActive,
@@ -90,7 +77,7 @@ export function PatientAiConversationRow({
       ]}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      accessibilityHint={showActions ? 'Maintenir pour plus d’options' : undefined}
+      accessibilityHint={canLongPress ? 'Maintenir pour épingler, archiver ou supprimer' : undefined}
     >
       <Cluster
         gap={spacing[2.5]}

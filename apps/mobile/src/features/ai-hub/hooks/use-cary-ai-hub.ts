@@ -34,6 +34,7 @@ import { isActiveAiDraft } from '../utils/is-active-ai-draft';
 import { patchMessageDraft } from '../utils/resolve-message-recap';
 import { assistantSignalsRecap } from '../utils/assistant-recap-intent';
 import { resolveAssistantMessageText } from '../utils/resolve-assistant-message-text';
+import { hydrateMessageAttachments, normalizeMessageAttachment } from '../utils/hydrate-message-attachments';
 
 const PROFILE_DOC_SET = new Set<string>(AI_PROFILE_DOC_TYPES);
 
@@ -130,12 +131,20 @@ function mapConversation(conv: AiConversation, messages: AiMessage[] = []): Pati
   return {
     id: conv.id,
     title: resolveConversationTitle(conv),
-    messages: messages.map((m) => ({
-      id: m.id,
-      role: m.role === 'user' ? 'user' : 'assistant',
-      text: m.content,
-      metadata: m.metadata ?? undefined,
-    })),
+    messages: messages.map((m) => {
+      const attachment = normalizeMessageAttachment(
+        (m.metadata as { attachment?: unknown } | undefined)?.attachment,
+      );
+      return {
+        id: m.id,
+        role: m.role === 'user' ? 'user' : 'assistant',
+        text: m.content,
+        metadata: {
+          ...(m.metadata ?? {}),
+          ...(attachment ? { attachment } : {}),
+        },
+      };
+    }),
     createdAt: conv.created_at ? Date.parse(conv.created_at) : Date.now(),
     updatedAt: updated ? Date.parse(updated) : Date.now(),
     isSystem: conv.is_system ?? false,
@@ -189,10 +198,12 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
   const loadConversationMessages = useCallback(async (id: string) => {
     const detail = await fetchAiConversationDetail(id);
     const mapped = mapConversation(detail.conversation, detail.messages);
+    const hydrated = await hydrateMessageAttachments(mapped.messages);
+    const withAttachments = { ...mapped, messages: hydrated };
     setConversations((prev) =>
-      prev.map((c) => (c.id === id ? mapped : c)),
+      prev.map((c) => (c.id === id ? withAttachments : c)),
     );
-    setActiveDraft(isActiveAiDraft(detail.draft) ? detail.draft : resolveLatestAiDraft(mapped.messages));
+    setActiveDraft(isActiveAiDraft(detail.draft) ? detail.draft : resolveLatestAiDraft(withAttachments.messages));
   }, []);
 
   const refreshConversationsList = useCallback(async (archivedOnly = false) => {
@@ -248,12 +259,16 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
           fetchAiConversations().catch(() => [] as AiConversation[]),
         ]);
         const active = mapConversation(detail.conversation, detail.messages);
+        const hydratedMessages = await hydrateMessageAttachments(active.messages);
+        const activeWithAttachments = { ...active, messages: hydratedMessages };
         const others = list
           .filter((c) => c.id !== conv.id)
           .map((c) => mapConversationListItem(c));
-        setConversations([active, ...others]);
+        setConversations([activeWithAttachments, ...others]);
         setActiveId(conv.id);
-        setActiveDraft(isActiveAiDraft(detail.draft) ? detail.draft : resolveLatestAiDraft(active.messages));
+        setActiveDraft(
+          isActiveAiDraft(detail.draft) ? detail.draft : resolveLatestAiDraft(activeWithAttachments.messages),
+        );
 
         if (init?.initialMessage && !initDone.current) {
           initDone.current = true;
@@ -268,9 +283,13 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
             const detail = await fetchAiConversationDetail(fallback.id).catch(() => null);
             if (detail) {
               const mapped = mapConversation(detail.conversation, detail.messages);
-              setConversations([mapped]);
+              const hydrated = await hydrateMessageAttachments(mapped.messages);
+              const withAttachments = { ...mapped, messages: hydrated };
+              setConversations([withAttachments]);
               setActiveId(fallback.id);
-              setActiveDraft(isActiveAiDraft(detail.draft) ? detail.draft : resolveLatestAiDraft(mapped.messages));
+              setActiveDraft(
+                isActiveAiDraft(detail.draft) ? detail.draft : resolveLatestAiDraft(withAttachments.messages),
+              );
             }
           }
         }
@@ -687,12 +706,6 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
           documentType: docType,
         };
 
-        try {
-          await analyzeMedicalDocument(medicalDocumentId);
-        } catch {
-          /* analyse serveur best-effort — le chat relancera l'OCR si besoin */
-        }
-
         if (activeDraft?.id) {
           const updated = await applyAttachmentToDraft(
             activeDraft.id,
@@ -704,6 +717,8 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
         }
 
         setPendingAttachment(attachment);
+        // Pré-chauffe l'analyse en arrière-plan — ne pas bloquer l'UI (~20s vision).
+        void analyzeMedicalDocument(medicalDocumentId).catch(() => {});
       } catch (e) {
         setPendingAttachment(null);
         showToast(carePhotoPickErrorMessage(e), { type: 'error' });

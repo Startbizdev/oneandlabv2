@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../../lib/ai/bootstrap.php';
 require_once __DIR__ . '/../../../lib/ai/AiConversationService.php';
 require_once __DIR__ . '/../../../lib/ai/AiBookingService.php';
+require_once __DIR__ . '/../../../lib/ai/AiAttachmentService.php';
 
 ai_handle_options(['GET', 'PATCH', 'DELETE', 'OPTIONS']);
 $user = ai_require_user(['patient', 'pro', 'nurse', 'preleveur', 'super_admin']);
@@ -22,8 +23,10 @@ if ($method === 'GET') {
         ai_json_error('Conversation introuvable', 404);
     }
     $messages = $service->getMessages($id, (string) $user['user_id']);
-    $booking = new AiBookingService();
     $userId = (string) $user['user_id'];
+    $attachmentService = new AiAttachmentService();
+    $messages = $attachmentService->enrichMessagesWithAttachments($id, $userId, $messages);
+    $booking = new AiBookingService();
     foreach ($messages as $i => $msg) {
         $draftId = is_array($msg['metadata']['draft'] ?? null)
             ? trim((string) ($msg['metadata']['draft']['id'] ?? ''))
