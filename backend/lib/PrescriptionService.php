@@ -46,6 +46,17 @@ class PrescriptionService
         }
 
         if (in_array($role, ['pro', 'super_admin'], true)) {
+            $emploi = trim((string) ($prescriber['emploi'] ?? ''));
+            require_once __DIR__ . '/ProfessionalId.php';
+            if (ProfessionalId::isProIpaEmploi($emploi)) {
+                $adeli = trim((string) ($prescriber['adeli'] ?? ''));
+                $rpps = trim((string) ($prescriber['rpps'] ?? ''));
+                if ($adeli === '' && $rpps === '') {
+                    return 'Numéro RPPS ou Adeli requis pour générer une ordonnance (Infirmier IPA).';
+                }
+
+                return null;
+            }
             $rpps = trim((string) ($prescriber['rpps'] ?? ''));
             if ($rpps === '') {
                 return 'Numéro RPPS requis pour générer une ordonnance médicale.';

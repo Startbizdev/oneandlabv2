@@ -3,20 +3,23 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { Mic, Plus, Send, X } from 'lucide-react-native';
+import { Mic, Plus, Send } from 'lucide-react-native';
 import { elevation, H_PADDING, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+import {
+  PatientAiAttachmentThumbnail,
+  type PatientAiAttachmentPreview,
+} from './PatientAiAttachmentThumbnail';
 
 const BAR_HEIGHT = 48;
+const ATTACHMENT_PREVIEW_HEIGHT = 72;
 
 /** Hauteur estimée du dock (hors clavier) — pour référence externe si besoin. */
 export const PATIENT_AI_COMPOSER_DOCK_HEIGHT = spacing[2] + BAR_HEIGHT + spacing[2];
 
-export type PatientAiPendingAttachment = {
-  fileName: string;
-  documentType: string;
-  medicalDocumentId?: string;
-};
+export const PATIENT_AI_COMPOSER_ATTACHMENT_EXTRA = ATTACHMENT_PREVIEW_HEIGHT + spacing[2];
+
+export type PatientAiPendingAttachment = PatientAiAttachmentPreview;
 
 interface Props {
   draft: string;
@@ -25,6 +28,7 @@ interface Props {
   onVoicePress: () => void;
   onAttachPress?: () => void;
   onClearAttachment?: () => void;
+  onPreviewPress?: () => void;
   pendingAttachment?: PatientAiPendingAttachment | null;
   attaching?: boolean;
   onFocus?: () => void;
@@ -35,7 +39,7 @@ interface Props {
   embedded?: boolean;
 }
 
-/** Barre de saisie Cary IA — + à gauche (photo/fichier), style ChatGPT. */
+/** Barre de saisie Cary IA — aperçu pièce jointe + micro et envoi visibles. */
 export function PatientAiChatComposer({
   draft,
   onChangeDraft,
@@ -43,6 +47,7 @@ export function PatientAiChatComposer({
   onVoicePress,
   onAttachPress,
   onClearAttachment,
+  onPreviewPress,
   pendingAttachment,
   attaching,
   onFocus,
@@ -58,21 +63,15 @@ export function PatientAiChatComposer({
   return (
     <View style={embedded ? styles.dockEmbedded : styles.dockStandalone}>
       {pendingAttachment ? (
-        <Row align="center" gap={spacing[2]} style={styles.attachmentChip}>
-          <Text style={[styles.attachmentLabel, { color: c.textSecondary }]} numberOfLines={1}>
-            📎 {pendingAttachment.fileName}
-          </Text>
-          {onClearAttachment ? (
-            <Pressable
-              onPress={onClearAttachment}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Retirer la pièce jointe"
-            >
-              <X size={14} color={c.textTertiary} strokeWidth={2.5} />
-            </Pressable>
-          ) : null}
-        </Row>
+        <View style={styles.previewRow}>
+          <PatientAiAttachmentThumbnail
+            attachment={pendingAttachment}
+            variant="composer"
+            loading={attaching}
+            onRemove={onClearAttachment}
+            onPress={!attaching && onPreviewPress ? onPreviewPress : undefined}
+          />
+        </View>
       ) : null}
 
       <Row
@@ -120,41 +119,48 @@ export function PatientAiChatComposer({
           textAlignVertical="center"
         />
 
-        {canSend ? (
-            <Pressable
-              onPress={onSend}
-              disabled={disabled}
-              style={({ pressed }) => [
-                styles.actionBtn,
-                pressed && styles.btnPressed,
-                disabled && styles.btnDisabled,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Envoyer le message"
-              hitSlop={6}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: c.primary }]}>
-                <Send size={18} color={c.textInverse} strokeWidth={2.25} />
-              </View>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={onVoicePress}
-              disabled={disabled}
-              style={({ pressed }) => [
-                styles.actionBtn,
-                pressed && styles.btnPressed,
-                disabled && styles.btnDisabled,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Parler à Cary"
-              hitSlop={6}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: c.primary }]}>
-                <Mic size={20} color={c.textInverse} strokeWidth={2.5} />
-              </View>
-            </Pressable>
-          )}
+        <Pressable
+          onPress={onVoicePress}
+          disabled={disabled}
+          style={({ pressed }) => [
+            styles.actionBtn,
+            pressed && styles.btnPressed,
+            disabled && styles.btnDisabled,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Parler à Cary"
+          hitSlop={6}
+        >
+          <View style={[styles.actionIcon, { backgroundColor: c.primary }]}>
+            <Mic size={20} color={c.textInverse} strokeWidth={2.5} />
+          </View>
+        </Pressable>
+
+        <Pressable
+          onPress={onSend}
+          disabled={disabled || !canSend}
+          style={({ pressed }) => [
+            styles.actionBtn,
+            pressed && canSend && styles.btnPressed,
+            (disabled || !canSend) && styles.btnDisabled,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Envoyer le message"
+          hitSlop={6}
+        >
+          <View
+            style={[
+              styles.actionIcon,
+              { backgroundColor: canSend && !disabled ? c.primary : c.surfaceAlt },
+            ]}
+          >
+            <Send
+              size={18}
+              color={canSend && !disabled ? c.textInverse : c.textTertiary}
+              strokeWidth={2.25}
+            />
+          </View>
+        </Pressable>
       </Row>
     </View>
   );
@@ -172,6 +178,10 @@ function buildStyles(_c: AppColors) {
       paddingTop: spacing[1.5],
       paddingBottom: spacing[2],
       paddingHorizontal: H_PADDING,
+    },
+    previewRow: {
+      marginBottom: spacing[2],
+      alignSelf: 'flex-start' as const,
     },
     bar: {
       width: '100%' as const,
@@ -194,22 +204,9 @@ function buildStyles(_c: AppColors) {
       maxHeight: 96,
       paddingVertical: Platform.OS === 'ios' ? spacing[1.5] : spacing[1],
     },
-    attachmentChip: {
-      marginBottom: spacing[1.5],
-      paddingHorizontal: spacing[2.5],
-      paddingVertical: spacing[1.5],
-      borderRadius: radius.lg,
-      maxWidth: '100%' as const,
-    },
-    attachmentLabel: {
-      flex: 1,
-      minWidth: 0,
-      fontFamily: fontFamily.medium,
-      fontSize: fontSize.xs,
-    },
     actionBtn: {
       flexShrink: 0,
-      marginLeft: spacing[1.5],
+      marginLeft: spacing[1],
     },
     actionBtnLeft: {
       marginLeft: 0,

@@ -26,6 +26,8 @@ interface Props {
   embedded?: boolean;
   /** Recherche suivie du CTA « Prendre RDV » — évite le double espacement vertical. */
   followedByBookCta?: boolean;
+  /** Premier élément sous le header glass — supprime la marge haute par défaut. */
+  compactTop?: boolean;
 }
 
 type SearchHostProps = Omit<Props, 'search' | 'onSearchChange'> & {
@@ -38,6 +40,7 @@ type SearchHostProps = Omit<Props, 'search' | 'onSearchChange'> & {
  */
 export function AppointmentsListSearchHost({
   onQueryChange,
+  compactTop,
   ...barProps
 }: SearchHostProps) {
   const [search, setSearch] = useState('');
@@ -54,6 +57,7 @@ export function AppointmentsListSearchHost({
   return (
     <AppointmentsListFilterBar
       {...barProps}
+      compactTop={compactTop}
       search={search}
       onSearchChange={handleSearchChange}
     />
@@ -69,6 +73,7 @@ export function AppointmentsListFilterBar({
   chips = [],
   embedded = false,
   followedByBookCta = false,
+  compactTop = false,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
@@ -81,6 +86,7 @@ export function AppointmentsListFilterBar({
       style={[
         styles.wrap,
         embedded && styles.wrapEmbedded,
+        embedded && compactTop && styles.wrapEmbeddedCompactTop,
         embedded && followedByBookCta && styles.wrapEmbeddedBeforeBookCta,
       ]}
     >
@@ -170,6 +176,9 @@ function buildStyles(c: AppColors) {
     marginTop: spacing[2],
     marginBottom: spacing[2],
     width: '100%' as const,
+  },
+  wrapEmbeddedCompactTop: {
+    marginTop: 0,
   },
   wrapEmbeddedBeforeBookCta: {
     marginBottom: 0,

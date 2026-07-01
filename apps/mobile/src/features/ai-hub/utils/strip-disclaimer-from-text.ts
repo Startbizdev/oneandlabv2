@@ -19,9 +19,23 @@ const INTERNAL_AI_PATTERNS = [
   /\*\*\((?:patient_mode|booking_step)[^)]+\)\*\*/gi,
 ];
 
+function stripInternalTokensOnly(text: string): string {
+  let out = text.trim();
+  for (const pattern of INTERNAL_AI_PATTERNS) {
+    out = out.replace(pattern, '').trim();
+  }
+  return out
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 /** Retire disclaimer / urgence / tokens internes du corps du message. */
 export function stripDisclaimerFromAssistantText(text: string, disclaimer?: string): string {
-  let out = text.trim();
+  const original = text.trim();
+  if (!original) return '';
+
+  let out = original;
   const d = disclaimer?.trim();
 
   if (d) {
@@ -48,6 +62,10 @@ export function stripDisclaimerFromAssistantText(text: string, disclaimer?: stri
     .replace(/^[\s\-–—•*]+|[\s\-–—•*]+$/g, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
+
+  if (!out && original) {
+    return stripInternalTokensOnly(original);
+  }
 
   return out;
 }

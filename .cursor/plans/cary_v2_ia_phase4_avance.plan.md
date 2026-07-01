@@ -4,22 +4,22 @@ overview: "Plan 4/4 — Voix STT/TTS, dictée pro, TrendEngine, recherche/éping
 todos:
   - id: p4-migrations
     content: "Migrations 085-087 : voice_*, ai_trends, ai_feedback"
-    status: pending
+    status: completed
   - id: p4-voice
-    content: "API /ai/voice/* + brancher VoiceMockOverlay + dictée pro post-RDV"
-    status: pending
+    content: API /ai/voice/* + brancher VoiceMockOverlay + dictée pro post-RDV
+    status: completed
   - id: p4-trends
-    content: "TrendEngine + badges descriptifs onglet santé"
-    status: pending
+    content: TrendEngine + badges descriptifs onglet santé
+    status: completed
   - id: p4-hub-ux
-    content: "Épinglage, archives, GET /ai/search, export RGPD — ConversationsSheet"
-    status: pending
+    content: Épinglage, archives, GET /ai/search, export RGPD — ConversationsSheet
+    status: completed
   - id: p4-admin-extended
     content: "Cockpit 04.8 : latence p95, coûts/provider, satisfaction"
-    status: pending
+    status: completed
   - id: p4-hardening
-    content: "Tests PHPUnit, audit prompt injection, charge OCR/health, non-régression 86 endpoints"
-    status: pending
+    content: Tests PHPUnit, audit prompt injection, charge OCR/health, non-régression 86 endpoints
+    status: completed
 isProject: false
 ---
 

@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { Appointment } from '@oneandlab/shared-types';
+import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
 import {
   AppointmentsRdvListBookHeader,
   AppointmentsRdvListFilterHeaderHost,
+  RDV_LIST_SEARCH_EDGE,
   useRdvListChromeStyles,
 } from '@/features/appointments/components/AppointmentsRdvListToolbar';
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
@@ -21,7 +23,13 @@ import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination
 import { useStaleForegroundRefetch } from '@/lib/hooks/use-stale-foreground-refetch';
 import { prefetchAppointmentsForUser } from '@/features/appointments/lib/prefetch-appointments';
 import { PATIENT_TAB_OPTIONS, type PatientListTab } from '@/constants/appointments-list-filters';
-import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
+import {
+  EMPTY_RDV_IMAGE,
+  EMPTY_RDV_IMAGE_HEIGHT,
+  EMPTY_RDV_IMAGE_WIDTH,
+} from '@/constants/empty-state-images';
+import { useHealthRecordCompletion } from '@/features/health-record/hooks/use-health-record-completion';
+import { HealthRecordPromptCard } from '@/features/health-record/components/HealthRecordPromptCard';
 
 function matchesSearch(apt: Appointment, q: string): boolean {
   const s = q.toLowerCase().trim();
@@ -40,6 +48,7 @@ function matchesSearch(apt: Appointment, q: string): boolean {
 export function PatientAppointmentsListScreen() {
   const router = useRouter();
   const chromeStyles = useRdvListChromeStyles();
+  const sceneInsets = useTabSceneInsets();
   const [tab, setTab] = useState<PatientListTab>('upcoming');
   const [search, setSearch] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -54,6 +63,12 @@ export function PatientAppointmentsListScreen() {
 
   const query = useInfiniteAppointmentsList(listFilters);
   const { refetch } = query;
+  const healthRecordQ = useHealthRecordCompletion();
+  const completion = healthRecordQ.data;
+  const completionPercent = completion?.percent ?? 0;
+  const showHealthCard =
+    tab === 'upcoming' &&
+    (healthRecordQ.isPending || healthRecordQ.isFetching || completionPercent < 100);
 
   const appointments = useMemo(
     () => flattenInfiniteAppointments(query.data?.pages),
@@ -110,19 +125,29 @@ export function PatientAppointmentsListScreen() {
     setSearch(value);
   }, []);
 
-  const ListHeader = useCallback(
-    () => (
-      <View style={chromeStyles.listHeader}>
-        <AppointmentsRdvListFilterHeaderHost
-          onQueryChange={onSearchQueryChange}
-          onOpenFilters={() => setSheetOpen(true)}
-          advancedFilterCount={advancedCount}
-          chips={filterChips}
+  const listChrome = (
+    <View
+      style={[
+        chromeStyles.listChrome,
+        { paddingTop: sceneInsets.insetTop + RDV_LIST_SEARCH_EDGE },
+      ]}
+    >
+      <AppointmentsRdvListFilterHeaderHost
+        compactTop
+        onQueryChange={onSearchQueryChange}
+        onOpenFilters={() => setSheetOpen(true)}
+        advancedFilterCount={advancedCount}
+        chips={filterChips}
+      />
+      <AppointmentsRdvListBookHeader href="/(patient)/booking/new" />
+      {showHealthCard ? (
+        <HealthRecordPromptCard
+          percent={healthRecordQ.isPending ? 0 : completionPercent}
+          loading={healthRecordQ.isPending && !completion}
+          onPress={() => router.push('/(patient)/health-record' as never)}
         />
-        <AppointmentsRdvListBookHeader href="/(patient)/booking/new" />
-      </View>
-    ),
-    [advancedCount, filterChips, chromeStyles, onSearchQueryChange],
+      ) : null}
+    </View>
   );
 
   if (query.isError) {
@@ -149,8 +174,8 @@ export function PatientAppointmentsListScreen() {
         items={displayRows}
         renderItem={renderItem}
         keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
-        ListHeaderComponent={ListHeader}
-        contentInsetAdjustmentBehavior="automatic"
+        header={listChrome}
+        reserveTopInsetInHeader
         contentContainerStyle={chromeStyles.listContent}
         showsVerticalScrollIndicator={false}
         skeletonHeight={116}

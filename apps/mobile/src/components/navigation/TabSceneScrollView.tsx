@@ -34,6 +34,8 @@ type Props = {
   onEndReached?: () => void;
   onEndReachedThreshold?: number;
   showsVerticalScrollIndicator?: boolean;
+  /** Le chrome est rendu hors scroll avec `paddingTop` — ne pas réappliquer l'inset haut. */
+  omitTopInset?: boolean;
 };
 
 /**
@@ -50,17 +52,19 @@ export function TabSceneScrollView({
   onEndReached,
   onEndReachedThreshold = 0.35,
   showsVerticalScrollIndicator = false,
+  omitTopInset = false,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'TabSceneScrollView');
   const sceneInsets = useTabSceneInsets();
+  const scrollInsets = omitTopInset ? { ...sceneInsets, insetTop: 0 } : sceneInsets;
   const innerRef = useRef<ScrollView>(null);
   const scrollRef = scrollRefProp ?? innerRef;
 
   useScrollToTopOnPop(scrollRef);
 
   const scrollConfig = buildTabSceneScrollConfig(
-    sceneInsets,
+    scrollInsets,
     contentContainerStyle,
     scrollPaddingOptions,
   );

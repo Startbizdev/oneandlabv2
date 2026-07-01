@@ -23,6 +23,7 @@ import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { useAuthGuard } from '@/features/auth/hooks/use-auth-guard';
 import { useOnboardingGate } from '@/features/onboarding/hooks/use-onboarding-gate';
 import { MustChangePasswordGate } from '@/features/auth/components/MustChangePasswordGate';
+import { AppUpdateGate } from '@/features/app-update/components/AppUpdateGate';
 import { registerNotificationHandlers } from '@/features/notifications/handlers/register-handlers';
 import { useDeepLinks } from '@/features/navigation/hooks/use-deep-links';
 import { NetworkProvider } from '@/providers/NetworkProvider';
@@ -64,6 +65,7 @@ function RootLayoutInner() {
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
       </Stack>
       <MustChangePasswordGate />
+      <AppUpdateGate />
     </View>
   );
 }

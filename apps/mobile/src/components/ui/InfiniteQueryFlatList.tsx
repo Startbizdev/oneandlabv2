@@ -72,6 +72,9 @@ type Props<TPage, Item> = Omit<
 
   header?: ReactNode;
 
+  /** Le `header` inclut déjà `paddingTop` (inset header glass) — ne pas le réappliquer sur la liste. */
+  reserveTopInsetInHeader?: boolean;
+
   skeletonCount?: number;
 
   skeletonHeight?: number;
@@ -89,6 +92,8 @@ export function InfiniteQueryFlatList<TPage, Item>({
   items,
 
   header,
+
+  reserveTopInsetInHeader = false,
 
   ListHeaderComponent,
 
@@ -150,7 +155,11 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
 
 
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, contentContainerStyle);
+  const scrollInsets = reserveTopInsetInHeader && header != null
+    ? { ...sceneInsets, insetTop: 0 }
+    : sceneInsets;
+
+  const scrollConfig = buildTabSceneScrollConfig(scrollInsets, contentContainerStyle);
 
 
 
@@ -223,6 +232,8 @@ export function InfiniteQueryFlatList<TPage, Item>({
           scrollRef={scrollRef}
 
           contentContainerStyle={[styles.listContent, contentContainerStyle]}
+
+          omitTopInset={reserveTopInsetInHeader && header != null}
 
           refreshing={refreshing}
 

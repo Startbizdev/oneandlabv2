@@ -129,3 +129,67 @@ EOF3
 else
   echo "Ignoré : $PRELEVEUR_PATIENT_NOTIFS_SCRIPT absent."
 fi
+
+AI_OCR_SCRIPT="$REMOTE_BASE/backend/cron/ai-document-ocr.php"
+AI_OCR_LOG="/var/log/oneandlab-ai-document-ocr.log"
+if [[ -f "$AI_OCR_SCRIPT" ]]; then
+  CRON_AI_OCR="/etc/cron.d/oneandlab-ai-document-ocr"
+  "${SUDO[@]}" tee "$CRON_AI_OCR" > /dev/null <<EOFAI
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+TZ=Europe/Paris
+*/15 * * * * $WWW_USER $PHP_BIN $AI_OCR_SCRIPT >> $AI_OCR_LOG 2>&1
+EOFAI
+  "${SUDO[@]}" chmod 644 "$CRON_AI_OCR"
+  "${SUDO[@]}" touch "$AI_OCR_LOG"
+  "${SUDO[@]}" chown "$WWW_USER:$WWW_USER" "$AI_OCR_LOG"
+  echo "OK : $CRON_AI_OCR (toutes les 15 min)."
+fi
+
+AI_FOLLOWUP_SCRIPT="$REMOTE_BASE/backend/cron/ai-patient-followup.php"
+AI_FOLLOWUP_LOG="/var/log/oneandlab-ai-patient-followup.log"
+if [[ -f "$AI_FOLLOWUP_SCRIPT" ]]; then
+  CRON_AI_FU="/etc/cron.d/oneandlab-ai-patient-followup"
+  "${SUDO[@]}" tee "$CRON_AI_FU" > /dev/null <<EOFFU
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+TZ=Europe/Paris
+15 6 * * * $WWW_USER $PHP_BIN $AI_FOLLOWUP_SCRIPT >> $AI_FOLLOWUP_LOG 2>&1
+EOFFU
+  "${SUDO[@]}" chmod 644 "$CRON_AI_FU"
+  "${SUDO[@]}" touch "$AI_FOLLOWUP_LOG"
+  "${SUDO[@]}" chown "$WWW_USER:$WWW_USER" "$AI_FOLLOWUP_LOG"
+  echo "OK : $CRON_AI_FU (06:15 Europe/Paris chaque jour)."
+fi
+
+AI_TRENDS_SCRIPT="$REMOTE_BASE/backend/cron/ai-compute-trends.php"
+AI_TRENDS_LOG="/var/log/oneandlab-ai-compute-trends.log"
+if [[ -f "$AI_TRENDS_SCRIPT" ]]; then
+  CRON_AI_TR="/etc/cron.d/oneandlab-ai-compute-trends"
+  "${SUDO[@]}" tee "$CRON_AI_TR" > /dev/null <<EOFTRENDS
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+TZ=Europe/Paris
+30 5 * * * $WWW_USER $PHP_BIN $AI_TRENDS_SCRIPT >> $AI_TRENDS_LOG 2>&1
+EOFTRENDS
+  "${SUDO[@]}" chmod 644 "$CRON_AI_TR"
+  "${SUDO[@]}" touch "$AI_TRENDS_LOG"
+  "${SUDO[@]}" chown "$WWW_USER:$WWW_USER" "$AI_TRENDS_LOG"
+  echo "OK : $CRON_AI_TR (05:30 Europe/Paris chaque jour)."
+fi
+
+HR_NUDGE_SCRIPT="$REMOTE_BASE/backend/cron/health-record-rdv-nudges.php"
+HR_NUDGE_LOG="/var/log/oneandlab-health-record-nudges.log"
+if [[ -f "$HR_NUDGE_SCRIPT" ]]; then
+  CRON_HR="/etc/cron.d/oneandlab-health-record-nudges"
+  "${SUDO[@]}" tee "$CRON_HR" > /dev/null <<EOFHR
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+TZ=Europe/Paris
+0 7 * * * $WWW_USER $PHP_BIN $HR_NUDGE_SCRIPT >> $HR_NUDGE_LOG 2>&1
+EOFHR
+  "${SUDO[@]}" chmod 644 "$CRON_HR"
+  "${SUDO[@]}" touch "$HR_NUDGE_LOG"
+  "${SUDO[@]}" chown "$WWW_USER:$WWW_USER" "$HR_NUDGE_LOG"
+  echo "OK : $CRON_HR (07:00 Europe/Paris chaque jour)."
+fi

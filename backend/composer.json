@@ -12,7 +12,11 @@
         "phpunit/phpunit": "^9.6"
     },
     "scripts": {
-        "test": "phpunit",
-        "test:qr": "phpunit --testsuite QR"
+        "test": "phpunit --testsuite All",
+        "test:ai": "phpunit --testsuite AI",
+        "test:health": "phpunit --testsuite Health",
+        "test:rag": "phpunit --testsuite RAG",
+        "test:qr": "phpunit --testsuite QR",
+        "test:mobile": "phpunit --testsuite Mobile"
     }
 }

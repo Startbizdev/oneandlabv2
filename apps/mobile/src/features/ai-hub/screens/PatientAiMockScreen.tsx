@@ -17,6 +17,7 @@ import {
 } from '../components/PatientAiChatFooter';
 import { PatientAiConversationsSheet } from '../components/PatientAiConversationsSheet';
 import { PatientAiVoiceMockOverlay } from '../components/PatientAiVoiceMockOverlay';
+import { useVoiceSession } from '../hooks/use-voice-session';
 import { usePatientAiConversations, nextPatientAiMessageId } from '../hooks/use-patient-ai-conversations';
 import { useAuthStore } from '@/store/auth-store';
 import {
@@ -147,6 +148,7 @@ export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: Screen
   const [draft, setDraft] = useState('');
   const [awaitingReply, setAwaitingReply] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const voice = useVoiceSession(activeId);
   const showSuggestions = messages.length === 1 && !awaitingReply;
   const canSend = draft.trim().length > 0 && !awaitingReply;
 
@@ -260,7 +262,23 @@ export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: Screen
         />
       </View>
 
-      <PatientAiVoiceMockOverlay visible={voiceOpen} onClose={() => setVoiceOpen(false)} />
+      <PatientAiVoiceMockOverlay
+        visible={voiceOpen}
+        onClose={() => {
+          voice.reset();
+          setVoiceOpen(false);
+        }}
+        phase={voice.phase}
+        recognizing={voice.recognizing}
+        available={voice.available}
+        liveTranscript={voice.liveTranscript}
+        lastUserText={voice.lastUserText}
+        lastResponse={voice.lastResponse}
+        speechError={voice.speechError}
+        onStart={() => void voice.startConversation()}
+        onStop={voice.stopConversation}
+        onToggleMic={() => void voice.toggleMic()}
+      />
 
       <PatientAiConversationsSheet
         visible={historyOpen}

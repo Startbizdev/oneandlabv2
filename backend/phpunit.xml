@@ -1,8 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit bootstrap="tests/bootstrap.php" colors="true">
+<phpunit bootstrap="tests/bootstrap.php" colors="true" failOnRisky="true" failOnWarning="true">
   <testsuites>
+    <testsuite name="All">
+      <directory>tests/ai</directory>
+      <directory>tests/health</directory>
+      <directory>tests/rag</directory>
+      <directory>tests/qr</directory>
+      <directory>tests/mobile</directory>
+    </testsuite>
+    <testsuite name="AI">
+      <directory>tests/ai</directory>
+    </testsuite>
+    <testsuite name="Health">
+      <directory>tests/health</directory>
+    </testsuite>
+    <testsuite name="RAG">
+      <directory>tests/rag</directory>
+    </testsuite>
     <testsuite name="QR">
       <directory>tests/qr</directory>
+    </testsuite>
+    <testsuite name="Mobile">
+      <directory>tests/mobile</directory>
     </testsuite>
   </testsuites>
 </phpunit>

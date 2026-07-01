@@ -1,3 +1,4 @@
+import { isProIpaEmploi } from '@oneandlab/shared-types';
 import { labelFromAppointmentAddressField } from './appointment-address';
 
 export type PrescriptionKind = 'medical' | 'nursing';
@@ -12,6 +13,7 @@ export interface PrescriptionProfileSnapshot {
   address?: unknown;
   rpps?: string | null;
   adeli?: string | null;
+  emploi?: string | null;
   prescription_signature_png?: string | null;
 }
 
@@ -71,10 +73,13 @@ export function getPrescriptionProfileGaps(options: {
 
   if (prescriber) {
     const isNurse = prescriptionKind === 'nursing' || prescriberRole === 'nurse';
+    const isProIpa =
+      prescriberRole === 'pro' && isProIpaEmploi(prescriber.emploi);
+    const usesAdeliOrRpps = isNurse || isProIpa;
     if (!hasProfessionalId(prescriber)) {
       gaps.push({
         id: 'prescriber_id',
-        message: isNurse ? 'N° ADELI ou RPPS manquant' : 'N° RPPS manquant',
+        message: usesAdeliOrRpps ? 'N° ADELI ou RPPS manquant' : 'N° RPPS manquant',
         ...editPrescriber,
       });
     }

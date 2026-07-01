@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
-import { FileText, Star } from 'lucide-react-native';
+import { Activity, FileText, Star } from 'lucide-react-native';
 import { PROFILE_HEADER_SF } from '@/components/navigation/RoleNativeTabsLayout';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
@@ -47,6 +47,15 @@ export default function PatientLayout() {
         />
         <Stack.Screen name="informations-legales" options={{ headerTitleAlign: 'left' }} />
         <Stack.Screen name="web" options={{ headerTitleAlign: 'left' }} />
+        <Stack.Screen
+          name="health-data"
+          options={{
+            title: 'Mes données santé',
+            headerTitle: tabHeaderTitle('Mes données santé', 'heart.text.square', Activity),
+          }}
+        />
+        <Stack.Screen name="health-record/index" options={{ title: 'Mon carnet de santé' }} />
+        <Stack.Screen name="health-record/wizard" options={{ title: 'Compléter mon carnet' }} />
       </Stack>
       </StackSceneInsetLayout>
     </View>

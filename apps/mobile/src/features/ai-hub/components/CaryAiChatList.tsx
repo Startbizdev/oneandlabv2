@@ -15,7 +15,7 @@ export type CaryAiChatListProps = {
   renderMessage: (item: PatientAiChatMessage) => ReactElement;
   listFooter?: ReactElement | null;
   extraData?: string;
-  onContentSizeChange?: () => void;
+  onContentSizeChange?: (width: number, height: number) => void;
 };
 
 function ListSeparator({ styles }: { styles: ReturnType<typeof buildStyles> }) {

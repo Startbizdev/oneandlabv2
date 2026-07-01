@@ -11,11 +11,13 @@ import { spacing } from '@/theme';
 interface Props {
   href: Href;
   label?: string;
+  /** Sans marge verticale — espacement géré par le parent (`gap`). */
+  flush?: boolean;
 }
 
 const DEFAULT_LABEL = 'Nouveau rendez-vous';
 
-function AppointmentsBookCtaComponent({ href, label = DEFAULT_LABEL }: Props) {
+function AppointmentsBookCtaComponent({ href, label = DEFAULT_LABEL, flush = false }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_appointments_components_AppointmentsBookCta_tsx_AppointmentsBookCtaComponent_styles');
 
@@ -26,7 +28,7 @@ function AppointmentsBookCtaComponent({ href, label = DEFAULT_LABEL }: Props) {
   }, [href, router]);
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, flush && styles.wrapFlush]}>
       <BookingPremiumStepCta
         variant="list"
         showStepBadge={false}
@@ -45,6 +47,10 @@ function buildStyles(c: AppColors) {
   wrap: {
     marginTop: spacing[2],
     marginBottom: spacing[2],
+  },
+  wrapFlush: {
+    marginTop: 0,
+    marginBottom: 0,
   },
 };
 }

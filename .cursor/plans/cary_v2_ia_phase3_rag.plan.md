@@ -3,29 +3,29 @@ name: Cary IA Phase 3 — RAG & intelligence profonde
 overview: "Plan 3/4 — Qdrant RAG, OCR documents, mémoire 3 niveaux, agent suivi, pièces jointes chat, admin IA, ai_reports. Prérequis : Phase 2 en prod."
 todos:
   - id: p3-qdrant
-    content: "Installer Qdrant EC2 127.0.0.1:6333 + collections par patient_id"
-    status: pending
+    content: Installer Qdrant EC2 127.0.0.1:6333 + collections par patient_id
+    status: completed
   - id: p3-migrations
     content: "Migrations 081-084 : ai_memory, signals, reports, attachments"
-    status: pending
+    status: completed
   - id: p3-rag-ocr
-    content: "RAG Qdrant + indexation dossier + OCR async medical_documents"
-    status: pending
+    content: RAG Qdrant + indexation dossier + OCR async medical_documents
+    status: completed
   - id: p3-memory
-    content: "MemoryComposer 3 niveaux remplace/complète ContextComposer vectoriel"
-    status: pending
+    content: MemoryComposer 3 niveaux remplace/complète ContextComposer vectoriel
+    status: completed
   - id: p3-agent-suivi
-    content: "Cron ai-patient-followup + ai_patient_signals + notifs → draft RDV"
-    status: pending
+    content: Cron ai-patient-followup + ai_patient_signals + notifs → draft RDV
+    status: completed
   - id: p3-attachments
-    content: "Pièces jointes PDF/image dans fil chat + citations"
-    status: pending
+    content: Pièces jointes PDF/image dans fil chat + citations
+    status: completed
   - id: p3-admin-ai
-    content: "frontend/pages/admin/ai/ — routing, usage, audits CSV"
-    status: pending
+    content: frontend/pages/admin/ai/ — routing, usage, audits CSV
+    status: completed
   - id: p3-tests-dod
     content: "DoD : RAG ACL, OCR→summary, agent signal, analyse doc dans chat"
-    status: pending
+    status: completed
 isProject: false
 ---
 

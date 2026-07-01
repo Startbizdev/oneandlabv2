@@ -7,8 +7,10 @@ import {
   Platform,
   Pressable,
   SectionList,
+  Share,
   StyleSheet,
   Text,
+  TextInput,
   View,
   useWindowDimensions,
   type SectionListRenderItem,
@@ -21,16 +23,18 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Cluster, Row } from '@/components/layout/primitives';
-import { Smile, X } from 'lucide-react-native';
+import { Archive, Download, MessageSquare, Search, X } from 'lucide-react-native';
+import { Cluster, Stack } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
+import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
+import { exportAiConversations } from '../api/ai.service';
 import { PatientAiConversationRow } from './PatientAiConversationRow';
 import type { PatientAiConversation } from '../types/patient-ai-conversation';
 import { elevation, H_PADDING, radius, spacing } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
-const SHEET_MAX_WIDTH = 320;
-const SHEET_WIDTH_RATIO = 0.88;
+const SHEET_MAX_WIDTH = 380;
+const SHEET_WIDTH_RATIO = 0.9;
 
 type ConversationSection = {
   key: string;
@@ -47,10 +51,20 @@ interface Props {
   onNewConversation: () => void;
   onDeleteConversation?: (id: string) => void;
   onRefresh?: () => void;
+  searchQuery?: string;
+  onSearchChange?: (q: string) => void;
+  showArchived?: boolean;
+  onToggleArchived?: () => void;
+  onTogglePin?: (id: string) => void;
+  onArchive?: (id: string) => void;
+  onUnarchive?: (id: string) => void;
 }
 
 function groupConversations(conversations: PatientAiConversation[]): ConversationSection[] {
-  const sorted = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
+  const sorted = [...conversations].sort((a, b) => {
+    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+    return b.updatedAt - a.updatedAt;
+  });
   const today: PatientAiConversation[] = [];
   const yesterday: PatientAiConversation[] = [];
   const week: PatientAiConversation[] = [];
@@ -72,7 +86,7 @@ function groupConversations(conversations: PatientAiConversation[]): Conversatio
   return sections;
 }
 
-/** Panneau latéral Cary — historique conversations (mock). */
+/** Panneau latéral Cary — historique conversations. */
 export function PatientAiConversationsSheet({
   visible,
   onClose,
@@ -82,9 +96,16 @@ export function PatientAiConversationsSheet({
   onNewConversation,
   onDeleteConversation,
   onRefresh,
+  searchQuery = '',
+  onSearchChange,
+  showArchived = false,
+  onToggleArchived,
+  onTogglePin,
+  onArchive,
+  onUnarchive,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useThemedStyles(buildStyles, 'PatientAiConversationsSheet');
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const sheetWidth = Math.min(SHEET_MAX_WIDTH, Math.round(windowWidth * SHEET_WIDTH_RATIO));
@@ -137,7 +158,7 @@ export function PatientAiConversationsSheet({
   }));
 
   const backdropStyle = useAnimatedStyle(() => ({
-    opacity: backdropOpacity.value * 0.45,
+    opacity: backdropOpacity.value * 0.4,
   }));
 
   const handleNew = () => {
@@ -150,22 +171,51 @@ export function PatientAiConversationsSheet({
     onClose();
   };
 
+  const handleExport = async () => {
+    try {
+      const data = await exportAiConversations();
+      await Share.share({
+        message: JSON.stringify(data, null, 2),
+        title: 'Export Cary IA',
+      });
+    } catch {
+      /* ignore */
+    }
+  };
+
   const renderItem: SectionListRenderItem<PatientAiConversation, ConversationSection> = ({
     item,
   }) => (
     <PatientAiConversationRow
       title={item.title}
       active={item.id === activeId}
+      pinned={item.isPinned}
       deletable={!item.isSystem}
       onPress={() => handleSelect(item.id)}
       onDelete={onDeleteConversation ? () => onDeleteConversation(item.id) : undefined}
+      onTogglePin={onTogglePin && !item.isSystem ? () => onTogglePin(item.id) : undefined}
+      onArchive={
+        showArchived
+          ? onUnarchive
+            ? () => onUnarchive(item.id)
+            : undefined
+          : onArchive && !item.isSystem
+            ? () => onArchive(item.id)
+            : undefined
+      }
+      archiveLabel={showArchived ? 'Restaurer' : 'Archiver'}
     />
   );
 
   const renderSectionHeader = ({ section }: { section: ConversationSection }) => (
-    <Text style={[styles.sectionLabel, section.key === sections[0]?.key && styles.sectionLabelFirst]}>
-      {section.title}
-    </Text>
+    <View
+      style={[
+        styles.sectionHeader,
+        section.key === sections[0]?.key && styles.sectionHeaderFirst,
+      ]}
+    >
+      <Text style={styles.sectionLabel}>{section.title}</Text>
+    </View>
   );
 
   useEffect(() => {
@@ -189,51 +239,59 @@ export function PatientAiConversationsSheet({
             style={[
               styles.safePad,
               {
-                paddingTop: insets.top,
-                paddingBottom: Math.max(insets.bottom, spacing[2]),
+                paddingTop: insets.top + spacing[2],
+                paddingBottom: Math.max(insets.bottom, spacing[3]),
               },
             ]}
           >
-            <Row justify="between" style={styles.header}>
-              <Cluster
-                gap={spacing[3]}
-                style={styles.headerBrand}
-                leading={
-                  <View style={styles.headerAvatar}>
-                    <Smile size={18} color={c.primary} strokeWidth={2.25} />
-                  </View>
-                }
-              >
-                <View style={styles.headerText}>
-                  <Text style={styles.headerTitle} numberOfLines={1}>
-                    Conversations
-                  </Text>
-                  <Text style={styles.headerSubtitle} numberOfLines={1}>
-                    Historique Cary
-                  </Text>
-                </View>
-              </Cluster>
+            <Cluster
+              align="center"
+              style={styles.header}
+              actions={
+                <Pressable
+                  onPress={onClose}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel="Fermer"
+                  style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+                >
+                  <X size={20} color={c.textSecondary} strokeWidth={2} />
+                </Pressable>
+              }
+            >
+              <Text style={styles.headerTitle}>Conversations</Text>
+            </Cluster>
 
-              <Pressable
-                onPress={onClose}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Fermer"
-                style={({ pressed }) => [styles.closeBtn, pressed && styles.closeBtnPressed]}
-              >
-                <X size={18} color={c.textSecondary} strokeWidth={2.25} />
-              </Pressable>
-            </Row>
+            <Stack gap={spacing[3]} style={styles.toolbar}>
+              {onSearchChange ? (
+                <Cluster
+                  gap={spacing[2]}
+                  align="center"
+                  style={[styles.searchField, elevation.xs]}
+                  leading={<Search size={16} color={c.textTertiary} strokeWidth={2} />}
+                >
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Rechercher"
+                    placeholderTextColor={c.textTertiary}
+                    value={searchQuery}
+                    onChangeText={onSearchChange}
+                    returnKeyType="search"
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                  />
+                </Cluster>
+              ) : null}
 
-            <View style={styles.ctaWrap}>
               <Button
                 title="Nouvelle conversation"
-                variant="outline"
-                size="sm"
-                fullWidth
                 onPress={handleNew}
+                fullWidth
+                size="md"
+                leftIcon={<MessageSquare size={18} color={c.textInverse} strokeWidth={2.25} />}
+                accessibilityLabel="Démarrer une nouvelle conversation"
               />
-            </View>
+            </Stack>
 
             <SectionList
               sections={sections}
@@ -248,9 +306,31 @@ export function PatientAiConversationsSheet({
               ListEmptyComponent={
                 <View style={styles.emptyWrap}>
                   <Text style={styles.emptyTitle}>Aucune conversation</Text>
-                  <Text style={styles.emptyBody}>
-                    Démarrez un échange avec Cary pour le retrouver ici.
-                  </Text>
+                  <Text style={styles.emptyBody}>Vos échanges avec Cary apparaîtront ici.</Text>
+                </View>
+              }
+              ListFooterComponent={
+                <View style={styles.footerWrap}>
+                  <MoreMenuSection
+                    items={[
+                      ...(onToggleArchived
+                        ? [
+                            {
+                              icon: Archive,
+                              label: showArchived ? 'Conversations actives' : 'Archives',
+                              onPress: onToggleArchived,
+                              iconAccent: 'muted' as const,
+                            },
+                          ]
+                        : []),
+                      {
+                        icon: Download,
+                        label: 'Exporter (RGPD)',
+                        onPress: () => void handleExport(),
+                        iconAccent: 'teal' as const,
+                      },
+                    ]}
+                  />
                 </View>
               }
             />
@@ -272,8 +352,8 @@ function useStateVisible(visible: boolean) {
 function buildStyles(c: AppColors) {
   return {
     root: {
-      minWidth: 0,
       flex: 1,
+      minWidth: 0,
     },
     backdrop: {
       ...StyleSheet.absoluteFillObject,
@@ -292,8 +372,8 @@ function buildStyles(c: AppColors) {
         ios: {
           shadowColor: '#0F172A',
           shadowOffset: { width: 4, height: 0 },
-          shadowOpacity: 0.14,
-          shadowRadius: 20,
+          shadowOpacity: 0.12,
+          shadowRadius: 24,
         },
         android: { elevation: 12 },
         default: {},
@@ -304,92 +384,86 @@ function buildStyles(c: AppColors) {
       minWidth: 0,
     },
     header: {
+      alignSelf: 'stretch' as const,
+      width: '100%' as const,
       paddingHorizontal: H_PADDING,
-      paddingTop: spacing[3],
       paddingBottom: spacing[3],
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: c.borderLight,
-      backgroundColor: c.surface,
-      ...elevation.xs,
-    },
-    headerBrand: {
-      flex: 1,
-      minWidth: 0,
-      marginRight: spacing[2],
-    },
-    headerAvatar: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.full,
-      backgroundColor: c.primaryLight,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      flexShrink: 0,
-    },
-    headerText: {
-      flex: 1,
-      minWidth: 0,
-      gap: spacing[0.5],
     },
     headerTitle: {
-      fontFamily: fontFamily.bold,
-      fontSize: fontSize.md,
-      lineHeight: lh(fontSize.md),
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.lg,
+      lineHeight: lh(fontSize.lg),
       color: c.textPrimary,
+      letterSpacing: -0.3,
     },
-    headerSubtitle: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSize.xs,
-      lineHeight: lh(fontSize.xs, 1.35),
-      color: c.textSecondary,
-    },
-    closeBtn: {
-      width: 40,
-      height: 40,
+    iconBtn: {
+      width: 36,
+      height: 36,
       borderRadius: radius.full,
-      backgroundColor: c.surfaceAlt,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-      flexShrink: 0,
-      ...elevation.xs,
     },
-    closeBtnPressed: {
-      opacity: 0.88,
+    iconBtnPressed: {
+      backgroundColor: c.surfaceAlt,
     },
-    ctaWrap: {
+    toolbar: {
+      alignSelf: 'stretch' as const,
+      width: '100%' as const,
       paddingHorizontal: H_PADDING,
-      paddingTop: spacing[4],
-      paddingBottom: spacing[2],
+      paddingBottom: spacing[3],
+    },
+    searchField: {
+      alignSelf: 'stretch' as const,
+      width: '100%' as const,
+      backgroundColor: c.surface,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: c.borderLight,
+      paddingHorizontal: spacing[3],
+      paddingVertical: spacing[2],
+      minHeight: 44,
+    },
+    searchInput: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.base,
+      lineHeight: lh(fontSize.base),
+      color: c.textPrimary,
+      paddingVertical: 0,
     },
     list: {
       flex: 1,
       minWidth: 0,
+      alignSelf: 'stretch' as const,
     },
     listContent: {
-      paddingHorizontal: H_PADDING,
-      paddingBottom: spacing[6],
+      paddingHorizontal: spacing[2],
+      paddingBottom: spacing[4],
+      flexGrow: 1,
+    },
+    sectionHeader: {
+      paddingTop: spacing[4],
+      paddingBottom: spacing[1.5],
+      paddingHorizontal: spacing[2],
+    },
+    sectionHeaderFirst: {
+      paddingTop: spacing[1],
     },
     sectionLabel: {
-      fontFamily: fontFamily.semiBold,
+      fontFamily: fontFamily.medium,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs),
-      letterSpacing: 0.5,
-      textTransform: 'uppercase' as const,
       color: c.textTertiary,
-      paddingTop: spacing[2],
-      paddingBottom: spacing[1],
-    },
-    sectionLabelFirst: {
-      paddingTop: spacing[1],
     },
     emptyWrap: {
       alignItems: 'center' as const,
-      paddingHorizontal: spacing[4],
-      paddingTop: spacing[8],
+      paddingHorizontal: spacing[6],
+      paddingTop: spacing[12],
       gap: spacing[2],
     },
     emptyTitle: {
-      fontFamily: fontFamily.semiBold,
+      fontFamily: fontFamily.medium,
       fontSize: fontSize.base,
       lineHeight: lh(fontSize.base),
       color: c.textPrimary,
@@ -399,8 +473,13 @@ function buildStyles(c: AppColors) {
       fontFamily: fontFamily.regular,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.45),
-      color: c.textSecondary,
+      color: c.textTertiary,
       textAlign: 'center' as const,
+    },
+    footerWrap: {
+      paddingHorizontal: H_PADDING,
+      paddingTop: spacing[4],
+      paddingBottom: spacing[2],
     },
   };
 }

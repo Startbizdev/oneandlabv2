@@ -341,6 +341,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         $appointment = null;
         $standaloneOrdonnance = false;
+        $standalonePatientDoc = false;
 
         if (!$appointmentId) {
             if ($documentType === 'ordonnance' && $postPatientId && in_array($user['role'], ['pro', 'nurse', 'super_admin'], true)) {
@@ -351,6 +352,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     exit;
                 }
                 $standaloneOrdonnance = true;
+            } elseif (
+                $user['role'] === 'patient'
+                && ($postPatientId === null || $postPatientId === '' || $postPatientId === $user['user_id'])
+            ) {
+                $standalonePatientDoc = true;
+                $postPatientId = (string) $user['user_id'];
+                $allowedChatTypes = ['ordonnance', 'resultats', 'other'];
+                if (!in_array($documentType, $allowedChatTypes, true)) {
+                    $documentType = 'other';
+                }
             } else {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'error' => 'appointment_id requis']);
@@ -494,7 +505,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ? AppTimezone::sqlDateTime()
             : null;
 
-        $patientIdForDoc = $standaloneOrdonnance
+        $patientIdForDoc = $standaloneOrdonnance || $standalonePatientDoc
             ? $postPatientId
             : ($appointment['patient_id'] ?? null);
 
@@ -746,6 +757,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 } catch (Exception $e) {
                     error_log('Erreur notification pro résultats: ' . $e->getMessage());
                 }
+            }
+        }
+
+        if (in_array($documentType, ['resultats', 'ordonnance', 'autre'], true)) {
+            try {
+                require_once __DIR__ . '/../../lib/rag/AiDocumentJobService.php';
+                $resolvedPatient = $postPatientId
+                    ?? ($appointment['patient_id'] ?? null)
+                    ?? (($user['role'] ?? '') === 'patient' ? ($user['user_id'] ?? null) : null);
+                if ($resolvedPatient) {
+                    (new AiDocumentJobService($db))->queueDocument((string) $resolvedPatient, (string) $id);
+                }
+            } catch (Throwable $ocrQueueErr) {
+                error_log('Queue OCR IA: ' . $ocrQueueErr->getMessage());
             }
         }
         

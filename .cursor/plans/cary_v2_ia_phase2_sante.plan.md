@@ -4,19 +4,19 @@ overview: "Plan 2/4 — Apple Health + Health Connect, onglet Mes données sant�
 todos:
   - id: p2-migrations
     content: "Migrations 079-080 : health_*, connected_devices"
-    status: pending
+    status: completed
   - id: p2-health-api
-    content: "API /health/* batch metrics, sources, révocation RGPD"
-    status: pending
+    content: API /health/* batch metrics, sources, révocation RGPD
+    status: completed
   - id: p2-health-sync-mobile
-    content: "Feature health-sync Expo + onglet patient graphiques poids/FC/activité"
-    status: pending
+    content: Feature health-sync Expo + onglet patient graphiques poids/FC/activité
+    status: completed
   - id: p2-context-health
     content: "Étendre ContextComposer : health_metrics résumé 7j/30j dans prompts IA"
-    status: pending
+    status: completed
   - id: p2-tests-dod
     content: "DoD : sync HealthKit, graphiques, métriques dans réponses IA, dédup batch"
-    status: pending
+    status: completed
 isProject: false
 ---
 

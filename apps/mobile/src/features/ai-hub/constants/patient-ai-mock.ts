@@ -34,7 +34,7 @@ export const PATIENT_AI_NOT_READY_REPLY = PATIENT_AI_MOCK_REPLIES[0];
 export const PATIENT_AI_DEV_REPLY = PATIENT_AI_NOT_READY_REPLY;
 
 export const PATIENT_AI_VOICE_MOCK_HINT =
-  'La reconnaissance vocale est en cours de développement — cette animation illustre l’expérience à venir.';
+  'Parlez puis appuyez sur le carré pour envoyer. Cary répond à voix haute.';
 
 export function patientAiGreeting(firstName: string): string {
   const name = firstName.trim();

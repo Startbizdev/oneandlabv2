@@ -18,14 +18,15 @@ final class AiConversationService
     /**
      * @return list<array<string, mixed>>
      */
-    public function listForUser(string $userId, int $limit = 50, int $offset = 0): array
+    public function listForUser(string $userId, int $limit = 50, int $offset = 0, bool $archivedOnly = false): array
     {
-        $stmt = $this->db->prepare('
+        $archiveClause = $archivedOnly ? 'archived_at IS NOT NULL' : 'archived_at IS NULL';
+        $stmt = $this->db->prepare("
             SELECT * FROM ai_conversations
-            WHERE user_id = ? AND deleted_at IS NULL
-            ORDER BY COALESCE(last_message_at, updated_at) DESC
+            WHERE user_id = ? AND deleted_at IS NULL AND {$archiveClause}
+            ORDER BY is_pinned DESC, COALESCE(last_message_at, updated_at) DESC
             LIMIT ? OFFSET ?
-        ');
+        ");
         $stmt->bindValue(1, $userId);
         $stmt->bindValue(2, max(1, min(100, $limit)), PDO::PARAM_INT);
         $stmt->bindValue(3, max(0, $offset), PDO::PARAM_INT);
@@ -121,6 +122,10 @@ final class AiConversationService
         if (array_key_exists('archived_at', $patch)) {
             $fields[] = 'archived_at = ?';
             $params[] = $patch['archived_at'];
+        }
+        if (array_key_exists('archived', $patch)) {
+            $fields[] = 'archived_at = ?';
+            $params[] = !empty($patch['archived']) ? date('Y-m-d H:i:s') : null;
         }
         if ($fields === []) {
             return $existing;
@@ -253,11 +258,13 @@ final class AiConversationService
             'assistant_health' => 'assistant_health',
             'lab_results' => 'lab_results',
             'appointment' => 'appointment',
+            'health_tracking' => 'health_tracking',
         ];
         $titleMap = [
             'assistant_health' => 'Mon Assistant Santé',
             'lab_results' => 'Mes résultats',
             'appointment' => 'Mes rendez-vous',
+            'health_tracking' => 'Mes données santé',
         ];
         $id = Uuid::v4();
         $convType = $typeMap[$systemKey] ?? 'general';
@@ -316,6 +323,7 @@ final class AiConversationService
             'lab_results' => "{$greeting} je peux vous aider à comprendre vos résultats d'analyses (sans interprétation médicale). Que souhaitez-vous savoir ?",
             'appointment' => "{$greeting} je peux vous aider à préparer ou planifier un rendez-vous. Souhaitez-vous prendre un RDV ?",
             'assistant_health' => "{$greeting} je suis votre assistant Cary. Posez-moi vos questions sur votre suivi, vos RDV ou vos documents.",
+            'health_tracking' => "{$greeting} je peux vous présenter vos tendances santé synchronisées (activité, poids, fréquence cardiaque). Que voulez-vous explorer ?",
             default => "{$greeting} je suis Cary, votre assistant. Comment puis-je vous aider ?",
         };
     }
@@ -334,6 +342,7 @@ final class AiConversationService
             'channel' => $row['channel'] ?? 'text',
             'custom_title' => $row['custom_title'] ?? null,
             'is_pinned' => (bool) ($row['is_pinned'] ?? false),
+            'archived_at' => $row['archived_at'] ?? null,
             'is_system' => (bool) ($row['is_system'] ?? false),
             'system_key' => $row['system_key'] ?? null,
             'message_count' => (int) ($row['message_count'] ?? 0),
