@@ -93,7 +93,7 @@ class PrescriptionPdf
         $signedAt = self::resolveSignedAt($options, $prescriptionDate);
         $prescriptionBodyHtml = self::buildPrescriptionBodyHtml($prescriptionText, $options, $kind, $date);
 
-        $idBlock = self::buildIdBlock($kind, $prescriberRpps, $prescriberAdeli);
+        $idBlock = self::buildIdBlock($kind, $prescriberRpps, $prescriberAdeli, $prescriberEmploi);
         $nirRow = $patientNir !== ''
             ? "<tr><td class=\"label\">NIR</td><td class=\"value\">{$patientNir}</td></tr>"
             : '';
@@ -565,13 +565,14 @@ HTML;
         return ($ok && is_string($jpeg) && $jpeg !== '') ? $jpeg : null;
     }
 
-    private static function buildIdBlock(string $kind, string $rpps, string $adeli): string
+    private static function buildIdBlock(string $kind, string $rpps, string $adeli, string $emploi = ''): string
     {
         $chips = [];
         $rpps = trim($rpps);
         $adeli = trim($adeli);
+        $useSingleId = $kind === 'nursing' || ProfessionalId::isProIpaEmploi($emploi);
 
-        if ($kind === 'nursing') {
+        if ($useSingleId) {
             $raw = $rpps !== '' ? $rpps : $adeli;
             if ($raw !== '') {
                 $split = ProfessionalId::split($raw);

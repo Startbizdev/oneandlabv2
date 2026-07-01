@@ -1,3 +1,4 @@
+export * from './compare-versions';
 export * from './password-validation';
 export * from './post-login-redirect';
 export * from './appointment-offer';

@@ -1,14 +1,18 @@
 import { useRouter } from 'expo-router';
 import {
+  Activity,
   Bell,
   FileText,
   FlaskConical,
+  Heart,
   LayoutGrid,
   Scale,
   Settings,
   Star,
   User,
 } from 'lucide-react-native';
+import { HealthRecordProgressRing } from '@/features/health-record/components/HealthRecordProgressRing';
+import { useHealthRecordCompletion } from '@/features/health-record/hooks/use-health-record-completion';
 import { buildHelpMoreItems } from '@/features/help/help-more-items';
 import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
@@ -20,6 +24,8 @@ import { TitledTabScreenFrame } from '@/navigation/tab-screen-frames';
 export default function PatientMore() {
   const router = useRouter();
   const unread = useUnreadNotificationsCount();
+  const healthRecord = useHealthRecordCompletion();
+  const hrPercent = healthRecord.data?.percent;
 
   const nav = (href: string) => router.navigate(href as never);
 
@@ -43,6 +49,22 @@ export default function PatientMore() {
                 icon: FileText,
                 label: 'Mes documents',
                 onPress: () => nav('/profile/documents'),
+                iconAccent: 'teal',
+              },
+              {
+                icon: Heart,
+                label: 'Mon carnet de santé',
+                onPress: () => nav('/(patient)/health-record'),
+                iconAccent: 'heart',
+                trailing:
+                  hrPercent != null && hrPercent < 100 ? (
+                    <HealthRecordProgressRing percent={hrPercent} variant="mini" />
+                  ) : undefined,
+              },
+              {
+                icon: Activity,
+                label: 'Mes données santé',
+                onPress: () => nav('/(patient)/health-data'),
                 iconAccent: 'teal',
               },
               {

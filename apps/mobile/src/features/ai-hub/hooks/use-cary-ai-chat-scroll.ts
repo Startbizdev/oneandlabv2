@@ -18,6 +18,8 @@ export function useCaryAiChatScroll<T>(
   const lastStreamLenRef = useRef(0);
   const lastStreamTimeRef = useRef(0);
   const scrollScheduledRef = useRef(false);
+  const lastContentHeightRef = useRef(0);
+  const prevAwaitingRef = useRef(false);
 
   const scrollToEnd = useCallback(
     (animated = true) => {
@@ -31,9 +33,25 @@ export function useCaryAiChatScroll<T>(
     [listRef],
   );
 
+  const scrollToEndAfterLayout = useCallback(() => {
+    scrollToEnd(false);
+    requestAnimationFrame(() => scrollToEnd(false));
+  }, [scrollToEnd]);
+
+  useEffect(() => {
+    lastContentHeightRef.current = 0;
+  }, [activeId]);
+
   useEffect(() => {
     scrollToEnd(messageCount > 1);
   }, [messageCount, awaitingReply, activeId, scrollToEnd]);
+
+  useEffect(() => {
+    if (prevAwaitingRef.current && !awaitingReply) {
+      scrollToEndAfterLayout();
+    }
+    prevAwaitingRef.current = awaitingReply;
+  }, [awaitingReply, scrollToEndAfterLayout]);
 
   useEffect(() => {
     if (!awaitingReply) {
@@ -50,8 +68,14 @@ export function useCaryAiChatScroll<T>(
     }
   }, [streamingTextLength, awaitingReply, scrollToEnd]);
 
-  /** Pas de scroll auto ici — évite la boucle layout ↔ scroll ↔ onContentSizeChange. */
-  const onContentSizeChange = useCallback(() => {}, []);
+  const onContentSizeChange = useCallback(
+    (_width: number, height: number) => {
+      if (height <= lastContentHeightRef.current + 4) return;
+      lastContentHeightRef.current = height;
+      scrollToEnd(false);
+    },
+    [scrollToEnd],
+  );
 
   return { scrollToEnd, onContentSizeChange };
 }

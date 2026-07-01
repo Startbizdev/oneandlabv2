@@ -22,7 +22,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mic, Square, X } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { PATIENT_AI_VOICE_MOCK_HINT } from '../constants/patient-ai-mock';
+import type { VoicePhase } from '../hooks/use-voice-session';
 import { animation, elevation, H_PADDING, radius, spacing } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
@@ -34,6 +34,35 @@ const HUB_TOUCH_SIZE = 260;
 interface Props {
   visible: boolean;
   onClose: () => void;
+  phase: VoicePhase;
+  recognizing: boolean;
+  available: boolean;
+  liveTranscript: string;
+  lastUserText: string | null;
+  lastResponse: string | null;
+  speechError: string | null;
+  onStart: () => void;
+  onStop: () => void;
+  onToggleMic: () => void;
+}
+
+function statusCopy(phase: VoicePhase, recognizing: boolean, available: boolean): { title: string; sub: string } {
+  if (!available) {
+    return {
+      title: 'Voix indisponible',
+      sub: 'Installez l’app Cary (pas Expo Go) pour parler à l’assistant.',
+    };
+  }
+  if (phase === 'processing') {
+    return { title: 'Cary réfléchit…', sub: 'Un instant.' };
+  }
+  if (phase === 'speaking') {
+    return { title: 'Cary vous répond', sub: 'Écoutez la réponse — le micro reprendra ensuite.' };
+  }
+  if (recognizing) {
+    return { title: 'Je vous écoute', sub: 'Parlez, puis appuyez sur le carré pour envoyer.' };
+  }
+  return { title: 'Mode vocal', sub: 'Appuyez sur le micro pour parler à Cary.' };
 }
 
 function PulseRing({
@@ -154,10 +183,12 @@ function WaveformBar({
 
 function VoiceHub({
   listening,
+  disabled,
   onToggle,
   styles,
 }: {
   listening: boolean;
+  disabled: boolean;
   onToggle: () => void;
   styles: ReturnType<typeof buildStyles>;
 }) {
@@ -200,9 +231,7 @@ function VoiceHub({
   }, [glowScale, listening, orbScale]);
 
   const orbAnimStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: orbScale.value * (1 - pressed.value * 0.04) },
-    ],
+    transform: [{ scale: orbScale.value * (1 - pressed.value * 0.04) }],
   }));
 
   const glowAnimStyle = useAnimatedStyle(() => ({
@@ -213,16 +242,17 @@ function VoiceHub({
   return (
     <Pressable
       onPress={onToggle}
+      disabled={disabled}
       onPressIn={() => {
         pressed.value = withSpring(1, animation.spring.snappy);
       }}
       onPressOut={() => {
         pressed.value = withSpring(0, animation.spring.gentle);
       }}
-      style={styles.hubTouch}
+      style={[styles.hubTouch, disabled && styles.hubDisabled]}
       accessibilityRole="button"
-      accessibilityLabel={listening ? 'Arrêter de parler' : 'Appuyer pour parler à Cary'}
-      accessibilityState={{ selected: listening }}
+      accessibilityLabel={listening ? 'Arrêter et envoyer' : 'Parler à Cary'}
+      accessibilityState={{ selected: listening, disabled }}
     >
       <View style={styles.hubStack} pointerEvents="none">
         <View style={styles.ringsLayer}>
@@ -260,28 +290,56 @@ function VoiceHub({
   );
 }
 
-/** Overlay mock — mode vocal Cary (tap centre pour parler, style ChatGPT). */
-export function PatientAiVoiceMockOverlay({ visible, onClose }: Props) {
+/** Mode vocal Cary — écoute STT + réponse TTS (style conversation). */
+export function PatientAiVoiceMockOverlay({
+  visible,
+  onClose,
+  phase,
+  recognizing,
+  available,
+  liveTranscript,
+  lastUserText,
+  lastResponse,
+  speechError,
+  onStart,
+  onStop,
+  onToggleMic,
+}: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
   const insets = useSafeAreaInsets();
-  const [listening, setListening] = useState(false);
+  const [started, setStarted] = useState(false);
+
+  const listening = recognizing || phase === 'listening';
+  const busy = phase === 'processing' || phase === 'speaking';
+  const status = statusCopy(phase, recognizing, available);
 
   useEffect(() => {
-    if (!visible) setListening(false);
-  }, [visible]);
+    if (visible && !started) {
+      setStarted(true);
+      void onStart();
+    }
+    if (!visible) {
+      setStarted(false);
+    }
+  }, [onStart, started, visible]);
+
+  const handleClose = useCallback(() => {
+    onStop();
+    onClose();
+  }, [onClose, onStop]);
 
   const handleToggle = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setListening((prev) => !prev);
-  }, []);
-
-  const handleClose = useCallback(() => {
-    setListening(false);
-    onClose();
-  }, [onClose]);
+    onToggleMic();
+  }, [onToggleMic]);
 
   if (!visible) return null;
+
+  const caption =
+    phase === 'speaking' && lastResponse
+      ? lastResponse
+      : liveTranscript || lastUserText || '';
 
   return (
     <Modal
@@ -314,38 +372,46 @@ export function PatientAiVoiceMockOverlay({ visible, onClose }: Props) {
 
           <Animated.View entering={FadeIn.duration(360)} style={styles.centerColumn}>
             <View style={styles.statusBlock}>
-              <Text style={[styles.statusTitle, { color: c.textPrimary }]}>
-                {listening ? 'Parlez maintenant' : 'Appuyez pour parler'}
-              </Text>
-              <Text style={[styles.statusSub, { color: c.textSecondary }]}>
-                {listening
-                  ? 'Touchez le centre pour arrêter.'
-                  : 'Tapez au centre du micro pour démarrer.'}
-              </Text>
+              <Text style={[styles.statusTitle, { color: c.textPrimary }]}>{status.title}</Text>
+              <Text style={[styles.statusSub, { color: c.textSecondary }]}>{status.sub}</Text>
             </View>
 
-            <VoiceHub listening={listening} onToggle={handleToggle} styles={styles} />
+            <VoiceHub
+              listening={listening}
+              disabled={busy || !available}
+              onToggle={handleToggle}
+              styles={styles}
+            />
 
             <View style={styles.waveZone}>
-              {listening ? (
+              {listening || phase === 'speaking' ? (
                 <Animated.View entering={FadeIn.duration(280)} style={styles.waveRow}>
                   <Row justify="center" gap={spacing[1.5]} style={styles.waveRowInner}>
                     {Array.from({ length: WAVEFORM_BAR_COUNT }, (_, i) => (
-                      <WaveformBar key={i} index={i} active styles={styles} />
+                      <WaveformBar key={i} index={i} active={listening || phase === 'speaking'} styles={styles} />
                     ))}
                   </Row>
                 </Animated.View>
               ) : (
                 <Text style={[styles.waveHint, { color: c.textTertiary }]}>
-                  L’onde apparaît quand vous parlez
+                  {busy ? 'Patientez…' : 'Conversation continue après chaque réponse'}
                 </Text>
               )}
             </View>
           </Animated.View>
 
           <View style={styles.footer}>
-            <Text style={[styles.footerKicker, { color: c.textTertiary }]}>Mode vocal · démo</Text>
-            <Text style={[styles.footerHint, { color: c.textTertiary }]}>{PATIENT_AI_VOICE_MOCK_HINT}</Text>
+            {speechError ? (
+              <Text style={[styles.caption, { color: c.error }]}>{speechError}</Text>
+            ) : caption ? (
+              <Text style={[styles.caption, { color: c.textPrimary }]} numberOfLines={6}>
+                {caption}
+              </Text>
+            ) : (
+              <Text style={[styles.captionMuted, { color: c.textTertiary }]}>
+                Vos paroles s’affichent ici pendant l’écoute.
+              </Text>
+            )}
           </View>
         </View>
       </View>
@@ -355,18 +421,9 @@ export function PatientAiVoiceMockOverlay({ visible, onClose }: Props) {
 
 function buildStyles(_c: AppColors) {
   return {
-    root: {
-      minWidth: 0,
-      flex: 1,
-    },
-    shell: {
-      minWidth: 0,
-      flex: 1,
-    },
-    header: {
-      paddingHorizontal: H_PADDING,
-      paddingBottom: spacing[2],
-    },
+    root: { minWidth: 0, flex: 1 },
+    shell: { minWidth: 0, flex: 1 },
+    header: { paddingHorizontal: H_PADDING, paddingBottom: spacing[2] },
     closeBtn: {
       width: 44,
       height: 44,
@@ -382,11 +439,7 @@ function buildStyles(_c: AppColors) {
       paddingHorizontal: H_PADDING,
       gap: spacing[6],
     },
-    statusBlock: {
-      alignItems: 'center' as const,
-      gap: spacing[2],
-      maxWidth: 320,
-    },
+    statusBlock: { alignItems: 'center' as const, gap: spacing[2], maxWidth: 320 },
     statusTitle: {
       fontFamily: fontFamily.bold,
       fontSize: fontSize['2xl'],
@@ -404,6 +457,7 @@ function buildStyles(_c: AppColors) {
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
+    hubDisabled: { opacity: 0.55 },
     hubStack: {
       width: HUB_TOUCH_SIZE,
       height: HUB_TOUCH_SIZE,
@@ -415,9 +469,7 @@ function buildStyles(_c: AppColors) {
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
-    pulseRing: {
-      position: 'absolute' as const,
-    },
+    pulseRing: { position: 'absolute' as const },
     glowOrb: {
       position: 'absolute' as const,
       width: ORB_SIZE + 72,
@@ -439,19 +491,9 @@ function buildStyles(_c: AppColors) {
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
-    waveRow: {
-      height: 56,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    waveRowInner: {
-      height: 56,
-    },
-    waveBar: {
-      width: 4,
-      height: 44,
-      borderRadius: radius.full,
-    },
+    waveRow: { height: 56, alignItems: 'center' as const, justifyContent: 'center' as const },
+    waveRowInner: { height: 56 },
+    waveBar: { width: 4, height: 44, borderRadius: radius.full },
     waveHint: {
       fontFamily: fontFamily.regular,
       fontSize: fontSize.sm,
@@ -460,19 +502,20 @@ function buildStyles(_c: AppColors) {
     footer: {
       paddingHorizontal: spacing[5],
       paddingTop: spacing[2],
-      paddingBottom: spacing[3],
-      gap: spacing[1],
-      alignItems: 'center' as const,
+      paddingBottom: spacing[6],
+      minHeight: 88,
+      justifyContent: 'center' as const,
     },
-    footerKicker: {
+    caption: {
       fontFamily: fontFamily.medium,
-      fontSize: fontSize.xs,
+      fontSize: fontSize.base,
+      lineHeight: lh(fontSize.base, 1.45),
       textAlign: 'center' as const,
     },
-    footerHint: {
+    captionMuted: {
       fontFamily: fontFamily.regular,
-      fontSize: fontSize.xs,
-      lineHeight: lh(fontSize.xs, 1.45),
+      fontSize: fontSize.sm,
+      lineHeight: lh(fontSize.sm, 1.45),
       textAlign: 'center' as const,
     },
   };

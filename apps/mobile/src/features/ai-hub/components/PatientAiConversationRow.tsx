@@ -1,45 +1,78 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import * as Haptics from 'expo-haptics';
-import { MessageSquare, Trash2 } from 'lucide-react-native';
+import { MessageSquare, Pin } from 'lucide-react-native';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 interface Props {
   title: string;
   active?: boolean;
+  pinned?: boolean;
   deletable?: boolean;
   onPress: () => void;
   onDelete?: () => void;
+  onTogglePin?: () => void;
+  onArchive?: () => void;
+  archiveLabel?: string;
 }
 
-/** Ligne conversation Cary — carte compacte, une ligne, tokens app. */
 export function PatientAiConversationRow({
   title,
   active = false,
+  pinned = false,
   deletable = true,
   onPress,
   onDelete,
+  onTogglePin,
+  onArchive,
+  archiveLabel = 'Archiver',
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useThemedStyles(buildStyles, 'PatientAiConversationRow');
 
-  const handleDelete = () => {
-    if (!onDelete) return;
-    Alert.alert('Supprimer la conversation', 'Cette action est irréversible.', [
-      { text: 'Annuler', style: 'cancel' },
-      {
+  const showActions = Boolean(onTogglePin || onArchive || (deletable && onDelete));
+
+  const handleLongPress = () => {
+    if (!showActions) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const buttons: Array<{ text: string; style?: 'default' | 'cancel' | 'destructive'; onPress?: () => void }> = [];
+
+    if (onTogglePin) {
+      buttons.push({
+        text: pinned ? 'Désépingler' : 'Épingler',
+        onPress: onTogglePin,
+      });
+    }
+    if (onArchive) {
+      buttons.push({ text: archiveLabel, onPress: onArchive });
+    }
+    if (deletable && onDelete) {
+      buttons.push({
         text: 'Supprimer',
         style: 'destructive',
         onPress: () => {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          onDelete();
+          Alert.alert('Supprimer la conversation', 'Cette action est irréversible.', [
+            { text: 'Annuler', style: 'cancel' },
+            {
+              text: 'Supprimer',
+              style: 'destructive',
+              onPress: () => {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                onDelete();
+              },
+            },
+          ]);
         },
-      },
-    ]);
+      });
+    }
+    buttons.push({ text: 'Annuler', style: 'cancel' });
+
+    Alert.alert(title, undefined, buttons);
   };
 
   return (
@@ -48,48 +81,39 @@ export function PatientAiConversationRow({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}
+      onLongPress={showActions ? handleLongPress : undefined}
+      delayLongPress={400}
       style={({ pressed }) => [
         styles.card,
-        active ? styles.cardActive : styles.cardIdle,
+        active && styles.cardActive,
         pressed && styles.cardPressed,
       ]}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
+      accessibilityHint={showActions ? 'Maintenir pour plus d’options' : undefined}
     >
-      {active ? <View style={styles.activeStripe} /> : null}
-
       <Cluster
         gap={spacing[2.5]}
+        align="start"
         style={styles.row}
         leading={
-          <View style={[styles.iconBox, active ? styles.iconBoxActive : styles.iconBoxIdle]}>
+          <View style={[styles.bubble, active ? styles.bubbleActive : styles.bubbleIdle]}>
             <MessageSquare
-              size={17}
+              size={16}
               color={active ? c.primary : c.textSecondary}
               strokeWidth={2}
             />
+            {pinned ? (
+              <View style={styles.pinBadge}>
+                <Pin size={9} color={c.primary} strokeWidth={2.5} fill={c.primary} />
+              </View>
+            ) : null}
           </View>
-        }
-        actions={
-          deletable && onDelete ? (
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation?.();
-                handleDelete();
-              }}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Supprimer la conversation"
-              style={({ pressed }) => [styles.deleteBtn, pressed && styles.deleteBtnPressed]}
-            >
-              <Trash2 size={16} color={c.textTertiary} strokeWidth={2} />
-            </Pressable>
-          ) : null
         }
       >
         <Text
           style={[styles.title, active && styles.titleActive]}
-          numberOfLines={1}
+          numberOfLines={2}
           ellipsizeMode="tail"
         >
           {title}
@@ -104,71 +128,61 @@ function buildStyles(c: AppColors) {
     card: {
       alignSelf: 'stretch' as const,
       borderRadius: radius.lg,
-      borderWidth: StyleSheet.hairlineWidth,
-      overflow: 'hidden' as const,
-      marginBottom: spacing[1.5],
-    },
-    cardIdle: {
-      backgroundColor: c.surface,
-      borderColor: c.borderLight,
+      marginBottom: spacing[0.5],
     },
     cardActive: {
-      backgroundColor: c.primaryLight,
-      borderColor: c.primaryMid,
+      backgroundColor: c.surfaceAlt,
     },
     cardPressed: {
-      opacity: 0.9,
-    },
-    activeStripe: {
-      position: 'absolute' as const,
-      left: 0,
-      top: spacing[2],
-      bottom: spacing[2],
-      width: 3,
-      borderTopRightRadius: radius.full,
-      borderBottomRightRadius: radius.full,
-      backgroundColor: c.primary,
+      backgroundColor: c.surfaceAlt,
+      opacity: 0.92,
     },
     row: {
       paddingVertical: spacing[2.5],
       paddingHorizontal: spacing[3],
-    },
-    iconBox: {
-      width: 34,
-      height: 34,
-      borderRadius: radius.md,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      flexShrink: 0,
-    },
-    iconBoxIdle: {
-      backgroundColor: c.surfaceAlt,
-    },
-    iconBoxActive: {
-      backgroundColor: c.surface,
-    },
-    title: {
-      flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.semiBold,
-      fontSize: fontSize.sm,
-      lineHeight: lh(fontSize.sm, 1.2),
-      color: c.textPrimary,
-      letterSpacing: -0.15,
+      alignSelf: 'stretch' as const,
     },
-    titleActive: {
-      color: c.primaryDark,
-    },
-    deleteBtn: {
+    bubble: {
       width: 32,
       height: 32,
       borderRadius: radius.md,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
+      flexShrink: 0,
     },
-    deleteBtnPressed: {
-      opacity: 0.65,
+    bubbleIdle: {
       backgroundColor: c.surfaceAlt,
+    },
+    bubbleActive: {
+      backgroundColor: c.primaryLight,
+    },
+    pinBadge: {
+      position: 'absolute' as const,
+      top: -3,
+      right: -3,
+      width: 14,
+      height: 14,
+      borderRadius: radius.full,
+      backgroundColor: c.surface,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      borderWidth: 1,
+      borderColor: c.borderLight,
+    },
+    title: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.sm,
+      lineHeight: lh(fontSize.sm, 1.45),
+      color: c.textPrimary,
+      letterSpacing: -0.1,
+      paddingTop: 4,
+    },
+    titleActive: {
+      fontFamily: fontFamily.medium,
+      color: c.textPrimary,
     },
   };
 }

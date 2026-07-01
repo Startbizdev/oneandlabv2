@@ -6,6 +6,12 @@
 class ProfessionalId
 {
     public const LABEL = 'RPPS ou Adeli';
+    public const PRO_IPA_EMPLOI = 'Infirmier IPA';
+
+    public static function isProIpaEmploi(?string $emploi): bool
+    {
+        return trim((string) $emploi) === self::PRO_IPA_EMPLOI;
+    }
 
     public static function normalize(string $raw): string
     {

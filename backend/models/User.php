@@ -187,13 +187,33 @@ class User
                 }
             }
         }
-        // Pro : Adeli et emploi (lors de la création depuis une demande d'inscription)
-        if ($role === 'pro' && $this->hasAdeliColumn() && !empty(trim((string)($data['adeli'] ?? '')))) {
-            $adeliEnc = $this->crypto->encryptField(trim((string)$data['adeli']));
-            $insertFields .= ', adeli_encrypted, adeli_dek';
-            $insertPlaceholders .= ', ?, ?';
-            $insertParams[] = $adeliEnc['encrypted'];
-            $insertParams[] = $adeliEnc['dek'];
+        // Pro : RPPS, Adeli (IPA) et emploi (lors de la création depuis une demande d'inscription)
+        if ($role === 'pro') {
+            require_once __DIR__ . '/../lib/ProfessionalId.php';
+            $rawId = ProfessionalId::fromRequestBody($data);
+            if ($rawId !== '') {
+                $split = ProfessionalId::split($rawId);
+                if (!empty($split['rpps'])) {
+                    $rppsEnc = $this->crypto->encryptField($split['rpps']);
+                    $insertFields .= ', rpps_encrypted, rpps_dek';
+                    $insertPlaceholders .= ', ?, ?';
+                    $insertParams[] = $rppsEnc['encrypted'];
+                    $insertParams[] = $rppsEnc['dek'];
+                }
+                if ($this->hasAdeliColumn() && !empty($split['adeli'])) {
+                    $adeliEnc = $this->crypto->encryptField($split['adeli']);
+                    $insertFields .= ', adeli_encrypted, adeli_dek';
+                    $insertPlaceholders .= ', ?, ?';
+                    $insertParams[] = $adeliEnc['encrypted'];
+                    $insertParams[] = $adeliEnc['dek'];
+                }
+            } elseif ($this->hasAdeliColumn() && !empty(trim((string)($data['adeli'] ?? '')))) {
+                $adeliEnc = $this->crypto->encryptField(trim((string)$data['adeli']));
+                $insertFields .= ', adeli_encrypted, adeli_dek';
+                $insertPlaceholders .= ', ?, ?';
+                $insertParams[] = $adeliEnc['encrypted'];
+                $insertParams[] = $adeliEnc['dek'];
+            }
         }
         if ($role === 'pro' && $this->hasEmploiColumn() && !empty(trim((string)($data['emploi'] ?? '')))) {
             $emploiVal = trim((string)$data['emploi']);
@@ -614,7 +634,23 @@ class User
             require_once __DIR__ . '/../lib/ProfessionalId.php';
             $rawId = ProfessionalId::fromRequestBody($data);
             $targetRole = $this->getRoleById($id);
+            $targetEmploi = null;
+            if ($targetRole === 'pro' && $this->hasEmploiColumn()) {
+                $emploiStmt = $this->db->prepare('SELECT emploi FROM profiles WHERE id = ? LIMIT 1');
+                $emploiStmt->execute([$id]);
+                $emploiRow = $emploiStmt->fetch(PDO::FETCH_ASSOC);
+                $targetEmploi = isset($emploiRow['emploi']) ? trim((string) $emploiRow['emploi']) : null;
+                if (array_key_exists('emploi', $data) && trim((string) ($data['emploi'] ?? '')) !== '') {
+                    $targetEmploi = trim((string) $data['emploi']);
+                }
+            }
             if ($rawId !== '' && $targetRole === 'nurse') {
+                $profErr = ProfessionalId::validate($rawId);
+                if ($profErr !== null) {
+                    throw new InvalidArgumentException($profErr);
+                }
+            }
+            if ($rawId !== '' && $targetRole === 'pro' && ProfessionalId::isProIpaEmploi($targetEmploi)) {
                 $profErr = ProfessionalId::validate($rawId);
                 if ($profErr !== null) {
                     throw new InvalidArgumentException($profErr);

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cary",
     "slug": "cary-mobile",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "cary",
@@ -19,6 +19,10 @@
         "NSPhotoLibraryUsageDescription": "Cary a besoin d’accéder à vos photos pour joindre des documents médicaux à vos rendez-vous.",
         "NSCameraUsageDescription": "Cary peut utiliser l’appareil photo pour joindre des documents à vos rendez-vous.",
         "NSFaceIDUsageDescription": "Cary utilise Face ID pour vous connecter sans saisir de code à chaque ouverture.",
+        "NSHealthShareUsageDescription": "Cary lit vos données Apple Santé (poids, activité, fréquence cardiaque) pour afficher vos graphiques et enrichir l’assistant.",
+        "NSHealthUpdateUsageDescription": "Cary peut enregistrer des données santé que vous choisissez de partager.",
+        "NSMicrophoneUsageDescription": "Cary utilise le micro pour le mode vocal de l’assistant.",
+        "NSSpeechRecognitionUsageDescription": "Cary transcrit votre voix pour répondre en conversation.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
@@ -32,7 +36,15 @@
       },
       "package": "com.carybioapp.app",
       "edgeToEdgeEnabled": true,
-      "versionCode": 4
+      "versionCode": 7,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -74,7 +86,21 @@
         }
       ],
       "expo-image-picker",
-      "expo-document-picker"
+      "expo-document-picker",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Cary lit vos données Apple Santé (poids, activité, fréquence cardiaque) pour afficher vos graphiques et enrichir l’assistant.",
+          "NSHealthUpdateUsageDescription": "Cary peut enregistrer des données santé que vous choisissez de partager."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Cary utilise le micro pour le mode vocal de l’assistant.",
+          "speechRecognitionPermission": "Cary transcrit votre voix pour répondre en conversation."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

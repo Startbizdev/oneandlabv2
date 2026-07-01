@@ -5,6 +5,7 @@ import {
   type MoreMenuIconAccent,
 } from '@/navigation/more-menu-icon-colors';
 import { useAppColors } from '@/theme/use-app-colors';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import Animated, {
@@ -23,6 +24,8 @@ export interface MoreMenuItemProps {
   label: string;
   onPress: () => void;
   badge?: number;
+  /** Contenu à droite (ex. anneau de progression) — remplace badge et chevron. */
+  trailing?: ReactNode;
   destructive?: boolean;
   /** Couleurs recalculées à chaque rendu — préféré au spread iconColor/iconBg. */
   iconAccent?: MoreMenuIconAccent;
@@ -35,6 +38,7 @@ export function MoreMenuItem({
   label,
   onPress,
   badge,
+  trailing,
   destructive,
   iconAccent,
   iconColor,
@@ -72,16 +76,18 @@ export function MoreMenuItem({
             </View>
           }
           actions={
-            badge != null && badge > 0 ? (
-              <View style={styles.badge}>
-                <Animated.Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Animated.Text>
-              </View>
-            ) : (
-              <ChevronRight
-                size={16}
-                color={destructive ? c.error : c.textTertiary}
-                strokeWidth={2}
-              />
+            trailing ?? (
+              badge != null && badge > 0 ? (
+                <View style={styles.badge}>
+                  <Animated.Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Animated.Text>
+                </View>
+              ) : (
+                <ChevronRight
+                  size={16}
+                  color={destructive ? c.error : c.textTertiary}
+                  strokeWidth={2}
+                />
+              )
             )
           }
         >

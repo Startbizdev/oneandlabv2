@@ -8,21 +8,26 @@ import { ActivityIndicator, Keyboard, Platform, StyleSheet, Text, View } from 'r
 import { Smile } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
+import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import {
   PatientAiChatFooter,
   PATIENT_AI_FOOTER_HEIGHT_WITH_DISCLAIMER,
   patientAiChatListBottomPadding,
 } from '../components/PatientAiChatFooter';
+import { PatientAiAttachmentThumbnail } from '../components/PatientAiAttachmentThumbnail';
 import { useNativeTabBarInset } from '@/navigation/use-native-tab-bar-inset';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PatientAiConversationsSheet } from '../components/PatientAiConversationsSheet';
 import { PatientAiVoiceMockOverlay } from '../components/PatientAiVoiceMockOverlay';
+import { useVoiceSession } from '../hooks/use-voice-session';
 import { CaryMarkdown } from '../components/CaryMarkdown';
 import { CaryAiBookingRecapCard } from '../components/CaryAiBookingRecapCard';
+import { resolveAssistantMessageText } from '../utils/resolve-assistant-message-text';
 import { stripDisclaimerFromAssistantText } from '../utils/strip-disclaimer-from-text';
 import { CaryAiChatList } from '../components/CaryAiChatList';
 import { resolveMessageRecap } from '../utils/resolve-message-recap';
 import { useCaryAiHub, type CaryAiHubInit } from '../hooks/use-cary-ai-hub';
+import { searchAiConversations } from '../api/ai.service';
 import { useCaryAiChatScroll } from '../hooks/use-cary-ai-chat-scroll';
 import type { PatientAiChatMessage } from '../types/patient-ai-conversation';
 import type { AiQuickSuggestion } from '@oneandlab/shared-types';
@@ -58,6 +63,7 @@ function MessageBubble({
   onSuggestionPick,
   disclaimer,
   recapSlot,
+  onAttachmentPress,
 }: {
   styles: ScreenStyles;
   message: PatientAiChatMessage;
@@ -66,25 +72,53 @@ function MessageBubble({
   onSuggestionPick?: (item: AiQuickSuggestion) => void;
   disclaimer?: string;
   recapSlot?: ReactNode;
+  onAttachmentPress?: (uri: string, fileName?: string) => void;
 }) {
   const c = useAppColors();
   const isUser = message.role === 'user';
+  const attachment = message.metadata?.attachment;
 
   if (isUser) {
+    const mediaOnly = Boolean(attachment) && !message.text;
     return (
       <Row justify="end" style={styles.userRow}>
-        <View style={[styles.bubble, styles.bubbleUser, { backgroundColor: c.primary }]}>
-          <CaryMarkdown text={message.text} inverse style={styles.bodyTextOnPrimary} />
+        <View
+          style={[
+            styles.bubble,
+            styles.bubbleUser,
+            mediaOnly ? styles.bubbleUserMediaOnly : null,
+            { backgroundColor: mediaOnly ? 'transparent' : c.primary },
+          ]}
+        >
+          {attachment ? (
+            <PatientAiAttachmentThumbnail
+              attachment={attachment}
+              variant="message"
+              compact={mediaOnly}
+              onPress={
+                onAttachmentPress
+                  ? () => onAttachmentPress(attachment.uri, attachment.fileName)
+                  : undefined
+              }
+            />
+          ) : null}
+          {message.text ? (
+            <CaryMarkdown text={message.text} inverse style={styles.bodyTextOnPrimary} />
+          ) : null}
         </View>
       </Row>
     );
   }
 
   const assistantText = stripDisclaimerFromAssistantText(message.text, disclaimer);
+  const visibleAssistantText =
+    assistantText ||
+    (recapSlot ? 'Voici le récapitulatif de votre demande.' : '') ||
+    resolveAssistantMessageText(message.text, '');
   const body = (
     <>
-      {assistantText ? (
-        <CaryMarkdown text={assistantText} style={styles.assistantText} />
+      {visibleAssistantText ? (
+        <CaryMarkdown text={visibleAssistantText} style={styles.assistantText} />
       ) : null}
       {welcome && suggestions?.length ? (
         <Row wrap gap={spacing[2]} style={styles.suggestionChips}>
@@ -170,6 +204,9 @@ export function CaryAiHubScreen({
     startNewConversation,
     deleteConversation,
     refreshConversationsList,
+    togglePinConversation,
+    archiveConversation,
+    unarchiveConversation,
     sendMessage,
     handleSuggestion,
     confirmDraft,
@@ -204,12 +241,62 @@ export function CaryAiHubScreen({
 
   const [draft, setDraft] = useState('');
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [attachmentPreview, setAttachmentPreview] = useState<{ uri: string; fileName?: string } | null>(
+    null,
+  );
+  const [convSearch, setConvSearch] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
+  const [searchIds, setSearchIds] = useState<Set<string> | null>(null);
+  const voice = useVoiceSession(activeId);
+  useEffect(() => {
+    if (voice.lastConversationId) {
+      void selectConversation(voice.lastConversationId);
+    }
+  }, [selectConversation, voice.lastConversationId]);
+
   const showSuggestions = messages.length <= 1 && !awaitingReply && suggestions.length > 0;
-  const canSend = draft.trim().length > 0 && !awaitingReply;
+  const canSend =
+    !awaitingReply &&
+    !attaching &&
+    (draft.trim().length > 0 || Boolean(pendingAttachment?.medicalDocumentId));
+
+  const handleAttachmentPress = useCallback((uri: string, fileName?: string) => {
+    setAttachmentPreview({ uri, fileName });
+  }, []);
 
   useEffect(() => {
     setDraft('');
   }, [activeId]);
+
+  useEffect(() => {
+    const q = convSearch.trim();
+    if (q.length < 2) {
+      setSearchIds(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      void searchAiConversations(q)
+        .then((hits) => {
+          const ids = new Set<string>();
+          hits.conversations.forEach((c) => ids.add(c.id));
+          hits.messages.forEach((m) => ids.add(m.conversation_id));
+          setSearchIds(ids);
+        })
+        .catch(() => setSearchIds(null));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [convSearch]);
+
+  useEffect(() => {
+    if (historyOpen) {
+      void refreshConversationsList(showArchived);
+    }
+  }, [historyOpen, showArchived, refreshConversationsList]);
+
+  const sheetConversations = useMemo(() => {
+    if (!searchIds) return conversations;
+    return conversations.filter((c) => searchIds.has(c.id));
+  }, [conversations, searchIds]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -235,10 +322,12 @@ export function CaryAiHubScreen({
   const handleSendText = useCallback(() => {
     if (!canSend) return;
     const text = draft;
+    const attachment =
+      pendingAttachment?.medicalDocumentId && !attaching ? pendingAttachment : undefined;
     setDraft('');
     scrollToEnd(true);
-    void sendMessage(text);
-  }, [canSend, draft, scrollToEnd, sendMessage]);
+    void sendMessage(text, attachment ? { attachment } : undefined);
+  }, [attaching, canSend, draft, pendingAttachment, scrollToEnd, sendMessage]);
 
   const renderMessage = useCallback(
     (item: PatientAiChatMessage) => {
@@ -264,6 +353,7 @@ export function CaryAiHubScreen({
           onSuggestionPick={showSuggestions ? handleSuggestion : undefined}
           disclaimer={disclaimer}
           recapSlot={recapSlot}
+          onAttachmentPress={handleAttachmentPress}
         />
       );
     },
@@ -278,8 +368,21 @@ export function CaryAiHubScreen({
       confirmingDraft,
       confirmDraft,
       handleReplaceDocument,
+      handleAttachmentPress,
     ],
   );
+
+  const handleComposerAttachmentPress = useCallback(() => {
+    if (!pendingAttachment?.uri) return;
+    setAttachmentPreview({
+      uri: pendingAttachment.uri,
+      fileName: pendingAttachment.fileName,
+    });
+  }, [pendingAttachment]);
+
+  const displayStreamingText = streamingText
+    ? resolveAssistantMessageText('', streamingText)
+    : '';
 
   const listFooter = (
     <>
@@ -288,9 +391,11 @@ export function CaryAiHubScreen({
           <AssistantAvatar styles={styles} />
           <View style={[styles.typingBubble, { backgroundColor: c.surfaceAlt, borderColor: c.borderLight }]}>
             <Text style={[styles.typingText, { color: c.textSecondary }]}>
-              {streamingText ? '' : 'Cary réfléchit…'}
+              {displayStreamingText ? '' : 'Cary réfléchit…'}
             </Text>
-            {streamingText ? <CaryMarkdown text={streamingText} style={styles.assistantText} /> : null}
+            {displayStreamingText ? (
+              <CaryMarkdown text={displayStreamingText} style={styles.assistantText} />
+            ) : null}
           </View>
         </Row>
       ) : null}
@@ -325,6 +430,7 @@ export function CaryAiHubScreen({
           onVoicePress={() => setVoiceOpen(true)}
           onAttachPress={() => void handleAttach()}
           onClearAttachment={clearAttachment}
+          onPreviewPress={handleComposerAttachmentPress}
           pendingAttachment={pendingAttachment}
           attaching={attaching}
           onFocusInput={() => scrollToEnd(true)}
@@ -336,17 +442,47 @@ export function CaryAiHubScreen({
         />
       </View>
 
-      <PatientAiVoiceMockOverlay visible={voiceOpen} onClose={() => setVoiceOpen(false)} />
+      <PatientAiVoiceMockOverlay
+        visible={voiceOpen}
+        onClose={() => {
+          voice.reset();
+          setVoiceOpen(false);
+        }}
+        phase={voice.phase}
+        recognizing={voice.recognizing}
+        available={voice.available}
+        liveTranscript={voice.liveTranscript}
+        lastUserText={voice.lastUserText}
+        lastResponse={voice.lastResponse}
+        speechError={voice.speechError}
+        onStart={() => void voice.startConversation()}
+        onStop={voice.stopConversation}
+        onToggleMic={() => void voice.toggleMic()}
+      />
 
       <PatientAiConversationsSheet
         visible={historyOpen}
         onClose={() => onHistoryOpenChange(false)}
-        conversations={conversations}
+        conversations={sheetConversations}
         activeId={activeId}
         onSelectConversation={(id) => void selectConversation(id)}
         onNewConversation={() => void startNewConversation()}
         onDeleteConversation={(id) => void deleteConversation(id)}
-        onRefresh={refreshConversationsList}
+        onRefresh={() => void refreshConversationsList(showArchived)}
+        searchQuery={convSearch}
+        onSearchChange={setConvSearch}
+        showArchived={showArchived}
+        onToggleArchived={() => setShowArchived((v) => !v)}
+        onTogglePin={(id) => void togglePinConversation(id)}
+        onArchive={(id) => void archiveConversation(id)}
+        onUnarchive={(id) => void unarchiveConversation(id)}
+      />
+
+      <MedicalDocumentPreviewModal
+        visible={Boolean(attachmentPreview)}
+        localUri={attachmentPreview?.uri ?? null}
+        fileName={attachmentPreview?.fileName}
+        onClose={() => setAttachmentPreview(null)}
       />
     </>
   );
@@ -411,6 +547,11 @@ function buildStyles(c: AppColors) {
       overflow: 'hidden' as const,
     },
     bubbleUser: { borderBottomRightRadius: radius.sm },
+    bubbleUserMediaOnly: {
+      paddingHorizontal: 0,
+      paddingVertical: 0,
+      maxWidth: '72%' as const,
+    },
     typingRow: { paddingTop: spacing[1] },
     recapInBubble: {
       marginTop: spacing[2],

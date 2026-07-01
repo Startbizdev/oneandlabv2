@@ -103,7 +103,7 @@ export async function apiRequest<T = unknown>(
       }
       throw new Error(
         status === 500
-          ? 'Erreur serveur (500). Le chargement est peut-être trop volumineux — réessayez.'
+          ? 'Erreur serveur (500). Réessayez dans un instant.'
           : `Erreur ${status}`,
       );
     }

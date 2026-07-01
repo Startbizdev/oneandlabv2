@@ -653,6 +653,7 @@ const breadcrumbItems = computed(() => {
     "/admin/reviews": { label: "Avis", icon: "i-lucide-star" },
     "/admin/notifications": { label: "Notifications", icon: "i-lucide-bell" },
     "/admin/abonnements": { label: "Abonnements", icon: "i-lucide-credit-card" },
+    "/admin/ai": { label: "IA Cary", icon: "i-lucide-sparkles" },
     "/admin/logs": { label: "Logs", icon: "i-lucide-file-text" },
     
     // Routes lab
@@ -844,6 +845,12 @@ const navigationItems = computed(() => {
           icon: "i-lucide-credit-card",
           to: "/admin/abonnements",
           active: active("/admin/abonnements"),
+        },
+        {
+          label: "IA Cary",
+          icon: "i-lucide-sparkles",
+          to: "/admin/ai",
+          active: active("/admin/ai"),
         },
         {
           label: "Logs HDS",

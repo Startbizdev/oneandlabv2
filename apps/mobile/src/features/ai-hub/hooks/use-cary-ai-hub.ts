@@ -2,6 +2,8 @@ import type { AiAppointmentDraft, AiConversation, AiMessage, AiQuickSuggestion }
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import {
+  attachAiConversationDocument,
+  analyzeMedicalDocument,
   confirmAiBookingDraft,
   createAiConversation,
   deleteAiConversation,
@@ -9,11 +11,12 @@ import {
   fetchAiConversationDetail,
   fetchAiConversations,
   fetchAiQuickSuggestions,
+  patchAiConversation,
+  searchAiConversations,
   patchAiBookingDraft,
   sendAiChatMessage,
   streamAiChatMessage,
 } from '../api/ai.service';
-import type { PatientAiPendingAttachment } from '../components/PatientAiChatComposer';
 import {
   uploadPatientProfileDocument,
   type PatientProfileUploadType,
@@ -22,7 +25,7 @@ import { pickCarePhoto, carePhotoPickErrorMessage } from '@/lib/uploads/pick-car
 import { uploadMedicalDocument } from '@/lib/uploads/upload-file';
 import { useToast } from '@/providers/ToastProvider';
 import { useAuthStore } from '@/store/auth-store';
-import type { PatientAiChatMessage, PatientAiConversation } from '../types/patient-ai-conversation';
+import type { PatientAiChatAttachment, PatientAiChatMessage, PatientAiConversation } from '../types/patient-ai-conversation';
 import { AI_PROFILE_DOC_TYPES } from '../utils/ai-draft-documents';
 import { mapSuggestionToMessage, systemKeyFromConversationType } from '../utils/ai-navigation';
 import { resolveConversationTitle } from '../utils/conversation-title';
@@ -30,17 +33,37 @@ import { resolveLatestAiDraft } from '../utils/resolve-latest-ai-draft';
 import { isActiveAiDraft } from '../utils/is-active-ai-draft';
 import { patchMessageDraft } from '../utils/resolve-message-recap';
 import { assistantSignalsRecap } from '../utils/assistant-recap-intent';
+import { resolveAssistantMessageText } from '../utils/resolve-assistant-message-text';
 
 const PROFILE_DOC_SET = new Set<string>(AI_PROFILE_DOC_TYPES);
 
 function inferAttachmentDocType(
   draft: AiAppointmentDraft | null,
   override?: string | null,
+  fileName?: string | null,
 ): string {
   if (override) return override;
-  const pending = draft?.payload?.pending_upload_type;
-  if (typeof pending === 'string' && pending.trim()) return pending;
-  return 'ordonnance';
+  if (draft) {
+    const pending = draft.payload?.pending_upload_type;
+    if (typeof pending === 'string' && pending.trim()) return pending;
+    return 'ordonnance';
+  }
+  const fromName = inferDocTypeFromFileName(fileName);
+  if (fromName) return fromName;
+  return 'other';
+}
+
+function inferDocTypeFromFileName(fileName?: string | null): string | null {
+  const lower = String(fileName ?? '').toLowerCase();
+  if (!lower) return null;
+  if (/analyse|bilan|resultat|résultat|labo|hemogram|hémogram|sanguin|nfs\b|bio/i.test(lower)) {
+    return 'resultats';
+  }
+  if (/ordonnance|prescription|prescri/i.test(lower)) return 'ordonnance';
+  if (/vitale|s[ée]curit[ée]\s*sociale/i.test(lower)) return 'carte_vitale';
+  if (/mutuelle|compl[ée]mentaire/i.test(lower)) return 'carte_mutuelle';
+  if (/assurance/i.test(lower)) return 'autres_assurances';
+  return null;
 }
 
 function attachmentConfirmMessage(docType: string): string {
@@ -57,6 +80,25 @@ function attachmentConfirmMessage(docType: string): string {
       return 'Voici le document joint.';
   }
 }
+
+function attachmentApiMessage(docType: string, fileName?: string): string {
+  const label = fileName?.trim() ? ` « ${fileName.trim()} »` : '';
+  if (docType === 'resultats') {
+    return `Voici mes résultats d'analyse${label}. Résume les points importants et explique-les simplement.`;
+  }
+  if (docType === 'other') {
+    return `Voici un document médical${label}. Analyse-le et explique-moi ce qui est important.`;
+  }
+  if (fileName?.trim()) {
+    return `${attachmentConfirmMessage(docType)} (${fileName.trim()})`;
+  }
+  return attachmentConfirmMessage(docType);
+}
+
+export type CaryAiSendOptions = {
+  conversationIdOverride?: string;
+  attachment?: PatientAiChatAttachment;
+};
 
 async function applyAttachmentToDraft(
   draftId: string,
@@ -97,6 +139,8 @@ function mapConversation(conv: AiConversation, messages: AiMessage[] = []): Pati
     createdAt: conv.created_at ? Date.parse(conv.created_at) : Date.now(),
     updatedAt: updated ? Date.parse(updated) : Date.now(),
     isSystem: conv.is_system ?? false,
+    isPinned: conv.is_pinned ?? false,
+    archivedAt: conv.archived_at ? Date.parse(conv.archived_at) : null,
   };
 }
 
@@ -112,6 +156,8 @@ function mapConversationListItem(
     createdAt: conv.created_at ? Date.parse(conv.created_at) : Date.now(),
     updatedAt: updated ? Date.parse(updated) : Date.now(),
     isSystem: conv.is_system ?? false,
+    isPinned: conv.is_pinned ?? false,
+    archivedAt: conv.archived_at ? Date.parse(conv.archived_at) : null,
   };
 }
 
@@ -126,12 +172,12 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
   const [awaitingReply, setAwaitingReply] = useState(false);
   const [activeDraft, setActiveDraft] = useState<AiAppointmentDraft | null>(null);
   const [confirmingDraft, setConfirmingDraft] = useState(false);
-  const [pendingAttachment, setPendingAttachment] = useState<PatientAiPendingAttachment | null>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<PatientAiChatAttachment | null>(null);
   const [attaching, setAttaching] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const initDone = useRef(false);
   const confirmInFlight = useRef(false);
-  const sendMessageRef = useRef<(text: string, conversationIdOverride?: string) => Promise<void>>(
+  const sendMessageRef = useRef<(text: string, options?: CaryAiSendOptions | string) => Promise<void>>(
     async () => {},
   );
 
@@ -149,19 +195,24 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
     setActiveDraft(isActiveAiDraft(detail.draft) ? detail.draft : resolveLatestAiDraft(mapped.messages));
   }, []);
 
-  const refreshConversationsList = useCallback(async () => {
-    const list = await fetchAiConversations();
+  const refreshConversationsList = useCallback(async (archivedOnly = false) => {
+    const list = await fetchAiConversations({ archived: archivedOnly });
     setConversations((prev) => {
       const byId = new Map(prev.map((c) => [c.id, c]));
       const fromApi = list.map((conv) => mapConversationListItem(conv, byId.get(conv.id)));
       const apiIds = new Set(fromApi.map((c) => c.id));
-      const localOnly = prev
-        .filter((c) => !apiIds.has(c.id))
-        .map((c) => ({
-          ...c,
-          messages: c.messages ?? [],
-        }));
-      return [...fromApi, ...localOnly].sort((a, b) => b.updatedAt - a.updatedAt);
+      const localOnly = archivedOnly
+        ? []
+        : prev
+            .filter((c) => !apiIds.has(c.id) && !c.archivedAt)
+            .map((c) => ({
+              ...c,
+              messages: c.messages ?? [],
+            }));
+      return [...fromApi, ...localOnly].sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        return b.updatedAt - a.updatedAt;
+      });
     });
   }, []);
 
@@ -250,15 +301,44 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
   );
 
   const sendMessage = useCallback(
-    async (text: string, conversationIdOverride?: string) => {
-      const convId = conversationIdOverride ?? activeId;
+    async (text: string, options?: CaryAiSendOptions | string) => {
+      const opts: CaryAiSendOptions =
+        typeof options === 'string' ? { conversationIdOverride: options } : (options ?? {});
+      const convId = opts.conversationIdOverride ?? activeId;
       const trimmed = text.trim();
-      if (!convId || !trimmed || awaitingReply) return;
+      const attachment = opts.attachment ?? pendingAttachment;
+      const hasAttachment = Boolean(attachment?.medicalDocumentId);
+      if (!convId || awaitingReply) return;
+      if (!trimmed && !hasAttachment) return;
+
+      const apiMessage =
+        trimmed ||
+        attachmentApiMessage(attachment?.documentType ?? 'other', attachment?.fileName);
+      const displayText = trimmed;
 
       setAwaitingReply(true);
       setStreamingText('');
+      setPendingAttachment(null);
+
       const userLocalId = `local-user-${Date.now()}`;
-      appendLocalMessage(convId, { id: userLocalId, role: 'user', text: trimmed });
+      appendLocalMessage(convId, {
+        id: userLocalId,
+        role: 'user',
+        text: displayText,
+        ...(attachment
+          ? {
+              metadata: {
+                attachment: {
+                  uri: attachment.uri,
+                  fileName: attachment.fileName,
+                  mimeType: attachment.mimeType,
+                  medicalDocumentId: attachment.medicalDocumentId,
+                  documentType: attachment.documentType,
+                },
+              },
+            }
+          : {}),
+      });
 
       const assistantLocalId = `local-assistant-${Date.now()}`;
       let assembled = '';
@@ -269,13 +349,30 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
           (isActiveAiDraft(activeDraft) ? activeDraft : null) ??
           resolveLatestAiDraft(convMessages);
 
-        const streamed = await streamAiChatMessage(
-          {
-            conversation_id: convId,
-            message: trimmed,
-            draft_id: draftForSend?.id,
-          },
-          {
+        const attachmentIds: string[] = [];
+        const medicalDocumentIds: string[] = [];
+        if (attachment?.medicalDocumentId) {
+          medicalDocumentIds.push(attachment.medicalDocumentId);
+          try {
+            const attached = await attachAiConversationDocument(
+              convId,
+              attachment.medicalDocumentId,
+            );
+            attachmentIds.push(attached.id);
+          } catch (e) {
+            console.warn('[cary-ai] attach conversation document failed', e);
+          }
+        }
+
+        const chatBody = {
+          conversation_id: convId,
+          message: apiMessage,
+          draft_id: draftForSend?.id,
+          ...(medicalDocumentIds.length ? { medical_document_ids: medicalDocumentIds } : {}),
+          ...(attachmentIds.length ? { attachment_ids: attachmentIds } : {}),
+        };
+
+        const streamed = await streamAiChatMessage(chatBody, {
             onDelta: (delta) => {
               assembled += delta;
               setStreamingText(assembled);
@@ -285,16 +382,14 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
 
         const payload =
           streamed ??
-          (await sendAiChatMessage({
-            conversation_id: convId,
-            message: trimmed,
-            draft_id: draftForSend?.id,
-          }));
+          (await sendAiChatMessage(chatBody));
+
+        const assistantText = resolveAssistantMessageText(payload.message.content, assembled);
 
         appendLocalMessage(convId, {
           id: payload.message.id ?? assistantLocalId,
           role: 'assistant',
-          text: (payload.message.content ?? assembled ?? '').trim() || '…',
+          text: assistantText,
           metadata: {
             ...(payload.message.metadata ?? {}),
             draft: payload.draft ?? payload.message.metadata?.draft,
@@ -305,7 +400,6 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
           payload.draft ??
           (payload.message.metadata as { draft?: AiAppointmentDraft } | undefined)?.draft ??
           null;
-        const assistantText = (payload.message.content ?? assembled ?? '').trim();
         if (!resolvedDraft?.recap && assistantSignalsRecap(assistantText)) {
           try {
             const detail = await fetchAiConversationDetail(convId);
@@ -333,16 +427,15 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
               return { ...c, messages: msgs };
             }),
           );
-          if (pendingAttachment?.medicalDocumentId && resolvedDraft.id) {
+          if (attachment?.medicalDocumentId && resolvedDraft.id) {
             try {
               const updated = await applyAttachmentToDraft(
                 resolvedDraft.id,
-                pendingAttachment.documentType,
-                pendingAttachment.medicalDocumentId,
-                pendingAttachment.fileName,
+                attachment.documentType ?? 'other',
+                attachment.medicalDocumentId,
+                attachment.fileName,
               );
               setActiveDraft(updated);
-              setPendingAttachment(null);
             } catch {
               /* ignore */
             }
@@ -381,24 +474,27 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
 
   const selectConversation = useCallback(
     async (id: string) => {
+      if (awaitingReply || id === activeId) return;
       setActiveId(id);
       setActiveDraft(null);
       await loadConversationMessages(id);
     },
-    [loadConversationMessages],
+    [activeId, awaitingReply, loadConversationMessages],
   );
 
   const startNewConversation = useCallback(async () => {
+    if (awaitingReply) return;
     const conv = await createAiConversation({ conversation_type: 'general' });
     const detail = await fetchAiConversationDetail(conv.id);
     const mapped = mapConversation(detail.conversation, detail.messages);
     setConversations((prev) => [mapped, ...prev.filter((c) => c.id !== mapped.id)]);
     setActiveId(conv.id);
     setActiveDraft(null);
-  }, []);
+  }, [awaitingReply]);
 
   const deleteConversation = useCallback(
     async (id: string) => {
+      if (awaitingReply) return;
       await deleteAiConversation(id);
       const remaining = conversations.filter((c) => c.id !== id);
       setConversations(remaining);
@@ -414,7 +510,55 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
       }
       await startNewConversation();
     },
-    [activeId, conversations, loadConversationMessages, startNewConversation],
+    [activeId, awaitingReply, conversations, loadConversationMessages, startNewConversation],
+  );
+
+  const togglePinConversation = useCallback(async (id: string) => {
+    const current = conversations.find((c) => c.id === id);
+    if (!current || current.isSystem) return;
+    const updated = await patchAiConversation(id, { is_pinned: !current.isPinned });
+    setConversations((prev) =>
+      prev
+        .map((c) =>
+          c.id === id
+            ? { ...c, isPinned: updated.is_pinned ?? false, title: resolveConversationTitle(updated) }
+            : c,
+        )
+        .sort((a, b) => {
+          if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+          return b.updatedAt - a.updatedAt;
+        }),
+    );
+  }, [conversations]);
+
+  const archiveConversation = useCallback(
+    async (id: string) => {
+      if (awaitingReply) return;
+      await patchAiConversation(id, { archived: true });
+      const remaining = conversations.filter((c) => c.id !== id);
+      setConversations(remaining);
+      if (activeId === id) {
+        setActiveDraft(null);
+        if (remaining.length > 0) {
+          const nextId = remaining[0]!.id;
+          setActiveId(nextId);
+          await loadConversationMessages(nextId);
+        } else {
+          await startNewConversation();
+        }
+      }
+      showToast('Conversation archivée');
+    },
+    [activeId, awaitingReply, conversations, loadConversationMessages, showToast, startNewConversation],
+  );
+
+  const unarchiveConversation = useCallback(
+    async (id: string) => {
+      await patchAiConversation(id, { archived: false });
+      await refreshConversationsList(true);
+      showToast('Conversation restaurée');
+    },
+    [refreshConversationsList, showToast],
   );
 
   const confirmDraft = useCallback(async (draftOverride?: AiAppointmentDraft) => {
@@ -490,18 +634,26 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
   const handleAttach = useCallback(
     async (docTypeOverride?: string) => {
       if (attaching || awaitingReply) return;
-      setAttaching(true);
       try {
         const picked = await pickCarePhoto();
         if (!picked) return;
 
-        const docType = inferAttachmentDocType(activeDraft, docTypeOverride ?? null);
+        const docType = inferAttachmentDocType(activeDraft, docTypeOverride ?? null, picked.fileName);
+        setPendingAttachment({
+          uri: picked.uri,
+          fileName: picked.fileName,
+          mimeType: picked.mimeType,
+          documentType: docType,
+        });
+        setAttaching(true);
+
         let medicalDocumentId: string;
         let fileName: string;
 
         if (PROFILE_DOC_SET.has(docType)) {
           if (!userId) {
             showToast('Session expirée — reconnectez-vous.', { type: 'error' });
+            setPendingAttachment(null);
             return;
           }
           const uploaded = await uploadPatientProfileDocument(
@@ -513,12 +665,32 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
           medicalDocumentId = uploaded.id;
           fileName = uploaded.file_name ?? picked.fileName;
         } else {
+          if (!userId) {
+            showToast('Session expirée — reconnectez-vous.', { type: 'error' });
+            setPendingAttachment(null);
+            return;
+          }
           const uploaded = await uploadMedicalDocument(
             { uri: picked.uri, fileName: picked.fileName, mimeType: picked.mimeType },
-            { document_type: docType },
+            { patient_id: userId, document_type: docType },
           );
+          if (!uploaded?.id) throw new Error('Upload impossible');
           medicalDocumentId = uploaded.id;
-          fileName = picked.fileName;
+          fileName = uploaded.file_name ?? picked.fileName;
+        }
+
+        const attachment: PatientAiChatAttachment = {
+          uri: picked.uri,
+          fileName,
+          mimeType: picked.mimeType,
+          medicalDocumentId,
+          documentType: docType,
+        };
+
+        try {
+          await analyzeMedicalDocument(medicalDocumentId);
+        } catch {
+          /* analyse serveur best-effort — le chat relancera l'OCR si besoin */
         }
 
         if (activeDraft?.id) {
@@ -529,19 +701,11 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
             fileName,
           );
           setActiveDraft(updated);
-          setPendingAttachment(null);
-          if (activeId) {
-            void sendMessage(attachmentConfirmMessage(docType));
-          }
-        } else {
-          setPendingAttachment({
-            fileName,
-            documentType: docType,
-            medicalDocumentId,
-          });
-          showToast('Document prêt — décrivez votre RDV à Cary pour continuer.');
         }
+
+        setPendingAttachment(attachment);
       } catch (e) {
+        setPendingAttachment(null);
         showToast(carePhotoPickErrorMessage(e), { type: 'error' });
       } finally {
         setAttaching(false);
@@ -549,10 +713,8 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
     },
     [
       activeDraft,
-      activeId,
       attaching,
       awaitingReply,
-      sendMessage,
       showToast,
       userId,
     ],
@@ -591,6 +753,9 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
     startNewConversation,
     deleteConversation,
     refreshConversationsList,
+    togglePinConversation,
+    archiveConversation,
+    unarchiveConversation,
     sendMessage,
     handleSuggestion,
     confirmDraft,

@@ -30,7 +30,7 @@ final class AiChatHelper
                 continue;
             }
             $clean = trim(preg_replace($pattern, '', $content) ?? $content);
-            $clean = self::sanitizeVisibleAssistantText($clean);
+            $clean = self::formatReadableChatText(self::sanitizeVisibleAssistantText($clean));
 
             return [
                 'content' => $clean,
@@ -38,7 +38,7 @@ final class AiChatHelper
             ];
         }
 
-        return ['content' => self::sanitizeVisibleAssistantText(trim($content)), 'patch' => null];
+        return ['content' => self::formatReadableChatText(self::sanitizeVisibleAssistantText(trim($content))), 'patch' => null];
     }
 
     /**
@@ -66,12 +66,131 @@ final class AiChatHelper
             '/(?:patient_mode|booking_step|ordonnance_status|relative_id|category_id|service_id)\s*=\s*[\w-]+/iu',
             '/\*\*\((?:patient_mode|booking_step)[^)]+\)\*\*/iu',
         ];
-        $out = trim($text);
+        $out = str_replace(["\r\n", "\r"], "\n", trim($text));
         foreach ($patterns as $pattern) {
             $out = trim(preg_replace($pattern, '', $out) ?? $out);
         }
 
-        return preg_replace('/\s{2,}/u', ' ', $out) ?? $out;
+        $lines = explode("\n", $out);
+        $lines = array_map(
+            static fn (string $line): string => trim(preg_replace('/[ \t]+/u', ' ', $line) ?? $line),
+            $lines,
+        );
+        $out = trim(implode("\n", $lines));
+
+        return trim(preg_replace('/\n{3,}/u', "\n\n", $out) ?? $out);
+    }
+
+    /**
+     * Aère le texte assistant pour les bulles mobile (paragraphes, listes, sections).
+     */
+    public static function formatReadableChatText(string $text): string
+    {
+        $out = str_replace(["\r\n", "\r"], "\n", trim($text));
+        if ($out === '') {
+            return '';
+        }
+
+        $out = preg_replace('/\*\*(.+?)\*\*/su', '$1', $out) ?? $out;
+        $out = preg_replace('/^#+\s+/m', '', $out) ?? $out;
+
+        $out = preg_replace(
+            '/(?<!\n)\n(?!\n)(?=[-•*]\s)/u',
+            "\n\n",
+            $out,
+        ) ?? $out;
+
+        $out = preg_replace('/:\s+-\s+/u', ":\n\n- ", $out) ?? $out;
+
+        $out = preg_replace(
+            '/\s+-\s+(?=[A-ZÀ-Ü0-9«])/u',
+            "\n- ",
+            $out,
+        ) ?? $out;
+
+        $out = preg_replace(
+            '/(?<=[.!?…])\s+-\s+(?=[A-ZÀ-Ü0-9«])/u',
+            "\n\n- ",
+            $out,
+        ) ?? $out;
+
+        $out = preg_replace(
+            '/(?<!\n\n)(?<=\S)\s+(?=(?:Valeurs|Points|En résumé|Pour résumer|Ce qui|En bref|Côté|NFS|Foie|Rein|Lipides|À retenir)[^\n.]{2,48}:)/iu',
+            "\n\n",
+            $out,
+        ) ?? $out;
+
+        if (!str_contains($out, "\n\n") && mb_strlen($out) > 90) {
+            $out = preg_replace(
+                '/(?<=[.!?…])\s+(?=[A-ZÀ-Ü«N])/u',
+                "\n\n",
+                $out,
+            ) ?? $out;
+        }
+
+        $lines = explode("\n", $out);
+        $reflowed = [];
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                $reflowed[] = '';
+                continue;
+            }
+            if (mb_strlen($trimmed) > 320 && !preg_match('/^[-•*]\s/u', $trimmed)) {
+                $parts = preg_split('/(?<=[.!?…])\s+(?=[A-ZÀ-Ü«])/u', $trimmed) ?: [$trimmed];
+                foreach ($parts as $i => $part) {
+                    $part = trim($part);
+                    if ($part === '') {
+                        continue;
+                    }
+                    if ($i > 0) {
+                        $reflowed[] = '';
+                    }
+                    $reflowed[] = $part;
+                }
+                continue;
+            }
+            $reflowed[] = $trimmed;
+        }
+
+        $out = trim(preg_replace("/\n{3,}/u", "\n\n", implode("\n", $reflowed)) ?? '');
+
+        return $out;
+    }
+
+    /**
+     * @return list<string> avertissements lisibilité (vide = OK)
+     */
+    public static function readabilityWarnings(string $text): array
+    {
+        $warnings = [];
+        $plain = trim($text);
+        if ($plain === '') {
+            return ['réponse vide'];
+        }
+
+        if (mb_strlen($plain) > 180 && substr_count($plain, "\n") === 0) {
+            $warnings[] = 'pavé sans retour à la ligne';
+        }
+
+        $blocks = preg_split('/\n{2,}/u', $plain) ?: [$plain];
+        foreach ($blocks as $block) {
+            $oneLine = trim(preg_replace('/\s+/u', ' ', str_replace("\n", ' ', $block)) ?? $block);
+            if (mb_strlen($oneLine) > 420) {
+                $warnings[] = 'paragraphe trop long (' . mb_strlen($oneLine) . ' car.)';
+                break;
+            }
+        }
+
+        if (preg_match('/\*\*|^#+\s/m', $plain)) {
+            $warnings[] = 'markdown visible';
+        }
+
+        if (preg_match('/\b(en tant qu.?assistant|veuillez noter que|il convient de|conformément à)\b/iu', $plain)) {
+            $warnings[] = 'ton trop institutionnel';
+        }
+
+        return $warnings;
     }
 
     /** Cary annonce le récap interactif (carte Valider côté app). */

@@ -1,9 +1,12 @@
 export * from './appointments';
 export * from './ai';
+export * from './health';
+export * from './mobile-app';
 export * from './lab-results';
 export * from './qr';
 export * from './staff-hub-search';
 export * from './professional-id';
+export * from './pro-emploi';
 export {
   GENDER_OPTIONS,
   type ProfileForm,

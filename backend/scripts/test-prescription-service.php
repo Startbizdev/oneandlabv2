@@ -44,6 +44,21 @@ assertTrue(
     'pro requires RPPS'
 );
 assertTrue(
+    PrescriptionService::validatePrescriberCredentials('pro', [
+        'emploi' => 'Infirmier IPA',
+        'adeli' => '123456789',
+    ]) === null,
+    'pro IPA with ADELI OK'
+);
+assertTrue(
+    PrescriptionService::validatePrescriberCredentials('pro', [
+        'emploi' => 'Infirmier IPA',
+        'rpps' => '',
+        'adeli' => '',
+    ]) !== null,
+    'pro IPA requires RPPS or Adeli'
+);
+assertTrue(
     PrescriptionService::validatePrescriberCredentials('nurse', ['adeli' => '123456789']) === null,
     'nurse with ADELI OK'
 );

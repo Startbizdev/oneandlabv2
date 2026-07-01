@@ -213,6 +213,7 @@ function profileSnapshotFromApi(data: Record<string, unknown>): PrescriptionProf
     address: data.address,
     rpps: (data.rpps as string | null | undefined) ?? null,
     adeli: (data.adeli as string | null | undefined) ?? null,
+    emploi: (data.emploi as string | null | undefined) ?? null,
     prescription_signature_png: (data.prescription_signature_png as string | null | undefined) ?? null,
   };
 }

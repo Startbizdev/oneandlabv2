@@ -4,6 +4,7 @@ const SYSTEM_TITLES: Record<string, string> = {
   assistant_health: 'Mon Assistant Santé',
   lab_results: 'Mes résultats',
   appointment: 'Mes rendez-vous',
+  health_tracking: 'Mes données santé',
 };
 
 /** Titre affiché dans la liste (style ChatGPT). */

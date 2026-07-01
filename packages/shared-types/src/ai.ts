@@ -16,6 +16,7 @@ export interface AiConversation {
   channel?: 'text' | 'voice';
   custom_title?: string | null;
   is_pinned?: boolean;
+  archived_at?: string | null;
   is_system?: boolean;
   system_key?: string | null;
   message_count?: number;
@@ -33,6 +34,7 @@ export interface AiMessage {
     draft?: AiAppointmentDraft;
     disclaimer?: string;
     audit_id?: string | null;
+    citation_refs?: string[];
   } | null;
   created_at?: string | null;
 }
@@ -85,6 +87,16 @@ export interface AiHubPayload {
   role?: string;
   disclaimer: string;
   quick_suggestions: AiQuickSuggestion[];
+}
+
+export interface AiAttachment {
+  id: string;
+  conversation_id: string;
+  medical_document_id?: string | null;
+  attachment_type: string;
+  file_name: string;
+  mime_type?: string | null;
+  created_at?: string | null;
 }
 
 export interface AiChatResponse {

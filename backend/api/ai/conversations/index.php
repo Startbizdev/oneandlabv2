@@ -13,7 +13,8 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'GET') {
     $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 50;
     $offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 0;
-    $items = $service->listForUser((string) $user['user_id'], $limit, $offset);
+    $archivedOnly = isset($_GET['archived']) && $_GET['archived'] === '1';
+    $items = $service->listForUser((string) $user['user_id'], $limit, $offset, $archivedOnly);
     ai_json_response(['success' => true, 'data' => $items]);
 }
 

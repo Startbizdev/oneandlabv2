@@ -17,6 +17,7 @@ interface Props {
   onVoicePress: () => void;
   onAttachPress?: () => void;
   onClearAttachment?: () => void;
+  onPreviewPress?: () => void;
   pendingAttachment?: import('./PatientAiChatComposer').PatientAiPendingAttachment | null;
   attaching?: boolean;
   onFocusInput?: () => void;
@@ -51,6 +52,7 @@ export function PatientAiChatFooter({
   onVoicePress,
   onAttachPress,
   onClearAttachment,
+  onPreviewPress,
   pendingAttachment,
   attaching,
   onFocusInput,
@@ -93,6 +95,7 @@ export function PatientAiChatFooter({
           onVoicePress={onVoicePress}
           onAttachPress={onAttachPress}
           onClearAttachment={onClearAttachment}
+          onPreviewPress={onPreviewPress}
           pendingAttachment={pendingAttachment}
           attaching={attaching}
           onFocus={() => {

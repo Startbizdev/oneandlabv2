@@ -116,9 +116,11 @@
         <FormInput
           v-if="isPro"
           v-model="form.rpps"
-          label="Numéro RPPS"
+          :label="isProIpa ? PROFESSIONAL_ID_LABEL : 'Numéro RPPS'"
           name="rpps"
-          placeholder="12345678901"
+          :placeholder="isProIpa ? '9 chiffres (Adeli) ou 11 chiffres (RPPS)' : '12345678901'"
+          :hint="isProIpa ? '9 chiffres (Adeli) ou 11 chiffres (RPPS) — un seul numéro' : undefined"
+          :maxlength="isProIpa ? '11' : undefined"
         />
 
         <FormInput
@@ -206,6 +208,7 @@ import type { ProfileForm } from '~/types/profile'
 import { GENDER_OPTIONS } from '~/types/profile'
 import { isTechnicalPatientEmail, patientUiEmailLine } from '~/utils/patient-address-rdv'
 import { PRO_SANTE_EMPLOIS } from '~/constants/proEmploi'
+import { isProIpaEmploi, PROFESSIONAL_ID_LABEL } from '@oneandlab/shared-types'
 
 const proEmploiItems = [...PRO_SANTE_EMPLOIS]
 
@@ -282,6 +285,7 @@ watch(() => form.value, (val) => {
 const isPatient = computed(() => props.role === 'patient')
 const isNurse = computed(() => props.role === 'nurse')
 const isPro = computed(() => props.role === 'pro')
+const isProIpa = computed(() => isPro.value && isProIpaEmploi(form.value.emploi))
 const isLab = computed(() => props.role === 'lab')
 const isLabOrSubaccount = computed(() => props.role === 'lab' || props.role === 'subaccount')
 

@@ -793,6 +793,10 @@
                 :role-base="staffPrescriptionsRoleBase"
                 :prescription-kind="staffPrescriptionKind"
               />
+              <PatientHealthRecordPanel
+                v-if="showStaffPatientHealthRecord"
+                :patient-id="effectiveUserId"
+              />
               <div v-if="isProEditingPatient" class="pt-2 w-full shrink-0">
                 <UButton
                   size="xl"
@@ -1016,7 +1020,7 @@
 
 <script setup lang="ts">
 import { nextTick } from 'vue'
-import { splitProfessionalId, validateProfessionalId } from '@oneandlab/shared-types'
+import { splitProfessionalId, validateProfessionalId, isProIpaEmploi } from '@oneandlab/shared-types'
 import { apiFetch } from '~/utils/api'
 import {
   STAFF_PATIENT_BOOKING_CONSENT_LABEL,
@@ -1365,6 +1369,12 @@ const showStaffPatientPrescriptions = computed(
     !!editingUserId.value &&
     role.value === 'patient' &&
     (user.value?.role === 'pro' || user.value?.role === 'nurse')
+)
+const showStaffPatientHealthRecord = computed(
+  () =>
+    !!editingUserId.value &&
+    role.value === 'patient' &&
+    ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'].includes(user.value?.role ?? '')
 )
 /** Charge les documents profil patient (soi-même ou dossier staff). */
 const shouldLoadPatientDossierDocuments = computed(
@@ -2228,7 +2238,24 @@ const saveProfile = async (fromSaveAll = false) => {
       body.gender = profileForm.value.gender?.trim() || null
     }
     if (role.value === 'pro') {
-      if (profileForm.value.rpps?.replace(/\s/g, '')) body.rpps = profileForm.value.rpps.replace(/\s/g, '')
+      if (isProIpaEmploi(profileForm.value.emploi)) {
+        const profErr = validateProfessionalId(profileForm.value.rpps || '')
+        if (profErr) {
+          toast.add({
+            title: 'Identifiant invalide',
+            description: profErr,
+            color: 'red',
+          })
+          if (!fromSaveAll) saving.value = false
+          return
+        }
+        const split = splitProfessionalId(profileForm.value.rpps || '')
+        body.professional_id = profileForm.value.rpps?.replace(/\s/g, '') || null
+        body.rpps = split.rpps
+        body.adeli = split.adeli
+      } else if (profileForm.value.rpps?.replace(/\s/g, '')) {
+        body.rpps = profileForm.value.rpps.replace(/\s/g, '')
+      }
       body.emploi = profileForm.value.emploi?.trim() || null
       if (!editingUserId.value) {
         body.profile_image_url = publicProfileForm.value.profile_image_url || null

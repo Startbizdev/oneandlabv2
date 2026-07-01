@@ -1,0 +1,122 @@
+{
+  "version": "1",
+  "disclaimer_fr": "Informations déclaratives — ne remplace pas un avis médical. Toutes les questions sont facultatives.",
+  "blocks": {
+    "profile": { "weight": 15, "label_fr": "Profil de base" },
+    "clinical": { "weight": 45, "label_fr": "Antécédents & cardio-métabolisme" },
+    "allergies_treatments": { "weight": 20, "label_fr": "Allergies & traitements" },
+    "health_sync": { "weight": 10, "label_fr": "Connexion santé" },
+    "documents": { "weight": 10, "label_fr": "Documents clés" }
+  },
+  "sections": [
+    {
+      "id": "general",
+      "block": "clinical",
+      "label_fr": "Général",
+      "questions": [
+        { "key": "height_cm", "label_fr": "Taille (cm)", "type": "number", "optional": true },
+        { "key": "weight_declared_kg", "label_fr": "Poids déclaré (kg)", "type": "number", "optional": true }
+      ]
+    },
+    {
+      "id": "cardio",
+      "block": "clinical",
+      "label_fr": "Cardiovasculaire",
+      "questions": [
+        { "key": "cholesterol_known", "label_fr": "Connaissez-vous votre taux de cholestérol ?", "type": "yes_no_unknown", "optional": true },
+        { "key": "hypertension", "label_fr": "Hypertension connue ?", "type": "yes_no_unknown", "optional": true },
+        { "key": "heart_event_history", "label_fr": "Antécédent d'infarctus ou AVC ?", "type": "yes_no_unknown", "optional": true }
+      ]
+    },
+    {
+      "id": "metabolic",
+      "block": "clinical",
+      "label_fr": "Métabolique",
+      "questions": [
+        { "key": "diabetes", "label_fr": "Diabète ?", "type": "yes_no_unknown", "optional": true },
+        { "key": "thyroid_disorder", "label_fr": "Trouble thyroïdien ?", "type": "yes_no_unknown", "optional": true }
+      ]
+    },
+    {
+      "id": "allergies",
+      "block": "allergies_treatments",
+      "label_fr": "Allergies",
+      "questions": [
+        { "key": "drug_allergies", "label_fr": "Allergies médicamenteuses", "type": "text", "placeholder": "Ex. pénicilline", "optional": true },
+        { "key": "food_allergies", "label_fr": "Allergies alimentaires", "type": "text", "optional": true },
+        { "key": "latex_allergy", "label_fr": "Allergie au latex ?", "type": "yes_no_unknown", "optional": true }
+      ]
+    },
+    {
+      "id": "treatments",
+      "block": "allergies_treatments",
+      "label_fr": "Traitements",
+      "questions": [
+        { "key": "current_medications", "label_fr": "Traitements en cours", "type": "text", "optional": true }
+      ]
+    },
+    {
+      "id": "lifestyle",
+      "block": "clinical",
+      "label_fr": "Mode de vie",
+      "questions": [
+        { "key": "smoking", "label_fr": "Tabac", "type": "enum", "options": ["never", "former", "yes", "unknown"], "optional": true },
+        { "key": "alcohol", "label_fr": "Alcool", "type": "enum", "options": ["never", "occasional", "regular", "unknown"], "optional": true },
+        { "key": "activity_level", "label_fr": "Activité physique", "type": "enum", "options": ["sedentary", "moderate", "active", "unknown"], "optional": true }
+      ]
+    },
+    {
+      "id": "surgical",
+      "block": "clinical",
+      "label_fr": "Chirurgie & hospitalisations",
+      "questions": [
+        { "key": "hospitalizations", "label_fr": "Hospitalisations récentes", "type": "text", "optional": true },
+        { "key": "surgeries", "label_fr": "Chirurgies passées", "type": "text", "optional": true }
+      ]
+    },
+    {
+      "id": "family",
+      "block": "clinical",
+      "label_fr": "Antécédents familiaux",
+      "questions": [
+        { "key": "family_cardio_history", "label_fr": "Antécédents cardiovasculaires dans la famille ?", "type": "yes_no_unknown", "optional": true }
+      ]
+    },
+    {
+      "id": "gynecology",
+      "block": "clinical",
+      "label_fr": "Gynécologie",
+      "conditional_gender": "female",
+      "questions": [
+        { "key": "pregnancy_status", "label_fr": "Grossesse en cours ?", "type": "yes_no_unknown", "optional": true }
+      ]
+    }
+  ],
+  "gap_labels": {
+    "lipid_panel_unknown": {
+      "label_fr": "Un bilan lipidique pourrait vous être utile",
+      "action": "book_blood_test",
+      "cta_fr": "Réserver une prise de sang"
+    },
+    "carnet_incomplete_pre_rdv": {
+      "label_fr": "Enrichissez votre carnet avant votre rendez-vous",
+      "action": "complete_carnet",
+      "cta_fr": "Compléter mon carnet"
+    },
+    "health_sync_stale": {
+      "label_fr": "Reconnectez Apple Santé ou Health Connect",
+      "action": "reconnect_health",
+      "cta_fr": "Synchroniser mes données"
+    },
+    "smoking_no_followup": {
+      "label_fr": "Un suivi prévention pourrait vous être proposé",
+      "action": "book_prevention",
+      "cta_fr": "Prendre rendez-vous"
+    },
+    "book_followup_lab": {
+      "label_fr": "Planifier un suivi après vos résultats",
+      "action": "book_followup",
+      "cta_fr": "Planifier un suivi"
+    }
+  }
+}

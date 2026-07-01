@@ -6,21 +6,25 @@ require_once __DIR__ . '/AIGateway.php';
 require_once __DIR__ . '/AiBookingService.php';
 require_once __DIR__ . '/AiChatHelper.php';
 require_once __DIR__ . '/AiConversationService.php';
-require_once __DIR__ . '/ContextComposer.php';
+require_once __DIR__ . '/MemoryComposer.php';
+require_once __DIR__ . '/CaryContextFocus.php';
+require_once __DIR__ . '/AiAttachmentService.php';
+require_once __DIR__ . '/AiDocumentIntent.php';
+require_once __DIR__ . '/../rag/AiDocumentJobService.php';
 require_once __DIR__ . '/bootstrap.php';
 
 final class AiChatService
 {
     private AiConversationService $conversations;
     private AIGateway $gateway;
-    private ContextComposer $composer;
+    private MemoryComposer $composer;
     private AiBookingService $booking;
 
     public function __construct()
     {
         $this->conversations = new AiConversationService();
         $this->gateway = new AIGateway();
-        $this->composer = new ContextComposer();
+        $this->composer = new MemoryComposer();
         $this->booking = new AiBookingService();
     }
 
@@ -42,8 +46,95 @@ final class AiChatService
         }
 
         $patientId = isset($conv['patient_id']) ? (string) $conv['patient_id'] : null;
-        $context = $this->composer->compose($user, $patientId, (string) ($conv['conversation_type'] ?? 'general'), true);
+        $resolved = $this->resolveChatAttachments($user, $conversationId, $conv, $input);
+        $attachmentIds = $resolved['attachment_ids'];
+        $chatAttachments = $resolved['chat_attachments'];
+        $newAttachmentsInMessage = $chatAttachments !== [];
+
+        $attachmentService = new AiAttachmentService();
+        $conversationAttachmentRows = $attachmentService->listForConversation(
+            $conversationId,
+            (string) $user['user_id'],
+        );
+
+        if (!$newAttachmentsInMessage && $conversationAttachmentRows !== []
+            && CaryContextFocus::matchesDocumentFollowUp(mb_strtolower($message))) {
+            $followUpAttachments = $this->loadConversationDocumentContext(
+                $user,
+                $conv,
+                $conversationAttachmentRows,
+                $attachmentService,
+            );
+            if ($followUpAttachments !== []) {
+                $chatAttachments = $followUpAttachments;
+            }
+        }
+
+        $isDocumentIntent = $newAttachmentsInMessage
+            || ($chatAttachments !== [] && CaryContextFocus::matchesDocumentFollowUp(mb_strtolower($message)));
+
+        $draftPreview = null;
+        $draftIdEarly = isset($input['draft_id']) ? trim((string) $input['draft_id']) : null;
+        if ($draftIdEarly !== null && $draftIdEarly !== '') {
+            $draftPreview = $this->booking->getDraft($draftIdEarly, (string) $user['user_id']);
+        }
+        if ($draftPreview === null) {
+            $draftPreview = $this->booking->getLatestDraftForConversation($conversationId, (string) $user['user_id']);
+        }
+
+        $contextFocus = $newAttachmentsInMessage
+            ? CaryContextFocus::DOCUMENT
+            : ($isDocumentIntent && $chatAttachments !== []
+                ? CaryContextFocus::DOCUMENT_FOLLOWUP
+                : CaryContextFocus::resolve(
+                    $message,
+                    false,
+                    $draftPreview,
+                    $conversationAttachmentRows !== [],
+                ));
+
+        if ($chatAttachments !== [] && $isDocumentIntent && !$newAttachmentsInMessage) {
+            $labels = array_map(
+                static fn (array $a): string => (string) ($a['file_name'] ?? 'document'),
+                $chatAttachments,
+            );
+            $message .= "\n\n[Question sur le document déjà analysé dans cette conversation : "
+                . implode(', ', $labels) . ']';
+        } elseif ($newAttachmentsInMessage) {
+            $labels = array_map(
+                static fn (array $a): string => (string) ($a['file_name'] ?? 'document'),
+                $chatAttachments,
+            );
+            $message .= "\n\n[Document(s) joint(s) dans ce message : " . implode(', ', $labels) . ']';
+        }
+
+        $context = $this->composer->compose(
+            $user,
+            $patientId,
+            (string) ($conv['conversation_type'] ?? 'general'),
+            true,
+            $message,
+            $conversationId,
+        );
         $context['disclaimer'] = $this->gateway->getDisclaimerPublic();
+        $context['active_intent'] = $contextFocus;
+        $context['active_intent_label_fr'] = CaryContextFocus::labelFr($contextFocus);
+
+        if ($chatAttachments !== [] && $isDocumentIntent) {
+            $context['chat_attachments'] = $chatAttachments;
+            $context['document_context_mode'] = $newAttachmentsInMessage ? 'new_attachment' : 'conversation_followup';
+        } else {
+            $context['conversation_mode'] = 'text_chat';
+        }
+
+        foreach (CaryContextFocus::suppressedContextKeys($contextFocus) as $key) {
+            unset($context[$key]);
+        }
+        if (isset($context['app_navigation']) && is_array($context['app_navigation'])) {
+            foreach (CaryContextFocus::suppressedNavigationKeys($contextFocus) as $navKey) {
+                unset($context['app_navigation'][$navKey]);
+            }
+        }
 
         $history = $this->conversations->getMessages($conversationId, (string) $user['user_id'], 12);
         $messages = [];
@@ -69,12 +160,13 @@ final class AiChatService
         }
         $draftId = $this->sanitizeDraftId($draftId, (string) $user['user_id']);
 
+        $taskType = $this->resolveTaskType($conv, $attachmentIds, $isDocumentIntent ? $chatAttachments : []);
         if ($onStreamDelta !== null) {
             $result = $this->gateway->chatStream(
                 $user,
                 $messages,
                 $onStreamDelta,
-                'chat_simple',
+                $taskType,
                 $context,
                 $conversationId,
                 $patientId
@@ -83,7 +175,7 @@ final class AiChatService
             $result = $this->gateway->chat(
                 $user,
                 $messages,
-                'chat_simple',
+                $taskType,
                 $context,
                 $conversationId,
                 $patientId
@@ -121,6 +213,9 @@ final class AiChatService
             'audit_id' => $result['audit_id'] ?? null,
             'disclaimer' => $context['disclaimer'],
         ];
+        if (!empty($context['citation_refs']) && is_array($context['citation_refs'])) {
+            $metadata['citation_refs'] = $context['citation_refs'];
+        }
         if ($draft) {
             $metadata['draft'] = $draft;
         }
@@ -197,5 +292,200 @@ final class AiChatService
         }
 
         return $draftId;
+    }
+
+    /**
+     * @param array<string, mixed> $conv
+     * @param array<string, mixed> $input
+     * @return array{attachment_ids: list<string>, chat_attachments: list<array<string, mixed>>}
+     */
+    private function resolveChatAttachments(
+        array $user,
+        string $conversationId,
+        array $conv,
+        array $input,
+    ): array {
+        $attachmentIds = [];
+        $rawIds = $input['attachment_ids'] ?? [];
+        if (is_array($rawIds)) {
+            foreach ($rawIds as $id) {
+                $id = trim((string) $id);
+                if ($id !== '') {
+                    $attachmentIds[] = $id;
+                }
+            }
+        }
+
+        $medicalIds = $input['medical_document_ids'] ?? [];
+        if (!is_array($medicalIds)) {
+            $medicalIds = [];
+        }
+
+        $attachmentService = new AiAttachmentService();
+        $docJobs = new AiDocumentJobService();
+        $chatAttachments = [];
+
+        foreach ($medicalIds as $medicalDocumentId) {
+            $medicalDocumentId = trim((string) $medicalDocumentId);
+            if ($medicalDocumentId === '') {
+                continue;
+            }
+
+            $meta = ['medical_document_id' => $medicalDocumentId];
+            $docRow = $attachmentService->getDocumentRow($medicalDocumentId);
+            try {
+                $attached = $attachmentService->attachToConversation($user, $conversationId, [
+                    'medical_document_id' => $medicalDocumentId,
+                ]);
+                $attachmentIds[] = (string) ($attached['id'] ?? '');
+                $meta = array_merge($meta, $attached);
+            } catch (Throwable $e) {
+                error_log('AiChatService attach: ' . $e->getMessage());
+            }
+
+            $patientId = (string) ($docRow['patient_id'] ?? $conv['patient_id'] ?? $user['user_id'] ?? '');
+            if ($patientId === '') {
+                $patientId = (string) ($user['user_id'] ?? '');
+            }
+
+            $excerpt = '';
+            $analysisTitle = (string) ($docRow['file_name'] ?? 'document');
+            $analysisReady = false;
+            try {
+                $analysis = $docJobs->ensureAnalyzed($patientId, $medicalDocumentId, 'document_analysis');
+                $excerpt = trim((string) ($analysis['summary_text'] ?? ''));
+                if ($excerpt === '') {
+                    $excerpt = trim((string) ($analysis['ocr_text'] ?? ''));
+                }
+                $analysisTitle = (string) ($analysis['title'] ?? $analysisTitle);
+                if ($excerpt !== '') {
+                    $excerpt = mb_substr($excerpt, 0, 8000);
+                }
+                $analysisReady = $excerpt !== ''
+                    && !str_starts_with($excerpt, 'Aucun texte extractible');
+            } catch (Throwable $e) {
+                error_log('AiChatService ensureAnalyzed: ' . $e->getMessage());
+            }
+
+            $intent = AiDocumentIntent::classify($docRow ?? [], $excerpt);
+            $chatAttachments[] = [
+                'medical_document_id' => $medicalDocumentId,
+                'file_name' => (string) ($meta['file_name'] ?? $analysisTitle),
+                'attachment_type' => (string) ($meta['attachment_type'] ?? 'other'),
+                'document_type' => (string) ($docRow['document_type'] ?? 'other'),
+                'mime_type' => (string) ($meta['mime_type'] ?? $docRow['mime_type'] ?? ''),
+                'intent_category' => $intent['category'],
+                'intent_kind' => $intent['kind'],
+                'intent_label_fr' => $intent['label_fr'],
+                'summary_excerpt' => $excerpt,
+                'analysis_ready' => $analysisReady,
+            ];
+        }
+
+        return [
+            'attachment_ids' => array_values(array_unique($attachmentIds)),
+            'chat_attachments' => $chatAttachments,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $conv
+     * @param mixed $attachmentIds
+     * @param list<array<string, mixed>> $chatAttachments
+     */
+    private function resolveTaskType(array $conv, mixed $attachmentIds, array $chatAttachments = []): string
+    {
+        if ($chatAttachments !== []) {
+            return 'document_analysis';
+        }
+        if (is_array($attachmentIds) && $attachmentIds !== []) {
+            return 'document_analysis';
+        }
+        $type = (string) ($conv['conversation_type'] ?? 'general');
+        if (in_array($type, ['medical_document', 'lab_results'], true)) {
+            return 'document_analysis';
+        }
+
+        return 'chat_simple';
+    }
+
+    /**
+     * Recharge le dernier document de la conversation pour une question de suivi (sans re-upload).
+     *
+     * @param list<array<string, mixed>> $conversationAttachmentRows
+     * @return list<array<string, mixed>>
+     */
+    private function loadConversationDocumentContext(
+        array $user,
+        array $conv,
+        array $conversationAttachmentRows,
+        AiAttachmentService $attachmentService,
+    ): array {
+        $seen = [];
+        $recentRows = [];
+        foreach (array_reverse($conversationAttachmentRows) as $row) {
+            $id = (string) ($row['medical_document_id'] ?? '');
+            if ($id === '' || isset($seen[$id])) {
+                continue;
+            }
+            $seen[$id] = true;
+            $recentRows[] = $row;
+            if (count($recentRows) >= 2) {
+                break;
+            }
+        }
+
+        $chatAttachments = [];
+        $docJobs = new AiDocumentJobService();
+        foreach ($recentRows as $row) {
+            $medicalDocumentId = (string) ($row['medical_document_id'] ?? '');
+            if ($medicalDocumentId === '') {
+                continue;
+            }
+            $docRow = $attachmentService->getDocumentRow($medicalDocumentId);
+            if ($docRow === null) {
+                continue;
+            }
+            $patientId = (string) ($docRow['patient_id'] ?? $conv['patient_id'] ?? $user['user_id'] ?? '');
+            if ($patientId === '') {
+                $patientId = (string) ($user['user_id'] ?? '');
+            }
+
+            $excerpt = '';
+            $analysisTitle = (string) ($docRow['file_name'] ?? 'document');
+            $analysisReady = false;
+            try {
+                $analysis = $docJobs->ensureAnalyzed($patientId, $medicalDocumentId, 'document_analysis');
+                $excerpt = trim((string) ($analysis['summary_text'] ?? ''));
+                if ($excerpt === '') {
+                    $excerpt = trim((string) ($analysis['ocr_text'] ?? ''));
+                }
+                $analysisTitle = (string) ($analysis['title'] ?? $analysisTitle);
+                if ($excerpt !== '') {
+                    $excerpt = mb_substr($excerpt, 0, 8000);
+                }
+                $analysisReady = $excerpt !== ''
+                    && !str_starts_with($excerpt, 'Aucun texte extractible');
+            } catch (Throwable $e) {
+                error_log('AiChatService followup ensureAnalyzed: ' . $e->getMessage());
+            }
+
+            $intent = AiDocumentIntent::classify($docRow, $excerpt);
+            $chatAttachments[] = [
+                'medical_document_id' => $medicalDocumentId,
+                'file_name' => $analysisTitle,
+                'attachment_type' => (string) ($row['attachment_type'] ?? 'other'),
+                'document_type' => (string) ($docRow['document_type'] ?? 'other'),
+                'mime_type' => (string) ($docRow['mime_type'] ?? ''),
+                'intent_category' => $intent['category'],
+                'intent_kind' => $intent['kind'],
+                'intent_label_fr' => $intent['label_fr'],
+                'summary_excerpt' => $excerpt,
+                'analysis_ready' => $analysisReady,
+                'from_conversation_history' => true,
+            ];
+        }
+
+        return $chatAttachments;
     }
 }

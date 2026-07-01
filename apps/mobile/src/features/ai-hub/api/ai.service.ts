@@ -28,8 +28,9 @@ export async function fetchAiQuickSuggestions(patientId?: string): Promise<{
   return res.data;
 }
 
-export async function fetchAiConversations(): Promise<AiConversation[]> {
-  const res = await apiRequest<AiConversation[]>('/ai/conversations');
+export async function fetchAiConversations(opts?: { archived?: boolean }): Promise<AiConversation[]> {
+  const qs = opts?.archived ? '?archived=1' : '';
+  const res = await apiRequest<AiConversation[]>(`/ai/conversations${qs}`);
   if (!res.success || !res.data) throw new Error(res.error ?? 'Conversations indisponibles');
   return res.data;
 }
@@ -74,6 +75,8 @@ export async function sendAiChatMessage(input: {
   conversation_id: string;
   message: string;
   draft_id?: string;
+  attachment_ids?: string[];
+  medical_document_ids?: string[];
 }): Promise<AiChatResponse> {
   const res = await apiRequest<AiChatResponse>('/ai/chat', { method: 'POST', body: input, timeout: 120_000 });
   if (!res.success || !res.data) throw new Error(res.error ?? 'Erreur chat IA');
@@ -157,7 +160,13 @@ function consumeAiChatSseBuffer(
 }
 
 export async function streamAiChatMessage(
-  input: { conversation_id: string; message: string; draft_id?: string },
+  input: {
+    conversation_id: string;
+    message: string;
+    draft_id?: string;
+    attachment_ids?: string[];
+    medical_document_ids?: string[];
+  },
   handlers: {
     onDelta: (text: string) => void;
     onDone?: (payload: AiChatResponse) => void;
@@ -207,4 +216,98 @@ export async function streamAiChatMessage(
   }
 
   return donePayload;
+}
+
+export async function attachAiConversationDocument(
+  conversationId: string,
+  medicalDocumentId: string,
+): Promise<{ id: string; summary_job_id?: string }> {
+  const res = await apiRequest<{ id: string; summary_job_id?: string }>(
+    `/ai/conversations/${conversationId}/attachments`,
+    { method: 'POST', body: { medical_document_id: medicalDocumentId } },
+  );
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Pièce jointe impossible');
+  return res.data;
+}
+
+export async function analyzeMedicalDocument(medicalDocumentId: string): Promise<{ summary_job_id: string }> {
+  const res = await apiRequest<{ summary_job_id: string }>(
+    `/ai/documents/${medicalDocumentId}/analyze`,
+    { method: 'POST', body: {} },
+  );
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Analyse impossible');
+  return res.data;
+}
+
+export async function patchAiConversation(
+  id: string,
+  patch: { is_pinned?: boolean; archived?: boolean; custom_title?: string },
+): Promise<AiConversation> {
+  const res = await apiRequest<AiConversation>(`/ai/conversations/${id}`, { method: 'PATCH', body: patch });
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Mise à jour impossible');
+  return res.data;
+}
+
+export async function searchAiConversations(q: string): Promise<{
+  conversations: Array<{ id: string; custom_title?: string }>;
+  messages: Array<{ id: string; conversation_id: string; excerpt: string }>;
+}> {
+  const res = await apiRequest<{
+    conversations: Array<{ id: string; custom_title?: string }>;
+    messages: Array<{ id: string; conversation_id: string; excerpt: string }>;
+  }>(`/ai/search?q=${encodeURIComponent(q)}`);
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Recherche impossible');
+  return res.data;
+}
+
+export async function fetchAiTrends(refresh = false): Promise<
+  Array<{ id: string; observation_fr: string; trend_key: string; metric_type?: string | null }>
+> {
+  const qs = refresh ? '?refresh=1' : '';
+  const res = await apiRequest<
+    Array<{ id: string; observation_fr: string; trend_key: string; metric_type?: string | null }>
+  >(`/ai/trends${qs}`);
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Tendances indisponibles');
+  return res.data;
+}
+
+export async function createVoiceSession(input?: {
+  conversation_id?: string;
+  locale?: string;
+}): Promise<{ id: string; ai_conversation_id?: string }> {
+  const res = await apiRequest<{ id: string; ai_conversation_id?: string }>('/ai/voice/sessions', {
+    method: 'POST',
+    body: input ?? {},
+  });
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Session vocale impossible');
+  return res.data;
+}
+
+export async function sendVoiceTurn(
+  sessionId: string,
+  transcript: string,
+): Promise<{ assistant_text: string; conversation_id: string; disclaimer: string }> {
+  const res = await apiRequest<{
+    assistant_text: string;
+    conversation_id: string;
+    disclaimer: string;
+  }>(`/ai/voice/sessions/${sessionId}/turn`, { method: 'POST', body: { transcript } });
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Tour vocal impossible');
+  return res.data;
+}
+
+export async function submitAiFeedback(input: {
+  rating: number;
+  conversation_id?: string;
+  message_id?: string;
+  comment?: string;
+}): Promise<void> {
+  const res = await apiRequest<null>('/ai/feedback', { method: 'POST', body: input });
+  if (!res.success) throw new Error(res.error ?? 'Feedback impossible');
+}
+
+export async function exportAiConversations(): Promise<Record<string, unknown>> {
+  const res = await apiRequest<Record<string, unknown>>('/ai/export');
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Export impossible');
+  return res.data;
 }

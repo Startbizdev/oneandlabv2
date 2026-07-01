@@ -310,11 +310,23 @@ class RegistrationRequest
             $createData['company_name'] = trim((string)$req['company_name']);
         }
         if ($req['role'] === 'pro') {
-            if (!empty(trim((string)($req['rpps'] ?? '')))) {
-                $createData['rpps'] = trim((string)$req['rpps']);
-            }
-            if (!empty(trim((string)($req['adeli'] ?? '')))) {
-                $createData['adeli'] = trim((string)$req['adeli']);
+            require_once __DIR__ . '/../lib/ProfessionalId.php';
+            $rawId = ProfessionalId::fromRequestBody([
+                'rpps' => $req['rpps'] ?? '',
+                'adeli' => $req['adeli'] ?? '',
+            ]);
+            if ($rawId !== '') {
+                $split = ProfessionalId::split($rawId);
+                if (!empty($split['rpps'])) {
+                    $createData['rpps'] = $split['rpps'];
+                } else {
+                    unset($createData['rpps']);
+                }
+                if (!empty($split['adeli'])) {
+                    $createData['adeli'] = $split['adeli'];
+                } else {
+                    unset($createData['adeli']);
+                }
             }
             if (!empty(trim((string)($req['emploi'] ?? '')))) {
                 $createData['emploi'] = trim((string)$req['emploi']);

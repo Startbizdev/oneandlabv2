@@ -17,6 +17,7 @@ import {
   CreditCard,
   FilePenLine,
   FolderOpen,
+  HeartPulse,
   Mail,
   MapPin,
   MessageCircle,
@@ -331,6 +332,15 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
             onPress={() => router.push(`${rolePrefix}/patient/${id}/history` as never)}
             iconColor={c.success}
             iconBg={c.successLight}
+          />
+          <View style={styles.rowDividerInset} />
+          <ProfileNavRow
+            icon={HeartPulse}
+            title="Carnet de santé"
+            subtitle="Données déclaratives · lecture seule"
+            onPress={() => router.push(`${rolePrefix}/patient/${id}/health-record` as never)}
+            iconColor={c.primary}
+            iconBg={c.primaryLight}
           />
         </View>
 

@@ -50,6 +50,36 @@ final class AiQuickSuggestionsService
             $items[] = ['id' => 'lab_results', 'label' => 'Explique mes derniers résultats'];
         }
 
+        $documents = $ctx['documents'] ?? $ctx['profile_documents'] ?? [];
+        if (is_array($documents) && $documents !== []) {
+            $items[] = ['id' => 'analyze_docs', 'label' => 'Analyse mes documents'];
+        }
+
+        $health = $ctx['health_metrics'] ?? null;
+        if (is_array($health) && !empty($health['has_data'])) {
+            $items[] = ['id' => 'health_trends', 'label' => 'Montre mes tendances santé'];
+        }
+
+        if ($role === 'patient') {
+            try {
+                require_once __DIR__ . '/../health/HealthRecordService.php';
+                $pid = (string) ($user['user_id'] ?? '');
+                $hr = (new HealthRecordService())->buildSummaryForAi($pid);
+                $pct = (int) ($hr['completion_percent'] ?? 100);
+                if ($pct < 100) {
+                    $items[] = ['id' => 'complete_health_record', 'label' => 'Compléter mon carnet'];
+                }
+                foreach ($hr['gaps'] ?? [] as $gap) {
+                    if (is_array($gap) && ($gap['gap_key'] ?? '') === 'lipid_panel_unknown') {
+                        $items[] = ['id' => 'book_blood_test', 'label' => 'Réserver un bilan'];
+                        break;
+                    }
+                }
+            } catch (Throwable) {
+                /* optional */
+            }
+        }
+
         if ($role === 'patient') {
             $items[] = ['id' => 'prepare_rdv', 'label' => 'Préparer mon prochain RDV'];
         } elseif (in_array($role, ['pro', 'nurse'], true)) {

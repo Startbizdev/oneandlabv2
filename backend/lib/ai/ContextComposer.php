@@ -7,6 +7,7 @@ require_once __DIR__ . '/../LabResultsListing.php';
 require_once __DIR__ . '/../PatientDossierDocuments.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/../health/HealthService.php';
 
 final class ContextComposer
 {
@@ -59,11 +60,16 @@ final class ContextComposer
                     'upcoming' => array_slice($appointments['upcoming'], 0, 4),
                     'past' => array_slice($appointments['past'], 0, 2),
                 ];
+                $healthLight = $this->healthMetricsSummary($userId, true);
+                if ($healthLight !== null) {
+                    $context['health_metrics'] = $healthLight;
+                }
             } else {
                 $context['appointments'] = $appointments;
                 $context['lab_results'] = $this->labResultsSummary($user, 5);
                 $context['documents'] = $this->documentsSummary($userId, $userId, $role);
                 $context['pending_documents'] = $this->pendingDocumentsSummary($userId);
+                $context['health_metrics'] = $this->healthMetricsSummary($userId, false);
             }
         } elseif (in_array($role, ['pro', 'nurse', 'preleveur'], true)) {
             $context['accessible_patients_count'] = count($this->scopedPatientIds($user));
@@ -486,6 +492,33 @@ final class ContextComposer
         ];
 
         return $map[$type] ?? 'proche';
+    }
+
+    /**
+     * Résumé métriques santé (patient uniquement — Phase 2).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function healthMetricsSummary(string $patientId, bool $light): ?array
+    {
+        try {
+            $service = new HealthService($this->db);
+            $summary = $service->metricsSummary($patientId);
+            if (empty($summary['has_data'])) {
+                return null;
+            }
+            if ($light) {
+                return [
+                    'has_data' => true,
+                    'last_sync_at' => $summary['last_sync_at'] ?? null,
+                    'windows' => ['7d' => $summary['windows']['7d'] ?? ['days' => 7, 'metrics' => []]],
+                ];
+            }
+
+            return $summary;
+        } catch (Throwable $e) {
+            return null;
+        }
     }
 
     private static function formatParisDateLabel(DateTimeImmutable $dt): string

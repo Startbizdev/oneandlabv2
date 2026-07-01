@@ -2,6 +2,8 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import {
   PROFESSIONAL_ID_LABEL,
+  getProfessionalIdDisplay,
+  isProIpaEmploi,
   splitProfessionalId,
   validateProfessionalId,
 } from '@oneandlab/shared-types';
@@ -96,8 +98,11 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
     lastName.trim() &&
     !validateProfessionalId(professionalId) &&
     gender;
-  const canSubmitPro =
-    email.trim() && firstName.trim() && lastName.trim() && proRpps.replace(/\s/g, '').length >= 11 && emploi.trim();
+  const canSubmitPro = (() => {
+    if (!email.trim() || !firstName.trim() || !lastName.trim() || !emploi.trim()) return false;
+    if (isProIpaEmploi(emploi)) return !validateProfessionalId(proRpps);
+    return proRpps.replace(/\s/g, '').length >= 11;
+  })();
   const canSubmit =
     role === 'patient' ? canSubmitPatient : role === 'nurse' ? canSubmitNurse : canSubmitPro;
 
@@ -149,7 +154,17 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
                   gender,
                 };
               })()
-            : { rpps: proRpps.replace(/\s/g, ''), emploi: emploi.trim() }),
+            : (() => {
+                if (isProIpaEmploi(emploi)) {
+                  const split = splitProfessionalId(proRpps);
+                  return {
+                    ...(split.rpps ? { rpps: split.rpps } : {}),
+                    ...(split.adeli ? { adeli: split.adeli } : {}),
+                    emploi: emploi.trim(),
+                  };
+                }
+                return { rpps: proRpps.replace(/\s/g, ''), emploi: emploi.trim() };
+              })()),
         };
         const res = await submitRegistrationRequest(payload);
         if (!res.success) throw new Error(res.error ?? "Impossible d'envoyer la demande");
@@ -262,13 +277,17 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
             <>
               <ProEmploiSelect value={emploi} onChange={setEmploi} />
               <Input
-                label="Numéro RPPS"
+                label={isProIpaEmploi(emploi) ? PROFESSIONAL_ID_LABEL : 'Numéro RPPS'}
                 value={proRpps}
                 onChangeText={setProRpps}
                 keyboardType="number-pad"
                 maxLength={11}
-                placeholder="12345678901"
-                hint="11 chiffres"
+                placeholder={isProIpaEmploi(emploi) ? '123456789 ou 12345678901' : '12345678901'}
+                hint={
+                  isProIpaEmploi(emploi)
+                    ? '9 chiffres (Adeli) ou 11 chiffres (RPPS)'
+                    : '11 chiffres'
+                }
               />
             </>
           ) : null}

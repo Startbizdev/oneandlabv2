@@ -11,8 +11,8 @@ import {
 } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { spacing } from '@/theme';
 
-/** Espacement vertical uniforme entre blocs chrome (recherche, CTA, liste). */
-export const RDV_LIST_CHROME_GAP = spacing[2];
+/** Espacement vertical uniforme : sous le header, entre recherche / CTA / carte carnet. */
+export const RDV_LIST_SEARCH_EDGE = spacing[3];
 
 /** Placeholder recherche unifié (pro / patient / préleveur). */
 export const APPOINTMENTS_RDV_SEARCH_PLACEHOLDER = 'Nom, soin, adresse…';
@@ -54,11 +54,14 @@ export function AppointmentsRdvListFilterHeader({
 
 type FilterHeaderHostProps = Omit<FilterHeaderProps, 'search' | 'onSearchChange'> & {
   onQueryChange: (value: string) => void;
+  /** Premier bloc sous le header glass — pas de marge haute supplémentaire. */
+  compactTop?: boolean;
 };
 
 /** Variante focus-safe pour ListHeader FlashList (état local). */
 export function AppointmentsRdvListFilterHeaderHost({
   onQueryChange,
+  compactTop,
   searchPlaceholder = APPOINTMENTS_RDV_SEARCH_PLACEHOLDER,
   onOpenFilters,
   advancedFilterCount,
@@ -68,6 +71,7 @@ export function AppointmentsRdvListFilterHeaderHost({
     <AppointmentsListSearchHost
       embedded
       followedByBookCta
+      compactTop={compactTop}
       onQueryChange={onQueryChange}
       searchPlaceholder={searchPlaceholder}
       onOpenFilters={onOpenFilters}
@@ -87,7 +91,7 @@ export function AppointmentsRdvListBookHeader({
   href,
   label,
 }: BookHeaderProps) {
-  return <AppointmentsBookCta href={href} {...(label != null ? { label } : {})} />;
+  return <AppointmentsBookCta flush href={href} {...(label != null ? { label } : {})} />;
 }
 
 function buildRdvListChromeStyles(c: AppColors) {
@@ -102,6 +106,14 @@ function buildRdvListChromeStyles(c: AppColors) {
     listHeader: {
       alignSelf: 'stretch' as const,
       width: '100%' as const,
+      gap: spacing[2],
+    },
+    listChrome: {
+      alignSelf: 'stretch' as const,
+      width: '100%' as const,
+      gap: RDV_LIST_SEARCH_EDGE,
+      paddingHorizontal: spacing[4],
+      backgroundColor: c.background,
     },
     errorWrap: {
       minWidth: 0,

@@ -1,4 +1,11 @@
 import type { AppColors } from '@/theme/colors';
+import {
+  getProfessionalIdDisplay,
+  isProIpaEmploi,
+  splitProfessionalId,
+  validateProfessionalId,
+  PROFESSIONAL_ID_LABEL,
+} from '@oneandlab/shared-types';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useState } from 'react';
@@ -72,7 +79,7 @@ export function ProfileProView() {
     setFirstName(d.first_name ?? '');
     setLastName(d.last_name ?? '');
     setPhone(d.phone ?? '');
-    setRpps(d.rpps ?? '');
+    setRpps(getProfessionalIdDisplay(d.rpps, d.adeli));
     setEmploi(d.emploi ?? '');
     setBiography(d.biography ?? '');
     setWebsiteUrl(d.website_url ?? '');
@@ -112,12 +119,11 @@ export function ProfileProView() {
   );
 
   const save = useMutation({
-    mutationFn: () =>
-      updateUser(user!.id, {
+    mutationFn: () => {
+      const body: Parameters<typeof updateUser>[1] = {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         phone: phone.trim() || null,
-        rpps: rpps.replace(/\s/g, '') || null,
         emploi: emploi.trim() || null,
         biography: biography.trim() || null,
         website_url: websiteUrl.trim() || null,
@@ -128,7 +134,19 @@ export function ProfileProView() {
         }),
         profile_image_url: profileUrl,
         cover_image_url: coverUrl,
-      }),
+      };
+      if (isProIpaEmploi(emploi)) {
+        const profErr = validateProfessionalId(rpps);
+        if (profErr) throw new Error(profErr);
+        const split = splitProfessionalId(rpps);
+        body.professional_id = rpps.replace(/\s/g, '') || null;
+        body.rpps = split.rpps;
+        body.adeli = split.adeli;
+      } else {
+        body.rpps = rpps.replace(/\s/g, '') || null;
+      }
+      return updateUser(user!.id, body);
+    },
     onSuccess: async () => {
       await fetchMe();
       void qc.invalidateQueries({ queryKey: queryKeys.profile.user(user!.id) });
@@ -176,11 +194,17 @@ export function ProfileProView() {
           <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
           <ProEmploiSelect value={emploi} onChange={setEmploi} label="Profession (emploi)" />
           <Input
-            label="Numéro RPPS"
+            label={isProIpaEmploi(emploi) ? PROFESSIONAL_ID_LABEL : 'Numéro RPPS'}
             value={rpps}
             onChangeText={setRpps}
             keyboardType="number-pad"
             maxLength={11}
+            placeholder={isProIpaEmploi(emploi) ? '123456789 ou 12345678901' : '12345678901'}
+            hint={
+              isProIpaEmploi(emploi)
+                ? '9 chiffres (Adeli) ou 11 chiffres (RPPS)'
+                : undefined
+            }
           />
         </ProfileSection>
 
