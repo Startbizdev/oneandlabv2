@@ -571,8 +571,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // car certains drivers PDO ne supportent pas les placeholders pour LIMIT/OFFSET
     // Infirmier : trier par date de création d’abord — un lot bilan + soin a souvent des scheduled_at différents,
     // avec ORDER BY scheduled_at seul le soin peut se retrouver loin (ou sur une autre page) alors qu’il vient d’être créé.
+    // Admin (super_admin) : derniers RDV créés en premier (created_at), pas seulement la date de soin la plus lointaine.
+    $sort = isset($_GET['sort']) ? trim((string) $_GET['sort']) : '';
     $orderBy = ' ORDER BY a.scheduled_at DESC';
     if ($user && ($user['role'] ?? '') === 'nurse') {
+        $orderBy = ' ORDER BY a.created_at DESC, a.scheduled_at DESC';
+    } elseif ($user && ($user['role'] ?? '') === 'super_admin') {
+        $orderBy = ' ORDER BY a.created_at DESC, a.scheduled_at DESC';
+    } elseif ($sort === 'created_at') {
         $orderBy = ' ORDER BY a.created_at DESC, a.scheduled_at DESC';
     } elseif ($user && ($user['role'] ?? '') === 'patient') {
         $orderBy = ($patientPeriod === 'past')

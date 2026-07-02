@@ -515,16 +515,23 @@ function syncNurseQueryToUrl() {
 watch(() => route.query, applyNurseNavFromRoute, { immediate: true });
 
 const currentPage = ref(1);
-/** Taille de page API : alignée sur le backend (défaut 20 si param absent) ; 24 pour limiter les allers-retours. */
+/** Taille de page API (admin : 24 RDV / page). */
 const pageSize = ref(24);
 const totalItems = ref(0);
 /** Indique qu’il existe (probablement) une page suivante — renvoyé par l’API ou déduit. */
 const serverHasMore = ref(false);
+/**
+ * Admin / pro / lab sans filtre période : pagination + filtres statut/dates côté API.
+ * Re-filtrer côté client sur 24 lignes vide la grille alors que le total serveur reste > 0.
+ */
+const isServerPaginatedList = computed(() => !props.useDateFilter);
+const hasClientSearchFilter = computed(() => (searchQuery.value || '').trim().length > 0);
 const totalPages = computed(() => Math.ceil(totalItems.value / pageSize.value));
 /** Afficher la barre si plus d’une page, ou page suivante possible, ou déjà au-delà de la page 1. */
-const showPaginationBar = computed(
-  () => totalPages.value > 1 || serverHasMore.value || currentPage.value > 1,
-);
+const showPaginationBar = computed(() => {
+  if (hasClientSearchFilter.value) return false;
+  return totalPages.value > 1 || serverHasMore.value || currentPage.value > 1;
+});
 
 const loading = ref(false);
 
@@ -669,10 +676,10 @@ const filteredAndSorted = computed(() => {
       list = list.filter((a: any) => a.assigned_lab_id === props.assignedToLabId);
     }
   }
-  if (statusFilter.value && statusFilter.value !== 'all') {
+  if (statusFilter.value && statusFilter.value !== 'all' && !isServerPaginatedList.value) {
     list = list.filter((a: any) => a.status === statusFilter.value);
   }
-  if (dateRangeStart.value) {
+  if (!isServerPaginatedList.value && dateRangeStart.value) {
     const startDay = new Date(dateRangeStart.value);
     startDay.setHours(0, 0, 0, 0);
     const startTs = startDay.getTime();
@@ -681,7 +688,7 @@ const filteredAndSorted = computed(() => {
       return at >= startTs;
     });
   }
-  if (dateRangeEnd.value) {
+  if (!isServerPaginatedList.value && dateRangeEnd.value) {
     const endDay = new Date(dateRangeEnd.value);
     endDay.setHours(23, 59, 59, 999);
     const endTs = endDay.getTime();
@@ -705,21 +712,29 @@ const filteredAndSorted = computed(() => {
       );
     });
   }
-  list.sort((a: any, b: any) => {
-    const dateA = new Date(a.created_at || a.scheduled_at || 0).getTime();
-    const dateB = new Date(b.created_at || b.scheduled_at || 0).getTime();
-    return dateB - dateA;
-  });
+  if (!isServerPaginatedList.value || hasClientSearchFilter.value) {
+    list.sort((a: any, b: any) => {
+      const dateA = new Date(a.created_at || a.scheduled_at || 0).getTime();
+      const dateB = new Date(b.created_at || b.scheduled_at || 0).getTime();
+      return dateB - dateA;
+    });
+  }
   return list;
 });
 
-/** Indices d’affichage alignés sur la pagination serveur (nombre de RDV), pas sur le nombre de cartes (lots groupés). */
+/** Indices d’affichage : alignés sur le total serveur sauf recherche locale (page courante uniquement). */
 const startIndex = computed(() => {
+  if (hasClientSearchFilter.value) {
+    return filteredAndSorted.value.length === 0 ? 0 : 1;
+  }
   if (totalItems.value === 0) return 0;
   return (currentPage.value - 1) * pageSize.value + 1;
 });
 
 const endIndex = computed(() => {
+  if (hasClientSearchFilter.value) {
+    return filteredAndSorted.value.length;
+  }
   if (totalItems.value === 0) return 0;
   return Math.min(currentPage.value * pageSize.value, totalItems.value);
 });
@@ -741,6 +756,9 @@ const emptyStateTitle = computed(() => {
 
 const emptyStateDescription = computed(() => {
   if (baseAppointments.value.length > 0 && filteredAndSorted.value.length === 0) {
+    if (hasClientSearchFilter.value && isServerPaginatedList.value) {
+      return 'Aucun résultat sur cette page — la recherche ne parcourt que les 24 RDV affichés. Effacez la recherche ou changez de page.';
+    }
     return 'Aucun rendez-vous ne correspond à la recherche ou au filtre de statut. Modifiez vos critères.';
   }
   if (props.nurseLockedSegment === 'en_attente' && baseAppointments.value.length === 0) {
@@ -777,22 +795,23 @@ const fetchAppointments = async (silent = false) => {
     if (props.userIdFilter) {
       params.user_id = props.userIdFilter;
     }
-    if (props.useDateFilter) {
-      const now = new Date();
-      if (dateRangeStart.value) {
-        params.date_from = new Date(dateRangeStart.value + 'T00:00:00').toISOString().slice(0, 19).replace('T', ' ');
-      } else if (dateFilter.value === 'upcoming') {
-        // Début du jour local : sinon les RDV « aujourd’hui » déjà passés disparaissent de « À venir »
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
-        const pad = (n: number) => String(n).padStart(2, '0');
-        params.date_from = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())} ${pad(start.getHours())}:${pad(start.getMinutes())}:${pad(start.getSeconds())}`;
-      }
-      if (dateRangeEnd.value) {
-        params.date_to = new Date(dateRangeEnd.value + 'T23:59:59').toISOString().slice(0, 19).replace('T', ' ');
-      } else if (dateFilter.value === 'past') {
-        params.date_to = now.toISOString().slice(0, 19).replace('T', ' ');
-      }
+    if (isServerPaginatedList.value) {
+      params.sort = 'created_at';
+    }
+    const now = new Date();
+    if (dateRangeStart.value) {
+      params.date_from = new Date(dateRangeStart.value + 'T00:00:00').toISOString().slice(0, 19).replace('T', ' ');
+    } else if (props.useDateFilter && dateFilter.value === 'upcoming') {
+      // Début du jour local : sinon les RDV « aujourd’hui » déjà passés disparaissent de « À venir »
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      params.date_from = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())} ${pad(start.getHours())}:${pad(start.getMinutes())}:${pad(start.getSeconds())}`;
+    }
+    if (dateRangeEnd.value) {
+      params.date_to = new Date(dateRangeEnd.value + 'T23:59:59').toISOString().slice(0, 19).replace('T', ' ');
+    } else if (props.useDateFilter && dateFilter.value === 'past') {
+      params.date_to = now.toISOString().slice(0, 19).replace('T', ' ');
     }
     if (props.basePath === '/nurse') {
       params.nurse_tab = nurseListTab.value;
