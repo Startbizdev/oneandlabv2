@@ -4,14 +4,21 @@ import {
   RecordingPresets,
   setAudioModeAsync,
   useAudioRecorder,
+  type RecordingOptions,
 } from 'expo-audio';
 import * as FileSystem from 'expo-file-system';
+
+/** Whisper + metering pour détection de pause (VAD). */
+const VOICE_WHISPER_PRESET: RecordingOptions = {
+  ...RecordingPresets.HIGH_QUALITY,
+  isMeteringEnabled: true,
+};
 
 /**
  * Enregistre l'audio du tour vocal pour transcription Whisper serveur (meilleure qualité que STT natif).
  */
 export function useVoiceWhisperCapture() {
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorder = useAudioRecorder(VOICE_WHISPER_PRESET);
   const uriRef = useRef<string | null>(null);
 
   const prepare = useCallback(async (): Promise<boolean> => {
@@ -63,6 +70,7 @@ export function useVoiceWhisperCapture() {
   }, [recorder]);
 
   return {
+    recorder,
     start,
     stopAndReadBase64,
     discard,

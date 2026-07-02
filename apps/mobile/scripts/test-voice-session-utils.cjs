@@ -68,5 +68,33 @@ console.log('\nconstants');
 assert(VOICE_SILENCE_SUBMIT_MS === 1200, 'VOICE_SILENCE_SUBMIT_MS = 1200');
 assert(VOICE_STT_TTS_GAP_MS === 180, 'VOICE_STT_TTS_GAP_MS = 180');
 
+console.log('\nvoice-audio-vad (inline)');
+const VOICE_METER_SPEECH_DB = -45;
+const VOICE_MIN_RECORDING_MS = 450;
+function isSpeechMeterLevel(metering) {
+  if (metering == null || Number.isNaN(metering)) return false;
+  return metering > VOICE_METER_SPEECH_DB;
+}
+function shouldAutoSubmitVoiceRecording(params) {
+  const { now, recordingStartedAt, lastSpeechAt, heardSpeech } = params;
+  const silenceMs = params.silenceMs ?? VOICE_SILENCE_SUBMIT_MS;
+  const duration = now - recordingStartedAt;
+  if (duration < VOICE_MIN_RECORDING_MS) return false;
+  if (heardSpeech && lastSpeechAt != null && now - lastSpeechAt >= silenceMs) return true;
+  if (duration >= 28000) return heardSpeech;
+  return false;
+}
+assert(isSpeechMeterLevel(-30) === true, 'metering fort → parole');
+assert(isSpeechMeterLevel(-55) === false, 'metering faible → silence');
+assert(
+  shouldAutoSubmitVoiceRecording({
+    now: 2000,
+    recordingStartedAt: 500,
+    lastSpeechAt: 700,
+    heardSpeech: true,
+  }) === true,
+  'pause après parole → submit',
+);
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
