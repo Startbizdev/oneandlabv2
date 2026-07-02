@@ -514,6 +514,7 @@ export function CaryAiHubScreen({
         }
         onStart={() => void voice.startConversation()}
         onStop={voice.stopConversation}
+        onMicPress={() => void voice.submitRecording()}
         onToggleMic={() => void voice.toggleMic()}
       />
 

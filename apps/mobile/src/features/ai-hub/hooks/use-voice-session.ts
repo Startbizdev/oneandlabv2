@@ -1,12 +1,20 @@
 import type { AiAppointmentDraft } from '@oneandlab/shared-types';
+import { useAudioRecorderState } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createVoiceSession, endVoiceSession, sendVoiceTurn } from '../api/ai.service';
 import { speakCaryVoice, stopCaryVoice } from '../utils/speak-cary-voice';
 import { useVoiceWhisperCapture } from './use-voice-whisper-capture';
 import {
+  isSpeechMeterLevel,
+  shouldAutoSubmitVoiceRecording,
+  VOICE_MAX_RECORDING_MS,
+  VOICE_NO_SPEECH_TIMEOUT_MS,
+} from '../utils/voice-audio-vad';
+import {
   appendVoiceTurn,
   createVoiceTurn,
   delay,
+  VOICE_STT_TTS_GAP_MS,
   type VoiceTurn,
 } from '../utils/voice-session-utils';
 
@@ -35,6 +43,10 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
   const submittingRef = useRef(false);
   const activeRef = useRef(false);
   const phaseRef = useRef<VoicePhase>('idle');
+  const recordingStartedAtRef = useRef(0);
+  const lastSpeechAtRef = useRef<number | null>(null);
+  const heardSpeechRef = useRef(false);
+  const submitRecordingRef = useRef<() => Promise<unknown>>(async () => null);
   const onSyncRef = useRef(onConversationSync);
   const onDraftSyncRef = useRef(onDraftSync);
   const onAppointmentCreatedRef = useRef(onAppointmentCreated);
@@ -79,6 +91,9 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
       setVoiceError('Microphone indisponible');
       return false;
     }
+    recordingStartedAtRef.current = Date.now();
+    lastSpeechAtRef.current = null;
+    heardSpeechRef.current = false;
     setRecording(true);
     setPhase('listening');
     return true;
@@ -140,12 +155,47 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     } finally {
       submittingRef.current = false;
       if (activeRef.current && phaseRef.current !== 'idle') {
+        await delay(VOICE_STT_TTS_GAP_MS);
         await startRecording();
       } else {
         setPhase('idle');
       }
     }
   }, [ensureSession, speakResponse, startRecording, whisper]);
+
+  submitRecordingRef.current = submitRecording;
+
+  const recorderState = useAudioRecorderState(whisper.recorder, 150);
+
+  useEffect(() => {
+    if (!recording || phase !== 'listening' || submittingRef.current) return;
+
+    const now = Date.now();
+    const metering = recorderState.metering;
+
+    if (isSpeechMeterLevel(metering)) {
+      heardSpeechRef.current = true;
+      lastSpeechAtRef.current = now;
+    }
+
+    const duration = now - recordingStartedAtRef.current;
+    if (!heardSpeechRef.current && duration >= VOICE_NO_SPEECH_TIMEOUT_MS) {
+      setVoiceError('Je n’ai rien entendu — réessayez en parlant près du micro.');
+      void submitRecordingRef.current();
+      return;
+    }
+
+    if (
+      shouldAutoSubmitVoiceRecording({
+        now,
+        recordingStartedAt: recordingStartedAtRef.current,
+        lastSpeechAt: lastSpeechAtRef.current,
+        heardSpeech: heardSpeechRef.current,
+      })
+    ) {
+      void submitRecordingRef.current();
+    }
+  }, [phase, recording, recorderState.metering, recorderState.durationMillis]);
 
   const startConversation = useCallback(async () => {
     setActive(true);
@@ -200,7 +250,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
 
   const lastUserText = [...turns].reverse().find((t) => t.role === 'user')?.text ?? null;
   const lastResponse = [...turns].reverse().find((t) => t.role === 'assistant')?.text ?? null;
-  const liveTranscript = recording ? 'Écoute en cours…' : '';
+  const liveTranscript = recording ? 'Parlez… relâchez ou appuyez sur le micro pour envoyer.' : '';
 
   return {
     phase,
@@ -218,6 +268,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     stopConversation,
     endSession,
     toggleMic,
+    submitRecording,
     reset,
   };
 }

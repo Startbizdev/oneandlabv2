@@ -56,6 +56,7 @@ interface Props {
   onAttachDocument?: (source: CarePhotoPickSource) => void;
   onStart: () => void;
   onStop: () => void;
+  onMicPress?: () => void;
   /** @deprecated Écoute auto — plus de bouton micro manuel */
   onToggleMic?: () => void;
 }
@@ -221,11 +222,15 @@ function VoiceActivityDock({
   status,
   sessionActive,
   styles,
+  onMicPress,
+  micHint,
 }: {
   mode: ActivityMode;
   status: { title: string; sub: string };
   sessionActive: boolean;
   styles: ReturnType<typeof buildStyles>;
+  onMicPress?: () => void;
+  micHint?: string;
 }) {
   const c = useAppColors();
   const pulse = useSharedValue(1);
@@ -277,24 +282,38 @@ function VoiceActivityDock({
           )}
         </View>
 
-        <Animated.View
-          style={[
-            styles.micIndicator,
-            iconStyle,
-            {
-              backgroundColor:
-                mode === 'assistant'
-                  ? c.primaryDark
-                  : mode === 'processing'
-                    ? hexToRgba(c.primary, 0.75)
-                    : c.primary,
-            },
-          ]}
+        <Pressable
+          onPress={mode === 'user' ? onMicPress : undefined}
+          disabled={mode !== 'user' || !onMicPress}
+          accessibilityRole="button"
+          accessibilityLabel="Envoyer le message vocal"
+          accessibilityHint={micHint}
         >
-          <Mic size={28} color={c.textInverse} strokeWidth={2.2} />
-        </Animated.View>
+          <Animated.View
+            style={[
+              styles.micIndicator,
+              iconStyle,
+              {
+                backgroundColor:
+                  mode === 'assistant'
+                    ? c.primaryDark
+                    : mode === 'processing'
+                      ? hexToRgba(c.primary, 0.75)
+                      : c.primary,
+              },
+            ]}
+          >
+            <Mic size={28} color={c.textInverse} strokeWidth={2.2} />
+          </Animated.View>
+        </Pressable>
 
-        {showWave ? (
+        {showWave && micHint ? (
+          <Text style={[styles.dockSub, { color: c.textSecondary }]} numberOfLines={2}>
+            {micHint}
+          </Text>
+        ) : null}
+
+        {showWave && !micHint ? (
           <Text style={[styles.dockSub, { color: c.textSecondary }]} numberOfLines={2}>
             {status.sub}
           </Text>
@@ -321,6 +340,7 @@ export function PatientAiVoiceOverlay({
   onAttachDocument,
   onStart,
   onStop,
+  onMicPress,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
@@ -463,6 +483,12 @@ export function PatientAiVoiceOverlay({
               status={status}
               sessionActive={sessionActive}
               styles={styles}
+              onMicPress={onMicPress}
+              micHint={
+                activityMode === 'user'
+                  ? 'Pause naturelle ou appuyez sur le micro pour envoyer.'
+                  : undefined
+              }
             />
 
             <View style={styles.footer}>
