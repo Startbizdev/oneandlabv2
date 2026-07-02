@@ -177,7 +177,7 @@ export function PatientAbsenceSheet({
   const isEditing = Boolean(editingAbsence?.id);
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Absence patient" snapPoints={['82%']}>
+    <BottomSheet visible={visible} onClose={onClose} title="Absence patient" snapPoints={['92%']}>
       <View style={styles.body}>
         {patientName ? <Text style={styles.patientName}>{patientName}</Text> : null}
 

@@ -62,30 +62,35 @@ export function useProfileAddressSync({
             postal_code: undefined,
           };
           const nextComplement = parsed?.complement ?? resolved.complement ?? '';
-          setFormAddress((prev) =>
-            prev?.label === nextAddr.label &&
-            prev.lat === nextAddr.lat &&
-            prev.lng === nextAddr.lng
-              ? prev
-              : nextAddr,
-          );
-          setAddressComplement((prev) => (prev === nextComplement ? prev : nextComplement));
+          const prev = getFormAddress();
+          if (
+            !prev ||
+            prev.label !== nextAddr.label ||
+            prev.lat !== nextAddr.lat ||
+            prev.lng !== nextAddr.lng
+          ) {
+            setFormAddress(nextAddr);
+          }
+          if (addressComplement !== nextComplement) {
+            setAddressComplement(nextComplement);
+          }
         } else {
-          setFormAddress((prev) => (prev === null ? prev : null));
-          setAddressComplement((prev) => (prev === '' ? prev : ''));
+          if (getFormAddress() !== null) setFormAddress(null);
+          if (addressComplement !== '') setAddressComplement('');
         }
       } finally {
         hydratingRef.current = false;
       }
     },
-    [setFormAddress, setAddressComplement],
+    [setFormAddress, setAddressComplement, getFormAddress, addressComplement],
   );
 
   const loadProfileAddress = useCallback(
     async (profileId: string) => {
       try {
         const cached = qc.getQueryData<{ address?: unknown }>(queryKeys.profile.user(profileId));
-        if (cached) {
+        const cachedLabel = parseRawPatientAddress(cached?.address)?.label?.trim();
+        if (cached && cachedLabel) {
           await applyFromRaw(cached.address);
           return;
         }
