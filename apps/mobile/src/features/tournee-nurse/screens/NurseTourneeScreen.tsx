@@ -270,6 +270,7 @@ export function NurseTourneeScreen() {
           <TourPassageSectionHeader
             sortActive={sortFilterActive}
             absentCount={absentCount}
+            activeTotal={tour.summary.total_stops ?? 0}
             onOpenFilter={() => setSortSheetOpen(true)}
           />
         ) : null}

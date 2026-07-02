@@ -69,35 +69,29 @@ export function TourSummaryCard({ summary, activeRemaining }: Props) {
           </Stack>
         </Row>
 
-        <View style={styles.metrics}>
-          {allAbsentOnly ? (
-            <Text style={styles.metric}>
-              {absent} absent{absent > 1 ? 's' : ''}
-            </Text>
-          ) : (
-            <>
-              <Row gap={spacing[1]} align="center" style={styles.metricItem}>
-                <Route size={12} color="#FFFFFF" strokeWidth={2.2} />
+        {!allAbsentOnly ? (
+          <View style={styles.metrics}>
+            <Row gap={spacing[1]} align="center" style={styles.metricItem}>
+              <Route size={12} color="#FFFFFF" strokeWidth={2.2} />
+              <Text style={styles.metric}>
+                {total} étape{total > 1 ? 's' : ''}
+              </Text>
+            </Row>
+            <View style={styles.metricDot} />
+            <Row gap={spacing[1]} align="center" style={styles.metricItem}>
+              <MapPin size={12} color="#FFFFFF" strokeWidth={2.2} />
+              <Text style={styles.metric}>{summary.estimated_km} km estimés</Text>
+            </Row>
+            {absent > 0 ? (
+              <>
+                <View style={styles.metricDot} />
                 <Text style={styles.metric}>
-                  {total} étape{total > 1 ? 's' : ''}
+                  {absent} absent{absent > 1 ? 's' : ''}
                 </Text>
-              </Row>
-              <View style={styles.metricDot} />
-              <Row gap={spacing[1]} align="center" style={styles.metricItem}>
-                <MapPin size={12} color="#FFFFFF" strokeWidth={2.2} />
-                <Text style={styles.metric}>{summary.estimated_km} km estimés</Text>
-              </Row>
-              {absent > 0 ? (
-                <>
-                  <View style={styles.metricDot} />
-                  <Text style={styles.metric}>
-                    {absent} absent{absent > 1 ? 's' : ''}
-                  </Text>
-                </>
-              ) : null}
-            </>
-          )}
-        </View>
+              </>
+            ) : null}
+          </View>
+        ) : null}
       </LinearGradient>
     </View>
   );
