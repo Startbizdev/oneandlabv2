@@ -22,6 +22,8 @@
         "NSHealthShareUsageDescription": "Cary lit vos données Apple Santé (poids, activité, fréquence cardiaque) pour afficher vos graphiques et enrichir l’assistant.",
         "NSHealthUpdateUsageDescription": "Cary peut enregistrer des données santé que vous choisissez de partager.",
         "NSLocationWhenInUseUsageDescription": "Cary utilise votre position pour optimiser l’ordre de votre tournée et afficher les distances entre vos passages.",
+        "NSCalendarsUsageDescription": "Cary ajoute vos passages de tournée à votre calendrier.",
+        "NSCalendarsFullAccessUsageDescription": "Cary ajoute vos passages de tournée à votre calendrier.",
         "NSMicrophoneUsageDescription": "Cary utilise le micro pour le mode vocal de l’assistant.",
         "NSSpeechRecognitionUsageDescription": "Cary transcrit votre voix pour répondre en conversation.",
         "NSAppTransportSecurity": {
@@ -46,7 +48,9 @@
         "android.permission.health.READ_HEART_RATE",
         "android.permission.health.READ_WEIGHT",
         "android.permission.health.READ_DISTANCE",
-        "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ]
     },
     "plugins": [
@@ -103,6 +107,12 @@
         {
           "microphonePermission": "Cary utilise le micro pour le mode vocal de l’assistant.",
           "speechRecognitionPermission": "Cary transcrit votre voix pour répondre en conversation."
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Cary ajoute vos passages de tournée à votre calendrier."
         }
       ]
     ],

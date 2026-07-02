@@ -35,7 +35,7 @@ import { TourSortFilterSheet } from '../components/TourSortFilterSheet';
 import { TourStopRescheduleSheet } from '../components/TourStopRescheduleSheet';
 import { TourSummaryCard } from '../components/TourSummaryCard';
 import type { NurseTourStop, TourSortMode } from '../api/nurse-tour.service';
-import { shareTourDayCalendar } from '../utils/tour-calendar';
+import { addTourDayToDeviceCalendar } from '../utils/tour-calendar';
 
 export function NurseTourneeScreen() {
   const c = useAppColors();
@@ -160,11 +160,32 @@ export function NurseTourneeScreen() {
     if (!tour?.stops.length) return;
     setExportingCalendar(true);
     try {
-      const ok = await shareTourDayCalendar(date, tour.stops);
-      if (ok) showToast('Tournée prête à importer', { type: 'success' });
-      else showToast('Partage calendrier indisponible', { type: 'error' });
+      const result = await addTourDayToDeviceCalendar(date, tour.stops);
+      if (result.ok && result.mode === 'native') {
+        showToast(
+          `${result.count} passage${result.count > 1 ? 's' : ''} ajouté${result.count > 1 ? 's' : ''} à votre calendrier`,
+          { type: 'success' },
+        );
+        return;
+      }
+      if (result.ok && result.mode === 'share') {
+        showToast('Choisissez Calendrier pour importer vos passages', { type: 'success' });
+        return;
+      }
+      if (!result.ok) {
+        if (result.reason === 'no_events') {
+          showToast('Aucun passage actif à ajouter au calendrier', { type: 'error' });
+          return;
+        }
+        if (result.reason === 'permission') {
+          showToast('Autorisez l’accès au calendrier dans les réglages', { type: 'error' });
+          return;
+        }
+        showToast('Ajout au calendrier impossible', { type: 'error' });
+        return;
+      }
     } catch {
-      showToast('Export calendrier impossible', { type: 'error' });
+      showToast('Ajout au calendrier impossible', { type: 'error' });
     } finally {
       setExportingCalendar(false);
     }
