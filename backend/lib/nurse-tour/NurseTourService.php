@@ -61,7 +61,7 @@ final class NurseTourService
                 'optimized_at' => $plan['optimized_at'],
             ],
             'summary' => [
-                'total_stops' => count($stops),
+                'total_stops' => max(0, count($stops) - $absent),
                 'done_stops' => $done,
                 'absent_stops' => $absent,
                 'estimated_km' => round(array_sum(array_column($stops, 'distance_km_from_prev')), 1),

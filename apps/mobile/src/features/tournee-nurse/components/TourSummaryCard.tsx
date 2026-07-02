@@ -27,8 +27,7 @@ export function TourSummaryCard({ summary, activeRemaining }: Props) {
   const done = summary.done_stops;
   const absent = summary.absent_stops ?? 0;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  const remaining =
-    activeRemaining ?? Math.max(0, total - done - absent);
+  const remaining = activeRemaining ?? Math.max(0, total - done);
 
   if (total === 0) return null;
 
