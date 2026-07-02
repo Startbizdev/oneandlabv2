@@ -2,6 +2,15 @@
 const { withAndroidManifest } = require('expo/config-plugins');
 const appJson = require('./app.json');
 
+const IS_DEV = process.env.APP_VARIANT === 'development';
+const DEV_SCHEME = 'com.carybioapp.app.dev';
+
+const basePlugins = (appJson.expo.plugins ?? []).filter(
+  (plugin) =>
+    plugin !== 'expo-dev-client' &&
+    !(Array.isArray(plugin) && plugin[0] === 'expo-dev-client'),
+);
+
 /** Store Android : téléphones uniquement (pas tablettes). */
 function withPhoneOnlyAndroid(config) {
   return withAndroidManifest(config, (modConfig) => {
@@ -22,19 +31,44 @@ function withPhoneOnlyAndroid(config) {
 module.exports = {
   expo: {
     ...appJson.expo,
+    name: IS_DEV ? 'Cary Dev' : appJson.expo.name,
+    slug: appJson.expo.slug,
+    scheme: IS_DEV ? DEV_SCHEME : appJson.expo.scheme,
     extra: {
       ...appJson.expo.extra,
       eas: {
         projectId: '7aee15c6-b9f9-45ac-b30e-0577641fcb03',
       },
+      appVariant: IS_DEV ? 'development' : 'production',
     },
     platforms: ['ios', 'android'],
+    ios: {
+      ...appJson.expo.ios,
+      bundleIdentifier: IS_DEV ? 'com.carybioapp.app.dev' : appJson.expo.ios.bundleIdentifier,
+      infoPlist: {
+        ...appJson.expo.ios.infoPlist,
+        CFBundleDisplayName: IS_DEV ? 'Cary Dev' : appJson.expo.ios.infoPlist?.CFBundleDisplayName,
+      },
+    },
     android: {
       ...appJson.expo.android,
+      package: IS_DEV ? 'com.carybioapp.app.dev' : appJson.expo.android.package,
       softwareKeyboardLayoutMode: 'resize',
     },
     plugins: [
-      ...(appJson.expo.plugins ?? []),
+      [
+        'expo-dev-client',
+        {
+          // Doc Expo : "most-recent" tente de charger sans URL Metro → "No script URL provided".
+          // "launcher" affiche toujours l'écran de connexion (Enter URL manually).
+          // https://docs.expo.dev/versions/latest/sdk/dev-client/
+          launchMode: IS_DEV ? 'launcher' : 'most-recent',
+          ios: { launchMode: IS_DEV ? 'launcher' : 'most-recent' },
+          android: { launchMode: IS_DEV ? 'launcher' : 'most-recent' },
+          addGeneratedScheme: IS_DEV,
+        },
+      ],
+      ...basePlugins,
       withPhoneOnlyAndroid,
       'expo-iap',
       'expo-font',
