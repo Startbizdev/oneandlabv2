@@ -64,6 +64,7 @@
     "expo-audio": "~1.0.16",
     "expo-blur": "~15.0.8",
     "expo-build-properties": "~1.0.10",
+    "expo-calendar": "~15.0.8",
     "expo-constants": "~18.0.9",
     "expo-dev-client": "^57.0.4",
     "expo-device": "~8.0.8",

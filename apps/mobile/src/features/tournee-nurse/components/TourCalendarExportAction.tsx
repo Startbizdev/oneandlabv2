@@ -11,7 +11,7 @@ type Props = {
   loading?: boolean;
 };
 
-/** Export ICS — toute la tournée du jour vers le calendrier du téléphone. */
+/** Ajoute la tournée du jour au calendrier du téléphone. */
 export function TourCalendarExportAction({ onPress, loading }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
@@ -23,7 +23,7 @@ export function TourCalendarExportAction({ onPress, loading }: Props) {
         disabled={loading}
         hitSlop={10}
         accessibilityRole="button"
-        accessibilityLabel="Exporter la tournée vers le calendrier"
+        accessibilityLabel="Ajouter la tournée au calendrier"
         style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
       >
         {loading ? (
