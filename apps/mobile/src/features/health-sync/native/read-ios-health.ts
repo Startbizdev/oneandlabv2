@@ -1,5 +1,6 @@
 import type { HealthBatchMetricInput } from '@oneandlab/shared-types';
 import type { HealthReadResult } from './read-health-metrics';
+import { requestDeviceHealthAuthorization } from './health-authorization';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -8,13 +9,16 @@ function sinceDate(days: number): Date {
 }
 
 /**
- * Lecture HealthKit (iOS). Nécessite un build natif avec @kingstinct/react-native-healthkit.
+ * Lecture HealthKit (iOS). Build natif @kingstinct/react-native-healthkit requis.
  */
 export async function readIosHealthMetrics(days: number): Promise<HealthReadResult> {
+  const auth = await requestDeviceHealthAuthorization();
+  if (!auth.ok) {
+    return { available: false, reason: auth.reason, metrics: [] };
+  }
+
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const Healthkit = require('@kingstinct/react-native-healthkit') as {
-      requestAuthorization?: (types: { toRead: string[] }) => Promise<boolean>;
       queryQuantitySamples?: (
         type: string,
         options: {
@@ -31,29 +35,15 @@ export async function readIosHealthMetrics(days: number): Promise<HealthReadResu
       >;
     };
 
-    if (!Healthkit?.requestAuthorization || !Healthkit?.queryQuantitySamples) {
+    if (!Healthkit?.queryQuantitySamples) {
       return {
         available: false,
-        reason: 'HealthKit indisponible — utilisez un build de développement Cary.',
+        reason: 'HealthKit indisponible — utilisez un build Cary natif.',
         metrics: [],
       };
     }
 
-    const readTypes = [
-      'HKQuantityTypeIdentifierBodyMass',
-      'HKQuantityTypeIdentifierHeight',
-      'HKQuantityTypeIdentifierHeartRate',
-      'HKQuantityTypeIdentifierStepCount',
-      'HKQuantityTypeIdentifierActiveEnergyBurned',
-      'HKQuantityTypeIdentifierDistanceWalkingRunning',
-    ];
-
-    const granted = await Healthkit.requestAuthorization({ toRead: readTypes });
-    const permissions: Record<string, boolean> = { healthkit: !!granted };
-    if (!granted) {
-      return { available: false, reason: 'Autorisation Apple Santé refusée', permissions, metrics: [] };
-    }
-
+    const permissions: Record<string, boolean> = { healthkit: true };
     const startDate = sinceDate(days);
     const endDate = new Date();
     const metrics: HealthBatchMetricInput[] = [];
@@ -73,6 +63,33 @@ export async function readIosHealthMetrics(days: number): Promise<HealthReadResu
         filter: { date: { startDate, endDate } },
       });
       if (!Array.isArray(samples)) continue;
+
+      if (q.metric === 'steps') {
+        const byDay = new Map<string, number>();
+        for (const sample of samples) {
+          const rawStart = sample.startDate;
+          const dayKey =
+            rawStart instanceof Date
+              ? rawStart.toISOString().slice(0, 10)
+              : rawStart
+                ? new Date(rawStart).toISOString().slice(0, 10)
+                : endDate.toISOString().slice(0, 10);
+          const value = Number(sample.quantity);
+          if (!Number.isFinite(value)) continue;
+          byDay.set(dayKey, (byDay.get(dayKey) ?? 0) + value);
+        }
+        for (const [dayKey, total] of byDay) {
+          metrics.push({
+            metric_type: 'steps',
+            value: Math.round(total),
+            unit: q.unit,
+            recorded_at: `${dayKey}T12:00:00.000Z`,
+            external_id: `ios:steps:${dayKey}`,
+          });
+        }
+        continue;
+      }
+
       for (const sample of samples) {
         const rawStart = sample.startDate;
         const recordedAt =
@@ -101,10 +118,10 @@ export async function readIosHealthMetrics(days: number): Promise<HealthReadResu
     }
 
     return { available: true, permissions, metrics };
-  } catch {
+  } catch (e) {
     return {
       available: false,
-      reason: 'HealthKit non configuré sur cet appareil.',
+      reason: e instanceof Error ? e.message : 'Lecture Apple Santé impossible.',
       metrics: [],
     };
   }

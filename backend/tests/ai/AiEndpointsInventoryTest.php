@@ -16,6 +16,7 @@ final class AiEndpointsInventoryTest extends TestCase
         $required = [
             'voice/sessions/index.php',
             'voice/sessions/[id]/turn.php',
+            'voice/sessions/[id]/end.php',
             'search/index.php',
             'export/index.php',
             'trends/index.php',

@@ -11,6 +11,7 @@ import {
 } from '~/utils/appointment-type-rules';
 import { formatPatientUrgentCreneauShortFr } from '~/utils/patient-urgency-display';
 import {
+  careCatalogBadgeBaseLabel,
   isAutreCareDisplayLabel,
   mapCareOptionsRecord,
   resolveRdvCareDisplayLabel,
@@ -109,6 +110,8 @@ export function patientRdvAppointmentCategorySummary(apt: any, opts?: PatientRdv
 export type PatientRdvCatalogDisplayOpts = {
   /** Vue patient : masque certificat de décès et actes staff-only. */
   hideStaffOnlyCares?: boolean;
+  /** Badges tournée : catégorie seule (options affichées en dessous). */
+  badgeCategoryOnly?: boolean;
 };
 
 function patientVisibleCareLabel(label: string, hideStaffOnlyCares?: boolean): string {
@@ -144,6 +147,9 @@ export function patientRdvCatalogDisplayLines(
           const rawLabel =
             String(it?.label ?? it?.category_name ?? apt?.category_name ?? 'Analyse').trim() || 'Analyse';
           const itemCare = mapCareOptionsRecord(it?.care_options);
+          const labelSource = opts?.badgeCategoryOnly
+            ? careCatalogBadgeBaseLabel(rawLabel, it?.category_name, 'Analyse')
+            : rawLabel;
           return {
             category_id:
               it?.category_id != null && String(it.category_id).trim() !== ''
@@ -151,9 +157,9 @@ export function patientRdvCatalogDisplayLines(
                 : null,
             category_image_url: it?.category_image_url ?? null,
             label: resolveRdvCareDisplayLabel(
-              rawLabel,
+              labelSource,
               itemCare,
-              isAutreCareDisplayLabel(rawLabel) ? fdCare : undefined,
+              isAutreCareDisplayLabel(labelSource) ? fdCare : undefined,
             ),
           };
         }),
@@ -174,6 +180,9 @@ export function patientRdvCatalogDisplayLines(
         raw.map((it: any) => {
           const rawLabel = String(it?.label ?? it?.category_name ?? '').trim() || 'Soin';
           const itemCare = mapCareOptionsRecord(it?.care_options);
+          const labelSource = opts?.badgeCategoryOnly
+            ? careCatalogBadgeBaseLabel(rawLabel, it?.category_name, 'Soin')
+            : rawLabel;
           return {
             category_id:
               it?.category_id != null && String(it.category_id).trim() !== ''
@@ -181,9 +190,9 @@ export function patientRdvCatalogDisplayLines(
                 : null,
             category_image_url: it?.category_image_url ?? null,
             label: resolveRdvCareDisplayLabel(
-              rawLabel,
+              labelSource,
               itemCare,
-              isAutreCareDisplayLabel(rawLabel) ? fdCare : undefined,
+              isAutreCareDisplayLabel(labelSource) ? fdCare : undefined,
             ),
           };
         }),

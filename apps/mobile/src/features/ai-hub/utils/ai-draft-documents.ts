@@ -59,7 +59,7 @@ export function getAiDraftDocumentEntries(draft: AiAppointmentDraft): AiDraftDoc
           file_name: typeof r.file_name === 'string' ? r.file_name : null,
         } satisfies AiDraftDocumentEntry;
       })
-      .filter((e): e is AiDraftDocumentEntry => Boolean(e));
+      .filter((e): e is NonNullable<typeof e> => e != null) as AiDraftDocumentEntry[];
   }
 
   const payload = draft.payload ?? {};

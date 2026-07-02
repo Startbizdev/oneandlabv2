@@ -5,6 +5,10 @@
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import {
+  formatPassageTimeSlotFromFormData,
+  isNursePassageFormData,
+} from '@oneandlab/shared-utils';
+import {
   formatPatientUrgentCreneauShortFr,
   isPatientVipSlotShortLabel,
 } from './patient-urgency-display';
@@ -209,7 +213,12 @@ export function formatScheduledDateWithAvailabilityLineFr(
 export function formatAvailabilityDisplayFr(
   availability: unknown,
   scheduledAt?: string | null,
+  formData?: Record<string, unknown> | null,
 ): string {
+  if (formData && isNursePassageFormData(formData)) {
+    return formatPassageTimeSlotFromFormData(formData, scheduledAt);
+  }
+
   const raw = formatAvailabilitySlotFr(availability);
   if (isPatientVipSlotShortLabel(raw)) return raw;
   if (raw === 'toute la journée') return 'Toute la journée';

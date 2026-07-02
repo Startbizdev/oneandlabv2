@@ -22,8 +22,8 @@ export function RdvInfoCard({
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvInfoCard_tsx_styles');
   const scheduled = apt.scheduled_at ? dayjs(apt.scheduled_at) : null;
-  const fd = (apt.form_data ?? {}) as { availability?: unknown };
-  const timeLabel = formatAvailabilityDisplayFr(fd.availability, apt.scheduled_at);
+  const fd = (apt.form_data ?? {}) as Record<string, unknown>;
+  const timeLabel = formatAvailabilityDisplayFr(fd.availability, apt.scheduled_at, fd);
 
   return (
     <Card shadow="sm" padding="md">

@@ -4,7 +4,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import dayjs from 'dayjs';
-import { CalendarDays, Route } from 'lucide-react-native';
+import { Route } from 'lucide-react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Button } from '@/components/ui/Button';
 import { radius, spacing } from '@/theme';
@@ -47,12 +47,6 @@ export function TourEmptyPanel({ date }: Props) {
           fullWidth
           variant="secondary"
         />
-        <View style={styles.hintRow}>
-          <CalendarDays size={14} color={c.textTertiary} strokeWidth={2} />
-          <Text style={[styles.hint, { color: c.textTertiary }]}>
-            Les RDV acceptés apparaissent ici automatiquement
-          </Text>
-        </View>
       </View>
     </Animated.View>
   );
@@ -94,18 +88,6 @@ function buildStyles(_c: AppColors) {
       maxWidth: 280,
       gap: spacing[3],
       marginTop: spacing[2],
-    },
-    hintRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      gap: spacing[1.5],
-    },
-    hint: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSize.xs,
-      textAlign: 'center' as const,
-      flexShrink: 1,
     },
   };
 }

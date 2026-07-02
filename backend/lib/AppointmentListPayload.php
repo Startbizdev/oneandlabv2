@@ -20,6 +20,7 @@ final class AppointmentListPayload
                 'email', 'phone', 'address', 'address_label', 'address_complement', 'availability',
                 'availability_start', 'availability_end', 'availability_type',
                 'duration_days', 'custom_days', 'frequency', 'blood_test_type', 'care_options',
+                'passage_time_slot', 'passage_duration_minutes', 'passage_source', 'custom_time', 'at_home',
             ];
             $trimmed = [];
             foreach ($keep as $key) {

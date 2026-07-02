@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
+import { formatPassageStopTimeLabel } from '@oneandlab/shared-utils';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
 import type { NurseTourStop } from '../api/nurse-tour.service';
 import { TourStopCareSection } from './TourStopCareSection';
@@ -43,6 +44,7 @@ type Props = {
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onMarkDone?: () => void;
+  onToggleDone?: () => void;
   onAddToCalendar?: () => void;
   onReschedule?: () => void;
 };
@@ -56,6 +58,7 @@ export function TourStopCard({
   onMoveUp,
   onMoveDown,
   onMarkDone,
+  onToggleDone,
   onAddToCalendar,
   onReschedule,
 }: Props) {
@@ -63,7 +66,18 @@ export function TourStopCard({
   const styles = useThemedStyles(buildStyles);
   const cardStyles = getAppointmentListCardStyles();
   const done = stop.visit_status === 'done' || stop.visit_status === 'skipped';
-  const timeLabel = formatAvailabilityDisplayFr(stop.availability, stop.scheduled_at);
+  const timeLabel =
+    formatPassageStopTimeLabel({
+      passage_time_slot: stop.passage_time_slot,
+      scheduled_at: stop.scheduled_at,
+      availability: stop.availability,
+      passage_custom_time: stop.passage_custom_time,
+    }) ?? formatAvailabilityDisplayFr(stop.availability, stop.scheduled_at, {
+      passage_time_slot: stop.passage_time_slot,
+      passage_source: 'nurse_passage',
+      custom_time: stop.passage_custom_time,
+      availability: stop.availability,
+    });
   const canMoveUp = index > 0;
   const canMoveDown = index < total - 1;
   const showReorder = total > 1 && !done;
@@ -88,7 +102,7 @@ export function TourStopCard({
           style={[
             cardStyles.card,
             done && styles.cardDone,
-            done && { borderColor: hexToRgba(c.textTertiary, 0.35), backgroundColor: hexToRgba(c.textPrimary, 0.1) },
+            done && { borderColor: hexToRgba(c.success, 0.28), backgroundColor: hexToRgba(c.success, 0.1) },
             isNext && !done && styles.cardNext,
             isNext && !done && { borderColor: c.primary },
           ]}
@@ -228,6 +242,25 @@ export function TourStopCard({
             </Pressable>
 
             {done ? <TourStopCompletedStamp /> : null}
+
+            {done && onToggleDone ? (
+              <Pressable
+                onPress={onToggleDone}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Passage effectué, appuyer pour remettre à faire"
+                style={({ pressed }) => [styles.undoCheck, pressed && styles.undoCheckPressed]}
+              >
+                <View
+                  style={[
+                    styles.undoCheckOuter,
+                    { borderColor: c.success, backgroundColor: c.success },
+                  ]}
+                >
+                  <Check size={18} color="#FFFFFF" strokeWidth={2.5} />
+                </View>
+              </Pressable>
+            ) : null}
           </View>
 
           {!done ? (
@@ -403,5 +436,20 @@ function buildStyles(c: AppColors) {
       gap: spacing[2],
     },
     actionFlex: { flex: 1, minWidth: 0 },
+    undoCheck: {
+      position: 'absolute' as const,
+      top: CARD_PAD_Y,
+      right: CARD_PAD_X,
+      zIndex: 10,
+    },
+    undoCheckPressed: { opacity: 0.75 },
+    undoCheckOuter: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      borderWidth: StyleSheet.hairlineWidth * 2,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    },
   };
 }

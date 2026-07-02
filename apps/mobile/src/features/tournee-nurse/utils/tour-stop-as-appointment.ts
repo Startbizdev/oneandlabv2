@@ -7,6 +7,12 @@ export function tourStopAsAppointment(stop: NurseTourStop): Appointment {
   if (stop.availability != null) fd.availability = stop.availability;
   if (stop.care_options && Object.keys(stop.care_options).length > 0) {
     fd.care_options = stop.care_options;
+  } else {
+    const firstItem = stop.nursing_items?.[0] as Record<string, unknown> | undefined;
+    const itemOptions = firstItem?.care_options;
+    if (itemOptions && typeof itemOptions === 'object' && Object.keys(itemOptions as object).length > 0) {
+      fd.care_options = itemOptions;
+    }
   }
 
   const nursingDisplay =

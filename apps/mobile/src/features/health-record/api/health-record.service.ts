@@ -1,6 +1,6 @@
 import { apiRequest } from '@/api/client';
 
-export type HealthRecordQuestionType = 'yes_no_unknown' | 'text' | 'number' | 'enum';
+export type HealthRecordQuestionType = 'yes_no_unknown' | 'text' | 'textarea' | 'number' | 'enum';
 
 export interface HealthRecordQuestion {
   key: string;
@@ -108,6 +108,18 @@ export async function recordGapAction(
 export async function fetchStaffHealthRecord(patientId: string): Promise<HealthRecordRecap> {
   const res = await apiRequest<HealthRecordRecap>(`/patients/${patientId}/health-record`);
   if (!res.success || !res.data) throw new Error(res.error ?? 'Carnet indisponible');
+  return res.data;
+}
+
+export async function patchStaffHealthRecordAnswers(
+  patientId: string,
+  answers: Record<string, { value: unknown }>,
+): Promise<HealthRecordRecap> {
+  const res = await apiRequest<HealthRecordRecap>(`/patients/${patientId}/health-record`, {
+    method: 'PATCH',
+    body: { answers },
+  });
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Enregistrement impossible');
   return res.data;
 }
 

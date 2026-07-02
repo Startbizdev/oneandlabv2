@@ -16,7 +16,7 @@ import {
   PatientAiChatFooter,
 } from '../components/PatientAiChatFooter';
 import { PatientAiConversationsSheet } from '../components/PatientAiConversationsSheet';
-import { PatientAiVoiceMockOverlay } from '../components/PatientAiVoiceMockOverlay';
+import { PatientAiVoiceOverlay } from '../components/PatientAiVoiceOverlay';
 import { useVoiceSession } from '../hooks/use-voice-session';
 import { usePatientAiConversations, nextPatientAiMessageId } from '../hooks/use-patient-ai-conversations';
 import { useAuthStore } from '@/store/auth-store';
@@ -148,7 +148,32 @@ export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: Screen
   const [draft, setDraft] = useState('');
   const [awaitingReply, setAwaitingReply] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
-  const voice = useVoiceSession(activeId);
+  const voice = useVoiceSession({ conversationId: activeId });
+
+  const voiceTurnsRef = useRef(voice.turns);
+  voiceTurnsRef.current = voice.turns;
+
+  const {
+    endSession: endVoiceSessionApi,
+    reset: resetVoiceSession,
+  } = voice;
+
+  const handleVoiceClose = useCallback(async () => {
+    await endVoiceSessionApi();
+    const convTurns = voiceTurnsRef.current;
+    if (convTurns.length > 0) {
+      setActiveMessages((prev) => [
+        ...prev,
+        ...convTurns.map((t) => ({
+          id: nextPatientAiMessageId(),
+          role: t.role,
+          text: t.text,
+        })),
+      ]);
+    }
+    resetVoiceSession({ keepConversationId: true });
+    setVoiceOpen(false);
+  }, [endVoiceSessionApi, resetVoiceSession, setActiveMessages]);
   const showSuggestions = messages.length === 1 && !awaitingReply;
   const canSend = draft.trim().length > 0 && !awaitingReply;
 
@@ -262,16 +287,14 @@ export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: Screen
         />
       </View>
 
-      <PatientAiVoiceMockOverlay
+      <PatientAiVoiceOverlay
         visible={voiceOpen}
-        onClose={() => {
-          voice.reset();
-          setVoiceOpen(false);
-        }}
+        onClose={() => void handleVoiceClose()}
         phase={voice.phase}
         recognizing={voice.recognizing}
         available={voice.available}
         liveTranscript={voice.liveTranscript}
+        turns={voice.turns}
         lastUserText={voice.lastUserText}
         lastResponse={voice.lastResponse}
         speechError={voice.speechError}

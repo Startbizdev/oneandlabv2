@@ -1,4 +1,3 @@
-<script setup lang="ts">
 import { apiFetch, apiFetchBlob } from '~/utils/api';
 import { buildNavigationUrl } from '@oneandlab/shared-utils';
 
@@ -34,6 +33,10 @@ export interface NurseTourStop {
   distance_km_from_prev: number;
   drive_min_from_prev: number;
   phone?: string;
+  passage_time_slot?: string | null;
+  passage_custom_time?: string | null;
+  passage_duration_minutes?: number | null;
+  passage_series_id?: string | null;
 }
 
 export interface NurseTourPayload {
@@ -224,12 +227,46 @@ export function useNurseTourWeb() {
     }
   }
 
-  async function markDone(stopId: string) {
+  async function markDone(stopId: string, options?: { finalizeAppointment?: boolean }) {
+    await setStopStatus(stopId, 'done', options);
+  }
+
+  async function toggleStopDone(stop: NurseTourStop) {
+    const isDone = stop.visit_status === 'done' || stop.status === 'completed';
+    await setStopStatus(stop.stop_id, isDone ? 'todo' : 'done');
+  }
+
+  async function setStopStatus(
+    stopId: string,
+    status: TourVisitStatus,
+    options?: { finalizeAppointment?: boolean },
+  ) {
     const res = await apiFetch(`/nurse/tour/stops/${stopId}/status`, {
       method: 'POST',
-      body: { status: 'done' },
+      body: {
+        status,
+        ...(options?.finalizeAppointment ? { finalize_appointment: true } : {}),
+      },
     });
     if (res?.success && res.data) tour.value = res.data as NurseTourPayload;
+  }
+
+  async function markEnRoute(stopId: string) {
+    saving.value = true;
+    try {
+      const res = await apiFetch(`/nurse/tour/stops/${stopId}/status`, {
+        method: 'POST',
+        body: { status: 'en_route' },
+      });
+      if (res?.success && res.data) {
+        tour.value = res.data as NurseTourPayload;
+        toast.add({ title: 'Patient prévenu — en route', color: 'success' });
+      }
+    } catch {
+      toast.add({ title: 'Notification impossible', color: 'error' });
+    } finally {
+      saving.value = false;
+    }
   }
 
   async function rescheduleStop(
@@ -320,6 +357,8 @@ export function useNurseTourWeb() {
     applySortMode,
     resetOrder,
     markDone,
+    toggleStopDone,
+    markEnRoute,
     rescheduleStop,
     callPatient,
     openNav,

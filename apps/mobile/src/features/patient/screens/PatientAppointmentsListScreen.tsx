@@ -29,6 +29,7 @@ import {
   EMPTY_RDV_IMAGE_WIDTH,
 } from '@/constants/empty-state-images';
 import { useHealthRecordCompletion } from '@/features/health-record/hooks/use-health-record-completion';
+import { useHealthRecordCompletionSyncOnFocus } from '@/features/health-record/hooks/use-health-record-completion-sync-on-focus';
 import { HealthRecordPromptCard } from '@/features/health-record/components/HealthRecordPromptCard';
 
 function matchesSearch(apt: Appointment, q: string): boolean {
@@ -68,7 +69,9 @@ export function PatientAppointmentsListScreen() {
   const completionPercent = completion?.percent ?? 0;
   const showHealthCard =
     tab === 'upcoming' &&
-    (healthRecordQ.isPending || healthRecordQ.isFetching || completionPercent < 100);
+    ((healthRecordQ.isPending && !completion) || completionPercent < 100);
+
+  useHealthRecordCompletionSyncOnFocus(tab === 'upcoming');
 
   const appointments = useMemo(
     () => flattenInfiniteAppointments(query.data?.pages),
@@ -129,7 +132,10 @@ export function PatientAppointmentsListScreen() {
     <View
       style={[
         chromeStyles.listChrome,
-        { paddingTop: sceneInsets.insetTop + RDV_LIST_SEARCH_EDGE },
+        {
+          paddingTop: sceneInsets.insetTop + RDV_LIST_SEARCH_EDGE,
+          paddingBottom: RDV_LIST_SEARCH_EDGE,
+        },
       ]}
     >
       <AppointmentsRdvListFilterHeaderHost

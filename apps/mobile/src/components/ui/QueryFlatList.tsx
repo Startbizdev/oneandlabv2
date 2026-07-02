@@ -68,6 +68,8 @@ type Props<T, Item> = Omit<
 
   skeletonGap?: number;
 
+  scrollPaddingOptions?: { extraTop?: number; extraBottom?: number };
+
 };
 
 
@@ -87,6 +89,8 @@ export function QueryFlatList<T, Item>({
   skeletonHeight = 116,
 
   skeletonGap = 12,
+
+  scrollPaddingOptions,
 
   contentContainerStyle,
 
@@ -108,7 +112,7 @@ export function QueryFlatList<T, Item>({
 
   useScrollToTopOnPop(Platform.OS === 'android' ? scrollRef : flatListRef);
 
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, contentContainerStyle);
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, contentContainerStyle, scrollPaddingOptions);
 
 
 

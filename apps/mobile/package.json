@@ -29,6 +29,7 @@
     "submit:store:latest": "node scripts/run-eas.cjs submit --platform all --profile production --latest --non-interactive",
     "typecheck": "tsc --noEmit",
     "simulate:iap": "node scripts/simulate-iap-purchase.cjs",
+    "test:voice-utils": "node scripts/test-voice-session-utils.cjs",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:styles": "node scripts/lint-themed-styles.mjs",
     "lint:styles:strict": "node scripts/lint-themed-styles.mjs --strict-colors",

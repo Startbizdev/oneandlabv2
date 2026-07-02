@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_HEADER_INNER_BOTTOM } from '@/components/navigation/header-layout';
 import {
@@ -99,9 +100,11 @@ function readStylePadding(
   return { value, rest };
 }
 
-function flattenContentStyles(contentContainerStyle?: object | object[] | null): object[] {
+function flattenContentStyles(contentContainerStyle?: StyleProp<ViewStyle>): StyleProp<ViewStyle>[] {
   if (!contentContainerStyle) return [];
-  return Array.isArray(contentContainerStyle) ? contentContainerStyle : [contentContainerStyle];
+  return (Array.isArray(contentContainerStyle)
+    ? [...contentContainerStyle]
+    : [contentContainerStyle]) as StyleProp<ViewStyle>[];
 }
 
 export type TabSceneScrollConfig = {
@@ -119,7 +122,7 @@ export type TabSceneScrollConfig = {
  */
 export function buildTabSceneScrollConfig(
   insets: Pick<TabSceneInsets, 'insetTop' | 'insetBottom'>,
-  contentContainerStyle?: object | object[] | null,
+  contentContainerStyle?: StyleProp<ViewStyle>,
   options: ScrollPaddingOptions = {},
 ): TabSceneScrollConfig {
   let extraTopFromStyles = 0;
@@ -128,7 +131,6 @@ export function buildTabSceneScrollConfig(
 
   for (const style of flattenContentStyles(contentContainerStyle)) {
     if (!style || typeof style !== 'object') {
-      cleanedStyles.push(style);
       continue;
     }
 
@@ -183,7 +185,7 @@ export function spreadTabSceneScrollProps(config: TabSceneScrollConfig) {
 /** @deprecated Préférer `buildTabSceneScrollConfig`. */
 export function mergeTabSceneScrollPadding(
   insets: Pick<TabSceneInsets, 'insetTop' | 'insetBottom'>,
-  contentContainerStyle?: object | object[] | null,
+  contentContainerStyle?: StyleProp<ViewStyle>,
   options: ScrollPaddingOptions = {},
 ): object | object[] {
   return buildTabSceneScrollConfig(insets, contentContainerStyle, options).contentContainerStyle;
@@ -192,7 +194,7 @@ export function mergeTabSceneScrollPadding(
 /** @deprecated Utiliser `mergeTabSceneScrollPadding`. */
 export function mergeLiquidGlassScrollPadding(
   insetTop: number,
-  contentContainerStyle?: object | object[] | null,
+  contentContainerStyle?: StyleProp<ViewStyle>,
   extraTop = 0,
 ): object | object[] {
   return mergeTabSceneScrollPadding({ insetTop, insetBottom: 0 }, contentContainerStyle, {

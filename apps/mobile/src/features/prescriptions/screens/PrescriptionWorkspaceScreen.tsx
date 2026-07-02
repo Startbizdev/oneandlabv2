@@ -23,7 +23,7 @@ import { cacheMedicalDocument, openMedicalDocument } from '@/lib/downloads/downl
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
-import type { ProPrescriptionRow, PrescriptionLinkMode } from '../api/prescriptions.service';
+import type { ProPrescriptionRow, PrescriptionLinkMode, PassagePrescriptionDraft } from '../api/prescriptions.service';
 import { PrescriptionComposer } from '../components/PrescriptionComposer';
 import type { OpenPrescriptionSignatureOptions } from '../components/PrescriptionSignatureSheet';
 import { PrescriptionSignatureSheet } from '../components/PrescriptionSignatureSheet';
@@ -60,17 +60,34 @@ interface Props {
   rolePrefix?: '/(pro)' | '/(nurse)';
   /** Fiche patient : patient fixé, historique filtré */
   fixedPatientId?: string;
+  /** Intégré dans un autre scroll (ex. prise en charge passage). */
+  embedded?: boolean;
+  /** Prise en charge passage : pas de choix sans RDV / liée — brouillon jusqu'à enregistrement. */
+  forPassageDraft?: boolean;
+  /** Détail passage : patient + RDV fixés — génération directe sur le rendez-vous. */
+  fixedAppointmentId?: string;
+  onPassagePrescriptionDraft?: (draft: PassagePrescriptionDraft | null) => void;
+  /** Invalide les docs RDV parent (ex. onglet Documents passage). */
+  onLinkedDocumentsChanged?: () => void | Promise<void>;
+  /** Alerte profil affichée par le parent (ex. en tête onglet Documents). */
+  hideProfileGapsAlert?: boolean;
 }
 
 export function PrescriptionWorkspaceScreen({
   roleBase = 'pro',
   rolePrefix = '/(pro)',
   fixedPatientId,
+  embedded = false,
+  forPassageDraft = false,
+  fixedAppointmentId,
+  onPassagePrescriptionDraft,
+  onLinkedDocumentsChanged,
+  hideProfileGapsAlert = false,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'PrescriptionWorkspaceScreen');
   const sceneInsets = useTabSceneInsets();
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.content);
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, embedded ? styles.embeddedContent : styles.content);
   const prescriptionKind = roleBase === 'nurse' ? 'nursing' : 'medical';
   const router = useRouter();
   const qc = useQueryClient();
@@ -79,7 +96,7 @@ export function PrescriptionWorkspaceScreen({
   const [tab, setTab] = useState<WorkspaceTab>('create');
   const [patientId, setPatientId] = useState(fixedPatientId ?? '');
   const [linkMode, setLinkMode] = useState<PrescriptionLinkMode>('standalone');
-  const [appointmentId, setAppointmentId] = useState('');
+  const [appointmentId, setAppointmentId] = useState(fixedAppointmentId ?? '');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -104,6 +121,8 @@ export function PrescriptionWorkspaceScreen({
   }, []);
 
   const effectivePatientId = fixedPatientId ?? patientId;
+  const effectiveAppointmentId = fixedAppointmentId ?? appointmentId;
+  const lockedToAppointment = Boolean(fixedAppointmentId);
 
   const patientsQ = usePrescriptionPatientPickerInfinite(!fixedPatientId);
   const patientOptions = useMemo(
@@ -131,7 +150,10 @@ export function PrescriptionWorkspaceScreen({
   const appointmentsQ = usePrescriptionAppointmentPickerInfinite(
     effectivePatientId,
     prescriptionKind,
-    Boolean(effectivePatientId) && linkMode === 'appointment' && tab === 'create',
+    Boolean(effectivePatientId) &&
+      linkMode === 'appointment' &&
+      tab === 'create' &&
+      !lockedToAppointment,
   );
   const appointmentOptions = useMemo(
     () => flattenPrescriptionPickerAppointments(appointmentsQ.data?.pages),
@@ -140,15 +162,16 @@ export function PrescriptionWorkspaceScreen({
   const appointmentTotal = prescriptionPickerTotalCount(appointmentsQ.data?.pages);
 
   const docsQ = useQuery({
-    queryKey: queryKeys.documents.medical(appointmentId),
-    queryFn: async () => (await fetchMedicalDocuments(appointmentId)).data ?? [],
-    enabled: Boolean(appointmentId),
+    queryKey: queryKeys.documents.medical(effectiveAppointmentId),
+    queryFn: async () => (await fetchMedicalDocuments(effectiveAppointmentId)).data ?? [],
+    enabled: Boolean(effectiveAppointmentId),
   });
 
   const refreshAll = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: ['prescriptions'] });
-    if (appointmentId) await docsQ.refetch();
-  }, [appointmentId, docsQ, qc]);
+    if (effectiveAppointmentId) await docsQ.refetch();
+    await onLinkedDocumentsChanged?.();
+  }, [docsQ, effectiveAppointmentId, onLinkedDocumentsChanged, qc]);
 
   const previewRow = async (id: string, fileName?: string) => {
     setPreviewingId(id);
@@ -209,71 +232,107 @@ export function PrescriptionWorkspaceScreen({
     { id: 'history' as const, label: 'Historique', Icon: History },
   ];
 
-  return (
-    <View style={styles.container}>
-      <KeyboardScrollView
-        style={styles.scroll}
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-        {...spreadTabSceneScrollProps(scrollConfig)}
-        refreshControl={
-          <RefreshControl
-            refreshing={historyQ.isRefetching && tab === 'history'}
-            onRefresh={() => void refreshAll()}
-            progressViewOffset={scrollConfig.refreshProgressOffset}
-          />
-        }
-      >
+  const body = (
+    <>
+      {!forPassageDraft ? (
         <FullWidthSegmentBar segments={segments} value={tab} onChange={setTab} />
+      ) : null}
 
-        {tab === 'create' ? (
-          <View style={[styles.section, elevation.xs]}>
-            {!fixedPatientId ? (
-              <PrescriptionPatientSelectField
-                patients={patientOptions}
-                selectedId={patientId}
-                onSelect={onPatientChange}
-                onEditPatient={(id) => setEditPatientId(id)}
-                loading={patientsQ.isPending}
-                totalCount={patientTotal}
-                hasNextPage={patientsQ.hasNextPage}
-                isFetchingNextPage={patientsQ.isFetchingNextPage}
-                onLoadMore={() => void patientsQ.fetchNextPage()}
+      {tab === 'create' || forPassageDraft ? (
+        <View style={[styles.section, elevation.xs]}>
+          {!fixedPatientId ? (
+            <PrescriptionPatientSelectField
+              patients={patientOptions}
+              selectedId={patientId}
+              onSelect={onPatientChange}
+              onEditPatient={(id) => setEditPatientId(id)}
+              loading={patientsQ.isPending}
+              totalCount={patientTotal}
+              hasNextPage={patientsQ.hasNextPage}
+              isFetchingNextPage={patientsQ.isFetchingNextPage}
+              onLoadMore={() => void patientsQ.fetchNextPage()}
+            />
+          ) : null}
+
+          {effectivePatientId && !forPassageDraft && !lockedToAppointment ? (
+            <PrescriptionLinkModeTabs value={linkMode} onChange={onLinkModeChange} />
+          ) : null}
+
+          {effectivePatientId && forPassageDraft ? (
+            <View style={styles.composerWrap}>
+              <Text style={styles.passageDraftTitle}>Ordonnance du passage</Text>
+              <Text style={styles.passageDraftHint}>
+                Rédigez et générez l’ordonnance ici. Elle sera automatiquement ajoutée aux
+                documents du passage dès que vous enregistrez la prise en charge.
+              </Text>
+              <PrescriptionComposer
+                patientId={effectivePatientId}
+                appointmentId={null}
+                documents={[]}
+                onDocumentsChanged={refreshAll}
+                prescriptionKind={prescriptionKind}
+                embedded
+                deferSaveForPassage
+                onPassageDraftReady={onPassagePrescriptionDraft}
+                onOpenSignatureSheet={handleOpenSignatureSheet}
+                onEditPatient={() => setEditPatientId(effectivePatientId)}
+                hideProfileGapsAlert={hideProfileGapsAlert}
               />
-            ) : null}
+            </View>
+          ) : null}
 
-            {effectivePatientId ? (
-              <PrescriptionLinkModeTabs value={linkMode} onChange={onLinkModeChange} />
-            ) : null}
+          {effectivePatientId && lockedToAppointment ? (
+            <View style={[styles.composerWrap, styles.composerWrapFlush]}>
+              <Text style={styles.passageDraftTitle}>Ordonnance du passage</Text>
+              <Text style={styles.passageDraftHint}>
+                {docsQ.data?.some((d) => d.document_type === 'ordonnance')
+                  ? 'Une ordonnance est déjà rattachée à ce rendez-vous. Vous pouvez en générer une nouvelle si besoin.'
+                  : 'Générez l’ordonnance ici — elle sera automatiquement rattachée à ce rendez-vous.'}
+              </Text>
+              <PrescriptionComposer
+                patientId={effectivePatientId}
+                appointmentId={fixedAppointmentId}
+                documents={docsQ.data ?? []}
+                onDocumentsChanged={refreshAll}
+                prescriptionKind={prescriptionKind}
+                embedded
+                onOpenSignatureSheet={handleOpenSignatureSheet}
+                onEditPatient={() => setEditPatientId(effectivePatientId)}
+                hideProfileGapsAlert={hideProfileGapsAlert}
+              />
+            </View>
+          ) : null}
 
-            {effectivePatientId && linkMode === 'standalone' ? (
-              <View style={styles.composerWrap}>
-                <PrescriptionComposer
-                  patientId={effectivePatientId}
-                  appointmentId={null}
-                  documents={[]}
-                  onDocumentsChanged={refreshAll}
-                  prescriptionKind={prescriptionKind}
-                  embedded
-                  onOpenSignatureSheet={handleOpenSignatureSheet}
-                  onEditPatient={() => setEditPatientId(effectivePatientId)}
-                />
-              </View>
-            ) : null}
+          {effectivePatientId && !forPassageDraft && !lockedToAppointment && linkMode === 'standalone' ? (
+            <View style={styles.composerWrap}>
+              <PrescriptionComposer
+                patientId={effectivePatientId}
+                appointmentId={null}
+                documents={[]}
+                onDocumentsChanged={refreshAll}
+                prescriptionKind={prescriptionKind}
+                embedded
+                onOpenSignatureSheet={handleOpenSignatureSheet}
+                onEditPatient={() => setEditPatientId(effectivePatientId)}
+                hideProfileGapsAlert={hideProfileGapsAlert}
+              />
+            </View>
+          ) : null}
 
-            {effectivePatientId && linkMode === 'appointment' ? (
-              <>
-                <PrescriptionAppointmentSelectField
-                  appointments={appointmentOptions}
-                  selectedId={appointmentId}
-                  onSelect={setAppointmentId}
-                  loading={appointmentsQ.isPending}
-                  totalCount={appointmentTotal}
-                  hasNextPage={appointmentsQ.hasNextPage}
-                  isFetchingNextPage={appointmentsQ.isFetchingNextPage}
-                  onLoadMore={() => void appointmentsQ.fetchNextPage()}
-                />
-                {appointmentId ? (
-                  <View style={styles.composerWrap}>
+          {effectivePatientId && !forPassageDraft && !lockedToAppointment && linkMode === 'appointment' ? (
+            <>
+              <PrescriptionAppointmentSelectField
+                appointments={appointmentOptions}
+                selectedId={appointmentId}
+                onSelect={setAppointmentId}
+                loading={appointmentsQ.isPending}
+                totalCount={appointmentTotal}
+                hasNextPage={appointmentsQ.hasNextPage}
+                isFetchingNextPage={appointmentsQ.isFetchingNextPage}
+                onLoadMore={() => void appointmentsQ.fetchNextPage()}
+              />
+              {appointmentId ? (
+                <View style={styles.composerWrap}>
                   <PrescriptionComposer
                     patientId={effectivePatientId}
                     appointmentId={appointmentId}
@@ -283,43 +342,65 @@ export function PrescriptionWorkspaceScreen({
                     embedded
                     onOpenSignatureSheet={handleOpenSignatureSheet}
                     onEditPatient={() => setEditPatientId(effectivePatientId)}
+                    hideProfileGapsAlert={hideProfileGapsAlert}
                   />
-                  </View>
-                ) : (
-                  <PrescriptionComposerAwaitingRdv />
-                )}
-              </>
-            ) : null}
-          </View>
-        ) : (
-          <View style={[styles.section, styles.historySection]}>
-            {historyQ.isLoading ? (
-              <SkeletonList count={3} itemHeight={52} gap={spacing[1]} />
-            ) : historyRows.length === 0 ? (
-              <EmptyState
-                Icon={FilePenLine}
-                title="Aucune ordonnance"
-                description="Les ordonnances enregistrées apparaîtront ici."
-              />
-            ) : (
-              <FlashList
-                data={historyRows}
-                keyExtractor={(row) => row.id}
-                renderItem={renderHistoryItem}
-                estimatedItemSize={72}
-                scrollEnabled={false}
-                onEndReached={() => {
-                  if (historyQ.hasNextPage && !historyQ.isFetchingNextPage) {
-                    void historyQ.fetchNextPage();
-                  }
-                }}
-                onEndReachedThreshold={0.3}
-                ListFooterComponent={historyFooter}
-              />
-            )}
-          </View>
-        )}
-      </KeyboardScrollView>
+                </View>
+              ) : (
+                <PrescriptionComposerAwaitingRdv />
+              )}
+            </>
+          ) : null}
+        </View>
+      ) : (
+        <View style={[styles.section, styles.historySection]}>
+          {historyQ.isLoading ? (
+            <SkeletonList count={3} itemHeight={52} gap={spacing[1]} />
+          ) : historyRows.length === 0 ? (
+            <EmptyState
+              Icon={FilePenLine}
+              title="Aucune ordonnance"
+              description="Les ordonnances enregistrées apparaîtront ici."
+            />
+          ) : (
+            <FlashList
+              data={historyRows}
+              keyExtractor={(row) => row.id}
+              renderItem={renderHistoryItem}
+              scrollEnabled={false}
+              onEndReached={() => {
+                if (historyQ.hasNextPage && !historyQ.isFetchingNextPage) {
+                  void historyQ.fetchNextPage();
+                }
+              }}
+              onEndReachedThreshold={0.3}
+              ListFooterComponent={historyFooter}
+            />
+          )}
+        </View>
+      )}
+    </>
+  );
+
+  return (
+    <View style={embedded ? styles.embeddedContainer : styles.container}>
+      {embedded ? (
+        <View style={styles.embeddedContent}>{body}</View>
+      ) : (
+        <KeyboardScrollView
+          style={styles.scroll}
+          contentContainerStyle={scrollConfig.contentContainerStyle}
+          {...spreadTabSceneScrollProps(scrollConfig)}
+          refreshControl={
+            <RefreshControl
+              refreshing={historyQ.isRefetching && tab === 'history'}
+              onRefresh={() => void refreshAll()}
+              progressViewOffset={scrollConfig.refreshProgressOffset}
+            />
+          }
+        >
+          {body}
+        </KeyboardScrollView>
+      )}
 
       <MedicalDocumentPreviewModal
         visible={previewOpen}
@@ -367,11 +448,16 @@ export function PrescriptionWorkspaceScreen({
 function buildStyles(c: AppColors) {
   return {
     container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+    embeddedContainer: { minWidth: 0, width: '100%' as const },
     scroll: { minWidth: 0, flex: 1 },
     content: {
       padding: spacing[4],
       gap: spacing[4],
       paddingBottom: spacing[10],
+    },
+    embeddedContent: {
+      gap: spacing[3],
+      width: '100%' as const,
     },
     section: {
       backgroundColor: c.surface,
@@ -390,6 +476,23 @@ function buildStyles(c: AppColors) {
       paddingTop: spacing[4],
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: c.borderLight,
+      gap: spacing[3],
+    },
+    composerWrapFlush: {
+      marginTop: 0,
+      paddingTop: 0,
+      borderTopWidth: 0,
+    },
+    passageDraftTitle: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.base,
+      color: c.textPrimary,
+    },
+    passageDraftHint: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+      lineHeight: fontSize.sm * 1.45,
     },
     listFooter: {
       paddingVertical: spacing[3],

@@ -16,15 +16,16 @@ import { BottomSheetModalContainer } from './BottomSheetModalContainer';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
-  BottomSheetScrollView,
   BottomSheetView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
+import { BottomSheetKeyboardAwareScrollView } from './BottomSheetKeyboardAwareScrollView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { SheetKeyboardProvider } from './sheet-keyboard-context';
+import { SheetKeyboardAccessory } from './sheet-keyboard-accessory';
 
 const MAX_HEIGHT_RATIO = 0.86;
 /** Ouverture haute pour fiches profil (intervenant RDV). */
@@ -38,8 +39,7 @@ interface Props {
   onBack?: () => void;
   children: React.ReactNode;
   /**
-   * Actions en bas du scroll (après `children`), pas en footer Gorhom —
-   * sinon les champs sont masqués à l’ouverture / avec le clavier.
+   * Actions en bas du scroll (après `children`) — le clavier Gorhom remonte la sheet.
    */
   footer?: React.ReactNode;
   contentStyle?: ViewStyle;
@@ -76,7 +76,7 @@ export function SheetModal({
   onDismissed,
   snapPoints,
   stackBehavior = 'switch',
-  keyboardBehavior = Platform.OS === 'android' ? 'fillParent' : 'interactive',
+  keyboardBehavior = 'interactive',
 }: Props) {
   const styles = useThemedStyles(buildStyles);
   const modalRef = useRef<BottomSheetModal>(null);
@@ -151,6 +151,7 @@ export function SheetModal({
   );
 
   const bottomPad = Math.max(insets.bottom, spacing[3]);
+  const keyboardBottomOffset = footer ? 72 + bottomPad : Math.max(bottomPad, spacing[2]);
   const contentStyleBase = [
     styles.body,
     contentStyle,
@@ -170,14 +171,16 @@ export function SheetModal({
       {content}
     </BottomSheetView>
   ) : (
-    <BottomSheetScrollView
-      contentContainerStyle={contentStyleBase}
+    <BottomSheetKeyboardAwareScrollView
+      bottomOffset={keyboardBottomOffset}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       showsVerticalScrollIndicator={false}
+      style={styles.scrollHost}
+      contentContainerStyle={contentStyleBase}
     >
       {content}
-    </BottomSheetScrollView>
+    </BottomSheetKeyboardAwareScrollView>
   );
 
   return (
@@ -202,7 +205,10 @@ export function SheetModal({
       android_keyboardInputMode="adjustResize"
       onDismiss={handleDismiss}
     >
-      <SheetKeyboardProvider>{body}</SheetKeyboardProvider>
+      <SheetKeyboardProvider>
+        <SheetKeyboardAccessory />
+        {body}
+      </SheetKeyboardProvider>
     </BottomSheetModal>
   );
 }
@@ -265,6 +271,10 @@ function buildStyles(c: AppColors) {
     },
     bodyFitContent: {
       flexGrow: 0,
+    },
+    scrollHost: {
+      flexGrow: 0,
+      flexShrink: 0,
     },
     scrollFooter: {
       marginTop: spacing[2],

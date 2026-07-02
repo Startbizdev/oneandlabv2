@@ -432,7 +432,7 @@ export function useBookingWizard(opts: {
 
       if (needsVip) {
         const draftFd = await buildPatientBookingDraftFormData(
-          payloads as Array<Record<string, unknown> & { files?: Record<string, unknown> }>,
+          payloads as Parameters<typeof buildPatientBookingDraftFormData>[0],
         );
         const draftRes = await createPatientBookingDraft(draftFd);
         if (!draftRes.success || !draftRes.data?.draft_id) {

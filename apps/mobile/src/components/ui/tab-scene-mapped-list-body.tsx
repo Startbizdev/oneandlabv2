@@ -85,7 +85,6 @@ export function TabSceneMappedListBody<T>({
           item,
           index,
           separators: SCROLL_SEPARATORS,
-          target: 'ScrollView',
         };
         return (
           <Fragment key={key}>

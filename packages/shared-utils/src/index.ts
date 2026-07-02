@@ -17,3 +17,4 @@ export * from './medical-prescription-fields';
 export * from './patient-vip-booking';
 export * from './tour-geo';
 export * from './open-navigation';
+export * from './nurse-passage-display';

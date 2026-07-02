@@ -11,6 +11,6 @@ export const STACK_SCROLL_PROPS = {
 
 export function stackScrollProps(
   overrides?: Pick<ScrollViewProps, 'showsVerticalScrollIndicator'>,
-): typeof STACK_SCROLL_PROPS {
+): Pick<ScrollViewProps, 'contentInsetAdjustmentBehavior' | 'showsVerticalScrollIndicator'> {
   return { ...STACK_SCROLL_PROPS, ...overrides };
 }

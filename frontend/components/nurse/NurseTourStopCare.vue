@@ -21,15 +21,42 @@
         </span>
       </span>
     </div>
-    <div v-if="optionRows.length" class="space-y-0.5">
-      <p
-        v-for="row in optionRows"
+    <div v-if="displayOptionRows.length" class="space-y-0.5">
+      <div
+        v-for="row in displayOptionRows"
         :key="`${row.label}-${row.value}`"
-        class="text-[11px] leading-snug text-gray-500 dark:text-gray-400"
+        :class="
+          showIcons && isTypeOptionLabel(row.label)
+            ? 'mt-1 flex min-w-0 items-center gap-1.5'
+            : ''
+        "
       >
-        <span class="font-medium text-gray-400 dark:text-gray-500">{{ row.label }} :</span>
-        {{ row.value }}
-      </p>
+        <UIcon
+          v-if="showIcons && isTypeOptionLabel(row.label)"
+          name="i-lucide-tag"
+          class="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500"
+        />
+        <p
+          class="min-w-0"
+          :class="
+            showIcons && isTypeOptionLabel(row.label)
+              ? 'text-xs font-medium text-gray-500 dark:text-gray-400'
+              : 'text-[11px] leading-snug text-gray-500 dark:text-gray-400'
+          "
+        >
+          <span
+            v-if="!(showIcons && isTypeOptionLabel(row.label))"
+            class="font-medium text-gray-400 dark:text-gray-500"
+            >{{ row.label }} :</span
+          >
+          <template v-if="showIcons && isTypeOptionLabel(row.label)">
+            {{ row.label }} : {{ row.value }}
+          </template>
+          <template v-else>
+            {{ row.value }}
+          </template>
+        </p>
+      </div>
     </div>
   </div>
 </template>
@@ -55,8 +82,10 @@ const props = withDefaults(
     stop: NurseTourStop;
     categories?: CareCategoryRowMinimal[];
     embedded?: boolean;
+    showIcons?: boolean;
+    listCompact?: boolean;
   }>(),
-  { categories: () => [], embedded: false },
+  { categories: () => [], embedded: false, showIcons: false, listCompact: false },
 );
 
 const config = useRuntimeConfig();
@@ -65,6 +94,26 @@ const categoryAccentMap = computed(() => buildCategoryAccentMapForList(props.cat
 const lotLabel = computed(() => tourStopLotSummaryLabel(props.stop));
 const catalogLines = computed(() => tourStopCatalogLines(props.stop));
 const optionRows = computed(() => tourStopCareOptionRows(props.stop, props.categories));
+
+function isDetailOptionLabel(label: string): boolean {
+  const normalized = label.trim().toLowerCase();
+  return (
+    normalized === 'type' ||
+    normalized === 'type de soin' ||
+    normalized.includes('plaie')
+  );
+}
+
+const displayOptionRows = computed(() =>
+  props.listCompact
+    ? optionRows.value.filter((row) => !isDetailOptionLabel(row.label))
+    : optionRows.value,
+);
+
+function isTypeOptionLabel(label: string): boolean {
+  const normalized = label.trim().toLowerCase();
+  return normalized === 'type' || normalized === 'type de soin';
+}
 
 function lineBadge(line: PatientRdvCatalogLine) {
   const apt = tourStopAsAppointment(props.stop);

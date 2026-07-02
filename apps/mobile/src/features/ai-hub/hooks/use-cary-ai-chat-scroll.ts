@@ -1,4 +1,4 @@
-import type { FlashList } from '@shopify/flash-list';
+import type { FlashListRef } from '@shopify/flash-list';
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 
 type ScrollDeps = {
@@ -12,7 +12,7 @@ type ScrollDeps = {
  * Scroll bas chronologique (liste non inversée) — pattern chat 2025+ avec footer sticky.
  */
 export function useCaryAiChatScroll<T>(
-  listRef: RefObject<FlashList<T> | null>,
+  listRef: RefObject<FlashListRef<T> | null>,
   { messageCount, streamingTextLength, awaitingReply, activeId }: ScrollDeps,
 ) {
   const lastStreamLenRef = useRef(0);

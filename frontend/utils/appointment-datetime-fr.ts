@@ -7,6 +7,10 @@ import {
   formatPatientUrgentCreneauShortFr,
   isPatientVipSlotShortLabel,
 } from '~/utils/patient-urgency-display';
+import {
+  formatPassageTimeSlotFromFormData,
+  isNursePassageFormData,
+} from '@oneandlab/shared-utils';
 
 const MIN_SLOT_SPAN_HOURS = 1;
 
@@ -264,10 +268,16 @@ function formatScheduledDateOnlyParis(scheduledAt: string): string {
 export function formatScheduledDateWithAvailabilityLineFr(
   scheduledAt: string | null | undefined,
   availability: unknown,
+  formData?: Record<string, unknown> | null,
 ): string {
   if (!scheduledAt) return '';
   const datePart = formatScheduledDateOnlyParis(scheduledAt);
   if (!datePart) return '';
+
+  if (formData && isNursePassageFormData(formData)) {
+    const slot = formatPassageTimeSlotFromFormData(formData, scheduledAt);
+    return slot ? `${datePart} · ${slot}` : datePart;
+  }
 
   const raw = formatAvailabilitySlotFr(availability);
   if (isPatientVipSlotShortLabel(raw)) {
@@ -312,7 +322,15 @@ export function formatScheduledDateWithAvailabilityLineFr(
  * Libellé UI cartes / fiche : « Toute la journée », « 9h00 - 11h00 », « Créneau 08:30 - 09:30 »,
  * ou heure issue de `scheduled_at` seulement si le créneau ne définit pas un type « horaire précis » legacy.
  */
-export function formatAvailabilityDisplayFr(availability: unknown, scheduledAt?: string | null): string {
+export function formatAvailabilityDisplayFr(
+  availability: unknown,
+  scheduledAt?: string | null,
+  formData?: Record<string, unknown> | null,
+): string {
+  if (formData && isNursePassageFormData(formData)) {
+    return formatPassageTimeSlotFromFormData(formData, scheduledAt);
+  }
+
   const raw = formatAvailabilitySlotFr(availability);
   if (isPatientVipSlotShortLabel(raw)) return raw;
   if (raw === 'toute la journée') return 'Toute la journée';

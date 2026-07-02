@@ -21,8 +21,13 @@ final class TourVisitService
     /**
      * @return array<string, mixed>
      */
-    public function updateStopStatus(string $nurseId, string $stopId, string $status, ?string $skipReason = null): array
-    {
+    public function updateStopStatus(
+        string $nurseId,
+        string $stopId,
+        string $status,
+        ?string $skipReason = null,
+        bool $finalizeAppointment = false,
+    ): array {
         $allowed = ['todo', 'en_route', 'on_site', 'done', 'skipped'];
         if (!in_array($status, $allowed, true)) {
             throw new InvalidArgumentException('Statut invalide');
@@ -39,10 +44,14 @@ final class TourVisitService
         $upd->execute([$status, $visitedAt, $skipReason, $stopId]);
 
         $aptId = (string) ($row['appointment_id'] ?? '');
-        if ($status === 'on_site') {
+        if ($status === 'en_route') {
+            $this->maybeNotifyPatientNurseEnRoute($row, $stopId, $nurseId, $aptId);
+        } elseif ($status === 'on_site') {
             $this->appointments->updateStatus($aptId, 'inProgress', $nurseId, 'nurse', 'Tournée — sur place');
-        } elseif ($status === 'done') {
-            $this->appointments->updateStatus($aptId, 'completed', $nurseId, 'nurse', 'Tournée — soin terminé');
+        } elseif ($status === 'done' && $finalizeAppointment) {
+            $this->appointments->updateStatus($aptId, 'completed', $nurseId, 'nurse', 'Passage terminé');
+        } elseif ($status === 'todo') {
+            $this->maybeRevertCompletedAppointmentSilently($aptId, $nurseId);
         }
 
         $tourDate = (string) ($row['tour_date'] ?? nurse_tour_parse_date(null));
@@ -184,5 +193,67 @@ final class TourVisitService
         }
 
         return $row;
+    }
+
+    private function maybeRevertCompletedAppointmentSilently(string $aptId, string $nurseId): void
+    {
+        if ($aptId === '') {
+            return;
+        }
+
+        $stmt = $this->db->prepare('
+            SELECT status FROM appointments
+            WHERE id = ? AND assigned_nurse_id = ?
+            LIMIT 1
+        ');
+        $stmt->execute([$aptId, $nurseId]);
+        $current = (string) ($stmt->fetchColumn() ?: '');
+        if ($current !== 'completed') {
+            return;
+        }
+
+        $this->db->prepare('
+            UPDATE appointments
+            SET status = ?, completed_at = NULL, updated_at = NOW()
+            WHERE id = ? AND assigned_nurse_id = ?
+        ')->execute(['confirmed', $aptId, $nurseId]);
+    }
+
+    private function maybeNotifyPatientNurseEnRoute(array $row, string $stopId, string $nurseId, string $aptId): void
+    {
+        if (!empty($row['notif_nurse_en_route_sent_at'])) {
+            return;
+        }
+
+        $stmt = $this->db->prepare('SELECT patient_id FROM appointments WHERE id = ? LIMIT 1');
+        $stmt->execute([$aptId]);
+        $patientId = $stmt->fetchColumn();
+        if (!$patientId) {
+            return;
+        }
+
+        require_once __DIR__ . '/../../models/User.php';
+        $userModel = new User();
+        $nurse = $userModel->getById($nurseId, 'system', 'system');
+        $first = $nurse ? trim((string) ($nurse['first_name'] ?? '')) : '';
+        $last = $nurse ? trim((string) ($nurse['last_name'] ?? '')) : '';
+        $fullName = trim($first . ' ' . $last);
+        if ($fullName === '') {
+            $fullName = 'Votre infirmier·ère';
+        }
+
+        try {
+            (new NotificationService())->notifyPatientNurseEnRoute(
+                (string) $patientId,
+                $aptId,
+                $nurseId,
+                $fullName,
+            );
+            $this->db->prepare('
+                UPDATE nurse_tour_stops SET notif_nurse_en_route_sent_at = NOW() WHERE id = ?
+            ')->execute([$stopId]);
+        } catch (Throwable $e) {
+            error_log('[TourVisitService::maybeNotifyPatientNurseEnRoute] ' . $e->getMessage());
+        }
     }
 }

@@ -57,7 +57,7 @@ export function RdvDetailHero({
   const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_RdvDetailHero_tsx_styles');
   const scheduled = primary.scheduled_at ? dayjs(primary.scheduled_at) : null;
   const fd = (primary.form_data ?? {}) as Record<string, unknown>;
-  const timeLabel = formatAvailabilityDisplayFr(fd.availability, primary.scheduled_at);
+  const timeLabel = formatAvailabilityDisplayFr(fd.availability, primary.scheduled_at, fd);
   const isMulti = batchCount > 1;
 
   const typeLabel = isBloodTestAppointment(primary.type)

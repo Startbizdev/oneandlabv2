@@ -28,6 +28,10 @@ export interface NurseTourStop {
   status: string;
   scheduled_at?: string | null;
   availability?: unknown;
+  passage_time_slot?: string | null;
+  passage_custom_time?: string | null;
+  passage_duration_minutes?: number | null;
+  passage_series_id?: string | null;
   address_line: string;
   address_complement?: string;
   lat?: number | null;
@@ -115,11 +119,15 @@ export async function resetNurseTourOrder(
 export async function updateNurseTourStopStatus(
   stopId: string,
   status: TourVisitStatus,
-  skipReason?: string,
+  options?: { skipReason?: string; finalizeAppointment?: boolean },
 ): Promise<NurseTourPayload> {
   const res = await apiRequest<NurseTourPayload>(`/nurse/tour/stops/${stopId}/status`, {
     method: 'POST',
-    body: { status, skip_reason: skipReason },
+    body: {
+      status,
+      skip_reason: options?.skipReason,
+      finalize_appointment: options?.finalizeAppointment === true ? true : undefined,
+    },
   });
   if (!res.data) throw new Error('Statut non enregistré');
   return res.data;

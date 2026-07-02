@@ -58,6 +58,15 @@
         </div>
       </div>
 
+      <div v-if="isNursePassageAppt && passageDurationLabel" :class="kvRow">
+        <div :class="kvLabel">Durée du passage</div>
+        <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ passageDurationLabel }}</p>
+      </div>
+      <div v-if="isNursePassageAppt && passageLocationLabel" :class="kvRow">
+        <div :class="kvLabel">Lieu</div>
+        <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ passageLocationLabel }}</p>
+      </div>
+
       <template v-for="(nItem, nIdx) in nursingItems" :key="`ndet-grp-${String(nItem?.id ?? '')}-${nIdx}`">
         <div>
           <div :class="kvRow">
@@ -303,6 +312,14 @@
         </p>
         <PatientUrgencyBadge :appointment="appt" />
       </div>
+    </div>
+    <div v-if="isNursePassageAppt && passageDurationLabel" :class="kvRow">
+      <div :class="kvLabel">Durée du passage</div>
+      <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ passageDurationLabel }}</p>
+    </div>
+    <div v-if="isNursePassageAppt && passageLocationLabel" :class="kvRow">
+      <div :class="kvLabel">Lieu</div>
+      <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ passageLocationLabel }}</p>
     </div>
     <div
       v-if="appt.type === 'blood_test' && bloodTestItems.length === 1"
@@ -595,6 +612,11 @@ import { appointmentDetailAddressLine } from '~/utils/address-display';
 import { parseRawPatientAddress } from '~/utils/patient-address-rdv';
 import { formatScheduledDateWithAvailabilityLineFr } from '~/utils/appointment-datetime-fr';
 import {
+  formatPassageDurationFromFormData,
+  formatPassageLocationFromFormData,
+  isNursePassageFormData,
+} from '@oneandlab/shared-utils';
+import {
   resolveCareCategoryImageSrc,
   resolveCareIconFromCategory,
 } from '~/utils/care-icons';
@@ -647,7 +669,21 @@ const appointmentNotesText = computed(() => getAppointmentNotes(props.appt));
 const addressLine = computed(() => appointmentDetailAddressLine(props.appt));
 const addressParsed = computed(() => parseRawPatientAddress(props.appt?.address));
 const scheduledDateWithAvailabilityLine = computed(() =>
-  formatScheduledDateWithAvailabilityLineFr(props.appt?.scheduled_at, props.appt?.form_data?.availability),
+  formatScheduledDateWithAvailabilityLineFr(
+    props.appt?.scheduled_at,
+    props.appt?.form_data?.availability,
+    props.appt?.form_data,
+  ),
+);
+
+const isNursePassageAppt = computed(() =>
+  isNursePassageFormData(props.appt?.form_data, props.appt?.passage_source),
+);
+const passageDurationLabel = computed(() =>
+  isNursePassageAppt.value ? formatPassageDurationFromFormData(props.appt?.form_data ?? {}) : null,
+);
+const passageLocationLabel = computed(() =>
+  isNursePassageAppt.value ? formatPassageLocationFromFormData(props.appt?.form_data ?? {}) : null,
 );
 
 const addressComplement = computed(() => {

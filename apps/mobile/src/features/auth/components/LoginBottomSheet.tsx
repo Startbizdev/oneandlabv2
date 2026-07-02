@@ -53,7 +53,7 @@ export function LoginBottomSheet({
   const showRegister = onRegisterPress && meta.mode === 'code' && meta.step === 'email';
 
   return (
-    <BottomSheet visible={visible} onClose={handleClose} title={title} subtitle={subtitle}>
+    <BottomSheet visible={visible} onClose={handleClose} title={title} subtitle={subtitle} disableScroll>
       <View style={styles.content}>
         <LoginFlow onSuccess={onSuccess} onEmailNotFound={onEmailNotFound} onMetaChange={setMeta} />
         {showRegister ? (

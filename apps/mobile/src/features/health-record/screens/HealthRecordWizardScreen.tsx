@@ -31,7 +31,7 @@ export function HealthRecordWizardScreen() {
     return (
       <StackChromeScreen>
         <View style={[styles.loading, { paddingTop: contentTopInset }]}>
-          <SkeletonList rows={3} />
+          <SkeletonList count={3} />
         </View>
       </StackChromeScreen>
     );

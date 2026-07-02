@@ -8,9 +8,8 @@ import {
   StyleSheet,
   Text,
   View,
-  type ListRenderItem,
 } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type ListRenderItem as FlashListRenderItem } from '@shopify/flash-list';
 import { Check, Search } from 'lucide-react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -101,7 +100,7 @@ export function PrescriptionPatientSelectSheet({
     [onClose, onSelect],
   );
 
-  const renderItem: ListRenderItem<PatientRow> = useCallback(
+  const renderItem: FlashListRenderItem<PatientRow> = useCallback(
     ({ item }) => {
       const selected = selectedId === item.id;
       const subtitle = patientListSubtitle(item);
@@ -178,7 +177,6 @@ export function PrescriptionPatientSelectSheet({
             data={filtered}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
-            estimatedItemSize={72}
             drawDistance={ROW_DRAW_DISTANCE}
             keyboardShouldPersistTaps="handled"
             ItemSeparatorComponent={ListSeparator}

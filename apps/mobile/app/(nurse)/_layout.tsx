@@ -62,6 +62,9 @@ export default function NurseLayout() {
         name="tournee/index"
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
+      <Stack.Screen name="passage/new" options={{ title: 'Prise en charge' }} />
+      <Stack.Screen name="passage/patient-pick" options={{ title: 'Choisir un patient' }} />
+      <Stack.Screen name="passage/[seriesId]" options={{ title: 'Détail passage' }} />
     </Stack>
     </StackSceneInsetLayout>
     </View>

@@ -31,6 +31,15 @@ export type PrescriptionsPagination = {
 export type PrescriptionKind = 'medical' | 'nursing';
 export type PrescriptionLinkMode = 'standalone' | 'appointment';
 
+/** Ordonnance générée avant création du passage — rattachée au 1er RDV à l'enregistrement. */
+export type PassagePrescriptionDraft = {
+  pdfUri: string;
+  fileName: string;
+  prescriptionText: string;
+  prescriptionNumber?: string;
+  prescriptionKind: PrescriptionKind;
+};
+
 function prescriptionsPath(roleBase: 'pro' | 'nurse', page: number, limit: number, patientId?: string) {
   const q = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (patientId) q.set('patient_id', patientId);

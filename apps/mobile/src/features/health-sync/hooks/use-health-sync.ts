@@ -5,10 +5,13 @@ import { useToast } from '@/providers/ToastProvider';
 import { postHealthMetricsBatch } from '../api/health.service';
 import { readHealthMetricsFromDevice } from '../native/read-health-metrics';
 import { useInvalidateHealth } from './use-health-dashboard';
+import { healthRecordQueryKeys } from '@/features/health-record/hooks/use-health-record-completion';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function useHealthSync() {
   const { show: toast } = useToast();
   const invalidate = useInvalidateHealth();
+  const qc = useQueryClient();
   const [syncing, setSyncing] = useState(false);
 
   const sync = useCallback(async () => {
@@ -17,11 +20,7 @@ export function useHealthSync() {
       const read = await readHealthMetricsFromDevice(30);
       if (!read.available) {
         toast(read.reason ?? 'Synchronisation santé indisponible sur cet appareil', { type: 'info' });
-        return;
-      }
-      if (read.metrics.length === 0) {
-        toast('Aucune nouvelle mesure à importer', { type: 'info' });
-        return;
+        return false;
       }
 
       const payload: HealthBatchPayload = {
@@ -34,18 +33,27 @@ export function useHealthSync() {
 
       const result = await postHealthMetricsBatch(payload);
       invalidate();
-      toast(
-        result.inserted > 0
-          ? `${result.inserted} mesure${result.inserted > 1 ? 's' : ''} synchronisée${result.inserted > 1 ? 's' : ''}`
-          : 'Données déjà à jour',
-        { type: 'success' },
-      );
+      void qc.invalidateQueries({ queryKey: healthRecordQueryKeys.recap });
+      void qc.invalidateQueries({ queryKey: healthRecordQueryKeys.completion });
+
+      if (read.metrics.length === 0) {
+        toast('Source connectée — aucune mesure récente dans les 30 derniers jours', { type: 'info' });
+      } else if (result.inserted > 0) {
+        toast(
+          `${result.inserted} mesure${result.inserted > 1 ? 's' : ''} synchronisée${result.inserted > 1 ? 's' : ''}`,
+          { type: 'success' },
+        );
+      } else {
+        toast('Données déjà à jour', { type: 'success' });
+      }
+      return true;
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Synchronisation impossible', { type: 'error' });
+      return false;
     } finally {
       setSyncing(false);
     }
-  }, [invalidate, toast]);
+  }, [invalidate, qc, toast]);
 
   return { sync, syncing };
 }

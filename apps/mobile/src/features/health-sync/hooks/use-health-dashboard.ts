@@ -12,6 +12,8 @@ export function useHealthDashboard(days = 30) {
   return useQuery({
     queryKey: healthQueryKeys.dashboard(days),
     queryFn: () => fetchHealthDashboard(days),
+    retry: 2,
+    staleTime: 30_000,
   });
 }
 
@@ -19,6 +21,8 @@ export function useHealthSources() {
   return useQuery({
     queryKey: healthQueryKeys.sources,
     queryFn: fetchHealthSources,
+    retry: 2,
+    staleTime: 30_000,
   });
 }
 
@@ -26,6 +30,8 @@ export function useHealthSyncs() {
   return useQuery({
     queryKey: healthQueryKeys.syncs,
     queryFn: () => fetchHealthSyncs(),
+    retry: 1,
+    staleTime: 30_000,
   });
 }
 

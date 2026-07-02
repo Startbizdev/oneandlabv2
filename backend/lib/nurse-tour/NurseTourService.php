@@ -72,7 +72,7 @@ final class NurseTourService
             FROM appointments a
             WHERE a.type = 'nursing'
               AND a.assigned_nurse_id = ?
-              AND a.status IN ('confirmed', 'inProgress', 'planned')
+              AND a.status IN ('confirmed', 'inProgress', 'planned', 'completed')
               AND a.scheduled_at IS NOT NULL
               AND DATE(CONVERT_TZ(a.scheduled_at, '+00:00', 'Europe/Paris')) BETWEEN ? AND ?
             GROUP BY tour_day
@@ -134,6 +134,19 @@ final class NurseTourService
         }
 
         $appointments = $this->loadAppointmentsForDate($nurseId, $tourDate);
+
+        if ($mode === 'manual') {
+            $orderIds = $this->orderEngine->orderIds($appointments, $plan, $origin);
+            $upd = $this->db->prepare("
+                UPDATE nurse_tour_plans
+                SET appointment_order_json = ?, manual_order_locked = 1, sort_mode = 'manual', updated_at = NOW()
+                WHERE id = ?
+            ");
+            $upd->execute([json_encode($orderIds), $plan['id']]);
+
+            return $this->getTour($nurseId, $tourDate, $origin);
+        }
+
         $plan['sort_mode'] = in_array($mode, ['smart', 'schedule', 'nearest'], true) ? $mode : 'smart';
         $plan['manual_order_locked'] = false;
         $orderIds = $this->orderEngine->orderIds($appointments, $plan, $origin);
@@ -180,7 +193,7 @@ final class NurseTourService
             LEFT JOIN care_categories c ON c.id = a.category_id
             WHERE a.type = 'nursing'
               AND a.assigned_nurse_id = ?
-              AND a.status IN ('confirmed', 'inProgress', 'planned')
+              AND a.status IN ('confirmed', 'inProgress', 'planned', 'completed')
               AND a.scheduled_at IS NOT NULL
               AND a.scheduled_at >= ?
               AND a.scheduled_at <= ?
@@ -345,6 +358,12 @@ final class NurseTourService
                 'status' => (string) ($apt['status'] ?? ''),
                 'scheduled_at' => $apt['scheduled_at'] ?? null,
                 'availability' => $fd['availability'] ?? null,
+                'passage_time_slot' => $fd['passage_time_slot'] ?? null,
+                'passage_custom_time' => $fd['custom_time'] ?? null,
+                'passage_duration_minutes' => isset($fd['passage_duration_minutes'])
+                    ? (int) $fd['passage_duration_minutes']
+                    : null,
+                'passage_series_id' => $apt['passage_series_id'] ?? null,
                 'address_line' => is_array($fd['address'] ?? null)
                     ? (string) (($fd['address']['label'] ?? '') ?: '')
                     : (string) ($apt['address'] ?? ''),

@@ -50,7 +50,7 @@ export const STACK_HEADER_CATALOG: Record<string, StackHeaderCatalogEntry> = {
   'help/[slug]': { title: 'Aide', symbol: PROFILE_HEADER_SF.help, fallbackIcon: HelpCircle },
   support: { title: 'Contacter le support', symbol: PROFILE_HEADER_SF.support, fallbackIcon: LifeBuoy },
   security: { title: 'Mot de passe et connexion', symbol: PROFILE_HEADER_SF.security, fallbackIcon: Lock },
-  documents: { title: 'Documents', symbol: PROFILE_HEADER_SF.documents, fallbackIcon: FileText },
+  documents: { title: 'Mes documents', symbol: PROFILE_HEADER_SF.documents, fallbackIcon: FileText },
   'nurse/coordinates': {
     title: 'Coordonnées',
     symbol: PROFILE_HEADER_SF.coordinates,

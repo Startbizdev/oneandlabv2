@@ -13,6 +13,6 @@ export function useHealthRecordCompletion(enabled = true) {
     queryKey: healthRecordQueryKeys.completion,
     queryFn: fetchHealthRecordCompletion,
     enabled,
-    staleTime: 60_000,
+    staleTime: 0,
   });
 }

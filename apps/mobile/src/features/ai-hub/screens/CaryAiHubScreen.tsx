@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { UserRole } from '@oneandlab/shared-types';
-import type { FlashList } from '@shopify/flash-list';
+import type { FlashListRef } from '@shopify/flash-list';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Keyboard, Platform, StyleSheet, Text, View } from 'react-native';
 import { Smile } from 'lucide-react-native';
@@ -18,7 +18,7 @@ import { PatientAiAttachmentThumbnail } from '../components/PatientAiAttachmentT
 import { useNativeTabBarInset } from '@/navigation/use-native-tab-bar-inset';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PatientAiConversationsSheet } from '../components/PatientAiConversationsSheet';
-import { PatientAiVoiceMockOverlay } from '../components/PatientAiVoiceMockOverlay';
+import { PatientAiVoiceOverlay } from '../components/PatientAiVoiceOverlay';
 import { useVoiceSession } from '../hooks/use-voice-session';
 import { CaryMarkdown } from '../components/CaryMarkdown';
 import { CaryAiBookingRecapCard } from '../components/CaryAiBookingRecapCard';
@@ -175,7 +175,7 @@ export function CaryAiHubScreen({
   const { bottom: safeBottom } = useSafeAreaInsets();
   const tabBarInset = useNativeTabBarInset(0);
   const bottomInset = includeTabBarInset ? tabBarInset : safeBottom;
-  const listRef = useRef<FlashList<PatientAiChatMessage>>(null);
+  const listRef = useRef<FlashListRef<PatientAiChatMessage>>(null);
   const [footerHeight, setFooterHeight] = useState(PATIENT_AI_FOOTER_HEIGHT_WITH_DISCLAIMER);
   const [keyboardInset, setKeyboardInset] = useState(0);
 
@@ -214,6 +214,7 @@ export function CaryAiHubScreen({
     sendMessage,
     handleSuggestion,
     confirmDraft,
+    reloadConversation,
     handleAttach,
     handleReplaceDocument,
     clearAttachment,
@@ -251,12 +252,26 @@ export function CaryAiHubScreen({
   const [convSearch, setConvSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [searchIds, setSearchIds] = useState<Set<string> | null>(null);
-  const voice = useVoiceSession(activeId);
-  useEffect(() => {
-    if (voice.lastConversationId) {
-      void selectConversation(voice.lastConversationId);
+  const voice = useVoiceSession({
+    conversationId: activeId,
+    onConversationSync: reloadConversation,
+  });
+
+  const {
+    endSession: endVoiceSessionApi,
+    reset: resetVoiceSession,
+    lastConversationId: voiceLastConversationId,
+  } = voice;
+
+  const handleVoiceClose = useCallback(async () => {
+    const convId = voiceLastConversationId ?? activeId;
+    await endVoiceSessionApi();
+    resetVoiceSession({ keepConversationId: true });
+    setVoiceOpen(false);
+    if (convId) {
+      await reloadConversation(convId);
     }
-  }, [selectConversation, voice.lastConversationId]);
+  }, [activeId, endVoiceSessionApi, resetVoiceSession, reloadConversation, voiceLastConversationId]);
 
   const showSuggestions = messages.length <= 1 && !awaitingReply && suggestions.length > 0;
   const canSend =
@@ -460,19 +475,20 @@ export function CaryAiHubScreen({
         />
       </View>
 
-      <PatientAiVoiceMockOverlay
+      <PatientAiVoiceOverlay
         visible={voiceOpen}
-        onClose={() => {
-          voice.reset();
-          setVoiceOpen(false);
-        }}
+        onClose={() => void handleVoiceClose()}
         phase={voice.phase}
         recognizing={voice.recognizing}
         available={voice.available}
         liveTranscript={voice.liveTranscript}
+        turns={voice.turns}
         lastUserText={voice.lastUserText}
         lastResponse={voice.lastResponse}
         speechError={voice.speechError}
+        activeDraft={activeDraft}
+        confirmingDraft={confirmingDraft}
+        onConfirmDraft={(d) => void confirmDraft(d)}
         onStart={() => void voice.startConversation()}
         onStop={voice.stopConversation}
         onToggleMic={() => void voice.toggleMic()}

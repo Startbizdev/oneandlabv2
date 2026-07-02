@@ -40,10 +40,10 @@ function buildStyles(c: AppColors) {
       borderColor: c.border,
       borderRadius: 12,
       padding: spacing[3],
-      backgroundColor: c.card,
+      backgroundColor: c.surface,
     },
     consentRowError: {
-      borderColor: c.destructive,
+      borderColor: c.error,
     },
     checkbox: {
       width: 22,
@@ -60,16 +60,16 @@ function buildStyles(c: AppColors) {
       borderColor: c.primary,
     },
     checkmark: {
-      color: c.primaryForeground,
+      color: c.textInverse,
       fontSize: fontSize.sm,
-      fontFamily: fontFamily.semibold,
+      fontFamily: fontFamily.semiBold,
       lineHeight: 16,
     },
     consentText: {
       flex: 1,
       fontSize: fontSize.sm,
       fontFamily: fontFamily.medium,
-      color: c.foreground,
+      color: c.textPrimary,
       lineHeight: 20,
     },
   };

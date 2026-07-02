@@ -37,7 +37,7 @@ export function CaryAiBookingRecapCard({
     let uri = await getCachedMedicalDocumentUri(medicalDocumentId, fileName ?? undefined);
     if (!uri) {
       const cached = await cacheMedicalDocument(medicalDocumentId, fileName ?? undefined);
-      uri = cached.uri;
+      uri = cached.localUri ?? null;
     }
     if (uri) {
       setPreview({ uri, fileName: fileName ?? undefined });

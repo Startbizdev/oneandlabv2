@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import dayjs from 'dayjs';
 import { useRouter } from 'expo-router';
 import {
@@ -14,22 +14,25 @@ import { Row } from '@/components/layout/primitives';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useStackContentTopInset } from '@/navigation/use-stack-scroll-config';
 import { H_PADDING, spacing } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
 import { useToast } from '@/providers/ToastProvider';
+import { PassageFab } from '@/features/nurse-passage/components/PassageFab';
+import {
+  PassagePlanningSheet,
+  type PassagePlanningChoice,
+} from '@/features/nurse-passage/components/PassagePlanningSheet';
+import { PassageSimpleListRow } from '@/features/nurse-passage/components/PassageSimpleListRow';
 import { useNurseTour } from '../hooks/use-nurse-tour';
 import { TourCalendarExportAction } from '../components/TourCalendarExportAction';
 import { TourDayStrip } from '../components/TourDayStrip';
 import { TourEmptyPanel } from '../components/TourEmptyPanel';
 import { TourLoadingSkeleton } from '../components/TourLoadingSkeleton';
 import { TourLocateAction } from '../components/TourLocateAction';
-import { TourMockBanner } from '../components/TourMockBanner';
-import { TourSortModeChips } from '../components/TourSortModeChips';
-import { TourStopCard } from '../components/TourStopCard';
+import { TourPassageSectionHeader } from '../components/TourPassageSectionHeader';
+import { TourSortFilterSheet } from '../components/TourSortFilterSheet';
 import { TourStopRescheduleSheet } from '../components/TourStopRescheduleSheet';
 import { TourSummaryCard } from '../components/TourSummaryCard';
 import type { NurseTourStop, TourSortMode } from '../api/nurse-tour.service';
-import { isMockTourId } from '../utils/tour-mock-data';
-import { shareTourDayCalendar, shareTourStopCalendarEvent } from '../utils/tour-calendar';
+import { shareTourDayCalendar } from '../utils/tour-calendar';
 
 export function NurseTourneeScreen() {
   const c = useAppColors();
@@ -40,20 +43,22 @@ export function NurseTourneeScreen() {
   const [locating, setLocating] = useState(false);
   const [exportingCalendar, setExportingCalendar] = useState(false);
   const [rescheduleStop, setRescheduleStop] = useState<NurseTourStop | null>(null);
+  const [planningSheetOpen, setPlanningSheetOpen] = useState(false);
+  const [sortSheetOpen, setSortSheetOpen] = useState(false);
+  const [manualOrderActive, setManualOrderActive] = useState(false);
 
   const contentTopInset = useStackContentTopInset();
   const sceneInsets = useTabSceneInsets();
   const listScrollConfig = buildTabSceneScrollConfig(
     { insetTop: 0, insetBottom: sceneInsets.insetBottom },
     styles.list,
-    { extraTop: spacing[2] },
+    { extraTop: spacing[2], extraBottom: spacing[16] },
   );
 
   const {
     tour,
     isLoading,
     isFetching,
-    isMockActive,
     refetch,
     dayCounts,
     refreshCoords,
@@ -68,22 +73,32 @@ export function NurseTourneeScreen() {
     void refreshCoords();
   }, [refreshCoords]);
 
+  useEffect(() => {
+    setManualOrderActive(false);
+  }, [date]);
+
+  const displayStops = tour?.stops ?? [];
+  const showManualReorder =
+    manualOrderActive || tour?.plan.sort_mode === 'manual' || tour?.plan.manual_order_locked;
+
   const handleLocate = useCallback(async () => {
     setLocating(true);
     try {
       await refreshCoords();
+      await refetch();
       showToast('Position actualisée', { type: 'success' });
     } catch {
       showToast('GPS indisponible', { type: 'error' });
     } finally {
       setLocating(false);
     }
-  }, [refreshCoords, showToast]);
+  }, [refreshCoords, refetch, showToast]);
 
   const handleOptimize = useCallback(
     async (mode: TourSortMode, force?: boolean) => {
       try {
         await optimize(mode, force);
+        setManualOrderActive(mode === 'manual');
         showToast('Ordre mis à jour', { type: 'success' });
       } catch {
         showToast('Optimisation impossible', { type: 'error' });
@@ -96,6 +111,7 @@ export function NurseTourneeScreen() {
     async (id: string, dir: 'up' | 'down') => {
       try {
         await moveStop(id, dir);
+        setManualOrderActive(true);
         showToast('Ordre enregistré', { type: 'success' });
       } catch {
         showToast('Enregistrement impossible', { type: 'error' });
@@ -104,15 +120,29 @@ export function NurseTourneeScreen() {
     [moveStop, showToast],
   );
 
-  const openStopDetail = useCallback(
+  const openPassageDetail = useCallback(
     (stop: NurseTourStop) => {
-      if (isMockActive || isMockTourId(stop.appointment_id)) {
-        showToast('Aperçu dev — détail disponible sur un RDV réel', { type: 'info' });
+      if (stop.passage_series_id) {
+        router.push({
+          pathname: '/(nurse)/passage/[seriesId]',
+          params: {
+            seriesId: stop.passage_series_id,
+            appointment_id: stop.appointment_id,
+            stop_id: stop.stop_id,
+          },
+        } as never);
         return;
       }
-      router.push(`/(nurse)/appointment/${stop.appointment_id}` as never);
+      router.push({
+        pathname: '/(nurse)/passage/[seriesId]',
+        params: {
+          seriesId: 'rdv',
+          appointment_id: stop.appointment_id,
+          stop_id: stop.stop_id,
+        },
+      } as never);
     },
-    [isMockActive, router, showToast],
+    [router],
   );
 
   const handleExportDayCalendar = useCallback(async () => {
@@ -129,36 +159,33 @@ export function NurseTourneeScreen() {
     }
   }, [date, showToast, tour?.stops]);
 
-  const handleAddStopToCalendar = useCallback(
-    async (stop: NurseTourStop) => {
-      try {
-        const ok = await shareTourStopCalendarEvent(stop);
-        if (ok) showToast('Passage prêt à importer', { type: 'success' });
-        else showToast('Partage calendrier indisponible', { type: 'error' });
-      } catch {
-        showToast('Ajout calendrier impossible', { type: 'error' });
-      }
+  const handlePlanningChoice = useCallback(
+    (choice: PassagePlanningChoice) => {
+      setPlanningSheetOpen(false);
+      router.push({
+        pathname: '/(nurse)/passage/patient-pick',
+        params: { start_date: date, mode: choice },
+      } as never);
     },
-    [showToast],
+    [date, router],
   );
 
-  const hasStops = (tour?.stops.length ?? 0) > 0;
+  const hasStops = displayStops.length > 0;
+
+  const sortFilterActive = Boolean(
+    tour && (tour.plan.sort_mode !== 'smart' || tour.plan.manual_order_locked),
+  );
 
   const listHeader = (
-    <>
+    <View style={styles.listHeader}>
       {tour && hasStops ? <TourSummaryCard summary={tour.summary} /> : null}
-      {tour && hasStops ? (
-        <TourSortModeChips
-          active={tour.plan.sort_mode}
-          locked={tour.plan.manual_order_locked}
-          onSelect={handleOptimize}
-          onReset={() => void resetOrder()}
+      {hasStops ? (
+        <TourPassageSectionHeader
+          sortActive={sortFilterActive}
+          onOpenFilter={() => setSortSheetOpen(true)}
         />
       ) : null}
-      {hasStops ? (
-        <Text style={[styles.sectionTitle, { color: c.textTertiary }]}>Vos passages</Text>
-      ) : null}
-    </>
+    </View>
   );
 
   return (
@@ -179,7 +206,6 @@ export function NurseTourneeScreen() {
     >
       <View style={[styles.container, { backgroundColor: c.background }]}>
         <View style={[styles.headerZone, { paddingTop: contentTopInset, backgroundColor: c.background }]}>
-          {isMockActive ? <TourMockBanner embedded /> : null}
           <TourDayStrip
             embedded
             selectedDate={date}
@@ -192,7 +218,7 @@ export function NurseTourneeScreen() {
           <TourLoadingSkeleton />
         ) : (
           <FlatList
-            data={tour?.stops ?? []}
+            data={displayStops}
             keyExtractor={(item) => item.stop_id}
             {...spreadTabSceneScrollProps(listScrollConfig)}
             contentContainerStyle={[
@@ -209,25 +235,55 @@ export function NurseTourneeScreen() {
               />
             }
             showsVerticalScrollIndicator={false}
-            renderItem={({ item: stop, index }) =>
-              tour ? (
-                <TourStopCard
+            renderItem={({ item: stop, index }) => {
+              if (!tour) return null;
+              const toggleDone = () => {
+                const isDone =
+                  stop.visit_status === 'done' ||
+                  stop.visit_status === 'skipped' ||
+                  stop.status === 'completed';
+                void setStatus(stop.stop_id, isDone ? 'todo' : 'done');
+              };
+              return (
+                <PassageSimpleListRow
                   stop={stop}
                   index={index}
-                  total={tour.stops.length}
+                  total={displayStops.length}
                   isNext={stop.stop_id === tour.next_stop_id}
-                  onPress={() => openStopDetail(stop)}
-                  onMoveUp={() => void handleMove(stop.appointment_id, 'up')}
-                  onMoveDown={() => void handleMove(stop.appointment_id, 'down')}
-                  onMarkDone={() => void setStatus(stop.stop_id, 'done')}
-                  onAddToCalendar={() => void handleAddStopToCalendar(stop)}
-                  onReschedule={() => setRescheduleStop(stop)}
+                  onPressName={() => openPassageDetail(stop)}
+                  onToggleDone={toggleDone}
+                  onMoveUp={
+                    showManualReorder ? () => void handleMove(stop.appointment_id, 'up') : undefined
+                  }
+                  onMoveDown={
+                    showManualReorder ? () => void handleMove(stop.appointment_id, 'down') : undefined
+                  }
                 />
-              ) : null
-            }
+              );
+            }}
           />
         )}
       </View>
+
+      <PassageFab onPress={() => setPlanningSheetOpen(true)} />
+
+      <PassagePlanningSheet
+        visible={planningSheetOpen}
+        selectedDate={date}
+        onClose={() => setPlanningSheetOpen(false)}
+        onSelect={handlePlanningChoice}
+      />
+
+      {tour && hasStops ? (
+        <TourSortFilterSheet
+          visible={sortSheetOpen}
+          active={tour.plan.sort_mode}
+          locked={tour.plan.manual_order_locked}
+          onClose={() => setSortSheetOpen(false)}
+          onSelect={handleOptimize}
+          onReset={() => void resetOrder()}
+        />
+      ) : null}
 
       <TourStopRescheduleSheet
         stop={rescheduleStop}
@@ -259,15 +315,13 @@ function buildStyles(c: AppColors) {
       paddingHorizontal: H_PADDING,
       paddingBottom: spacing[10],
     },
+    listHeader: {
+      alignSelf: 'stretch' as const,
+      width: '100%' as const,
+      overflow: 'visible' as const,
+    },
     listEmpty: {
       flexGrow: 1,
-    },
-    sectionTitle: {
-      fontFamily: fontFamily.semiBold,
-      fontSize: fontSize.xs,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.6,
-      marginBottom: spacing[2],
     },
   };
 }

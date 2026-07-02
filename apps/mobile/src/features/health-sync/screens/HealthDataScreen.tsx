@@ -2,27 +2,34 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useRouter } from 'expo-router';
-import { Platform, RefreshControl, Text, useWindowDimensions, View } from 'react-native';
+import { Linking, Platform, RefreshControl, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { MessageCircle } from 'lucide-react-native';
 import { ActionRowCard } from '@/components/ui/ActionRowCard';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useStackContentTopInset, useStackScrollConfig, STACK_SCENE_CONTENT_TOP_GAP } from '@/navigation/use-stack-scroll-config';
-import { elevation, radius, spacing } from '@/theme';
+import { useStackScrollConfig, STACK_SCENE_CONTENT_TOP_GAP } from '@/navigation/use-stack-scroll-config';
+import { elevation, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
-import { HealthDataEmptyPanel } from '../components/HealthDataEmptyPanel';
+import { HealthActivityHero } from '../components/HealthActivityHero';
+import { HealthConnectOnboarding } from '../components/HealthConnectOnboarding';
+import { HealthInsightCards } from '../components/HealthInsightCards';
 import { HealthMetricChart } from '../components/HealthMetricChart';
-import { HealthSourceConnectCard } from '../components/HealthSourceConnectCard';
-import { revokeHealthSource } from '../api/health.service';
+import { HealthSyncStatusCard } from '../components/HealthSyncStatusCard';
+import { useHealthAutoConnect } from '../hooks/use-health-auto-connect';
 import { pickMetricSeries } from '../hooks/use-health-dashboard';
 import { useHealthSourceConnection } from '../hooks/use-health-source-connection';
-import { useToast } from '@/providers/ToastProvider';
-import { useEffect, useMemo, useState } from 'react';
-import { fetchAiTrends } from '@/features/ai-hub/api/ai.service';
+import {
+  buildHealthInsights,
+  buildHealthMetricStats,
+  pickLatestMetricValue,
+} from '../utils/health-metric-stats';
+import { getHealthPlatformUiConfig } from '../utils/health-platform-config';
+import { useMemo } from 'react';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 
 interface Props {
@@ -33,29 +40,39 @@ export function HealthDataScreen({ variant = 'stack' }: Props) {
   const styles = useThemedStyles(buildStyles, 'features_health_sync_HealthDataScreen_styles');
   const c = useAppColors();
   const router = useRouter();
-  const { show: toast } = useToast();
   const insets = useTabSceneInsets();
-  const contentTopInset = useStackContentTopInset();
-  const { height: windowHeight } = useWindowDimensions();
   const scrollConfig = useStackScrollConfig(styles.scrollContent, {
     extraTop: STACK_SCENE_CONTENT_TOP_GAP,
   });
   const connection = useHealthSourceConnection();
-  const { dashboardQ, sourcesQ, connected, lastSyncAt, syncing, connectOrSync, primarySource } =
-    connection;
-  const [trends, setTrends] = useState<Array<{ observation_fr: string }>>([]);
+  const {
+    dashboardQ,
+    sourcesQ,
+    connected,
+    lastSyncAt,
+    syncing,
+    connectOrSync,
+    revokeConnection,
+    refetchAll,
+  } = connection;
+
+  const sourcesReady = !sourcesQ.isLoading || sourcesQ.data !== undefined;
+  const { phase: autoPhase } = useHealthAutoConnect({
+    enabled: variant === 'stack',
+    connected,
+    sourcesReady,
+    syncing,
+    onConnect: connectOrSync,
+  });
+
   const { refreshing, onRefresh } = useManualRefresh(async () => {
-    await connectOrSync();
+    await refetchAll();
   });
 
   const data = dashboardQ.data;
-
-  useEffect(() => {
-    if (!data?.summary?.has_data) return;
-    void fetchAiTrends(true)
-      .then(setTrends)
-      .catch(() => setTrends([]));
-  }, [data?.summary?.has_data]);
+  const stats = useMemo(() => buildHealthMetricStats(data), [data]);
+  const insights = useMemo(() => buildHealthInsights(data), [data]);
+  const loadingInitial = sourcesQ.isLoading && !sourcesQ.data;
 
   const weight = pickMetricSeries(data, 'weight');
   const heart = pickMetricSeries(data, 'heart_rate');
@@ -63,17 +80,20 @@ export function HealthDataScreen({ variant = 'stack' }: Props) {
   const summary7 = data?.summary?.windows?.['7d']?.metrics;
   const hasData = data?.summary?.has_data;
 
-  const chips = useMemo(() => {
-    const items: string[] = [];
-    trends.forEach((t) => items.push(t.observation_fr));
-    if (summary7?.steps) items.push(`~${Math.round(summary7.steps.avg)} pas/j`);
-    if (summary7?.weight && summary7.weight.sample_count >= 2) {
-      items.push(`${summary7.weight.min}–${summary7.weight.max} kg`);
-    }
-    return items;
-  }, [summary7, trends]);
+  const todaySteps = pickLatestMetricValue(steps);
+  const avgSteps7d = summary7?.steps ? summary7.steps.avg : null;
+  const lastHeart = pickLatestMetricValue(heart);
+  const lastWeight = pickLatestMetricValue(weight);
 
-  if (dashboardQ.isLoading && !data) {
+  const openPlatformSettings = () => {
+    if (Platform.OS === 'ios') {
+      void Linking.openURL('x-apple-health://');
+      return;
+    }
+    void Linking.openSettings();
+  };
+
+  if (loadingInitial) {
     const loading = (
       <View style={variant === 'stack' ? styles.loading : [styles.root, { paddingTop: insets.insetTop }]}>
         <SkeletonList count={4} />
@@ -82,148 +102,113 @@ export function HealthDataScreen({ variant = 'stack' }: Props) {
     return variant === 'stack' ? <StackChromeScreen>{loading}</StackChromeScreen> : loading;
   }
 
-  const emptyContainerStyle = useMemo(
-    () => ({
-      minHeight: windowHeight,
-      paddingTop: contentTopInset,
-      paddingBottom: contentTopInset,
-      justifyContent: 'center' as const,
-      alignItems: 'center' as const,
-      paddingHorizontal: spacing[4],
-    }),
-    [contentTopInset, windowHeight],
-  );
-
-  const handleRevoke = () => {
-    if (!primarySource) return;
-    void (async () => {
-      try {
-        await revokeHealthSource(primarySource.id);
-        await sourcesQ.refetch();
-        await dashboardQ.refetch();
-        toast('Accès révoqué', { type: 'success' });
-      } catch (e) {
-        toast(e instanceof Error ? e.message : 'Révocation impossible', { type: 'error' });
-      }
-    })();
-  };
-
-  const emptyBody = (
-    <HealthDataEmptyPanel
-      connected={connected}
-      syncing={syncing}
-      onConnect={() => void connectOrSync()}
-      onRevoke={connected ? handleRevoke : undefined}
-    />
-  );
-
-  const dataBody = (
+  const body = (
     <>
-      <HealthSourceConnectCard
-        connected={connected}
-        lastSyncAt={lastSyncAt}
-        syncing={syncing}
-        onPress={() => void connectOrSync()}
-        compact
-      />
+      {!connected ? (
+        <HealthConnectOnboarding
+          syncing={syncing}
+          autoPrompting={autoPhase === 'prompting' || syncing}
+          onConnect={() => void connectOrSync()}
+        />
+      ) : (
+        <>
+          <HealthSyncStatusCard
+            connected={connected}
+            lastSyncAt={lastSyncAt}
+            syncing={syncing}
+            stats={stats}
+            onConnect={() => void connectOrSync()}
+            onSync={() => void connectOrSync()}
+            onDisconnect={revokeConnection}
+          />
 
-      {chips.length > 0 ? (
-        <View style={styles.chipRow}>
-          {chips.map((label) => (
-            <View key={label} style={styles.chip}>
-              <Text style={styles.chipText}>{label}</Text>
-            </View>
-          ))}
+          {(hasData || todaySteps != null || avgSteps7d != null) && (
+            <HealthActivityHero
+              todaySteps={todaySteps}
+              avgSteps7d={avgSteps7d}
+              lastHeartRate={lastHeart}
+              lastWeight={lastWeight}
+            />
+          )}
+
+          <HealthInsightCards insights={insights} />
+        </>
+      )}
+
+      {dashboardQ.isError && !data ? (
+        <EmptyState
+          title="Graphiques indisponibles"
+          description="Vos données locales sont connectées, mais le serveur ne répond pas. Tirez pour rafraîchir."
+          actionLabel="Réessayer"
+          onAction={() => void dashboardQ.refetch()}
+        />
+      ) : null}
+
+      {connected && !hasData && !dashboardQ.isError ? (
+        <View style={styles.noDataHint}>
+          <Text style={styles.noDataTitle}>Aucune mesure importée</Text>
+          <Text style={styles.noDataText}>
+            Vérifiez que Cary peut lire le poids, la fréquence cardiaque et les pas dans{' '}
+            {getHealthPlatformUiConfig().name}, puis synchronisez.
+          </Text>
+          <Text style={styles.link} onPress={openPlatformSettings}>
+            Ouvrir {Platform.OS === 'ios' ? 'Apple Santé' : 'Health Connect'}
+          </Text>
         </View>
       ) : null}
 
-      <View style={[styles.chartCard, elevation.xs]}>
-        <HealthMetricChart title="Poids" unit="kg" points={weight} />
-        <HealthMetricChart title="Fréquence cardiaque" unit="bpm" points={heart} />
-        <HealthMetricChart
-          title="Pas"
-          unit="/j"
-          points={steps}
-          formatValue={(v) => String(Math.round(v))}
-          isLast
-        />
-      </View>
+      {hasData && !dashboardQ.isError ? (
+        <>
+          <View style={[styles.chartCard, elevation.xs]}>
+            <Text style={styles.sectionTitle}>Historique · 30 jours</Text>
+            <HealthMetricChart title="Pas" unit="/j" points={steps} formatValue={(v) => String(Math.round(v))} />
+            <HealthMetricChart title="Fréquence cardiaque" unit="bpm" points={heart} />
+            <HealthMetricChart title="Poids" unit="kg" points={weight} isLast />
+          </View>
 
-      <ActionRowCard
-        title="Demander à l'assistant"
-        Icon={MessageCircle}
-        iconColor={c.primary}
-        iconBg={c.primaryLight}
-        onPress={() =>
-          router.push(buildAiDeepLink('patient', { conversation_type: 'health_tracking' }) as never)
-        }
-        accessibilityLabel="Ouvrir l'assistant Cary"
-      />
+          <ActionRowCard
+            title="Demander à l'assistant"
+            Icon={MessageCircle}
+            iconColor={c.primary}
+            iconBg={c.primaryLight}
+            onPress={() =>
+              router.push(buildAiDeepLink('patient', { conversation_type: 'health_tracking' }) as never)
+            }
+            accessibilityLabel="Ouvrir l'assistant Cary"
+          />
+        </>
+      ) : null}
 
-      <Text style={styles.disclaimer}>Données indicatives — sans diagnostic médical.</Text>
+      <Text style={styles.disclaimer}>Indicatif — ne remplace pas un avis médical.</Text>
     </>
   );
 
-  if (variant === 'stack') {
-    if (!hasData) {
-      return (
-        <StackChromeScreen>
-          <Animated.ScrollView
-            style={styles.root}
-            contentContainerStyle={emptyContainerStyle}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing || syncing}
-                onRefresh={onRefresh}
-                progressViewOffset={insets.insetTop}
-              />
-            }
-            showsVerticalScrollIndicator={false}
-          >
-            {emptyBody}
-          </Animated.ScrollView>
-        </StackChromeScreen>
-      );
-    }
-
-    return (
-      <StackChromeScreen>
-        <Animated.ScrollView
-          {...spreadTabSceneScrollProps(scrollConfig)}
-          style={styles.root}
-          contentContainerStyle={scrollConfig.contentContainerStyle}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing || syncing}
-              onRefresh={onRefresh}
-              progressViewOffset={scrollConfig.refreshProgressOffset}
-            />
-          }
-          showsVerticalScrollIndicator={false}
-        >
-          {dataBody}
-        </Animated.ScrollView>
-      </StackChromeScreen>
-    );
-  }
-
-  return (
+  const content = (
     <Animated.ScrollView
+      {...(variant === 'stack' ? spreadTabSceneScrollProps(scrollConfig) : {})}
       style={styles.root}
       contentContainerStyle={
-        hasData
-          ? [
+        variant === 'stack'
+          ? scrollConfig.contentContainerStyle
+          : [
               styles.scrollContent,
               { paddingTop: insets.insetTop + spacing[4], paddingBottom: insets.insetBottom + spacing[8] },
             ]
-          : emptyContainerStyle
       }
-      refreshControl={<RefreshControl refreshing={refreshing || syncing} onRefresh={onRefresh} />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing || syncing}
+          onRefresh={onRefresh}
+          progressViewOffset={variant === 'stack' ? scrollConfig.refreshProgressOffset : insets.insetTop}
+        />
+      }
       showsVerticalScrollIndicator={false}
     >
-      {hasData ? dataBody : emptyBody}
+      {body}
     </Animated.ScrollView>
   );
+
+  return variant === 'stack' ? <StackChromeScreen>{content}</StackChromeScreen> : content;
 }
 
 function buildStyles(c: AppColors) {
@@ -235,41 +220,51 @@ function buildStyles(c: AppColors) {
       paddingBottom: spacing[10],
       gap: spacing[5],
     },
-    chipRow: {
-      flexDirection: 'row' as const,
-      flexWrap: 'wrap' as const,
-      gap: spacing[2],
-    },
-    chip: {
-      backgroundColor: c.surface,
-      borderRadius: radius.full,
-      borderWidth: 1,
-      borderColor: c.borderLight,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[1.5],
-    },
-    chipText: {
-      fontFamily: fontFamily.medium,
+    sectionTitle: {
+      fontFamily: fontFamily.semiBold,
       fontSize: fontSize.xs,
-      color: c.textSecondary,
+      color: c.textTertiary,
+      letterSpacing: 0.8,
+      textTransform: 'uppercase' as const,
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[4],
+      paddingBottom: spacing[1],
     },
     chartCard: {
       backgroundColor: c.surface,
-      borderRadius: radius.xl,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: c.borderLight,
       overflow: 'hidden' as const,
-      ...Platform.select({
-        ios: { borderCurve: 'continuous' as const },
-        default: {},
-      }),
+    },
+    noDataHint: {
+      backgroundColor: c.surfaceAlt,
+      borderRadius: 16,
+      padding: spacing[4],
+      gap: spacing[1.5],
+    },
+    noDataTitle: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.sm,
+      color: c.textPrimary,
+    },
+    noDataText: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+      lineHeight: fontSize.sm * 1.5,
+    },
+    link: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.sm,
+      color: c.primary,
+      marginTop: spacing[1],
     },
     disclaimer: {
       fontFamily: fontFamily.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       textAlign: 'center' as const,
-      marginTop: spacing[1],
     },
   };
 }
