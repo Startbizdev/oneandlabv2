@@ -14,12 +14,12 @@ if ($iosStoreUrl === '' && $iosStoreId !== '') {
 return [
     'ios' => [
         'min_version' => trim((string) ($_ENV['MOBILE_IOS_MIN_VERSION'] ?? '1.0.0')),
-        'latest_version' => trim((string) ($_ENV['MOBILE_IOS_LATEST_VERSION'] ?? '1.5.0')),
+        'latest_version' => trim((string) ($_ENV['MOBILE_IOS_LATEST_VERSION'] ?? '1.6.0')),
         'store_url' => $iosStoreUrl,
     ],
     'android' => [
         'min_version' => trim((string) ($_ENV['MOBILE_ANDROID_MIN_VERSION'] ?? '1.0.0')),
-        'latest_version' => trim((string) ($_ENV['MOBILE_ANDROID_LATEST_VERSION'] ?? '1.5.0')),
+        'latest_version' => trim((string) ($_ENV['MOBILE_ANDROID_LATEST_VERSION'] ?? '1.6.0')),
         'min_version_code' => max(1, (int) ($_ENV['MOBILE_ANDROID_MIN_VERSION_CODE'] ?? 7)),
         'store_url' => trim((string) ($_ENV['MOBILE_ANDROID_STORE_URL'] ?? ''))
             ?: ('https://play.google.com/store/apps/details?id=' . $androidPackage),
