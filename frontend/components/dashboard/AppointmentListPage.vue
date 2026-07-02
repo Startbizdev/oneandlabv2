@@ -232,8 +232,9 @@
         class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 mt-4 border-t border-gray-100 dark:border-gray-800"
       >
         <p class="text-[14px] text-gray-500 dark:text-gray-400">
-          Affichage de <span class="font-semibold text-gray-900 dark:text-white">{{ startIndex }}-{{ endIndex }}</span> 
+          Affichage de <span class="font-semibold text-gray-900 dark:text-white">{{ startIndex }}-{{ endIndex }}</span>
           sur <span class="font-semibold text-gray-900 dark:text-white">{{ totalItems }}</span>
+          <span v-if="isAdminCardPagination"> cartes</span>
         </p>
         <UPagination
           v-model:page="currentPage"
@@ -515,7 +516,7 @@ function syncNurseQueryToUrl() {
 watch(() => route.query, applyNurseNavFromRoute, { immediate: true });
 
 const currentPage = ref(1);
-/** Taille de page API (admin : 24 RDV / page). */
+/** Taille de page : 24 cartes (admin regroupe les lots multisoins). */
 const pageSize = ref(24);
 const totalItems = ref(0);
 /** Indique qu’il existe (probablement) une page suivante — renvoyé par l’API ou déduit. */
@@ -525,6 +526,8 @@ const serverHasMore = ref(false);
  * Re-filtrer côté client sur 24 lignes vide la grille alors que le total serveur reste > 0.
  */
 const isServerPaginatedList = computed(() => !props.useDateFilter);
+/** Admin : pagination par cartes (lots regroupés), pas par lignes API brutes. */
+const isAdminCardPagination = computed(() => props.basePath === '/admin');
 const hasClientSearchFilter = computed(() => (searchQuery.value || '').trim().length > 0);
 const totalPages = computed(() => Math.ceil(totalItems.value / pageSize.value));
 /** Afficher la barre si plus d’une page, ou page suivante possible, ou déjà au-delà de la page 1. */
@@ -607,12 +610,35 @@ async function confirmAcceptOfferPending() {
   }
 }
 
+const adminCardPageRows = ref<AppointmentListRow[]>([]);
+
+function appointmentsFromListRow(row: AppointmentListRow): any[] {
+  return row.kind === 'batch' ? row.appointments : [row.appointment];
+}
+
+function filterListRowsBySearch(rows: AppointmentListRow[], q: string): AppointmentListRow[] {
+  if (!q) return rows;
+  const searchPhone = q.replace(/\s/g, '');
+  return rows.filter((row) =>
+    appointmentsFromListRow(row).some((a) => {
+      const fd = normalizeAppointmentFormData(a.form_data) ?? {};
+      const phone = String(fd.phone ?? '').replace(/\s/g, '');
+      const address =
+        typeof a.address === 'string' ? a.address.toLowerCase() : (a.address?.label || '').toLowerCase();
+      const nameBlob = appointmentPatientSearchTextLower(a);
+      return nameBlob.includes(q) || phone.includes(searchPhone) || address.includes(q);
+    }),
+  );
+}
+
 const displayRows = computed((): AppointmentListRow[] => {
-  const list = filteredAndSorted.value;
-  // Admin : une carte = un RDV (sinon 24 lignes API → ~7 cartes lot multisoins).
-  if (props.basePath === '/admin') {
-    return list.map((appointment) => ({ kind: 'single', appointment }));
+  if (isAdminCardPagination.value) {
+    return filterListRowsBySearch(
+      adminCardPageRows.value,
+      (searchQuery.value || '').trim().toLowerCase(),
+    );
   }
+  const list = filteredAndSorted.value;
   if (props.basePath === '/nurse' && props.nurseLockedSegment === 'en_attente') {
     return groupAppointmentsForNurseMesDemandes(list);
   }
@@ -746,7 +772,10 @@ const endIndex = computed(() => {
 });
 
 const emptyStateTitle = computed(() => {
-  if (baseAppointments.value.length > 0 && filteredAndSorted.value.length === 0) {
+  if (isAdminCardPagination.value && adminCardPageRows.value.length > 0 && displayRows.value.length === 0) {
+    return 'Aucun résultat';
+  }
+  if (baseAppointments.value.length > 0 && filteredAndSorted.value.length === 0 && !isAdminCardPagination.value) {
     return 'Aucun résultat';
   }
   if (props.nurseLockedSegment === 'en_attente' && baseAppointments.value.length === 0) {
@@ -786,52 +815,105 @@ const emptyStateDescription = computed(() => {
   }
 });
 
+function buildAppointmentListParams(apiPage: number, apiLimit: number): Record<string, string> {
+  const params: Record<string, string> = {
+    page: String(apiPage),
+    limit: String(apiLimit),
+  };
+  if (props.statusFilterApi) {
+    params.status = props.statusFilterApi;
+  } else if (statusFilter.value && statusFilter.value !== 'all') {
+    params.status = statusFilter.value;
+  }
+  if (props.userIdFilter) {
+    params.user_id = props.userIdFilter;
+  }
+  if (isServerPaginatedList.value) {
+    params.sort = 'created_at';
+  }
+  const now = new Date();
+  if (dateRangeStart.value) {
+    params.date_from = new Date(dateRangeStart.value + 'T00:00:00')
+      .toISOString()
+      .slice(0, 19)
+      .replace('T', ' ');
+  } else if (props.useDateFilter && dateFilter.value === 'upcoming') {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    params.date_from = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())} ${pad(start.getHours())}:${pad(start.getMinutes())}:${pad(start.getSeconds())}`;
+  }
+  if (dateRangeEnd.value) {
+    params.date_to = new Date(dateRangeEnd.value + 'T23:59:59').toISOString().slice(0, 19).replace('T', ' ');
+  } else if (props.useDateFilter && dateFilter.value === 'past') {
+    params.date_to = now.toISOString().slice(0, 19).replace('T', ' ');
+  }
+  if (props.basePath === '/nurse') {
+    params.nurse_tab = nurseListTab.value;
+    const seg = props.nurseLockedSegment ?? nurseSegment.value;
+    if (nurseListTab.value === 'soins' && seg !== 'tous') {
+      params.nurse_segment = seg;
+    }
+  }
+  if (props.basePath === '/lab') {
+    const pre = (props.assignedToPreleveurId || '').trim();
+    const slab = (props.assignedToLabId || '').trim();
+    if (pre) params.filter_assigned_to = pre;
+    if (slab) params.filter_assigned_lab_id = slab;
+  }
+  return params;
+}
+
+/** Admin : charge assez de RDV API pour afficher 24 cartes (lots regroupés) par page. */
+async function fetchAdminCardPage() {
+  const cardPage = currentPage.value;
+  const perPage = pageSize.value;
+  const skip = (cardPage - 1) * perPage;
+  const need = skip + perPage;
+  const apiChunk = 50;
+
+  let apiPage = 1;
+  let accumulated: any[] = [];
+  let grouped: AppointmentListRow[] = [];
+  let apptHasMore = true;
+
+  while (grouped.length < need && apptHasMore) {
+    const params = buildAppointmentListParams(apiPage, apiChunk);
+    const response = await apiFetch(`/appointments?${new URLSearchParams(params).toString()}`, {
+      method: 'GET',
+    });
+    if (!response.success || !Array.isArray(response.data)) {
+      throw new Error((response as { error?: string }).error || 'Erreur lors du chargement des rendez-vous');
+    }
+    const chunk = response.data as any[];
+    if (chunk.length === 0) {
+      apptHasMore = false;
+      break;
+    }
+    accumulated = accumulated.concat(chunk);
+    grouped = groupAppointmentsByBatch(accumulated);
+    const pag = response.pagination as { has_more?: boolean } | undefined;
+    apptHasMore = chunk.length >= apiChunk && pag?.has_more !== false;
+    apiPage += 1;
+    if (apiPage > 40) break;
+  }
+
+  adminCardPageRows.value = grouped.slice(skip, skip + perPage);
+  baseAppointments.value = accumulated;
+
+  const hasMoreCards = grouped.length > skip + perPage || apptHasMore;
+  serverHasMore.value = hasMoreCards;
+  totalItems.value = hasMoreCards ? Math.max(skip + perPage + 1, grouped.length) : grouped.length;
+}
+
 const fetchAppointments = async (silent = false) => {
   if (!silent) loading.value = true;
   try {
-    const params: Record<string, string> = {
-      page: String(currentPage.value),
-      limit: String(pageSize.value),
-    };
-    if (props.statusFilterApi) {
-      params.status = props.statusFilterApi;
-    } else if (statusFilter.value && statusFilter.value !== 'all') {
-      params.status = statusFilter.value;
+    if (isAdminCardPagination.value) {
+      await fetchAdminCardPage();
+      return;
     }
-    if (props.userIdFilter) {
-      params.user_id = props.userIdFilter;
-    }
-    if (isServerPaginatedList.value) {
-      params.sort = 'created_at';
-    }
-    const now = new Date();
-    if (dateRangeStart.value) {
-      params.date_from = new Date(dateRangeStart.value + 'T00:00:00').toISOString().slice(0, 19).replace('T', ' ');
-    } else if (props.useDateFilter && dateFilter.value === 'upcoming') {
-      // Début du jour local : sinon les RDV « aujourd’hui » déjà passés disparaissent de « À venir »
-      const start = new Date();
-      start.setHours(0, 0, 0, 0);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      params.date_from = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())} ${pad(start.getHours())}:${pad(start.getMinutes())}:${pad(start.getSeconds())}`;
-    }
-    if (dateRangeEnd.value) {
-      params.date_to = new Date(dateRangeEnd.value + 'T23:59:59').toISOString().slice(0, 19).replace('T', ' ');
-    } else if (props.useDateFilter && dateFilter.value === 'past') {
-      params.date_to = now.toISOString().slice(0, 19).replace('T', ' ');
-    }
-    if (props.basePath === '/nurse') {
-      params.nurse_tab = nurseListTab.value;
-      const seg = props.nurseLockedSegment ?? nurseSegment.value;
-      if (nurseListTab.value === 'soins' && seg !== 'tous') {
-        params.nurse_segment = seg;
-      }
-    }
-    if (props.basePath === '/lab') {
-      const pre = (props.assignedToPreleveurId || '').trim();
-      const slab = (props.assignedToLabId || '').trim();
-      if (pre) params.filter_assigned_to = pre;
-      if (slab) params.filter_assigned_lab_id = slab;
-    }
+    const params = buildAppointmentListParams(currentPage.value, pageSize.value);
     const queryString = new URLSearchParams(params).toString();
     const response = await apiFetch(`/appointments?${queryString}`, { method: 'GET' });
 
@@ -858,6 +940,7 @@ const fetchAppointments = async (silent = false) => {
         color: 'red',
       });
       baseAppointments.value = [];
+      adminCardPageRows.value = [];
       totalItems.value = 0;
       serverHasMore.value = false;
     }
@@ -868,6 +951,7 @@ const fetchAppointments = async (silent = false) => {
       color: 'red',
     });
     baseAppointments.value = [];
+    adminCardPageRows.value = [];
     totalItems.value = 0;
     serverHasMore.value = false;
   } finally {
