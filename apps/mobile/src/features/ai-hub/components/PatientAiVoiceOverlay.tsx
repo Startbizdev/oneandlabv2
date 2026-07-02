@@ -20,7 +20,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Mic, X } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { CaryAiBookingRecapCard } from '@/features/ai-hub/components/CaryAiBookingRecapCard';
 import { CaryAiVoiceDocumentUpload } from '@/features/ai-hub/components/CaryAiVoiceDocumentUpload';
@@ -31,7 +31,7 @@ import {
   shouldShowAiDraftDocumentUpload,
 } from '../utils/should-show-ai-draft-documents';
 import type { CarePhotoPickSource } from '@/lib/uploads/pick-care-photo';
-import { elevation, H_PADDING, radius, spacing } from '@/theme';
+import { H_PADDING, radius, spacing } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 const DOCK_WAVEFORM_BARS = 32;
@@ -56,15 +56,12 @@ interface Props {
   onAttachDocument?: (source: CarePhotoPickSource) => void;
   onStart: () => void;
   onStop: () => void;
-  onMicPress?: () => void;
-  /** @deprecated Écoute auto — plus de bouton micro manuel */
-  onToggleMic?: () => void;
 }
 
 function resolveActivityMode(phase: VoicePhase, sessionActive: boolean): ActivityMode {
   if (phase === 'processing') return 'processing';
   if (phase === 'speaking') return 'assistant';
-  if (sessionActive && (phase === 'listening' || phase === 'idle')) return 'user';
+  if (sessionActive && phase === 'listening') return 'user';
   return 'idle';
 }
 
@@ -72,6 +69,7 @@ function statusCopy(
   phase: VoicePhase,
   sessionActive: boolean,
   available: boolean,
+  hasUserMessage: boolean,
 ): { title: string; sub: string } {
   if (!available) {
     return {
@@ -80,15 +78,17 @@ function statusCopy(
     };
   }
   if (phase === 'processing') {
-    return { title: 'Cary réfléchit…', sub: 'Analyse de votre message.' };
+    return hasUserMessage
+      ? { title: 'Cary réfléchit…', sub: 'Analyse de votre message.' }
+      : { title: 'Connexion…', sub: 'Cary se présente…' };
   }
   if (phase === 'speaking') {
-    return { title: 'Cary parle', sub: 'Écoutez la réponse — le micro reprendra ensuite.' };
+    return { title: 'Cary parle', sub: 'Écoutez — le micro reprendra ensuite.' };
   }
-  if (sessionActive) {
+  if (sessionActive && phase === 'listening') {
     return {
       title: 'Je vous écoute',
-      sub: 'Parlez naturellement — envoi automatique quand vous marquez une pause.',
+      sub: 'Parlez naturellement — vos mots s’affichent en direct.',
     };
   }
   return { title: 'Mode vocal', sub: 'Ouverture de la session…' };
@@ -222,15 +222,11 @@ function VoiceActivityDock({
   status,
   sessionActive,
   styles,
-  onMicPress,
-  micHint,
 }: {
   mode: ActivityMode;
   status: { title: string; sub: string };
   sessionActive: boolean;
   styles: ReturnType<typeof buildStyles>;
-  onMicPress?: () => void;
-  micHint?: string;
 }) {
   const c = useAppColors();
   const pulse = useSharedValue(1);
@@ -252,11 +248,17 @@ function VoiceActivityDock({
     );
   }, [mode, pulse, sessionActive]);
 
-  const iconStyle = useAnimatedStyle(() => ({
+  const orbStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulse.value }],
   }));
 
   const showWave = sessionActive && mode !== 'idle';
+  const orbColor =
+    mode === 'assistant'
+      ? c.primaryDark
+      : mode === 'processing'
+        ? hexToRgba(c.primary, 0.75)
+        : c.primary;
 
   return (
     <View style={styles.dock}>
@@ -282,38 +284,15 @@ function VoiceActivityDock({
           )}
         </View>
 
-        <Pressable
-          onPress={mode === 'user' ? onMicPress : undefined}
-          disabled={mode !== 'user' || !onMicPress}
-          accessibilityRole="button"
-          accessibilityLabel="Envoyer le message vocal"
-          accessibilityHint={micHint}
-        >
+        {showWave ? (
           <Animated.View
-            style={[
-              styles.micIndicator,
-              iconStyle,
-              {
-                backgroundColor:
-                  mode === 'assistant'
-                    ? c.primaryDark
-                    : mode === 'processing'
-                      ? hexToRgba(c.primary, 0.75)
-                      : c.primary,
-              },
-            ]}
+            style={[styles.voiceOrb, orbStyle, { backgroundColor: hexToRgba(orbColor, 0.18) }]}
           >
-            <Mic size={28} color={c.textInverse} strokeWidth={2.2} />
+            <View style={[styles.voiceOrbCore, { backgroundColor: orbColor }]} />
           </Animated.View>
-        </Pressable>
-
-        {showWave && micHint ? (
-          <Text style={[styles.dockSub, { color: c.textSecondary }]} numberOfLines={2}>
-            {micHint}
-          </Text>
         ) : null}
 
-        {showWave && !micHint ? (
+        {showWave ? (
           <Text style={[styles.dockSub, { color: c.textSecondary }]} numberOfLines={2}>
             {status.sub}
           </Text>
@@ -340,7 +319,6 @@ export function PatientAiVoiceOverlay({
   onAttachDocument,
   onStart,
   onStop,
-  onMicPress,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
@@ -349,8 +327,9 @@ export function PatientAiVoiceOverlay({
   const transcriptRef = useRef<ScrollView>(null);
 
   const sessionActive = started && available;
+  const hasUserMessage = turns.some((t) => t.role === 'user');
   const activityMode = resolveActivityMode(phase, sessionActive);
-  const status = statusCopy(phase, sessionActive, available);
+  const status = statusCopy(phase, sessionActive, available, hasUserMessage);
   const showRecap =
     activeDraft && shouldShowAiDraftRecap(activeDraft) && onConfirmDraft != null;
   const showDocumentUpload =
@@ -367,13 +346,14 @@ export function PatientAiVoiceOverlay({
       setStarted(true);
       void onStart();
     }
-    if (!visible) {
+    if (!visible && started) {
       setStarted(false);
+      onStop();
     }
-  }, [onStart, started, visible]);
+  }, [onStart, onStop, started, visible]);
 
   useEffect(() => {
-    if (turns.length > 0 || liveTranscript || phase === 'processing') {
+    if (turns.length > 0 || liveTranscript || phase === 'processing' || phase === 'speaking') {
       transcriptRef.current?.scrollToEnd({ animated: true });
     }
   }, [turns.length, liveTranscript, phase]);
@@ -427,16 +407,6 @@ export function PatientAiVoiceOverlay({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {turns.length === 0 && !liveLine && phase !== 'processing' ? (
-              <View style={styles.welcomeBlock}>
-                <Text style={[styles.welcomeTitle, { color: c.textPrimary }]}>Conversation vocale</Text>
-                <Text style={[styles.welcomeSub, { color: c.textSecondary }]}>
-                  Parlez naturellement — Cary vous écoute en continu et répond à voix haute. Pas besoin
-                  d’appuyer sur un bouton.
-                </Text>
-              </View>
-            ) : null}
-
             {turns.map((turn) => (
               <TurnBubble key={turn.id} turn={turn} styles={styles} />
             ))}
@@ -483,12 +453,6 @@ export function PatientAiVoiceOverlay({
               status={status}
               sessionActive={sessionActive}
               styles={styles}
-              onMicPress={onMicPress}
-              micHint={
-                activityMode === 'user'
-                  ? 'Pause naturelle ou appuyez sur le micro pour envoyer.'
-                  : undefined
-              }
             />
 
             <View style={styles.footer}>
@@ -496,7 +460,7 @@ export function PatientAiVoiceOverlay({
                 <Text style={[styles.caption, { color: c.error }]}>{speechError}</Text>
               ) : (
                 <Text style={[styles.captionMuted, { color: c.textTertiary }]}>
-                  À la fermeture, l’échange apparaît dans le chat texte.
+                  Conversation mains libres — parlez, Cary répond à voix haute.
                 </Text>
               )}
             </View>
@@ -528,22 +492,6 @@ function buildStyles(_c: AppColors) {
       gap: spacing[2.5],
       paddingTop: spacing[1],
       flexGrow: 1,
-    },
-    welcomeBlock: {
-      paddingVertical: spacing[6],
-      paddingHorizontal: spacing[2],
-      gap: spacing[2],
-    },
-    welcomeTitle: {
-      fontFamily: fontFamily.bold,
-      fontSize: fontSize.lg,
-      textAlign: 'center' as const,
-    },
-    welcomeSub: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSize.sm,
-      lineHeight: lh(fontSize.sm, 1.45),
-      textAlign: 'center' as const,
     },
     turnBubble: {
       borderRadius: radius.xl,
@@ -639,13 +587,17 @@ function buildStyles(_c: AppColors) {
       height: 44,
       borderRadius: radius.full,
     },
-    micIndicator: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
+    voiceOrb: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-      ...elevation.md,
+    },
+    voiceOrbCore: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
     },
     footer: {
       paddingHorizontal: spacing[5],

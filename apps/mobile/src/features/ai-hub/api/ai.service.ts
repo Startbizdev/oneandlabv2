@@ -286,8 +286,8 @@ export async function createVoiceSession(input?: {
 export async function sendVoiceTurn(
   sessionId: string,
   transcript: string,
-  audioBase64?: string | null,
 ): Promise<{
+  transcript: string;
   assistant_text: string;
   conversation_id: string;
   disclaimer: string;
@@ -295,6 +295,7 @@ export async function sendVoiceTurn(
   appointment_id?: string | null;
 }> {
   const res = await apiRequest<{
+    transcript: string;
     assistant_text: string;
     conversation_id: string;
     disclaimer: string;
@@ -304,7 +305,7 @@ export async function sendVoiceTurn(
     method: 'POST',
     body: {
       transcript,
-      ...(audioBase64 ? { audio_base64: audioBase64 } : {}),
+      stt_provider: 'client',
     },
   });
   if (!res.success || !res.data) throw new Error(res.error ?? 'Tour vocal impossible');

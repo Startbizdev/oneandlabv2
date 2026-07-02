@@ -148,7 +148,7 @@ export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: Screen
   const [draft, setDraft] = useState('');
   const [awaitingReply, setAwaitingReply] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
-  const voice = useVoiceSession({ conversationId: activeId });
+  const voice = useVoiceSession({ conversationId: activeId, userFirstName: firstName });
 
   const voiceTurnsRef = useRef(voice.turns);
   voiceTurnsRef.current = voice.turns;
@@ -300,7 +300,6 @@ export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: Screen
         speechError={voice.speechError}
         onStart={() => void voice.startConversation()}
         onStop={voice.stopConversation}
-        onToggleMic={() => void voice.toggleMic()}
       />
 
       <PatientAiConversationsSheet

@@ -37,9 +37,3 @@ export function tourStopAsAppointment(stop: NurseTourStop): Appointment {
     nursing_items_display: nursingDisplay,
   } as Appointment;
 }
-
-export function tourStopLotSummaryLabel(stop: NurseTourStop): string {
-  const n = stop.batch_sibling_count ?? 0;
-  if (n <= 1) return '';
-  return 'Rendez-vous multiple';
-}

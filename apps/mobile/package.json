@@ -25,6 +25,7 @@
     "icons:generate": "bash scripts/generate-brand-icons.sh",
     "build:ios:store": "node scripts/run-eas-ios.cjs",
     "build:dev:ios": "node scripts/run-eas-ios.cjs build --platform ios --profile development",
+    "build:dev:ios:clean": "node scripts/run-eas-ios.cjs build --platform ios --profile development --clear-cache",
     "build:dev:android": "node scripts/run-eas.cjs build --platform android --profile development",
     "build:store": "node scripts/run-eas.cjs build --platform all --profile production",
     "build:store:submit": "node scripts/run-eas.cjs build --platform all --profile production --auto-submit",

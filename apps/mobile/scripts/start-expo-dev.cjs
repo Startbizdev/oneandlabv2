@@ -137,7 +137,8 @@ async function main() {
     console.log('   3) « Enter URL manually » → Metro URL ci-dessus');
     console.log('      OU connectez le même compte Expo sur PC (npx expo login) et sur Cary Dev');
     console.log('   4) Tunnel si réseaux différents : npm run start:tunnel');
-    console.log('\n   ⚠️  Rebuild Cary Dev requis (launchMode: launcher) : npm run build:dev:ios\n');
+    console.log('\n   ⚠️  Si « No script URL » sans écran launcher : rebuild obligatoire');
+    console.log('      npm run build:dev:ios:clean  (fix prebuilt iOS, expo/expo#41751)\n');
   } else if (useTunnel) {
     const tunnelHint = 'https://qr.expo.dev/development-client?appScheme=' + encodeURIComponent(DEV_SCHEME);
     console.log('\n🌐 Tunnel Expo — après démarrage, Metro URL affichée par Expo');

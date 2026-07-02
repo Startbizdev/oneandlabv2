@@ -7,7 +7,6 @@ import { ChevronRight } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import {
   type AppointmentListRow,
-  batchLotSummaryLabel,
   displayAppointmentForListRow,
   isBloodTestOnlyBatchRow,
   isNursingOnlyBatchRow,
@@ -22,7 +21,6 @@ import {
 import { buildRdvListCardTypography } from './rdv-list-card-typography';
 import { maskOfferCounterparty } from '@/utils/offer-privacy-display';
 import { spacing } from '@/theme';
-import { fontFamily } from '@/theme/typography';
 
 const LIST_CARD_INSET_X = spacing[4];
 
@@ -111,10 +109,6 @@ export function RdvListCardBody({
   const isMergedHomogeneousBatch =
     row.kind === 'batch' && (isBloodTestOnlyBatchRow(row) || isNursingOnlyBatchRow(row));
   const displayApt = isMergedHomogeneousBatch ? displayAppointmentForListRow(row) : primaryApt;
-  const lotSummaryLabel =
-    isMergedHomogeneousBatch && row.kind === 'batch'
-      ? batchLotSummaryLabel(row.appointments)
-      : '';
 
   if (multiRdvBlocks && multiRdvBlocks.length > 0) {
     return (
@@ -135,11 +129,6 @@ export function RdvListCardBody({
 
   return (
     <View style={styles.bodyShell}>
-      {lotSummaryLabel ? (
-        <Text style={styles.lotSummary} numberOfLines={1}>
-          {lotSummaryLabel}
-        </Text>
-      ) : null}
       <MaquetteCardBlock apt={displayApt} role={role} status={resolveStatus(displayApt)} />
       {footer ? <View style={styles.extraFooter}>{footer}</View> : null}
       <CardNavChevron />
@@ -152,12 +141,6 @@ function buildStyles(c: AppColors) {
   return {
     bodyShell: {
       position: 'relative' as const,
-    },
-    lotSummary: {
-      ...type.meta,
-      color: c.primary,
-      marginBottom: spacing[2],
-      fontFamily: fontFamily.semiBold,
     },
     block: {},
     personSection: {

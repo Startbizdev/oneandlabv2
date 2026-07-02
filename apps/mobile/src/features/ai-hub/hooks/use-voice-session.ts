@@ -1,62 +1,57 @@
 import type { AiAppointmentDraft } from '@oneandlab/shared-types';
-import { useAudioRecorderState } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createVoiceSession, endVoiceSession, sendVoiceTurn } from '../api/ai.service';
 import { speakCaryVoice, stopCaryVoice } from '../utils/speak-cary-voice';
-import { useVoiceWhisperCapture } from './use-voice-whisper-capture';
-import {
-  isSpeechMeterLevel,
-  shouldAutoSubmitVoiceRecording,
-  VOICE_MAX_RECORDING_MS,
-  VOICE_NO_SPEECH_TIMEOUT_MS,
-} from '../utils/voice-audio-vad';
+import { VOICE_NO_SPEECH_TIMEOUT_MS } from '../utils/voice-audio-vad';
 import {
   appendVoiceTurn,
+  buildVoiceWelcomeMessage,
   createVoiceTurn,
   delay,
+  shouldAutoSubmitTranscript,
   VOICE_STT_TTS_GAP_MS,
   type VoiceTurn,
 } from '../utils/voice-session-utils';
+import { useDeviceSpeechRecognition } from './use-device-speech-recognition';
 
 export type { VoiceTurn } from '../utils/voice-session-utils';
 export type VoicePhase = 'idle' | 'listening' | 'processing' | 'speaking';
 
 export type VoiceSessionOptions = {
   conversationId?: string;
+  userFirstName?: string | null;
   onConversationSync?: (conversationId: string) => void | Promise<void>;
   onDraftSync?: (draft: AiAppointmentDraft | null) => void | Promise<void>;
   onAppointmentCreated?: (appointmentId: string) => void | Promise<void>;
 };
 
-/** STT unique : enregistrement → Whisper serveur (pas de STT natif iOS en parallèle). */
+/** STT natif (iOS/Android) → transcript texte → Grok serveur — expérience mains libres type voice chat. */
 export function useVoiceSession(options: VoiceSessionOptions = {}) {
-  const { conversationId, onConversationSync, onDraftSync, onAppointmentCreated } = options;
-  const whisper = useVoiceWhisperCapture();
+  const { conversationId, userFirstName, onConversationSync, onDraftSync, onAppointmentCreated } =
+    options;
+  const device = useDeviceSpeechRecognition({ locale: 'fr-FR', continuous: true });
+
   const [phase, setPhase] = useState<VoicePhase>('idle');
   const [active, setActive] = useState(false);
   const [turns, setTurns] = useState<VoiceTurn[]>([]);
   const [lastConversationId, setLastConversationId] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  const [recording, setRecording] = useState(false);
 
   const sessionIdRef = useRef<string | null>(null);
   const submittingRef = useRef(false);
   const activeRef = useRef(false);
-  const phaseRef = useRef<VoicePhase>('idle');
-  const recordingStartedAtRef = useRef(0);
-  const lastSpeechAtRef = useRef<number | null>(null);
-  const heardSpeechRef = useRef(false);
+  const listeningStartedAtRef = useRef(0);
   const submitRecordingRef = useRef<() => Promise<unknown>>(async () => null);
   const onSyncRef = useRef(onConversationSync);
   const onDraftSyncRef = useRef(onDraftSync);
   const onAppointmentCreatedRef = useRef(onAppointmentCreated);
+  const deviceRef = useRef(device);
+
+  deviceRef.current = device;
 
   useEffect(() => {
     activeRef.current = active;
   }, [active]);
-  useEffect(() => {
-    phaseRef.current = phase;
-  }, [phase]);
   useEffect(() => {
     onSyncRef.current = onConversationSync;
   }, [onConversationSync]);
@@ -66,6 +61,19 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
   useEffect(() => {
     onAppointmentCreatedRef.current = onAppointmentCreated;
   }, [onAppointmentCreated]);
+
+  useEffect(() => {
+    if (device.error && active) {
+      setVoiceError(device.error);
+    }
+  }, [active, device.error]);
+
+  useEffect(() => {
+    return () => {
+      stopCaryVoice();
+      deviceRef.current.abort();
+    };
+  }, []);
 
   const ensureSession = useCallback(async () => {
     if (sessionIdRef.current) return sessionIdRef.current;
@@ -84,44 +92,58 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     await speakCaryVoice(text);
   }, []);
 
-  const startRecording = useCallback(async () => {
-    setVoiceError(null);
-    const ok = await whisper.start();
-    if (!ok) {
-      setVoiceError('Microphone indisponible');
-      return false;
-    }
-    recordingStartedAtRef.current = Date.now();
-    lastSpeechAtRef.current = null;
-    heardSpeechRef.current = false;
-    setRecording(true);
-    setPhase('listening');
-    return true;
-  }, [whisper]);
+  const startListening = useCallback(
+    async (opts?: { clearError?: boolean }) => {
+      if (opts?.clearError !== false) {
+        setVoiceError(null);
+      }
+      device.clearTranscript();
+      const ok = await device.start();
+      if (!ok) {
+        setVoiceError(device.error ?? 'Microphone ou reconnaissance vocale indisponible');
+        return false;
+      }
+      listeningStartedAtRef.current = Date.now();
+      setPhase('listening');
+      return true;
+    },
+    [device],
+  );
+
+  const playWelcome = useCallback(async () => {
+    const welcomeText = buildVoiceWelcomeMessage(userFirstName);
+    setTurns([createVoiceTurn('assistant', welcomeText)]);
+    setPhase('speaking');
+    await speakResponse(welcomeText);
+  }, [speakResponse, userFirstName]);
 
   const submitRecording = useCallback(async () => {
     if (submittingRef.current) return null;
     submittingRef.current = true;
     setVoiceError(null);
     setPhase('processing');
-    setRecording(false);
 
-    const audioBase64 = await whisper.stopAndReadBase64();
-    if (!audioBase64) {
-      setVoiceError('Enregistrement trop court');
+    const captured = device.displayTranscript.trim();
+    device.stop();
+
+    if (!captured) {
       submittingRef.current = false;
+      device.clearTranscript();
       if (activeRef.current) {
-        await startRecording();
+        await startListening();
       } else {
         setPhase('idle');
       }
       return null;
     }
 
+    device.clearTranscript();
+
+    let submitFailed = false;
     try {
       const sid = await ensureSession();
-      const result = await sendVoiceTurn(sid, '', audioBase64);
-      const userText = result.transcript?.trim() ?? '';
+      const result = await sendVoiceTurn(sid, captured);
+      const userText = result.transcript?.trim() ?? captured;
       const assistantText = result.assistant_text?.trim() ?? '';
 
       if (userText) {
@@ -149,70 +171,84 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
       }
       return result;
     } catch (e) {
+      submitFailed = true;
       const message = e instanceof Error ? e.message : 'Réponse vocale indisponible';
       setVoiceError(message);
       return null;
     } finally {
       submittingRef.current = false;
-      if (activeRef.current && phaseRef.current !== 'idle') {
-        await delay(VOICE_STT_TTS_GAP_MS);
-        await startRecording();
-      } else {
+      if (!activeRef.current) {
+        device.abort();
         setPhase('idle');
+      } else if (!submitFailed) {
+        await delay(VOICE_STT_TTS_GAP_MS);
+        await startListening();
+      } else {
+        await delay(VOICE_STT_TTS_GAP_MS);
+        await startListening({ clearError: false });
       }
     }
-  }, [ensureSession, speakResponse, startRecording, whisper]);
+  }, [device, ensureSession, speakResponse, startListening]);
 
   submitRecordingRef.current = submitRecording;
 
-  const recorderState = useAudioRecorderState(whisper.recorder, 150);
-
   useEffect(() => {
-    if (!recording || phase !== 'listening' || submittingRef.current) return;
+    if (!active || phase !== 'listening' || submittingRef.current) return;
 
     const now = Date.now();
-    const metering = recorderState.metering;
+    const text = device.displayTranscript.trim();
+    const listeningDuration = now - listeningStartedAtRef.current;
 
-    if (isSpeechMeterLevel(metering)) {
-      heardSpeechRef.current = true;
-      lastSpeechAtRef.current = now;
-    }
-
-    const duration = now - recordingStartedAtRef.current;
-    if (!heardSpeechRef.current && duration >= VOICE_NO_SPEECH_TIMEOUT_MS) {
-      setVoiceError('Je n’ai rien entendu — réessayez en parlant près du micro.');
-      void submitRecordingRef.current();
+    if (!text && listeningDuration >= VOICE_NO_SPEECH_TIMEOUT_MS) {
+      device.abort();
+      device.clearTranscript();
+      void startListening();
       return;
     }
 
     if (
-      shouldAutoSubmitVoiceRecording({
-        now,
-        recordingStartedAt: recordingStartedAtRef.current,
-        lastSpeechAt: lastSpeechAtRef.current,
-        heardSpeech: heardSpeechRef.current,
-      })
+      text &&
+      device.lastResultAt > 0 &&
+      shouldAutoSubmitTranscript(text, device.lastResultAt, now)
     ) {
       void submitRecordingRef.current();
     }
-  }, [phase, recording, recorderState.metering, recorderState.durationMillis]);
+  }, [active, phase, device.displayTranscript, device.lastResultAt, startListening]);
 
   const startConversation = useCallback(async () => {
+    if (!device.available) {
+      setVoiceError(
+        device.error ?? 'Reconnaissance vocale indisponible — utilisez l’app Cary (pas Expo Go).',
+      );
+      return;
+    }
     setActive(true);
     setTurns([]);
     setVoiceError(null);
     setLastConversationId(conversationId ?? null);
+    setPhase('processing');
     await ensureSession();
-    await startRecording();
-  }, [conversationId, ensureSession, startRecording]);
+    if (!activeRef.current) return;
+    await playWelcome();
+    if (!activeRef.current) return;
+    await delay(VOICE_STT_TTS_GAP_MS);
+    await startListening();
+  }, [
+    conversationId,
+    device.available,
+    device.error,
+    ensureSession,
+    playWelcome,
+    startListening,
+  ]);
 
   const stopConversation = useCallback(() => {
     setActive(false);
-    setRecording(false);
     stopCaryVoice();
-    void whisper.discard();
+    device.abort();
+    device.clearTranscript();
     setPhase('idle');
-  }, [whisper]);
+  }, [device]);
 
   const endSession = useCallback(async () => {
     const sid = sessionIdRef.current;
@@ -223,17 +259,6 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
       /* session déjà clôturée ou réseau */
     }
   }, []);
-
-  const toggleMic = useCallback(async () => {
-    if (phase === 'processing' || phase === 'speaking') return;
-
-    if (recording) {
-      await submitRecording();
-      return;
-    }
-
-    await startRecording();
-  }, [phase, recording, startRecording, submitRecording]);
 
   const reset = useCallback(
     (opts?: { keepConversationId?: boolean }) => {
@@ -250,13 +275,13 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
 
   const lastUserText = [...turns].reverse().find((t) => t.role === 'user')?.text ?? null;
   const lastResponse = [...turns].reverse().find((t) => t.role === 'assistant')?.text ?? null;
-  const liveTranscript = recording ? 'Parlez… relâchez ou appuyez sur le micro pour envoyer.' : '';
+  const liveTranscript = phase === 'listening' ? device.displayTranscript : '';
 
   return {
     phase,
     active,
-    available: true,
-    recognizing: recording,
+    available: device.available,
+    recognizing: device.recognizing,
     liveTranscript,
     speechError: voiceError,
     lastUserText,
@@ -267,8 +292,6 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     startConversation,
     stopConversation,
     endSession,
-    toggleMic,
-    submitRecording,
     reset,
   };
 }

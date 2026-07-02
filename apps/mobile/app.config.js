@@ -48,6 +48,13 @@ module.exports = {
       infoPlist: {
         ...appJson.expo.ios.infoPlist,
         CFBundleDisplayName: IS_DEV ? 'Cary Dev' : appJson.expo.ios.infoPlist?.CFBundleDisplayName,
+        ...(IS_DEV
+          ? {
+              NSLocalNetworkUsageDescription:
+                'Cary Dev se connecte au serveur Metro sur votre réseau local pour charger le code JavaScript.',
+              NSBonjourServices: ['_expo._tcp'],
+            }
+          : {}),
       },
     },
     android: {
@@ -55,6 +62,17 @@ module.exports = {
       package: IS_DEV ? 'com.carybioapp.app.dev' : appJson.expo.android.package,
       softwareKeyboardLayoutMode: 'resize',
     },
+    ...(IS_DEV
+      ? {
+          autolinking: {
+            ios: {
+              // Fix EAS dev client iOS : prebuilt XCFrameworks → dev launcher jamais invoqué
+              // → "No script URL provided" (expo/expo#41751, docs prebuilt-expo-modules).
+              buildFromSource: ['.*'],
+            },
+          },
+        }
+      : {}),
     plugins: [
       [
         'expo-dev-client',
@@ -79,6 +97,15 @@ module.exports = {
             usesCleartextTraffic: true,
             minSdkVersion: 26,
           },
+          ...(IS_DEV
+            ? {
+                buildReactNativeFromSource: true,
+                ios: {
+                  usePrecompiledModules: false,
+                  buildReactNativeFromSource: true,
+                },
+              }
+            : {}),
         },
       ],
       [

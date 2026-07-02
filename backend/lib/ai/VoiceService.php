@@ -75,15 +75,21 @@ final class VoiceService
         $rawTranscript = trim((string) ($input['transcript'] ?? ''));
         $sttProvider = (string) ($input['stt_provider'] ?? 'client');
         if (!empty($input['audio_base64'])) {
+            $openAiKey = ai_env('OPENAI_API_KEY');
+            if ($openAiKey === null || $openAiKey === '') {
+                throw new InvalidArgumentException(
+                    'STT audio serveur indisponible — envoyez un transcript depuis le client (STT natif)',
+                );
+            }
             $whisperText = trim($this->transcribeAudio((string) $input['audio_base64'], (string) ($session['locale'] ?? 'fr')));
             if ($whisperText === '') {
-                throw new InvalidArgumentException('Transcription Whisper vide');
+                throw new InvalidArgumentException('Transcription audio vide');
             }
             $rawTranscript = $whisperText;
             $sttProvider = 'whisper';
         }
         if ($rawTranscript === '') {
-            throw new InvalidArgumentException('transcript ou audio_base64 requis');
+            throw new InvalidArgumentException('transcript requis (STT natif mobile)');
         }
         $transcript = $rawTranscript;
 
@@ -231,7 +237,7 @@ final class VoiceService
     {
         $openAiKey = ai_env('OPENAI_API_KEY');
         if ($openAiKey === null || $openAiKey === '') {
-            throw new InvalidArgumentException('STT serveur indisponible — envoyez transcript depuis le client');
+            throw new InvalidArgumentException('STT audio serveur indisponible');
         }
         $binary = base64_decode($audioBase64, true);
         if ($binary === false || $binary === '') {
