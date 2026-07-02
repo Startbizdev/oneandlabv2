@@ -15,7 +15,6 @@ import { isNursingAppointment } from '@oneandlab/shared-utils';
 import type { NurseTourStop } from '../api/nurse-tour.service';
 import {
   tourStopAsAppointment,
-  tourStopLotSummaryLabel,
 } from '../utils/tour-stop-as-appointment';
 import { spacing } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
@@ -40,13 +39,12 @@ function isDetailOptionLabel(label: string): boolean {
   );
 }
 
-/** Soins (emoji + libellé), options catalogue et mention lot — aligné détail RDV. */
+/** Soins (emoji + libellé) et options catalogue — aligné détail RDV. */
 export function TourStopCareSection({ stop, embedded = false, muted = false, listCompact = false }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
   const apt = useMemo(() => tourStopAsAppointment(stop), [stop]);
   const { data: categories = [] } = useAppointmentCareCategories();
-  const lotLabel = tourStopLotSummaryLabel(stop);
 
   const optionRows = useMemo(
     () => buildAppointmentCareOptionKvRows(apt, categories).filter((r) => r.value?.trim()),
@@ -77,11 +75,6 @@ export function TourStopCareSection({ stop, embedded = false, muted = false, lis
       gap={spacing[1]}
       style={[styles.wrap, embedded && styles.wrapEmbedded, muted && styles.wrapMuted]}
     >
-      {lotLabel ? (
-        <Text style={styles.lotLabel} numberOfLines={1}>
-          {lotLabel}
-        </Text>
-      ) : null}
       <RdvCareTagsRow apt={apt} tone="neutral" density="compact" badgeCategoryOnly />
       {displayOptionRows.length > 0 ? (
         <View style={styles.optionsBlock}>
@@ -112,13 +105,6 @@ function buildStyles(c: AppColors) {
     },
     wrapMuted: {
       opacity: 0.62,
-    },
-    lotLabel: {
-      fontFamily: fontFamily.semiBold,
-      fontSize: fontSize.xs,
-      lineHeight: lh(fontSize.xs),
-      color: c.textSecondary,
-      letterSpacing: 0.2,
     },
     optionsBlock: {
       gap: spacing[0.5],

@@ -28,6 +28,7 @@ import { CaryAiChatList } from '../components/CaryAiChatList';
 import { resolveMessageRecap } from '../utils/resolve-message-recap';
 import { draftPendingUploadType } from '../utils/should-show-ai-draft-documents';
 import { useCaryAiHub, type CaryAiHubInit } from '../hooks/use-cary-ai-hub';
+import { useAuthStore } from '@/store/auth-store';
 import { searchAiConversations } from '../api/ai.service';
 import { useCaryAiChatScroll } from '../hooks/use-cary-ai-chat-scroll';
 import type { PatientAiChatAttachment, PatientAiChatMessage } from '../types/patient-ai-conversation';
@@ -255,12 +256,16 @@ export function CaryAiHubScreen({
   const [convSearch, setConvSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [searchIds, setSearchIds] = useState<Set<string> | null>(null);
+  const closeVoiceModeRef = useRef<(opts?: { reload?: boolean }) => Promise<void>>(async () => {});
+  const voiceUserFirstName = useAuthStore((s) => s.user?.first_name ?? null);
+
   const voice = useVoiceSession({
     conversationId: activeId,
+    userFirstName: voiceUserFirstName,
     onConversationSync: reloadConversation,
     onDraftSync: syncVoiceDraft,
-    onAppointmentCreated: (appointmentId) => {
-      setVoiceOpen(false);
+    onAppointmentCreated: async (appointmentId) => {
+      await closeVoiceModeRef.current({ reload: false });
       onVoiceAppointmentCreated(appointmentId);
     },
   });
@@ -268,28 +273,47 @@ export function CaryAiHubScreen({
   const {
     endSession: endVoiceSessionApi,
     reset: resetVoiceSession,
+    stopConversation: stopVoiceConversation,
     lastConversationId: voiceLastConversationId,
   } = voice;
 
+  const closeVoiceMode = useCallback(
+    async (opts?: { reload?: boolean }) => {
+      stopVoiceConversation();
+      await endVoiceSessionApi();
+      resetVoiceSession({ keepConversationId: true });
+      setVoiceOpen(false);
+      if (opts?.reload !== false) {
+        const convId = voiceLastConversationId ?? activeId;
+        if (convId) {
+          await reloadConversation(convId);
+        }
+      }
+    },
+    [
+      activeId,
+      endVoiceSessionApi,
+      reloadConversation,
+      resetVoiceSession,
+      stopVoiceConversation,
+      voiceLastConversationId,
+    ],
+  );
+
+  closeVoiceModeRef.current = closeVoiceMode;
+
   const handleVoiceClose = useCallback(async () => {
-    const convId = voiceLastConversationId ?? activeId;
-    await endVoiceSessionApi();
-    resetVoiceSession({ keepConversationId: true });
-    setVoiceOpen(false);
-    if (convId) {
-      await reloadConversation(convId);
-    }
-  }, [activeId, endVoiceSessionApi, resetVoiceSession, reloadConversation, voiceLastConversationId]);
+    await closeVoiceMode({ reload: true });
+  }, [closeVoiceMode]);
 
   const handleConfirmDraft = useCallback(
     async (draft?: Parameters<typeof confirmDraft>[0]) => {
       if (voiceOpen) {
-        setVoiceOpen(false);
-        resetVoiceSession({ keepConversationId: true });
+        await closeVoiceMode({ reload: true });
       }
       await confirmDraft(draft);
     },
-    [confirmDraft, resetVoiceSession, voiceOpen],
+    [closeVoiceMode, confirmDraft, voiceOpen],
   );
 
   const showSuggestions = messages.length <= 1 && !awaitingReply && suggestions.length > 0;
@@ -514,8 +538,6 @@ export function CaryAiHubScreen({
         }
         onStart={() => void voice.startConversation()}
         onStop={voice.stopConversation}
-        onMicPress={() => void voice.submitRecording()}
-        onToggleMic={() => void voice.toggleMic()}
       />
 
       <PatientAiConversationsSheet
