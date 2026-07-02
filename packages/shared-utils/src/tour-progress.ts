@@ -21,11 +21,10 @@ export function computeTourSummaryFromStops(
   stops: TourStopProgressLike[],
   estimatedKm = 0,
 ): { total_stops: number; done_stops: number; absent_stops: number; estimated_km: number } {
-  const total = stops.length;
   const absent = stops.filter(isTourStopAbsent).length;
   const done = stops.filter(isTourStopDone).length;
   return {
-    total_stops: total,
+    total_stops: Math.max(0, stops.length - absent),
     done_stops: done,
     absent_stops: absent,
     estimated_km: estimatedKm,
