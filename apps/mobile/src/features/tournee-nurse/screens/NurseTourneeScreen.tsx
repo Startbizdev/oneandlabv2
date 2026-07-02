@@ -249,6 +249,9 @@ export function NurseTourneeScreen() {
   );
 
   const hasStops = displayStops.length > 0;
+  const absentCount = tour?.summary.absent_stops ?? 0;
+  const showTourSummary =
+    Boolean(tour) && ((tour?.summary.total_stops ?? 0) > 0 || absentCount > 0);
 
   const sortFilterActive = Boolean(
     tour && (tour.plan.sort_mode !== 'smart' || tour.plan.manual_order_locked),
@@ -257,7 +260,7 @@ export function NurseTourneeScreen() {
   const listHeader = useCallback(
     () => (
       <View style={styles.listHeader}>
-        {tour && hasStops ? (
+        {showTourSummary && tour ? (
           <TourSummaryCard
             summary={tour.summary}
             activeRemaining={countTourActiveRemainingStops(displayStops)}
@@ -266,12 +269,13 @@ export function NurseTourneeScreen() {
         {hasStops ? (
           <TourPassageSectionHeader
             sortActive={sortFilterActive}
+            absentCount={absentCount}
             onOpenFilter={() => setSortSheetOpen(true)}
           />
         ) : null}
       </View>
     ),
-    [hasStops, sortFilterActive, tour, styles.listHeader],
+    [absentCount, displayStops, hasStops, showTourSummary, sortFilterActive, tour, styles.listHeader],
   );
 
   return (

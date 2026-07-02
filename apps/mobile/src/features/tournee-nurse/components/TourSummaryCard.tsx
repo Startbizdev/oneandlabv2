@@ -26,10 +26,11 @@ export function TourSummaryCard({ summary, activeRemaining }: Props) {
   const total = summary.total_stops;
   const done = summary.done_stops;
   const absent = summary.absent_stops ?? 0;
+  const allAbsentOnly = total === 0 && absent > 0;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   const remaining = activeRemaining ?? Math.max(0, total - done);
 
-  if (total === 0) return null;
+  if (total === 0 && absent === 0) return null;
 
   return (
     <View style={[cardStyles.cardShell, styles.shell, elevation.md]}>
@@ -43,40 +44,59 @@ export function TourSummaryCard({ summary, activeRemaining }: Props) {
         <View style={styles.glowOrbSecondary} pointerEvents="none" />
 
         <Row gap={spacing[3]} align="center">
-          <HealthRecordProgressRing percent={pct} size={56} strokeWidth={4} tone="onGradient" />
+          <HealthRecordProgressRing percent={allAbsentOnly ? 0 : pct} size={56} strokeWidth={4} tone="onGradient" />
           <Stack gap={spacing[0.5]} style={styles.copy}>
             <Text style={styles.kicker}>Ma tournée du jour</Text>
-            <Text style={styles.title}>
-              {done} sur {total} passage{total > 1 ? 's' : ''}
-            </Text>
-            <Text style={styles.sub}>
-              {remaining > 0
-                ? `${remaining} passage${remaining > 1 ? 's' : ''} restant${remaining > 1 ? 's' : ''}`
-                : 'Bravo, tournée terminée !'}
-            </Text>
+            {allAbsentOnly ? (
+              <>
+                <Text style={styles.title}>Pas de tournée du jour</Text>
+                <Text style={styles.sub}>
+                  Vous avez {absent} patient{absent > 1 ? 's' : ''} absent{absent > 1 ? 's' : ''}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.title}>
+                  {done} sur {total} passage{total > 1 ? 's' : ''}
+                </Text>
+                <Text style={styles.sub}>
+                  {remaining > 0
+                    ? `${remaining} passage${remaining > 1 ? 's' : ''} restant${remaining > 1 ? 's' : ''}`
+                    : 'Bravo, tournée terminée !'}
+                </Text>
+              </>
+            )}
           </Stack>
         </Row>
 
         <View style={styles.metrics}>
-          <Row gap={spacing[1]} align="center" style={styles.metricItem}>
-            <Route size={12} color="#FFFFFF" strokeWidth={2.2} />
+          {allAbsentOnly ? (
             <Text style={styles.metric}>
-              {total} étape{total > 1 ? 's' : ''}
+              {absent} absent{absent > 1 ? 's' : ''}
             </Text>
-          </Row>
-          <View style={styles.metricDot} />
-          <Row gap={spacing[1]} align="center" style={styles.metricItem}>
-            <MapPin size={12} color="#FFFFFF" strokeWidth={2.2} />
-            <Text style={styles.metric}>{summary.estimated_km} km estimés</Text>
-          </Row>
-          {absent > 0 ? (
+          ) : (
             <>
+              <Row gap={spacing[1]} align="center" style={styles.metricItem}>
+                <Route size={12} color="#FFFFFF" strokeWidth={2.2} />
+                <Text style={styles.metric}>
+                  {total} étape{total > 1 ? 's' : ''}
+                </Text>
+              </Row>
               <View style={styles.metricDot} />
-              <Text style={styles.metric}>
-                {absent} absent{absent > 1 ? 's' : ''}
-              </Text>
+              <Row gap={spacing[1]} align="center" style={styles.metricItem}>
+                <MapPin size={12} color="#FFFFFF" strokeWidth={2.2} />
+                <Text style={styles.metric}>{summary.estimated_km} km estimés</Text>
+              </Row>
+              {absent > 0 ? (
+                <>
+                  <View style={styles.metricDot} />
+                  <Text style={styles.metric}>
+                    {absent} absent{absent > 1 ? 's' : ''}
+                  </Text>
+                </>
+              ) : null}
             </>
-          ) : null}
+          )}
         </View>
       </LinearGradient>
     </View>

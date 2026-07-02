@@ -9,16 +9,22 @@ import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
   sortActive: boolean;
+  absentCount?: number;
   onOpenFilter: () => void;
 };
 
-export function TourPassageSectionHeader({ sortActive, onOpenFilter }: Props) {
+export function TourPassageSectionHeader({ sortActive, absentCount = 0, onOpenFilter }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
 
   return (
     <Row align="center" gap={spacing[1.5]} style={styles.row}>
       <Text style={[styles.title, { color: c.textTertiary }]}>Passage</Text>
+      {absentCount > 0 ? (
+        <Text style={[styles.absentHint, { color: c.textSecondary }]}>
+          {absentCount} absent{absentCount > 1 ? 's' : ''}
+        </Text>
+      ) : null}
       <Pressable
         onPress={onOpenFilter}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -46,6 +52,10 @@ function buildStyles(_c: AppColors) {
       fontSize: fontSize.xs,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.6,
+    },
+    absentHint: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSize.xs,
     },
     filterBtn: {
       width: 32,
