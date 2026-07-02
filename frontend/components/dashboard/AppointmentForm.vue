@@ -885,6 +885,7 @@
 import { apiFetch } from '~/utils/api';
 import { fetchAllPatientsForDashboard } from '~/utils/fetch-all-patients';
 import { PATIENT_SELECT_SEARCH_PLACEHOLDER, buildPatientSelectRow } from '~/utils/patient-select-menu';
+import { lookupPatientByContact } from '~/utils/patient-contact-lookup';
 import type { Address, Appointment } from '~/types/appointments';
 import { MIN_BIRTH_YEAR } from '~/constants/birth-date';
 import { NURSING_DURATION_OPTIONS, showNursingFrequency as showNursingFreq } from '~/constants/nursing-duration';
@@ -1070,10 +1071,10 @@ const loadingPatientDocuments = ref(false);
 const uploadingDocumentType = ref<string | null>(null);
 const PATIENT_DOC_TYPES = ['carte_vitale', 'carte_mutuelle', 'autres_assurances'];
 
-/** Debounce recherche patient par email (nouveau patient) */
-let emailLookupTimer: ReturnType<typeof setTimeout> | null = null;
-const emailLookupLoading = ref(false);
-const skipEmailLookupOnce = ref(false);
+/** Debounce recherche patient par email / téléphone (nouveau patient) */
+let contactLookupTimer: ReturnType<typeof setTimeout> | null = null;
+const contactLookupLoading = ref(false);
+const skipContactLookupOnce = ref(false);
 
 // Form Data
 const categoryOptions = ref<SelectOption[]>([]);
@@ -2708,16 +2709,15 @@ watch(selectedPatientId, async (id) => {
   }
 });
 
-async function runPatientEmailLookup(emailTrim: string) {
+async function runPatientContactLookup(email: string, phone: string) {
   if (!isCreate.value || selectedPatientId.value !== NEW_PATIENT_VALUE) return;
   if (!canCreatePatientForAppointment.value) return;
   if (!(isProForm.value || isNurseForm.value || isLabForm.value || isSubaccountForm.value || props.basePath === '/admin')) return;
-  emailLookupLoading.value = true;
+  contactLookupLoading.value = true;
   try {
-    const res = await apiFetch(`/patients/lookup?email=${encodeURIComponent(emailTrim)}`, { method: 'GET' });
-    if (res?.success && (res as any).data?.id) {
-      const row = (res as any).data;
-      skipEmailLookupOnce.value = true;
+    const row = await lookupPatientByContact(apiFetch, email, phone);
+    if (row?.id) {
+      skipContactLookupOnce.value = true;
       selectedPatientId.value = String(row.id);
       await selectPatient(row);
       if (!patients.value.some((x) => String(x.id) === String(row.id))) {
@@ -2725,7 +2725,7 @@ async function runPatientEmailLookup(emailTrim: string) {
       }
       toast.add({
         title: 'Patient existant',
-        description: 'Un compte avec cet e-mail a été trouvé — données préremplies.',
+        description: 'Un dossier correspondant a été trouvé — données préremplies.',
         color: 'green',
         icon: 'i-lucide-user-check',
       });
@@ -2733,31 +2733,32 @@ async function runPatientEmailLookup(emailTrim: string) {
   } catch {
     /* silencieux */
   } finally {
-    emailLookupLoading.value = false;
+    contactLookupLoading.value = false;
   }
 }
 
 watch(
-  () => form.form_data.email,
-  (em) => {
+  () => [form.form_data.email, form.form_data.phone] as const,
+  ([em, ph]) => {
     if (!isCreate.value || selectedPatientId.value !== NEW_PATIENT_VALUE) return;
     if (!canCreatePatientForAppointment.value) return;
     if (!(isProForm.value || isNurseForm.value || isLabForm.value || isSubaccountForm.value || props.basePath === '/admin')) return;
-    if (skipEmailLookupOnce.value) {
-      skipEmailLookupOnce.value = false;
+    if (skipContactLookupOnce.value) {
+      skipContactLookupOnce.value = false;
       return;
     }
-    if (emailLookupTimer) {
-      clearTimeout(emailLookupTimer);
-      emailLookupTimer = null;
+    if (contactLookupTimer) {
+      clearTimeout(contactLookupTimer);
+      contactLookupTimer = null;
     }
-    const t = (em || '').trim();
-    if (!t || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return;
-    emailLookupTimer = setTimeout(() => {
-      emailLookupTimer = null;
-      runPatientEmailLookup(t);
+    const email = (em || '').trim();
+    const phone = (ph || '').trim();
+    if (!email && !phone.replace(/\D/g, '')) return;
+    contactLookupTimer = setTimeout(() => {
+      contactLookupTimer = null;
+      void runPatientContactLookup(email, phone);
     }, 400);
-  }
+  },
 );
 
 watch([birthYear, birthMonth, birthDay], () => {

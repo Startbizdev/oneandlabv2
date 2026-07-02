@@ -15,7 +15,7 @@ import { handleApiError } from '@/lib/errors/handle-api-error';
 import { fetchAllPatients } from '@/features/patients/api/fetch-all-patients';
 import { patientPickerOptionFromRow } from '@/features/patients/utils/patient-contact-display';
 import { createPatient } from '@/features/patients/api/patients.service';
-import { lookupPatientByEmail } from '@/features/patients/api/patient-lookup.service';
+import { lookupPatientByContact } from '@/features/patients/api/patient-lookup.service';
 import {
   fetchCareCategories,
   fetchCareCategoryOptions,
@@ -180,8 +180,8 @@ export function useAppointmentForm(opts: {
 
       let patientId = selectedPatientId && selectedPatientId !== NEW_PATIENT_ID ? selectedPatientId : undefined;
 
-      if (data.email?.trim() && !patientId) {
-        const lookup = await lookupPatientByEmail(data.email);
+      if (!patientId) {
+        const lookup = await lookupPatientByContact(data.email ?? '', data.phone ?? '');
         if (lookup.success && lookup.data?.id) patientId = lookup.data.id;
       }
 
@@ -365,6 +365,7 @@ export function useMultiAppointmentWizard(opts: {
     opts.initialPatientId ? 'existing' : 'existing',
   );
   const [addressComplement, setAddressComplement] = useState('');
+  const [pinnedLookupPatient, setPinnedLookupPatient] = useState<PatientRow | null>(null);
 
   const form = useForm({
     defaultValues: {
@@ -443,28 +444,37 @@ export function useMultiAppointmentWizard(opts: {
     (id: string, opts?: { keepMode?: boolean }) => {
       setSelectedPatientId(id);
       const isNew = id === NEW_PATIENT_ID;
+      if (!isNew && pinnedLookupPatient?.id !== id) {
+        setPinnedLookupPatient(null);
+      }
       if (!opts?.keepMode) {
         if (isNew) {
           setPatientMode('new');
+          setPinnedLookupPatient(null);
         } else {
           setPatientMode('existing');
         }
       }
       if (!isNew) {
-        const p = patientsQ.data?.find((x) => x.id === id);
+        const p =
+          patientsQ.data?.find((x) => x.id === id) ??
+          (pinnedLookupPatient?.id === id ? pinnedLookupPatient : undefined);
         if (p) void fillWizardPatient(p);
       }
     },
-    [patientsQ.data, fillWizardPatient],
+    [patientsQ.data, fillWizardPatient, pinnedLookupPatient],
   );
 
-  const patientOptions = useMemo(
-    () => (patientsQ.data ?? []).map(patientPickerOptionFromRow),
-    [patientsQ.data],
-  );
+  const patientOptions = useMemo(() => {
+    const base = (patientsQ.data ?? []).map(patientPickerOptionFromRow);
+    if (!pinnedLookupPatient) return base;
+    if (base.some((p) => p.id === pinnedLookupPatient.id)) return base;
+    return [patientPickerOptionFromRow(pinnedLookupPatient), ...base];
+  }, [patientsQ.data, pinnedLookupPatient]);
 
   const adoptLookupPatient = useCallback(
     (row: PatientRow) => {
+      setPinnedLookupPatient(row);
       if (!patientsQ.data?.some((x) => x.id === row.id)) {
         void patientsQ.refetch();
       }
@@ -603,8 +613,8 @@ export function useMultiAppointmentWizard(opts: {
       let patientId =
         selectedPatientId && selectedPatientId !== NEW_PATIENT_ID ? selectedPatientId : undefined;
 
-      if (patientMode === 'new' && patient.email?.trim() && !patientId) {
-        const lookup = await lookupPatientByEmail(patient.email);
+      if (patientMode === 'new' && !patientId) {
+        const lookup = await lookupPatientByContact(patient.email ?? '', patient.phone ?? '');
         if (lookup.success && lookup.data?.id) patientId = lookup.data.id;
       }
 

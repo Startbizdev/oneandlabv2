@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { lookupPatientByEmail, lookupPatientByPhone } from '@/features/patients/api/patient-lookup.service';
+import { lookupPatientByContact } from '@/features/patients/api/patient-lookup.service';
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function isFrenchPhoneLookup(phone: string): boolean {
-  const d = phone.replace(/\D/g, '');
-  return d.length >= 10 && (d.startsWith('0') || d.startsWith('33'));
-}
 
 /** Détecte un patient existant par email ou téléphone (debounce 450 ms). */
 export function usePatientDuplicateDetection(email: string, phone: string, enabled: boolean) {
@@ -20,18 +13,14 @@ export function usePatientDuplicateDetection(email: string, phone: string, enabl
     if (!enabled) return;
     const em = email.trim();
     const ph = phone.trim();
-    const emailOk = EMAIL_RE.test(em);
-    const phoneOk = isFrenchPhoneLookup(ph);
-    if (!emailOk && !phoneOk) {
+    if (!em && !ph.replace(/\D/g, '')) {
       setDuplicateOpen(false);
       setDuplicateRow(null);
       return;
     }
 
     try {
-      const res = emailOk
-        ? await lookupPatientByEmail(em)
-        : await lookupPatientByPhone(ph);
+      const res = await lookupPatientByContact(em, ph);
       const row = res.success ? res.data : null;
       if (!row?.id) {
         setDuplicateOpen(false);
