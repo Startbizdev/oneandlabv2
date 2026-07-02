@@ -607,11 +607,17 @@ async function confirmAcceptOfferPending() {
   }
 }
 
-const displayRows = computed(() =>
-  props.basePath === '/nurse' && props.nurseLockedSegment === 'en_attente'
-    ? groupAppointmentsForNurseMesDemandes(filteredAndSorted.value)
-    : groupAppointmentsByBatch(filteredAndSorted.value),
-);
+const displayRows = computed((): AppointmentListRow[] => {
+  const list = filteredAndSorted.value;
+  // Admin : une carte = un RDV (sinon 24 lignes API → ~7 cartes lot multisoins).
+  if (props.basePath === '/admin') {
+    return list.map((appointment) => ({ kind: 'single', appointment }));
+  }
+  if (props.basePath === '/nurse' && props.nurseLockedSegment === 'en_attente') {
+    return groupAppointmentsForNurseMesDemandes(list);
+  }
+  return groupAppointmentsByBatch(list);
+});
 const dateFilter = ref('upcoming');
 const searchQuery = ref('');
 const filtersSheetOpen = ref(false);
