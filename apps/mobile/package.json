@@ -10,6 +10,7 @@
     "verify:eas": "node scripts/verify-eas-archive-size.cjs && node scripts/verify-eas-preflight.cjs",
     "postinstall": "node scripts/patch-expo-ngrok.cjs",
     "start": "node scripts/start-expo-dev.cjs",
+    "dev": "node scripts/start-expo-dev.cjs",
     "start:localhost": "expo start --dev-client",
     "start:tunnel": "node scripts/start-expo-dev.cjs --tunnel",
     "start:clean": "node scripts/clean-metro.cjs && node scripts/start-expo-dev.cjs -c",

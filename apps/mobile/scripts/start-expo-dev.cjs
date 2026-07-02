@@ -19,14 +19,19 @@ function pickLanIpv4() {
   const candidates = [];
 
   for (const [name, addrs] of Object.entries(nets)) {
+    if (/vEthernet|Hyper-V|VirtualBox|VMware|WSL|TAP|Tun|Teredo|Loopback|Bluetooth/i.test(name)) {
+      continue;
+    }
     for (const net of addrs ?? []) {
       if (net.family !== 'IPv4' || net.internal) continue;
       candidates.push({ name, address: net.address });
     }
   }
 
-  const preferred = candidates.find((c) =>
-    /^(Wi-?Fi|WLAN|Ethernet|eth\d|en\d)/i.test(c.name),
+  const preferred = candidates.find(
+    (c) =>
+      /^(Wi-?Fi|WLAN|Ethernet|eth\d|en\d)/i.test(c.name) &&
+      /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(c.address),
   );
   return preferred?.address ?? candidates[0]?.address ?? null;
 }
@@ -87,6 +92,8 @@ async function ensureTunnelReady() {
   }
 }
 
+const DEV_SCHEME = 'com.carybioapp.app.dev';
+
 async function main() {
   if (useTunnel) {
     await ensureTunnelReady();
@@ -99,7 +106,7 @@ async function main() {
   const devClient = process.env.EXPO_USE_DEV_CLIENT !== '0';
   const expoStartArgs = [
     'start',
-    ...(devClient ? ['--dev-client'] : []),
+    ...(devClient ? ['--dev-client', '--scheme', DEV_SCHEME] : []),
     ...(useTunnel ? ['--tunnel'] : ['--lan']),
     '--port',
     String(port),
@@ -107,16 +114,35 @@ async function main() {
   ];
 
   const lanIp = pickLanIpv4();
-  const env = { ...process.env };
+  const env = {
+    ...process.env,
+    // Aligne le QR Metro sur Cary Dev (com.carybioapp.app.dev), pas TestFlight.
+    APP_VARIANT: process.env.APP_VARIANT ?? 'development',
+  };
 
   if (!useTunnel && lanIp) {
     env.REACT_NATIVE_PACKAGER_HOSTNAME = lanIp;
     env.EXPO_PACKAGER_HOSTNAME = lanIp;
-    console.log(`\n📡 Expo LAN : ${lanIp} — ouvrez l’app Cary Dev (pas TestFlight) et scannez le QR\n`);
-    console.log(`   URL manuelle si besoin : exp+cary-mobile://expo-development-client/?url=http://${lanIp}:${port}\n`);
+    const metroUrl = `http://${lanIp}:${port}`;
+    const deepLinkDev = `${DEV_SCHEME}://expo-development-client/?url=${encodeURIComponent(metroUrl)}`;
+    const expoQrUrl = `https://qr.expo.dev/development-client?appScheme=${encodeURIComponent(DEV_SCHEME)}&url=${encodeURIComponent(metroUrl)}`;
+    console.log('\n📡 Cary Dev — Metro (doc Expo : variants + dev-client)');
+    console.log(`   Metro URL  : ${metroUrl}`);
+    console.log(`   Deep link  : ${deepLinkDev}`);
+    console.log(`   QR Expo    : ${expoQrUrl}`);
+    console.log('      ↑ Ouvrez ce lien dans Safari (iPhone) pour un QR scannable');
+    console.log('\n   Procédure doc Expo (use-development-builds) :');
+    console.log('   1) npm run start tourne sur le PC');
+    console.log('   2) Ouvrez Cary Dev → écran launcher (pas l’icône seule avant rebuild)');
+    console.log('   3) « Enter URL manually » → Metro URL ci-dessus');
+    console.log('      OU connectez le même compte Expo sur PC (npx expo login) et sur Cary Dev');
+    console.log('   4) Tunnel si réseaux différents : npm run start:tunnel');
+    console.log('\n   ⚠️  Rebuild Cary Dev requis (launchMode: launcher) : npm run build:dev:ios\n');
   } else if (useTunnel) {
-    console.log('\n🌐 Tunnel Expo intégré — client peut être sur un autre réseau\n');
-    console.log('   Si erreur ngrok : essayez `npx expo login` puis relancez, ou utilisez le LAN.\n');
+    const tunnelHint = 'https://qr.expo.dev/development-client?appScheme=' + encodeURIComponent(DEV_SCHEME);
+    console.log('\n🌐 Tunnel Expo — après démarrage, Metro URL affichée par Expo');
+    console.log(`   QR Expo (après tunnel) : ${tunnelHint}&url=<URL_METRO_EXPO>`);
+    console.log('   Ou Enter URL manually dans Cary Dev avec l’URL Metro du terminal.\n');
   } else {
     console.warn('\n⚠️ IP LAN introuvable — localhost seul (Expo Go physique impossible)\n');
   }
