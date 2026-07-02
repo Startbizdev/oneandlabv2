@@ -96,8 +96,10 @@ async function main() {
     console.log(`\n⚠️ Port 8081 occupé — utilisation du port ${port}\n`);
   }
 
+  const devClient = process.env.EXPO_USE_DEV_CLIENT !== '0';
   const expoStartArgs = [
     'start',
+    ...(devClient ? ['--dev-client'] : []),
     ...(useTunnel ? ['--tunnel'] : ['--lan']),
     '--port',
     String(port),
@@ -110,7 +112,8 @@ async function main() {
   if (!useTunnel && lanIp) {
     env.REACT_NATIVE_PACKAGER_HOSTNAME = lanIp;
     env.EXPO_PACKAGER_HOSTNAME = lanIp;
-    console.log(`\n📡 Expo LAN : ${lanIp} — scannez le QR avec Expo Go (même Wi‑Fi)\n`);
+    console.log(`\n📡 Expo LAN : ${lanIp} — ouvrez l’app Cary Dev (pas TestFlight) et scannez le QR\n`);
+    console.log(`   URL manuelle si besoin : exp+cary-mobile://expo-development-client/?url=http://${lanIp}:${port}\n`);
   } else if (useTunnel) {
     console.log('\n🌐 Tunnel Expo intégré — client peut être sur un autre réseau\n');
     console.log('   Si erreur ngrok : essayez `npx expo login` puis relancez, ou utilisez le LAN.\n');
