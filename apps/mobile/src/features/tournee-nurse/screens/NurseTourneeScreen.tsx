@@ -26,6 +26,10 @@ import { deletePatientAbsence } from '@/features/patient-absence/api/patient-abs
 import { countTourActiveRemainingStops, isTourStopAbsent } from '@oneandlab/shared-utils';
 import { useNurseTour } from '../hooks/use-nurse-tour';
 import { TourCalendarExportAction } from '../components/TourCalendarExportAction';
+import {
+  TourCalendarImportSheet,
+  type TourCalendarImportScope,
+} from '../components/TourCalendarImportSheet';
 import { TourDayStrip } from '../components/TourDayStrip';
 import { TourEmptyPanel } from '../components/TourEmptyPanel';
 import { TourLoadingSkeleton } from '../components/TourLoadingSkeleton';
@@ -35,7 +39,7 @@ import { TourSortFilterSheet } from '../components/TourSortFilterSheet';
 import { TourStopRescheduleSheet } from '../components/TourStopRescheduleSheet';
 import { TourSummaryCard } from '../components/TourSummaryCard';
 import type { NurseTourStop, TourSortMode } from '../api/nurse-tour.service';
-import { addTourDayToDeviceCalendar } from '../utils/tour-calendar';
+import { countTodayActiveStops, importTourToDeviceCalendar } from '../utils/tour-calendar';
 
 export function NurseTourneeScreen() {
   const c = useAppColors();
@@ -48,6 +52,7 @@ export function NurseTourneeScreen() {
   const [rescheduleStop, setRescheduleStop] = useState<NurseTourStop | null>(null);
   const [planningSheetOpen, setPlanningSheetOpen] = useState(false);
   const [sortSheetOpen, setSortSheetOpen] = useState(false);
+  const [calendarSheetOpen, setCalendarSheetOpen] = useState(false);
   const [manualOrderActive, setManualOrderActive] = useState(false);
   const [absenceStop, setAbsenceStop] = useState<NurseTourStop | null>(null);
 
@@ -156,40 +161,56 @@ export function NurseTourneeScreen() {
     [router],
   );
 
-  const handleExportDayCalendar = useCallback(async () => {
-    if (!tour?.stops.length) return;
-    setExportingCalendar(true);
-    try {
-      const result = await addTourDayToDeviceCalendar(date, tour.stops);
+  const reportCalendarImportResult = useCallback(
+    (result: Awaited<ReturnType<typeof importTourToDeviceCalendar>>) => {
       if (result.ok && result.mode === 'native') {
         showToast(
-          `${result.count} passage${result.count > 1 ? 's' : ''} ajouté${result.count > 1 ? 's' : ''} à votre calendrier`,
+          `${result.count} rendez-vous ajouté${result.count > 1 ? 's' : ''} à votre calendrier`,
           { type: 'success' },
         );
         return;
       }
       if (result.ok && result.mode === 'share') {
-        showToast('Choisissez Calendrier pour importer vos passages', { type: 'success' });
+        showToast('Choisissez Calendrier pour importer vos rendez-vous', { type: 'success' });
         return;
       }
       if (!result.ok) {
         if (result.reason === 'no_events') {
-          showToast('Aucun passage actif à ajouter au calendrier', { type: 'error' });
+          showToast('Aucun rendez-vous à ajouter au calendrier', { type: 'error' });
           return;
         }
         if (result.reason === 'permission') {
-          showToast('Autorisez l’accès au calendrier dans les réglages', { type: 'error' });
+          showToast('Autorisez Cary à accéder à votre calendrier dans Réglages', { type: 'error' });
           return;
         }
         showToast('Ajout au calendrier impossible', { type: 'error' });
-        return;
       }
-    } catch {
-      showToast('Ajout au calendrier impossible', { type: 'error' });
-    } finally {
-      setExportingCalendar(false);
-    }
-  }, [date, showToast, tour?.stops]);
+    },
+    [showToast],
+  );
+
+  const handleCalendarImport = useCallback(
+    async (scope: TourCalendarImportScope) => {
+      setExportingCalendar(true);
+      try {
+        const result = await importTourToDeviceCalendar({
+          scope,
+          date,
+          todayStops: tour?.stops ?? [],
+        });
+        reportCalendarImportResult(result);
+      } catch {
+        showToast('Ajout au calendrier impossible', { type: 'error' });
+      } finally {
+        setExportingCalendar(false);
+      }
+    },
+    [date, reportCalendarImportResult, showToast, tour?.stops],
+  );
+
+  const openCalendarImportSheet = useCallback(() => {
+    setCalendarSheetOpen(true);
+  }, []);
 
   const handlePlanningChoice = useCallback(
     (choice: PassagePlanningChoice) => {
@@ -303,17 +324,13 @@ export function NurseTourneeScreen() {
   return (
     <StackChromeScreen
       headerRight={
-        hasStops ? (
-          <Row align="center">
-            <TourCalendarExportAction
-              onPress={() => void handleExportDayCalendar()}
-              loading={exportingCalendar}
-            />
-            <TourLocateAction onPress={() => void handleLocate()} loading={locating} />
-          </Row>
-        ) : (
+        <Row align="center">
+          <TourCalendarExportAction
+            onPress={openCalendarImportSheet}
+            loading={exportingCalendar}
+          />
           <TourLocateAction onPress={() => void handleLocate()} loading={locating} />
-        )
+        </Row>
       }
     >
       <View style={[styles.container, { backgroundColor: c.background }]}>
@@ -417,6 +434,14 @@ export function NurseTourneeScreen() {
           onReset={() => void resetOrder()}
         />
       ) : null}
+
+      <TourCalendarImportSheet
+        visible={calendarSheetOpen}
+        selectedDate={date}
+        todayCount={countTodayActiveStops(tour?.stops ?? [])}
+        onClose={() => setCalendarSheetOpen(false)}
+        onSelect={(scope) => void handleCalendarImport(scope)}
+      />
 
       <TourStopRescheduleSheet
         stop={rescheduleStop}
