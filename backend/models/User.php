@@ -65,6 +65,22 @@ class User
                 if ($existingId !== null && $this->patientDelegatedProfileMatchesProfessional($existingId, $actorId)) {
                     return $existingId;
                 }
+            } else {
+                $dupHash = hash('sha256', strtolower($emailRaw));
+                $existingPatientId = $this->findPatientIdByEmailHash($dupHash);
+                if ($existingPatientId !== null && $this->patientDelegatedProfileMatchesProfessional($existingPatientId, $actorId)) {
+                    return $existingPatientId;
+                }
+                $existingProfile = $this->findProfileByEmailHash($dupHash);
+                if ($existingProfile !== null) {
+                    // Email déjà pris (compte staff ou patient d'un autre pro) → email technique déterministe
+                    $data['email'] = $this->buildStableDelegatedPatientEmail($actorId, $data);
+                    $dupHash = hash('sha256', strtolower($data['email']));
+                    $existingId = $this->findPatientIdByEmailHash($dupHash);
+                    if ($existingId !== null && $this->patientDelegatedProfileMatchesProfessional($existingId, $actorId)) {
+                        return $existingId;
+                    }
+                }
             }
         }
         
@@ -1348,6 +1364,26 @@ class User
         $stmt->execute([$emailHash, 'patient']);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ? (string) $row['id'] : null;
+    }
+
+    /**
+     * Profil quel que soit le rôle (détection collision email_hash avant INSERT).
+     *
+     * @return array{id: string, role: string}|null
+     */
+    public function findProfileByEmailHash(string $emailHash): ?array
+    {
+        $stmt = $this->db->prepare('SELECT id, role FROM profiles WHERE email_hash = ? LIMIT 1');
+        $stmt->execute([$emailHash]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row || empty($row['id'])) {
+            return null;
+        }
+
+        return [
+            'id' => (string) $row['id'],
+            'role' => (string) ($row['role'] ?? ''),
+        ];
     }
 
     /**

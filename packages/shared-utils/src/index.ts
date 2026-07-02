@@ -19,3 +19,4 @@ export * from './tour-geo';
 export * from './tour-progress';
 export * from './open-navigation';
 export * from './nurse-passage-display';
+export * from './patient-absence-display';

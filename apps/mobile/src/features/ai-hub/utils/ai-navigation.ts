@@ -21,6 +21,20 @@ export function aiTabHref(role: UserRole | string): string {
   }
 }
 
+/** Détail RDV après création — aligné wizard / formulaire staff. */
+export function appointmentDetailHref(role: UserRole | string, appointmentId: string): string {
+  switch (role) {
+    case 'nurse':
+      return `/(nurse)/appointment/${appointmentId}`;
+    case 'preleveur':
+      return `/(preleveur)/appointment/${appointmentId}`;
+    case 'pro':
+      return `/(pro)/appointment/${appointmentId}`;
+    default:
+      return `/(patient)/appointment/${appointmentId}`;
+  }
+}
+
 export function buildAiDeepLink(role: UserRole | string, params: AiDeepLinkParams): string {
   const base = aiTabHref(role);
   const qs = new URLSearchParams();

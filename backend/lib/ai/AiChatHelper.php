@@ -46,7 +46,8 @@ final class AiChatHelper
      */
     private static function looksLikeBookingPatch(array $decoded): bool
     {
-        $keys = ['category_id', 'category_name', 'selected_services', 'booking_step', 'type', 'scheduled_at'];
+        $keys = ['category_id', 'category_name', 'selected_services', 'booking_step', 'type', 'scheduled_at',
+            'patient_mode', 'first_name', 'last_name', 'patient_id', 'use_staff_contact_email'];
         foreach ($keys as $key) {
             if (array_key_exists($key, $decoded) && $decoded[$key] !== null && $decoded[$key] !== '') {
                 return true;

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../../lib/ai/bootstrap.php';
-require_once __DIR__ . '/../../../lib/ai/VoiceService.php';
+require_once __DIR__ . '/../../../../lib/ai/bootstrap.php';
+require_once __DIR__ . '/../../../../lib/ai/VoiceService.php';
 
 ai_handle_options(['POST', 'OPTIONS']);
 $user = ai_require_user(['patient', 'pro', 'nurse', 'preleveur']);

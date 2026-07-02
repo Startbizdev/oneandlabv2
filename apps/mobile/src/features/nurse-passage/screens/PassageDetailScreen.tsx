@@ -65,7 +65,7 @@ import {
   resolveAppointmentDetailAddressLine,
   resolveAppointmentMapCoords,
 } from '@/features/appointments/detail/utils/appointment-address-display';
-import { buildNavigationUrl, resolvePassageTimeRange } from '@oneandlab/shared-utils';
+import { buildNavigationUrl, resolvePassageCustomTime, resolvePassageTimeRange } from '@oneandlab/shared-utils';
 
 import { updateNurseTourStopStatus } from '@/features/tournee-nurse/api/nurse-tour.service';
 
@@ -84,6 +84,9 @@ import {
 } from '../api/nurse-passage.service';
 
 import { PassageDetailActionsSheet } from '../components/PassageDetailActionsSheet';
+import { PatientAbsenceSheet } from '@/features/patient-absence/components/PatientAbsenceSheet';
+import { fetchPatientAbsences } from '@/features/patient-absence/api/patient-absence.service';
+import type { PatientAbsence } from '@oneandlab/shared-types';
 import { PassageFormCareSheet } from '../components/PassageFormCareSheet';
 
 import { PassageFormDurationSheet } from '../components/PassageFormDurationSheet';
@@ -166,6 +169,7 @@ type SheetKey =
   | 'care'
   | 'notes'
   | 'actions'
+  | 'absence'
   | null;
 
 type SegmentId = 'information' | 'documents' | 'health_record';
@@ -361,7 +365,35 @@ export function PassageDetailScreen() {
 
   const patient = patientQ.data;
 
+  const passageDate = useMemo(() => {
+    if (apt?.scheduled_at) return apt.scheduled_at.slice(0, 10);
+    if (series?.first_date) return series.first_date.slice(0, 10);
+    return planningState.startDate;
+  }, [apt?.scheduled_at, series?.first_date, planningState.startDate]);
 
+  const absencesQ = useQuery({
+    queryKey: ['patient-absences', patientId, passageDate],
+    queryFn: () => fetchPatientAbsences(patientId, true),
+    enabled: Boolean(patientId),
+  });
+
+  const activeAbsenceForDate = useMemo((): PatientAbsence | null => {
+    const list = absencesQ.data ?? [];
+    return (
+      list.find(
+        (a) =>
+          a.start_date.slice(0, 10) <= passageDate && a.end_date.slice(0, 10) >= passageDate,
+      ) ?? null
+    );
+  }, [absencesQ.data, passageDate]);
+
+  const refreshAfterAbsenceChange = useCallback(() => {
+    void qc.invalidateQueries({ queryKey: ['patient-absences', patientId] });
+    void qc.invalidateQueries({ queryKey: ['nurse-tour'] });
+    void qc.invalidateQueries({ queryKey: ['nurse-passage-series', seriesId] });
+    void qc.invalidateQueries({ queryKey: ['appointment', appointmentId] });
+    toast('Absence enregistrée', { type: 'success' });
+  }, [appointmentId, patientId, qc, seriesId, toast]);
 
   const { data: careCategories = [] } = useAppointmentCareCategories();
 
@@ -1186,7 +1218,12 @@ export function PassageDetailScreen() {
 
             time_slot: slot,
 
-            custom_time: slot === 'custom' ? time : null,
+            custom_time: resolvePassageCustomTime({
+              time_slot: slot,
+              custom_time: time,
+              time_range: slot === 'all_day' ? null : range,
+              planning_config: nextPlanningConfig,
+            }),
 
             time_range: slot === 'all_day' ? null : range,
 
@@ -1282,6 +1319,8 @@ export function PassageDetailScreen() {
         visible={openSheet === 'actions'}
         onClose={() => setOpenSheet(null)}
         hasStop={Boolean(stopId)}
+        hasPatient={Boolean(patientId)}
+        isPatientAbsent={Boolean(activeAbsenceForDate)}
         showMaterialize={!isAppointmentOnly && planningState.planningMode === 'manual'}
         materializeLoading={materializeMut.isPending}
         enRouteLoading={enRouteMut.isPending}
@@ -1292,12 +1331,25 @@ export function PassageDetailScreen() {
         onMaterialize={() => materializeMut.mutate()}
         onEnRoute={() => enRouteMut.mutate()}
         onMarkDone={() => markDoneMut.mutate()}
+        onManageAbsence={() => setOpenSheet('absence')}
         onOpenFullAppointment={() =>
           router.push(`/(nurse)/appointment/${appointmentId}` as never)
         }
         onDeleteOne={confirmDeleteOne}
         onDeleteSeries={confirmDeleteSeries}
       />
+
+      {patientId ? (
+        <PatientAbsenceSheet
+          visible={openSheet === 'absence'}
+          patientId={patientId}
+          patientName={patientName}
+          defaultStartDate={passageDate}
+          existing={activeAbsenceForDate}
+          onClose={() => setOpenSheet(null)}
+          onSaved={refreshAfterAbsenceChange}
+        />
+      ) : null}
 
     </StackChromeScreen>
 

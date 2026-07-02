@@ -25,11 +25,13 @@ final class GrokProvider implements AIProviderInterface
     {
         $payload = $this->buildPayload($messages, $options, false);
         $response = $this->request($payload);
-        $choice = $response['choices'][0]['message']['content'] ?? '';
+        $message = $response['choices'][0]['message'] ?? [];
+        $choice = is_array($message) ? ($message['content'] ?? '') : '';
         $usage = $response['usage'] ?? [];
 
         return [
             'content' => is_string($choice) ? $choice : '',
+            'tool_calls' => is_array($message['tool_calls'] ?? null) ? $message['tool_calls'] : [],
             'model' => (string) ($response['model'] ?? ($options['model'] ?? $this->defaultModel)),
             'tokens_input' => isset($usage['prompt_tokens']) ? (int) $usage['prompt_tokens'] : null,
             'tokens_output' => isset($usage['completion_tokens']) ? (int) $usage['completion_tokens'] : null,
@@ -77,12 +79,18 @@ final class GrokProvider implements AIProviderInterface
             throw new RuntimeException('XAI_API_KEY manquante');
         }
 
-        return [
+        $payload = [
             'model' => (string) ($options['model'] ?? $this->defaultModel),
             'messages' => $messages,
             'temperature' => isset($options['temperature']) ? (float) $options['temperature'] : 0.4,
             'stream' => $stream,
         ];
+        if (!empty($options['tools']) && is_array($options['tools'])) {
+            $payload['tools'] = $options['tools'];
+            $payload['tool_choice'] = $options['tool_choice'] ?? 'auto';
+        }
+
+        return $payload;
     }
 
     /**
@@ -99,7 +107,7 @@ final class GrokProvider implements AIProviderInterface
                 'Content-Type: application/json',
                 'Authorization: Bearer ' . $this->apiKey,
             ],
-            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
             CURLOPT_TIMEOUT => 120,
         ]);
         $raw = curl_exec($ch);
@@ -133,7 +141,7 @@ final class GrokProvider implements AIProviderInterface
                 'Content-Type: application/json',
                 'Authorization: Bearer ' . $this->apiKey,
             ],
-            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
             CURLOPT_TIMEOUT => 120,
             CURLOPT_WRITEFUNCTION => function ($ch, string $data) use (&$buffer, $onChunk): int {
                 $buffer .= $data;

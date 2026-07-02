@@ -51,16 +51,10 @@ final class UnifiedRdvValidator
         $patientMode = (string) ($payload['patient_mode'] ?? 'self');
         if (in_array($role, ['pro', 'nurse'], true)) {
             if ($patientMode === 'new') {
-                foreach (['first_name', 'last_name', 'phone'] as $field) {
+                foreach (['first_name', 'last_name'] as $field) {
                     $v = $payload[$field] ?? ($payload['form_data'][$field] ?? null);
                     if ($v === null || trim((string) $v) === '') {
                         $missing[] = $field;
-                    }
-                }
-                if (!$patientEmailOptional) {
-                    $email = $payload['email'] ?? ($payload['form_data']['email'] ?? null);
-                    if ($email === null || trim((string) $email) === '') {
-                        $missing[] = 'email';
                     }
                 }
             } elseif ($patientMode === 'existing') {

@@ -3,11 +3,14 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/CaryContextFocus.php';
+require_once __DIR__ . '/CaryBookingPromptRules.php';
 require_once __DIR__ . '/AIProviderInterface.php';
 require_once __DIR__ . '/DeepSeekProvider.php';
 require_once __DIR__ . '/GrokProvider.php';
-require_once __DIR__ . '/OpenAIProvider.php';
-require_once __DIR__ . '/../Uuid.php';
+require_once __DIR__ . '/AiGrokToolCatalog.php';
+require_once __DIR__ . '/AiBookingToolExecutor.php';
+require_once __DIR__ . '/AiBookingDraftSummary.php';
+require_once __DIR__ . '/GrokProvider.php';
 
 final class AIGateway
 {
@@ -97,12 +100,141 @@ final class AIGateway
     }
 
     /**
+     * Tour Grok avec tools RDV — boucle jusqu'à réponse texte finale.
+     *
+     * @param list<array{role: string, content: string}> $messages
+     * @param array<string, mixed> $context
+     * @param array<string, mixed>|null $draftPreview
+     * @return array{content: string, draft: ?array<string, mixed>, audit_id: string, tool_calls_count: int, model: ?string, tokens_input: ?int, tokens_output: ?int}
+     */
+    public function chatWithTools(
+        array $user,
+        array $messages,
+        string $taskType,
+        array $context,
+        ?string $conversationId,
+        ?string $patientId,
+        ?array $draftPreview,
+    ): array {
+        $started = microtime(true);
+        $auditId = Uuid::v4();
+        $provider = $this->resolveProvider($taskType);
+        if (!$provider instanceof GrokProvider) {
+            $provider = new GrokProvider();
+        }
+
+        $context['tools_enabled'] = true;
+        if ($draftPreview !== null) {
+            $context['active_booking_draft'] = $this->summarizeDraftForTools($draftPreview);
+        }
+
+        $system = $this->buildSystemPrompt($context);
+        $fullMessages = [['role' => 'system', 'content' => $system], ...$messages];
+        $tools = AiGrokToolCatalog::bookingTools();
+        $model = $this->resolveModel($taskType);
+        $temperature = $this->getTemperature();
+        $toolCallsCount = 0;
+        $draft = $draftPreview;
+        $executor = new AiBookingToolExecutor($user, (string) $conversationId, $draftPreview);
+
+        $tokensIn = 0;
+        $tokensOut = 0;
+        $resultModel = $model;
+
+        for ($i = 0; $i < 8; $i++) {
+            $result = $provider->chat($fullMessages, [
+                'model' => $model,
+                'temperature' => $temperature,
+                'tools' => $tools,
+                'tool_choice' => 'auto',
+            ]);
+            $tokensIn += (int) ($result['tokens_input'] ?? 0);
+            $tokensOut += (int) ($result['tokens_output'] ?? 0);
+            $resultModel = (string) ($result['model'] ?? $model);
+            $toolCalls = is_array($result['tool_calls'] ?? null) ? $result['tool_calls'] : [];
+
+            if ($toolCalls === []) {
+                $content = trim((string) ($result['content'] ?? ''));
+                $this->writeAudit($auditId, $user, $conversationId, $patientId, $taskType, 'grok', [
+                    'model' => $resultModel,
+                    'tokens_input' => $tokensIn,
+                    'tokens_output' => $tokensOut,
+                ], hash('sha256', json_encode($fullMessages)), $started, null);
+
+                return [
+                    'content' => $content,
+                    'draft' => $executor->getDraft(),
+                    'audit_id' => $auditId,
+                    'tool_calls_count' => $toolCallsCount,
+                    'model' => $resultModel,
+                    'tokens_input' => $tokensIn,
+                    'tokens_output' => $tokensOut,
+                ];
+            }
+
+            $assistantMessage = [
+                'role' => 'assistant',
+                'content' => $result['content'] ?? null,
+                'tool_calls' => $toolCalls,
+            ];
+            $fullMessages[] = $assistantMessage;
+
+            foreach ($toolCalls as $call) {
+                if (!is_array($call)) {
+                    continue;
+                }
+                $toolCallsCount++;
+                $fn = (string) ($call['function']['name'] ?? '');
+                $argsRaw = (string) ($call['function']['arguments'] ?? '{}');
+                $args = json_decode($argsRaw, true);
+                if (!is_array($args)) {
+                    $args = [];
+                }
+                $exec = $executor->execute($fn, $args);
+                if ($exec['draft'] !== null) {
+                    $draft = $exec['draft'];
+                }
+                $fullMessages[] = [
+                    'role' => 'tool',
+                    'tool_call_id' => (string) ($call['id'] ?? Uuid::v4()),
+                    'content' => json_encode($exec['result'], JSON_UNESCAPED_UNICODE),
+                ];
+            }
+        }
+
+        throw new RuntimeException('Boucle tools Grok interrompue (max itérations)');
+    }
+
+    /**
+     * @param array<string, mixed> $draft
+     * @return array<string, mixed>
+     */
+    private function summarizeDraftForTools(array $draft): array
+    {
+        $payload = is_array($draft['payload'] ?? null) ? $draft['payload'] : [];
+
+        return [
+            'id' => $draft['id'] ?? null,
+            'status' => $draft['status'] ?? null,
+            'missing_fields' => $draft['missing_fields'] ?? [],
+            'booking_step' => $payload['booking_step'] ?? null,
+            'patient_mode' => $payload['patient_mode'] ?? null,
+            'payload' => $payload,
+        ];
+    }
+
+    /**
      * @param array<string, mixed> $context
      */
     private function buildSystemPrompt(array $context): string
     {
         $disclaimer = $this->getDisclaimer();
-        $contextJson = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        $toolsEnabled = !empty($context['tools_enabled']);
+        $promptContext = $context;
+        if ($toolsEnabled) {
+            unset($promptContext['care_categories'], $promptContext['staff_patients']);
+        }
+        $contextJson = json_encode($promptContext, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         if ($contextJson === false) {
             $contextJson = '{}';
         }
@@ -110,6 +242,87 @@ final class AIGateway
         $hasChatAttachments = !empty($context['chat_attachments']) && is_array($context['chat_attachments']);
         $activeIntent = (string) ($context['active_intent'] ?? CaryContextFocus::GENERAL);
 
+        if ($toolsEnabled) {
+            return $this->buildToolsSystemPrompt($context, $contextJson, $hasChatAttachments, $activeIntent);
+        }
+
+        return $this->buildLegacySystemPrompt($context, $contextJson, $hasChatAttachments, $activeIntent, $disclaimer);
+    }
+
+    /**
+     * Prompt court — RDV via tools Grok, pas de booking_patch markdown.
+     *
+     * @param array<string, mixed> $context
+     */
+    private function buildToolsSystemPrompt(
+        array $context,
+        string $contextJson,
+        bool $hasChatAttachments,
+        string $activeIntent,
+    ): string {
+        $role = (string) ($context['role'] ?? 'patient');
+        $voiceRules = (($context['conversation_type'] ?? '') === 'voice' || ($context['conversation_mode'] ?? '') === 'voice_chat')
+            ? CaryBookingPromptRules::voiceModeBlock()
+            : '';
+        $roleIntro = CaryBookingPromptRules::isStaffRole($role)
+            ? 'Tu aides des professionnels de santé à planifier des soins pour leurs patients.'
+            : 'Tu accompagnes des patients dans leur parcours de santé.';
+
+        $documentBlock = '';
+        if ($hasChatAttachments || in_array($activeIntent, [CaryContextFocus::DOCUMENT, CaryContextFocus::DOCUMENT_FOLLOWUP], true)) {
+            $documentBlock = <<<'DOC'
+
+Documents (chat_attachments) : analyse summary_excerpt selon intent_category (medical / non_medical / unclear). Pas de markdown. Ne dis jamais « pas de pièce jointe » en suivi document.
+DOC;
+        }
+
+        $carnetBlock = '';
+        if (!empty($context['health_record_summary'])) {
+            $carnetBlock = <<<'CARNET'
+
+Carnet : cite completion_percent exact, priority_actions, chemins in-app (Plus → Mon carnet / Mes données santé). Jamais « Réglages iPhone ».
+CARNET;
+        }
+
+        return <<<PROMPT
+Tu es Cary, assistant santé Cary (OneAndLab). Français, chaleureux, phrases courtes.
+{$roleIntro}
+{$voiceRules}
+
+Format mobile (texte brut, PAS de markdown ** # ```) :
+- Aère avec des lignes vides. Listes : « - item ». RDV vocal : 1–2 phrases max.
+
+Sécurité : pas de diagnostic ni prescription. Pas de disclaimer 15/112 dans le texte (déjà affiché dans l'app).
+
+RDV — tools obligatoires (jamais de bloc booking_patch) :
+- update_booking_draft : dès qu'une info est collectée ou modifiée.
+- geocode_address : adresse donnée ou corrigée.
+- list_care_categories / list_staff_patients / resolve_staff_patient : catalogue ou patient existant.
+- active_booking_draft = état actuel — ne redemande jamais un champ déjà rempli.
+- use_staff_contact_email / use_staff_contact_phone si pas de contact patient (infirmier/pro).
+- use_staff_practice_address vs geocode_address patient : ne confonds pas cabinet pro et adresse patient.
+- Texte visible : une question à la fois, sans répéter l'utilisateur. RDV non confirmé tant que l'utilisateur n'a pas validé la carte récap.
+- JAMAIS dans le texte utilisateur : « je géocode », « geocode », noms d'outils ou étapes techniques. Les tools s'exécutent en silence ; réponds en langage naturel (« Parfait », « C'est noté », question suivante).
+- JAMAIS annoncer « rendez-vous validé / confirmé / créé » sans carte récap validée. En vocal staff : ordonnance_status=deferred si le patient a l'ordonnance (sans upload vocal).
+- Dates naturelles en français (pas d'ISO visible). Utilise today_paris / tomorrow_paris du contexte.
+{$documentBlock}
+{$carnetBlock}
+
+Contexte Cary :
+{$contextJson}
+PROMPT;
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     */
+    private function buildLegacySystemPrompt(
+        array $context,
+        string $contextJson,
+        bool $hasChatAttachments,
+        string $activeIntent,
+        string $disclaimer,
+    ): string {
         $conversationNavigation = <<<'NAV'
 
 Navigation conversationnelle (comme un humain) :
@@ -164,8 +377,40 @@ Carnet de santé & Apple Santé / Health Connect (health_record_summary + app_na
 CARNET;
         }
 
+        $role = (string) ($context['role'] ?? 'patient');
+        $bookingWorkflow = CaryBookingPromptRules::workflowBlock($role);
+        $voiceRules = (($context['conversation_type'] ?? '') === 'voice')
+            ? CaryBookingPromptRules::voiceModeBlock()
+            : '';
+        $roleIntro = CaryBookingPromptRules::isStaffRole($role)
+            ? 'Tu aides des professionnels de santé (infirmiers, pros) à organiser les soins de leurs patients — pas à prendre des RDV pour eux-mêmes.'
+            : 'Tu accompagnes des patients dans leur parcours de santé au quotidien.';
+
+        $toolsEnabled = !empty($context['tools_enabled']);
+        $rdvToolsBlock = '';
+        $legacyPatchBlock = '';
+        if ($toolsEnabled) {
+            $rdvToolsBlock = <<<'TOOLS'
+
+RDV — TOOLS Grok (obligatoire, pas de markdown booking_patch) :
+- update_booking_draft : dès que tu collectes/modifies une info (patient, soin, créneau, ordonnance, flags contact pro).
+- geocode_address : dès qu'une adresse est donnée ou corrigée (monde entier).
+- list_care_categories / list_staff_patients / resolve_staff_patient : si tu as besoin du catalogue ou d'un patient existant.
+- active_booking_draft dans le contexte = état actuel — ne redemande jamais un champ déjà rempli.
+- Texte visible : court, une question à la fois, sans répéter ce que l'utilisateur vient de dire.
+- Ne dis jamais que le RDV est confirmé : l'utilisateur valide sur la carte récap.
+TOOLS;
+        } else {
+            $legacyPatchBlock = <<<'LEGACY'
+- Les clés techniques vont UNIQUEMENT dans le bloc ```booking_patch``` (JSON), jamais dans le message visible.
+- Quand tu envoies un booking_patch, inclure booking_step, patient_mode, ordonnance_status.
+LEGACY;
+        }
+
         return <<<PROMPT
 Tu es Cary, l'assistant santé de Cary (OneAndLab) — une startup santé moderne, proche des patients. Tu réponds en français.
+{$roleIntro}
+{$voiceRules}
 
 Personnalité (humain, pas robot) :
 - Chaleureux, rassurant, direct : une vraie présence dans le fil, pas un formulaire administratif.
@@ -202,36 +447,10 @@ Règles strictes :
 - Pour prendre un rendez-vous : collecte les informations comme le wizard mobile Cary (même logique que l'app).
 - Dates : utilise today_paris / today_label_fr / tomorrow_paris / tomorrow_label_fr du contexte pour « aujourd'hui », « demain », etc.
 - Dans ton texte visible à l'utilisateur : JAMAIS de date ISO (2026-06-20). Toujours en français naturel : « demain, samedi 20 juin », « entre 12h et 13h ».
-- Texte utilisateur : langage naturel uniquement. JAMAIS de clés techniques (patient_mode, booking_step, category_id, relative_id, ordonnance_status, service_id, form_data, care_options, etc.) ni de notation key=value entre parenthèses. Exemple interdit : « (patient_mode=self) ». Dis « pour vous-même », « pour Marie (votre mère) », etc.
-- Les clés techniques vont UNIQUEMENT dans le bloc ```booking_patch``` (JSON), jamais dans le message visible.
-- Parcours RDV guidé (identique au wizard Cary) — UNE seule question à la fois, dans cet ordre strict :
-  0) Bénéficiaire (pour qui ?) — si l'utilisateur dit « je veux un RDV / prendre rendez-vous » sans bénéficiaire clair :
-     • Commence par : « Bien sûr [Prénom] ! Ce rendez-vous est pour vous ou pour un proche ? »
-     • Si relatives[] contient des entrées : cite display_name + relationship_label_fr (ex. « pour Marie (votre mère), Paul (votre enfant) »). Propose « pour moi » explicitement.
-     • « pour moi / pour moi-même / c'est pour moi » → patient_mode=self, pas de relative_id.
-     • Prénom ou nom d'un proche listé → patient_mode=relative + relative_id (uuid du contexte relatives[]).
-     • booking_step=beneficiary. Ne passe PAS à l'étape soin tant que le bénéficiaire n'est pas tranché.
-  1) Type de soin — une fois le bénéficiaire connu : « Quel type de soin ? » + 4 à 6 exemples concrets tirés de care_categories (pansement, prise de sang, injection, perfusion…). booking_step=services.
-     • Choisis category_id + category_name exacts depuis care_categories (ex. « pansement plaie au pied » → catégorie « Pansement-plaie », pas « Pansement » générique si une catégorie plus précise existe).
-     • Options de soin (care_categories[].options) : même logique que le wizard mobile.
-       - Si l'utilisateur précise déjà dans sa demande (ex. « plaie au pied » → location=pied pour Pansement-plaie), remplis care_options dans form_data ou formDataByService avec les value des choices.
-       - Si la catégorie a des options required ou des détails manquants, pose UNE question courte listant les libellés (ex. « Quelle localisation : jambe, pied, abdomen… ? »). booking_step=services.
-       - Dans booking_patch : form_data.care_options = {"location":"pied","wound_type":"simple"} (clés = option key du catalogue, valeurs = value des choices).
-  2) Date et créneau — « Quand souhaitez-vous le rendez-vous ? » (demain, date précise, toute la journée, ou plage ex. entre 12h et 13h). booking_step=slot.
-  3) Adresse — « À quelle adresse se déroulera le soin ? » ; « mon adresse / chez moi » → use_profile_address=true + adresse profil. booking_step=address.
-  4) Ordonnance — OBLIGATOIRE avant le récap pour soin infirmier (pansement, etc.) et prélèvement :
-     • Quand soin + créneau + adresse sont connus mais l'ordonnance n'est pas tranchée : réponds UNIQUEMENT en demandant l'ordonnance. Exemple : « D'accord [Prénom], parfait ! Avez-vous une ordonnance pour ce pansement ? »
-     • booking_step = documents, ordonnance_status = pending. PAS de récap, PAS booking_step = recap.
-     • Si l'utilisateur répond oui : « Super ! Joignez-la avec le bouton + à gauche de la barre de saisie (photo, galerie ou fichier). » Reste en booking_step = documents.
-     • Si l'utilisateur répond non / pas d'ordonnance : ordonnance_status = declined, booking_step = recap — là seulement tu peux présenter le récap.
-     • Quand l'ordonnance est jointe via + : ordonnance_status = uploaded, booking_step = recap.
-  5) Récap — uniquement après l'étape ordonnance (upload ou refus explicite). booking_step=recap dans booking_patch.
-     • NE rédige PAS le récap en puces/liste dans ton message : l'app affiche une carte interactive avec bouton « Valider ».
-     • Texte court uniquement, ex. : « Voici le récapitulatif — vérifiez les détails ci-dessous et appuyez sur Valider pour confirmer. »
-     • Multi-soins : chaque soin a ses propres care_options dans formDataByService[service_id].care_options (clés = option key du catalogue pour CETTE catégorie).
-- Exemple demande vague « Je souhaite prendre un rendez-vous » (sans proche ni soin) :
-  « Bien sûr Shany ! Ce rendez-vous est pour vous, ou pour un proche [liste prénoms si relatives] ? » — booking_step=beneficiary, pas de category_id dans le booking_patch.
-- Si l'utilisateur donne tout d'un coup (soin + date + adresse) : valide le bénéficiaire d'abord (self par défaut seulement s'il dit « pour moi » ou n'a qu'un seul choix logique), puis enchaîne ordonnance avant récap.
+- Texte utilisateur : langage naturel uniquement. JAMAIS de clés techniques (patient_mode, booking_step, etc.) dans le message visible.
+{$rdvToolsBlock}
+{$legacyPatchBlock}
+{$bookingWorkflow}
 - Multi-soins : utilise selected_services (tableau) + formDataByService (créneaux, care_options et docs par acte). Chaque entrée selected_services doit avoir son category_id ; les options catalogue vont dans formDataByService[id].care_options (pas seulement form_data global).
 - Utilise profile.first_name pour personnaliser (« D'accord Marie, parfait ! »).
 - Utilise profile.address du contexte quand l'utilisateur dit « mon adresse », « même adresse », « adresse du compte » : mets use_profile_address=true et recopie label/lat/lng réels (jamais « Adresse du compte » ni lat/lng à 0).
@@ -248,18 +467,7 @@ Règles strictes :
   • Quand il envoie la nouvelle version (« voici ma carte vitale », etc.) : mets à jour files.[type] avec le medical_document_id ; retire pending_upload_type.
 - Ordonnance RDV : jointe via + pour ce rendez-vous (pas le dossier profil sauf si remplacement explicite).
 {$documentAttachmentRules}
-- Si l'utilisateur corrige une info (« change l'adresse », « plutôt toute la journée »), renvoie un booking_patch complet mis à jour.
-- Quand tu envoies un booking_patch, inclure booking_step (beneficiary|services|slot|address|documents|recap), patient_mode, relative_id si proche, et ordonnance_status.
-- Exemple booking_patch pansement plaie au pied, demain 14h, étape ordonnance en attente :
-```booking_patch
-{"selected_services":[{"id":"svc-1","type":"nursing","category_id":"uuid","category_name":"Pansement-plaie","name":"Pansement-plaie"}],"type":"nursing","category_id":"uuid","category_name":"Pansement-plaie","scheduled_at":"YYYY-MM-DD","use_profile_address":true,"form_data":{"availability":"{\"type\":\"custom\",\"range\":[14,15]}","care_options":{"location":"pied"}},"files":{},"patient_mode":"self","booking_step":"documents","ordonnance_status":"pending"}
-```
-- Exemple après refus ordonnance (récap autorisé) :
-```booking_patch
-{...,"booking_step":"recap","ordonnance_status":"declined"}
-```
-- Ne dis jamais que le rendez-vous est confirmé : l'utilisateur doit cliquer Valider sur la carte récap.
-
+- Si l'utilisateur corrige une info, mets à jour via update_booking_draft (mode tools) ou booking_patch (mode legacy).
 - Ne répète JAMAIS le disclaimer ni « en cas d'urgence contactez le 15/112 » dans le texte visible : l'app l'affiche déjà dans le pied de page. Réponds sans cette phrase.
 - Si rag_chunks est présent dans le contexte : appuie-toi sur le contenu textuel des extraits (documents, résultats OCR, RDV). Cite les sources avec [ref:citation_ref] quand pertinent (ex. [ref:doc:uuid:0]).
 - Les rag_chunks contiennent du contenu documentaire réel — utilise-le pour répondre aux questions sur les résultats, ordonnances et bilans (pas seulement les dates).

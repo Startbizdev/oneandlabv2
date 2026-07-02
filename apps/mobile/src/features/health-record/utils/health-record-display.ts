@@ -3,15 +3,23 @@ export const HEALTH_RECORD_OPTIONAL_BADGE = 'Optionnel';
 /** @deprecated Utiliser HEALTH_RECORD_OPTIONAL_BADGE */
 export const HEALTH_RECORD_EMPTY_HINT = HEALTH_RECORD_OPTIONAL_BADGE;
 
-/** Valeur vide renvoyée par l’API (legacy ou actuelle). */
-export function isHealthRecordValueFilled(display: string | undefined | null): boolean {
-  if (!display?.trim()) return false;
-  return display !== HEALTH_RECORD_EMPTY_LABEL && display !== '—';
+function isEmptyDisplayToken(value: string): boolean {
+  const t = value.trim().toLowerCase();
+  return t === '' || t === '—' || t === 'null' || t === 'undefined';
 }
 
-/** Normalise l’affichage récap (legacy tiret cadratin). */
-export function formatHealthRecordDisplay(display: string): string {
-  if (!display?.trim() || display === '—') {
+/** Valeur vide renvoyée par l’API (legacy ou actuelle). */
+export function isHealthRecordValueFilled(display: string | undefined | null): boolean {
+  if (display == null) return false;
+  return !isEmptyDisplayToken(display) && display !== HEALTH_RECORD_EMPTY_LABEL;
+}
+
+/** Normalise l’affichage récap (legacy tiret cadratin, chaîne "null"). */
+export function formatHealthRecordDisplay(display: string | undefined | null): string {
+  if (display == null || isEmptyDisplayToken(display)) {
+    return HEALTH_RECORD_EMPTY_LABEL;
+  }
+  if (display === HEALTH_RECORD_EMPTY_LABEL) {
     return HEALTH_RECORD_EMPTY_LABEL;
   }
   return display;

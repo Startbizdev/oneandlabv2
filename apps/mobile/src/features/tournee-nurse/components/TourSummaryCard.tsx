@@ -11,20 +11,24 @@ import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styl
 import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 import type { NurseTourPayload } from '../api/nurse-tour.service';
+import { countTourActiveRemainingStops } from '@oneandlab/shared-utils';
 
 const HERO_GRADIENT = [brand.gradientStart, brand.gradientEnd] as const;
 
 type Props = {
   summary: NurseTourPayload['summary'];
+  activeRemaining?: number;
 };
 
-export function TourSummaryCard({ summary }: Props) {
+export function TourSummaryCard({ summary, activeRemaining }: Props) {
   const styles = useThemedStyles(buildStyles);
   const cardStyles = getAppointmentListCardStyles();
   const total = summary.total_stops;
   const done = summary.done_stops;
+  const absent = summary.absent_stops ?? 0;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  const remaining = Math.max(0, total - done);
+  const remaining =
+    activeRemaining ?? Math.max(0, total - done - absent);
 
   if (total === 0) return null;
 
@@ -66,6 +70,14 @@ export function TourSummaryCard({ summary }: Props) {
             <MapPin size={12} color="#FFFFFF" strokeWidth={2.2} />
             <Text style={styles.metric}>{summary.estimated_km} km estimés</Text>
           </Row>
+          {absent > 0 ? (
+            <>
+              <View style={styles.metricDot} />
+              <Text style={styles.metric}>
+                {absent} absent{absent > 1 ? 's' : ''}
+              </Text>
+            </>
+          ) : null}
         </View>
       </LinearGradient>
     </View>

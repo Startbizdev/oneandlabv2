@@ -6,7 +6,6 @@ import type { AiAppointmentDraft } from '@oneandlab/shared-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
 import Animated, {
   Easing,
   FadeIn,
@@ -18,21 +17,24 @@ import Animated, {
   withDelay,
   withRepeat,
   withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Mic, Square, X } from 'lucide-react-native';
+import { Mic, X } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { CaryAiBookingRecapCard } from '@/features/ai-hub/components/CaryAiBookingRecapCard';
+import { CaryAiVoiceDocumentUpload } from '@/features/ai-hub/components/CaryAiVoiceDocumentUpload';
 import type { VoicePhase, VoiceTurn } from '../hooks/use-voice-session';
 import { canConfirmAiDraftRecap, shouldShowAiDraftRecap } from '../utils/should-show-ai-draft-recap';
-import { animation, elevation, H_PADDING, radius, spacing } from '@/theme';
+import {
+  draftPendingUploadType,
+  shouldShowAiDraftDocumentUpload,
+} from '../utils/should-show-ai-draft-documents';
+import type { CarePhotoPickSource } from '@/lib/uploads/pick-care-photo';
+import { elevation, H_PADDING, radius, spacing } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
-const DOCK_WAVEFORM_BARS = 28;
-const ORB_SIZE = 88;
-const HUB_TOUCH_SIZE = 112;
+const DOCK_WAVEFORM_BARS = 32;
 
 type ActivityMode = 'idle' | 'user' | 'assistant' | 'processing';
 
@@ -49,20 +51,27 @@ interface Props {
   speechError: string | null;
   activeDraft?: AiAppointmentDraft | null;
   confirmingDraft?: boolean;
+  attachingDocument?: boolean;
   onConfirmDraft?: (draft: AiAppointmentDraft) => void;
+  onAttachDocument?: (source: CarePhotoPickSource) => void;
   onStart: () => void;
   onStop: () => void;
-  onToggleMic: () => void;
+  /** @deprecated Écoute auto — plus de bouton micro manuel */
+  onToggleMic?: () => void;
 }
 
-function resolveActivityMode(phase: VoicePhase, recognizing: boolean): ActivityMode {
+function resolveActivityMode(phase: VoicePhase, sessionActive: boolean): ActivityMode {
   if (phase === 'processing') return 'processing';
   if (phase === 'speaking') return 'assistant';
-  if (recognizing || phase === 'listening') return 'user';
+  if (sessionActive && (phase === 'listening' || phase === 'idle')) return 'user';
   return 'idle';
 }
 
-function statusCopy(phase: VoicePhase, recognizing: boolean, available: boolean): { title: string; sub: string } {
+function statusCopy(
+  phase: VoicePhase,
+  sessionActive: boolean,
+  available: boolean,
+): { title: string; sub: string } {
   if (!available) {
     return {
       title: 'Voix indisponible',
@@ -75,10 +84,13 @@ function statusCopy(phase: VoicePhase, recognizing: boolean, available: boolean)
   if (phase === 'speaking') {
     return { title: 'Cary parle', sub: 'Écoutez la réponse — le micro reprendra ensuite.' };
   }
-  if (recognizing) {
-    return { title: 'Je vous écoute', sub: 'Parlez — envoi automatique à la pause (~1,2 s).' };
+  if (sessionActive) {
+    return {
+      title: 'Je vous écoute',
+      sub: 'Parlez naturellement — envoi automatique quand vous marquez une pause.',
+    };
   }
-  return { title: 'Mode vocal', sub: 'Appuyez sur le micro pour parler.' };
+  return { title: 'Mode vocal', sub: 'Ouverture de la session…' };
 }
 
 function TurnBubble({
@@ -207,54 +219,39 @@ function DockWaveBar({
 function VoiceActivityDock({
   mode,
   status,
-  listening,
-  disabled,
-  onToggle,
+  sessionActive,
   styles,
 }: {
   mode: ActivityMode;
   status: { title: string; sub: string };
-  listening: boolean;
-  disabled: boolean;
-  onToggle: () => void;
+  sessionActive: boolean;
   styles: ReturnType<typeof buildStyles>;
 }) {
   const c = useAppColors();
-  const orbScale = useSharedValue(1);
-  const pressed = useSharedValue(0);
+  const pulse = useSharedValue(1);
 
   useEffect(() => {
-    cancelAnimation(orbScale);
-    if (mode === 'user') {
-      orbScale.value = withRepeat(
-        withSequence(
-          withTiming(1.08, { duration: 480, easing: Easing.inOut(Easing.sin) }),
-          withTiming(1, { duration: 480, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        true,
-      );
+    cancelAnimation(pulse);
+    if (!sessionActive || mode === 'idle') {
+      pulse.value = withTiming(1, { duration: 240 });
       return;
     }
-    if (mode === 'assistant') {
-      orbScale.value = withRepeat(
-        withSequence(
-          withTiming(1.05, { duration: 620, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0.98, { duration: 620, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        true,
-      );
-      return;
-    }
-    orbScale.value = withTiming(1, { duration: 240 });
-  }, [mode, orbScale]);
+    const scale = mode === 'assistant' ? 1.04 : mode === 'processing' ? 1.02 : 1.06;
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(scale, { duration: mode === 'assistant' ? 620 : 480, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1, { duration: mode === 'assistant' ? 620 : 480, easing: Easing.inOut(Easing.sin) }),
+      ),
+      -1,
+      true,
+    );
+  }, [mode, pulse, sessionActive]);
 
-  const orbAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: orbScale.value * (1 - pressed.value * 0.05) }],
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
   }));
 
-  const showWave = mode !== 'idle';
+  const showWave = sessionActive && mode !== 'idle';
 
   return (
     <View style={styles.dock}>
@@ -280,42 +277,22 @@ function VoiceActivityDock({
           )}
         </View>
 
-        <Pressable
-          onPress={onToggle}
-          disabled={disabled}
-          onPressIn={() => {
-            pressed.value = withSpring(1, animation.spring.snappy);
-          }}
-          onPressOut={() => {
-            pressed.value = withSpring(0, animation.spring.gentle);
-          }}
-          style={[styles.hubTouch, disabled && styles.hubDisabled]}
-          accessibilityRole="button"
-          accessibilityLabel={listening ? 'Envoyer maintenant' : 'Parler à Cary'}
-          accessibilityState={{ selected: listening, disabled }}
+        <Animated.View
+          style={[
+            styles.micIndicator,
+            iconStyle,
+            {
+              backgroundColor:
+                mode === 'assistant'
+                  ? c.primaryDark
+                  : mode === 'processing'
+                    ? hexToRgba(c.primary, 0.75)
+                    : c.primary,
+            },
+          ]}
         >
-          <Animated.View
-            style={[
-              styles.micOrb,
-              orbAnimStyle,
-              {
-                backgroundColor:
-                  mode === 'assistant'
-                    ? c.primaryDark
-                    : listening
-                      ? c.primaryDark
-                      : c.primary,
-                borderColor: hexToRgba(c.textInverse, listening ? 0.35 : 0.15),
-              },
-            ]}
-          >
-            {listening ? (
-              <Square size={28} color={c.textInverse} strokeWidth={2.5} fill={c.textInverse} />
-            ) : (
-              <Mic size={34} color={c.textInverse} strokeWidth={2.25} />
-            )}
-          </Animated.View>
-        </Pressable>
+          <Mic size={28} color={c.textInverse} strokeWidth={2.2} />
+        </Animated.View>
 
         {showWave ? (
           <Text style={[styles.dockSub, { color: c.textSecondary }]} numberOfLines={2}>
@@ -339,10 +316,11 @@ export function PatientAiVoiceOverlay({
   speechError,
   activeDraft,
   confirmingDraft,
+  attachingDocument,
   onConfirmDraft,
+  onAttachDocument,
   onStart,
   onStop,
-  onToggleMic,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
@@ -350,12 +328,19 @@ export function PatientAiVoiceOverlay({
   const [started, setStarted] = useState(false);
   const transcriptRef = useRef<ScrollView>(null);
 
-  const listening = recognizing || phase === 'listening';
-  const busy = phase === 'processing' || phase === 'speaking';
-  const activityMode = resolveActivityMode(phase, recognizing);
-  const status = statusCopy(phase, recognizing, available);
+  const sessionActive = started && available;
+  const activityMode = resolveActivityMode(phase, sessionActive);
+  const status = statusCopy(phase, sessionActive, available);
   const showRecap =
     activeDraft && shouldShowAiDraftRecap(activeDraft) && onConfirmDraft != null;
+  const showDocumentUpload =
+    activeDraft &&
+    shouldShowAiDraftDocumentUpload(activeDraft) &&
+    onAttachDocument != null;
+  const docUploadLabel =
+    draftPendingUploadType(activeDraft ?? null) === 'ordonnance'
+      ? 'Joignez votre ordonnance'
+      : 'Joignez le document';
 
   useEffect(() => {
     if (visible && !started) {
@@ -377,11 +362,6 @@ export function PatientAiVoiceOverlay({
     onStop();
     onClose();
   }, [onClose, onStop]);
-
-  const handleToggle = useCallback(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onToggleMic();
-  }, [onToggleMic]);
 
   if (!visible) return null;
 
@@ -422,7 +402,7 @@ export function PatientAiVoiceOverlay({
             style={styles.transcriptScroll}
             contentContainerStyle={[
               styles.transcriptContent,
-              { paddingBottom: showRecap ? spacing[2] : spacing[4] },
+              { paddingBottom: showRecap || showDocumentUpload ? spacing[2] : spacing[4] },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -431,8 +411,8 @@ export function PatientAiVoiceOverlay({
               <View style={styles.welcomeBlock}>
                 <Text style={[styles.welcomeTitle, { color: c.textPrimary }]}>Conversation vocale</Text>
                 <Text style={[styles.welcomeSub, { color: c.textSecondary }]}>
-                  Votre échange s’affiche ici en direct, comme dans une conversation ChatGPT. Parlez
-                  naturellement — Cary répondra à voix haute.
+                  Parlez naturellement — Cary vous écoute en continu et répond à voix haute. Pas besoin
+                  d’appuyer sur un bouton.
                 </Text>
               </View>
             ) : null}
@@ -456,6 +436,16 @@ export function PatientAiVoiceOverlay({
             {phase === 'processing' ? <ProcessingBubble styles={styles} /> : null}
           </ScrollView>
 
+          {showDocumentUpload ? (
+            <View style={styles.recapWrap}>
+              <CaryAiVoiceDocumentUpload
+                label={docUploadLabel}
+                attaching={attachingDocument}
+                onPick={onAttachDocument!}
+              />
+            </View>
+          ) : null}
+
           {showRecap ? (
             <View style={styles.recapWrap}>
               <CaryAiBookingRecapCard
@@ -471,9 +461,7 @@ export function PatientAiVoiceOverlay({
             <VoiceActivityDock
               mode={activityMode}
               status={status}
-              listening={listening}
-              disabled={busy || !available}
-              onToggle={handleToggle}
+              sessionActive={sessionActive}
               styles={styles}
             />
 
@@ -625,21 +613,13 @@ function buildStyles(_c: AppColors) {
       height: 44,
       borderRadius: radius.full,
     },
-    hubTouch: {
-      width: HUB_TOUCH_SIZE,
-      height: HUB_TOUCH_SIZE,
+    micIndicator: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-    },
-    hubDisabled: { opacity: 0.55 },
-    micOrb: {
-      width: ORB_SIZE,
-      height: ORB_SIZE,
-      borderRadius: ORB_SIZE / 2,
-      borderWidth: 2,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      ...elevation.lg,
+      ...elevation.md,
     },
     footer: {
       paddingHorizontal: spacing[5],

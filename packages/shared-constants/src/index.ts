@@ -49,3 +49,4 @@ export * from './nurse-subscription-plans';
 export * from './patient-vip-iap';
 export * from './staff-patient-booking-consent';
 export * from './pending-offer-expiry';
+export * from './patient-absence';

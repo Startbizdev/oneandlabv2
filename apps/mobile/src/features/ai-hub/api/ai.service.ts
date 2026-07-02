@@ -286,12 +286,27 @@ export async function createVoiceSession(input?: {
 export async function sendVoiceTurn(
   sessionId: string,
   transcript: string,
-): Promise<{ assistant_text: string; conversation_id: string; disclaimer: string }> {
+  audioBase64?: string | null,
+): Promise<{
+  assistant_text: string;
+  conversation_id: string;
+  disclaimer: string;
+  draft?: AiAppointmentDraft | null;
+  appointment_id?: string | null;
+}> {
   const res = await apiRequest<{
     assistant_text: string;
     conversation_id: string;
     disclaimer: string;
-  }>(`/ai/voice/sessions/${sessionId}/turn`, { method: 'POST', body: { transcript } });
+    draft?: AiAppointmentDraft | null;
+    appointment_id?: string | null;
+  }>(`/ai/voice/sessions/${sessionId}/turn`, {
+    method: 'POST',
+    body: {
+      transcript,
+      ...(audioBase64 ? { audio_base64: audioBase64 } : {}),
+    },
+  });
   if (!res.success || !res.data) throw new Error(res.error ?? 'Tour vocal impossible');
   return res.data;
 }

@@ -120,6 +120,29 @@ if (count($segments) >= 4) {
 }
 
 // ======================================================
+// 7) Double dynamic after [id]
+// Example: /nurse/patients/123/absences/456 → nurse/patients/[id]/absences/[absenceId].php
+// ======================================================
+$segments = explode('/', $path);
+if (count($segments) >= 5) {
+    $secondValue = array_pop($segments);
+    $middleFolder = array_pop($segments);
+    $idValue = array_pop($segments);
+    $nestedDir = $apiDir . '/' . implode('/', $segments) . '/[id]/' . $middleFolder;
+    if (is_dir($nestedDir)) {
+        foreach (glob($nestedDir . '/[[]*[]].php') ?: [] as $candidate) {
+            $basename = basename($candidate);
+            if (preg_match('/^\[([^\]]+)\]\.php$/', $basename, $m)) {
+                $_GET['id'] = $idValue;
+                $_GET[$m[1]] = $secondValue;
+                require $candidate;
+                exit;
+            }
+        }
+    }
+}
+
+// ======================================================
 // No route found
 // ======================================================
 http_response_code(404);

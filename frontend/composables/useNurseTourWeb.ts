@@ -1,7 +1,9 @@
 import { apiFetch, apiFetchBlob } from '~/utils/api';
+import type { PatientAbsence } from '@oneandlab/shared-types';
 import {
   buildNavigationUrl,
   computeTourSummaryFromStops,
+  isTourStopAbsent,
   resolveTourNextStopId,
 } from '@oneandlab/shared-utils';
 
@@ -15,6 +17,8 @@ export interface NurseTourStop {
   visit_status: TourVisitStatus;
   patient_name: string;
   patient_id?: string | null;
+  is_patient_absent_today?: boolean;
+  patient_absence?: PatientAbsence | null;
   patient_gender?: string | null;
   profile_image_url?: string | null;
   type?: string;
@@ -54,6 +58,7 @@ export interface NurseTourPayload {
   summary: {
     total_stops: number;
     done_stops: number;
+    absent_stops?: number;
     estimated_km: number;
   };
   stops: NurseTourStop[];
@@ -245,6 +250,7 @@ export function useNurseTourWeb() {
   }
 
   async function toggleStopDone(stop: NurseTourStop) {
+    if (isTourStopAbsent(stop)) return;
     const isDone = stop.visit_status === 'done' || stop.status === 'completed';
     await setStopStatus(stop.stop_id, isDone ? 'todo' : 'done');
   }

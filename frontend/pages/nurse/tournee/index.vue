@@ -85,6 +85,10 @@
           <UIcon name="i-lucide-map-pin" class="h-3 w-3" />
           {{ tour.summary.estimated_km }} km estimés
         </span>
+        <template v-if="(tour.summary.absent_stops ?? 0) > 0">
+          <span class="h-1 w-1 rounded-full bg-white/50" />
+          <span>{{ tour.summary.absent_stops }} absent{{ (tour.summary.absent_stops ?? 0) > 1 ? 's' : '' }}</span>
+        </template>
       </div>
     </div>
 
@@ -122,6 +126,7 @@
             :show-reorder="showManualReorder"
             @toggle-done="toggleStopDone(stop)"
             @open-detail="openPassageDetail(stop)"
+            @manage-absence="openAbsenceModal(stop)"
             @move-up="moveStop(index, -1)"
             @move-down="moveStop(index, 1)"
           />
@@ -136,6 +141,19 @@
       description="Consultez un autre jour dans le bandeau ou le calendrier."
       variant="naked"
       class="py-10"
+    />
+
+    <PatientAbsenceModal
+      :open="Boolean(absenceTarget)"
+      :patient-id="absenceTarget?.patient_id ?? null"
+      :patient-name="absenceTarget?.patient_name"
+      :default-start-date="selectedDate"
+      :existing="absenceTarget?.patient_absence ?? null"
+      :saving="absenceSaving"
+      :error="absenceError"
+      @close="absenceTarget = null"
+      @save="onAbsenceSave"
+      @delete="onAbsenceDelete"
     />
 
     <NurseTourRescheduleModal
@@ -177,6 +195,8 @@
 <script setup lang="ts">
 import type { NurseTourStop } from '~/composables/useNurseTourWeb';
 import type { CareCategoryRowMinimal } from '~/utils/care-icons';
+import type { PatientAbsenceInput } from '@oneandlab/shared-types';
+import { countTourActiveRemainingStops } from '@oneandlab/shared-utils';
 import { apiFetch } from '~/utils/api';
 
 definePageMeta({
@@ -199,9 +219,14 @@ const {
   toggleStopDone,
   rescheduleStop,
   downloadIcs,
+  refresh,
 } = useNurseTourWeb();
 
+const { saving: absenceSaving, error: absenceError, saveAbsence, removeAbsence } =
+  usePatientAbsenceWeb();
+
 const rescheduleTarget = ref<NurseTourStop | null>(null);
+const absenceTarget = ref<NurseTourStop | null>(null);
 const passageModalOpen = ref(false);
 const sortModalOpen = ref(false);
 const careCategories = ref<CareCategoryRowMinimal[]>([]);
@@ -244,9 +269,8 @@ const progressPct = computed(() => {
 });
 
 const remainingLabel = computed(() => {
-  const total = tour.value?.summary.total_stops ?? 0;
-  const done = tour.value?.summary.done_stops ?? 0;
-  const remaining = Math.max(0, total - done);
+  const stops = tour.value?.stops ?? [];
+  const remaining = countTourActiveRemainingStops(stops);
   if (remaining === 0) return 'Tournée terminée';
   return `${remaining} passage${remaining > 1 ? 's' : ''} restant${remaining > 1 ? 's' : ''}`;
 });
@@ -276,5 +300,37 @@ function openPassageDetail(stop: NurseTourStop) {
     path: '/nurse/passage/rdv',
     query: { appointment_id: stop.appointment_id, stop_id: stop.stop_id },
   });
+}
+
+function openAbsenceModal(stop: NurseTourStop) {
+  if (!stop.patient_id) {
+    useToast().add({ title: 'Patient introuvable pour cette absence', color: 'error' });
+    return;
+  }
+  absenceTarget.value = stop;
+}
+
+async function onAbsenceSave(input: PatientAbsenceInput, absenceId?: string | null) {
+  if (!absenceTarget.value?.patient_id) return;
+  try {
+    await saveAbsence(absenceTarget.value.patient_id, input, absenceId);
+    absenceTarget.value = null;
+    useToast().add({ title: 'Tournée actualisée', color: 'success' });
+    await refresh();
+  } catch {
+    /* error bound in modal */
+  }
+}
+
+async function onAbsenceDelete(absenceId: string) {
+  if (!absenceTarget.value?.patient_id) return;
+  try {
+    await removeAbsence(absenceTarget.value.patient_id, absenceId);
+    absenceTarget.value = null;
+    useToast().add({ title: 'Absence levée — patient de retour', color: 'success' });
+    await refresh();
+  } catch {
+    /* error bound in modal */
+  }
 }
 </script>

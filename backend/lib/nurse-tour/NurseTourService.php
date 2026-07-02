@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/TourOrderEngine.php';
 require_once __DIR__ . '/TourProximity.php';
+require_once __DIR__ . '/PatientAbsenceService.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../AppointmentListPayload.php';
 require_once __DIR__ . '/../DbSchemaCache.php';
@@ -34,10 +35,15 @@ final class NurseTourService
         $this->syncCompletedVisitStatus((string) $plan['id'], $appointments);
 
         $orderIds = $this->orderEngine->orderIds($appointments, $plan, $origin);
-        $stops = $this->buildStopsResponse((string) $plan['id'], $appointments, $orderIds, $origin, $nurseId);
+        $stops = $this->buildStopsResponse((string) $plan['id'], $appointments, $orderIds, $origin, $nurseId, $tourDate);
 
+        $absent = 0;
         $done = 0;
         foreach ($stops as $stop) {
+            if (!empty($stop['is_patient_absent_today'])) {
+                $absent++;
+                continue;
+            }
             $visit = (string) ($stop['visit_status'] ?? '');
             $aptStatus = (string) ($stop['status'] ?? '');
             if ($visit === 'done' || $visit === 'skipped' || $aptStatus === 'completed') {
@@ -57,6 +63,7 @@ final class NurseTourService
             'summary' => [
                 'total_stops' => count($stops),
                 'done_stops' => $done,
+                'absent_stops' => $absent,
                 'estimated_km' => round(array_sum(array_column($stops, 'distance_km_from_prev')), 1),
             ],
             'stops' => $stops,
@@ -317,6 +324,7 @@ final class NurseTourService
         array $orderIds,
         ?array $origin,
         string $nurseId,
+        string $tourDate,
     ): array {
         $byId = [];
         foreach ($appointments as $apt) {
@@ -331,6 +339,23 @@ final class NurseTourService
         $stopMeta = [];
         foreach ($stopRows->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
             $stopMeta[(string) $row['appointment_id']] = $row;
+        }
+
+        $patientIds = [];
+        foreach ($orderIds as $aptId) {
+            if (!isset($byId[$aptId])) {
+                continue;
+            }
+            $pid = $byId[$aptId]['patient_id'] ?? null;
+            if ($pid) {
+                $patientIds[] = (string) $pid;
+            }
+        }
+        $absenceMap = [];
+        try {
+            $absenceMap = (new PatientAbsenceService($this->db))->activeMapForDate($nurseId, $patientIds, $tourDate);
+        } catch (Throwable $e) {
+            error_log('[nurse-tour] patient absences: ' . $e->getMessage());
         }
 
         $cursor = $origin;
@@ -375,6 +400,8 @@ final class NurseTourService
             $nursingItemsDisplay = is_array($apt['nursing_items_display'] ?? null)
                 ? $apt['nursing_items_display']
                 : $nursingItems;
+            $patientId = !empty($apt['patient_id']) ? (string) $apt['patient_id'] : null;
+            $patientAbsence = ($patientId && isset($absenceMap[$patientId])) ? $absenceMap[$patientId] : null;
 
             $stops[] = [
                 'stop_id' => (string) ($meta['id'] ?? ''),
@@ -384,7 +411,9 @@ final class NurseTourService
                 'visited_at' => $meta['visited_at'] ?? null,
                 'skip_reason' => $meta['skip_reason'] ?? null,
                 'patient_name' => $patientName,
-                'patient_id' => !empty($apt['patient_id']) ? (string) $apt['patient_id'] : null,
+                'patient_id' => $patientId,
+                'is_patient_absent_today' => $patientAbsence !== null,
+                'patient_absence' => $patientAbsence,
                 'patient_gender' => $apt['beneficiary_gender'] ?? null,
                 'profile_image_url' => $apt['beneficiary_profile_image_url'] ?? null,
                 'type' => (string) ($apt['type'] ?? 'nursing'),
@@ -463,6 +492,9 @@ final class NurseTourService
     private function resolveNextStopId(array $stops): ?string
     {
         foreach ($stops as $stop) {
+            if (!empty($stop['is_patient_absent_today'])) {
+                continue;
+            }
             $status = (string) ($stop['visit_status'] ?? '');
             if (!in_array($status, ['done', 'skipped'], true)) {
                 return (string) ($stop['stop_id'] ?? '');

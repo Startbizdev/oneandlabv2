@@ -15,7 +15,7 @@ import {
 import { PASSAGE_TIME_SLOT_LABELS } from '../utils/passage-display';
 import { PassageTimePicker } from './PassageTimePicker';
 import type { PassageTimeSlot } from '@oneandlab/shared-types';
-import { resolvePassageTimeRange } from '@oneandlab/shared-utils';
+import { resolvePassageTimeRange, passageCustomTimeFromHour } from '@oneandlab/shared-utils';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -113,7 +113,7 @@ export function PassageFormTimeSheet({
             if (draftSelection === 'all_day') {
               onConfirm('all_day', '', null);
             } else if (draftSelection === 'range') {
-              onConfirm('custom', '', draftRange);
+              onConfirm('custom', passageCustomTimeFromHour(draftRange[0]), draftRange);
             } else if (draftSelection === 'custom') {
               onConfirm('custom', draftCustomTime, null);
             } else {

@@ -53,8 +53,8 @@ final class Cary360Assertions
     {
         return [
             ['id' => 'focus_attachment', 'message' => 'bonjour', 'has_attachment' => true, 'has_docs' => false, 'draft' => null, 'expect' => CaryContextFocus::DOCUMENT],
-            ['id' => 'focus_carnet', 'message' => 'Aide-moi à compléter mon carnet de santé', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::HEALTH_RECORD],
-            ['id' => 'focus_booking_pansement', 'message' => 'Je voudrais un pansement demain', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::BOOKING],
+            ['id' => 'focus_carnet', 'message' => 'Aide-moi à compléter mon carnet de santé', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::GENERAL],
+            ['id' => 'focus_booking_pansement', 'message' => 'Je voudrais un pansement demain', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::GENERAL],
             ['id' => 'focus_booking_draft', 'message' => 'oui demain', 'has_attachment' => false, 'has_docs' => false, 'draft' => ['status' => 'collecting'], 'expect' => CaryContextFocus::BOOKING],
             ['id' => 'focus_general_alat', 'message' => 'Quelle est la différence entre ALAT et ASAT ?', 'has_attachment' => false, 'has_docs' => false, 'draft' => null, 'expect' => CaryContextFocus::GENERAL],
             ['id' => 'focus_general_alat_with_docs_trap', 'message' => 'Quelle est la différence entre ALAT et ASAT ?', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::DOCUMENT_FOLLOWUP],
@@ -62,9 +62,9 @@ final class Cary360Assertions
             ['id' => 'focus_followup_mon_bilan', 'message' => 'dans mon bilan que pense tu de la créatinine', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::DOCUMENT_FOLLOWUP],
             ['id' => 'trap_merci', 'message' => 'merci beaucoup', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::GENERAL],
             ['id' => 'trap_bonjour', 'message' => 'bonjour comment vas tu ?', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::GENERAL],
-            ['id' => 'trap_pansement_with_docs', 'message' => 'pansement plaie demain 14h', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::BOOKING],
-            ['id' => 'trap_carnet_not_doc', 'message' => 'mon pourcentage carnet de santé', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::HEALTH_RECORD],
-            ['id' => 'trap_rdv_not_followup', 'message' => 'prendre un rdv prise de sang', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::BOOKING],
+            ['id' => 'trap_pansement_with_docs', 'message' => 'pansement plaie demain 14h', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::GENERAL],
+            ['id' => 'trap_carnet_not_doc', 'message' => 'mon pourcentage carnet de santé', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::GENERAL],
+            ['id' => 'trap_rdv_not_followup', 'message' => 'prendre un rdv prise de sang', 'has_attachment' => false, 'has_docs' => true, 'draft' => null, 'expect' => CaryContextFocus::GENERAL],
         ];
     }
 

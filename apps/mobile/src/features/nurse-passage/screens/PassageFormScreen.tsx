@@ -46,6 +46,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { parseProfileAddress, hasValidGeoAddress } from '@/features/profile/utils/parse-profile-address';
 import { useAuthStore } from '@/store/auth-store';
 import type { NursePassageNursingItem, PassageTimeSlot } from '@oneandlab/shared-types';
+import { resolvePassageCustomTime } from '@oneandlab/shared-utils';
 import { H_PADDING, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -214,16 +215,22 @@ export function PassageFormScreen() {
       duration === -1 ? Math.max(5, parseInt(customDuration, 10) || 30) : duration;
 
     const { planning_type, planning_config } = buildPlanningPayload(planningState, nursingItems);
+    const planningWithRange = embedTimeRangeInPlanningConfig(
+      planning_config,
+      timeSlot === 'all_day' ? null : timeRange,
+    );
 
     createMut.mutate({
       patient_id: patientId,
       planning_type,
-      planning_config: embedTimeRangeInPlanningConfig(
-        planning_config,
-        timeSlot === 'all_day' ? null : timeRange,
-      ),
+      planning_config: planningWithRange,
       time_slot: timeSlot,
-      custom_time: timeSlot === 'custom' ? customTime : null,
+      custom_time: resolvePassageCustomTime({
+        time_slot: timeSlot,
+        custom_time: customTime,
+        time_range: timeSlot === 'all_day' ? null : timeRange,
+        planning_config: planningWithRange,
+      }),
       time_range: timeSlot === 'all_day' ? null : timeRange,
       duration_minutes: durationMinutes,
       at_home: atHome,

@@ -5,14 +5,15 @@ import { Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import {
-  fetchHealthRecordSchema,
   fetchStaffHealthRecord,
   patchStaffHealthRecordAnswers,
 } from '@/features/health-record/api/health-record.service';
 import { HealthRecordQuestionStep } from '@/features/health-record/components/HealthRecordQuestionStep';
 import { healthRecordQueryKeys } from '@/features/health-record/hooks/use-health-record-completion';
+import { recapItemsToQuestions } from '@/features/health-record/utils/health-record-questions';
 import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -33,12 +34,6 @@ export function PassageFormHealthRecordSectionSheet({
   const qc = useQueryClient();
   const [stepIndex, setStepIndex] = useState(0);
 
-  const schemaQ = useQuery({
-    queryKey: healthRecordQueryKeys.schema,
-    queryFn: fetchHealthRecordSchema,
-    enabled: visible,
-  });
-
   const recapQ = useQuery({
     queryKey: healthRecordQueryKeys.staffRecap(patientId),
     queryFn: () => fetchStaffHealthRecord(patientId),
@@ -46,11 +41,15 @@ export function PassageFormHealthRecordSectionSheet({
   });
 
   const section = useMemo(
-    () => schemaQ.data?.sections.find((s) => s.id === sectionId) ?? null,
-    [schemaQ.data?.sections, sectionId],
+    () => recapQ.data?.sections.find((s) => s.id === sectionId) ?? null,
+    [recapQ.data?.sections, sectionId],
   );
 
-  const questions = section?.questions ?? [];
+  const questions = useMemo(
+    () => recapItemsToQuestions(section?.items),
+    [section?.items],
+  );
+
   const current = questions[stepIndex] ?? null;
 
   const savedAnswers = useMemo(() => {
@@ -95,12 +94,25 @@ export function PassageFormHealthRecordSectionSheet({
       snapPoints={['88%']}
       footer={
         current && stepIndex > 0 ? (
-          <Button title="Question précédente" variant="secondary" onPress={() => setStepIndex((i) => Math.max(0, i - 1))} />
+          <Button
+            title="Question précédente"
+            variant="secondary"
+            onPress={() => setStepIndex((i) => Math.max(0, i - 1))}
+          />
         ) : undefined
       }
     >
-      {schemaQ.isLoading || recapQ.isLoading ? (
+      {recapQ.isLoading ? (
         <SkeletonList count={3} itemHeight={48} gap={spacing[2]} />
+      ) : recapQ.isError ? (
+        <EmptyState
+          title="Carnet indisponible"
+          description={
+            recapQ.error instanceof Error ? recapQ.error.message : 'Impossible de charger le carnet.'
+          }
+          actionLabel="Fermer"
+          onAction={onClose}
+        />
       ) : !current ? (
         <Text style={styles.empty}>Aucune question dans cette section.</Text>
       ) : (

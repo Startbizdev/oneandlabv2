@@ -6,6 +6,7 @@ import {
   FileText,
   Layers,
   Trash2,
+  UserX,
 } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import {
@@ -24,9 +25,12 @@ type Props = {
   deleteOneLoading: boolean;
   deleteSeriesLoading: boolean;
   showDeleteSeries?: boolean;
+  hasPatient?: boolean;
+  isPatientAbsent?: boolean;
   onMaterialize: () => void;
   onEnRoute: () => void;
   onMarkDone: () => void;
+  onManageAbsence?: () => void;
   onOpenFullAppointment: () => void;
   onDeleteOne: () => void;
   onDeleteSeries: () => void;
@@ -43,9 +47,12 @@ export function PassageDetailActionsSheet({
   deleteOneLoading,
   deleteSeriesLoading,
   showDeleteSeries = true,
+  hasPatient = false,
+  isPatientAbsent = false,
   onMaterialize,
   onEnRoute,
   onMarkDone,
+  onManageAbsence,
   onOpenFullAppointment,
   onDeleteOne,
   onDeleteSeries,
@@ -94,6 +101,20 @@ export function PassageDetailActionsSheet({
         onPress: () => {
           onClose();
           onMaterialize();
+        },
+      });
+    }
+
+    if (hasPatient && onManageAbsence) {
+      items.push({
+        key: 'absence',
+        label: isPatientAbsent ? 'Modifier l\'absence du patient' : 'Déclarer une absence',
+        icon: UserX,
+        tone: isPatientAbsent ? 'neutral' : 'neutral',
+        showChevron: false,
+        onPress: () => {
+          onClose();
+          onManageAbsence();
         },
       });
     }
@@ -153,8 +174,11 @@ export function PassageDetailActionsSheet({
     onDeleteSeries,
     onEnRoute,
     onMarkDone,
+    onManageAbsence,
     onMaterialize,
     onOpenFullAppointment,
+    hasPatient,
+    isPatientAbsent,
     showMaterialize,
     showDeleteSeries,
   ]);

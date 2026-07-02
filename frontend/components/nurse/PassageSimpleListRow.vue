@@ -1,31 +1,30 @@
 <template>
   <div
     class="relative rounded-2xl border px-3.5 py-3 shadow-md ring-1 ring-black/[0.04] dark:ring-white/[0.06]"
-    :class="
-      done
-        ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800/70 dark:bg-emerald-950/35'
-        : isNext
-          ? 'border-primary-300 ring-1 ring-primary-200 dark:border-primary-700 dark:ring-primary-900/40'
-          : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900/50'
-    "
+    :class="cardClass"
   >
     <div class="flex items-center gap-2.5">
       <button type="button" class="min-w-0 flex-1 text-left" @click="$emit('open-detail')">
         <div class="flex min-w-0 flex-wrap items-center gap-1.5">
           <p
             class="truncate text-sm font-semibold leading-tight tracking-tight"
-            :class="done ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'"
+            :class="mutedText ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'"
           >
             {{ stop.patient_name }}
           </p>
-          <UBadge v-if="isNext && !done" color="primary" variant="subtle" size="xs">Suivant</UBadge>
+          <UBadge v-if="isNext && !done && !absent" color="primary" variant="subtle" size="xs">
+            Suivant
+          </UBadge>
+          <UBadge v-if="absent && absenceLabel" color="neutral" variant="subtle" size="xs">
+            {{ absenceLabel }}
+          </UBadge>
         </div>
         <NurseTourStopCare
           :stop="stop"
           :categories="categories"
           embedded
           list-compact
-          :class="done ? 'opacity-70' : ''"
+          :class="mutedText ? 'opacity-70' : ''"
         />
         <div v-if="scheduleMeta" class="mt-1 flex min-w-0 items-center gap-1.5">
           <UIcon name="i-lucide-clock" class="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" />
@@ -49,19 +48,24 @@
       <button
         type="button"
         class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors"
-        :class="
-          done
-            ? 'border-emerald-500 bg-emerald-500 shadow-sm'
-            : 'border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-800'
-        "
-        :aria-label="done ? 'Passage effectué, appuyer pour annuler' : 'Marquer comme effectué'"
-        @click="$emit('toggle-done')"
+        :class="checkClass"
+        :aria-label="absent ? 'Gérer l\'absence du patient' : done ? 'Passage effectué, appuyer pour annuler' : 'Marquer comme effectué'"
+        @click="absent ? $emit('manage-absence') : $emit('toggle-done')"
       >
         <UIcon
-          name="i-lucide-check"
+          :name="absent ? 'i-lucide-user-x' : 'i-lucide-check'"
           class="h-[18px] w-[18px]"
-          :class="done ? 'text-white' : 'text-gray-400 opacity-40 dark:text-gray-500'"
+          :class="absent ? 'text-gray-500 dark:text-gray-400' : done ? 'text-white' : 'text-gray-400 opacity-40 dark:text-gray-500'"
         />
+      </button>
+
+      <button
+        type="button"
+        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+        aria-label="Gérer l'absence"
+        @click="$emit('manage-absence')"
+      >
+        <UIcon name="i-lucide-calendar-off" class="h-4 w-4" />
       </button>
     </div>
 
@@ -91,6 +95,7 @@
 <script setup lang="ts">
 import type { NurseTourStop } from '~/composables/useNurseTourWeb';
 import type { CareCategoryRowMinimal } from '~/utils/care-icons';
+import { isTourStopAbsent } from '@oneandlab/shared-utils';
 import {
   formatPassageTourStopTimeLabel,
   resolvePassageTourStopRouteLabels,
@@ -114,11 +119,40 @@ defineEmits<{
   'open-detail': [];
   'move-up': [];
   'move-down': [];
+  'manage-absence': [];
 }>();
 
+const absent = computed(() => isTourStopAbsent(props.stop));
 const done = computed(
-  () => props.stop.visit_status === 'done' || props.stop.status === 'completed',
+  () =>
+    !absent.value &&
+    (props.stop.visit_status === 'done' || props.stop.status === 'completed'),
 );
+const mutedText = computed(() => done.value || absent.value);
+const absenceLabel = computed(() => props.stop.patient_absence?.card_label_fr ?? '');
+
+const cardClass = computed(() => {
+  if (absent.value) {
+    return 'border-gray-300 bg-gray-100 opacity-75 dark:border-gray-700 dark:bg-gray-800/60';
+  }
+  if (done.value) {
+    return 'border-emerald-200 bg-emerald-50 dark:border-emerald-800/70 dark:bg-emerald-950/35';
+  }
+  if (props.isNext) {
+    return 'border-primary-300 ring-1 ring-primary-200 dark:border-primary-700 dark:ring-primary-900/40 bg-white dark:bg-gray-900/50';
+  }
+  return 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900/50';
+});
+
+const checkClass = computed(() => {
+  if (absent.value) {
+    return 'border-gray-300 bg-gray-200 dark:border-gray-600 dark:bg-gray-700';
+  }
+  if (done.value) {
+    return 'border-emerald-500 bg-emerald-500 shadow-sm';
+  }
+  return 'border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-800';
+});
 
 const scheduleMeta = computed(() => {
   const parts: string[] = [formatPassageTourStopTimeLabel(props.stop)];

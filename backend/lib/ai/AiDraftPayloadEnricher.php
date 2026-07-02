@@ -6,6 +6,8 @@ require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../models/PatientRelative.php';
 require_once __DIR__ . '/../PatientDossierDocuments.php';
 require_once __DIR__ . '/../Uuid.php';
+require_once __DIR__ . '/AiStaffPatientResolver.php';
+require_once __DIR__ . '/AiAddressFromMessageResolver.php';
 
 /**
  * Enrichit un brouillon IA avec les données réelles du compte (adresse, docs, créneaux wizard).
@@ -15,17 +17,23 @@ final class AiDraftPayloadEnricher
     private PDO $db;
     private User $userModel;
 
+    private AiStaffPatientResolver $staffPatientResolver;
+
+    private AiAddressFromMessageResolver $addressResolver;
+
     public function __construct(?PDO $db = null, ?User $userModel = null)
     {
         $this->db = $db ?? ai_db();
         $this->userModel = $userModel ?? new User();
+        $this->staffPatientResolver = new AiStaffPatientResolver($this->userModel);
+        $this->addressResolver = new AiAddressFromMessageResolver();
     }
 
     /**
      * @param array<string, mixed> $payload
      * @return array<string, mixed>
      */
-    public function enrich(array $payload, array $user): array
+    public function enrich(array $payload, array $user, ?string $userMessage = null): array
     {
         $role = (string) ($user['role'] ?? '');
         $userId = (string) ($user['user_id'] ?? '');
@@ -36,13 +44,18 @@ final class AiDraftPayloadEnricher
             $payload['patient_mode'] = $payload['patient_mode'] ?? 'self';
         }
 
+        $payload = $this->staffPatientResolver->apply($payload, $user);
+        $payload = $this->resolveStaffPracticeAddress($payload, $user);
+        $payload = $this->addressResolver->apply($payload);
+        $payload = $this->applyStaffContactPhoneFallback($payload, $user);
+        $payload = $this->applyStaffContactEmailFallback($payload, $user);
         $payload = $this->resolveCategory($payload);
+        $payload = $this->syncCategoryNameFromId($payload);
         $payload = $this->resolveProfileAddress($payload, $user, $patientId, $role);
         $payload = $this->resolveProfileIdentity($payload, $user, $patientId, $role);
         $payload = $this->normalizeAvailability($payload);
         $payload = $this->normalizeSelectedServices($payload);
         $payload = $this->normalizeCareOptions($payload);
-        $payload = $this->prefillProfileDocuments($payload, $patientId, $userId, $role);
 
         return $payload;
     }
@@ -63,6 +76,23 @@ final class AiDraftPayloadEnricher
     }
 
     /**
+     * Sync display name depuis category_id (Grok choisit l'id via list_care_categories).
+     *
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function syncCategoryNameFromId(array $payload): array
+    {
+        if (!empty($payload['category_id']) && empty($payload['category_name'])) {
+            $payload['category_name'] = $this->categoryNameById((string) $payload['category_id']);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Résout category_id depuis category_name (+ type) quand Grok n'a pas l'uuid catalogue.
+     *
      * @param array<string, mixed> $payload
      * @return array<string, mixed>
      */
@@ -98,6 +128,21 @@ final class AiDraftPayloadEnricher
                         $row = $candidate;
                         break;
                     }
+                }
+            }
+        }
+        if (!$row) {
+            $keywords = preg_split('/[\s\-_\/\']+/u', mb_strtolower($name)) ?: [];
+            $keywords = array_values(array_filter(
+                $keywords,
+                static fn (string $word): bool => mb_strlen($word) >= 4,
+            ));
+            usort($keywords, static fn (string $a, string $b): int => mb_strlen($b) <=> mb_strlen($a));
+            foreach ($keywords as $keyword) {
+                $stmt->execute([$type, '%' . $keyword . '%']);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($row) {
+                    break;
                 }
             }
         }
@@ -398,6 +443,17 @@ final class AiDraftPayloadEnricher
      */
     private function resolveProfileAddress(array $payload, array $user, string $patientId, string $role): array
     {
+        $patientMode = (string) ($payload['patient_mode'] ?? 'self');
+        if (
+            in_array($role, ['pro', 'nurse', 'preleveur'], true)
+            && $patientMode === 'new'
+            && empty($payload['use_staff_practice_address'])
+            && empty($payload['use_profile_address'])
+            && !$this->hasResolvedAddress($payload)
+        ) {
+            return $payload;
+        }
+
         $address = $payload['address'] ?? null;
         if (!$this->shouldUseProfileAddress($address, $payload)) {
             return $payload;
@@ -439,42 +495,159 @@ final class AiDraftPayloadEnricher
     }
 
     /**
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function resolveStaffPracticeAddress(array $payload, array $user): array
+    {
+        $role = (string) ($user['role'] ?? '');
+        if (!in_array($role, ['pro', 'nurse', 'preleveur'], true)) {
+            return $payload;
+        }
+
+        if (empty($payload['use_staff_practice_address'])) {
+            return $payload;
+        }
+
+        try {
+            $profile = $this->userModel->getById(
+                (string) ($user['user_id'] ?? ''),
+                (string) ($user['user_id'] ?? ''),
+                $role,
+                'mobile',
+            );
+        } catch (Throwable) {
+            return $payload;
+        }
+
+        $profileAddress = is_array($profile['address'] ?? null) ? $profile['address'] : null;
+        if (!$profileAddress || trim((string) ($profileAddress['label'] ?? '')) === '') {
+            return $payload;
+        }
+
+        $lat = $profileAddress['lat'] ?? null;
+        $lng = $profileAddress['lng'] ?? null;
+        if (!is_numeric($lat) || !is_numeric($lng)) {
+            return $payload;
+        }
+
+        $payload['address'] = [
+            'label' => (string) $profileAddress['label'],
+            'lat' => (float) $lat,
+            'lng' => (float) $lng,
+            'complement' => $profileAddress['complement'] ?? null,
+            'city' => $profileAddress['city'] ?? null,
+            'postal_code' => $profileAddress['postal_code'] ?? null,
+        ];
+        $payload['use_profile_address'] = true;
+        $payload['booking_step'] = $payload['booking_step'] ?? 'address';
+
+        return $payload;
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function applyStaffContactPhoneFallback(array $payload, array $user): array
+    {
+        if (empty($payload['use_staff_contact_phone'])) {
+            return $payload;
+        }
+
+        $formData = is_array($payload['form_data'] ?? null) ? $payload['form_data'] : [];
+        if (!empty($payload['phone']) || !empty($formData['phone'])) {
+            return $payload;
+        }
+
+        try {
+            $profile = $this->userModel->getById(
+                (string) ($user['user_id'] ?? ''),
+                (string) ($user['user_id'] ?? ''),
+                (string) ($user['role'] ?? ''),
+                'mobile',
+            );
+        } catch (Throwable) {
+            return $payload;
+        }
+
+        $phone = trim((string) ($profile['phone'] ?? ''));
+        if ($phone === '') {
+            return $payload;
+        }
+
+        $payload['phone'] = $phone;
+        $formData['phone'] = $phone;
+        $payload['form_data'] = $formData;
+
+        return $payload;
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function applyStaffContactEmailFallback(array $payload, array $user): array
+    {
+        if (empty($payload['use_staff_contact_email'])) {
+            return $payload;
+        }
+
+        $formData = is_array($payload['form_data'] ?? null) ? $payload['form_data'] : [];
+        if (!empty($payload['email']) || !empty($formData['email'])) {
+            return $payload;
+        }
+
+        try {
+            $profile = $this->userModel->getById(
+                (string) ($user['user_id'] ?? ''),
+                (string) ($user['user_id'] ?? ''),
+                (string) ($user['role'] ?? ''),
+                'mobile',
+            );
+        } catch (Throwable) {
+            return $payload;
+        }
+
+        $email = trim((string) ($profile['email'] ?? ''));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $payload;
+        }
+
+        $payload['email'] = $email;
+        $formData['email'] = $email;
+        $payload['form_data'] = $formData;
+
+        return $payload;
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function hasResolvedAddress(array $payload): bool
+    {
+        $address = $payload['address'] ?? null;
+        if (!is_array($address)) {
+            return false;
+        }
+
+        $label = trim((string) ($address['label'] ?? ''));
+        $lat = $address['lat'] ?? null;
+        $lng = $address['lng'] ?? null;
+
+        return $label !== ''
+            && is_numeric($lat)
+            && is_numeric($lng)
+            && ((float) $lat !== 0.0 || (float) $lng !== 0.0);
+    }
+
+    /**
      * @param array<string, mixed>|null $address
      * @param array<string, mixed> $payload
      */
     private function shouldUseProfileAddress(?array $address, array $payload): bool
     {
-        if (!empty($payload['use_profile_address'])) {
-            return true;
-        }
-
-        if (!is_array($address)) {
-            return true;
-        }
-
-        $label = mb_strtolower(trim((string) ($address['label'] ?? '')));
-        $placeholders = [
-            'adresse du compte',
-            'mon compte',
-            'même adresse',
-            'meme adresse',
-            'adresse enregistrée',
-            'adresse enregistree',
-            'adresse du profil',
-            'mon adresse',
-        ];
-        foreach ($placeholders as $needle) {
-            if ($label !== '' && str_contains($label, $needle)) {
-                return true;
-            }
-        }
-
-        $lat = $address['lat'] ?? null;
-        $lng = $address['lng'] ?? null;
-
-        return !is_numeric($lat) || !is_numeric($lng)
-            || trim((string) ($address['label'] ?? '')) === ''
-            || ((float) $lat === 0.0 && (float) $lng === 0.0);
+        return !empty($payload['use_profile_address']) || !empty($payload['use_staff_practice_address']);
     }
 
     /**
@@ -670,6 +843,16 @@ final class AiDraftPayloadEnricher
             $id = (string) ($svc['id'] ?? Uuid::v4());
             $catId = $svc['category_id'] ?? null;
             $name = trim((string) ($svc['name'] ?? $svc['category_name'] ?? ''));
+            if (($catId === null || $catId === '') && $name !== '') {
+                $resolved = $this->resolveCategory([
+                    'category_name' => $name,
+                    'type' => (string) ($svc['type'] ?? 'nursing'),
+                ]);
+                $catId = $resolved['category_id'] ?? null;
+                if ($name === '' && $catId) {
+                    $name = $this->categoryNameById((string) $catId) ?? '';
+                }
+            }
             if ($name === '' && $catId) {
                 $name = $this->categoryNameById((string) $catId) ?? '';
             }
