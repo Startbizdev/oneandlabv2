@@ -3,14 +3,17 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Check, ChevronDown, ChevronUp, Clock, MapPin } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronUp, Car, Clock, Route } from 'lucide-react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { Badge } from '@/components/ui/Badge';
 import { TourStopCareSection } from '@/features/tournee-nurse/components/TourStopCareSection';
 import type { NurseTourStop } from '@/features/tournee-nurse/api/nurse-tour.service';
 import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
-import { formatPassageDurationLabel, formatPassageTimeLabel } from '../utils/passage-display';
-import { formatTourStopRouteLineText } from '@oneandlab/shared-utils';
+import {
+  formatPassageDurationLabel,
+  formatPassageTimeLabel,
+  resolvePassageRouteListLabels,
+} from '../utils/passage-display';
 import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
@@ -42,8 +45,8 @@ export function PassageSimpleListRow({
   const done = stop.visit_status === 'done' || stop.status === 'completed';
   const timeLabel = formatPassageTimeLabel(stop);
   const durationLabel = formatPassageDurationLabel(stop);
+  const { kmLabel, driveMinLabel } = resolvePassageRouteListLabels(stop, index);
   const scheduleMeta = [timeLabel, durationLabel].filter(Boolean).join(' · ');
-  const routeLine = formatTourStopRouteLineText(stop, index);
 
   return (
     <Animated.View entering={FadeInDown.delay(index * 35).duration(280)} style={cardStyles.cardShell}>
@@ -121,12 +124,20 @@ export function PassageSimpleListRow({
                 <Text style={[styles.meta, { color: c.textTertiary }]}>{scheduleMeta}</Text>
               </Row>
             ) : null}
-            {routeLine ? (
-              <Row gap={spacing[2]} align="center" style={styles.metaRow}>
-                <View style={styles.metaIconWrap}>
-                  <MapPin size={12} color={c.textTertiary} strokeWidth={2.5} />
-                </View>
-                <Text style={[styles.meta, { color: c.textTertiary }]}>{routeLine}</Text>
+            {kmLabel || driveMinLabel ? (
+              <Row gap={spacing[2.5]} align="center" wrap style={styles.metaRow}>
+                {kmLabel ? (
+                  <Row gap={spacing[1]} align="center" style={styles.routeSegment}>
+                    <Route size={12} color={c.textTertiary} strokeWidth={2.5} />
+                    <Text style={[styles.metaInline, { color: c.textTertiary }]}>{kmLabel}</Text>
+                  </Row>
+                ) : null}
+                {driveMinLabel ? (
+                  <Row gap={spacing[1]} align="center" style={styles.routeSegment}>
+                    <Car size={12} color={c.textTertiary} strokeWidth={2.5} />
+                    <Text style={[styles.metaInline, { color: c.textTertiary }]}>{driveMinLabel}</Text>
+                  </Row>
+                ) : null}
               </Row>
             ) : null}
           </Pressable>
@@ -179,6 +190,13 @@ function buildStyles(_c: AppColors) {
       minWidth: 0,
       fontFamily: fontFamily.medium,
       fontSize: fontSize.xs,
+    },
+    metaInline: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSize.xs,
+    },
+    routeSegment: {
+      flexShrink: 0,
     },
     metaRow: {
       marginTop: spacing[0.5],

@@ -4,7 +4,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import dayjs from 'dayjs';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   buildTabSceneScrollConfig,
   spreadTabSceneScrollProps,
@@ -72,6 +72,13 @@ export function NurseTourneeScreen() {
   useEffect(() => {
     void refreshCoords();
   }, [refreshCoords]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshCoords();
+      void refetch();
+    }, [refreshCoords, refetch]),
+  );
 
   useEffect(() => {
     setManualOrderActive(false);
@@ -176,16 +183,19 @@ export function NurseTourneeScreen() {
     tour && (tour.plan.sort_mode !== 'smart' || tour.plan.manual_order_locked),
   );
 
-  const listHeader = (
-    <View style={styles.listHeader}>
-      {tour && hasStops ? <TourSummaryCard summary={tour.summary} /> : null}
-      {hasStops ? (
-        <TourPassageSectionHeader
-          sortActive={sortFilterActive}
-          onOpenFilter={() => setSortSheetOpen(true)}
-        />
-      ) : null}
-    </View>
+  const listHeader = useCallback(
+    () => (
+      <View style={styles.listHeader}>
+        {tour && hasStops ? <TourSummaryCard summary={tour.summary} /> : null}
+        {hasStops ? (
+          <TourPassageSectionHeader
+            sortActive={sortFilterActive}
+            onOpenFilter={() => setSortSheetOpen(true)}
+          />
+        ) : null}
+      </View>
+    ),
+    [hasStops, sortFilterActive, tour, styles.listHeader],
   );
 
   return (
@@ -220,6 +230,7 @@ export function NurseTourneeScreen() {
           <FlatList
             data={displayStops}
             keyExtractor={(item) => item.stop_id}
+            extraData={`${tour?.summary.done_stops}/${tour?.summary.total_stops}`}
             {...spreadTabSceneScrollProps(listScrollConfig)}
             contentContainerStyle={[
               listScrollConfig.contentContainerStyle,

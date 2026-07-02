@@ -31,9 +31,18 @@
           <UIcon name="i-lucide-clock" class="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" />
           <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ scheduleMeta }}</span>
         </div>
-        <div v-if="routeLine" class="mt-1 flex min-w-0 items-center gap-1.5">
-          <UIcon name="i-lucide-map-pin" class="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" />
-          <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ routeLine }}</span>
+        <div
+          v-if="routeKmLabel || routeDriveMinLabel"
+          class="mt-1 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5"
+        >
+          <span v-if="routeKmLabel" class="inline-flex items-center gap-1">
+            <UIcon name="i-lucide-route" class="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" />
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ routeKmLabel }}</span>
+          </span>
+          <span v-if="routeDriveMinLabel" class="inline-flex items-center gap-1">
+            <UIcon name="i-lucide-car" class="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" />
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ routeDriveMinLabel }}</span>
+          </span>
         </div>
       </button>
 
@@ -82,8 +91,10 @@
 <script setup lang="ts">
 import type { NurseTourStop } from '~/composables/useNurseTourWeb';
 import type { CareCategoryRowMinimal } from '~/utils/care-icons';
-import { formatPassageStopTimeLabel, formatTourStopRouteLineText } from '@oneandlab/shared-utils';
-import { formatAvailabilityDisplayFr } from '~/utils/appointment-datetime-fr';
+import {
+  formatPassageTourStopTimeLabel,
+  resolvePassageTourStopRouteLabels,
+} from '~/utils/passage-tour-display';
 
 const props = withDefaults(
   defineProps<{
@@ -110,22 +121,14 @@ const done = computed(
 );
 
 const scheduleMeta = computed(() => {
-  const parts: string[] = [];
-  const slotLabel =
-    formatPassageStopTimeLabel({
-      passage_time_slot: props.stop.passage_time_slot,
-      scheduled_at: props.stop.scheduled_at,
-      availability: props.stop.availability,
-      passage_custom_time: props.stop.passage_custom_time,
-    }) ??
-    formatAvailabilityDisplayFr(props.stop.availability, props.stop.scheduled_at) ??
-    '';
-  if (slotLabel) parts.push(slotLabel);
+  const parts: string[] = [formatPassageTourStopTimeLabel(props.stop)];
   if (props.stop.passage_duration_minutes) {
     parts.push(`${props.stop.passage_duration_minutes} min`);
   }
-  return parts.join(' · ');
+  return parts.filter(Boolean).join(' · ');
 });
 
-const routeLine = computed(() => formatTourStopRouteLineText(props.stop, props.index));
+const routeLabels = computed(() => resolvePassageTourStopRouteLabels(props.stop, props.index));
+const routeKmLabel = computed(() => routeLabels.value.kmLabel);
+const routeDriveMinLabel = computed(() => routeLabels.value.driveMinLabel);
 </script>

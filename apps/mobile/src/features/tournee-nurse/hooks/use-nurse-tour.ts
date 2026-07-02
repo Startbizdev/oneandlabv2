@@ -3,6 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Location from 'expo-location';
 import dayjs from 'dayjs';
 import {
+  computeTourSummaryFromStops,
+  resolveTourNextStopId,
+} from '@oneandlab/shared-utils';
+import {
   fetchNurseTour,
   fetchNurseTourSummary,
   optimizeNurseTour,
@@ -18,14 +22,28 @@ import {
 const STALE_MS = 60_000;
 const FORWARD_SUMMARY_DAYS = 21;
 
+function tourQueryKey(date: string, coords: { lat: number; lng: number } | null) {
+  return ['nurse-tour', date, coords?.lat ?? null, coords?.lng ?? null] as const;
+}
+
+function withDerivedSummary(tour: NurseTourPayload): NurseTourPayload {
+  const summary = computeTourSummaryFromStops(tour.stops, tour.summary.estimated_km);
+  return {
+    ...tour,
+    summary,
+    next_stop_id: resolveTourNextStopId(tour.stops),
+  };
+}
+
 export function useNurseTour(date: string) {
   const qc = useQueryClient();
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const tourQuery = useQuery({
-    queryKey: ['nurse-tour', date, coords?.lat ?? null, coords?.lng ?? null],
+    queryKey: tourQueryKey(date, coords),
     queryFn: () => fetchNurseTour(date, coords ?? undefined),
     staleTime: STALE_MS,
+    select: withDerivedSummary,
   });
 
   const summaryFrom = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
@@ -42,7 +60,7 @@ export function useNurseTour(date: string) {
     const adjacent = [dayjs(date).subtract(1, 'day'), dayjs(date).add(1, 'day')];
     for (const d of adjacent) {
       void qc.prefetchQuery({
-        queryKey: ['nurse-tour', d.format('YYYY-MM-DD'), coords?.lat ?? null, coords?.lng ?? null],
+        queryKey: tourQueryKey(d.format('YYYY-MM-DD'), coords),
         queryFn: () => fetchNurseTour(d.format('YYYY-MM-DD'), coords ?? undefined),
         staleTime: STALE_MS,
       });
@@ -62,9 +80,9 @@ export function useNurseTour(date: string) {
 
   const applyTour = useCallback(
     (data: NurseTourPayload) => {
-      qc.setQueryData(['nurse-tour', date, coords?.lat ?? null, coords?.lng ?? null], data);
+      qc.setQueryData(tourQueryKey(date, coords), data);
     },
-    [coords?.lat, coords?.lng, date, qc],
+    [coords, date, qc],
   );
 
   const moveStop = useCallback(
@@ -99,10 +117,34 @@ export function useNurseTour(date: string) {
 
   const setStatus = useCallback(
     async (stopId: string, status: TourVisitStatus) => {
-      const updated = await updateNurseTourStopStatus(stopId, status);
-      applyTour(updated);
+      const key = tourQueryKey(date, coords);
+      const current = qc.getQueryData<NurseTourPayload>(key) ?? tour;
+      if (!current) return;
+
+      const visitedAt =
+        status === 'done' || status === 'on_site' ? new Date().toISOString() : null;
+      const optimisticStops = current.stops.map((s) => {
+        if (s.stop_id !== stopId) return s;
+        const nextStatus =
+          status === 'todo' && s.status === 'completed' ? ('confirmed' as const) : s.status;
+        return {
+          ...s,
+          visit_status: status,
+          visited_at: visitedAt,
+          status: nextStatus,
+        };
+      });
+      applyTour({ ...current, stops: optimisticStops });
+
+      try {
+        const updated = await updateNurseTourStopStatus(stopId, status);
+        applyTour(updated);
+      } catch (error) {
+        applyTour(current);
+        throw error;
+      }
     },
-    [applyTour],
+    [applyTour, coords, date, qc, tour],
   );
 
   const reschedule = useCallback(

@@ -17,6 +17,36 @@ header('Access-Control-Allow-Methods: GET, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
 header('Access-Control-Allow-Credentials: true');
 
+/**
+ * PATCH créneau passage infirmier (form_data + scheduled_at) — pas une refonte admin complète.
+ */
+function appointment_is_nurse_passage_schedule_patch(array $input): bool
+{
+    if (isset($input['address']) || isset($input['status']) || isset($input['category_id'])) {
+        return false;
+    }
+    foreach (array_keys($input) as $key) {
+        if (!in_array($key, ['form_data', 'scheduled_at'], true)) {
+            return false;
+        }
+    }
+
+    return isset($input['form_data']) || isset($input['scheduled_at']);
+}
+
+function appointment_nurse_assigned_to_nursing(PDO $db, string $appointmentId, string $nurseId): bool
+{
+    $stmt = $db->prepare("
+        SELECT id FROM appointments
+        WHERE id = ? AND type = 'nursing' AND assigned_nurse_id = ?
+          AND status IN ('confirmed', 'inProgress', 'planned', 'completed')
+        LIMIT 1
+    ");
+    $stmt->execute([$appointmentId, $nurseId]);
+
+    return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
@@ -382,9 +412,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
 
         if ($isFullUpdate) {
-            require_once __DIR__ . '/../../middleware/RoleMiddleware.php';
-            $roleMiddleware = new RoleMiddleware();
-            $roleMiddleware->handle($user, ['super_admin']);
+            $allowNursePassagePatch = false;
+            if (($user['role'] ?? '') === 'nurse' && appointment_is_nurse_passage_schedule_patch($input)) {
+                $config = require __DIR__ . '/../../config/database.php';
+                $dsn = sprintf(
+                    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+                    $config['host'],
+                    $config['port'],
+                    $config['database'],
+                    $config['charset'],
+                );
+                $dbNursePatch = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
+                $allowNursePassagePatch = appointment_nurse_assigned_to_nursing(
+                    $dbNursePatch,
+                    $id,
+                    (string) ($user['user_id'] ?? ''),
+                );
+            }
+            if (!$allowNursePassagePatch) {
+                require_once __DIR__ . '/../../middleware/RoleMiddleware.php';
+                $roleMiddleware = new RoleMiddleware();
+                $roleMiddleware->handle($user, ['super_admin']);
+            }
             // S'assurer que category_id est à la racine (le modèle le lit là)
             if (!isset($input['category_id']) && !empty($input['form_data']['category_id'])) {
                 $input['category_id'] = $input['form_data']['category_id'];

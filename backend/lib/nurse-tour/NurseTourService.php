@@ -31,13 +31,16 @@ final class NurseTourService
         $appointments = $this->loadAppointmentsForDate($nurseId, $tourDate);
         $plan = $this->ensurePlan($nurseId, $tourDate);
         $this->syncStops((string) $plan['id'], $appointments);
+        $this->syncCompletedVisitStatus((string) $plan['id'], $appointments);
 
         $orderIds = $this->orderEngine->orderIds($appointments, $plan, $origin);
         $stops = $this->buildStopsResponse((string) $plan['id'], $appointments, $orderIds, $origin, $nurseId);
 
         $done = 0;
         foreach ($stops as $stop) {
-            if (($stop['visit_status'] ?? '') === 'done') {
+            $visit = (string) ($stop['visit_status'] ?? '');
+            $aptStatus = (string) ($stop['status'] ?? '');
+            if ($visit === 'done' || $visit === 'skipped' || $aptStatus === 'completed') {
                 $done++;
             }
         }
@@ -261,6 +264,45 @@ final class NurseTourService
             if (!isset($seen[$aptId])) {
                 $this->db->prepare('DELETE FROM nurse_tour_stops WHERE id = ?')->execute([$stopId]);
             }
+        }
+    }
+
+    /**
+     * Aligne visit_status quand le RDV est déjà terminé (ex. finalisation depuis le détail passage).
+     *
+     * @param list<array<string, mixed>> $appointments
+     */
+    private function syncCompletedVisitStatus(string $planId, array $appointments): void
+    {
+        $byId = [];
+        foreach ($appointments as $apt) {
+            $id = (string) ($apt['id'] ?? '');
+            if ($id !== '') {
+                $byId[$id] = $apt;
+            }
+        }
+
+        $stmt = $this->db->prepare('
+            SELECT id, appointment_id, visit_status
+            FROM nurse_tour_stops
+            WHERE tour_plan_id = ?
+        ');
+        $stmt->execute([$planId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $aptId = (string) ($row['appointment_id'] ?? '');
+            $visit = (string) ($row['visit_status'] ?? '');
+            if ($visit === 'done' || $visit === 'skipped' || $aptId === '') {
+                continue;
+            }
+            $aptStatus = (string) (($byId[$aptId]['status'] ?? ''));
+            if ($aptStatus !== 'completed') {
+                continue;
+            }
+            $this->db->prepare('
+                UPDATE nurse_tour_stops
+                SET visit_status = ?, visited_at = COALESCE(visited_at, NOW()), updated_at = NOW()
+                WHERE id = ?
+            ')->execute(['done', (string) $row['id']]);
         }
     }
 

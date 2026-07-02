@@ -1,5 +1,9 @@
 import { apiFetch, apiFetchBlob } from '~/utils/api';
-import { buildNavigationUrl } from '@oneandlab/shared-utils';
+import {
+  buildNavigationUrl,
+  computeTourSummaryFromStops,
+  resolveTourNextStopId,
+} from '@oneandlab/shared-utils';
 
 export type TourVisitStatus = 'todo' | 'en_route' | 'on_site' | 'done' | 'skipped';
 export type TourSortMode = 'smart' | 'schedule' | 'nearest' | 'manual';
@@ -63,6 +67,15 @@ function formatDateYmd(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+function withDerivedTourSummary(data: NurseTourPayload): NurseTourPayload {
+  const summary = computeTourSummaryFromStops(data.stops, data.summary.estimated_km);
+  return {
+    ...data,
+    summary,
+    next_stop_id: resolveTourNextStopId(data.stops),
+  };
+}
+
 export function useNurseTourWeb() {
   const selectedDate = ref(formatDateYmd(new Date()));
   const loading = ref(false);
@@ -101,7 +114,7 @@ export function useNurseTourWeb() {
       const qs = new URLSearchParams({ date: selectedDate.value });
       const res = await apiFetch(`/nurse/tour?${qs}`);
       if (res?.success && res.data) {
-        tour.value = res.data as NurseTourPayload;
+        tour.value = withDerivedTourSummary(res.data as NurseTourPayload);
       } else {
         tour.value = null;
       }
@@ -151,7 +164,7 @@ export function useNurseTourWeb() {
         body: { date: selectedDate.value, appointment_ids: ids },
       });
       if (res?.success && res.data) {
-        tour.value = res.data as NurseTourPayload;
+        tour.value = withDerivedTourSummary(res.data as NurseTourPayload);
         toast.add({ title: 'Ordre enregistré', color: 'success' });
       }
     } catch {
@@ -203,7 +216,7 @@ export function useNurseTourWeb() {
         },
       });
       if (res?.success && res.data) {
-        tour.value = res.data as NurseTourPayload;
+        tour.value = withDerivedTourSummary(res.data as NurseTourPayload);
       } else if (res?.code === 'manual_order_locked') {
         toast.add({ title: 'Ordre manuel verrouillé — confirmez pour remplacer', color: 'warning' });
       }
@@ -221,7 +234,7 @@ export function useNurseTourWeb() {
         method: 'POST',
         body: { date: selectedDate.value },
       });
-      if (res?.success && res.data) tour.value = res.data as NurseTourPayload;
+      if (res?.success && res.data) tour.value = withDerivedTourSummary(res.data as NurseTourPayload);
     } finally {
       saving.value = false;
     }
@@ -241,14 +254,33 @@ export function useNurseTourWeb() {
     status: TourVisitStatus,
     options?: { finalizeAppointment?: boolean },
   ) {
-    const res = await apiFetch(`/nurse/tour/stops/${stopId}/status`, {
-      method: 'POST',
-      body: {
-        status,
-        ...(options?.finalizeAppointment ? { finalize_appointment: true } : {}),
-      },
-    });
-    if (res?.success && res.data) tour.value = res.data as NurseTourPayload;
+    const previous = tour.value;
+    if (previous) {
+      const visitedAt =
+        status === 'done' || status === 'on_site' ? new Date().toISOString() : null;
+      const optimisticStops = previous.stops.map((s) =>
+        s.stop_id === stopId
+          ? { ...s, visit_status: status, visited_at: visitedAt }
+          : s,
+      );
+      tour.value = withDerivedTourSummary({ ...previous, stops: optimisticStops });
+    }
+
+    try {
+      const res = await apiFetch(`/nurse/tour/stops/${stopId}/status`, {
+        method: 'POST',
+        body: {
+          status,
+          ...(options?.finalizeAppointment ? { finalize_appointment: true } : {}),
+        },
+      });
+      if (res?.success && res.data) {
+        tour.value = withDerivedTourSummary(res.data as NurseTourPayload);
+      }
+    } catch {
+      if (previous) tour.value = previous;
+      throw new Error('Mise à jour impossible');
+    }
   }
 
   async function markEnRoute(stopId: string) {
@@ -259,7 +291,7 @@ export function useNurseTourWeb() {
         body: { status: 'en_route' },
       });
       if (res?.success && res.data) {
-        tour.value = res.data as NurseTourPayload;
+        tour.value = withDerivedTourSummary(res.data as NurseTourPayload);
         toast.add({ title: 'Patient prévenu — en route', color: 'success' });
       }
     } catch {
@@ -280,7 +312,7 @@ export function useNurseTourWeb() {
         body: payload,
       });
       if (res?.success && res.data) {
-        tour.value = res.data as NurseTourPayload;
+        tour.value = withDerivedTourSummary(res.data as NurseTourPayload);
         toast.add({ title: 'Créneau mis à jour — patient prévenu', color: 'success' });
       }
     } catch {

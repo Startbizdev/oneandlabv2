@@ -35,6 +35,7 @@ function isDetailOptionLabel(label: string): boolean {
   return (
     normalized === 'type' ||
     normalized === 'type de soin' ||
+    normalized === 'localisation' ||
     normalized.includes('plaie')
   );
 }
