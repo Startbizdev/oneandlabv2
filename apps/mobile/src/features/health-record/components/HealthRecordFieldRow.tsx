@@ -55,7 +55,7 @@ export function HealthRecordFieldRow({ label, display: rawDisplay }: Props) {
         </View>
       ) : (
         <View style={[styles.valueShell, styles.valueShellEmpty]}>
-          <Row gap={spacing[2]} align="center" justify="space-between" style={styles.valueInner}>
+          <Row gap={spacing[2]} align="center" justify="between" style={styles.valueInner}>
             <Row gap={spacing[2]} align="center" style={styles.emptyLeading}>
               <CircleDashed
                 size={16}

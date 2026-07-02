@@ -94,7 +94,7 @@ export function useHealthRecordWizard(sectionFilter?: string) {
     mutationFn: (payload: Record<string, { value: unknown }>) => patchHealthRecordAnswers(payload),
     onSuccess: (data) => {
       qc.setQueryData(healthRecordQueryKeys.recap, data);
-      void qc.invalidateQueries({ queryKey: healthRecordQueryKeys.completion });
+      qc.setQueryData(healthRecordQueryKeys.completion, data.completion);
     },
   });
 

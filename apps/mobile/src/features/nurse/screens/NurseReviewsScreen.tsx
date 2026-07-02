@@ -92,7 +92,8 @@ export function NurseReviewsScreen() {
   };
 
   const refetchAll = async () => {
-    await Promise.all([reviewsQ.refetch(), statsQ.refetch()]);
+    const [reviewsResult] = await Promise.all([reviewsQ.refetch(), statsQ.refetch()]);
+    return reviewsResult;
   };
 
   const ListHeader = () => (

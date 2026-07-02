@@ -245,10 +245,11 @@ function EdgeFade({
     opacity: opacity.value,
   }));
 
-  const colors =
+  const colors = (
     side === 'left'
       ? [baseColor, hexToRgba(baseColor, 0.65), `${baseColor}00`]
-      : [`${baseColor}00`, hexToRgba(baseColor, 0.65), baseColor];
+      : [`${baseColor}00`, hexToRgba(baseColor, 0.65), baseColor]
+  ) as [string, string, string];
 
   return (
     <Animated.View

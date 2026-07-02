@@ -18,7 +18,7 @@ import {
 
 } from 'react-native';
 
-import { FlashList, type ListRenderItem } from '@shopify/flash-list';
+import { FlashList, type FlashListRef, type ListRenderItem } from '@shopify/flash-list';
 
 import type { UseInfiniteQueryResult } from '@tanstack/react-query';
 
@@ -117,7 +117,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
   const sceneInsets = useTabSceneInsets();
 
-  const flashListRef = useRef<FlashList<Item>>(null);
+  const flashListRef = useRef<FlashListRef<Item>>(null);
 
   const scrollRef = useRef<ScrollView>(null);
 

@@ -64,6 +64,23 @@ export function resolveRdvCareDisplayLabel(
   return base;
 }
 
+/**
+ * Badge tournée / passage : libellé catégorie seul (sans options entre parenthèses).
+ * Les options catalogue restent en lignes « Type : … » sous les badges.
+ */
+export function careCatalogBadgeBaseLabel(
+  rawLabel: string,
+  categoryName?: string | null,
+  fallback = 'Soin',
+): string {
+  const cat = String(categoryName ?? '').trim();
+  if (cat) return cat;
+  const label = rawLabel.trim();
+  if (!label) return fallback;
+  const withoutParen = label.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  return withoutParen || label || fallback;
+}
+
 /** Ne pas répéter « Précisez » sous le titre quand il sert déjà de libellé de carte. */
 export function shouldHideAutrePreciserDetailRow(
   categoryLabel: string | undefined,

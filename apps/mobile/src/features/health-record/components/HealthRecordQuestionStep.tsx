@@ -1,15 +1,15 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Row } from '@/components/layout/primitives';
 import type { HealthRecordQuestion } from '../api/health-record.service';
 import { HEALTH_RECORD_OPTIONAL_BADGE } from '../utils/health-record-display';
-import { radius, spacing } from '@/theme';
+import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const ENUM_LABELS: Record<string, string> = {
@@ -66,7 +66,6 @@ export function HealthRecordQuestionStep({
   onSkip,
   saving,
 }: Props) {
-  const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'HealthRecordQuestionStep');
   const [textValue, setTextValue] = useState('');
   const [numberValue, setNumberValue] = useState('');
@@ -160,11 +159,9 @@ export function HealthRecordQuestionStep({
     return (
       <View style={styles.root}>
         <QuestionHeader label={question.label_fr} styles={styles} />
-        <TextInput
-          style={[styles.input, { borderColor: c.border, color: c.textPrimary }]}
+        <Input
           keyboardType="decimal-pad"
           placeholder={question.placeholder ?? 'Ex. 175'}
-          placeholderTextColor={c.textTertiary}
           value={numberValue}
           onChangeText={setNumberValue}
         />
@@ -230,13 +227,5 @@ function buildStyles(c: AppColors) {
     },
     choices: { gap: spacing[2] },
     actions: { gap: spacing[2] },
-    input: {
-      borderWidth: 1,
-      borderRadius: radius.lg,
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[3],
-      fontFamily: fontFamily.regular,
-      fontSize: fontSize.base,
-    },
   };
 }

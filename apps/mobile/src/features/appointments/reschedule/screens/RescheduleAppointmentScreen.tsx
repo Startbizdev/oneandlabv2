@@ -119,7 +119,10 @@ export function RescheduleAppointmentScreen({
         availabilityType={r.form.availability_type}
         range={r.form.availability_range}
         onScheduledAt={(v) => r.setField('scheduled_at', v)}
-        onAvailabilityType={(t) => r.setField('availability_type', t)}
+        onAvailabilityType={(t) => {
+          if (t === 'urgent') return;
+          r.setField('availability_type', t);
+        }}
         onRange={(range) => r.setField('availability_range', range)}
       />
 

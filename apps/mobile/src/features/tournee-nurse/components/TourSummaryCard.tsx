@@ -39,9 +39,9 @@ export function TourSummaryCard({ summary }: Props) {
         <View style={styles.glowOrb} pointerEvents="none" />
         <View style={styles.glowOrbSecondary} pointerEvents="none" />
 
-        <Row gap={spacing[4]} align="center">
-          <HealthRecordProgressRing percent={pct} size={76} strokeWidth={6} tone="onGradient" />
-          <Stack gap={spacing[1]} style={styles.copy}>
+        <Row gap={spacing[3]} align="center">
+          <HealthRecordProgressRing percent={pct} size={56} strokeWidth={4} tone="onGradient" />
+          <Stack gap={spacing[0.5]} style={styles.copy}>
             <Text style={styles.kicker}>Ma tournée du jour</Text>
             <Text style={styles.title}>
               {done} sur {total} passage{total > 1 ? 's' : ''}
@@ -55,15 +55,15 @@ export function TourSummaryCard({ summary }: Props) {
         </Row>
 
         <View style={styles.metrics}>
-          <Row gap={spacing[1.5]} align="center" style={styles.metricItem}>
-            <Route size={14} color="#FFFFFF" strokeWidth={2.2} />
+          <Row gap={spacing[1]} align="center" style={styles.metricItem}>
+            <Route size={12} color="#FFFFFF" strokeWidth={2.2} />
             <Text style={styles.metric}>
               {total} étape{total > 1 ? 's' : ''}
             </Text>
           </Row>
           <View style={styles.metricDot} />
-          <Row gap={spacing[1.5]} align="center" style={styles.metricItem}>
-            <MapPin size={14} color="#FFFFFF" strokeWidth={2.2} />
+          <Row gap={spacing[1]} align="center" style={styles.metricItem}>
+            <MapPin size={12} color="#FFFFFF" strokeWidth={2.2} />
             <Text style={styles.metric}>{summary.estimated_km} km estimés</Text>
           </Row>
         </View>
@@ -75,67 +75,68 @@ export function TourSummaryCard({ summary }: Props) {
 function buildStyles(_c: AppColors) {
   const cardRadius = Platform.select({ ios: radius['2xl'], default: radius.xl });
   return {
-    shell: { marginBottom: spacing[3] },
+    shell: { marginBottom: spacing[2] },
     gradient: {
       borderRadius: cardRadius,
-      padding: spacing[4],
-      gap: spacing[3],
+      paddingHorizontal: spacing[3],
+      paddingVertical: spacing[2.5],
+      gap: spacing[2],
       overflow: 'hidden' as const,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: hexToRgba('#FFFFFF', 0.22),
     },
     glowOrb: {
       position: 'absolute' as const,
-      top: -40,
-      right: -30,
-      width: 120,
-      height: 120,
-      borderRadius: 60,
+      top: -28,
+      right: -22,
+      width: 88,
+      height: 88,
+      borderRadius: 44,
       backgroundColor: hexToRgba('#FFFFFF', 0.14),
     },
     glowOrbSecondary: {
       position: 'absolute' as const,
-      bottom: -50,
-      left: -20,
-      width: 100,
-      height: 100,
-      borderRadius: 50,
+      bottom: -36,
+      left: -16,
+      width: 72,
+      height: 72,
+      borderRadius: 36,
       backgroundColor: hexToRgba(palette.cyan[600], 0.35),
     },
     copy: { flex: 1, minWidth: 0 },
     kicker: {
       fontFamily: fontFamily.bold,
-      fontSize: fontSize.xs,
+      fontSize: 10,
       textTransform: 'uppercase' as const,
-      letterSpacing: 0.7,
+      letterSpacing: 0.6,
       color: hexToRgba('#FFFFFF', 0.82),
     },
     title: {
       fontFamily: fontFamily.bold,
-      fontSize: fontSize.xl,
-      lineHeight: lh(fontSize.xl),
-      letterSpacing: -0.4,
+      fontSize: fontSize.lg,
+      lineHeight: lh(fontSize.lg),
+      letterSpacing: -0.35,
       color: '#FFFFFF',
     },
     sub: {
       fontFamily: fontFamily.medium,
-      fontSize: fontSize.sm,
-      lineHeight: lh(fontSize.sm),
+      fontSize: fontSize.xs,
+      lineHeight: lh(fontSize.xs),
       color: hexToRgba('#FFFFFF', 0.88),
     },
     metrics: {
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
       flexWrap: 'wrap' as const,
-      gap: spacing[2],
-      paddingTop: spacing[3],
+      gap: spacing[1.5],
+      paddingTop: spacing[2],
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: hexToRgba('#FFFFFF', 0.22),
     },
     metricItem: { flexShrink: 1 },
     metric: {
       fontFamily: fontFamily.semiBold,
-      fontSize: fontSize.sm,
+      fontSize: fontSize.xs,
       color: hexToRgba('#FFFFFF', 0.92),
     },
     metricDot: {

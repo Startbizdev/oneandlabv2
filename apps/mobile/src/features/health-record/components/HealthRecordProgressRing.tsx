@@ -74,6 +74,7 @@ export function HealthRecordProgressRing({
         style={[
           styles.label,
           isMini && styles.labelMini,
+          resolvedSize >= 64 && styles.labelLarge,
           onGradient ? styles.labelOnGradient : styles.labelDefault,
         ]}
       >
@@ -98,6 +99,10 @@ function buildStyles(c: AppColors) {
     labelMini: {
       fontSize: 9,
       letterSpacing: -0.3,
+    },
+    labelLarge: {
+      fontSize: fontSize.sm,
+      letterSpacing: -0.2,
     },
     labelDefault: {
       color: c.textPrimary,

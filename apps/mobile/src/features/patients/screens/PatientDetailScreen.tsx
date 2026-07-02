@@ -337,7 +337,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
           <ProfileNavRow
             icon={HeartPulse}
             title="Carnet de santé"
-            subtitle="Données déclaratives · lecture seule"
+            subtitle="Données déclaratives · compléter ou corriger"
             onPress={() => router.push(`${rolePrefix}/patient/${id}/health-record` as never)}
             iconColor={c.primary}
             iconBg={c.primaryLight}

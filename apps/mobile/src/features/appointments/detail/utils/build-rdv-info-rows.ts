@@ -26,7 +26,16 @@ import {
   collectLotNursingItems,
   nursingSharedOptionKeys,
 } from '@/utils/batch-appointment-detail-display';
-import { formatAvailabilityDisplayFr, formatFrenchWeekdayDate } from '@/utils/appointment-datetime-fr';
+import {
+  formatAvailabilityDisplayFr as formatAvailabilityDisplayFrBase,
+  formatFrenchWeekdayDate,
+} from '@/utils/appointment-datetime-fr';
+import {
+  formatPassageDurationFromFormData,
+  formatPassageLocationFromFormData,
+  formatPassageTimeSlotFromFormData,
+  isNursePassageFormData,
+} from '@oneandlab/shared-utils';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import {
@@ -323,10 +332,31 @@ function buildRdvRows(apt: Appointment, viewer?: AuthUser | null, _batch?: Appoi
   const strike = canceled;
 
   const datePart = formatFrenchWeekdayDate(apt.scheduled_at);
-  const slot = formatAvailabilityDisplayFr(fd.availability, apt.scheduled_at);
-  const dateCreaneau = [datePart, slot].filter(Boolean).join(' · ');
-  if (dateCreaneau) {
-    rows.push({ kind: 'field', label: 'Date & créneau', value: dateCreaneau, strikethrough: strike });
+  const fdRecord = fd as Record<string, unknown>;
+  const isPassage = isNursePassageFormData(fdRecord, (apt as { passage_source?: string }).passage_source);
+
+  if (isPassage) {
+    const slot = formatPassageTimeSlotFromFormData(fdRecord, apt.scheduled_at);
+    const dateCreaneau = [datePart, slot].filter(Boolean).join(' · ');
+    if (dateCreaneau) {
+      rows.push({ kind: 'field', label: 'Date & créneau', value: dateCreaneau, strikethrough: strike });
+    }
+    const duration = formatPassageDurationFromFormData(fdRecord);
+    if (duration) {
+      rows.push({ kind: 'field', label: 'Durée du passage', value: duration, strikethrough: strike });
+    }
+    rows.push({
+      kind: 'field',
+      label: 'Lieu',
+      value: formatPassageLocationFromFormData(fdRecord),
+      strikethrough: strike,
+    });
+  } else {
+    const slot = formatAvailabilityDisplayFrBase(fd.availability, apt.scheduled_at, fdRecord);
+    const dateCreaneau = [datePart, slot].filter(Boolean).join(' · ');
+    if (dateCreaneau) {
+      rows.push({ kind: 'field', label: 'Date & créneau', value: dateCreaneau, strikethrough: strike });
+    }
   }
 
   const first = beneficiaryFirstName(apt);

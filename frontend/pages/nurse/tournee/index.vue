@@ -30,7 +30,6 @@
       </AppPageHeader>
     </template>
 
-    <!-- Strip jours -->
     <div class="flex gap-2 overflow-x-auto pb-1">
       <button
         v-for="day in dayStrip"
@@ -54,60 +53,55 @@
       </button>
     </div>
 
-    <!-- Hero progression -->
     <div
       v-if="tour && tour.stops.length"
-      class="overflow-hidden rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-600 p-4 text-white shadow-md"
+      class="overflow-hidden rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-600 p-3 text-white shadow-md"
     >
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3">
         <div
-          class="flex h-[76px] w-[76px] shrink-0 items-center justify-center rounded-full border-[6px] border-white/30 text-lg font-bold"
+          class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-4 border-white/30 text-base font-bold"
         >
           {{ progressPct }}%
         </div>
         <div class="min-w-0">
-          <p class="text-xs font-bold uppercase tracking-wide text-white/80">Ma tournée du jour</p>
-          <p class="text-xl font-bold tracking-tight">
-            {{ tour.summary.done_stops }} sur {{ tour.summary.total_stops }} passages
+          <p class="text-[10px] font-bold uppercase tracking-wide text-white/80">Ma tournée du jour</p>
+          <p class="text-lg font-bold tracking-tight">
+            {{ tour.summary.done_stops }} sur {{ tour.summary.total_stops }} passage{{ tour.summary.total_stops > 1 ? 's' : '' }}
           </p>
-          <p class="text-sm text-white/90">
-            {{ remainingLabel }} · ~{{ tour.summary.estimated_km }} km
+          <p class="text-xs text-white/90">
+            {{ remainingLabel === 'Tournée terminée' ? 'Bravo, tournée terminée !' : remainingLabel }}
           </p>
         </div>
       </div>
-    </div>
-
-    <!-- Modes tri -->
-    <div v-if="tour" class="space-y-2">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Ordre des passages</span>
-        <span v-if="tour.plan.sort_mode !== 'manual'" class="text-xs text-gray-400">
-          Mode « Manuel » pour réorganiser
+      <div
+        class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-white/20 pt-2 text-xs font-semibold text-white/90"
+      >
+        <span class="inline-flex items-center gap-1">
+          <UIcon name="i-lucide-route" class="h-3 w-3" />
+          {{ tour.summary.total_stops }} étape{{ tour.summary.total_stops > 1 ? 's' : '' }}
+        </span>
+        <span class="h-1 w-1 rounded-full bg-white/50" />
+        <span class="inline-flex items-center gap-1">
+          <UIcon name="i-lucide-map-pin" class="h-3 w-3" />
+          {{ tour.summary.estimated_km }} km estimés
         </span>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <UButton
-          v-for="m in sortModes"
-          :key="m.value"
-          size="xs"
-          :variant="tour.plan.sort_mode === m.value ? 'solid' : 'outline'"
-          :color="tour.plan.sort_mode === m.value ? 'primary' : 'neutral'"
-          :disabled="loading || saving"
-          @click="applySortMode(m.value)"
-        >
-          {{ m.label }}
-        </UButton>
-        <UButton
-          v-if="tour.plan.manual_order_locked"
-          size="xs"
-          color="neutral"
-          variant="ghost"
-          :disabled="loading || saving"
-          @click="resetOrder"
-        >
-          Réinitialiser
-        </UButton>
-      </div>
+    </div>
+
+    <div v-if="tour && tour.stops.length" class="flex w-full items-center gap-1.5">
+      <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Passage</span>
+      <button
+        type="button"
+        class="relative flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-600 transition-colors hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+        aria-label="Filtrer l'ordre des passages"
+        @click="sortModalOpen = true"
+      >
+        <UIcon name="i-lucide-sliders-horizontal" class="h-4 w-4" />
+        <span
+          v-if="sortFilterActive"
+          class="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-primary-500 ring-2 ring-white dark:ring-gray-900"
+        />
+      </button>
     </div>
 
     <div v-if="loading" class="flex flex-col items-center justify-center py-16">
@@ -116,221 +110,21 @@
     </div>
 
     <template v-else-if="tour && tour.stops.length">
-      <ClientOnly>
-        <Map
-          v-if="mapMarkers.length"
-          :markers="mapMarkers"
-          :center="mapCenter"
-          height="220px"
-          class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"
-        />
-      </ClientOnly>
-
-      <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Vos passages</p>
-
-      <ul class="space-y-3">
-        <li
-          v-for="(stop, index) in tour.stops"
-          :key="stop.stop_id"
-          draggable="true"
-          class="overflow-hidden rounded-xl border shadow-sm"
-          :class="[
-            stop.visit_status === 'done'
-              ? 'border-gray-300 bg-gray-200 dark:border-gray-600 dark:bg-gray-800'
-              : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900/50',
-            stop.stop_id === tour.next_stop_id && stop.visit_status !== 'done'
-              ? 'border-primary-400 ring-1 ring-primary-200 dark:border-primary-600'
-              : '',
-          ]"
-          @dragstart="onDragStart(index)"
-          @dragover.prevent
-          @drop="onDrop(index)"
-        >
-          <div class="relative px-4 pt-3.5 pb-2.5" :class="stop.visit_status === 'done' ? 'min-h-[148px]' : ''">
-            <div
-              v-if="stop.visit_status !== 'done' && tour.stops.length > 1"
-              class="absolute right-4 top-3.5 z-10 flex flex-col gap-1"
-            >
-              <UButton
-                size="xs"
-                color="neutral"
-                variant="outline"
-                icon="i-lucide-arrow-up"
-                class="!p-1.5"
-                :disabled="index === 0 || saving"
-                aria-label="Monter"
-                @click="moveStop(index, -1)"
-              />
-              <UButton
-                size="xs"
-                color="neutral"
-                variant="outline"
-                icon="i-lucide-arrow-down"
-                class="!p-1.5"
-                :disabled="index >= tour.stops.length - 1 || saving"
-                aria-label="Descendre"
-                @click="moveStop(index, 1)"
-              />
-            </div>
-
-            <NuxtLink
-              :to="`/nurse/appointments/${stop.appointment_id}`"
-              class="block min-w-0 transition-colors"
-              :class="[
-                stop.visit_status !== 'done' && tour.stops.length > 1 ? 'pr-10' : '',
-                stop.visit_status !== 'done' ? 'hover:opacity-90' : 'opacity-30',
-              ]"
-            >
-              <div class="flex items-start gap-3">
-                <div
-                  class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                  :class="
-                    stop.visit_status === 'done'
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                      : 'bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300'
-                  "
-                >
-                  <UIcon
-                    v-if="stop.visit_status === 'done'"
-                    name="i-lucide-check"
-                    class="h-4 w-4"
-                  />
-                  <span v-else>{{ stop.position }}</span>
-                </div>
-                <div class="min-w-0 flex-1">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span
-                      class="font-semibold"
-                      :class="
-                        stop.visit_status === 'done'
-                          ? 'text-gray-600 dark:text-gray-300'
-                          : 'text-gray-900 dark:text-white'
-                      "
-                    >
-                      {{ stop.patient_name }}
-                    </span>
-                    <UBadge
-                      v-if="stop.visit_status === 'done'"
-                      color="success"
-                      variant="subtle"
-                      size="xs"
-                    >
-                      Effectué
-                    </UBadge>
-                    <UBadge
-                      v-if="stop.stop_id === tour.next_stop_id && stop.visit_status !== 'done'"
-                      color="primary"
-                      variant="subtle"
-                      size="xs"
-                    >
-                      Suivant
-                    </UBadge>
-                  </div>
-                  <NurseTourStopCare
-                    :stop="stop"
-                    :categories="careCategories"
-                    embedded
-                    :class="stop.visit_status === 'done' ? 'opacity-70' : ''"
-                  />
-                  <div
-                    v-if="slotLabel(stop)"
-                    class="mt-2.5 flex min-w-0 items-center gap-1.5 text-xs font-semibold"
-                    :class="
-                      stop.visit_status === 'done'
-                        ? 'text-gray-400 dark:text-gray-500'
-                        : 'text-primary-600 dark:text-primary-400'
-                    "
-                  >
-                    <UIcon name="i-lucide-clock" class="h-3.5 w-3.5 shrink-0" />
-                    <span>{{ slotLabel(stop) }}</span>
-                    <button
-                      v-if="stop.visit_status !== 'done'"
-                      type="button"
-                      class="inline-flex shrink-0 rounded-md p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300"
-                      aria-label="Modifier la date et le créneau"
-                      @click.prevent="openReschedule(stop)"
-                    >
-                      <UIcon name="i-lucide-pencil" class="h-4 w-4" />
-                    </button>
-                  </div>
-                  <p
-                    v-if="stop.address_line"
-                    class="mt-2 text-xs"
-                    :class="
-                      stop.visit_status === 'done'
-                        ? 'text-gray-400 dark:text-gray-500'
-                        : 'text-gray-600 dark:text-gray-400'
-                    "
-                  >
-                    {{ stop.address_line }}
-                  </p>
-                  <p v-if="stop.address_complement" class="text-xs text-gray-400">
-                    {{ stop.address_complement }}
-                  </p>
-                  <p v-if="stop.distance_km_from_prev > 0" class="mt-1 text-xs text-gray-400">
-                    {{ stop.distance_km_from_prev.toFixed(1) }} km · ~{{ stop.drive_min_from_prev }} min
-                  </p>
-                </div>
-              </div>
-            </NuxtLink>
-
-            <div
-              v-if="stop.visit_status === 'done'"
-              class="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-gray-900/35 dark:bg-black/45"
-            >
-              <div class="flex flex-col items-center gap-2">
-                <div
-                  class="flex h-[76px] w-[76px] items-center justify-center rounded-full border-[3px] border-emerald-500 bg-white shadow-md dark:bg-gray-900"
-                >
-                  <UIcon name="i-lucide-check" class="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <span class="rounded-full bg-white px-3 py-1 text-base font-bold tracking-wide text-emerald-700 shadow-sm dark:bg-gray-900 dark:text-emerald-300">Effectué</span>
-              </div>
-            </div>
-          </div>
-
-          <div
-            v-if="stop.visit_status !== 'done'"
-            class="flex flex-wrap gap-2 border-t border-gray-100 px-4 py-2.5 dark:border-gray-800"
-          >
-            <UButton
-              size="xs"
-              variant="solid"
-              icon="i-lucide-navigation"
-              class="!bg-[#33CCFF] !text-white hover:!bg-[#2db8e6]"
-              @click="openNav(stop)"
-            >
-              Waze
-            </UButton>
-            <UButton
-              v-if="stop.phone"
-              size="xs"
-              color="neutral"
-              variant="soft"
-              icon="i-lucide-phone"
-              @click="callPatient(stop.phone)"
-            >
-              Appeler
-            </UButton>
-            <UButton
-              size="xs"
-              color="neutral"
-              variant="outline"
-              icon="i-lucide-calendar-plus"
-              @click="downloadIcs"
-            >
-              Calendrier
-            </UButton>
-            <UButton
-              size="xs"
-              color="success"
-              icon="i-lucide-check"
-              :disabled="saving"
-              @click="markDone(stop.stop_id)"
-            >
-              Terminer
-            </UButton>
-          </div>
+      <ul class="space-y-2">
+        <li v-for="(stop, index) in tour.stops" :key="stop.stop_id">
+          <PassageSimpleListRow
+            :stop="stop"
+            :index="index"
+            :total="tour.stops.length"
+            :is-next="stop.stop_id === tour.next_stop_id"
+            :categories="careCategories"
+            :saving="saving"
+            :show-reorder="showManualReorder"
+            @toggle-done="toggleStopDone(stop)"
+            @open-detail="openPassageDetail(stop)"
+            @move-up="moveStop(index, -1)"
+            @move-down="moveStop(index, 1)"
+          />
         </li>
       </ul>
     </template>
@@ -351,11 +145,36 @@
       @close="rescheduleTarget = null"
       @confirm="onRescheduleConfirm"
     />
+
+    <PassagePlanningModal
+      :open="passageModalOpen"
+      :selected-date="selectedDate"
+      @close="passageModalOpen = false"
+      @select="onPassagePlanningSelect"
+    />
+
+    <TourSortFilterModal
+      v-if="tour"
+      v-model:open="sortModalOpen"
+      :sort-mode="tour.plan.sort_mode"
+      :locked="tour.plan.manual_order_locked"
+      @select="applySortMode"
+      @reset="resetOrder"
+    />
+
+    <UButton
+      icon="i-lucide-plus"
+      label="Ajouter un passage"
+      size="lg"
+      color="primary"
+      class="fixed bottom-8 right-8 z-30 min-h-[52px] rounded-full px-5 shadow-lg"
+      aria-label="Ajouter un passage"
+      @click="passageModalOpen = true"
+    />
   </AppPageShell>
 </template>
 
 <script setup lang="ts">
-import { formatAvailabilityDisplayFr } from '~/utils/appointment-datetime-fr';
 import type { NurseTourStop } from '~/composables/useNurseTourWeb';
 import type { CareCategoryRowMinimal } from '~/utils/care-icons';
 import { apiFetch } from '~/utils/api';
@@ -374,22 +193,28 @@ const {
   saving,
   tour,
   dayStrip,
-  sortModes,
-  mapMarkers,
   moveStop,
-  onDragStart,
-  onDrop,
   applySortMode,
   resetOrder,
-  markDone,
+  toggleStopDone,
   rescheduleStop,
-  callPatient,
-  openNav,
   downloadIcs,
 } = useNurseTourWeb();
 
 const rescheduleTarget = ref<NurseTourStop | null>(null);
+const passageModalOpen = ref(false);
+const sortModalOpen = ref(false);
 const careCategories = ref<CareCategoryRowMinimal[]>([]);
+
+const sortFilterActive = computed(
+  () =>
+    Boolean(tour.value) &&
+    (tour.value!.plan.sort_mode !== 'smart' || tour.value!.plan.manual_order_locked),
+);
+
+const showManualReorder = computed(
+  () => tour.value?.plan.sort_mode === 'manual' || tour.value?.plan.manual_order_locked,
+);
 
 onMounted(async () => {
   try {
@@ -411,12 +236,6 @@ const headerDescription = computed(() => {
   }
 });
 
-const mapCenter = computed((): [number, number] => {
-  const first = mapMarkers.value[0];
-  if (first) return [first.lat, first.lng];
-  return [48.8566, 2.3522];
-});
-
 const progressPct = computed(() => {
   const total = tour.value?.summary.total_stops ?? 0;
   const done = tour.value?.summary.done_stops ?? 0;
@@ -432,17 +251,30 @@ const remainingLabel = computed(() => {
   return `${remaining} passage${remaining > 1 ? 's' : ''} restant${remaining > 1 ? 's' : ''}`;
 });
 
-function slotLabel(stop: NurseTourStop): string {
-  return formatAvailabilityDisplayFr(stop.availability, stop.scheduled_at) || '—';
-}
-
-function openReschedule(stop: NurseTourStop) {
-  rescheduleTarget.value = stop;
-}
-
 async function onRescheduleConfirm(payload: { scheduled_at: string; availability: string }) {
   if (!rescheduleTarget.value) return;
   await rescheduleStop(rescheduleTarget.value.stop_id, payload);
   rescheduleTarget.value = null;
+}
+
+function onPassagePlanningSelect(mode: 'single_day' | 'recurring') {
+  navigateTo({
+    path: '/nurse/passage/patient-pick',
+    query: { start_date: selectedDate.value, mode },
+  });
+}
+
+function openPassageDetail(stop: NurseTourStop) {
+  if (stop.passage_series_id) {
+    navigateTo({
+      path: `/nurse/passage/${stop.passage_series_id}`,
+      query: { appointment_id: stop.appointment_id, stop_id: stop.stop_id },
+    });
+    return;
+  }
+  navigateTo({
+    path: '/nurse/passage/rdv',
+    query: { appointment_id: stop.appointment_id, stop_id: stop.stop_id },
+  });
 }
 </script>

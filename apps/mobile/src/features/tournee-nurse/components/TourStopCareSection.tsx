@@ -1,11 +1,17 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
 import { Text, View } from 'react-native';
 import { Stack } from '@/components/layout/primitives';
 import { RdvCareTagsRow } from '@/features/appointments/components/RdvCareTagsRow';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
-import { buildAppointmentCareOptionKvRows } from '@/utils/appointment-detail-display';
+import {
+  buildAppointmentCareOptionKvRows,
+  getAppointmentNursingItems,
+  nursingItemDisplayLabel,
+} from '@/utils/appointment-detail-display';
+import { isNursingAppointment } from '@oneandlab/shared-utils';
 import type { NurseTourStop } from '../api/nurse-tour.service';
 import {
   tourStopAsAppointment,
@@ -20,10 +26,22 @@ type Props = {
   embedded?: boolean;
   /** Passage terminé — contenu atténué */
   muted?: boolean;
+  /** Liste tournée : soins uniquement (sans Type / options détail). */
+  listCompact?: boolean;
 };
 
+function isDetailOptionLabel(label: string): boolean {
+  const normalized = label.trim().toLowerCase();
+  return (
+    normalized === 'type' ||
+    normalized === 'type de soin' ||
+    normalized.includes('plaie')
+  );
+}
+
 /** Soins (emoji + libellé), options catalogue et mention lot — aligné détail RDV. */
-export function TourStopCareSection({ stop, embedded = false, muted = false }: Props) {
+export function TourStopCareSection({ stop, embedded = false, muted = false, listCompact = false }: Props) {
+  const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
   const apt = useMemo(() => tourStopAsAppointment(stop), [stop]);
   const { data: categories = [] } = useAppointmentCareCategories();
@@ -33,6 +51,25 @@ export function TourStopCareSection({ stop, embedded = false, muted = false }: P
     () => buildAppointmentCareOptionKvRows(apt, categories).filter((r) => r.value?.trim()),
     [apt, categories],
   );
+
+  const displayOptionRows = useMemo(() => {
+    const baseRows = listCompact
+      ? optionRows.filter((row) => !isDetailOptionLabel(row.label))
+      : optionRows;
+
+    if (listCompact) return baseRows;
+
+    if (baseRows.some((row) => isDetailOptionLabel(row.label))) {
+      return baseRows;
+    }
+    if (!isNursingAppointment(apt.type)) return baseRows;
+    const items = getAppointmentNursingItems(apt);
+    if (items.length > 1) return baseRows;
+    const value =
+      items.length === 1 ? nursingItemDisplayLabel(items[0]!) : apt.category_name?.trim() ?? '';
+    if (!value) return baseRows;
+    return [{ label: 'Type', value }, ...baseRows];
+  }, [apt, listCompact, optionRows]);
 
   return (
     <Stack
@@ -44,15 +81,18 @@ export function TourStopCareSection({ stop, embedded = false, muted = false }: P
           {lotLabel}
         </Text>
       ) : null}
-      <RdvCareTagsRow apt={apt} tone="neutral" density="compact" />
-      {optionRows.length > 0 ? (
+      <RdvCareTagsRow apt={apt} tone="neutral" density="compact" badgeCategoryOnly />
+      {displayOptionRows.length > 0 ? (
         <View style={styles.optionsBlock}>
-          {optionRows.map((row) => (
-            <Text key={`${row.label}-${row.value}`} style={styles.optionLine} numberOfLines={2}>
-              <Text style={styles.optionLabel}>{row.label} : </Text>
-              {row.value}
-            </Text>
-          ))}
+          {displayOptionRows.map((row) => {
+            const line = (
+              <Text style={styles.optionLine} numberOfLines={2}>
+                <Text style={styles.optionLabel}>{row.label} : </Text>
+                {row.value}
+              </Text>
+            );
+            return <View key={`${row.label}-${row.value}`}>{line}</View>;
+          })}
         </View>
       ) : null}
     </Stack>
@@ -92,6 +132,22 @@ function buildStyles(c: AppColors) {
     optionLabel: {
       fontFamily: fontFamily.medium,
       color: c.textTertiary,
+    },
+    metaRow: {
+      marginTop: spacing[0.5],
+      minWidth: 0,
+      alignSelf: 'stretch' as const,
+    },
+    metaIconWrap: {
+      width: 18,
+      alignItems: 'center' as const,
+      flexShrink: 0,
+    },
+    metaLine: {
+      flex: 1,
+      minWidth: 0,
+      fontFamily: fontFamily.medium,
+      fontSize: fontSize.xs,
     },
   };
 }

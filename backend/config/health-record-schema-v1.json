@@ -104,9 +104,9 @@
       "cta_fr": "Compléter mon carnet"
     },
     "health_sync_stale": {
-      "label_fr": "Reconnectez Apple Santé ou Health Connect",
+      "label_fr": "Synchronisez vos données santé pour un suivi à jour",
       "action": "reconnect_health",
-      "cta_fr": "Synchroniser mes données"
+      "cta_fr": "Synchroniser"
     },
     "smoking_no_followup": {
       "label_fr": "Un suivi prévention pourrait vous être proposé",

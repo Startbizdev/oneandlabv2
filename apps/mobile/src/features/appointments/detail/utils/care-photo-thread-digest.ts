@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { CarePhotoRow } from '../api/appointment-detail.service';
+import type { CarePhotoComment, CarePhotoRow } from '../api/appointment-detail.service';
 
 /** Empreinte des commentaires d’une photo (badges « nouveau »). */
 export function carePhotoCommentsDigest(ids: Iterable<string>): string {

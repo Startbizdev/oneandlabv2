@@ -54,17 +54,25 @@ export function useProfileAddressSync({
         const resolved = await resolvePatientAddressForRdvForm(raw);
         const parsed = parseRawPatientAddress(raw);
         if (resolved) {
-          setFormAddress({
+          const nextAddr: AddressPayload = {
             label: resolved.label,
             lat: resolved.lat,
             lng: resolved.lng,
             city: undefined,
             postal_code: undefined,
-          });
-          setAddressComplement(parsed?.complement ?? resolved.complement ?? '');
+          };
+          const nextComplement = parsed?.complement ?? resolved.complement ?? '';
+          setFormAddress((prev) =>
+            prev?.label === nextAddr.label &&
+            prev.lat === nextAddr.lat &&
+            prev.lng === nextAddr.lng
+              ? prev
+              : nextAddr,
+          );
+          setAddressComplement((prev) => (prev === nextComplement ? prev : nextComplement));
         } else {
-          setFormAddress(null);
-          setAddressComplement('');
+          setFormAddress((prev) => (prev === null ? prev : null));
+          setAddressComplement((prev) => (prev === '' ? prev : ''));
         }
       } finally {
         hydratingRef.current = false;

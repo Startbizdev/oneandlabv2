@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ErrorCode,
   getAvailablePurchases,
-  isUserCancelledError,
   useIAP,
   type Purchase,
 } from 'expo-iap';
@@ -181,7 +180,12 @@ export function useNurseIap() {
       await requestSubscriptionPurchase(purchaseRequest.request);
     } catch (error) {
       setPurchaseLoading(false);
-      if (isUserCancelledError(error)) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error as { code: string }).code === ErrorCode.UserCancelled
+      ) {
         return;
       }
       handleApiError(error, toast, 'iap-purchase');

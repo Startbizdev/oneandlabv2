@@ -501,6 +501,18 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
     [activeId, awaitingReply, loadConversationMessages],
   );
 
+  const reloadConversation = useCallback(
+    async (id: string) => {
+      if (!id || awaitingReply) return;
+      if (id !== activeId) {
+        setActiveId(id);
+        setActiveDraft(null);
+      }
+      await loadConversationMessages(id);
+    },
+    [activeId, awaitingReply, loadConversationMessages],
+  );
+
   const startNewConversation = useCallback(async () => {
     if (awaitingReply) return;
     const conv = await createAiConversation({ conversation_type: 'general' });
@@ -765,6 +777,7 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
     activeDraft,
     confirmingDraft,
     selectConversation,
+    reloadConversation,
     startNewConversation,
     deleteConversation,
     refreshConversationsList,

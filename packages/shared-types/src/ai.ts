@@ -68,6 +68,7 @@ export interface AiAppointmentDraft {
     patient_mode?: string | null;
     profile_documents?: string[];
     missing_documents?: string[];
+    beneficiary_name?: string | null;
     care_option_lines?: string[];
     services?: Array<{ name?: string | null; type?: string | null; category_name?: string | null }>;
     attached_documents?: string[];

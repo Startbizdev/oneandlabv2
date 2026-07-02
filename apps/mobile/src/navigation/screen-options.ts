@@ -77,7 +77,7 @@ export function useTabScreenOptions(
 
   return {
     ...sharedHeaderVisualOptions(),
-    headerBackground: renderHeaderBackground,
+    headerBackground: renderHeaderBackground as BottomTabNavigationOptions['headerBackground'],
     headerStyle: {
       height: tabHeaderHeight(layout, insets.top),
       backgroundColor: 'transparent',
@@ -99,7 +99,7 @@ export function tabScreenOptions(
 ): BottomTabNavigationOptions {
   return {
     ...sharedHeaderVisualOptions(),
-    headerBackground: renderHeaderBackground,
+    headerBackground: renderHeaderBackground as BottomTabNavigationOptions['headerBackground'],
     sceneStyle: appTabSceneStyle(),
     ...(overrides ?? {}),
   };

@@ -83,7 +83,10 @@ export function AppointmentFormScreen(props: Props) {
         availabilityType={f.values.availability_type}
         range={f.values.availability_range}
         onScheduledAt={(v) => f.setField('scheduled_at', v)}
-        onAvailabilityType={(t) => f.setValue('availability_type', t)}
+        onAvailabilityType={(t) => {
+          if (t === 'urgent') return;
+          f.setValue('availability_type', t);
+        }}
         onRange={(r) => f.setValue('availability_range', r)}
       />
 

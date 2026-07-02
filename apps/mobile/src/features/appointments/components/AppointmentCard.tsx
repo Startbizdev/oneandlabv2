@@ -71,8 +71,12 @@ function AppointmentCardComponent({
   const address = appointmentAddressLine(appointment);
   const careLines = appointmentCareLines(appointment);
   const scheduledAt = appointment.scheduled_at ? dayjs(appointment.scheduled_at) : null;
-  const fd = appointment.form_data as { availability?: unknown } | undefined;
-  const timeLabel = formatAvailabilityDisplayFr(fd?.availability, appointment.scheduled_at);
+  const fd = appointment.form_data as Record<string, unknown> | undefined;
+  const timeLabel = formatAvailabilityDisplayFr(
+    fd?.availability,
+    appointment.scheduled_at,
+    fd,
+  );
 
   const entering = listItemEntering(index);
   const EnterShell = enteringShell(entering);

@@ -87,8 +87,8 @@ export default function ProfileLayout() {
       <Stack.Screen
         name="documents"
         options={{
-          title: 'Documents',
-          headerTitle: tabHeaderTitle('Documents', PROFILE_HEADER_SF.documents, FileText),
+          title: 'Mes documents',
+          headerTitle: tabHeaderTitle('Mes documents', PROFILE_HEADER_SF.documents, FileText),
         }}
       />
       <Stack.Screen

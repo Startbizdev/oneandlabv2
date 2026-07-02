@@ -296,6 +296,11 @@ export async function sendVoiceTurn(
   return res.data;
 }
 
+export async function endVoiceSession(sessionId: string): Promise<void> {
+  const res = await apiRequest<null>(`/ai/voice/sessions/${sessionId}/end`, { method: 'POST' });
+  if (!res.success) throw new Error(res.error ?? 'Clôture session vocale impossible');
+}
+
 export async function submitAiFeedback(input: {
   rating: number;
   conversation_id?: string;

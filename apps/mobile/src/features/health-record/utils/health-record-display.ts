@@ -28,10 +28,23 @@ export function healthRecordFieldAccessibilityLabel(
   return `${label} : ${HEALTH_RECORD_EMPTY_LABEL}, optionnel.`;
 }
 
-/** Sous-titre hero récap / carte RDV — le % est déjà dans l’anneau. */
+/** Sous-titre hero récap / carte RDV — le % est déjà dans l'anneau. */
 export function healthRecordHeroSubtitle(percent: number): string {
   if (percent >= 100) return 'Carnet à jour.';
   if (percent >= 75) return 'Vous y êtes presque.';
   if (percent >= 35) return 'Complétez à votre rythme.';
   return 'Pour des soins personnalisés.';
+}
+
+/** Sous-titre vue staff — sans répéter le pourcentage (déjà dans l'anneau). */
+export function healthRecordStaffHeroSubtitle(percent: number, missingCount = 0): string {
+  if (percent >= 100) return 'Carnet à jour.';
+  if (missingCount > 0) {
+    return missingCount === 1
+      ? '1 information à compléter.'
+      : `${missingCount} informations à compléter.`;
+  }
+  if (percent >= 75) return 'Presque complet.';
+  if (percent >= 35) return 'Données partiellement renseignées.';
+  return 'Carnet peu renseigné.';
 }

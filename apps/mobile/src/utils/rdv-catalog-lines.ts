@@ -5,7 +5,7 @@ import {
   isNursingAppointment,
 } from '@oneandlab/shared-utils';
 import { careEmojiForCareItem, careEmojiForLabel } from '@/utils/care-category-display';
-import { isAutreCareDisplayLabel, resolveRdvCareDisplayLabel } from '@/utils/rdv-care-display-label';
+import { isAutreCareDisplayLabel, resolveRdvCareDisplayLabel, careCatalogBadgeBaseLabel } from '@/utils/rdv-care-display-label';
 
 export type RdvCatalogLine = {
   category_id: string | null;
@@ -37,15 +37,23 @@ function mapCareOptions(raw: unknown): Record<string, string | number> | undefin
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-function mapItem(it: ItemRow, fallbackLabel: string, apt: Appointment): RdvCatalogLine {
+function mapItem(
+  it: ItemRow,
+  fallbackLabel: string,
+  apt: Appointment,
+  opts?: RdvCatalogDisplayOpts,
+): RdvCatalogLine {
   const rawLabel = String(it?.label ?? it?.category_name ?? fallbackLabel).trim() || fallbackLabel;
   const careOpts = mapCareOptions(it?.care_options);
   const fd = (apt.form_data ?? {}) as Record<string, unknown>;
   const fdCareOpts = mapCareOptions(fd.care_options);
+  const labelSource = opts?.badgeCategoryOnly
+    ? careCatalogBadgeBaseLabel(rawLabel, it?.category_name, fallbackLabel)
+    : rawLabel;
   const label = resolveRdvCareDisplayLabel(
-    rawLabel,
+    labelSource,
     careOpts,
-    isAutreCareDisplayLabel(rawLabel) ? fdCareOpts : undefined,
+    isAutreCareDisplayLabel(labelSource) ? fdCareOpts : undefined,
   );
   const categoryId = it?.category_id != null ? String(it.category_id) : null;
   const emojiSource = isAutreCareDisplayLabel(rawLabel) ? rawLabel : label;
@@ -62,6 +70,8 @@ function mapItem(it: ItemRow, fallbackLabel: string, apt: Appointment): RdvCatal
 export type RdvCatalogDisplayOpts = {
   /** Masque certificat de décès et autres actes staff-only (vue patient). */
   hideStaffOnlyCares?: boolean;
+  /** Badges tournée : catégorie seule (options affichées en dessous). */
+  badgeCategoryOnly?: boolean;
 };
 
 function finalizeRdvCatalogLines(
@@ -88,7 +98,7 @@ export function rdvCatalogDisplayLines(apt: Appointment, opts?: RdvCatalogDispla
         : ext.blood_test_items ?? [];
     if (raw.length > 0) {
       return finalizeRdvCatalogLines(
-        raw.map((it) => mapItem(it, apt.category_name ?? 'Analyse', apt)),
+        raw.map((it) => mapItem(it, apt.category_name ?? 'Analyse', apt, opts)),
         opts,
       );
     }
@@ -103,7 +113,7 @@ export function rdvCatalogDisplayLines(apt: Appointment, opts?: RdvCatalogDispla
         ? ext.nursing_items_display
         : ext.nursing_items ?? [];
     if (raw.length > 0) {
-      return finalizeRdvCatalogLines(raw.map((it) => mapItem(it, 'Soin', apt)), opts);
+      return finalizeRdvCatalogLines(raw.map((it) => mapItem(it, 'Soin', apt, opts)), opts);
     }
   }
   const catId = apt.category_id != null ? String(apt.category_id) : null;

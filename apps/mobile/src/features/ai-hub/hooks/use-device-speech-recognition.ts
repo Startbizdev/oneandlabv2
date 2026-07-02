@@ -5,12 +5,22 @@ type SpeechModule = typeof import('expo-speech-recognition').ExpoSpeechRecogniti
 const EXPO_GO_HINT =
   'La voix nécessite l’app Cary installée (build de développement). Expo Go ne supporte pas le micro IA.';
 
-export function useDeviceSpeechRecognition(locale = 'fr-FR') {
+type Options = {
+  locale?: string;
+  /** Écoute continue — recommandé pour le mode conversation. */
+  continuous?: boolean;
+};
+
+export function useDeviceSpeechRecognition(options: Options = {}) {
+  const locale = options.locale ?? 'fr-FR';
+  const continuous = options.continuous ?? true;
+
   const [available, setAvailable] = useState(false);
   const [recognizing, setRecognizing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [lastResultAt, setLastResultAt] = useState(0);
   const moduleRef = useRef<SpeechModule | null>(null);
   const listenersRef = useRef<Array<{ remove: () => void }>>([]);
 
@@ -55,8 +65,6 @@ export function useDeviceSpeechRecognition(locale = 'fr-FR') {
       return false;
     }
     setError(null);
-    setTranscript('');
-    setInterimTranscript('');
 
     const perms = await m.requestPermissionsAsync();
     if (!perms.granted) {
@@ -71,6 +79,7 @@ export function useDeviceSpeechRecognition(locale = 'fr-FR') {
       m.addListener('result', (event) => {
         const text = (event.results?.[0]?.transcript ?? '').trim();
         if (!text) return;
+        setLastResultAt(Date.now());
         if (event.isFinal) {
           setTranscript((prev) => (prev ? `${prev} ${text}` : text).trim());
           setInterimTranscript('');
@@ -88,12 +97,12 @@ export function useDeviceSpeechRecognition(locale = 'fr-FR') {
     m.start({
       lang: locale,
       interimResults: true,
-      continuous: false,
+      continuous,
       iosVoiceProcessingEnabled: true,
       addsPunctuation: true,
     });
     return true;
-  }, [available, cleanupListeners, locale]);
+  }, [available, cleanupListeners, continuous, locale]);
 
   const stop = useCallback(() => {
     moduleRef.current?.stop();
@@ -110,6 +119,12 @@ export function useDeviceSpeechRecognition(locale = 'fr-FR') {
     setInterimTranscript('');
   }, [cleanupListeners]);
 
+  const clearTranscript = useCallback(() => {
+    setTranscript('');
+    setInterimTranscript('');
+    setLastResultAt(0);
+  }, []);
+
   const displayTranscript = (transcript || interimTranscript).trim();
 
   return {
@@ -118,9 +133,11 @@ export function useDeviceSpeechRecognition(locale = 'fr-FR') {
     transcript,
     interimTranscript,
     displayTranscript,
+    lastResultAt,
     error,
     start,
     stop,
     abort,
+    clearTranscript,
   };
 }

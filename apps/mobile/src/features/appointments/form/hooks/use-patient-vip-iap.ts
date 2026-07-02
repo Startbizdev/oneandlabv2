@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import {
   ErrorCode,
-  isUserCancelledError,
   requestPurchase,
   useIAP,
   type Product,
@@ -150,7 +149,7 @@ export function usePatientVipIap() {
         setPurchaseLoading(true);
         const sku = PATIENT_VIP_IAP_PRODUCT_ID;
         void requestPurchase({
-          type: 'inapp',
+          type: 'in-app',
           request: {
             apple: { sku },
             ios: { sku },
@@ -159,7 +158,12 @@ export function usePatientVipIap() {
         }).catch((error) => {
           setPurchaseLoading(false);
           pendingDraftRef.current = null;
-          if (isUserCancelledError(error)) {
+          if (
+            error &&
+            typeof error === 'object' &&
+            'code' in error &&
+            (error as { code: string }).code === ErrorCode.UserCancelled
+          ) {
             reject(new Error('USER_CANCELLED'));
             return;
           }

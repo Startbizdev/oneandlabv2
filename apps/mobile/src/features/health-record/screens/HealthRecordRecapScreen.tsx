@@ -20,6 +20,11 @@ import { HealthRecordGapActionCard } from '../components/HealthRecordGapActionCa
 import { fetchHealthRecordRecap } from '../api/health-record.service';
 import { healthRecordQueryKeys } from '../hooks/use-health-record-completion';
 import { healthRecordHeroSubtitle } from '../utils/health-record-display';
+import { HealthSyncStatusCard } from '@/features/health-sync/components/HealthSyncStatusCard';
+import { useHealthSourceConnection } from '@/features/health-sync/hooks/use-health-source-connection';
+import { buildHealthMetricStats, buildHealthInsights, isHealthSyncRecent } from '@/features/health-sync/utils/health-metric-stats';
+import { HealthInsightCards } from '@/features/health-sync/components/HealthInsightCards';
+import { useMemo } from 'react';
 import { elevation, radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -35,18 +40,34 @@ export function HealthRecordRecapScreen() {
     extraTop: STACK_SCENE_CONTENT_TOP_GAP,
   });
   const contentTopInset = useStackContentTopInset();
+  const healthConnection = useHealthSourceConnection();
   const { refreshing, onRefresh } = useManualRefresh(async () => {
-    await recapQ.refetch();
+    await Promise.all([recapQ.refetch(), healthConnection.refetchAll()]);
   });
 
   const data = recapQ.data;
   const percent = data?.completion?.percent ?? 0;
+  const healthStats = useMemo(
+    () => buildHealthMetricStats(healthConnection.dashboardQ.data),
+    [healthConnection.dashboardQ.data],
+  );
+  const healthInsights = useMemo(
+    () => buildHealthInsights(healthConnection.dashboardQ.data),
+    [healthConnection.dashboardQ.data],
+  );
+  const openGaps = useMemo(() => {
+    const gaps = (data?.open_gaps ?? []).filter((g) => g?.gap_key);
+    if (!healthConnection.connected || !isHealthSyncRecent(healthConnection.lastSyncAt)) {
+      return gaps;
+    }
+    return gaps.filter((g) => g.gap_key !== 'health_sync_stale');
+  }, [data?.open_gaps, healthConnection.connected, healthConnection.lastSyncAt]);
 
   if (recapQ.isLoading && !data) {
     return (
       <StackChromeScreen>
         <View style={[styles.loading, { paddingTop: contentTopInset }]}>
-          <SkeletonList rows={5} />
+          <SkeletonList count={5} />
         </View>
       </StackChromeScreen>
     );
@@ -107,10 +128,34 @@ export function HealthRecordRecapScreen() {
           />
         ) : null}
 
-        {(data?.open_gaps ?? []).length > 0 ? (
+        <View style={styles.block}>
+          <Text style={styles.blockTitle}>Données connectées</Text>
+          <HealthSyncStatusCard
+            connected={healthConnection.connected}
+            lastSyncAt={healthConnection.lastSyncAt}
+            syncing={healthConnection.syncing}
+            stats={healthStats}
+            compact
+            onConnect={() => void healthConnection.connectOrSync()}
+            onSync={() => void healthConnection.connectOrSync()}
+            onDisconnect={healthConnection.connected ? healthConnection.revokeConnection : undefined}
+          />
+          <Button
+            title="Voir mes graphiques"
+            variant="outline"
+            size="sm"
+            onPress={() => router.push('/(patient)/health-data' as never)}
+            fullWidth
+          />
+          {healthConnection.connected && healthInsights.length > 0 ? (
+            <HealthInsightCards insights={healthInsights.slice(0, 2)} />
+          ) : null}
+        </View>
+
+        {openGaps.length > 0 ? (
           <View style={styles.block}>
             <Text style={styles.blockTitle}>Suggestions de suivi</Text>
-            {data!.open_gaps.filter((g) => g?.gap_key).map((gap) => (
+            {openGaps.map((gap) => (
               <HealthRecordGapActionCard key={gap.gap_key} gap={gap} />
             ))}
           </View>

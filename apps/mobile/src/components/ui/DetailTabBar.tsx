@@ -19,6 +19,8 @@ interface DetailTabBarProps<T extends string> {
   value: T;
   onChange: (id: T) => void;
   accessibilityLabel?: string;
+  /** Padding réduit + labels auto-ajustés (3 onglets côte à côte). */
+  compact?: boolean;
 }
 
 /**
@@ -29,9 +31,12 @@ export function DetailTabBar<T extends string>({
   value,
   onChange,
   accessibilityLabel = 'Sections',
+  compact = false,
 }: DetailTabBarProps<T>) {
   const c = useAppColors();
   const styles = useThemedStyles(buildDetailTabBarStyles, 'DetailTabBar');
+  const labelLineHeight = lh(fontSize.xs, 1.15);
+  const iconSize = compact ? 14 : 15;
 
   if (tabs.length <= 1) return null;
 
@@ -41,7 +46,7 @@ export function DetailTabBar<T extends string>({
       accessibilityRole="tablist"
       accessibilityLabel={accessibilityLabel}
     >
-      <View style={styles.shell}>
+      <View style={[styles.shell, compact && styles.shellCompact]}>
         {tabs.map((tab) => {
           const active = value === tab.id;
           const Icon = tab.Icon;
@@ -54,15 +59,28 @@ export function DetailTabBar<T extends string>({
               accessibilityState={{ selected: active }}
               accessibilityLabel={tab.label}
               onPress={() => onChange(tab.id)}
-              style={[styles.tab, active && styles.tabActive]}
+              style={[styles.tab, compact && styles.tabCompact, active && styles.tabActive]}
             >
-              <Row gap={spacing[1.5]} align="center" justify="center" style={styles.tabContent}>
+              <Row
+                gap={compact ? spacing[1] : spacing[1.5]}
+                align="center"
+                justify="center"
+                style={styles.tabContent}
+              >
                 {Icon ? (
-                  <Icon size={15} color={iconColor} strokeWidth={2.2} />
+                  <View style={styles.iconWrap}>
+                    <Icon size={iconSize} color={iconColor} strokeWidth={2.2} />
+                  </View>
                 ) : null}
                 <Text
-                  style={[styles.label, active && styles.labelActive]}
+                  style={[
+                    styles.label,
+                    { lineHeight: labelLineHeight },
+                    active && styles.labelActive,
+                  ]}
                   numberOfLines={1}
+                  adjustsFontSizeToFit={compact}
+                  minimumFontScale={compact ? 0.85 : 1}
                 >
                   {tab.label}
                 </Text>
@@ -96,6 +114,10 @@ function buildDetailTabBarStyles(c: AppColors) {
       borderRadius: radius.lg,
       backgroundColor: c.surfaceSubtle,
     },
+    shellCompact: {
+      gap: spacing[0.5],
+      padding: spacing[0.5],
+    },
     tab: {
       flex: 1,
       flexBasis: 0,
@@ -106,6 +128,10 @@ function buildDetailTabBarStyles(c: AppColors) {
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
+    tabCompact: {
+      minHeight: 38,
+      paddingHorizontal: spacing[1],
+    },
     tabActive: {
       backgroundColor: c.surface,
       borderWidth: 1,
@@ -114,12 +140,18 @@ function buildDetailTabBarStyles(c: AppColors) {
     tabContent: {
       minWidth: 0,
       flexShrink: 1,
+      alignItems: 'center' as const,
+    },
+    iconWrap: {
+      flexShrink: 0,
+      justifyContent: 'center' as const,
+      alignItems: 'center' as const,
+      transform: [{ translateY: Platform.OS === 'android' ? -1 : -1.5 }],
     },
     label: {
       flexShrink: 1,
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.xs,
-      lineHeight: lh(fontSize.xs, 1.15),
       color: c.textTertiary,
       ...(Platform.OS === 'android'
         ? { includeFontPadding: false, textAlignVertical: 'center' as const }

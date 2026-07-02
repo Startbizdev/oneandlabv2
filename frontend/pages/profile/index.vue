@@ -796,6 +796,8 @@
               <PatientHealthRecordPanel
                 v-if="showStaffPatientHealthRecord"
                 :patient-id="effectiveUserId"
+                :editable="showStaffPatientHealthRecord"
+                :clinical-vitals="showStaffClinicalVitals"
               />
               <div v-if="isProEditingPatient" class="pt-2 w-full shrink-0">
                 <UButton
@@ -1375,6 +1377,12 @@ const showStaffPatientHealthRecord = computed(
     !!editingUserId.value &&
     role.value === 'patient' &&
     ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'].includes(user.value?.role ?? '')
+)
+/** Constantes médicales : saisie infirmier / pro uniquement */
+const showStaffClinicalVitals = computed(
+  () =>
+    showStaffPatientHealthRecord.value &&
+    (user.value?.role === 'pro' || user.value?.role === 'nurse')
 )
 /** Charge les documents profil patient (soi-même ou dossier staff). */
 const shouldLoadPatientDossierDocuments = computed(

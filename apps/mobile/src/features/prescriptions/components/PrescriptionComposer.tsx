@@ -20,6 +20,7 @@ import { handleApiError } from '@/lib/errors/handle-api-error';
 import {
   generatePrescriptionPdf,
   savePrescriptionPdf,
+  type PassagePrescriptionDraft,
   type PrescriptionKind,
 } from '../api/prescriptions.service';
 import {
@@ -50,10 +51,15 @@ interface Props {
   initialText?: string;
   embedded?: boolean;
   prescriptionKind?: PrescriptionKind;
+  /** Brouillon passage : génère le PDF sans enregistrement — rattachement au RDV à la création. */
+  deferSaveForPassage?: boolean;
+  onPassageDraftReady?: (draft: PassagePrescriptionDraft | null) => void;
   /** Sheet signature au niveau écran (hors scroll) — recommandé */
   onOpenSignatureSheet?: (options?: OpenPrescriptionSignatureOptions) => void;
   /** Ouvre la fiche patient (alerte champs manquants). */
   onEditPatient?: () => void;
+  /** Masque l'alerte champs manquants (affichée ailleurs). */
+  hideProfileGapsAlert?: boolean;
 }
 
 export function PrescriptionComposer({
@@ -64,8 +70,11 @@ export function PrescriptionComposer({
   initialText = '',
   embedded = false,
   prescriptionKind = 'medical',
+  deferSaveForPassage = false,
+  onPassageDraftReady,
   onOpenSignatureSheet,
   onEditPatient,
+  hideProfileGapsAlert = false,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_prescriptions_components_PrescriptionComposer_tsx_styles');
@@ -180,23 +189,46 @@ export function PrescriptionComposer({
         throw new Error(cached.error ?? 'Impossible d’afficher le PDF');
       }
 
-      const saveRes = await savePrescriptionPdf(cached.localUri, {
-        patientId,
-        appointmentId: appointmentId ?? undefined,
-        fileName: name,
-        prescriptionKind,
-        prescriptionText: composedText,
-        prescriptionNumber: meta.prescription_number,
-      });
+      const saveRes = deferSaveForPassage
+        ? null
+        : await savePrescriptionPdf(cached.localUri, {
+            patientId,
+            appointmentId: appointmentId ?? undefined,
+            fileName: name,
+            prescriptionKind,
+            prescriptionText: composedText,
+            prescriptionNumber: meta.prescription_number,
+          });
 
-      return { cached, name, meta, saveOk: saveRes.success, saveError: saveRes.error };
+      return {
+        cached,
+        name,
+        meta,
+        deferred: deferSaveForPassage,
+        saveOk: deferSaveForPassage ? true : Boolean(saveRes?.success),
+        saveError: saveRes?.error,
+      };
     },
-    onSuccess: async ({ cached, name, meta, saveOk, saveError }) => {
+    onSuccess: async ({ cached, name, meta, deferred, saveOk, saveError }) => {
       setPdfFileName(name);
       setPdfMeta(meta);
       setPdfUri(cached.localUri);
       setSaveFailed(!saveOk);
       setPreviewOpen(true);
+
+      if (deferred) {
+        onPassageDraftReady?.({
+          pdfUri: cached.localUri,
+          fileName: name,
+          prescriptionText: composedText,
+          prescriptionNumber: meta.prescription_number,
+          prescriptionKind,
+        });
+        toast('Ordonnance générée — enregistrez le passage pour la rattacher au rendez-vous.', {
+          type: 'success',
+        });
+        return;
+      }
 
       if (saveOk) {
         toast(
@@ -306,12 +338,22 @@ export function PrescriptionComposer({
         </View>
       ) : null}
 
-      <PrescriptionProfileGapsAlert
-        gaps={profileGaps}
-        onEditPatient={onEditPatient}
-        onSignPrescriber={() => requestSignatureSheet(false)}
-        prescriberRole={user?.role}
-      />
+      {deferSaveForPassage && pdfUri ? (
+        <View style={styles.passageDraftReady}>
+          <Text style={styles.passageDraftReadyText}>
+            Ordonnance prête — elle sera ajoutée au passage à l&apos;enregistrement.
+          </Text>
+        </View>
+      ) : null}
+
+      {!hideProfileGapsAlert ? (
+        <PrescriptionProfileGapsAlert
+          gaps={profileGaps}
+          onEditPatient={onEditPatient}
+          onSignPrescriber={() => requestSignatureSheet(false)}
+          prescriberRole={user?.role}
+        />
+      ) : null}
 
       <PrescriptionDatePicker value={prescriptionDate} onChange={setPrescriptionDate} />
 
@@ -371,13 +413,13 @@ export function PrescriptionComposer({
 
       <View style={styles.actions}>
         <Button
-          title="Générer le PDF"
+          title={deferSaveForPassage ? 'Générer l’ordonnance' : 'Générer le PDF'}
           leftIcon={<FileOutput size={16} color={c.textInverse} strokeWidth={2} />}
           loading={generateMut.isPending}
           disabled={!canGenerate}
           onPress={onPressGenerate}
         />
-        {pdfUri && !hasExisting && saveFailed ? (
+        {pdfUri && !hasExisting && !deferSaveForPassage && saveFailed ? (
           <>
             <Button
               title="Aperçu"
@@ -489,6 +531,19 @@ function buildStyles(c: AppColors) {
     },
     warnActions: {
       minWidth: 0,
+    },
+    passageDraftReady: {
+      backgroundColor: c.primaryLight,
+      borderRadius: 12,
+      padding: spacing[3],
+      borderWidth: 1,
+      borderColor: c.primaryMid,
+    },
+    passageDraftReadyText: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSize.sm,
+      color: c.primaryDark,
+      lineHeight: fontSize.sm * 1.45,
     },
     textarea: { minHeight: 140, textAlignVertical: 'top' as const },
     signRow: {

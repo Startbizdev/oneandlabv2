@@ -20,12 +20,13 @@ if ($stopId === '') {
 $body = nurse_tour_read_json_body();
 $status = trim((string) ($body['status'] ?? ''));
 $skipReason = isset($body['skip_reason']) ? trim((string) $body['skip_reason']) : null;
+$finalizeAppointment = !empty($body['finalize_appointment']);
 
 try {
     $service = new TourVisitService();
     nurse_tour_json_response([
         'success' => true,
-        'data' => $service->updateStopStatus($nurseId, $stopId, $status, $skipReason),
+        'data' => $service->updateStopStatus($nurseId, $stopId, $status, $skipReason, $finalizeAppointment),
     ]);
 } catch (InvalidArgumentException $e) {
     nurse_tour_json_error($e->getMessage(), 400);

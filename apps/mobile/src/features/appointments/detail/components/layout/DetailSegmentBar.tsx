@@ -26,10 +26,12 @@ interface Props {
   segments: DetailSegment[];
   active: string;
   onChange: (id: string) => void;
+  /** Onglets plus compacts (ex. prise en charge passage — 3 labels courts). */
+  compact?: boolean;
 }
 
 /** Onglets fiche RDV — délègue à `DetailTabBar` (pleine largeur, tokens design system). */
-export function DetailSegmentBar({ segments, active, onChange }: Props) {
+export function DetailSegmentBar({ segments, active, onChange, compact }: Props) {
   const tabs = segments.map((s) => ({
     id: s.id,
     label: s.label,
@@ -42,6 +44,7 @@ export function DetailSegmentBar({ segments, active, onChange }: Props) {
       tabs={tabs}
       value={active}
       onChange={onChange}
+      compact={compact}
       accessibilityLabel="Sections du rendez-vous"
     />
   );

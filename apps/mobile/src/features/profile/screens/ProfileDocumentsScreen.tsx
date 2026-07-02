@@ -1,22 +1,20 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { ScrollView, Text, View } from 'react-native';
+import { Text } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { StackScrollView } from '@/components/navigation/StackScrollView';
 import { ProfileDocumentsPremiumPanel } from '@/features/profile/components/ProfileDocumentsPremiumPanel';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Page dédiée documents (route /profile/documents) — patient uniquement */
 export function ProfileDocumentsScreen() {
   const styles = useThemedStyles(buildStyles, 'features_profile_screens_ProfileDocumentsScreen_tsx_styles');
+
   return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
-      >
+    <StackChromeScreen>
+      <StackScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ProfileDocumentsPremiumPanel />
 
         <Animated.View entering={FadeInDown.delay(200).duration(280).springify()} style={styles.infoBox}>
@@ -25,8 +23,8 @@ export function ProfileDocumentsScreen() {
             santé autorisés peuvent y accéder.
           </Text>
         </Animated.View>
-      </ScrollView>
-    </View>
+      </StackScrollView>
+    </StackChromeScreen>
   );
 }
 
@@ -37,8 +35,6 @@ export function ProfileDocumentsEmbedded() {
 
 function buildStyles(c: AppColors) {
   return {
-    container: { minWidth: 0, flex: 1, backgroundColor: c.background },
-    scroll: { minWidth: 0, flex: 1 },
     content: {
       padding: spacing[4],
       gap: spacing[4],

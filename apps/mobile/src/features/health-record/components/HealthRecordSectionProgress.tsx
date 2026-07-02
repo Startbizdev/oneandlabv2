@@ -34,7 +34,7 @@ export function HealthRecordSectionProgress({ filled, total }: Props) {
       accessibilityRole="summary"
       accessibilityLabel={`${filled} sur ${total} renseignées. ${caption}`}
     >
-      <Row gap={spacing[2]} align="center" justify="space-between">
+      <Row gap={spacing[2]} align="center" justify="between">
         <View style={styles.track} accessibilityElementsHidden importantForAccessibility="no">
           <View
             style={[

@@ -69,6 +69,7 @@ export function RegisterBottomSheet({
       onClose={onClose}
       title="Créer un compte"
       subtitle="Choisissez le profil qui correspond à votre situation"
+      disableScroll
     >
       <View style={styles.body}>
         {hasEmail ? (

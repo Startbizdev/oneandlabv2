@@ -12,18 +12,43 @@ final class TourProximity
     public static function coordsFromAppointment(array $apt): ?array
     {
         $fd = is_array($apt['form_data'] ?? null) ? $apt['form_data'] : [];
-        $addr = $fd['address'] ?? null;
-        if (is_array($addr)) {
-            $lat = (float) ($addr['lat'] ?? 0);
-            $lng = (float) ($addr['lng'] ?? 0);
-            if ($lat !== 0.0 || $lng !== 0.0) {
-                return ['lat' => $lat, 'lng' => $lng];
+        foreach ([$fd['address'] ?? null, $apt['address'] ?? null] as $addr) {
+            $parsed = self::coordsFromAddressValue($addr);
+            if ($parsed !== null) {
+                return $parsed;
             }
         }
         $lat = (float) ($apt['location_lat'] ?? 0);
         $lng = (float) ($apt['location_lng'] ?? 0);
         if ($lat !== 0.0 || $lng !== 0.0) {
             return ['lat' => $lat, 'lng' => $lng];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{lat: float, lng: float}|null
+     */
+    private static function coordsFromAddressValue(mixed $addr): ?array
+    {
+        if (is_array($addr)) {
+            $lat = (float) ($addr['lat'] ?? 0);
+            $lng = (float) ($addr['lng'] ?? 0);
+            if ($lat !== 0.0 || $lng !== 0.0) {
+                return ['lat' => $lat, 'lng' => $lng];
+            }
+
+            return null;
+        }
+        if (is_string($addr) && trim($addr) !== '') {
+            $trimmed = trim($addr);
+            if ($trimmed[0] === '{' || $trimmed[0] === '[') {
+                $decoded = json_decode($trimmed, true);
+                if (is_array($decoded)) {
+                    return self::coordsFromAddressValue($decoded);
+                }
+            }
         }
 
         return null;

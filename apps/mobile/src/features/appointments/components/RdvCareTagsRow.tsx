@@ -23,6 +23,8 @@ interface Props {
   tone?: 'neutral' | 'brand';
   /** `compact` = sous le créneau dans la colonne principale. */
   density?: 'default' | 'compact';
+  /** Tournée passage : badge = nom catégorie seul (options en dessous). */
+  badgeCategoryOnly?: boolean;
 }
 
 function listCareTagColors(c: AppColors) {
@@ -38,6 +40,7 @@ export function RdvCareTagsRow({
   hideStaffOnlyCares,
   tone = 'neutral',
   density = 'default',
+  badgeCategoryOnly = false,
 }: Props) {
   const c = useAppColors();
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
@@ -53,8 +56,10 @@ export function RdvCareTagsRow({
   );
 
   const opts: RdvCatalogDisplayOpts | undefined = hideStaffOnlyCares
-    ? { hideStaffOnlyCares: true }
-    : undefined;
+    ? { hideStaffOnlyCares: true, badgeCategoryOnly }
+    : badgeCategoryOnly
+      ? { badgeCategoryOnly: true }
+      : undefined;
   const lines = rdvCatalogDisplayLines(apt, opts);
   if (!lines.length) return null;
 

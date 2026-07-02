@@ -119,7 +119,8 @@ export function PatientReviewsScreen() {
   );
 
   const refetchAll = async () => {
-    await Promise.all([reviewsQ.refetch(), appointmentsQ.refetch()]);
+    const [reviewsResult] = await Promise.all([reviewsQ.refetch(), appointmentsQ.refetch()]);
+    return reviewsResult;
   };
 
   const ListHeader = () => (

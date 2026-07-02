@@ -1100,6 +1100,32 @@ class NotificationService
     }
 
     /**
+     * Patient : l'infirmier est en route pour le passage à domicile.
+     */
+    public function notifyPatientNurseEnRoute(
+        string $patientId,
+        string $appointmentId,
+        string $nurseId,
+        string $nurseFullName,
+    ): void {
+        try {
+            $name = trim($nurseFullName);
+            if ($name === '') {
+                $name = 'Votre infirmier·ère';
+            }
+            $this->createNotification(
+                $patientId,
+                'nurse_en_route',
+                'Infirmier·ère en route',
+                $name . ' est en route pour votre passage.',
+                ['appointment_id' => $appointmentId, 'assigned_nurse_id' => $nurseId],
+            );
+        } catch (Exception $e) {
+            error_log('notifyPatientNurseEnRoute: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Notifie l'infirmier qu'il a accepté un rendez-vous
      */
     public function notifyNurseAcceptedAppointment(string $appointmentId, string $nurseId, array $appointmentData): void

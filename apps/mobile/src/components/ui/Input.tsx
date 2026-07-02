@@ -7,33 +7,32 @@ import {
   Text,
   TextInput,
   View,
-  StyleSheet,
   type TextInputProps,
 } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
-import { useSheetTextInputComponent } from './sheet-keyboard-context';
+import { useInBottomSheet, useSheetTextInputComponent } from './sheet-keyboard-context';
+import { SHEET_KEYBOARD_ACCESSORY_ID } from './sheet-keyboard-accessory';
 
-/** Claviers iOS sans touche retour — RN injecte une barre anglaise (Next/Done) si returnKeyType est défini. */
-const IOS_NO_RETURN_KEY_KEYBOARDS = new Set([
+const NUMERIC_KEYBOARDS = new Set([
   'number-pad',
   'phone-pad',
   'decimal-pad',
   'ascii-capable-number-pad',
 ]);
 
+/** Pavé numérique : « Valider » natif Android ; barre iOS française dans les sheets. */
 function resolveReturnKeyType(
   keyboardType: TextInputProps['keyboardType'],
   returnKeyType: TextInputProps['returnKeyType'],
+  inSheet: boolean,
 ): TextInputProps['returnKeyType'] {
-  if (
-    Platform.OS === 'ios' &&
-    returnKeyType &&
-    keyboardType &&
-    IOS_NO_RETURN_KEY_KEYBOARDS.has(String(keyboardType))
-  ) {
-    return undefined;
+  if (keyboardType && NUMERIC_KEYBOARDS.has(String(keyboardType))) {
+    if (Platform.OS === 'ios' && inSheet) {
+      return undefined;
+    }
+    return returnKeyType ?? 'done';
   }
   return returnKeyType;
 }
@@ -66,7 +65,11 @@ function InputComponent(
   const styles = useThemedStyles(buildStyles, 'Input');
   const [isFocused, setIsFocused] = useState(false);
   const TextField = useSheetTextInputComponent();
-  const resolvedReturnKeyType = resolveReturnKeyType(keyboardType, returnKeyType);
+  const inSheet = useInBottomSheet();
+  const isNumeric = Boolean(keyboardType && NUMERIC_KEYBOARDS.has(String(keyboardType)));
+  const resolvedReturnKeyType = resolveReturnKeyType(keyboardType, returnKeyType, inSheet);
+  const iosNumericAccessory =
+    Platform.OS === 'ios' && inSheet && isNumeric ? SHEET_KEYBOARD_ACCESSORY_ID : undefined;
 
   const borderColor = error
     ? c.borderError
@@ -110,6 +113,9 @@ function InputComponent(
           onBlur={handleBlur}
           keyboardType={keyboardType}
           returnKeyType={resolvedReturnKeyType}
+          returnKeyLabel={Platform.OS === 'android' && isNumeric ? 'Valider' : undefined}
+          inputAccessoryViewID={iosNumericAccessory}
+          blurOnSubmit
           accessibilityLabel={props.accessibilityLabel ?? label}
           style={[
             styles.input,

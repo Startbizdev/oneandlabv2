@@ -43,6 +43,10 @@ interface Props {
   category: CareCategory | null;
   categories: CareCategory[];
   onlyCategoryOptions: boolean;
+  /** Contenu inline dans un sheet parent (pas de second bottom sheet). */
+  embedded?: boolean;
+  /** Libellé du bouton de confirmation (défaut : « Valider et ajouter »). */
+  confirmLabel?: string;
   onClose: () => void;
   onDismissed?: () => void;
   onConfirm: (payload: { service: SelectedServiceInput; slice: BookingServiceFormSlice }) => void;
@@ -94,6 +98,8 @@ export function CareServiceQuickOptionsSheet({
   category,
   categories,
   onlyCategoryOptions,
+  embedded = false,
+  confirmLabel = 'Valider et ajouter',
   onClose,
   onDismissed,
   onConfirm,
@@ -231,18 +237,8 @@ export function CareServiceQuickOptionsSheet({
 
   const isOpen = visible && category != null;
 
-  return (
-    <BottomSheet
-      visible={isOpen}
-      presentKey={category?.id ?? 'closed'}
-      onClose={onClose}
-      onDismissed={onDismissed}
-      onBack={onClose}
-      title={category?.label ?? ''}
-      subtitle="Paramétrez votre soin"
-    >
-      {!category ? null : (
-        <>
+  const formBody = !category ? null : (
+    <>
       {localError ? (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>{localError}</Text>
@@ -360,10 +356,28 @@ export function CareServiceQuickOptionsSheet({
       ) : null}
 
       <View style={styles.sheetFooter}>
-        <Button title="Valider et ajouter" onPress={handleConfirm} fullWidth size="lg" />
+        <Button title={confirmLabel} onPress={handleConfirm} fullWidth size="lg" />
       </View>
-        </>
-      )}
+    </>
+  );
+
+  if (embedded) {
+    if (!isOpen) return null;
+    return <View style={styles.embeddedBody}>{formBody}</View>;
+  }
+
+  return (
+    <BottomSheet
+      visible={isOpen}
+      presentKey={category?.id ?? 'closed'}
+      onClose={onClose}
+      onDismissed={onDismissed}
+      onBack={onClose}
+      title={category?.label ?? ''}
+      subtitle="Paramétrez votre soin"
+      stackBehavior="push"
+    >
+      {formBody}
     </BottomSheet>
   );
 }
@@ -409,6 +423,7 @@ function buildStyles(c: AppColors) {
     paddingTop: spacing[4],
     marginTop: spacing[1],
   },
+  embeddedBody: { gap: spacing[3] },
 };
 }
 

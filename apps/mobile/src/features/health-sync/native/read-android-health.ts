@@ -1,44 +1,32 @@
 import type { HealthBatchMetricInput } from '@oneandlab/shared-types';
 import type { HealthReadResult } from './read-health-metrics';
+import { requestDeviceHealthAuthorization } from './health-authorization';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Lecture Health Connect (Android). Nécessite react-native-health-connect sur build natif.
+ * Lecture Health Connect (Android). Build natif react-native-health-connect requis.
  */
 export async function readAndroidHealthMetrics(days: number): Promise<HealthReadResult> {
+  const auth = await requestDeviceHealthAuthorization();
+  if (!auth.ok) {
+    return { available: false, reason: auth.reason, metrics: [] };
+  }
+
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const HealthConnect = require('react-native-health-connect') as {
-      initialize?: () => Promise<boolean>;
-      requestPermission?: (permissions: Array<{ accessType: string; recordType: string }>) => Promise<unknown>;
       readRecords?: (
         type: string,
         options: { timeRangeFilter: { operator: string; startTime: string; endTime: string } },
       ) => Promise<{ records?: Array<Record<string, unknown>> }>;
     };
 
-    if (!HealthConnect?.initialize || !HealthConnect?.readRecords) {
+    if (!HealthConnect?.readRecords) {
       return {
         available: false,
-        reason: 'Health Connect indisponible — utilisez un build de développement Cary.',
+        reason: 'Health Connect indisponible — utilisez un build Cary natif.',
         metrics: [],
       };
-    }
-
-    const ok = await HealthConnect.initialize();
-    if (!ok) {
-      return { available: false, reason: 'Health Connect non disponible', metrics: [] };
-    }
-
-    if (HealthConnect.requestPermission) {
-      await HealthConnect.requestPermission([
-        { accessType: 'read', recordType: 'Weight' },
-        { accessType: 'read', recordType: 'HeartRate' },
-        { accessType: 'read', recordType: 'Steps' },
-        { accessType: 'read', recordType: 'Distance' },
-        { accessType: 'read', recordType: 'ActiveCaloriesBurned' },
-      ]);
     }
 
     const startTime = new Date(Date.now() - days * DAY_MS).toISOString();
@@ -57,11 +45,35 @@ export async function readAndroidHealthMetrics(days: number): Promise<HealthRead
     for (const m of mapType) {
       const result = await HealthConnect.readRecords(m.record, { timeRangeFilter });
       const records = result?.records ?? [];
-      for (const row of records) {
+
+      if (m.metric === 'steps') {
+        const byDay = new Map<string, number>();
+        for (const row of records) {
+          const time = String(row.startTime ?? row.time ?? endTime);
+          const dayKey = new Date(time).toISOString().slice(0, 10);
+          const value = Number(row.count ?? 0);
+          if (!Number.isFinite(value)) continue;
+          byDay.set(dayKey, (byDay.get(dayKey) ?? 0) + value);
+        }
+        for (const [dayKey, total] of byDay) {
+          metrics.push({
+            metric_type: 'steps',
+            value: Math.round(total),
+            unit: m.unit,
+            recorded_at: `${dayKey}T12:00:00.000Z`,
+            external_id: `android:steps:${dayKey}`,
+          });
+        }
+        continue;
+      }
+
+      for (const row of records as Array<Record<string, unknown>>) {
+        const distance = row.distance as { inKilometers?: number } | undefined;
+        const metadata = row.metadata as { id?: string } | undefined;
         const time = String(row.startTime ?? row.time ?? endTime);
-        const value = Number(row.weight ?? row.beatsPerMinute ?? row.count ?? row.energy ?? row.distance?.inKilometers ?? 0);
+        const value = Number(row.weight ?? row.beatsPerMinute ?? row.energy ?? distance?.inKilometers ?? 0);
         if (!Number.isFinite(value) || value <= 0) continue;
-        const id = String(row.metadata?.id ?? `${m.metric}:${time}:${value}`);
+        const id = String(metadata?.id ?? `${m.metric}:${time}:${value}`);
         metrics.push({
           metric_type: m.metric,
           value,
@@ -73,10 +85,10 @@ export async function readAndroidHealthMetrics(days: number): Promise<HealthRead
     }
 
     return { available: true, permissions: { health_connect: true }, metrics };
-  } catch {
+  } catch (e) {
     return {
       available: false,
-      reason: 'Health Connect non configuré sur cet appareil.',
+      reason: e instanceof Error ? e.message : 'Lecture Health Connect impossible.',
       metrics: [],
     };
   }

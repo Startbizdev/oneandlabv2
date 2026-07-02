@@ -10,6 +10,12 @@ export function tourStopAsAppointment(stop: NurseTourStop): Record<string, unkno
   if (stop.availability != null) fd.availability = stop.availability;
   if (stop.care_options && Object.keys(stop.care_options).length > 0) {
     fd.care_options = stop.care_options;
+  } else {
+    const firstItem = stop.nursing_items?.[0] as Record<string, unknown> | undefined;
+    const itemOptions = firstItem?.care_options;
+    if (itemOptions && typeof itemOptions === 'object' && Object.keys(itemOptions as object).length > 0) {
+      fd.care_options = itemOptions;
+    }
   }
 
   const nursingDisplay =
@@ -42,7 +48,7 @@ export function tourStopLotSummaryLabel(stop: NurseTourStop): string {
 }
 
 export function tourStopCatalogLines(stop: NurseTourStop) {
-  return patientRdvCatalogDisplayLines(tourStopAsAppointment(stop));
+  return patientRdvCatalogDisplayLines(tourStopAsAppointment(stop), { badgeCategoryOnly: true });
 }
 
 export function tourStopCareOptionRows(
@@ -81,6 +87,20 @@ export function tourStopCareOptionRows(
       if (seen.has(key)) continue;
       seen.add(key);
       rows.push(row);
+    }
+  }
+
+  const hasTypeRow = rows.some((row) => {
+    const label = row.label.trim().toLowerCase();
+    return label === 'type' || label === 'type de soin';
+  });
+  if (!hasTypeRow && stop.category_name && (stop.type ?? 'nursing') === 'nursing' && items.length <= 1) {
+    const value =
+      items.length === 1
+        ? String(items[0]?.label ?? items[0]?.category_name ?? stop.category_name).trim()
+        : stop.category_name.trim();
+    if (value) {
+      rows.unshift({ label: 'Type', value });
     }
   }
 

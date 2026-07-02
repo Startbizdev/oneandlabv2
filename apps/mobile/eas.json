@@ -25,7 +25,8 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "shany.pastre@gmail.com"
+        "appleId": "shany.pastre@gmail.com",
+        "ascAppId": "6778805884"
       }
     }
   }
