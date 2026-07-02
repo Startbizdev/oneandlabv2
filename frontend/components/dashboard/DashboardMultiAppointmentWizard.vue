@@ -277,7 +277,7 @@
                   >
                     <template #label>
                       <span v-if="!selectedPatientId" class="text-gray-400">Sélectionner un patient…</span>
-                      <span v-else>{{ patientSelectItems.find((i) => i.value === selectedPatientId)?.label }}</span>
+                      <span v-else>{{ selectedPatientSelectLabel }}</span>
                     </template>
                     <template #item-label="{ item }">
                       <div class="min-w-0 flex-1 py-0.5 text-left">
@@ -375,13 +375,7 @@ import {
   STAFF_PATIENT_BOOKING_CONSENT_LABEL,
   STAFF_PATIENT_BOOKING_CONSENT_ERROR,
 } from '~/constants/staff-patient-booking-consent';
-
-const PATIENT_EMAIL_LOOKUP_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function isFrenchPhoneLookupFormat(phone: string): boolean {
-  const cleaned = phone.replace(/[\s.\-]/g, '');
-  return /^(\+33|0)[1-9]\d{8}$/.test(cleaned);
-}
+import { lookupPatientByContact } from '~/utils/patient-contact-lookup';
 
 function patientContactSuppressKey(email: string, phone: string, patientId: string): string {
   return `${email.trim().toLowerCase()}|${phone.replace(/\D/g, '')}|${patientId}`;
@@ -735,13 +729,28 @@ const patientDocumentUserIdForForm = computed(() => {
 const patientSelectSearchPlaceholder = PATIENT_SELECT_SEARCH_PLACEHOLDER;
 
 const patientSelectItems = computed(() => {
-  const list = patients.value.filter((p) => p?.id != null);
+  let list = patients.value.filter((p) => p?.id != null);
+  const pinned = pinnedLookupPatient.value;
+  if (pinned?.id != null && !list.some((p) => String(p.id) === String(pinned.id))) {
+    list = [...list, pinned];
+  }
   return list.map((p) => buildPatientSelectRow(p, { labelStyle: 'natural' }));
+});
+
+const selectedPatientSelectLabel = computed(() => {
+  const id = selectedPatientId.value;
+  if (!id) return '';
+  const item = patientSelectItems.value.find((i) => i.value === String(id));
+  if (item?.label) return item.label;
+  const fd = formData.value;
+  const fromForm = [fd?.first_name, fd?.last_name].filter(Boolean).join(' ').trim();
+  return fromForm || 'Patient';
 });
 
 const duplicatePatientModalOpen = ref(false);
 const duplicatePatientRow = ref<Record<string, unknown> | null>(null);
 const duplicatePatientSuppressKey = ref('');
+const pinnedLookupPatient = ref<Record<string, unknown> | null>(null);
 let patientContactLookupTimer: ReturnType<typeof setTimeout> | null = null;
 
 const duplicatePatientDisplayName = computed(() => {
@@ -779,29 +788,15 @@ async function runPatientContactLookup() {
   if (patientMode.value !== 'new') return;
   const email = String(formData.value?.email ?? '').trim();
   const phone = String(formData.value?.phone ?? '').trim();
-  const emailOk = PATIENT_EMAIL_LOOKUP_RE.test(email);
-  const phoneOk = isFrenchPhoneLookupFormat(phone);
-  if (!emailOk && !phoneOk) {
+  if (!email && !phone.replace(/\D/g, '')) {
     duplicatePatientModalOpen.value = false;
     duplicatePatientRow.value = null;
     return;
   }
 
-  let query: string | null = null;
-  if (emailOk) {
-    query = `email=${encodeURIComponent(email)}`;
-  } else if (phoneOk) {
-    query = `phone=${encodeURIComponent(phone)}`;
-  }
-  if (!query) return;
-
   try {
-    const res = (await apiFetch(`/patients/lookup?${query}`, { method: 'GET' })) as {
-      success?: boolean;
-      data?: Record<string, unknown> | null;
-    };
-    const row = res?.success ? res.data : null;
-    if (!row || typeof row !== 'object' || row.id == null) {
+    const row = await lookupPatientByContact(apiFetch, email, phone);
+    if (!row || row.id == null) {
       duplicatePatientModalOpen.value = false;
       duplicatePatientRow.value = null;
       return;
@@ -844,6 +839,7 @@ async function confirmAdoptExistingPatientFromLookup() {
   if (!patients.value.some((x) => String(x.id) === id)) {
     patients.value = [...patients.value, row];
   }
+  pinnedLookupPatient.value = row;
   patientMode.value = 'existing';
   await nextTick();
   selectedPatientId.value = id;
@@ -983,6 +979,8 @@ async function fetchAndApplyPatientDetail(id: string) {
       const idx = patients.value.findIndex((x) => String(x.id) === String(id));
       if (idx >= 0) {
         patients.value[idx] = { ...patients.value[idx], ...res.data };
+      } else {
+        patients.value = [...patients.value, full];
       }
       p = full;
     }

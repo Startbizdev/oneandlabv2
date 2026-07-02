@@ -8,7 +8,7 @@ import { Cluster, Row } from '@/components/layout/primitives';
 import { ChevronDown, UserPlus, Users } from 'lucide-react-native';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { Input } from '@/components/ui/Input';
-import { lookupPatientByEmail, lookupPatientByPhone } from '@/features/patients/api/patient-lookup.service';
+import { lookupPatientByContact } from '@/features/patients/api/patient-lookup.service';
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import { PatientDuplicatePrompt } from './PatientDuplicatePrompt';
 import { PatientSelectSheet } from './PatientSelectSheet';
@@ -40,13 +40,6 @@ interface Props {
   onChange: (field: string, value: string) => void;
   emailOptional?: boolean;
   onAdoptLookupPatient?: (patient: PatientRow) => void;
-}
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function isFrenchPhoneLookup(phone: string): boolean {
-  const d = phone.replace(/\D/g, '');
-  return d.length >= 10 && (d.startsWith('0') || d.startsWith('33'));
 }
 
 export function FormPatientSection({
@@ -81,18 +74,14 @@ export function FormPatientSection({
     if (patientMode !== 'new') return;
     const em = email.trim();
     const ph = phone.trim();
-    const emailOk = EMAIL_RE.test(em);
-    const phoneOk = isFrenchPhoneLookup(ph);
-    if (!emailOk && !phoneOk) {
+    if (!em && !ph.replace(/\D/g, '')) {
       setDuplicateOpen(false);
       setDuplicateRow(null);
       return;
     }
 
     try {
-      const res = emailOk
-        ? await lookupPatientByEmail(em)
-        : await lookupPatientByPhone(ph);
+      const res = await lookupPatientByContact(em, ph);
       const row = res.success ? res.data : null;
       if (!row?.id) {
         setDuplicateOpen(false);
