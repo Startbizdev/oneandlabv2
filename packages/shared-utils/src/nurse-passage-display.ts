@@ -353,17 +353,70 @@ export function resolveTourStopRouteMetrics(stop: TourStopRouteLike): { km: numb
   return { km, min };
 }
 
+/** Métriques trajet pour la liste tournée (km + minutes séparés). */
+export function resolveTourStopRouteListLabels(
+  stop: TourStopRouteLike,
+  stopIndex = 0,
+): { kmLabel: string | null; driveMinLabel: string | null } {
+  const km = Number(stop.distance_km_from_prev ?? 0);
+  if (!Number.isFinite(km) || km < 0) {
+    return { kmLabel: null, driveMinLabel: null };
+  }
+  if (stopIndex <= 0 && km <= 0) {
+    return { kmLabel: null, driveMinLabel: null };
+  }
+
+  const min =
+    km <= 0 ? 1 : Math.max(1, Math.round(Number(stop.drive_min_from_prev ?? 0)) || 1);
+
+  return {
+    kmLabel: `${km.toFixed(1)} km`,
+    driveMinLabel: `~${min} min`,
+  };
+}
+
 /** Ligne compacte « X km · ~Y min » sous l'horaire (liste tournée). */
 export function formatTourStopRouteLineText(
   stop: TourStopRouteLike,
   stopIndex = 0,
 ): string | null {
-  if (stopIndex <= 0) return null;
+  const { kmLabel, driveMinLabel } = resolveTourStopRouteListLabels(stop, stopIndex);
+  if (!kmLabel && !driveMinLabel) return null;
+  return [kmLabel, driveMinLabel].filter(Boolean).join(' · ');
+}
 
-  const km = Number(stop.distance_km_from_prev ?? 0);
-  if (!Number.isFinite(km) || km < 0) return null;
+export type PassageTourListTimeInput = {
+  passage_time_slot?: string | null;
+  scheduled_at?: string | null;
+  availability?: unknown;
+  passage_custom_time?: string | null;
+  passage_series_id?: string | null;
+};
 
-  const min =
-    km <= 0 ? 1 : Math.max(1, Math.round(Number(stop.drive_min_from_prev ?? 0)));
-  return `${km.toFixed(1)} km · ~${min} min`;
+/** Libellé horaire fiable pour carte tournée / liste passage. */
+export function formatPassageTourListTimeLabel(input: PassageTourListTimeInput): string {
+  const slot = resolvePassageTimeSlotForAppointment(
+    input.availability,
+    input.passage_time_slot,
+  );
+  const range = parsePassageAvailabilityRange(input.availability);
+  const summary = formatPassageTimeSelectionSummary(
+    slot,
+    input.passage_custom_time,
+    range,
+  );
+  if (summary.trim()) return summary;
+
+  const fromStop = formatPassageStopTimeLabel({
+    passage_time_slot: input.passage_time_slot,
+    scheduled_at: input.scheduled_at,
+    availability: input.availability,
+    passage_custom_time: input.passage_custom_time,
+  });
+  if (fromStop && fromStop.trim() && fromStop !== '—') return fromStop;
+
+  const fromSchedule = formatParisTimeFromScheduledAt(input.scheduled_at ?? null);
+  if (fromSchedule) return fromSchedule;
+
+  return fromStop?.trim() || 'Horaire à confirmer';
 }

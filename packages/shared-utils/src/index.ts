@@ -16,5 +16,6 @@ export * from './prescription-profile-gaps';
 export * from './medical-prescription-fields';
 export * from './patient-vip-booking';
 export * from './tour-geo';
+export * from './tour-progress';
 export * from './open-navigation';
 export * from './nurse-passage-display';

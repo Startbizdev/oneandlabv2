@@ -94,7 +94,7 @@ export function PassageFormScreen() {
 
   const [timeSlot, setTimeSlot] = useState<PassageTimeSlot>('morning');
   const [customTime, setCustomTime] = useState('09:00');
-  const [timeRange, setTimeRange] = useState<[number, number] | null>([8, 12]);
+  const [timeRange, setTimeRange] = useState<[number, number] | null>(null);
   const [atHome, setAtHome] = useState(true);
   const [duration, setDuration] = useState<number>(30);
   const [customDuration, setCustomDuration] = useState('');

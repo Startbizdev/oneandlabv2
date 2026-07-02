@@ -2,10 +2,8 @@ import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
-import { Clock, Sun } from 'lucide-react-native';
-import { Row } from '@/components/layout/primitives';
+import { useEffect, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { BookingTimeRangeSlider } from '@/features/appointments/form/components/BookingTimeRangeSlider';
@@ -15,23 +13,24 @@ import {
   clampAvailabilityRange,
 } from '@/features/appointments/form/utils/booking-availability-utils';
 import { PASSAGE_TIME_SLOT_LABELS } from '../utils/passage-display';
+import { PassageTimePicker } from './PassageTimePicker';
 import type { PassageTimeSlot } from '@oneandlab/shared-types';
-import {
-  passagePresetRangeForSlot,
-  passageSlotFromRange,
-  resolvePassageTimeRange,
-} from '@oneandlab/shared-utils';
+import { resolvePassageTimeRange } from '@oneandlab/shared-utils';
 import { radius, spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-type TimeMode = 'all_day' | 'range';
+/** Sélection UI — « range » = créneau horaire avec slider. */
+type DraftSelection = PassageTimeSlot | 'range';
 
-const PRESET_SLOTS: Exclude<PassageTimeSlot, 'custom' | 'all_day'>[] = [
-  'morning',
-  'noon',
-  'afternoon',
-  'evening',
-  'night',
+const SLOT_OPTIONS: Array<{ id: DraftSelection; label: string }> = [
+  { id: 'morning', label: PASSAGE_TIME_SLOT_LABELS.morning },
+  { id: 'noon', label: PASSAGE_TIME_SLOT_LABELS.noon },
+  { id: 'afternoon', label: PASSAGE_TIME_SLOT_LABELS.afternoon },
+  { id: 'evening', label: PASSAGE_TIME_SLOT_LABELS.evening },
+  { id: 'night', label: PASSAGE_TIME_SLOT_LABELS.night },
+  { id: 'custom', label: 'Personnalisée' },
+  { id: 'all_day', label: 'Toute la journée' },
+  { id: 'range', label: 'Créneau' },
 ];
 
 type Props = {
@@ -48,6 +47,23 @@ type Props = {
   ) => void;
 };
 
+function resolveInitialSelection(
+  timeSlot: PassageTimeSlot,
+  customTime: string,
+  timeRange: [number, number] | null | undefined,
+): DraftSelection {
+  if (timeSlot === 'all_day') return 'all_day';
+  if (timeSlot === 'custom') {
+    if (!timeRange) return 'custom';
+    const span = timeRange[1] - timeRange[0];
+    if (span > 1) return 'range';
+    const hour = parseInt((customTime || '09:00').split(':')[0] ?? '9', 10);
+    if (Math.floor(timeRange[0]) === hour && span <= 1) return 'custom';
+    return 'range';
+  }
+  return timeSlot;
+}
+
 export function PassageFormTimeSheet({
   visible,
   timeSlot,
@@ -60,62 +76,48 @@ export function PassageFormTimeSheet({
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
   const maxHour = availabilityMaxHour('nursing');
-  const minHour = useMemo(
-    () => availabilitySliderMinHour(passageDate, maxHour),
-    [passageDate, maxHour],
-  );
+  const minHour = availabilitySliderMinHour(passageDate, maxHour);
 
-  const [draftMode, setDraftMode] = useState<TimeMode>('range');
+  const [draftSelection, setDraftSelection] = useState<DraftSelection>('morning');
+  const [draftCustomTime, setDraftCustomTime] = useState('09:00');
   const [draftRange, setDraftRange] = useState<[number, number]>([8, 12]);
 
   useEffect(() => {
     if (!visible) return;
-    const mode: TimeMode = timeSlot === 'all_day' ? 'all_day' : 'range';
-    setDraftMode(mode);
+    setDraftSelection(resolveInitialSelection(timeSlot, customTime, timeRange));
+    setDraftCustomTime(customTime || '09:00');
     setDraftRange(
-      resolvePassageTimeRange({
-        time_slot: timeSlot,
-        custom_time: customTime,
-        planning_config: timeRange ? { time_range: timeRange } : undefined,
-      }),
+      timeRange ??
+        resolvePassageTimeRange({
+          time_slot: timeSlot,
+          custom_time: customTime,
+        }),
     );
   }, [visible, timeSlot, customTime, timeRange]);
 
   useEffect(() => {
-    if (draftMode !== 'range') return;
+    if (draftSelection !== 'range') return;
     setDraftRange((prev) => clampAvailabilityRange(prev[0], prev[1], maxHour, minHour));
-  }, [draftMode, maxHour, minHour]);
-
-  const applyPreset = (slot: Exclude<PassageTimeSlot, 'custom' | 'all_day'>) => {
-    const preset = passagePresetRangeForSlot(slot);
-    if (preset) setDraftRange(preset);
-  };
-
-  const activePreset = useMemo(() => {
-    if (draftMode !== 'range') return null;
-    const slot = passageSlotFromRange(draftRange);
-    return slot === 'custom' ? null : slot;
-  }, [draftMode, draftRange]);
+  }, [draftSelection, maxHour, minHour]);
 
   return (
     <BottomSheet
       visible={visible}
       onClose={onClose}
       title="Heure de passage"
-      snapPoints={['72%']}
+      snapPoints={draftSelection === 'range' ? ['72%'] : draftSelection === 'custom' ? ['58%'] : ['48%']}
       footer={
         <Button
           title="Valider"
           onPress={() => {
-            if (draftMode === 'all_day') {
+            if (draftSelection === 'all_day') {
               onConfirm('all_day', '', null);
+            } else if (draftSelection === 'range') {
+              onConfirm('custom', '', draftRange);
+            } else if (draftSelection === 'custom') {
+              onConfirm('custom', draftCustomTime, null);
             } else {
-              const slot = passageSlotFromRange(draftRange);
-              const custom =
-                slot === 'custom'
-                  ? `${String(draftRange[0]).padStart(2, '0')}:00`
-                  : customTime;
-              onConfirm(slot, custom, draftRange);
+              onConfirm(draftSelection, '', null);
             }
             onClose();
           }}
@@ -123,128 +125,61 @@ export function PassageFormTimeSheet({
       }
     >
       <View style={styles.body}>
-        <Row gap={spacing[1]} style={styles.segmentShell}>
-          <Pressable
-            onPress={() => setDraftMode('all_day')}
-            style={[styles.segment, draftMode === 'all_day' && styles.segmentActive]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: draftMode === 'all_day' }}
-          >
-            <Row gap={spacing[1]} align="center" justify="center">
-              <Sun
-                size={15}
-                color={draftMode === 'all_day' ? c.primaryDark : c.textTertiary}
-                strokeWidth={2.2}
-              />
-              <Text
-                style={[styles.segmentLabel, draftMode === 'all_day' && styles.segmentLabelActive]}
-                numberOfLines={1}
+        <View style={styles.presetWrap}>
+          {SLOT_OPTIONS.map((opt) => {
+            const selected = draftSelection === opt.id;
+            return (
+              <Pressable
+                key={opt.id}
+                onPress={() => setDraftSelection(opt.id)}
+                style={[
+                  styles.presetChip,
+                  {
+                    borderColor: selected ? c.primary : c.border,
+                    backgroundColor: selected ? hexToRgba(c.primary, 0.12) : c.surfaceAlt,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
               >
-                Toute la journée
-              </Text>
-            </Row>
-          </Pressable>
-          <Pressable
-            onPress={() => setDraftMode('range')}
-            style={[styles.segment, draftMode === 'range' && styles.segmentActive]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: draftMode === 'range' }}
-          >
-            <Row gap={spacing[1]} align="center" justify="center">
-              <Clock
-                size={15}
-                color={draftMode === 'range' ? c.primaryDark : c.textTertiary}
-                strokeWidth={2.2}
-              />
-              <Text
-                style={[styles.segmentLabel, draftMode === 'range' && styles.segmentLabelActive]}
-                numberOfLines={1}
-              >
-                Créneau horaire
-              </Text>
-            </Row>
-          </Pressable>
-        </Row>
+                <Text
+                  style={{
+                    color: selected ? c.primaryDark : c.textSecondary,
+                    fontFamily: fontFamily.semiBold,
+                    fontSize: fontSize.xs,
+                  }}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
-        {draftMode === 'range' ? (
-          <>
-            <View style={styles.presetWrap}>
-              {PRESET_SLOTS.map((slot) => {
-                const selected = activePreset === slot;
-                return (
-                  <Pressable
-                    key={slot}
-                    onPress={() => applyPreset(slot)}
-                    style={[
-                      styles.presetChip,
-                      {
-                        borderColor: selected ? c.primary : c.border,
-                        backgroundColor: selected ? hexToRgba(c.primary, 0.12) : c.surfaceAlt,
-                      },
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                  >
-                    <Text
-                      style={{
-                        color: selected ? c.primaryDark : c.textSecondary,
-                        fontFamily: fontFamily.semiBold,
-                        fontSize: fontSize.xs,
-                      }}
-                    >
-                      {PASSAGE_TIME_SLOT_LABELS[slot]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <BookingTimeRangeSlider
-              min={minHour}
-              max={maxHour}
-              range={draftRange}
-              onChange={setDraftRange}
-            />
-          </>
+        {draftSelection === 'custom' ? (
+          <PassageTimePicker
+            label="Heure"
+            value={draftCustomTime}
+            onChange={setDraftCustomTime}
+          />
+        ) : null}
+
+        {draftSelection === 'range' ? (
+          <BookingTimeRangeSlider
+            min={minHour}
+            max={maxHour}
+            range={draftRange}
+            onChange={setDraftRange}
+          />
         ) : null}
       </View>
     </BottomSheet>
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles(_c: AppColors) {
   return {
     body: { gap: spacing[3], paddingBottom: spacing[2] },
-    segmentShell: {
-      padding: spacing[0.5],
-      borderRadius: radius.lg,
-      backgroundColor: c.surfaceSubtle,
-    },
-    segment: {
-      minWidth: 0,
-      flex: 1,
-      minHeight: 40,
-      borderRadius: radius.md,
-      paddingHorizontal: spacing[1],
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    segmentActive: {
-      backgroundColor: c.surface,
-      borderWidth: 1,
-      borderColor: c.primaryMid,
-    },
-    segmentLabel: {
-      fontFamily: fontFamily.semiBold,
-      fontSize: 10,
-      lineHeight: 12,
-      color: c.textTertiary,
-      ...(Platform.OS === 'android'
-        ? { includeFontPadding: false, textAlignVertical: 'center' as const }
-        : null),
-    },
-    segmentLabelActive: {
-      color: c.primaryDark,
-    },
     presetWrap: {
       flexDirection: 'row' as const,
       flexWrap: 'wrap' as const,
