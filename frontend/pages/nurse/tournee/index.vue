@@ -54,7 +54,7 @@
     </div>
 
     <div
-      v-if="tour && tour.stops.length"
+      v-if="showTourSummary"
       class="overflow-hidden rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-600 p-3 text-white shadow-md"
     >
       <div class="flex items-center gap-3">
@@ -65,35 +65,55 @@
         </div>
         <div class="min-w-0">
           <p class="text-[10px] font-bold uppercase tracking-wide text-white/80">Ma tournée du jour</p>
-          <p class="text-lg font-bold tracking-tight">
-            {{ tour.summary.done_stops }} sur {{ tour.summary.total_stops }} passage{{ tour.summary.total_stops > 1 ? 's' : '' }}
-          </p>
-          <p class="text-xs text-white/90">
-            {{ remainingLabel === 'Tournée terminée' ? 'Bravo, tournée terminée !' : remainingLabel }}
-          </p>
+          <template v-if="allAbsentOnly">
+            <p class="text-lg font-bold tracking-tight">Pas de tournée du jour</p>
+            <p class="text-xs text-white/90">
+              Vous avez {{ tour!.summary.absent_stops }} patient{{ (tour!.summary.absent_stops ?? 0) > 1 ? 's' : '' }}
+              absent{{ (tour!.summary.absent_stops ?? 0) > 1 ? 's' : '' }}
+            </p>
+          </template>
+          <template v-else>
+            <p class="text-lg font-bold tracking-tight">
+              {{ tour!.summary.done_stops }} sur {{ tour!.summary.total_stops }} passage{{ tour!.summary.total_stops > 1 ? 's' : '' }}
+            </p>
+            <p class="text-xs text-white/90">
+              {{ remainingLabel === 'Tournée terminée' ? 'Bravo, tournée terminée !' : remainingLabel }}
+            </p>
+          </template>
         </div>
       </div>
       <div
         class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-white/20 pt-2 text-xs font-semibold text-white/90"
       >
-        <span class="inline-flex items-center gap-1">
-          <UIcon name="i-lucide-route" class="h-3 w-3" />
-          {{ tour.summary.total_stops }} étape{{ tour.summary.total_stops > 1 ? 's' : '' }}
-        </span>
-        <span class="h-1 w-1 rounded-full bg-white/50" />
-        <span class="inline-flex items-center gap-1">
-          <UIcon name="i-lucide-map-pin" class="h-3 w-3" />
-          {{ tour.summary.estimated_km }} km estimés
-        </span>
-        <template v-if="(tour.summary.absent_stops ?? 0) > 0">
+        <template v-if="allAbsentOnly">
+          <span>{{ tour!.summary.absent_stops }} absent{{ (tour!.summary.absent_stops ?? 0) > 1 ? 's' : '' }}</span>
+        </template>
+        <template v-else>
+          <span class="inline-flex items-center gap-1">
+            <UIcon name="i-lucide-route" class="h-3 w-3" />
+            {{ tour!.summary.total_stops }} étape{{ tour!.summary.total_stops > 1 ? 's' : '' }}
+          </span>
           <span class="h-1 w-1 rounded-full bg-white/50" />
-          <span>{{ tour.summary.absent_stops }} absent{{ (tour.summary.absent_stops ?? 0) > 1 ? 's' : '' }}</span>
+          <span class="inline-flex items-center gap-1">
+            <UIcon name="i-lucide-map-pin" class="h-3 w-3" />
+            {{ tour!.summary.estimated_km }} km estimés
+          </span>
+          <template v-if="(tour!.summary.absent_stops ?? 0) > 0">
+            <span class="h-1 w-1 rounded-full bg-white/50" />
+            <span>{{ tour!.summary.absent_stops }} absent{{ (tour!.summary.absent_stops ?? 0) > 1 ? 's' : '' }}</span>
+          </template>
         </template>
       </div>
     </div>
 
     <div v-if="tour && tour.stops.length" class="flex w-full items-center gap-1.5">
       <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Passage</span>
+      <span
+        v-if="(tour.summary.absent_stops ?? 0) > 0"
+        class="text-xs font-medium text-gray-500 dark:text-gray-400"
+      >
+        {{ tour.summary.absent_stops }} absent{{ (tour.summary.absent_stops ?? 0) > 1 ? 's' : '' }}
+      </span>
       <button
         type="button"
         class="relative flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-600 transition-colors hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
@@ -266,6 +286,19 @@ const progressPct = computed(() => {
   const done = tour.value?.summary.done_stops ?? 0;
   if (total <= 0) return 0;
   return Math.round((done / total) * 100);
+});
+
+const allAbsentOnly = computed(() => {
+  const total = tour.value?.summary.total_stops ?? 0;
+  const absent = tour.value?.summary.absent_stops ?? 0;
+  return total === 0 && absent > 0;
+});
+
+const showTourSummary = computed(() => {
+  if (!tour.value) return false;
+  const total = tour.value.summary.total_stops ?? 0;
+  const absent = tour.value.summary.absent_stops ?? 0;
+  return total > 0 || absent > 0;
 });
 
 const remainingLabel = computed(() => {
