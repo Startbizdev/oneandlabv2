@@ -274,8 +274,20 @@ export async function fetchAiTrends(refresh = false): Promise<
 export async function createVoiceSession(input?: {
   conversation_id?: string;
   locale?: string;
-}): Promise<{ id: string; ai_conversation_id?: string }> {
-  const res = await apiRequest<{ id: string; ai_conversation_id?: string }>('/ai/voice/sessions', {
+}): Promise<{
+  id: string;
+  ai_conversation_id?: string;
+  welcome_text?: string;
+  welcome_audio_base64?: string;
+  welcome_audio_mime?: string;
+}> {
+  const res = await apiRequest<{
+    id: string;
+    ai_conversation_id?: string;
+    welcome_text?: string;
+    welcome_audio_base64?: string;
+    welcome_audio_mime?: string;
+  }>('/ai/voice/sessions', {
     method: 'POST',
     body: input ?? {},
   });
@@ -285,10 +297,12 @@ export async function createVoiceSession(input?: {
 
 export async function sendVoiceTurn(
   sessionId: string,
-  transcript: string,
+  audioBase64: string,
 ): Promise<{
   transcript: string;
   assistant_text: string;
+  assistant_audio_base64?: string | null;
+  assistant_audio_mime?: string | null;
   conversation_id: string;
   disclaimer: string;
   draft?: AiAppointmentDraft | null;
@@ -297,6 +311,8 @@ export async function sendVoiceTurn(
   const res = await apiRequest<{
     transcript: string;
     assistant_text: string;
+    assistant_audio_base64?: string | null;
+    assistant_audio_mime?: string | null;
     conversation_id: string;
     disclaimer: string;
     draft?: AiAppointmentDraft | null;
@@ -304,8 +320,8 @@ export async function sendVoiceTurn(
   }>(`/ai/voice/sessions/${sessionId}/turn`, {
     method: 'POST',
     body: {
-      transcript,
-      stt_provider: 'client',
+      audio_base64: audioBase64,
+      stt_provider: 'grok_stt',
     },
   });
   if (!res.success || !res.data) throw new Error(res.error ?? 'Tour vocal impossible');

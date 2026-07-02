@@ -1,61 +1,55 @@
-import * as Speech from 'expo-speech';
-import { Platform } from 'react-native';
+import {
+  createAudioPlayer,
+  setAudioModeAsync,
+  type AudioPlayer,
+} from 'expo-audio';
+import * as FileSystem from 'expo-file-system';
+import { prepareVoiceSpeakingAudio } from './voice-audio-session';
 
-let cachedVoice: string | undefined | null;
+let activePlayer: AudioPlayer | null = null;
+let activeUri: string | null = null;
 
-function scoreVoice(name: string, identifier: string, quality?: string): number {
-  const blob = `${name} ${identifier} ${quality ?? ''}`.toLowerCase();
-  let score = 0;
-  if (/fr/i.test(blob)) score += 2;
-  if (/premium|enhanced|siri|neural|wavenet|natural/i.test(blob)) score += 8;
-  if (/audrey|marie|thomas|amelie|virginie|daniel/i.test(blob)) score += 4;
-  if (quality === 'Enhanced') score += 6;
-  if (/compact|low/i.test(blob)) score -= 4;
-  return score;
-}
-
-async function resolveFrenchVoice(): Promise<string | undefined> {
-  if (cachedVoice !== null) return cachedVoice;
+export function stopCaryVoice(): void {
   try {
-    const voices = await Speech.getAvailableVoicesAsync();
-    const french = voices.filter((v) => (v.language ?? '').toLowerCase().startsWith('fr'));
-    if (french.length === 0) {
-      cachedVoice = undefined;
-      return undefined;
-    }
-    french.sort((a, b) => {
-      const sa = scoreVoice(a.name ?? '', a.identifier ?? '', (a as { quality?: string }).quality);
-      const sb = scoreVoice(b.name ?? '', b.identifier ?? '', (b as { quality?: string }).quality);
-      return sb - sa;
-    });
-    cachedVoice = french[0]?.identifier;
-    return cachedVoice;
+    activePlayer?.pause();
   } catch {
-    cachedVoice = undefined;
-    return undefined;
+    /* noop */
+  }
+  activePlayer = null;
+  if (activeUri) {
+    void FileSystem.deleteAsync(activeUri, { idempotent: true }).catch(() => undefined);
+    activeUri = null;
   }
 }
 
-export function stopCaryVoice(): void {
-  Speech.stop();
-}
+/** Lecture voix Cary via MP3 Grok (base64). */
+export async function playCaryVoiceBase64(audioBase64: string): Promise<void> {
+  const trimmed = audioBase64.trim();
+  if (!trimmed) return;
 
-export async function speakCaryVoice(text: string): Promise<void> {
-  const trimmed = text.trim();
-  if (!trimmed) return Promise.resolve();
+  stopCaryVoice();
+  await prepareVoiceSpeakingAudio();
+  await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
 
-  const voice = await resolveFrenchVoice();
-  Speech.stop();
+  const uri = `${FileSystem.cacheDirectory}cary-voice-${Date.now()}.mp3`;
+  await FileSystem.writeAsStringAsync(uri, trimmed, { encoding: FileSystem.EncodingType.Base64 });
+  activeUri = uri;
 
-  return new Promise<void>((resolve) => {
-    Speech.speak(trimmed, {
-      language: 'fr-FR',
-      voice,
-      rate: Platform.select({ ios: 0.94, android: 0.92, default: 0.93 }),
-      pitch: Platform.select({ ios: 1.02, android: 1.0, default: 1.0 }),
-      onDone: () => resolve(),
-      onStopped: () => resolve(),
-      onError: () => resolve(),
+  const player = createAudioPlayer(uri);
+  activePlayer = player;
+
+  await new Promise<void>((resolve) => {
+    const finish = () => {
+      sub.remove();
+      stopCaryVoice();
+      resolve();
+    };
+    const sub = player.addListener('playbackStatusUpdate', (status) => {
+      if (status.isLoaded && status.didJustFinish) {
+        finish();
+      }
     });
+    player.play();
+    setTimeout(finish, 120_000);
   });
 }

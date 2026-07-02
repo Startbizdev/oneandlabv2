@@ -11,7 +11,18 @@ echo "==> buildscriptoneandlab : étape 1/3 menuswipe..."
 echo "==> buildscriptoneandlab : étape 2/3 build local + rsync + PM2..."
 "$SCRIPT_DIR/buildlocaloneandlab.sh"
 
-echo "==> buildscriptoneandlab : étape 3/3 migrations prod (093–095)..."
+echo "==> buildscriptoneandlab : étape 3/4 migrations prod (093–095)..."
 "$SCRIPT_DIR/scripts/run-migration-pending-prod.sh"
 
-echo "✅ buildscriptoneandlab terminé (déploiement + migrations)."
+echo "==> buildscriptoneandlab : étape 4/4 config prod (mobile 1.7.2 + voix Grok)..."
+SSH_KEY="${SSH_KEY:-$HOME/Desktop/oneandlab-key.pem}"
+if [[ ! -f "$SSH_KEY" && -f "$HOME/.ssh/oneandlab-key.pem" ]]; then
+  SSH_KEY="$HOME/.ssh/oneandlab-key.pem"
+fi
+SSH_HOST="${SSH_HOST:-ubuntu@15.236.73.7}"
+REMOTE_BASE="/var/www/oneandlab"
+SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 -i "$SSH_KEY")
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "bash $REMOTE_BASE/database/scripts/apply-mobile-app-env-prod.sh"
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "bash $REMOTE_BASE/database/scripts/apply-voice-grok-env-prod.sh"
+
+echo "✅ buildscriptoneandlab terminé (déploiement + migrations + config prod)."
