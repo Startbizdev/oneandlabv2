@@ -239,7 +239,7 @@
         <UPagination
           v-model:page="currentPage"
           :total="totalItems"
-          :items-per-page="effectivePageSize"
+          :items-per-page="pageSize"
           :sibling-count="2"
           show-edges
           :ui="{ wrapper: 'gap-1', rounded: 'rounded-lg' }"
@@ -516,8 +516,7 @@ function syncNurseQueryToUrl() {
 watch(() => route.query, applyNurseNavFromRoute, { immediate: true });
 
 const currentPage = ref(1);
-/** Cartes par page (admin : lots regroupés). Autres rôles : lignes API. */
-const ADMIN_CARD_PAGE_SIZE = 12;
+/** Taille de page : 24 cartes (admin regroupe les lots multisoins). */
 const pageSize = ref(24);
 const totalItems = ref(0);
 /** Indique qu’il existe (probablement) une page suivante — renvoyé par l’API ou déduit. */
@@ -529,11 +528,8 @@ const serverHasMore = ref(false);
 const isServerPaginatedList = computed(() => !props.useDateFilter);
 /** Admin : pagination par cartes (lots regroupés), pas par lignes API brutes. */
 const isAdminCardPagination = computed(() => props.basePath === '/admin');
-const effectivePageSize = computed(() =>
-  isAdminCardPagination.value ? ADMIN_CARD_PAGE_SIZE : pageSize.value,
-);
 const hasClientSearchFilter = computed(() => (searchQuery.value || '').trim().length > 0);
-const totalPages = computed(() => Math.ceil(totalItems.value / effectivePageSize.value));
+const totalPages = computed(() => Math.ceil(totalItems.value / pageSize.value));
 /** Afficher la barre si plus d’une page, ou page suivante possible, ou déjà au-delà de la page 1. */
 const showPaginationBar = computed(() => {
   if (hasClientSearchFilter.value) return false;
@@ -615,29 +611,6 @@ async function confirmAcceptOfferPending() {
 }
 
 const adminCardPageRows = ref<AppointmentListRow[]>([]);
-
-type AdminCardCache = {
-  filterKey: string;
-  accumulated: any[];
-  grouped: AppointmentListRow[];
-  apiPage: number;
-  apptHasMore: boolean;
-};
-
-const adminCardCache = ref<AdminCardCache | null>(null);
-
-function adminListFilterKey(): string {
-  return JSON.stringify({
-    status: statusFilter.value,
-    dateFrom: dateRangeStart.value,
-    dateTo: dateRangeEnd.value,
-    userId: props.userIdFilter,
-  });
-}
-
-function invalidateAdminCardCache() {
-  adminCardCache.value = null;
-}
 
 function appointmentsFromListRow(row: AppointmentListRow): any[] {
   return row.kind === 'batch' ? row.appointments : [row.appointment];
@@ -787,7 +760,7 @@ const startIndex = computed(() => {
     return filteredAndSorted.value.length === 0 ? 0 : 1;
   }
   if (totalItems.value === 0) return 0;
-  return (currentPage.value - 1) * effectivePageSize.value + 1;
+  return (currentPage.value - 1) * pageSize.value + 1;
 });
 
 const endIndex = computed(() => {
@@ -795,7 +768,7 @@ const endIndex = computed(() => {
     return filteredAndSorted.value.length;
   }
   if (totalItems.value === 0) return 0;
-  return Math.min(currentPage.value * effectivePageSize.value, totalItems.value);
+  return Math.min(currentPage.value * pageSize.value, totalItems.value);
 });
 
 const emptyStateTitle = computed(() => {
@@ -891,33 +864,21 @@ function buildAppointmentListParams(apiPage: number, apiLimit: number): Record<s
   return params;
 }
 
-/** Admin : 12 cartes/page, cache + requêtes API limitées (pas de re-scan complet). */
+/** Admin : charge assez de RDV API pour afficher 24 cartes (lots regroupés) par page. */
 async function fetchAdminCardPage() {
-  const perPage = ADMIN_CARD_PAGE_SIZE;
   const cardPage = currentPage.value;
+  const perPage = pageSize.value;
   const skip = (cardPage - 1) * perPage;
   const need = skip + perPage;
-  const filterKey = adminListFilterKey();
+  const apiChunk = 50;
 
-  if (adminCardCache.value?.filterKey !== filterKey) {
-    adminCardCache.value = null;
-  }
+  let apiPage = 1;
+  let accumulated: any[] = [];
+  let grouped: AppointmentListRow[] = [];
+  let apptHasMore = true;
 
-  const cache: AdminCardCache = adminCardCache.value ?? {
-    filterKey,
-    accumulated: [],
-    grouped: [],
-    apiPage: 1,
-    apptHasMore: true,
-  };
-
-  /** ~3 RDV bruts / carte en moyenne ; plafond 2 requêtes API par chargement. */
-  const apiChunk = perPage * 3;
-  const maxFetchesPerLoad = 2;
-  let fetches = 0;
-
-  while (cache.grouped.length < need && cache.apptHasMore && fetches < maxFetchesPerLoad) {
-    const params = buildAppointmentListParams(cache.apiPage, apiChunk);
+  while (grouped.length < need && apptHasMore) {
+    const params = buildAppointmentListParams(apiPage, apiChunk);
     const response = await apiFetch(`/appointments?${new URLSearchParams(params).toString()}`, {
       method: 'GET',
     });
@@ -926,24 +887,23 @@ async function fetchAdminCardPage() {
     }
     const chunk = response.data as any[];
     if (chunk.length === 0) {
-      cache.apptHasMore = false;
+      apptHasMore = false;
       break;
     }
-    cache.accumulated = cache.accumulated.concat(chunk);
-    cache.grouped = groupAppointmentsByBatch(cache.accumulated);
+    accumulated = accumulated.concat(chunk);
+    grouped = groupAppointmentsByBatch(accumulated);
     const pag = response.pagination as { has_more?: boolean } | undefined;
-    cache.apptHasMore = chunk.length >= apiChunk && pag?.has_more !== false;
-    cache.apiPage += 1;
-    fetches += 1;
+    apptHasMore = chunk.length >= apiChunk && pag?.has_more !== false;
+    apiPage += 1;
+    if (apiPage > 40) break;
   }
 
-  adminCardCache.value = cache;
-  adminCardPageRows.value = cache.grouped.slice(skip, skip + perPage);
-  baseAppointments.value = cache.accumulated;
+  adminCardPageRows.value = grouped.slice(skip, skip + perPage);
+  baseAppointments.value = accumulated;
 
-  const hasMoreCards = cache.grouped.length > skip + perPage || cache.apptHasMore;
+  const hasMoreCards = grouped.length > skip + perPage || apptHasMore;
   serverHasMore.value = hasMoreCards;
-  totalItems.value = hasMoreCards ? Math.max(skip + perPage + 1, cache.grouped.length) : cache.grouped.length;
+  totalItems.value = hasMoreCards ? Math.max(skip + perPage + 1, grouped.length) : grouped.length;
 }
 
 const fetchAppointments = async (silent = false) => {
@@ -1220,7 +1180,6 @@ async function nurseRefuseOffer(apt: any, opts?: { termsKey?: string }) {
 }
 
 watch([dateFilter, statusFilter, dateRangeStart, dateRangeEnd], () => {
-  invalidateAdminCardCache();
   currentPage.value = 1;
   fetchAppointments();
 });
@@ -1299,7 +1258,6 @@ defineExpose({
 });
 
 watch(() => props.userIdFilter, () => {
-  invalidateAdminCardCache();
   currentPage.value = 1;
   fetchAppointments();
 });
