@@ -83,25 +83,21 @@
         </div>
       </div>
       <div
+        v-if="!allAbsentOnly"
         class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-white/20 pt-2 text-xs font-semibold text-white/90"
       >
-        <template v-if="allAbsentOnly">
-          <span>{{ tour!.summary.absent_stops }} absent{{ (tour!.summary.absent_stops ?? 0) > 1 ? 's' : '' }}</span>
-        </template>
-        <template v-else>
-          <span class="inline-flex items-center gap-1">
-            <UIcon name="i-lucide-route" class="h-3 w-3" />
-            {{ tour!.summary.total_stops }} étape{{ tour!.summary.total_stops > 1 ? 's' : '' }}
-          </span>
+        <span class="inline-flex items-center gap-1">
+          <UIcon name="i-lucide-route" class="h-3 w-3" />
+          {{ tour!.summary.total_stops }} étape{{ tour!.summary.total_stops > 1 ? 's' : '' }}
+        </span>
+        <span class="h-1 w-1 rounded-full bg-white/50" />
+        <span class="inline-flex items-center gap-1">
+          <UIcon name="i-lucide-map-pin" class="h-3 w-3" />
+          {{ tour!.summary.estimated_km }} km estimés
+        </span>
+        <template v-if="(tour!.summary.absent_stops ?? 0) > 0">
           <span class="h-1 w-1 rounded-full bg-white/50" />
-          <span class="inline-flex items-center gap-1">
-            <UIcon name="i-lucide-map-pin" class="h-3 w-3" />
-            {{ tour!.summary.estimated_km }} km estimés
-          </span>
-          <template v-if="(tour!.summary.absent_stops ?? 0) > 0">
-            <span class="h-1 w-1 rounded-full bg-white/50" />
-            <span>{{ tour!.summary.absent_stops }} absent{{ (tour!.summary.absent_stops ?? 0) > 1 ? 's' : '' }}</span>
-          </template>
+          <span>{{ tour!.summary.absent_stops }} absent{{ (tour!.summary.absent_stops ?? 0) > 1 ? 's' : '' }}</span>
         </template>
       </div>
     </div>
@@ -109,7 +105,7 @@
     <div v-if="tour && tour.stops.length" class="flex w-full items-center gap-1.5">
       <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Passage</span>
       <span
-        v-if="(tour.summary.absent_stops ?? 0) > 0"
+        v-if="(tour.summary.absent_stops ?? 0) > 0 && (tour.summary.total_stops ?? 0) > 0"
         class="text-xs font-medium text-gray-500 dark:text-gray-400"
       >
         {{ tour.summary.absent_stops }} absent{{ (tour.summary.absent_stops ?? 0) > 1 ? 's' : '' }}
