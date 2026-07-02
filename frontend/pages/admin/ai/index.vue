@@ -78,8 +78,8 @@
               size="sm"
               variant="outline"
               icon="i-lucide-download"
-              :href="exportAuditsUrl"
-              target="_blank"
+              :loading="exportingAudits"
+              @click="exportAudits"
             >
               Export audits CSV
             </UButton>
@@ -144,13 +144,13 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: 'dashboard', middleware: ['auth', 'role'], role: 'super_admin' });
+import { apiFetch, apiFetchBlob } from '~/utils/api';
 
-const config = useRuntimeConfig();
-const apiBase = computed(() => config.public.apiBase as string);
+definePageMeta({ layout: 'dashboard', middleware: ['auth', 'role'], role: 'super_admin' });
 
 const loading = ref(true);
 const error = ref<string | null>(null);
+const exportingAudits = ref(false);
 const routing = ref<Array<Record<string, unknown>>>([]);
 const usage = ref<{
   totals?: Record<string, number>;
@@ -168,7 +168,14 @@ const providerOptions = [
   { label: 'DeepSeek', value: 'deepseek' },
 ];
 
-const exportAuditsUrl = computed(() => `${apiBase.value}/admin/ai/audits/export?days=30`);
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
 function formatMs(value?: number | null): string {
   if (value == null) return '—';
@@ -180,29 +187,25 @@ function formatRating(value?: number | null): string {
   return `${value.toFixed(1)}/5`;
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await $fetch<{ success: boolean; data: T; error?: string }>(`${apiBase.value}${path}`, {
-    credentials: 'include',
-    ...init,
-  });
-  if (!res.success) throw new Error(res.error ?? 'Erreur API');
-  return res.data;
-}
-
 async function load() {
   loading.value = true;
   error.value = null;
   try {
-    const [routingData, usageData, settingsData] = await Promise.all([
-      apiFetch<typeof routing.value>('/admin/ai/routing'),
-      apiFetch<typeof usage.value>('/admin/ai/usage?days=30'),
-      apiFetch<{ disclaimer_fr?: string; temperature?: number }>('/admin/ai/settings'),
+    const [routingRes, usageRes, settingsRes] = await Promise.all([
+      apiFetch('/admin/ai/routing', { method: 'GET' }),
+      apiFetch('/admin/ai/usage?days=30', { method: 'GET' }),
+      apiFetch('/admin/ai/settings', { method: 'GET' }),
     ]);
-    routing.value = routingData.map((r) => ({
+    if (!routingRes.success) throw new Error(routingRes.error ?? 'Routing indisponible');
+    if (!usageRes.success) throw new Error(usageRes.error ?? 'Usage indisponible');
+    if (!settingsRes.success) throw new Error(settingsRes.error ?? 'Paramètres indisponibles');
+
+    routing.value = (routingRes.data ?? []).map((r: Record<string, unknown>) => ({
       ...r,
       enabled: Boolean(r.enabled),
     }));
-    usage.value = usageData;
+    usage.value = usageRes.data ?? null;
+    const settingsData = settingsRes.data ?? {};
     settings.disclaimer_fr = settingsData.disclaimer_fr ?? '';
     settings.temperature = settingsData.temperature ?? 0.4;
   } catch (e) {
@@ -213,7 +216,7 @@ async function load() {
 }
 
 async function saveRouting(row: Record<string, unknown>) {
-  await apiFetch('/admin/ai/routing', {
+  const res = await apiFetch('/admin/ai/routing', {
     method: 'PATCH',
     body: {
       task_type: row.task_type,
@@ -222,17 +225,31 @@ async function saveRouting(row: Record<string, unknown>) {
       enabled: row.enabled,
     },
   });
+  if (!res.success) throw new Error(res.error ?? 'Enregistrement impossible');
 }
 
 async function saveSettings() {
   savingSettings.value = true;
   try {
-    await apiFetch('/admin/ai/settings', {
+    const res = await apiFetch('/admin/ai/settings', {
       method: 'PUT',
       body: { disclaimer_fr: settings.disclaimer_fr, temperature: settings.temperature },
     });
+    if (!res.success) throw new Error(res.error ?? 'Enregistrement impossible');
   } finally {
     savingSettings.value = false;
+  }
+}
+
+async function exportAudits() {
+  exportingAudits.value = true;
+  try {
+    const { blob, filenameHint } = await apiFetchBlob('/admin/ai/audits/export?days=30');
+    triggerBlobDownload(blob, filenameHint ?? `ai_audits_${new Date().toISOString().slice(0, 10)}.csv`);
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Export impossible';
+  } finally {
+    exportingAudits.value = false;
   }
 }
 
