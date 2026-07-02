@@ -11,6 +11,7 @@ require_once __DIR__ . '/CaryContextFocus.php';
 
 require_once __DIR__ . '/AiTurnOrchestrator.php';
 require_once __DIR__ . '/AiBookingDraftSummary.php';
+require_once __DIR__ . '/VoiceGrokAudioService.php';
 
 final class VoiceService
 {
@@ -20,6 +21,7 @@ final class VoiceService
     private AiConversationService $conversations;
     private AiBookingService $booking;
     private AiTurnOrchestrator $orchestrator;
+    private VoiceGrokAudioService $grokAudio;
 
     public function __construct(?PDO $db = null)
     {
@@ -29,6 +31,7 @@ final class VoiceService
         $this->conversations = new AiConversationService($this->db);
         $this->booking = new AiBookingService($this->db);
         $this->orchestrator = new AiTurnOrchestrator($this->gateway, $this->booking);
+        $this->grokAudio = new VoiceGrokAudioService();
     }
 
     /**
@@ -59,7 +62,19 @@ final class VoiceService
             VALUES (?, ?, ?, ?, ?, \'voice\', NOW())
         ')->execute([$id, $user['user_id'], $patientId, $conversationId, $locale]);
 
-        return $this->getSession($id, (string) $user['user_id']);
+        $session = $this->getSession($id, (string) $user['user_id']);
+        $welcomeText = $this->buildVoiceWelcomeMessage($user);
+        try {
+            $welcomeAudio = $this->grokAudio->synthesize($welcomeText, $locale);
+            $session['welcome_text'] = $welcomeText;
+            $session['welcome_audio_base64'] = $welcomeAudio['audio_base64'];
+            $session['welcome_audio_mime'] = $welcomeAudio['mime'];
+        } catch (Throwable $e) {
+            error_log('[voice] welcome TTS: ' . $e->getMessage());
+            $session['welcome_text'] = $welcomeText;
+        }
+
+        return $session;
     }
 
     /**
@@ -75,21 +90,12 @@ final class VoiceService
         $rawTranscript = trim((string) ($input['transcript'] ?? ''));
         $sttProvider = (string) ($input['stt_provider'] ?? 'client');
         if (!empty($input['audio_base64'])) {
-            $openAiKey = ai_env('OPENAI_API_KEY');
-            if ($openAiKey === null || $openAiKey === '') {
-                throw new InvalidArgumentException(
-                    'STT audio serveur indisponible — envoyez un transcript depuis le client (STT natif)',
-                );
-            }
-            $whisperText = trim($this->transcribeAudio((string) $input['audio_base64'], (string) ($session['locale'] ?? 'fr')));
-            if ($whisperText === '') {
-                throw new InvalidArgumentException('Transcription audio vide');
-            }
-            $rawTranscript = $whisperText;
-            $sttProvider = 'whisper';
+            $grokText = trim($this->grokAudio->transcribe((string) $input['audio_base64'], (string) ($session['locale'] ?? 'fr')));
+            $rawTranscript = $grokText;
+            $sttProvider = 'grok_stt';
         }
         if ($rawTranscript === '') {
-            throw new InvalidArgumentException('transcript requis (STT natif mobile)');
+            throw new InvalidArgumentException('audio_base64 requis pour la conversation vocale');
         }
         $transcript = $rawTranscript;
 
@@ -180,11 +186,23 @@ final class VoiceService
         }
         $this->conversations->addMessage($conversationId, 'assistant', $assistantText, $metadata);
 
+        $assistantAudio = null;
+        $assistantAudioMime = null;
+        try {
+            $tts = $this->grokAudio->synthesize($assistantText, (string) ($session['locale'] ?? 'fr'));
+            $assistantAudio = $tts['audio_base64'];
+            $assistantAudioMime = $tts['mime'];
+        } catch (Throwable $e) {
+            error_log('[voice] assistant TTS: ' . $e->getMessage());
+        }
+
         return [
             'session_id' => $sessionId,
             'conversation_id' => $conversationId,
             'transcript' => $transcript,
             'assistant_text' => $assistantText,
+            'assistant_audio_base64' => $assistantAudio,
+            'assistant_audio_mime' => $assistantAudioMime,
             'disclaimer' => $context['disclaimer'],
             'audit_id' => $turn['audit_id'] ?? null,
             'locale' => $session['locale'] ?? 'fr',
@@ -192,6 +210,30 @@ final class VoiceService
             'draft_id' => $draftId,
             'appointment_id' => $appointmentId,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $user
+     */
+    private function buildVoiceWelcomeMessage(array $user): string
+    {
+        $name = '';
+        try {
+            require_once __DIR__ . '/../../models/User.php';
+            $userModel = new User();
+            $profile = $userModel->getById(
+                (string) $user['user_id'],
+                (string) $user['user_id'],
+                (string) ($user['role'] ?? 'patient'),
+                'mobile',
+            );
+            $name = trim((string) ($profile['first_name'] ?? ''));
+        } catch (Throwable $e) {
+            // ignore
+        }
+        $greeting = $name !== '' ? "Bonjour {$name}," : 'Bonjour,';
+
+        return "{$greeting} je suis Cary, votre assistant santé. Que puis-je faire pour vous ?";
     }
 
     private function isBookingConfirmIntent(string $transcript): bool
@@ -231,45 +273,5 @@ final class VoiceService
     {
         $this->db->prepare('UPDATE voice_sessions SET ended_at = NOW() WHERE id = ? AND user_id = ?')
             ->execute([$id, $userId]);
-    }
-
-    private function transcribeAudio(string $audioBase64, string $locale): string
-    {
-        $openAiKey = ai_env('OPENAI_API_KEY');
-        if ($openAiKey === null || $openAiKey === '') {
-            throw new InvalidArgumentException('STT audio serveur indisponible');
-        }
-        $binary = base64_decode($audioBase64, true);
-        if ($binary === false || $binary === '') {
-            throw new InvalidArgumentException('audio_base64 invalide');
-        }
-        $tmp = tempnam(sys_get_temp_dir(), 'cary_stt_');
-        if ($tmp === false) {
-            throw new RuntimeException('tmp STT failed');
-        }
-        file_put_contents($tmp, $binary);
-        $ch = curl_init('https://api.openai.com/v1/audio/transcriptions');
-        $post = [
-            'model' => 'whisper-1',
-            'language' => substr($locale, 0, 2),
-            'file' => new CURLFile($tmp, 'audio/m4a', 'audio.m4a'),
-        ];
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $openAiKey],
-            CURLOPT_POSTFIELDS => $post,
-            CURLOPT_TIMEOUT => 60,
-        ]);
-        $raw = curl_exec($ch);
-        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        @unlink($tmp);
-        if ($raw === false || $code >= 400) {
-            throw new RuntimeException('STT échoué');
-        }
-        $decoded = json_decode($raw, true);
-
-        return trim((string) ($decoded['text'] ?? ''));
     }
 }
