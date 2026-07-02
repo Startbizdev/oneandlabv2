@@ -26,7 +26,9 @@ const ENUM_LABELS: Record<string, string> = {
 };
 
 function hasStoredValue(value: unknown): boolean {
-  return value !== null && value !== undefined && value !== '';
+  if (value === null || value === undefined || value === '') return false;
+  if (typeof value === 'string' && value.trim().toLowerCase() === 'null') return false;
+  return true;
 }
 
 function formatInitialNumber(value: unknown): string {

@@ -172,6 +172,30 @@ function findRouteFile($requestPath, $apiDir) {
         }
     }
     
+    // Stratégie 5: Double segment dynamique après [id]
+    // Ex: /nurse/patients/123/absences/456 -> nurse/patients/[id]/absences/[absenceId].php
+    $pathPartsNested = explode('/', $path);
+    if (count($pathPartsNested) >= 5) {
+        $secondValue = array_pop($pathPartsNested);
+        $middleFolder = array_pop($pathPartsNested);
+        $idValue = array_pop($pathPartsNested);
+        $nestedDir = $basePath . '/' . implode('/', $pathPartsNested) . '/[id]/' . $middleFolder;
+        if (is_dir($nestedDir)) {
+            foreach (glob($nestedDir . '/[[]*[]].php') ?: [] as $candidate) {
+                $basename = basename($candidate);
+                if (preg_match('/^\[([^\]]+)\]\.php$/', $basename, $m)) {
+                    return [
+                        'file' => $candidate,
+                        'params' => [
+                            'id' => $idValue,
+                            $m[1] => $secondValue,
+                        ],
+                    ];
+                }
+            }
+        }
+    }
+
     return null;
 }
 

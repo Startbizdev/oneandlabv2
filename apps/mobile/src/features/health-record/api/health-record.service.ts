@@ -38,6 +38,9 @@ export interface HealthRecordRecapItem {
   key: string;
   label_fr: string;
   type: string;
+  optional?: boolean;
+  placeholder?: string;
+  options?: string[];
   value: unknown;
   display: string;
 }

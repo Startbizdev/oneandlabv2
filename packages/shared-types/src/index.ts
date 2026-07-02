@@ -9,6 +9,7 @@ export * from './staff-hub-search';
 export * from './professional-id';
 export * from './pro-emploi';
 export * from './nurse-passage';
+export * from './patient-absence';
 export {
   GENDER_OPTIONS,
   type ProfileForm,

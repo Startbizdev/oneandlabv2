@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Intention du message courant — Cary suit le sujet actif, pas le premier de la conversation.
+ * Routage léger : brouillon actif / documents. Le reste → Grok + tools.
  */
 final class CaryContextFocus
 {
@@ -36,23 +36,11 @@ final class CaryContextFocus
             return self::BOOKING;
         }
 
-        if (self::matchesHealthRecord($msg)) {
-            return self::HEALTH_RECORD;
-        }
-
-        if (self::matchesBooking($msg)) {
-            return self::BOOKING;
-        }
-
         return self::GENERAL;
     }
 
     public static function matchesDocumentFollowUp(string $msg): bool
     {
-        if (self::matchesBooking($msg) || self::matchesHealthRecord($msg)) {
-            return false;
-        }
-
         if (preg_match(
             '/mon (bilan|analyse|pdf|r[ée]sultat|document|fichier)|'
             . 'ce (bilan|pdf|document|fichier|r[ée]sultat)|'
@@ -92,8 +80,6 @@ final class CaryContextFocus
     }
 
     /**
-     * Clés de contexte à retirer selon le focus actif (allège sans amnésie conversation).
-     *
      * @return list<string>
      */
     public static function suppressedContextKeys(string $focus): array
@@ -105,14 +91,11 @@ final class CaryContextFocus
             self::BOOKING => [
                 'health_record_summary',
             ],
-            self::HEALTH_RECORD => [],
             default => [],
         };
     }
 
     /**
-     * Clés app_navigation à retirer.
-     *
      * @return list<string>
      */
     public static function suppressedNavigationKeys(string $focus): array
@@ -133,26 +116,5 @@ final class CaryContextFocus
             self::HEALTH_RECORD => 'carnet de santé',
             default => 'question générale',
         };
-    }
-
-    private static function matchesHealthRecord(string $msg): bool
-    {
-        return (bool) preg_match(
-            '/carnet\s*(de\s*)?sant[ée]|questionnaire|compl[ée]ter.*(carnet|profil)|'
-            . 'mon\s*profil\s*sant[ée]|apple\s*sant[ée]|health\s*connect|mes\s*donn[ée]es\s*sant[ée]|'
-            . 'pourcentage.*carnet|completion_percent/i',
-            $msg,
-        );
-    }
-
-    private static function matchesBooking(string $msg): bool
-    {
-        return (bool) preg_match(
-            '/\b(rdv|rendez-vous|prendre\s+(un\s+)?rdv|r[ée]server)\b|'
-            . 'pansement|prise\s+de\s+sang|injection|perfusion|pr[ée]l[èe]vement|'
-            . 'ordonnance|cr[ée]neau|disponibilit[ée]|'
-            . 'demain\s+(pour|à)|apr[èe]s-demain\s+(pour|à)/iu',
-            $msg,
-        );
     }
 }

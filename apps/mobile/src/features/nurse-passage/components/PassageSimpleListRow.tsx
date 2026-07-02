@@ -3,7 +3,8 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Check, ChevronDown, ChevronUp, Car, Clock, Route } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronUp, Car, Clock, Route, UserX } from 'lucide-react-native';
+import { isTourStopAbsent } from '@oneandlab/shared-utils';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { Badge } from '@/components/ui/Badge';
 import { TourStopCareSection } from '@/features/tournee-nurse/components/TourStopCareSection';
@@ -27,6 +28,7 @@ type Props = {
   onToggleDone: () => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
+  onManageAbsence?: () => void;
 };
 
 export function PassageSimpleListRow({
@@ -38,11 +40,14 @@ export function PassageSimpleListRow({
   onToggleDone,
   onMoveUp,
   onMoveDown,
+  onManageAbsence,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
   const cardStyles = getAppointmentListCardStyles();
-  const done = stop.visit_status === 'done' || stop.status === 'completed';
+  const absent = isTourStopAbsent(stop);
+  const done = !absent && (stop.visit_status === 'done' || stop.status === 'completed');
+  const absenceLabel = stop.patient_absence?.card_label_fr;
   const timeLabel = formatPassageTimeLabel(stop);
   const durationLabel = formatPassageDurationLabel(stop);
   const { kmLabel, driveMinLabel } = resolvePassageRouteListLabels(stop, index);
@@ -54,9 +59,19 @@ export function PassageSimpleListRow({
         style={[
           cardStyles.card,
           styles.cardInner,
+          absent && styles.cardAbsent,
           {
-            backgroundColor: done ? hexToRgba(c.success, 0.1) : c.surface,
-            borderColor: done ? hexToRgba(c.success, 0.28) : c.borderLight,
+            backgroundColor: absent
+              ? hexToRgba(c.textTertiary, 0.08)
+              : done
+                ? hexToRgba(c.success, 0.1)
+                : c.surface,
+            borderColor: absent
+              ? hexToRgba(c.textTertiary, 0.22)
+              : done
+                ? hexToRgba(c.success, 0.28)
+                : c.borderLight,
+            opacity: absent ? 0.72 : 1,
           },
         ]}
       >
@@ -65,41 +80,56 @@ export function PassageSimpleListRow({
           gap={spacing[2.5]}
           actions={
             <Pressable
-              onPress={onToggleDone}
+              onPress={absent ? onManageAbsence : onToggleDone}
+              disabled={absent && !onManageAbsence}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={styles.checkHit}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: done }}
+              accessibilityRole={absent ? 'button' : 'checkbox'}
+              accessibilityState={absent ? undefined : { checked: done }}
               accessibilityLabel={
-                done ? 'Passage effectué, appuyer pour annuler' : 'Marquer comme effectué'
+                absent
+                  ? 'Gérer l\'absence du patient'
+                  : done
+                    ? 'Passage effectué, appuyer pour annuler'
+                    : 'Marquer comme effectué'
               }
             >
               <View
                 style={[
                   styles.checkOuter,
-                  done
+                  absent
                     ? {
-                        borderColor: c.success,
-                        backgroundColor: c.success,
-                      }
-                    : {
                         borderColor: hexToRgba(c.textTertiary, 0.35),
-                        backgroundColor: c.surfaceAlt,
-                      },
+                        backgroundColor: hexToRgba(c.textTertiary, 0.12),
+                      }
+                    : done
+                      ? {
+                          borderColor: c.success,
+                          backgroundColor: c.success,
+                        }
+                      : {
+                          borderColor: hexToRgba(c.textTertiary, 0.35),
+                          backgroundColor: c.surfaceAlt,
+                        },
                 ]}
               >
-                <Check
-                  size={18}
-                  color={done ? '#FFFFFF' : c.textTertiary}
-                  strokeWidth={2.5}
-                  opacity={done ? 1 : 0.38}
-                />
+                {absent ? (
+                  <UserX size={17} color={c.textTertiary} strokeWidth={2.3} />
+                ) : (
+                  <Check
+                    size={18}
+                    color={done ? '#FFFFFF' : c.textTertiary}
+                    strokeWidth={2.5}
+                    opacity={done ? 1 : 0.38}
+                  />
+                )}
               </View>
             </Pressable>
           }
         >
           <Pressable
             onPress={onPressName}
+            onLongPress={onManageAbsence}
             style={styles.nameCol}
             accessibilityRole="button"
             accessibilityLabel={`Ouvrir le passage de ${stop.patient_name}`}
@@ -111,11 +141,14 @@ export function PassageSimpleListRow({
               >
                 {stop.patient_name}
               </Text>
-              {isNext && !done ? (
+              {isNext && !done && !absent ? (
                 <Badge label="Suivant" variant="primary" size="sm" dot={false} />
               ) : null}
+              {absent && absenceLabel ? (
+                <Badge label={absenceLabel} variant="neutral" size="sm" dot={false} />
+              ) : null}
             </Row>
-            <TourStopCareSection stop={stop} embedded listCompact muted={done} />
+            <TourStopCareSection stop={stop} embedded listCompact muted={done || absent} />
             {scheduleMeta ? (
               <Row gap={spacing[2]} align="center" style={styles.metaRow}>
                 <View style={styles.metaIconWrap}>
@@ -177,6 +210,7 @@ function buildStyles(_c: AppColors) {
       paddingVertical: spacing[3],
       paddingHorizontal: spacing[3.5],
     },
+    cardAbsent: {},
     nameCol: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     nameRow: { minWidth: 0, alignSelf: 'stretch' as const },
     nameFlex: { flexShrink: 1, minWidth: 0 },

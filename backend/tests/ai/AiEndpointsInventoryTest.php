@@ -29,4 +29,20 @@ final class AiEndpointsInventoryTest extends TestCase
             $this->assertFileExists($root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rel), $rel);
         }
     }
+
+    public function testGrokToolArchitectureFilesExist(): void
+    {
+        $lib = realpath(__DIR__ . '/../../lib/ai');
+        $this->assertIsString($lib);
+        foreach ([
+            'AiTurnOrchestrator.php',
+            'AiBookingToolExecutor.php',
+            'AiGrokToolCatalog.php',
+            'AiBookingDraftSummary.php',
+        ] as $file) {
+            $this->assertFileExists($lib . DIRECTORY_SEPARATOR . $file, $file);
+        }
+        $this->assertFileDoesNotExist($lib . DIRECTORY_SEPARATOR . 'AiAddressQueryExtractor.php');
+        $this->assertFileDoesNotExist($lib . DIRECTORY_SEPARATOR . 'AiVoiceTranscriptNormalizer.php');
+    }
 }

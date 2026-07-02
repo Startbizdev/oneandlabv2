@@ -11,6 +11,8 @@ require_once __DIR__ . '/CaryContextFocus.php';
 require_once __DIR__ . '/AiAttachmentService.php';
 require_once __DIR__ . '/AiDocumentIntent.php';
 require_once __DIR__ . '/../rag/AiDocumentJobService.php';
+require_once __DIR__ . '/AiTurnOrchestrator.php';
+require_once __DIR__ . '/AiBookingDraftSummary.php';
 require_once __DIR__ . '/bootstrap.php';
 
 final class AiChatService
@@ -19,6 +21,7 @@ final class AiChatService
     private AIGateway $gateway;
     private MemoryComposer $composer;
     private AiBookingService $booking;
+    private AiTurnOrchestrator $orchestrator;
 
     public function __construct()
     {
@@ -26,6 +29,7 @@ final class AiChatService
         $this->gateway = new AIGateway();
         $this->composer = new MemoryComposer();
         $this->booking = new AiBookingService();
+        $this->orchestrator = new AiTurnOrchestrator($this->gateway, $this->booking);
     }
 
     /**
@@ -127,6 +131,10 @@ final class AiChatService
             $context['conversation_mode'] = 'text_chat';
         }
 
+        if ($draftPreview !== null) {
+            $context['active_booking_draft'] = AiBookingDraftSummary::forPrompt($draftPreview);
+        }
+
         foreach (CaryContextFocus::suppressedContextKeys($contextFocus) as $key) {
             unset($context[$key]);
         }
@@ -136,7 +144,11 @@ final class AiChatService
             }
         }
 
-        $history = $this->conversations->getMessages($conversationId, (string) $user['user_id'], 12);
+        $history = $this->conversations->getMessages(
+            $conversationId,
+            (string) $user['user_id'],
+            AiTurnOrchestrator::HISTORY_LIMIT,
+        );
         $messages = [];
         foreach ($history as $msg) {
             if (($msg['role'] ?? '') === 'system') {
@@ -181,53 +193,23 @@ final class AiChatService
         $draftId = $this->sanitizeDraftId($draftId, (string) $user['user_id']);
 
         $taskType = $this->resolveTaskType($conv, $attachmentIds, $isDocumentIntent ? $chatAttachments : []);
-        if ($onStreamDelta !== null) {
-            $result = $this->gateway->chatStream(
-                $user,
-                $messages,
-                $onStreamDelta,
-                $taskType,
-                $context,
-                $conversationId,
-                $patientId
-            );
-        } else {
-            $result = $this->gateway->chat(
-                $user,
-                $messages,
-                $taskType,
-                $context,
-                $conversationId,
-                $patientId
-            );
-        }
-
-        $extracted = AiChatHelper::extractBookingPatch($result['content']);
-        $assistantContent = $extracted['content'];
-        $draft = null;
-
-        if ($extracted['patch'] !== null) {
-            if ($draftId) {
-                $draft = $this->booking->patchDraft($draftId, $user, $extracted['patch'], $message);
-            }
-            if ($draft === null) {
-                $draft = $this->booking->createDraft($user, [
-                    'conversation_id' => $conversationId,
-                    'payload' => $extracted['patch'],
-                    'user_message' => $message,
-                ]);
-                $draftId = (string) ($draft['id'] ?? '');
-            }
-        }
-
-        $draft = $this->finalizeDraftForResponse(
-            $draft,
-            $draftId,
-            $conversationId,
+        $turn = $this->orchestrator->runTurn(
             $user,
-            $assistantContent,
-            $message,
+            $messages,
+            $context,
+            $conversationId,
+            $patientId,
+            $taskType,
+            $draftId,
+            $onStreamDelta,
         );
+
+        $assistantContent = $turn['content'];
+        $draft = $turn['draft'];
+        if ($draft !== null) {
+            $draftId = (string) ($draft['id'] ?? $draftId ?? '');
+        }
+        $result = ['audit_id' => $turn['audit_id']];
 
         $metadata = [
             'audit_id' => $result['audit_id'] ?? null,
@@ -258,47 +240,6 @@ final class AiChatService
             'audit_id' => $result['audit_id'] ?? null,
             'conversation' => $updatedConv,
         ];
-    }
-
-    /**
-     * @param array<string, mixed>|null $draft
-     * @param array<string, mixed> $user
-     * @return array<string, mixed>|null
-     */
-    private function finalizeDraftForResponse(
-        ?array $draft,
-        ?string $draftId,
-        string $conversationId,
-        array $user,
-        string $assistantContent,
-        string $userMessage,
-    ): ?array {
-        if ($draft === null && $draftId !== null) {
-            $draft = $this->booking->getDraft($draftId, (string) $user['user_id']);
-        }
-        if ($draft === null) {
-            $draft = $this->booking->getLatestDraftForConversation($conversationId, (string) $user['user_id']);
-        }
-
-        if ($draft === null || !AiChatHelper::assistantSignalsRecap($assistantContent)) {
-            return is_array($draft) && in_array($draft['status'] ?? '', ['collecting', 'ready'], true)
-                ? $draft
-                : ($this->booking->getLatestDraftForConversation($conversationId, (string) $user['user_id']) ?? null);
-        }
-
-        $id = (string) ($draft['id'] ?? '');
-        if ($id === '' || !in_array($draft['status'] ?? '', ['collecting', 'ready'], true)) {
-            return $this->booking->getLatestDraftForConversation($conversationId, (string) $user['user_id']);
-        }
-
-        $patched = $this->booking->patchDraft(
-            $id,
-            $user,
-            ['booking_step' => 'recap'],
-            $userMessage,
-        );
-
-        return $patched ?? $draft;
     }
 
     private function sanitizeDraftId(?string $draftId, string $userId): ?string

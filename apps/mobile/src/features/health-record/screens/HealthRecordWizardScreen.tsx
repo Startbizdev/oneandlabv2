@@ -17,11 +17,21 @@ import { useHealthRecordWizard } from '../hooks/use-health-record-wizard';
 import { spacing } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
+function normalizeRouteParam(value?: string | string[]): string | undefined {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (Array.isArray(value) && typeof value[0] === 'string' && value[0].trim()) {
+    return value[0].trim();
+  }
+  return undefined;
+}
+
 export function HealthRecordWizardScreen() {
   const styles = useThemedStyles(buildStyles, 'HealthRecordWizardScreen');
   const router = useRouter();
-  const { section } = useLocalSearchParams<{ section?: string }>();
-  const wizard = useHealthRecordWizard(typeof section === 'string' ? section : undefined);
+  const { section, question } = useLocalSearchParams<{ section?: string | string[]; question?: string | string[] }>();
+  const sectionId = normalizeRouteParam(section);
+  const questionKey = normalizeRouteParam(question);
+  const wizard = useHealthRecordWizard(sectionId, questionKey);
   const scrollConfig = useStackScrollConfig(styles.content, {
     extraTop: STACK_SCENE_CONTENT_TOP_GAP,
   });

@@ -19,7 +19,7 @@ final class AiAdminService
     public function listRouting(): array
     {
         $stmt = $this->db->query('
-            SELECT task_type, provider, model, priority, enabled, updated_at
+            SELECT task_type, provider, model, priority, enabled
             FROM ai_task_routing ORDER BY task_type ASC
         ');
 
@@ -29,7 +29,7 @@ final class AiAdminService
     public function updateRouting(string $taskType, string $provider, ?string $model, bool $enabled): void
     {
         $stmt = $this->db->prepare('
-            UPDATE ai_task_routing SET provider = ?, model = ?, enabled = ?, updated_at = NOW()
+            UPDATE ai_task_routing SET provider = ?, model = ?, enabled = ?
             WHERE task_type = ?
         ');
         $stmt->execute([$provider, $model, $enabled ? 1 : 0, $taskType]);

@@ -48,7 +48,11 @@ export function HealthRecordSectionRecap({ section, onEdit, embedded }: Props) {
 
       <View style={styles.items}>
         {items.slice(0, 4).map((item) => (
-          <HealthRecordFieldRow key={item.key} label={item.label_fr} display={item.display} />
+          <HealthRecordFieldRow
+            key={item.key}
+            label={item.label_fr?.trim() || item.key}
+            display={item.display}
+          />
         ))}
         {total > 4 ? (
           <Text style={styles.moreHint} accessibilityRole="text">

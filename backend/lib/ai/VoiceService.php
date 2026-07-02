@@ -6,7 +6,11 @@ require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/AIGateway.php';
 require_once __DIR__ . '/MemoryComposer.php';
 require_once __DIR__ . '/AiConversationService.php';
-require_once __DIR__ . '/../Uuid.php';
+require_once __DIR__ . '/AiBookingService.php';
+require_once __DIR__ . '/CaryContextFocus.php';
+
+require_once __DIR__ . '/AiTurnOrchestrator.php';
+require_once __DIR__ . '/AiBookingDraftSummary.php';
 
 final class VoiceService
 {
@@ -14,6 +18,8 @@ final class VoiceService
     private AIGateway $gateway;
     private MemoryComposer $memory;
     private AiConversationService $conversations;
+    private AiBookingService $booking;
+    private AiTurnOrchestrator $orchestrator;
 
     public function __construct(?PDO $db = null)
     {
@@ -21,6 +27,8 @@ final class VoiceService
         $this->gateway = new AIGateway($this->db);
         $this->memory = new MemoryComposer();
         $this->conversations = new AiConversationService($this->db);
+        $this->booking = new AiBookingService($this->db);
+        $this->orchestrator = new AiTurnOrchestrator($this->gateway, $this->booking);
     }
 
     /**
@@ -64,30 +72,50 @@ final class VoiceService
         if (!$session) {
             throw new RuntimeException('Session vocale introuvable');
         }
-        $transcript = trim((string) ($input['transcript'] ?? ''));
-        if ($transcript === '' && !empty($input['audio_base64'])) {
-            $transcript = $this->transcribeAudio((string) $input['audio_base64'], (string) ($session['locale'] ?? 'fr'));
+        $rawTranscript = trim((string) ($input['transcript'] ?? ''));
+        $sttProvider = (string) ($input['stt_provider'] ?? 'client');
+        if (!empty($input['audio_base64'])) {
+            $whisperText = trim($this->transcribeAudio((string) $input['audio_base64'], (string) ($session['locale'] ?? 'fr')));
+            if ($whisperText === '') {
+                throw new InvalidArgumentException('Transcription Whisper vide');
+            }
+            $rawTranscript = $whisperText;
+            $sttProvider = 'whisper';
         }
-        if ($transcript === '') {
+        if ($rawTranscript === '') {
             throw new InvalidArgumentException('transcript ou audio_base64 requis');
         }
+        $transcript = $rawTranscript;
 
         $conversationId = (string) ($session['ai_conversation_id'] ?? '');
         $userMsgId = Uuid::v4();
         $this->db->prepare('INSERT INTO voice_messages (id, session_id, role, created_at) VALUES (?, ?, \'user\', NOW())')
             ->execute([$userMsgId, $sessionId]);
         $this->db->prepare('INSERT INTO voice_transcriptions (id, voice_message_id, text, provider, language_detected) VALUES (?, ?, ?, ?, ?)')
-            ->execute([Uuid::v4(), $userMsgId, $transcript, $input['stt_provider'] ?? 'client', $session['locale'] ?? 'fr']);
+            ->execute([Uuid::v4(), $userMsgId, $transcript, $sttProvider, $session['locale'] ?? 'fr']);
 
         $this->conversations->addMessage($conversationId, 'user', $transcript);
 
         $conv = $this->conversations->getById($conversationId, (string) $user['user_id']);
         $patientId = isset($conv['patient_id']) ? (string) $conv['patient_id'] : null;
+
+        $draftPreview = $this->booking->getLatestDraftForConversation($conversationId, (string) $user['user_id']);
+        $contextFocus = CaryContextFocus::resolve($transcript, false, $draftPreview, false);
+
         $context = $this->memory->compose($user, $patientId, 'voice', true, $transcript, $conversationId);
         $context['disclaimer'] = $this->gateway->getDisclaimerPublic();
         $context['locale'] = $session['locale'] ?? 'fr';
+        $context['active_intent'] = $contextFocus;
+        $context['conversation_mode'] = 'voice_chat';
+        if ($draftPreview !== null) {
+            $context['active_booking_draft'] = AiBookingDraftSummary::forPrompt($draftPreview);
+        }
 
-        $history = $this->conversations->getMessages($conversationId, (string) $user['user_id'], 10);
+        $history = $this->conversations->getMessages(
+            $conversationId,
+            (string) $user['user_id'],
+            AiTurnOrchestrator::HISTORY_LIMIT,
+        );
         $messages = [];
         foreach ($history as $msg) {
             if (($msg['role'] ?? '') === 'system') {
@@ -96,22 +124,54 @@ final class VoiceService
             $messages[] = ['role' => (string) $msg['role'], 'content' => (string) $msg['content']];
         }
 
-        $result = $this->gateway->chat(
+        $turn = $this->orchestrator->runTurn(
             $user,
             $messages,
-            'voice_agent',
             $context,
             $conversationId,
             $patientId,
+            'voice_agent',
         );
-        $assistantText = trim((string) ($result['content'] ?? ''));
+
+        $assistantText = trim($turn['content']);
+        $draft = $turn['draft'] ?? null;
+        $appointmentId = null;
+
+        if ($this->isBookingConfirmIntent($transcript) && is_array($draft) && !empty($draft['id'])) {
+            $freshDraft = $this->booking->getDraft((string) $draft['id'], (string) $user['user_id']);
+            if (is_array($freshDraft) && ($freshDraft['status'] ?? '') === 'ready') {
+                try {
+                    $confirmed = $this->booking->confirmDraft((string) $draft['id'], $user);
+                    $draft = $confirmed['draft'] ?? $freshDraft;
+                    $appointmentId = (string) ($confirmed['appointment_id'] ?? '');
+                    $assistantText = 'Parfait, le rendez-vous est créé. Vous le retrouverez dans votre tournée.';
+                } catch (Throwable $e) {
+                    error_log('[voice] confirmDraft: ' . $e->getMessage());
+                    $assistantText = 'Il manque encore une information pour finaliser — vérifiez le récap et appuyez sur Valider.';
+                }
+            } elseif (is_array($freshDraft) && ($freshDraft['status'] ?? '') !== 'confirmed') {
+                $assistantText = 'Presque fini — appuyez sur Valider sur la carte récap pour créer le rendez-vous.';
+            }
+        }
+
+        $draftId = is_array($draft) && !empty($draft['id']) ? (string) $draft['id'] : null;
+
         $assistantMsgId = Uuid::v4();
         $this->db->prepare('INSERT INTO voice_messages (id, session_id, role, created_at) VALUES (?, ?, \'assistant\', NOW())')
             ->execute([$assistantMsgId, $sessionId]);
         $this->db->prepare('INSERT INTO voice_transcriptions (id, voice_message_id, text, provider) VALUES (?, ?, ?, \'grok\')')
             ->execute([Uuid::v4(), $assistantMsgId, $assistantText]);
 
-        $metadata = ['audit_id' => $result['audit_id'] ?? null, 'disclaimer' => $context['disclaimer']];
+        $metadata = [
+            'audit_id' => $turn['audit_id'] ?? null,
+            'disclaimer' => $context['disclaimer'],
+        ];
+        if ($draft) {
+            $metadata['draft'] = $draft;
+        }
+        if ($appointmentId !== null && $appointmentId !== '') {
+            $metadata['appointment_id'] = $appointmentId;
+        }
         $this->conversations->addMessage($conversationId, 'assistant', $assistantText, $metadata);
 
         return [
@@ -120,9 +180,25 @@ final class VoiceService
             'transcript' => $transcript,
             'assistant_text' => $assistantText,
             'disclaimer' => $context['disclaimer'],
-            'audit_id' => $result['audit_id'] ?? null,
+            'audit_id' => $turn['audit_id'] ?? null,
             'locale' => $session['locale'] ?? 'fr',
+            'draft' => $draft,
+            'draft_id' => $draftId,
+            'appointment_id' => $appointmentId,
         ];
+    }
+
+    private function isBookingConfirmIntent(string $transcript): bool
+    {
+        $t = mb_strtolower(trim($transcript));
+        if ($t === '') {
+            return false;
+        }
+
+        return (bool) preg_match(
+            '/\b(je confirme|on valide|valide|valider|confirme le rendez|confirmer le rendez|c\'?est bon|ok pour le rdv)\b/u',
+            $t,
+        );
     }
 
     /**

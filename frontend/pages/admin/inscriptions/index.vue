@@ -1,20 +1,19 @@
 <template>
-  <AppPageShell class="space-y-6">
+  <AppPageShell max-width="7xl" class="space-y-6">
     <template #pageHeader>
-    <AppPageHeader
-      :edge-bleed="false"
-      title="Inscriptions"
-      description="Demandes d'inscription laboratoires, professionnels et infirmiers. Acceptez ou refusez les demandes."
-    />
+      <AppPageHeader
+        :edge-bleed="false"
+        title="Inscriptions"
+        description="Demandes d'inscription laboratoires, professionnels et infirmiers. Acceptez ou refusez les demandes."
+      />
     </template>
 
-    <!-- Filtres : bandeau compact comme les autres écrans admin -->
     <div
       class="flex flex-col gap-2.5 rounded-xl border border-gray-200/90 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-gray-800 dark:bg-gray-950 sm:flex-row sm:flex-wrap sm:items-center"
     >
       <UInput
         v-model="searchQuery"
-        placeholder="Rechercher (email, nom, SIRET, RPPS, Adeli…)"
+        placeholder="Rechercher par email, nom, SIRET, RPPS, Adeli, adresse…"
         class="min-w-0 flex-1"
         icon="i-lucide-search"
         size="sm"
@@ -26,7 +25,7 @@
           v-model="statusFilter"
           :items="statusOptions"
           value-key="value"
-          placeholder="Statut"
+          placeholder="Filtrer par statut"
           size="sm"
           class="min-w-[9.5rem] flex-1 sm:flex-none sm:min-w-[10.5rem]"
         />
@@ -34,186 +33,219 @@
           v-model="roleFilter"
           :items="roleOptions"
           value-key="value"
-          placeholder="Profil"
+          placeholder="Filtrer par profil"
           size="sm"
           class="min-w-[9.5rem] flex-1 sm:flex-none sm:min-w-[10.5rem]"
         />
       </div>
     </div>
 
-    <!-- Chargement : lignes squelette alignées sur la liste -->
-    <div
-      v-if="loading"
-      class="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-gray-800 dark:bg-gray-950"
-    >
+    <div v-if="loading" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       <div
-        v-for="i in 5"
+        v-for="i in 6"
         :key="i"
-        class="flex flex-col gap-4 border-b border-gray-100 p-4 last:border-b-0 dark:border-gray-800 sm:flex-row sm:justify-between animate-pulse"
-      >
-        <div class="min-w-0 flex-1 space-y-3">
-          <div class="flex gap-2">
-            <div class="h-6 w-24 rounded-full bg-gray-100 dark:bg-gray-800" />
-            <div class="h-6 w-20 rounded-full bg-gray-100 dark:bg-gray-800" />
-          </div>
-          <div class="h-5 max-w-[14rem] rounded bg-gray-100 dark:bg-gray-800" />
-          <div class="space-y-2">
-            <div class="h-4 max-w-xl rounded bg-gray-100 dark:bg-gray-800" />
-            <div class="h-4 w-3/5 max-w-xs rounded bg-gray-100 dark:bg-gray-800" />
-          </div>
-        </div>
-        <div class="flex w-full shrink-0 gap-2 sm:w-40">
-          <div class="h-9 flex-1 rounded-lg bg-gray-100 dark:bg-gray-800" />
-          <div class="h-9 flex-1 rounded-lg bg-gray-100 dark:bg-gray-800" />
-        </div>
-      </div>
+        class="h-72 animate-pulse rounded-xl border border-gray-200/90 bg-white dark:border-gray-800 dark:bg-gray-950"
+      />
     </div>
 
-    <!-- Vide : bloc unique lisible -->
     <div
       v-else-if="filteredRequests.length === 0"
-      class="flex flex-col items-center justify-center gap-4 rounded-xl border border-gray-200/90 bg-gray-50/50 px-6 py-14 text-center dark:border-gray-800 dark:bg-gray-950/60"
+      class="rounded-xl border border-gray-200/90 bg-white px-6 py-14 dark:border-gray-800 dark:bg-gray-950"
     >
-      <div
-        class="flex h-14 w-14 items-center justify-center rounded-2xl border border-gray-200/80 bg-white dark:border-gray-700 dark:bg-gray-900"
-      >
-        <UIcon name="i-lucide-inbox" class="h-7 w-7 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-      </div>
-      <div class="max-w-sm space-y-1">
-        <p class="text-base font-semibold text-gray-900 dark:text-white">Aucune demande</p>
-        <p class="text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-          Aucune demande d’inscription ne correspond à vos critères. Modifiez les filtres ou la recherche.
-        </p>
-      </div>
+      <UEmpty
+        icon="i-lucide-inbox"
+        title="Aucune demande"
+        description="Aucune demande d'inscription ne correspond à vos critères."
+        variant="naked"
+        :actions="[{ label: 'Réinitialiser les filtres', variant: 'outline', onClick: resetFilters }]"
+      />
     </div>
 
-    <!-- Liste linéaire : une ligne = une demande, actions à droite (ou sous le contenu sur mobile) -->
-    <div
-      v-else
-      class="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-gray-800 dark:bg-gray-950"
-    >
-      <article
-        v-for="req in filteredRequests"
-        :key="req.id"
-        class="flex flex-col gap-4 border-b border-gray-100 p-4 transition-colors last:border-b-0 hover:bg-gray-50/60 dark:border-gray-800 dark:hover:bg-gray-900/40 sm:flex-row sm:items-stretch sm:gap-6 sm:p-5"
-      >
-        <div class="min-w-0 flex-1 space-y-3">
-          <div class="flex flex-wrap items-center gap-2">
-            <UBadge :color="getRoleColor(req.role)" variant="soft" size="sm" class="font-medium">
-              {{ getRoleLabel(req.role) }}
-            </UBadge>
-            <UBadge :color="getStatusColor(req.status)" variant="subtle" size="sm">
-              {{ getStatusLabel(req.status) }}
-            </UBadge>
+    <template v-else>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <article
+          v-for="req in paginatedRequests"
+          :key="req.id"
+          class="flex flex-col rounded-xl border border-gray-200/90 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-gray-800 dark:bg-gray-950"
+        >
+          <div class="flex flex-1 flex-col gap-4 p-5">
+            <div class="flex flex-wrap items-center gap-2">
+              <UBadge :color="getRoleColor(req.role)" variant="soft" size="sm">
+                {{ getRoleLabel(req.role) }}
+              </UBadge>
+              <UBadge :color="getStatusColor(req.status)" variant="subtle" size="sm">
+                {{ getStatusLabel(req.status) }}
+              </UBadge>
+            </div>
+
+            <div>
+              <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+                {{ fullName(req) }}
+              </h2>
+              <p class="mt-1 text-xs text-muted">
+                Reçue le {{ formatDate(req.created_at) }}
+              </p>
+            </div>
+
+            <dl class="space-y-2.5 text-sm">
+              <div class="flex gap-2">
+                <dt class="w-24 shrink-0 text-muted">Email</dt>
+                <dd class="min-w-0 break-all text-gray-800 dark:text-gray-200">{{ req.email || '—' }}</dd>
+              </div>
+              <div v-if="req.phone" class="flex gap-2">
+                <dt class="w-24 shrink-0 text-muted">Téléphone</dt>
+                <dd class="text-gray-800 dark:text-gray-200">{{ req.phone }}</dd>
+              </div>
+              <div v-if="req.role === 'lab' && req.siret" class="flex gap-2">
+                <dt class="w-24 shrink-0 text-muted">SIRET</dt>
+                <dd class="font-mono text-gray-800 dark:text-gray-200">{{ req.siret }}</dd>
+              </div>
+              <div v-if="req.role === 'lab' && req.company_name" class="flex gap-2">
+                <dt class="w-24 shrink-0 text-muted">Entreprise</dt>
+                <dd class="min-w-0 text-gray-800 dark:text-gray-200">{{ req.company_name }}</dd>
+              </div>
+              <div v-if="req.role === 'pro' && req.rpps" class="flex gap-2">
+                <dt class="w-24 shrink-0 text-muted">RPPS</dt>
+                <dd class="font-mono text-gray-800 dark:text-gray-200">{{ req.rpps }}</dd>
+              </div>
+              <div v-if="req.role === 'pro' && req.emploi" class="flex gap-2">
+                <dt class="w-24 shrink-0 text-muted">Profession</dt>
+                <dd class="text-gray-800 dark:text-gray-200">{{ req.emploi }}</dd>
+              </div>
+              <div v-if="req.role === 'nurse' && req.rpps" class="flex gap-2">
+                <dt class="w-24 shrink-0 text-muted">RPPS</dt>
+                <dd class="font-mono text-gray-800 dark:text-gray-200">{{ req.rpps }}</dd>
+              </div>
+              <div v-if="req.role === 'nurse' && req.adeli" class="flex gap-2">
+                <dt class="w-24 shrink-0 text-muted">Adeli</dt>
+                <dd class="font-mono text-gray-800 dark:text-gray-200">{{ req.adeli }}</dd>
+              </div>
+              <div v-if="req.role === 'nurse' && req.gender" class="flex gap-2">
+                <dt class="w-24 shrink-0 text-muted">Genre</dt>
+                <dd class="text-gray-800 dark:text-gray-200">{{ genderLabel(req.gender) }}</dd>
+              </div>
+              <div v-if="formatRegistrationAddress(req.address) !== '—'" class="flex gap-2">
+                <dt class="w-24 shrink-0 text-muted">Adresse</dt>
+                <dd class="min-w-0 leading-snug text-gray-800 dark:text-gray-200">
+                  {{ formatRegistrationAddress(req.address) }}
+                </dd>
+              </div>
+            </dl>
           </div>
 
-          <h2 class="truncate text-[15px] font-semibold leading-snug text-gray-900 dark:text-white">
-            {{ [req.first_name, req.last_name].filter(Boolean).join(' ') || '—' }}
-          </h2>
-
-          <ul class="min-w-0 space-y-1.5 text-[13px] text-gray-600 dark:text-gray-400" role="list">
-            <li class="flex min-w-0 items-start gap-2">
-              <UIcon name="i-lucide-mail" class="mt-0.5 h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
-              <span class="min-w-0 break-all">{{ req.email }}</span>
-            </li>
-            <li v-if="req.phone" class="flex items-start gap-2">
-              <UIcon name="i-lucide-phone" class="mt-0.5 h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
-              <span>{{ req.phone }}</span>
-            </li>
-            <template v-if="req.role === 'lab'">
-              <li v-if="req.siret" class="flex items-start gap-2 font-mono text-[13px]">
-                <UIcon name="i-lucide-building-2" class="mt-0.5 h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
-                <span>SIRET {{ req.siret }}</span>
-              </li>
-              <li v-if="req.company_name" class="flex min-w-0 items-start gap-2">
-                <UIcon name="i-lucide-briefcase" class="mt-0.5 h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
-                <span class="min-w-0 truncate">{{ req.company_name }}</span>
-              </li>
-            </template>
-            <li v-if="req.role === 'pro' && req.rpps" class="flex items-start gap-2 font-mono text-[13px]">
-              <UIcon name="i-lucide-badge-check" class="mt-0.5 h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
-              <span>RPPS {{ req.rpps }}</span>
-            </li>
-            <li
-              v-if="req.role === 'nurse' && (req.rpps || req.adeli)"
-              class="flex items-start gap-2 font-mono text-[13px]"
+          <div
+            v-if="req.status === 'pending'"
+            class="flex gap-2 border-t border-gray-100 p-4 dark:border-gray-800"
+          >
+            <UButton
+              class="flex-1 justify-center"
+              color="success"
+              variant="solid"
+              size="sm"
+              icon="i-lucide-check"
+              :loading="acceptingId === req.id"
+              :disabled="rejectingId === req.id"
+              @click="acceptRequest(req.id)"
             >
-              <UIcon name="i-lucide-heart-pulse" class="mt-0.5 h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
-              <span>{{ req.rpps ? `RPPS ${req.rpps}` : `Adeli ${req.adeli}` }}</span>
-            </li>
-            <li v-if="req.address" class="flex min-w-0 items-start gap-2">
-              <UIcon name="i-lucide-map-pin" class="mt-0.5 h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
-              <span class="min-w-0 leading-snug">{{ req.address }}</span>
-            </li>
-          </ul>
+              Accepter
+            </UButton>
+            <UButton
+              class="flex-1 justify-center"
+              variant="outline"
+              color="error"
+              size="sm"
+              icon="i-lucide-x"
+              :loading="rejectingId === req.id"
+              :disabled="acceptingId === req.id"
+              @click="rejectRequest(req.id)"
+            >
+              Refuser
+            </UButton>
+          </div>
+        </article>
+      </div>
 
-          <p class="text-xs text-gray-400 dark:text-gray-500">
-            <UIcon name="i-lucide-clock" class="mr-1 inline-block h-3 w-3 -translate-y-px align-middle opacity-70" aria-hidden="true" />
-            Reçu le {{ formatDate(req.created_at) }}
-          </p>
-        </div>
-
-        <div
-          v-if="req.status === 'pending'"
-          class="flex w-full shrink-0 flex-row gap-2 border-t border-gray-100 pt-4 dark:border-gray-800 sm:w-[11.5rem] sm:flex-col sm:border-t-0 sm:border-l sm:pl-6 sm:pt-0"
-        >
-          <UButton
-            class="min-h-9 flex-1 justify-center sm:w-full"
-            color="success"
-            variant="solid"
-            size="sm"
-            icon="i-lucide-check"
-            :loading="acceptingId === req.id"
-            :disabled="rejectingId === req.id"
-            :on-click="() => acceptRequest(req.id)"
-          >
-            Accepter
-          </UButton>
-          <UButton
-            class="min-h-9 flex-1 justify-center sm:w-full"
-            variant="outline"
-            color="error"
-            size="sm"
-            icon="i-lucide-x"
-            :loading="rejectingId === req.id"
-            :disabled="acceptingId === req.id"
-            :on-click="() => rejectRequest(req.id)"
-          >
-            Refuser
-          </UButton>
-        </div>
-      </article>
-    </div>
+      <div
+        v-if="filteredTotal > 0"
+        class="flex flex-col items-center justify-between gap-3 rounded-xl border border-gray-200/90 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-950 sm:flex-row"
+      >
+        <p class="text-sm text-muted">
+          <span class="font-medium text-gray-700 dark:text-gray-300">{{ rangeStart }}-{{ rangeEnd }}</span>
+          sur
+          <span class="font-medium text-gray-700 dark:text-gray-300">{{ filteredTotal }}</span>
+          demandes
+        </p>
+        <UPagination
+          v-if="totalPages > 1"
+          v-model:page="currentPage"
+          :total="filteredTotal"
+          :items-per-page="pageSize"
+          :sibling-count="1"
+          show-edges
+          :ui="{ wrapper: 'gap-1', rounded: 'rounded-lg' }"
+        />
+      </div>
+    </template>
   </AppPageShell>
 </template>
 
 <script setup lang="ts">
+import { apiFetch } from '~/utils/api';
+import { labelFromAppointmentAddressField } from '~/utils/address-display';
+
 definePageMeta({
   layout: 'dashboard',
   middleware: ['auth', 'role'],
   role: ['super_admin'],
 });
 
-import { apiFetch } from '~/utils/api';
-const toast = useAppToast();
+type RegistrationRow = {
+  id: string;
+  role: string;
+  status: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  siret?: string;
+  company_name?: string;
+  rpps?: string;
+  adeli?: string;
+  emploi?: string;
+  gender?: string;
+  address?: unknown;
+  created_at?: string;
+};
 
-const requests = ref<any[]>([]);
+const toast = useAppToast();
+const requests = ref<RegistrationRow[]>([]);
 const loading = ref(true);
 const searchQuery = ref('');
+const debouncedSearch = ref('');
 const statusFilter = ref('all');
 const roleFilter = ref('all');
 const acceptingId = ref<string | null>(null);
 const rejectingId = ref<string | null>(null);
+const currentPage = ref(1);
+const pageSize = 9;
+
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+watch(searchQuery, (q) => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    debouncedSearch.value = q;
+  }, 220);
+}, { immediate: true });
 
 const statusOptions = [
-  { label: 'Tous', value: 'all' },
+  { label: 'Tous les statuts', value: 'all' },
   { label: 'En attente', value: 'pending' },
   { label: 'Acceptées', value: 'accepted' },
   { label: 'Refusées', value: 'rejected' },
 ];
 
 const roleOptions = [
-  { label: 'Tous', value: 'all' },
+  { label: 'Tous les profils', value: 'all' },
   { label: 'Laboratoire', value: 'lab' },
   { label: 'Professionnel', value: 'pro' },
   { label: 'Infirmier', value: 'nurse' },
@@ -221,26 +253,57 @@ const roleOptions = [
 
 const filteredRequests = computed(() => {
   let list = [...requests.value];
-  if (statusFilter.value && statusFilter.value !== 'all') {
-    list = list.filter(r => r.status === statusFilter.value);
-  }
-  if (roleFilter.value && roleFilter.value !== 'all') {
-    list = list.filter(r => r.role === roleFilter.value);
-  }
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase();
-    list = list.filter(r =>
-      (r.email || '').toLowerCase().includes(q) ||
-      (r.first_name || '').toLowerCase().includes(q) ||
-      (r.last_name || '').toLowerCase().includes(q) ||
-      (r.siret || '').includes(q) ||
-      (r.adeli || '').includes(q) ||
-      (r.rpps || '').includes(q) ||
-      (r.company_name || '').toLowerCase().includes(q)
-    );
+  if (debouncedSearch.value.trim()) {
+    const q = debouncedSearch.value.toLowerCase().trim();
+    list = list.filter((r) => {
+      const addressLabel = formatRegistrationAddress(r.address).toLowerCase();
+      return (
+        (r.email || '').toLowerCase().includes(q)
+        || (r.first_name || '').toLowerCase().includes(q)
+        || (r.last_name || '').toLowerCase().includes(q)
+        || (r.siret || '').includes(q)
+        || (r.adeli || '').includes(q)
+        || (r.rpps || '').includes(q)
+        || (r.company_name || '').toLowerCase().includes(q)
+        || (r.phone || '').includes(q)
+        || addressLabel.includes(q)
+      );
+    });
   }
   return list;
 });
+
+const filteredTotal = computed(() => filteredRequests.value.length);
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredTotal.value / pageSize)));
+const rangeStart = computed(() => (filteredTotal.value === 0 ? 0 : (currentPage.value - 1) * pageSize + 1));
+const rangeEnd = computed(() => Math.min(currentPage.value * pageSize, filteredTotal.value));
+
+const paginatedRequests = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredRequests.value.slice(start, start + pageSize);
+});
+
+function fullName(req: RegistrationRow) {
+  return [req.first_name, req.last_name].filter(Boolean).join(' ') || '—';
+}
+
+function formatRegistrationAddress(raw: unknown) {
+  const label = labelFromAppointmentAddressField(raw);
+  if (label && !label.trim().startsWith('{')) return label;
+  const s = typeof raw === 'string' ? raw : '';
+  const match = s.match(/"label"\s*:\s*"([^"]+)"/);
+  if (match?.[1]) return match[1];
+  return label || '—';
+}
+
+function genderLabel(gender: string) {
+  const labels: Record<string, string> = {
+    male: 'Homme',
+    female: 'Femme',
+    other: 'Autre',
+  };
+  return labels[gender] || gender;
+}
 
 function getRoleLabel(role: string) {
   const l: Record<string, string> = { lab: 'Laboratoire', pro: 'Professionnel', nurse: 'Infirmier' };
@@ -262,22 +325,44 @@ function getStatusColor(status: string) {
   return c[status] || 'neutral';
 }
 
-function formatDate(d: string) {
+function formatDate(d?: string) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(d).toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function resetFilters() {
+  searchQuery.value = '';
+  debouncedSearch.value = '';
+  statusFilter.value = 'all';
+  roleFilter.value = 'all';
+  currentPage.value = 1;
+  void fetchRequests();
 }
 
 async function fetchRequests() {
   loading.value = true;
   try {
-    const response = await apiFetch('/registration-requests', { method: 'GET' });
-    if (response?.success && Array.isArray(response.data)) {
-      requests.value = response.data;
-    } else {
-      requests.value = [];
-    }
+    const params = new URLSearchParams();
+    if (statusFilter.value && statusFilter.value !== 'all') params.set('status', statusFilter.value);
+    if (roleFilter.value && roleFilter.value !== 'all') params.set('role', roleFilter.value);
+    const qs = params.toString();
+    const response = await apiFetch<{ success: boolean; data: RegistrationRow[] }>(
+      `/registration-requests${qs ? `?${qs}` : ''}`,
+      { method: 'GET' },
+    );
+    requests.value = response?.success && Array.isArray(response.data) ? response.data : [];
   } catch (e) {
-    toast.add({ title: 'Erreur', description: (e as Error)?.message ?? 'Chargement impossible', color: 'error' });
+    toast.add({
+      title: 'Erreur',
+      description: e instanceof Error ? e.message : 'Chargement impossible',
+      color: 'error',
+    });
     requests.value = [];
   } finally {
     loading.value = false;
@@ -287,15 +372,22 @@ async function fetchRequests() {
 async function acceptRequest(id: string) {
   acceptingId.value = id;
   try {
-    const response = await apiFetch(`/registration-requests/${id}/accept`, { method: 'PUT' });
+    const response = await apiFetch<{ success: boolean; error?: string }>(
+      `/registration-requests/${id}/accept`,
+      { method: 'PUT' },
+    );
     if (response?.success) {
       toast.add({ title: 'Demande acceptée', color: 'success' });
       await fetchRequests();
     } else {
-      toast.add({ title: 'Erreur', description: (response as any)?.error ?? 'Échec', color: 'error' });
+      toast.add({ title: 'Erreur', description: response?.error ?? 'Échec', color: 'error' });
     }
   } catch (e) {
-    toast.add({ title: 'Erreur', description: (e as Error)?.message ?? 'Échec', color: 'error' });
+    toast.add({
+      title: 'Erreur',
+      description: e instanceof Error ? e.message : 'Échec',
+      color: 'error',
+    });
   } finally {
     acceptingId.value = null;
   }
@@ -305,21 +397,42 @@ async function rejectRequest(id: string) {
   if (!confirm('Refuser cette demande d\'inscription ?')) return;
   rejectingId.value = id;
   try {
-    const response = await apiFetch(`/registration-requests/${id}/reject`, { method: 'PUT' });
+    const response = await apiFetch<{ success: boolean; error?: string }>(
+      `/registration-requests/${id}/reject`,
+      { method: 'PUT' },
+    );
     if (response?.success) {
       toast.add({ title: 'Demande refusée', color: 'success' });
       await fetchRequests();
     } else {
-      toast.add({ title: 'Erreur', description: (response as any)?.error ?? 'Échec', color: 'error' });
+      toast.add({ title: 'Erreur', description: response?.error ?? 'Échec', color: 'error' });
     }
   } catch (e) {
-    toast.add({ title: 'Erreur', description: (e as Error)?.message ?? 'Échec', color: 'error' });
+    toast.add({
+      title: 'Erreur',
+      description: e instanceof Error ? e.message : 'Échec',
+      color: 'error',
+    });
   } finally {
     rejectingId.value = null;
   }
 }
 
+watch([statusFilter, roleFilter], () => {
+  currentPage.value = 1;
+  void fetchRequests();
+});
+
+watch(debouncedSearch, () => {
+  currentPage.value = 1;
+});
+
+watch(filteredTotal, (total) => {
+  const maxPage = Math.max(1, Math.ceil(total / pageSize));
+  if (currentPage.value > maxPage) currentPage.value = maxPage;
+});
+
 onMounted(() => {
-  fetchRequests();
+  void fetchRequests();
 });
 </script>

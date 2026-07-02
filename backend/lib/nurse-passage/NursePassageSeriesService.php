@@ -198,6 +198,18 @@ final class NursePassageSeriesService
         $customTime = null;
         if ($timeSlot === 'custom') {
             $customTime = trim((string) ($input['custom_time'] ?? ''));
+            if ($customTime === '' && isset($input['time_range']) && is_array($input['time_range']) && count($input['time_range']) >= 1) {
+                $hour = (float) $input['time_range'][0];
+                $h = (int) floor($hour);
+                $m = (int) round(($hour - $h) * 60);
+                $customTime = sprintf('%02d:%02d', max(0, min(23, $h)), max(0, min(59, $m)));
+            }
+            if ($customTime === '' && is_array($config['time_range'] ?? null) && count($config['time_range']) >= 1) {
+                $hour = (float) $config['time_range'][0];
+                $h = (int) floor($hour);
+                $m = (int) round(($hour - $h) * 60);
+                $customTime = sprintf('%02d:%02d', max(0, min(23, $h)), max(0, min(59, $m)));
+            }
             if ($customTime === '') {
                 throw new InvalidArgumentException('custom_time requis pour créneau personnalisé');
             }

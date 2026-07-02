@@ -17,7 +17,7 @@ import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
   label: string;
-  display: string;
+  display?: string | null;
 }
 
 export function HealthRecordFieldRow({ label, display: rawDisplay }: Props) {

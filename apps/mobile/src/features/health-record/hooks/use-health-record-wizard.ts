@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchHealthRecordCompletion,
@@ -9,6 +9,7 @@ import {
   type HealthRecordSection,
 } from '../api/health-record.service';
 import { healthRecordQueryKeys } from './use-health-record-completion';
+import { recapItemsToQuestions } from '../utils/health-record-questions';
 
 function flattenQuestions(sections: HealthRecordSection[]): HealthRecordQuestion[] {
   const out: HealthRecordQuestion[] = [];
@@ -23,10 +24,12 @@ function flattenQuestions(sections: HealthRecordSection[]): HealthRecordQuestion
 }
 
 function isAnswered(value: unknown): boolean {
-  return value !== null && value !== undefined && value !== '';
+  if (value === null || value === undefined || value === '') return false;
+  if (typeof value === 'string' && value.trim().toLowerCase() === 'null') return false;
+  return true;
 }
 
-export function useHealthRecordWizard(sectionFilter?: string) {
+export function useHealthRecordWizard(sectionFilter?: string, questionKey?: string) {
   const qc = useQueryClient();
   const schemaQ = useQuery({
     queryKey: healthRecordQueryKeys.schema,
@@ -56,18 +59,43 @@ export function useHealthRecordWizard(sectionFilter?: string) {
     return { ...map, ...localAnswers };
   }, [recapQ.data, localAnswers]);
 
+  const recapQuestions = useMemo(() => {
+    if (!sectionFilter) return [];
+    const section = recapQ.data?.sections.find((s) => s.id === sectionFilter);
+    return recapItemsToQuestions(section?.items);
+  }, [recapQ.data?.sections, sectionFilter]);
+
   const questions = useMemo(() => {
     const sections = schemaQ.data?.sections ?? [];
     const filteredSections = sectionFilter
       ? sections.filter((s) => s.id === sectionFilter)
       : sections;
-    return flattenQuestions(filteredSections);
-  }, [schemaQ.data, sectionFilter]);
+    const schemaQuestions = flattenQuestions(filteredSections);
+    if (schemaQuestions.length > 0) return schemaQuestions;
+    return recapQuestions;
+  }, [schemaQ.data, sectionFilter, recapQuestions]);
 
   const sectionMeta = useMemo(() => {
-    if (!sectionFilter || !schemaQ.data) return null;
-    return schemaQ.data.sections.find((s) => s.id === sectionFilter) ?? null;
-  }, [schemaQ.data, sectionFilter]);
+    if (!sectionFilter) return null;
+    const fromSchema = schemaQ.data?.sections.find((s) => s.id === sectionFilter);
+    if (fromSchema) return fromSchema;
+    const fromRecap = recapQ.data?.sections.find((s) => s.id === sectionFilter);
+    if (!fromRecap) return null;
+    return {
+      id: fromRecap.id,
+      label_fr: fromRecap.label_fr,
+      questions: recapQuestions,
+    };
+  }, [schemaQ.data, recapQ.data, sectionFilter, recapQuestions]);
+
+  useEffect(() => {
+    if (!questionKey || questions.length === 0) {
+      setStepIndex(0);
+      return;
+    }
+    const idx = questions.findIndex((q) => q.key === questionKey);
+    setStepIndex(idx >= 0 ? idx : 0);
+  }, [questionKey, sectionFilter, questions]);
 
   const current = questions[stepIndex] ?? null;
   const sectionLabel = useMemo(() => {

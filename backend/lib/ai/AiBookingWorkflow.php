@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 /**
  * Étapes RDV Cary IA — ordonnance avant récap (aligné wizard mobile).
+ * Statuts et étapes viennent du patch Grok (tools), pas de re-parse du message utilisateur.
  */
 final class AiBookingWorkflow
 {
@@ -23,15 +24,17 @@ final class AiBookingWorkflow
             return $payload;
         }
 
-        $payload['ordonnance_status'] = self::resolveOrdonnanceStatus($payload, $userMessage, $previous);
+        $payload['ordonnance_status'] = self::resolveOrdonnanceStatus($payload, $previous);
 
         if ($payload['ordonnance_status'] === 'pending') {
             $payload['booking_step'] = 'documents';
-        } elseif (self::hasCoreBookingFields($payload)) {
+        } elseif (in_array($payload['ordonnance_status'], ['declined', 'uploaded', 'deferred'], true)
+            && self::hasCoreBookingFields($payload)) {
+            $payload['booking_step'] = 'recap';
+        } elseif (self::hasCoreBookingFields($payload) && empty($payload['booking_step'])) {
             $payload['booking_step'] = 'recap';
         }
 
-        $payload = self::applyPendingUploadType($payload, $userMessage);
         if (self::pendingUploadSatisfied($payload)) {
             unset($payload['pending_upload_type']);
         }
@@ -50,7 +53,7 @@ final class AiBookingWorkflow
 
         $status = (string) ($payload['ordonnance_status'] ?? 'pending');
 
-        return in_array($status, ['declined', 'uploaded', 'not_required'], true);
+        return in_array($status, ['declined', 'uploaded', 'not_required', 'deferred'], true);
     }
 
     /**
@@ -74,7 +77,7 @@ final class AiBookingWorkflow
             return false;
         }
 
-        if (!empty($payload['use_profile_address'])) {
+        if (!empty($payload['use_profile_address']) || !empty($payload['use_staff_practice_address'])) {
             return true;
         }
 
@@ -88,18 +91,14 @@ final class AiBookingWorkflow
      * @param array<string, mixed> $payload
      * @param array<string, mixed>|null $previous
      */
-    private static function resolveOrdonnanceStatus(array $payload, ?string $userMessage, ?array $previous): string
+    private static function resolveOrdonnanceStatus(array $payload, ?array $previous): string
     {
         if (self::hasOrdonnanceFile($payload)) {
             return 'uploaded';
         }
 
-        if ($userMessage !== null && self::userDeclinedOrdonnance($userMessage)) {
-            return 'declined';
-        }
-
         $fromPatch = (string) ($payload['ordonnance_status'] ?? '');
-        if (in_array($fromPatch, ['declined', 'uploaded', 'not_required'], true)) {
+        if (in_array($fromPatch, ['declined', 'uploaded', 'not_required', 'deferred'], true)) {
             return $fromPatch;
         }
 
@@ -108,7 +107,7 @@ final class AiBookingWorkflow
             if ($prev === 'uploaded' && self::hasOrdonnanceFile($payload)) {
                 return 'uploaded';
             }
-            if (in_array($prev, ['declined', 'uploaded'], true)) {
+            if (in_array($prev, ['declined', 'uploaded', 'deferred'], true)) {
                 return $prev;
             }
         }
@@ -129,44 +128,6 @@ final class AiBookingWorkflow
         $formFiles = is_array($formData['files'] ?? null) ? $formData['files'] : [];
 
         return !empty($formFiles['ordonnance']);
-    }
-
-    private static function userDeclinedOrdonnance(string $message): bool
-    {
-        $m = mb_strtolower(trim($message));
-        if ($m === '') {
-            return false;
-        }
-
-        $patterns = [
-            '/^(non\b|no\b)/u',
-            "/pas d['']ordonnance/u",
-            '/pas\s+ordonnance/u',
-            "/j['']ai pas/u",
-            '/sans ordonnance/u',
-            '/pas besoin.*ordonnance/u',
-            '/pas d ordonnance/u',
-        ];
-        foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $m)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * @param array<string, mixed> $payload
-     */
-    private static function applyPendingUploadType(array $payload, ?string $userMessage): array
-    {
-        $detected = self::detectDocumentUploadIntent($userMessage);
-        if ($detected !== null) {
-            $payload['pending_upload_type'] = $detected;
-        }
-
-        return $payload;
     }
 
     /**
@@ -195,31 +156,5 @@ final class AiBookingWorkflow
         $formFiles = is_array($formData['files'] ?? null) ? $formData['files'] : [];
 
         return !empty($formFiles[$type]);
-    }
-
-    private static function detectDocumentUploadIntent(?string $message): ?string
-    {
-        if ($message === null || trim($message) === '') {
-            return null;
-        }
-
-        $m = mb_strtolower(trim($message));
-        $wantsChange = preg_match('/modif|remplac|changer|mettre à jour|mettre a jour|nouveau|nouvelle|update/u', $m) === 1
-            || preg_match('/voici (ma|mon|mes)/u', $m) === 1;
-
-        if (preg_match('/carte[\s-]?vitale/u', $m)) {
-            return 'carte_vitale';
-        }
-        if (preg_match('/mutuelle/u', $m)) {
-            return 'carte_mutuelle';
-        }
-        if (preg_match('/autre(s)?\s+assurance|autres_assurances/u', $m)) {
-            return 'autres_assurances';
-        }
-        if ($wantsChange && preg_match('/ordonnance/u', $m)) {
-            return 'ordonnance';
-        }
-
-        return null;
     }
 }

@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActionSheetIOS, Alert, FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
 import dayjs from 'dayjs';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
@@ -21,6 +21,9 @@ import {
   type PassagePlanningChoice,
 } from '@/features/nurse-passage/components/PassagePlanningSheet';
 import { PassageSimpleListRow } from '@/features/nurse-passage/components/PassageSimpleListRow';
+import { PatientAbsenceSheet } from '@/features/patient-absence/components/PatientAbsenceSheet';
+import { deletePatientAbsence } from '@/features/patient-absence/api/patient-absence.service';
+import { countTourActiveRemainingStops, isTourStopAbsent } from '@oneandlab/shared-utils';
 import { useNurseTour } from '../hooks/use-nurse-tour';
 import { TourCalendarExportAction } from '../components/TourCalendarExportAction';
 import { TourDayStrip } from '../components/TourDayStrip';
@@ -46,6 +49,7 @@ export function NurseTourneeScreen() {
   const [planningSheetOpen, setPlanningSheetOpen] = useState(false);
   const [sortSheetOpen, setSortSheetOpen] = useState(false);
   const [manualOrderActive, setManualOrderActive] = useState(false);
+  const [absenceStop, setAbsenceStop] = useState<NurseTourStop | null>(null);
 
   const contentTopInset = useStackContentTopInset();
   const sceneInsets = useTabSceneInsets();
@@ -177,6 +181,73 @@ export function NurseTourneeScreen() {
     [date, router],
   );
 
+  const openAbsenceSheet = useCallback((stop: NurseTourStop) => {
+    if (!stop.patient_id) {
+      showToast('Patient introuvable pour cette absence', { type: 'error' });
+      return;
+    }
+    setAbsenceStop(stop);
+  }, [showToast]);
+
+  const handleManageAbsence = useCallback(
+    (stop: NurseTourStop) => {
+      if (!stop.patient_id) {
+        showToast('Patient introuvable pour cette absence', { type: 'error' });
+        return;
+      }
+      const absent = isTourStopAbsent(stop);
+      const absenceId = stop.patient_absence?.id;
+
+      const liftAbsence = () => {
+        if (!absenceId) {
+          openAbsenceSheet(stop);
+          return;
+        }
+        void (async () => {
+          try {
+            await deletePatientAbsence(stop.patient_id!, absenceId);
+            showToast('Absence levée — patient de retour', { type: 'success' });
+            void refetch();
+          } catch {
+            showToast('Suppression impossible', { type: 'error' });
+          }
+        })();
+      };
+
+      const actions = [
+        {
+          text: absent ? 'Modifier l\'absence' : 'Déclarer une absence',
+          onPress: () => openAbsenceSheet(stop),
+        },
+        ...(absent
+          ? [
+              {
+                text: 'Patient de retour — lever l\'absence',
+                style: 'destructive' as const,
+                onPress: liftAbsence,
+              },
+            ]
+          : []),
+        { text: 'Annuler', style: 'cancel' as const },
+      ];
+
+      if (Platform.OS === 'ios') {
+        const labels = actions.map((a) => a.text);
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options: labels,
+            cancelButtonIndex: labels.length - 1,
+            destructiveButtonIndex: absent ? 1 : undefined,
+          },
+          (i) => actions[i]?.onPress?.(),
+        );
+        return;
+      }
+      Alert.alert(stop.patient_name, undefined, actions);
+    },
+    [openAbsenceSheet, refetch, showToast],
+  );
+
   const hasStops = displayStops.length > 0;
 
   const sortFilterActive = Boolean(
@@ -186,7 +257,12 @@ export function NurseTourneeScreen() {
   const listHeader = useCallback(
     () => (
       <View style={styles.listHeader}>
-        {tour && hasStops ? <TourSummaryCard summary={tour.summary} /> : null}
+        {tour && hasStops ? (
+          <TourSummaryCard
+            summary={tour.summary}
+            activeRemaining={countTourActiveRemainingStops(displayStops)}
+          />
+        ) : null}
         {hasStops ? (
           <TourPassageSectionHeader
             sortActive={sortFilterActive}
@@ -249,6 +325,10 @@ export function NurseTourneeScreen() {
             renderItem={({ item: stop, index }) => {
               if (!tour) return null;
               const toggleDone = () => {
+                if (isTourStopAbsent(stop)) {
+                  handleManageAbsence(stop);
+                  return;
+                }
                 const isDone =
                   stop.visit_status === 'done' ||
                   stop.visit_status === 'skipped' ||
@@ -263,6 +343,7 @@ export function NurseTourneeScreen() {
                   isNext={stop.stop_id === tour.next_stop_id}
                   onPressName={() => openPassageDetail(stop)}
                   onToggleDone={toggleDone}
+                  onManageAbsence={() => handleManageAbsence(stop)}
                   onMoveUp={
                     showManualReorder ? () => void handleMove(stop.appointment_id, 'up') : undefined
                   }
@@ -284,6 +365,21 @@ export function NurseTourneeScreen() {
         onClose={() => setPlanningSheetOpen(false)}
         onSelect={handlePlanningChoice}
       />
+
+      {absenceStop?.patient_id ? (
+        <PatientAbsenceSheet
+          visible={Boolean(absenceStop)}
+          patientId={absenceStop.patient_id}
+          patientName={absenceStop.patient_name}
+          defaultStartDate={date}
+          existing={absenceStop.patient_absence ?? null}
+          onClose={() => setAbsenceStop(null)}
+          onSaved={() => {
+            showToast('Tournée actualisée', { type: 'success' });
+            void refetch();
+          }}
+        />
+      ) : null}
 
       {tour && hasStops ? (
         <TourSortFilterSheet

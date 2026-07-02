@@ -72,7 +72,10 @@ final class ContextComposer
                 $context['health_metrics'] = $this->healthMetricsSummary($userId, false);
             }
         } elseif (in_array($role, ['pro', 'nurse', 'preleveur'], true)) {
-            $context['accessible_patients_count'] = count($this->scopedPatientIds($user));
+            $context['profile'] = $this->profileSummary($userId, $userId, $role);
+            $context['staff_patients'] = $this->staffPatientsSummary($user);
+            $context['care_categories'] = $this->careCategoriesSummary();
+            $context['accessible_patients_count'] = count($context['staff_patients']);
             if ($targetPatientId) {
                 $context['patient'] = $this->profileSummary($targetPatientId, $userId, $role);
                 $context['appointments'] = $this->appointmentsSummary($userId, [$targetPatientId], true);
@@ -451,6 +454,46 @@ final class ContextComposer
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return $this->mapAppointments($rows);
+    }
+
+    /**
+     * @return list<array{id: string, display_name: string, first_name: ?string, last_name: ?string}>
+     */
+    private function staffPatientsSummary(array $user): array
+    {
+        $role = (string) ($user['role'] ?? '');
+        $requesterId = (string) ($user['user_id'] ?? '');
+        if (!in_array($role, ['nurse', 'pro', 'preleveur'], true) || $requesterId === '') {
+            return [];
+        }
+
+        $filters = ['role' => 'patient', 'created_by' => $requesterId];
+        $out = [];
+        $page = 1;
+        do {
+            $result = $this->userModel->getAll($filters, $page, 50, $requesterId, $role);
+            foreach ($result['data'] ?? [] as $row) {
+                if (empty($row['id'])) {
+                    continue;
+                }
+                $fn = trim((string) ($row['first_name'] ?? ''));
+                $ln = trim((string) ($row['last_name'] ?? ''));
+                $display = trim($fn . ' ' . $ln) ?: 'Patient';
+                $out[] = [
+                    'id' => (string) $row['id'],
+                    'first_name' => $fn !== '' ? $fn : null,
+                    'last_name' => $ln !== '' ? $ln : null,
+                    'display_name' => $display,
+                ];
+                if (count($out) >= 20) {
+                    break 2;
+                }
+            }
+            $pages = (int) ($result['pages'] ?? 1);
+            $page++;
+        } while ($page <= $pages && $page <= 4);
+
+        return $out;
     }
 
     /**

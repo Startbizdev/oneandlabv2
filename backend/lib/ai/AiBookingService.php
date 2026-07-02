@@ -42,11 +42,10 @@ final class AiBookingService
             $payload['patient_id'] = $user['user_id'];
         }
         $payload = $this->enricher->enrich($payload, $user);
-        $userMessage = isset($input['user_message']) ? trim((string) $input['user_message']) : null;
-        if ($userMessage === '') {
-            $userMessage = null;
+        $payload = AiBookingWorkflow::apply($payload, null, null);
+        if (!$this->payloadHasBookingSignal($payload)) {
+            throw new InvalidArgumentException('Impossible de créer un brouillon sans données de réservation');
         }
-        $payload = AiBookingWorkflow::apply($payload, $userMessage, null);
         $expires = (new DateTimeImmutable('now'))->modify('+24 hours')->format('Y-m-d H:i:s');
         $validation = UnifiedRdvValidator::validateDraft($payload, $role, true);
         $status = ($validation['valid'] && AiBookingWorkflow::allowsRecap($payload)) ? 'ready' : 'collecting';
@@ -130,10 +129,7 @@ final class AiBookingService
             $payload['patient_id'] = $user['user_id'];
         }
         $payload = $this->enricher->enrich($payload, $user);
-        if ($userMessage !== null && trim($userMessage) === '') {
-            $userMessage = null;
-        }
-        $payload = AiBookingWorkflow::apply($payload, $userMessage, $previousPayload);
+        $payload = AiBookingWorkflow::apply($payload, null, $previousPayload);
         $validation = UnifiedRdvValidator::validateDraft($payload, $role, true);
         $status = ($validation['valid'] && AiBookingWorkflow::allowsRecap($payload)) ? 'ready' : 'collecting';
 
@@ -183,7 +179,7 @@ final class AiBookingService
             $payload['patient_id'] = $user['user_id'];
         }
 
-        $payload = $this->enricher->enrich($payload, $user);
+        $payload = $this->enricher->enrich($payload, $user, null);
 
         $validation = UnifiedRdvValidator::validateDraft($payload, $role, true);
         if (!$validation['valid']) {
@@ -252,7 +248,11 @@ final class AiBookingService
             $dupHash = hash('sha256', strtolower($email));
             $existingId = $this->userModel->findPatientIdByEmailHash($dupHash);
             if ($existingId !== null) {
-                throw new RuntimeException('Un patient existe déjà avec cet email', 409);
+                return $existingId;
+            }
+            // Email déjà utilisé par un compte staff → laisser User::create basculer sur email technique
+            if ($this->userModel->findProfileByEmailHash($dupHash) !== null) {
+                $email = '';
             }
         }
 
@@ -376,5 +376,50 @@ final class AiBookingService
             INSERT INTO ai_booking_audits (id, draft_id, action, user_id, appointment_id, ai_audit_id)
             VALUES (?, ?, ?, ?, ?, ?)
         ')->execute([Uuid::v4(), $draftId, $action, $userId, $appointmentId, $aiAuditId]);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function payloadHasBookingSignal(array $payload): bool
+    {
+        if (!empty($payload['use_profile_address']) || !empty($payload['use_staff_practice_address'])) {
+            return true;
+        }
+
+        if (($payload['patient_mode'] ?? '') === 'existing' && !empty($payload['patient_id'])) {
+            return true;
+        }
+
+        foreach ([
+            'category_id',
+            'category_name',
+            'scheduled_at',
+            'type',
+            'first_name',
+            'last_name',
+            'email',
+            'phone',
+            'booking_step',
+            'selected_services',
+        ] as $key) {
+            if (trim((string) ($payload[$key] ?? '')) !== '') {
+                return true;
+            }
+        }
+
+        $address = $payload['address'] ?? null;
+        if (is_array($address) && trim((string) ($address['label'] ?? '')) !== '') {
+            return true;
+        }
+
+        $formData = is_array($payload['form_data'] ?? null) ? $payload['form_data'] : [];
+        foreach (['first_name', 'last_name', 'email', 'phone'] as $key) {
+            if (trim((string) ($formData[$key] ?? '')) !== '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

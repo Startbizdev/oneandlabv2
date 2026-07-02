@@ -95,6 +95,9 @@ final class HealthRecordService
                     'key' => $key,
                     'label_fr' => $q['label_fr'] ?? $key,
                     'type' => $q['type'] ?? 'text',
+                    'optional' => (bool) ($q['optional'] ?? true),
+                    'placeholder' => $q['placeholder'] ?? null,
+                    'options' => $q['options'] ?? null,
                     'value' => $answers[$key]['value'] ?? null,
                     'display' => $this->formatDisplay($answers[$key]['value'] ?? null),
                 ];
@@ -397,6 +400,9 @@ final class HealthRecordService
     private function formatDisplay(mixed $value): string
     {
         if ($value === null || $value === '') {
+            return self::EMPTY_DISPLAY;
+        }
+        if (is_string($value) && strtolower(trim($value)) === 'null') {
             return self::EMPTY_DISPLAY;
         }
         return match ($value) {

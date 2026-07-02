@@ -159,13 +159,20 @@ function chooseSource(): Promise<CarePhotoPickSource | null> {
 }
 
 /** Image ou PDF : appareil, galerie ou fichier (max 25 Mo). */
-export async function pickCarePhoto(): Promise<CarePhotoPickResult | null> {
-  const source = await chooseSource();
+export async function pickCarePhotoFromSource(
+  source: CarePhotoPickSource,
+): Promise<CarePhotoPickResult | null> {
   logMedDoc('pick:source', { source });
-  if (!source) return null;
   if (source === 'camera') return pickFromCamera();
   if (source === 'library') return pickFromLibrary();
   return pickFromFiles();
+}
+
+/** Image ou PDF : appareil, galerie ou fichier (max 25 Mo). */
+export async function pickCarePhoto(): Promise<CarePhotoPickResult | null> {
+  const source = await chooseSource();
+  if (!source) return null;
+  return pickCarePhotoFromSource(source);
 }
 
 /** @deprecated Préférer `pickCarePhoto()` pour récupérer aussi le MIME. */

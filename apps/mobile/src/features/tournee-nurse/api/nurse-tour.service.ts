@@ -1,4 +1,5 @@
 import { apiRequest } from '@/api/client';
+import type { PatientAbsence } from '@oneandlab/shared-types';
 
 export type TourVisitStatus = 'todo' | 'en_route' | 'on_site' | 'done' | 'skipped';
 export type TourSortMode = 'smart' | 'schedule' | 'nearest' | 'manual';
@@ -13,6 +14,8 @@ export interface NurseTourStop {
   skip_reason?: string | null;
   patient_name: string;
   patient_id?: string | null;
+  is_patient_absent_today?: boolean;
+  patient_absence?: PatientAbsence | null;
   patient_gender?: string | null;
   profile_image_url?: string | null;
   type?: string;
@@ -53,6 +56,7 @@ export interface NurseTourPayload {
   summary: {
     total_stops: number;
     done_stops: number;
+    absent_stops?: number;
     estimated_km: number;
   };
   stops: NurseTourStop[];

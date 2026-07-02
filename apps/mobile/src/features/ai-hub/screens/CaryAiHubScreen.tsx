@@ -26,6 +26,7 @@ import { resolveAssistantMessageText } from '../utils/resolve-assistant-message-
 import { stripDisclaimerFromAssistantText } from '../utils/strip-disclaimer-from-text';
 import { CaryAiChatList } from '../components/CaryAiChatList';
 import { resolveMessageRecap } from '../utils/resolve-message-recap';
+import { draftPendingUploadType } from '../utils/should-show-ai-draft-documents';
 import { useCaryAiHub, type CaryAiHubInit } from '../hooks/use-cary-ai-hub';
 import { searchAiConversations } from '../api/ai.service';
 import { useCaryAiChatScroll } from '../hooks/use-cary-ai-chat-scroll';
@@ -215,6 +216,8 @@ export function CaryAiHubScreen({
     handleSuggestion,
     confirmDraft,
     reloadConversation,
+    syncVoiceDraft,
+    onVoiceAppointmentCreated,
     handleAttach,
     handleReplaceDocument,
     clearAttachment,
@@ -255,6 +258,11 @@ export function CaryAiHubScreen({
   const voice = useVoiceSession({
     conversationId: activeId,
     onConversationSync: reloadConversation,
+    onDraftSync: syncVoiceDraft,
+    onAppointmentCreated: (appointmentId) => {
+      setVoiceOpen(false);
+      onVoiceAppointmentCreated(appointmentId);
+    },
   });
 
   const {
@@ -272,6 +280,17 @@ export function CaryAiHubScreen({
       await reloadConversation(convId);
     }
   }, [activeId, endVoiceSessionApi, resetVoiceSession, reloadConversation, voiceLastConversationId]);
+
+  const handleConfirmDraft = useCallback(
+    async (draft?: Parameters<typeof confirmDraft>[0]) => {
+      if (voiceOpen) {
+        setVoiceOpen(false);
+        resetVoiceSession({ keepConversationId: true });
+      }
+      await confirmDraft(draft);
+    },
+    [confirmDraft, resetVoiceSession, voiceOpen],
+  );
 
   const showSuggestions = messages.length <= 1 && !awaitingReply && suggestions.length > 0;
   const canSend =
@@ -372,7 +391,7 @@ export function CaryAiHubScreen({
           draft={recapState.draft}
           canConfirm={recapState.canConfirm}
           confirming={recapState.canConfirm && confirmingDraft}
-          onConfirm={(d) => void confirmDraft(d)}
+          onConfirm={(d) => void handleConfirmDraft(d)}
           onReplaceDocument={handleReplaceDocument}
         />
       ) : null;
@@ -399,7 +418,7 @@ export function CaryAiHubScreen({
       disclaimer,
       awaitingReply,
       confirmingDraft,
-      confirmDraft,
+      handleConfirmDraft,
       handleReplaceDocument,
       handleAttachmentPress,
     ],
@@ -488,7 +507,11 @@ export function CaryAiHubScreen({
         speechError={voice.speechError}
         activeDraft={activeDraft}
         confirmingDraft={confirmingDraft}
-        onConfirmDraft={(d) => void confirmDraft(d)}
+        attachingDocument={attaching}
+        onConfirmDraft={(d) => void handleConfirmDraft(d)}
+        onAttachDocument={(source) =>
+          void handleAttach(draftPendingUploadType(activeDraft ?? null), source)
+        }
         onStart={() => void voice.startConversation()}
         onStop={voice.stopConversation}
         onToggleMic={() => void voice.toggleMic()}

@@ -246,6 +246,35 @@ function formatPassageHourLabel(h: number): string {
   return `${n}h${mins.toString().padStart(2, '0')}`;
 }
 
+/** Heure décimale (ex. 8.5) → « HH:MM » pour custom_time. */
+export function passageCustomTimeFromHour(hour: number): string {
+  const h = Math.floor(hour);
+  const m = Math.round((hour - h) * 60);
+  return `${String(Math.max(0, Math.min(23, h))).padStart(2, '0')}:${String(Math.max(0, Math.min(59, m))).padStart(2, '0')}`;
+}
+
+/** custom_time requis côté API quand time_slot = custom (créneau slider inclus). */
+export function resolvePassageCustomTime(input: {
+  time_slot: PassageTimeSlot;
+  custom_time?: string | null;
+  time_range?: [number, number] | null;
+  planning_config?: unknown;
+}): string | null {
+  if (input.time_slot !== 'custom') return null;
+  const trimmed = input.custom_time?.trim();
+  if (trimmed) return trimmed.slice(0, 5);
+  const cfg = input.planning_config as { time_range?: unknown } | null | undefined;
+  const range =
+    input.time_range ??
+    (Array.isArray(cfg?.time_range) && cfg.time_range.length >= 1
+      ? ([Number(cfg.time_range[0]), Number(cfg.time_range[1] ?? cfg.time_range[0])] as [number, number])
+      : null);
+  if (range && !Number.isNaN(range[0])) {
+    return passageCustomTimeFromHour(range[0]);
+  }
+  return '09:00';
+}
+
 export function formatPassageTimeSelectionSummary(
   timeSlot: PassageTimeSlot,
   customTime?: string | null,

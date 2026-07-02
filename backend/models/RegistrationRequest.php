@@ -248,7 +248,7 @@ class RegistrationRequest
             'last_name' => $dec($r['last_name_encrypted'] ?? '', $r['last_name_dek'] ?? ''),
             'gender' => $this->genderFromRow($r, $dec),
             'phone' => $dec($r['phone_encrypted'] ?? '', $r['phone_dek'] ?? ''),
-            'address' => $dec($r['address_encrypted'] ?? '', $r['address_dek'] ?? ''),
+            'address' => $this->normalizeAddressLabel($dec($r['address_encrypted'] ?? '', $r['address_dek'] ?? '')),
             'siret' => $dec($r['siret_encrypted'] ?? '', $r['siret_dek'] ?? ''),
             'adeli' => $dec($r['adeli_encrypted'] ?? '', $r['adeli_dek'] ?? ''),
             'rpps' => $dec($r['rpps_encrypted'] ?? '', $r['rpps_dek'] ?? ''),
@@ -280,6 +280,26 @@ class RegistrationRequest
             return trim((string) $r['gender']);
         }
         return '';
+    }
+
+    /** Libellé lisible pour adresse stockée en JSON ({label,lat,lng}) ou texte libre. */
+    private function normalizeAddressLabel(string $raw): string
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return '';
+        }
+        if ($raw[0] === '{') {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $label = trim((string) ($decoded['label'] ?? ''));
+                if ($label !== '') {
+                    return $label;
+                }
+            }
+        }
+
+        return $raw;
     }
 
     public function getById(string $id): ?array
