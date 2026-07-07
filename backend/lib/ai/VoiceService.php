@@ -326,6 +326,10 @@ final class VoiceService
         }
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getSession(string $id, string $userId): ?array
     {
         $stmt = $this->db->prepare('SELECT * FROM voice_sessions WHERE id = ? AND user_id = ? LIMIT 1');
         $stmt->execute([$id, $userId]);
