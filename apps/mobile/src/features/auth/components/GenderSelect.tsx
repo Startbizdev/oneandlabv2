@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { GENDER_OPTIONS } from '@/constants/pro-emploi';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -17,7 +17,7 @@ export function GenderSelect({ label = 'Genre', value, onChange, error }: Props)
   const styles = useThemedStyles(buildStyles, 'features_auth_components_GenderSelect_tsx_styles');
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+      <AppText style={styles.label}>{label}</AppText>
       <Row wrap gap={spacing[2]}>
         {GENDER_OPTIONS.map((g) => {
           const active = value === g.value;
@@ -27,12 +27,12 @@ export function GenderSelect({ label = 'Genre', value, onChange, error }: Props)
               onPress={() => onChange(g.value)}
               style={[styles.chip, active && styles.chipActive]}
             >
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>{g.label}</Text>
+              <AppText style={[styles.chipText, active && styles.chipTextActive]}>{g.label}</AppText>
             </Pressable>
           );
         })}
       </Row>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <AppText style={styles.error}>{error}</AppText> : null}
     </View>
   );
 }

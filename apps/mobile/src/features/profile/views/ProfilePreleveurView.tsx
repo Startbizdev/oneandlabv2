@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import {
@@ -26,7 +26,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function ProfilePreleveurView() {
@@ -119,15 +119,15 @@ export function ProfilePreleveurView() {
           <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
           <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
           <View>
-            <Text style={styles.fieldLabel}>Email</Text>
+            <AppText style={styles.fieldLabel}>Email</AppText>
             <Cluster
               gap={spacing[2]}
-              leading={<Mail size={16} color={c.textTertiary} strokeWidth={2} />}
+              leading={<Mail size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
               style={styles.emailRow}
             >
-              <Text style={styles.emailText}>{user?.email ?? '—'}</Text>
+              <AppText style={styles.emailText}>{user?.email ?? '—'}</AppText>
             </Cluster>
-            <Text style={styles.fieldHint}>L'email ne peut pas être modifié depuis l'application.</Text>
+            <AppText style={styles.fieldHint}>L'email ne peut pas être modifié depuis l'application.</AppText>
           </View>
           <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         </ProfileSection>

@@ -1,7 +1,8 @@
+import { layoutRowBetween, layoutRowCenter } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react-native';
 import type { ClinicalVitalReading, ClinicalVitalType } from '@oneandlab/shared-types';
@@ -19,7 +20,7 @@ import {
   formatClinicalVitalHistoryDate,
   formatClinicalVitalRecorderName,
 } from '../utils/clinical-vital-display';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 type Props = {
@@ -69,14 +70,14 @@ export function ClinicalVitalHistorySheet({
       {historyQ.isLoading ? (
         <SkeletonList count={5} itemHeight={72} gap={spacing[2]} />
       ) : historyQ.isError ? (
-        <Text style={[styles.empty, { color: c.error }]}>
+        <AppText style={[styles.empty, { color: c.error }]}>
           {historyQ.error instanceof Error ? historyQ.error.message : 'Erreur'}
-        </Text>
+        </AppText>
       ) : !historyQ.data?.history.length ? (
         <Stack gap={spacing[3]} style={styles.emptyWrap}>
-          <Text style={[styles.empty, { color: c.textSecondary }]}>
+          <AppText style={[styles.empty, { color: c.textSecondary }]}>
             Aucune mesure enregistrée pour cette constante.
-          </Text>
+          </AppText>
           {vitalType ? (
             <Button title="Ajouter une mesure" variant="secondary" onPress={() => onAdd(vitalType)} />
           ) : null}
@@ -135,31 +136,31 @@ function HistoryRow({
     >
       <View style={styles.rowMain}>
         <View style={styles.rowTop}>
-          <Text style={[styles.rowValue, { color: c.textPrimary }]}>
+          <AppText style={[styles.rowValue, { color: c.textPrimary }]}>
             {value}
-            <Text style={[styles.rowUnit, { color: c.textSecondary }]}> {unit}</Text>
-          </Text>
+            <AppText style={[styles.rowUnit, { color: c.textSecondary }]}> {unit}</AppText>
+          </AppText>
           {isLatest ? (
             <View style={[styles.latestBadge, { backgroundColor: c.primaryLight }]}>
-              <Text style={[styles.latestBadgeText, { color: c.primary }]}>
+              <AppText style={[styles.latestBadgeText, { color: c.primary }]}>
                 Dernière
-              </Text>
+              </AppText>
             </View>
           ) : null}
         </View>
-        <Text style={[styles.rowMeta, { color: c.textSecondary }]} numberOfLines={1}>
+        <AppText style={[styles.rowMeta, { color: c.textSecondary }]} numberOfLines={1}>
           {dateLabel}
-        </Text>
-        <Text style={[styles.rowMeta, { color: c.textTertiary }]} numberOfLines={1}>
+        </AppText>
+        <AppText style={[styles.rowMeta, { color: c.textTertiary }]} numberOfLines={1}>
           Par {recorder}
-        </Text>
+        </AppText>
         {note ? (
-          <Text style={[styles.rowNote, { color: c.textSecondary }]} numberOfLines={2}>
+          <AppText style={[styles.rowNote, { color: c.textSecondary }]} numberOfLines={2}>
             {note}
-          </Text>
+          </AppText>
         ) : null}
       </View>
-      <ChevronRight size={18} color={c.textTertiary} strokeWidth={2} />
+      <ChevronRight size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />
     </Pressable>
   );
 }
@@ -176,9 +177,7 @@ function buildStyles(_c: AppColors) {
       textAlign: 'center' as const,
     },
     row: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: spacing[2],
+      ...layoutRowCenter(spacing[2]),
       borderWidth: 1,
       borderRadius: radius.lg,
       paddingHorizontal: spacing[3],
@@ -190,12 +189,10 @@ function buildStyles(_c: AppColors) {
       gap: spacing[0.5],
     },
     rowTop: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'space-between' as const,
-      gap: spacing[2],
+      ...layoutRowBetween(spacing[2]),
     },
     rowValue: {
+      minWidth: 0,
       fontFamily: fontFamily.bold,
       fontSize: fontSize.lg,
       flexShrink: 1,

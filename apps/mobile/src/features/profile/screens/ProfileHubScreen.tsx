@@ -40,7 +40,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { getNotificationsPath } from '@/navigation/notifications-route';
 import { roleRoutePrefix } from '@/navigation/role-route-prefix';
-import { elevation, radius, spacing } from '@/theme';
+import {elevation, radius, spacing, iconSize } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface MenuItemProps {
@@ -75,11 +75,11 @@ function MenuItem({ icon: Icon, label, onPress, destructive, iconColor, iconBg }
           gap={spacing[3]}
           leading={
             <View style={[styles.menuIconWrap, { backgroundColor: ib }]}>
-              <Icon size={18} color={ic} strokeWidth={2} />
+              <Icon size={iconSize.mdSm} color={ic} strokeWidth={2} />
             </View>
           }
           actions={
-            <ChevronRight size={16} color={destructive ? c.error : c.textTertiary} strokeWidth={2} />
+            <ChevronRight size={iconSize.sm} color={destructive ? c.error : c.textTertiary} strokeWidth={2} />
           }
         >
           <Animated.Text style={[styles.menuLabel, destructive && styles.menuLabelDestructive]}>

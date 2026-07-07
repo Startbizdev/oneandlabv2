@@ -1,25 +1,27 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { FilePenLine } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText, useLayoutMetrics, centeredCopyMaxWidth } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Zone visible tant qu'aucun RDV n'est choisi — évite l'effet « il faut scroller ». */
 export function PrescriptionComposerAwaitingRdv() {
   const c = useAppColors();
+  const layout = useLayoutMetrics();
   const styles = useThemedStyles(buildStyles, 'PrescriptionComposerAwaitingRdv');
+  const hintMaxWidth = centeredCopyMaxWidth(layout);
 
   return (
     <View style={styles.wrap}>
       <View style={styles.iconWrap}>
-        <FilePenLine size={20} color={c.textTertiary} strokeWidth={2} />
+        <FilePenLine size={iconSize.md} color={c.textTertiary} strokeWidth={2} />
       </View>
-      <Text style={styles.title}>Rédaction de l'ordonnance</Text>
-      <Text style={styles.hint}>
+      <AppText style={styles.title}>Rédaction de l'ordonnance</AppText>
+      <AppText style={[styles.hint, { maxWidth: hintMaxWidth }]}>
         Sélectionnez d'abord un rendez-vous ci-dessus. Le formulaire s'affichera ici.
-      </Text>
+      </AppText>
     </View>
   );
 }
@@ -57,7 +59,6 @@ function buildStyles(c: AppColors) {
       color: c.textSecondary,
       textAlign: 'center' as const,
       lineHeight: fontSize.sm * 1.5,
-      maxWidth: 280,
     },
   };
 }

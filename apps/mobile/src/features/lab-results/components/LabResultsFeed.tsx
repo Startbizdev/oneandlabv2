@@ -2,18 +2,10 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-  type ListRenderItem,
-} from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View, type ListRenderItem } from 'react-native';
 import type { LabResultListItem } from '@oneandlab/shared-types';
 import { LabResultListCard } from './LabResultListCard';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type RoleMode = 'patient' | 'nurse' | 'pro';
@@ -75,9 +67,9 @@ export function LabResultsFeed({
   const ListHeader = useCallback(
     () =>
       items.length > 0 ? (
-        <Text style={styles.sectionTitle}>
+        <AppText style={styles.sectionTitle}>
           {items.length} résultat{items.length > 1 ? 's' : ''}
-        </Text>
+        </AppText>
       ) : null,
     [items.length],
   );

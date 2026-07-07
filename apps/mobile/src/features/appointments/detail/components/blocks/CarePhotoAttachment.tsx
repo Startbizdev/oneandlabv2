@@ -3,15 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Download, FileText, ImageOff, Maximize2, RefreshCw } from 'lucide-react-native';
 import type { CarePhotoRow } from '../../api/appointment-detail.service';
 import { carePhotoAttachmentLabel, isCarePhotoPdf } from '../../utils/care-photo-file';
@@ -21,7 +13,7 @@ import { CarePhotoImage } from './CarePhotoImage';
 import { exportLocalFile } from '@/lib/downloads/open-local-file';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -161,24 +153,24 @@ function CarePhotoPdfCard({
           </View>
         ) : failed ? (
           <Pressable style={styles.center} onPress={retry} accessibilityRole="button">
-            <ImageOff size={22} color={c.textTertiary} strokeWidth={1.75} />
-            <Text style={styles.failText}>Document indisponible</Text>
+            <ImageOff size={iconSize.mdLg} color={c.textTertiary} strokeWidth={1.75} />
+            <AppText style={styles.failText}>Document indisponible</AppText>
             <Row gap={4} align="center" style={styles.retryRow}>
-              <RefreshCw size={12} color={c.primary} strokeWidth={2.5} />
-              <Text style={styles.retryText}>Réessayer</Text>
+              <RefreshCw size={iconSize['2xs']} color={c.primary} strokeWidth={2.5} />
+              <AppText style={styles.retryText}>Réessayer</AppText>
             </Row>
           </Pressable>
         ) : (
           <View style={styles.pdfBody}>
             <View style={styles.pdfIconBox}>
-              <FileText size={32} color={c.primary} strokeWidth={1.75} />
+              <FileText size={iconSize['2xl']} color={c.primary} strokeWidth={1.75} />
             </View>
-            <Text style={styles.pdfName} numberOfLines={2}>
+            <AppText style={styles.pdfName} numberOfLines={2}>
               {label}
-            </Text>
+            </AppText>
             <Row gap={6} align="center" style={styles.openRow}>
-              <Maximize2 size={14} color={c.primary} strokeWidth={2.5} />
-              <Text style={styles.openText}>Aperçu</Text>
+              <Maximize2 size={iconSize.xs} color={c.primary} strokeWidth={2.5} />
+              <AppText style={styles.openText}>Aperçu</AppText>
             </Row>
             <Pressable
               style={styles.downloadBtn}
@@ -194,8 +186,8 @@ function CarePhotoPdfCard({
                 <ActivityIndicator size="small" color={c.textSecondary} />
               ) : (
                 <Row gap={6} align="center">
-                  <Download size={14} color={c.textSecondary} strokeWidth={2.5} />
-                  <Text style={styles.downloadText}>Télécharger</Text>
+                  <Download size={iconSize.xs} color={c.textSecondary} strokeWidth={2.5} />
+                  <AppText style={styles.downloadText}>Télécharger</AppText>
                 </Row>
               )}
             </Pressable>
@@ -203,8 +195,8 @@ function CarePhotoPdfCard({
         )}
         {!loading && !failed ? (
           <Row gap={5} align="center" style={styles.zoomPill}>
-            <Maximize2 size={14} color={c.textInverse} strokeWidth={2.5} />
-            <Text style={styles.zoomPillText}>Aperçu</Text>
+            <Maximize2 size={iconSize.xs} color={c.textInverse} strokeWidth={2.5} />
+            <AppText style={styles.zoomPillText}>Aperçu</AppText>
           </Row>
         ) : null}
         {children}

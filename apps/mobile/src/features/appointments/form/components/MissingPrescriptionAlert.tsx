@@ -3,11 +3,11 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { AlertTriangle } from 'lucide-react-native';
 import { missingPrescriptionCopy } from '../constants/appointment-document-fields';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -29,14 +29,14 @@ export function MissingPrescriptionAlert({
       align="start"
       gap={spacing[2.5]}
       style={styles.box}
-      leading={<AlertTriangle size={18} color={c.warning} strokeWidth={2.25} />}
+      leading={<AlertTriangle size={iconSize.mdSm} color={c.warning} strokeWidth={2.25} />}
     >
       <View style={styles.body}>
-        <Text style={styles.title}>{title}</Text>
+        <AppText style={styles.title}>{title}</AppText>
         <Pressable onPress={() => setOpen((v) => !v)} hitSlop={8}>
-          <Text style={styles.more}>{open ? 'Masquer' : 'Plus d’info'}</Text>
+          <AppText style={styles.more}>{open ? 'Masquer' : 'Plus d’info'}</AppText>
         </Pressable>
-        {open ? <Text style={styles.desc}>{description}</Text> : null}
+        {open ? <AppText style={styles.desc}>{description}</AppText> : null}
       </View>
     </Cluster>
   );

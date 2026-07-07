@@ -3,9 +3,9 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import type { ReactNode } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { elevation, radius } from '@/theme';
+import { elevation, radius, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import {
   APP_HEADER_ORB_ICON,
@@ -75,7 +75,7 @@ export function HeaderGradientOrbButton({
             end={{ x: 1, y: 0.5 }}
             style={styles.badge}
           >
-            <Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text>
+            <AppText style={styles.badgeText} compact>{badgeCount > 99 ? '99+' : badgeCount}</AppText>
           </LinearGradient>
         </View>
       ) : null}

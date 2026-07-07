@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { Phone, MessageSquare, Mail } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { Row } from '@/components/layout/primitives';
@@ -10,7 +10,7 @@ import {
   getRelationshipLabel,
   patientDisplayName,
 } from '@/utils/appointment-detail-display';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -37,39 +37,39 @@ export function RdvPatientPortalSection({ apt }: Props) {
     <Card shadow="sm" padding="md">
       {rel ? (
         <View style={styles.block}>
-          <Text style={styles.label}>Pour qui</Text>
-          <Text style={styles.value}>{patientDisplayName(apt) || '—'}</Text>
+          <AppText style={styles.label}>Pour qui</AppText>
+          <AppText style={styles.value}>{patientDisplayName(apt) || '—'}</AppText>
           {rel.relationship_type ? (
-            <Text style={styles.hint}>{getRelationshipLabel(rel.relationship_type)}</Text>
+            <AppText style={styles.hint}>{getRelationshipLabel(rel.relationship_type)}</AppText>
           ) : null}
         </View>
       ) : null}
 
       <View style={styles.block}>
-        <Text style={styles.label}>{rel ? 'Titulaire du compte' : 'Patient'}</Text>
-        <Text style={styles.value}>{accountName}</Text>
+        <AppText style={styles.label}>{rel ? 'Titulaire du compte' : 'Patient'}</AppText>
+        <AppText style={styles.value}>{accountName}</AppText>
         <Row wrap gap={spacing[2]} style={styles.actions}>
           {phone ? (
             <Pressable onPress={() => void Linking.openURL(`tel:${phone}`)}>
               <Row gap={6} align="center" style={styles.chip}>
-                <Phone size={14} color={c.primary} strokeWidth={2} />
-                <Text style={styles.chipText}>Appeler</Text>
+                <Phone size={iconSize.xs} color={c.primary} strokeWidth={2} />
+                <AppText style={styles.chipText}>Appeler</AppText>
               </Row>
             </Pressable>
           ) : null}
           {phone ? (
             <Pressable onPress={() => void Linking.openURL(`sms:${phone}`)}>
               <Row gap={6} align="center" style={styles.chip}>
-                <MessageSquare size={14} color={c.primary} strokeWidth={2} />
-                <Text style={styles.chipText}>Message</Text>
+                <MessageSquare size={iconSize.xs} color={c.primary} strokeWidth={2} />
+                <AppText style={styles.chipText}>Message</AppText>
               </Row>
             </Pressable>
           ) : null}
           {email ? (
             <Pressable onPress={() => void Linking.openURL(`mailto:${email}`)}>
               <Row gap={6} align="center" style={styles.chip}>
-                <Mail size={14} color={c.primary} strokeWidth={2} />
-                <Text style={styles.chipText}>E-mail</Text>
+                <Mail size={iconSize.xs} color={c.primary} strokeWidth={2} />
+                <AppText style={styles.chipText}>E-mail</AppText>
               </Row>
             </Pressable>
           ) : null}

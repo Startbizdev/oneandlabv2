@@ -46,7 +46,8 @@ export function RoleAiHubRouteScreen({ role, showBackButton = false }: Props) {
       headerLeft={showBackButton ? <StackGlassBackButton /> : undefined}
       headerRight={<PatientAiHeaderMenuButton onPress={() => setHistoryOpen(true)} />}
       headerVisual={showBackButton ? 'large' : undefined}
-      shellStyle={{ flex: 1 }}
+      shellStyle={{
+    minWidth: 0, flex: 1 }}
     >
       <CaryAiHubScreen
         role={role}

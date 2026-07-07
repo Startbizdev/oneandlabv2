@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useEffect, useMemo } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Clock, FastForward, Sparkles, Sun } from 'lucide-react-native';
 import {
@@ -17,7 +17,7 @@ import {
 } from '../utils/booking-availability-utils';
 import type { AvailabilityType, UrgentTimingMode } from '../utils/availability';
 import { VipScheduledTimePicker } from './VipScheduledTimePicker';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 interface Props {
@@ -78,7 +78,7 @@ export function BookingAvailabilitySection({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>Disponibilité</Text>
+      <AppText style={styles.label}>Disponibilité</AppText>
 
       <Row gap={spacing[1]} style={styles.segmentShell}>
         {tabs.map((tab) => {
@@ -97,11 +97,11 @@ export function BookingAvailabilitySection({
             >
               <Row gap={spacing[1]} align="center" justify="center">
                 <Icon
-                  size={15}
+                  size={iconSize.xs}
                   color={isVip ? (on ? '#7c2d12' : '#b45309') : on ? c.primaryDark : c.textTertiary}
                   strokeWidth={2.2}
                 />
-                <Text
+                <AppText
                   style={[
                     styles.segmentLabel,
                     on && (isVip ? styles.segmentLabelVipActive : styles.segmentLabelActive),
@@ -110,7 +110,7 @@ export function BookingAvailabilitySection({
                   numberOfLines={1}
                 >
                   {tab.label}
-                </Text>
+                </AppText>
               </Row>
             </Pressable>
           );
@@ -130,33 +130,33 @@ export function BookingAvailabilitySection({
         <View style={styles.vipCard}>
           <Row gap={spacing[2]} align="start">
             <View style={styles.vipIconWrap}>
-              <Sparkles size={18} color="#b45309" strokeWidth={2.2} />
+              <Sparkles size={iconSize.mdSm} color="#b45309" strokeWidth={2.2} />
             </View>
             <View style={styles.vipTextWrap}>
-              <Text style={styles.vipTitle}>Horaire VIP · {vipFeeLabel}</Text>
-              <Text style={styles.vipDesc}>
+              <AppText style={styles.vipTitle}>Horaire VIP · {vipFeeLabel}</AppText>
+              <AppText style={styles.vipDesc}>
                 Priorisation 6h–19h. Au moment de la validation, paiement via {Platform.OS === 'ios' ? 'App Store' : 'Google Play'} pour confirmer votre réservation.
-              </Text>
+              </AppText>
             </View>
           </Row>
 
-          <Text style={styles.vipWhenLabel}>Quand ?</Text>
+          <AppText style={styles.vipWhenLabel}>Quand ?</AppText>
           <Row gap={spacing[2]}>
             <Pressable
               onPress={() => onUrgentTimingMode?.('asap')}
               style={[styles.vipModeBtn, urgentTimingMode === 'asap' && styles.vipModeBtnActive]}
             >
-              <FastForward size={18} color="#b45309" strokeWidth={2.2} />
-              <Text style={styles.vipModeTitle}>Le plus vite possible</Text>
-              <Text style={styles.vipModeSub}>Priorisation pour le jour choisi</Text>
+              <FastForward size={iconSize.mdSm} color="#b45309" strokeWidth={2.2} />
+              <AppText style={styles.vipModeTitle}>Le plus vite possible</AppText>
+              <AppText style={styles.vipModeSub}>Priorisation pour le jour choisi</AppText>
             </Pressable>
             <Pressable
               onPress={() => onUrgentTimingMode?.('scheduled')}
               style={[styles.vipModeBtn, urgentTimingMode === 'scheduled' && styles.vipModeBtnActive]}
             >
-              <Clock size={18} color="#b45309" strokeWidth={2.2} />
-              <Text style={styles.vipModeTitle}>Heure précise</Text>
-              <Text style={styles.vipModeSub}>Par pas de 15 min</Text>
+              <Clock size={iconSize.mdSm} color="#b45309" strokeWidth={2.2} />
+              <AppText style={styles.vipModeTitle}>Heure précise</AppText>
+              <AppText style={styles.vipModeSub}>Par pas de 15 min</AppText>
             </Pressable>
           </Row>
 
@@ -213,7 +213,7 @@ function buildStyles(c: AppColors) {
   },
   segmentLabel: {
     fontFamily: fontFamily.semiBold,
-    fontSize: 10,
+    fontSize: fontSize['2xs'],
     lineHeight: lh(10, 1.15),
     color: c.textTertiary,
     ...(Platform.OS === 'android'
@@ -245,7 +245,8 @@ function buildStyles(c: AppColors) {
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
-  vipTextWrap: { flex: 1, gap: spacing[1] },
+  vipTextWrap: {
+    minWidth: 0, flex: 1, gap: spacing[1] },
   vipTitle: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.sm,
@@ -263,6 +264,7 @@ function buildStyles(c: AppColors) {
     color: c.textTertiary,
   },
   vipModeBtn: {
+    minWidth: 0,
     flex: 1,
     gap: spacing[1],
     alignItems: 'center' as const,
@@ -284,7 +286,7 @@ function buildStyles(c: AppColors) {
   },
   vipModeSub: {
     fontFamily: fontFamily.regular,
-    fontSize: 10,
+    fontSize: fontSize['2xs'],
     color: c.textTertiary,
     textAlign: 'center' as const,
   },

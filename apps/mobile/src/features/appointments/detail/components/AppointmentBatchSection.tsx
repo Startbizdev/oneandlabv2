@@ -1,6 +1,6 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { Row } from '@/components/layout/primitives';
@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { RdvCancellationBanner } from './RdvCancellationBanner';
 import { RdvFieldRows } from './RdvFieldRows';
 import { RdvInfoCard } from './RdvInfoCard';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function batchLineTitle(appt: Appointment, index: number, isMulti: boolean): string | null {
@@ -42,8 +42,8 @@ export function AppointmentBatchSection({ appointments, role, isMultiBatch }: Pr
   return (
     <Card shadow="sm" padding="none">
       <View style={styles.mergedHeader}>
-        <Text style={styles.mergedTitle}>Lot de rendez-vous</Text>
-        <Text style={styles.mergedSub}>{appointments.length} actes liés</Text>
+        <AppText style={styles.mergedTitle}>Lot de rendez-vous</AppText>
+        <AppText style={styles.mergedSub}>{appointments.length} actes liés</AppText>
       </View>
       {appointments.map((appt, idx) => {
         const title = batchLineTitle(appt, idx, true);
@@ -51,7 +51,7 @@ export function AppointmentBatchSection({ appointments, role, isMultiBatch }: Pr
           <View key={appt.id} style={styles.batchBlock}>
             {title ? (
               <Row justify="between" align="center" gap={spacing[2]} style={styles.batchTitleRow}>
-                <Text style={styles.batchTitle}>{title}</Text>
+                <AppText style={styles.batchTitle}>{title}</AppText>
                 <StatusBadge status={appt.status} size="sm" />
               </Row>
             ) : null}

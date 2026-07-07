@@ -1,14 +1,14 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Row } from '@/components/layout/primitives';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { api } from '@/api/client';
 import { StaffPatientKvSection } from '../StaffPatientKvSection';
 import { DetailSection } from '../layout/DetailSection';
 import { canLeaveReview } from '@/utils/can-leave-review';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -94,7 +94,7 @@ export function PatientRdvUnifiedCard({
         <Row wrap gap={spacing[2]}>
           {actionItems.map((a) => (
             <Pressable key={a.key} onPress={a.onPress} style={styles.actionBtn}>
-              <Text style={styles.actionBtnText}>{a.label}</Text>
+              <AppText style={styles.actionBtnText}>{a.label}</AppText>
             </Pressable>
           ))}
         </Row>

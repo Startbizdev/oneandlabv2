@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { getDefaultHeaderHeight, getHeaderTitle } from '@react-navigation/elements';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import type { NativeStackHeaderProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +14,7 @@ import {
 } from '@/components/navigation/header-layout';
 import { StackHeaderBackButton } from '@/navigation/StackHeaderBackButton';
 
-import { fontFamily, fontSize } from '@/theme/typography';
+import { fontFamily, fontSize, AppText } from '@/theme';
 
 const STATUS_BAR_OFFSET = 0;
 
@@ -76,13 +76,13 @@ export function CaryStackHeader({ options, route, back, navigation }: NativeStac
 
           <View style={[styles.titleSlot, !headerLeftNode && { paddingLeft: padLeft }]}>
             {titleIsString ? (
-              <Text
+              <AppText
                 style={[styles.titleText, options.headerTitleStyle]}
                 numberOfLines={2}
                 ellipsizeMode="tail"
               >
                 {headerTitleNode}
-              </Text>
+              </AppText>
             ) : (
               headerTitleNode
             )}

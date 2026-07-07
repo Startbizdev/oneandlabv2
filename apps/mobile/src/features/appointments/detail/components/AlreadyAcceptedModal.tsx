@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Modal, StyleSheet, Text, View } from 'react-native';
+import { Modal, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function AlreadyAcceptedModal() {
@@ -14,13 +14,13 @@ export function AlreadyAcceptedModal() {
     <Modal transparent animationType="fade">
       <View style={styles.backdrop}>
         <View style={[styles.card, elevation.lg]}>
-          <Text style={styles.emoji} accessibilityRole="image">
+          <AppText style={styles.emoji} accessibilityRole="image">
             😔
-          </Text>
-          <Text style={styles.title}>Déjà accepté</Text>
-          <Text style={styles.message}>
+          </AppText>
+          <AppText style={styles.title}>Déjà accepté</AppText>
+          <AppText style={styles.message}>
             Ce rendez-vous a déjà été accepté par un autre préleveur.
-          </Text>
+          </AppText>
           <Button title="OK" onPress={() => router.back()} fullWidth size="lg" />
         </View>
       </View>
@@ -47,7 +47,7 @@ function buildStyles(c: AppColors) {
     width: '100%' as const,
   },
   emoji: {
-    fontSize: 56,
+    fontSize: fontSize['5xl'],
     lineHeight: 60,
     marginBottom: spacing[1],
   },

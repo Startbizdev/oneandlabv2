@@ -3,10 +3,10 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { ListFilter, Search, X } from 'lucide-react-native';
 import { Cluster, Row, Stack } from '@/components/layout/primitives';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface FilterChip {
@@ -95,7 +95,7 @@ export function AppointmentsListFilterBar({
           gap={spacing[2]}
           align="center"
           style={[styles.searchField, elevation.xs]}
-          leading={<Search size={16} color={c.textTertiary} strokeWidth={2} />}
+          leading={<Search size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
           actions={
             search.length > 0 ? (
               <Pressable
@@ -103,7 +103,7 @@ export function AppointmentsListFilterBar({
                 hitSlop={8}
                 accessibilityLabel="Effacer la recherche"
               >
-                <X size={16} color={c.textTertiary} strokeWidth={2} />
+                <X size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />
               </Pressable>
             ) : undefined
           }
@@ -127,13 +127,13 @@ export function AppointmentsListFilterBar({
             accessibilityLabel="Filtres"
           >
             <ListFilter
-              size={18}
+              size={iconSize.mdSm}
               color={advancedFilterCount > 0 ? c.primary : c.textSecondary}
               strokeWidth={2}
             />
             {advancedFilterCount > 0 ? (
               <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>{advancedFilterCount}</Text>
+                <AppText style={styles.filterBadgeText}>{advancedFilterCount}</AppText>
               </View>
             ) : null}
           </Pressable>
@@ -151,8 +151,8 @@ export function AppointmentsListFilterBar({
                 accessibilityLabel={`Retirer le filtre ${chip.label}`}
               >
                 <Row gap={spacing[1]} align="center">
-                  <Text style={styles.chipLabel}>{chip.label}</Text>
-                  <X size={14} color={c.primary} strokeWidth={2.5} />
+                  <AppText style={styles.chipLabel}>{chip.label}</AppText>
+                  <X size={iconSize.xs} color={c.primary} strokeWidth={2.5} />
                 </Row>
               </Pressable>
             ))}

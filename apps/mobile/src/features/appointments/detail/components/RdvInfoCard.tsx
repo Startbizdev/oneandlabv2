@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import { CalendarDays, Clock } from 'lucide-react-native';
@@ -11,7 +11,7 @@ import { Cluster, Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -28,9 +28,9 @@ export function RdvInfoCard({
   return (
     <Card shadow="sm" padding="md">
       <Row justify="between" align="start" gap={spacing[3]} style={styles.topRow}>
-        <Text style={styles.category} numberOfLines={2}>
+        <AppText style={styles.category} numberOfLines={2}>
           {apt.category_name ?? 'Rendez-vous'}
-        </Text>
+        </AppText>
         <StatusBadge status={apt.status} size="md" />
       </Row>
 
@@ -39,25 +39,25 @@ export function RdvInfoCard({
         align="center"
         leading={
           <View style={styles.iconCircle}>
-            <CalendarDays size={18} color={c.primary} strokeWidth={2} />
+            <CalendarDays size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
           </View>
         }
       >
         <View style={styles.dateTexts}>
           {scheduled ? (
             <>
-              <Text style={styles.dayText}>
+              <AppText style={styles.dayText}>
                 {scheduled.format('dddd D MMMM YYYY')}
-              </Text>
+              </AppText>
               {timeLabel ? (
                 <Row gap={4} align="center">
-                  <Clock size={12} color={c.textTertiary} strokeWidth={2} />
-                  <Text style={styles.timeText}>{timeLabel}</Text>
+                  <Clock size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2} />
+                  <AppText style={styles.timeText}>{timeLabel}</AppText>
                 </Row>
               ) : null}
             </>
           ) : (
-            <Text style={styles.dayMuted}>Date à définir</Text>
+            <AppText style={styles.dayMuted}>Date à définir</AppText>
           )}
         </View>
       </Cluster>

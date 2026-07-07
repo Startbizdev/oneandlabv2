@@ -2,14 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, type ReactNode } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { ActivityIndicator, Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import Animated, {
   runOnJS,
@@ -20,7 +13,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { ArrowRight } from 'lucide-react-native';
-import { animation, elevation, radius, spacing } from '@/theme';
+import { animation, elevation, radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface BookingPremiumStepCtaProps {
@@ -137,12 +130,12 @@ export function BookingPremiumStepCta({
                 style={({ pressed }) => [pressed && styles.badgePressed]}
               >
                 <View style={[styles.stepBadge, loading && styles.leadingMuted]}>
-                  <Text style={styles.stepNum}>{badgeValue}</Text>
+                  <AppText style={styles.stepNum}>{badgeValue}</AppText>
                 </View>
               </Pressable>
             ) : (
               <View style={[styles.stepBadge, loading && styles.leadingMuted]}>
-                <Text style={styles.stepNum}>{badgeValue}</Text>
+                <AppText style={styles.stepNum}>{badgeValue}</AppText>
               </View>
             )
           ) : leadingIcon ? (
@@ -158,13 +151,13 @@ export function BookingPremiumStepCta({
           ) : null}
 
           <View style={styles.copy}>
-            <Text style={[styles.title, isList && styles.titleList]} numberOfLines={1}>
+            <AppText style={[styles.title, isList && styles.titleList]} numberOfLines={1}>
               {title}
-            </Text>
+            </AppText>
             {!isList && subtitle ? (
-              <Text style={styles.subtitle} numberOfLines={1}>
+              <AppText style={styles.subtitle} numberOfLines={1}>
                 {subtitle}
-              </Text>
+              </AppText>
             ) : null}
           </View>
 

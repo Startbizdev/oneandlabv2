@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { Lock } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
@@ -11,7 +11,7 @@ import { forgotPassword, updatePassword } from '@/features/auth/api/auth.service
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { validatePasswordStrength, passwordsMatch } from '@oneandlab/shared-utils';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function PasswordManagementPanel() {
@@ -77,16 +77,16 @@ export function PasswordManagementPanel() {
         align="start"
         leading={
           <View style={[styles.iconWrap, { backgroundColor: c.primaryLight }]}>
-            <Lock size={20} color={c.primary} strokeWidth={2.25} />
+            <Lock size={iconSize.md} color={c.primary} strokeWidth={2.25} />
           </View>
         }
         style={styles.header}
       >
         <View style={styles.headerText}>
-          <Text style={[styles.title, { color: c.textPrimary }]}>Mot de passe</Text>
-          <Text style={[styles.sub, { color: c.textSecondary }]}>
+          <AppText style={[styles.title, { color: c.textPrimary }]}>Mot de passe</AppText>
+          <AppText style={[styles.sub, { color: c.textSecondary }]}>
             Facultatif — le code email reste disponible
-          </Text>
+          </AppText>
         </View>
       </Cluster>
       {hasPassword ? (

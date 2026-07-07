@@ -62,4 +62,6 @@ export interface AuthUser {
   avatar?: string | null;
   has_password?: boolean;
   must_change_password?: boolean;
+  /** Adresse cabinet (infirmier / pro) — renvoyée par `/auth/me?scope=mobile`. */
+  address?: Address | null;
 }

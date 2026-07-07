@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SkeletonList } from '@/components/ui/skeletons';
@@ -21,7 +21,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -121,10 +121,10 @@ export function ProfileNurseQualificationsSection({
     <SkeletonList count={4} itemHeight={52} gap={spacing[2]} />
   ) : (
     <>
-      <Text style={[styles.hint, bare && styles.hintBare]}>
+      <AppText style={[styles.hint, bare && styles.hintBare]}>
         Activez les diplômes affichés sur votre fiche publique. Chaque changement est enregistré
         automatiquement.
-      </Text>
+      </AppText>
       <View style={[styles.list, bare && styles.listBare]}>
         {NURSE_QUALIFICATIONS.map((item) => {
           const on =
@@ -142,16 +142,16 @@ export function ProfileNurseQualificationsSection({
               }
               style={[styles.row, on && styles.rowEnabled, busy && styles.rowBusy]}
             >
-              <Text style={styles.rowTitle} numberOfLines={1}>
+              <AppText style={styles.rowTitle} numberOfLines={1}>
                 {item.label}
-              </Text>
+              </AppText>
             </Cluster>
           );
         })}
       </View>
       {showOtherFields ? (
         <View style={[styles.otherBlock, bare && styles.otherBlockBare]}>
-          <Text style={styles.otherTitle}>Autres formations (précisez)</Text>
+          <AppText style={styles.otherTitle}>Autres formations (précisez)</AppText>
           {otherFormations.map((val, idx) => (
             <Row key={idx} gap={spacing[2]} align="start" style={styles.otherRow}>
               <View style={styles.otherInput}>
@@ -174,7 +174,7 @@ export function ProfileNurseQualificationsSection({
                 hitSlop={8}
                 style={styles.trashBtn}
               >
-                <Trash2 size={18} color={c.error} strokeWidth={2} />
+                <Trash2 size={iconSize.mdSm} color={c.error} strokeWidth={2} />
               </Pressable>
             </Row>
           ))}
@@ -185,8 +185,8 @@ export function ProfileNurseQualificationsSection({
             }}
           >
             <Row gap={spacing[2]} align="center" style={styles.addBtn}>
-              <Plus size={16} color={c.primary} strokeWidth={2.5} />
-              <Text style={styles.addText}>Ajouter une formation</Text>
+              <Plus size={iconSize.sm} color={c.primary} strokeWidth={2.5} />
+              <AppText style={styles.addText}>Ajouter une formation</AppText>
             </Row>
           </Pressable>
         </View>

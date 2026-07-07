@@ -2,7 +2,7 @@ import { palette, type AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import {
@@ -20,7 +20,7 @@ import {
 } from '@/utils/rdv-maquette-card-display';
 import { buildRdvListCardTypography } from './rdv-list-card-typography';
 import { maskOfferCounterparty } from '@/utils/offer-privacy-display';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 
 const LIST_CARD_INSET_X = spacing[4];
 
@@ -60,9 +60,9 @@ function MaquetteCardBlock({
       ) : null}
 
       {demandeNotes ? (
-        <Text style={styles.demandeNotes} numberOfLines={2}>
+        <AppText style={styles.demandeNotes} numberOfLines={2}>
           {demandeNotes}
-        </Text>
+        </AppText>
       ) : null}
     </View>
   );
@@ -73,7 +73,7 @@ function CardNavChevron() {
   const styles = useThemedStyles(buildStyles);
   return (
     <View style={styles.chevronCorner} pointerEvents="none" accessible={false}>
-      <ChevronRight size={20} color={c.textSecondary} strokeWidth={2.15} style={styles.chevronIcon} />
+      <ChevronRight size={iconSize.md} color={c.textSecondary} strokeWidth={2.15} style={styles.chevronIcon} />
     </View>
   );
 }

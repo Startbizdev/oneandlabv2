@@ -1,10 +1,33 @@
 <template>
   <AppPageShell class="space-y-6">
     <template #pageHeader>
-      <AppPageHeader :edge-bleed="false" title="Ma tournée" :description="tourneeDescription" />
+      <AppPageHeader :edge-bleed="false" title="Ma tournée" :description="tourneeDescription">
+        <template #actions>
+          <div class="flex flex-wrap items-center gap-2">
+            <UButton
+              color="neutral"
+              variant="outline"
+              size="sm"
+              icon="i-lucide-locate-fixed"
+              :loading="locating"
+              @click="refreshWithLocation"
+            >
+              Ma position
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="outline"
+              size="sm"
+              icon="i-lucide-sliders-horizontal"
+              @click="sortModalOpen = true"
+            >
+              {{ sortModeLabel }}
+            </UButton>
+          </div>
+        </template>
+      </AppPageHeader>
     </template>
 
-    <!-- Navigation jour (même barre avec / sans RDV) -->
     <div
       class="flex items-center justify-between gap-2 rounded-xl border border-gray-200/80 bg-white/90 px-2 py-2 shadow-sm dark:border-gray-800 dark:bg-gray-900/50 sm:px-3"
     >
@@ -15,8 +38,8 @@
         class="shrink-0"
         icon="i-lucide-chevron-left"
         aria-label="Jour précédent"
-        :disabled="tourneeLoading || dayOffset <= TOURNEE_OFFSET_MIN"
-        @click="shiftDay(-1)"
+        :disabled="loading || dayOffset <= TOURNEE_OFFSET_MIN"
+        @click="onShiftDay(-1)"
       />
       <p class="min-w-0 flex-1 truncate text-center text-sm font-semibold capitalize text-gray-900 dark:text-white">
         {{ selectedDayNavLabel }}
@@ -28,17 +51,30 @@
         class="shrink-0"
         icon="i-lucide-chevron-right"
         aria-label="Jour suivant"
-        :disabled="tourneeLoading || dayOffset >= TOURNEE_OFFSET_MAX"
-        @click="shiftDay(1)"
+        :disabled="loading || dayOffset >= TOURNEE_OFFSET_MAX"
+        @click="onShiftDay(1)"
       />
     </div>
 
-    <div v-if="tourneeLoading" class="flex flex-col items-center justify-center py-16">
+    <div
+      v-if="tour && tour.stops.length > 0"
+      class="rounded-xl border border-primary-200/60 bg-primary-50/40 px-4 py-3 text-sm text-primary-900 dark:border-primary-900/40 dark:bg-primary-950/30 dark:text-primary-100"
+    >
+      <span class="font-semibold">{{ tour.stops.length }} arrêt{{ tour.stops.length > 1 ? 's' : '' }}</span>
+      <span v-if="tour.summary.estimated_km > 0">
+        · ~{{ tour.summary.estimated_km.toFixed(1) }} km estimés
+      </span>
+      <span v-if="tour.summary.done_stops > 0">
+        · {{ tour.summary.done_stops }} terminé{{ tour.summary.done_stops > 1 ? 's' : '' }}
+      </span>
+    </div>
+
+    <div v-if="loading" class="flex flex-col items-center justify-center py-16">
       <UIcon name="i-lucide-loader-2" class="mb-3 h-8 w-8 animate-spin text-primary-500" />
       <p class="text-sm text-gray-500 dark:text-gray-400">Chargement de la tournée…</p>
     </div>
     <UEmpty
-      v-else-if="tourneeSorted.length === 0"
+      v-else-if="!tour || tour.stops.length === 0"
       icon="i-lucide-calendar-off"
       :title="emptyTitle"
       :description="emptyDescription"
@@ -49,41 +85,69 @@
       v-else
       class="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900/50"
     >
-      <li v-for="(rdv, index) in tourneeSorted" :key="rdv.id">
-        <NuxtLink
-          :to="`/preleveur/appointments/${rdv.id}`"
-          class="flex flex-wrap items-stretch gap-3 px-3 py-3.5 transition-colors sm:px-4"
-          :class="tourneeRowLinkClass(rdv)"
+      <li v-for="(stop, index) in tour.stops" :key="stop.appointment_id">
+        <div
+          class="flex flex-wrap items-stretch gap-3 px-3 py-3.5 sm:px-4"
+          :class="tourneeRowClass(stop)"
         >
           <div
             class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold tabular-nums ring-1"
-            :class="tourneeStepBadgeClass(rdv)"
-            :aria-label="`Étape ${index + 1}`"
+            :class="tourneeStepBadgeClass(stop)"
+            :aria-label="`Étape ${stop.position}`"
           >
-            {{ index + 1 }}
+            {{ stop.position }}
           </div>
-          <div class="min-w-0 flex-1 space-y-1">
+          <NuxtLink
+            :to="`/preleveur/appointments/${stop.appointment_id}`"
+            class="min-w-0 flex-1 space-y-1 transition-opacity hover:opacity-90"
+          >
             <div class="flex flex-wrap items-center gap-2">
               <span class="text-sm font-semibold tabular-nums text-gray-900 dark:text-white">
-                {{ formatCreneau(rdv) }}
+                {{ formatCreneau(stop) }}
               </span>
-              <UBadge :color="tourneeStatusColor(rdv.status)" variant="subtle" size="xs">
-                {{ tourneeStatusLabel(rdv.status) }}
+              <UBadge :color="tourneeStatusColor(stop.status)" variant="subtle" size="xs">
+                {{ tourneeStatusLabel(stop.status) }}
               </UBadge>
             </div>
-            <p v-if="tourneePatientLine(rdv)" class="truncate text-xs text-gray-600 dark:text-gray-400">
-              {{ tourneePatientLine(rdv) }}
+            <p class="truncate text-xs font-medium text-gray-700 dark:text-gray-300">
+              {{ stop.patient_name }}
             </p>
-            <p v-if="tourneeAddressLine(rdv)" class="truncate text-xs text-gray-500 dark:text-gray-500">
-              {{ tourneeAddressLine(rdv) }}
+            <p v-if="stop.address_line" class="truncate text-xs text-gray-500 dark:text-gray-500">
+              {{ stop.address_line }}
             </p>
+            <TourStopRouteChip v-if="stop.position > 1" :stop="stop" class="mt-1" />
+          </NuxtLink>
+          <div v-if="showManualReorder" class="flex shrink-0 flex-col gap-1 self-center">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              icon="i-lucide-chevron-up"
+              :disabled="saving || index === 0"
+              aria-label="Monter"
+              @click="moveStop(index, -1)"
+            />
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              icon="i-lucide-chevron-down"
+              :disabled="saving || index >= tour.stops.length - 1"
+              aria-label="Descendre"
+              @click="moveStop(index, 1)"
+            />
           </div>
-          <div class="flex shrink-0 items-center self-center">
-            <UIcon name="i-lucide-chevron-right" class="h-5 w-5 text-gray-300 dark:text-gray-600" />
-          </div>
-        </NuxtLink>
+        </div>
       </li>
     </ul>
+
+    <TourSortFilterModal
+      v-model:open="sortModalOpen"
+      :sort-mode="tour?.plan.sort_mode ?? 'smart'"
+      :locked="!!tour?.plan.manual_order_locked"
+      @select="applySortMode"
+      @reset="() => applySortMode('smart')"
+    />
   </AppPageShell>
 </template>
 
@@ -94,17 +158,38 @@ definePageMeta({
   role: 'preleveur',
 });
 
-import { apiFetch } from '~/utils/api';
+import TourSortFilterModal from '~/components/nurse/TourSortFilterModal.vue';
+import TourStopRouteChip from '~/components/nurse/TourStopRouteChip.vue';
+import { usePreleveurTourWeb } from '~/composables/usePreleveurTourWeb';
+import type { PreleveurTourStop } from '~/composables/usePreleveurTourWeb';
 import { isAppointmentSlotEndedForPreleveurTournee } from '~/utils/appointment-datetime-fr';
 
-const { user } = useAuth();
-const tourneeLoading = ref(false);
-const tourneeRaw = ref<any[]>([]);
-
-/** Décalage par rapport à aujourd’hui (fuseau local navigateur) pour la plage API. */
-const dayOffset = ref(0);
 const TOURNEE_OFFSET_MIN = -90;
 const TOURNEE_OFFSET_MAX = 90;
+const sortModalOpen = ref(false);
+const dayOffset = ref(0);
+
+const {
+  selectedDate,
+  loading,
+  saving,
+  locating,
+  tour,
+  sortModeLabel,
+  showManualReorder,
+  shiftDay,
+  loadTour,
+  refreshWithLocation,
+  moveStop,
+  applySortMode,
+} = usePreleveurTourWeb();
+
+function onShiftDay(delta: number) {
+  const next = dayOffset.value + delta;
+  if (next < TOURNEE_OFFSET_MIN || next > TOURNEE_OFFSET_MAX) return;
+  dayOffset.value = next;
+  shiftDay(delta);
+}
 
 function baseDateForOffset(): Date {
   const d = new Date();
@@ -115,22 +200,20 @@ function baseDateForOffset(): Date {
 
 const tourneeDescription = computed(() => {
   try {
-    const d = baseDateForOffset();
-    return d.toLocaleDateString('fr-FR', {
+    return baseDateForOffset().toLocaleDateString('fr-FR', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     });
   } catch {
-    return 'Tournée';
+    return 'Tournée optimisée';
   }
 });
 
 const selectedDayNavLabel = computed(() => {
   try {
-    const d = baseDateForOffset();
-    return d.toLocaleDateString('fr-FR', {
+    return baseDateForOffset().toLocaleDateString('fr-FR', {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
@@ -141,101 +224,45 @@ const selectedDayNavLabel = computed(() => {
   }
 });
 
-const emptyTitle = computed(() => {
-  if (dayOffset.value === 0) return 'Aucun rendez-vous ce jour-là';
-  return 'Aucune tournée prévue';
-});
+const emptyTitle = computed(() =>
+  dayOffset.value === 0 ? 'Aucun rendez-vous ce jour-là' : 'Aucune tournée prévue',
+);
 
 const emptyDescription = computed(() =>
   dayOffset.value === 0
     ? 'Vous n’avez pas de prélèvement assigné à votre nom pour cette journée.'
-    : 'Aucun prélèvement ne vous est attribué pour la date affichée. Utilisez les flèches pour consulter les jours suivants ou précédents.',
+    : 'Aucun prélèvement ne vous est attribué pour la date affichée.',
 );
 
-function pad2(n: number) {
-  return String(n).padStart(2, '0');
-}
 
-function dateRangeParamsForSelectedDay() {
-  const start = baseDateForOffset();
-  const end = new Date(start);
-  end.setHours(23, 59, 59, 999);
-  return {
-    date_from: `${start.getFullYear()}-${pad2(start.getMonth() + 1)}-${pad2(start.getDate())} ${pad2(start.getHours())}:${pad2(start.getMinutes())}:${pad2(start.getSeconds())}`,
-    date_to: `${end.getFullYear()}-${pad2(end.getMonth() + 1)}-${pad2(end.getDate())} ${pad2(end.getHours())}:${pad2(end.getMinutes())}:${pad2(end.getSeconds())}`,
-  };
-}
-
-async function loadTournee() {
-  if (!user.value?.id) return;
-  tourneeLoading.value = true;
-  try {
-    const { date_from, date_to } = dateRangeParamsForSelectedDay();
-    const params = new URLSearchParams({
-      page: '1',
-      limit: '500',
-      type: 'blood_test',
-      date_from,
-      date_to,
-    });
-    const response = await apiFetch<{ success: boolean; data?: any[]; error?: string }>(`/appointments?${params.toString()}`, {
-      method: 'GET',
-    });
-    if (response.success && response.data) {
-      const mine = String(user.value.id);
-      tourneeRaw.value = response.data.filter((a: any) => a && String(a.assigned_to ?? '') === mine);
-    } else {
-      tourneeRaw.value = [];
-    }
-  } catch {
-    tourneeRaw.value = [];
-  } finally {
-    tourneeLoading.value = false;
-  }
-}
-
-function shiftDay(delta: number) {
-  const next = dayOffset.value + delta;
-  if (next < TOURNEE_OFFSET_MIN || next > TOURNEE_OFFSET_MAX) return;
-  dayOffset.value = next;
-  void loadTournee();
-}
-
-const tourneeSorted = computed(() => {
-  const list = [...tourneeRaw.value];
-  list.sort((a, b) => {
-    const ta = new Date(a.scheduled_at || 0).getTime();
-    const tb = new Date(b.scheduled_at || 0).getTime();
-    if (ta !== tb) return ta - tb;
-    return String(a.id || '').localeCompare(String(b.id || ''));
-  });
-  return list;
+onMounted(() => {
+  void loadTour();
 });
 
-function tourneeCreneauTermine(rdv: any): boolean {
-  return isAppointmentSlotEndedForPreleveurTournee(rdv);
+function stopAsRdv(stop: PreleveurTourStop) {
+  return { scheduled_at: stop.scheduled_at, status: stop.status };
 }
 
-function tourneeRowLinkClass(rdv: any) {
-  if (tourneeCreneauTermine(rdv)) {
-    return 'bg-emerald-50/95 hover:bg-emerald-100/90 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/55';
+function tourneeCreneauTermine(stop: PreleveurTourStop): boolean {
+  return isAppointmentSlotEndedForPreleveurTournee(stopAsRdv(stop));
+}
+
+function tourneeRowClass(stop: PreleveurTourStop) {
+  if (stop.status === 'completed' || tourneeCreneauTermine(stop)) {
+    return 'bg-emerald-50/95 dark:bg-emerald-950/40';
   }
-  return 'hover:bg-gray-50 dark:hover:bg-gray-800/50';
+  return '';
 }
 
-function tourneeStepBadgeClass(rdv: any) {
-  if (tourneeCreneauTermine(rdv)) {
+function tourneeStepBadgeClass(stop: PreleveurTourStop) {
+  if (stop.status === 'completed' || tourneeCreneauTermine(stop)) {
     return 'bg-emerald-100 text-emerald-800 ring-emerald-300/80 dark:bg-emerald-900/50 dark:text-emerald-200 dark:ring-emerald-800/70';
   }
   return 'bg-primary-50 text-primary-700 ring-primary-200/80 dark:bg-primary-950/50 dark:text-primary-300 dark:ring-primary-800/60';
 }
 
-onMounted(() => {
-  void loadTournee();
-});
-
-function formatCreneau(rdv: any) {
-  const iso = rdv?.scheduled_at;
+function formatCreneau(stop: PreleveurTourStop) {
+  const iso = stop?.scheduled_at;
   if (!iso) return '—';
   try {
     const d = new Date(iso);
@@ -245,20 +272,6 @@ function formatCreneau(rdv: any) {
   } catch {
     return '—';
   }
-}
-
-function tourneePatientLine(rdv: any) {
-  const fn = rdv?.form_data?.first_name || rdv?.relative?.first_name;
-  const ln = rdv?.form_data?.last_name || rdv?.relative?.last_name;
-  const parts = [fn, ln].filter(Boolean);
-  return parts.length ? parts.join(' ') : '';
-}
-
-function tourneeAddressLine(rdv: any) {
-  const a = rdv?.address;
-  if (!a) return '';
-  if (typeof a === 'object' && a?.label) return String(a.label);
-  return String(a);
 }
 
 function tourneeStatusLabel(status: string | undefined) {

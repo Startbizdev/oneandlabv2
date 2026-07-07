@@ -2,12 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import { Search } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
@@ -20,7 +15,7 @@ import {
   appointmentPickerRowKey,
 } from './PrescriptionAppointmentPickerRow';
 import { prescriptionAppointmentMatchesSearch } from '../utils/prescription-display';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const H_PAD = spacing[4];
@@ -143,7 +138,7 @@ export function PrescriptionAppointmentSelectSheet({
           value={query}
           onChangeText={setQuery}
           placeholder={searchPlaceholder}
-          leftIcon={<Search size={16} color={c.textTertiary} strokeWidth={2} />}
+          leftIcon={<Search size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
           autoCorrect={false}
         />
       </View>
@@ -151,18 +146,18 @@ export function PrescriptionAppointmentSelectSheet({
       {initialLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={c.primary} />
-          <Text style={styles.centeredText}>Chargement…</Text>
+          <AppText style={styles.centeredText}>Chargement…</AppText>
         </View>
       ) : resolvedTotal === 0 && !query.trim() ? (
-        <Text style={styles.empty}>
+        <AppText style={styles.empty}>
           Aucun rendez-vous pour ce patient. Créez-en un ou passez en mode « Sans RDV ».
-        </Text>
+        </AppText>
       ) : filteredRows.length === 0 ? (
-        <Text style={styles.empty}>
+        <AppText style={styles.empty}>
           {query.trim()
             ? `Aucun résultat pour « ${query.trim()} ».`
             : 'Aucun rendez-vous chargé.'}
-        </Text>
+        </AppText>
       ) : (
         <View style={styles.listPanel}>
           <FlashList

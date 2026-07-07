@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo } from 'react';
-import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -24,7 +24,7 @@ import {
   type ProfessionalProfileData,
 } from '@/features/profile/utils/professional-profile-sheet';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const AVATAR = 96;
@@ -115,18 +115,18 @@ export function ProfessionalProfileSheet({
             style={styles.avatar}
           />
         </View>
-        <Text style={styles.roleEyebrow}>Professionnel de santé</Text>
-        <Text style={styles.name}>{displayName}</Text>
+        <AppText style={styles.roleEyebrow}>Professionnel de santé</AppText>
+        <AppText style={styles.name}>{displayName}</AppText>
         <Row wrap justify="center" gap={spacing[2]} style={styles.badges}>
           {profile.emploi ? (
             <Row wrap style={styles.badge}>
-              <Text style={styles.badgeMuted}>Profession</Text>
-              <Text style={styles.badgeValue}> · {profile.emploi}</Text>
+              <AppText style={styles.badgeMuted}>Profession</AppText>
+              <AppText style={styles.badgeValue}> · {profile.emploi}</AppText>
             </Row>
           ) : null}
           <Row wrap style={styles.badge}>
-            <Text style={styles.badgeMuted}>N° Adeli</Text>
-            <Text style={styles.badgeValue}> · {profile.adeli?.trim() || '—'}</Text>
+            <AppText style={styles.badgeMuted}>N° Adeli</AppText>
+            <AppText style={styles.badgeValue}> · {profile.adeli?.trim() || '—'}</AppText>
           </Row>
         </Row>
       </View>
@@ -137,7 +137,7 @@ export function ProfessionalProfileSheet({
             title="Appeler"
             variant="outline"
             size="sm"
-            leftIcon={<Phone size={16} color={c.primary} strokeWidth={2} />}
+            leftIcon={<Phone size={iconSize.sm} color={c.primary} strokeWidth={2} />}
             onPress={() => void Linking.openURL(`tel:${phone}`)}
             style={styles.contactBtn}
           />
@@ -145,7 +145,7 @@ export function ProfessionalProfileSheet({
             title="Message"
             variant="outline"
             size="sm"
-            leftIcon={<MessageCircle size={16} color={c.primary} strokeWidth={2} />}
+            leftIcon={<MessageCircle size={iconSize.sm} color={c.primary} strokeWidth={2} />}
             onPress={() => void Linking.openURL(`sms:${phone}`)}
             style={styles.contactBtn}
           />
@@ -153,20 +153,20 @@ export function ProfessionalProfileSheet({
       ) : null}
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Présentation</Text>
+        <AppText style={styles.sectionTitle}>Présentation</AppText>
         {profile.biography?.trim() ? (
-          <Text style={styles.bio}>{profile.biography.trim()}</Text>
+          <AppText style={styles.bio}>{profile.biography.trim()}</AppText>
         ) : (
           <View style={styles.emptyBox}>
-            <Stethoscope size={20} color={c.textTertiary} strokeWidth={2} />
-            <Text style={styles.emptyText}>Aucune présentation renseignée sur le profil.</Text>
+            <Stethoscope size={iconSize.md} color={c.textTertiary} strokeWidth={2} />
+            <AppText style={styles.emptyText}>Aucune présentation renseignée sur le profil.</AppText>
           </View>
         )}
       </View>
 
       {websiteUrl || socialRows.length ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Site web et réseaux</Text>
+          <AppText style={styles.sectionTitle}>Site web et réseaux</AppText>
           {websiteUrl ? (
             <Pressable
               style={styles.linkRow}
@@ -177,16 +177,16 @@ export function ProfessionalProfileSheet({
                 gap={spacing[3]}
                 leading={
                   <View style={styles.linkIcon}>
-                    <Globe size={18} color={c.primary} strokeWidth={2} />
+                    <Globe size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
                   </View>
                 }
-                actions={<ExternalLink size={16} color={c.textTertiary} strokeWidth={2} />}
+                actions={<ExternalLink size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
               >
                 <View style={styles.linkText}>
-                  <Text style={styles.linkLabel}>Site internet</Text>
-                  <Text style={styles.linkUrl} numberOfLines={2}>
+                  <AppText style={styles.linkLabel}>Site internet</AppText>
+                  <AppText style={styles.linkUrl} numberOfLines={2}>
                     {profile.websiteUrl}
-                  </Text>
+                  </AppText>
                 </View>
               </Cluster>
             </Pressable>
@@ -202,16 +202,16 @@ export function ProfessionalProfileSheet({
                 gap={spacing[3]}
                 leading={
                   <View style={styles.linkIcon}>
-                    <row.Icon size={18} color={c.primary} strokeWidth={2} />
+                    <row.Icon size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
                   </View>
                 }
-                actions={<ExternalLink size={16} color={c.textTertiary} strokeWidth={2} />}
+                actions={<ExternalLink size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
               >
                 <View style={styles.linkText}>
-                  <Text style={styles.linkLabel}>{row.label}</Text>
-                  <Text style={styles.linkUrl} numberOfLines={1}>
+                  <AppText style={styles.linkLabel}>{row.label}</AppText>
+                  <AppText style={styles.linkUrl} numberOfLines={1}>
                     {row.url.replace(/^https?:\/\//i, '')}
-                  </Text>
+                  </AppText>
                 </View>
               </Cluster>
             </Pressable>

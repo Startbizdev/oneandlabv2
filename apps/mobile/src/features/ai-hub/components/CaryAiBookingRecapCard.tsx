@@ -2,10 +2,10 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { AiAppointmentDraft } from '@oneandlab/shared-types';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 import { buildAiDraftRecapBullets } from '../utils/build-ai-draft-recap-bullets';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
@@ -47,7 +47,7 @@ export function CaryAiBookingRecapCard({
   return (
     <>
       <View style={styles.block}>
-        <Text style={styles.title}>Récapitulatif</Text>
+        <AppText style={styles.title}>Récapitulatif</AppText>
         <View style={styles.list}>
           {bullets.map((row, index) => {
             const isDoc = Boolean(row.medicalDocumentId);
@@ -57,17 +57,17 @@ export function CaryAiBookingRecapCard({
                 accessibilityRole="button"
                 accessibilityLabel={`Aperçu ${row.value}`}
               >
-                <Text style={[styles.value, styles.link]}>{row.value}</Text>
+                <AppText style={[styles.value, styles.link]}>{row.value}</AppText>
               </Pressable>
             ) : (
-              <Text style={styles.value}>{row.value}</Text>
+              <AppText style={styles.value}>{row.value}</AppText>
             );
 
             return (
               <Row key={`${row.label}-${index}`} align="start" gap={spacing[2]} style={styles.row}>
-                <Text style={styles.bullet}>•</Text>
+                <AppText style={styles.bullet}>•</AppText>
                 <View style={styles.rowBody}>
-                  <Text style={styles.label}>{row.label}</Text>
+                  <AppText style={styles.label}>{row.label}</AppText>
                   {valueNode}
                 </View>
               </Row>
@@ -76,7 +76,7 @@ export function CaryAiBookingRecapCard({
         </View>
 
         {draft.missing_fields?.length && canConfirm ? (
-          <Text style={styles.hint}>À compléter : {draft.missing_fields.join(', ')}</Text>
+          <AppText style={styles.hint}>À compléter : {draft.missing_fields.join(', ')}</AppText>
         ) : null}
 
         {canConfirm ? (

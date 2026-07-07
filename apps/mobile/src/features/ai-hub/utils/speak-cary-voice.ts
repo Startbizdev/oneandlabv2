@@ -3,7 +3,7 @@ import {
   setAudioModeAsync,
   type AudioPlayer,
 } from 'expo-audio';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { prepareVoiceSpeakingAudio } from './voice-audio-session';
 
 let activePlayer: AudioPlayer | null = null;

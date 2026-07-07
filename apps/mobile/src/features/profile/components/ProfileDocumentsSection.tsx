@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { ProfileDocumentsEmbedded } from '@/features/profile/screens/ProfileDocumentsScreen';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Bloc documents médicaux patient — aligné web `ProfileDocuments` sur /patient/profile */
@@ -13,10 +13,10 @@ export function ProfileDocumentsSection() {
   return (
     <View style={styles.wrap}>
       <Animated.View entering={FadeInDown.delay(240).duration(280).springify()}>
-        <Text style={styles.sectionTitle}>Documents médicaux</Text>
-        <Text style={styles.sectionHint}>
+        <AppText style={styles.sectionTitle}>Documents médicaux</AppText>
+        <AppText style={styles.sectionHint}>
           Carte Vitale, mutuelle et autres assurances — l’ordonnance se gère sur chaque rendez-vous.
-        </Text>
+        </AppText>
       </Animated.View>
       <ProfileDocumentsEmbedded />
     </View>

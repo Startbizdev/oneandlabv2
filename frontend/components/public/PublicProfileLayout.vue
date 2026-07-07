@@ -24,17 +24,19 @@
       <UAlert
         color="neutral"
         variant="subtle"
-        :title="type === 'nurse' ? 'Profil indisponible' : 'Laboratoire indisponible'"
+        :title="type === 'nurse' ? 'Profil indisponible' : type === 'pro' ? 'Professionnel indisponible' : 'Laboratoire indisponible'"
         :description="error"
       />
     </div>
     <div v-else class="max-w-lg w-full text-center">
       <UEmpty
-        :icon="type === 'nurse' ? 'i-lucide-stethoscope' : 'i-lucide-building-2'"
-        :title="type === 'nurse' ? 'Ce profil n\'est pas disponible' : 'Ce laboratoire n\'est pas disponible'"
+        :icon="type === 'nurse' ? 'i-lucide-stethoscope' : type === 'pro' ? 'i-lucide-user-round' : 'i-lucide-building-2'"
+        :title="type === 'nurse' ? 'Ce profil n\'est pas disponible' : type === 'pro' ? 'Ce professionnel n\'est pas disponible' : 'Ce laboratoire n\'est pas disponible'"
         :description="type === 'nurse'
           ? 'Ce professionnel n\'a pas activé sa fiche ou le lien a changé. Découvrez les infirmiers à domicile près de chez vous et réservez en quelques clics.'
-          : 'Ce laboratoire n\'a pas activé sa fiche ou le lien a changé. Découvrez les laboratoires de prélèvement à domicile près de chez vous.'"
+          : type === 'pro'
+            ? 'Ce professionnel n\'a pas activé sa fiche ou le lien a changé.'
+            : 'Ce laboratoire n\'a pas activé sa fiche ou le lien a changé. Découvrez les laboratoires de prélèvement à domicile près de chez vous.'"
         variant="naked"
         size="lg"
         :actions="[
@@ -134,9 +136,20 @@
             </div>
           </UCard>
 
-          <!-- Infirmier : site + réseaux (expérience et diplômes sont dans le header) -->
           <UCard
-            v-if="type === 'nurse' && nurseExtraHasContent(profile)"
+            v-if="type === 'pro' && profile.emploi"
+            class="shadow-sm border-0 ring-1 ring-gray-200 dark:ring-gray-800"
+            :ui="{ body: { padding: 'p-5 sm:p-6' } }"
+          >
+            <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <UIcon name="i-lucide-briefcase-medical" class="w-4 h-4 text-primary-500 shrink-0" />
+              <span>{{ profile.emploi }}</span>
+            </div>
+          </UCard>
+
+          <!-- Infirmier / pro : site + réseaux -->
+          <UCard
+            v-if="(type === 'nurse' || type === 'pro') && nurseExtraHasContent(profile)"
             class="shadow-sm hover:shadow-md transition-shadow duration-300 border-0 ring-1 ring-gray-200 dark:ring-gray-800"
             :ui="{ body: { padding: 'p-6 lg:p-8' } }"
           >
@@ -262,6 +275,7 @@
           </UCard>
 
           <UCard
+            v-if="type !== 'pro' && profile?.reviews"
             class="shadow-sm hover:shadow-md transition-shadow duration-300 border-0 ring-1 ring-gray-200 dark:ring-gray-800"
             :ui="{ body: { padding: 'p-6 lg:p-8' } }"
           >
@@ -480,7 +494,7 @@ const props = defineProps<{
   mapCenter?: { lat: number; lng: number } | null
   /** Rayon en km (infirmier) pour afficher "Rayon d'intervention" */
   radiusKm?: number | null
-  type: 'nurse' | 'lab'
+  type: 'nurse' | 'lab' | 'pro'
   /** Panneau latéral / embed : pas de plein écran ni empty state marketing */
   embedded?: boolean
   /** URL de partage explicite (ex. panneau profil depuis une autre page) */
@@ -512,6 +526,9 @@ const displayNameForAcceptance = computed(() => {
   if (!p) return 'Profil'
   if (props.type === 'nurse') {
     return `${(p.first_name || '').trim()} ${(p.last_name || '').trim()}`.trim() || p.name || 'Profil'
+  }
+  if (props.type === 'pro') {
+    return p.name || `${(p.first_name || '').trim()} ${(p.last_name || '').trim()}`.trim() || 'Profil'
   }
   return (p.company_name || p.name || '').trim() || `${(p.first_name || '').trim()} ${(p.last_name || '').trim()}`.trim() || 'Profil'
 })
@@ -567,6 +584,7 @@ function aboutSectionHasContent(profile: any): boolean {
 function aboutTitle(profile: any): string {
   const name = profile?.name || ''
   if (props.type === 'nurse') return name ? `À propos de l'infirmier(e) à domicile ${name}` : "À propos de l'infirmier(e) à domicile"
+  if (props.type === 'pro') return name ? `À propos de ${name}` : 'À propos du professionnel'
   return name ? `À propos du laboratoire ${name}` : 'À propos du laboratoire'
 }
 

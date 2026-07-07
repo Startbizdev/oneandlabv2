@@ -3,12 +3,12 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { ChevronDown } from 'lucide-react-native';
 import { BottomSheet } from './BottomSheet';
 import { useInBottomSheet } from './sheet-keyboard-context';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type SelectOption = { value: string; label: string };
@@ -60,14 +60,14 @@ export function SelectField({
         accessibilityState={{ selected: active }}
         accessibilityLabel={opt.label}
       >
-        <Text style={[styles.itemText, active && styles.itemTextActive]}>{opt.label}</Text>
+        <AppText style={[styles.itemText, active && styles.itemTextActive]}>{opt.label}</AppText>
       </Pressable>
     );
   });
 
   return (
     <View style={styles.wrap}>
-      {hideLabel ? null : <Text style={styles.label}>{label}</Text>}
+      {hideLabel ? null : <AppText style={styles.label}>{label}</AppText>}
       <Pressable
         onPress={() => setOpen((prev) => (inSheet ? !prev : true))}
         style={[styles.trigger, error ? styles.triggerError : null, open && inSheet && styles.triggerOpen]}
@@ -76,18 +76,18 @@ export function SelectField({
         accessibilityState={{ expanded: open }}
       >
         <Row gap={spacing[2]} align="center" style={styles.triggerRow}>
-          <Text
+          <AppText
             style={[styles.triggerText, !selectedLabel && styles.placeholder]}
             numberOfLines={1}
           >
             {selectedLabel ?? placeholder}
-          </Text>
+          </AppText>
           <View style={[styles.chevronWrap, open && inSheet && styles.chevronOpen]}>
-            <ChevronDown size={18} color={c.textSecondary} strokeWidth={2} />
+            <ChevronDown size={iconSize.mdSm} color={c.textSecondary} strokeWidth={2} />
           </View>
         </Row>
       </Pressable>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <AppText style={styles.error}>{error}</AppText> : null}
 
       {inSheet && open ? (
         <View style={styles.inlinePanel}>

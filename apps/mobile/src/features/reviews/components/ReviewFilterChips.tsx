@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Pressable, ScrollView, Text } from 'react-native';
+import { Pressable, ScrollView } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import type { ReviewFilter } from '@/features/reviews/types';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const FILTERS: { id: ReviewFilter; label: string }[] = [
@@ -37,7 +37,7 @@ export function ReviewFilterChips({ value, onChange, counts }: Props) {
             onPress={() => onChange(f.id)}
             style={[styles.chip, active && styles.chipActive]}
           >
-            <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+            <AppText style={[styles.chipText, active && styles.chipTextActive]}>{label}</AppText>
           </Pressable>
         );
       })}

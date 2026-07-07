@@ -3,14 +3,14 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight, FlaskConical } from 'lucide-react-native';
 import type { LabResultListItem } from '@oneandlab/shared-types';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -99,7 +99,7 @@ export const LabResultListCard = React.memo(function LabResultListCard({
         style={styles.row}
         leading={
           <View style={styles.iconBox}>
-            <FlaskConical size={18} color={c.primary} strokeWidth={2} />
+            <FlaskConical size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
           </View>
         }
         actions={
@@ -110,22 +110,22 @@ export const LabResultListCard = React.memo(function LabResultListCard({
             accessibilityRole="button"
             accessibilityLabel="Voir le rendez-vous"
           >
-            <ChevronRight size={16} color={c.textTertiary} strokeWidth={2} />
+            <ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />
           </Pressable>
         }
       >
         <View style={styles.content}>
           <Row align="start">
             <View style={styles.titleWrap}>
-              <Text style={styles.title} numberOfLines={2}>
+              <AppText style={styles.title} numberOfLines={2}>
                 Résultats d&apos;analyses
-              </Text>
+              </AppText>
             </View>
-            {time ? <Text style={styles.time}>{time}</Text> : null}
+            {time ? <AppText style={styles.time}>{time}</AppText> : null}
           </Row>
-          <Text style={styles.body} numberOfLines={3}>
+          <AppText style={styles.body} numberOfLines={3}>
             {body}
-          </Text>
+          </AppText>
         </View>
       </Cluster>
     </Pressable>

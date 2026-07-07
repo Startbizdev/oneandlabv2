@@ -4,9 +4,9 @@ import { useAppColors } from '@/theme/use-app-colors';
 
 import { Cluster } from '@/components/layout/primitives';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -31,14 +31,14 @@ export function DetailPanel({
           leading={
             Icon ? (
               <View style={styles.iconWrap}>
-                <Icon size={16} color={c.primary} strokeWidth={2} />
+                <Icon size={iconSize.sm} color={c.primary} strokeWidth={2} />
               </View>
             ) : undefined
           }
         >
           <View style={styles.headerText}>
-            <Text style={styles.title}>{title}</Text>
-            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+            <AppText style={styles.title}>{title}</AppText>
+            {subtitle ? <AppText style={styles.subtitle}>{subtitle}</AppText> : null}
           </View>
         </Cluster>
       ) : null}

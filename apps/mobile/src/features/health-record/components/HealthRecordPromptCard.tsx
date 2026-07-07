@@ -2,14 +2,14 @@ import type { AppColors } from '@/theme/colors';
 import { palette } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { ArrowRight, HeartPulse } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { Skeleton } from '@/components/ui/skeletons';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, progressRingSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { HealthRecordProgressRing } from './HealthRecordProgressRing';
 import { healthRecordHeroSubtitle } from '../utils/health-record-display';
@@ -63,21 +63,21 @@ export function HealthRecordPromptCard({ percent, onPress, loading }: Props) {
 
           <Row gap={spacing[3]} align="center">
             <View style={styles.ringWrap}>
-              <HealthRecordProgressRing percent={percent} size={56} strokeWidth={5} tone="onGradient" />
+              <HealthRecordProgressRing percent={percent} size={progressRingSize.md} strokeWidth={5} tone="onGradient" />
             </View>
 
             <View style={styles.body}>
               <Row gap={spacing[1.5]} align="center">
-                <HeartPulse size={15} color="#FFFFFF" strokeWidth={2.25} />
-                <Text style={styles.title}>Mon carnet de santé</Text>
+                <HeartPulse size={iconSize.xs} color="#FFFFFF" strokeWidth={2.25} />
+                <AppText style={styles.title}>Mon carnet de santé</AppText>
               </Row>
-              <Text style={styles.subtitle} numberOfLines={2}>
+              <AppText style={styles.subtitle} numberOfLines={2}>
                 {subtitle}
-              </Text>
+              </AppText>
             </View>
 
             <View style={styles.chevronWrap}>
-              <ArrowRight size={18} color="#FFFFFF" strokeWidth={2.25} />
+              <ArrowRight size={iconSize.mdSm} color="#FFFFFF" strokeWidth={2.25} />
             </View>
           </Row>
         </LinearGradient>

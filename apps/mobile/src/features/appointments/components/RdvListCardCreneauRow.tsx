@@ -2,11 +2,11 @@ import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Clock } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { buildRdvListCardTypography } from '@/features/appointments/components/rdv-list-card-typography';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 
 const CLOCK_SIZE = 14;
 
@@ -35,9 +35,9 @@ export function RdvListCardCreneauRow({ label, status }: Props) {
           <View style={styles.iconWrap}>
             <Clock size={CLOCK_SIZE} color={c.textTertiary} strokeWidth={2} />
           </View>
-          <Text style={styles.label} numberOfLines={2}>
+          <AppText style={styles.label} numberOfLines={2}>
             {label}
-          </Text>
+          </AppText>
         </Row>
       ) : null}
     </Cluster>

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { AppState, type AppStateStatus, View, Text } from 'react-native';
+import { AppState, type AppStateStatus, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppText } from '@/theme';
 
 type NetworkContextValue = { isOnline: boolean };
 
@@ -92,9 +93,9 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
           className="absolute left-0 right-0 bg-amber-600 px-4 py-2 z-50"
           style={{ top: insets.top }}
         >
-          <Text className="text-white text-center text-xs font-semibold">
+          <AppText className="text-white text-center text-xs font-semibold">
             Hors ligne — les données peuvent être obsolètes
-          </Text>
+          </AppText>
         </View>
       ) : null}
     </NetworkContext.Provider>

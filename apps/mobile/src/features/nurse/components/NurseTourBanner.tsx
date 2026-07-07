@@ -1,10 +1,11 @@
+import { layoutRowCenter } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronRight, Route } from 'lucide-react-native';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -25,17 +26,17 @@ export function NurseTourBanner({ stopCount }: Props) {
       accessibilityLabel="Ouvrir ma tournée"
     >
       <View style={[styles.iconWrap, { backgroundColor: c.primaryLight }]}>
-        <Route size={18} color={c.primary} strokeWidth={2} />
+        <Route size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
       </View>
       <View style={styles.body}>
-        <Text style={[styles.title, { color: c.textPrimary }]}>Ma tournée</Text>
-        <Text style={[styles.sub, { color: c.textSecondary }]}>
+        <AppText style={[styles.title, { color: c.textPrimary }]}>Ma tournée</AppText>
+        <AppText style={[styles.sub, { color: c.textSecondary }]}>
           {typeof stopCount === 'number' && stopCount > 0
             ? `${stopCount} passage${stopCount > 1 ? 's' : ''} · ordre intelligent`
             : 'Organiser vos passages du jour'}
-        </Text>
+        </AppText>
       </View>
-      <ChevronRight size={20} color={c.textTertiary} />
+      <ChevronRight size={iconSize.md} color={c.textTertiary} />
     </Pressable>
   );
 }
@@ -43,9 +44,7 @@ export function NurseTourBanner({ stopCount }: Props) {
 function buildStyles(_c: AppColors) {
   return {
     card: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: spacing[3],
+      ...layoutRowCenter(spacing[3]),
       borderRadius: radius.xl,
       borderWidth: 1,
       padding: spacing[3],
@@ -58,7 +57,8 @@ function buildStyles(_c: AppColors) {
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
-    body: { flex: 1, gap: spacing[0.5] },
+    body: {
+    minWidth: 0, flex: 1, gap: spacing[0.5] },
     title: { fontFamily: fontFamily.bold, fontSize: fontSize.sm },
     sub: { fontFamily: fontFamily.regular, fontSize: fontSize.xs },
   };

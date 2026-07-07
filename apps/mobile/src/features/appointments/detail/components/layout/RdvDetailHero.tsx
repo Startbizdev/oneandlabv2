@@ -4,7 +4,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import { CalendarDays, Clock, Layers, Mail, MapPin, MessageCircle, Phone } from 'lucide-react-native';
@@ -24,7 +24,7 @@ import {
   beneficiaryDisplayName,
   patientContactEmail,
 } from '../../utils/patient-appointment-display';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, avatarSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -90,33 +90,33 @@ export function RdvDetailHero({
       <Row justify="between" align="start" gap={spacing[3]}>
         {!hideTitle ? (
           <Row align="start" gap={spacing[2]} style={styles.titleCol}>
-            {isMulti ? <Layers size={16} color={c.primary} strokeWidth={2} /> : null}
-            <Text style={styles.title} numberOfLines={2}>
+            {isMulti ? <Layers size={iconSize.sm} color={c.primary} strokeWidth={2} /> : null}
+            <AppText style={styles.title} numberOfLines={2}>
               {title}
-            </Text>
+            </AppText>
           </Row>
         ) : (
           <View style={styles.titleCol}>
-            <Text style={styles.typeOnly}>{typeLabel}</Text>
+            <AppText style={styles.typeOnly}>{typeLabel}</AppText>
           </View>
         )}
         <StatusBadge status={primary.status} size="sm" />
       </Row>
 
-      {!hideTitle ? <Text style={styles.type}>{typeLabel}</Text> : null}
+      {!hideTitle ? <AppText style={styles.type}>{typeLabel}</AppText> : null}
 
       {dateLine || timeLabel ? (
         <Row wrap gap={spacing[3]} align="center">
           {dateLine ? (
             <Row gap={5} align="center">
-              <CalendarDays size={13} color={c.textTertiary} strokeWidth={2} />
-              <Text style={styles.scheduleText}>{dateLine}</Text>
+              <CalendarDays size={iconSize.xs} color={c.textTertiary} strokeWidth={2} />
+              <AppText style={styles.scheduleText}>{dateLine}</AppText>
             </Row>
           ) : null}
           {timeLabel ? (
             <Row gap={5} align="center">
-              <Clock size={13} color={c.textTertiary} strokeWidth={2} />
-              <Text style={styles.scheduleText}>{timeLabel}</Text>
+              <Clock size={iconSize.xs} color={c.textTertiary} strokeWidth={2} />
+              <AppText style={styles.scheduleText}>{timeLabel}</AppText>
             </Row>
           ) : null}
         </Row>
@@ -132,15 +132,15 @@ export function RdvDetailHero({
                 profileImageUrl={patientAvatar.profileImageUrl}
                 seed={patientAvatar.seed}
                 gender={patientAvatar.gender}
-                size={44}
+                size={avatarSize.sm}
               />
             }
           >
             <View style={styles.patientHeadText}>
-              <Text style={styles.patientName}>{name}</Text>
-              {birth ? <Text style={styles.patientSub}>{birth}</Text> : null}
+              <AppText style={styles.patientName}>{name}</AppText>
+              {birth ? <AppText style={styles.patientSub}>{birth}</AppText> : null}
               {email.text ? (
-                <Text style={[styles.patientSub, !email.href && styles.muted]}>{email.text}</Text>
+                <AppText style={[styles.patientSub, !email.href && styles.muted]}>{email.text}</AppText>
               ) : null}
             </View>
           </Cluster>
@@ -154,7 +154,7 @@ export function RdvDetailHero({
                       title={btn.label}
                       size="sm"
                       variant="primary"
-                      leftIcon={<Icon size={14} color={c.textInverse} strokeWidth={2.5} />}
+                      leftIcon={<Icon size={iconSize.xs} color={c.textInverse} strokeWidth={2.5} />}
                       onPress={btn.onPress}
                       style={{ backgroundColor: btn.color, width: '100%' as const }}
                     />
@@ -174,14 +174,14 @@ export function RdvDetailHero({
           <Cluster
             gap={6}
             align="start"
-            leading={<MapPin size={13} color={c.primary} strokeWidth={2} />}
+            leading={<MapPin size={iconSize.xs} color={c.primary} strokeWidth={2} />}
           >
-            <Text style={styles.addressText}>{address}</Text>
+            <AppText style={styles.addressText}>{address}</AppText>
           </Cluster>
         </Pressable>
       ) : null}
 
-      {createdMeta ? <Text style={styles.meta}>{createdMeta}</Text> : null}
+      {createdMeta ? <AppText style={styles.meta}>{createdMeta}</AppText> : null}
       {footer}
     </View>
   );

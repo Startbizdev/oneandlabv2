@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Row } from '@/components/layout/primitives';
 import { Input } from '@/components/ui/Input';
@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/Card';
 import { api } from '@/api/client';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface CarePhoto {
@@ -64,13 +64,13 @@ export function CarePhotosSection({ appointmentId }: { appointmentId: string }) 
               />
             ) : (
               <View style={styles.photoPlaceholder}>
-                <Text style={styles.photoPlaceholderText}>Photo</Text>
+                <AppText style={styles.photoPlaceholderText}>Photo</AppText>
               </View>
             )}
             {p.caption ? (
-              <Text style={styles.caption} numberOfLines={2}>
+              <AppText style={styles.caption} numberOfLines={2}>
                 {p.caption}
-              </Text>
+              </AppText>
             ) : null}
           </View>
         ))}

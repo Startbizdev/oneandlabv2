@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import {
   buildBirthDateIso,
   formatBirthDateFr,
@@ -9,7 +9,7 @@ import {
 } from '@oneandlab/shared-utils';
 import { Row } from '@/components/layout/primitives';
 import { Input } from '@/components/ui/Input';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -106,7 +106,7 @@ export function BirthDatePicker({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+      <AppText style={styles.label}>{label}</AppText>
       <Row gap={spacing[2]} style={styles.row}>
         <View style={styles.field}>
           <Input
@@ -145,8 +145,8 @@ export function BirthDatePicker({
           />
         </View>
       </Row>
-      {summary ? <Text style={styles.summary}>{summary}</Text> : null}
-      {displayError ? <Text style={styles.error}>{displayError}</Text> : null}
+      {summary ? <AppText style={styles.summary}>{summary}</AppText> : null}
+      {displayError ? <AppText style={styles.error}>{displayError}</AppText> : null}
     </View>
   );
 }

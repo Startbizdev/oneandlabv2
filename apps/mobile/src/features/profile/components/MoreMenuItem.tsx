@@ -16,7 +16,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { ChevronRight } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import {radius, spacing, iconSize } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface MoreMenuItemProps {
@@ -72,7 +72,7 @@ export function MoreMenuItem({
           gap={spacing[3]}
           leading={
             <View style={[styles.menuIconWrap, { backgroundColor: ib }]}>
-              <Icon size={18} color={ic} strokeWidth={2} />
+              <Icon size={iconSize.mdSm} color={ic} strokeWidth={2} />
             </View>
           }
           actions={
@@ -83,7 +83,7 @@ export function MoreMenuItem({
                 </View>
               ) : (
                 <ChevronRight
-                  size={16}
+                  size={iconSize.sm}
                   color={destructive ? c.error : c.textTertiary}
                   strokeWidth={2}
                 />

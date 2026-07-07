@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Appointment } from '@oneandlab/shared-types';
-import { isPendingIncomingOffer, isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { isPendingIncomingOffer, isBloodTestAppointment, isNursingAppointment, isOfferModalSnoozed } from '@oneandlab/shared-utils';
 import { fetchAppointment } from '../api/appointments.service';
 
 export type OpenIncomingOfferResult =
@@ -21,6 +21,7 @@ function canOpenOffer(data: Appointment, role: string, userId: string): boolean 
     return false;
   }
   if (role === 'nurse' && isBloodTestAppointment(data.type)) return false;
+  if (isOfferModalSnoozed(data)) return false;
   if (!isPendingIncomingOffer(data, userId)) return false;
   if (role === 'nurse') {
     const assigned = data.assigned_nurse_id;

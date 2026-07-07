@@ -2,15 +2,16 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, useLayoutMetrics, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function RegisterMerciScreen() {
   const c = useAppColors();
+  const layout = useLayoutMetrics();
   const styles = useThemedStyles(buildStyles, 'features_auth_screens_RegisterMerciScreen_tsx_styles');
   const { type } = useLocalSearchParams<{ type?: string }>();
   const router = useRouter();
@@ -19,20 +20,25 @@ export function RegisterMerciScreen() {
     type === 'nurse' ? 'infirmier·ère' : type === 'pro' ? 'professionnel de santé' : 'professionnel';
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.card, elevation.sm]}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={[styles.card, elevation.sm, { maxWidth: layout.contentMaxWidth }]}>
         <View style={styles.iconWrap}>
-          <CheckCircle2 size={40} color={c.primary} strokeWidth={2} />
+          <CheckCircle2 size={iconSize['4xl']} color={c.primary} strokeWidth={2} />
         </View>
-        <Text style={styles.title}>Demande bien reçue</Text>
-        <Text style={styles.sub}>Merci pour votre inscription sur Cary.</Text>
-        <Text style={styles.body}>
+        <AppText style={styles.title}>Demande bien reçue</AppText>
+        <AppText style={styles.sub}>Merci pour votre inscription sur Cary.</AppText>
+        <AppText style={styles.body}>
           Notre équipe va analyser votre profil {roleLabel} et reviendra vers vous dans les plus brefs
           délais pour finaliser votre accès.
-        </Text>
-        <Text style={styles.hint}>
+        </AppText>
+        <AppText style={styles.hint}>
           Vous recevrez un email dès que votre compte sera activé.
-        </Text>
+        </AppText>
         <View style={styles.actions}>
           <Button title="Retour à l'accueil" fullWidth size="lg" onPress={() => router.replace('/(auth)/welcome')} />
           <Button
@@ -44,7 +50,7 @@ export function RegisterMerciScreen() {
           />
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -54,10 +60,16 @@ function buildStyles(c: AppColors) {
     minWidth: 0,
     flex: 1,
     backgroundColor: c.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    minWidth: 0,
     padding: spacing[5],
     justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
   card: {
+    width: '100%' as const,
     backgroundColor: c.surface,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -90,22 +102,20 @@ function buildStyles(c: AppColors) {
   body: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
-    color: c.textPrimary,
+    color: c.textSecondary,
     textAlign: 'center' as const,
     lineHeight: fontSize.sm * 1.55,
   },
   hint: {
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     textAlign: 'center' as const,
-    lineHeight: fontSize.xs * 1.5,
   },
   actions: {
     width: '100%' as const,
     gap: spacing[3],
-    marginTop: spacing[4],
+    marginTop: spacing[2],
   },
 };
 }
-

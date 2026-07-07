@@ -1,8 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { healthRecordSectionEmoji } from '../utils/health-record-section-emoji';
-import { radius } from '@/theme';
+import { radius, AppText } from '@/theme';
 import { fontSize } from '@/theme/typography';
 
 interface Props {
@@ -20,7 +20,7 @@ export function HealthRecordSectionEmoji({ sectionId, size = 'md' }: Props) {
       accessibilityElementsHidden
       importantForAccessibility="no"
     >
-      <Text style={[styles.emoji, size === 'lg' && styles.emojiLg]}>{emoji}</Text>
+      <AppText style={[styles.emoji, size === 'lg' && styles.emojiLg]}>{emoji}</AppText>
     </View>
   );
 }
@@ -40,11 +40,11 @@ function buildStyles(c: AppColors) {
       height: 44,
     },
     emoji: {
-      fontSize: 22,
+      fontSize: fontSize.xl,
       lineHeight: 26,
     },
     emojiLg: {
-      fontSize: 24,
+      fontSize: fontSize['2xl'],
       lineHeight: 28,
     },
   };

@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Badge } from '@/components/ui/Badge';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -46,7 +46,7 @@ export function HealthRecordSectionProgress({ filled, total }: Props) {
         </View>
         <Badge label={badgeLabel} variant={badgeVariant} dot={false} size="sm" shape="square" />
       </Row>
-      <Text style={styles.caption}>{caption}</Text>
+      <AppText style={styles.caption}>{caption}</AppText>
     </View>
   );
 }
@@ -58,6 +58,7 @@ function buildStyles(c: AppColors) {
       marginTop: spacing[1],
     },
     track: {
+      minWidth: 0,
       flex: 1,
       height: 6,
       borderRadius: radius.full,

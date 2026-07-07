@@ -1,10 +1,10 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import dayjs from 'dayjs';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 export type PassagePlanningChoice = 'single_day' | 'recurring';
@@ -63,10 +63,10 @@ export function PassagePlanningSheet({ visible, selectedDate, onClose, onSelect 
             onPress={() => handleSelect(opt.id)}
             accessibilityRole="button"
           >
-            <Text style={[styles.optionTitle, { color: c.textPrimary }]}>{opt.title}</Text>
-            <Text style={[styles.optionSub, { color: c.textSecondary }]}>
+            <AppText style={[styles.optionTitle, { color: c.textPrimary }]}>{opt.title}</AppText>
+            <AppText style={[styles.optionSub, { color: c.textSecondary }]}>
               {opt.subtitle(dateLabel)}
-            </Text>
+            </AppText>
           </Pressable>
         ))}
       </View>

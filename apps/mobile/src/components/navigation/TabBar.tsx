@@ -3,12 +3,12 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import React, { useCallback } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import type { BottomTabBarProps, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Hauteur zone icône + libellé (hors safe area bas). */
@@ -65,12 +65,13 @@ function TabItem({
       style={styles.tabItem}
     >
       <View style={styles.iconSlot}>{icon}</View>
-      <Text
+      <AppText
         style={[styles.label, isFocused ? styles.labelFocused : styles.labelIdle]}
         numberOfLines={1}
+        compact
       >
         {label}
-      </Text>
+      </AppText>
     </Pressable>
   );
 }

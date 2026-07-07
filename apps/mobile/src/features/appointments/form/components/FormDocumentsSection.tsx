@@ -1,13 +1,13 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { SERVICE_DOC_FIELDS } from '../constants/appointment-document-fields';
 import type { PatientDocumentRow } from '@/features/patients/api/patient-profile.service';
 import { MissingPrescriptionAlert } from './MissingPrescriptionAlert';
 import { WizardDocumentFields } from './WizardDocumentFields';
 import type { DocumentFileRef } from '../types/document-file-ref';
 import { hasDocumentFile } from '../types/document-file-ref';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -49,10 +49,10 @@ export function FormDocumentsSection({
     <View style={styles.wrapper}>
       {profilePersonalOnFile ? (
         <View style={styles.profileBanner}>
-          <Text style={styles.profileBannerText}>
+          <AppText style={styles.profileBannerText}>
             Votre Carte Vitale et mutuelle sont déjà enregistrées. Ajoutez seulement l’ordonnance
             pour ce rendez-vous.
-          </Text>
+          </AppText>
         </View>
       ) : null}
 

@@ -3,7 +3,8 @@ import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Text, View } from 'react-native';
+import { AppText } from '@/theme';
+import { View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -70,7 +71,7 @@ export function HealthRecordProgressRing({
           origin={`${resolvedSize / 2}, ${resolvedSize / 2}`}
         />
       </Svg>
-      <Text
+      <AppText
         style={[
           styles.label,
           isMini && styles.labelMini,
@@ -79,7 +80,7 @@ export function HealthRecordProgressRing({
         ]}
       >
         {clamped}%
-      </Text>
+      </AppText>
     </View>
   );
 }
@@ -97,7 +98,7 @@ function buildStyles(c: AppColors) {
       fontSize: fontSize.xs,
     },
     labelMini: {
-      fontSize: 9,
+      fontSize: fontSize['2xs'],
       letterSpacing: -0.3,
     },
     labelLarge: {

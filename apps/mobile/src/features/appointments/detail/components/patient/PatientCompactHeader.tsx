@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import { CalendarDays, Clock, Layers } from 'lucide-react-native';
@@ -11,7 +11,7 @@ import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-
 import { Cluster, Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -45,32 +45,32 @@ export function PatientCompactHeader({
       <Row justify="between" align="start" gap={spacing[3]}>
         <Row align="start" gap={spacing[2]} style={styles.titleCol}>
           {isMultiBatch ? (
-            <Layers size={16} color={c.primary} strokeWidth={2} />
+            <Layers size={iconSize.sm} color={c.primary} strokeWidth={2} />
           ) : null}
-          <Text style={styles.title} numberOfLines={2}>
+          <AppText style={styles.title} numberOfLines={2}>
             {title}
-          </Text>
+          </AppText>
         </Row>
         <StatusBadge status={primary.status} size="sm" />
       </Row>
       <Row wrap gap={4} align="center">
-        <Text style={styles.type}>{typeLabel}</Text>
+        <AppText style={styles.type}>{typeLabel}</AppText>
         {isMultiBatch ? (
-          <Text style={styles.batchHint}>· {batch.length} actes liés</Text>
+          <AppText style={styles.batchHint}>· {batch.length} actes liés</AppText>
         ) : null}
       </Row>
       {scheduled || timeLabel ? (
         <View style={styles.schedule}>
           {scheduled ? (
             <Row gap={spacing[2]} align="center">
-              <CalendarDays size={14} color={c.textTertiary} strokeWidth={2} />
-              <Text style={styles.date}>{scheduled.format('ddd D MMM YYYY')}</Text>
+              <CalendarDays size={iconSize.xs} color={c.textTertiary} strokeWidth={2} />
+              <AppText style={styles.date}>{scheduled.format('ddd D MMM YYYY')}</AppText>
             </Row>
           ) : null}
           {timeLabel ? (
             <Row gap={spacing[2]} align="center">
-              <Clock size={14} color={c.textTertiary} strokeWidth={2} />
-              <Text style={styles.time}>{timeLabel}</Text>
+              <Clock size={iconSize.xs} color={c.textTertiary} strokeWidth={2} />
+              <AppText style={styles.time}>{timeLabel}</AppText>
             </Row>
           ) : null}
         </View>

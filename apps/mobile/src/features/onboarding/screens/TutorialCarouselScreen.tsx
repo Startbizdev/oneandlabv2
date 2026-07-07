@@ -2,15 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import {
-  FlatList,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Pressable,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { FlatList, NativeScrollEvent, NativeSyntheticEvent, Pressable, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,7 +14,7 @@ import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { Button } from '@/components/ui/Button';
 import { Row } from '@/components/layout/primitives';
 import { TutorialIllustration } from '../components/TutorialIllustration';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, useLayoutMetrics, carouselHeight as computeCarouselHeight, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function TutorialCarouselScreen() {
@@ -32,10 +24,10 @@ export function TutorialCarouselScreen() {
   const { replay } = useLocalSearchParams<{ replay?: string }>();
   const role = useAuthStore((s) => s.user?.role);
   const setOnboardingCompleted = useAppPreferencesStore((s) => s.setOnboardingCompleted);
-  const { width, height } = useWindowDimensions();
+  const layout = useLayoutMetrics();
   const listRef = useRef<FlatList<TutorialSlide>>(null);
   const [index, setIndex] = useState(0);
-  const [carouselHeight, setCarouselHeight] = useState(Math.max(height * 0.58, 420));
+  const [slideHeight, setSlideHeight] = useState(() => computeCarouselHeight(layout.usableHeight));
 
   const isReplay = replay === '1' || replay === 'true';
   const config = useMemo(() => {
@@ -75,10 +67,10 @@ export function TutorialCarouselScreen() {
 
   const onMomentumScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+      const nextIndex = Math.round(event.nativeEvent.contentOffset.x / layout.width);
       setIndex(Math.max(0, Math.min(nextIndex, lastIndex)));
     },
-    [lastIndex, width],
+    [lastIndex, layout.width],
   );
 
   if (!config || slides.length === 0) {
@@ -95,9 +87,9 @@ export function TutorialCarouselScreen() {
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <Row align="center" justify="between" style={styles.topBar}>
-          <Text style={styles.kicker}>{config.welcomeTitle}</Text>
+          <AppText style={styles.kicker}>{config.welcomeTitle}</AppText>
           <Pressable onPress={finish} hitSlop={12} accessibilityRole="button" accessibilityLabel="Passer">
-            <Text style={styles.skip}>Passer</Text>
+            <AppText style={styles.skip}>Passer</AppText>
           </Pressable>
         </Row>
 
@@ -105,7 +97,7 @@ export function TutorialCarouselScreen() {
           style={styles.carouselHost}
           onLayout={(event) => {
             const next = event.nativeEvent.layout.height;
-            if (next > 0) setCarouselHeight(next);
+            if (next > 0) setSlideHeight(next);
           }}
         >
           <FlatList
@@ -117,15 +109,15 @@ export function TutorialCarouselScreen() {
             bounces={false}
             showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={onMomentumScrollEnd}
-            getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+            getItemLayout={(_, i) => ({ length: layout.width, offset: layout.width * i, index: i })}
             style={styles.carouselList}
             renderItem={({ item }) => (
-              <View style={[styles.slidePage, { width, height: carouselHeight }]}>
-                <View style={styles.slideCenter}>
+              <View style={[styles.slidePage, { width: layout.width, height: slideHeight }]}>
+                <View style={[styles.slideCenter, { maxWidth: layout.contentMaxWidth }]}>
                   <TutorialIllustration illustration={item.illustration} />
                   <View style={styles.copy}>
-                    <Text style={styles.title}>{item.title}</Text>
-                    <Text style={styles.body}>{item.body}</Text>
+                    <AppText style={styles.title}>{item.title}</AppText>
+                    <AppText style={styles.body}>{item.body}</AppText>
                   </View>
                 </View>
               </View>
@@ -172,9 +164,11 @@ export function TutorialCarouselScreen() {
 
 function buildStyles(c: AppColors) {
   return {
-    root: { flex: 1, backgroundColor: c.background },
+    root: {
+    minWidth: 0, flex: 1, backgroundColor: c.background },
     gradient: { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0 },
-    safe: { flex: 1 },
+    safe: {
+    minWidth: 0, flex: 1 },
     topBar: {
       paddingHorizontal: spacing[4],
       paddingTop: spacing[2],
@@ -192,10 +186,12 @@ function buildStyles(c: AppColors) {
       color: c.textSecondary,
     },
     carouselHost: {
+      minWidth: 0,
       flex: 1,
       minHeight: 0,
     },
     carouselList: {
+      minWidth: 0,
       flex: 1,
     },
     slidePage: {
@@ -205,7 +201,6 @@ function buildStyles(c: AppColors) {
     },
     slideCenter: {
       width: '100%' as const,
-      maxWidth: 360,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       gap: spacing[5],

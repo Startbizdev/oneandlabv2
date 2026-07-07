@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
@@ -17,7 +17,7 @@ import { CreatePatientModal } from '@/features/patients/components/CreatePatient
 import { StaffPatientHubListRow } from '@/features/patients/components/StaffPatientHubListRow';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { queryKeys } from '@/lib/query-keys';
-import { H_PADDING, radius, spacing } from '@/theme';
+import { H_PADDING, radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Users } from 'lucide-react-native';
@@ -92,9 +92,9 @@ export function PassagePatientPickScreen() {
             },
           ]}
         >
-          <Text style={[styles.modeBannerText, { color: isRecurring ? c.primaryDark : c.textSecondary }]}>
+          <AppText style={[styles.modeBannerText, { color: isRecurring ? c.primaryDark : c.textSecondary }]}>
             {modeHint}
-          </Text>
+          </AppText>
         </View>
         <AppointmentsListFilterBar
           search={search}
@@ -119,9 +119,9 @@ export function PassagePatientPickScreen() {
           />
         ) : (
           <View style={styles.list}>
-            <Text style={[styles.hint, { color: c.textTertiary }]}>
+            <AppText style={[styles.hint, { color: c.textTertiary }]}>
               Sélectionnez le patient pour ce passage
-            </Text>
+            </AppText>
             {hubQ.data?.map((item) =>
               item.kind === 'patient' ? (
                 <StaffPatientHubListRow

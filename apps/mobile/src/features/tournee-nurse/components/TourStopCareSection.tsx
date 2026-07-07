@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Stack } from '@/components/layout/primitives';
 import { RdvCareTagsRow } from '@/features/appointments/components/RdvCareTagsRow';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
@@ -16,7 +16,7 @@ import type { NurseTourStop } from '../api/nurse-tour.service';
 import {
   tourStopAsAppointment,
 } from '../utils/tour-stop-as-appointment';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 type Props = {
@@ -80,10 +80,10 @@ export function TourStopCareSection({ stop, embedded = false, muted = false, lis
         <View style={styles.optionsBlock}>
           {displayOptionRows.map((row) => {
             const line = (
-              <Text style={styles.optionLine} numberOfLines={2}>
-                <Text style={styles.optionLabel}>{row.label} : </Text>
+              <AppText style={styles.optionLine} numberOfLines={2}>
+                <AppText style={styles.optionLabel}>{row.label} : </AppText>
                 {row.value}
-              </Text>
+              </AppText>
             );
             return <View key={`${row.label}-${row.value}`}>{line}</View>;
           })}

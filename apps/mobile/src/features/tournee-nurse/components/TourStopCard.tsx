@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { buildNavigationUrl } from '@oneandlab/shared-utils';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import {
   CalendarPlus,
   Check,
@@ -24,7 +24,7 @@ import type { NurseTourStop } from '../api/nurse-tour.service';
 import { TourStopCareSection } from './TourStopCareSection';
 import { TourStopCompletedStamp } from './TourStopCompletedStamp';
 import { TourStopReorderControls } from './TourStopReorderControls';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
 
@@ -141,7 +141,7 @@ export function TourStopCard({
                       profileImageUrl={stop.profile_image_url}
                       seed={stop.patient_id ?? stop.patient_name}
                       gender={stop.patient_gender}
-                      size={40}
+                      size={iconSize['4xl']}
                       style={[styles.avatar, { borderColor: c.borderLight }]}
                     />
                     <View
@@ -151,9 +151,9 @@ export function TourStopCard({
                       ]}
                     >
                       {done ? (
-                        <Check size={10} color="#fff" strokeWidth={3} />
+                        <Check size={iconSize['3xs']} color="#fff" strokeWidth={3} />
                       ) : (
-                        <Text style={styles.positionText}>{stop.position}</Text>
+                        <AppText style={styles.positionText}>{stop.position}</AppText>
                       )}
                     </View>
                   </View>
@@ -161,7 +161,7 @@ export function TourStopCard({
               >
                 <View style={styles.headText}>
                   <Row gap={spacing[1.5]} align="center" wrap>
-                    <Text
+                    <AppText
                       style={[
                         styles.name,
                         { color: done ? c.textSecondary : c.textPrimary },
@@ -169,7 +169,7 @@ export function TourStopCard({
                       numberOfLines={1}
                     >
                       {stop.patient_name}
-                    </Text>
+                    </AppText>
                     {done ? (
                       <Badge label="Effectué" variant="success" size="sm" dot={false} />
                     ) : null}
@@ -184,17 +184,17 @@ export function TourStopCard({
               {timeLabel ? (
                 <Row gap={spacing[2]} align="center" style={styles.metaRow}>
                   <View style={styles.metaIconWrap}>
-                    <Clock size={12} color={done ? c.textTertiary : c.primary} strokeWidth={2.5} />
+                    <Clock size={iconSize['2xs']} color={done ? c.textTertiary : c.primary} strokeWidth={2.5} />
                   </View>
                   <Row align="center" gap={spacing[1.5]} style={styles.timeCluster}>
-                    <Text
+                    <AppText
                       style={[
                         styles.metaTime,
                         { color: done ? c.textTertiary : c.primary },
                       ]}
                     >
                       {timeLabel}
-                    </Text>
+                    </AppText>
                     {!done && onReschedule ? (
                       <Pressable
                         onPress={onReschedule}
@@ -203,7 +203,7 @@ export function TourStopCard({
                         accessibilityLabel="Modifier la date et le créneau"
                         style={({ pressed }) => [styles.penBtn, pressed && styles.penBtnPressed]}
                       >
-                        <Pencil size={16} color={c.textTertiary} strokeWidth={2.2} />
+                        <Pencil size={iconSize.sm} color={c.textTertiary} strokeWidth={2.2} />
                       </Pressable>
                     ) : null}
                   </Row>
@@ -213,10 +213,10 @@ export function TourStopCard({
               {stop.address_line ? (
                 <Row gap={spacing[2]} align="start" style={styles.metaRow}>
                   <View style={styles.metaIconWrap}>
-                    <MapPin size={12} color={c.textTertiary} strokeWidth={2.5} />
+                    <MapPin size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2.5} />
                   </View>
                   <Stack gap={spacing[0.5]} style={styles.addrStack}>
-                    <Text
+                    <AppText
                       style={[
                         styles.metaLine,
                         { color: done ? c.textTertiary : c.textSecondary },
@@ -224,20 +224,20 @@ export function TourStopCard({
                       numberOfLines={2}
                     >
                       {stop.address_line}
-                    </Text>
+                    </AppText>
                     {stop.address_complement ? (
-                      <Text style={[styles.complement, { color: c.textTertiary }]} numberOfLines={1}>
+                      <AppText style={[styles.complement, { color: c.textTertiary }]} numberOfLines={1}>
                         {stop.address_complement}
-                      </Text>
+                      </AppText>
                     ) : null}
                   </Stack>
                 </Row>
               ) : null}
 
               {stop.distance_km_from_prev > 0 ? (
-                <Text style={[styles.dist, { color: c.textTertiary }]}>
+                <AppText style={[styles.dist, { color: c.textTertiary }]}>
                   {stop.distance_km_from_prev.toFixed(1)} km · ~{stop.drive_min_from_prev} min
-                </Text>
+                </AppText>
               ) : null}
             </Pressable>
 
@@ -257,7 +257,7 @@ export function TourStopCard({
                     { borderColor: c.success, backgroundColor: c.success },
                   ]}
                 >
-                  <Check size={18} color="#FFFFFF" strokeWidth={2.5} />
+                  <Check size={iconSize.mdSm} color="#FFFFFF" strokeWidth={2.5} />
                 </View>
               </Pressable>
             ) : null}
@@ -273,7 +273,7 @@ export function TourStopCard({
                     variant="primary"
                     fullWidth
                     style={{ backgroundColor: WAZE_BRAND }}
-                    leftIcon={<Navigation size={15} color="#FFFFFF" strokeWidth={2.5} />}
+                    leftIcon={<Navigation size={iconSize.xs} color="#FFFFFF" strokeWidth={2.5} />}
                     onPress={openNav}
                   />
                 </View>
@@ -284,7 +284,7 @@ export function TourStopCard({
                       size="sm"
                       variant="secondary"
                       fullWidth
-                      leftIcon={<Phone size={15} color={c.primary} strokeWidth={2.5} />}
+                      leftIcon={<Phone size={iconSize.xs} color={c.primary} strokeWidth={2.5} />}
                       onPress={call}
                     />
                   </View>
@@ -298,7 +298,7 @@ export function TourStopCard({
                     size="sm"
                     variant="outline"
                     fullWidth
-                    leftIcon={<CalendarPlus size={15} color={c.primary} strokeWidth={2.2} />}
+                    leftIcon={<CalendarPlus size={iconSize.xs} color={c.primary} strokeWidth={2.2} />}
                     onPress={onAddToCalendar}
                   />
                 </View>
@@ -309,7 +309,7 @@ export function TourStopCard({
                     variant="primary"
                     fullWidth
                     style={{ backgroundColor: c.success }}
-                    leftIcon={<Check size={15} color="#FFFFFF" strokeWidth={2.5} />}
+                    leftIcon={<Check size={iconSize.xs} color="#FFFFFF" strokeWidth={2.5} />}
                     onPress={onMarkDone}
                   />
                 </View>
@@ -375,10 +375,11 @@ function buildStyles(c: AppColors) {
     positionText: {
       color: '#fff',
       fontFamily: fontFamily.bold,
-      fontSize: 9,
+      fontSize: fontSize['2xs'],
     },
     headText: { flex: 1, minWidth: 0, gap: spacing[1] },
     name: {
+      minWidth: 0,
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.base,
       lineHeight: lh(fontSize.base),
@@ -400,6 +401,7 @@ function buildStyles(c: AppColors) {
       lineHeight: lh(fontSize.xs),
     },
     metaTime: {
+      minWidth: 0,
       fontFamily: fontFamily.bold,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs),

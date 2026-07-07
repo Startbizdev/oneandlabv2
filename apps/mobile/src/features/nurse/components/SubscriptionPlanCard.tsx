@@ -2,11 +2,11 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { Check } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type SubscriptionPlanCardProps = {
@@ -51,21 +51,21 @@ export function SubscriptionPlanCard({
     >
       {recommended ? (
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>Recommandé</Text>
+          <AppText style={styles.badgeText}>Recommandé</AppText>
         </View>
       ) : null}
       {isCurrent ? (
         <View style={[styles.badge, styles.badgeCurrent]}>
-          <Text style={[styles.badgeText, styles.badgeTextCurrent]}>Votre offre</Text>
+          <AppText style={[styles.badgeText, styles.badgeTextCurrent]}>Votre offre</AppText>
         </View>
       ) : null}
 
-      <Text style={styles.name}>{name}</Text>
+      <AppText style={styles.name}>{name}</AppText>
       <Row align="baseline" gap={spacing[1]}>
-        <Text style={styles.price}>{price}</Text>
-        <Text style={styles.priceSuffix}>{priceSuffix}</Text>
+        <AppText style={styles.price}>{price}</AppText>
+        <AppText style={styles.priceSuffix}>{priceSuffix}</AppText>
       </Row>
-      <Text style={styles.tagline}>{tagline}</Text>
+      <AppText style={styles.tagline}>{tagline}</AppText>
 
       <View style={styles.features}>
         {features.map((f) => (
@@ -75,11 +75,11 @@ export function SubscriptionPlanCard({
             align="start"
             leading={
               <View style={styles.check}>
-                <Check size={12} color={c.primary} strokeWidth={3} />
+                <Check size={iconSize['2xs']} color={c.primary} strokeWidth={3} />
               </View>
             }
           >
-            <Text style={styles.featureText}>{f}</Text>
+            <AppText style={styles.featureText}>{f}</AppText>
           </Cluster>
         ))}
       </View>

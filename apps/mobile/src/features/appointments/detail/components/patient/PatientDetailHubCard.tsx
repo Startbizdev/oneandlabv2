@@ -3,9 +3,9 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { Cluster } from '@/components/layout/primitives';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { ChevronRight, FileText } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -24,23 +24,23 @@ export function PatientDetailHubCard({
         align="center"
         leading={
           <View style={styles.iconWrap}>
-            <FileText size={18} color={c.primary} strokeWidth={2} />
+            <FileText size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
           </View>
         }
         actions={
           <>
             {documentsCount > 0 ? (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{documentsCount}</Text>
+                <AppText style={styles.badgeText}>{documentsCount}</AppText>
               </View>
             ) : null}
-            <ChevronRight size={16} color={c.textTertiary} strokeWidth={2} />
+            <ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />
           </>
         }
       >
         <View style={styles.body}>
-          <Text style={styles.title}>Documents</Text>
-          <Text style={styles.subtitle}>Pièces jointes et ordonnances</Text>
+          <AppText style={styles.title}>Documents</AppText>
+          <AppText style={styles.subtitle}>Pièces jointes et ordonnances</AppText>
         </View>
       </Cluster>
     </Pressable>

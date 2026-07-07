@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Modal, Text, View } from 'react-native';
+import { Modal, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { getAppMeta } from '@/features/help/utils/app-meta';
 import { openAppStoreUrl } from '../utils/app-update-policy';
@@ -24,11 +24,11 @@ export function ForceAppUpdateModal({ visible, message, storeUrl, force, onDismi
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
       <View style={[styles.shell, { backgroundColor: c.background }]}>
-        <Text style={[styles.title, { color: c.textPrimary }]}>
+        <AppText style={[styles.title, { color: c.textPrimary }]}>
           {force ? 'Mise à jour requise' : 'Mise à jour disponible'}
-        </Text>
-        <Text style={[styles.sub, { color: c.textSecondary }]}>{message}</Text>
-        <Text style={[styles.meta, { color: c.textSecondary }]}>Version installée : {appVersion}</Text>
+        </AppText>
+        <AppText style={[styles.sub, { color: c.textSecondary }]}>{message}</AppText>
+        <AppText style={[styles.meta, { color: c.textSecondary }]}>Version installée : {appVersion}</AppText>
         <View style={styles.actions}>
           <Button title="Mettre à jour" onPress={() => openAppStoreUrl(storeUrl)} fullWidth />
           {!force && onDismiss ? (

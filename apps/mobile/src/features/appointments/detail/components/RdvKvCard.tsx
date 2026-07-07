@@ -1,10 +1,10 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Card } from '@/components/ui/Card';
 import type { DetailKvRow } from '@/utils/appointment-detail-display';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function KvRow({ label, value, strikethrough }: DetailKvRow) {
@@ -12,13 +12,13 @@ function KvRow({ label, value, strikethrough }: DetailKvRow) {
   if (!value) return null;
   return (
     <Row justify="between" align="start" gap={spacing[3]} style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text
+      <AppText style={styles.rowLabel}>{label}</AppText>
+      <AppText
         style={[styles.rowValue, strikethrough && styles.strikethrough]}
         selectable
       >
         {value}
-      </Text>
+      </AppText>
     </Row>
   );
 }
@@ -43,7 +43,7 @@ export function RdvKvCard({
   return (
     <Card shadow="sm" padding="none">
       {showTitle ? (
-        <Text style={styles.overline}>{title}</Text>
+        <AppText style={styles.overline}>{title}</AppText>
       ) : null}
       {visible.map((r, i) => (
         <View

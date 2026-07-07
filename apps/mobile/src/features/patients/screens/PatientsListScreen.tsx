@@ -6,21 +6,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 
 import { Fragment, useCallback, useMemo, useState } from 'react';
 
-import {
-
-  ActionSheetIOS,
-
-  Alert,
-
-  Platform,
-
-  StyleSheet,
-
-  Text,
-
-  View,
-
-} from 'react-native';
+import { ActionSheetIOS, Alert, Platform, StyleSheet, View } from 'react-native';
 
 import { useRouter } from 'expo-router';
 
@@ -64,7 +50,7 @@ import { useAuthStore } from '@/store/auth-store';
 
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -374,7 +360,7 @@ export function PatientsListScreen({
 
           <View style={styles.listCard}>
 
-            <Text style={styles.sectionKicker}>{headerLabel}</Text>
+            <AppText style={styles.sectionKicker}>{headerLabel}</AppText>
 
             {items.map((item, index) => (
 

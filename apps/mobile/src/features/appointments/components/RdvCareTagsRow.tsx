@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { Row } from '@/components/layout/primitives';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
@@ -13,7 +13,7 @@ import {
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { rdvCatalogDisplayLines, type RdvCatalogDisplayOpts } from '@/utils/rdv-catalog-lines';
 import { buildRdvListCardTypography } from './rdv-list-card-typography';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontSize, lh } from '@/theme/typography';
 
 interface Props {
@@ -101,12 +101,12 @@ export function RdvCareTagsRow({
               },
             ]}
           >
-            <Text style={styles.emoji} accessibilityElementsHidden>
+            <AppText style={styles.emoji} accessibilityElementsHidden>
               {line.emoji}
-            </Text>
-            <Text style={styles.label} numberOfLines={1}>
+            </AppText>
+            <AppText style={styles.label} numberOfLines={1}>
               {line.label}
-            </Text>
+            </AppText>
           </Row>
         );
       })}

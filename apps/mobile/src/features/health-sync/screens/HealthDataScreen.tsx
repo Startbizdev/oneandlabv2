@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useRouter } from 'expo-router';
-import { Linking, Platform, RefreshControl, Text, View } from 'react-native';
+import { Linking, Platform, RefreshControl, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { MessageCircle } from 'lucide-react-native';
 import { ActionRowCard } from '@/components/ui/ActionRowCard';
@@ -12,7 +12,7 @@ import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-i
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useStackScrollConfig, STACK_SCENE_CONTENT_TOP_GAP } from '@/navigation/use-stack-scroll-config';
-import { elevation, spacing } from '@/theme';
+import { elevation, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
 import { HealthActivityHero } from '../components/HealthActivityHero';
@@ -146,21 +146,21 @@ export function HealthDataScreen({ variant = 'stack' }: Props) {
 
       {connected && !hasData && !dashboardQ.isError ? (
         <View style={styles.noDataHint}>
-          <Text style={styles.noDataTitle}>Aucune mesure importée</Text>
-          <Text style={styles.noDataText}>
+          <AppText style={styles.noDataTitle}>Aucune mesure importée</AppText>
+          <AppText style={styles.noDataText}>
             Vérifiez que Cary peut lire le poids, la fréquence cardiaque et les pas dans{' '}
             {getHealthPlatformUiConfig().name}, puis synchronisez.
-          </Text>
-          <Text style={styles.link} onPress={openPlatformSettings}>
+          </AppText>
+          <AppText style={styles.link} onPress={openPlatformSettings}>
             Ouvrir {Platform.OS === 'ios' ? 'Apple Santé' : 'Health Connect'}
-          </Text>
+          </AppText>
         </View>
       ) : null}
 
       {hasData && !dashboardQ.isError ? (
         <>
           <View style={[styles.chartCard, elevation.xs]}>
-            <Text style={styles.sectionTitle}>Historique · 30 jours</Text>
+            <AppText style={styles.sectionTitle}>Historique · 30 jours</AppText>
             <HealthMetricChart title="Pas" unit="/j" points={steps} formatValue={(v) => String(Math.round(v))} />
             <HealthMetricChart title="Fréquence cardiaque" unit="bpm" points={heart} />
             <HealthMetricChart title="Poids" unit="kg" points={weight} isLast />
@@ -179,7 +179,7 @@ export function HealthDataScreen({ variant = 'stack' }: Props) {
         </>
       ) : null}
 
-      <Text style={styles.disclaimer}>Indicatif — ne remplace pas un avis médical.</Text>
+      <AppText style={styles.disclaimer}>Indicatif — ne remplace pas un avis médical.</AppText>
     </>
   );
 
@@ -213,8 +213,10 @@ export function HealthDataScreen({ variant = 'stack' }: Props) {
 
 function buildStyles(c: AppColors) {
   return {
-    root: { flex: 1, backgroundColor: c.background },
-    loading: { flex: 1, padding: spacing[4] },
+    root: {
+    minWidth: 0, flex: 1, backgroundColor: c.background },
+    loading: {
+    minWidth: 0, flex: 1, padding: spacing[4] },
     scrollContent: {
       paddingHorizontal: spacing[4],
       paddingBottom: spacing[10],

@@ -3,13 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import React, { useCallback } from 'react';
-import {
-  Alert,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -36,7 +30,7 @@ import { relationshipLabel } from '@/features/patient-relatives/constants/relati
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -72,27 +66,27 @@ const RelativeCard = React.memo(function RelativeCard({
               profileImageUrl={null}
               seed={item.id ?? displayName(item)}
               gender={item.gender}
-              size={48}
+              size={iconSize['5xl']}
               style={styles.avatar}
             />
           }
         >
           <View style={styles.info}>
-            <Text style={styles.name}>{displayName(item)}</Text>
+            <AppText style={styles.name}>{displayName(item)}</AppText>
             {rel ? (
               <Row gap={4} align="center" style={styles.relationPill}>
-                <Heart size={10} color={c.error} strokeWidth={2.5} fill={c.error} />
-                <Text style={styles.relationText}>{rel}</Text>
+                <Heart size={iconSize['3xs']} color={c.error} strokeWidth={2.5} fill={c.error} />
+                <AppText style={styles.relationText}>{rel}</AppText>
               </Row>
             ) : null}
-            {item.phone ? <Text style={styles.meta}>{item.phone}</Text> : null}
+            {item.phone ? <AppText style={styles.meta}>{item.phone}</AppText> : null}
             {item.email ? (
-              <Text style={styles.meta} numberOfLines={1}>
+              <AppText style={styles.meta} numberOfLines={1}>
                 {item.email}
-              </Text>
+              </AppText>
             ) : null}
             {item.birth_date ? (
-              <Text style={styles.birth}>Né(e) le {formatBirthDateFr(item.birth_date)}</Text>
+              <AppText style={styles.birth}>Né(e) le {formatBirthDateFr(item.birth_date)}</AppText>
             ) : null}
           </View>
         </Cluster>
@@ -177,9 +171,9 @@ export function PatientRelativesScreen({
         skeletonHeight={80}
         skeletonCount={2}
         ListHeaderComponent={
-          <Text style={styles.subtitle}>
+          <AppText style={styles.subtitle}>
             Touchez une carte pour modifier · appui long pour supprimer
-          </Text>
+          </AppText>
         }
         ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
         showsVerticalScrollIndicator={false}

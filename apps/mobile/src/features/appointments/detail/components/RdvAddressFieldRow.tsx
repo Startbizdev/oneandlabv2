@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 import { Map, Navigation } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { Row } from '@/components/layout/primitives';
@@ -14,7 +14,7 @@ import {
   resolveAppointmentMapCoords,
 } from '../utils/appointment-address-display';
 import { getRdvDetailSectionStyles } from './layout/rdv-detail-section-styles';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -77,14 +77,14 @@ export function RdvAddressFieldRow({
         rowIndex > 0 && getRdvDetailSectionStyles().rowBorder,
       ]}
     >
-      <Text style={styles.label}>Adresse</Text>
+      <AppText style={styles.label}>Adresse</AppText>
       {pending ? (
         <Skeleton height={18} width="88%" borderRadius={radius.sm} />
       ) : (
         <View style={styles.valueBlock}>
-          <Text style={styles.value}>{line}</Text>
+          <AppText style={styles.value}>{line}</AppText>
           {complement ? (
-            <Text style={styles.complement}>Complément : {complement}</Text>
+            <AppText style={styles.complement}>Complément : {complement}</AppText>
           ) : null}
           {showMapActions && line ? (
             <Row gap={4} align="center" style={styles.mapActions}>
@@ -92,7 +92,7 @@ export function RdvAddressFieldRow({
                 title="Carte"
                 variant="muted"
                 size="sm"
-                leftIcon={<Map size={11} color={c.textSecondary} strokeWidth={2.25} />}
+                leftIcon={<Map size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.25} />}
                 onPress={openGoogleMaps}
               />
               <Button
@@ -100,7 +100,7 @@ export function RdvAddressFieldRow({
                 variant="muted"
                 size="sm"
                 leftIcon={
-                  <Navigation size={11} color={c.textSecondary} strokeWidth={2.25} />
+                  <Navigation size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.25} />
                 }
                 onPress={openWaze}
                 accessibilityLabel="Itinéraire Waze"

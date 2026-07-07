@@ -312,7 +312,7 @@ export function NurseTourneeScreen() {
           <TourPassageSectionHeader
             sortActive={sortFilterActive}
             absentCount={absentCount}
-            activeTotal={tour.summary.total_stops ?? 0}
+            activeTotal={tour?.summary.total_stops ?? 0}
             onOpenFilter={() => setSortSheetOpen(true)}
           />
         ) : null}
@@ -479,6 +479,7 @@ function buildStyles(c: AppColors) {
       overflow: 'visible' as const,
     },
     listEmpty: {
+      minWidth: 0,
       flexGrow: 1,
     },
   };

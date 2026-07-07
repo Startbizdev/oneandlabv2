@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ProfileCoverageEditor } from '@/features/profile/components/ProfileCoverageEditor';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
@@ -19,7 +19,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import type { AddressPayload } from '@/features/appointments/form/types';
 
@@ -129,13 +129,13 @@ export function ProfileNurseCoverageScreen() {
 
   return (
     <ProfileSubScreenLayout hideSave>
-      <Text style={styles.intro}>
+      <AppText style={styles.intro}>
         Ajustez le rayon autour de votre adresse professionnelle. Chaque modification est
         enregistrée automatiquement.
-      </Text>
-      <Text style={styles.hint}>
+      </AppText>
+      <AppText style={styles.hint}>
         Adresse issue de vos coordonnées — modifiez-la dans Coordonnées si besoin.
-      </Text>
+      </AppText>
       <ProfileCoverageEditor
         embedded
         showDiscoveryHint

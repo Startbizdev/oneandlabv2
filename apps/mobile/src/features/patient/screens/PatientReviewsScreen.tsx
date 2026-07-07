@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -28,7 +28,7 @@ import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { scrollChildEntering } from '@/lib/platform/list-entering-animation';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const PATIENT_APPOINTMENTS_FILTERS = {
@@ -47,15 +47,15 @@ function PatientReviewsSummary({ reviews }: { reviews: Review[] }) {
   return (
     <Row justify="between" align="center" gap={spacing[3]} style={summaryStyles.wrap}>
       <View style={summaryStyles.left}>
-        <Text style={summaryStyles.count}>{reviews.length}</Text>
-        <Text style={summaryStyles.countLabel}>
+        <AppText style={summaryStyles.count}>{reviews.length}</AppText>
+        <AppText style={summaryStyles.countLabel}>
           {reviews.length > 1 ? 'avis laissés' : 'avis laissé'}
-        </Text>
+        </AppText>
       </View>
       {withRating.length > 0 ? (
         <View style={summaryStyles.right}>
-          <Text style={summaryStyles.avgLabel}>Note moyenne donnée</Text>
-          <ReviewStars rating={avg} size={16} />
+          <AppText style={summaryStyles.avgLabel}>Note moyenne donnée</AppText>
+          <ReviewStars rating={avg} size={iconSize.sm} />
         </View>
       ) : null}
     </Row>
@@ -125,9 +125,9 @@ export function PatientReviewsScreen() {
 
   const ListHeader = () => (
     <View style={styles.headerBlock}>
-      <Text style={styles.intro}>
+      <AppText style={styles.intro}>
         Retrouvez les notes et commentaires que vous avez partagés après vos rendez-vous.
-      </Text>
+      </AppText>
       <PatientReviewsSummary reviews={reviews} />
     </View>
   );

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
-import { Text, View, type TextStyle } from 'react-native';
+import { AppText } from '@/theme';
+import { Row } from '@/components/layout/primitives';
+import { View, type TextStyle } from 'react-native';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 export type MessageBlock =
@@ -88,9 +90,9 @@ function renderInlineBold(text: string, style?: TextStyle): ReactNode[] {
       nodes.push(text.slice(last, match.index));
     }
     nodes.push(
-      <Text key={`b-${index++}`} style={[style, { fontFamily: fontFamily.semiBold }]}>
+      <AppText key={`b-${index++}`} style={[style, { fontFamily: fontFamily.semiBold }]}>
         {match[1]}
-      </Text>,
+      </AppText>,
     );
     last = match.index + match[0].length;
   }
@@ -110,9 +112,9 @@ function renderLine(line: string, style: TextStyle, key: string) {
   const cleaned = line.trim();
   if (!cleaned) return null;
   return (
-    <Text key={key} style={style}>
+    <AppText key={key} style={style}>
       {renderInlineBold(cleaned, style)}
-    </Text>
+    </AppText>
   );
 }
 
@@ -151,9 +153,9 @@ export function CaryMarkdown({
       {blocks.map((block, blockIndex) => {
         if (block.type === 'heading') {
           return (
-            <Text key={`h-${blockIndex}`} style={headingStyle}>
+            <AppText key={`h-${blockIndex}`} style={headingStyle}>
               {block.text}
-            </Text>
+            </AppText>
           );
         }
 
@@ -161,12 +163,13 @@ export function CaryMarkdown({
           return (
             <View key={`list-${blockIndex}`} style={{ gap: 8, paddingLeft: 2 }}>
               {block.items.map((item, itemIndex) => (
-                <View key={`li-${blockIndex}-${itemIndex}`} style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
-                  <Text style={[baseStyle, { lineHeight: lh(fontSize.base, 1.55), marginTop: 1 }]}>{'•'}</Text>
-                  <Text style={[baseStyle, { flex: 1 }]}>
+                <Row key={`li-${blockIndex}-${itemIndex}`} gap={8} align="start" style={{ minWidth: 0 }}>
+                  <AppText style={[baseStyle, { lineHeight: lh(fontSize.base, 1.55), marginTop: 1 }]}>{'•'}</AppText>
+                  <AppText style={[baseStyle, {
+    minWidth: 0, flex: 1 }]}>
                     {renderInlineBold(stripStrayMarkdown(item), baseStyle)}
-                  </Text>
-                </View>
+                  </AppText>
+                </Row>
               ))}
             </View>
           );

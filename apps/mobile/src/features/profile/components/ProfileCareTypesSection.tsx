@@ -1,6 +1,6 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
@@ -16,7 +16,7 @@ import type { NurseCategoryPreference } from '@/features/profile/types/profile.t
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { palette, radius, spacing } from '@/theme';
+import { palette, radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -66,9 +66,9 @@ export function ProfileCareTypesSection({ bare }: Props) {
   const body = q.isLoading ? (
     <SkeletonList count={6} itemHeight={48} gap={spacing[2]} />
   ) : prefs.length === 0 ? (
-    <Text style={[styles.empty, bare && styles.emptyBare]}>
+    <AppText style={[styles.empty, bare && styles.emptyBare]}>
       Aucune catégorie de soins disponible pour le moment.
-    </Text>
+    </AppText>
   ) : (
     <View style={[styles.list, bare && styles.listBare]}>
       {prefs.map((p) => {
@@ -80,9 +80,9 @@ export function ProfileCareTypesSection({ bare }: Props) {
             gap={spacing[3]}
             leading={
               <View style={[styles.emojiTile, enabled && styles.emojiTileEnabled]}>
-                <Text style={styles.emoji} accessibilityElementsHidden>
+                <AppText style={styles.emoji} accessibilityElementsHidden>
                   {preferenceEmoji(p)}
-                </Text>
+                </AppText>
               </View>
             }
             actions={
@@ -94,12 +94,12 @@ export function ProfileCareTypesSection({ bare }: Props) {
             }
             style={[styles.row, enabled && styles.rowEnabled, busy && styles.rowBusy]}
           >
-            <Text
+            <AppText
               style={[styles.rowTitle, !enabled && styles.rowTitleOff]}
               numberOfLines={1}
             >
               {p.name ?? p.category_id}
-            </Text>
+            </AppText>
           </Cluster>
         );
       })}
@@ -163,7 +163,7 @@ function buildStyles(c: AppColors) {
     borderColor: palette.brand[200],
   },
   emoji: {
-    fontSize: 20,
+    fontSize: fontSize.lg,
     lineHeight: 24,
   },
   rowTitle: {

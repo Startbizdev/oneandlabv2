@@ -2,13 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { FlashList, type ListRenderItem as FlashListRenderItem } from '@shopify/flash-list';
 import { Check, Search } from 'lucide-react-native';
 import { Cluster } from '@/components/layout/primitives';
@@ -20,7 +14,7 @@ import {
   patientListSubtitle,
   patientPickerOptionFromRow,
 } from '@/features/patients/utils/patient-contact-display';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const H_PAD = spacing[4];
@@ -114,16 +108,16 @@ export function PrescriptionPatientSelectSheet({
             style={[styles.row, selected && styles.rowSelected]}
             actions={
               <View style={styles.trailing}>
-                {selected ? <Check size={20} color={c.primary} strokeWidth={2.5} /> : null}
+                {selected ? <Check size={iconSize.md} color={c.primary} strokeWidth={2.5} /> : null}
               </View>
             }
           >
             <View style={styles.rowBody}>
-              <Text style={[styles.name, selected && styles.nameSelected]} numberOfLines={1}>
+              <AppText style={[styles.name, selected && styles.nameSelected]} numberOfLines={1}>
                 {patientDisplayName(item)}
-              </Text>
+              </AppText>
               {subtitle ? (
-                <Text style={styles.meta} numberOfLines={1}>{subtitle}</Text>
+                <AppText style={styles.meta} numberOfLines={1}>{subtitle}</AppText>
               ) : null}
             </View>
           </Cluster>
@@ -158,7 +152,7 @@ export function PrescriptionPatientSelectSheet({
           value={query}
           onChangeText={setQuery}
           placeholder={searchPlaceholder}
-          leftIcon={<Search size={16} color={c.textTertiary} strokeWidth={2} />}
+          leftIcon={<Search size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
           autoCorrect={false}
         />
       </View>
@@ -168,9 +162,9 @@ export function PrescriptionPatientSelectSheet({
           <ActivityIndicator size="large" color={c.primary} />
         </View>
       ) : filtered.length === 0 ? (
-        <Text style={styles.empty}>
+        <AppText style={styles.empty}>
           {query.trim() ? `Aucun résultat pour « ${query.trim()} »` : 'Aucun patient'}
-        </Text>
+        </AppText>
       ) : (
         <View style={styles.listPanel}>
           <FlashList

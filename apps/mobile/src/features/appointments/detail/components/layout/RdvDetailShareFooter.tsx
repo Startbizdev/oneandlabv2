@@ -2,13 +2,13 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
-import { ActivityIndicator, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Share, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Share2 } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import type { ShareForNurseData } from '../../api/appointment-detail.service';
 import { buildNurseShareMessage } from '../../utils/nurse-share-message';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -50,8 +50,8 @@ export function RdvDetailShareFooter({ shareData, shareText: shareTextProp, load
             <ActivityIndicator color={c.textInverse} size="small" />
           ) : (
             <Row gap={spacing[2]} align="center" justify="center">
-              <Share2 size={18} color={c.textInverse} strokeWidth={2.25} />
-              <Text style={styles.btnText}>Partager le rendez-vous</Text>
+              <Share2 size={iconSize.mdSm} color={c.textInverse} strokeWidth={2.25} />
+              <AppText style={styles.btnText}>Partager le rendez-vous</AppText>
             </Row>
           )}
         </LinearGradient>

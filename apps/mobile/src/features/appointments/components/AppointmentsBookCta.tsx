@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { CalendarPlus } from 'lucide-react-native';
 import { BookingPremiumStepCta } from '@/features/appointments/form/components/BookingPremiumStepCta';
-import { spacing } from '@/theme';
+import {spacing, iconSize } from '@/theme';
 
 interface Props {
   href: Href;
@@ -33,7 +33,7 @@ function AppointmentsBookCtaComponent({ href, label = DEFAULT_LABEL, flush = fal
         variant="list"
         showStepBadge={false}
         title={label}
-        leadingIcon={<CalendarPlus size={18} color={c.primary} strokeWidth={2.25} />}
+        leadingIcon={<CalendarPlus size={iconSize.mdSm} color={c.primary} strokeWidth={2.25} />}
         onPress={onPress}
       />
     </View>

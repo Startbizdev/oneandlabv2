@@ -1,12 +1,12 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useAuthStore } from '@/store/auth-store';
 import { ProfileNurseView } from '@/features/profile/views/ProfileNurseView';
 import { ProfilePatientView } from '@/features/profile/views/ProfilePatientView';
 import { ProfilePreleveurView } from '@/features/profile/views/ProfilePreleveurView';
 import { ProfileProView } from '@/features/profile/views/ProfileProView';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 /**
@@ -24,7 +24,7 @@ export function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.error}>Profil non disponible pour ce compte.</Text>
+      <AppText style={styles.error}>Profil non disponible pour ce compte.</AppText>
     </View>
   );
 }

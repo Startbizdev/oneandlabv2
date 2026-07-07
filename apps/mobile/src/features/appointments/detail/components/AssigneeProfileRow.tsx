@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { MessageCircle, Phone, User } from 'lucide-react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { CompactAssigneeRating } from '@/features/appointments/detail/components/CompactAssigneeRating';
 import type { AssigneeReviewSummary } from '@/features/appointments/detail/utils/assignee-review-display';
 import { buildPhoneContactActions } from '@/utils/contact-actions';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -76,19 +76,19 @@ export function AssigneeProfileRow({
         leading={<View style={styles.avatarWrap}>{avatar}</View>}
       >
         <View style={styles.meta}>
-          <Text style={styles.name} numberOfLines={2}>
+          <AppText style={styles.name} numberOfLines={2}>
             {name}
-          </Text>
-          <Text style={styles.role} numberOfLines={1}>
+          </AppText>
+          <AppText style={styles.role} numberOfLines={1}>
             {title}
-          </Text>
+          </AppText>
 
           <CompactAssigneeRating summary={reviewSummary} />
 
           {subtitle ? (
-            <Text style={styles.subtitle} numberOfLines={2}>
+            <AppText style={styles.subtitle} numberOfLines={2}>
               {subtitle}
-            </Text>
+            </AppText>
           ) : null}
         </View>
       </Cluster>
@@ -100,7 +100,7 @@ export function AssigneeProfileRow({
               title="Voir le profil"
               variant="muted"
               size="sm"
-              leftIcon={<User size={13} color={c.textSecondary} strokeWidth={2.25} />}
+              leftIcon={<User size={iconSize.xs} color={c.textSecondary} strokeWidth={2.25} />}
               onPress={onViewProfile}
               style={styles.actionButton}
               accessibilityLabel={`Voir le profil de ${name}`}
@@ -114,7 +114,7 @@ export function AssigneeProfileRow({
                 title={action.label}
                 variant="muted"
                 size="sm"
-                leftIcon={<Icon size={13} color={c.textSecondary} strokeWidth={2.25} />}
+                leftIcon={<Icon size={iconSize.xs} color={c.textSecondary} strokeWidth={2.25} />}
                 onPress={action.onPress}
                 style={styles.actionButton}
               />

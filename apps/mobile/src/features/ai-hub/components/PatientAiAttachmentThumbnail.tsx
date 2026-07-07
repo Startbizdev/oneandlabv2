@@ -1,17 +1,10 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 import { FileText, X } from 'lucide-react-native';
 import { isPdfMime } from '../utils/attachment-preview';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type PatientAiAttachmentPreview = {
@@ -72,12 +65,12 @@ export function PatientAiAttachmentThumbnail({
         />
       )}
       {isPdf || !hasImageUri ? (
-        <Text
+        <AppText
           style={[styles.pdfName, { color: c.textSecondary }]}
           numberOfLines={2}
         >
           {attachment.fileName}
-        </Text>
+        </AppText>
       ) : null}
       {loading ? (
         <View style={[styles.loadingOverlay, { backgroundColor: `${c.background}CC` }]}>
@@ -92,7 +85,7 @@ export function PatientAiAttachmentThumbnail({
           accessibilityRole="button"
           accessibilityLabel="Retirer la pièce jointe"
         >
-          <X size={14} color={c.textSecondary} strokeWidth={2.5} />
+          <X size={iconSize.xs} color={c.textSecondary} strokeWidth={2.5} />
         </Pressable>
       ) : null}
     </View>

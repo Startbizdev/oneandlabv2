@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { STAFF_PATIENT_BOOKING_CONSENT_LABEL } from '@oneandlab/shared-constants';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -25,9 +25,9 @@ export function StaffPatientBookingConsentRow({ checked, onToggle, error }: Prop
     >
       <Row align="start" gap={spacing[3]}>
         <View style={[styles.checkbox, checked && styles.checkboxActive]}>
-          {checked ? <Text style={styles.checkmark}>✓</Text> : null}
+          {checked ? <AppText style={styles.checkmark}>✓</AppText> : null}
         </View>
-        <Text style={styles.consentText}>{STAFF_PATIENT_BOOKING_CONSENT_LABEL}</Text>
+        <AppText style={styles.consentText}>{STAFF_PATIENT_BOOKING_CONSENT_LABEL}</AppText>
       </Row>
     </Pressable>
   );
@@ -66,6 +66,7 @@ function buildStyles(c: AppColors) {
       lineHeight: 16,
     },
     consentText: {
+      minWidth: 0,
       flex: 1,
       fontSize: fontSize.sm,
       fontFamily: fontFamily.medium,

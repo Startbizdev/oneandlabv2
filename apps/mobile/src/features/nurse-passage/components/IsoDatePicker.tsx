@@ -1,14 +1,14 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
 import dayjs from 'dayjs';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { useInBottomSheet } from '@/components/ui/sheet-keyboard-context';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -81,9 +81,9 @@ export function IsoDatePicker({
   return (
     <View style={styles.wrap}>
       {label ? (
-        <Text style={styles.label} numberOfLines={1}>
+        <AppText style={styles.label} numberOfLines={1}>
           {label}
-        </Text>
+        </AppText>
       ) : null}
       <Pressable
         onPress={openPicker}
@@ -98,16 +98,16 @@ export function IsoDatePicker({
         accessibilityLabel={label ? `${label}, ${display}` : display}
         accessibilityState={{ expanded }}
       >
-        <Text
+        <AppText
           style={[styles.value, !parsedValid && styles.placeholder]}
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.85}
         >
           {display}
-        </Text>
+        </AppText>
       </Pressable>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <AppText style={styles.error}>{error}</AppText> : null}
 
       {androidOpen ? (
         <DateTimePicker

@@ -1,8 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -19,12 +19,12 @@ export function BookingWizardProgress({ current, total, label, hint }: Props) {
   return (
     <View style={styles.wrap}>
       <Row gap={spacing[2]} justify="between">
-        <Text style={styles.stepText}>
+        <AppText style={styles.stepText}>
           Étape {current} sur {total}
-        </Text>
-        {label ? <Text style={styles.label}>{label}</Text> : null}
+        </AppText>
+        {label ? <AppText style={styles.label}>{label}</AppText> : null}
       </Row>
-      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+      {hint ? <AppText style={styles.hint}>{hint}</AppText> : null}
       <View style={styles.track}>
         <View style={[styles.fill, { width: `${pct}%` }]} />
       </View>

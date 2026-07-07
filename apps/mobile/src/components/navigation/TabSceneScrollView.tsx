@@ -40,7 +40,8 @@ type Props = {
 
 /**
  * ScrollView onglet NativeTabs — copie exacte du pattern NurseAppointmentsListScreen / PatientsListScreen.
- * Parent obligatoire : `<View style={{ flex: 1 }}>`.
+ * Parent obligatoire : `<View style={{
+    minWidth: 0, flex: 1 }}>`.
  */
 export function TabSceneScrollView({
   children,

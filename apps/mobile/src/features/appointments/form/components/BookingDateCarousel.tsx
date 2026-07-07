@@ -3,16 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  FlatList,
-  LayoutChangeEvent,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native';
+import { FlatList, LayoutChangeEvent, Pressable, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import Animated, {
   useAnimatedStyle,
@@ -34,7 +25,7 @@ import {
   parseIsoDay,
   slideIndexForBookingDate,
 } from '../utils/booking-date-utils';
-import { animation, elevation, radius, spacing } from '@/theme';
+import { animation, elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { FONT_SIZE_BASE, fontFamily, fontSize, lh } from '@/theme/typography';
 import { getTextScaleMultiplier } from '@/theme/text-scale';
 
@@ -120,12 +111,12 @@ function DayCell({
           end={{ x: 1, y: 1 }}
           style={[styles.cellInner, styles.cellInnerSelected]}
         >
-          <Text style={[styles.weekday, styles.textOn]} numberOfLines={1} adjustsFontSizeToFit>
+          <AppText style={[styles.weekday, styles.textOn]} numberOfLines={1} adjustsFontSizeToFit>
             {weekday}
-          </Text>
-          <Text style={[styles.dayNum, styles.textOn]} adjustsFontSizeToFit minimumFontScale={0.85}>
+          </AppText>
+          <AppText style={[styles.dayNum, styles.textOn]} adjustsFontSizeToFit minimumFontScale={0.85}>
             {dayNum}
-          </Text>
+          </AppText>
         </LinearGradient>
       ) : (
         <View
@@ -135,20 +126,20 @@ function DayCell({
             isToday && !disabled && styles.cellInnerToday,
           ]}
         >
-          <Text
+          <AppText
             style={[styles.weekday, disabled && styles.textOff, isToday && !disabled && styles.weekdayToday]}
             numberOfLines={1}
             adjustsFontSizeToFit
           >
             {weekday}
-          </Text>
-          <Text
+          </AppText>
+          <AppText
             style={[styles.dayNum, disabled && styles.textOff, isToday && !disabled && styles.dayNumToday]}
             adjustsFontSizeToFit
             minimumFontScale={0.85}
           >
             {dayNum}
-          </Text>
+          </AppText>
         </View>
       )}
     </AnimatedPressable>
@@ -237,17 +228,17 @@ function PeriodNavigator({
         accessibilityRole="button"
         accessibilityLabel="Période précédente"
       >
-        <ChevronLeft size={18} color={canPrev ? c.primary : c.textTertiary} strokeWidth={2.5} />
+        <ChevronLeft size={iconSize.mdSm} color={canPrev ? c.primary : c.textTertiary} strokeWidth={2.5} />
       </Pressable>
 
       <View style={styles.periodCenter}>
-        <Text style={styles.periodLabel} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.9}>
+        <AppText style={styles.periodLabel} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.9}>
           {label}
-        </Text>
+        </AppText>
         {pageCount > 1 ? (
-          <Text style={styles.periodHint}>
+          <AppText style={styles.periodHint}>
             {page + 1} / {pageCount}
-          </Text>
+          </AppText>
         ) : null}
       </View>
 
@@ -259,7 +250,7 @@ function PeriodNavigator({
         accessibilityRole="button"
         accessibilityLabel="Période suivante"
       >
-        <ChevronRight size={18} color={canNext ? c.primary : c.textTertiary} strokeWidth={2.5} />
+        <ChevronRight size={iconSize.mdSm} color={canNext ? c.primary : c.textTertiary} strokeWidth={2.5} />
       </Pressable>
     </Row>
   );
@@ -368,7 +359,7 @@ export function BookingDateCarousel({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>Date souhaitée</Text>
+      <AppText style={styles.label}>Date souhaitée</AppText>
 
       <View style={styles.calendarCard}>
         <PeriodNavigator
@@ -407,9 +398,9 @@ export function BookingDateCarousel({
 
         {selected ? (
           <View style={styles.selectedRecap}>
-            <Text style={styles.selectedRecapText} numberOfLines={1}>
+            <AppText style={styles.selectedRecapText} numberOfLines={1}>
               {formatBookingSelectedDay(selected)}
-            </Text>
+            </AppText>
           </View>
         ) : null}
       </View>

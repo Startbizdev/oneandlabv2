@@ -1,3 +1,4 @@
+import { iconSize } from '@/theme';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
@@ -21,7 +22,7 @@ export function BookingWizardHeaderClose({ onPress }: Props) {
       accessibilityRole="button"
       accessibilityLabel="Fermer"
     >
-      <X size={22} color={c.primary} strokeWidth={2.25} />
+      <X size={iconSize.mdLg} color={c.primary} strokeWidth={2.25} />
     </Pressable>
   );
 }

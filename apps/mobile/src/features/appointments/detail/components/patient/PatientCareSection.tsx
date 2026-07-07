@@ -1,6 +1,6 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Stethoscope } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
@@ -18,7 +18,7 @@ import {
   PatientListRow,
   PatientRowValue,
 } from './PatientListPrimitives';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function actTitle(appt: Appointment, index: number): string {
@@ -94,7 +94,7 @@ export function PatientCareSection({ batch, isMultiBatch }: Props) {
       {batch.map((appt, idx) => (
         <View key={appt.id} style={[styles.act, idx > 0 && styles.actBorder]}>
           <Row justify="between" align="center" gap={spacing[2]} style={styles.actHead}>
-            <Text style={styles.actTitle}>{actTitle(appt, idx)}</Text>
+            <AppText style={styles.actTitle}>{actTitle(appt, idx)}</AppText>
             <StatusBadge status={appt.status} size="sm" />
           </Row>
           {isAppointmentCanceled(appt.status) ? (

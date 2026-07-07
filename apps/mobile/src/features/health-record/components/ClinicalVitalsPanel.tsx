@@ -1,8 +1,9 @@
+import { layoutRowBaselineWrap, layoutRowWrap } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
-import { Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react-native';
 import type {
@@ -21,18 +22,12 @@ import {
 } from '../utils/clinical-vital-display';
 import { ClinicalVitalEditSheet } from './ClinicalVitalEditSheet';
 import { ClinicalVitalHistorySheet } from './ClinicalVitalHistorySheet';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, useLayoutMetrics, gridColumns, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const CARD_MIN_H = 96;
 /** 1 carte « Ajouter » + une carte par type de constante. */
 const VITAL_GRID_CARD_COUNT = 1 + CLINICAL_VITAL_UI.length;
-
-/** 3 colonnes sur petits écrans pour éviter les retours à la ligne sur les libellés. */
-function gridColumns(screenWidth: number): number {
-  if (screenWidth < 360) return 3;
-  return 4;
-}
 
 type Props = {
   patientId: string;
@@ -53,31 +48,31 @@ function VitalCardContent({
   return (
     <View style={styles.cardBody}>
       <View style={[styles.emojiBadge, { backgroundColor: c.surfaceAlt ?? c.primaryLight + '40' }]}>
-        <Text style={styles.emoji}>{cfg.emoji}</Text>
+        <AppText style={styles.emoji}>{cfg.emoji}</AppText>
       </View>
-      <Text
+      <AppText
         style={styles.cardLabel}
         numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.82}
       >
         {cfg.card_label_fr}
-      </Text>
+      </AppText>
       <View style={styles.cardMetrics}>
         {reading ? (
           <>
             <View style={styles.valueRow}>
-              <Text style={styles.cardValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              <AppText style={styles.cardValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                 {formatClinicalVitalCardValue(reading)}
-              </Text>
-              <Text style={styles.cardUnit}>{cfg.unit}</Text>
+              </AppText>
+              <AppText style={styles.cardUnit}>{cfg.unit}</AppText>
             </View>
-            <Text style={styles.cardDate} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+            <AppText style={styles.cardDate} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
               {formatClinicalVitalCardDate(reading.recorded_at)}
-            </Text>
+            </AppText>
           </>
         ) : (
-          <Text style={styles.cardPlaceholder}>—</Text>
+          <AppText style={styles.cardPlaceholder}>—</AppText>
         )}
       </View>
     </View>
@@ -86,8 +81,8 @@ function VitalCardContent({
 
 export function ClinicalVitalsPanel({ patientId, context }: Props) {
   const c = useAppColors();
-  const { width: screenWidth } = useWindowDimensions();
-  const cols = gridColumns(screenWidth);
+  const layout = useLayoutMetrics();
+  const cols = gridColumns(layout.width, { compact: 3, default: 4 });
   const styles = useThemedStyles(buildStyles);
   const slotStyle = { width: `${100 / cols}%` as const };
 
@@ -139,7 +134,7 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>Constantes médicales</Text>
+      <AppText style={styles.title}>Constantes médicales</AppText>
 
       {vitalsQ.isLoading && !vitalsQ.data ? (
         <View style={styles.grid}>
@@ -159,9 +154,9 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
               accessibilityLabel="Ajouter une constante"
             >
               <View style={[styles.addIconCircle, { backgroundColor: c.primaryLight }]}>
-                <Plus size={18} color={c.primary} strokeWidth={2.25} />
+                <Plus size={iconSize.mdSm} color={c.primary} strokeWidth={2.25} />
               </View>
-              <Text style={styles.addLabel}>Ajouter</Text>
+              <AppText style={styles.addLabel}>Ajouter</AppText>
             </Pressable>
           </View>
 
@@ -217,8 +212,7 @@ function buildStyles(c: AppColors) {
       letterSpacing: 0.4,
     },
     grid: {
-      flexDirection: 'row' as const,
-      flexWrap: 'wrap' as const,
+      ...layoutRowWrap(0),
       marginHorizontal: -(gap / 2),
     },
     cardSlot: {
@@ -241,6 +235,7 @@ function buildStyles(c: AppColors) {
       overflow: 'hidden' as const,
     },
     cardBody: {
+      minWidth: 0,
       flex: 1,
       minHeight: CARD_MIN_H - spacing[2] * 2,
       gap: spacing[1],
@@ -278,7 +273,7 @@ function buildStyles(c: AppColors) {
       justifyContent: 'center' as const,
     },
     emoji: {
-      fontSize: 18,
+      fontSize: fontSize.md,
       lineHeight: 22,
       textAlign: 'center' as const,
     },
@@ -289,17 +284,16 @@ function buildStyles(c: AppColors) {
       lineHeight: fontSize.xs * 1.2,
     },
     cardMetrics: {
+      minWidth: 0,
       flex: 1,
       justifyContent: 'flex-end' as const,
       gap: 1,
     },
     valueRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'baseline' as const,
-      flexWrap: 'wrap' as const,
-      gap: 3,
+      ...layoutRowBaselineWrap(3),
     },
     cardValue: {
+      minWidth: 0,
       fontFamily: fontFamily.bold,
       fontSize: fontSize.md,
       color: c.textPrimary,
@@ -312,7 +306,7 @@ function buildStyles(c: AppColors) {
     },
     cardDate: {
       fontFamily: fontFamily.regular,
-      fontSize: 10,
+      fontSize: fontSize['2xs'],
       color: c.textTertiary,
       lineHeight: 12,
     },

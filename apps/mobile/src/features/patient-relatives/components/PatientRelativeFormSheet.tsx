@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
@@ -12,7 +12,7 @@ import type { AddressPayload } from '@/features/appointments/form/types';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { RELATIONSHIP_OPTIONS } from '../constants/relationship-types';
 import type { PatientRelative } from '../api/patient-relatives.service';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -107,7 +107,7 @@ export function PatientRelativeFormSheet({
         <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
         <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
         <View>
-          <Text style={styles.label}>Lien de parenté</Text>
+          <AppText style={styles.label}>Lien de parenté</AppText>
           <Row wrap gap={spacing[2]}>
             {RELATIONSHIP_OPTIONS.map((o) => {
               const active = relationshipType === o.value;
@@ -120,7 +120,7 @@ export function PatientRelativeFormSheet({
                   accessibilityState={{ selected: active }}
                   accessibilityLabel={o.label}
                 >
-                  <Text style={[styles.pillText, active && styles.pillTextActive]}>{o.label}</Text>
+                  <AppText style={[styles.pillText, active && styles.pillTextActive]}>{o.label}</AppText>
                 </Pressable>
               );
             })}
@@ -144,7 +144,7 @@ export function PatientRelativeFormSheet({
           onComplementChange={setAddressComplement}
         />
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <AppText style={styles.error}>{error}</AppText> : null}
       <Row gap={spacing[3]} style={styles.actions}>
         <View style={styles.actionBtn}>
           <Button title="Annuler" variant="outline" onPress={onClose} fullWidth size="lg" />

@@ -7,7 +7,7 @@ import {
   buildCareTileOrbColorMap,
   resolveRdvCareTagColors,
 } from '@/features/appointments/form/utils/booking-care-catalog';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import {
   Calendar,
@@ -38,7 +38,7 @@ import {
 import { buildRdvListCardTypography } from '@/features/appointments/components/rdv-list-card-typography';
 import { OfferInfoRow } from './OfferInfoRow';
 import { OfferLabPartnerSection } from './OfferLabPartnerSection';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -76,12 +76,12 @@ function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
                 },
               ]}
             >
-              <Text style={tagStyles.careTagEmoji} accessibilityElementsHidden>
+              <AppText style={tagStyles.careTagEmoji} accessibilityElementsHidden>
                 {line.emoji}
-              </Text>
-              <Text style={tagStyles.careTagLabel} numberOfLines={1}>
+              </AppText>
+              <AppText style={tagStyles.careTagLabel} numberOfLines={1}>
                 {line.label}
-              </Text>
+              </AppText>
             </Row>
           );
         })}
@@ -143,10 +143,10 @@ function OfferCard({ primary, batch }: { primary: Appointment; batch: Appointmen
       {notes ? (
         <View style={styles.notesBlock}>
           <Row align="center" gap={spacing[2]} style={styles.notesHead}>
-            <MessageSquare size={14} color={c.textTertiary} strokeWidth={2} />
-            <Text style={styles.notesLabel}>Message</Text>
+            <MessageSquare size={iconSize.xs} color={c.textTertiary} strokeWidth={2} />
+            <AppText style={styles.notesLabel}>Message</AppText>
           </Row>
-          <Text style={styles.notesText}>{notes}</Text>
+          <AppText style={styles.notesText}>{notes}</AppText>
         </View>
       ) : null}
     </View>

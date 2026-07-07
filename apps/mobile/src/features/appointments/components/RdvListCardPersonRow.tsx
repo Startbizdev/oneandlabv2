@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -16,7 +16,7 @@ import { Cluster, Row } from '@/components/layout/primitives';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { CompactAssigneeRating } from '@/features/appointments/detail/components/CompactAssigneeRating';
 import type { RdvMaquetteCounterparty } from '@/utils/rdv-maquette-card-display';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 /** Ligne intervenant — compact (legacy) ou pied de carte (avatar + nom). */
@@ -166,15 +166,15 @@ export function RdvListCardPersonRow({
       }
     >
       <View style={styles.metaCol}>
-        <Text style={styles.nameLine} numberOfLines={1} ellipsizeMode="tail">
-          <Text style={styles.name}>{name}</Text>
+        <AppText style={styles.nameLine} numberOfLines={1} ellipsizeMode="tail">
+          <AppText style={styles.name}>{name}</AppText>
           {roleLabel ? (
             <>
-              <Text style={styles.name}>, </Text>
-              <Text style={styles.roleInline}>{roleLabel}</Text>
+              <AppText style={styles.name}>, </AppText>
+              <AppText style={styles.roleInline}>{roleLabel}</AppText>
             </>
           ) : null}
-        </Text>
+        </AppText>
         {person.showRating ? (
           <CompactAssigneeRating summary={person.reviewSummary} showNewWhenEmpty />
         ) : null}

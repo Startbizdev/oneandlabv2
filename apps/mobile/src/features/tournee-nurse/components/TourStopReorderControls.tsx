@@ -4,7 +4,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable } from 'react-native';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
 import { Stack } from '@/components/layout/primitives';
-import { spacing } from '@/theme';
+import {spacing, iconSize } from '@/theme';
 
 type Props = {
   canMoveUp: boolean;
@@ -32,7 +32,7 @@ export function TourStopReorderControls({ canMoveUp, canMoveDown, onMoveUp, onMo
         ]}
       >
         <ArrowUp
-          size={15}
+          size={iconSize.xs}
           color={canMoveUp ? c.textSecondary : c.textTertiary}
           strokeWidth={2.4}
         />
@@ -50,7 +50,7 @@ export function TourStopReorderControls({ canMoveUp, canMoveDown, onMoveUp, onMo
         ]}
       >
         <ArrowDown
-          size={15}
+          size={iconSize.xs}
           color={canMoveDown ? c.textSecondary : c.textTertiary}
           strokeWidth={2.4}
         />

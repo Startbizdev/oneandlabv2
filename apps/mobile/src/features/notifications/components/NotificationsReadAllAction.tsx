@@ -2,10 +2,10 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { CheckCheck } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { HEADER_ACTION_MARGIN_RIGHT } from '@/navigation/HeaderActionButton';
 
@@ -32,8 +32,8 @@ export function NotificationsReadAllAction({
           <ActivityIndicator size="small" color={c.primary} />
         ) : (
           <Row gap={spacing[1.5]} align="center">
-            <CheckCheck size={15} color={c.primary} strokeWidth={2.2} />
-            <Text style={styles.label}>Tout lu</Text>
+            <CheckCheck size={iconSize.xs} color={c.primary} strokeWidth={2.2} />
+            <AppText style={styles.label}>Tout lu</AppText>
           </Row>
         )}
       </Pressable>

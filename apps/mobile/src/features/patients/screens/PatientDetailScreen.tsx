@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useRef } from 'react';
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
@@ -41,7 +41,7 @@ import {
   patientGenderLabel,
 } from '../utils/patient-profile-display';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, avatarSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import {
@@ -71,16 +71,16 @@ function InfoRow({
     <View style={styles.infoRow}>
       <Cluster gap={spacing[3]} align="start" leading={
         <View style={styles.infoIconWrap}>
-          <Icon size={16} color={c.primary} strokeWidth={2.25} />
+          <Icon size={iconSize.sm} color={c.primary} strokeWidth={2.25} />
         </View>
       }>
         <View style={styles.infoBody}>
-          <Text style={styles.infoLabel}>{label}</Text>
-          <Text style={styles.infoValue}>{value}</Text>
+          <AppText style={styles.infoLabel}>{label}</AppText>
+          <AppText style={styles.infoValue}>{value}</AppText>
           {secondary ? (
-            <Text style={styles.infoSecondary} numberOfLines={2}>
+            <AppText style={styles.infoSecondary} numberOfLines={2}>
               {secondary}
-            </Text>
+            </AppText>
           ) : null}
         </View>
       </Cluster>
@@ -255,20 +255,20 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
               profileImageUrl={p.profile_image_url}
               seed={p.id ?? name}
               gender={p.gender}
-              size={56}
+              size={avatarSize.md}
               style={styles.avatar}
             />
           }
         >
           <View style={styles.heroText}>
-            <Text style={styles.heroName}>{name}</Text>
-            {age != null ? <Text style={styles.heroMeta}>{age} ans</Text> : null}
+            <AppText style={styles.heroName}>{name}</AppText>
+            {age != null ? <AppText style={styles.heroMeta}>{age} ans</AppText> : null}
           </View>
         </Cluster>
 
         {infoRows.length > 0 ? (
           <View style={styles.card}>
-            <Text style={styles.cardKicker}>Fiche patient</Text>
+            <AppText style={styles.cardKicker}>Fiche patient</AppText>
             {infoRows.map((row, index) => (
               <View key={row.label}>
                 {index > 0 ? <View style={styles.rowDivider} /> : null}
@@ -294,7 +294,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
                     title={btn.label}
                     size="sm"
                     variant="primary"
-                    leftIcon={<Icon size={14} color={c.textInverse} strokeWidth={2.5} />}
+                    leftIcon={<Icon size={iconSize.xs} color={c.textInverse} strokeWidth={2.5} />}
                     onPress={btn.onPress}
                     style={{ backgroundColor: btn.color, width: '100%' as const }}
                   />
@@ -305,7 +305,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
         ) : null}
 
         <View style={styles.card}>
-          <Text style={styles.cardKicker}>Dossier</Text>
+          <AppText style={styles.cardKicker}>Dossier</AppText>
           <ProfileNavRow
             icon={FolderOpen}
             title="Documents"

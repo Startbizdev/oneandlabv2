@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/Input';
@@ -13,7 +13,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const YEARS_OPTIONS = [
@@ -86,7 +86,7 @@ export function ProfileNursePresentationScreen() {
       onSave={() => savePresentation.mutate()}
       saveTitle="Enregistrer"
     >
-      <Text style={styles.sectionKicker}>Texte & expérience</Text>
+      <AppText style={styles.sectionKicker}>Texte & expérience</AppText>
       <Input
         label="Biographie"
         value={biography}
@@ -96,18 +96,18 @@ export function ProfileNursePresentationScreen() {
         style={{ minHeight: 120, textAlignVertical: 'top' as const }}
         placeholder="Présentez votre parcours et votre zone d'intervention…"
       />
-      <Text style={styles.fieldLabel}>Années d&apos;expérience</Text>
+      <AppText style={styles.fieldLabel}>Années d&apos;expérience</AppText>
       <Row wrap gap={spacing[2]}>
         {YEARS_OPTIONS.map((o) => (
           <Pressable key={o.value} onPress={() => setYearsExperience(o.value)}>
-            <Text style={[styles.chip, yearsExperience === o.value && styles.chipActive]}>
+            <AppText style={[styles.chip, yearsExperience === o.value && styles.chipActive]}>
               {o.label}
-            </Text>
+            </AppText>
           </Pressable>
         ))}
       </Row>
 
-      <Text style={[styles.sectionKicker, styles.sectionKickerSpaced]}>Visibilité & activité</Text>
+      <AppText style={[styles.sectionKicker, styles.sectionKickerSpaced]}>Visibilité & activité</AppText>
       <View style={styles.card}>
         <ProfileToggleRow
           label="Fiche publique"

@@ -3,18 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  LayoutChangeEvent,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent, type StyleProp, type ViewStyle } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -33,7 +22,7 @@ import {
   catalogGroupTheme,
   type CareFilterTab,
 } from '../utils/booking-care-catalog';
-import { animation, elevation, radius, spacing } from '@/theme';
+import { animation, elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { hexToRgba } from '@/theme/color-utils';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -132,11 +121,11 @@ function FilterChip({
             active && styles.emojiOrbActive,
           ]}
         >
-          <Text style={styles.emojiGlyph} accessibilityElementsHidden>
+          <AppText style={styles.emojiGlyph} accessibilityElementsHidden>
             {emoji}
-          </Text>
+          </AppText>
         </View>
-        <Text
+        <AppText
           style={[
             styles.label,
             active ? { color: theme.labelActive } : null,
@@ -144,7 +133,7 @@ function FilterChip({
           numberOfLines={1}
         >
           {tab.label}
-        </Text>
+        </AppText>
       </Row>
     </AnimatedPressable>
   );
@@ -219,7 +208,7 @@ function SwipeHintRail({ visible }: { visible: boolean }) {
         style={styles.swipeRailGradient}
       />
       <Animated.View style={[styles.swipeRailIconBadge, iconAnimStyle]}>
-        <ChevronRight size={18} color={c.primaryDark} strokeWidth={2.75} />
+        <ChevronRight size={iconSize.mdSm} color={c.primaryDark} strokeWidth={2.75} />
       </Animated.View>
     </Animated.View>
   );
@@ -274,6 +263,8 @@ function EdgeFade({
 
 export function CareCategoryFilterBar({ tabs, value, onChange }: Props) {
   const styles = useThemedStyles(buildStyles);
+  const c = useAppColors();
+  const fadeBase = c.bookingCanvas;
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
   const textScale = useAppPreferencesStore((s) => s.textScale);
   const scrollRef = useRef<ScrollView>(null);
@@ -365,9 +356,6 @@ export function CareCategoryFilterBar({ tabs, value, onChange }: Props) {
 
   if (tabs.length === 0) return null;
 
-  const c = useAppColors();
-  const fadeBase = c.bookingCanvas;
-
   return (
     <View style={styles.shell} onLayout={onTrackLayout}>
       <ScrollView
@@ -455,7 +443,7 @@ function buildStyles(c: AppColors) {
       transform: [{ scale: 1.04 }],
     },
     emojiGlyph: {
-      fontSize: 18,
+      fontSize: fontSize.md,
       lineHeight: 20,
       textAlign: 'center' as const,
     },

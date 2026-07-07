@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { CalendarDays } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import {radius, spacing, iconSize } from '@/theme';
 import { HEADER_ACTION_MARGIN_RIGHT } from '@/navigation/HeaderActionButton';
 
 type Props = {
@@ -29,7 +29,7 @@ export function TourCalendarExportAction({ onPress, loading }: Props) {
         {loading ? (
           <ActivityIndicator size="small" color={c.primary} />
         ) : (
-          <CalendarDays size={18} color={c.primary} strokeWidth={2.2} />
+          <CalendarDays size={iconSize.mdSm} color={c.primary} strokeWidth={2.2} />
         )}
       </Pressable>
     </View>

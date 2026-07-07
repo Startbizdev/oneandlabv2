@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { CircleCheck } from 'lucide-react-native';
 import type { SelectedServiceInput } from '@oneandlab/shared-utils';
@@ -14,7 +14,7 @@ import {
   bookingWizardServiceDisplayName,
   type BookingWizardLotKind,
 } from '../utils/booking-wizard-lot';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface WizardRecapItem {
@@ -46,14 +46,14 @@ export function BookingWizardSegmentContext({
       {previousRecaps.length > 0 ? (
         <View style={styles.doneBlock}>
           <Row gap={spacing[1.5]} align="center">
-            <CircleCheck size={14} color={c.primary} strokeWidth={2.5} />
-            <Text style={styles.doneTitle}>Déjà planifié</Text>
+            <CircleCheck size={iconSize.xs} color={c.primary} strokeWidth={2.5} />
+            <AppText style={styles.doneTitle}>Déjà planifié</AppText>
           </Row>
           {previousRecaps.map((r) => (
-            <Text key={r.serviceId} style={styles.doneLine} numberOfLines={2}>
-              <Text style={styles.doneBold}>{r.shortLabel}</Text>
-              {r.dateLabel ? <Text style={styles.doneDate}> — {r.dateLabel}</Text> : null}
-            </Text>
+            <AppText key={r.serviceId} style={styles.doneLine} numberOfLines={2}>
+              <AppText style={styles.doneBold}>{r.shortLabel}</AppText>
+              {r.dateLabel ? <AppText style={styles.doneDate}> — {r.dateLabel}</AppText> : null}
+            </AppText>
           ))}
         </View>
       ) : null}
@@ -61,17 +61,17 @@ export function BookingWizardSegmentContext({
       <Row style={styles.card}>
         <View style={styles.accent} />
         <View style={styles.copy}>
-          <Text style={styles.badge}>{stepLabel}</Text>
-          <Text style={styles.title} numberOfLines={3}>
+          <AppText style={styles.badge}>{stepLabel}</AppText>
+          <AppText style={styles.title} numberOfLines={3}>
             {title}
-          </Text>
+          </AppText>
           {lotServices.length > 1 ? (
             <Row wrap gap={spacing[1.5]}>
               {lotServices.map((s) => (
                 <View key={s.id} style={styles.pill}>
-                  <Text style={styles.pillText} numberOfLines={1}>
+                  <AppText style={styles.pillText} numberOfLines={1}>
                     {bookingWizardServiceDisplayName(s)}
-                  </Text>
+                  </AppText>
                 </View>
               ))}
             </Row>

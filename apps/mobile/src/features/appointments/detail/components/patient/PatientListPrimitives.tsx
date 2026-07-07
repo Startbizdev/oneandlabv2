@@ -4,9 +4,9 @@ import { useAppColors } from '@/theme/use-app-colors';
 
 import { Cluster, Row } from '@/components/layout/primitives';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function PatientListCard({
@@ -30,12 +30,12 @@ export function PatientListCard({
           leading={
             Icon ? (
               <View style={styles.iconWrap}>
-                <Icon size={15} color={c.primary} strokeWidth={2} />
+                <Icon size={iconSize.xs} color={c.primary} strokeWidth={2} />
               </View>
             ) : undefined
           }
         >
-          <Text style={styles.cardTitle}>{title}</Text>
+          <AppText style={styles.cardTitle}>{title}</AppText>
         </Cluster>
       ) : null}
       <View style={styles.cardBody}>{children}</View>
@@ -65,7 +65,7 @@ export function PatientListRow({
         highlight && styles.rowHighlight,
       ]}
     >
-      <Text style={styles.rowLabel}>{label}</Text>
+      <AppText style={styles.rowLabel}>{label}</AppText>
       <View style={styles.rowValue}>{children}</View>
     </Row>
   );
@@ -83,8 +83,8 @@ export function PatientRowValue({
   const styles = useThemedStyles(buildStyles, 'PatientListPrimitives.PatientRowValue');
   return (
     <View style={styles.valueStack}>
-      <Text style={[styles.valueText, muted && styles.valueMuted]}>{text}</Text>
-      {sub ? <Text style={styles.valueSub}>{sub}</Text> : null}
+      <AppText style={[styles.valueText, muted && styles.valueMuted]}>{text}</AppText>
+      {sub ? <AppText style={styles.valueSub}>{sub}</AppText> : null}
     </View>
   );
 }
@@ -100,7 +100,7 @@ export function PatientActionChips({
     <Row wrap gap={spacing[2]} style={styles.chips}>
       {actions.map((a) => (
         <Pressable key={a.label} onPress={a.onPress} style={styles.chip}>
-          <Text style={styles.chipText}>{a.label}</Text>
+          <AppText style={styles.chipText}>{a.label}</AppText>
         </Pressable>
       ))}
     </Row>

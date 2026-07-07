@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { User } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { FormScreen } from '@/components/layout/FormScreen';
@@ -21,7 +21,7 @@ import {
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -98,13 +98,13 @@ export function RescheduleAppointmentScreen({
       }
     >
       <Pressable onPress={r.goBackToChoice} style={styles.backLink}>
-        <Text style={styles.backLinkText}>← Retour au choix</Text>
+        <AppText style={styles.backLinkText}>← Retour au choix</AppText>
       </Pressable>
 
       <Row wrap align="center" gap={spacing[2]} style={styles.patientBanner}>
-        <User size={16} color={c.textSecondary} strokeWidth={2} />
-        <Text style={styles.patientName}>{patientName}</Text>
-        {patientPhone ? <Text style={styles.patientPhone}>· {patientPhone}</Text> : null}
+        <User size={iconSize.sm} color={c.textSecondary} strokeWidth={2} />
+        <AppText style={styles.patientName}>{patientName}</AppText>
+        {patientPhone ? <AppText style={styles.patientPhone}>· {patientPhone}</AppText> : null}
       </Row>
 
       <CategoryPicker

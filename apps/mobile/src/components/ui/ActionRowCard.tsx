@@ -4,10 +4,10 @@ import { useAppColors } from '@/theme/use-app-colors';
 
 import { Cluster } from '@/components/layout/primitives';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight, type LucideIcon } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface ActionRowCardProps {
@@ -62,20 +62,20 @@ export function ActionRowCard({
         style={styles.row}
         leading={
           <View style={[styles.iconBox, { backgroundColor: iconBg }]}>
-            <Icon size={18} color={iconColor} strokeWidth={2} />
+            <Icon size={iconSize.mdSm} color={iconColor} strokeWidth={2} />
           </View>
         }
         actions={
           <View style={styles.chevron}>
-            <ChevronRight size={16} color={c.textTertiary} strokeWidth={2} />
+            <ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />
           </View>
         }
       >
         <View style={styles.content}>
-          <Text style={[styles.title, highlighted && styles.titleHighlighted]} numberOfLines={2}>
+          <AppText style={[styles.title, highlighted && styles.titleHighlighted]} numberOfLines={2}>
             {title}
-          </Text>
-          {body ? <Text style={styles.body}>{body}</Text> : null}
+          </AppText>
+          {body ? <AppText style={styles.body}>{body}</AppText> : null}
         </View>
       </Cluster>
     </Pressable>

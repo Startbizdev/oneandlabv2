@@ -3,13 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { CreditCard, FileText, FlaskConical, Shield, Camera } from 'lucide-react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { DocumentDownloadButton } from '@/features/documents/components/DocumentDownloadButton';
@@ -25,7 +19,7 @@ import {
   getDocumentTypeLabel,
 } from '../utils/document-labels';
 import { formatDocumentFileSubtitle } from '@/utils/document-display-name';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const DOC_ICONS: Record<string, LucideIcon> = {
@@ -52,7 +46,7 @@ function DocIcon({ type }: { type: string }) {
   const Icon = DOC_ICONS[type] ?? FileText;
   return (
     <View style={styles.docIcon}>
-      <Icon size={16} color={c.primary} strokeWidth={2} />
+      <Icon size={iconSize.sm} color={c.primary} strokeWidth={2} />
     </View>
   );
 }
@@ -90,10 +84,10 @@ function DocumentRow({
         }
       >
         <View style={styles.docBody}>
-          <Text style={styles.docLabel}>{label}</Text>
-          <Text style={styles.docFile} numberOfLines={1}>
+          <AppText style={styles.docLabel}>{label}</AppText>
+          <AppText style={styles.docFile} numberOfLines={1}>
             {sub}
-          </Text>
+          </AppText>
         </View>
       </Cluster>
     </Pressable>

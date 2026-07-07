@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, Pressable, StyleSheet, Text, View } from 'react-native';
+import { InteractionManager, StyleSheet, View } from 'react-native';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { Row } from '@/components/layout/primitives';
 import { useRouter } from 'expo-router';
@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { SkeletonList } from '@/components/ui/skeletons';
 import {
   acceptOfferBatch,
-  refuseOfferBatch,
+  snoozeOfferBatch,
 } from '@/features/nurse/utils/offer-appointment-workflow';
 import { useAppointmentBatch } from '../hooks/use-appointment-batch';
 import { batchLotSummaryLabel } from '@/utils/appointment-batch';
@@ -28,7 +28,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { fetchAppointment } from '../../api/appointments.service';
 import { OfferAcceptPreparationOverlay } from './offer/OfferAcceptPreparationOverlay';
 import { OfferAppointmentPreviewBody } from './offer/OfferAppointmentPreviewBody';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -99,20 +99,40 @@ export function OfferAppointmentModal({
     return 'Acceptez rapidement avant qu’un autre professionnel ne le prenne.';
   }, [batchSorted.length, isMultiBatch]);
 
-  /** Fermeture backdrop / swipe — ne pas enchaîner processNext (évite double modal Gorhom). */
+  /** Fermeture backdrop / swipe — snooze puis file suivante. */
   const dismissOffer = useCallback(() => {
-    closeModal();
-  }, [closeModal]);
+    if (!row) {
+      closeModal();
+      return;
+    }
+    void (async () => {
+      await snoozeOfferBatch(row, user?.id);
+      closeModal();
+      if (!user?.role || !user.id) return;
+      setTimeout(() => {
+        void useOfferQueueStore.getState().processNext(user.role, user.id);
+      }, 400);
+    })();
+  }, [closeModal, row, user?.id, user?.role]);
 
-  /** « Plus tard » — passer à l’offre suivante dans la file après fermeture. */
+  /** « Plus tard » — snooze serveur puis offre suivante. */
   const deferOffer = useCallback(() => {
-    closeModal();
-    if (!user?.role || !user.id) return;
-    const { role, id } = user;
-    setTimeout(() => {
-      void useOfferQueueStore.getState().processNext(role, id);
-    }, 400);
-  }, [closeModal, user?.id, user?.role]);
+    if (!row) {
+      closeModal();
+      return;
+    }
+    void (async () => {
+      const r = await snoozeOfferBatch(row, user?.id);
+      if (!r.ok) {
+        toast(r.error, { type: 'error' });
+      }
+      closeModal();
+      if (!user?.role || !user.id) return;
+      setTimeout(() => {
+        void useOfferQueueStore.getState().processNext(user.role, user.id);
+      }, 400);
+    })();
+  }, [closeModal, row, toast, user?.id, user?.role]);
 
   const finishAndNext = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
@@ -121,26 +141,6 @@ export function OfferAppointmentModal({
       void useOfferQueueStore.getState().processNext(user.role, user.id);
     }
   }, [closeModal, qc, user?.id, user?.role]);
-
-  const handleRefuse = useCallback(async () => {
-    if (!row) return;
-    setLoading(true);
-    const r = await refuseOfferBatch(row, user?.id);
-    setLoading(false);
-    if (!r.ok) {
-      toast(r.error, { type: 'error' });
-      return;
-    }
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    if (r.declinedOffer) {
-      toast('Proposition retirée — le RDV reste en attente pour le patient.', { type: 'info' });
-    } else {
-      toast(batchCount > 1 ? `Lot refusé (${r.count} soins)` : 'Rendez-vous refusé', {
-        type: 'info',
-      });
-    }
-    await finishAndNext();
-  }, [batchCount, finishAndNext, row, toast, user?.id]);
 
   const handleAccept = useCallback(async () => {
     if (!row || !selected) return;
@@ -244,22 +244,19 @@ export function OfferAppointmentModal({
       <Button
         title={batchCount > 1 ? `Accepter (${batchCount} soins)` : 'Accepter'}
         loading={loading}
-        leftIcon={<Check size={16} color={c.textInverse} strokeWidth={2.5} />}
+        leftIcon={<Check size={iconSize.sm} color={c.textInverse} strokeWidth={2.5} />}
         onPress={() => void handleAccept()}
         fullWidth
         size="lg"
       />
       <Button
-        title={batchCount > 1 ? 'Refuser le lot' : 'Refuser'}
+        title="Plus tard"
         variant="outline"
         loading={loading}
-        leftIcon={<X size={16} color={c.error} strokeWidth={2} />}
-        onPress={() => void handleRefuse()}
+        leftIcon={<X size={iconSize.sm} color={c.textSecondary} strokeWidth={2} />}
+        onPress={() => void deferOffer()}
         fullWidth
       />
-      <Pressable onPress={deferOffer} style={styles.laterBtn} disabled={loading}>
-        <Text style={styles.laterText}>Plus tard</Text>
-      </Pressable>
     </View>
   );
 
@@ -275,7 +272,7 @@ export function OfferAppointmentModal({
         >
           {lotLabel && !isMultiBatch ? (
             <View style={styles.lotPill}>
-              <Text style={styles.lotPillText}>{lotLabel}</Text>
+              <AppText style={styles.lotPillText}>{lotLabel}</AppText>
             </View>
           ) : null}
           {siblingsLoading ? (
@@ -287,9 +284,9 @@ export function OfferAppointmentModal({
           )}
           <Row align="start" gap={spacing[3]} style={styles.termsRow}>
             <ToggleSwitch value={termsAccepted} onValueChange={setTermsAccepted} />
-            <Text style={styles.termsText}>
+            <AppText style={styles.termsText}>
               J’accepte la prise en charge et m’engage à respecter la confidentialité du patient.
-            </Text>
+            </AppText>
           </Row>
           {footer}
         </BottomSheet>
@@ -335,12 +332,6 @@ function buildStyles(c: AppColors) {
     lineHeight: fontSize.sm * 1.45,
   },
   footer: { gap: spacing[2] },
-  laterBtn: { alignItems: 'center' as const, paddingVertical: spacing[1] },
-  laterText: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSize.sm,
-    color: c.textTertiary,
-  },
 };
 }
 

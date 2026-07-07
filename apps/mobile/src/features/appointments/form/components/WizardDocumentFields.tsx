@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { Check, FileText, Upload } from 'lucide-react-native';
 import type { PatientDocumentRow } from '@/features/patients/api/patient-profile.service';
@@ -16,7 +16,7 @@ import {
   profileDocRefFromRow,
   type DocumentFileRef,
 } from '../types/document-file-ref';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -58,16 +58,16 @@ export function WizardDocumentFields({
 
   return (
     <View style={styles.wrapper}>
-      {title ? <Text style={styles.sectionLabel}>{title}</Text> : null}
+      {title ? <AppText style={styles.sectionLabel}>{title}</AppText> : null}
       {subtitle ? (
-        <Text style={styles.subtitle} numberOfLines={2}>
+        <AppText style={styles.subtitle} numberOfLines={2}>
           {subtitle}
-        </Text>
+        </AppText>
       ) : null}
       {loadingProfile ? (
         <Row gap={spacing[2]} align="center" style={styles.loadingRow}>
           <ActivityIndicator size="small" color={c.primary} />
-          <Text style={styles.loadingText}>Chargement de votre dossier…</Text>
+          <AppText style={styles.loadingText}>Chargement de votre dossier…</AppText>
         </Row>
       ) : null}
 
@@ -100,9 +100,9 @@ export function WizardDocumentFields({
               leading={
                 <View style={[styles.docIcon, done && styles.docIconDone]}>
                   {done ? (
-                    <Check size={14} color={c.success} strokeWidth={2.5} />
+                    <Check size={iconSize.xs} color={c.success} strokeWidth={2.5} />
                   ) : (
-                    <Upload size={14} color={c.primary} strokeWidth={2} />
+                    <Upload size={iconSize.xs} color={c.primary} strokeWidth={2} />
                   )}
                 </View>
               }
@@ -116,26 +116,26 @@ export function WizardDocumentFields({
                     }}
                     hitSlop={8}
                   >
-                    <Text style={styles.replaceLink}>
+                    <AppText style={styles.replaceLink}>
                       {profileRow ? 'Dossier' : 'Modifier'}
-                    </Text>
+                    </AppText>
                   </Pressable>
                 ) : null
               }
             >
               <View style={styles.docTextCol}>
-                <Text style={[styles.docLabel, done && styles.docLabelDone]}>
+                <AppText style={[styles.docLabel, done && styles.docLabelDone]}>
                   {f.label}
                   {done ? ' · OK' : ''}
-                </Text>
-                {f.hint && !done ? <Text style={styles.docHint}>{f.hint}</Text> : null}
+                </AppText>
+                {f.hint && !done ? <AppText style={styles.docHint}>{f.hint}</AppText> : null}
                 {done ? (
                   <Row gap={4} align="center">
-                    <FileText size={12} color={c.textSecondary} strokeWidth={2} />
-                    <Text style={styles.fileMeta} numberOfLines={1}>
+                    <FileText size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2} />
+                    <AppText style={styles.fileMeta} numberOfLines={1}>
                       {fromProfile && !local ? 'Déjà enregistré — ' : ''}
                       {displayName}
-                    </Text>
+                    </AppText>
                   </Row>
                 ) : null}
               </View>

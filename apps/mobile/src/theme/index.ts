@@ -7,3 +7,6 @@ export * from './tokens';
 export * from './typography';
 export * from './text-scale';
 export * from './layout-styles';
+export * from './breakpoints';
+export * from './use-layout-metrics';
+export { AppText, COMPACT_MAX_FONT_MULTIPLIER, type AppTextProps } from './AppText';

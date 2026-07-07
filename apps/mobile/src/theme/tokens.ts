@@ -127,13 +127,42 @@ export const animation = {
 } as const;
 
 export const iconSize = {
+  /** Icônes micro (badges, pins) */
+  '3xs': 10,
+  /** Icônes très compactes (badges, chevrons mini) */
+  '2xs': 12,
   xs: 14,
   sm: 16,
+  /** Entre sm et mdSm */
+  smMd: 17,
+  /** Entre sm et md — icônes inline fréquentes */
+  mdSm: 18,
   md: 20,
+  /** FAB, fermeture header */
+  mdLg: 22,
   lg: 24,
   xl: 28,
   '2xl': 32,
+  /** FAB principal */
+  '2xlSm': 26,
+  /** Empty states, avatars icône */
+  '3xl': 36,
+  '4xl': 40,
+  '5xl': 48,
 } as const;
 
 export const TAB_BAR_HEIGHT = 64;
 export const H_PADDING = 16;
+
+/** Avatars `ProfileAvatar` — diamètres en px. */
+export const avatarSize = {
+  sm: 44,
+  md: 56,
+  lg: 64,
+} as const;
+
+/** Anneaux de progression (`HealthRecordProgressRing`). */
+export const progressRingSize = {
+  md: 56,
+  lg: 72,
+} as const;

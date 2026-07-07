@@ -1,11 +1,11 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import { useRouter } from 'expo-router';
 import { ChevronRight, Lock } from 'lucide-react-native';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Lien visible depuis Mon profil vers mot de passe + biométrie. */
@@ -23,18 +23,18 @@ export function ProfileSecurityLinkRow() {
       <ListRowShell
         leading={
           <View style={[styles.iconWrap, { backgroundColor: c.primaryLight }]}>
-            <Lock size={20} color={c.primary} strokeWidth={2.25} />
+            <Lock size={iconSize.md} color={c.primary} strokeWidth={2.25} />
           </View>
         }
         body={
           <>
-            <Text style={[styles.title, { color: c.textPrimary }]}>Mot de passe et connexion</Text>
-            <Text style={[styles.sub, { color: c.textSecondary }]}>
+            <AppText style={[styles.title, { color: c.textPrimary }]}>Mot de passe et connexion</AppText>
+            <AppText style={[styles.sub, { color: c.textSecondary }]}>
               Créer ou modifier votre mot de passe · biométrie
-            </Text>
+            </AppText>
           </>
         }
-        actions={<ChevronRight size={18} color={c.textTertiary} strokeWidth={2} />}
+        actions={<ChevronRight size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />}
         style={[styles.card, { backgroundColor: c.surface, borderColor: c.borderLight }]}
       />
     </Pressable>

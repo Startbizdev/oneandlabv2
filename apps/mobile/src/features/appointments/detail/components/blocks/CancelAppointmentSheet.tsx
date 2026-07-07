@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CalendarX2 } from 'lucide-react-native';
 import {
@@ -30,7 +30,7 @@ import {
   carePhotoPickErrorMessage,
   pickCarePhoto,
 } from '@/lib/uploads/pick-care-photo';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -194,13 +194,13 @@ export function CancelAppointmentSheet({
           gap={spacing[2]}
           align="center"
           style={styles.warningStrip}
-          leading={<AlertTriangle size={16} color={c.error} strokeWidth={2.25} />}
+          leading={<AlertTriangle size={iconSize.sm} color={c.error} strokeWidth={2.25} />}
         >
-          <Text style={styles.warningText}>
+          <AppText style={styles.warningText}>
             {isBatch
               ? `${targets.length} rendez-vous seront définitivement annulés.`
               : 'Cette action est irréversible.'}
-          </Text>
+          </AppText>
         </Cluster>
 
         {targetLabel && !isBatch ? (
@@ -212,15 +212,15 @@ export function CancelAppointmentSheet({
               style={styles.targetRow}
               leading={
                 <View style={styles.targetIcon}>
-                  <CalendarX2 size={16} color={c.primary} strokeWidth={2.25} />
+                  <CalendarX2 size={iconSize.sm} color={c.primary} strokeWidth={2.25} />
                 </View>
               }
             >
               <View style={styles.targetCopy}>
-                <Text style={styles.targetKicker}>Rendez-vous concerné</Text>
-                <Text style={styles.targetName} numberOfLines={2}>
+                <AppText style={styles.targetKicker}>Rendez-vous concerné</AppText>
+                <AppText style={styles.targetName} numberOfLines={2}>
                   {targetLabel}
-                </Text>
+                </AppText>
               </View>
             </Cluster>
           </>
@@ -229,7 +229,7 @@ export function CancelAppointmentSheet({
 
       {!isPatient ? (
         <View style={styles.formSection}>
-          <Text style={styles.formTitle}>Motif d'annulation</Text>
+          <AppText style={styles.formTitle}>Motif d'annulation</AppText>
           <StaffCancellationFields values={staff} onChange={patchStaff} onPickPhoto={beginPhotoPick} />
         </View>
       ) : null}

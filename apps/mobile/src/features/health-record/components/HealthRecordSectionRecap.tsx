@@ -1,6 +1,6 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { Row } from '@/components/layout/primitives';
 import type { HealthRecordRecapSection } from '../api/health-record.service';
@@ -8,7 +8,7 @@ import { isHealthRecordValueFilled } from '../utils/health-record-display';
 import { HealthRecordFieldRow } from './HealthRecordFieldRow';
 import { HealthRecordSectionProgress } from './HealthRecordSectionProgress';
 import { HealthRecordSectionEmoji } from './HealthRecordSectionEmoji';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -40,7 +40,7 @@ export function HealthRecordSectionRecap({ section, onEdit, embedded }: Props) {
         <View style={styles.headerOnly}>
           <Row gap={spacing[2]} align="center">
             <HealthRecordSectionEmoji sectionId={section.id} />
-            <Text style={styles.title}>{section.label_fr}</Text>
+            <AppText style={styles.title}>{section.label_fr}</AppText>
           </Row>
           <HealthRecordSectionProgress filled={filled} total={total} />
         </View>
@@ -55,9 +55,9 @@ export function HealthRecordSectionRecap({ section, onEdit, embedded }: Props) {
           />
         ))}
         {total > 4 ? (
-          <Text style={styles.moreHint} accessibilityRole="text">
+          <AppText style={styles.moreHint} accessibilityRole="text">
             + {total - 4} autre{total - 4 > 1 ? 's' : ''} — appuyez pour voir la section
-          </Text>
+          </AppText>
         ) : null}
       </View>
     </View>

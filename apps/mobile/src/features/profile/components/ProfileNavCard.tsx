@@ -1,8 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { elevation, radius, spacing } from '@/theme';
+import { StyleSheet, View } from 'react-native';
+import { elevation, radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -15,7 +15,7 @@ export function ProfileNavCard({ title, children }: Props) {
 
   return (
     <View style={styles.section}>
-      {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
+      {title ? <AppText style={styles.sectionTitle}>{title}</AppText> : null}
       <View style={[styles.card, elevation.xs]}>{children}</View>
     </View>
   );

@@ -3,13 +3,13 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { FlaskConical } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { AssigneeProfileRow } from '../AssigneeProfileRow';
 import { ProviderPublicProfileSheet } from '@/features/profile/components/ProviderPublicProfileSheet';
 import type { OfferLabPartner } from '../../utils/offer-appointment-display';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -27,12 +27,12 @@ export function OfferLabPartnerSection({
     <>
       <View style={styles.wrap}>
         <Row align="center" gap={spacing[2]} style={styles.head}>
-          <FlaskConical size={14} color={c.primary} strokeWidth={2} />
-          <Text style={styles.headTitle}>Laboratoire associé</Text>
+          <FlaskConical size={iconSize.xs} color={c.primary} strokeWidth={2} />
+          <AppText style={styles.headTitle}>Laboratoire associé</AppText>
         </Row>
-        <Text style={styles.hint}>
+        <AppText style={styles.hint}>
           Ce laboratoire a déjà accepté la prise en charge sur ce rendez-vous.
-        </Text>
+        </AppText>
         <AssigneeProfileRow
           title={lab.roleLabel ?? 'Laboratoire'}
           name={lab.displayName}

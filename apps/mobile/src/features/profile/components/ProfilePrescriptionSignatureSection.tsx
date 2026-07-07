@@ -1,7 +1,8 @@
+import { layoutRowWrap } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useState } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PenLine } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
@@ -11,7 +12,7 @@ import { PrescriptionSignatureSheet } from '@/features/prescriptions/components/
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -44,15 +45,15 @@ export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Pr
   return (
     <>
       <ProfileSection title="Signature ordonnance" Icon={PenLine}>
-        <Text style={styles.help}>
+        <AppText style={styles.help}>
           Cette signature apparaît sur vos ordonnances lorsque vous choisissez de signer avant génération.
-        </Text>
+        </AppText>
         {previewUri ? (
           <View style={styles.previewWrap}>
             <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="contain" />
           </View>
         ) : (
-          <Text style={styles.empty}>Aucune signature enregistrée</Text>
+          <AppText style={styles.empty}>Aucune signature enregistrée</AppText>
         )}
         <View style={styles.actions}>
           <Button
@@ -111,6 +112,8 @@ function buildStyles(c: AppColors) {
       width: '100%' as const,
       height: 72,
     },
-    actions: { flexDirection: 'row' as const, gap: spacing[2], flexWrap: 'wrap' as const },
+    actions: {
+      ...layoutRowWrap(spacing[2]),
+    },
   };
 }

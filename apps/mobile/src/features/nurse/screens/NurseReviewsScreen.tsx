@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
@@ -23,7 +23,7 @@ import { ReviewStatsBanner } from '@/features/reviews/components/ReviewStatsBann
 import type { Review, ReviewFilter, ReviewStats } from '@/features/reviews/types';
 import { scrollChildEntering } from '@/lib/platform/list-entering-animation';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function filterReviews(list: Review[], filter: ReviewFilter): Review[] {
@@ -103,10 +103,10 @@ export function NurseReviewsScreen() {
       ) : null}
       {allReviews.length > 0 ? (
         <>
-          <Text style={styles.sectionHint}>
+          <AppText style={styles.sectionHint}>
             Les patients partagent leur expérience après un soin. Répondez pour rassurer et valoriser
             votre profil.
-          </Text>
+          </AppText>
           <ReviewFilterChips value={filter} onChange={setFilter} counts={counts} />
         </>
       ) : null}
@@ -150,12 +150,12 @@ export function NurseReviewsScreen() {
             />
           ) : (
             <View style={styles.filterEmpty}>
-              <Text style={styles.filterEmptyTitle}>
+              <AppText style={styles.filterEmptyTitle}>
                 {filter === 'pending' ? 'Aucun avis en attente' : 'Aucun avis répondu'}
-              </Text>
-              <Text style={styles.filterEmptyDesc}>
+              </AppText>
+              <AppText style={styles.filterEmptyDesc}>
                 Changez de filtre pour voir les autres avis.
-              </Text>
+              </AppText>
             </View>
           )
         }

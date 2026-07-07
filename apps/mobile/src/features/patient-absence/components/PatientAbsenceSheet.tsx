@@ -1,7 +1,8 @@
+import { layoutRowBetween } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { History } from 'lucide-react-native';
@@ -25,7 +26,7 @@ import {
 } from '../api/patient-absence.service';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type SheetTab = 'declare' | 'history';
@@ -179,21 +180,21 @@ export function PatientAbsenceSheet({
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Absence patient" snapPoints={['92%']}>
       <View style={styles.body}>
-        {patientName ? <Text style={styles.patientName}>{patientName}</Text> : null}
+        {patientName ? <AppText style={styles.patientName}>{patientName}</AppText> : null}
 
         <FullWidthSegmentBar segments={segments} value={tab} onChange={handleTabChange} />
 
         {tab === 'declare' ? (
           <View style={styles.tabBody}>
-            <Text style={styles.hint}>
+            <AppText style={styles.hint}>
               {isEditing
                 ? 'Modifiez les informations de cette absence, ou créez-en une nouvelle.'
                 : 'Le passage reste visible sur la tournée mais la carte sera grisée avec le motif jusqu\'à la date de fin.'}
-            </Text>
+            </AppText>
 
             {isEditing ? (
               <Pressable onPress={resetFormForNew} accessibilityRole="button">
-                <Text style={styles.newAbsenceLink}>Créer une nouvelle absence</Text>
+                <AppText style={styles.newAbsenceLink}>Créer une nouvelle absence</AppText>
               </Pressable>
             ) : null}
 
@@ -274,23 +275,23 @@ export function PatientAbsenceSheet({
                   return (
                     <View key={absence.id} style={styles.historyRow}>
                       <View style={styles.historyRowHeader}>
-                        <Text style={styles.historyType} numberOfLines={1}>
+                        <AppText style={styles.historyType} numberOfLines={1}>
                           {absence.type_label_fr}
-                        </Text>
+                        </AppText>
                         {active ? <Badge label="En cours" variant="warning" /> : null}
                       </View>
-                      <Text style={styles.historyDates}>{formatAbsencePeriod(absence)}</Text>
+                      <AppText style={styles.historyDates}>{formatAbsencePeriod(absence)}</AppText>
                       {absence.note?.trim() ? (
-                        <Text style={styles.historyNote} numberOfLines={2}>
+                        <AppText style={styles.historyNote} numberOfLines={2}>
                           {absence.note.trim()}
-                        </Text>
+                        </AppText>
                       ) : null}
                       <Pressable
                         onPress={() => handleSelectHistoryItem(absence)}
                         accessibilityRole="button"
                         accessibilityLabel={`Modifier l'absence ${absence.type_label_fr}`}
                       >
-                        <Text style={styles.historyAction}>Modifier</Text>
+                        <AppText style={styles.historyAction}>Modifier</AppText>
                       </Pressable>
                     </View>
                   );
@@ -334,12 +335,10 @@ function buildStyles(c: AppColors) {
       backgroundColor: c.surface,
     },
     historyRowHeader: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'space-between' as const,
-      gap: spacing[2],
+      ...layoutRowBetween(spacing[2]),
     },
     historyType: {
+      minWidth: 0,
       flex: 1,
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.base,

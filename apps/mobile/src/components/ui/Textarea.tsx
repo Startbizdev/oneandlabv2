@@ -3,15 +3,8 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import React, { useCallback, useState } from 'react';
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  type TextInputProps,
-} from 'react-native';
-import { radius, spacing } from '@/theme';
+import { Platform, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { useInBottomSheet, useSheetTextInputComponent } from './sheet-keyboard-context';
 import { SHEET_KEYBOARD_ACCESSORY_ID } from './sheet-keyboard-accessory';
@@ -67,7 +60,7 @@ function TextareaComponent(
   return (
     <View style={styles.wrapper}>
       {label ? (
-        <Text style={[styles.label, isFocused && styles.labelFocused]}>{label}</Text>
+        <AppText style={[styles.label, isFocused && styles.labelFocused]}>{label}</AppText>
       ) : null}
 
       <View
@@ -103,9 +96,9 @@ function TextareaComponent(
       </View>
 
       {error ? (
-        <Text style={styles.error}>{error}</Text>
+        <AppText style={styles.error}>{error}</AppText>
       ) : hint ? (
-        <Text style={styles.hint}>{hint}</Text>
+        <AppText style={styles.hint}>{hint}</AppText>
       ) : null}
     </View>
   );

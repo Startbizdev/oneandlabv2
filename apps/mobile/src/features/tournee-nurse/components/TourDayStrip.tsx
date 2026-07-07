@@ -1,13 +1,14 @@
+import { layoutRowCenter } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { MiniDateCalendar, miniDateCalendarOuterSize } from '@/components/ui/MiniDateCalendar';
 import { formatMiniDateCalendarParts } from '@/utils/mini-date-calendar-parts';
-import { H_PADDING, elevation, radius, spacing } from '@/theme';
+import { H_PADDING, elevation, radius, spacing, iconSize, fontSize, AppText } from '@/theme';
 import { fontFamily } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
 
@@ -64,9 +65,9 @@ function TourDayCell({ iso, active, isToday, count, onPress }: DayCellProps) {
               { backgroundColor: c.primary, borderColor: c.background },
             ]}
           >
-            <Text style={[styles.countText, { color: c.textInverse }]}>
+            <AppText style={[styles.countText, { color: c.textInverse }]} maxFontSizeMultiplier={1.2}>
               {count > 99 ? '99+' : count}
-            </Text>
+            </AppText>
           </View>
         ) : null}
       </View>
@@ -123,7 +124,7 @@ export function TourDayStrip({ selectedDate, dayCounts, onSelectDate, embedded =
           pressed && styles.navBtnPressed,
         ]}
       >
-        <ChevronLeft size={18} color={c.textSecondary} strokeWidth={2.4} />
+        <ChevronLeft size={iconSize.mdSm} color={c.textSecondary} strokeWidth={2.4} />
       </Pressable>
 
       <ScrollView
@@ -155,7 +156,7 @@ export function TourDayStrip({ selectedDate, dayCounts, onSelectDate, embedded =
           pressed && styles.navBtnPressed,
         ]}
       >
-        <ChevronRight size={18} color={c.textSecondary} strokeWidth={2.4} />
+        <ChevronRight size={iconSize.mdSm} color={c.textSecondary} strokeWidth={2.4} />
       </Pressable>
     </View>
   );
@@ -164,9 +165,7 @@ export function TourDayStrip({ selectedDate, dayCounts, onSelectDate, embedded =
 function buildStyles(_c: AppColors) {
   return {
     bar: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: spacing[1],
+      ...layoutRowCenter(spacing[1]),
     },
     barEmbedded: { marginBottom: 0 },
     barStandalone: {
@@ -245,11 +244,10 @@ function buildCellStyles(c: AppColors) {
     },
     countText: {
       fontFamily: fontFamily.extraBold,
-      fontSize: 10,
+      fontSize: fontSize['2xs'],
       lineHeight: 12,
       textAlign: 'center' as const,
       includeFontPadding: false,
-      allowFontScaling: false,
       ...Platform.select({
         android: {
           textAlignVertical: 'center' as const,

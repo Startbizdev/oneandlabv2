@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Cluster, Row } from '@/components/layout/primitives';
@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import type { RescheduleChoiceMode } from '../utils/build-reschedule-payload';
-import { elevation, palette, radius, spacing } from '@/theme';
+import { elevation, palette, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type FlowChip = {
@@ -90,9 +90,9 @@ function FlowChipView({ chip }: { chip: FlowChip }) {
 
   return (
     <View style={[styles.flowChip, chipStyle]}>
-      <Text style={[styles.flowChipText, textStyle]} numberOfLines={1}>
+      <AppText style={[styles.flowChipText, textStyle]} numberOfLines={1}>
         {chip.label}
-      </Text>
+      </AppText>
     </View>
   );
 }
@@ -146,7 +146,7 @@ function RescheduleChoiceCard({
               leading={
                 <View style={[styles.iconOrb, { backgroundColor: choice.orbBg }]}>
                   <Icon
-                    size={22}
+                    size={iconSize.mdLg}
                     color={selected ? c.primaryDark : c.textSecondary}
                     strokeWidth={2}
                   />
@@ -154,28 +154,28 @@ function RescheduleChoiceCard({
               }
               actions={
                 <View style={[styles.radio, selected && styles.radioSelected]}>
-                  {selected ? <Check size={14} color={c.textInverse} strokeWidth={3} /> : null}
+                  {selected ? <Check size={iconSize.xs} color={c.textInverse} strokeWidth={3} /> : null}
                 </View>
               }
             >
               <View style={styles.cardTitles}>
                 {choice.badge ? (
                   <Row align="center" gap={4} style={styles.badge}>
-                    <Sparkles size={11} color={c.primaryDark} strokeWidth={2.25} />
-                    <Text style={styles.badgeText}>{choice.badge}</Text>
+                    <Sparkles size={iconSize['2xs']} color={c.primaryDark} strokeWidth={2.25} />
+                    <AppText style={styles.badgeText}>{choice.badge}</AppText>
                   </Row>
                 ) : null}
-                <Text style={[styles.cardTitle, selected && styles.cardTitleSelected]}>
+                <AppText style={[styles.cardTitle, selected && styles.cardTitleSelected]}>
                   {choice.title}
-                </Text>
+                </AppText>
               </View>
             </Cluster>
 
-            <Text style={styles.cardDescription}>{choice.description}</Text>
+            <AppText style={styles.cardDescription}>{choice.description}</AppText>
 
             <Row wrap align="center" gap={spacing[2]} style={styles.flowRow}>
               <FlowChipView chip={choice.flow[0]!} />
-              <ArrowRight size={14} color={c.textTertiary} strokeWidth={2.25} />
+              <ArrowRight size={iconSize.xs} color={c.textTertiary} strokeWidth={2.25} />
               <FlowChipView chip={choice.flow[1]!} />
             </Row>
           </View>
@@ -198,13 +198,13 @@ export function RescheduleChoiceStep({
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFillObject}
         />
-        <Text style={styles.heroEyebrow}>Reprise de rendez-vous</Text>
-        <Text style={styles.heroTitle}>Pour {patientName}</Text>
+        <AppText style={styles.heroEyebrow}>Reprise de rendez-vous</AppText>
+        <AppText style={styles.heroTitle}>Pour {patientName}</AppText>
       </Animated.View>
 
-      <Text style={styles.instruction}>
+      <AppText style={styles.instruction}>
         Choisissez une option, puis appuyez sur Suivant.
-      </Text>
+      </AppText>
 
       <View style={styles.choiceList}>
         {CHOICES.map((choice, index) => (

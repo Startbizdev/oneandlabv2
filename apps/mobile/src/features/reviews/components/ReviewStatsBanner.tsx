@@ -1,12 +1,12 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Star } from 'lucide-react-native';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import type { ReviewStats } from '@/features/reviews/types';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -35,17 +35,17 @@ export function ReviewStatsBanner({ stats, subtitle }: Props) {
     >
       <Row align="center" gap={spacing[4]}>
         <View style={[styles.iconBadge, { backgroundColor: c.surface }]}>
-          <Star size={22} color={c.star} fill={c.starFill} strokeWidth={1.5} />
+          <Star size={iconSize.mdLg} color={c.star} fill={c.starFill} strokeWidth={1.5} />
         </View>
         <Row align="center" gap={spacing[3]} flex={1}>
-          <Text style={[styles.score, { color: c.textPrimary }]}>
+          <AppText style={[styles.score, { color: c.textPrimary }]}>
             {avg.toFixed(1).replace('.', ',')}
-          </Text>
+          </AppText>
           <View style={styles.meta}>
-            <ReviewStars rating={avg} size={18} showValue={false} />
-            <Text style={[styles.count, { color: c.textSecondary }]}>
+            <ReviewStars rating={avg} size={iconSize.mdSm} showValue={false} />
+            <AppText style={[styles.count, { color: c.textSecondary }]}>
               {subtitle ?? countLabel}
-            </Text>
+            </AppText>
           </View>
         </Row>
       </Row>
@@ -69,7 +69,7 @@ function buildStyles(c: AppColors) {
   },
   score: {
     fontFamily: fontFamily.extraBold,
-    fontSize: 40,
+    fontSize: fontSize['4xl'],
     letterSpacing: -1,
     lineHeight: 44,
   },

@@ -2,9 +2,9 @@ import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type FullWidthSegment<T extends string = string> = {
@@ -49,15 +49,15 @@ export function FullWidthSegmentBar<T extends string>({
             accessibilityState={{ selected: active }}
             accessibilityLabel={segment.label}
           >
-            {Icon ? <Icon size={16} color={iconColor} strokeWidth={2.25} /> : null}
-            <Text style={[styles.label, active && styles.labelActive]} numberOfLines={1}>
+            {Icon ? <Icon size={iconSize.sm} color={iconColor} strokeWidth={2.25} /> : null}
+            <AppText style={[styles.label, active && styles.labelActive]} numberOfLines={1}>
               {segment.label}
-            </Text>
+            </AppText>
             {segment.badge != null && segment.badge > 0 ? (
               <View style={[styles.badge, active && styles.badgeActive]}>
-                <Text style={[styles.badgeText, active && styles.badgeTextActive]}>
+                <AppText style={[styles.badgeText, active && styles.badgeTextActive]}>
                   {segment.badge > 99 ? '99+' : segment.badge}
-                </Text>
+                </AppText>
               </View>
             ) : null}
           </Pressable>

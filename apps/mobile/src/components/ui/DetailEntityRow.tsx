@@ -3,11 +3,11 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Cluster, Row } from '@/components/layout/primitives';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { MessageCircle, Phone, User } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import type { PhoneContactAction } from '@/utils/contact-actions';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type DetailEntityRowProps = {
@@ -72,7 +72,7 @@ export function DetailEntityRow({
                     title={action.label}
                     variant="muted"
                     size="sm"
-                    leftIcon={<Icon size={11} color={c.textSecondary} strokeWidth={2.25} />}
+                    leftIcon={<Icon size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.25} />}
                     onPress={action.onPress}
                   />
                 );
@@ -82,7 +82,7 @@ export function DetailEntityRow({
                   title="Profil"
                   variant="muted"
                   size="sm"
-                  leftIcon={<User size={11} color={c.textSecondary} strokeWidth={2.25} />}
+                  leftIcon={<User size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.25} />}
                   onPress={onProfilePress}
                   accessibilityLabel={
                     profileAccessibilityLabel ?? `Voir le profil de ${title}`
@@ -95,18 +95,18 @@ export function DetailEntityRow({
       >
         <View style={styles.text}>
           {eyebrow ? (
-            <Text style={styles.eyebrow} numberOfLines={1}>
+            <AppText style={styles.eyebrow} numberOfLines={1}>
               {eyebrow}
-            </Text>
+            </AppText>
           ) : null}
-          <Text style={styles.title} numberOfLines={1}>
+          <AppText style={styles.title} numberOfLines={1}>
             {title}
-          </Text>
+          </AppText>
           {belowTitle}
           {subtitle ? (
-            <Text style={styles.subtitle} numberOfLines={1}>
+            <AppText style={styles.subtitle} numberOfLines={1}>
               {subtitle}
-            </Text>
+            </AppText>
           ) : null}
         </View>
       </Cluster>

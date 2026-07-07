@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight } from 'lucide-react-native';
@@ -13,7 +13,7 @@ import {
   formatNotificationTime,
   notificationVisual,
 } from '@/features/notifications/utils/notification-card-meta';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -48,23 +48,23 @@ export const NotificationCard = React.memo(function NotificationCard({ item, onP
       <ListRowShell
         leading={
           <View style={[styles.iconBox, { backgroundColor: bg }]}>
-            <Icon size={18} color={color} strokeWidth={2} />
+            <Icon size={iconSize.mdSm} color={color} strokeWidth={2} />
           </View>
         }
         body={
           <>
             <Row align="start">
               <View style={styles.titleWrap}>
-                <Text style={[styles.title, isUnread && styles.titleUnread]} numberOfLines={2}>
+                <AppText style={[styles.title, isUnread && styles.titleUnread]} numberOfLines={2}>
                   {label}
-                </Text>
+                </AppText>
               </View>
-              {time ? <Text style={styles.time}>{time}</Text> : null}
+              {time ? <AppText style={styles.time}>{time}</AppText> : null}
             </Row>
-            {message ? <Text style={styles.body}>{message}</Text> : null}
+            {message ? <AppText style={styles.body}>{message}</AppText> : null}
           </>
         }
-        trailing={<ChevronRight size={16} color={c.textTertiary} strokeWidth={2} />}
+        trailing={<ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
       />
     </Pressable>
   );

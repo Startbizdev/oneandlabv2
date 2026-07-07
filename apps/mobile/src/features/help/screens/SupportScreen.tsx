@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { Stack } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
@@ -17,7 +17,7 @@ import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScr
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
 import { useAuthStore } from '@/store/auth-store';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -113,34 +113,34 @@ export function SupportScreen() {
         onSave={onSubmit}
         saving={send.isPending}
       >
-        <Text style={styles.lead}>
+        <AppText style={styles.lead}>
           Décrivez votre demande. Les informations de votre compte Cary ci-dessous seront transmises
           à notre équipe pour un traitement plus rapide.
-        </Text>
+        </AppText>
 
         <View style={[styles.card, elevation.xs]}>
           <Cluster
             gap={spacing[3]}
             leading={
               <View style={styles.cardIcon}>
-                <UserCircle2 size={22} color={c.primary} strokeWidth={2} />
+                <UserCircle2 size={iconSize.mdLg} color={c.primary} strokeWidth={2} />
               </View>
             }
           >
-            <Text style={styles.cardTitle}>Informations du compte</Text>
+            <AppText style={styles.cardTitle}>Informations du compte</AppText>
           </Cluster>
-          <Text style={styles.cardHint}>
+          <AppText style={styles.cardHint}>
             Ces données sont jointes automatiquement — vous n’avez pas besoin de les recopier dans
             votre message.
-          </Text>
+          </AppText>
           {accountRows.map((row, index) => (
             <View key={row.label}>
               {index > 0 ? <View style={styles.divider} /> : null}
               <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>{row.label}</Text>
-                <Text style={styles.metaValue} selectable>
+                <AppText style={styles.metaLabel}>{row.label}</AppText>
+                <AppText style={styles.metaValue} selectable>
                   {row.value}
-                </Text>
+                </AppText>
               </View>
             </View>
           ))}

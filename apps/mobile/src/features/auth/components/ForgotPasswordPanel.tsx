@@ -1,12 +1,12 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { ArrowLeft } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { webAppUrl } from '@/config/env';
 
@@ -27,18 +27,18 @@ export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSub
   if (sent) {
     return (
       <View style={styles.wrap}>
-        <Text style={[styles.body, { color: c.textSecondary }]}>
+        <AppText style={[styles.body, { color: c.textSecondary }]}>
           Si un compte existe, vous recevrez un email avec un lien et un code pour choisir un nouveau mot de
           passe.
-        </Text>
+        </AppText>
         <Button title="Ouvrir ma messagerie" variant="outline" onPress={() => Linking.openURL('message:')} fullWidth />
         <Pressable onPress={() => Linking.openURL(webAppUrl('/reset-password'))}>
-          <Text style={[styles.link, { color: c.primary }]}>Réinitialiser sur le web</Text>
+          <AppText style={[styles.link, { color: c.primary }]}>Réinitialiser sur le web</AppText>
         </Pressable>
         <Pressable onPress={onBack}>
           <Row gap={spacing[2]} align="center" justify="center" style={styles.backBtn}>
-            <ArrowLeft size={14} color={c.textSecondary} strokeWidth={2} />
-            <Text style={styles.backText}>Retour à la connexion</Text>
+            <ArrowLeft size={iconSize.xs} color={c.textSecondary} strokeWidth={2} />
+            <AppText style={styles.backText}>Retour à la connexion</AppText>
           </Row>
         </Pressable>
       </View>
@@ -59,8 +59,8 @@ export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSub
       <Button title="Envoyer" loading={loading} onPress={onSubmit} fullWidth size="lg" />
       <Pressable onPress={onBack}>
         <Row gap={spacing[2]} align="center" justify="center" style={styles.backBtn}>
-          <ArrowLeft size={14} color={c.textSecondary} strokeWidth={2} />
-          <Text style={styles.backText}>Retour à la connexion</Text>
+          <ArrowLeft size={iconSize.xs} color={c.textSecondary} strokeWidth={2} />
+          <AppText style={styles.backText}>Retour à la connexion</AppText>
         </Row>
       </Pressable>
     </View>

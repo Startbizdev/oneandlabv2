@@ -2,15 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { getAppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useRef } from 'react';
-import {
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-  type ViewStyle,
-} from 'react-native';
+import { Platform, Pressable, StyleSheet, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { BottomSheetModalContainer } from './BottomSheetModalContainer';
 import {
@@ -22,7 +14,7 @@ import {
 import { BottomSheetKeyboardAwareScrollView } from './BottomSheetKeyboardAwareScrollView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { SheetKeyboardProvider } from './sheet-keyboard-context';
 import { SheetKeyboardAccessory } from './sheet-keyboard-accessory';
@@ -137,12 +129,12 @@ export function SheetModal({
         <Row gap={spacing[2]} style={styles.header}>
           {onBack ? (
             <Pressable onPress={onBack} hitSlop={12} style={styles.backBtn} accessibilityLabel="Retour">
-              <ChevronLeft size={22} color={getAppColors().primary} strokeWidth={2.5} />
+              <ChevronLeft size={iconSize.mdLg} color={getAppColors().primary} strokeWidth={2.5} />
             </Pressable>
           ) : null}
           <View style={styles.headerText}>
-            <Text style={styles.title}>{title}</Text>
-            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+            <AppText style={styles.title}>{title}</AppText>
+            {subtitle ? <AppText style={styles.subtitle}>{subtitle}</AppText> : null}
           </View>
         </Row>
       </View>

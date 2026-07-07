@@ -1,12 +1,12 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { FilterOptionChips, type FilterChipOption } from '@/components/ui/FilterOptionChips';
 import { Input } from '@/components/ui/Input';
 import { Search } from 'lucide-react-native';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props<
@@ -77,27 +77,27 @@ export function AppointmentsFilterSheet<
           value={search}
           onChangeText={onSearchChange}
           placeholder={searchPlaceholder}
-          leftIcon={<Search size={16} color={c.textTertiary} strokeWidth={2} />}
+          leftIcon={<Search size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
         />
       ) : null}
 
       {tabs && tab !== undefined && onTabChange ? (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Affichage</Text>
+          <AppText style={styles.sectionLabel}>Affichage</AppText>
           <FilterOptionChips options={tabs} value={tab} onChange={pick(onTabChange)} />
         </View>
       ) : null}
 
       {segments && segment !== undefined && onSegmentChange ? (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{segmentSectionLabel}</Text>
+          <AppText style={styles.sectionLabel}>{segmentSectionLabel}</AppText>
           <FilterOptionChips options={segments} value={segment} onChange={pick(onSegmentChange)} />
         </View>
       ) : null}
 
       {secondarySegments && secondarySegment !== undefined && onSecondarySegmentChange ? (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{secondarySectionLabel}</Text>
+          <AppText style={styles.sectionLabel}>{secondarySectionLabel}</AppText>
           <FilterOptionChips
             options={secondarySegments}
             value={secondarySegment}
@@ -108,7 +108,7 @@ export function AppointmentsFilterSheet<
 
       {onReset ? (
         <Pressable onPress={onReset} hitSlop={8} style={styles.resetBtn}>
-          <Text style={styles.resetText}>Réinitialiser les filtres</Text>
+          <AppText style={styles.resetText}>Réinitialiser les filtres</AppText>
         </Pressable>
       ) : null}
     </BottomSheet>

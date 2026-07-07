@@ -1,11 +1,11 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Text } from 'react-native';
+;
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { StackScrollView } from '@/components/navigation/StackScrollView';
 import { ProfileDocumentsPremiumPanel } from '@/features/profile/components/ProfileDocumentsPremiumPanel';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Page dédiée documents (route /profile/documents) — patient uniquement */
@@ -18,10 +18,10 @@ export function ProfileDocumentsScreen() {
         <ProfileDocumentsPremiumPanel />
 
         <Animated.View entering={FadeInDown.delay(200).duration(280).springify()} style={styles.infoBox}>
-          <Text style={styles.infoText}>
+          <AppText style={styles.infoText}>
             Vos documents sont chiffrés et stockés de façon sécurisée. Seuls les professionnels de
             santé autorisés peuvent y accéder.
-          </Text>
+          </AppText>
         </Animated.View>
       </StackScrollView>
     </StackChromeScreen>

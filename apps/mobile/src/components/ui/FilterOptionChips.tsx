@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View, Pressable } from 'react-native';
-import { radius, spacing } from '@/theme';
+import { StyleSheet, View, Pressable } from 'react-native';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface FilterChipOption<T extends string = string> {
@@ -32,14 +32,14 @@ export function FilterOptionChips<T extends string>({ options, value, onChange }
             accessibilityState={{ selected: active }}
             accessibilityLabel={opt.label}
           >
-            <Text style={[styles.label, active && styles.labelActive]} numberOfLines={2}>
+            <AppText style={[styles.label, active && styles.labelActive]} numberOfLines={2}>
               {opt.label}
-            </Text>
+            </AppText>
           </Pressable>
         );
       })}
       {options.find((o) => o.value === value)?.hint ? (
-        <Text style={styles.hint}>{options.find((o) => o.value === value)!.hint}</Text>
+        <AppText style={styles.hint}>{options.find((o) => o.value === value)!.hint}</AppText>
       ) : null}
     </View>
   );

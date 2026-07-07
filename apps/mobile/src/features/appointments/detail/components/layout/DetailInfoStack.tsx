@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View } from 'react-native';
-import { spacing } from '@/theme';
+import { StyleSheet, View } from 'react-native';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type DetailInfoItem = {
@@ -19,8 +19,8 @@ export function DetailInfoStack({ items }: { items: DetailInfoItem[] }) {
     <View style={styles.stack}>
       {items.map((item, i) => (
         <View key={`${item.label}-${i}`} style={i > 0 ? styles.itemBorder : undefined}>
-          <Text style={styles.label}>{item.label}</Text>
-          <Text style={[styles.value, item.muted && styles.valueMuted]}>{item.value}</Text>
+          <AppText style={styles.label}>{item.label}</AppText>
+          <AppText style={[styles.value, item.muted && styles.valueMuted]}>{item.value}</AppText>
         </View>
       ))}
     </View>

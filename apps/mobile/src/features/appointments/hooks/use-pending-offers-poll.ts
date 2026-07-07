@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import {
   isBloodTestAppointment,
   isPendingIncomingOffer,
+  isOfferModalSnoozed,
 } from '@oneandlab/shared-utils';
 import { useNursePendingDemandesQuery } from '@/features/nurse/hooks/use-nurse-pending-demandes-query';
 import { useAuthStore } from '@/store/auth-store';
@@ -19,6 +20,7 @@ export function usePendingOffersPoll(enabled: boolean) {
     return raw.filter(
       (a) =>
         a.status === 'pending' &&
+        !isOfferModalSnoozed(a) &&
         !isBloodTestAppointment(a.type) &&
         isPendingIncomingOffer(a, myId) &&
         (a.assigned_nurse_id === myId || !a.assigned_nurse_id),

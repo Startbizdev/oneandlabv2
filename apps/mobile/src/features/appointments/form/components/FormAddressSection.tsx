@@ -1,10 +1,10 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Input } from '@/components/ui/Input';
 import type { AddressPayload } from '../types';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -34,9 +34,9 @@ export function FormAddressSection({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Adresse</Text>
+      <AppText style={styles.sectionTitle}>Adresse</AppText>
       {existingAddress ? (
-        <Text style={styles.existingAddress}>{existingAddress.label}</Text>
+        <AppText style={styles.existingAddress}>{existingAddress.label}</AppText>
       ) : null}
       <Input
         label="Adresse (libellé)"
@@ -53,9 +53,9 @@ export function FormAddressSection({
         </View>
       </Row>
       <Input label="Complément" value={complement} onChangeText={onChangeComplement} />
-      <Text style={styles.hint}>
+      <AppText style={styles.hint}>
         Saisissez l'adresse et les coordonnées GPS (comme sur le web après géolocalisation).
-      </Text>
+      </AppText>
     </View>
   );
 }

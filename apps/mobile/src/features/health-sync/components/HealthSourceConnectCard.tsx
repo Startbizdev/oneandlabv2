@@ -1,11 +1,11 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { CheckCircle2, ChevronRight, HeartPulse } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import {
   formatHealthSyncRelative,
@@ -63,21 +63,21 @@ export function HealthSourceConnectCard({
         </View>
 
         <View style={styles.textCol}>
-          <Text style={[styles.title, compact && styles.titleCompact]} numberOfLines={1}>
+          <AppText style={[styles.title, compact && styles.titleCompact]} numberOfLines={1}>
             {title}
-          </Text>
-          <Text style={styles.subtitle} numberOfLines={compact ? 2 : 3}>
+          </AppText>
+          <AppText style={styles.subtitle} numberOfLines={compact ? 2 : 3}>
             {subtitle}
-          </Text>
+          </AppText>
         </View>
 
         <View style={styles.trailing}>
           {syncing ? (
             <ActivityIndicator size="small" color={c.primary} />
           ) : connected ? (
-            <CheckCircle2 size={20} color={c.success} strokeWidth={2.25} />
+            <CheckCircle2 size={iconSize.md} color={c.success} strokeWidth={2.25} />
           ) : (
-            <ChevronRight size={18} color={c.textTertiary} strokeWidth={2} />
+            <ChevronRight size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />
           )}
         </View>
       </Row>

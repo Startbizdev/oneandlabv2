@@ -6,7 +6,7 @@ import {
   useAudioRecorder,
   type RecordingOptions,
 } from 'expo-audio';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 /** Enregistrement micro + metering VAD (STT Grok côté serveur). */
 const VOICE_CAPTURE_PRESET: RecordingOptions = {

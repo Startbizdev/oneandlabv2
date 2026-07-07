@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { ClipboardList, FileText, HeartPulse } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -47,7 +47,7 @@ import { parseProfileAddress, hasValidGeoAddress } from '@/features/profile/util
 import { useAuthStore } from '@/store/auth-store';
 import type { NursePassageNursingItem, PassageTimeSlot } from '@oneandlab/shared-types';
 import { resolvePassageCustomTime } from '@oneandlab/shared-utils';
-import { H_PADDING, spacing } from '@/theme';
+import { H_PADDING, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type SheetKey = 'planning' | 'time' | 'location' | 'duration' | 'care' | 'notes' | null;
@@ -270,18 +270,18 @@ export function PassageFormScreen() {
           >
             <Stack gap={spacing[3]}>
               <View style={styles.patientBlock}>
-                <Text style={[styles.sectionLabel, { color: c.textTertiary }]}>Patient</Text>
+                <AppText style={[styles.sectionLabel, { color: c.textTertiary }]}>Patient</AppText>
                 <Row gap={spacing[3]} align="center" style={styles.patientRow}>
                   <ProfileAvatar
                     profileImageUrl={patientQ.data?.profile_image_url}
                     seed={patientId || patientName}
                     gender={patientQ.data?.gender}
-                    size={48}
+                    size={iconSize['5xl']}
                   />
                   <View style={styles.patientNameCol}>
-                    <Text style={[styles.patientName, { color: c.textPrimary }]} numberOfLines={2}>
+                    <AppText style={[styles.patientName, { color: c.textPrimary }]} numberOfLines={2}>
                       {patientName}
-                    </Text>
+                    </AppText>
                   </View>
                 </Row>
               </View>
@@ -422,7 +422,8 @@ function buildStyles(_c: AppColors) {
       paddingTop: spacing[1],
       paddingBottom: spacing[10],
     },
-    centered: { flex: 1, alignItems: 'center' as const, justifyContent: 'center' as const },
+    centered: {
+    minWidth: 0, flex: 1, alignItems: 'center' as const, justifyContent: 'center' as const },
     patientBlock: { gap: spacing[2] },
     patientRow: { minWidth: 0 },
     patientNameCol: { flex: 1, minWidth: 0 },

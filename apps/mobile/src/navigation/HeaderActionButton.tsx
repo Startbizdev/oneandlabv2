@@ -7,9 +7,9 @@ import type { Href } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CalendarPlus, Heart, Plus, UserPlus, type LucideIcon } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, AppText, useLayoutMetrics, headerActionMaxWidth } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const ICON_SIZE = 16;
@@ -52,7 +52,9 @@ export function headerRightAction(
 /** CTA header — gradient brand (identité Continuer). */
 export function HeaderActionButton({ kind, href, onPress }: Props) {
   const c = useAppColors();
+  const layout = useLayoutMetrics();
   const styles = useThemedStyles(buildStyles, 'navigation_HeaderActionButton_tsx_HeaderActionButton_styles');
+  const pillMaxWidth = headerActionMaxWidth(layout);
 
   const router = useRouter();
   const { Icon, label, accessibilityLabel } = CONFIG[kind];
@@ -70,13 +72,13 @@ export function HeaderActionButton({ kind, href, onPress }: Props) {
         colors={[c.gradientStart, c.gradientEnd]}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
-        style={styles.pill}
+        style={[styles.pill, { maxWidth: pillMaxWidth }]}
       >
         <Row gap={spacing[1.5]} align="center">
           <Icon size={ICON_SIZE} color={c.textInverse} strokeWidth={2.5} />
-          <Text style={styles.label} numberOfLines={1}>
+          <AppText style={styles.label} numberOfLines={1} compact>
             {label}
-          </Text>
+          </AppText>
         </Row>
       </LinearGradient>
     </Pressable>
@@ -100,7 +102,6 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[2.5],
     minHeight: 44,
     borderRadius: radius.lg,
-    maxWidth: 148,
   },
   label: {
     fontFamily: fontFamily.semiBold,

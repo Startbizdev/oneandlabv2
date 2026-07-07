@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Keyboard, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, StyleSheet, View } from 'react-native';
 import { Image as ImageIcon } from 'lucide-react-native';
 import {
   CANCELLATION_COMMENT_MAX_LENGTH,
@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { SelectField } from '@/components/ui/SelectField';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type StaffCancellationValues = {
@@ -66,20 +66,20 @@ export function StaffCancellationFields({ values, onChange, onPickPhoto }: Props
             : undefined
         }
       />
-      <Text style={styles.counter}>
+      <AppText style={styles.counter}>
         {commentLen} / {CANCELLATION_COMMENT_MAX_LENGTH}
-      </Text>
+      </AppText>
       {showPhoto ? (
         <View style={styles.photoBlock}>
-          <Text style={styles.photoTitle}>Photo (optionnelle)</Text>
-          <Text style={styles.photoHint}>
+          <AppText style={styles.photoTitle}>Photo (optionnelle)</AppText>
+          <AppText style={styles.photoHint}>
             Vous pouvez joindre une photo du lieu ou de l'accès si pertinent.
-          </Text>
+          </AppText>
           <Button
             title={photoUri ? 'Photo ajoutée ✓' : 'Choisir une photo'}
             variant="outline"
             size="sm"
-            leftIcon={<ImageIcon size={14} color={c.primary} strokeWidth={2} />}
+            leftIcon={<ImageIcon size={iconSize.xs} color={c.primary} strokeWidth={2} />}
             onPress={onPickPhoto}
           />
           {photoUri ? (
@@ -93,10 +93,10 @@ export function StaffCancellationFields({ values, onChange, onPickPhoto }: Props
         </View>
       ) : null}
       {!canSubmit && reason ? (
-        <Text style={styles.hint}>
+        <AppText style={styles.hint}>
           Renseignez un commentaire d'au moins {CANCELLATION_COMMENT_MIN_LENGTH} caractères pour
           confirmer.
-        </Text>
+        </AppText>
       ) : null}
     </View>
   );

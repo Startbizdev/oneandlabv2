@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { Users } from 'lucide-react-native';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 import {
@@ -104,15 +104,15 @@ export function PatientInfoSection({ apt, viewer }: Props) {
             { backgroundColor: c.warningLight, borderTopColor: c.warningMid },
           ]}
         >
-          <Text style={[styles.minorText, { color: c.warning }]}>
-            <Text style={styles.minorBold}>Personne mineure</Text>
+          <AppText style={[styles.minorText, { color: c.warning }]}>
+            <AppText style={styles.minorBold}>Personne mineure</AppText>
             {ext.relative.age_years != null
               ? ` (${ext.relative.age_years} an${ext.relative.age_years === 1 ? '' : 's'})`
               : ''}
             {' · '}
             Le rendez-vous est réservé par le titulaire du compte (contact principal ci-dessous),
             habilité à représenter le patient.
-          </Text>
+          </AppText>
         </View>
       ) : null}
 

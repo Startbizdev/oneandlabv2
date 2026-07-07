@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useRouter } from 'expo-router';
-import { RefreshControl, Text, View } from 'react-native';
+import { RefreshControl, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { HeartPulse } from 'lucide-react-native';
@@ -25,7 +25,7 @@ import { useHealthSourceConnection } from '@/features/health-sync/hooks/use-heal
 import { buildHealthMetricStats, buildHealthInsights, isHealthSyncRecent } from '@/features/health-sync/utils/health-metric-stats';
 import { HealthInsightCards } from '@/features/health-sync/components/HealthInsightCards';
 import { useMemo } from 'react';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, progressRingSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function HealthRecordRecapScreen() {
@@ -106,15 +106,15 @@ export function HealthRecordRecapScreen() {
       >
         <Animated.View entering={FadeInDown.duration(320).springify()} style={[styles.heroCard, elevation.sm]}>
           <Row gap={spacing[4]} align="center">
-            <HealthRecordProgressRing percent={percent} size={72} strokeWidth={6} />
+            <HealthRecordProgressRing percent={percent} size={progressRingSize.lg} strokeWidth={6} />
             <View style={styles.heroText}>
               <Row gap={spacing[2]} align="center">
                 <View style={[styles.heroIcon, { backgroundColor: c.primaryLight }]}>
-                  <HeartPulse size={16} color={c.primary} strokeWidth={2} />
+                  <HeartPulse size={iconSize.sm} color={c.primary} strokeWidth={2} />
                 </View>
-                <Text style={styles.heroTitle}>Mon carnet de santé</Text>
+                <AppText style={styles.heroTitle}>Mon carnet de santé</AppText>
               </Row>
-              <Text style={styles.heroSub}>{healthRecordHeroSubtitle(percent)}</Text>
+              <AppText style={styles.heroSub}>{healthRecordHeroSubtitle(percent)}</AppText>
             </View>
           </Row>
         </Animated.View>
@@ -129,7 +129,7 @@ export function HealthRecordRecapScreen() {
         ) : null}
 
         <View style={styles.block}>
-          <Text style={styles.blockTitle}>Données connectées</Text>
+          <AppText style={styles.blockTitle}>Données connectées</AppText>
           <HealthSyncStatusCard
             connected={healthConnection.connected}
             lastSyncAt={healthConnection.lastSyncAt}
@@ -154,7 +154,7 @@ export function HealthRecordRecapScreen() {
 
         {openGaps.length > 0 ? (
           <View style={styles.block}>
-            <Text style={styles.blockTitle}>Suggestions de suivi</Text>
+            <AppText style={styles.blockTitle}>Suggestions de suivi</AppText>
             {openGaps.map((gap) => (
               <HealthRecordGapActionCard key={gap.gap_key} gap={gap} />
             ))}
@@ -163,17 +163,17 @@ export function HealthRecordRecapScreen() {
 
         {(data?.trends ?? []).length > 0 ? (
           <View style={styles.block}>
-            <Text style={styles.blockTitle}>Tendances (7 j)</Text>
+            <AppText style={styles.blockTitle}>Tendances (7 j)</AppText>
             {data!.trends!.map((t) => (
               <View key={t.observation_fr} style={styles.trendBadge}>
-                <Text style={styles.trendText}>{t.observation_fr}</Text>
+                <AppText style={styles.trendText}>{t.observation_fr}</AppText>
               </View>
             ))}
           </View>
         ) : null}
 
         <View style={styles.block}>
-          <Text style={styles.blockTitle}>Sections</Text>
+          <AppText style={styles.blockTitle}>Sections</AppText>
           <View style={[styles.sectionCard, elevation.xs]}>
             {(data?.sections ?? []).map((section, index) => (
               <View key={section.id}>
@@ -192,7 +192,7 @@ export function HealthRecordRecapScreen() {
 
         {data?.disclaimer_fr ? (
           <View style={styles.disclaimerBox}>
-            <Text style={styles.disclaimer}>{data.disclaimer_fr}</Text>
+            <AppText style={styles.disclaimer}>{data.disclaimer_fr}</AppText>
           </View>
         ) : null}
       </Animated.ScrollView>
@@ -202,8 +202,10 @@ export function HealthRecordRecapScreen() {
 
 function buildStyles(c: AppColors) {
   return {
-    loading: { flex: 1, padding: spacing[4] },
-    errorWrap: { flex: 1, padding: spacing[4], justifyContent: 'center' as const },
+    loading: {
+    minWidth: 0, flex: 1, padding: spacing[4] },
+    errorWrap: {
+    minWidth: 0, flex: 1, padding: spacing[4], justifyContent: 'center' as const },
     scrollContent: {
       paddingHorizontal: spacing[4],
       paddingBottom: spacing[10],

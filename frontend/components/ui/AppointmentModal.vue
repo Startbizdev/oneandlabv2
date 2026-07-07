@@ -278,6 +278,7 @@
         </label>
         <div class="flex flex-col-reverse sm:flex-row gap-2">
           <UButton
+            v-if="showDeclineOfferButton"
             color="error"
             variant="outline"
             leading-icon="i-lucide-x"
@@ -287,6 +288,18 @@
             @click="refuseAppointment"
           >
             Refuser
+          </UButton>
+          <UButton
+            v-if="showSnoozeOfferButton"
+            color="neutral"
+            variant="outline"
+            leading-icon="i-lucide-clock"
+            :loading="snoozing"
+            class="flex-1 justify-center min-h-10"
+            block
+            @click="snoozeAppointment"
+          >
+            Plus tard
           </UButton>
           <UButton
             color="primary"
@@ -384,6 +397,8 @@ const loading = ref(false)
 const batchSiblingsFull = ref<any[]>([])
 const accepting = ref(false)
 const refusing = ref(false)
+const snoozing = ref(false)
+const skipSnoozeOnClose = ref(false)
 const isAlreadyAccepted = ref(false)
 const planLimitReached = ref(false)
 const acceptedBy = ref<any>(null)
@@ -683,6 +698,22 @@ const canAccept = computed(() => {
   return false
 })
 
+/** Préleveur : refus = retirer l'offre. Nurse/lab/sub : snooze uniquement. */
+const showDeclineOfferButton = computed(
+  () => props.role === 'preleveur' && canAccept.value,
+)
+const showSnoozeOfferButton = computed(
+  () => ['nurse', 'lab', 'subaccount'].includes(props.role ?? '') && canAccept.value,
+)
+const shouldSnoozeOnDismiss = computed(
+  () =>
+    showSnoozeOfferButton.value &&
+    !!props.appointment &&
+    props.appointment.status === 'pending' &&
+    !isAlreadyAccepted.value &&
+    !planLimitReached.value,
+)
+
 const appointmentsListPath = computed(() => {
   if (props.role === 'nurse') return '/nurse/appointments'
   if (props.role === 'subaccount') return '/subaccount/appointments'
@@ -733,6 +764,7 @@ const acceptAppointment = async () => {
       })
       isAccepted.value = true
       shareTokenForAccept.value = null
+      skipSnoozeOnClose.value = true
       emit('accepted', props.appointment)
       emit('refresh')
       const detailId = props.appointment!.id
@@ -796,6 +828,7 @@ const refuseAppointment = async () => {
           color: 'orange',
         })
       }
+      skipSnoozeOnClose.value = true
       emit('refused', props.appointment!.id)
       emit('refresh')
       closeModal()
@@ -806,6 +839,33 @@ const refuseAppointment = async () => {
     }
   } finally {
     refusing.value = false
+  }
+}
+
+const snoozeAppointment = async () => {
+  if (!props.appointment?.id) return
+  snoozing.value = true
+  try {
+    const ids = batchAppointmentIds.value
+    await Promise.all(
+      ids.map((id) =>
+        apiFetch(`/appointments/${encodeURIComponent(id)}/offer/snooze`, {
+          method: 'POST',
+          body: {},
+        }),
+      ),
+    )
+    skipSnoozeOnClose.value = true
+    emit('refresh')
+    closeModal()
+  } catch (err: any) {
+    toast.add({
+      title: 'Erreur',
+      description: err?.message || 'Impossible de reporter cette offre',
+      color: 'error',
+    })
+  } finally {
+    snoozing.value = false
   }
 }
 
@@ -821,6 +881,30 @@ const closeModal = () => {
     batchSiblingsFull.value = []
   })
 }
+
+watch(isOpen, async (open, wasOpen) => {
+  if (wasOpen && !open && shouldSnoozeOnDismiss.value && !skipSnoozeOnClose.value) {
+    try {
+      const ids = batchAppointmentIds.value
+      if (ids.length) {
+        await Promise.all(
+          ids.map((id) =>
+            apiFetch(`/appointments/${encodeURIComponent(id)}/offer/snooze`, {
+              method: 'POST',
+              body: {},
+            }),
+          ),
+        )
+        emit('refresh')
+      }
+    } catch {
+      /* Fermeture sans bloquer l'utilisateur */
+    }
+  }
+  if (!open) {
+    skipSnoozeOnClose.value = false
+  }
+})
 
 /* ---------------- UTIL ---------------- */
 

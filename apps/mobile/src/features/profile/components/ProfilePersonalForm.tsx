@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -14,7 +14,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { fetchUser, updateUser } from '../api/profile.service';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, avatarSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -65,15 +65,15 @@ export function ProfilePersonalForm({ showSaveButton = true }: Props) {
             }
             seed={user?.id ?? `${firstName} ${lastName}`}
             gender={(q.data as { gender?: string | null } | undefined)?.gender}
-            size={64}
+            size={avatarSize.lg}
             style={styles.avatar}
           />
         }>
           <View style={styles.avatarInfo}>
-            <Text style={styles.avatarName}>
+            <AppText style={styles.avatarName}>
               {firstName || lastName ? `${firstName} ${lastName}`.trim() : 'Votre profil'}
-            </Text>
-            <Text style={styles.avatarEmail}>{user?.email ?? ''}</Text>
+            </AppText>
+            <AppText style={styles.avatarEmail}>{user?.email ?? ''}</AppText>
           </View>
         </Cluster>
       </Animated.View>
@@ -82,7 +82,7 @@ export function ProfilePersonalForm({ showSaveButton = true }: Props) {
         <SkeletonList count={3} itemHeight={72} gap={spacing[3]} />
       ) : (
         <Animated.View entering={FadeInDown.delay(80).duration(280).springify()} style={[styles.formCard, elevation.xs]}>
-          <Text style={styles.sectionTitle}>Informations personnelles</Text>
+          <AppText style={styles.sectionTitle}>Informations personnelles</AppText>
           <Input
             label="Prénom"
             value={firstName}
@@ -105,9 +105,9 @@ export function ProfilePersonalForm({ showSaveButton = true }: Props) {
             returnKeyType="done"
           />
           {user?.role === 'patient' ? (
-            <Text style={styles.hint}>
+            <AppText style={styles.hint}>
               L’e-mail ne peut pas être modifié depuis l’application. Contactez le support si besoin.
-            </Text>
+            </AppText>
           ) : null}
         </Animated.View>
       )}

@@ -13,7 +13,7 @@ import {
   resolveAppointmentDetailAddressLine,
   resolveAppointmentMapCoords,
 } from '../utils/appointment-address-display';
-import { spacing } from '@/theme';
+import {spacing, iconSize } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function AddressCard({
@@ -63,7 +63,7 @@ export function AddressCard({
         style={styles.addressRow}
         leading={
           <View style={styles.iconWrap}>
-            <MapPin size={16} color={c.primary} strokeWidth={2} />
+            <MapPin size={iconSize.sm} color={c.primary} strokeWidth={2} />
           </View>
         }
       >
@@ -74,7 +74,7 @@ export function AddressCard({
           title={wazePreferred ? 'Itinéraire Waze' : 'Ouvrir dans Maps'}
           variant="outline"
           size="sm"
-          rightIcon={<ExternalLink size={13} color={c.primary} strokeWidth={2} />}
+          rightIcon={<ExternalLink size={iconSize.xs} color={c.primary} strokeWidth={2} />}
           onPress={openMaps}
         />
       </View>

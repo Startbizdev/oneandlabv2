@@ -1,15 +1,15 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { Text } from 'react-native';
+;
 import { ProfileNurseQualificationsSection } from '@/features/profile/components/ProfileNurseQualificationsSection';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function ProfileNurseQualificationsScreen() {
   const c = useAppColors();
   return (
     <ProfileSubScreenLayout hideSave>
-      <Text
+      <AppText
         style={{
           fontFamily: fontFamily.regular,
           fontSize: fontSize.sm,
@@ -19,7 +19,7 @@ export function ProfileNurseQualificationsScreen() {
         }}
       >
         Chaque modification est enregistrée automatiquement.
-      </Text>
+      </AppText>
       <ProfileNurseQualificationsSection bare />
     </ProfileSubScreenLayout>
   );

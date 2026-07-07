@@ -12,6 +12,7 @@ import * as Haptics from 'expo-haptics';
 import { animation, radius, spacing } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
+import { scaleLayoutSize } from '@/theme/text-scale';
 
 type Variant =
   | 'primary'
@@ -37,21 +38,14 @@ interface ButtonProps extends Omit<PressableProps, 'style'> {
   style?: PressableProps['style'];
 }
 
-const sizeStyle: Record<
+const sizeStyleBase: Record<
   Size,
-  { paddingVertical: number; paddingHorizontal: number; borderRadius: number; minHeight: number }
+  { paddingVertical: number; paddingHorizontal: number; borderRadius: number; baseMinHeight: number }
 > = {
-  mini: { paddingVertical: spacing[2], paddingHorizontal: spacing[2], borderRadius: radius.md, minHeight: 40 },
-  sm: { paddingVertical: spacing[2], paddingHorizontal: spacing[4], borderRadius: radius.md, minHeight: 44 },
-  md: { paddingVertical: spacing[3], paddingHorizontal: spacing[5], borderRadius: radius.lg, minHeight: 44 },
-  lg: { paddingVertical: spacing[4], paddingHorizontal: spacing[6], borderRadius: radius.xl, minHeight: 48 },
-};
-
-const textSize: Record<Size, number> = {
-  mini: fontSize.xs,
-  sm: fontSize.sm,
-  md: fontSize.base,
-  lg: fontSize.md,
+  mini: { paddingVertical: spacing[2], paddingHorizontal: spacing[2], borderRadius: radius.md, baseMinHeight: 40 },
+  sm: { paddingVertical: spacing[2], paddingHorizontal: spacing[4], borderRadius: radius.md, baseMinHeight: 44 },
+  md: { paddingVertical: spacing[3], paddingHorizontal: spacing[5], borderRadius: radius.lg, baseMinHeight: 44 },
+  lg: { paddingVertical: spacing[4], paddingHorizontal: spacing[6], borderRadius: radius.xl, baseMinHeight: 48 },
 };
 
 function triggerHaptic() {
@@ -161,9 +155,8 @@ function ButtonComponent({
         accessibilityLabel={props.accessibilityLabel ?? (iconOnly ? title : undefined)}
         style={[
           styles.base,
-          { minHeight: sizeStyle[size].minHeight, gap: isMini ? 3 : 0 },
+          styles.size[size],
           variantStyleFor(variant, c),
-          sizeStyle[size],
           isDisabled && styles.disabled,
           fullWidth && styles.fullWidth,
           style,
@@ -192,7 +185,8 @@ function ButtonComponent({
             <Animated.Text
               style={[
                 isMini ? styles.textMini : styles.text,
-                { color: textColorFor(variant, c), fontSize: textSize[size] },
+                styles.textSize[size],
+                { color: textColorFor(variant, c) },
                 leftIcon || rightIcon
                   ? isMini
                     ? styles.textWithIconMini
@@ -213,6 +207,44 @@ function ButtonComponent({
 export const Button = React.memo(ButtonComponent);
 
 function buildStyles(c: AppColors) {
+  const textSizeStyles = {
+    mini: { fontSize: fontSize.xs },
+    sm: { fontSize: fontSize.sm },
+    md: { fontSize: fontSize.base },
+    lg: { fontSize: fontSize.md },
+  } as const;
+
+  const sizeStyles = {
+    mini: {
+      paddingVertical: sizeStyleBase.mini.paddingVertical,
+      paddingHorizontal: sizeStyleBase.mini.paddingHorizontal,
+      borderRadius: sizeStyleBase.mini.borderRadius,
+      minHeight: scaleLayoutSize(sizeStyleBase.mini.baseMinHeight),
+      gap: 3,
+    },
+    sm: {
+      paddingVertical: sizeStyleBase.sm.paddingVertical,
+      paddingHorizontal: sizeStyleBase.sm.paddingHorizontal,
+      borderRadius: sizeStyleBase.sm.borderRadius,
+      minHeight: scaleLayoutSize(sizeStyleBase.sm.baseMinHeight),
+      gap: 0,
+    },
+    md: {
+      paddingVertical: sizeStyleBase.md.paddingVertical,
+      paddingHorizontal: sizeStyleBase.md.paddingHorizontal,
+      borderRadius: sizeStyleBase.md.borderRadius,
+      minHeight: scaleLayoutSize(sizeStyleBase.md.baseMinHeight),
+      gap: 0,
+    },
+    lg: {
+      paddingVertical: sizeStyleBase.lg.paddingVertical,
+      paddingHorizontal: sizeStyleBase.lg.paddingHorizontal,
+      borderRadius: sizeStyleBase.lg.borderRadius,
+      minHeight: scaleLayoutSize(sizeStyleBase.lg.baseMinHeight),
+      gap: 0,
+    },
+  } as const;
+
   return {
   base: {
     flexDirection: 'row' as const,
@@ -243,5 +275,7 @@ function buildStyles(c: AppColors) {
   disabled: {
     opacity: 0.45,
   },
+  size: sizeStyles,
+  textSize: textSizeStyles,
 };
 }

@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { MessageSquare } from 'lucide-react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
@@ -13,7 +13,7 @@ import {
   formatReviewDate,
   reviewerDisplayName,
 } from '@/features/reviews/utils/review-labels';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
@@ -51,47 +51,47 @@ export function ReviewReceivedCard({
           <ProfileAvatar
             profileImageUrl={null}
             seed={name}
-            size={36}
+            size={iconSize['3xl']}
             style={styles.avatar}
           />
         }
-        actions={date ? <Text style={styles.date}>{date}</Text> : undefined}
+        actions={date ? <AppText style={styles.date}>{date}</AppText> : undefined}
       >
         <View style={styles.authorText}>
-          <Text style={styles.authorName}>{name}</Text>
+          <AppText style={styles.authorName}>{name}</AppText>
           {aptMeta || aptDate ? (
-            <Text style={styles.meta} numberOfLines={2}>
+            <AppText style={styles.meta} numberOfLines={2}>
               {aptMeta}
               {aptMeta && aptDate ? ' — ' : ''}
               {aptDate ? `RDV du ${aptDate}` : ''}
-            </Text>
+            </AppText>
           ) : null}
         </View>
       </Cluster>
 
-      <ReviewStars rating={review.rating ?? 0} size={18} />
+      <ReviewStars rating={review.rating ?? 0} size={iconSize.mdSm} />
 
       {review.comment?.trim() ? (
         <View style={styles.quote}>
-          <Text style={styles.comment}>{review.comment.trim()}</Text>
+          <AppText style={styles.comment}>{review.comment.trim()}</AppText>
         </View>
       ) : (
-        <Text style={styles.noComment}>Aucun commentaire écrit</Text>
+        <AppText style={styles.noComment}>Aucun commentaire écrit</AppText>
       )}
 
       {hasResponse ? (
         <View style={styles.responseBox}>
           <Row gap={spacing[1.5]}>
-            <MessageSquare size={14} color={c.primary} strokeWidth={2} />
-            <Text style={styles.responseLabel}>Votre réponse</Text>
+            <MessageSquare size={iconSize.xs} color={c.primary} strokeWidth={2} />
+            <AppText style={styles.responseLabel}>Votre réponse</AppText>
           </Row>
-          <Text style={styles.responseText}>{review.response!.trim()}</Text>
+          <AppText style={styles.responseText}>{review.response!.trim()}</AppText>
         </View>
       ) : onReply ? (
         <Pressable onPress={onReply} style={styles.replyBtn}>
           <Row justify="center" gap={spacing[2]}>
-            <MessageSquare size={16} color={c.primary} strokeWidth={2} />
-            <Text style={styles.replyBtnText}>Répondre à cet avis</Text>
+            <MessageSquare size={iconSize.sm} color={c.primary} strokeWidth={2} />
+            <AppText style={styles.replyBtnText}>Répondre à cet avis</AppText>
           </Row>
         </Pressable>
       ) : null}

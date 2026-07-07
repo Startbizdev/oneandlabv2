@@ -45,7 +45,15 @@ retry_cmd() {
 
 resolve_ipv4() {
   local host="$1"
-  dig +short "$host" | awk 'NF { print; exit }'
+  if [[ "$host" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "$host"
+    return 0
+  fi
+  if command -v dig >/dev/null 2>&1; then
+    dig +short "$host" | awk 'NF { print; exit }'
+    return
+  fi
+  return 1
 }
 
 ensure_ssh_target() {

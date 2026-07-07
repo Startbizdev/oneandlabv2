@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
-import { fontFamily, fontSize } from '@/theme/typography';
+import { AppText, fontFamily, fontSize } from '@/theme';
 
 interface Props {
   Icon: LucideIcon;
@@ -36,7 +36,7 @@ export function TabBarIconBadge({
           <View style={styles.dot} />
         ) : (
           <View style={[styles.badge, label.length > 1 && styles.badgeWide]}>
-            <Text style={styles.badgeText}>{label}</Text>
+            <AppText style={styles.badgeText} compact>{label}</AppText>
           </View>
         )
       ) : null}

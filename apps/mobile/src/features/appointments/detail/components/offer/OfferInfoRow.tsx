@@ -1,10 +1,10 @@
 import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Cluster } from '@/components/layout/primitives';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -23,11 +23,11 @@ export function OfferInfoRow({ icon: Icon, label, value, bordered }: Props) {
       gap={spacing[3]}
       align="start"
       style={[styles.row, bordered && styles.bordered]}
-      leading={<Icon size={16} color={c.textSecondary} strokeWidth={2} style={styles.icon} />}
+      leading={<Icon size={iconSize.sm} color={c.textSecondary} strokeWidth={2} style={styles.icon} />}
     >
       <View style={styles.body}>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={styles.value}>{value}</Text>
+        <AppText style={styles.label}>{label}</AppText>
+        <AppText style={styles.value}>{value}</AppText>
       </View>
     </Cluster>
   );

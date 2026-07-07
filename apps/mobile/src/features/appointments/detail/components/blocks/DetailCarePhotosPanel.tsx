@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Camera, MessageCircle } from 'lucide-react-native';
@@ -27,7 +27,7 @@ import { isCarePhotoPdf } from '../../utils/care-photo-file';
 import { useToast } from '@/providers/ToastProvider';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { loadCarePhotoLocalUri } from '../../utils/care-photo-image';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -115,10 +115,10 @@ export function DetailCarePhotosPanel({
   if (!isCarePhotoGalleryContext(apt)) {
     return (
       <View style={styles.emptyCard}>
-        <Text style={styles.emptySub}>
+        <AppText style={styles.emptySub}>
           Les photos de soins sont disponibles pour les rendez-vous prescrits par un professionnel
           de santé.
-        </Text>
+        </AppText>
       </View>
     );
   }
@@ -134,10 +134,10 @@ export function DetailCarePhotosPanel({
   if (q.isError) {
     return (
       <View style={styles.emptyCard}>
-        <Text style={styles.emptyTitle}>Échange indisponible</Text>
-        <Text style={styles.emptySub}>
+        <AppText style={styles.emptyTitle}>Échange indisponible</AppText>
+        <AppText style={styles.emptySub}>
           {q.error instanceof Error ? q.error.message : 'Erreur de chargement'}
-        </Text>
+        </AppText>
       </View>
     );
   }
@@ -148,7 +148,7 @@ export function DetailCarePhotosPanel({
   return (
     <View style={styles.wrap}>
       <View style={styles.introCard}>
-        <Text style={styles.intro}>{carePhotosPanelIntro(viewerRole)}</Text>
+        <AppText style={styles.intro}>{carePhotosPanelIntro(viewerRole)}</AppText>
       </View>
 
       {hasPhotos ? (
@@ -165,7 +165,7 @@ export function DetailCarePhotosPanel({
                 onZoom={() => void openLightbox(p)}
                 accessibilityLabel={`Ouvrir le fichier ${idx + 1}`}
               />
-              <Text style={styles.previewLabel}>Fichier {idx + 1}</Text>
+              <AppText style={styles.previewLabel}>Fichier {idx + 1}</AppText>
             </View>
           ))}
         </ScrollView>
@@ -173,13 +173,13 @@ export function DetailCarePhotosPanel({
 
       {showEmptyReadOnly ? (
         <View style={styles.emptyCard}>
-          <Camera size={32} color={c.textTertiary} strokeWidth={1.75} />
-          <Text style={styles.emptyTitle}>Aucune photo pour l’instant</Text>
-          <Text style={styles.emptySub}>
+          <Camera size={iconSize['2xl']} color={c.textTertiary} strokeWidth={1.75} />
+          <AppText style={styles.emptyTitle}>Aucune photo pour l’instant</AppText>
+          <AppText style={styles.emptySub}>
             {viewerRole === 'pro'
               ? 'Vous et l’infirmier(ère) assigné(e) pourrez partager des photos de suivi ici.'
               : 'Vous et le professionnel de santé pourrez partager des photos de suivi ici.'}
-          </Text>
+          </AppText>
         </View>
       ) : (
         <View style={styles.ctaWrap}>
@@ -189,19 +189,19 @@ export function DetailCarePhotosPanel({
               size="lg"
               fullWidth
               leftIcon={
-                <MessageCircle size={20} color={c.textInverse} strokeWidth={2.25} />
+                <MessageCircle size={iconSize.md} color={c.textInverse} strokeWidth={2.25} />
               }
               onPress={onPrimaryPress}
             />
             {showOpenCta && unread > 0 ? (
               <View style={styles.unreadBadge} accessibilityLabel={`${unread} nouveaux messages`}>
-                <Text style={styles.unreadBadgeText}>{unread > 99 ? '99+' : unread}</Text>
+                <AppText style={styles.unreadBadgeText}>{unread > 99 ? '99+' : unread}</AppText>
               </View>
             ) : null}
           </View>
-          <Text style={styles.ctaHint}>
+          <AppText style={styles.ctaHint}>
             Messages, photos ou PDF — tout se fait depuis l’échange.
-          </Text>
+          </AppText>
         </View>
       )}
       <FullscreenImageViewer

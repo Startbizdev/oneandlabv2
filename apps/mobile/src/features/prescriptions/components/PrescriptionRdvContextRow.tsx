@@ -5,9 +5,9 @@ import { Stack } from '@/components/layout/primitives';
 import { RdvListCardCreneauRow } from '@/features/appointments/components/RdvListCardCreneauRow';
 import { RdvCareTagsRow } from '@/features/appointments/components/RdvCareTagsRow';
 import { prescriptionAppointmentPickerScheduleLabel } from '../utils/prescription-display';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
-import { Text } from 'react-native';
+;
 
 interface Props {
   apt: Appointment;
@@ -23,9 +23,9 @@ export function PrescriptionRdvContextRow({ apt, lotLabel }: Props) {
   return (
     <Stack gap={spacing[1]} style={styles.root}>
       {lotLabel ? (
-        <Text style={styles.lotLabel} numberOfLines={1}>
+        <AppText style={styles.lotLabel} numberOfLines={1}>
           {lotLabel}
-        </Text>
+        </AppText>
       ) : null}
       <RdvListCardCreneauRow label={schedule} status={status} />
       <RdvCareTagsRow apt={apt} tone="neutral" density="compact" />

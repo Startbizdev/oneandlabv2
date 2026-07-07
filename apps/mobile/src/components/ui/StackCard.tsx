@@ -2,15 +2,8 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { hairlineBottom, hairlineTop, layoutRow } from '@/theme/layout-styles';
 import type { ReactNode } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
-import { radius, spacing } from '@/theme';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Inset intérieur — parité `AppointmentListRowCard` (`inner`). */
@@ -92,9 +85,9 @@ function StackCardFooterMeta({ children, numberOfLines = 1 }: FooterMetaProps) {
   const styles = useThemedStyles(buildStackCardStyles, 'StackCard.FooterMeta');
 
   return (
-    <Text style={styles.footerMeta} numberOfLines={numberOfLines}>
+    <AppText style={styles.footerMeta} numberOfLines={numberOfLines}>
       {children}
-    </Text>
+    </AppText>
   );
 }
 

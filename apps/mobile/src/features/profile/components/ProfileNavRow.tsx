@@ -3,10 +3,10 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight, type LucideIcon } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -51,15 +51,15 @@ export function ProfileNavRow({
     leading ??
     (Icon ? (
       <View style={[styles.iconWrap, { backgroundColor: iconBg ?? c.primaryLight }]}>
-        <Icon size={18} color={iconColor ?? c.primary} strokeWidth={2} />
+        <Icon size={iconSize.mdSm} color={iconColor ?? c.primary} strokeWidth={2} />
       </View>
     ) : null);
 
   const titleNode = (
-    <Text style={styles.title} numberOfLines={1}>
+    <AppText style={styles.title} numberOfLines={1}>
       {title}
-      {titleSuffix ? <Text style={styles.titleSuffix}>{titleSuffix}</Text> : null}
-    </Text>
+      {titleSuffix ? <AppText style={styles.titleSuffix}>{titleSuffix}</AppText> : null}
+    </AppText>
   );
 
   return (
@@ -76,20 +76,20 @@ export function ProfileNavRow({
           <>
             {titleNode}
             {subtitle ? (
-              <Text style={styles.subtitle} numberOfLines={2}>
+              <AppText style={styles.subtitle} numberOfLines={2}>
                 {subtitle}
-              </Text>
+              </AppText>
             ) : null}
           </>
         }
         trailing={
           badge != null && badge > 0 ? (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
+              <AppText style={styles.badgeText}>{badge > 99 ? '99+' : badge}</AppText>
             </View>
           ) : undefined
         }
-        actions={<ChevronRight size={18} color={c.textTertiary} strokeWidth={2} />}
+        actions={<ChevronRight size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />}
       />
     </Pressable>
   );

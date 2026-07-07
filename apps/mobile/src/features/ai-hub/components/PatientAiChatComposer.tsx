@@ -4,7 +4,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Mic, Plus, Send } from 'lucide-react-native';
-import { elevation, H_PADDING, radius, spacing } from '@/theme';
+import {elevation, H_PADDING, radius, spacing, iconSize } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import {
   PatientAiAttachmentThumbnail,
@@ -96,7 +96,7 @@ export function PatientAiChatComposer({
               {attaching ? (
                 <ActivityIndicator size="small" color={c.primary} />
               ) : (
-                <Plus size={20} color={c.textSecondary} strokeWidth={2.25} />
+                <Plus size={iconSize.md} color={c.textSecondary} strokeWidth={2.25} />
               )}
             </View>
           </Pressable>
@@ -132,7 +132,7 @@ export function PatientAiChatComposer({
           hitSlop={6}
         >
           <View style={[styles.actionIcon, { backgroundColor: c.primary }]}>
-            <Mic size={20} color={c.textInverse} strokeWidth={2.5} />
+            <Mic size={iconSize.md} color={c.textInverse} strokeWidth={2.5} />
           </View>
         </Pressable>
 
@@ -155,7 +155,7 @@ export function PatientAiChatComposer({
             ]}
           >
             <Send
-              size={18}
+              size={iconSize.mdSm}
               color={canSend && !disabled ? c.textInverse : c.textTertiary}
               strokeWidth={2.25}
             />

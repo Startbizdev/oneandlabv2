@@ -1,18 +1,19 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Activity, CheckCircle2, HeartPulse, RefreshCw, Unplug } from 'lucide-react-native';
 import { Row, Stack } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
 import {
   formatHealthSyncRelative,
   getHealthPlatformUiConfig,
 } from '../utils/health-platform-config';
+import { layoutRowCenter } from '@/theme/layout-styles';
 import type { HealthMetricStat } from '../utils/health-metric-stats';
 
 interface Props {
@@ -56,38 +57,38 @@ export function HealthSyncStatusCard({
 
         <Stack gap={spacing[2]} style={styles.body}>
           <Row gap={spacing[2]} align="center" style={styles.titleRow}>
-            <Text style={[styles.title, compact && styles.titleCompact]} numberOfLines={1}>
+            <AppText style={[styles.title, compact && styles.titleCompact]} numberOfLines={1}>
               {platform.name}
-            </Text>
+            </AppText>
             {connected ? (
               <View style={[styles.badge, { backgroundColor: hexToRgba(c.success, 0.14) }]}>
-                <CheckCircle2 size={12} color={c.success} strokeWidth={2.5} />
-                <Text style={[styles.badgeText, { color: c.success }]}>Connecté</Text>
+                <CheckCircle2 size={iconSize['2xs']} color={c.success} strokeWidth={2.5} />
+                <AppText style={[styles.badgeText, { color: c.success }]}>Connecté</AppText>
               </View>
             ) : null}
           </Row>
 
-          <Text style={styles.subtitle}>
+          <AppText style={styles.subtitle}>
             {connected
               ? `${formatHealthSyncRelative(lastSyncAt)} · ${platform.connectedSubtitle}`
               : platform.disconnectedSubtitle}
-          </Text>
+          </AppText>
 
           {connected && stats.length > 0 ? (
             <Row gap={spacing[2]} style={styles.statsRow}>
               {stats.slice(0, 3).map((stat) => (
                 <View key={stat.type} style={[styles.statTile, { backgroundColor: c.surface }]}>
-                  <Text style={styles.statLabel} numberOfLines={1}>
+                  <AppText style={styles.statLabel} numberOfLines={1}>
                     {stat.label}
-                  </Text>
-                  <Text style={styles.statValue}>
+                  </AppText>
+                  <AppText style={styles.statValue}>
                     {stat.value}
-                    <Text style={styles.statUnit}> {stat.unit}</Text>
-                  </Text>
+                    <AppText style={styles.statUnit}> {stat.unit}</AppText>
+                  </AppText>
                   {stat.hint ? (
-                    <Text style={styles.statHint} numberOfLines={1}>
+                    <AppText style={styles.statHint} numberOfLines={1}>
                       {stat.hint}
-                    </Text>
+                    </AppText>
                   ) : null}
                 </View>
               ))}
@@ -104,7 +105,7 @@ export function HealthSyncStatusCard({
                     fullWidth
                     loading={syncing}
                     leftIcon={
-                      syncing ? undefined : <RefreshCw size={15} color="#FFFFFF" strokeWidth={2.5} />
+                      syncing ? undefined : <RefreshCw size={iconSize.xs} color="#FFFFFF" strokeWidth={2.5} />
                     }
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -130,7 +131,7 @@ export function HealthSyncStatusCard({
                     {syncing ? (
                       <ActivityIndicator size="small" color={c.textTertiary} />
                     ) : (
-                      <Unplug size={16} color={c.textSecondary} strokeWidth={2.25} />
+                      <Unplug size={iconSize.sm} color={c.textSecondary} strokeWidth={2.25} />
                     )}
                   </Pressable>
                 ) : null}
@@ -143,7 +144,7 @@ export function HealthSyncStatusCard({
                   fullWidth
                   loading={syncing}
                   leftIcon={
-                    syncing ? undefined : <Activity size={15} color="#FFFFFF" strokeWidth={2.5} />
+                    syncing ? undefined : <Activity size={iconSize.xs} color="#FFFFFF" strokeWidth={2.5} />
                   }
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -192,6 +193,7 @@ function buildStyles(c: AppColors) {
       flexWrap: 'wrap' as const,
     },
     title: {
+      minWidth: 0,
       fontFamily: fontFamily.bold,
       fontSize: fontSize.base,
       color: c.textPrimary,
@@ -202,9 +204,7 @@ function buildStyles(c: AppColors) {
       fontSize: fontSize.sm,
     },
     badge: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: spacing[1],
+      ...layoutRowCenter(spacing[1]),
       paddingHorizontal: spacing[2],
       paddingVertical: spacing[0.5],
       borderRadius: radius.full,
@@ -234,7 +234,7 @@ function buildStyles(c: AppColors) {
     },
     statLabel: {
       fontFamily: fontFamily.medium,
-      fontSize: 10,
+      fontSize: fontSize['2xs'],
       color: c.textTertiary,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.4,
@@ -252,7 +252,7 @@ function buildStyles(c: AppColors) {
     },
     statHint: {
       fontFamily: fontFamily.regular,
-      fontSize: 10,
+      fontSize: fontSize['2xs'],
       color: c.textTertiary,
     },
     actions: {

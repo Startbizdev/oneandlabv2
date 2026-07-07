@@ -1,13 +1,13 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
 import dayjs from 'dayjs';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -67,7 +67,7 @@ export function PrescriptionDatePicker({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+      <AppText style={styles.label}>{label}</AppText>
       <Pressable
         onPress={openPicker}
         disabled={disabled}
@@ -75,9 +75,9 @@ export function PrescriptionDatePicker({
         accessibilityRole="button"
         accessibilityLabel={`${label}, ${display}`}
       >
-        <Text style={[styles.value, !parsedValid && styles.placeholder]}>{display}</Text>
+        <AppText style={[styles.value, !parsedValid && styles.placeholder]}>{display}</AppText>
       </Pressable>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <AppText style={styles.error}>{error}</AppText> : null}
 
       {androidOpen ? (
         <DateTimePicker

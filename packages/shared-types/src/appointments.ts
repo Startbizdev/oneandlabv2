@@ -90,6 +90,8 @@ export interface Appointment {
   completed_at?: string;
   created_at: string;
   updated_at: string;
+  /** Snooze modal offre (appointment_offers.modal_snoozed_until). */
+  offer_modal_snoozed_until?: string | null;
 }
 
 export interface AppointmentListFilters {

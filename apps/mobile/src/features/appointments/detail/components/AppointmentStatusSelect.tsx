@@ -1,13 +1,13 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Row } from '@/components/layout/primitives';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { updateAppointment } from '../../api/appointments.service';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const NURSE_STATUSES = ['pending', 'confirmed', 'in_progress', 'completed', 'canceled'] as const;
@@ -31,8 +31,6 @@ export function AppointmentStatusSelect({ appointmentId, currentStatus, role }: 
   const { show: toast } = useToast();
   const qc = useQueryClient();
 
-  if (role !== 'nurse' && role !== 'pro') return null;
-
   const mut = useMutation({
     mutationFn: (status: string) => updateAppointment(appointmentId, { status }),
     onSuccess: () => {
@@ -43,9 +41,11 @@ export function AppointmentStatusSelect({ appointmentId, currentStatus, role }: 
     onError: (e) => handleApiError(e, toast, 'updateStatus'),
   });
 
+  if (role !== 'nurse' && role !== 'pro') return null;
+
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.overline}>Statut</Text>
+      <AppText style={styles.overline}>Statut</AppText>
       <Row wrap gap={spacing[2]}>
         {NURSE_STATUSES.map((s) => {
           const on = currentStatus === s;
@@ -56,9 +56,9 @@ export function AppointmentStatusSelect({ appointmentId, currentStatus, role }: 
               disabled={mut.isPending}
               style={[styles.pill, on && styles.pillActive]}
             >
-              <Text style={[styles.pillText, on && styles.pillTextActive]}>
+              <AppText style={[styles.pillText, on && styles.pillTextActive]}>
                 {STATUS_LABELS[s] ?? s}
-              </Text>
+              </AppText>
             </Pressable>
           );
         })}

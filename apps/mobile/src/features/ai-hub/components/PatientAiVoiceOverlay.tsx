@@ -4,7 +4,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { AiAppointmentDraft } from '@oneandlab/shared-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
@@ -22,6 +22,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
+import { layoutRowCenterAll } from '@/theme/layout-styles';
 import { CaryAiBookingRecapCard } from '@/features/ai-hub/components/CaryAiBookingRecapCard';
 import { CaryAiVoiceDocumentUpload } from '@/features/ai-hub/components/CaryAiVoiceDocumentUpload';
 import type { VoicePhase, VoiceTurn } from '../hooks/use-voice-session';
@@ -31,7 +32,7 @@ import {
   shouldShowAiDraftDocumentUpload,
 } from '../utils/should-show-ai-draft-documents';
 import type { CarePhotoPickSource } from '@/lib/uploads/pick-care-photo';
-import { H_PADDING, radius, spacing } from '@/theme';
+import { H_PADDING, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 const DOCK_WAVEFORM_BARS = 32;
@@ -108,10 +109,10 @@ function TurnBubble({
       entering={FadeInDown.duration(280).springify().damping(18)}
       style={[styles.turnBubble, isUser ? styles.turnUser : styles.turnAssistant]}
     >
-      <Text style={[styles.turnLabel, { color: isUser ? c.primary : c.textSecondary }]}>
+      <AppText style={[styles.turnLabel, { color: isUser ? c.primary : c.textSecondary }]}>
         {isUser ? 'Vous' : 'Cary'}
-      </Text>
-      <Text style={[styles.turnText, { color: c.textPrimary }]}>{turn.text}</Text>
+      </AppText>
+      <AppText style={[styles.turnText, { color: c.textPrimary }]}>{turn.text}</AppText>
     </Animated.View>
   );
 }
@@ -152,7 +153,7 @@ function ProcessingBubble({ styles }: { styles: ReturnType<typeof buildStyles> }
 
   return (
     <View style={[styles.turnBubble, styles.turnAssistant]}>
-      <Text style={[styles.turnLabel, { color: c.textSecondary }]}>Cary</Text>
+      <AppText style={[styles.turnLabel, { color: c.textSecondary }]}>Cary</AppText>
       <Row gap={spacing[1.5]} align="center">
         <Animated.View style={[styles.typingDot, { backgroundColor: c.textTertiary }, s1]} />
         <Animated.View style={[styles.typingDot, { backgroundColor: c.textTertiary }, s2]} />
@@ -270,7 +271,7 @@ function VoiceActivityDock({
       />
 
       <View style={styles.dockInner}>
-        <Text style={[styles.dockTitle, { color: c.textPrimary }]}>{status.title}</Text>
+        <AppText style={[styles.dockTitle, { color: c.textPrimary }]}>{status.title}</AppText>
 
         <View style={styles.dockWaveZone}>
           {showWave ? (
@@ -280,7 +281,7 @@ function VoiceActivityDock({
               ))}
             </Animated.View>
           ) : (
-            <Text style={[styles.dockHint, { color: c.textTertiary }]}>{status.sub}</Text>
+            <AppText style={[styles.dockHint, { color: c.textTertiary }]}>{status.sub}</AppText>
           )}
         </View>
 
@@ -293,9 +294,9 @@ function VoiceActivityDock({
         ) : null}
 
         {showWave ? (
-          <Text style={[styles.dockSub, { color: c.textSecondary }]} numberOfLines={2}>
+          <AppText style={[styles.dockSub, { color: c.textSecondary }]} numberOfLines={2}>
             {status.sub}
-          </Text>
+          </AppText>
         ) : null}
       </View>
     </View>
@@ -393,7 +394,7 @@ export function PatientAiVoiceOverlay({
               accessibilityRole="button"
               accessibilityLabel="Fermer le mode vocal"
             >
-              <X size={22} color={c.textSecondary} strokeWidth={2.25} />
+              <X size={iconSize.mdLg} color={c.textSecondary} strokeWidth={2.25} />
             </Pressable>
           </Row>
 
@@ -416,10 +417,10 @@ export function PatientAiVoiceOverlay({
                 entering={FadeIn.duration(200)}
                 style={[styles.turnBubble, styles.turnLive]}
               >
-                <Text style={[styles.turnLabel, { color: c.primary }]}>Vous · en direct</Text>
-                <Text style={[styles.turnText, styles.turnTextLive, { color: c.textPrimary }]}>
+                <AppText style={[styles.turnLabel, { color: c.primary }]}>Vous · en direct</AppText>
+                <AppText style={[styles.turnText, styles.turnTextLive, { color: c.textPrimary }]}>
                   {liveLine}
-                </Text>
+                </AppText>
               </Animated.View>
             ) : null}
 
@@ -457,11 +458,11 @@ export function PatientAiVoiceOverlay({
 
             <View style={styles.footer}>
               {speechError ? (
-                <Text style={[styles.caption, { color: c.error }]}>{speechError}</Text>
+                <AppText style={[styles.caption, { color: c.error }]}>{speechError}</AppText>
               ) : (
-                <Text style={[styles.captionMuted, { color: c.textTertiary }]}>
+                <AppText style={[styles.captionMuted, { color: c.textTertiary }]}>
                   Conversation mains libres — parlez, Cary répond à voix haute.
-                </Text>
+                </AppText>
               )}
             </View>
           </View>
@@ -488,6 +489,7 @@ function buildStyles(_c: AppColors) {
     },
     transcriptScroll: { minWidth: 0, flex: 1 },
     transcriptContent: {
+      minWidth: 0,
       paddingHorizontal: spacing[4],
       gap: spacing[2.5],
       paddingTop: spacing[1],
@@ -574,10 +576,7 @@ function buildStyles(_c: AppColors) {
       justifyContent: 'center' as const,
     },
     dockWaveRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      gap: 3,
+      ...layoutRowCenterAll(3),
       height: 52,
       width: '100%' as const,
       paddingHorizontal: spacing[1],

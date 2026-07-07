@@ -5,6 +5,7 @@ import React, { type ReactNode } from 'react';
 import { View, StyleSheet, type ScrollViewProps, type ViewStyle } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { KeyboardScrollView } from './KeyboardScrollView';
+import { ResponsiveContent } from './ResponsiveContent';
 import { spacing } from '@/theme';
 
 /**
@@ -22,6 +23,8 @@ interface StaticScreenProps extends BaseScreenProps {
   scroll?: false;
   contentStyle?: ViewStyle;
   keyboardAvoiding?: boolean;
+  /** Limite la largeur de contenu sur grands écrans (défaut: true). */
+  responsive?: boolean;
 }
 
 interface ScrollScreenProps extends BaseScreenProps {
@@ -29,6 +32,7 @@ interface ScrollScreenProps extends BaseScreenProps {
   contentStyle?: ViewStyle;
   scrollProps?: Omit<ScrollViewProps, 'children' | 'contentContainerStyle'>;
   keyboardAvoiding?: boolean;
+  responsive?: boolean;
 }
 
 type ScreenProps = StaticScreenProps | ScrollScreenProps;
@@ -37,11 +41,13 @@ export function Screen({
   children,
   style,
   backgroundColor,
+  responsive = true,
   ...rest
 }: ScreenProps) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'components_layout_Screen_tsx_Screen_styles');
   const bg = { backgroundColor: backgroundColor ?? c.background };
+  const body = responsive ? <ResponsiveContent centered>{children}</ResponsiveContent> : children;
 
   if ('scroll' in rest && rest.scroll) {
     const { contentStyle, scrollProps, keyboardAvoiding = true } = rest as ScrollScreenProps;
@@ -54,7 +60,7 @@ export function Screen({
             contentContainerStyle={[styles.scrollContent, contentStyle]}
             {...scrollProps}
           >
-            {children}
+            {body}
           </KeyboardScrollView>
         </View>
       );
@@ -68,7 +74,7 @@ export function Screen({
           contentContainerStyle={[styles.scrollContent, contentStyle]}
           {...scrollProps}
         >
-          {children}
+          {body}
         </KeyboardScrollView>
       </View>
     );
@@ -77,7 +83,7 @@ export function Screen({
   const { contentStyle, keyboardAvoiding = false } = rest as StaticScreenProps;
 
   const content = (
-    <View style={[styles.flex, styles.staticContent, contentStyle]}>{children}</View>
+    <View style={[styles.flex, styles.staticContent, contentStyle]}>{body}</View>
   );
 
   return (

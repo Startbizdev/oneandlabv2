@@ -2,14 +2,14 @@ import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { ChevronDown, X } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { PrescriptionAppointmentSelectSheet } from './PrescriptionAppointmentSelectSheet';
 import { prescriptionAppointmentSelectSummary } from '../utils/prescription-display';
 import { groupAppointmentsByBatch } from '@/utils/appointment-batch';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -69,7 +69,7 @@ export function PrescriptionAppointmentSelectField({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+      <AppText style={styles.label}>{label}</AppText>
       <Pressable
         onPress={openSheet}
         disabled={loading}
@@ -93,19 +93,19 @@ export function PrescriptionAppointmentSelectField({
                 accessibilityRole="button"
                 accessibilityLabel="Effacer le rendez-vous sélectionné"
               >
-                <X size={18} color={c.textTertiary} strokeWidth={2} />
+                <X size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />
               </Pressable>
             ) : (
-              <ChevronDown size={18} color={c.textSecondary} strokeWidth={2} />
+              <ChevronDown size={iconSize.mdSm} color={c.textSecondary} strokeWidth={2} />
             )
           }
         >
-          <Text
+          <AppText
             style={[styles.triggerText, !selectedApt && styles.placeholder]}
             numberOfLines={2}
           >
             {displayLabel}
-          </Text>
+          </AppText>
         </Cluster>
       </Pressable>
 

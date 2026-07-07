@@ -3,26 +3,11 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import { useAppColors } from '@/theme/use-app-colors';
+import { layoutRowCenter } from '@/theme/layout-styles';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-
-  ActivityIndicator,
-
-  Alert,
-
-  Linking,
-
-  Pressable,
-
-  ScrollView,
-
-  Text,
-
-  View,
-
-} from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, View } from 'react-native';
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -155,7 +140,7 @@ import { PASSAGE_DURATION_PRESETS } from '@oneandlab/shared-types';
 
 import { useToast } from '@/providers/ToastProvider';
 
-import { H_PADDING, spacing } from '@/theme';
+import { H_PADDING, spacing, iconSize, AppText } from '@/theme';
 
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -972,7 +957,7 @@ export function PassageDetailScreen() {
 
               <View style={styles.patientBlock}>
 
-                <Text style={[styles.sectionLabel, { color: c.textTertiary }]}>Patient</Text>
+                <AppText style={[styles.sectionLabel, { color: c.textTertiary }]}>Patient</AppText>
 
                 <Row gap={spacing[3]} align="center" style={styles.patientRow}>
 
@@ -984,17 +969,17 @@ export function PassageDetailScreen() {
 
                     gender={patient?.gender}
 
-                    size={48}
+                    size={iconSize['5xl']}
 
                   />
 
                   <View style={styles.patientNameCol}>
 
-                    <Text style={[styles.patientName, { color: c.textPrimary }]} numberOfLines={2}>
+                    <AppText style={[styles.patientName, { color: c.textPrimary }]} numberOfLines={2}>
 
                       {patientName}
 
-                    </Text>
+                    </AppText>
 
                     {phone ? (
 
@@ -1006,9 +991,9 @@ export function PassageDetailScreen() {
 
                       >
 
-                        <Phone size={14} color={c.primary} />
+                        <Phone size={iconSize.xs} color={c.primary} />
 
-                        <Text style={[styles.phoneLink, { color: c.primary }]}>{String(phone)}</Text>
+                        <AppText style={[styles.phoneLink, { color: c.primary }]}>{String(phone)}</AppText>
 
                       </Pressable>
 
@@ -1086,7 +1071,7 @@ export function PassageDetailScreen() {
                   title="Lancer la navigation"
                   variant="secondary"
                   fullWidth
-                  leftIcon={<Navigation size={16} color={c.primary} strokeWidth={2.5} />}
+                  leftIcon={<Navigation size={iconSize.sm} color={c.primary} strokeWidth={2.5} />}
                   onPress={handleLaunchNavigation}
                 />
               ) : null}
@@ -1395,7 +1380,8 @@ function buildStyles(_c: AppColors) {
 
     },
 
-    centered: { flex: 1, alignItems: 'center' as const, justifyContent: 'center' as const },
+    centered: {
+    minWidth: 0, flex: 1, alignItems: 'center' as const, justifyContent: 'center' as const },
 
     patientBlock: { gap: spacing[2] },
 
@@ -1427,11 +1413,7 @@ function buildStyles(_c: AppColors) {
 
     phoneRow: {
 
-      flexDirection: 'row' as const,
-
-      alignItems: 'center' as const,
-
-      gap: spacing[1.5],
+      ...layoutRowCenter(spacing[1.5]),
 
     },
 

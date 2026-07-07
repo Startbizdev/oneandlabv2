@@ -1,3 +1,4 @@
+import { iconSize } from '@/theme';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
@@ -32,7 +33,7 @@ export function DocumentDownloadButton({
       {downloading ? (
         <ActivityIndicator size="small" color={c.primary} />
       ) : (
-        <ExternalLink size={18} color={c.primary} strokeWidth={2.25} />
+        <ExternalLink size={iconSize.mdSm} color={c.primary} strokeWidth={2.25} />
       )}
     </Pressable>
   );

@@ -3,10 +3,10 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Row } from '@/components/layout/primitives';
 import { Mail, MessageCircle, Phone } from 'lucide-react-native';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import type { PatientContactButton } from '@/utils/contact-actions';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const CONTACT_ICONS = {
@@ -29,10 +29,10 @@ export function DetailPersonBlock({ title, name, subtitle, detail, buttons }: Pr
 
   return (
     <View style={styles.wrap}>
-      {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
-      <Text style={styles.name}>{name}</Text>
-      {subtitle ? <Text style={styles.sub}>{subtitle}</Text> : null}
-      {detail ? <Text style={styles.detail}>{detail}</Text> : null}
+      {title ? <AppText style={styles.sectionTitle}>{title}</AppText> : null}
+      <AppText style={styles.name}>{name}</AppText>
+      {subtitle ? <AppText style={styles.sub}>{subtitle}</AppText> : null}
+      {detail ? <AppText style={styles.detail}>{detail}</AppText> : null}
       {buttons && buttons.length > 0 ? (
         <Row gap={spacing[1.5]} style={styles.buttonRow}>
           {buttons.map((btn) => {
@@ -43,7 +43,7 @@ export function DetailPersonBlock({ title, name, subtitle, detail, buttons }: Pr
                   title={btn.label}
                   size="sm"
                   variant="primary"
-                  leftIcon={<Icon size={14} color={c.textInverse} strokeWidth={2.5} />}
+                  leftIcon={<Icon size={iconSize.xs} color={c.textInverse} strokeWidth={2.5} />}
                   onPress={btn.onPress}
                   style={{ backgroundColor: btn.color, width: '100%' as const }}
                 />

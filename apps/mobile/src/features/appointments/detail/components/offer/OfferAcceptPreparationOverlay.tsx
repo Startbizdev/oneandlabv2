@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useRef, useState } from 'react';
-import { Image, Modal, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
@@ -14,7 +14,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText, useLayoutMetrics, responsiveValue } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const LOGO = require('../../../../../../assets/logo-cary.png');
@@ -35,7 +35,10 @@ interface Props {
 
 export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: Props) {
   const c = useAppColors();
+  const layout = useLayoutMetrics();
   const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_offer_OfferAcceptPreparationOverlay_tsx_styles');
+  const taglineMaxWidth = responsiveValue(layout, { compact: 280, default: 300, wide: 360 });
+  const progressMaxWidth = responsiveValue(layout, { compact: 280, default: 320, wide: layout.contentMaxWidth });
   const progress = useSharedValue(0);
   const logoScale = useSharedValue(1);
   const onFinishRef = useRef(onFinish);
@@ -131,11 +134,11 @@ export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: P
               <Image source={LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="Cary" />
             </Animated.View>
 
-            <Text style={styles.title}>Préparation du rendez-vous</Text>
-            <Text style={styles.subtitle}>{STATUS_LINES[statusIndex]}</Text>
-            <Text style={styles.tagline}>Votre espace Cary se met à jour pour accueillir ce nouveau soin.</Text>
+            <AppText style={styles.title}>Préparation du rendez-vous</AppText>
+            <AppText style={styles.subtitle}>{STATUS_LINES[statusIndex]}</AppText>
+            <AppText style={[styles.tagline, { maxWidth: taglineMaxWidth }]}>Votre espace Cary se met à jour pour accueillir ce nouveau soin.</AppText>
 
-            <View style={styles.progressBlock}>
+            <View style={[styles.progressBlock, { maxWidth: progressMaxWidth }]}>
               <View style={styles.progressTrack}>
                 <Animated.View style={[styles.progressFillWrap, barFillStyle]}>
                   <LinearGradient
@@ -217,11 +220,9 @@ function buildStyles(c: AppColors) {
     color: c.textSecondary,
     textAlign: 'center' as const,
     lineHeight: fontSize.sm * 1.55,
-    maxWidth: 300,
   },
   progressBlock: {
     width: '100%' as const,
-    maxWidth: 320,
     marginTop: spacing[4],
   },
   progressTrack: {

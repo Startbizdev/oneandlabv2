@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { ChevronDown, UserPlus, Users } from 'lucide-react-native';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
@@ -13,7 +13,7 @@ import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import { PatientDuplicatePrompt } from './PatientDuplicatePrompt';
 import { PatientSelectSheet } from './PatientSelectSheet';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export interface PatientOption {
@@ -132,7 +132,7 @@ export function FormPatientSection({
 
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.sectionLabel}>Patient</Text>
+      <AppText style={styles.sectionLabel}>Patient</AppText>
 
       <Row gap={spacing[2]} style={styles.modeTabs}>
         <Pressable
@@ -140,10 +140,10 @@ export function FormPatientSection({
           style={[styles.modeTab, patientMode === 'existing' && styles.modeTabActive]}
         >
           <Row gap={spacing[1.5]} align="center" justify="center">
-            <Users size={16} color={patientMode === 'existing' ? c.primary : c.textTertiary} />
-            <Text style={[styles.modeTabText, patientMode === 'existing' && styles.modeTabTextActive]}>
+            <Users size={iconSize.sm} color={patientMode === 'existing' ? c.primary : c.textTertiary} />
+            <AppText style={[styles.modeTabText, patientMode === 'existing' && styles.modeTabTextActive]}>
               Patient dans la liste
-            </Text>
+            </AppText>
           </Row>
         </Pressable>
         <Pressable
@@ -151,22 +151,22 @@ export function FormPatientSection({
           style={[styles.modeTab, patientMode === 'new' && styles.modeTabActive]}
         >
           <Row gap={spacing[1.5]} align="center" justify="center">
-            <UserPlus size={16} color={patientMode === 'new' ? c.primary : c.textTertiary} />
-            <Text style={[styles.modeTabText, patientMode === 'new' && styles.modeTabTextActive]}>
+            <UserPlus size={iconSize.sm} color={patientMode === 'new' ? c.primary : c.textTertiary} />
+            <AppText style={[styles.modeTabText, patientMode === 'new' && styles.modeTabTextActive]}>
               Nouveau patient
-            </Text>
+            </AppText>
           </Row>
         </Pressable>
       </Row>
 
       {patientMode === 'existing' ? (
         <>
-          <Text style={styles.fieldLabel}>Choisir un patient</Text>
+          <AppText style={styles.fieldLabel}>Choisir un patient</AppText>
           <Pressable onPress={() => setSelectOpen(true)} style={styles.selectBtn}>
             <Cluster
-              actions={<ChevronDown size={18} color={c.textTertiary} />}
+              actions={<ChevronDown size={iconSize.mdSm} color={c.textTertiary} />}
             >
-              <Text
+              <AppText
                 style={[
                   styles.selectBtnText,
                   !selectedPatientId && styles.selectPlaceholder,
@@ -174,7 +174,7 @@ export function FormPatientSection({
                 numberOfLines={1}
               >
                 {selectedLabel}
-              </Text>
+              </AppText>
             </Cluster>
           </Pressable>
         </>
@@ -204,7 +204,7 @@ export function FormPatientSection({
             keyboardType="phone-pad"
           />
           <View style={styles.genderRow}>
-            <Text style={styles.fieldLabel}>Genre</Text>
+            <AppText style={styles.fieldLabel}>Genre</AppText>
             <Row gap={spacing[2]}>
               {(['M', 'F'] as const).map((g) => {
                 const on = gender.toUpperCase() === g;
@@ -214,9 +214,9 @@ export function FormPatientSection({
                     onPress={() => onChange('gender', g)}
                     style={[styles.genderPill, on && styles.genderPillActive]}
                   >
-                    <Text style={[styles.genderText, on && styles.genderTextActive]}>
+                    <AppText style={[styles.genderText, on && styles.genderTextActive]}>
                       {g === 'M' ? 'Homme' : 'Femme'}
-                    </Text>
+                    </AppText>
                   </Pressable>
                 );
               })}

@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { MessageSquare } from 'lucide-react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
@@ -11,7 +11,7 @@ import {
   appointmentTypeLabel,
   formatReviewDate,
 } from '@/features/reviews/utils/review-labels';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
@@ -47,47 +47,47 @@ export function ReviewGivenCard({ review }: Props) {
             profileImageUrl={review.reviewee_profile_image_url}
             seed={review.reviewee_id ?? proName}
             gender={review.reviewee_gender}
-            size={40}
+            size={iconSize['4xl']}
             style={styles.proAvatar}
           />
         }
-        actions={date ? <Text style={styles.date}>{date}</Text> : undefined}
+        actions={date ? <AppText style={styles.date}>{date}</AppText> : undefined}
       >
         <View>
-          <Text style={styles.proLabel}>Pour</Text>
-          <Text style={styles.proName} numberOfLines={1}>
+          <AppText style={styles.proLabel}>Pour</AppText>
+          <AppText style={styles.proName} numberOfLines={1}>
             {proName}
-          </Text>
+          </AppText>
         </View>
       </Cluster>
 
-      <ReviewStars rating={review.rating ?? 0} size={18} />
+      <ReviewStars rating={review.rating ?? 0} size={iconSize.mdSm} />
 
       {aptMeta || aptDate ? (
-        <Text style={styles.context}>
+        <AppText style={styles.context}>
           {aptMeta}
           {aptMeta && aptDate ? ' — ' : ''}
           {aptDate ? `RDV du ${aptDate}` : ''}
-        </Text>
+        </AppText>
       ) : null}
 
       {review.comment?.trim() ? (
-        <Text style={styles.comment}>{review.comment.trim()}</Text>
+        <AppText style={styles.comment}>{review.comment.trim()}</AppText>
       ) : null}
 
       {review.response?.trim() ? (
         <View style={styles.responseBox}>
           <Row gap={spacing[1.5]}>
-            <MessageSquare size={12} color={c.textSecondary} strokeWidth={2} />
-            <Text style={styles.responseLabel}>Réponse du professionnel</Text>
+            <MessageSquare size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2} />
+            <AppText style={styles.responseLabel}>Réponse du professionnel</AppText>
           </Row>
-          <Text style={styles.responseText}>{review.response.trim()}</Text>
+          <AppText style={styles.responseText}>{review.response.trim()}</AppText>
         </View>
       ) : null}
 
       {review.is_visible === false ? (
         <View style={styles.hiddenPill}>
-          <Text style={styles.hiddenText}>Masqué</Text>
+          <AppText style={styles.hiddenText}>Masqué</AppText>
         </View>
       ) : null}
     </View>

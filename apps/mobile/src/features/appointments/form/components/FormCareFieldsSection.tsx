@@ -1,6 +1,6 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Input } from '@/components/ui/Input';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
@@ -9,7 +9,7 @@ import {
   NURSING_FREQUENCY_OPTIONS,
   showNursingFrequency,
 } from '@oneandlab/shared-constants';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const BLOOD_TYPE_OPTIONS = [
@@ -47,7 +47,7 @@ function OptionPills({
   const styles = useThemedStyles(buildStyles, 'FormCareFieldsSection.OptionPills');
   return (
     <View style={styles.group}>
-      <Text style={styles.groupLabel}>{label}</Text>
+      <AppText style={styles.groupLabel}>{label}</AppText>
       <Row wrap gap={spacing[2]}>
         {options.map((o) => {
           const on = value === o.value;
@@ -57,7 +57,7 @@ function OptionPills({
               onPress={() => onChange(o.value)}
               style={[styles.pill, on && styles.pillActive]}
             >
-              <Text style={[styles.pillText, on && styles.pillTextActive]}>{o.label}</Text>
+              <AppText style={[styles.pillText, on && styles.pillTextActive]}>{o.label}</AppText>
             </Pressable>
           );
         })}
@@ -93,7 +93,7 @@ export function FormCareFieldsSection({
   if (isBloodTestAppointment(type)) {
     return (
       <View style={styles.wrapper}>
-        <Text style={styles.sectionLabel}>Prélèvement</Text>
+        <AppText style={styles.sectionLabel}>Prélèvement</AppText>
         <OptionPills
           label="Type de prélèvement"
           options={BLOOD_TYPE_OPTIONS}
@@ -126,7 +126,7 @@ export function FormCareFieldsSection({
   if (isNursingAppointment(type)) {
     return (
       <View style={styles.wrapper}>
-        <Text style={styles.sectionLabel}>Soins infirmiers</Text>
+        <AppText style={styles.sectionLabel}>Soins infirmiers</AppText>
         <OptionPills
           label="Prise en charge"
           options={[...NURSING_DURATION_OPTIONS]}

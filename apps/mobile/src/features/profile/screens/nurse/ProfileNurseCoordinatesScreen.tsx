@@ -9,7 +9,7 @@ import {
   PROFESSIONAL_ID_LABEL,
 } from '@oneandlab/shared-types';
 import { useCallback, useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Mail } from 'lucide-react-native';
@@ -24,7 +24,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function buildFieldStyles(c: AppColors) {
@@ -156,15 +156,15 @@ export function ProfileNurseCoordinatesScreen() {
       <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
       <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
       <View>
-        <Text style={fieldStyles.fieldLabel}>Email</Text>
+        <AppText style={fieldStyles.fieldLabel}>Email</AppText>
         <Cluster
           gap={spacing[2]}
-          leading={<Mail size={16} color={c.textTertiary} strokeWidth={2} />}
+          leading={<Mail size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
           style={fieldStyles.emailRow}
         >
-          <Text style={fieldStyles.emailText}>{user?.email ?? '—'}</Text>
+          <AppText style={fieldStyles.emailText}>{user?.email ?? '—'}</AppText>
         </Cluster>
-        <Text style={fieldStyles.fieldHint}>L'email ne peut pas être modifié depuis l'application.</Text>
+        <AppText style={fieldStyles.fieldHint}>L'email ne peut pas être modifié depuis l'application.</AppText>
       </View>
       <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
       <GenderSelect value={gender} onChange={setGender} />

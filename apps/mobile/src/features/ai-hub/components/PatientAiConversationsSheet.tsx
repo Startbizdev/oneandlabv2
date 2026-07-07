@@ -2,19 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Modal,
-  Platform,
-  Pressable,
-  SectionList,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  useWindowDimensions,
-  type SectionListRenderItem,
-} from 'react-native';
+import { Modal, Platform, Pressable, SectionList, Share, StyleSheet, TextInput, View, type SectionListRenderItem } from 'react-native';
 import Animated, {
   Easing,
   runOnJS,
@@ -30,7 +18,7 @@ import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
 import { exportAiConversations } from '../api/ai.service';
 import { PatientAiConversationRow } from './PatientAiConversationRow';
 import type { PatientAiConversation } from '../types/patient-ai-conversation';
-import { elevation, H_PADDING, radius, spacing } from '@/theme';
+import { elevation, H_PADDING, radius, spacing, iconSize, useLayoutMetrics, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 const SHEET_MAX_WIDTH = 380;
@@ -107,8 +95,8 @@ export function PatientAiConversationsSheet({
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'PatientAiConversationsSheet');
   const insets = useSafeAreaInsets();
-  const { width: windowWidth } = useWindowDimensions();
-  const sheetWidth = Math.min(SHEET_MAX_WIDTH, Math.round(windowWidth * SHEET_WIDTH_RATIO));
+  const layout = useLayoutMetrics();
+  const sheetWidth = Math.min(SHEET_MAX_WIDTH, Math.round(layout.width * SHEET_WIDTH_RATIO));
 
   const translateX = useSharedValue(-sheetWidth);
   const backdropOpacity = useSharedValue(0);
@@ -214,7 +202,7 @@ export function PatientAiConversationsSheet({
         section.key === sections[0]?.key && styles.sectionHeaderFirst,
       ]}
     >
-      <Text style={styles.sectionLabel}>{section.title}</Text>
+      <AppText style={styles.sectionLabel}>{section.title}</AppText>
     </View>
   );
 
@@ -255,11 +243,11 @@ export function PatientAiConversationsSheet({
                   accessibilityLabel="Fermer"
                   style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
                 >
-                  <X size={20} color={c.textSecondary} strokeWidth={2} />
+                  <X size={iconSize.md} color={c.textSecondary} strokeWidth={2} />
                 </Pressable>
               }
             >
-              <Text style={styles.headerTitle}>Conversations</Text>
+              <AppText style={styles.headerTitle}>Conversations</AppText>
             </Cluster>
 
             <Stack gap={spacing[3]} style={styles.toolbar}>
@@ -268,7 +256,7 @@ export function PatientAiConversationsSheet({
                   gap={spacing[2]}
                   align="center"
                   style={[styles.searchField, elevation.xs]}
-                  leading={<Search size={16} color={c.textTertiary} strokeWidth={2} />}
+                  leading={<Search size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
                 >
                   <TextInput
                     style={styles.searchInput}
@@ -288,7 +276,7 @@ export function PatientAiConversationsSheet({
                 onPress={handleNew}
                 fullWidth
                 size="md"
-                leftIcon={<MessageSquare size={18} color={c.textInverse} strokeWidth={2.25} />}
+                leftIcon={<MessageSquare size={iconSize.mdSm} color={c.textInverse} strokeWidth={2.25} />}
                 accessibilityLabel="Démarrer une nouvelle conversation"
               />
             </Stack>
@@ -306,8 +294,8 @@ export function PatientAiConversationsSheet({
               keyboardShouldPersistTaps="handled"
               ListEmptyComponent={
                 <View style={styles.emptyWrap}>
-                  <Text style={styles.emptyTitle}>Aucune conversation</Text>
-                  <Text style={styles.emptyBody}>Vos échanges avec Cary apparaîtront ici.</Text>
+                  <AppText style={styles.emptyTitle}>Aucune conversation</AppText>
+                  <AppText style={styles.emptyBody}>Vos échanges avec Cary apparaîtront ici.</AppText>
                 </View>
               }
               ListFooterComponent={
@@ -439,6 +427,7 @@ function buildStyles(c: AppColors) {
       alignSelf: 'stretch' as const,
     },
     listContent: {
+      minWidth: 0,
       paddingHorizontal: spacing[2],
       paddingBottom: spacing[4],
       flexGrow: 1,

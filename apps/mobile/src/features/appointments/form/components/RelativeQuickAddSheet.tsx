@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -16,7 +16,7 @@ import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { RELATIONSHIP_OPTIONS } from '@/features/patient-relatives/constants/relationship-types';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -84,7 +84,7 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
         <Input label="Prénom" value={firstName} onChangeText={setFirstName} />
         <Input label="Nom" value={lastName} onChangeText={setLastName} />
         <View>
-          <Text style={styles.label}>Lien de parenté</Text>
+          <AppText style={styles.label}>Lien de parenté</AppText>
           <Row wrap gap={spacing[2]}>
             {RELATIONSHIP_OPTIONS.map((o) => {
               const active = relationshipType === o.value;
@@ -97,7 +97,7 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
                   accessibilityState={{ selected: active }}
                   accessibilityLabel={o.label}
                 >
-                  <Text style={[styles.pillText, active && styles.pillTextActive]}>{o.label}</Text>
+                  <AppText style={[styles.pillText, active && styles.pillTextActive]}>{o.label}</AppText>
                 </Pressable>
               );
             })}

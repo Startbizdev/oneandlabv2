@@ -1,10 +1,10 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { MoreHorizontal, Pencil, type LucideIcon } from 'lucide-react-native';
 import { Cluster } from '@/components/layout/primitives';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 type Props = {
@@ -50,13 +50,13 @@ export function PassageFormFieldRow({
               { backgroundColor: isAction ? c.surface : c.surfaceAlt },
             ]}
           >
-            <Icon size={16} color={c.primary} strokeWidth={2.2} />
+            <Icon size={iconSize.sm} color={c.primary} strokeWidth={2.2} />
           </View>
         }
       >
         <View style={styles.textCol}>
-          <Text style={[styles.label, { color: c.textTertiary }]}>{label}</Text>
-          <Text
+          <AppText style={[styles.label, { color: c.textTertiary }]}>{label}</AppText>
+          <AppText
             style={[
               styles.value,
               { color: empty ? c.textTertiary : c.textPrimary },
@@ -64,7 +64,7 @@ export function PassageFormFieldRow({
             numberOfLines={3}
           >
             {value}
-          </Text>
+          </AppText>
         </View>
       </Cluster>
     </Pressable>

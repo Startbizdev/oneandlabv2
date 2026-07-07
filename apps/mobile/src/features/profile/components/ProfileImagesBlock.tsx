@@ -2,12 +2,12 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { Camera, ImagePlus, Trash2, Upload, User } from 'lucide-react-native';
 import { usePickProfileImage } from '@/features/profile/hooks/use-pick-profile-image';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -45,7 +45,7 @@ export function ProfileImagesBlock({
 
   return (
     <View style={[styles.card, elevation.xs]}>
-      <Text style={styles.cardTitle}>Photo de profil</Text>
+      <AppText style={styles.cardTitle}>Photo de profil</AppText>
 
       <Cluster gap={spacing[4]} leading={
         <Pressable
@@ -58,14 +58,14 @@ export function ProfileImagesBlock({
             <Image source={{ uri: profileSrc }} style={styles.avatarImage} />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <User size={36} color={c.textTertiary} strokeWidth={1.75} />
+              <User size={iconSize['3xl']} color={c.textTertiary} strokeWidth={1.75} />
             </View>
           )}
           <View style={styles.avatarOverlay}>
             {picking === 'profile' ? (
               <ActivityIndicator color={c.textInverse} size="small" />
             ) : (
-              <Camera size={22} color={c.textInverse} strokeWidth={2} />
+              <Camera size={iconSize.mdLg} color={c.textInverse} strokeWidth={2} />
             )}
           </View>
         </Pressable>
@@ -77,8 +77,8 @@ export function ProfileImagesBlock({
             style={styles.actionBtn}
           >
             <Row gap={spacing[2]} align="center">
-              <Upload size={14} color={c.primary} strokeWidth={2} />
-              <Text style={styles.actionLabel}>{profileSrc ? 'Changer' : 'Ajouter'}</Text>
+              <Upload size={iconSize.xs} color={c.primary} strokeWidth={2} />
+              <AppText style={styles.actionLabel}>{profileSrc ? 'Changer' : 'Ajouter'}</AppText>
             </Row>
           </Pressable>
           {profileSrc ? (
@@ -88,8 +88,8 @@ export function ProfileImagesBlock({
               style={[styles.actionBtn, styles.actionBtnDanger]}
             >
               <Row gap={spacing[2]} align="center">
-                <Trash2 size={14} color={c.error} strokeWidth={2} />
-                <Text style={[styles.actionLabel, styles.actionLabelDanger]}>Supprimer</Text>
+                <Trash2 size={iconSize.xs} color={c.error} strokeWidth={2} />
+                <AppText style={[styles.actionLabel, styles.actionLabelDanger]}>Supprimer</AppText>
               </Row>
             </Pressable>
           ) : null}
@@ -98,7 +98,7 @@ export function ProfileImagesBlock({
 
       {showCover && onChangeCover ? (
         <View style={styles.coverSection}>
-          <Text style={styles.coverLabel}>Image de couverture</Text>
+          <AppText style={styles.coverLabel}>Image de couverture</AppText>
           <Pressable
             onPress={() => handlePick('cover')}
             disabled={busy}
@@ -109,7 +109,7 @@ export function ProfileImagesBlock({
               <Image source={{ uri: coverSrc }} style={styles.coverImage} resizeMode="cover" />
             ) : (
               <View style={styles.coverPlaceholder}>
-                <ImagePlus size={28} color={c.textTertiary} strokeWidth={1.75} />
+                <ImagePlus size={iconSize.xl} color={c.textTertiary} strokeWidth={1.75} />
               </View>
             )}
             {picking === 'cover' ? (
@@ -121,8 +121,8 @@ export function ProfileImagesBlock({
           <Row wrap gap={spacing[2]} style={styles.coverActions}>
             <Pressable onPress={() => pickImage('cover')} disabled={busy} style={styles.actionBtn}>
               <Row gap={spacing[2]} align="center">
-                <Upload size={14} color={c.primary} strokeWidth={2} />
-                <Text style={styles.actionLabel}>{coverSrc ? 'Changer' : 'Ajouter'}</Text>
+                <Upload size={iconSize.xs} color={c.primary} strokeWidth={2} />
+                <AppText style={styles.actionLabel}>{coverSrc ? 'Changer' : 'Ajouter'}</AppText>
               </Row>
             </Pressable>
             {coverSrc ? (
@@ -132,8 +132,8 @@ export function ProfileImagesBlock({
                 style={[styles.actionBtn, styles.actionBtnDanger]}
               >
                 <Row gap={spacing[2]} align="center">
-                  <Trash2 size={14} color={c.error} strokeWidth={2} />
-                  <Text style={[styles.actionLabel, styles.actionLabelDanger]}>Supprimer</Text>
+                  <Trash2 size={iconSize.xs} color={c.error} strokeWidth={2} />
+                  <AppText style={[styles.actionLabel, styles.actionLabelDanger]}>Supprimer</AppText>
                 </Row>
               </Pressable>
             ) : null}

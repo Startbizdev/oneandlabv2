@@ -2,17 +2,9 @@ import { ListRowShell } from '@/components/ui/ListRowShell';
 import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { type LucideIcon } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { getRdvDetailSectionStyles } from './rdv-detail-section-styles';
 
@@ -96,27 +88,27 @@ function ActionRow({
               {action.loading ? (
                 <ActivityIndicator size="small" color={tone.iconColor} />
               ) : (
-                <Icon size={20} color={tone.iconColor} strokeWidth={2.25} />
+                <Icon size={iconSize.md} color={tone.iconColor} strokeWidth={2.25} />
               )}
             </View>
           }
           body={
             <>
-              <Text style={[styles.label, { color: tone.labelColor }]} numberOfLines={2}>
+              <AppText style={[styles.label, { color: tone.labelColor }]} numberOfLines={2}>
                 {action.label}
-              </Text>
+              </AppText>
               {action.hint ? (
-                <Text style={[styles.hint, { color: tone.hintColor }]} numberOfLines={2}>
+                <AppText style={[styles.hint, { color: tone.hintColor }]} numberOfLines={2}>
                   {action.hint}
-                </Text>
+                </AppText>
               ) : null}
             </>
           }
           trailing={
             action.showChevron !== false ? (
-              <Text style={styles.chevron} accessibilityElementsHidden>
+              <AppText style={styles.chevron} accessibilityElementsHidden>
                 ›
-              </Text>
+              </AppText>
             ) : undefined
           }
           disabled={disabled}
@@ -164,7 +156,7 @@ function buildStyles(c: AppColors) {
     lineHeight: fontSize.xs * 1.35,
   },
   chevron: {
-    fontSize: 22,
+    fontSize: fontSize.xl,
     lineHeight: 24,
     color: c.textTertiary,
   },

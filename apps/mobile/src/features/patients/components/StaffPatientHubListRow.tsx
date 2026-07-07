@@ -1,3 +1,4 @@
+import { iconSize } from '@/theme';
 import type { StaffHubSearchItem } from '@oneandlab/shared-types';
 import { ageFromBirthDate } from '@oneandlab/shared-utils';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
@@ -44,7 +45,7 @@ export function StaffPatientHubListRow({ item, onPress, onLongPress }: Props) {
             profileImageUrl={item.profile_image_url}
             seed={item.patient_id}
             gender={item.gender}
-            size={40}
+            size={iconSize['4xl']}
           />
         }
         title={title}

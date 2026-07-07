@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -26,7 +26,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const MIN_RADIUS = 5;
@@ -181,13 +181,13 @@ export function ProfileCoverageEditor({
           <Cluster
             gap={spacing[2]}
             align="start"
-            leading={<AlertCircle size={16} color={c.warning} strokeWidth={2} />}
+            leading={<AlertCircle size={iconSize.sm} color={c.warning} strokeWidth={2} />}
           >
-            <Text style={styles.alertText}>
+            <AppText style={styles.alertText}>
               {hideAddressCard
                 ? 'Renseignez une adresse professionnelle valide dans Coordonnées (suggestion avec GPS).'
                 : "Définissez d'abord votre adresse pour configurer votre zone de couverture."}
-            </Text>
+            </AppText>
           </Cluster>
         </View>
       ) : (
@@ -201,17 +201,17 @@ export function ProfileCoverageEditor({
             disabled={saving || savingRadius}
           />
           {savingRadius ? (
-            <Text style={styles.savingHint}>Enregistrement du rayon…</Text>
+            <AppText style={styles.savingHint}>Enregistrement du rayon…</AppText>
           ) : null}
           {showDiscoveryHint && isDiscovery && maxRadiusKm <= 20 ? (
             <Pressable
               onPress={() => router.push('/(nurse)/abonnement')}
               style={styles.discoveryBanner}
             >
-              <Text style={styles.discoveryText}>
+              <AppText style={styles.discoveryText}>
                 Offre Découverte : rayon limité à 20 km.{' '}
-                <Text style={styles.discoveryLink}>Passez en Pro</Text> pour étendre jusqu'à 100 km.
-              </Text>
+                <AppText style={styles.discoveryLink}>Passez en Pro</AppText> pour étendre jusqu'à 100 km.
+              </AppText>
             </Pressable>
           ) : null}
           {!embedded ? (
@@ -246,11 +246,11 @@ export function ProfileCoverageEditor({
         <Animated.View entering={FadeInDown.duration(280).springify()} style={[styles.card, elevation.xs]}>
           <View style={styles.cardHeader}>
             <Row gap={spacing[2]} align="center">
-              <MapPin size={18} color={c.primary} strokeWidth={2} />
-              <Text style={styles.cardTitle}>Adresse professionnelle</Text>
+              <MapPin size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
+              <AppText style={styles.cardTitle}>Adresse professionnelle</AppText>
             </Row>
           </View>
-          <Text style={styles.cardDesc}>Centre de votre zone d'intervention.</Text>
+          <AppText style={styles.cardDesc}>Centre de votre zone d'intervention.</AppText>
           <AddressAutocomplete
             value={address}
             complement={addressComplement}
@@ -263,11 +263,11 @@ export function ProfileCoverageEditor({
               <Cluster
                 gap={spacing[2]}
                 align="start"
-                leading={<AlertCircle size={16} color={c.warning} strokeWidth={2} />}
+                leading={<AlertCircle size={iconSize.sm} color={c.warning} strokeWidth={2} />}
               >
-                <Text style={styles.alertText}>
+                <AppText style={styles.alertText}>
                   Sélectionnez une adresse dans les suggestions pour activer la carte et le rayon.
-                </Text>
+                </AppText>
               </Cluster>
             </View>
           ) : null}
@@ -275,8 +275,8 @@ export function ProfileCoverageEditor({
       ) : null}
 
       <Animated.View entering={FadeInDown.delay(60).duration(280).springify()} style={[styles.card, elevation.xs]}>
-        <Text style={styles.cardTitle}>Zone de couverture</Text>
-        <Text style={styles.cardDesc}>Rayon d'intervention autour de votre adresse (en km)</Text>
+        <AppText style={styles.cardTitle}>Zone de couverture</AppText>
+        <AppText style={styles.cardDesc}>Rayon d'intervention autour de votre adresse (en km)</AppText>
         {zoneContent}
       </Animated.View>
     </View>
