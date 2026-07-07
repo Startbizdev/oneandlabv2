@@ -38,6 +38,10 @@
       "ios": {
         "appleId": "shany.pastre@gmail.com",
         "ascAppId": "6778805884"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "completed"
       }
     }
   }

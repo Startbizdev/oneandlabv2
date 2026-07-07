@@ -8,7 +8,6 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
-  FadeIn,
   FadeInDown,
   cancelAnimation,
   interpolate,
@@ -22,7 +21,6 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { layoutRowCenterAll } from '@/theme/layout-styles';
 import { CaryAiBookingRecapCard } from '@/features/ai-hub/components/CaryAiBookingRecapCard';
 import { CaryAiVoiceDocumentUpload } from '@/features/ai-hub/components/CaryAiVoiceDocumentUpload';
 import type { VoicePhase, VoiceTurn } from '../hooks/use-voice-session';
@@ -35,7 +33,8 @@ import type { CarePhotoPickSource } from '@/lib/uploads/pick-care-photo';
 import { H_PADDING, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
-const DOCK_WAVEFORM_BARS = 32;
+/** Réserve bas d’écran pour l’orbe + safe area — évite que le fil soit masqué. */
+const TRANSCRIPT_DOCK_CLEARANCE = 196;
 
 type ActivityMode = 'idle' | 'user' | 'assistant' | 'processing';
 
@@ -45,10 +44,8 @@ interface Props {
   phase: VoicePhase;
   recognizing: boolean;
   available: boolean;
-  liveTranscript: string;
+  voiceEnergy?: number;
   turns: VoiceTurn[];
-  lastUserText: string | null;
-  lastResponse: string | null;
   speechError: string | null;
   activeDraft?: AiAppointmentDraft | null;
   confirmingDraft?: boolean;
@@ -66,33 +63,17 @@ function resolveActivityMode(phase: VoicePhase, sessionActive: boolean): Activit
   return 'idle';
 }
 
-function statusCopy(
+function statusTitle(
   phase: VoicePhase,
   sessionActive: boolean,
   available: boolean,
   hasUserMessage: boolean,
-): { title: string; sub: string } {
-  if (!available) {
-    return {
-      title: 'Voix indisponible',
-      sub: 'Installez l’app Cary (pas Expo Go) pour parler à l’assistant.',
-    };
-  }
-  if (phase === 'processing') {
-    return hasUserMessage
-      ? { title: 'Cary réfléchit…', sub: 'Analyse de votre message.' }
-      : { title: 'Connexion…', sub: 'Cary se présente…' };
-  }
-  if (phase === 'speaking') {
-    return { title: 'Cary parle', sub: 'Écoutez — le micro reprendra ensuite.' };
-  }
-  if (sessionActive && phase === 'listening') {
-    return {
-      title: 'Je vous écoute',
-      sub: 'Parlez naturellement — vos mots s’affichent en direct.',
-    };
-  }
-  return { title: 'Mode vocal', sub: 'Ouverture de la session…' };
+): string | null {
+  if (!available) return 'Voix indisponible';
+  if (phase === 'processing') return hasUserMessage ? 'Réflexion…' : 'Connexion…';
+  if (phase === 'speaking') return 'Cary parle';
+  if (sessionActive && phase === 'listening') return null;
+  return '…';
 }
 
 function TurnBubble({
@@ -163,154 +144,125 @@ function ProcessingBubble({ styles }: { styles: ReturnType<typeof buildStyles> }
   );
 }
 
-function DockWaveBar({
-  index,
+function VoiceOrbDock({
   mode,
-  styles,
-}: {
-  index: number;
-  mode: ActivityMode;
-  styles: ReturnType<typeof buildStyles>;
-}) {
-  const c = useAppColors();
-  const level = useSharedValue(0.18);
-  const active = mode === 'user' || mode === 'assistant';
-
-  useEffect(() => {
-    cancelAnimation(level);
-    if (mode === 'processing' || mode === 'idle') {
-      level.value = withTiming(mode === 'processing' ? 0.32 + (index % 3) * 0.08 : 0.14, { duration: 320 });
-      return;
-    }
-
-    const isAssistant = mode === 'assistant';
-    const peak = isAssistant
-      ? 0.42 + (index % 5) * 0.1
-      : 0.58 + (index % 4) * 0.14;
-    const up = isAssistant ? 320 + (index % 4) * 90 : 180 + (index % 3) * 60;
-    const down = isAssistant ? 280 + (index % 3) * 70 : 160 + (index % 2) * 50;
-
-    level.value = withDelay(
-      index * (isAssistant ? 42 : 28),
-      withRepeat(
-        withSequence(
-          withTiming(peak, { duration: up, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0.16, { duration: down, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        true,
-      ),
-    );
-  }, [active, index, level, mode]);
-
-  const barStyle = useAnimatedStyle(() => ({
-    transform: [{ scaleY: level.value }],
-    opacity: interpolate(level.value, [0.14, 0.95], [0.35, 1]),
-  }));
-
-  const color =
-    mode === 'assistant'
-      ? hexToRgba(c.primaryDark, 0.9)
-      : mode === 'user'
-        ? hexToRgba(c.primary, 0.92)
-        : hexToRgba(c.textTertiary, mode === 'processing' ? 0.55 : 0.28);
-
-  return <Animated.View style={[styles.dockWaveBar, barStyle, { backgroundColor: color }]} />;
-}
-
-function VoiceActivityDock({
-  mode,
-  status,
+  title,
+  voiceEnergy,
   sessionActive,
   styles,
 }: {
   mode: ActivityMode;
-  status: { title: string; sub: string };
+  title: string | null;
+  voiceEnergy: number;
   sessionActive: boolean;
   styles: ReturnType<typeof buildStyles>;
 }) {
   const c = useAppColors();
-  const pulse = useSharedValue(1);
+  const breathe = useSharedValue(1);
+  const ring = useSharedValue(0.72);
+  const energy = useSharedValue(0);
 
   useEffect(() => {
-    cancelAnimation(pulse);
+    energy.value = withTiming(voiceEnergy, { duration: 120 });
+  }, [energy, voiceEnergy]);
+
+  useEffect(() => {
+    cancelAnimation(breathe);
+    cancelAnimation(ring);
     if (!sessionActive || mode === 'idle') {
-      pulse.value = withTiming(1, { duration: 240 });
+      breathe.value = withTiming(1, { duration: 280 });
+      ring.value = withTiming(0.72, { duration: 280 });
       return;
     }
-    const scale = mode === 'assistant' ? 1.04 : mode === 'processing' ? 1.02 : 1.06;
-    pulse.value = withRepeat(
+
+    const breatheScale =
+      mode === 'user' ? 1.08 : mode === 'assistant' ? 1.05 : mode === 'processing' ? 1.03 : 1;
+    const breatheMs = mode === 'assistant' ? 900 : mode === 'processing' ? 1100 : 700;
+
+    breathe.value = withRepeat(
       withSequence(
-        withTiming(scale, { duration: mode === 'assistant' ? 620 : 480, easing: Easing.inOut(Easing.sin) }),
-        withTiming(1, { duration: mode === 'assistant' ? 620 : 480, easing: Easing.inOut(Easing.sin) }),
+        withTiming(breatheScale, { duration: breatheMs, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1, { duration: breatheMs, easing: Easing.inOut(Easing.sin) }),
       ),
       -1,
       true,
     );
-  }, [mode, pulse, sessionActive]);
 
-  const orbStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulse.value }],
+    ring.value = withRepeat(
+      withSequence(
+        withTiming(1.18, { duration: breatheMs + 120, easing: Easing.out(Easing.quad) }),
+        withTiming(0.72, { duration: 0 }),
+      ),
+      -1,
+      false,
+    );
+  }, [breathe, mode, ring, sessionActive]);
+
+  const orbColor = mode === 'assistant' ? c.primaryDark : c.primary;
+  const orbStyle = useAnimatedStyle(() => {
+    const energyBoost = mode === 'user' ? energy.value * 0.14 : 0;
+    return {
+      transform: [{ scale: breathe.value + energyBoost }],
+    };
+  });
+
+  const ringStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: ring.value }],
+    opacity: interpolate(ring.value, [0.72, 1.18], [0.45, 0]),
   }));
 
-  const showWave = sessionActive && mode !== 'idle';
-  const orbColor =
-    mode === 'assistant'
-      ? c.primaryDark
-      : mode === 'processing'
-        ? hexToRgba(c.primary, 0.75)
-        : c.primary;
+  const ring2Style = useAnimatedStyle(() => ({
+    transform: [{ scale: ring.value * 0.88 }],
+    opacity: interpolate(ring.value, [0.72, 1.18], [0.28, 0]),
+  }));
+
+  const coreStyle = useAnimatedStyle(() => ({
+    opacity: mode === 'processing' ? 0.72 : 0.92 + energy.value * 0.08,
+    transform: [{ scale: 0.42 + energy.value * 0.12 }],
+  }));
 
   return (
-    <View style={styles.dock}>
-      <LinearGradient
-        colors={[hexToRgba(c.background, 0), hexToRgba(c.background, 0.92), c.background]}
-        locations={[0, 0.35, 1]}
-        style={styles.dockFade}
-        pointerEvents="none"
-      />
-
+    <View style={[styles.dock, { backgroundColor: c.background }]}>
       <View style={styles.dockInner}>
-        <AppText style={[styles.dockTitle, { color: c.textPrimary }]}>{status.title}</AppText>
-
-        <View style={styles.dockWaveZone}>
-          {showWave ? (
-            <Animated.View entering={FadeIn.duration(220)} style={styles.dockWaveRow}>
-              {Array.from({ length: DOCK_WAVEFORM_BARS }, (_, i) => (
-                <DockWaveBar key={i} index={i} mode={mode} styles={styles} />
-              ))}
-            </Animated.View>
-          ) : (
-            <AppText style={[styles.dockHint, { color: c.textTertiary }]}>{status.sub}</AppText>
-          )}
+        <View style={styles.orbStage}>
+          <Animated.View
+            style={[styles.orbRing, ring2Style, { borderColor: hexToRgba(orbColor, 0.18) }]}
+          />
+          <Animated.View
+            style={[styles.orbRing, ringStyle, { borderColor: hexToRgba(orbColor, 0.28) }]}
+          />
+          <Animated.View
+            style={[
+              styles.voiceOrb,
+              orbStyle,
+              { backgroundColor: hexToRgba(orbColor, mode === 'processing' ? 0.12 : 0.2) },
+            ]}
+          >
+            <Animated.View
+              style={[
+                styles.voiceOrbCore,
+                coreStyle,
+                { backgroundColor: mode === 'processing' ? hexToRgba(orbColor, 0.8) : orbColor },
+              ]}
+            />
+          </Animated.View>
         </View>
 
-        {showWave ? (
-          <Animated.View
-            style={[styles.voiceOrb, orbStyle, { backgroundColor: hexToRgba(orbColor, 0.18) }]}
-          >
-            <View style={[styles.voiceOrbCore, { backgroundColor: orbColor }]} />
-          </Animated.View>
-        ) : null}
-
-        {showWave ? (
-          <AppText style={[styles.dockSub, { color: c.textSecondary }]} numberOfLines={2}>
-            {status.sub}
-          </AppText>
+        {title ? (
+          <AppText style={[styles.dockTitle, { color: c.textSecondary }]}>{title}</AppText>
         ) : null}
       </View>
     </View>
   );
 }
 
-/** Mode vocal Cary — fil conversation + activité audio en bas (UX type ChatGPT). */
+/** Mode vocal Cary — fil conversation + orbe d’activité. */
 export function PatientAiVoiceOverlay({
   visible,
   onClose,
   phase,
-  recognizing,
   available,
-  liveTranscript,
+  voiceEnergy = 0,
   turns,
   speechError,
   activeDraft,
@@ -330,7 +282,7 @@ export function PatientAiVoiceOverlay({
   const sessionActive = started && available;
   const hasUserMessage = turns.some((t) => t.role === 'user');
   const activityMode = resolveActivityMode(phase, sessionActive);
-  const status = statusCopy(phase, sessionActive, available, hasUserMessage);
+  const title = statusTitle(phase, sessionActive, available, hasUserMessage);
   const showRecap =
     activeDraft && shouldShowAiDraftRecap(activeDraft) && onConfirmDraft != null;
   const showDocumentUpload =
@@ -354,10 +306,10 @@ export function PatientAiVoiceOverlay({
   }, [onStart, onStop, started, visible]);
 
   useEffect(() => {
-    if (turns.length > 0 || liveTranscript || phase === 'processing' || phase === 'speaking') {
+    if (turns.length > 0 || phase === 'processing' || phase === 'speaking') {
       transcriptRef.current?.scrollToEnd({ animated: true });
     }
-  }, [turns.length, liveTranscript, phase]);
+  }, [turns.length, phase]);
 
   const handleClose = useCallback(() => {
     onStop();
@@ -366,8 +318,7 @@ export function PatientAiVoiceOverlay({
 
   if (!visible) return null;
 
-  const liveLine =
-    phase === 'listening' && liveTranscript.trim() ? liveTranscript.trim() : null;
+  const dockClearance = TRANSCRIPT_DOCK_CLEARANCE + insets.bottom + (speechError ? spacing[6] : 0);
 
   return (
     <Modal
@@ -379,8 +330,8 @@ export function PatientAiVoiceOverlay({
     >
       <View style={[styles.root, { backgroundColor: c.background }]}>
         <LinearGradient
-          colors={[c.background, hexToRgba(c.primaryLight, 0.35), c.background]}
-          locations={[0, 0.45, 1]}
+          colors={[c.background, hexToRgba(c.primaryLight, 0.28), c.background]}
+          locations={[0, 0.42, 1]}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
@@ -398,12 +349,16 @@ export function PatientAiVoiceOverlay({
             </Pressable>
           </Row>
 
+        <View style={styles.body}>
           <ScrollView
             ref={transcriptRef}
             style={styles.transcriptScroll}
             contentContainerStyle={[
               styles.transcriptContent,
-              { paddingBottom: showRecap || showDocumentUpload ? spacing[2] : spacing[4] },
+              {
+                paddingBottom:
+                  dockClearance + (showRecap || showDocumentUpload ? spacing[4] : spacing[2]),
+              },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -412,23 +367,11 @@ export function PatientAiVoiceOverlay({
               <TurnBubble key={turn.id} turn={turn} styles={styles} />
             ))}
 
-            {liveLine ? (
-              <Animated.View
-                entering={FadeIn.duration(200)}
-                style={[styles.turnBubble, styles.turnLive]}
-              >
-                <AppText style={[styles.turnLabel, { color: c.primary }]}>Vous · en direct</AppText>
-                <AppText style={[styles.turnText, styles.turnTextLive, { color: c.textPrimary }]}>
-                  {liveLine}
-                </AppText>
-              </Animated.View>
-            ) : null}
-
             {phase === 'processing' ? <ProcessingBubble styles={styles} /> : null}
           </ScrollView>
 
           {showDocumentUpload ? (
-            <View style={styles.recapWrap}>
+            <View style={[styles.recapWrap, { backgroundColor: c.background }]}>
               <CaryAiVoiceDocumentUpload
                 label={docUploadLabel}
                 attaching={attachingDocument}
@@ -438,7 +381,7 @@ export function PatientAiVoiceOverlay({
           ) : null}
 
           {showRecap ? (
-            <View style={styles.recapWrap}>
+            <View style={[styles.recapWrap, { backgroundColor: c.background }]}>
               <CaryAiBookingRecapCard
                 draft={activeDraft}
                 canConfirm={canConfirmAiDraftRecap(activeDraft)}
@@ -447,25 +390,30 @@ export function PatientAiVoiceOverlay({
               />
             </View>
           ) : null}
+        </View>
 
-          <View style={{ paddingBottom: insets.bottom }}>
-            <VoiceActivityDock
-              mode={activityMode}
-              status={status}
-              sessionActive={sessionActive}
-              styles={styles}
-            />
+        <View
+          style={[
+            styles.bottomBar,
+            {
+              paddingBottom: insets.bottom,
+              backgroundColor: c.background,
+              borderTopColor: hexToRgba(c.textPrimary, 0.08),
+            },
+          ]}
+        >
+          <VoiceOrbDock
+            mode={activityMode}
+            title={title}
+            voiceEnergy={voiceEnergy}
+            sessionActive={sessionActive}
+            styles={styles}
+          />
 
-            <View style={styles.footer}>
-              {speechError ? (
-                <AppText style={[styles.caption, { color: c.error }]}>{speechError}</AppText>
-              ) : (
-                <AppText style={[styles.captionMuted, { color: c.textTertiary }]}>
-                  Conversation mains libres — parlez, Cary répond à voix haute.
-                </AppText>
-              )}
-            </View>
-          </View>
+          {speechError ? (
+            <AppText style={[styles.errorCaption, { color: c.error }]}>{speechError}</AppText>
+          ) : null}
+        </View>
         </View>
       </View>
     </Modal>
@@ -479,6 +427,10 @@ function buildStyles(_c: AppColors) {
   return {
     root: { minWidth: 0, flex: 1 },
     shell: { minWidth: 0, flex: 1 },
+    body: { minWidth: 0, flex: 1 },
+    bottomBar: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+    },
     header: { paddingHorizontal: H_PADDING, paddingBottom: spacing[1] },
     closeBtn: {
       width: 44,
@@ -509,12 +461,6 @@ function buildStyles(_c: AppColors) {
       alignSelf: 'flex-start' as const,
       backgroundColor: _c.surfaceAlt,
     },
-    turnLive: {
-      alignSelf: 'flex-end' as const,
-      backgroundColor: hexToRgba(_c.primary, 0.06),
-      borderWidth: 1,
-      borderColor: hexToRgba(_c.primary, 0.22),
-    },
     turnLabel: {
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.xs,
@@ -527,95 +473,58 @@ function buildStyles(_c: AppColors) {
       fontSize: fontSize.md,
       lineHeight: lh(fontSize.md, 1.45),
     },
-    turnTextLive: {
-      fontFamily: fontFamily.medium,
-    },
     typingDot: {
       width: 8,
       height: 8,
       borderRadius: radius.full,
     },
-    recapWrap: { paddingHorizontal: spacing[4], paddingBottom: spacing[2] },
+    recapWrap: { paddingHorizontal: spacing[4], paddingVertical: spacing[2] },
     dock: {
       paddingTop: spacing[2],
       paddingHorizontal: H_PADDING,
     },
-    dockFade: {
-      position: 'absolute' as const,
-      left: 0,
-      right: 0,
-      top: -spacing[8],
-      height: spacing[8],
-    },
     dockInner: {
       alignItems: 'center' as const,
-      gap: spacing[2],
+      gap: spacing[3],
     },
     dockTitle: {
-      fontFamily: fontFamily.semiBold,
+      fontFamily: fontFamily.medium,
       fontSize: fontSize.sm,
       textAlign: 'center' as const,
     },
-    dockSub: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSize.xs,
-      lineHeight: lh(fontSize.xs, 1.4),
-      textAlign: 'center' as const,
-      paddingHorizontal: spacing[4],
-    },
-    dockHint: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSize.xs,
-      textAlign: 'center' as const,
-      paddingHorizontal: spacing[4],
-    },
-    dockWaveZone: {
-      width: '100%' as const,
-      height: 52,
+    orbStage: {
+      width: 120,
+      height: 120,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
-    dockWaveRow: {
-      ...layoutRowCenterAll(3),
-      height: 52,
-      width: '100%' as const,
-      paddingHorizontal: spacing[1],
-    },
-    dockWaveBar: {
-      width: 3,
-      height: 44,
-      borderRadius: radius.full,
+    orbRing: {
+      position: 'absolute' as const,
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      borderWidth: 1.5,
     },
     voiceOrb: {
-      width: 72,
-      height: 72,
-      borderRadius: 36,
+      width: 96,
+      height: 96,
+      borderRadius: 48,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
     voiceOrbCore: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
+      width: 96,
+      height: 96,
+      borderRadius: 48,
     },
-    footer: {
-      paddingHorizontal: spacing[5],
-      paddingTop: spacing[1],
-      paddingBottom: spacing[3],
-      minHeight: 40,
-      justifyContent: 'center' as const,
-    },
-    caption: {
+    errorCaption: {
       fontFamily: fontFamily.medium,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.45),
       textAlign: 'center' as const,
-    },
-    captionMuted: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSize.xs,
-      lineHeight: lh(fontSize.xs, 1.45),
-      textAlign: 'center' as const,
+      paddingHorizontal: spacing[5],
+      paddingTop: spacing[1],
+      paddingBottom: spacing[2],
     },
   };
 }

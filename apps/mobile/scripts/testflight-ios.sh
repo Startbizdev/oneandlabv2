@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build iOS + TestFlight (monorepo onev2).
+# Build iOS production + soumission TestFlight (--auto-submit, monorepo onev2).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -22,12 +22,8 @@ if ! git -C "$REPO_ROOT" ls-files --error-unmatch apps/mobile/package.json packa
 fi
 
 cd "$MOBILE_DIR"
-echo "→ Build iOS production (cache vidé)…"
-npx eas-cli build --platform ios --profile production --clear-cache
-
-echo ""
-echo "→ Soumission TestFlight…"
-npx eas-cli submit --platform ios --profile production --latest
+echo "→ Build iOS production + soumission TestFlight (auto-submit)…"
+node scripts/run-eas-ios.cjs build --platform ios --profile production --clear-cache --auto-submit
 
 echo ""
 echo "→ Suivi : https://expo.dev/accounts/startbiz/projects/cary-mobile/builds"

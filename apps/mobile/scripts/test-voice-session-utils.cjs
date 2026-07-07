@@ -3,7 +3,7 @@
  * Usage: node scripts/test-voice-session-utils.cjs
  */
 
-const VOICE_SILENCE_SUBMIT_MS = 1200;
+const VOICE_SILENCE_SUBMIT_MS = 1600;
 const VOICE_STT_TTS_GAP_MS = 180;
 
 function createVoiceTurn(role, text) {
@@ -65,12 +65,12 @@ assert(merged[0].role === 'user' && merged[1].role === 'assistant', 'ordre conse
 assert(merged[0].id !== merged[1].id, 'ids uniques');
 
 console.log('\nconstants');
-assert(VOICE_SILENCE_SUBMIT_MS === 1200, 'VOICE_SILENCE_SUBMIT_MS = 1200');
+assert(VOICE_SILENCE_SUBMIT_MS === 1600, 'VOICE_SILENCE_SUBMIT_MS = 1600');
 assert(VOICE_STT_TTS_GAP_MS === 180, 'VOICE_STT_TTS_GAP_MS = 180');
 
 console.log('\nvoice-audio-vad (inline)');
 const VOICE_METER_SPEECH_DB = -45;
-const VOICE_MIN_RECORDING_MS = 450;
+const VOICE_MIN_RECORDING_MS = 900;
 function isSpeechMeterLevel(metering) {
   if (metering == null || Number.isNaN(metering)) return false;
   return metering > VOICE_METER_SPEECH_DB;
@@ -86,11 +86,13 @@ function shouldAutoSubmitVoiceRecording(params) {
 }
 assert(isSpeechMeterLevel(-30) === true, 'metering fort → parole');
 assert(isSpeechMeterLevel(-55) === false, 'metering faible → silence');
+const startedAt = 500;
+const speechEnd = startedAt + VOICE_MIN_RECORDING_MS;
 assert(
   shouldAutoSubmitVoiceRecording({
-    now: 2000,
-    recordingStartedAt: 500,
-    lastSpeechAt: 700,
+    now: speechEnd + VOICE_SILENCE_SUBMIT_MS,
+    recordingStartedAt: startedAt,
+    lastSpeechAt: speechEnd,
     heardSpeech: true,
   }) === true,
   'pause après parole → submit',

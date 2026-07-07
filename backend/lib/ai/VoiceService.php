@@ -12,6 +12,9 @@ require_once __DIR__ . '/CaryContextFocus.php';
 require_once __DIR__ . '/AiTurnOrchestrator.php';
 require_once __DIR__ . '/AiBookingDraftSummary.php';
 require_once __DIR__ . '/VoiceGrokAudioService.php';
+require_once __DIR__ . '/AiVoiceMessageSignals.php';
+require_once __DIR__ . '/AiVoiceAssistantGuard.php';
+require_once __DIR__ . '/AiVoiceDraftReconciler.php';
 
 final class VoiceService
 {
@@ -89,11 +92,15 @@ final class VoiceService
         }
         $rawTranscript = trim((string) ($input['transcript'] ?? ''));
         $sttProvider = (string) ($input['stt_provider'] ?? 'client');
-        if (!empty($input['audio_base64'])) {
+
+        if ($rawTranscript !== '' && in_array($sttProvider, ['device', 'client'], true)) {
+            $sttProvider = 'device';
+        } elseif (!empty($input['audio_base64'])) {
             $grokText = trim($this->grokAudio->transcribe((string) $input['audio_base64'], (string) ($session['locale'] ?? 'fr')));
             $rawTranscript = $grokText;
             $sttProvider = 'grok_stt';
         }
+
         if ($rawTranscript === '') {
             throw new InvalidArgumentException('audio_base64 requis pour la conversation vocale');
         }
@@ -107,6 +114,8 @@ final class VoiceService
             ->execute([Uuid::v4(), $userMsgId, $transcript, $sttProvider, $session['locale'] ?? 'fr']);
 
         $this->conversations->addMessage($conversationId, 'user', $transcript);
+
+        $this->applyVoiceSignalsToDraft($user, $conversationId, $transcript);
 
         $conv = $this->conversations->getById($conversationId, (string) $user['user_id']);
         $patientId = isset($conv['patient_id']) ? (string) $conv['patient_id'] : null;
@@ -145,11 +154,16 @@ final class VoiceService
             'voice_agent',
         );
 
-        $assistantText = trim($turn['content']);
-        $draft = $turn['draft'] ?? null;
+        $draft = $turn['draft'] ?? $draftPreview;
+        if (is_array($draft) && !empty($draft['id'])) {
+            $draft = $this->reconcileVoiceDraft($user, (string) $draft['id'], $transcript, $draft) ?? $draft;
+        }
+
+        $assistantText = AiVoiceAssistantGuard::normalize($transcript, trim($turn['content']), is_array($draft) ? $draft : null);
         $appointmentId = null;
 
         if ($this->isBookingConfirmIntent($transcript) && is_array($draft) && !empty($draft['id'])) {
+            $draft = $this->reconcileVoiceDraft($user, (string) $draft['id'], $transcript, $draft) ?? $draft;
             $freshDraft = $this->booking->getDraft((string) $draft['id'], (string) $user['user_id']);
             if (is_array($freshDraft) && ($freshDraft['status'] ?? '') === 'ready') {
                 try {
@@ -236,23 +250,82 @@ final class VoiceService
         return "{$greeting} je suis Cary, votre assistant santé. Que puis-je faire pour vous ?";
     }
 
+    private function applyVoiceSignalsToDraft(array $user, string $conversationId, string $transcript): void
+    {
+        $userId = (string) $user['user_id'];
+        $draft = $this->booking->getLatestDraftForConversation($conversationId, $userId);
+        $patch = AiVoiceMessageSignals::buildDraftPatch($transcript, $user, $draft);
+        if ($patch === []) {
+            return;
+        }
+
+        try {
+            if (is_array($draft) && !empty($draft['id'])) {
+                $this->booking->patchDraft((string) $draft['id'], $user, $patch, $transcript);
+            } elseif ($this->patchHasBookingSignal($patch)) {
+                $this->booking->createDraft($user, [
+                    'conversation_id' => $conversationId,
+                    'payload' => $patch,
+                    'user_message' => $transcript,
+                ]);
+            }
+        } catch (Throwable $e) {
+            error_log('[voice] applyVoiceSignals: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $patch
+     */
+    private function patchHasBookingSignal(array $patch): bool
+    {
+        foreach ($patch as $value) {
+            if ($value !== null && $value !== '' && $value !== []) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function isBookingConfirmIntent(string $transcript): bool
     {
-        $t = mb_strtolower(trim($transcript));
+        $t = mb_strtolower(trim(preg_replace('/[.!?]+$/u', '', trim($transcript)) ?? trim($transcript)));
         if ($t === '') {
             return false;
         }
 
+        if (preg_match('/^(?:oui|ok|c[\']?est bon)$/u', preg_replace('/\s+/u', ' ', $t) ?? $t)) {
+            return true;
+        }
+
         return (bool) preg_match(
-            '/\b(je confirme|on valide|valide|valider|confirme le rendez|confirmer le rendez|c\'?est bon|ok pour le rdv)\b/u',
+            '/\b(je confirme|on valide|valide|valider|confirme|confirmez|confirmer|c[\']?est bon|ok pour le rdv)\b/u',
             $t,
         );
     }
 
     /**
+     * @param array<string, mixed> $draft
      * @return array<string, mixed>|null
      */
-    public function getSession(string $id, string $userId): ?array
+    private function reconcileVoiceDraft(array $user, string $draftId, string $transcript, array $draft): ?array
+    {
+        $payload = is_array($draft['payload'] ?? null) ? $draft['payload'] : [];
+        $patch = AiVoiceDraftReconciler::buildPatch($payload, $transcript, $user);
+        if ($patch === []) {
+            return $this->booking->getDraft($draftId, (string) $user['user_id']);
+        }
+
+        try {
+            return $this->booking->patchDraft($draftId, $user, $patch, $transcript);
+        } catch (Throwable $e) {
+            error_log('[voice] reconcileVoiceDraft: ' . $e->getMessage());
+
+            return null;
+        }
+    }
+
     {
         $stmt = $this->db->prepare('SELECT * FROM voice_sessions WHERE id = ? AND user_id = ? LIMIT 1');
         $stmt->execute([$id, $userId]);

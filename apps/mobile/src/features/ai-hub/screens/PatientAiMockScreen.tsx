@@ -288,10 +288,8 @@ export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: Screen
         phase={voice.phase}
         recognizing={voice.recognizing}
         available={voice.available}
-        liveTranscript={voice.liveTranscript}
+        voiceEnergy={voice.voiceEnergy}
         turns={voice.turns}
-        lastUserText={voice.lastUserText}
-        lastResponse={voice.lastResponse}
         speechError={voice.speechError}
         onStart={() => void voice.startConversation()}
         onStop={voice.stopConversation}
