@@ -1,8 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { ProfileCoverageEditor } from '@/features/profile/components/ProfileCoverageEditor';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function ProfileCoverageScreen() {
@@ -17,9 +17,9 @@ export function ProfileCoverageScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.subtitle}>
+        <AppText style={styles.subtitle}>
           Définissez le rayon d'intervention autour de votre adresse professionnelle.
-        </Text>
+        </AppText>
         <ProfileCoverageEditor />
       </ScrollView>
     </View>

@@ -8,7 +8,7 @@ import {
   validateProfessionalId,
 } from '@oneandlab/shared-types';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Shield } from 'lucide-react-native';
@@ -33,7 +33,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
 import { offerBiometricEnrollment } from '@/features/auth/utils/offer-biometric-enrollment';
 import { registerHeaderTitle } from '@/navigation/RegisterHeaderTitle';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface RegisterScreenProps {
@@ -304,9 +304,9 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
           />
 
           <Pressable onPress={() => router.replace('/(auth)/welcome')} style={styles.loginLink}>
-            <Text style={styles.loginLinkText}>
-              Déjà un compte ? <Text style={styles.loginLinkAccent}>Se connecter</Text>
-            </Text>
+            <AppText style={styles.loginLinkText}>
+              Déjà un compte ? <AppText style={styles.loginLinkAccent}>Se connecter</AppText>
+            </AppText>
           </Pressable>
         </View>
     </FormScreen>

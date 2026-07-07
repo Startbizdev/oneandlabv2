@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Star, User } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
@@ -22,7 +22,7 @@ import {
 } from '@/utils/preleveur-live-banner';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type ReviewRow = {
@@ -60,7 +60,7 @@ function InteractiveStars({
       {[1, 2, 3, 4, 5].map((n) => (
         <Pressable key={n} onPress={() => onChange(n)} hitSlop={8}>
           <Star
-            size={28}
+            size={iconSize.xl}
             color={c.star}
             fill={n <= rating ? c.starFill : 'transparent'}
             strokeWidth={1.5}
@@ -158,32 +158,32 @@ export function PatientDetailExtras({
           align="start"
           style={[styles.alertCard, phase === 'arrive' && styles.alertArrive]}
           leading={
-            <User size={20} color={phase === 'arrive' ? c.success : c.primary} strokeWidth={2} />
+            <User size={iconSize.md} color={phase === 'arrive' ? c.success : c.primary} strokeWidth={2} />
           }
         >
           <View style={styles.alertTexts}>
-            <Text style={styles.alertTitle}>{preleveurBannerTitle(appt, phase)}</Text>
-            <Text style={styles.alertSub}>{preleveurBannerSubtitle(appt, phase)}</Text>
+            <AppText style={styles.alertTitle}>{preleveurBannerTitle(appt, phase)}</AppText>
+            <AppText style={styles.alertSub}>{preleveurBannerSubtitle(appt, phase)}</AppText>
           </View>
         </Cluster>
       ))}
 
       {resultats.length > 0 ? (
         <View style={styles.resultatsCard}>
-          <Text style={styles.sectionLabel}>Résultats disponibles</Text>
-          <Text style={styles.resultatsHint}>
+          <AppText style={styles.sectionLabel}>Résultats disponibles</AppText>
+          <AppText style={styles.resultatsHint}>
             {resultats.length} document{resultats.length > 1 ? 's' : ''} de résultats — consultez la section Documents.
-          </Text>
+          </AppText>
         </View>
       ) : null}
 
       {reviewable.length > 0 ? (
         <View style={styles.reviewsCard}>
           <Row gap={spacing[2]} align="center">
-            <Star size={18} color={c.star} fill={c.starFill} strokeWidth={1.5} />
-            <Text style={styles.sectionLabel}>
+            <Star size={iconSize.mdSm} color={c.star} fill={c.starFill} strokeWidth={1.5} />
+            <AppText style={styles.sectionLabel}>
               {reviewable.length > 1 ? 'Vos avis' : 'Votre avis'}
-            </Text>
+            </AppText>
           </Row>
           {reviewable.map((appt) => {
             const existing = reviewsQ.data?.[appt.id];
@@ -192,13 +192,13 @@ export function PatientDetailExtras({
               return (
                 <View key={appt.id} style={styles.reviewBlock}>
                   {batch.length > 1 ? (
-                    <Text style={styles.reviewApptTitle}>{appt.category_name ?? 'Soin'}</Text>
+                    <AppText style={styles.reviewApptTitle}>{appt.category_name ?? 'Soin'}</AppText>
                   ) : null}
-                  <ReviewStars rating={existing.rating ?? 0} size={20} showValue={false} />
+                  <ReviewStars rating={existing.rating ?? 0} size={iconSize.md} showValue={false} />
                   {existing.comment ? (
-                    <Text style={styles.reviewComment}>{existing.comment}</Text>
+                    <AppText style={styles.reviewComment}>{existing.comment}</AppText>
                   ) : (
-                    <Text style={styles.reviewMuted}>Pas de commentaire</Text>
+                    <AppText style={styles.reviewMuted}>Pas de commentaire</AppText>
                   )}
                 </View>
               );
@@ -206,7 +206,7 @@ export function PatientDetailExtras({
             return (
               <View key={appt.id} style={styles.reviewBlock}>
                 {batch.length > 1 ? (
-                  <Text style={styles.reviewApptTitle}>{appt.category_name ?? 'Soin'}</Text>
+                  <AppText style={styles.reviewApptTitle}>{appt.category_name ?? 'Soin'}</AppText>
                 ) : null}
                 <InteractiveStars
                   rating={form.rating}

@@ -2,15 +2,8 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { actionsSlot, flexText, layoutRow } from '@/theme/layout-styles';
 import type { ReactNode } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
-import { spacing } from '@/theme';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface ListRowShellProps {
@@ -53,13 +46,13 @@ export function ListRowShell({
     body ??
     (title ? (
       <>
-        <Text style={styles.title} numberOfLines={2}>
+        <AppText style={styles.title} numberOfLines={2}>
           {title}
-        </Text>
+        </AppText>
         {hint ? (
-          <Text style={styles.hint} numberOfLines={2}>
+          <AppText style={styles.hint} numberOfLines={2}>
             {hint}
-          </Text>
+          </AppText>
         ) : null}
       </>
     ) : null);

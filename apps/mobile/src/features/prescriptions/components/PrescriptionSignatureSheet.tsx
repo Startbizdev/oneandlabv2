@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Keyboard, Text, View } from 'react-native';
+import { Keyboard, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -15,7 +15,7 @@ import { updateUser } from '@/features/profile/api/profile.service';
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { normalizeSignaturePngBase64 } from '@/features/prescriptions/lib/signature-pad-html';
 
@@ -159,7 +159,7 @@ export function PrescriptionSignatureSheet({
         </View>
       }
     >
-      <Text style={styles.hint}>Signez dans la zone ci-dessous avec votre doigt ou un stylet.</Text>
+      <AppText style={styles.hint}>Signez dans la zone ci-dessous avec votre doigt ou un stylet.</AppText>
       <PrescriptionSignaturePad
         key={presentKey}
         ref={padRef}

@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/StaffPatientConsent.php';
 require_once __DIR__ . '/../../lib/PendingOfferExpiry.php';
 require_once __DIR__ . '/../../lib/DbSchemaCache.php';
+require_once __DIR__ . '/../../lib/AppointmentOfferSnooze.php';
 
 /** Logs verbeux : désactivés si APP_ENV=production (après chargement .env par config/database.php). */
 function appointmentsVerboseLoggingEnabled(): bool
@@ -737,6 +738,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         $appointmentModel->enrichListAssigneeReviewStats($decryptedAppointments);
         $listRole = (string) ($user['role'] ?? '');
+        if (in_array($listRole, ['nurse', 'lab', 'subaccount', 'preleveur'], true)) {
+            AppointmentOfferSnooze::enrichListWithSnooze($db, $decryptedAppointments, $userId);
+        }
 
         $bloodTestIds = array_values(array_filter(array_map(
             static fn($apt) => (($apt['type'] ?? '') === 'blood_test') ? (string) ($apt['id'] ?? '') : '',

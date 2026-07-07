@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { useQuery } from '@tanstack/react-query';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -13,7 +13,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { queryKeys } from '@/lib/query-keys';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, avatarSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -74,28 +74,28 @@ export function MoreProfileCard({ roleLabel, onPress, subtitle, delay = 80 }: Pr
                 profileImageUrl={rawImage}
                 seed={avatarSeed}
                 gender={profileQ.data?.gender}
-                size={56}
+                size={avatarSize.md}
                 style={styles.avatarRing}
               />
             }
             actions={
               <View style={styles.chevronWrap}>
-                <ChevronRight size={18} color={c.textTertiary} strokeWidth={2} />
+                <ChevronRight size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />
               </View>
             }
             style={styles.row}
           >
             <View style={styles.info}>
-              <Text style={styles.name} numberOfLines={1}>
+              <AppText style={styles.name} numberOfLines={1}>
                 {name}
-              </Text>
+              </AppText>
               <View style={styles.rolePill}>
-                <Text style={styles.roleText}>{roleLabel}</Text>
+                <AppText style={styles.roleText}>{roleLabel}</AppText>
               </View>
               {subtitle ? (
-                <Text style={styles.subtitle} numberOfLines={1}>
+                <AppText style={styles.subtitle} numberOfLines={1}>
                   {subtitle}
-                </Text>
+                </AppText>
               ) : null}
             </View>
           </Cluster>

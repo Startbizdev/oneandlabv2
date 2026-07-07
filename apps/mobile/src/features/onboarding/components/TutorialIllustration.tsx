@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { AppText } from '@/theme';
+import { View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { TutorialIllustrationKey } from '@oneandlab/onboarding';
 
@@ -44,7 +45,7 @@ function StatusPill({
 
   return (
     <View className={`rounded-full border px-2.5 py-0.5 ${containerClass}`}>
-      <Text className={`font-nunito-semibold text-2xs ${textClass}`}>{label}</Text>
+      <AppText className={`font-nunito-semibold text-2xs ${textClass}`}>{label}</AppText>
     </View>
   );
 }
@@ -56,9 +57,9 @@ function Avatar({ label, accent }: { label: string; accent?: boolean }) {
         accent ? 'bg-primary' : 'bg-slate-100'
       }`}
     >
-      <Text className={`font-nunito-bold text-sm ${accent ? 'text-white' : 'text-slate-600'}`}>
+      <AppText className={`font-nunito-bold text-sm ${accent ? 'text-white' : 'text-slate-600'}`}>
         {label}
-      </Text>
+      </AppText>
     </View>
   );
 }
@@ -84,12 +85,12 @@ function FeatureRow({
     >
       <Avatar label={avatar} accent={accent} />
       <View className="min-w-0 flex-1 gap-1">
-        <Text className="font-nunito-bold text-sm text-slate-900" numberOfLines={1}>
+        <AppText className="font-nunito-bold text-sm text-slate-900" numberOfLines={1}>
           {title}
-        </Text>
-        <Text className="font-nunito text-xs text-slate-500" numberOfLines={1}>
+        </AppText>
+        <AppText className="font-nunito text-xs text-slate-500" numberOfLines={1}>
           {subtitle}
-        </Text>
+        </AppText>
       </View>
       {pill ? <StatusPill label={pill.label} tone={pill.tone} /> : null}
     </View>
@@ -111,9 +112,9 @@ function ChatBubble({
       {ai ? (
         <View className="mb-1 flex-row items-center gap-1.5">
           <View className="h-5 w-5 items-center justify-center rounded-full bg-primary">
-            <Text className="font-nunito-black text-2xs text-white">C</Text>
+            <AppText className="font-nunito-black text-2xs text-white">C</AppText>
           </View>
-          <Text className="font-nunito-semibold text-2xs text-primary-700">Cary</Text>
+          <AppText className="font-nunito-semibold text-2xs text-primary-700">Cary</AppText>
         </View>
       ) : null}
       <View
@@ -121,11 +122,11 @@ function ChatBubble({
           isRight ? 'rounded-tr-sm bg-primary' : 'rounded-tl-sm border border-slate-100 bg-slate-50'
         }`}
       >
-        <Text
+        <AppText
           className={`font-nunito text-xs leading-[18px] ${isRight ? 'text-white' : 'text-slate-700'}`}
         >
           {text}
-        </Text>
+        </AppText>
       </View>
     </View>
   );
@@ -144,7 +145,7 @@ function IllustrationBody({ illustration }: Props) {
               end={{ x: 1, y: 1 }}
               style={{ width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Text className="font-nunito-black text-4xl text-white">C</Text>
+              <AppText className="font-nunito-black text-4xl text-white">C</AppText>
             </LinearGradient>
             <View className="absolute -right-1 -top-1 h-5 w-5 rounded-full border-2 border-white bg-warning" />
           </View>
@@ -155,7 +156,7 @@ function IllustrationBody({ illustration }: Props) {
           <View className="flex-row gap-2">
             {['Soins', 'RDV', 'Proches'].map((tag) => (
               <View key={tag} className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1">
-                <Text className="font-nunito-semibold text-2xs text-primary-800">{tag}</Text>
+                <AppText className="font-nunito-semibold text-2xs text-primary-800">{tag}</AppText>
               </View>
             ))}
           </View>
@@ -166,7 +167,7 @@ function IllustrationBody({ illustration }: Props) {
       return (
         <View className="gap-3">
           <View className="flex-row items-center justify-between">
-            <Text className="font-nunito-bold text-sm text-slate-900">Mes rendez-vous</Text>
+            <AppText className="font-nunito-bold text-sm text-slate-900">Mes rendez-vous</AppText>
             <StatusPill label="2 à venir" tone="primary" />
           </View>
           <FeatureRow
@@ -188,7 +189,7 @@ function IllustrationBody({ illustration }: Props) {
     case 'book':
       return (
         <View className="gap-4">
-          <Text className="font-nunito-bold text-sm text-slate-900">Choisir un soin</Text>
+          <AppText className="font-nunito-bold text-sm text-slate-900">Choisir un soin</AppText>
           <View className="flex-row flex-wrap gap-2">
             {[
               { emoji: '🩹', label: 'Pansement', active: true },
@@ -203,14 +204,14 @@ function IllustrationBody({ illustration }: Props) {
                     : 'border-slate-100 bg-slate-50'
                 }`}
               >
-                <Text className="text-xl">{item.emoji}</Text>
-                <Text
+                <AppText className="text-xl">{item.emoji}</AppText>
+                <AppText
                   className={`mt-1 font-nunito-semibold text-2xs ${
                     item.active ? 'text-primary-800' : 'text-slate-500'
                   }`}
                 >
                   {item.label}
-                </Text>
+                </AppText>
               </View>
             ))}
           </View>
@@ -223,7 +224,7 @@ function IllustrationBody({ illustration }: Props) {
             ))}
           </View>
           <View className="items-center rounded-xl bg-primary py-3">
-            <Text className="font-nunito-bold text-sm text-white">Continuer la réservation</Text>
+            <AppText className="font-nunito-bold text-sm text-white">Continuer la réservation</AppText>
           </View>
         </View>
       );
@@ -231,7 +232,7 @@ function IllustrationBody({ illustration }: Props) {
     case 'relatives':
       return (
         <View className="gap-3">
-          <Text className="font-nunito-bold text-sm text-slate-900">Mes proches</Text>
+          <AppText className="font-nunito-bold text-sm text-slate-900">Mes proches</AppText>
           <FeatureRow
             avatar="M"
             title="Marie Dupont"
@@ -241,14 +242,14 @@ function IllustrationBody({ illustration }: Props) {
           />
           <View className="flex-row items-center gap-3 rounded-2xl border border-dashed border-primary-200 bg-primary-50/50 p-3.5">
             <View className="h-11 w-11 items-center justify-center rounded-2xl border border-primary-200 bg-white">
-              <Text className="text-lg">📄</Text>
+              <AppText className="text-lg">📄</AppText>
             </View>
             <View className="flex-1 gap-1">
-              <Text className="font-nunito-bold text-sm text-slate-900">Documents</Text>
-              <Text className="font-nunito text-xs text-slate-500">Ordonnance · Mutuelle</Text>
+              <AppText className="font-nunito-bold text-sm text-slate-900">Documents</AppText>
+              <AppText className="font-nunito text-xs text-slate-500">Ordonnance · Mutuelle</AppText>
             </View>
             <View className="h-7 w-7 items-center justify-center rounded-full bg-primary">
-              <Text className="font-nunito-bold text-xs text-white">+</Text>
+              <AppText className="font-nunito-bold text-xs text-white">+</AppText>
             </View>
           </View>
         </View>
@@ -261,12 +262,12 @@ function IllustrationBody({ illustration }: Props) {
           <ChatBubble text="Je voudrais prendre un RDV pour ma mère" side="right" />
           <View className="self-start rounded-2xl rounded-tl-sm border border-primary-100 bg-primary-50 px-3.5 py-2.5">
             <View className="mb-1 flex-row items-center gap-1">
-              <Text className="text-xs">✨</Text>
-              <Text className="font-nunito-semibold text-2xs text-primary-700">Suggestion Cary</Text>
+              <AppText className="text-xs">✨</AppText>
+              <AppText className="font-nunito-semibold text-2xs text-primary-700">Suggestion Cary</AppText>
             </View>
-            <Text className="font-nunito text-xs leading-[18px] text-slate-700">
+            <AppText className="font-nunito text-xs leading-[18px] text-slate-700">
               Pansement à domicile demain 14h — voulez-vous confirmer ?
-            </Text>
+            </AppText>
           </View>
         </View>
       );
@@ -276,30 +277,30 @@ function IllustrationBody({ illustration }: Props) {
         <View className="gap-4">
           <View className="flex-row items-center gap-3">
             <View className="relative h-12 w-12 items-center justify-center rounded-2xl bg-primary-50">
-              <Text className="text-xl">🔔</Text>
+              <AppText className="text-xl">🔔</AppText>
               <View className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-error" />
             </View>
             <View className="flex-1 gap-1">
-              <Text className="font-nunito-bold text-sm text-slate-900">Notifications</Text>
-              <Text className="font-nunito text-xs text-slate-500">Restez informé en temps réel</Text>
+              <AppText className="font-nunito-bold text-sm text-slate-900">Notifications</AppText>
+              <AppText className="font-nunito text-xs text-slate-500">Restez informé en temps réel</AppText>
             </View>
           </View>
           <View className="gap-2 rounded-2xl border border-slate-100 bg-slate-50 p-3.5">
             <View className="flex-row items-start gap-2.5">
               <View className="mt-0.5 h-2 w-2 rounded-full bg-primary" />
               <View className="flex-1 gap-1">
-                <Text className="font-nunito-bold text-xs text-slate-900">RDV confirmé</Text>
-                <Text className="font-nunito text-2xs leading-4 text-slate-500">
+                <AppText className="font-nunito-bold text-xs text-slate-900">RDV confirmé</AppText>
+                <AppText className="font-nunito text-2xs leading-4 text-slate-500">
                   Votre pansement est prévu demain à 14h30
-                </Text>
+                </AppText>
               </View>
             </View>
             <View className="h-px bg-slate-200" />
             <View className="flex-row items-start gap-2.5 opacity-70">
               <View className="mt-0.5 h-2 w-2 rounded-full bg-slate-300" />
               <View className="flex-1 gap-1">
-                <Text className="font-nunito-semibold text-xs text-slate-700">Rappel J-1</Text>
-                <Text className="font-nunito text-2xs text-slate-400">Envoyé la veille du soin</Text>
+                <AppText className="font-nunito-semibold text-xs text-slate-700">Rappel J-1</AppText>
+                <AppText className="font-nunito text-2xs text-slate-400">Envoyé la veille du soin</AppText>
               </View>
             </View>
           </View>
@@ -325,10 +326,10 @@ function IllustrationBody({ illustration }: Props) {
           </View>
           <View className="flex-row gap-2.5">
             <View className="flex-1 items-center rounded-xl bg-primary py-2.5">
-              <Text className="font-nunito-bold text-xs text-white">Accepter</Text>
+              <AppText className="font-nunito-bold text-xs text-white">Accepter</AppText>
             </View>
             <View className="flex-1 items-center rounded-xl border border-slate-200 bg-white py-2.5">
-              <Text className="font-nunito-semibold text-xs text-slate-600">Refuser</Text>
+              <AppText className="font-nunito-semibold text-xs text-slate-600">Refuser</AppText>
             </View>
           </View>
         </View>
@@ -338,23 +339,23 @@ function IllustrationBody({ illustration }: Props) {
       return (
         <View className="gap-3">
           <View className="flex-row items-center justify-between">
-            <Text className="font-nunito-bold text-sm text-slate-900">Semaine</Text>
-            <Text className="font-nunito-semibold text-xs text-primary-700">Juin</Text>
+            <AppText className="font-nunito-bold text-sm text-slate-900">Semaine</AppText>
+            <AppText className="font-nunito-semibold text-xs text-primary-700">Juin</AppText>
           </View>
           <View className="flex-row gap-1.5">
             {['L', 'M', 'M', 'J', 'V'].map((day, i) => (
               <View key={`${day}-${i}`} className="flex-1 items-center gap-1">
-                <Text className="font-nunito text-2xs text-slate-400">{day}</Text>
+                <AppText className="font-nunito text-2xs text-slate-400">{day}</AppText>
                 <View
                   className={`h-9 w-full items-center justify-center rounded-xl ${
                     i === 2 ? 'bg-primary' : 'border border-slate-100 bg-slate-50'
                   }`}
                 >
-                  <Text
+                  <AppText
                     className={`font-nunito-bold text-xs ${i === 2 ? 'text-white' : 'text-slate-600'}`}
                   >
                     {10 + i}
-                  </Text>
+                  </AppText>
                 </View>
               </View>
             ))}
@@ -373,8 +374,8 @@ function IllustrationBody({ illustration }: Props) {
       return (
         <View className="gap-3">
           <View className="flex-row items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5">
-            <Text className="text-sm">🔍</Text>
-            <Text className="font-nunito text-xs text-slate-400">Rechercher un patient…</Text>
+            <AppText className="text-sm">🔍</AppText>
+            <AppText className="font-nunito text-xs text-slate-400">Rechercher un patient…</AppText>
           </View>
           <FeatureRow avatar="JD" title="Jean Dupont" subtitle="Dernière visite · hier" accent />
           <FeatureRow avatar="MC" title="Marie Claire" subtitle="Suivi post-opératoire" />
@@ -405,8 +406,8 @@ function IllustrationBody({ illustration }: Props) {
             </View>
           </View>
           <View className="items-center gap-1">
-            <Text className="font-nunito-bold text-sm text-slate-900">Scanner le patient</Text>
-            <Text className="font-nunito text-xs text-slate-500">Identification rapide sur place</Text>
+            <AppText className="font-nunito-bold text-sm text-slate-900">Scanner le patient</AppText>
+            <AppText className="font-nunito text-xs text-slate-500">Identification rapide sur place</AppText>
           </View>
         </View>
       );
@@ -416,7 +417,7 @@ function IllustrationBody({ illustration }: Props) {
         <View className="gap-3">
           <View className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
             <View className="mb-3 flex-row items-center justify-between">
-              <Text className="font-nunito-bold text-xs text-slate-700">Ordonnance</Text>
+              <AppText className="font-nunito-bold text-xs text-slate-700">Ordonnance</AppText>
               <StatusPill label="Validée" tone="success" />
             </View>
             <View className="gap-2">
@@ -428,9 +429,9 @@ function IllustrationBody({ illustration }: Props) {
           </View>
           <View className="flex-row items-center gap-2.5 rounded-2xl border border-primary-200 bg-primary-50 p-3">
             <View className="h-8 w-8 items-center justify-center rounded-full bg-primary">
-              <Text className="font-nunito-bold text-xs text-white">✓</Text>
+              <AppText className="font-nunito-bold text-xs text-white">✓</AppText>
             </View>
-            <Text className="font-nunito-semibold text-xs text-primary-800">Envoyée au patient</Text>
+            <AppText className="font-nunito-semibold text-xs text-primary-800">Envoyée au patient</AppText>
           </View>
         </View>
       );
@@ -461,11 +462,11 @@ function IllustrationBody({ illustration }: Props) {
                   i === 1 ? 'bg-primary' : 'border border-slate-200 bg-white'
                 }`}
               >
-                <Text
+                <AppText
                   className={`font-nunito-semibold text-2xs ${i === 1 ? 'text-white' : 'text-slate-600'}`}
                 >
                   {action}
-                </Text>
+                </AppText>
               </View>
             ))}
           </View>

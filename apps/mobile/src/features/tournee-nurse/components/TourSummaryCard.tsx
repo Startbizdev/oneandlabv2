@@ -1,14 +1,15 @@
+import { layoutRowWrap } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { brand, palette } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MapPin, Route } from 'lucide-react-native';
 import { Row, Stack } from '@/components/layout/primitives';
 import { HealthRecordProgressRing } from '@/features/health-record/components/HealthRecordProgressRing';
 import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, progressRingSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 import type { NurseTourPayload } from '../api/nurse-tour.service';
 import { countTourActiveRemainingStops } from '@oneandlab/shared-utils';
@@ -44,26 +45,26 @@ export function TourSummaryCard({ summary, activeRemaining }: Props) {
         <View style={styles.glowOrbSecondary} pointerEvents="none" />
 
         <Row gap={spacing[3]} align="center">
-          <HealthRecordProgressRing percent={allAbsentOnly ? 0 : pct} size={56} strokeWidth={4} tone="onGradient" />
+          <HealthRecordProgressRing percent={allAbsentOnly ? 0 : pct} size={progressRingSize.md} strokeWidth={4} tone="onGradient" />
           <Stack gap={spacing[0.5]} style={styles.copy}>
-            <Text style={styles.kicker}>Ma tournée du jour</Text>
+            <AppText style={styles.kicker}>Ma tournée du jour</AppText>
             {allAbsentOnly ? (
               <>
-                <Text style={styles.title}>Pas de tournée du jour</Text>
-                <Text style={styles.sub}>
+                <AppText style={styles.title}>Pas de tournée du jour</AppText>
+                <AppText style={styles.sub}>
                   Vous avez {absent} patient{absent > 1 ? 's' : ''} absent{absent > 1 ? 's' : ''}
-                </Text>
+                </AppText>
               </>
             ) : (
               <>
-                <Text style={styles.title}>
+                <AppText style={styles.title}>
                   {done} sur {total} passage{total > 1 ? 's' : ''}
-                </Text>
-                <Text style={styles.sub}>
+                </AppText>
+                <AppText style={styles.sub}>
                   {remaining > 0
                     ? `${remaining} passage${remaining > 1 ? 's' : ''} restant${remaining > 1 ? 's' : ''}`
                     : 'Bravo, tournée terminée !'}
-                </Text>
+                </AppText>
               </>
             )}
           </Stack>
@@ -72,22 +73,22 @@ export function TourSummaryCard({ summary, activeRemaining }: Props) {
         {!allAbsentOnly ? (
           <View style={styles.metrics}>
             <Row gap={spacing[1]} align="center" style={styles.metricItem}>
-              <Route size={12} color="#FFFFFF" strokeWidth={2.2} />
-              <Text style={styles.metric}>
+              <Route size={iconSize['2xs']} color="#FFFFFF" strokeWidth={2.2} />
+              <AppText style={styles.metric}>
                 {total} étape{total > 1 ? 's' : ''}
-              </Text>
+              </AppText>
             </Row>
             <View style={styles.metricDot} />
             <Row gap={spacing[1]} align="center" style={styles.metricItem}>
-              <MapPin size={12} color="#FFFFFF" strokeWidth={2.2} />
-              <Text style={styles.metric}>{summary.estimated_km} km estimés</Text>
+              <MapPin size={iconSize['2xs']} color="#FFFFFF" strokeWidth={2.2} />
+              <AppText style={styles.metric}>{summary.estimated_km} km estimés</AppText>
             </Row>
             {absent > 0 ? (
               <>
                 <View style={styles.metricDot} />
-                <Text style={styles.metric}>
+                <AppText style={styles.metric}>
                   {absent} absent{absent > 1 ? 's' : ''}
-                </Text>
+                </AppText>
               </>
             ) : null}
           </View>
@@ -131,7 +132,7 @@ function buildStyles(_c: AppColors) {
     copy: { flex: 1, minWidth: 0 },
     kicker: {
       fontFamily: fontFamily.bold,
-      fontSize: 10,
+      fontSize: fontSize['2xs'],
       textTransform: 'uppercase' as const,
       letterSpacing: 0.6,
       color: hexToRgba('#FFFFFF', 0.82),
@@ -150,15 +151,14 @@ function buildStyles(_c: AppColors) {
       color: hexToRgba('#FFFFFF', 0.88),
     },
     metrics: {
-      flexDirection: 'row' as const,
+      ...layoutRowWrap(spacing[1.5]),
       alignItems: 'center' as const,
-      flexWrap: 'wrap' as const,
-      gap: spacing[1.5],
       paddingTop: spacing[2],
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: hexToRgba('#FFFFFF', 0.22),
     },
-    metricItem: { flexShrink: 1 },
+    metricItem: {
+    minWidth: 0, flexShrink: 1 },
     metric: {
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.xs,

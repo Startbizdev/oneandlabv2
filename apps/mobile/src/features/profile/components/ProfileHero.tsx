@@ -1,13 +1,13 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, User } from 'lucide-react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, avatarSize, useLayoutMetrics, responsiveValue, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const ROLE_LABEL: Record<string, string> = {
@@ -41,14 +41,21 @@ export function ProfileHero({
   onEditPhotos,
 }: Props) {
   const c = useAppColors();
+  const layout = useLayoutMetrics();
   const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileHero_tsx_styles');
   const name = `${firstName} ${lastName}`.trim() || 'Mon profil';
   const coverSrc = resolveProfileImageUrl(coverImageUrl);
+  const coverHeight = responsiveValue(layout, { compact: 96, default: 120, wide: 132 });
+  const avatarSizePx = responsiveValue(layout, {
+    compact: avatarSize.md,
+    default: avatarSize.lg + 32,
+    wide: avatarSize.lg + 40,
+  });
 
   return (
     <View style={styles.wrap}>
       {showCover ? (
-        <View style={styles.coverWrap}>
+        <View style={[styles.coverWrap, { height: coverHeight }]}>
           {coverSrc ? (
             <Image source={{ uri: coverSrc }} style={styles.coverImage} resizeMode="cover" />
           ) : (
@@ -63,11 +70,11 @@ export function ProfileHero({
       ) : (
         <LinearGradient
           colors={[c.primaryLight, c.background]}
-          style={styles.coverPlaceholder}
+          style={[styles.coverPlaceholder, { height: coverHeight * 0.47 }]}
         />
       )}
 
-      <View style={styles.identity}>
+      <View style={[styles.identity, { marginTop: -avatarSizePx / 2 }]}>
         <Pressable
           onPress={onEditPhotos}
           style={styles.avatarOuter}
@@ -77,28 +84,26 @@ export function ProfileHero({
             profileImageUrl={profileImageUrl}
             seed={name}
             gender={gender}
-            size={AVATAR}
-            style={styles.avatarClip}
+            size={avatarSizePx}
+            style={[styles.avatarClip, { width: avatarSizePx, height: avatarSizePx, borderRadius: avatarSizePx / 2 }]}
           />
           <View style={styles.cameraBadge}>
-            <Camera size={15} color={c.textInverse} strokeWidth={2.5} />
+            <Camera size={iconSize.xs} color={c.textInverse} strokeWidth={2.5} />
           </View>
         </Pressable>
 
-        <Text style={styles.name}>{name}</Text>
+        <AppText style={styles.name}>{name}</AppText>
         {role && ROLE_LABEL[role] ? (
           <Row gap={spacing[1]} align="center" style={styles.rolePill}>
-            <User size={12} color={c.primary} strokeWidth={2} />
-            <Text style={styles.roleText}>{ROLE_LABEL[role]}</Text>
+            <User size={iconSize['2xs']} color={c.primary} strokeWidth={2} />
+            <AppText style={styles.roleText}>{ROLE_LABEL[role]}</AppText>
           </Row>
         ) : null}
-        {email ? <Text style={styles.email}>{email}</Text> : null}
+        {email ? <AppText style={styles.email}>{email}</AppText> : null}
       </View>
     </View>
   );
 }
-
-const AVATAR = 96;
 
 function buildStyles(c: AppColors) {
   return {
@@ -106,7 +111,6 @@ function buildStyles(c: AppColors) {
     marginBottom: spacing[2],
   },
   coverWrap: {
-    height: 120,
     width: '100%' as const,
     backgroundColor: c.surfaceAlt,
     overflow: 'hidden' as const,
@@ -116,25 +120,18 @@ function buildStyles(c: AppColors) {
     height: '100%' as const,
   },
   coverPlaceholder: {
-    height: 56,
     width: '100%' as const,
   },
   identity: {
     alignItems: 'center' as const,
-    marginTop: -AVATAR / 2,
     paddingHorizontal: spacing[4],
     gap: spacing[2],
   },
   avatarOuter: {
-    width: AVATAR + 12,
-    height: AVATAR + 12,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
   avatarClip: {
-    width: AVATAR,
-    height: AVATAR,
-    borderRadius: AVATAR / 2,
     borderWidth: 3,
     borderColor: c.surface,
     overflow: 'hidden' as const,

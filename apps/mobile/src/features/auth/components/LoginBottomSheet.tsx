@@ -1,10 +1,10 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { LoginFlow, type LoginFlowMeta } from '@/features/auth/components/LoginFlow';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -58,10 +58,10 @@ export function LoginBottomSheet({
         <LoginFlow onSuccess={onSuccess} onEmailNotFound={onEmailNotFound} onMetaChange={setMeta} />
         {showRegister ? (
           <Pressable onPress={onRegisterPress} style={styles.registerLink} hitSlop={8}>
-            <Text style={styles.registerText}>
+            <AppText style={styles.registerText}>
               Pas encore de compte ?{' '}
-              <Text style={styles.registerAccent}>Créer un compte</Text>
-            </Text>
+              <AppText style={styles.registerAccent}>Créer un compte</AppText>
+            </AppText>
           </Pressable>
         ) : null}
       </View>

@@ -2,10 +2,10 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { StyleSheet, Text, View, type ViewProps } from 'react-native';
+import { StyleSheet, View, type ViewProps } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props extends ViewProps {
@@ -27,15 +27,15 @@ export function ProfileSection({
         leading={
           Icon ? (
             <View style={styles.iconWrap}>
-              <Icon size={18} color={c.primary} strokeWidth={2} />
+              <Icon size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
             </View>
           ) : undefined
         }
         style={styles.header}
       >
         <View style={styles.headerText}>
-          <Text style={styles.title}>{title}</Text>
-          {description ? <Text style={styles.description}>{description}</Text> : null}
+          <AppText style={styles.title}>{title}</AppText>
+          {description ? <AppText style={styles.description}>{description}</AppText> : null}
         </View>
       </Cluster>
       <View style={styles.body}>{children}</View>

@@ -1,6 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Text, View } from 'react-native';
+import { AppText } from '@/theme';
+import { View } from 'react-native';
 import type { ReactElement } from 'react';
 import { bookingCareSelectionTitle } from '../utils/booking-wizard-titles';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -14,7 +15,7 @@ export function BookingCareSelectionHeaderTitle({ role, embedded }: Props) {
   const styles = useThemedStyles(buildStyles, 'BookingCareSelectionHeaderTitle');
   return (
     <View style={embedded ? styles.wrapEmbedded : styles.wrap}>
-      <Text
+      <AppText
         style={styles.title}
         numberOfLines={2}
         adjustsFontSizeToFit
@@ -22,7 +23,7 @@ export function BookingCareSelectionHeaderTitle({ role, embedded }: Props) {
         accessibilityRole="header"
       >
         {bookingCareSelectionTitle(role)}
-      </Text>
+      </AppText>
     </View>
   );
 }

@@ -1,9 +1,10 @@
+import { layoutRowBetween, layoutRowCenter } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react-native';
 import {
@@ -26,7 +27,7 @@ import {
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { queryKeys } from '@/lib/query-keys';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -190,8 +191,8 @@ export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiP
               },
             ]}
           >
-            <Text style={styles.pickerEmoji}>{emoji}</Text>
-            <Text style={[styles.pickerLabel, { color: c.textPrimary }]}>{cat.name}</Text>
+            <AppText style={styles.pickerEmoji}>{emoji}</AppText>
+            <AppText style={[styles.pickerLabel, { color: c.textPrimary }]}>{cat.name}</AppText>
           </Pressable>
         );
       })}
@@ -201,7 +202,7 @@ export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiP
   return (
     <View>
       {!embedded ? (
-        <Text style={[styles.sectionLabel, { color: c.textTertiary }]}>Soins</Text>
+        <AppText style={[styles.sectionLabel, { color: c.textTertiary }]}>Soins</AppText>
       ) : null}
 
       {showInlineOptions && optionsCat ? (
@@ -213,7 +214,7 @@ export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiP
             accessibilityRole="button"
             accessibilityLabel="Retour à la liste des soins"
           >
-            <Text style={[styles.backLinkText, { color: c.primary }]}>← Retour</Text>
+            <AppText style={[styles.backLinkText, { color: c.primary }]}>← Retour</AppText>
           </Pressable>
           <CareServiceQuickOptionsSheet
             embedded
@@ -236,7 +237,7 @@ export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiP
               accessibilityRole="button"
               accessibilityLabel="Retour aux soins sélectionnés"
             >
-              <Text style={[styles.backLinkText, { color: c.primary }]}>← Retour</Text>
+              <AppText style={[styles.backLinkText, { color: c.primary }]}>← Retour</AppText>
             </Pressable>
           ) : null}
           {categoryList}
@@ -252,16 +253,16 @@ export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiP
               ]}
             >
               <View style={styles.careTextCol}>
-                <Text style={[styles.careName, { color: c.textPrimary }]} numberOfLines={2}>
+                <AppText style={[styles.careName, { color: c.textPrimary }]} numberOfLines={2}>
                   {formatPassageNursingItemLabel(item, categories)}
-                </Text>
+                </AppText>
               </View>
               <Pressable
                 onPress={() => removeItem(item.category_id)}
                 hitSlop={8}
                 accessibilityLabel="Retirer le soin"
               >
-                <X size={18} color={c.textSecondary} />
+                <X size={iconSize.mdSm} color={c.textSecondary} />
               </Pressable>
             </View>
           ))}
@@ -269,7 +270,7 @@ export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiP
           <Button
             title="Ajouter un soin"
             variant="secondary"
-            leftIcon={<Plus size={18} color={c.primary} />}
+            leftIcon={<Plus size={iconSize.mdSm} color={c.primary} />}
             onPress={() => (embedded ? setAddingMore(true) : setPickerOpen(true))}
             style={styles.addBtn}
           />
@@ -312,30 +313,27 @@ function buildStyles(_c: AppColors) {
       marginBottom: spacing[2],
     },
     careRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'space-between' as const,
-      gap: spacing[2],
+      ...layoutRowBetween(spacing[2]),
       borderWidth: 1,
       borderRadius: radius.lg,
       padding: spacing[3],
       marginBottom: spacing[2],
     },
-    careTextCol: { flex: 1, gap: spacing[0.5] },
+    careTextCol: {
+    minWidth: 0, flex: 1, gap: spacing[0.5] },
     careName: { fontFamily: fontFamily.medium, fontSize: fontSize.md },
     addBtn: { marginTop: spacing[1] },
     backLink: { marginBottom: spacing[2], alignSelf: 'flex-start' as const },
     backLinkText: { fontFamily: fontFamily.semiBold, fontSize: fontSize.sm },
     pickerList: { paddingBottom: spacing[4], gap: spacing[2] },
     pickerRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: spacing[3],
+      ...layoutRowCenter(spacing[3]),
       borderWidth: 1,
       borderRadius: radius.lg,
       padding: spacing[3],
     },
-    pickerEmoji: { fontSize: 24 },
-    pickerLabel: { flex: 1, fontFamily: fontFamily.medium, fontSize: fontSize.md },
+    pickerEmoji: { fontSize: fontSize['2xl'] },
+    pickerLabel: {
+    minWidth: 0, flex: 1, fontFamily: fontFamily.medium, fontSize: fontSize.md },
   };
 }

@@ -2,10 +2,10 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -30,19 +30,19 @@ export function PatientPaginationBar({
         style={[styles.btn, page <= 1 && styles.btnDisabled]}
         accessibilityLabel="Page précédente"
       >
-        <ChevronLeft size={18} color={page <= 1 ? c.textTertiary : c.primary} />
+        <ChevronLeft size={iconSize.mdSm} color={page <= 1 ? c.textTertiary : c.primary} />
       </Pressable>
-      <Text style={styles.label}>
+      <AppText style={styles.label}>
         Page {page} / {Math.max(1, pages)}
         {total > 0 ? ` · ${total} élément${total > 1 ? 's' : ''}` : ''}
-      </Text>
+      </AppText>
       <Pressable
         onPress={onNext}
         disabled={page >= pages}
         style={[styles.btn, page >= pages && styles.btnDisabled]}
         accessibilityLabel="Page suivante"
       >
-        <ChevronRight size={18} color={page >= pages ? c.textTertiary : c.primary} />
+        <ChevronRight size={iconSize.mdSm} color={page >= pages ? c.textTertiary : c.primary} />
       </Pressable>
     </Row>
   );

@@ -1,5 +1,5 @@
 import type { Appointment } from '@oneandlab/shared-types';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
@@ -13,7 +13,7 @@ import {
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { AppColors } from '@/theme/colors';
 import { fontFamily, fontSize } from '@/theme/typography';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -59,9 +59,9 @@ export function PatientReviewPromptSheet({
         <View style={sheetStyles.body}>
           <RatingStars value={existing.rating ?? 0} readonly size="lg" centered />
           {existing.comment?.trim() ? (
-            <Text style={sheetStyles.comment}>{existing.comment.trim()}</Text>
+            <AppText style={sheetStyles.comment}>{existing.comment.trim()}</AppText>
           ) : (
-            <Text style={sheetStyles.commentMuted}>Pas de commentaire</Text>
+            <AppText style={sheetStyles.commentMuted}>Pas de commentaire</AppText>
           )}
           <Button title="Fermer" variant="outline" onPress={onClose} fullWidth size="lg" />
         </View>
@@ -69,9 +69,9 @@ export function PatientReviewPromptSheet({
 
       {!isReadOnly && form ? (
         <View style={sheetStyles.body}>
-          <Text style={sheetStyles.hint}>
+          <AppText style={sheetStyles.hint}>
             Votre note aide la communauté Cary à choisir les bons professionnels.
-          </Text>
+          </AppText>
           <RatingStars
             value={form.rating}
             onChange={onRatingChange}

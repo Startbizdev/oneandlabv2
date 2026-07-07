@@ -1,9 +1,10 @@
+import { layoutRowBetween } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -14,7 +15,7 @@ import { useProfileAddressSync } from '@/features/appointments/form/hooks/usePro
 import { hasValidGeoAddress } from '@/features/profile/utils/parse-profile-address';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -160,24 +161,24 @@ export function PassageFormLocationSheet({
                 ]}
               >
                 <View style={styles.textCol}>
-                  <Text style={[styles.label, { color: c.textPrimary }]}>{opt.label}</Text>
-                  <Text style={[styles.hint, { color: c.textSecondary }]}>{opt.hint}</Text>
+                  <AppText style={[styles.label, { color: c.textPrimary }]}>{opt.label}</AppText>
+                  <AppText style={[styles.hint, { color: c.textSecondary }]}>{opt.hint}</AppText>
                 </View>
-                {selected ? <Check size={18} color={c.primary} strokeWidth={2.5} /> : null}
+                {selected ? <Check size={iconSize.mdSm} color={c.primary} strokeWidth={2.5} /> : null}
               </Pressable>
             );
           })}
         </View>
 
         <View style={styles.addressBlock}>
-          <Text style={[styles.addressTitle, { color: c.textPrimary }]}>
+          <AppText style={[styles.addressTitle, { color: c.textPrimary }]}>
             {draftAtHome ? 'Adresse du patient' : 'Mon adresse professionnelle'}
-          </Text>
-          <Text style={[styles.addressHint, { color: c.textTertiary }]}>
+          </AppText>
+          <AppText style={[styles.addressHint, { color: c.textTertiary }]}>
             {draftAtHome
               ? 'La modification est enregistrée sur la fiche du patient.'
               : 'La modification est enregistrée sur votre profil professionnel.'}
-          </Text>
+          </AppText>
           {draftAtHome ? (
             <AddressAutocomplete
               value={patientAddress}
@@ -206,16 +207,14 @@ function buildStyles(_c: AppColors) {
     body: { gap: spacing[4], paddingBottom: spacing[4] },
     list: { gap: spacing[2] },
     option: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'space-between' as const,
-      gap: spacing[3],
+      ...layoutRowBetween(spacing[3]),
       borderWidth: StyleSheet.hairlineWidth,
       borderRadius: radius.lg,
       paddingHorizontal: spacing[4],
       paddingVertical: spacing[3.5],
     },
-    textCol: { flex: 1, gap: spacing[0.5] },
+    textCol: {
+    minWidth: 0, flex: 1, gap: spacing[0.5] },
     label: { fontFamily: fontFamily.semiBold, fontSize: fontSize.md },
     hint: { fontFamily: fontFamily.regular, fontSize: fontSize.sm },
     addressBlock: { gap: spacing[2] },

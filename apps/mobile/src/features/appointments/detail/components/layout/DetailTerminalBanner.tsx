@@ -1,12 +1,12 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { CalendarX, CircleCheck, Ban, TimerOff } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import type { AppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const ICONS: Record<string, LucideIcon> = {
@@ -26,12 +26,12 @@ export function DetailTerminalBanner({ terminal }: { terminal: AppointmentSideba
       gap={spacing[2]}
       align="start"
       style={styles.wrap}
-      leading={<Icon size={16} color={c.textTertiary} strokeWidth={2} />}
+      leading={<Icon size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
     >
-      <Text style={styles.text}>
-        <Text style={styles.title}>{terminal.title}</Text>
-        <Text style={styles.desc}> · {terminal.description}</Text>
-      </Text>
+      <AppText style={styles.text}>
+        <AppText style={styles.title}>{terminal.title}</AppText>
+        <AppText style={styles.desc}> · {terminal.description}</AppText>
+      </AppText>
     </Cluster>
   );
 }

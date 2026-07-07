@@ -1,12 +1,13 @@
+import { layoutRowWrap } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AlertTriangle } from 'lucide-react-native';
 import { Cluster } from '@/components/layout/primitives';
 import type { PrescriptionProfileGap } from '../utils/prescription-profile-gaps';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -52,18 +53,18 @@ export function PrescriptionProfileGapsAlert({
       align="start"
       gap={spacing[2.5]}
       style={styles.box}
-      leading={<AlertTriangle size={18} color={c.warning} strokeWidth={2.25} />}
+      leading={<AlertTriangle size={iconSize.mdSm} color={c.warning} strokeWidth={2.25} />}
     >
       <View style={styles.body}>
-        <Text style={styles.title}>À compléter pour l'ordonnance</Text>
-        <Text style={styles.subtitle}>
+        <AppText style={styles.title}>À compléter pour l'ordonnance</AppText>
+        <AppText style={styles.subtitle}>
           Ces informations figureront sur le PDF. Vous pouvez générer quand même, mais le document sera
           incomplet.
-        </Text>
+        </AppText>
 
         {patientGaps.length > 0 ? (
           <View style={styles.group}>
-            <Text style={styles.groupLabel}>Fiche patient</Text>
+            <AppText style={styles.groupLabel}>Fiche patient</AppText>
             {patientGaps.map((gap) => (
               <GapRow key={gap.id} gap={gap} onPress={() => onGapPress(gap)} styles={styles} />
             ))}
@@ -72,7 +73,7 @@ export function PrescriptionProfileGapsAlert({
 
         {prescriberGaps.length > 0 ? (
           <View style={styles.group}>
-            <Text style={styles.groupLabel}>Votre profil</Text>
+            <AppText style={styles.groupLabel}>Votre profil</AppText>
             {prescriberGaps.map((gap) => (
               <GapRow key={gap.id} gap={gap} onPress={() => onGapPress(gap)} styles={styles} />
             ))}
@@ -94,9 +95,9 @@ function GapRow({
 }) {
   return (
     <View style={styles.row}>
-      <Text style={styles.rowMessage}>· {gap.message}</Text>
+      <AppText style={styles.rowMessage}>· {gap.message}</AppText>
       <Pressable onPress={onPress} hitSlop={6} accessibilityRole="button">
-        <Text style={styles.rowAction}>{gap.actionLabel}</Text>
+        <AppText style={styles.rowAction}>{gap.actionLabel}</AppText>
       </Pressable>
     </View>
   );
@@ -132,13 +133,11 @@ function buildStyles(c: AppColors) {
       letterSpacing: 0.3,
     },
     row: {
-      flexDirection: 'row' as const,
-      flexWrap: 'wrap' as const,
+      ...layoutRowWrap(spacing[1.5]),
       alignItems: 'center' as const,
-      gap: spacing[1.5],
-      minWidth: 0,
     },
     rowMessage: {
+      minWidth: 0,
       fontFamily: fontFamily.medium,
       fontSize: fontSize.xs,
       color: c.textPrimary,

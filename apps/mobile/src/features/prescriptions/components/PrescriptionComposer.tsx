@@ -3,8 +3,9 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
+import { layoutRowCenter } from '@/theme/layout-styles';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Download, Eye, FileOutput, PenLine, Upload } from 'lucide-react-native';
 import dayjs from 'dayjs';
@@ -40,7 +41,7 @@ import { getPrescriptionProfileGaps } from '@/features/prescriptions/utils/presc
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -218,10 +219,10 @@ export function PrescriptionComposer({
 
       if (deferred) {
         onPassageDraftReady?.({
-          pdfUri: cached.localUri,
+          pdfUri: cached.localUri!,
           fileName: name,
           prescriptionText: composedText,
-          prescriptionNumber: meta.prescription_number,
+          prescriptionNumber: meta.prescription_number ?? '',
           prescriptionKind,
         });
         toast('Ordonnance générée — enregistrez le passage pour la rattacher au rendez-vous.', {
@@ -312,17 +313,17 @@ export function PrescriptionComposer({
     <View style={styles.inner}>
       {hasExisting ? (
         <View style={styles.warn}>
-          <AlertTriangle size={16} color={c.warning} strokeWidth={2} />
-          <Text style={styles.warnText}>
+          <AlertTriangle size={iconSize.sm} color={c.warning} strokeWidth={2} />
+          <AppText style={styles.warnText}>
             Une ordonnance est déjà enregistrée sur ce rendez-vous. Consultez-la ou régénérez-en une
             nouvelle ci-dessous.
-          </Text>
+          </AppText>
           <Row wrap gap={spacing[2]} style={styles.warnActions}>
             <Button
               title="Voir"
               variant="outline"
               size="sm"
-              leftIcon={<Eye size={14} color={c.primary} strokeWidth={2} />}
+              leftIcon={<Eye size={iconSize.xs} color={c.primary} strokeWidth={2} />}
               loading={previewExistingMut.isPending}
               onPress={() => previewExistingMut.mutate()}
             />
@@ -330,7 +331,7 @@ export function PrescriptionComposer({
               title="Télécharger"
               variant="outline"
               size="sm"
-              leftIcon={<Download size={14} color={c.primary} strokeWidth={2} />}
+              leftIcon={<Download size={iconSize.xs} color={c.primary} strokeWidth={2} />}
               loading={downloadMut.isPending}
               onPress={() => downloadMut.mutate()}
             />
@@ -340,9 +341,9 @@ export function PrescriptionComposer({
 
       {deferSaveForPassage && pdfUri ? (
         <View style={styles.passageDraftReady}>
-          <Text style={styles.passageDraftReadyText}>
+          <AppText style={styles.passageDraftReadyText}>
             Ordonnance prête — elle sera ajoutée au passage à l&apos;enregistrement.
-          </Text>
+          </AppText>
         </View>
       ) : null}
 
@@ -365,15 +366,15 @@ export function PrescriptionComposer({
           style={styles.signRowMain}
         >
           <View style={[styles.checkbox, includeSignature && styles.checkboxOn]}>
-            {includeSignature ? <Text style={styles.checkMark}>✓</Text> : null}
+            {includeSignature ? <AppText style={styles.checkMark}>✓</AppText> : null}
           </View>
           <View style={styles.signRowText}>
-            <Text style={styles.signLabel}>Inclure ma signature manuscrite</Text>
-            <Text style={styles.signHint}>
+            <AppText style={styles.signLabel}>Inclure ma signature manuscrite</AppText>
+            <AppText style={styles.signHint}>
               {hasSignature
                 ? 'Signature enregistrée sur votre compte'
                 : 'Vous serez invité à signer avant génération'}
-            </Text>
+            </AppText>
           </View>
         </Pressable>
         {hasSignature || includeSignature ? (
@@ -386,10 +387,10 @@ export function PrescriptionComposer({
             }
             style={styles.signPenBtn}
           >
-            <PenLine size={20} color={c.primary} strokeWidth={2} />
+            <PenLine size={iconSize.md} color={c.primary} strokeWidth={2} />
           </Pressable>
         ) : (
-          <PenLine size={18} color={c.textTertiary} strokeWidth={2} />
+          <PenLine size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />
         )}
       </View>
 
@@ -414,7 +415,7 @@ export function PrescriptionComposer({
       <View style={styles.actions}>
         <Button
           title={deferSaveForPassage ? 'Générer l’ordonnance' : 'Générer le PDF'}
-          leftIcon={<FileOutput size={16} color={c.textInverse} strokeWidth={2} />}
+          leftIcon={<FileOutput size={iconSize.sm} color={c.textInverse} strokeWidth={2} />}
           loading={generateMut.isPending}
           disabled={!canGenerate}
           onPress={onPressGenerate}
@@ -424,13 +425,13 @@ export function PrescriptionComposer({
             <Button
               title="Aperçu"
               variant="outline"
-              leftIcon={<Eye size={16} color={c.primary} strokeWidth={2} />}
+              leftIcon={<Eye size={iconSize.sm} color={c.primary} strokeWidth={2} />}
               onPress={() => setPreviewOpen(true)}
             />
             <Button
               title={linkedToAppointment ? 'Enregistrer sur le RDV' : 'Enregistrer'}
               variant="outline"
-              leftIcon={<Upload size={16} color={c.primary} strokeWidth={2} />}
+              leftIcon={<Upload size={iconSize.sm} color={c.primary} strokeWidth={2} />}
               loading={saveMut.isPending}
               onPress={() => saveMut.mutate()}
             />
@@ -439,7 +440,7 @@ export function PrescriptionComposer({
           <Button
             title="Aperçu"
             variant="outline"
-            leftIcon={<Eye size={16} color={c.primary} strokeWidth={2} />}
+            leftIcon={<Eye size={iconSize.sm} color={c.primary} strokeWidth={2} />}
             onPress={() => setPreviewOpen(true)}
           />
         ) : null}
@@ -482,9 +483,9 @@ export function PrescriptionComposer({
 
   return (
     <Card>
-      <Text style={styles.cardTitle}>
+      <AppText style={styles.cardTitle}>
         {isNursing ? "Prescription d'actes infirmiers" : 'Créer une ordonnance'}
-      </Text>
+      </AppText>
       {content}
       {!onOpenSignatureSheet && user?.id ? (
         <PrescriptionSignatureSheet
@@ -547,17 +548,13 @@ function buildStyles(c: AppColors) {
     },
     textarea: { minHeight: 140, textAlignVertical: 'top' as const },
     signRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: spacing[2],
+      ...layoutRowCenter(spacing[2]),
       paddingVertical: spacing[1],
     },
     signRowMain: {
       flex: 1,
+      ...layoutRowCenter(spacing[2.5]),
       minWidth: 0,
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: spacing[2.5],
     },
     signPenBtn: {
       padding: spacing[1],
@@ -577,7 +574,7 @@ function buildStyles(c: AppColors) {
     },
     checkMark: {
       color: c.textInverse,
-      fontSize: 14,
+      fontSize: fontSize.xs,
       fontFamily: fontFamily.bold,
     },
     signRowText: { flex: 1, minWidth: 0 },

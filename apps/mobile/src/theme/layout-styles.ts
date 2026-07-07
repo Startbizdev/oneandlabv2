@@ -12,6 +12,81 @@ export function layoutRow(gap: number = spacing[2.5]) {
   };
 }
 
+/** Row centrée verticalement. */
+export function layoutRowCenter(gap: number = spacing[2]) {
+  return {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    minWidth: 0,
+    gap,
+  };
+}
+
+/** Row centrée horizontalement et verticalement. */
+export function layoutRowCenterAll(gap: number = spacing[2]) {
+  return {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    minWidth: 0,
+    gap,
+  };
+}
+
+/** Row space-between (lignes d’option, en-têtes de carte). */
+export function layoutRowBetween(gap: number = spacing[2]) {
+  return {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    minWidth: 0,
+    gap,
+  };
+}
+
+/** Row avec retour à la ligne (chips, grilles légères). */
+export function layoutRowWrap(gap: number = spacing[2]) {
+  return {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    minWidth: 0,
+    gap,
+  };
+}
+
+/** Row baseline + wrap (valeurs + unités). */
+export function layoutRowBaselineWrap(gap: number = spacing[1]) {
+  return {
+    flexDirection: 'row' as const,
+    alignItems: 'baseline' as const,
+    flexWrap: 'wrap' as const,
+    minWidth: 0,
+    gap,
+  };
+}
+
+/** Row alignée en bas (en-têtes graphiques). */
+export function layoutRowEndBetween(gap: number = spacing[2]) {
+  return {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end' as const,
+    justifyContent: 'space-between' as const,
+    minWidth: 0,
+    gap,
+  };
+}
+
+/** Row actions alignées à droite (accessoire clavier). */
+export function layoutRowEndActions(gap: number = spacing[2]) {
+  return {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'flex-end' as const,
+    minWidth: 0,
+    gap,
+  };
+}
+
 export const flexText = {
   flex: 1,
   minWidth: 0,

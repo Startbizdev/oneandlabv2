@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
-import { spacing } from '@/theme';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -16,7 +16,7 @@ export function RdvSection({ title, children, style }: Props) {
 
   return (
     <View style={[styles.wrap, style]}>
-      <Text style={styles.title}>{title}</Text>
+      <AppText style={styles.title}>{title}</AppText>
       {children}
     </View>
   );

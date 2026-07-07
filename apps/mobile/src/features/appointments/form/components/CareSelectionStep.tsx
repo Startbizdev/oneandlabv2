@@ -2,13 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,7 +36,7 @@ import {
   spreadTabSceneScrollProps,
   useTabSceneInsets,
 } from '@/components/navigation/liquid-glass-header-inset';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const H_PAD = spacing[4];
@@ -90,12 +84,12 @@ function CareEmojiOrb({
         },
       ]}
     >
-      <Text
+      <AppText
         style={[styles.emojiOrbGlyph, { fontSize: glyphSize, lineHeight: glyphSize + 2 }]}
         accessibilityElementsHidden
       >
         {emoji}
-      </Text>
+      </AppText>
     </View>
   );
 }
@@ -142,13 +136,13 @@ function CareListTile({
         <CareEmojiOrb emoji={emoji} backgroundColor={orbColor} size={TILE_EMOJI_ORB} />
 
         <View style={styles.tileCopy}>
-          <Text
+          <AppText
             style={[styles.tileLabel, selected && styles.tileLabelSelected]}
             numberOfLines={2}
           >
             {cat.label}
-          </Text>
-          {hint ? <Text style={styles.tileHint}>{hint}</Text> : null}
+          </AppText>
+          {hint ? <AppText style={styles.tileHint}>{hint}</AppText> : null}
         </View>
 
         <View
@@ -159,9 +153,9 @@ function CareListTile({
           pointerEvents="none"
         >
           {selected ? (
-            <Check size={18} color={c.textInverse} strokeWidth={3} />
+            <Check size={iconSize.mdSm} color={c.textInverse} strokeWidth={3} />
           ) : (
-            <Plus size={18} color={c.primary} strokeWidth={2.75} />
+            <Plus size={iconSize.mdSm} color={c.primary} strokeWidth={2.75} />
           )}
         </View>
       </Row>
@@ -348,18 +342,18 @@ export function CareSelectionStep({
 
         <Row gap={spacing[3]} align="start" justify="between">
           <View style={styles.metaCopy}>
-            <Text style={styles.metaTitle}>{careListHeading(filterTab, filterTabs)}</Text>
-            <Text style={styles.metaSubtitle}>
+            <AppText style={styles.metaTitle}>{careListHeading(filterTab, filterTabs)}</AppText>
+            <AppText style={styles.metaSubtitle}>
               {hasSelection
                 ? `${selectionCount} sélectionné${selectionCount > 1 ? 's' : ''} — touchez à nouveau pour retirer`
                 : 'Choisissez un ou plusieurs soins ci-dessous'}
-            </Text>
+            </AppText>
           </View>
           <Row gap={spacing[1]} align="baseline" style={styles.metaCountPill}>
-            <Text style={styles.metaCount}>{displayList.length}</Text>
-            <Text style={styles.metaCountLabel}>
+            <AppText style={styles.metaCount}>{displayList.length}</AppText>
+            <AppText style={styles.metaCountLabel}>
               {displayList.length > 1 ? 'soins' : 'soin'}
-            </Text>
+            </AppText>
           </Row>
         </Row>
       </View>
@@ -377,11 +371,11 @@ export function CareSelectionStep({
   const listBody = useMemo(() => {
     if (gridItems.length === 0) {
       return (
-        <Text style={styles.emptyList}>
+        <AppText style={styles.emptyList}>
           {filterTab === 'all'
             ? 'Aucun soin disponible pour le moment.'
             : 'Aucun soin dans cette catégorie.'}
-        </Text>
+        </AppText>
       );
     }
     return (
@@ -403,7 +397,7 @@ export function CareSelectionStep({
     if (autreItems.length === 0) return null;
     return (
       <View style={styles.autreBlock}>
-        <Text style={styles.autreKicker}>Besoin d’un autre soin ?</Text>
+        <AppText style={styles.autreKicker}>Besoin d’un autre soin ?</AppText>
         {autreItems.map((cat) => (
           <CareListTile
             key={cat.id}

@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
@@ -20,7 +20,7 @@ import {
   type PatientProfileUploadType,
 } from '../api/patient-profile.service';
 import { StaffPatientBookingConsentRow } from '@/features/patients/components/StaffPatientBookingConsentRow';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export type CreatedPatientResult = Pick<PatientRow, 'id' | 'first_name' | 'last_name'> & {
@@ -214,7 +214,7 @@ export function CreatePatientModal({
         error={error?.includes('consentement') ?? false}
       />
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <AppText style={styles.errorText}>{error}</AppText> : null}
 
       <Row gap={spacing[3]} style={styles.actions}>
         <View style={styles.actionBtn}>

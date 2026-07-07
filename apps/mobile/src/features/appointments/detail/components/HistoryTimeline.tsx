@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
@@ -9,7 +9,7 @@ import { Row } from '@/components/layout/primitives';
 import { Card } from '@/components/ui/Card';
 import type { AppointmentHistoryEntry } from '../api/appointment-detail.service';
 import { scrollChildEntering } from '@/lib/platform/list-entering-animation';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -47,15 +47,15 @@ export function HistoryTimeline({ entries }: { entries: AppointmentHistoryEntry[
                 </View>
 
                 <View style={[styles.timelineContent, !isLast && styles.timelineContentGap]}>
-                  <Text style={styles.actionLabel}>{actionLabel}</Text>
+                  <AppText style={styles.actionLabel}>{actionLabel}</AppText>
                   <Row wrap>
                     {entry.created_at ? (
-                      <Text style={styles.metaText}>
+                      <AppText style={styles.metaText}>
                         {dayjs(entry.created_at).format('D MMM YYYY · HH:mm')}
-                      </Text>
+                      </AppText>
                     ) : null}
                     {entry.user_name ? (
-                      <Text style={styles.metaText}> · {entry.user_name}</Text>
+                      <AppText style={styles.metaText}> · {entry.user_name}</AppText>
                     ) : null}
                   </Row>
                 </View>

@@ -337,7 +337,7 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
 import { apiFetch } from "~/utils/api";
-import { isPendingIncomingOffer } from "~/utils/appointment-offer";
+import { isPendingIncomingOffer, isOfferModalSnoozed } from "~/utils/appointment-offer";
 import { isBloodTestAppointment } from "~/utils/appointment-type-rules";
 import { formatBellNotificationLines, sanitizeNotificationText } from "~/utils/notification-display";
 
@@ -1414,6 +1414,7 @@ const { start: startAppointmentPolling, stop: stopAppointmentPolling, isPolling:
 
     if (res?.success && res.data) {
       const pending = res.data.filter((a: any) => {
+        if (isOfferModalSnoozed(a)) return false;
         if (role === 'nurse') {
           return (
             a.status === 'pending' &&
@@ -1503,6 +1504,7 @@ watch(() => user.value?.role, async (role) => {
     const res = await apiFetch(appointmentsPendingOffersUrl(role), { method: 'GET' });
     if (res?.success && res.data && myId) {
       const pending = res.data.filter((a: any) => {
+        if (isOfferModalSnoozed(a)) return false;
         if (role === 'nurse') {
           return (
             a.status === 'pending' &&

@@ -71,6 +71,14 @@ export async function updateAppointment(id: string, body: Record<string, unknown
   return api.put<Appointment>(`/appointments/${id}`, body);
 }
 
+export async function snoozeOfferAppointment(appointmentId: string, minutes?: number) {
+  const body = minutes != null ? { minutes } : {};
+  return api.post<{ modal_snoozed_until?: string; modal_ack_at?: string }>(
+    `/appointments/${appointmentId}/offer/snooze`,
+    body,
+  );
+}
+
 export async function createAppointment(body: Record<string, unknown>) {
   return api.post<Appointment>('/appointments', body);
 }

@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Check, ChevronDown, ChevronUp, Car, Clock, Route, UserX } from 'lucide-react-native';
 import { isTourStopAbsent } from '@oneandlab/shared-utils';
@@ -15,7 +15,7 @@ import {
   formatPassageTimeLabel,
   resolvePassageRouteListLabels,
 } from '../utils/passage-display';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
 
@@ -114,10 +114,10 @@ export function PassageSimpleListRow({
                 ]}
               >
                 {absent ? (
-                  <UserX size={17} color={c.textTertiary} strokeWidth={2.3} />
+                  <UserX size={iconSize.smMd} color={c.textTertiary} strokeWidth={2.3} />
                 ) : (
                   <Check
-                    size={18}
+                    size={iconSize.mdSm}
                     color={done ? '#FFFFFF' : c.textTertiary}
                     strokeWidth={2.5}
                     opacity={done ? 1 : 0.38}
@@ -135,12 +135,12 @@ export function PassageSimpleListRow({
             accessibilityLabel={`Ouvrir le passage de ${stop.patient_name}`}
           >
             <Row gap={spacing[1.5]} align="center" wrap style={styles.nameRow}>
-              <Text
+              <AppText
                 style={[styles.name, styles.nameFlex, { color: done ? c.textSecondary : c.textPrimary }]}
                 numberOfLines={1}
               >
                 {stop.patient_name}
-              </Text>
+              </AppText>
               {isNext && !done && !absent ? (
                 <Badge label="Suivant" variant="primary" size="sm" dot={false} />
               ) : null}
@@ -152,23 +152,23 @@ export function PassageSimpleListRow({
             {scheduleMeta ? (
               <Row gap={spacing[2]} align="center" style={styles.metaRow}>
                 <View style={styles.metaIconWrap}>
-                  <Clock size={12} color={c.textTertiary} strokeWidth={2.5} />
+                  <Clock size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2.5} />
                 </View>
-                <Text style={[styles.meta, { color: c.textTertiary }]}>{scheduleMeta}</Text>
+                <AppText style={[styles.meta, { color: c.textTertiary }]}>{scheduleMeta}</AppText>
               </Row>
             ) : null}
             {kmLabel || driveMinLabel ? (
               <Row gap={spacing[2.5]} align="center" wrap style={styles.metaRow}>
                 {kmLabel ? (
                   <Row gap={spacing[1]} align="center" style={styles.routeSegment}>
-                    <Route size={12} color={c.textTertiary} strokeWidth={2.5} />
-                    <Text style={[styles.metaInline, { color: c.textTertiary }]}>{kmLabel}</Text>
+                    <Route size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2.5} />
+                    <AppText style={[styles.metaInline, { color: c.textTertiary }]}>{kmLabel}</AppText>
                   </Row>
                 ) : null}
                 {driveMinLabel ? (
                   <Row gap={spacing[1]} align="center" style={styles.routeSegment}>
-                    <Car size={12} color={c.textTertiary} strokeWidth={2.5} />
-                    <Text style={[styles.metaInline, { color: c.textTertiary }]}>{driveMinLabel}</Text>
+                    <Car size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2.5} />
+                    <AppText style={[styles.metaInline, { color: c.textTertiary }]}>{driveMinLabel}</AppText>
                   </Row>
                 ) : null}
               </Row>
@@ -184,7 +184,7 @@ export function PassageSimpleListRow({
               style={[styles.reorderBtn, index === 0 && styles.reorderDisabled]}
               accessibilityLabel="Monter"
             >
-              <ChevronUp size={20} color={index === 0 ? c.textTertiary : c.textSecondary} />
+              <ChevronUp size={iconSize.md} color={index === 0 ? c.textTertiary : c.textSecondary} />
             </Pressable>
             <Pressable
               onPress={onMoveDown}
@@ -193,7 +193,7 @@ export function PassageSimpleListRow({
               accessibilityLabel="Descendre"
             >
               <ChevronDown
-                size={20}
+                size={iconSize.md}
                 color={index >= total - 1 ? c.textTertiary : c.textSecondary}
               />
             </Pressable>

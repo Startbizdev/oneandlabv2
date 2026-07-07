@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
-import { Image, Platform, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -13,19 +13,25 @@ import { RegisterBottomSheet } from '@/features/auth/components/RegisterBottomSh
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
 import { useAuthStore } from '@/store/auth-store';
 import type { RegisterRole } from '@/features/auth/api/registration.service';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, useLayoutMetrics, responsiveValue, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const LOGO = require('../../../../assets/logo-cary.png');
 
 export function WelcomeScreen() {
   const c = useAppColors();
+  const layout = useLayoutMetrics();
   const styles = useThemedStyles(buildStyles, 'features_auth_screens_WelcomeScreen_tsx_styles');
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
+
+  const logoWidth = responsiveValue(layout, { compact: 190, default: 220, wide: 240 });
+  const logoHeight = responsiveValue(layout, { compact: 68, default: 80, wide: 88 });
+  const textMaxWidth = layout.contentMaxWidth;
+  const logoAndroidMaxWidth = responsiveValue(layout, { compact: 220, default: 260, wide: 280 });
 
   function onLoginSuccess() {
     setLoginOpen(false);
@@ -58,21 +64,32 @@ export function WelcomeScreen() {
       <View style={styles.glowBottom} pointerEvents="none" />
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <View style={styles.main}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.hero}>
             <Image
               source={LOGO}
-              style={[styles.logo, Platform.OS === 'android' && styles.logoAndroid]}
+              style={[
+                styles.logo,
+                Platform.OS === 'android' && { width: '88%', maxWidth: logoAndroidMaxWidth },
+                { width: logoWidth, height: logoHeight },
+              ]}
               resizeMode="contain"
               accessibilityLabel="Cary"
             />
 
-            <Text style={styles.audienceKicker}>Patients et professionnels de santé</Text>
+            <AppText style={[styles.audienceKicker, { maxWidth: textMaxWidth }]}>
+              Patients et professionnels de santé
+            </AppText>
 
-            <Text style={styles.tagline}>
+            <AppText style={[styles.tagline, { maxWidth: textMaxWidth }]}>
               Soins et prélèvements{'\n'}
-              <Text style={styles.taglineAccent}>à domicile</Text>
-            </Text>
+              <AppText style={styles.taglineAccent}>à domicile</AppText>
+            </AppText>
 
             <View style={styles.taglineRule} />
           </View>
@@ -93,14 +110,14 @@ export function WelcomeScreen() {
               />
             </View>
 
-            <Text style={styles.legal}>
+            <AppText style={styles.legal}>
               En continuant, vous acceptez nos conditions d&apos;utilisation.
-            </Text>
+            </AppText>
             {user ? (
-              <Text style={styles.legal}>Session active sur cet appareil.</Text>
+              <AppText style={styles.legal}>Session active sur cet appareil.</AppText>
             ) : null}
           </View>
-        </View>
+        </ScrollView>
       </SafeAreaView>
 
       <LoginBottomSheet
@@ -155,28 +172,26 @@ function buildStyles(c: AppColors) {
     backgroundColor: 'rgba(22, 182, 214, 0.08)',
   },
   safe: { minWidth: 0, flex: 1 },
-  main: {
+  scroll: { minWidth: 0, flex: 1 },
+  scrollContent: {
     minWidth: 0,
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: spacing[6],
+    paddingTop: spacing[4],
+    paddingBottom: spacing[4],
     justifyContent: 'space-between' as const,
+    gap: spacing[6],
   },
   hero: {
     minWidth: 0,
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center' as const,
     alignItems: 'center' as const,
-    paddingTop: spacing[8],
+    paddingTop: spacing[4],
     gap: spacing[5],
   },
   logo: {
-    width: 220,
-    height: 80,
-  },
-  logoAndroid: {
-    width: '88%' as const,
-    maxWidth: 260,
-    height: 72,
+    maxWidth: '100%' as const,
   },
   audienceKicker: {
     fontFamily: fontFamily.semiBold,
@@ -184,7 +199,6 @@ function buildStyles(c: AppColors) {
     color: c.textSecondary,
     textAlign: 'center' as const,
     letterSpacing: 0.2,
-    maxWidth: 320,
   },
   tagline: {
     fontFamily: fontFamily.regular,
@@ -193,7 +207,6 @@ function buildStyles(c: AppColors) {
     textAlign: 'center' as const,
     lineHeight: fontSize['2xl'] * 1.3,
     letterSpacing: -0.4,
-    maxWidth: 320,
   },
   taglineAccent: {
     fontFamily: fontFamily.extraBold,
@@ -207,7 +220,6 @@ function buildStyles(c: AppColors) {
     opacity: 0.35,
   },
   footer: {
-    paddingBottom: spacing[2],
     gap: spacing[4],
   },
   actionsCard: {
@@ -228,4 +240,3 @@ function buildStyles(c: AppColors) {
   },
 };
 }
-

@@ -1,10 +1,10 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Sparkles } from 'lucide-react-native';
-import { H_PADDING, spacing } from '@/theme';
+import { H_PADDING, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 /** Bandeau « version démo » — collé au-dessus du compositeur, orange clair. */
@@ -24,14 +24,14 @@ export function PatientAiDemoBanner() {
         },
       ]}
     >
-      <Sparkles size={14} color={c.warning} strokeWidth={2.25} />
-      <Text style={[styles.label, { color: c.warning }]} numberOfLines={1}>
+      <Sparkles size={iconSize.xs} color={c.warning} strokeWidth={2.25} />
+      <AppText style={[styles.label, { color: c.warning }]} numberOfLines={1}>
         Version démo
-      </Text>
-      <Text style={[styles.dot, { color: c.warning }]}>·</Text>
-      <Text style={[styles.message, { color: c.textSecondary }]} numberOfLines={1}>
+      </AppText>
+      <AppText style={[styles.dot, { color: c.warning }]}>·</AppText>
+      <AppText style={[styles.message, { color: c.textSecondary }]} numberOfLines={1}>
         Votre assistant santé Cary arrive bientôt
-      </Text>
+      </AppText>
     </Row>
   );
 }

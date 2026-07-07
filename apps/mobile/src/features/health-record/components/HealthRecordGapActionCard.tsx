@@ -1,12 +1,12 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useRouter } from 'expo-router';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
 import type { HealthRecordGap } from '../api/health-record.service';
 import { recordGapAction } from '../api/health-record.service';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -51,7 +51,7 @@ export function HealthRecordGapActionCard({ gap }: Props) {
 
   return (
     <View style={styles.card}>
-      <Text style={styles.label}>{gap.label_fr}</Text>
+      <AppText style={styles.label}>{gap.label_fr}</AppText>
       <Button title={cta} size="sm" onPress={onPress} />
     </View>
   );

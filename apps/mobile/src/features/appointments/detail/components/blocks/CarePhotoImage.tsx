@@ -3,22 +3,11 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type ImageResizeMode,
-  type ImageStyle,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View, type ImageResizeMode, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
 import { ImageOff, RefreshCw } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { loadCarePhotoLocalUri } from '../../utils/care-photo-image';
-import { radius } from '@/theme';
+import { radius, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -75,11 +64,11 @@ export function CarePhotoImage({
         </View>
       ) : failed || !uri ? (
         <Pressable style={styles.center} onPress={retry} accessibilityRole="button">
-          <ImageOff size={22} color={c.textTertiary} strokeWidth={1.75} />
-          <Text style={styles.failText}>Photo indisponible</Text>
+          <ImageOff size={iconSize.mdLg} color={c.textTertiary} strokeWidth={1.75} />
+          <AppText style={styles.failText}>Photo indisponible</AppText>
           <Row gap={4} align="center" style={styles.retryRow}>
-            <RefreshCw size={12} color={c.primary} strokeWidth={2.5} />
-            <Text style={styles.retryText}>Réessayer</Text>
+            <RefreshCw size={iconSize['2xs']} color={c.primary} strokeWidth={2.5} />
+            <AppText style={styles.retryText}>Réessayer</AppText>
           </Row>
         </Pressable>
       ) : (

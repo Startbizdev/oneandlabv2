@@ -10,7 +10,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import {
   AlertTriangle,
@@ -27,7 +27,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText, useLayoutMetrics } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -82,6 +82,7 @@ function ToastCard({
   onDismiss: () => void;
 }) {
   const c = useAppColors();
+  const layout = useLayoutMetrics();
   const styles = useThemedStyles(buildStyles, 'ToastProvider.ToastCard');
   const meta = toastMetaFor(toast.type, c);
   const { Icon } = meta;
@@ -110,7 +111,7 @@ function ToastCard({
     <Animated.View
       entering={FadeInDown.duration(280).springify().damping(20)}
       exiting={FadeOutUp.duration(180)}
-      style={styles.toastWrap}
+      style={[styles.toastWrap, { maxWidth: layout.contentMaxWidth }]}
     >
       <Pressable
         onPress={onDismiss}
@@ -120,10 +121,10 @@ function ToastCard({
       >
         <Shell {...shellProps} style={styles.card}>
           <Row gap={spacing[2.5]} align="center" style={styles.rowInner}>
-            <Icon size={17} color={meta.iconColor} strokeWidth={2.35} />
-            <Text style={styles.line} numberOfLines={1} ellipsizeMode="tail">
+            <Icon size={iconSize.smMd} color={meta.iconColor} strokeWidth={2.35} />
+            <AppText style={styles.line} numberOfLines={1} ellipsizeMode="tail">
               {toast.line}
-            </Text>
+            </AppText>
           </Row>
           <View
             style={styles.progressTrack}
@@ -206,7 +207,6 @@ function buildStyles(c: AppColors) {
   },
   toastWrap: {
     width: '100%' as const,
-    maxWidth: 360,
   },
   pressable: {
     width: '100%' as const,

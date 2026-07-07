@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { RdvDetailHeaderStatus } from './RdvDetailHeaderStatus';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Titre + badge sur une ligne avec le bouton retour (slot titre du header). */
@@ -18,9 +18,9 @@ export function RdvDetailNavTitle({
 
   return (
     <Row gap={spacing[2]} align="center" flex={1} style={styles.row}>
-      <Text style={styles.title} numberOfLines={1}>
+      <AppText style={styles.title} numberOfLines={1}>
         {title}
-      </Text>
+      </AppText>
       {status ? (
         <View style={styles.badgeWrap}>
           <RdvDetailHeaderStatus status={status} />

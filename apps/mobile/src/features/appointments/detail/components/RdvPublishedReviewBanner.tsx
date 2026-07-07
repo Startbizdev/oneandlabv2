@@ -1,8 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useAppColors } from '@/theme/use-app-colors';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -25,8 +25,8 @@ export function RdvPublishedReviewBanner({ message, compact, onPress }: Props) {
         { backgroundColor: c.successLight, borderColor: c.successMid },
       ]}
     >
-      <Text style={[styles.title, { color: c.success }]}>Merci pour votre avis.</Text>
-      <Text style={[styles.message, { color: c.textSecondary }]}>{message}</Text>
+      <AppText style={[styles.title, { color: c.success }]}>Merci pour votre avis.</AppText>
+      <AppText style={[styles.message, { color: c.textSecondary }]}>{message}</AppText>
     </View>
   );
 

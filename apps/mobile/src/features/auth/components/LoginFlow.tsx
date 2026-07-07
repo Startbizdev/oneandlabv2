@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import type { AuthUser } from '@oneandlab/shared-types';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
@@ -25,7 +25,7 @@ import {
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { offerBiometricEnrollment } from '@/features/auth/utils/offer-biometric-enrollment';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type LoginMode = 'code' | 'password';
@@ -272,9 +272,9 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
             onPress={() => switchMode('code')}
             style={[styles.tab, mode === 'code' && { backgroundColor: c.surface }]}
           >
-            <Text style={[styles.tabText, { color: mode === 'code' ? c.primary : c.textSecondary }]}>
+            <AppText style={[styles.tabText, { color: mode === 'code' ? c.primary : c.textSecondary }]}>
               Code email
-            </Text>
+            </AppText>
           </Pressable>
           <Pressable
             accessibilityRole="tab"
@@ -282,9 +282,9 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
             onPress={() => switchMode('password')}
             style={[styles.tab, mode === 'password' && { backgroundColor: c.surface }]}
           >
-            <Text style={[styles.tabText, { color: mode === 'password' ? c.primary : c.textSecondary }]}>
+            <AppText style={[styles.tabText, { color: mode === 'password' ? c.primary : c.textSecondary }]}>
               Mot de passe
-            </Text>
+            </AppText>
           </Pressable>
         </Row>
       ) : null}
@@ -326,8 +326,8 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
           <Button title="Se connecter" loading={loading} onPress={onOtpSubmit} fullWidth size="lg" />
           <Pressable onPress={goToEmail}>
             <Row gap={spacing[2]} align="center" justify="center" style={styles.backBtn}>
-              <ArrowLeft size={14} color={c.textSecondary} strokeWidth={2} />
-              <Text style={styles.backText}>Changer d&apos;email</Text>
+              <ArrowLeft size={iconSize.xs} color={c.textSecondary} strokeWidth={2} />
+              <AppText style={styles.backText}>Changer d&apos;email</AppText>
             </Row>
           </Pressable>
         </>
@@ -360,27 +360,27 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
             rightIcon={
               <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
                 {showPassword ? (
-                  <EyeOff size={20} color={c.textSecondary} strokeWidth={2} />
+                  <EyeOff size={iconSize.md} color={c.textSecondary} strokeWidth={2} />
                 ) : (
-                  <Eye size={20} color={c.textSecondary} strokeWidth={2} />
+                  <Eye size={iconSize.md} color={c.textSecondary} strokeWidth={2} />
                 )}
               </Pressable>
             }
           />
           {hasPassword === false ? (
             <View style={[styles.infoBox, { backgroundColor: c.primaryLight, borderColor: c.primary }]}>
-              <Text style={[styles.infoText, { color: c.primaryDark }]}>
+              <AppText style={[styles.infoText, { color: c.primaryDark }]}>
                 Aucun mot de passe sur ce compte. Utilisez le code par email ou créez un mot de passe depuis
                 Mon profil après connexion.
-              </Text>
+              </AppText>
               <Pressable onPress={() => switchMode('code')}>
-                <Text style={[styles.infoLink, { color: c.primary }]}>Utiliser le code email</Text>
+                <AppText style={[styles.infoLink, { color: c.primary }]}>Utiliser le code email</AppText>
               </Pressable>
             </View>
           ) : null}
           <Button title="Se connecter" loading={loading} onPress={onPasswordSubmit} fullWidth size="lg" />
           <Pressable onPress={goToForgot} style={styles.forgotBtn}>
-            <Text style={[styles.forgotText, { color: c.primary }]}>Mot de passe oublié ?</Text>
+            <AppText style={[styles.forgotText, { color: c.primary }]}>Mot de passe oublié ?</AppText>
           </Pressable>
         </>
       ) : null}

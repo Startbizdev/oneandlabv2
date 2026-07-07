@@ -1,12 +1,12 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { ActivityIndicator, Platform, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Footprints, Heart, Scale, Sparkles } from 'lucide-react-native';
 import { Row, Stack } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText, useLayoutMetrics, responsiveValue } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
 import { getHealthPlatformUiConfig } from '../utils/health-platform-config';
@@ -26,7 +26,9 @@ const VALUE_ITEMS = [
 
 export function HealthConnectOnboarding({ syncing = false, autoPrompting = false, onConnect }: Props) {
   const c = useAppColors();
+  const layout = useLayoutMetrics();
   const styles = useThemedStyles(buildStyles);
+  const heroSubMaxWidth = responsiveValue(layout, { compact: 280, default: 300, wide: 340 });
   const platform = getHealthPlatformUiConfig();
 
   return (
@@ -38,23 +40,23 @@ export function HealthConnectOnboarding({ syncing = false, autoPrompting = false
         style={styles.hero}
       >
         <View style={[styles.heroIcon, { backgroundColor: platform.iconBg }]}>
-          <Heart size={28} color={platform.iconColor} fill={platform.iconColor} strokeWidth={0} />
+          <Heart size={iconSize.xl} color={platform.iconColor} fill={platform.iconColor} strokeWidth={0} />
         </View>
-        <Text style={styles.heroTitle}>Votre activité, au service de votre santé</Text>
-        <Text style={styles.heroSub}>
+        <AppText style={styles.heroTitle}>Votre activité, au service de votre santé</AppText>
+        <AppText style={[styles.heroSub, { maxWidth: heroSubMaxWidth }]}>
           Connectez {platform.name} pour visualiser vos mesures, suivre vos progrès et enrichir votre carnet Cary.
-        </Text>
+        </AppText>
       </LinearGradient>
 
       <Stack gap={spacing[2]} style={styles.list}>
         {VALUE_ITEMS.map(({ icon: Icon, label, desc }) => (
           <Row key={label} gap={spacing[3]} align="center" style={[styles.row, { backgroundColor: c.surface }]}>
             <View style={[styles.rowIcon, { backgroundColor: c.primaryLight }]}>
-              <Icon size={18} color={c.primary} strokeWidth={2.25} />
+              <Icon size={iconSize.mdSm} color={c.primary} strokeWidth={2.25} />
             </View>
             <View style={styles.rowText}>
-              <Text style={styles.rowLabel}>{label}</Text>
-              <Text style={styles.rowDesc}>{desc}</Text>
+              <AppText style={styles.rowLabel}>{label}</AppText>
+              <AppText style={styles.rowDesc}>{desc}</AppText>
             </View>
           </Row>
         ))}
@@ -63,9 +65,9 @@ export function HealthConnectOnboarding({ syncing = false, autoPrompting = false
       {autoPrompting ? (
         <Row gap={spacing[2]} align="center" style={styles.promptingRow}>
           <ActivityIndicator size="small" color={c.primary} />
-          <Text style={styles.promptingText}>
+          <AppText style={styles.promptingText}>
             Ouverture de {platform.name}…
-          </Text>
+          </AppText>
         </Row>
       ) : (
         <Button
@@ -77,9 +79,9 @@ export function HealthConnectOnboarding({ syncing = false, autoPrompting = false
         />
       )}
 
-      <Text style={styles.privacy}>
+      <AppText style={styles.privacy}>
         Lecture seule — Cary n’écrit pas dans {Platform.OS === 'ios' ? 'Apple Santé' : 'Health Connect'} sans votre accord.
-      </Text>
+      </AppText>
     </View>
   );
 }
@@ -117,7 +119,6 @@ function buildStyles(c: AppColors) {
       color: c.textSecondary,
       textAlign: 'center' as const,
       lineHeight: fontSize.sm * 1.55,
-      maxWidth: 300,
     },
     list: {
       width: '100%' as const,

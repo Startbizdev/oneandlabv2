@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { User, FileCheck, XCircle } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
@@ -14,7 +14,7 @@ import {
 } from '@/utils/preleveur-live-banner';
 import type { MedicalDocumentRow } from '../../api/appointment-detail.service';
 import { PatientListCard, PatientListRow } from './PatientListPrimitives';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function PatientPreleveurAlerts({
@@ -52,15 +52,15 @@ export function PatientPreleveurAlerts({
           style={[styles.alertCard, phase === 'arrive' && styles.alertArrive]}
           leading={
             <User
-              size={20}
+              size={iconSize.md}
               color={phase === 'arrive' ? c.success : c.primary}
               strokeWidth={2}
             />
           }
         >
           <View style={styles.alertTexts}>
-            <Text style={styles.alertTitle}>{preleveurBannerTitle(appt, phase)}</Text>
-            <Text style={styles.alertSub}>{preleveurBannerSubtitle(appt, phase)}</Text>
+            <AppText style={styles.alertTitle}>{preleveurBannerTitle(appt, phase)}</AppText>
+            <AppText style={styles.alertSub}>{preleveurBannerSubtitle(appt, phase)}</AppText>
           </View>
         </Cluster>
       ))}
@@ -98,8 +98,8 @@ export function PatientFooterActions({
       node: (
         <Pressable onPress={onScrollToDocuments}>
           <Row gap={spacing[2]} align="center" style={styles.actionBtn}>
-            <FileCheck size={16} color={c.primary} strokeWidth={2} />
-            <Text style={styles.actionBtnText}>Voir les résultats</Text>
+            <FileCheck size={iconSize.sm} color={c.primary} strokeWidth={2} />
+            <AppText style={styles.actionBtnText}>Voir les résultats</AppText>
           </Row>
         </Pressable>
       ),
@@ -113,10 +113,10 @@ export function PatientFooterActions({
       node: (
         <Pressable onPress={onCancel}>
           <Row gap={spacing[2]} align="center" style={[styles.actionBtn, styles.actionBtnDanger]}>
-            <XCircle size={16} color={c.error} strokeWidth={2} />
-            <Text style={[styles.actionBtnText, styles.actionBtnTextDanger]}>
+            <XCircle size={iconSize.sm} color={c.error} strokeWidth={2} />
+            <AppText style={[styles.actionBtnText, styles.actionBtnTextDanger]}>
               {cancelCount > 1 ? 'Annuler les rendez-vous du lot' : 'Annuler le rendez-vous'}
-            </Text>
+            </AppText>
           </Row>
         </Pressable>
       ),

@@ -1,10 +1,11 @@
+import { layoutRowCenter } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 export type DetailTabBarItem<T extends string = string> = {
@@ -72,7 +73,7 @@ export function DetailTabBar<T extends string>({
                     <Icon size={iconSize} color={iconColor} strokeWidth={2.2} />
                   </View>
                 ) : null}
-                <Text
+                <AppText
                   style={[
                     styles.label,
                     { lineHeight: labelLineHeight },
@@ -83,12 +84,12 @@ export function DetailTabBar<T extends string>({
                   minimumFontScale={compact ? 0.85 : 1}
                 >
                   {tab.label}
-                </Text>
+                </AppText>
                 {tab.badge != null && tab.badge > 0 ? (
                   <View style={[styles.badge, active && styles.badgeActive]}>
-                    <Text style={[styles.badgeText, active && styles.badgeTextActive]}>
+                    <AppText style={[styles.badgeText, active && styles.badgeTextActive]}>
                       {tab.badge > 99 ? '99+' : tab.badge}
-                    </Text>
+                    </AppText>
                   </View>
                 ) : null}
               </Row>
@@ -108,8 +109,7 @@ function buildDetailTabBarStyles(c: AppColors) {
     },
     shell: {
       width: '100%' as const,
-      flexDirection: 'row' as const,
-      gap: spacing[1],
+      ...layoutRowCenter(spacing[1]),
       padding: spacing[0.5],
       borderRadius: radius.lg,
       backgroundColor: c.surfaceSubtle,
@@ -149,6 +149,7 @@ function buildDetailTabBarStyles(c: AppColors) {
       transform: [{ translateY: Platform.OS === 'android' ? -1 : -1.5 }],
     },
     label: {
+      minWidth: 0,
       flexShrink: 1,
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.xs,
@@ -175,7 +176,7 @@ function buildDetailTabBarStyles(c: AppColors) {
     },
     badgeText: {
       fontFamily: fontFamily.bold,
-      fontSize: 10,
+      fontSize: fontSize['2xs'],
       color: c.textSecondary,
     },
     badgeTextActive: {

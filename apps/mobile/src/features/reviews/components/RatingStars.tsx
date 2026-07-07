@@ -2,11 +2,11 @@ import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Star } from 'lucide-react-native';
 import { fontFamily, fontSize } from '@/theme/typography';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 
 const SIZE_MAP = {
   sm: 16,
@@ -131,9 +131,9 @@ export function RatingStars({
         );
       })}
       {showValue ? (
-        <Text style={[styles.value, { color: c.warning, fontSize: starSize * 0.72 }]}>
+        <AppText style={[styles.value, { color: c.warning, fontSize: starSize * 0.72 }]}>
           {clamped}/{max}
-        </Text>
+        </AppText>
       ) : null}
     </Row>
   );

@@ -12,11 +12,11 @@ import {
 } from '../utils/prescription-display';
 import { prescriptionRowAsAppointment } from '../utils/prescription-row-appointment';
 import { Stack } from '@/components/layout/primitives';
-import { iconSize, radius, spacing } from '@/theme';
+import { iconSize, radius, spacing, AppText } from '@/theme';
 import { layoutRow } from '@/theme/layout-styles';
 import { Download, Eye } from 'lucide-react-native';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface RowProps {
@@ -64,24 +64,24 @@ export function PrescriptionHistoryCard({
               accessibilityRole="button"
               accessibilityLabel={`Ouvrir le rendez-vous lié, ${title}`}
             >
-              <Text style={styles.title} numberOfLines={1}>
+              <AppText style={styles.title} numberOfLines={1}>
                 {title}
-              </Text>
+              </AppText>
             </Pressable>
           ) : (
-            <Text style={styles.title} numberOfLines={1}>
+            <AppText style={styles.title} numberOfLines={1}>
               {title}
-            </Text>
+            </AppText>
           )}
-          <Text style={styles.hint} numberOfLines={2}>
+          <AppText style={styles.hint} numberOfLines={2}>
             {hint}
-          </Text>
+          </AppText>
           {linkedApt ? (
             <Stack gap={spacing[0.5]} style={styles.careBlock}>
               {lotLabel ? (
-                <Text style={styles.lotLabel} numberOfLines={1}>
+                <AppText style={styles.lotLabel} numberOfLines={1}>
                   {lotLabel}
-                </Text>
+                </AppText>
               ) : null}
               <RdvCareTagsRow apt={linkedApt} tone="neutral" density="compact" />
             </Stack>

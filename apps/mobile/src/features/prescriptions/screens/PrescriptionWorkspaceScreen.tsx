@@ -2,13 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
 import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -50,7 +44,7 @@ import {
   spreadTabSceneScrollProps,
   useTabSceneInsets,
 } from '@/components/navigation/liquid-glass-header-inset';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type WorkspaceTab = 'create' | 'history';
@@ -260,11 +254,11 @@ export function PrescriptionWorkspaceScreen({
 
           {effectivePatientId && forPassageDraft ? (
             <View style={styles.composerWrap}>
-              <Text style={styles.passageDraftTitle}>Ordonnance du passage</Text>
-              <Text style={styles.passageDraftHint}>
+              <AppText style={styles.passageDraftTitle}>Ordonnance du passage</AppText>
+              <AppText style={styles.passageDraftHint}>
                 Rédigez et générez l’ordonnance ici. Elle sera automatiquement ajoutée aux
                 documents du passage dès que vous enregistrez la prise en charge.
-              </Text>
+              </AppText>
               <PrescriptionComposer
                 patientId={effectivePatientId}
                 appointmentId={null}
@@ -283,12 +277,12 @@ export function PrescriptionWorkspaceScreen({
 
           {effectivePatientId && lockedToAppointment ? (
             <View style={[styles.composerWrap, styles.composerWrapFlush]}>
-              <Text style={styles.passageDraftTitle}>Ordonnance du passage</Text>
-              <Text style={styles.passageDraftHint}>
+              <AppText style={styles.passageDraftTitle}>Ordonnance du passage</AppText>
+              <AppText style={styles.passageDraftHint}>
                 {docsQ.data?.some((d) => d.document_type === 'ordonnance')
                   ? 'Une ordonnance est déjà rattachée à ce rendez-vous. Vous pouvez en générer une nouvelle si besoin.'
                   : 'Générez l’ordonnance ici — elle sera automatiquement rattachée à ce rendez-vous.'}
-              </Text>
+              </AppText>
               <PrescriptionComposer
                 patientId={effectivePatientId}
                 appointmentId={fixedAppointmentId}

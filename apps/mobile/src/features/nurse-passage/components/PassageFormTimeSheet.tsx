@@ -1,9 +1,10 @@
+import { layoutRowWrap } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { BookingTimeRangeSlider } from '@/features/appointments/form/components/BookingTimeRangeSlider';
@@ -16,7 +17,7 @@ import { PASSAGE_TIME_SLOT_LABELS } from '../utils/passage-display';
 import { PassageTimePicker } from './PassageTimePicker';
 import type { PassageTimeSlot } from '@oneandlab/shared-types';
 import { resolvePassageTimeRange, passageCustomTimeFromHour } from '@oneandlab/shared-utils';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Sélection UI — « range » = créneau horaire avec slider. */
@@ -142,7 +143,7 @@ export function PassageFormTimeSheet({
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
               >
-                <Text
+                <AppText
                   style={{
                     color: selected ? c.primaryDark : c.textSecondary,
                     fontFamily: fontFamily.semiBold,
@@ -150,7 +151,7 @@ export function PassageFormTimeSheet({
                   }}
                 >
                   {opt.label}
-                </Text>
+                </AppText>
               </Pressable>
             );
           })}
@@ -181,9 +182,7 @@ function buildStyles(_c: AppColors) {
   return {
     body: { gap: spacing[3], paddingBottom: spacing[2] },
     presetWrap: {
-      flexDirection: 'row' as const,
-      flexWrap: 'wrap' as const,
-      gap: spacing[1.5],
+      ...layoutRowWrap(spacing[1.5]),
     },
     presetChip: {
       paddingHorizontal: spacing[2.5],

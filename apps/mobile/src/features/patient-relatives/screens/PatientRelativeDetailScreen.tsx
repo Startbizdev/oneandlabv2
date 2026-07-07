@@ -1,13 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
-import {
-  Alert,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react-native';
@@ -34,7 +28,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function PatientRelativeDetailScreen() {
@@ -137,9 +131,9 @@ export function PatientRelativeDetailScreen() {
     <StackChromeScreen
       title={<HeaderTitleText title={name || 'Proche'} />}
       headerRight={
-        <Text onPress={() => setEditOpen(true)} style={styles.headerEdit}>
+        <AppText onPress={() => setEditOpen(true)} style={styles.headerEdit}>
           Modifier
-        </Text>
+        </AppText>
       }
     >
       <ScrollView
@@ -157,15 +151,15 @@ export function PatientRelativeDetailScreen() {
         }
       >
         <View style={styles.hero}>
-          <Text style={styles.heroName}>{name}</Text>
+          <AppText style={styles.heroName}>{name}</AppText>
           {r.relationship_type ? (
-            <Text style={styles.heroSub}>{relationshipLabel(r.relationship_type)}</Text>
+            <AppText style={styles.heroSub}>{relationshipLabel(r.relationship_type)}</AppText>
           ) : null}
           {r.birth_date ? (
-            <Text style={styles.heroSub}>Né(e) le {formatBirthDateFr(r.birth_date)}</Text>
+            <AppText style={styles.heroSub}>Né(e) le {formatBirthDateFr(r.birth_date)}</AppText>
           ) : null}
-          {r.phone ? <Text style={styles.heroSub}>{r.phone}</Text> : null}
-          {r.email ? <Text style={styles.heroSub}>{r.email}</Text> : null}
+          {r.phone ? <AppText style={styles.heroSub}>{r.phone}</AppText> : null}
+          {r.email ? <AppText style={styles.heroSub}>{r.email}</AppText> : null}
         </View>
 
         <Button title="Réserver pour ce proche" onPress={book} fullWidth size="lg" />

@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import {
   PATIENT_VIP_MAX_HOUR,
   PATIENT_VIP_MIN_HOUR,
@@ -9,7 +9,7 @@ import {
 } from '@oneandlab/shared-constants';
 import { Row } from '@/components/layout/primitives';
 import { SelectField, type SelectOption } from '@/components/ui/SelectField';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 const VIP_HOUR_OPTIONS: SelectOption[] = Array.from(
@@ -49,7 +49,7 @@ export function VipScheduledTimePicker({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.sectionLabel}>Horaire</Text>
+      <AppText style={styles.sectionLabel}>Horaire</AppText>
       <Row align="center" gap={spacing[2]} style={styles.pickersRow}>
         <View style={styles.pickerCol}>
           <SelectField
@@ -65,7 +65,7 @@ export function VipScheduledTimePicker({
             sheetTitle="Heure"
           />
         </View>
-        <Text style={styles.colon}>:</Text>
+        <AppText style={styles.colon}>:</AppText>
         <View style={styles.pickerColMinute}>
           <SelectField
             hideLabel
@@ -81,10 +81,10 @@ export function VipScheduledTimePicker({
           />
         </View>
       </Row>
-      <Text style={styles.summary}>Créneau : {summary}</Text>
-      <Text style={styles.hint}>
+      <AppText style={styles.summary}>Créneau : {summary}</AppText>
+      <AppText style={styles.hint}>
         De {PATIENT_VIP_MIN_HOUR}h à {PATIENT_VIP_MAX_HOUR}h, par pas de 15 minutes.
-      </Text>
+      </AppText>
     </View>
   );
 }

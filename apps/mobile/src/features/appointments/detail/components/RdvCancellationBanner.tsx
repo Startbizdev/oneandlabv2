@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { getCancellationMotifLine, isAppointmentCanceled } from '@/utils/appointment-detail-display';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -28,8 +28,8 @@ export function RdvCancellationBanner({
         { backgroundColor: c.errorLight, borderColor: c.errorMid },
       ]}
     >
-      <Text style={[styles.title, { color: c.error }]}>Ce rendez-vous a été annulé.</Text>
-      {motif ? <Text style={[styles.motif, { color: c.textSecondary }]}>{motif}</Text> : null}
+      <AppText style={[styles.title, { color: c.error }]}>Ce rendez-vous a été annulé.</AppText>
+      {motif ? <AppText style={[styles.motif, { color: c.textSecondary }]}>{motif}</AppText> : null}
     </View>
   );
 }

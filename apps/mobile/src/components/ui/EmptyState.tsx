@@ -2,10 +2,18 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React from 'react';
-import { Image, type ImageSourcePropType, Text, View, StyleSheet } from 'react-native';
+import { Image, type ImageSourcePropType, View, StyleSheet } from 'react-native';
 import Animated from 'react-native-reanimated';
 import type { LucideIcon } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import {
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useLayoutMetrics,
+  centeredCopyMaxWidth,
+  responsiveValue,
+} from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { emptyStateEntering } from '@/lib/platform/list-entering-animation';
 import { Button } from './Button';
@@ -38,7 +46,10 @@ function EmptyStateComponent({
   onAction,
 }: EmptyStateProps) {
   const c = useAppColors();
+  const layout = useLayoutMetrics();
   const styles = useThemedStyles(buildStyles, 'components_ui_EmptyState_tsx_EmptyStateComponent_styles');
+  const descriptionMaxWidth = centeredCopyMaxWidth(layout);
+  const actionMaxWidth = responsiveValue(layout, { compact: 220, default: 240, wide: 280 });
 
   const entering = emptyStateEntering();
   const Shell = entering ? Animated.View : View;
@@ -59,24 +70,26 @@ function EmptyStateComponent({
           accessibilityRole="image"
         />
       ) : emoji ? (
-        <Text
+        <AppText
           style={[styles.emoji, { fontSize: emojiSize, lineHeight: emojiSize * 1.08 }]}
           accessibilityRole="image"
         >
           {emoji}
-        </Text>
+        </AppText>
       ) : Icon ? (
         <View style={styles.iconWrap}>
-          <Icon size={28} color={c.textTertiary} strokeWidth={1.5} />
+          <Icon size={iconSize.xl} color={c.textTertiary} strokeWidth={1.5} />
         </View>
       ) : null}
 
-      <Text style={styles.title}>{title}</Text>
+      <AppText style={styles.title}>{title}</AppText>
 
-      {description ? <Text style={styles.description}>{description}</Text> : null}
+      {description ? (
+        <AppText style={[styles.description, { maxWidth: descriptionMaxWidth }]}>{description}</AppText>
+      ) : null}
 
       {actionLabel && onAction ? (
-        <View style={styles.action}>
+        <View style={[styles.action, { maxWidth: actionMaxWidth }]}>
           <Button title={actionLabel} onPress={onAction} size="lg" fullWidth />
         </View>
       ) : null}
@@ -123,12 +136,10 @@ function buildStyles(c: AppColors) {
     color: c.textSecondary,
     textAlign: 'center' as const,
     lineHeight: fontSize.sm * 1.55,
-    maxWidth: 260,
   },
   action: {
     marginTop: spacing[2],
     width: '100%' as const,
-    maxWidth: 240,
   },
 };
 }

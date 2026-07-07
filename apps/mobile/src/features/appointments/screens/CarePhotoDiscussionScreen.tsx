@@ -3,16 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -61,7 +52,7 @@ import { rdvMaquetteAvatarCounterparty } from '@/utils/rdv-maquette-card-display
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -258,7 +249,7 @@ export function CarePhotoDiscussionScreen({
   if (!appointmentId) {
     return (
       <View style={styles.errorWrap}>
-        <Text style={styles.errorText}>Rendez-vous introuvable.</Text>
+        <AppText style={styles.errorText}>Rendez-vous introuvable.</AppText>
       </View>
     );
   }
@@ -273,7 +264,7 @@ export function CarePhotoDiscussionScreen({
             accessibilityRole="button"
             accessibilityLabel="Retour"
           >
-            <ChevronLeft size={24} color={c.textPrimary} strokeWidth={2.25} />
+            <ChevronLeft size={iconSize.lg} color={c.textPrimary} strokeWidth={2.25} />
           </Pressable>
           <View style={styles.headerSpacer} />
         </Row>
@@ -294,7 +285,7 @@ export function CarePhotoDiscussionScreen({
           accessibilityRole="button"
           accessibilityLabel="Retour"
         >
-          <ChevronLeft size={24} color={c.textPrimary} strokeWidth={2.25} />
+          <ChevronLeft size={iconSize.lg} color={c.textPrimary} strokeWidth={2.25} />
         </Pressable>
         <Cluster
           gap={spacing[3]}
@@ -314,15 +305,15 @@ export function CarePhotoDiscussionScreen({
         >
           {patientHeader?.name ? (
             <View style={styles.headerCopy}>
-              <Text style={styles.headerPatientName} numberOfLines={1}>
+              <AppText style={styles.headerPatientName} numberOfLines={1}>
                 {patientHeader.name}
-              </Text>
-              <Text style={styles.headerSub}>{headerSubtitle}</Text>
+              </AppText>
+              <AppText style={styles.headerSub}>{headerSubtitle}</AppText>
             </View>
           ) : (
             <View style={styles.headerCopy}>
-              <Text style={styles.headerTitle}>Échanges</Text>
-              <Text style={styles.headerSub}>{headerSubtitle}</Text>
+              <AppText style={styles.headerTitle}>Échanges</AppText>
+              <AppText style={styles.headerSub}>{headerSubtitle}</AppText>
             </View>
           )}
         </Cluster>
@@ -346,7 +337,7 @@ export function CarePhotoDiscussionScreen({
                     {uploadMut.isPending ? (
                       <ActivityIndicator size="small" color={c.primary} />
                     ) : (
-                      <Plus size={24} color={c.primary} strokeWidth={2.25} />
+                      <Plus size={iconSize.lg} color={c.primary} strokeWidth={2.25} />
                     )}
                   </Pressable>
                 ) : null}
@@ -377,12 +368,12 @@ export function CarePhotoDiscussionScreen({
                       {sendMut.isPending ? (
                         <ActivityIndicator size="small" color={c.textInverse} />
                       ) : (
-                        <Send size={20} color={c.textInverse} strokeWidth={2.25} />
+                        <Send size={iconSize.md} color={c.textInverse} strokeWidth={2.25} />
                       )}
                     </Pressable>
                   </>
                 ) : (
-                  <Text style={styles.readOnlyHint}>Lecture seule</Text>
+                  <AppText style={styles.readOnlyHint}>Lecture seule</AppText>
                 )}
               </Row>
             </KeyboardStickyView>
@@ -401,19 +392,19 @@ export function CarePhotoDiscussionScreen({
             <SkeletonList count={2} itemHeight={140} gap={spacing[4]} />
           ) : threadQ.isError ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>Discussion indisponible</Text>
-              <Text style={styles.emptySub}>
+              <AppText style={styles.emptyTitle}>Discussion indisponible</AppText>
+              <AppText style={styles.emptySub}>
                 {threadQ.error instanceof Error ? threadQ.error.message : 'Erreur de chargement'}
-              </Text>
+              </AppText>
             </View>
           ) : photos.length === 0 && !threadQ.data?.thread?.comments?.length ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>Démarrez la conversation</Text>
-              <Text style={styles.emptySub}>
+              <AppText style={styles.emptyTitle}>Démarrez la conversation</AppText>
+              <AppText style={styles.emptySub}>
                 {canUpload
                   ? 'Envoyez un message ou utilisez le bouton + pour partager une photo ou un PDF.'
                   : 'Les messages et fichiers partagés apparaîtront ici.'}
-              </Text>
+              </AppText>
             </View>
           ) : (
             <>
@@ -427,14 +418,14 @@ export function CarePhotoDiscussionScreen({
                         style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
                       >
                         <Row justify="between" gap={spacing[2]} style={styles.bubbleMeta}>
-                          <Text style={[styles.author, mine && styles.authorMine]}>
+                          <AppText style={[styles.author, mine && styles.authorMine]}>
                             {c.author_name}
-                          </Text>
-                          <Text style={[styles.time, mine && styles.timeMine]}>
+                          </AppText>
+                          <AppText style={[styles.time, mine && styles.timeMine]}>
                             {formatShortDate(c.created_at)}
-                          </Text>
+                          </AppText>
                         </Row>
-                        <Text style={[styles.body, mine && styles.bodyMine]}>{c.body}</Text>
+                        <AppText style={[styles.body, mine && styles.bodyMine]}>{c.body}</AppText>
                       </View>
                     );
                   })}
@@ -494,11 +485,11 @@ function PhotoThreadBlock({
 
   return (
     <View style={styles.photoBlock}>
-      <Text style={styles.photoBlockLabel}>
+      <AppText style={styles.photoBlockLabel}>
         {isCarePhotoPdf(photo) ? `Document ${index + 1}` : `Photo ${index + 1}`}
-      </Text>
+      </AppText>
       {photo.created_at ? (
-        <Text style={styles.photoBlockDate}>{formatPhotoDate(photo.created_at)}</Text>
+        <AppText style={styles.photoBlockDate}>{formatPhotoDate(photo.created_at)}</AppText>
       ) : null}
       <CarePhotoAttachment
         photo={photo}
@@ -508,14 +499,14 @@ function PhotoThreadBlock({
       >
         {!isCarePhotoPdf(photo) ? (
           <Row align="center" gap={5} style={styles.zoomPill}>
-            <Maximize2 size={14} color={appColors.textInverse} strokeWidth={2.5} />
-            <Text style={styles.zoomPillText}>Agrandir</Text>
+            <Maximize2 size={iconSize.xs} color={appColors.textInverse} strokeWidth={2.5} />
+            <AppText style={styles.zoomPillText}>Agrandir</AppText>
           </Row>
         ) : null}
       </CarePhotoAttachment>
 
       {comments.length === 0 ? (
-        <Text style={styles.noComments}>Aucun message sur cette photo.</Text>
+        <AppText style={styles.noComments}>Aucun message sur cette photo.</AppText>
       ) : (
         <View style={styles.thread}>
           {comments.map((c) => {
@@ -526,12 +517,12 @@ function PhotoThreadBlock({
                 style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
               >
                 <Row justify="between" gap={spacing[2]} style={styles.bubbleMeta}>
-                  <Text style={[styles.author, mine && styles.authorMine]}>{c.author_name}</Text>
-                  <Text style={[styles.time, mine && styles.timeMine]}>
+                  <AppText style={[styles.author, mine && styles.authorMine]}>{c.author_name}</AppText>
+                  <AppText style={[styles.time, mine && styles.timeMine]}>
                     {formatShortDate(c.created_at)}
-                  </Text>
+                  </AppText>
                 </Row>
-                <Text style={[styles.body, mine && styles.bodyMine]}>{c.body}</Text>
+                <AppText style={[styles.body, mine && styles.bodyMine]}>{c.body}</AppText>
               </View>
             );
           })}

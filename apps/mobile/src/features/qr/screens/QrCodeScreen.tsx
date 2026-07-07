@@ -1,7 +1,8 @@
+import { layoutRow } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Link2, QrCode, Share2 } from 'lucide-react-native';
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
@@ -13,12 +14,13 @@ import { queryKeys } from '@/lib/query-keys';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { useAuthStore } from '@/store/auth-store';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, useLayoutMetrics, AppText } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function QrCodeScreen() {
   const c = useAppColors();
+  const layout = useLayoutMetrics();
   const styles = useThemedStyles(buildStyles, 'features_qr_screens_QrCodeScreen_styles');
   const userId = useAuthStore((s) => s.user?.id ?? '');
   const qc = useQueryClient();
@@ -110,13 +112,13 @@ export function QrCodeScreen() {
       >
         <View style={[styles.posterCard, elevation.sm]}>
           {loadingPoster || q.isLoading ? (
-            <View style={styles.posterPlaceholder}>
-              <Text style={styles.muted}>Génération de l'affiche…</Text>
+            <View style={[styles.posterPlaceholder, { maxWidth: layout.contentMaxWidth }]}>
+              <AppText style={styles.muted}>Génération de l'affiche…</AppText>
             </View>
           ) : posterUri ? (
             <Image
               source={{ uri: posterUri }}
-              style={styles.poster}
+              style={[styles.poster, { maxWidth: layout.contentMaxWidth }]}
               resizeMode="contain"
               accessibilityLabel="Affiche QR Cary"
             />
@@ -126,19 +128,19 @@ export function QrCodeScreen() {
         {stats ? (
           <View style={styles.statsRow}>
             <View style={[styles.statCard, elevation.xs]}>
-              <Text style={styles.statValue}>{stats.scans}</Text>
-              <Text style={styles.statLabel}>Flashes</Text>
-              <Text style={styles.statSub}>30 jours</Text>
+              <AppText style={styles.statValue}>{stats.scans}</AppText>
+              <AppText style={styles.statLabel}>Flashes</AppText>
+              <AppText style={styles.statSub}>30 jours</AppText>
             </View>
             <View style={[styles.statCard, elevation.xs]}>
-              <Text style={styles.statValue}>{stats.visits}</Text>
-              <Text style={styles.statLabel}>Visites</Text>
-              <Text style={styles.statSub}>30 jours</Text>
+              <AppText style={styles.statValue}>{stats.visits}</AppText>
+              <AppText style={styles.statLabel}>Visites</AppText>
+              <AppText style={styles.statSub}>30 jours</AppText>
             </View>
             <View style={[styles.statCard, elevation.xs]}>
-              <Text style={styles.statValue}>{stats.conversions}</Text>
-              <Text style={styles.statLabel}>RDV</Text>
-              <Text style={styles.statSub}>30 jours</Text>
+              <AppText style={styles.statValue}>{stats.conversions}</AppText>
+              <AppText style={styles.statLabel}>RDV</AppText>
+              <AppText style={styles.statSub}>30 jours</AppText>
             </View>
           </View>
         ) : null}
@@ -156,7 +158,7 @@ export function QrCodeScreen() {
             numberOfLines={4}
             maxLength={120}
           />
-          <Text style={styles.counter}>{tagline.length}/120</Text>
+          <AppText style={styles.counter}>{tagline.length}/120</AppText>
           <Button title="Enregistrer" onPress={() => void saveTagline()} loading={saving} fullWidth />
         </ProfileSection>
 
@@ -166,26 +168,26 @@ export function QrCodeScreen() {
               title="Partager l'affiche"
               variant="primary"
               fullWidth
-              leftIcon={<Share2 size={18} color={c.textInverse} strokeWidth={2} />}
+              leftIcon={<Share2 size={iconSize.mdSm} color={c.textInverse} strokeWidth={2} />}
               onPress={() => void sharePoster()}
             />
             <Button
               title="QR seul"
               variant="outline"
               fullWidth
-              leftIcon={<Download size={18} color={c.primary} strokeWidth={2} />}
+              leftIcon={<Download size={iconSize.mdSm} color={c.primary} strokeWidth={2} />}
               onPress={() => void downloadRaw()}
             />
             <Button
               title="Copier le lien"
               variant="ghost"
               fullWidth
-              leftIcon={<Link2 size={18} color={c.primary} strokeWidth={2} />}
+              leftIcon={<Link2 size={iconSize.mdSm} color={c.primary} strokeWidth={2} />}
               onPress={() => void copyLink()}
             />
           </View>
           {q.data?.qr.short_url ? (
-            <Text style={styles.shortUrl}>{q.data.qr.short_url}</Text>
+            <AppText style={styles.shortUrl}>{q.data.qr.short_url}</AppText>
           ) : null}
         </ProfileSection>
       </ScrollView>
@@ -213,23 +215,21 @@ function buildStyles(c: AppColors) {
     },
     poster: {
       width: '100%' as const,
-      maxWidth: 420,
       aspectRatio: 1240 / 1754,
       backgroundColor: c.bookingCanvas,
     },
     posterPlaceholder: {
       width: '100%' as const,
-      maxWidth: 420,
       aspectRatio: 1240 / 1754,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       backgroundColor: c.bookingCanvas,
     },
     statsRow: {
-      flexDirection: 'row' as const,
-      gap: spacing[2],
+      ...layoutRow(spacing[2]),
     },
     statCard: {
+      minWidth: 0,
       flex: 1,
       alignItems: 'center' as const,
       paddingVertical: spacing[4],

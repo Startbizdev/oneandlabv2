@@ -1,6 +1,7 @@
+import { layoutRowEndActions } from '@/theme/layout-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Keyboard, Platform, Pressable, StyleSheet, Text, View, InputAccessoryView } from 'react-native';
-import { spacing } from '@/theme';
+import { Keyboard, Platform, Pressable, StyleSheet, View, InputAccessoryView } from 'react-native';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 /** Barre clavier iOS (pavé numérique) — « Valider » en français, pas le « Done » anglais de RN. */
@@ -23,7 +24,7 @@ export function SheetKeyboardAccessory() {
           accessibilityLabel="Valider"
           style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
         >
-          <Text style={[styles.label, { color: c.primary }]}>Valider</Text>
+          <AppText style={[styles.label, { color: c.primary }]}>Valider</AppText>
         </Pressable>
       </View>
     </InputAccessoryView>
@@ -32,9 +33,7 @@ export function SheetKeyboardAccessory() {
 
 const styles = StyleSheet.create({
   bar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
+    ...layoutRowEndActions(),
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],

@@ -41,7 +41,7 @@ type Props = {
   accessibilityHidden?: boolean;
 };
 
-const compactText = { allowFontScaling: false as const };
+const compactText = { maxFontSizeMultiplier: 1.2 as const };
 
 const textBoxReset = StyleSheet.create({
   base: {

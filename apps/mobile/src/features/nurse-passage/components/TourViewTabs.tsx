@@ -3,9 +3,10 @@ import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { PassageTourViewTab } from '@oneandlab/shared-types';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { H_PADDING, radius, spacing } from '@/theme';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { H_PADDING, radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+import { layoutRow } from '@/theme/layout-styles';
 
 const TABS: { id: PassageTourViewTab; label: string }[] = [
   { id: 'manual', label: 'Passage' },
@@ -37,7 +38,7 @@ export function TourViewTabs({ active, onChange }: Props) {
             accessibilityRole="tab"
             accessibilityState={{ selected }}
           >
-            <Text
+            <AppText
               style={[
                 styles.label,
                 { color: selected ? c.primaryDark : c.textSecondary },
@@ -45,7 +46,7 @@ export function TourViewTabs({ active, onChange }: Props) {
               numberOfLines={1}
             >
               {t.label}
-            </Text>
+            </AppText>
           </Pressable>
         );
       })}
@@ -56,11 +57,11 @@ export function TourViewTabs({ active, onChange }: Props) {
 function buildStyles(_c: AppColors) {
   return {
     row: {
-      flexDirection: 'row' as const,
-      gap: spacing[2],
+      ...layoutRow(spacing[2]),
       marginBottom: spacing[2],
     },
     tab: {
+      minWidth: 0,
       flex: 1,
       paddingVertical: spacing[2.5],
       paddingHorizontal: spacing[2],

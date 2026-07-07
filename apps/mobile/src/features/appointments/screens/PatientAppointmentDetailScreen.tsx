@@ -179,6 +179,7 @@ export function PatientAppointmentDetailScreen() {
 function buildStyles(_c: AppColors) {
   return {
   scroll: {
+    minWidth: 0,
     flexGrow: 1,
     alignSelf: 'stretch' as const,
     paddingBottom: spacing[10],

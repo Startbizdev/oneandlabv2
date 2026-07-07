@@ -1,6 +1,7 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
-import { View, Text } from 'react-native';
+import { AppText } from '@/theme';
+import { View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   medicalDocumentPickErrorMessage,
@@ -190,10 +191,10 @@ export function ProfileDocumentsPremiumPanel({ embedded, patientUserId }: Props)
 
         {showEmptyHint ? (
           <View style={headStyles.emptyRow}>
-            <Text style={[headStyles.emptyText, { color: c.textSecondary }]}>
+            <AppText style={[headStyles.emptyText, { color: c.textSecondary }]}>
               Aucun document enregistré — ajoutez la Carte Vitale, la mutuelle ou une autre prescription
               ci-dessous.
-            </Text>
+            </AppText>
           </View>
         ) : null}
 

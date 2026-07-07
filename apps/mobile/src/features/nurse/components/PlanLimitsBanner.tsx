@@ -4,7 +4,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 
 import { Cluster, Row } from '@/components/layout/primitives';
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +17,7 @@ import {
   type NursePlanLimitsApi,
 } from '@/features/nurse/utils/nurse-plan-limits';
 import { scrollSectionEntering } from '@/lib/platform/list-entering-animation';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function PlanLimitsBanner() {
@@ -47,22 +47,22 @@ export function PlanLimitsBanner() {
         gap={spacing[3]}
         leading={
           <View style={styles.iconWrap}>
-            <Zap size={16} color={full ? c.warning : c.primary} strokeWidth={2} />
+            <Zap size={iconSize.sm} color={full ? c.warning : c.primary} strokeWidth={2} />
           </View>
         }
       >
         <Row justify="between" align="center" flex={1}>
-          <Text style={styles.title}>Offre Découverte</Text>
-          <Text style={[styles.pill, full ? styles.pillFull : styles.pillActive]}>
+          <AppText style={styles.title}>Offre Découverte</AppText>
+          <AppText style={[styles.pill, full ? styles.pillFull : styles.pillActive]}>
             {full ? 'Quota atteint' : 'Ce mois-ci'}
-          </Text>
+          </AppText>
         </Row>
       </Cluster>
 
-      <Text style={styles.countText}>
-        <Text style={[styles.countBig, full && styles.countBigFull]}>{used}</Text>
+      <AppText style={styles.countText}>
+        <AppText style={[styles.countBig, full && styles.countBigFull]}>{used}</AppText>
         {' / '}{max} rendez-vous
-      </Text>
+      </AppText>
 
       <View style={styles.trackBg}>
         <View

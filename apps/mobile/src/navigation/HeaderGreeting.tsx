@@ -2,10 +2,11 @@ import type { AppColors } from '@/theme/colors';
 
 import { useThemedStyles } from '@/theme/use-themed-styles';
 
-import { Platform, Text, View } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { useAuthStore } from '@/store/auth-store';
 
+import { AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 
@@ -36,11 +37,11 @@ export function HeaderGreeting() {
 
     <View style={styles.wrap}>
 
-      <Text style={styles.text} numberOfLines={1}>
+      <AppText style={styles.text} numberOfLines={1}>
 
         Bonjour {formatFirstName(firstName)} !
 
-      </Text>
+      </AppText>
 
     </View>
 
@@ -65,6 +66,8 @@ function buildStyles(c: AppColors) {
     },
 
     text: {
+
+      minWidth: 0,
 
       fontFamily: fontFamily.bold,
 

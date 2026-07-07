@@ -2,9 +2,9 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Row } from '@/components/layout/primitives';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Star } from 'lucide-react-native';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import {
   formatReviewsCount,
@@ -26,14 +26,14 @@ function EmptyAssigneeRating({ label = 'Nouveau' }: { label?: string }) {
           {Array.from({ length: 5 }, (_, index) => (
             <Star
               key={index}
-              size={11}
+              size={iconSize['2xs']}
               color={c.border}
               fill="transparent"
               strokeWidth={1.5}
             />
           ))}
         </Row>
-        <Text style={styles.newLabel}>{label}</Text>
+        <AppText style={styles.newLabel}>{label}</AppText>
       </Row>
     </View>
   );
@@ -59,16 +59,16 @@ export function CompactAssigneeRating({ summary, showNewWhenEmpty = false }: Pro
           {Array.from({ length: 5 }, (_, index) => (
             <Star
               key={index}
-              size={11}
+              size={iconSize['2xs']}
               color={index < filledStars ? c.star : c.border}
               fill={index < filledStars ? c.starFill : 'transparent'}
               strokeWidth={1.5}
             />
           ))}
         </Row>
-        <Text style={styles.rating}>{averageRating.toFixed(1)}</Text>
-        <Text style={styles.separator}>·</Text>
-        <Text style={styles.count}>{formatReviewsCount(reviewsCount)}</Text>
+        <AppText style={styles.rating}>{averageRating.toFixed(1)}</AppText>
+        <AppText style={styles.separator}>·</AppText>
+        <AppText style={styles.count}>{formatReviewsCount(reviewsCount)}</AppText>
       </Row>
     </View>
   );

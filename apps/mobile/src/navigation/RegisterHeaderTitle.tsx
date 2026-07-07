@@ -2,10 +2,10 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import {radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -23,19 +23,19 @@ export function RegisterHeaderTitle({
       gap={spacing[3]}
       leading={
         <View style={styles.iconWrap}>
-          <Icon size={20} color={c.primary} strokeWidth={2.5} />
+          <Icon size={iconSize.md} color={c.primary} strokeWidth={2.5} />
         </View>
       }
       style={styles.row}
     >
       <View style={styles.textCol}>
-        <Text style={styles.title} numberOfLines={1}>
+        <AppText style={styles.title} numberOfLines={1}>
           {title}
-        </Text>
+        </AppText>
         {subtitle ? (
-          <Text style={styles.subtitle} numberOfLines={2}>
+          <AppText style={styles.subtitle} numberOfLines={2}>
             {subtitle}
-          </Text>
+          </AppText>
         ) : null}
       </View>
     </Cluster>

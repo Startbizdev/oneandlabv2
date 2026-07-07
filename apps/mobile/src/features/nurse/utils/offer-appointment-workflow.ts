@@ -1,6 +1,6 @@
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import type { Appointment } from '@oneandlab/shared-types';
-import { updateAppointment } from '@/features/appointments/api/appointments.service';
+import { updateAppointment, snoozeOfferAppointment } from '@/features/appointments/api/appointments.service';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 
 export type OfferActionResult =
@@ -142,4 +142,21 @@ export async function refuseOfferBatch(
     if (r.declinedOffer) declinedAny = true;
   }
   return { ok: true, declinedOffer: declinedAny, count: ids.length };
+}
+
+/** Reporter la modal sans retirer l'offre (snooze serveur 30 min). */
+export async function snoozeOfferBatch(
+  row: AppointmentListRow,
+  userId: string | undefined,
+): Promise<OfferActionResult> {
+  const ids = collectIncomingOfferIds(row, userId);
+  if (!ids.length) return { ok: false, error: 'Aucune offre à reporter' };
+
+  for (const id of ids) {
+    const res = await snoozeOfferAppointment(id);
+    if (!res.success) {
+      return { ok: false, error: res.error ?? res.message ?? 'Impossible de reporter' };
+    }
+  }
+  return { ok: true, count: ids.length };
 }

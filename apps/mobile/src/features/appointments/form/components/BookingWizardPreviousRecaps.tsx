@@ -1,11 +1,11 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { CircleCheck } from 'lucide-react-native';
 import type { WizardRecapItem } from './BookingWizardSegmentContext';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -24,15 +24,15 @@ export function BookingWizardPreviousRecaps({ recaps }: Props) {
       align="start"
       gap={spacing[2]}
       style={styles.wrap}
-      leading={<CircleCheck size={12} color={c.primary} strokeWidth={2.5} />}
+      leading={<CircleCheck size={iconSize['2xs']} color={c.primary} strokeWidth={2.5} />}
     >
       <View style={styles.copy}>
-        <Text style={styles.title}>Déjà planifié</Text>
+        <AppText style={styles.title}>Déjà planifié</AppText>
         {recaps.map((r) => (
-          <Text key={r.serviceId} style={styles.line} numberOfLines={2}>
-            <Text style={styles.bold}>{r.shortLabel}</Text>
-            {r.dateLabel ? <Text style={styles.date}> — {r.dateLabel}</Text> : null}
-          </Text>
+          <AppText key={r.serviceId} style={styles.line} numberOfLines={2}>
+            <AppText style={styles.bold}>{r.shortLabel}</AppText>
+            {r.dateLabel ? <AppText style={styles.date}> — {r.dateLabel}</AppText> : null}
+          </AppText>
         ))}
       </View>
     </Cluster>

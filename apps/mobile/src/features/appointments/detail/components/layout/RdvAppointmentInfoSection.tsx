@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
 import { Mail, MessageCircle, Phone, User } from 'lucide-react-native';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { Cluster, Row } from '@/components/layout/primitives';
@@ -21,7 +21,7 @@ import {
   resolveAppointmentDetailAddressLine,
 } from '../../utils/appointment-address-display';
 import { buildPatientContactButtons } from '@/utils/contact-actions';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { getRdvDetailSectionStyles } from './rdv-detail-section-styles';
 
@@ -94,7 +94,7 @@ function InfoRow({
     >
       {row.kind === 'identity' ? (
         <>
-          <Text style={styles.label}>{row.identityLabel ?? 'Patient'}</Text>
+          <AppText style={styles.label}>{row.identityLabel ?? 'Patient'}</AppText>
           <View style={styles.identityBlock}>
             <Row gap={spacing[2.5]} align="center">
               <ProfileAvatar
@@ -104,18 +104,18 @@ function InfoRow({
                   [row.firstName, row.lastName].filter((p) => p && p !== '—').join(' ')
                 }
                 gender={row.gender}
-                size={40}
+                size={iconSize['4xl']}
               />
-              <Text style={styles.value}>
+              <AppText style={styles.value}>
                 {[row.firstName, row.lastName].filter(Boolean).join(' ')}
-              </Text>
+              </AppText>
             </Row>
             {onViewPatientProfile ? (
               <Button
                 title="Voir le profil"
                 variant="muted"
                 size="sm"
-                leftIcon={<User size={13} color={c.textSecondary} strokeWidth={2.25} />}
+                leftIcon={<User size={iconSize.xs} color={c.textSecondary} strokeWidth={2.25} />}
                 onPress={onViewPatientProfile}
                 style={styles.profileButton}
                 accessibilityLabel={`Voir le profil de ${[row.firstName, row.lastName].filter(Boolean).join(' ')}`}
@@ -125,16 +125,16 @@ function InfoRow({
         </>
       ) : (
         <>
-          <Text style={styles.label}>{row.label}</Text>
+          <AppText style={styles.label}>{row.label}</AppText>
           <Row align="start" wrap gap={6}>
             {row.emoji ? (
-              <Text style={styles.valueEmoji} accessibilityElementsHidden>
+              <AppText style={styles.valueEmoji} accessibilityElementsHidden>
                 {row.emoji}
-              </Text>
+              </AppText>
             ) : null}
-            <Text style={[styles.value, row.strikethrough && styles.valueMuted]}>
+            <AppText style={[styles.value, row.strikethrough && styles.valueMuted]}>
               {row.value}
-            </Text>
+            </AppText>
           </Row>
         </>
       )}
@@ -276,7 +276,7 @@ export function RdvAppointmentInfoSection({
                       title={btn.label}
                       size="sm"
                       variant="primary"
-                      leftIcon={<Icon size={14} color={c.textInverse} strokeWidth={2.5} />}
+                      leftIcon={<Icon size={iconSize.xs} color={c.textInverse} strokeWidth={2.5} />}
                       onPress={btn.onPress}
                       style={{ backgroundColor: btn.color, width: '100%' as const }}
                     />
@@ -317,7 +317,7 @@ function buildStyles(c: AppColors) {
     letterSpacing: 0.4,
   },
   valueEmoji: {
-    fontSize: 20,
+    fontSize: fontSize.lg,
     lineHeight: 24,
   },
   value: {

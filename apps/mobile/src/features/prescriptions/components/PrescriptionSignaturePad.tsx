@@ -122,6 +122,7 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
   },
   web: {
+    minWidth: 0,
     flex: 1,
     backgroundColor: '#fff',
   },

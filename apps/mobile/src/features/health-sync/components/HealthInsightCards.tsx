@@ -1,12 +1,13 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Lightbulb, TrendingDown, TrendingUp } from 'lucide-react-native';
 import { Stack } from '@/components/layout/primitives';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
+import { layoutRowCenter } from '@/theme/layout-styles';
 import type { HealthInsight } from '../utils/health-metric-stats';
 
 interface Props {
@@ -25,9 +26,9 @@ function toneColors(tone: HealthInsight['tone'], c: AppColors) {
 }
 
 function ToneIcon({ tone, color }: { tone: HealthInsight['tone']; color: string }) {
-  if (tone === 'positive') return <TrendingUp size={16} color={color} strokeWidth={2.25} />;
-  if (tone === 'attention') return <TrendingDown size={16} color={color} strokeWidth={2.25} />;
-  return <Lightbulb size={16} color={color} strokeWidth={2.25} />;
+  if (tone === 'positive') return <TrendingUp size={iconSize.sm} color={color} strokeWidth={2.25} />;
+  if (tone === 'attention') return <TrendingDown size={iconSize.sm} color={color} strokeWidth={2.25} />;
+  return <Lightbulb size={iconSize.sm} color={color} strokeWidth={2.25} />;
 }
 
 export function HealthInsightCards({ insights }: Props) {
@@ -38,7 +39,7 @@ export function HealthInsightCards({ insights }: Props) {
 
   return (
     <Stack gap={spacing[2]}>
-      <Text style={styles.sectionTitle}>Pour vous</Text>
+      <AppText style={styles.sectionTitle}>Pour vous</AppText>
       {insights.map((item) => {
         const colors = toneColors(item.tone, c);
         return (
@@ -51,9 +52,9 @@ export function HealthInsightCards({ insights }: Props) {
           >
             <View style={styles.cardHeader}>
               <ToneIcon tone={item.tone} color={colors.accent} />
-              <Text style={styles.cardTitle}>{item.title}</Text>
+              <AppText style={styles.cardTitle}>{item.title}</AppText>
             </View>
-            <Text style={styles.cardBody}>{item.body}</Text>
+            <AppText style={styles.cardBody}>{item.body}</AppText>
           </View>
         );
       })}
@@ -77,11 +78,10 @@ function buildStyles(c: AppColors) {
       gap: spacing[1.5],
     },
     cardHeader: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: spacing[2],
+      ...layoutRowCenter(spacing[2]),
     },
     cardTitle: {
+      minWidth: 0,
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,

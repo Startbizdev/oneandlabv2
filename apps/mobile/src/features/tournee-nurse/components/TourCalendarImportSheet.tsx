@@ -1,12 +1,12 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import dayjs from 'dayjs';
 import { CalendarDays, CalendarRange } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 export type TourCalendarImportScope = 'today' | 'all_upcoming';
@@ -77,13 +77,13 @@ export function TourCalendarImportSheet({
           >
             <Row gap={spacing[3]} align="center">
               <View style={[styles.iconWrap, { backgroundColor: c.primaryLight }]}>
-                <Icon size={20} color={c.primary} strokeWidth={2.2} />
+                <Icon size={iconSize.md} color={c.primary} strokeWidth={2.2} />
               </View>
               <View style={styles.copy}>
-                <Text style={[styles.optionTitle, { color: c.textPrimary }]}>{title}</Text>
-                <Text style={[styles.optionSub, { color: c.textSecondary }]}>
+                <AppText style={[styles.optionTitle, { color: c.textPrimary }]}>{title}</AppText>
+                <AppText style={[styles.optionSub, { color: c.textSecondary }]}>
                   {subtitle({ dateLabel, todayCount })}
-                </Text>
+                </AppText>
               </View>
             </Row>
           </Pressable>

@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Platform, Text, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { CheckCircle2, CircleDashed } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { Badge } from '@/components/ui/Badge';
@@ -12,7 +12,7 @@ import {
   healthRecordFieldAccessibilityLabel,
   isHealthRecordValueFilled,
 } from '../utils/health-record-display';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -34,23 +34,23 @@ export function HealthRecordFieldRow({ label, display: rawDisplay }: Props) {
       accessibilityRole="text"
       accessibilityLabel={a11yLabel}
     >
-      <Text style={styles.label} numberOfLines={2}>
+      <AppText style={styles.label} numberOfLines={2}>
         {label}
-      </Text>
+      </AppText>
 
       {filled ? (
         <View style={[styles.valueShell, styles.valueShellFilled]}>
           <Row gap={spacing[2]} align="center" style={styles.valueInner}>
             <CheckCircle2
-              size={16}
+              size={iconSize.sm}
               color={c.success}
               strokeWidth={2.25}
               accessibilityElementsHidden
               importantForAccessibility="no"
             />
-            <Text style={styles.valueFilled} numberOfLines={3}>
+            <AppText style={styles.valueFilled} numberOfLines={3}>
               {display}
-            </Text>
+            </AppText>
           </Row>
         </View>
       ) : (
@@ -58,13 +58,13 @@ export function HealthRecordFieldRow({ label, display: rawDisplay }: Props) {
           <Row gap={spacing[2]} align="center" justify="between" style={styles.valueInner}>
             <Row gap={spacing[2]} align="center" style={styles.emptyLeading}>
               <CircleDashed
-                size={16}
+                size={iconSize.sm}
                 color={c.textTertiary}
                 strokeWidth={2}
                 accessibilityElementsHidden
                 importantForAccessibility="no"
               />
-              <Text style={styles.valueEmpty}>{HEALTH_RECORD_EMPTY_LABEL}</Text>
+              <AppText style={styles.valueEmpty}>{HEALTH_RECORD_EMPTY_LABEL}</AppText>
             </Row>
             <Badge
               label={HEALTH_RECORD_OPTIONAL_BADGE}

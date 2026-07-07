@@ -2,22 +2,12 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { NURSE_PLAN_LIST, NURSE_PLANS } from '@oneandlab/shared-constants';
 import { useMemo } from 'react';
-import {
-  ActivityIndicator,
-  Linking,
-  Platform,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SubscriptionPlanCard } from '@/features/nurse/components/SubscriptionPlanCard';
 import { useNurseIap } from '@/features/nurse/hooks/use-nurse-iap';
 import { Button } from '@/components/ui/Button';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { useAppColors } from '@/theme/use-app-colors';
 import {
@@ -139,10 +129,10 @@ export function NurseSubscriptionScreen() {
         />
       }
     >
-      <Text style={[styles.lead, { color: c.textSecondary }]}>
+      <AppText style={[styles.lead, { color: c.textSecondary }]}>
         Choisissez l’offre adaptée à votre activité. L’abonnement Pro sur mobile est géré via{' '}
         {Platform.OS === 'ios' ? 'l’App Store' : 'Google Play'}.
-      </Text>
+      </AppText>
 
       {subscriptionLoading && !subscription ? (
         <ActivityIndicator style={styles.loader} color={c.primary} />
@@ -152,15 +142,15 @@ export function NurseSubscriptionScreen() {
 
       {isPro && billingLabel ? (
         <View style={[styles.statusCard, { backgroundColor: c.surface, borderColor: c.borderLight }]}>
-          <Text style={[styles.statusTitle, { color: c.textPrimary }]}>Abonnement actif</Text>
-          <Text style={[styles.statusMeta, { color: c.textSecondary }]}>
+          <AppText style={[styles.statusTitle, { color: c.textPrimary }]}>Abonnement actif</AppText>
+          <AppText style={[styles.statusMeta, { color: c.textSecondary }]}>
             Source : {billingLabel}
-          </Text>
+          </AppText>
           {subscription?.current_period_end ? (
-            <Text style={[styles.statusMeta, { color: c.textSecondary }]}>
+            <AppText style={[styles.statusMeta, { color: c.textSecondary }]}>
               Renouvellement :{' '}
               {new Date(subscription.current_period_end).toLocaleDateString('fr-FR')}
-            </Text>
+            </AppText>
           ) : null}
           {(subscription?.billing_source === 'apple' ||
             subscription?.billing_source === 'google') && (
@@ -179,17 +169,17 @@ export function NurseSubscriptionScreen() {
         {restoreLoading ? (
           <ActivityIndicator color={c.primary} />
         ) : (
-          <Text style={[styles.restoreText, { color: c.primary }]}>
+          <AppText style={[styles.restoreText, { color: c.primary }]}>
             Restaurer mes achats
-          </Text>
+          </AppText>
         )}
       </Pressable>
 
-      <Text style={[styles.legal, { color: c.textTertiary }]}>
+      <AppText style={[styles.legal, { color: c.textTertiary }]}>
         Le paiement est débité sur votre compte {Platform.OS === 'ios' ? 'Apple' : 'Google'}.
         L’abonnement se renouvelle automatiquement sauf annulation au moins 24 h avant la fin de
         la période en cours.
-      </Text>
+      </AppText>
     </ScrollView>
   );
 }

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { updateAppointment } from '../../api/appointments.service';
-import { spacing } from '@/theme';
+import {spacing, iconSize } from '@/theme';
 
 export function OfferActions({ appointmentId, onDone }: { appointmentId: string; onDone?: () => void }) {
   const c = useAppColors();
@@ -34,7 +34,7 @@ export function OfferActions({ appointmentId, onDone }: { appointmentId: string;
         <Button
           title="Accepter"
           loading={mut.isPending}
-          leftIcon={<Check size={16} color={c.textInverse} strokeWidth={2.5} />}
+          leftIcon={<Check size={iconSize.sm} color={c.textInverse} strokeWidth={2.5} />}
           onPress={() => mut.mutate('confirmed')}
           fullWidth
         />
@@ -44,7 +44,7 @@ export function OfferActions({ appointmentId, onDone }: { appointmentId: string;
           title="Refuser"
           variant="outline"
           loading={mut.isPending}
-          leftIcon={<X size={16} color={c.error} strokeWidth={2.5} />}
+          leftIcon={<X size={iconSize.sm} color={c.error} strokeWidth={2.5} />}
           onPress={() => mut.mutate('refused')}
           fullWidth
         />

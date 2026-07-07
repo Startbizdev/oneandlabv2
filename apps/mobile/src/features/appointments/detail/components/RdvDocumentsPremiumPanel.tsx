@@ -1,6 +1,7 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { AppText } from '@/theme';
+import { View } from 'react-native';
 import {
   medicalDocumentPickErrorMessage,
   pickMedicalDocumentFile,
@@ -185,20 +186,20 @@ export function RdvDocumentsPremiumPanel({
 
         {hasProfileNewerAlert ? (
           <View style={dossierStyles.alert}>
-            <Text style={[dossierStyles.alertText, { color: c.textSecondary }]}>
+            <AppText style={[dossierStyles.alertText, { color: c.textSecondary }]}>
               Certains documents proviennent du profil patient et sont plus récents que la version
               attachée au rendez-vous.
-            </Text>
+            </AppText>
           </View>
         ) : null}
 
         {stackRows.length === 0 ? (
           <View style={headStyles.emptyRow}>
-            <Text style={[headStyles.emptyText, { color: c.textSecondary }]}>
+            <AppText style={[headStyles.emptyText, { color: c.textSecondary }]}>
               {canUpload
                 ? 'Aucun document disponible pour ce rendez-vous.'
                 : 'Les documents ne peuvent plus être modifiés.'}
-            </Text>
+            </AppText>
           </View>
         ) : (
           stackRows.map((row, index) => {

@@ -2,12 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  FlatList,
-  Text,
-  View,
-  type ListRenderItem,
-} from 'react-native';
+import { FlatList, View, type ListRenderItem } from 'react-native';
 import { Smile } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
@@ -31,7 +26,7 @@ import {
   spreadTabSceneScrollProps,
   useTabSceneInsets,
 } from '@/components/navigation/liquid-glass-header-inset';
-import { H_PADDING, radius, spacing } from '@/theme';
+import { H_PADDING, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 type ScreenStyles = ReturnType<typeof buildStyles>;
@@ -45,7 +40,7 @@ function AssistantAvatar({ styles }: { styles: ScreenStyles }) {
   const c = useAppColors();
   return (
     <View style={[styles.avatar, { backgroundColor: c.primaryLight }]}>
-      <Smile size={20} color={c.primary} strokeWidth={2} />
+      <Smile size={iconSize.md} color={c.primary} strokeWidth={2} />
     </View>
   );
 }
@@ -70,7 +65,7 @@ function MessageBubble({
     return (
       <Row justify="end" style={styles.userRow}>
         <View style={[styles.bubble, styles.bubbleUser, { backgroundColor: c.primary }]}>
-          <Text style={[styles.bodyText, styles.bodyTextOnPrimary]}>{message.text}</Text>
+          <AppText style={[styles.bodyText, styles.bodyTextOnPrimary]}>{message.text}</AppText>
         </View>
       </Row>
     );
@@ -81,7 +76,7 @@ function MessageBubble({
       <Row align="start" gap={spacing[2]} style={styles.assistantPlainRow}>
         <AssistantAvatar styles={styles} />
         <View style={styles.plainContent}>
-          <Text style={styles.assistantText}>{message.text}</Text>
+          <AppText style={styles.assistantText}>{message.text}</AppText>
           {suggestions?.length ? (
             <Row wrap gap={spacing[2]} style={styles.suggestionChips}>
               {suggestions.map((item) => (
@@ -112,7 +107,7 @@ function MessageBubble({
           { backgroundColor: c.surface, borderColor: c.borderLight },
         ]}
       >
-        <Text style={styles.assistantText}>{message.text}</Text>
+        <AppText style={styles.assistantText}>{message.text}</AppText>
       </View>
     </Row>
   );
@@ -252,7 +247,7 @@ export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: Screen
     <Row align="end" gap={spacing[2]} style={styles.typingRow}>
       <AssistantAvatar styles={styles} />
       <View style={[styles.typingBubble, { backgroundColor: c.surfaceAlt, borderColor: c.borderLight }]}>
-        <Text style={[styles.typingText, { color: c.textSecondary }]}>Cary réfléchit…</Text>
+        <AppText style={[styles.typingText, { color: c.textSecondary }]}>Cary réfléchit…</AppText>
       </View>
     </Row>
   ) : null;

@@ -40,3 +40,8 @@ export function getTextScaleMultiplier(): number {
 export function scaleFontSize(basePx: number): number {
   return Math.round(basePx * getTextScaleMultiplier());
 }
+
+/** Scale layout (minHeight, hit targets) avec le réglage « Texte agrandi ». */
+export function scaleLayoutSize(basePx: number): number {
+  return scaleFontSize(basePx);
+}

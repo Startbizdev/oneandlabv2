@@ -2,14 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { ActivityIndicator, Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import Animated, {
   runOnJS,
@@ -20,7 +13,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { ArrowRight } from 'lucide-react-native';
-import { animation, elevation, radius, spacing } from '@/theme';
+import { animation, elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -100,11 +93,11 @@ export function BookingContinueButton({
             <ActivityIndicator color={c.textInverse} size="small" />
           ) : (
             <Row gap={spacing[2]} justify="center">
-              <Text style={styles.label} numberOfLines={1}>
+              <AppText style={styles.label} numberOfLines={1}>
                 {title}
-              </Text>
+              </AppText>
               <View style={styles.iconCircle}>
-                <ArrowRight size={18} color={c.textInverse} strokeWidth={2.5} />
+                <ArrowRight size={iconSize.mdSm} color={c.textInverse} strokeWidth={2.5} />
               </View>
             </Row>
           )}

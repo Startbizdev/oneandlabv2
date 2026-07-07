@@ -3,13 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useMemo, useState } from 'react';
-import {
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -43,7 +37,7 @@ import {
 import { PatientPaginationBar } from '@/features/appointments/detail/components/patient/PatientPaginationBar';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const PAGE_SIZE = 8;
@@ -74,10 +68,10 @@ function AddDocumentSection({
   const styles = useThemedStyles(buildStyles, 'PatientRelativeDocumentsScreen.AddDocumentSection');
   return (
     <View style={styles.addCard}>
-      <Text style={styles.addKicker}>Ajouter</Text>
-      <Text style={styles.addHint}>
+      <AppText style={styles.addKicker}>Ajouter</AppText>
+      <AppText style={styles.addHint}>
         Appuyez sur un type, puis choisissez une photo ou un fichier PDF.
-      </Text>
+      </AppText>
       {UPLOAD_SLOTS.map((slot, index) => {
         const busy = uploading === slot.key;
         const hasType = existingTypes.has(slot.key);
@@ -128,7 +122,7 @@ function SavedDocumentRow({
       style={styles.docCard}
       leading={
         <View style={styles.docIcon}>
-          <Icon size={18} color={c.primary} strokeWidth={2} />
+          <Icon size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
         </View>
       }
       actions={
@@ -141,10 +135,10 @@ function SavedDocumentRow({
       }
     >
       <View style={styles.docText}>
-        <Text style={styles.docLabel}>{label}</Text>
-        <Text style={styles.docFile} numberOfLines={1}>
+        <AppText style={styles.docLabel}>{label}</AppText>
+        <AppText style={styles.docFile} numberOfLines={1}>
           {sub}
-        </Text>
+        </AppText>
       </View>
     </Cluster>
   );
@@ -257,23 +251,23 @@ export function PatientRelativeDocumentsScreen() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.introTitle}>Documents</Text>
-            <Text style={styles.introSub}>
+            <AppText style={styles.introTitle}>Documents</AppText>
+            <AppText style={styles.introSub}>
               {relativeName
                 ? `Carte Vitale et mutuelle pour ${relativeName}.`
                 : 'Carte Vitale et mutuelle pour ce proche.'}
-            </Text>
+            </AppText>
             <AddDocumentSection
               uploading={uploading}
               existingTypes={existingTypes}
               onPick={(t) => void pickAndUpload(t)}
             />
             {allDocs.length > 0 ? (
-              <Text style={styles.sectionKicker}>Enregistrés · {allDocs.length}</Text>
+              <AppText style={styles.sectionKicker}>Enregistrés · {allDocs.length}</AppText>
             ) : (
-              <Text style={styles.emptyHint}>
+              <AppText style={styles.emptyHint}>
                 Aucun document pour l’instant — appuyez sur une ligne ci-dessus pour en ajouter.
-              </Text>
+              </AppText>
             )}
           </View>
         }

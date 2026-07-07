@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+KEY="${SSH_KEY:-$HOME/.ssh/oneandlab-key.pem}"
+HOST="${SSH_HOST:-ubuntu@15.236.73.7}"
+scp -o ConnectTimeout=15 -i "$KEY" "$(dirname "$0")/report-patient-orphan-appointments.php" "$HOST:/var/www/oneandlab/backend/scripts/"
+ssh -o ConnectTimeout=15 -i "$KEY" "$HOST" 'cd /var/www/oneandlab && php backend/scripts/report-patient-orphan-appointments.php'

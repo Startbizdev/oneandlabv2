@@ -1,14 +1,14 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { HeartPulse, Mail, Stethoscope, User, type LucideIcon } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
 import type { MoreMenuItemProps } from '@/features/profile/components/MoreMenuItem';
 import type { RegisterRole } from '@/features/auth/api/registration.service';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const REGISTER_ROLE_META: {
@@ -76,14 +76,14 @@ export function RegisterBottomSheet({
           <Cluster
             gap={spacing[3]}
             align="start"
-            leading={<Mail size={16} color={c.primary} strokeWidth={2} />}
+            leading={<Mail size={iconSize.sm} color={c.primary} strokeWidth={2} />}
             style={styles.emailBanner}
           >
             <View style={styles.emailTextCol}>
-              <Text style={styles.emailLabel}>Aucun compte trouvé pour</Text>
-              <Text style={styles.emailValue} numberOfLines={2}>
+              <AppText style={styles.emailLabel}>Aucun compte trouvé pour</AppText>
+              <AppText style={styles.emailValue} numberOfLines={2}>
                 {pendingEmail}
-              </Text>
+              </AppText>
             </View>
           </Cluster>
         ) : null}
@@ -92,10 +92,10 @@ export function RegisterBottomSheet({
 
         {onLoginPress ? (
           <Pressable onPress={onLoginPress} style={styles.loginLink} hitSlop={8}>
-            <Text style={styles.loginText}>
+            <AppText style={styles.loginText}>
               Déjà un compte ?{' '}
-              <Text style={styles.loginAccent}>Se connecter</Text>
-            </Text>
+              <AppText style={styles.loginAccent}>Se connecter</AppText>
+            </AppText>
           </Pressable>
         ) : null}
       </View>

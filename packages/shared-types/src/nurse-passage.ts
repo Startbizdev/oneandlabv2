@@ -98,6 +98,7 @@ export const PASSAGE_SLOT_DEFAULT_HOURS: Record<
   Exclude<PassageTimeSlot, 'custom'>,
   { hour: number; minute: number }
 > = {
+  all_day: { hour: 9, minute: 0 },
   morning: { hour: 8, minute: 0 },
   noon: { hour: 12, minute: 0 },
   afternoon: { hour: 15, minute: 0 },

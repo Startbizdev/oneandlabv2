@@ -1,8 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -29,14 +29,14 @@ export function StaffPatientKvSection({ apt }: Props) {
           { backgroundColor: c.warningLight, borderColor: c.warningMid },
         ]}
       >
-        <Text style={[styles.minorText, { color: c.warning }]}>
+        <AppText style={[styles.minorText, { color: c.warning }]}>
           Personne mineure
           {ext.relative.age_years != null
             ? ` (${ext.relative.age_years} an${ext.relative.age_years === 1 ? '' : 's'})`
             : ''}
           {' · '}
           le rendez-vous est réservé par le titulaire du compte (voir « Rendez-vous pris par »).
-        </Text>
+        </AppText>
       </View>
     </View>
   );

@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { Trash2 } from 'lucide-react-native';
 import type { SelectedServiceInput } from '@oneandlab/shared-utils';
@@ -13,7 +13,7 @@ import {
   detailLinesForSelectedService,
   selectionModalTitle,
 } from '../utils/selected-service-detail-lines';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -76,25 +76,25 @@ export function SelectedServicesDetailSheet({
                   accessibilityLabel={`Retirer ${svc.name}`}
                   accessibilityRole="button"
                 >
-                  <Trash2 size={20} color={c.error} strokeWidth={2} />
+                  <Trash2 size={iconSize.md} color={c.error} strokeWidth={2} />
                 </Pressable>
               }
             >
-              <Text style={styles.itemName} numberOfLines={2}>
+              <AppText style={styles.itemName} numberOfLines={2}>
                 {svc.name}
-              </Text>
+              </AppText>
             </Cluster>
             {lines.length > 0 ? (
               <View style={styles.details}>
                 {lines.map((ln, i) => (
-                  <Text key={`${svc.id}-${i}`} style={styles.detailLine}>
-                    <Text style={styles.detailLabel}>{ln.label} </Text>
-                    <Text style={styles.detailValue}>{ln.value}</Text>
-                  </Text>
+                  <AppText key={`${svc.id}-${i}`} style={styles.detailLine}>
+                    <AppText style={styles.detailLabel}>{ln.label} </AppText>
+                    <AppText style={styles.detailValue}>{ln.value}</AppText>
+                  </AppText>
                 ))}
               </View>
             ) : (
-              <Text style={styles.empty}>Aucune option renseignée.</Text>
+              <AppText style={styles.empty}>Aucune option renseignée.</AppText>
             )}
           </View>
         );

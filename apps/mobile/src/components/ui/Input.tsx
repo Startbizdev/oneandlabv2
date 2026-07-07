@@ -2,15 +2,9 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback, useState } from 'react';
-import {
-  Platform,
-  Text,
-  TextInput,
-  View,
-  type TextInputProps,
-} from 'react-native';
+import { Platform, TextInput, View, type TextInputProps } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { useInBottomSheet, useSheetTextInputComponent } from './sheet-keyboard-context';
 import { SHEET_KEYBOARD_ACCESSORY_ID } from './sheet-keyboard-accessory';
@@ -96,7 +90,7 @@ function InputComponent(
   return (
     <View style={styles.wrapper}>
       {label ? (
-        <Text style={[styles.label, isFocused && styles.labelFocused]}>{label}</Text>
+        <AppText style={[styles.label, isFocused && styles.labelFocused]}>{label}</AppText>
       ) : null}
 
       <Row
@@ -132,7 +126,7 @@ function InputComponent(
         {rightIcon ? <View style={styles.iconRight}>{rightIcon}</View> : null}
       </Row>
 
-      {error ? <Text style={styles.error}>{error}</Text> : hint ? <Text style={styles.hint}>{hint}</Text> : null}
+      {error ? <AppText style={styles.error}>{error}</AppText> : hint ? <AppText style={styles.hint}>{hint}</AppText> : null}
     </View>
   );
 }

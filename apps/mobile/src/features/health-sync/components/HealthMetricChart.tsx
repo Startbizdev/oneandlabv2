@@ -1,12 +1,13 @@
+import { layoutRowEndBetween } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo } from 'react';
-import { Platform, Text, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 import { LineChart } from 'lucide-react-native';
 import type { HealthMetricPoint } from '@oneandlab/shared-types';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -54,11 +55,11 @@ export function HealthMetricChart({
   return (
     <View style={[styles.wrap, !isLast && styles.wrapDivider]}>
       <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
+        <AppText style={styles.title}>{title}</AppText>
         {last != null ? (
           <View style={styles.valueCol}>
-            <Text style={styles.value}>{fmt(last)}</Text>
-            <Text style={styles.unit}>{unit}</Text>
+            <AppText style={styles.value}>{fmt(last)}</AppText>
+            <AppText style={styles.unit}>{unit}</AppText>
           </View>
         ) : null}
       </View>
@@ -72,14 +73,14 @@ export function HealthMetricChart({
               return <Circle key={pt} cx={x} cy={y} r={4} fill={c.primary} />;
             })}
           </Svg>
-          <Text style={styles.range}>
+          <AppText style={styles.range}>
             {fmt(min)}–{fmt(max)} · {points.length} pts
-          </Text>
+          </AppText>
         </>
       ) : (
         <View style={styles.emptyShell}>
-          <LineChart size={20} color={c.textTertiary} strokeWidth={1.75} />
-          <Text style={styles.emptyHint}>—</Text>
+          <LineChart size={iconSize.md} color={c.textTertiary} strokeWidth={1.75} />
+          <AppText style={styles.emptyHint}>—</AppText>
         </View>
       )}
     </View>
@@ -97,11 +98,8 @@ function buildStyles(c: AppColors) {
       borderBottomColor: c.borderLight,
     },
     header: {
-      flexDirection: 'row' as const,
-      justifyContent: 'space-between' as const,
-      alignItems: 'flex-end' as const,
+      ...layoutRowEndBetween(spacing[3]),
       marginBottom: spacing[3],
-      gap: spacing[3],
     },
     title: {
       fontFamily: fontFamily.semiBold,

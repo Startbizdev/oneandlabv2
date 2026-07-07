@@ -2,10 +2,10 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Minus, Plus } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const STEP = 5;
@@ -28,8 +28,8 @@ export function CoverageRadiusControl({
   return (
     <View style={styles.wrap}>
       <Row justify="between" align="center" style={styles.header}>
-        <Text style={styles.label}>Rayon d'intervention</Text>
-        <Text style={styles.value}>{value} km</Text>
+        <AppText style={styles.label}>Rayon d'intervention</AppText>
+        <AppText style={styles.value}>{value} km</AppText>
       </Row>
       <Row gap={spacing[3]} align="center" style={styles.row}>
         <Pressable
@@ -38,7 +38,7 @@ export function CoverageRadiusControl({
           style={[styles.btn, (disabled || value <= min) && styles.btnDisabled]}
           accessibilityLabel="Diminuer le rayon"
         >
-          <Minus size={20} color={c.primary} strokeWidth={2.5} />
+          <Minus size={iconSize.md} color={c.primary} strokeWidth={2.5} />
         </Pressable>
         <View style={styles.track}>
           <View
@@ -54,14 +54,14 @@ export function CoverageRadiusControl({
           style={[styles.btn, (disabled || value >= max) && styles.btnDisabled]}
           accessibilityLabel="Augmenter le rayon"
         >
-          <Plus size={20} color={c.primary} strokeWidth={2.5} />
+          <Plus size={iconSize.md} color={c.primary} strokeWidth={2.5} />
         </Pressable>
       </Row>
       <Row justify="between" style={styles.limits}>
-        <Text style={styles.limitText}>{min} km</Text>
-        <Text style={styles.limitText}>{max} km</Text>
+        <AppText style={styles.limitText}>{min} km</AppText>
+        <AppText style={styles.limitText}>{max} km</AppText>
       </Row>
-      <Text style={styles.hint}>Ajustez par pas de {STEP} km pour définir votre zone.</Text>
+      <AppText style={styles.hint}>Ajustez par pas de {STEP} km pour définir votre zone.</AppText>
     </View>
   );
 }

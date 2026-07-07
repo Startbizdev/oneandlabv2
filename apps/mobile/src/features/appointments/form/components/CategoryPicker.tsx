@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import type { CareCategory } from '@/features/categories/api/categories.service';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -16,7 +16,7 @@ export function CategoryPicker({ categories, selectedId, onSelect }: Props) {
   const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_CategoryPicker_tsx_styles');
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.label}>Type de soin</Text>
+      <AppText style={styles.label}>Type de soin</AppText>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Row gap={spacing[2]}>
         {categories.map((c) => {
@@ -27,7 +27,7 @@ export function CategoryPicker({ categories, selectedId, onSelect }: Props) {
               onPress={() => onSelect(c)}
               style={[styles.chip, on && styles.chipActive]}
             >
-              <Text style={[styles.chipText, on && styles.chipTextActive]}>{c.label}</Text>
+              <AppText style={[styles.chipText, on && styles.chipTextActive]}>{c.label}</AppText>
             </Pressable>
           );
         })}

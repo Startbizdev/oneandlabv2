@@ -4,9 +4,9 @@ import { useAppColors } from '@/theme/use-app-colors';
 
 import { Cluster } from '@/components/layout/primitives';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -32,12 +32,12 @@ export function DetailSection({
           leading={
             Icon ? (
               <View style={styles.iconWrap}>
-                <Icon size={14} color={c.primary} strokeWidth={2} />
+                <Icon size={iconSize.xs} color={c.primary} strokeWidth={2} />
               </View>
             ) : undefined
           }
         >
-          <Text style={styles.title}>{title}</Text>
+          <AppText style={styles.title}>{title}</AppText>
         </Cluster>
       ) : null}
       <View style={[styles.body, compact && styles.bodyCompact]}>{children}</View>

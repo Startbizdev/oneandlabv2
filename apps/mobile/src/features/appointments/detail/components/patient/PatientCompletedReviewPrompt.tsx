@@ -3,13 +3,13 @@ import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Row } from '@/components/layout/primitives';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Star } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { RdvPublishedReviewBanner } from '@/features/appointments/detail/components/RdvPublishedReviewBanner';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';import { PatientReviewPromptSheet } from './PatientReviewPromptSheet';
 import {
   revieweeFirstName,
@@ -56,22 +56,22 @@ function PendingReviewCard({
         >
           <View style={cardStyles.content}>
             <Row justify="between" align="center" gap={spacing[2]}>
-              <Text style={[cardStyles.kicker, { color: c.primaryDark }]}>Votre avis compte</Text>
+              <AppText style={[cardStyles.kicker, { color: c.primaryDark }]}>Votre avis compte</AppText>
               <View style={[cardStyles.timePill, { backgroundColor: c.primary }]}>
-                <Text style={[cardStyles.timePillText, { color: c.textInverse }]}>2 min</Text>
+                <AppText style={[cardStyles.timePillText, { color: c.textInverse }]}>2 min</AppText>
               </View>
             </Row>
 
-            <Text style={cardStyles.headline}>{headline}</Text>
-            <Text style={cardStyles.subline}>
+            <AppText style={cardStyles.headline}>{headline}</AppText>
+            <AppText style={cardStyles.subline}>
               Aidez la communauté Cary à trouver les meilleurs professionnels.
-            </Text>
+            </AppText>
 
             {isMulti ? (
               <View style={[cardStyles.soinTag, { backgroundColor: hexToRgba(c.primary, 0.1) }]}>
-                <Text style={[cardStyles.soinTagText, { color: c.primaryDark }]}>
+                <AppText style={[cardStyles.soinTagText, { color: c.primaryDark }]}>
                   {appt.category_name ?? 'Soin'}
-                </Text>
+                </AppText>
               </View>
             ) : null}
 
@@ -87,8 +87,8 @@ function PendingReviewCard({
                 },
               ]}
             >
-              <Star size={20} color={c.star} fill={c.starFill} strokeWidth={1.5} />
-              <Text style={[cardStyles.ctaText, { color: c.warning }]}>Noter mon soin</Text>
+              <Star size={iconSize.md} color={c.star} fill={c.starFill} strokeWidth={1.5} />
+              <AppText style={[cardStyles.ctaText, { color: c.warning }]}>Noter mon soin</AppText>
             </Row>
           </View>
         </LinearGradient>
@@ -178,9 +178,9 @@ export function PatientCompletedReviewPrompt({ batch, onRefresh }: Props) {
         })}
 
         {pendingCount > 0 && isMulti ? (
-          <Text style={cardStyles.footerHint}>
+          <AppText style={cardStyles.footerHint}>
             {pendingCount} avis restant{pendingCount > 1 ? 's' : ''} sur ce lot
-          </Text>
+          </AppText>
         ) : null}
       </View>
 

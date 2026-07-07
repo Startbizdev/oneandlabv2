@@ -44,7 +44,8 @@ export function BookingWizardChrome({
         headerLeft={headerLeft}
         headerRight={null}
         headerVisual="inline"
-        shellStyle={{ flex: 1 }}
+        shellStyle={{
+    minWidth: 0, flex: 1 }}
       >
         {children}
       </TabScreenFrame>

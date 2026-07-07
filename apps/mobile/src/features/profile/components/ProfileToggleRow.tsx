@@ -1,9 +1,9 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -50,15 +50,15 @@ export function ProfileToggleRow({
       ]}
     >
       <View style={styles.rowText}>
-        <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{label}</Text>
-        <Text
+        <AppText style={[styles.rowLabel, { color: c.textPrimary }]}>{label}</AppText>
+        <AppText
           style={[
             styles.rowHint,
             { color: showActiveHighlight ? c.primary : c.textTertiary },
           ]}
         >
           {hint}
-        </Text>
+        </AppText>
       </View>
     </Cluster>
   );

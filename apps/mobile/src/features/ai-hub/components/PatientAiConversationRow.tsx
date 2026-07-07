@@ -1,12 +1,12 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import { Cluster } from '@/components/layout/primitives';
 import * as Haptics from 'expo-haptics';
 import { MessageSquare, Pin } from 'lucide-react-native';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 import { showConversationRowActions } from '../utils/conversation-row-actions';
 
@@ -86,25 +86,25 @@ export function PatientAiConversationRow({
         leading={
           <View style={[styles.bubble, active ? styles.bubbleActive : styles.bubbleIdle]}>
             <MessageSquare
-              size={16}
+              size={iconSize.sm}
               color={active ? c.primary : c.textSecondary}
               strokeWidth={2}
             />
             {pinned ? (
               <View style={styles.pinBadge}>
-                <Pin size={9} color={c.primary} strokeWidth={2.5} fill={c.primary} />
+                <Pin size={iconSize['3xs']} color={c.primary} strokeWidth={2.5} fill={c.primary} />
               </View>
             ) : null}
           </View>
         }
       >
-        <Text
+        <AppText
           style={[styles.title, active && styles.titleActive]}
           numberOfLines={2}
           ellipsizeMode="tail"
         >
           {title}
-        </Text>
+        </AppText>
       </Cluster>
     </Pressable>
   );

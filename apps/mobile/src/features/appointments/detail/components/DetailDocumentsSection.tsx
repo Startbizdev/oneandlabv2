@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { pickMedicalDocumentFile } from '@/lib/uploads/pick-medical-document';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload } from 'lucide-react-native';
@@ -19,7 +19,7 @@ import { Row } from '@/components/layout/primitives';
 import { DocumentsBlock } from './DocumentsBlock';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
 import { getDocumentTypeLabel } from '../utils/document-labels';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const PATIENT_TYPES = [
@@ -132,7 +132,7 @@ export function DetailDocumentsSection({
       />
       {canUpload ? (
         <View style={styles.uploadZone}>
-          <Text style={styles.uploadTitle}>Ajouter un document</Text>
+          <AppText style={styles.uploadTitle}>Ajouter un document</AppText>
           {uploadTypes.map((t) => (
             <Pressable
               key={t}
@@ -140,10 +140,10 @@ export function DetailDocumentsSection({
               onPress={() => void pickAndUpload(t)}
             >
               <Row gap={spacing[2]} align="center" style={styles.uploadRow}>
-                <Upload size={16} color={c.primary} strokeWidth={2} />
-                <Text style={styles.uploadLabel}>
+                <Upload size={iconSize.sm} color={c.primary} strokeWidth={2} />
+                <AppText style={styles.uploadLabel}>
                   {uploading === t ? 'Envoi…' : getDocumentTypeLabel(t)}
-                </Text>
+                </AppText>
               </Row>
             </Pressable>
           ))}

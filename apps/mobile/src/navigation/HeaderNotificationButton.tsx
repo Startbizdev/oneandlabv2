@@ -1,3 +1,4 @@
+import { iconSize } from '@/theme';
 import type { ReactElement } from 'react';
 import { useRouter } from 'expo-router';
 import { Bell } from 'lucide-react-native';
@@ -23,7 +24,7 @@ export function HeaderNotificationBell() {
       accessibilityLabel="Notifications"
       badge={badgeCount}
       onPress={() => router.push(getNotificationsPath(role))}
-      fallback={<Bell size={20} strokeWidth={2.25} />}
+      fallback={<Bell size={iconSize.md} strokeWidth={2.25} />}
     />
   );
 }

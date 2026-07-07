@@ -28,6 +28,9 @@ $checks = [
     '094 notif_nurse_en_route_sent_at' => "SHOW COLUMNS FROM nurse_tour_stops LIKE 'notif_nurse_en_route_sent_at'",
     '095 patient_clinical_vitals' => "SHOW TABLES LIKE 'patient_clinical_vitals'",
     '096 patient_absences' => "SHOW TABLES LIKE 'patient_absences'",
+    '097 offer_modal_snoozed_until' => "SHOW COLUMNS FROM appointment_offers LIKE 'modal_snoozed_until'",
+    '098 preleveur_tour_plans' => "SHOW TABLES LIKE 'preleveur_tour_plans'",
+    '098 preleveur_tour_stops' => "SHOW TABLES LIKE 'preleveur_tour_stops'",
 ];
 
 echo "DB: {$config['database']}\n";

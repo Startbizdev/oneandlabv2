@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Row } from '@/components/layout/primitives';
 import type { HealthRecordQuestion } from '../api/health-record.service';
 import { HEALTH_RECORD_OPTIONAL_BADGE } from '../utils/health-record-display';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const ENUM_LABELS: Record<string, string> = {
@@ -49,7 +49,7 @@ interface Props {
 function QuestionHeader({ label, styles }: { label: string; styles: ReturnType<typeof buildStyles> }) {
   return (
     <Row gap={spacing[2]} align="center" wrap style={styles.labelRow}>
-      <Text style={styles.label}>{label}</Text>
+      <AppText style={styles.label}>{label}</AppText>
       <Badge
         label={HEALTH_RECORD_OPTIONAL_BADGE}
         variant="neutral"
@@ -92,9 +92,9 @@ export function HealthRecordQuestionStep({
       <View style={styles.root}>
         <QuestionHeader label={question.label_fr} styles={styles} />
         {hasStoredValue(initialValue) ? (
-          <Text style={styles.currentValue}>
+          <AppText style={styles.currentValue}>
             Réponse actuelle : {ENUM_LABELS[String(initialValue)] ?? String(initialValue)}
-          </Text>
+          </AppText>
         ) : null}
         <View style={styles.choices}>
           <Button
@@ -126,9 +126,9 @@ export function HealthRecordQuestionStep({
       <View style={styles.root}>
         <QuestionHeader label={question.label_fr} styles={styles} />
         {hasStoredValue(initialValue) ? (
-          <Text style={styles.currentValue}>
+          <AppText style={styles.currentValue}>
             Réponse actuelle : {ENUM_LABELS[String(initialValue)] ?? String(initialValue)}
-          </Text>
+          </AppText>
         ) : null}
         <View style={styles.choices}>
           {question.options.map((opt) => (
@@ -216,6 +216,7 @@ function buildStyles(c: AppColors) {
       flexWrap: 'wrap' as const,
     },
     label: {
+      minWidth: 0,
       flexShrink: 1,
       fontFamily: fontFamily.semiBold,
       fontSize: fontSize.lg,

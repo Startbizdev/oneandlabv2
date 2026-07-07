@@ -1,8 +1,8 @@
 import { isValidElement, type ReactNode } from 'react';
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
-import { Text } from 'react-native';
+import { AppText } from '@/theme';
+import { getAppColors } from '@/theme/colors';
 import { fontFamily, fontSize } from '@/theme/typography';
-import { colors } from '@/theme';
 
 type HeaderTitleRenderProps = {
   tintColor?: string;
@@ -23,17 +23,18 @@ export function resolveStackHeaderTitle(
   if (raw == null) return undefined;
 
   if (typeof raw === 'string') {
+    const c = getAppColors();
     return (
-      <Text
+      <AppText
         numberOfLines={1}
         style={{
           fontFamily: fontFamily.bold,
           fontSize: fontSize.lg,
-          color: colors.textPrimary,
+          color: tintColor ?? c.textPrimary,
         }}
       >
         {raw}
-      </Text>
+      </AppText>
     );
   }
 

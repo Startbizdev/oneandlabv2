@@ -13,6 +13,7 @@ import {
   LIQUID_GLASS_LARGE_TITLE_ROW_MIN_HEIGHT,
   type LiquidGlassHeaderVisual,
 } from '@/components/navigation/nav-chrome-tokens';
+import { layoutRowCenter } from '@/theme/layout-styles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { tabSceneLayoutHandler } from '@/lib/debug/tab-scene-layout-debug';
 
@@ -86,10 +87,8 @@ function buildStyles(_c: AppColors) {
     },
     leading: {
       flex: 1,
+      ...layoutRowCenter(8),
       minWidth: 0,
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: 8,
     },
     leadingSlot: {
       flexShrink: 0,

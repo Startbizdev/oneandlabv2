@@ -155,6 +155,24 @@ export const textStyles = {
   },
 } as const;
 
+export type TextVariant = keyof typeof textStyles;
+
+/** Styles typographiques scalés (réglage « Texte agrandi »). */
+export function getTextStyle(variant: TextVariant) {
+  const base = textStyles[variant];
+  const scaledSize = scaleFontSize(base.fontSize);
+  const baseLineHeight =
+    'lineHeight' in base && typeof base.lineHeight === 'number'
+      ? base.lineHeight
+      : Math.round(base.fontSize * lineHeight.normal);
+  const ratio = baseLineHeight / base.fontSize;
+  return {
+    ...base,
+    fontSize: scaledSize,
+    lineHeight: Math.round(scaledSize * ratio),
+  };
+}
+
 /** Line-height calculé pour une taille de police (px). */
 export function lh(sizePx: number, ratio: number = lineHeight.normal): number {
   return Math.round(sizePx * ratio);

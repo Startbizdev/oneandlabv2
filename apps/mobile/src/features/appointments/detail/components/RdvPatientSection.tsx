@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import React, { useCallback } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { Phone, MessageSquare, Mail, AlertTriangle } from 'lucide-react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
@@ -18,7 +18,7 @@ import {
   patientDisplayName,
 } from '@/utils/appointment-detail-display';
 import { appointmentBeneficiaryAvatarMeta } from '../utils/patient-appointment-display';
-import { spacing, elevation } from '@/theme';
+import { spacing, elevation, iconSize, avatarSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -35,7 +35,7 @@ function ActionChip({ icon, label, onPress }: ActionChipProps) {
     <Pressable onPress={onPress} style={[styles.chip, elevation.xs]}>
       <Row gap={spacing[1.5]} align="center">
         {icon}
-        <Text style={styles.chipLabel}>{label}</Text>
+        <AppText style={styles.chipLabel}>{label}</AppText>
       </Row>
     </Pressable>
   );
@@ -54,21 +54,21 @@ function ContactRow({ phone, email }: { phone: string; email: string }) {
     <Row wrap gap={spacing[2]} style={styles.actions}>
       {phone ? (
         <ActionChip
-          icon={<Phone size={14} color={c.primary} strokeWidth={2} />}
+          icon={<Phone size={iconSize.xs} color={c.primary} strokeWidth={2} />}
           label="Appeler"
           onPress={callPhone}
         />
       ) : null}
       {phone ? (
         <ActionChip
-          icon={<MessageSquare size={14} color={c.primary} strokeWidth={2} />}
+          icon={<MessageSquare size={iconSize.xs} color={c.primary} strokeWidth={2} />}
           label="Message"
           onPress={smsPhone}
         />
       ) : null}
       {email ? (
         <ActionChip
-          icon={<Mail size={14} color={c.primary} strokeWidth={2} />}
+          icon={<Mail size={iconSize.xs} color={c.primary} strokeWidth={2} />}
           label="E-mail"
           onPress={sendEmail}
         />
@@ -124,31 +124,31 @@ export function RdvPatientSection({
             profileImageUrl={avatar.profileImageUrl}
             seed={avatar.seed}
             gender={avatar.gender}
-            size={44}
+            size={avatarSize.sm}
           />
         }
       >
         <View style={styles.sectionHeaderText}>
-          <Text style={styles.sectionLabel}>{rel ? 'Bénéficiaire' : 'Patient'}</Text>
-          <Text style={styles.patientName}>{name}</Text>
+          <AppText style={styles.sectionLabel}>{rel ? 'Bénéficiaire' : 'Patient'}</AppText>
+          <AppText style={styles.patientName}>{name}</AppText>
         </View>
       </Cluster>
 
-      {birth ? <Text style={styles.birthText}>Né(e) le {birth}</Text> : null}
+      {birth ? <AppText style={styles.birthText}>Né(e) le {birth}</AppText> : null}
 
       {rel?.relationship_type ? (
-        <Text style={styles.relText}>Lien : {getRelationshipLabel(rel.relationship_type)}</Text>
+        <AppText style={styles.relText}>Lien : {getRelationshipLabel(rel.relationship_type)}</AppText>
       ) : null}
 
       {rel?.is_minor ? (
         <Row gap={spacing[2]} align="center" style={styles.minorBanner}>
-          <AlertTriangle size={14} color={c.warning} strokeWidth={2} />
-          <Text style={styles.minorText}>
+          <AlertTriangle size={iconSize.xs} color={c.warning} strokeWidth={2} />
+          <AppText style={styles.minorText}>
             Personne mineure
             {rel.age_years != null
               ? ` · ${rel.age_years} an${rel.age_years === 1 ? '' : 's'}`
               : ''}
-          </Text>
+          </AppText>
         </Row>
       ) : null}
 
@@ -156,9 +156,9 @@ export function RdvPatientSection({
 
       {showBookingContact ? (
         <View style={styles.bookingBlock}>
-          <Text style={styles.bookingLabel}>Contact principal</Text>
-          <Text style={styles.bookingName}>{bookingName || '—'}</Text>
-          <Text style={styles.bookingHint}>Titulaire du compte · personne qui a pris le rendez-vous</Text>
+          <AppText style={styles.bookingLabel}>Contact principal</AppText>
+          <AppText style={styles.bookingName}>{bookingName || '—'}</AppText>
+          <AppText style={styles.bookingHint}>Titulaire du compte · personne qui a pris le rendez-vous</AppText>
           <ContactRow phone={bookingPhone} email={bookingEmail} />
         </View>
       ) : null}

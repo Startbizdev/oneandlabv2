@@ -2,16 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
-import {
-  Platform,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { FadeInDown, runOnJS } from 'react-native-reanimated';
@@ -47,7 +38,7 @@ import {
   type CalendarTypeFilter,
 } from '@/constants/calendar-filters';
 import { NURSE_TAB_OPTIONS, type NurseListTab } from '@/constants/appointments-list-filters';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, gridCellSize, useLayoutMetrics, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -98,7 +89,7 @@ export function CalendarScreen({
   const sceneInsets = useTabSceneInsets();
   const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.content);
   const listRole = listRoleProp ?? listRoleFromDetailPrefix(detailPathPrefix);
-  const { width } = useWindowDimensions();
+  const layout = useLayoutMetrics();
   const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
@@ -174,7 +165,7 @@ export function CalendarScreen({
 
   const cells = useMemo(() => monthMatrix(cursor.year(), cursor.month()), [cursor]);
   const today = dayjs().format('YYYY-MM-DD');
-  const cellSize = Math.floor((width - spacing[4] * 2 - spacing[1] * 6) / 7);
+  const cellSize = gridCellSize(layout.width, 7, spacing[1], spacing[4]);
 
   const filterChips = useMemo(() => {
     const chips: Array<{ key: string; label: string; onRemove: () => void }> = [];
@@ -283,11 +274,11 @@ export function CalendarScreen({
             <Animated.View entering={FadeInDown.delay(40).duration(280).springify()}>
               <Row justify="between" align="center" style={[styles.monthNav, elevation.xs]}>
                 <Pressable onPress={goPrevMonth} style={styles.navBtn} hitSlop={8}>
-                  <ChevronLeft size={18} color={c.primary} strokeWidth={2.5} />
+                  <ChevronLeft size={iconSize.mdSm} color={c.primary} strokeWidth={2.5} />
                 </Pressable>
-                <Text style={styles.monthLabel}>{cursor.format('MMMM YYYY')}</Text>
+                <AppText style={styles.monthLabel}>{cursor.format('MMMM YYYY')}</AppText>
                 <Pressable onPress={goNextMonth} style={styles.navBtn} hitSlop={8}>
-                  <ChevronRight size={18} color={c.primary} strokeWidth={2.5} />
+                  <ChevronRight size={iconSize.mdSm} color={c.primary} strokeWidth={2.5} />
                 </Pressable>
               </Row>
             </Animated.View>
@@ -296,7 +287,7 @@ export function CalendarScreen({
               <Row gap={spacing[1]}>
               {WEEKDAYS.map((d, i) => (
                 <View key={i} style={[styles.weekCell, { width: cellSize }]}>
-                  <Text style={styles.weekLabel}>{d}</Text>
+                  <AppText style={styles.weekLabel}>{d}</AppText>
                 </View>
               ))}
               </Row>
@@ -324,7 +315,7 @@ export function CalendarScreen({
                       !isSelected && count > 0 && styles.dayCellHasEvents,
                     ]}
                   >
-                    <Text
+                    <AppText
                       style={[
                         styles.dayNum,
                         isSelected && styles.dayNumSelected,
@@ -332,7 +323,7 @@ export function CalendarScreen({
                       ]}
                     >
                       {day.format('D')}
-                    </Text>
+                    </AppText>
                     {count > 0 ? (
                       <Row gap={2}>
                         {Array.from({ length: Math.min(count, 3) }).map((_, di) => (
@@ -354,12 +345,12 @@ export function CalendarScreen({
           <Pressable onPress={() => openDaySheet(selectedDay)} style={styles.daySummary}>
             <Cluster
               gap={spacing[2]}
-              leading={<Calendar size={15} color={c.primary} strokeWidth={2} />}
-              actions={<ChevronRight size={15} color={c.primary} strokeWidth={2.5} />}
+              leading={<Calendar size={iconSize.xs} color={c.primary} strokeWidth={2} />}
+              actions={<ChevronRight size={iconSize.xs} color={c.primary} strokeWidth={2.5} />}
             >
-              <Text style={styles.daySummaryText} numberOfLines={1}>
+              <AppText style={styles.daySummaryText} numberOfLines={1}>
                 {dayjs(selectedDay).format('dddd D MMMM')} · {dayItems.length} RDV
-              </Text>
+              </AppText>
             </Cluster>
           </Pressable>
         </Animated.View>

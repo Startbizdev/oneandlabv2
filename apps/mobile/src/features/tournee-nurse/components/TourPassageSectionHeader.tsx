@@ -1,10 +1,10 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SlidersHorizontal } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -25,11 +25,11 @@ export function TourPassageSectionHeader({
 
   return (
     <Row align="center" gap={spacing[1.5]} style={styles.row}>
-      <Text style={[styles.title, { color: c.textTertiary }]}>Passage</Text>
+      <AppText style={[styles.title, { color: c.textTertiary }]}>Passage</AppText>
       {absentCount > 0 && activeTotal > 0 ? (
-        <Text style={[styles.absentHint, { color: c.textSecondary }]}>
+        <AppText style={[styles.absentHint, { color: c.textSecondary }]}>
           {absentCount} absent{absentCount > 1 ? 's' : ''}
-        </Text>
+        </AppText>
       ) : null}
       <Pressable
         onPress={onOpenFilter}
@@ -38,7 +38,7 @@ export function TourPassageSectionHeader({
         accessibilityRole="button"
         accessibilityLabel="Filtrer l'ordre des passages"
       >
-        <SlidersHorizontal size={16} color={sortActive ? c.primary : c.textSecondary} strokeWidth={2.2} />
+        <SlidersHorizontal size={iconSize.sm} color={sortActive ? c.primary : c.textSecondary} strokeWidth={2.2} />
         {sortActive ? (
           <View style={[styles.dot, { backgroundColor: c.primary, borderColor: c.surfaceAlt }]} />
         ) : null}

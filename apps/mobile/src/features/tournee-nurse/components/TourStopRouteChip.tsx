@@ -1,17 +1,22 @@
+import { layoutRowCenter } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Car, Route } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
 import { resolveTourStopRouteMetrics } from '@oneandlab/shared-utils';
-import type { NurseTourStop } from '../api/nurse-tour.service';
+
+type RouteStopLike = {
+  distance_km_from_prev?: number | null;
+  drive_min_from_prev?: number | null;
+};
 
 type Props = {
-  stop: NurseTourStop;
+  stop: RouteStopLike;
 };
 
 export function TourStopRouteChip({ stop }: Props) {
@@ -29,13 +34,13 @@ export function TourStopRouteChip({ stop }: Props) {
       accessibilityLabel={`Trajet depuis le passage précédent : ${kmLabel}, environ ${metrics.min} minutes`}
     >
       <Row gap={spacing[1]} align="center" style={styles.segment}>
-        <Route size={11} color={c.textSecondary} strokeWidth={2.4} />
-        <Text style={[styles.value, { color: c.textSecondary }]}>{kmLabel}</Text>
+        <Route size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.4} />
+        <AppText style={[styles.value, { color: c.textSecondary }]}>{kmLabel}</AppText>
       </Row>
       <View style={[styles.divider, { backgroundColor: hexToRgba(c.textTertiary, 0.28) }]} />
       <Row gap={spacing[1]} align="center" style={styles.segment}>
-        <Car size={11} color={c.textSecondary} strokeWidth={2.4} />
-        <Text style={[styles.value, { color: c.textSecondary }]}>{minLabel}</Text>
+        <Car size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.4} />
+        <AppText style={[styles.value, { color: c.textSecondary }]}>{minLabel}</AppText>
       </Row>
     </View>
   );
@@ -44,8 +49,7 @@ export function TourStopRouteChip({ stop }: Props) {
 function buildStyles(_c: AppColors) {
   return {
     chip: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
+      ...layoutRowCenter(),
       alignSelf: 'flex-end' as const,
       borderRadius: radius.full,
       borderWidth: StyleSheet.hairlineWidth,

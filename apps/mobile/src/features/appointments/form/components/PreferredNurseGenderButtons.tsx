@@ -1,8 +1,8 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const OPTIONS = [
@@ -20,7 +20,7 @@ export function PreferredNurseGenderButtons({ value, onChange }: Props) {
   const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_PreferredNurseGenderButtons_tsx_styles');
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>Préférence pour l&apos;infirmier(ère)</Text>
+      <AppText style={styles.label}>Préférence pour l&apos;infirmier(ère)</AppText>
       <Row wrap gap={spacing[2]}>
         {OPTIONS.map((o) => {
           const on = (value || 'any') === o.value;
@@ -30,7 +30,7 @@ export function PreferredNurseGenderButtons({ value, onChange }: Props) {
               onPress={() => onChange(o.value)}
               style={[styles.pill, on && styles.pillActive]}
             >
-              <Text style={[styles.text, on && styles.textActive]}>{o.label}</Text>
+              <AppText style={[styles.text, on && styles.textActive]}>{o.label}</AppText>
             </Pressable>
           );
         })}

@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { HeartPulse } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
@@ -19,7 +19,7 @@ import { ClinicalVitalsPanel } from '@/features/health-record/components/Clinica
 import { StaffPatientEditSheet } from '@/features/patients/components/StaffPatientEditSheet';
 import { useAuthStore } from '@/store/auth-store';
 import { PassageFormHealthRecordSectionSheet } from './PassageFormHealthRecordSectionSheet';
-import { elevation, H_PADDING, radius, spacing } from '@/theme';
+import { elevation, H_PADDING, radius, spacing, iconSize, progressRingSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -87,22 +87,22 @@ export function PassageFormHealthRecordPanel({
     <>
       <View style={styles.wrap}>
         <View style={styles.banner}>
-          <Text style={styles.bannerText}>
+          <AppText style={styles.bannerText}>
             Données déclarées par le patient — vous pouvez les compléter ou corriger ici.
-          </Text>
+          </AppText>
         </View>
 
         <View style={[styles.heroCard, elevation.sm]}>
           <Row gap={spacing[4]} align="center">
-            <HealthRecordProgressRing percent={percent} size={72} strokeWidth={6} />
+            <HealthRecordProgressRing percent={percent} size={progressRingSize.lg} strokeWidth={6} />
             <View style={styles.heroText}>
               <Row gap={spacing[2]} align="center">
                 <View style={[styles.heroIcon, { backgroundColor: c.primaryLight }]}>
-                  <HeartPulse size={16} color={c.primary} strokeWidth={2} />
+                  <HeartPulse size={iconSize.sm} color={c.primary} strokeWidth={2} />
                 </View>
-                <Text style={styles.heroTitle}>Carnet de santé</Text>
+                <AppText style={styles.heroTitle}>Carnet de santé</AppText>
               </Row>
-              <Text style={styles.heroSub}>{heroSubtitle}</Text>
+              <AppText style={styles.heroSub}>{heroSubtitle}</AppText>
             </View>
           </Row>
         </View>
@@ -124,7 +124,7 @@ export function PassageFormHealthRecordPanel({
 
         <Button title="Modifier la fiche patient" variant="secondary" onPress={() => setEditPatientOpen(true)} />
 
-        <Text style={styles.disclaimer}>{data?.disclaimer_fr}</Text>
+        <AppText style={styles.disclaimer}>{data?.disclaimer_fr}</AppText>
       </View>
 
       <PassageFormHealthRecordSectionSheet

@@ -1,7 +1,8 @@
+import { layoutRowWrap } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -20,7 +21,7 @@ import {
   deleteClinicalVital,
   updateClinicalVital,
 } from '../api/clinical-vitals.service';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -194,9 +195,9 @@ export function ClinicalVitalEditSheet({
         />
 
         {saveMut.isError ? (
-          <Text style={styles.error}>
+          <AppText style={styles.error}>
             {saveMut.error instanceof Error ? saveMut.error.message : 'Erreur'}
-          </Text>
+          </AppText>
         ) : null}
       </Stack>
     </BottomSheet>
@@ -206,9 +207,7 @@ export function ClinicalVitalEditSheet({
 function buildStyles(c: AppColors) {
   return {
     typeGrid: {
-      flexDirection: 'row' as const,
-      flexWrap: 'wrap' as const,
-      gap: spacing[2],
+      ...layoutRowWrap(spacing[2]),
     },
     error: {
       fontFamily: fontFamily.medium,

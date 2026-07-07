@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
@@ -14,7 +14,7 @@ import {
 import { HealthRecordQuestionStep } from '@/features/health-record/components/HealthRecordQuestionStep';
 import { healthRecordQueryKeys } from '@/features/health-record/hooks/use-health-record-completion';
 import { recapItemsToQuestions } from '@/features/health-record/utils/health-record-questions';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -114,12 +114,12 @@ export function PassageFormHealthRecordSectionSheet({
           onAction={onClose}
         />
       ) : !current ? (
-        <Text style={styles.empty}>Aucune question dans cette section.</Text>
+        <AppText style={styles.empty}>Aucune question dans cette section.</AppText>
       ) : (
         <View style={styles.body}>
-          <Text style={styles.progress}>
+          <AppText style={styles.progress}>
             Question {stepIndex + 1} / {questions.length}
-          </Text>
+          </AppText>
           <HealthRecordQuestionStep
             key={current.key}
             question={current}

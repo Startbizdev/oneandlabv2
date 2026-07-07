@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/Input';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import type { Review } from '@/features/reviews/types';
 import { reviewerDisplayName } from '@/features/reviews/utils/review-labels';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { MessageSquare } from 'lucide-react-native';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 
 interface Props {
@@ -43,13 +43,13 @@ export function ReviewReplySheet({
       onClose={onClose}
       title="Répondre à l'avis"
       subtitle={reviewerDisplayName(review)}
-      headerIcon={<MessageSquare size={20} color={c.primary} strokeWidth={2} />}
+      headerIcon={<MessageSquare size={iconSize.md} color={c.primary} strokeWidth={2} />}
     >
       <View style={styles.preview}>
-        <ReviewStars rating={review.rating ?? 0} size={14} />
-        <Text style={styles.previewComment}>
+        <ReviewStars rating={review.rating ?? 0} size={iconSize.xs} />
+        <AppText style={styles.previewComment}>
           {review.comment?.trim() ? `« ${review.comment.trim()} »` : 'Pas de commentaire texte.'}
-        </Text>
+        </AppText>
       </View>
       <Input
         label="Votre réponse"
@@ -60,7 +60,7 @@ export function ReviewReplySheet({
         placeholder="Remerciez le patient ou apportez des précisions…"
         style={styles.input}
       />
-      <Text style={styles.hint}>Votre réponse sera visible sur votre fiche publique Cary.</Text>
+      <AppText style={styles.hint}>Votre réponse sera visible sur votre fiche publique Cary.</AppText>
       <Row gap={spacing[3]} style={styles.actions}>
         <View style={styles.actionBtn}>
           <Button title="Annuler" variant="outline" onPress={onClose} fullWidth size="lg" />

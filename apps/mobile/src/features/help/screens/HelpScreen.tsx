@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import {
   buildTabSceneScrollConfig,
   spreadTabSceneScrollProps,
@@ -27,7 +27,7 @@ import { getHelpFaqForRole, type HelpFaqItem } from '@/features/help/help-faq-co
 import { ProfileNavCard } from '@/features/profile/components/ProfileNavCard';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { useAuthStore } from '@/store/auth-store';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
@@ -71,7 +71,7 @@ export function HelpScreen() {
         contentContainerStyle={scrollConfig.contentContainerStyle}
         showsVerticalScrollIndicator={false}
       >
-      <Text style={styles.lead}>{faq.intro}</Text>
+      <AppText style={styles.lead}>{faq.intro}</AppText>
 
       {role && isTutorialRole(role) ? (
         <ProfileNavCard title="Prise en main">

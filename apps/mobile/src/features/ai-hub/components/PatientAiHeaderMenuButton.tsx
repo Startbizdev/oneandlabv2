@@ -1,3 +1,4 @@
+import { iconSize } from '@/theme';
 import { List } from 'lucide-react-native';
 import { GlassHeaderButton } from '@/components/navigation/GlassHeaderButton';
 
@@ -12,7 +13,7 @@ export function PatientAiHeaderMenuButton({ onPress }: Props) {
       symbol="clock.arrow.circlepath"
       accessibilityLabel="Historique des conversations"
       onPress={onPress}
-      fallback={<List size={20} strokeWidth={2.25} />}
+      fallback={<List size={iconSize.md} strokeWidth={2.25} />}
     />
   );
 }

@@ -2,12 +2,12 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNativeTabBarInset } from '@/navigation/use-native-tab-bar-inset';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { PatientAiChatComposer, PATIENT_AI_COMPOSER_DOCK_HEIGHT } from './PatientAiChatComposer';
-import { H_PADDING, spacing } from '@/theme';
+import { H_PADDING, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 interface Props {
@@ -83,9 +83,9 @@ export function PatientAiChatFooter({
       >
         {!inputFocused && disclaimer ? (
           <View style={[styles.disclaimerWrap, { backgroundColor: c.surfaceAlt }]}>
-            <Text style={[styles.disclaimer, { color: c.textTertiary }]}>
+            <AppText style={[styles.disclaimer, { color: c.textTertiary }]}>
               {disclaimer}
-            </Text>
+            </AppText>
           </View>
         ) : null}
         <PatientAiChatComposer

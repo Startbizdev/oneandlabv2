@@ -1,14 +1,15 @@
+import { layoutRowWrap } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText, useLayoutMetrics, calendarCellMaxWidth } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -20,7 +21,9 @@ type Props = {
 
 export function PassageMultiDateCalendar({ selected, onChange }: Props) {
   const c = useAppColors();
+  const layout = useLayoutMetrics();
   const styles = useThemedStyles(buildStyles);
+  const cellMaxWidth = calendarCellMaxWidth(layout.width);
   const [cursor, setCursor] = useState(() => dayjs().startOf('month'));
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -55,32 +58,32 @@ export function PassageMultiDateCalendar({ selected, onChange }: Props) {
           hitSlop={8}
           accessibilityLabel="Mois précédent"
         >
-          <ChevronLeft size={22} color={c.textSecondary} />
+          <ChevronLeft size={iconSize.mdLg} color={c.textSecondary} />
         </Pressable>
-        <Text style={[styles.monthLabel, { color: c.textPrimary }]}>
+        <AppText style={[styles.monthLabel, { color: c.textPrimary }]}>
           {cursor.format('MMMM YYYY')}
-        </Text>
+        </AppText>
         <Pressable
           onPress={() => setCursor((m) => m.add(1, 'month'))}
           hitSlop={8}
           accessibilityLabel="Mois suivant"
         >
-          <ChevronRight size={22} color={c.textSecondary} />
+          <ChevronRight size={iconSize.mdLg} color={c.textSecondary} />
         </Pressable>
       </Row>
 
       <Row style={styles.weekdayRow}>
         {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((w, i) => (
-          <Text key={`${w}-${i}`} style={[styles.weekday, { color: c.textTertiary }]}>
+          <AppText key={`${w}-${i}`} style={[styles.weekday, { color: c.textTertiary }]}>
             {w}
-          </Text>
+          </AppText>
         ))}
       </Row>
 
       <View style={styles.grid}>
         {grid.map((cell, idx) => {
           if (!cell.iso || cell.day == null) {
-            return <View key={`empty-${idx}`} style={styles.cell} />;
+            return <View key={`empty-${idx}`} style={[styles.cell, { maxWidth: cellMaxWidth }]} />;
           }
           const on = selectedSet.has(cell.iso);
           return (
@@ -90,13 +93,14 @@ export function PassageMultiDateCalendar({ selected, onChange }: Props) {
               style={[
                 styles.cell,
                 styles.dayCell,
+                { maxWidth: cellMaxWidth },
                 on && { backgroundColor: hexToRgba(c.primary, 0.15), borderColor: c.primary },
               ]}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}
               accessibilityLabel={dayjs(cell.iso).format('D MMMM YYYY')}
             >
-              <Text
+              <AppText
                 style={{
                   fontFamily: fontFamily.semiBold,
                   fontSize: fontSize.sm,
@@ -104,7 +108,7 @@ export function PassageMultiDateCalendar({ selected, onChange }: Props) {
                 }}
               >
                 {cell.day}
-              </Text>
+              </AppText>
             </Pressable>
           );
         })}
@@ -112,13 +116,13 @@ export function PassageMultiDateCalendar({ selected, onChange }: Props) {
 
       {sortedSelected.length > 0 ? (
         <View style={styles.summary}>
-          <Text style={[styles.summaryLabel, { color: c.textSecondary }]}>
+          <AppText style={[styles.summaryLabel, { color: c.textSecondary }]}>
             {sortedSelected.length} date{sortedSelected.length > 1 ? 's' : ''} sélectionnée
             {sortedSelected.length > 1 ? 's' : ''}
-          </Text>
-          <Text style={[styles.summaryDates, { color: c.textPrimary }]} numberOfLines={3}>
+          </AppText>
+          <AppText style={[styles.summaryDates, { color: c.textPrimary }]} numberOfLines={3}>
             {sortedSelected.map((d) => dayjs(d).format('D MMM')).join(' · ')}
-          </Text>
+          </AppText>
         </View>
       ) : null}
     </View>
@@ -142,13 +146,11 @@ function buildStyles(_c: AppColors) {
       fontSize: fontSize.xs,
     },
     grid: {
-      flexDirection: 'row' as const,
-      flexWrap: 'wrap' as const,
+      ...layoutRowWrap(0),
     },
     cell: {
       width: '14.28%' as unknown as number,
       aspectRatio: 1,
-      maxWidth: 44,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },

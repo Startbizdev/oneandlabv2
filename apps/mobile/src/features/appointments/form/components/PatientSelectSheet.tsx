@@ -3,20 +3,13 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo, useState } from 'react';
-import {
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type ListRenderItem,
-} from 'react-native';
+import { FlatList, Pressable, StyleSheet, View, type ListRenderItem } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { Check, Search } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import type { PatientOption } from './FormPatientSection';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const H_PAD = spacing[4];
@@ -79,17 +72,17 @@ export function PatientSelectSheet({
           actions={
             <View style={styles.trailing}>
               {selected ? (
-                <Check size={20} color={c.primary} strokeWidth={2.5} />
+                <Check size={iconSize.md} color={c.primary} strokeWidth={2.5} />
               ) : null}
             </View>
           }
         >
-          <Text
+          <AppText
             style={[styles.name, selected && styles.nameSelected]}
             numberOfLines={1}
           >
             {item.label}
-          </Text>
+          </AppText>
         </Cluster>
       </Pressable>
     );
@@ -108,12 +101,12 @@ export function PatientSelectSheet({
           value={q}
           onChangeText={setQ}
           placeholder="Rechercher un patient…"
-          leftIcon={<Search size={16} color={c.textTertiary} />}
+          leftIcon={<Search size={iconSize.sm} color={c.textTertiary} />}
         />
       </View>
 
       {filtered.length === 0 ? (
-        <Text style={styles.empty}>Aucun patient trouvé</Text>
+        <AppText style={styles.empty}>Aucun patient trouvé</AppText>
       ) : (
         <View style={styles.listPanel}>
           <FlatList

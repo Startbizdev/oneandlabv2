@@ -2,12 +2,12 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { MapPin, X } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { searchAddresses, type AddressSuggestion } from '../api/address.service';
 import type { AddressPayload } from '@/features/appointments/form/types';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -94,13 +94,13 @@ export function AddressAutocomplete({
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           placeholder="Tapez au moins 3 caractères…"
           editable={!value}
-          leftIcon={<MapPin size={16} color={c.textTertiary} strokeWidth={2} />}
+          leftIcon={<MapPin size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
           rightIcon={
             loading ? (
               <ActivityIndicator size="small" color={c.primary} />
             ) : value ? (
               <Pressable onPress={clear} hitSlop={8}>
-                <X size={16} color={c.textTertiary} strokeWidth={2} />
+                <X size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />
               </Pressable>
             ) : null
           }
@@ -116,11 +116,11 @@ export function AddressAutocomplete({
               onPress={() => select(s)}
               style={[styles.suggestion, i === 0 && styles.suggestionFirst]}
             >
-              <Text style={styles.suggestionLabel}>{s.label}</Text>
+              <AppText style={styles.suggestionLabel}>{s.label}</AppText>
               {s.postcode || s.city ? (
-                <Text style={styles.suggestionMeta}>
+                <AppText style={styles.suggestionMeta}>
                   {[s.postcode, s.city].filter(Boolean).join(' ')}
-                </Text>
+                </AppText>
               ) : null}
             </Pressable>
           ))}
@@ -128,7 +128,7 @@ export function AddressAutocomplete({
       ) : null}
 
       {open && query.length >= 3 && !loading && suggestions.length === 0 ? (
-        <Text style={styles.noResult}>Aucune adresse trouvée</Text>
+        <AppText style={styles.noResult}>Aucune adresse trouvée</AppText>
       ) : null}
 
       {value && onComplementChange ? (

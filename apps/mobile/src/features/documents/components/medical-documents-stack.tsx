@@ -2,14 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import {
   CreditCard,
   Download,
@@ -40,7 +33,7 @@ import { Button } from '@/components/ui/Button';
 import { IconActionButton } from '@/components/ui/IconActionButton';
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import { useDownloadedDocumentIds } from '@/features/documents/hooks/use-downloaded-document-ids';
-import { radius, spacing, iconSize } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export const MEDICAL_DOC_ICONS: Record<string, LucideIcon> = {
@@ -128,7 +121,7 @@ export function MedicalDocumentsStackHead({
     return (
       <View style={section.card}>
         <View style={styles.head}>
-          <Text style={[styles.title, { color: c.textPrimary }]}>{title}</Text>
+          <AppText style={[styles.title, { color: c.textPrimary }]}>{title}</AppText>
         </View>
         <View style={styles.skeletonPad}>
           <SkeletonList count={3} itemHeight={72} gap={spacing[2]} />
@@ -144,13 +137,13 @@ export function MedicalDocumentsStackHead({
       style={styles.head}
       leading={
         <View style={[styles.headIcon, { backgroundColor: c.primaryLight }]}>
-          <FileText size={16} color={c.primary} strokeWidth={2.25} />
+          <FileText size={iconSize.sm} color={c.primary} strokeWidth={2.25} />
         </View>
       }
     >
       <View style={styles.headText}>
-        <Text style={[styles.title, { color: c.textPrimary }]}>{title}</Text>
-        <Text style={[styles.sub, { color: c.textSecondary }]}>{subtitle}</Text>
+        <AppText style={[styles.title, { color: c.textPrimary }]}>{title}</AppText>
+        <AppText style={[styles.sub, { color: c.textSecondary }]}>{subtitle}</AppText>
       </View>
     </Cluster>
   );
@@ -210,18 +203,18 @@ function DocumentStackRow({
       bodyDisabled={disabled}
       body={
         <>
-          <Text
+          <AppText
             style={[styles.label, styles.shrinkText, { color: c.textPrimary }]}
             numberOfLines={2}
           >
             {label}
-          </Text>
-          <Text
+          </AppText>
+          <AppText
             style={[styles.hint, styles.shrinkText, { color: hintColor }]}
             numberOfLines={2}
           >
             {hint}
-          </Text>
+          </AppText>
         </>
       }
       actions={actions}

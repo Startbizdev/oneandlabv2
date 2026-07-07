@@ -364,6 +364,7 @@ export function AppointmentDetailScreen({ role }: Props) {
 function buildStyles(c: AppColors) {
   return {
   scroll: {
+    minWidth: 0,
     flexGrow: 1,
     alignSelf: 'stretch' as const,
     paddingBottom: spacing[10],

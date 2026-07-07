@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
@@ -16,7 +16,7 @@ import { parseProfileAddress } from '@/features/profile/utils/parse-profile-addr
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -130,9 +130,9 @@ export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: 
             onComplementChange={setAddressComplement}
             label="Adresse"
           />
-          <Text style={styles.hint}>
+          <AppText style={styles.hint}>
             L’email ne peut pas être modifié depuis l’application.
-          </Text>
+          </AppText>
         </View>
       )}
     </BottomSheet>

@@ -2,11 +2,11 @@ import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Camera, FileUp, ImageIcon } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import type { CarePhotoPickSource } from '@/lib/uploads/pick-care-photo';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 interface Props {
@@ -32,10 +32,10 @@ export function CaryAiVoiceDocumentUpload({
 
   return (
     <View style={[styles.block, { backgroundColor: c.surfaceAlt, borderColor: hexToRgba(c.primary, 0.2) }]}>
-      <Text style={[styles.title, { color: c.textPrimary }]}>{label}</Text>
-      <Text style={[styles.sub, { color: c.textSecondary }]}>
+      <AppText style={[styles.title, { color: c.textPrimary }]}>{label}</AppText>
+      <AppText style={[styles.sub, { color: c.textSecondary }]}>
         {attaching ? 'Envoi en cours…' : 'Choisissez une source ci-dessous.'}
-      </Text>
+      </AppText>
       <Row gap={spacing[2]} style={styles.row}>
         {OPTIONS.map(({ source, label: optLabel, Icon }) => (
           <Pressable
@@ -52,8 +52,8 @@ export function CaryAiVoiceDocumentUpload({
             accessibilityRole="button"
             accessibilityLabel={optLabel}
           >
-            <Icon size={22} color={c.primary} strokeWidth={2.1} />
-            <Text style={[styles.btnLabel, { color: c.primary }]}>{optLabel}</Text>
+            <Icon size={iconSize.mdLg} color={c.primary} strokeWidth={2.1} />
+            <AppText style={[styles.btnLabel, { color: c.primary }]}>{optLabel}</AppText>
           </Pressable>
         ))}
       </Row>
@@ -83,6 +83,7 @@ function buildStyles(_c: AppColors) {
       marginTop: spacing[0.5],
     },
     btn: {
+      minWidth: 0,
       flex: 1,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,

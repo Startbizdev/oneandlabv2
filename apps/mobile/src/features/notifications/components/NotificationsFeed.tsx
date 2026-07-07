@@ -2,19 +2,11 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-  type ListRenderItem,
-} from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View, type ListRenderItem } from 'react-native';
 import type { AppNotification } from '@/features/notifications/api/notifications.service';
 import { NotificationCard } from './NotificationCard';
 import { Button } from '@/components/ui/Button';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -60,9 +52,9 @@ export function NotificationsFeed({
 
   const ListHeader = useCallback(
     () => (
-      <Text style={styles.sectionTitle}>
+      <AppText style={styles.sectionTitle}>
         {hasUnread ? 'Non lues en premier' : 'Toutes lues'}
-      </Text>
+      </AppText>
     ),
     [hasUnread],
   );
@@ -83,7 +75,7 @@ export function NotificationsFeed({
       );
     }
     if (items.length > pageSize) {
-      return <Text style={styles.endHint}>Fin de l'historique</Text>;
+      return <AppText style={styles.endHint}>Fin de l'historique</AppText>;
     }
     return null;
   }, [hasMore, items.length, loadingMore, onLoadMore, pageSize]);

@@ -2,10 +2,10 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Check } from 'lucide-react-native';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Stack } from '@/components/layout/primitives';
 import { hexToRgba } from '@/theme/color-utils';
-import { spacing } from '@/theme';
+import { spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 import { elevation } from '@/theme/tokens';
 
@@ -18,10 +18,10 @@ export function TourStopCompletedStamp() {
     <View style={styles.root} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no">
       <Stack align="center" gap={spacing[2]} style={styles.center}>
         <View style={[styles.circle, { backgroundColor: c.surface, borderColor: c.success, shadowColor: c.textPrimary }]}>
-          <Check size={36} color={c.success} strokeWidth={3} />
+          <Check size={iconSize['3xl']} color={c.success} strokeWidth={3} />
         </View>
         <View style={[styles.labelWrap, { backgroundColor: c.surface }]}>
-          <Text style={[styles.label, { color: c.success }]}>Effectué</Text>
+          <AppText style={[styles.label, { color: c.success }]}>Effectué</AppText>
         </View>
       </Stack>
     </View>

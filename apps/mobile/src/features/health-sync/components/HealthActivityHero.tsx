@@ -1,11 +1,11 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Footprints } from 'lucide-react-native';
 import { Row, Stack } from '@/components/layout/primitives';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
 import { DAILY_STEPS_GOAL } from '../utils/health-metric-stats';
@@ -57,35 +57,35 @@ export function HealthActivityHero({ todaySteps, avgSteps7d, lastHeartRate, last
             />
           </Svg>
           <View style={styles.ringCenter}>
-            <Footprints size={18} color={c.primary} strokeWidth={2.25} />
-            <Text style={styles.ringValue}>
+            <Footprints size={iconSize.mdSm} color={c.primary} strokeWidth={2.25} />
+            <AppText style={styles.ringValue}>
               {stepsDisplay != null ? stepsDisplay.toLocaleString('fr-FR') : '—'}
-            </Text>
-            <Text style={styles.ringUnit}>pas</Text>
+            </AppText>
+            <AppText style={styles.ringUnit}>pas</AppText>
           </View>
         </View>
 
         <Stack gap={spacing[2]} style={styles.meta}>
-          <Text style={styles.title}>
+          <AppText style={styles.title}>
             {todaySteps != null ? 'Aujourd’hui' : 'Activité (7 j)'}
-          </Text>
-          <Text style={styles.goal}>
+          </AppText>
+          <AppText style={styles.goal}>
             {goalPct} % de l’objectif {DAILY_STEPS_GOAL.toLocaleString('fr-FR')} pas
-          </Text>
+          </AppText>
           {avgSteps7d != null ? (
-            <Text style={styles.sub}>Moyenne {Math.round(avgSteps7d).toLocaleString('fr-FR')} pas/j</Text>
+            <AppText style={styles.sub}>Moyenne {Math.round(avgSteps7d).toLocaleString('fr-FR')} pas/j</AppText>
           ) : null}
           <Row gap={spacing[4]}>
             {lastHeartRate != null ? (
               <View>
-                <Text style={styles.miniLabel}>FC</Text>
-                <Text style={styles.miniValue}>{Math.round(lastHeartRate)} bpm</Text>
+                <AppText style={styles.miniLabel}>FC</AppText>
+                <AppText style={styles.miniValue}>{Math.round(lastHeartRate)} bpm</AppText>
               </View>
             ) : null}
             {lastWeight != null ? (
               <View>
-                <Text style={styles.miniLabel}>Poids</Text>
-                <Text style={styles.miniValue}>{lastWeight} kg</Text>
+                <AppText style={styles.miniLabel}>Poids</AppText>
+                <AppText style={styles.miniValue}>{lastWeight} kg</AppText>
               </View>
             ) : null}
           </Row>
@@ -146,7 +146,7 @@ function buildStyles(c: AppColors) {
     },
     miniLabel: {
       fontFamily: fontFamily.medium,
-      fontSize: 10,
+      fontSize: fontSize['2xs'],
       color: c.textTertiary,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.4,

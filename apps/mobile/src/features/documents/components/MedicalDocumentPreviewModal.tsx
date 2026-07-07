@@ -2,14 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Modal,
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Modal, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -21,7 +14,7 @@ import { exportLocalFile } from '@/lib/downloads/open-local-file';
 import { resolveDocumentPreviewKind } from '@/lib/downloads/document-file-kind';
 import { inspectMedDocFile, logMedDoc } from '@/lib/uploads/medical-doc-file-debug';
 import { useToast } from '@/providers/ToastProvider';
-import { iconSize, spacing } from '@/theme';
+import { iconSize, spacing, AppText } from '@/theme';
 import { layoutRow } from '@/theme/layout-styles';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -87,7 +80,7 @@ function PdfPreviewBody({ localUri, fileName }: { localUri: string; fileName?: s
   if (failed) {
     return (
       <View style={styles.center}>
-        <Text style={styles.failText}>Impossible d’afficher ce PDF.</Text>
+        <AppText style={styles.failText}>Impossible d’afficher ce PDF.</AppText>
       </View>
     );
   }
@@ -96,7 +89,7 @@ function PdfPreviewBody({ localUri, fileName }: { localUri: string; fileName?: s
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={c.primary} />
-        <Text style={styles.loadingText}>Chargement du PDF…</Text>
+        <AppText style={styles.loadingText}>Chargement du PDF…</AppText>
       </View>
     );
   }
@@ -194,9 +187,9 @@ export function MedicalDocumentPreviewModal({ visible, localUri, fileName, onClo
             </View>
           }
         >
-          <Text style={styles.pdfTitle} numberOfLines={1}>
+          <AppText style={styles.pdfTitle} numberOfLines={1}>
             {pdfPreviewTitle(fileName)}
-          </Text>
+          </AppText>
         </Cluster>
         <PdfPreviewBody localUri={localUri} fileName={fileName} />
       </View>

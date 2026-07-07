@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useLayoutEffect, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { useFocusEffect, useNavigation } from 'expo-router';
 import { ScanFace } from 'lucide-react-native';
@@ -18,7 +18,7 @@ import {
 } from '@/lib/biometric-auth';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function openDeviceBiometricSettings() {
@@ -107,7 +107,7 @@ export function ProfileSecurityScreen() {
   if (!user?.id) {
     return (
       <ProfileSubScreenLayout hideSave>
-        <Text style={styles.error}>Connectez-vous pour gérer la sécurité.</Text>
+        <AppText style={styles.error}>Connectez-vous pour gérer la sécurité.</AppText>
       </ProfileSubScreenLayout>
     );
   }
@@ -115,7 +115,7 @@ export function ProfileSecurityScreen() {
   const card = (
     <Row gap={spacing[2]} align="center" style={[styles.card, elevation.xs]}>
       <View style={[styles.iconWrap, enabled && styles.iconWrapActive]}>
-        <ScanFace size={22} color={c.primary} strokeWidth={2} />
+        <ScanFace size={iconSize.mdLg} color={c.primary} strokeWidth={2} />
       </View>
       <View style={styles.rowWrap}>
         <ProfileToggleRow

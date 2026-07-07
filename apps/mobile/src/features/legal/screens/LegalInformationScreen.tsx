@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 
 import { useThemedStyles } from '@/theme/use-themed-styles';
 
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { useRouter } from 'expo-router';
 
@@ -18,7 +18,7 @@ import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, AppText } from '@/theme';
 
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -60,13 +60,13 @@ export function LegalInformationScreen({ rolePrefix }: Props) {
 
       >
 
-        <Text style={styles.lead}>
+        <AppText style={styles.lead}>
 
           Consultez les documents légaux de Cary. Ils s’ouvrent dans le même format que sur le site
 
           web.
 
-        </Text>
+        </AppText>
 
         <View style={[styles.card, elevation.xs]}>
 

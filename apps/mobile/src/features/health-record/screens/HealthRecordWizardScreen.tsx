@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -14,7 +14,7 @@ import { Row } from '@/components/layout/primitives';
 import { HealthRecordSectionEmoji } from '../components/HealthRecordSectionEmoji';
 import { HealthRecordQuestionStep } from '../components/HealthRecordQuestionStep';
 import { useHealthRecordWizard } from '../hooks/use-health-record-wizard';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function normalizeRouteParam(value?: string | string[]): string | undefined {
@@ -94,12 +94,12 @@ export function HealthRecordWizardScreen() {
             {wizard.sectionId ? (
               <HealthRecordSectionEmoji sectionId={wizard.sectionId} size="lg" />
             ) : null}
-            <Text style={styles.section}>{wizard.sectionLabel}</Text>
+            <AppText style={styles.section}>{wizard.sectionLabel}</AppText>
           </Row>
         ) : null}
-        <Text style={styles.step}>
+        <AppText style={styles.step}>
           Question {wizard.stepIndex + 1} / {wizard.questions.length}
-        </Text>
+        </AppText>
 
         <Animated.View entering={FadeInDown.duration(280)}>
           <HealthRecordQuestionStep
@@ -141,8 +141,10 @@ export function HealthRecordWizardScreen() {
 
 function buildStyles(c: AppColors) {
   return {
-    loading: { flex: 1, padding: spacing[4] },
-    errorWrap: { flex: 1, padding: spacing[4], justifyContent: 'center' as const },
+    loading: {
+    minWidth: 0, flex: 1, padding: spacing[4] },
+    errorWrap: {
+    minWidth: 0, flex: 1, padding: spacing[4], justifyContent: 'center' as const },
     content: { paddingHorizontal: spacing[4], paddingBottom: spacing[8] },
     sectionRow: {
       marginBottom: spacing[1],

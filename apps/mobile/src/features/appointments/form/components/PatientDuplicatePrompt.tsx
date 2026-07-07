@@ -2,12 +2,12 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { UserCheck } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -34,14 +34,14 @@ export function PatientDuplicatePrompt({
   return (
     <View style={styles.card} accessibilityRole="alert">
       <Row gap={spacing[2]} align="center">
-        <UserCheck size={22} color={c.primary} strokeWidth={2} />
-        <Text style={styles.title}>Patient déjà enregistré</Text>
+        <UserCheck size={iconSize.mdLg} color={c.primary} strokeWidth={2} />
+        <AppText style={styles.title}>Patient déjà enregistré</AppText>
       </Row>
-      <Text style={styles.text}>
+      <AppText style={styles.text}>
         {isBooking
           ? `Un dossier existe déjà${name ? ` pour ${name}` : ''}. Vous pouvez le sélectionner pour ce rendez-vous ou continuer à saisir un nouveau patient.`
           : `Un dossier existe déjà${name ? ` (${name})` : ''}. Utilisez-le ou continuez la création si c’est bien une autre personne.`}
-      </Text>
+      </AppText>
       <View style={styles.actions}>
         <Button
           title={isBooking ? 'Continuer en nouveau' : 'Continuer la saisie'}

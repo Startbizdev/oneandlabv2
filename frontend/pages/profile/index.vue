@@ -259,6 +259,39 @@
                   </UFormField>
                 </div>
               </UCard>
+
+              <UCard class="overflow-hidden">
+                <template #header>
+                  <div class="flex items-start gap-2">
+                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <UIcon name="i-lucide-settings" class="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <h2 class="text-base font-medium text-gray-900 dark:text-white">Paramètres</h2>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        Visibilité de votre fiche publique Cary
+                      </p>
+                    </div>
+                  </div>
+                </template>
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 transition-colors" :class="publicProfileForm.is_public_profile_enabled ? 'bg-primary-50/50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-gray-50/50 dark:bg-gray-800/30'">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-2">
+                        <span class="text-sm font-medium text-gray-900 dark:text-white">Profil public</span>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium" :class="publicProfileForm.is_public_profile_enabled ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-400'">{{ publicProfileForm.is_public_profile_enabled ? 'Activé' : 'Désactivé' }}</span>
+                      </div>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {{ publicProfileForm.is_public_profile_enabled ? 'Votre fiche est visible sur Cary.' : 'Votre fiche n’est pas visible publiquement.' }}
+                      </p>
+                      <p v-if="publicProfileForm.public_slug" class="text-xs text-muted mt-1 truncate">
+                        {{ publicProfileSlugPrefix }}{{ publicProfileForm.public_slug }}
+                      </p>
+                    </div>
+                    <USwitch :model-value="publicProfileForm.is_public_profile_enabled" class="shrink-0" :disabled="savingPublicProfile" @update:model-value="onPublicProfileToggle($event)" />
+                  </div>
+                </div>
+              </UCard>
             </template>
 
             <!-- Lab : rattacher le préleveur au lab ou à un sous-compte (création + édition) -->
@@ -1327,10 +1360,12 @@ const isDisplayedProfileLab = computed(() => role.value === 'lab')
 const hasCoverageZone = computed(
   () => isNurse.value || isSubaccount.value || isDisplayedProfileLab.value
 )
-const hasPublicProfile = computed(() => isNurse.value || isSubaccount.value || isDisplayedProfileLab.value)
+const hasPublicProfile = computed(
+  () => isNurse.value || isSubaccount.value || isDisplayedProfileLab.value || isProOwnProfile.value,
+)
 /** Section Paramètres (profil public + disponibilité) : nurse, subaccount, lab */
 const hasSettingsCard = computed(
-  () => hasPublicProfile.value || isDisplayedProfileLab.value
+  () => hasPublicProfile.value || isDisplayedProfileLab.value || isProOwnProfile.value,
 )
 /** Photo (préleveur) ; photo + couverture (nurse, subaccount, lab) */
 const hasProfilePhotoCard = computed(
@@ -1653,16 +1688,20 @@ function setOtherFormation(idx: number, value: string) {
 }
 const savingPublicProfile = ref(false)
 const savingAccepting = ref(false)
-const publicProfileSlugPrefix = computed(() =>
-  (isSubaccount.value || isDisplayedProfileLab.value)
-    ? 'cary.fr/Laboratoire/'
-    : 'cary.fr/infirmier/'
-)
+const publicProfileSlugPrefix = computed(() => {
+  if (isSubaccount.value || isDisplayedProfileLab.value) return 'cary.fr/Laboratoire/'
+  if (isProOwnProfile.value) return 'cary.fr/professionnel/'
+  return 'cary.fr/infirmier/'
+})
 
 async function onPublicProfileToggle(value: boolean) {
   publicProfileForm.value.is_public_profile_enabled = value
-  if (value && (isDisplayedProfileLab.value || isSubaccount.value) && !publicProfileForm.value.public_slug) {
-    generatePublicSlug()
+  if (value && !publicProfileForm.value.public_slug) {
+    if (isDisplayedProfileLab.value || isSubaccount.value) {
+      generatePublicSlug()
+    } else if (isNurse.value || isProOwnProfile.value) {
+      generatePublicSlug()
+    }
   }
   await savePublicProfile()
 }
@@ -1698,7 +1737,9 @@ async function onAcceptingToggle(value: boolean) {
 const publicProfileUrl = computed(() => {
   const slug = publicProfileForm.value.public_slug
   if (!slug) return '#'
-  return (isSubaccount.value || isDisplayedProfileLab.value) ? `/Laboratoire/${slug}` : `/infirmier/${slug}`
+  if (isSubaccount.value || isDisplayedProfileLab.value) return `/Laboratoire/${slug}`
+  if (isProOwnProfile.value) return `/professionnel/${slug}`
+  return `/infirmier/${slug}`
 })
 
 const hasValidAddress = computed(() => {
@@ -2269,6 +2310,8 @@ const saveProfile = async (fromSaveAll = false) => {
         body.profile_image_url = publicProfileForm.value.profile_image_url || null
         body.biography = publicProfileForm.value.biography?.trim() || null
         body.website_url = publicProfileForm.value.website_url?.trim() || null
+        body.public_slug = publicProfileForm.value.public_slug || null
+        body.is_public_profile_enabled = !!publicProfileForm.value.is_public_profile_enabled
         const sl = publicProfileForm.value.social_links
         body.social_links = sl && (sl.facebook || sl.linkedin || sl.instagram) ? sl : null
       }

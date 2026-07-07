@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
@@ -11,7 +11,7 @@ import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-
 import { Cluster, Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -49,21 +49,21 @@ export function DetailHero({ primary, batch, isMultiBatch }: Props) {
       <Row justify="between" align="start" gap={spacing[3]}>
         <Row align="start" gap={spacing[2]} style={styles.titleBlock}>
           {isMultiBatch ? (
-            <Layers size={18} color={c.primary} strokeWidth={2} style={styles.titleIcon} />
+            <Layers size={iconSize.mdSm} color={c.primary} strokeWidth={2} style={styles.titleIcon} />
           ) : null}
-          <Text style={styles.title} numberOfLines={2}>
+          <AppText style={styles.title} numberOfLines={2}>
             {title}
-          </Text>
+          </AppText>
         </Row>
         {!isMultiBatch ? <StatusBadge status={primary.status} size="md" /> : null}
       </Row>
 
       <Row wrap gap={spacing[2]} align="center">
         <View style={styles.typePill}>
-          <Text style={styles.typePillText}>{typeLabel}</Text>
+          <AppText style={styles.typePillText}>{typeLabel}</AppText>
         </View>
         {isMultiBatch ? (
-          <Text style={styles.batchHint}>{batch.length} actes liés · détails ci-dessous</Text>
+          <AppText style={styles.batchHint}>{batch.length} actes liés · détails ci-dessous</AppText>
         ) : null}
       </Row>
 
@@ -72,16 +72,16 @@ export function DetailHero({ primary, batch, isMultiBatch }: Props) {
           gap={spacing[2.5]}
           align="start"
           style={styles.schedule}
-          leading={<CalendarDays size={16} color={c.primary} strokeWidth={2} />}
+          leading={<CalendarDays size={iconSize.sm} color={c.primary} strokeWidth={2} />}
         >
           <View style={styles.scheduleTexts}>
             {scheduled ? (
-              <Text style={styles.dateLine}>{scheduled.format('dddd D MMMM YYYY')}</Text>
+              <AppText style={styles.dateLine}>{scheduled.format('dddd D MMMM YYYY')}</AppText>
             ) : null}
             {timeLabel ? (
               <Row gap={4} align="center">
-                <Clock size={12} color={c.textTertiary} strokeWidth={2} />
-                <Text style={styles.timeLine}>{timeLabel}</Text>
+                <Clock size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2} />
+                <AppText style={styles.timeLine}>{timeLabel}</AppText>
               </Row>
             ) : null}
           </View>

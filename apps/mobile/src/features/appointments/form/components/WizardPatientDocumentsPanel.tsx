@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -11,7 +11,7 @@ import { FolderOpen } from 'lucide-react-native';
 import { queryKeys } from '@/lib/query-keys';
 import { fetchPatientDocuments } from '@/features/patients/api/patient-profile.service';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -63,14 +63,14 @@ export function WizardPatientDocumentsPanel({
           style={styles.loadingRow}
           leading={
             <View style={styles.iconWrap}>
-              <FolderOpen size={20} color={c.primary} strokeWidth={2.25} />
+              <FolderOpen size={iconSize.md} color={c.primary} strokeWidth={2.25} />
             </View>
           }
           actions={
             <ActivityIndicator size="small" color={c.textTertiary} style={styles.spinner} />
           }
         >
-          <Text style={styles.loadingTitle}>Dossier patient</Text>
+          <AppText style={styles.loadingTitle}>Dossier patient</AppText>
         </Cluster>
       ) : (
         <ProfileNavRow

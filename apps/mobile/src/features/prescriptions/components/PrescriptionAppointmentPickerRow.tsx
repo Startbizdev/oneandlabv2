@@ -12,7 +12,7 @@ import {
   navigateAppointmentForListRow,
   type AppointmentListRow,
 } from '@/utils/appointment-batch';
-import { spacing } from '@/theme';
+import {spacing, iconSize } from '@/theme';
 
 interface Props {
   row: AppointmentListRow;
@@ -57,7 +57,7 @@ export const PrescriptionAppointmentPickerRow = React.memo(function Prescription
         actions={
           selected ? (
             <View style={styles.trailing}>
-              <Check size={20} color={c.primary} strokeWidth={2.5} />
+              <Check size={iconSize.md} color={c.primary} strokeWidth={2.5} />
             </View>
           ) : null
         }

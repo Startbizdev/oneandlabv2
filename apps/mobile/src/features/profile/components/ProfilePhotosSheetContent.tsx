@@ -2,21 +2,14 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Camera, ImagePlus, Trash2, User } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { usePickProfileImage } from '@/features/profile/hooks/use-pick-profile-image';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -104,7 +97,7 @@ export function ProfilePhotosSheetContent({
                 <Image source={{ uri: profileSrc }} style={styles.avatarImage} />
               ) : (
                 <View style={styles.avatarPlaceholder}>
-                  <User size={28} color={c.primary} strokeWidth={1.75} />
+                  <User size={iconSize.xl} color={c.primary} strokeWidth={1.75} />
                 </View>
               )}
             </View>
@@ -112,7 +105,7 @@ export function ProfilePhotosSheetContent({
               {picking === 'profile' ? (
                 <ActivityIndicator color={c.textInverse} size="small" />
               ) : (
-                <Camera size={13} color={c.textInverse} strokeWidth={2.5} />
+                <Camera size={iconSize.xs} color={c.textInverse} strokeWidth={2.5} />
               )}
             </View>
           </Pressable>
@@ -163,7 +156,7 @@ function PhotoActions({
   const styles = useThemedStyles(buildStyles, 'ProfilePhotosSheetContent.PhotoActions');
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <AppText style={styles.sectionTitle}>{title}</AppText>
       <View style={styles.sectionButtons}>
         <Button
           title={hasImage ? 'Changer' : 'Importer depuis la galerie'}
@@ -172,7 +165,7 @@ function PhotoActions({
           loading={loading}
           disabled={disabled}
           onPress={onPick}
-          leftIcon={<ImagePlus size={18} color={c.textInverse} strokeWidth={2.25} />}
+          leftIcon={<ImagePlus size={iconSize.mdSm} color={c.textInverse} strokeWidth={2.25} />}
         />
         {hasImage ? (
           <Button
@@ -182,7 +175,7 @@ function PhotoActions({
             size="md"
             disabled={disabled || loading}
             onPress={onRemove}
-            leftIcon={<Trash2 size={16} color={c.error} strokeWidth={2} />}
+            leftIcon={<Trash2 size={iconSize.sm} color={c.error} strokeWidth={2} />}
             style={styles.removeOutline}
           />
         ) : null}

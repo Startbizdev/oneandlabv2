@@ -1,12 +1,13 @@
+import { layoutRowBetween } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 import { Check, RotateCcw } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Row } from '@/components/layout/primitives';
 import type { TourSortMode } from '../api/nurse-tour.service';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
 
@@ -84,10 +85,10 @@ export function TourSortFilterSheet({ visible, active, locked, onClose, onSelect
               ]}
             >
               <View style={styles.optionText}>
-                <Text style={[styles.optionLabel, { color: c.textPrimary }]}>{mode.label}</Text>
-                <Text style={[styles.optionHint, { color: c.textTertiary }]}>{mode.hint}</Text>
+                <AppText style={[styles.optionLabel, { color: c.textPrimary }]}>{mode.label}</AppText>
+                <AppText style={[styles.optionHint, { color: c.textTertiary }]}>{mode.hint}</AppText>
               </View>
-              {selected ? <Check size={20} color={c.primary} strokeWidth={2.5} /> : null}
+              {selected ? <Check size={iconSize.md} color={c.primary} strokeWidth={2.5} /> : null}
             </Pressable>
           );
         })}
@@ -101,8 +102,8 @@ export function TourSortFilterSheet({ visible, active, locked, onClose, onSelect
             style={[styles.resetBtn, { borderColor: hexToRgba(c.error, 0.35) }]}
           >
             <Row gap={spacing[2]} align="center">
-              <RotateCcw size={16} color={c.error} />
-              <Text style={[styles.resetText, { color: c.error }]}>Réinitialiser l&apos;ordre</Text>
+              <RotateCcw size={iconSize.sm} color={c.error} />
+              <AppText style={[styles.resetText, { color: c.error }]}>Réinitialiser l&apos;ordre</AppText>
             </Row>
           </Pressable>
         ) : null}
@@ -115,10 +116,7 @@ function buildStyles(_c: AppColors) {
   return {
     list: { gap: spacing[2] },
     option: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'space-between' as const,
-      gap: spacing[3],
+      ...layoutRowBetween(spacing[3]),
       paddingHorizontal: spacing[3.5],
       paddingVertical: spacing[3],
       borderRadius: radius.lg,
@@ -126,7 +124,7 @@ function buildStyles(_c: AppColors) {
     },
     optionText: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     optionLabel: { fontFamily: fontFamily.semiBold, fontSize: fontSize.sm },
-    optionHint: { fontFamily: fontFamily.regular, fontSize: fontSize.xs, lineHeight: lh.xs },
+    optionHint: { fontFamily: fontFamily.regular, fontSize: fontSize.xs, lineHeight: lh(fontSize.xs) },
     resetBtn: {
       marginTop: spacing[2],
       paddingVertical: spacing[3],

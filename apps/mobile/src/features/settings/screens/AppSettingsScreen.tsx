@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
@@ -22,7 +22,7 @@ import {
   type ActiveColorblindType,
 } from '@/theme/colorblind-types';
 import { TEXT_SCALE_OPTIONS, type TextScale } from '@/theme/text-scale';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -159,11 +159,11 @@ export function AppSettingsScreen() {
           style={styles.cardHeader}
           leading={
             <View style={previewStyles(c).iconWrap}>
-              <Smartphone size={20} color={c.primary} strokeWidth={2} />
+              <Smartphone size={iconSize.md} color={c.primary} strokeWidth={2} />
             </View>
           }
         >
-          <Text style={previewStyles(c).cardTitle}>Application</Text>
+          <AppText style={previewStyles(c).cardTitle}>Application</AppText>
         </Cluster>
 
         <ProfileToggleRow
@@ -178,8 +178,8 @@ export function AppSettingsScreen() {
 
         <View style={styles.typeBlock}>
           <Row gap={spacing[2]} align="center">
-            <Type size={18} color={c.primary} strokeWidth={2} />
-            <Text style={[styles.typeLabel, { color: c.textSecondary }]}>Taille du texte</Text>
+            <Type size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
+            <AppText style={[styles.typeLabel, { color: c.textSecondary }]}>Taille du texte</AppText>
           </Row>
           <View style={styles.typeRow}>
             {TEXT_SCALE_OPTIONS.map((opt) => {
@@ -198,17 +198,17 @@ export function AppSettingsScreen() {
                     },
                   ]}
                 >
-                  <Text
+                  <AppText
                     style={[
                       styles.typeChipTitle,
                       { color: active ? c.primaryDark : c.textPrimary },
                     ]}
                   >
                     {opt.label}
-                  </Text>
-                  <Text style={[styles.typeChipHint, { color: c.textTertiary }]}>
+                  </AppText>
+                  <AppText style={[styles.typeChipHint, { color: c.textTertiary }]}>
                     {opt.description}
-                  </Text>
+                  </AppText>
                 </Pressable>
               );
             })}
@@ -227,9 +227,9 @@ export function AppSettingsScreen() {
 
         {colorblindMode ? (
           <View style={styles.typeBlock}>
-            <Text style={[styles.typeLabel, { color: c.textSecondary }]}>
+            <AppText style={[styles.typeLabel, { color: c.textSecondary }]}>
               Quelles couleurs confondez-vous le plus ?
-            </Text>
+            </AppText>
             <View style={styles.typeRow}>
               {COLORBLIND_TYPE_OPTIONS.map((opt) => {
                 const active = colorblindType === opt.value;
@@ -247,17 +247,17 @@ export function AppSettingsScreen() {
                       },
                     ]}
                   >
-                    <Text
+                    <AppText
                       style={[
                         styles.typeChipTitle,
                         { color: active ? c.primaryDark : c.textPrimary },
                       ]}
                     >
                       {opt.label}
-                    </Text>
-                    <Text style={[styles.typeChipHint, { color: c.textTertiary }]}>
+                    </AppText>
+                    <AppText style={[styles.typeChipHint, { color: c.textTertiary }]}>
                       {opt.hint}
-                    </Text>
+                    </AppText>
                   </Pressable>
                 );
               })}
@@ -267,20 +267,20 @@ export function AppSettingsScreen() {
 
         <Row wrap gap={spacing[2]} style={previewStyles(c).swatchRow}>
           <View style={[previewStyles(c).swatch, { backgroundColor: c.successLight }]}>
-            <Text style={[previewStyles(c).swatchLabel, { color: c.success }]}>Succès</Text>
-            <Text style={[previewStyles(c).swatchValue, { color: c.success }]}>●</Text>
+            <AppText style={[previewStyles(c).swatchLabel, { color: c.success }]}>Succès</AppText>
+            <AppText style={[previewStyles(c).swatchValue, { color: c.success }]}>●</AppText>
           </View>
           <View style={[previewStyles(c).swatch, { backgroundColor: c.errorLight }]}>
-            <Text style={[previewStyles(c).swatchLabel, { color: c.error }]}>Erreur</Text>
-            <Text style={[previewStyles(c).swatchValue, { color: c.error }]}>●</Text>
+            <AppText style={[previewStyles(c).swatchLabel, { color: c.error }]}>Erreur</AppText>
+            <AppText style={[previewStyles(c).swatchValue, { color: c.error }]}>●</AppText>
           </View>
           <View style={[previewStyles(c).swatch, { backgroundColor: c.warningLight }]}>
-            <Text style={[previewStyles(c).swatchLabel, { color: c.warning }]}>Alerte</Text>
-            <Text style={[previewStyles(c).swatchValue, { color: c.warning }]}>●</Text>
+            <AppText style={[previewStyles(c).swatchLabel, { color: c.warning }]}>Alerte</AppText>
+            <AppText style={[previewStyles(c).swatchValue, { color: c.warning }]}>●</AppText>
           </View>
           <View style={[previewStyles(c).swatch, { backgroundColor: c.primaryLight }]}>
-            <Text style={[previewStyles(c).swatchLabel, { color: c.primary }]}>Primaire</Text>
-            <Text style={[previewStyles(c).swatchValue, { color: c.primary }]}>●</Text>
+            <AppText style={[previewStyles(c).swatchLabel, { color: c.primary }]}>Primaire</AppText>
+            <AppText style={[previewStyles(c).swatchValue, { color: c.primary }]}>●</AppText>
           </View>
         </Row>
       </View>
@@ -288,23 +288,23 @@ export function AppSettingsScreen() {
       <Cluster
         gap={spacing[3]}
         style={[styles.infoCard, elevation.xs, { backgroundColor: c.surfaceSubtle }]}
-        leading={<Eye size={18} color={c.textSecondary} strokeWidth={2} />}
+        leading={<Eye size={iconSize.mdSm} color={c.textSecondary} strokeWidth={2} />}
       >
-        <Text style={[styles.infoText, { color: c.textSecondary }]}>
+        <AppText style={[styles.infoText, { color: c.textSecondary }]}>
           Cary ajuste les couleurs des statuts, badges et boutons pour les rendre plus faciles à
           lire. Chaque statut reste aussi décrit par un libellé texte — la couleur n’est qu’un
           complément visuel.
-        </Text>
+        </AppText>
       </Cluster>
 
       {Platform.OS === 'ios' && pushEnabled ? (
-        <Text
+        <AppText
           style={[styles.link, { color: c.textLink }]}
           onPress={() => void Linking.openSettings()}
           accessibilityRole="link"
         >
           Ouvrir les réglages iOS des notifications
-        </Text>
+        </AppText>
       ) : null}
     </ProfileSubScreenLayout>
   );

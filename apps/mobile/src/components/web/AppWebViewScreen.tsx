@@ -6,7 +6,8 @@ import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo, useState } from 'react';
 
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { AppText } from '@/theme';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { WebView } from 'react-native-webview';
 
@@ -78,11 +79,11 @@ export function AppWebViewScreen({ path, title = 'Cary', requireAuth = false }: 
 
   const titleNode = (
 
-    <Text style={styles.title} numberOfLines={1}>
+    <AppText style={styles.title} numberOfLines={1}>
 
       {title}
 
-    </Text>
+    </AppText>
 
   );
 
@@ -159,6 +160,8 @@ function buildStyles(c: AppColors) {
   },
 
   title: {
+
+    minWidth: 0,
 
     fontFamily: fontFamily.bold,
 

@@ -1,6 +1,6 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import {
   buildTabSceneScrollConfig,
@@ -10,7 +10,7 @@ import {
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { findHelpFaqTopic } from '@/features/help/help-faq-content';
 import { useAuthStore } from '@/store/auth-store';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function HelpFaqTopicScreen() {
@@ -29,7 +29,7 @@ export function HelpFaqTopicScreen() {
           {...spreadTabSceneScrollProps(scrollConfig)}
           contentContainerStyle={scrollConfig.contentContainerStyle}
         >
-          <Text style={styles.missing}>Cette rubrique d’aide est introuvable.</Text>
+          <AppText style={styles.missing}>Cette rubrique d’aide est introuvable.</AppText>
         </ScrollView>
       </StackChromeScreen>
     );
@@ -42,8 +42,8 @@ export function HelpFaqTopicScreen() {
         contentContainerStyle={scrollConfig.contentContainerStyle}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.question}>{topic.question}</Text>
-        <Text style={styles.answer}>{topic.answer}</Text>
+        <AppText style={styles.question}>{topic.question}</AppText>
+        <AppText style={styles.answer}>{topic.answer}</AppText>
       </ScrollView>
     </StackChromeScreen>
   );

@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -19,7 +19,7 @@ import {
   isAvailabilityRangeValid,
 } from '../utils/booking-availability-utils';
 import { AVAILABILITY_MIN_SPAN_HOURS } from '@oneandlab/shared-constants';
-import { animation, radius, spacing } from '@/theme';
+import { animation, radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const THUMB = 24;
@@ -150,9 +150,9 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
   return (
     <View style={styles.wrap}>
       <Row gap={spacing[2]} justify="center">
-        <Text style={styles.timeValue}>{formatBookingHour(range[0])}</Text>
-        <Text style={styles.timeSep}>—</Text>
-        <Text style={styles.timeValue}>{formatBookingHour(range[1])}</Text>
+        <AppText style={styles.timeValue}>{formatBookingHour(range[0])}</AppText>
+        <AppText style={styles.timeSep}>—</AppText>
+        <AppText style={styles.timeValue}>{formatBookingHour(range[1])}</AppText>
       </Row>
 
       <View style={styles.trackShell} onLayout={onLayout}>
@@ -181,14 +181,14 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
 
       <Row justify="between">
         {ticks.map((h) => (
-          <Text key={h} style={styles.tick}>
+          <AppText key={h} style={styles.tick}>
             {formatBookingHour(h)}
-          </Text>
+          </AppText>
         ))}
       </Row>
 
       {!valid ? (
-        <Text style={styles.warn}>Minimum {AVAILABILITY_MIN_SPAN_HOURS} h</Text>
+        <AppText style={styles.warn}>Minimum {AVAILABILITY_MIN_SPAN_HOURS} h</AppText>
       ) : null}
     </View>
   );

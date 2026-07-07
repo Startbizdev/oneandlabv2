@@ -1,13 +1,13 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import dayjs from 'dayjs';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { useInBottomSheet } from '@/components/ui/sheet-keyboard-context';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -76,7 +76,7 @@ export function PassageTimePicker({ label = 'Heure', value, onChange, disabled }
 
   return (
     <View style={styles.wrap}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? <AppText style={styles.label}>{label}</AppText> : null}
       <Pressable
         onPress={openPicker}
         disabled={disabled}
@@ -85,7 +85,7 @@ export function PassageTimePicker({ label = 'Heure', value, onChange, disabled }
         accessibilityLabel={`${label}, ${display}`}
         accessibilityState={{ expanded }}
       >
-        <Text style={styles.value}>{display}</Text>
+        <AppText style={styles.value}>{display}</AppText>
       </Pressable>
 
       {androidOpen ? (

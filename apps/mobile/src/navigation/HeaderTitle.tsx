@@ -4,12 +4,13 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import type { ReactElement } from 'react';
 
-import { Platform, Text, View } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import type { LucideIcon } from 'lucide-react-native';
 
 import type { SFSymbol } from 'sf-symbols-typescript';
 
+import { AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 
@@ -34,11 +35,11 @@ export function HeaderTitleText({ title }: HeaderTitleProps) {
 
     <View style={styles.wrap}>
 
-      <Text style={styles.title} numberOfLines={1}>
+      <AppText style={styles.title} numberOfLines={1}>
 
         {title}
 
-      </Text>
+      </AppText>
 
     </View>
 

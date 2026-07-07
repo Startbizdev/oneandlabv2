@@ -2,14 +2,14 @@ import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Stack } from '@/components/layout/primitives';
 import { Input } from '@/components/ui/Input';
 import type { PassagePlanningFormState, PlanningMode } from '../utils/passage-planning';
 import { IsoDatePicker } from './IsoDatePicker';
 import { PassageMultiDateCalendar } from './PassageMultiDateCalendar';
 import { PassageWeekdayChips } from './PassageWeekdayChips';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -44,7 +44,7 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
         <View
           style={[styles.periodCard, { borderColor: c.borderLight, backgroundColor: c.surfaceAlt }]}
         >
-          <Text style={[styles.periodTitle, { color: c.textSecondary }]}>Période</Text>
+          <AppText style={[styles.periodTitle, { color: c.textSecondary }]}>Période</AppText>
           {isManual ? (
             <IsoDatePicker
               label="Date du premier passage"
@@ -69,7 +69,7 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
         </View>
       ) : null}
 
-      <Text style={[styles.sectionLabel, { color: c.textTertiary }]}>Type de planification</Text>
+      <AppText style={[styles.sectionLabel, { color: c.textTertiary }]}>Type de planification</AppText>
 
       {MODE_OPTIONS.map(({ id, label, hint }) => (
         <Pressable
@@ -84,16 +84,16 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
             },
           ]}
         >
-          <Text style={{ fontFamily: fontFamily.semiBold, color: c.textPrimary }}>{label}</Text>
+          <AppText style={{ fontFamily: fontFamily.semiBold, color: c.textPrimary }}>{label}</AppText>
           {hint && state.planningMode === id ? (
-            <Text style={[styles.optionHint, { color: c.textSecondary }]}>{hint}</Text>
+            <AppText style={[styles.optionHint, { color: c.textSecondary }]}>{hint}</AppText>
           ) : null}
         </Pressable>
       ))}
 
       {state.planningMode === 'interval' ? (
         <Stack gap={spacing[2]} style={styles.planFields}>
-          <Text style={[styles.fieldLabel, { color: c.textSecondary }]}>Tous les (jours)</Text>
+          <AppText style={[styles.fieldLabel, { color: c.textSecondary }]}>Tous les (jours)</AppText>
           <Input
             value={state.everyDays}
             onChangeText={(everyDays) => onChange({ everyDays })}
@@ -104,7 +104,7 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
 
       {state.planningMode === 'weekdays' ? (
         <Stack gap={spacing[2]} style={styles.planFields}>
-          <Text style={[styles.fieldLabel, { color: c.textSecondary }]}>Jours de la semaine</Text>
+          <AppText style={[styles.fieldLabel, { color: c.textSecondary }]}>Jours de la semaine</AppText>
           <PassageWeekdayChips
             selected={state.weekdays}
             onChange={(weekdays) => onChange({ weekdays })}
@@ -114,9 +114,9 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
 
       {state.planningMode === 'custom_dates' ? (
         <View style={styles.planFields}>
-          <Text style={[styles.fieldLabel, { color: c.textSecondary, marginBottom: spacing[2] }]}>
+          <AppText style={[styles.fieldLabel, { color: c.textSecondary, marginBottom: spacing[2] }]}>
             Sélectionnez les dates de passage
-          </Text>
+          </AppText>
           <PassageMultiDateCalendar
             selected={state.customDates}
             onChange={(customDates) => onChange({ customDates })}
@@ -125,21 +125,21 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
       ) : null}
 
       {state.planningMode === 'manual' ? (
-        <Text style={[styles.manualHint, { color: c.textSecondary }]}>
+        <AppText style={[styles.manualHint, { color: c.textSecondary }]}>
           Aucune génération automatique au-delà du premier passage. Ajoutez les suivants depuis le
           détail.
-        </Text>
+        </AppText>
       ) : null}
 
       {passageCount != null && passageCount > 0 ? (
         <View
           style={[styles.preview, { backgroundColor: hexToRgba(c.primary, 0.08), borderColor: c.primary }]}
         >
-          <Text style={[styles.previewText, { color: c.primaryDark }]}>
+          <AppText style={[styles.previewText, { color: c.primaryDark }]}>
             {passageCount === 1
               ? '1 passage sera créé'
               : `${passageCount} passages seront créés sur la période`}
-          </Text>
+          </AppText>
         </View>
       ) : null}
     </View>

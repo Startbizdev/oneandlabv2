@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import {
   NURSING_DURATION_OPTIONS,
@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/Input';
 import type { CareCategory, CareCategoryOption } from '@/features/categories/api/categories.service';
 import type { BookingServiceFormSlice } from '../utils/booking-service-form-slice';
 import { resolveRdvCareDisplayLabel } from '@/utils/rdv-care-display-label';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const BLOOD_TEST_TYPE_OPTIONS = [
@@ -68,10 +68,10 @@ function OptionSelect({
   const styles = useThemedStyles(buildStyles, 'CareServiceQuickOptionsSheet.OptionSelect');
   return (
     <View style={styles.field}>
-      <Text style={styles.fieldLabel}>
+      <AppText style={styles.fieldLabel}>
         {label}
         {required ? ' *' : ''}
-      </Text>
+      </AppText>
       <Row wrap gap={spacing[2]}>
         {items.map((item) => {
           const on = value === item.value;
@@ -84,7 +84,7 @@ function OptionSelect({
               accessibilityState={{ selected: on }}
               accessibilityLabel={item.label}
             >
-              <Text style={[styles.pillText, on && styles.pillTextActive]}>{item.label}</Text>
+              <AppText style={[styles.pillText, on && styles.pillTextActive]}>{item.label}</AppText>
             </Pressable>
           );
         })}
@@ -241,7 +241,7 @@ export function CareServiceQuickOptionsSheet({
     <>
       {localError ? (
         <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{localError}</Text>
+          <AppText style={styles.errorText}>{localError}</AppText>
         </View>
       ) : null}
 

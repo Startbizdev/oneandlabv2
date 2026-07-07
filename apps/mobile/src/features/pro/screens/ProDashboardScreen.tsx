@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import Animated from 'react-native-reanimated';
 import { useQuery } from '@tanstack/react-query';
@@ -12,7 +12,7 @@ import { api } from '@/api/client';
 import { SkeletonDashboardStats } from '@/components/ui/skeletons';
 import { useAuthStore } from '@/store/auth-store';
 import { scrollChildEntering, scrollSectionEntering } from '@/lib/platform/list-entering-animation';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 function greeting() {
@@ -42,8 +42,8 @@ function StatCard({ label, value, icon, accent, index }: StatCardProps) {
       style={[styles.statCard, elevation.xs]}
     >
       <View style={[styles.statIcon, { backgroundColor: accentColor + '18' }]}>{icon}</View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <AppText style={styles.statValue}>{value}</AppText>
+      <AppText style={styles.statLabel}>{label}</AppText>
     </Shell>
   );
 }
@@ -86,8 +86,8 @@ export function ProDashboardScreen() {
         showsVerticalScrollIndicator={false}
       >
         <HeaderShell entering={headerEntering} style={styles.header}>
-          <Text style={styles.greeting}>{greeting()},</Text>
-          <Text style={styles.name}>{firstName} 👋</Text>
+          <AppText style={styles.greeting}>{greeting()},</AppText>
+          <AppText style={styles.name}>{firstName} 👋</AppText>
         </HeaderShell>
 
         {/* Stats grid */}
@@ -99,29 +99,29 @@ export function ProDashboardScreen() {
               index={0}
               label="Total RDV"
               value={statsQ.data?.total ?? 0}
-              icon={<Activity size={18} color={c.primary} strokeWidth={2} />}
+              icon={<Activity size={iconSize.mdSm} color={c.primary} strokeWidth={2} />}
             />
             <StatCard
               index={1}
               label="En attente"
               value={statsQ.data?.pending ?? 0}
               accent={c.warning}
-              icon={<Clock size={18} color={c.warning} strokeWidth={2} />}
+              icon={<Clock size={iconSize.mdSm} color={c.warning} strokeWidth={2} />}
             />
             <StatCard
               index={2}
               label="Aujourd'hui"
               value={statsQ.data?.today ?? 0}
               accent={c.success}
-              icon={<CalendarCheck size={18} color={c.success} strokeWidth={2} />}
+              icon={<CalendarCheck size={iconSize.mdSm} color={c.success} strokeWidth={2} />}
             />
           </Row>
         )}
 
         {/* Today date */}
         <DateShell entering={dateEntering} style={[styles.dateCard, elevation.xs]}>
-          <Text style={styles.dateDay}>{dayjs().format('dddd')}</Text>
-          <Text style={styles.dateLabel}>{dayjs().format('D MMMM YYYY')}</Text>
+          <AppText style={styles.dateDay}>{dayjs().format('dddd')}</AppText>
+          <AppText style={styles.dateLabel}>{dayjs().format('D MMMM YYYY')}</AppText>
         </DateShell>
       </ScrollView>
     </View>

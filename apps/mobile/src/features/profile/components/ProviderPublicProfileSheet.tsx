@@ -3,15 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Linking,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -48,7 +40,7 @@ import { CompactAssigneeRating } from '@/features/appointments/detail/components
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import { queryKeys } from '@/lib/query-keys';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const AVATAR = 96;
@@ -101,7 +93,7 @@ function ProfileSection({
   const styles = useThemedStyles(buildStyles, 'ProviderPublicProfileSheet.ProfileSection');
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <AppText style={styles.sectionTitle}>{title}</AppText>
       {children}
     </View>
   );
@@ -188,18 +180,18 @@ export function ProviderPublicProfileSheet({
       {profileQ.isLoading ? (
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color={c.primary} />
-          <Text style={styles.stateText}>Chargement du profil…</Text>
+          <AppText style={styles.stateText}>Chargement du profil…</AppText>
         </View>
       ) : null}
 
       {profileQ.isError ? (
         <View style={styles.centerState}>
-          <Text style={styles.errorTitle}>Profil indisponible</Text>
-          <Text style={styles.stateText}>
+          <AppText style={styles.errorTitle}>Profil indisponible</AppText>
+          <AppText style={styles.stateText}>
             {profileQ.error instanceof Error
               ? profileQ.error.message
               : 'Impossible de charger ce profil.'}
-          </Text>
+          </AppText>
           <Button
             title="Réessayer"
             variant="outline"
@@ -237,7 +229,7 @@ export function ProviderPublicProfileSheet({
                 />
               ) : (
                 <View style={[styles.avatar, styles.avatarFallback]}>
-                  <FallbackIcon size={36} color={c.textTertiary} strokeWidth={1.75} />
+                  <FallbackIcon size={iconSize['3xl']} color={c.textTertiary} strokeWidth={1.75} />
                 </View>
               )}
               {providerType === 'nurse' && nurseMeta ? (
@@ -252,8 +244,8 @@ export function ProviderPublicProfileSheet({
               ) : null}
             </View>
 
-            <Text style={styles.roleEyebrow}>{roleLabel}</Text>
-            <Text style={styles.name}>{displayName}</Text>
+            <AppText style={styles.roleEyebrow}>{roleLabel}</AppText>
+            <AppText style={styles.name}>{displayName}</AppText>
 
             {reviewStats?.total_reviews || experience ? (
               <View style={styles.identityMeta}>
@@ -267,7 +259,7 @@ export function ProviderPublicProfileSheet({
                 ) : null}
                 {experience ? (
                   <View style={styles.metaPill}>
-                    <Text style={styles.metaPillText}>{experience}</Text>
+                    <AppText style={styles.metaPillText}>{experience}</AppText>
                   </View>
                 ) : null}
               </View>
@@ -280,7 +272,7 @@ export function ProviderPublicProfileSheet({
                 title="Appeler"
                 variant="outline"
                 size="sm"
-                leftIcon={<Phone size={16} color={c.primary} strokeWidth={2} />}
+                leftIcon={<Phone size={iconSize.sm} color={c.primary} strokeWidth={2} />}
                 onPress={() => void Linking.openURL(`tel:${dialPhone}`)}
                 style={styles.contactBtn}
               />
@@ -288,7 +280,7 @@ export function ProviderPublicProfileSheet({
                 title="Message"
                 variant="outline"
                 size="sm"
-                leftIcon={<MessageCircle size={16} color={c.primary} strokeWidth={2} />}
+                leftIcon={<MessageCircle size={iconSize.sm} color={c.primary} strokeWidth={2} />}
                 onPress={() => void Linking.openURL(`sms:${dialPhone}`)}
                 style={styles.contactBtn}
               />
@@ -297,11 +289,11 @@ export function ProviderPublicProfileSheet({
 
           <ProfileSection title={providerType === 'nurse' ? 'Présentation' : 'Le laboratoire'}>
             {profile.biography?.trim() ? (
-              <Text style={styles.bio}>{profile.biography.trim()}</Text>
+              <AppText style={styles.bio}>{profile.biography.trim()}</AppText>
             ) : (
               <View style={styles.emptyBox}>
-                <Stethoscope size={20} color={c.textTertiary} strokeWidth={2} />
-                <Text style={styles.emptyText}>Aucune présentation renseignée.</Text>
+                <Stethoscope size={iconSize.md} color={c.textTertiary} strokeWidth={2} />
+                <AppText style={styles.emptyText}>Aucune présentation renseignée.</AppText>
               </View>
             )}
           </ProfileSection>
@@ -313,10 +305,10 @@ export function ProviderPublicProfileSheet({
               <Row wrap gap={spacing[2]} style={styles.chipWrap}>
                 {services.map((item) => (
                   <Row key={String(item.id)} gap={spacing[1]} align="center" style={styles.chip}>
-                    <Text style={styles.chipEmoji}>{specializationEmoji(item)}</Text>
-                    <Text style={styles.chipLabel} numberOfLines={2}>
+                    <AppText style={styles.chipEmoji}>{specializationEmoji(item)}</AppText>
+                    <AppText style={styles.chipLabel} numberOfLines={2}>
                       {item.name}
-                    </Text>
+                    </AppText>
                   </Row>
                 ))}
               </Row>
@@ -332,23 +324,23 @@ export function ProviderPublicProfileSheet({
                   <Cluster
                     gap={spacing[2]}
                     align="start"
-                    leading={<MapPin size={16} color={c.primary} strokeWidth={2} />}
+                    leading={<MapPin size={iconSize.sm} color={c.primary} strokeWidth={2} />}
                   >
-                    <Text style={styles.infoText}>{addressLabel}</Text>
+                    <AppText style={styles.infoText}>{addressLabel}</AppText>
                   </Cluster>
                 ) : null}
                 {nurseMeta?.radius_km ? (
-                  <Text style={styles.infoHint}>
+                  <AppText style={styles.infoHint}>
                     Intervient dans un rayon de{' '}
-                    <Text style={styles.infoHintStrong}>{Math.round(nurseMeta.radius_km)} km</Text>
-                  </Text>
+                    <AppText style={styles.infoHintStrong}>{Math.round(nurseMeta.radius_km)} km</AppText>
+                  </AppText>
                 ) : null}
                 {itinerary ? (
                   <Button
                     title="Itinéraire"
                     variant="ghost"
                     size="sm"
-                    leftIcon={<Navigation size={14} color={c.primary} strokeWidth={2} />}
+                    leftIcon={<Navigation size={iconSize.xs} color={c.primary} strokeWidth={2} />}
                     onPress={() => void Linking.openURL(itinerary)}
                     style={styles.itineraryBtn}
                   />
@@ -363,10 +355,10 @@ export function ProviderPublicProfileSheet({
                 {hoursRows.map((row) => (
                   <Row key={row.key} justify="between" align="center" gap={spacing[3]} style={styles.hoursRow}>
                     <Row gap={spacing[2]} align="center" flex={1} style={styles.hoursDay}>
-                      <Clock size={14} color={c.textTertiary} strokeWidth={2} />
-                      <Text style={styles.hoursDayText}>{row.label}</Text>
+                      <Clock size={iconSize.xs} color={c.textTertiary} strokeWidth={2} />
+                      <AppText style={styles.hoursDayText}>{row.label}</AppText>
                     </Row>
-                    <Text style={styles.hoursValue}>{row.value}</Text>
+                    <AppText style={styles.hoursValue}>{row.value}</AppText>
                   </Row>
                 ))}
               </View>
@@ -381,10 +373,10 @@ export function ProviderPublicProfileSheet({
                     key={q.code}
                     gap={spacing[2]}
                     align="start"
-                    leading={<GraduationCap size={16} color={c.textTertiary} strokeWidth={2} />}
+                    leading={<GraduationCap size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
                     style={styles.qualRow}
                   >
-                    <Text style={styles.qualText}>{q.label}</Text>
+                    <AppText style={styles.qualText}>{q.label}</AppText>
                   </Cluster>
                 ))}
               </View>
@@ -403,16 +395,16 @@ export function ProviderPublicProfileSheet({
                     gap={spacing[3]}
                     leading={
                       <View style={styles.linkIcon}>
-                        <Globe size={18} color={c.primary} strokeWidth={2} />
+                        <Globe size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
                       </View>
                     }
-                    actions={<ExternalLink size={16} color={c.textTertiary} strokeWidth={2} />}
+                    actions={<ExternalLink size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
                   >
                     <View style={styles.linkText}>
-                      <Text style={styles.linkLabel}>Site internet</Text>
-                      <Text style={styles.linkUrl} numberOfLines={2}>
+                      <AppText style={styles.linkLabel}>Site internet</AppText>
+                      <AppText style={styles.linkUrl} numberOfLines={2}>
                         {profile.website_url}
-                      </Text>
+                      </AppText>
                     </View>
                   </Cluster>
                 </Pressable>
@@ -428,16 +420,16 @@ export function ProviderPublicProfileSheet({
                     gap={spacing[3]}
                     leading={
                       <View style={styles.linkIcon}>
-                        <row.Icon size={18} color={c.primary} strokeWidth={2} />
+                        <row.Icon size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
                       </View>
                     }
-                    actions={<ExternalLink size={16} color={c.textTertiary} strokeWidth={2} />}
+                    actions={<ExternalLink size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
                   >
                     <View style={styles.linkText}>
-                      <Text style={styles.linkLabel}>{row.label}</Text>
-                      <Text style={styles.linkUrl} numberOfLines={1}>
+                      <AppText style={styles.linkLabel}>{row.label}</AppText>
+                      <AppText style={styles.linkUrl} numberOfLines={1}>
                         {row.url.replace(/^https?:\/\//i, '')}
-                      </Text>
+                      </AppText>
                     </View>
                   </Cluster>
                 </Pressable>
@@ -451,15 +443,15 @@ export function ProviderPublicProfileSheet({
                 {reviewItems.map((item) => (
                   <View key={item.id} style={styles.reviewCard}>
                     {item.comment?.trim() ? (
-                      <Text style={styles.reviewComment} numberOfLines={4}>
+                      <AppText style={styles.reviewComment} numberOfLines={4}>
                         « {item.comment.trim()} »
-                      </Text>
+                      </AppText>
                     ) : null}
                     <Row justify="between" align="center" gap={spacing[2]} style={styles.reviewFooter}>
-                      <Text style={styles.reviewAuthor}>
+                      <AppText style={styles.reviewAuthor}>
                         {item.patient_name?.trim() || 'Patient'}
-                      </Text>
-                      <ReviewStars rating={item.rating ?? 0} size={12} showValue={false} />
+                      </AppText>
+                      <ReviewStars rating={item.rating ?? 0} size={iconSize['2xs']} showValue={false} />
                     </Row>
                   </View>
                 ))}
@@ -645,7 +637,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.borderLight,
   },
   chipEmoji: {
-    fontSize: 14,
+    fontSize: fontSize.xs,
   },
   chipLabel: {
     minWidth: 0,

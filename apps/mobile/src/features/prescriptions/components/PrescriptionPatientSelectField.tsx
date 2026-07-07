@@ -1,8 +1,9 @@
+import { layoutRowCenter } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { ChevronDown, PenLine, UserPlus, X } from 'lucide-react-native';
@@ -14,7 +15,7 @@ import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import { PrescriptionPatientSelectSheet } from './PrescriptionPatientSelectSheet';
 import { patientDisplayName } from '@/features/patients/utils/patient-contact-display';
 import { queryKeys } from '@/lib/query-keys';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -112,7 +113,7 @@ export function PrescriptionPatientSelectField({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+      <AppText style={styles.label}>{label}</AppText>
       <Pressable
         onPress={openSheet}
         disabled={loading}
@@ -138,7 +139,7 @@ export function PrescriptionPatientSelectField({
                     accessibilityRole="button"
                     accessibilityLabel="Modifier la fiche patient"
                   >
-                    <PenLine size={18} color={c.primary} strokeWidth={2} />
+                    <PenLine size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
                   </Pressable>
                 ) : null}
                 {selectedPatient ? (
@@ -148,21 +149,21 @@ export function PrescriptionPatientSelectField({
                     accessibilityRole="button"
                     accessibilityLabel="Effacer le patient sélectionné"
                   >
-                    <X size={18} color={c.textTertiary} strokeWidth={2} />
+                    <X size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />
                   </Pressable>
                 ) : (
-                  <ChevronDown size={18} color={c.textSecondary} strokeWidth={2} />
+                  <ChevronDown size={iconSize.mdSm} color={c.textSecondary} strokeWidth={2} />
                 )}
               </View>
             )
           }
         >
-          <Text
+          <AppText
             style={[styles.triggerText, !selectedPatient && styles.placeholder]}
             numberOfLines={1}
           >
             {displayLabel}
-          </Text>
+          </AppText>
         </Cluster>
       </Pressable>
 
@@ -173,8 +174,8 @@ export function PrescriptionPatientSelectField({
         accessibilityLabel="Ajouter un patient"
       >
         <Row gap={spacing[2]} align="center" justify="center">
-          <UserPlus size={18} color={c.primary} strokeWidth={2.25} />
-          <Text style={styles.addPatientText}>Ajouter un patient</Text>
+          <UserPlus size={iconSize.mdSm} color={c.primary} strokeWidth={2.25} />
+          <AppText style={styles.addPatientText}>Ajouter un patient</AppText>
         </Row>
       </Pressable>
 
@@ -235,9 +236,7 @@ function buildStyles(c: AppColors) {
     },
     placeholder: { color: c.textTertiary },
     actions: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: spacing[2],
+      ...layoutRowCenter(spacing[2]),
     },
     addPatientBtn: {
       borderWidth: 1,

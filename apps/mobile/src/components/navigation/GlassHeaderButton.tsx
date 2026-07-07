@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { ReactNode } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import { SymbolView } from 'expo-symbols';
 import type { SFSymbol } from 'sf-symbols-typescript';
@@ -12,7 +12,7 @@ import {
   LIQUID_GLASS_HEADER_CONTROL_SIZE,
   LIQUID_GLASS_HEADER_SYMBOL_SIZE,
 } from '@/components/navigation/nav-chrome-tokens';
-import { fontFamily } from '@/theme/typography';
+import { fontFamily, fontSize, AppText } from '@/theme';
 
 type Props = {
   symbol: SFSymbol;
@@ -100,7 +100,7 @@ export function GlassHeaderButton({
               badgeLabel.length === 2 && styles.badgeWide,
             ]}
           >
-            <Text style={styles.badgeText}>{badgeLabel}</Text>
+            <AppText style={styles.badgeText} compact maxFontSizeMultiplier={1.2}>{badgeLabel}</AppText>
           </View>
         </View>
       ) : null}
@@ -183,12 +183,11 @@ function buildStyles(c: AppColors) {
     },
     badgeText: {
       fontFamily: fontFamily.extraBold,
-      fontSize: 10,
+      fontSize: fontSize['2xs'],
       lineHeight: 12,
       textAlign: 'center' as const,
       color: c.textInverse,
       includeFontPadding: false,
-      allowFontScaling: false,
       ...Platform.select({
         android: {
           textAlignVertical: 'center' as const,

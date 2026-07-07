@@ -29,3 +29,15 @@ export function isPendingIncomingOffer(
 
   return true;
 }
+
+/** Offre masquée temporairement après « Plus tard » ou fermeture de la modal. */
+export function isOfferModalSnoozed(
+  apt: { offer_modal_snoozed_until?: string | null },
+  now: Date = new Date(),
+): boolean {
+  const raw = apt?.offer_modal_snoozed_until;
+  if (raw == null || String(raw).trim() === '') return false;
+  const until = new Date(String(raw));
+  if (Number.isNaN(until.getTime())) return false;
+  return until.getTime() > now.getTime();
+}

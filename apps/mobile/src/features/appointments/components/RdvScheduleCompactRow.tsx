@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { iconSlot, flexText } from '@/theme/layout-styles';
 import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { Row, Stack } from '@/components/layout/primitives';
 import { RdvListCardCreneauRow } from '@/features/appointments/components/RdvListCardCreneauRow';
@@ -10,7 +10,7 @@ import { RdvCareTagsRow } from '@/features/appointments/components/RdvCareTagsRo
 import { MiniDateCalendar, miniDateCalendarOuterSize } from '@/components/ui/MiniDateCalendar';
 import { rdvMaquetteTimeLabel } from '@/utils/rdv-maquette-card-display';
 import { buildRdvListCardTypography } from '@/features/appointments/components/rdv-list-card-typography';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
 import { fontSize } from '@/theme/typography';
 
 const CALENDAR_SIZE = 'xs' as const;
@@ -65,9 +65,9 @@ export function RdvScheduleCompactRow({
         <Stack gap={mainColGap} flex={1} style={styles.mainCol}>
           <RdvListCardCreneauRow label={creneau} status={status} />
           {careLabel ? (
-            <Text style={styles.careFallback} numberOfLines={1}>
+            <AppText style={styles.careFallback} numberOfLines={1}>
               {careLabel}
-            </Text>
+            </AppText>
           ) : (
             <RdvCareTagsRow
               apt={apt}

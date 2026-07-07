@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { SheetModal } from '@/components/ui/SheetModal';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface DayAppointmentsSheetProps<T> {
@@ -43,7 +43,7 @@ export function DayAppointmentsSheet<T>({
       )}
 
       <Pressable onPress={onClose} style={styles.closeBtn}>
-        <Text style={styles.closeBtnText}>Fermer</Text>
+        <AppText style={styles.closeBtnText}>Fermer</AppText>
       </Pressable>
     </SheetModal>
   );

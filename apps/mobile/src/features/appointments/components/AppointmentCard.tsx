@@ -23,7 +23,7 @@ import {
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import { elevation, radius, spacing, animation } from '@/theme';
+import {elevation, radius, spacing, animation, iconSize } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
@@ -114,7 +114,7 @@ function AppointmentCardComponent({
             {scheduledAt ? (
               <Row gap={spacing[2]} align="center">
                 <View style={styles.metaIconWrap}>
-                  <Clock size={12} color={c.primary} strokeWidth={2.5} />
+                  <Clock size={iconSize['2xs']} color={c.primary} strokeWidth={2.5} />
                 </View>
                 <Animated.Text style={styles.metaText} numberOfLines={2}>
                   {scheduledAt.format('ddd D MMM')}
@@ -133,7 +133,7 @@ function AppointmentCardComponent({
             {address ? (
               <Row gap={spacing[2]} align="center">
                 <View style={styles.metaIconWrap}>
-                  <MapPin size={12} color={c.textTertiary} strokeWidth={2.5} />
+                  <MapPin size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2.5} />
                 </View>
                 <Animated.Text style={[styles.metaText, styles.metaAddress]} numberOfLines={1}>
                   {address}

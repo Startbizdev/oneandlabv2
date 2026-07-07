@@ -4,7 +4,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import type { UserRole } from '@oneandlab/shared-types';
 import type { FlashListRef } from '@shopify/flash-list';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Keyboard, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Platform, StyleSheet, View } from 'react-native';
 import { Smile } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
@@ -38,7 +38,7 @@ import {
 } from '@/lib/downloads/download-medical-document';
 import type { AiQuickSuggestion } from '@oneandlab/shared-types';
 import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
-import { H_PADDING, radius, spacing } from '@/theme';
+import { H_PADDING, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize, lh } from '@/theme/typography';
 
 type ScreenStyles = ReturnType<typeof buildStyles>;
@@ -56,7 +56,7 @@ function AssistantAvatar({ styles }: { styles: ScreenStyles }) {
   const c = useAppColors();
   return (
     <View style={[styles.avatar, { backgroundColor: c.primaryLight }]}>
-      <Smile size={20} color={c.primary} strokeWidth={2} />
+      <Smile size={iconSize.md} color={c.primary} strokeWidth={2} />
     </View>
   );
 }
@@ -466,9 +466,9 @@ export function CaryAiHubScreen({
         <Row align="end" gap={spacing[2]} style={styles.typingRow}>
           <AssistantAvatar styles={styles} />
           <View style={[styles.typingBubble, { backgroundColor: c.surfaceAlt, borderColor: c.borderLight }]}>
-            <Text style={[styles.typingText, { color: c.textSecondary }]}>
+            <AppText style={[styles.typingText, { color: c.textSecondary }]}>
               {displayStreamingText ? '' : 'Cary réfléchit…'}
-            </Text>
+            </AppText>
             {displayStreamingText ? (
               <CaryMarkdown text={displayStreamingText} style={styles.assistantText} />
             ) : null}

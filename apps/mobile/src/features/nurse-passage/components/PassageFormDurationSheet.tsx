@@ -1,15 +1,16 @@
+import { layoutRowBetween } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PASSAGE_DURATION_PRESETS } from '@oneandlab/shared-types';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 type Props = {
@@ -79,8 +80,8 @@ export function PassageFormDurationSheet({
                 },
               ]}
             >
-              <Text style={[styles.label, { color: c.textPrimary }]}>{opt.label}</Text>
-              {selected ? <Check size={18} color={c.primary} strokeWidth={2.5} /> : null}
+              <AppText style={[styles.label, { color: c.textPrimary }]}>{opt.label}</AppText>
+              {selected ? <Check size={iconSize.mdSm} color={c.primary} strokeWidth={2.5} /> : null}
             </Pressable>
           );
         })}
@@ -101,9 +102,7 @@ function buildStyles(_c: AppColors) {
   return {
     list: { gap: spacing[2], paddingBottom: spacing[4] },
     option: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'space-between' as const,
+      ...layoutRowBetween(),
       borderWidth: StyleSheet.hairlineWidth,
       borderRadius: radius.lg,
       paddingHorizontal: spacing[4],

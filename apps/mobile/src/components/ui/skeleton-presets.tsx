@@ -345,6 +345,7 @@ function buildStyles(c: AppColors) {
     alignSelf: 'stretch' as const,
   },
   segmentBar: {
+    minWidth: 0,
     width: '100%' as const,
     flexDirection: 'row' as const,
     gap: spacing[1],

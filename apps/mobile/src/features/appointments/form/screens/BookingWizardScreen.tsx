@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View, type ScrollView } from 'react-native';
+import { Alert, Pressable, StyleSheet, View, type ScrollView } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useLocalSearchParams } from 'expo-router';
@@ -37,7 +37,7 @@ import type { PatientRelative } from '@/features/patient-relatives/api/patient-r
 import { SkeletonCareSelectionStep } from '@/components/ui/skeletons';
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -226,7 +226,7 @@ export function BookingWizardScreen({
 
         {bw.validationError ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{bw.validationError}</Text>
+            <AppText style={styles.errorText}>{bw.validationError}</AppText>
           </View>
         ) : null}
 
@@ -291,20 +291,20 @@ export function BookingWizardScreen({
           <Animated.View entering={FadeInDown.delay(60).duration(260).springify()} style={styles.section}>
             {mode === 'patient' ? (
               <>
-                <Text style={styles.sectionLabel}>Pour qui est ce rendez-vous ?</Text>
+                <AppText style={styles.sectionLabel}>Pour qui est ce rendez-vous ?</AppText>
                 <Row wrap gap={spacing[2]} align="center">
                   <Pressable
                     onPress={() => bw.setSelectedRelativeId(null)}
                     style={[styles.relativePill, !bw.selectedRelativeId && styles.relativePillActive]}
                   >
-                    <Text
+                    <AppText
                       style={[
                         styles.relativePillText,
                         !bw.selectedRelativeId && styles.relativePillTextActive,
                       ]}
                     >
                       Pour moi
-                    </Text>
+                    </AppText>
                   </Pressable>
                   {bw.relatives.map((r: PatientRelative) => {
                     const on = bw.selectedRelativeId === r.id;
@@ -315,9 +315,9 @@ export function BookingWizardScreen({
                         onPress={() => bw.setSelectedRelativeId(r.id)}
                         style={[styles.relativePill, on && styles.relativePillActive]}
                       >
-                        <Text style={[styles.relativePillText, on && styles.relativePillTextActive]}>
+                        <AppText style={[styles.relativePillText, on && styles.relativePillTextActive]}>
                           {label}
-                        </Text>
+                        </AppText>
                       </Pressable>
                     );
                   })}
@@ -326,26 +326,26 @@ export function BookingWizardScreen({
                     style={styles.addRelativeBtn}
                   >
                     <Row gap={4} align="center">
-                      <Plus size={14} color={c.primary} strokeWidth={2.5} />
-                      <Text style={styles.addRelativeText}>Proche</Text>
+                      <Plus size={iconSize.xs} color={c.primary} strokeWidth={2.5} />
+                      <AppText style={styles.addRelativeText}>Proche</AppText>
                     </Row>
                   </Pressable>
                 </Row>
                 {bw.selectedRelativeId ? (
                   <View style={styles.selfCard}>
-                    <Text style={styles.selfName}>
+                    <AppText style={styles.selfName}>
                       {[w.form.watch('first_name'), w.form.watch('last_name')].filter(Boolean).join(' ') ||
                         'Proche'}
-                    </Text>
-                    <Text style={styles.selfEmail}>Rendez-vous pour un proche</Text>
+                    </AppText>
+                    <AppText style={styles.selfEmail}>Rendez-vous pour un proche</AppText>
                   </View>
                 ) : null}
                 {!bw.selectedRelativeId && user ? (
                   <View style={styles.selfCard}>
-                    <Text style={styles.selfName}>
+                    <AppText style={styles.selfName}>
                       {user.first_name} {user.last_name}
-                    </Text>
-                    <Text style={styles.selfEmail}>{user.email}</Text>
+                    </AppText>
+                    <AppText style={styles.selfEmail}>{user.email}</AppText>
                   </View>
                 ) : null}
                 <View style={styles.identityBlock}>
@@ -425,13 +425,13 @@ export function BookingWizardScreen({
               >
                 <Row align="start" gap={spacing[3]}>
                   <View style={[styles.checkbox, bw.consent && styles.checkboxActive]}>
-                    {bw.consent ? <Text style={styles.checkmark}>✓</Text> : null}
+                    {bw.consent ? <AppText style={styles.checkmark}>✓</AppText> : null}
                   </View>
-                  <Text style={styles.consentText}>
+                  <AppText style={styles.consentText}>
                     J&apos;accepte la politique de confidentialité et consens au traitement de mes données de
                     santé. J&apos;autorise Cary à partager les informations de mon profil et les éléments
                     nécessaires à la prise de rendez-vous avec les professionnels de santé de mon secteur.
-                  </Text>
+                  </AppText>
                 </Row>
               </Pressable>
             ) : (
@@ -441,9 +441,9 @@ export function BookingWizardScreen({
               >
                 <Row align="start" gap={spacing[3]}>
                   <View style={[styles.checkbox, bw.consent && styles.checkboxActive]}>
-                    {bw.consent ? <Text style={styles.checkmark}>✓</Text> : null}
+                    {bw.consent ? <AppText style={styles.checkmark}>✓</AppText> : null}
                   </View>
-                  <Text style={styles.consentText}>{STAFF_PATIENT_BOOKING_CONSENT_LABEL}</Text>
+                  <AppText style={styles.consentText}>{STAFF_PATIENT_BOOKING_CONSENT_LABEL}</AppText>
                 </Row>
               </Pressable>
             )}
