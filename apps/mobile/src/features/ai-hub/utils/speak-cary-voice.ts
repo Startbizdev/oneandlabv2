@@ -1,10 +1,10 @@
 import {
   createAudioPlayer,
-  setAudioModeAsync,
   type AudioPlayer,
 } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
 import { prepareVoiceSpeakingAudio } from './voice-audio-session';
+import { voiceLog } from './voice-debug-log';
 
 let activePlayer: AudioPlayer | null = null;
 let activeUri: string | null = null;
@@ -12,6 +12,11 @@ let activeUri: string | null = null;
 export function stopCaryVoice(): void {
   try {
     activePlayer?.pause();
+  } catch {
+    /* noop */
+  }
+  try {
+    activePlayer?.release();
   } catch {
     /* noop */
   }
@@ -29,18 +34,20 @@ export async function playCaryVoiceBase64(audioBase64: string): Promise<void> {
 
   stopCaryVoice();
   await prepareVoiceSpeakingAudio();
-  await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
 
+  voiceLog('tts.play.start', { audioBase64Len: trimmed.length });
   const uri = `${FileSystem.cacheDirectory}cary-voice-${Date.now()}.mp3`;
   await FileSystem.writeAsStringAsync(uri, trimmed, { encoding: FileSystem.EncodingType.Base64 });
   activeUri = uri;
 
-  const player = createAudioPlayer(uri);
+  const player = createAudioPlayer(uri, { keepAudioSessionActive: true });
   activePlayer = player;
+  player.volume = 1;
 
   await new Promise<void>((resolve) => {
     const finish = () => {
       sub.remove();
+      voiceLog('tts.play.done');
       stopCaryVoice();
       resolve();
     };

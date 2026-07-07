@@ -5,8 +5,8 @@ export type VoiceTurn = {
   at: number;
 };
 
-/** Délai après le dernier résultat STT avant envoi auto (fin de phrase). */
-export const VOICE_SILENCE_SUBMIT_MS = 1200;
+/** Délai après la fin de phrase détectée avant envoi auto (VAD). */
+export const VOICE_SILENCE_SUBMIT_MS = 1600;
 
 /** Pause audio entre fin STT et TTS (évite conflit session iOS). */
 export const VOICE_STT_TTS_GAP_MS = 180;

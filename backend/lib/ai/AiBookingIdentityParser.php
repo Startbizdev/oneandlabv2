@@ -52,7 +52,10 @@ final class AiBookingIdentityParser
                 $out['first_name'] = self::titleCaseWord($parts[0]);
                 $out['last_name'] = self::titleCaseWord(implode(' ', array_slice($parts, 1)));
             } elseif (count($parts) === 1) {
-                $out['first_name'] = self::titleCaseWord($parts[0]);
+                $candidate = self::titleCaseWord($parts[0]);
+                if (!self::isGarbageName($candidate)) {
+                    $out['first_name'] = $candidate;
+                }
                 if (!empty($out['email'])) {
                     $local = explode('@', $out['email'])[0] ?? '';
                     $localParts = preg_split('/[._-]+/', $local) ?: [];
@@ -152,5 +155,17 @@ final class AiBookingIdentityParser
         }
 
         return mb_convert_case($word, MB_CASE_TITLE, 'UTF-8');
+    }
+
+    private static function isGarbageName(string $name): bool
+    {
+        $normalized = mb_strtolower(trim(preg_replace('/[.!?,;:]+$/u', '', trim($name)) ?? trim($name)));
+        $normalized = preg_replace('/\s+/u', '', $normalized) ?? $normalized;
+        $stopwords = [
+            'oui', 'non', 'ok', 'daccord', 'bien', 'merci', 'moi', 'je', 'valide', 'confirme',
+            'confirmé', 'confirmez', 'bonjour', 'salut', 'hello', 'voila', 'voilà',
+        ];
+
+        return $normalized === '' || in_array($normalized, $stopwords, true);
     }
 }

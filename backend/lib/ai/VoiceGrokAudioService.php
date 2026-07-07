@@ -5,6 +5,8 @@ declare(strict_types=1);
 /**
  * STT + TTS Grok (xAI) — même stack que Grok Voice, sans OpenAI ni STT natif mobile.
  */
+require_once __DIR__ . '/VoiceGrokNaturalSpeech.php';
+
 final class VoiceGrokAudioService
 {
     private const STT_URL = 'https://api.x.ai/v1/stt';
@@ -72,15 +74,18 @@ final class VoiceGrokAudioService
         }
 
         $apiKey = $this->requireApiKey();
-        $voiceId = ai_env('XAI_TTS_VOICE_ID', 'ara') ?? 'ara';
+        $voiceId = ai_env('XAI_TTS_VOICE_ID', 'sal') ?? 'sal';
+        $speedRaw = ai_env('XAI_TTS_SPEED', '0.93') ?? '0.93';
+        $speed = max(0.7, min(1.5, (float) $speedRaw));
         $lang = substr($locale, 0, 2);
+        $spokenText = VoiceGrokNaturalSpeech::humanize($trimmed);
 
         $payload = json_encode([
-            'text' => $trimmed,
+            'text' => $spokenText,
             'voice_id' => $voiceId,
             'language' => $lang,
             'text_normalization' => true,
-            'speed' => 1.0,
+            'speed' => $speed,
             'output_format' => [
                 'codec' => 'mp3',
                 'sample_rate' => 24000,

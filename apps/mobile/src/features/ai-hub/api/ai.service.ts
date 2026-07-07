@@ -297,7 +297,11 @@ export async function createVoiceSession(input?: {
 
 export async function sendVoiceTurn(
   sessionId: string,
-  audioBase64: string,
+  input: {
+    audioBase64?: string;
+    transcript?: string;
+    sttProvider?: 'device' | 'grok_stt';
+  },
 ): Promise<{
   transcript: string;
   assistant_text: string;
@@ -320,8 +324,9 @@ export async function sendVoiceTurn(
   }>(`/ai/voice/sessions/${sessionId}/turn`, {
     method: 'POST',
     body: {
-      audio_base64: audioBase64,
-      stt_provider: 'grok_stt',
+      audio_base64: input.audioBase64,
+      transcript: input.transcript,
+      stt_provider: input.sttProvider ?? (input.transcript ? 'device' : 'grok_stt'),
     },
   });
   if (!res.success || !res.data) throw new Error(res.error ?? 'Tour vocal impossible');

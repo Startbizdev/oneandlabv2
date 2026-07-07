@@ -524,10 +524,8 @@ export function CaryAiHubScreen({
         phase={voice.phase}
         recognizing={voice.recognizing}
         available={voice.available}
-        liveTranscript={voice.liveTranscript}
+        voiceEnergy={voice.voiceEnergy}
         turns={voice.turns}
-        lastUserText={voice.lastUserText}
-        lastResponse={voice.lastResponse}
         speechError={voice.speechError}
         activeDraft={activeDraft}
         confirmingDraft={confirmingDraft}
