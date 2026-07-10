@@ -28,8 +28,12 @@ final class AiVoiceMessageSignals
         $payload = is_array($draft['payload'] ?? null) ? $draft['payload'] : [];
 
         if (CaryBookingPromptRules::isStaffRole($role)) {
-            $patch = array_merge($patch, self::parseStaffContactFlags($text));
-            if (!AiVoiceDraftReconciler::isConversationalReply($text)) {
+            $contactFlags = self::parseStaffContactFlags($text);
+            $patch = array_merge($patch, $contactFlags);
+            $skipIdentity = !empty($contactFlags)
+                || AiVoiceDraftReconciler::isConversationalReply($text)
+                || self::isContactDelegationMessage($text);
+            if (!$skipIdentity) {
                 $identity = AiBookingIdentityParser::parseContactFromMessage($text);
                 if ($identity !== []) {
                     $patch = AiBookingIdentityParser::mergeParsedIdentity($patch, $identity);
@@ -82,6 +86,16 @@ final class AiVoiceMessageSignals
         }
 
         return $out;
+    }
+
+    private static function isContactDelegationMessage(string $text): bool
+    {
+        $t = mb_strtolower(trim($text));
+
+        return (bool) preg_match(
+            '/\b(?:pas de mail|pas d[\']?e?-?mail|sans mail|sans e-?mail|pas de t[ée]l|sans t[ée]l|utilise(?:r)? mon (?:mail|e-?mail|num[ée]ro|t[ée]l))\b/u',
+            $t,
+        );
     }
 
     /**
