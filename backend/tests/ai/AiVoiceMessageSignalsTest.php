@@ -73,14 +73,16 @@ final class AiVoiceMessageSignalsTest extends TestCase
         $this->assertSame('recap', $patch['booking_step'] ?? null);
     }
 
-    public function testBlocksFalseConfirmClaim(): void
+    public function testStaffContactMessageSkipsIdentityParse(): void
     {
-        $draft = [
-            'status' => 'collecting',
-            'missing_fields' => [],
-            'payload' => ['booking_step' => 'documents', 'ordonnance_status' => 'pending'],
-        ];
-        $out = AiVoiceAssistantGuard::normalize('Oui', 'Parfait, c\'est enregistré.', $draft);
-        $this->assertStringContainsString('Valider', $out);
+        $patch = AiVoiceMessageSignals::buildDraftPatch(
+            'pas de mail pas de tel',
+            ['role' => 'nurse'],
+            null,
+        );
+        $this->assertTrue($patch['use_staff_contact_email'] ?? false);
+        $this->assertTrue($patch['use_staff_contact_phone'] ?? false);
+        $this->assertArrayNotHasKey('first_name', $patch);
+        $this->assertArrayNotHasKey('last_name', $patch);
     }
 }
