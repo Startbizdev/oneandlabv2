@@ -120,39 +120,44 @@ export function mergeNursingBatchAppointmentsForListDisplay(appointments: any[])
 }
 
 export function groupAppointmentsByBatch(list: any[]): AppointmentListRow[] {
-  const out: AppointmentListRow[] = [];
-  const seen = new Set<string>();
-  for (const a of list) {
+  const buckets = new Map<string, any[]>();
+  const keyFirstIndex = new Map<string, number>();
+  const ordered: { idx: number; row: AppointmentListRow }[] = [];
+
+  for (let i = 0; i < list.length; i++) {
+    const a = list[i];
     const bid = a.creation_batch_id;
     const ty = a.type;
     const canGroup = isNursingAppointment(ty) || isBloodTestAppointment(ty);
     if (!bid || !canGroup) {
-      out.push({ kind: 'single', appointment: a });
+      ordered.push({ idx: i, row: { kind: 'single', appointment: a } });
       continue;
     }
     const normalizedType = isBloodTestAppointment(ty) ? 'blood_test' : 'nursing';
     const key = `${normalizedType}:${bid}`;
-    if (seen.has(key)) continue;
-    const group = list.filter(
-      (x) =>
-        x.creation_batch_id === bid &&
-        (normalizedType === 'blood_test'
-          ? isBloodTestAppointment(x.type)
-          : isNursingAppointment(x.type)),
-    );
-    if (group.length <= 1) {
-      out.push({ kind: 'single', appointment: a });
-      continue;
+    if (!buckets.has(key)) {
+      buckets.set(key, []);
+      keyFirstIndex.set(key, i);
     }
-    seen.add(key);
+    buckets.get(key)!.push(a);
+  }
+
+  for (const [key, group] of buckets) {
+    const idx = keyFirstIndex.get(key) ?? 0;
     group.sort((x, y) => {
       const ax = new Date(x.scheduled_at || x.created_at || 0).getTime();
       const bx = new Date(y.scheduled_at || y.created_at || 0).getTime();
       return ax - bx;
     });
-    out.push({ kind: 'batch', appointments: group, key });
+    if (group.length <= 1) {
+      ordered.push({ idx, row: { kind: 'single', appointment: group[0] } });
+    } else {
+      ordered.push({ idx, row: { kind: 'batch', appointments: group, key } });
+    }
   }
-  return out;
+
+  ordered.sort((a, b) => a.idx - b.idx);
+  return ordered.map((entry) => entry.row);
 }
 
 /** Clé patient + proche (pour regroupement sans batch_id). */

@@ -1,6 +1,6 @@
-import type { NursePassageNursingItem, PassageTimeSlot } from '@oneandlab/shared-types';
+import type { NursePassageNursingItem, PassageDailyTimeSlot, PassageTimeSlot } from '@oneandlab/shared-types';
 import dayjs from 'dayjs';
-import { formatPassageTimeSelectionSummary } from '@oneandlab/shared-utils';
+import { PASSAGE_TIME_SLOT_LABELS } from './passage-display';
 import type { PassagePlanningFormState } from './passage-planning';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 import { resolveCareItemDisplayLabel } from '@/utils/appointment-detail-display';
@@ -36,6 +36,8 @@ export function formatPlanningSummary(
   parts.push(`début ${start}`);
   if (state.endDate.trim()) {
     parts.push(`fin ${dayjs(state.endDate).format('D MMM YYYY')}`);
+  } else if (state.openEnded && (state.planningMode === 'interval' || state.planningMode === 'weekdays')) {
+    parts.push('sans fin (chronique)');
   }
   if (passageCount > 0) {
     parts.push(`${passageCount} passage${passageCount > 1 ? 's' : ''}`);
@@ -49,7 +51,22 @@ export function formatTimeSummary(
   customTime: string,
   timeRange?: [number, number] | null,
 ): string {
-  return formatPassageTimeSelectionSummary(timeSlot, customTime, timeRange);
+  if (timeRange && timeRange.length >= 2) {
+    const fmt = (h: number) => `${String(h).padStart(2, '0')}h`;
+    return `Plage ${fmt(timeRange[0])} – ${fmt(timeRange[1])}`;
+  }
+  if (timeSlot === 'custom') {
+    const t = customTime.trim() || '—';
+    return `Personnalisée · ${t}`;
+  }
+  return PASSAGE_TIME_SLOT_LABELS[timeSlot] ?? timeSlot;
+}
+
+export function formatDailyTimesSummary(slots: PassageDailyTimeSlot[]): string {
+  if (slots.length === 0) return 'Matin';
+  return slots
+    .map((s) => PASSAGE_TIME_SLOT_LABELS[s.time_slot] ?? s.time_slot)
+    .join(' + ');
 }
 
 export function formatLocationSummary(atHome: boolean, addressLabel?: string | null): string {

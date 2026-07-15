@@ -521,6 +521,119 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
     }
 
+    $view = isset($_GET['view']) ? trim((string) $_GET['view']) : '';
+    $skipCount = !empty($_GET['skip_count'])
+        && in_array(strtolower(trim((string) $_GET['skip_count'])), ['1', 'true', 'yes'], true);
+
+    if ($view === 'cards') {
+        require_once __DIR__ . '/../../lib/AppointmentListCards.php';
+        require_once __DIR__ . '/../../lib/AppointmentListPayload.php';
+
+        $cardLimit = min(max($limit, 1), 48);
+        $cardPage = max(1, $page);
+
+        try {
+            $cardMeta = AppointmentListCards::paginateCardKeys(
+                $db,
+                $sql,
+                $params,
+                $cardPage,
+                $cardLimit,
+                $skipCount
+            );
+        } catch (Throwable $e) {
+            logAppointmentError('pagination cartes RDV', ['error' => $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Erreur pagination cartes']);
+            exit;
+        }
+
+        $fetchParams = $params;
+        $repIdRows = AppointmentListCards::fetchRepresentativeIdRows(
+            $db,
+            $sql,
+            $cardMeta['keys'],
+            $fetchParams
+        );
+        $representativeIds = array_values(array_filter(array_map(
+            static fn(array $row): string => (string) ($row['id'] ?? ''),
+            $repIdRows
+        )));
+
+        if ($representativeIds === []) {
+            echo json_encode([
+                'success' => true,
+                'data' => ['rows' => []],
+                'pagination' => [
+                    'page' => $cardPage,
+                    'limit' => $cardLimit,
+                    'total_cards' => $cardMeta['total_cards'],
+                    'has_more' => $cardMeta['has_more'],
+                ],
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $repPlaceholders = implode(',', array_fill(0, count($representativeIds), '?'));
+        $fetchSql = $sql . " AND a.id IN ($repPlaceholders)";
+        $fetchParams = array_merge($fetchParams, $representativeIds);
+        $fetchSql .= ' ORDER BY a.created_at DESC, a.scheduled_at DESC';
+
+        $fetchStmt = $db->prepare($fetchSql);
+        $fetchStmt->execute($fetchParams);
+        $appointments = $fetchStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($user) {
+            $decrypted = AppointmentListPayload::decryptRowsForList(
+                $appointmentModel,
+                $appointments,
+                $user['user_id'],
+                $user['role']
+            );
+            $decrypted = AppointmentListPayload::enrichForListCards(
+                $db,
+                $appointmentModel,
+                $decrypted,
+                $hasMergedColumn
+            );
+            $appointmentModel->enrichListAssigneeReviewStats($decrypted);
+            $rows = AppointmentListCards::groupIntoRows($decrypted, $cardMeta['keys']);
+        } else {
+            $rows = [];
+        }
+
+        $totalCards = $cardMeta['total_cards'];
+        if ($skipCount && $totalCards === 0) {
+            $totalCards = ($cardPage - 1) * $cardLimit + count($rows);
+            if ($cardMeta['has_more']) {
+                $totalCards = max($totalCards, $cardPage * $cardLimit + 1);
+            }
+        }
+
+        logAppointment('=== FIN GET /appointments view=cards ===', [
+            'page' => $cardPage,
+            'limit' => $cardLimit,
+            'rows' => count($rows),
+            'appointments_fetched' => count($appointments),
+            'representatives_fetched' => count($representativeIds),
+            'has_more' => $cardMeta['has_more'],
+        ]);
+
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'rows' => $rows,
+            ],
+            'pagination' => [
+                'page' => $cardPage,
+                'limit' => $cardLimit,
+                'total_cards' => $totalCards,
+                'has_more' => $cardMeta['has_more'],
+            ],
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     // Compter le total - construire la requête COUNT à partir de la requête principale
     logAppointment('Construction de la requête COUNT');
     logAppointment('SQL avant COUNT', ['sql' => $sql, 'params' => $params]);
@@ -549,6 +662,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     logAppointment('Requête COUNT construite', ['countSql' => $countSql]);
     
+    $total = 0;
+    if (!$skipCount) {
     try {
         logAppointment('Exécution de la requête COUNT');
         $countStmt = $db->prepare($countSql);
@@ -565,6 +680,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'params' => $params
         ]);
         $total = 0;
+    }
     }
     
     // Récupérer les résultats avec pagination
@@ -1048,6 +1164,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $inputForCreate = $input;
     unset($inputForCreate['reschedule_from_appointment_id']);
 
+    $externalNurseInvite = null;
+    if (!empty($inputForCreate['external_nurse_invite']) && is_array($inputForCreate['external_nurse_invite'])) {
+        $externalNurseInvite = $inputForCreate['external_nurse_invite'];
+        unset($inputForCreate['external_nurse_invite']);
+    }
+    if (!empty($inputForCreate['skip_zone_dispatch'])) {
+        $inputForCreate['skip_zone_dispatch'] = true;
+    }
+
     if (!empty($inputForCreate['utm_qr']) && empty($inputForCreate['attribution_qr_id'])) {
         require_once __DIR__ . '/../../lib/QrCodeService.php';
         $qrResolve = new QrCodeService();
@@ -1111,6 +1236,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         logAppointment('Appel à appointmentModel->create', ['user_id' => $user['user_id'], 'role' => $user['role']]);
         $id = $appointmentModel->create($inputForCreate, $user['user_id'], $user['role']);
         logAppointment('Rendez-vous créé avec succès', ['appointment_id' => $id]);
+
+        require_once __DIR__ . '/../../lib/admin/AdminDispatchEventLogger.php';
+        $dispatchLogger = new AdminDispatchEventLogger($db);
+        $dispatchMode = 'zone';
+        if ($externalNurseInvite !== null && ($inputForCreate['type'] ?? '') === 'nursing') {
+            $dispatchMode = 'external_invite';
+        } elseif (!empty($inputForCreate['assigned_pro_id']) || !empty($inputForCreate['assigned_nurse_id']) || !empty($inputForCreate['assigned_lab_id'])) {
+            $dispatchMode = 'direct_assign';
+        } elseif (($user['role'] ?? '') === 'nurse' && ($inputForCreate['type'] ?? '') === 'nursing') {
+            $dispatchMode = 'direct_assign';
+        } elseif (in_array($user['role'] ?? '', ['lab', 'subaccount'], true) && ($inputForCreate['type'] ?? '') === 'blood_test') {
+            $dispatchMode = 'direct_assign';
+        } elseif (!empty($inputForCreate['skip_zone_dispatch'])) {
+            $dispatchMode = 'direct_assign';
+        } elseif (($user['role'] ?? '') === 'super_admin') {
+            $dispatchMode = 'manual';
+        }
+        $dispatchLogger->setDispatchMode($id, $dispatchMode);
+        $dispatchLogger->log(
+            $id,
+            'created',
+            $user['user_id'],
+            $user['role'],
+            null,
+            [
+                'dispatch_mode' => $dispatchMode,
+                'type' => $inputForCreate['type'] ?? null,
+                'assigned_pro_id' => $inputForCreate['assigned_pro_id'] ?? null,
+            ]
+        );
+
+        if ($externalNurseInvite !== null && ($inputForCreate['type'] ?? '') === 'nursing') {
+            require_once __DIR__ . '/../../lib/NurseInviteService.php';
+            try {
+                $inviteResult = NurseInviteService::inviteExternalForAppointment($db, $id, $externalNurseInvite, $user['user_id']);
+                $inputForCreate['skip_zone_dispatch'] = true;
+                $inputForCreate['external_nurse_invite_sent'] = true;
+                if (!empty($inviteResult['resolved_nurse_id'])) {
+                    $inputForCreate['assigned_nurse_id'] = (string) $inviteResult['resolved_nurse_id'];
+                }
+                $dispatchLogger->setDispatchMode($id, 'external_invite');
+            } catch (Throwable $e) {
+                logAppointmentError('invitation infirmier externe', ['error' => $e->getMessage(), 'appointment_id' => $id]);
+                http_response_code(503);
+                echo json_encode([
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                    'code' => 'NURSE_INVITE_FAILED',
+                    'data' => ['id' => $id],
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+        }
 
         if (StaffPatientConsent::requiresConsent((string) ($user['role'] ?? ''))) {
             $consentPatientId = isset($input['patient_id']) ? (string) $input['patient_id'] : null;

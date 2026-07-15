@@ -248,7 +248,7 @@ class RegistrationRequest
             'last_name' => $dec($r['last_name_encrypted'] ?? '', $r['last_name_dek'] ?? ''),
             'gender' => $this->genderFromRow($r, $dec),
             'phone' => $dec($r['phone_encrypted'] ?? '', $r['phone_dek'] ?? ''),
-            'address' => $this->normalizeAddressLabel($dec($r['address_encrypted'] ?? '', $r['address_dek'] ?? '')),
+            'address' => $this->parseAddressFromDecrypted($dec($r['address_encrypted'] ?? '', $r['address_dek'] ?? '')),
             'siret' => $dec($r['siret_encrypted'] ?? '', $r['siret_dek'] ?? ''),
             'adeli' => $dec($r['adeli_encrypted'] ?? '', $r['adeli_dek'] ?? ''),
             'rpps' => $dec($r['rpps_encrypted'] ?? '', $r['rpps_dek'] ?? ''),
@@ -285,21 +285,106 @@ class RegistrationRequest
     /** Libellé lisible pour adresse stockée en JSON ({label,lat,lng}) ou texte libre. */
     private function normalizeAddressLabel(string $raw): string
     {
+        $parsed = $this->parseAddressFromDecrypted($raw);
+        if (is_array($parsed) && !empty($parsed['label'])) {
+            return (string) $parsed['label'];
+        }
+
+        return trim($raw);
+    }
+
+    /**
+     * Conserve label + coordonnées depuis le JSON chiffré d'inscription.
+     *
+     * @return array{label: string, lat?: float, lng?: float}|null
+     */
+    private function parseAddressFromDecrypted(string $raw): ?array
+    {
         $raw = trim($raw);
         if ($raw === '') {
-            return '';
+            return null;
         }
         if ($raw[0] === '{') {
             $decoded = json_decode($raw, true);
             if (is_array($decoded)) {
                 $label = trim((string) ($decoded['label'] ?? ''));
-                if ($label !== '') {
-                    return $label;
+                if ($label === '') {
+                    return null;
                 }
+                $out = ['label' => $label];
+                if (isset($decoded['lat']) && is_numeric($decoded['lat'])) {
+                    $out['lat'] = (float) $decoded['lat'];
+                }
+                if (isset($decoded['lng']) && is_numeric($decoded['lng'])) {
+                    $out['lng'] = (float) $decoded['lng'];
+                }
+
+                return $out;
             }
         }
 
-        return $raw;
+        return ['label' => $raw];
+    }
+
+    /**
+     * Géocode l'adresse d'inscription si lat/lng absents (fallback Google).
+     *
+     * @param array<string, mixed>|string|null $rawAddress
+     * @return array{label: string, lat: float, lng: float}|null
+     */
+    private function resolveAddressWithGeocode($rawAddress): ?array
+    {
+        $addr = null;
+        if (is_array($rawAddress)) {
+            $addr = $rawAddress;
+        } elseif (is_string($rawAddress) && $rawAddress !== '') {
+            $addr = $this->parseAddressFromDecrypted($rawAddress);
+        }
+        if (!$addr || empty($addr['label'])) {
+            return null;
+        }
+
+        $label = trim((string) $addr['label']);
+        $lat = isset($addr['lat']) && is_numeric($addr['lat']) ? (float) $addr['lat'] : null;
+        $lng = isset($addr['lng']) && is_numeric($addr['lng']) ? (float) $addr['lng'] : null;
+        if ($lat !== null && $lng !== null && !($lat === 0.0 && $lng === 0.0)) {
+            return ['label' => $label, 'lat' => $lat, 'lng' => $lng];
+        }
+
+        try {
+            require_once __DIR__ . '/../lib/GoogleAddressSearch.php';
+            $hits = (new GoogleAddressSearch())->search($label, 1);
+            $hit = $hits[0] ?? null;
+            if (is_array($hit) && isset($hit['lat'], $hit['lng']) && is_numeric($hit['lat']) && is_numeric($hit['lng'])) {
+                return [
+                    'label' => trim((string) ($hit['label'] ?? $label)),
+                    'lat' => (float) $hit['lat'],
+                    'lng' => (float) $hit['lng'],
+                ];
+            }
+        } catch (Throwable $e) {
+            error_log('resolveAddressWithGeocode: ' . $e->getMessage());
+        }
+
+        return null;
+    }
+
+    /** Fiche publique activée par défaut à l'acceptation (visible sur le site une fois le compte créé). */
+    private function enableDefaultPublicProfile(string $userId, string $role): void
+    {
+        if (!in_array($role, ['nurse', 'pro', 'lab', 'subaccount'], true)) {
+            return;
+        }
+        $slug = 'profil-' . substr(str_replace('-', '', $userId), 0, 12);
+        $this->db->prepare(
+            'UPDATE profiles SET
+                is_public_profile_enabled = 1,
+                public_slug = CASE
+                    WHEN public_slug IS NULL OR TRIM(public_slug) = \'\' THEN ?
+                    ELSE public_slug
+                END
+             WHERE id = ?'
+        )->execute([$slug, $userId]);
     }
 
     public function getById(string $id): ?array
@@ -353,13 +438,10 @@ class RegistrationRequest
                 if (strlen($createData['emploi']) > 120) $createData['emploi'] = substr($createData['emploi'], 0, 120);
             }
         }
-        if (in_array($req['role'], ['lab', 'nurse'], true) && !empty($req['address'])) {
-            $addr = $req['address'];
-            if (is_string($addr)) {
-                $decoded = json_decode($addr, true);
-                $createData['address'] = is_array($decoded) ? $decoded : ['label' => $addr];
-            } elseif (is_array($addr)) {
-                $createData['address'] = $addr;
+        if (in_array($req['role'], ['lab', 'nurse'], true)) {
+            $resolvedAddress = $this->resolveAddressWithGeocode($req['address'] ?? null);
+            if ($resolvedAddress) {
+                $createData['address'] = $resolvedAddress;
             }
         }
         if ($req['role'] === 'nurse' && !empty(trim((string)($req['gender'] ?? '')))) {
@@ -415,9 +497,16 @@ class RegistrationRequest
 
         // Créer la zone de couverture à partir de l'adresse d'inscription
         try {
-            $this->createCoverageZoneFromAddress($userId, $req['role'], $req['address'] ?? null);
+            $resolvedForZone = $this->resolveAddressWithGeocode($req['address'] ?? null);
+            $this->createCoverageZoneFromAddress($userId, $req['role'], $resolvedForZone);
         } catch (Throwable $e) {
             error_log('RegistrationRequest accept createCoverageZone: ' . $e->getMessage());
+        }
+
+        try {
+            $this->enableDefaultPublicProfile($userId, $req['role']);
+        } catch (Throwable $e) {
+            error_log('RegistrationRequest accept enableDefaultPublicProfile: ' . $e->getMessage());
         }
 
         try {
@@ -474,13 +563,15 @@ class RegistrationRequest
     {
         if (!in_array($role, ['nurse', 'lab', 'subaccount'], true)) return;
 
-        // Décoder l'adresse (peut être JSON string ou array)
         $addr = null;
         if (is_array($rawAddress)) {
             $addr = $rawAddress;
         } elseif (is_string($rawAddress) && $rawAddress !== '') {
-            $decoded = json_decode($rawAddress, true);
-            $addr = is_array($decoded) ? $decoded : null;
+            $addr = $this->parseAddressFromDecrypted($rawAddress);
+        }
+
+        if (!$addr || empty($addr['lat']) || empty($addr['lng'])) {
+            $addr = $this->resolveAddressWithGeocode($rawAddress);
         }
 
         if (!$addr || empty($addr['lat']) || empty($addr['lng'])) {

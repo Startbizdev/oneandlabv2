@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
 require_once __DIR__ . '/../../../lib/AddressDisplayFr.php';
+require_once __DIR__ . '/../../../lib/admin/AdminDispatchEventLogger.php';
 require_once __DIR__ . '/../../../models/User.php';
 require_once __DIR__ . '/../../../models/Appointment.php';
 
@@ -206,6 +207,15 @@ if ($needsRepend && $shouldReleaseForShare) {
                     random_int(0, 0xffff)
                 );
                 $insHist->execute([$histId, $rid, 'pending', $user['user_id'], $user['role'], $noteHist]);
+                $dispatchLogger = new AdminDispatchEventLogger($db);
+                $dispatchLogger->log(
+                    $rid,
+                    'nurse_share_release',
+                    $user['user_id'],
+                    $user['role'],
+                    null,
+                    ['batch_size' => count($idsToRepend)]
+                );
             }
             $repended = true;
         }
@@ -359,13 +369,34 @@ if ($tokenValidDays > 0) {
     $expiresAt = (new DateTime())->modify("+{$tokenValidDays} days")->format('Y-m-d H:i:s');
 }
 
+$tokenRowId = null;
 if ($existing && (empty($existing['expires_at']) || strtotime($existing['expires_at']) > time())) {
     $token = $existing['token'];
+    $tokLookup = $db->prepare('SELECT id FROM appointment_share_tokens WHERE appointment_id = ? AND token = ? LIMIT 1');
+    $tokLookup->execute([$appointmentId, $token]);
+    $tokRow = $tokLookup->fetch(PDO::FETCH_ASSOC);
+    $tokenRowId = $tokRow['id'] ?? null;
 } else {
     $token = bin2hex(random_bytes(32));
     $id = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x', random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0x4000) | 0x8000, random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff));
     $insert = $db->prepare('INSERT INTO appointment_share_tokens (id, appointment_id, token, created_at, expires_at) VALUES (?, ?, ?, NOW(), ?)');
     $insert->execute([$id, $appointmentId, $token, $expiresAt]);
+    $tokenRowId = $id;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $dispatchLoggerShare = new AdminDispatchEventLogger($db);
+    $dispatchLoggerShare->log(
+        $appointmentId,
+        'nurse_share_link_created',
+        $user['user_id'],
+        $user['role'],
+        null,
+        [
+            'token_id' => $tokenRowId,
+            'repended' => $repended,
+        ]
+    );
 }
 
 $sharePath = "/p/rdv/{$token}";

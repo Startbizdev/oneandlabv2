@@ -33,6 +33,11 @@
           @click="editModal = 'planning'"
         />
         <PassageFieldRow
+          label="Passages dans la journée"
+          :value="dailyTimesSummary"
+          @click="editModal = 'daily_times'"
+        />
+        <PassageFieldRow
           label="Heure de passage"
           :value="timeSummary"
           @click="editModal = 'time'"
@@ -95,6 +100,24 @@
       </div>
     </UModal>
 
+    <UModal v-model:open="dailyTimesOpen" title="Passages dans la journée">
+      <div class="space-y-3 p-1">
+        <p class="text-sm text-gray-500">Sélectionnez un ou plusieurs créneaux (ex. matin + après-midi)</p>
+        <div class="flex flex-wrap gap-2">
+          <UButton
+            v-for="item in dailySlotItems"
+            :key="item.value"
+            size="sm"
+            :variant="dailyTimeSlots.some((s) => s.time_slot === item.value) ? 'solid' : 'outline'"
+            @click="toggleDailySlot(item.value)"
+          >
+            {{ item.label }}
+          </UButton>
+        </div>
+        <UButton block @click="editModal = null">Valider</UButton>
+      </div>
+    </UModal>
+
     <UModal v-model:open="timeOpen" title="Heure de passage">
       <div class="space-y-3 p-1">
         <USelect v-model="timeSlot" :items="slotItems" />
@@ -138,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import type { NursePassageNursingItem, NursePassageSeriesInput, PassageTimeSlot } from '@oneandlab/shared-types';
+import type { NursePassageNursingItem, NursePassageSeriesInput, PassageDailyTimeSlot, PassageTimeSlot } from '@oneandlab/shared-types';
 import PassageCarePicker from '~/components/nurse/PassageCarePicker.vue';
 import PassageFieldRow from '~/components/nurse/PassageFieldRow.vue';
 import PassagePlanningFormFields from '~/components/nurse/PassagePlanningFormFields.vue';
@@ -146,6 +169,7 @@ import PrescriptionSection from '~/components/dashboard/PrescriptionSection.vue'
 import PatientHealthRecordPanel from '~/components/dashboard/PatientHealthRecordPanel.vue';
 import {
   formatCareSummary,
+  formatDailyTimesSummary,
   formatLocationSummary,
   formatNotesSummary,
   formatPassageDurationSummary,
@@ -155,6 +179,7 @@ import {
 import {
   buildPlanningPayload,
   defaultPlanningFormState,
+  embedTimeRangeInPlanningConfig,
   previewPassageCount,
   suggestPlanningFromCare,
   type PassagePlanningFormState,
@@ -196,16 +221,18 @@ const nursingItems = ref<NursePassageNursingItem[]>([]);
 const planningEdited = ref(false);
 const planningState = ref<PassagePlanningFormState>(
   (() => {
-    const base = defaultPlanningFormState(stripDate.value);
+    const base = defaultPlanningFormState(stripDate.value, { recurring: flowMode.value === 'recurring' });
     if (flowMode.value === 'recurring') {
-      return { ...base, planningMode: 'interval' };
+      return { ...base, planningMode: 'interval', openEnded: true };
     }
     return base;
   })(),
 );
+const dailyTimeSlots = ref<PassageDailyTimeSlot[]>([{ time_slot: 'morning', custom_time: null }]);
 
-const editModal = ref<'planning' | 'time' | 'location' | 'duration' | 'care' | 'notes' | null>(null);
+const editModal = ref<'planning' | 'time' | 'daily_times' | 'location' | 'duration' | 'care' | 'notes' | null>(null);
 const planningOpen = computed({ get: () => editModal.value === 'planning', set: (v) => { if (!v) editModal.value = null; } });
+const dailyTimesOpen = computed({ get: () => editModal.value === 'daily_times', set: (v) => { if (!v) editModal.value = null; } });
 const timeOpen = computed({ get: () => editModal.value === 'time', set: (v) => { if (!v) editModal.value = null; } });
 const locationOpen = computed({ get: () => editModal.value === 'location', set: (v) => { if (!v) editModal.value = null; } });
 const durationOpen = computed({ get: () => editModal.value === 'duration', set: (v) => { if (!v) editModal.value = null; } });
@@ -227,8 +254,16 @@ const durationItems = [
   { label: '1 h', value: 60 },
 ];
 
-const passageCount = computed(() => previewPassageCount(planningState.value, nursingItems.value));
+const dailySlotItems = [
+  { label: 'Matin', value: 'morning' as PassageTimeSlot },
+  { label: 'Midi', value: 'noon' as PassageTimeSlot },
+  { label: 'Après-midi', value: 'afternoon' as PassageTimeSlot },
+  { label: 'Soir', value: 'evening' as PassageTimeSlot },
+];
+
+const passageCount = computed(() => previewPassageCount(planningState.value, nursingItems.value, dailyTimeSlots.value.length));
 const planningSummary = computed(() => formatPlanningSummary(planningState.value, passageCount.value));
+const dailyTimesSummary = computed(() => formatDailyTimesSummary(dailyTimeSlots.value));
 const timeSummary = computed(() => formatTimeSummary(timeSlot.value, customTime.value));
 const durationSummary = computed(() => formatPassageDurationSummary(duration.value, ''));
 const careSummary = computed(() => formatCareSummary(nursingItems.value, careCategories.value));
@@ -257,6 +292,21 @@ watch(nursingItems, (items) => {
   const patch = suggestPlanningFromCare(planningState.value, items);
   if (patch) planningState.value = { ...planningState.value, ...patch };
 }, { deep: true });
+
+function toggleDailySlot(slot: PassageTimeSlot) {
+  const order = dailySlotItems.map((i) => i.value);
+  const current = dailyTimeSlots.value.map((s) => s.time_slot);
+  if (current.includes(slot)) {
+    if (current.length <= 1) return;
+    dailyTimeSlots.value = dailyTimeSlots.value.filter((s) => s.time_slot !== slot);
+  } else {
+    dailyTimeSlots.value = [...dailyTimeSlots.value, { time_slot: slot, custom_time: null }]
+      .sort((a, b) => order.indexOf(a.time_slot) - order.indexOf(b.time_slot));
+  }
+  if (dailyTimeSlots.value.length === 1) {
+    timeSlot.value = dailyTimeSlots.value[0].time_slot;
+  }
+}
 
 function confirmPlanning() {
   planningEdited.value = true;
@@ -296,11 +346,16 @@ async function submit() {
   }
 
   const built = buildPlanningPayload(planningState.value, nursingItems.value);
+  const slotsPayload: PassageDailyTimeSlot[] =
+    dailyTimeSlots.value.length === 1
+      ? [{ time_slot: timeSlot.value, custom_time: timeSlot.value === 'custom' ? customTime.value : null }]
+      : dailyTimeSlots.value;
+  const planningConfig = embedTimeRangeInPlanningConfig(built.planning_config, null, slotsPayload);
   const input: NursePassageSeriesInput = {
     patient_id: patientId.value,
     planning_type: built.planning_type,
-    planning_config: built.planning_config,
-    time_slot: timeSlot.value,
+    planning_config: planningConfig,
+    time_slot: slotsPayload[0]?.time_slot ?? timeSlot.value,
     custom_time: timeSlot.value === 'custom' ? customTime.value : null,
     duration_minutes: duration.value,
     at_home: atHome.value,

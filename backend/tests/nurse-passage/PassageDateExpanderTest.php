@@ -67,6 +67,18 @@ final class PassageDateExpanderTest extends TestCase
         $this->assertSame('2026-07-07', $dates[6]);
     }
 
+    public function testIntervalOpenEndedUses365DayHorizon(): void
+    {
+        $dates = PassageDateExpander::expand('interval', [
+            'every_days' => 7,
+            'start_date' => '2026-01-01',
+            'open_ended' => true,
+        ]);
+        $this->assertGreaterThan(50, count($dates));
+        $this->assertSame('2026-01-01', $dates[0]);
+        $this->assertSame('2026-12-31', $dates[count($dates) - 1]);
+    }
+
     public function testMorningSlotScheduledAt(): void
     {
         $at = PassageSlotResolver::scheduledAt('2026-07-15', 'morning', null);

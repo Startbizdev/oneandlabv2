@@ -7,6 +7,7 @@ import { Pressable, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { ChevronDown, UserPlus, Users } from 'lucide-react-native';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
+import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { Input } from '@/components/ui/Input';
 import { lookupPatientByContact } from '@/features/patients/api/patient-lookup.service';
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
@@ -15,6 +16,7 @@ import { PatientSelectSheet } from './PatientSelectSheet';
 import { useToast } from '@/providers/ToastProvider';
 import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+import { normalizePatientGender, patientGenderIsSet } from '@/utils/patient-gender';
 
 export interface PatientOption {
   id: string;
@@ -69,6 +71,11 @@ export function FormPatientSection({
 
   const selectedLabel =
     patients.find((p) => p.id === selectedPatientId)?.label ?? 'Sélectionner un patient…';
+
+  const existingProfileIncomplete =
+    patientMode === 'existing' &&
+    Boolean(selectedPatientId) &&
+    (!patientGenderIsSet(gender) || !birthDate.trim());
 
   const runLookup = useCallback(async () => {
     if (patientMode !== 'new') return;
@@ -177,6 +184,41 @@ export function FormPatientSection({
               </AppText>
             </Cluster>
           </Pressable>
+          {selectedPatientId ? (
+            <View style={styles.existingProfileCard}>
+              <AppText style={styles.existingProfileTitle}>Fiche patient</AppText>
+              {existingProfileIncomplete ? (
+                <AppText style={styles.existingProfileHint}>
+                  Complétez les informations manquantes pour valider le rendez-vous.
+                </AppText>
+              ) : (
+                <AppText style={styles.existingProfileHint}>
+                  Vous pouvez corriger les coordonnées avant la prise de rendez-vous.
+                </AppText>
+              )}
+              <Input label="Prénom" value={firstName} onChangeText={(v) => onChange('first_name', v)} />
+              <Input label="Nom" value={lastName} onChangeText={(v) => onChange('last_name', v)} />
+              <Input
+                label={emailOptional ? 'Email (optionnel)' : 'Email'}
+                value={email}
+                onChangeText={(v) => onChange('email', v)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <Input
+                label="Téléphone"
+                value={phone}
+                onChangeText={(v) => onChange('phone', v)}
+                keyboardType="phone-pad"
+              />
+              <GenderSelect
+                label="Genre"
+                value={normalizePatientGender(gender)}
+                onChange={(v) => onChange('gender', v)}
+              />
+              <BirthDatePicker value={birthDate} onChange={(v) => onChange('birth_date', v)} />
+            </View>
+          ) : null}
         </>
       ) : (
         <View style={styles.fields}>
@@ -207,11 +249,12 @@ export function FormPatientSection({
             <AppText style={styles.fieldLabel}>Genre</AppText>
             <Row gap={spacing[2]}>
               {(['M', 'F'] as const).map((g) => {
-                const on = gender.toUpperCase() === g;
+                const norm = normalizePatientGender(gender);
+                const on = (g === 'M' && norm === 'male') || (g === 'F' && norm === 'female');
                 return (
                   <Pressable
                     key={g}
-                    onPress={() => onChange('gender', g)}
+                    onPress={() => onChange('gender', g === 'M' ? 'male' : 'female')}
                     style={[styles.genderPill, on && styles.genderPillActive]}
                   >
                     <AppText style={[styles.genderText, on && styles.genderTextActive]}>
@@ -297,6 +340,27 @@ function buildStyles(c: AppColors) {
   },
   selectPlaceholder: { color: c.textTertiary },
   fields: { gap: spacing[2] },
+  existingProfileCard: {
+    gap: spacing[2],
+    marginTop: spacing[1],
+    padding: spacing[3],
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: c.borderLight,
+    backgroundColor: c.surfaceAlt,
+  },
+  existingProfileTitle: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.sm,
+    color: c.textPrimary,
+  },
+  existingProfileHint: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.xs,
+    color: c.textSecondary,
+    lineHeight: fontSize.xs * 1.45,
+    marginBottom: spacing[1],
+  },
   genderRow: { gap: spacing[2] },
   genderPill: {
     minWidth: 0,

@@ -7,6 +7,8 @@ final class PassageDateExpander
 {
     public const MAX_DAYS_WITHOUT_END = 90;
 
+    public const OPEN_ENDED_HORIZON_DAYS = 365;
+
     /**
      * @param array<string, mixed> $config
      * @return list<string> Dates Y-m-d triées uniques
@@ -148,9 +150,11 @@ final class PassageDateExpander
             return self::validateEndDate($endRaw);
         }
 
+        $openEnded = !empty($config['open_ended']);
+        $horizonDays = $openEnded ? self::OPEN_ENDED_HORIZON_DAYS : self::MAX_DAYS_WITHOUT_END;
         $startDt = new DateTimeImmutable($start, new DateTimeZone('Europe/Paris'));
 
-        return $startDt->modify('+' . (self::MAX_DAYS_WITHOUT_END - 1) . ' days')->format('Y-m-d');
+        return $startDt->modify('+' . ($horizonDays - 1) . ' days')->format('Y-m-d');
     }
 
     private static function validateEndDate(string $endRaw): string

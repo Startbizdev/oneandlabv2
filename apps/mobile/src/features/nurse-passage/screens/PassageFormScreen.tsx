@@ -19,6 +19,7 @@ import { createNursePassageSeries } from '../api/nurse-passage.service';
 import type { PassagePrescriptionDraft } from '@/features/prescriptions/api/prescriptions.service';
 import { savePrescriptionPdf } from '@/features/prescriptions/api/prescriptions.service';
 import { PassageFormCareSheet } from '../components/PassageFormCareSheet';
+import { PassageFormDailyTimesSheet } from '../components/PassageFormDailyTimesSheet';
 import { PassageFormDocumentsPanel } from '../components/PassageFormDocumentsPanel';
 import { PassageFormDurationSheet } from '../components/PassageFormDurationSheet';
 import { PassageFormFieldRow } from '../components/PassageFormFieldRow';
@@ -28,29 +29,30 @@ import { PassageFormNotesSheet } from '../components/PassageFormNotesSheet';
 import { PassageFormPlanningSheet } from '../components/PassageFormPlanningSheet';
 import { PassageFormTimeSheet } from '../components/PassageFormTimeSheet';
 import {
-  formatCareSummary,
-  formatLocationSummary,
-  formatNotesSummary,
-  formatPassageDurationSummary,
-  formatPlanningSummary,
-  formatTimeSummary,
-} from '../utils/passage-form-summaries';
-import {
   buildPlanningPayload,
   defaultPlanningFormState,
   embedTimeRangeInPlanningConfig,
   previewPassageCount,
   suggestPlanningFromCare,
 } from '../utils/passage-planning';
+import {
+  formatCareSummary,
+  formatDailyTimesSummary,
+  formatLocationSummary,
+  formatNotesSummary,
+  formatPassageDurationSummary,
+  formatPlanningSummary,
+  formatTimeSummary,
+} from '../utils/passage-form-summaries';
 import { useToast } from '@/providers/ToastProvider';
 import { parseProfileAddress, hasValidGeoAddress } from '@/features/profile/utils/parse-profile-address';
 import { useAuthStore } from '@/store/auth-store';
-import type { NursePassageNursingItem, PassageTimeSlot } from '@oneandlab/shared-types';
+import type { NursePassageNursingItem, PassageDailyTimeSlot, PassageTimeSlot } from '@oneandlab/shared-types';
 import { resolvePassageCustomTime } from '@oneandlab/shared-utils';
 import { H_PADDING, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-type SheetKey = 'planning' | 'time' | 'location' | 'duration' | 'care' | 'notes' | null;
+type SheetKey = 'planning' | 'time' | 'daily_times' | 'location' | 'duration' | 'care' | 'notes' | null;
 type SegmentId = 'information' | 'documents' | 'health_record';
 
 const PASSAGE_FORM_SEGMENTS = [
@@ -101,12 +103,15 @@ export function PassageFormScreen() {
   const [customDuration, setCustomDuration] = useState('');
   const [notes, setNotes] = useState('');
   const [planningState, setPlanningState] = useState(() => {
-    const base = defaultPlanningFormState(stripDate);
+    const base = defaultPlanningFormState(stripDate, { recurring: flowMode === 'recurring' });
     if (flowMode === 'recurring') {
-      return { ...base, planningMode: 'interval' as const };
+      return { ...base, planningMode: 'interval' as const, openEnded: true };
     }
     return base;
   });
+  const [dailyTimeSlots, setDailyTimeSlots] = useState<PassageDailyTimeSlot[]>([
+    { time_slot: 'morning', custom_time: null },
+  ]);
   const [nursingItems, setNursingItems] = useState<NursePassageNursingItem[]>([]);
   const [planningEdited, setPlanningEdited] = useState(false);
   const [openSheet, setOpenSheet] = useState<SheetKey>(null);
@@ -126,8 +131,8 @@ export function PassageFormScreen() {
   }, [patientQ.data]);
 
   const passageCount = useMemo(
-    () => previewPassageCount(planningState, nursingItems),
-    [planningState, nursingItems],
+    () => previewPassageCount(planningState, nursingItems, dailyTimeSlots.length),
+    [planningState, nursingItems, dailyTimeSlots.length],
   );
 
   const { data: careCategories = [] } = useAppointmentCareCategories();
@@ -215,16 +220,21 @@ export function PassageFormScreen() {
       duration === -1 ? Math.max(5, parseInt(customDuration, 10) || 30) : duration;
 
     const { planning_type, planning_config } = buildPlanningPayload(planningState, nursingItems);
+    const slotsPayload: PassageDailyTimeSlot[] =
+      dailyTimeSlots.length === 1
+        ? [{ time_slot: timeSlot, custom_time: timeSlot === 'custom' ? customTime : null }]
+        : dailyTimeSlots;
     const planningWithRange = embedTimeRangeInPlanningConfig(
       planning_config,
       timeSlot === 'all_day' ? null : timeRange,
+      slotsPayload,
     );
 
     createMut.mutate({
       patient_id: patientId,
       planning_type,
       planning_config: planningWithRange,
-      time_slot: timeSlot,
+      time_slot: slotsPayload[0]?.time_slot ?? timeSlot,
       custom_time: resolvePassageCustomTime({
         time_slot: timeSlot,
         custom_time: customTime,
@@ -292,6 +302,11 @@ export function PassageFormScreen() {
                 onPress={() => setOpenSheet('planning')}
               />
               <PassageFormFieldRow
+                label="Passages dans la journée"
+                value={formatDailyTimesSummary(dailyTimeSlots)}
+                onPress={() => setOpenSheet('daily_times')}
+              />
+              <PassageFormFieldRow
                 label="Heure de passage"
                 value={formatTimeSummary(timeSlot, customTime, timeRange)}
                 onPress={() => setOpenSheet('time')}
@@ -356,6 +371,17 @@ export function PassageFormScreen() {
         nursingItems={nursingItems}
         onClose={() => setOpenSheet(null)}
         onConfirm={handlePlanningConfirm}
+      />
+      <PassageFormDailyTimesSheet
+        visible={openSheet === 'daily_times'}
+        slots={dailyTimeSlots}
+        onClose={() => setOpenSheet(null)}
+        onConfirm={(slots) => {
+          setDailyTimeSlots(slots);
+          if (slots.length === 1) {
+            setTimeSlot(slots[0].time_slot);
+          }
+        }}
       />
       <PassageFormTimeSheet
         visible={openSheet === 'time'}

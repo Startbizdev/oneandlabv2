@@ -18,6 +18,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { CareSelectionStep } from '../components/CareSelectionStep';
 import { FormScheduleSection } from '../components/FormScheduleSection';
 import { PreferredNurseGenderButtons } from '../components/PreferredNurseGenderButtons';
+import { ProNurseAssignmentSection } from '../components/ProNurseAssignmentSection';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { FormPatientSection } from '../components/FormPatientSection';
 import { FormDocumentsSection } from '../components/FormDocumentsSection';
@@ -206,6 +207,7 @@ export function BookingWizardScreen({
             {...bookingWizardFooterCtaCopy(bw.isFinalWizardStep)}
             onPrimary={bw.wizardNext}
             primaryLoading={bw.saving}
+            primaryDisabled={bw.saving}
           />
         }
       >
@@ -417,6 +419,19 @@ export function BookingWizardScreen({
               onChange={w.onAddressChange}
               onComplementChange={w.onComplementChange}
             />
+
+            {bw.showProNurseAssignment ? (
+              <ProNurseAssignmentSection
+                mode={bw.nurseAssignmentMode}
+                onModeChange={bw.setNurseAssignmentMode}
+                linkedNurses={bw.linkedNurses}
+                linkedNursesLoading={bw.linkedNursesLoading}
+                selectedLinkedNurseId={bw.proLinkedNurseId}
+                onSelectLinkedNurse={bw.onSelectLinkedNurse}
+                externalPhone={bw.externalNursePhone}
+                onExternalPhoneChange={bw.onExternalNursePhoneChange}
+              />
+            ) : null}
 
             {mode === 'patient' ? (
               <Pressable

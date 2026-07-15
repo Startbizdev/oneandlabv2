@@ -612,6 +612,19 @@ async function confirmAcceptOfferPending() {
 
 const adminCardPageRows = ref<AppointmentListRow[]>([]);
 
+/** Cache page 1 admin (30 s) — retour immédiat sans re-fetch. */
+let adminCardsCache: {
+  key: string;
+  rows: AppointmentListRow[];
+  total: number;
+  hasMore: boolean;
+  at: number;
+} | null = null;
+
+function invalidateAdminCardsCache() {
+  adminCardsCache = null;
+}
+
 function appointmentsFromListRow(row: AppointmentListRow): any[] {
   return row.kind === 'batch' ? row.appointments : [row.appointment];
 }
@@ -864,46 +877,64 @@ function buildAppointmentListParams(apiPage: number, apiLimit: number): Record<s
   return params;
 }
 
-/** Admin : charge assez de RDV API pour afficher 24 cartes (lots regroupés) par page. */
+/** Admin : une requête API `view=cards` — pagination cartes côté serveur. */
 async function fetchAdminCardPage() {
-  const cardPage = currentPage.value;
-  const perPage = pageSize.value;
-  const skip = (cardPage - 1) * perPage;
-  const need = skip + perPage;
-  const apiChunk = 50;
-
-  let apiPage = 1;
-  let accumulated: any[] = [];
-  let grouped: AppointmentListRow[] = [];
-  let apptHasMore = true;
-
-  while (grouped.length < need && apptHasMore) {
-    const params = buildAppointmentListParams(apiPage, apiChunk);
-    const response = await apiFetch(`/appointments?${new URLSearchParams(params).toString()}`, {
-      method: 'GET',
-    });
-    if (!response.success || !Array.isArray(response.data)) {
-      throw new Error((response as { error?: string }).error || 'Erreur lors du chargement des rendez-vous');
-    }
-    const chunk = response.data as any[];
-    if (chunk.length === 0) {
-      apptHasMore = false;
-      break;
-    }
-    accumulated = accumulated.concat(chunk);
-    grouped = groupAppointmentsByBatch(accumulated);
-    const pag = response.pagination as { has_more?: boolean } | undefined;
-    apptHasMore = chunk.length >= apiChunk && pag?.has_more !== false;
-    apiPage += 1;
-    if (apiPage > 40) break;
+  const params = buildAppointmentListParams(currentPage.value, pageSize.value);
+  params.view = 'cards';
+  if (currentPage.value > 1) {
+    params.skip_count = '1';
   }
 
-  adminCardPageRows.value = grouped.slice(skip, skip + perPage);
-  baseAppointments.value = accumulated;
+  const cacheKey = JSON.stringify(params);
+  if (
+    currentPage.value === 1 &&
+    adminCardsCache &&
+    adminCardsCache.key === cacheKey &&
+    Date.now() - adminCardsCache.at < 30_000
+  ) {
+    adminCardPageRows.value = adminCardsCache.rows;
+    totalItems.value = adminCardsCache.total;
+    serverHasMore.value = adminCardsCache.hasMore;
+    return;
+  }
 
-  const hasMoreCards = grouped.length > skip + perPage || apptHasMore;
-  serverHasMore.value = hasMoreCards;
-  totalItems.value = hasMoreCards ? Math.max(skip + perPage + 1, grouped.length) : grouped.length;
+  const response = await apiFetch(`/appointments?${new URLSearchParams(params).toString()}`, {
+    method: 'GET',
+  });
+
+  if (!response.success) {
+    throw new Error((response as { error?: string }).error || 'Erreur lors du chargement des rendez-vous');
+  }
+
+  const rows = (response.data?.rows ?? []) as AppointmentListRow[];
+  const pag = response.pagination as
+    | { total_cards?: number; has_more?: boolean }
+    | undefined;
+
+  adminCardPageRows.value = rows;
+  baseAppointments.value = rows.flatMap((row) =>
+    row.kind === 'batch' ? row.appointments : [row.appointment],
+  );
+
+  const totalCards = Number(pag?.total_cards ?? 0);
+  const hasMore = pag?.has_more === true;
+  totalItems.value =
+    totalCards > 0
+      ? totalCards
+      : hasMore
+        ? currentPage.value * pageSize.value + 1
+        : (currentPage.value - 1) * pageSize.value + rows.length;
+  serverHasMore.value = hasMore;
+
+  if (currentPage.value === 1) {
+    adminCardsCache = {
+      key: cacheKey,
+      rows,
+      total: totalItems.value,
+      hasMore,
+      at: Date.now(),
+    };
+  }
 }
 
 const fetchAppointments = async (silent = false) => {
@@ -1180,6 +1211,7 @@ async function nurseRefuseOffer(apt: any, opts?: { termsKey?: string }) {
 }
 
 watch([dateFilter, statusFilter, dateRangeStart, dateRangeEnd], () => {
+  invalidateAdminCardsCache();
   currentPage.value = 1;
   fetchAppointments();
 });
@@ -1251,6 +1283,7 @@ function isProcessing(id: string) {
 
 defineExpose({
   fetchAppointments,
+  invalidateAdminCardsCache,
   processingAppointments,
   canStart,
   isProcessing,
@@ -1258,6 +1291,7 @@ defineExpose({
 });
 
 watch(() => props.userIdFilter, () => {
+  invalidateAdminCardsCache();
   currentPage.value = 1;
   fetchAppointments();
 });

@@ -14,7 +14,7 @@
           Mentions légales
         </h1>
         <p class="mt-2 text-sm text-gray-500">
-          Dernière mise à jour : février 2025
+          Dernière mise à jour : juillet 2026
         </p>
       </header>
 
@@ -58,12 +58,13 @@
             3. Hébergeur
           </h2>
           <ul class="list-none space-y-1">
-            <li><strong class="text-gray-700">Nom :</strong> Microsoft Azure</li>
-            <li><strong class="text-gray-700">Adresse :</strong> One Microsoft Way, Redmond, WA 98052, États-Unis</li>
-            <li><strong class="text-gray-700">Contact :</strong> support.azure.com</li>
+            <li><strong class="text-gray-700">Nom :</strong> Amazon Web Services (AWS)</li>
+            <li><strong class="text-gray-700">Région :</strong> eu-west-3 (Paris, France)</li>
+            <li><strong class="text-gray-700">Siège social AWS EMEA :</strong> 38 avenue John F. Kennedy, L-1855 Luxembourg</li>
+            <li><strong class="text-gray-700">Contact :</strong> <a href="https://aws.amazon.com/contact-us/" class="text-primary-600 hover:underline" target="_blank" rel="noopener noreferrer">aws.amazon.com/contact-us</a></li>
           </ul>
           <p class="mt-4 p-3 rounded-lg bg-gray-100 border border-gray-200 text-sm">
-            L'hébergeur respecte les normes de sécurité en vigueur et détient la certification <strong>Hébergement de Données de Santé (HDS)</strong> pour l'hébergement de données médicales sensibles.
+            La plateforme Cary est hébergée sur AWS en région Europe (Paris). L'infrastructure respecte les normes de sécurité en vigueur et les exigences applicables à l'<strong>hébergement de données de santé (HDS)</strong>.
           </p>
         </section>
 

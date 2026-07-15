@@ -44,6 +44,35 @@ final class TourOrderEngineTest extends TestCase
         $this->assertSame(['b', 'a'], $ids);
     }
 
+    public function testSmartOrdersByScheduleChronologically(): void
+    {
+        $engine = new TourOrderEngine();
+        $appointments = [
+            ['id' => 'late', 'scheduled_at' => '2026-07-10 14:00:00', 'form_data' => []],
+            ['id' => 'early', 'scheduled_at' => '2026-07-10 08:30:00', 'form_data' => []],
+            ['id' => 'mid', 'scheduled_at' => '2026-07-10 11:00:00', 'form_data' => []],
+        ];
+        $plan = ['sort_mode' => 'smart', 'manual_order_locked' => false];
+
+        $ids = $engine->orderIds($appointments, $plan);
+
+        $this->assertSame(['early', 'mid', 'late'], $ids);
+    }
+
+    public function testScheduleModeOrdersEarliestFirst(): void
+    {
+        $engine = new TourOrderEngine();
+        $appointments = [
+            ['id' => 'b', 'scheduled_at' => '2026-07-10 16:00:00', 'form_data' => []],
+            ['id' => 'a', 'scheduled_at' => '2026-07-10 09:00:00', 'form_data' => []],
+        ];
+        $plan = ['sort_mode' => 'schedule'];
+
+        $ids = $engine->orderIds($appointments, $plan);
+
+        $this->assertSame(['a', 'b'], $ids);
+    }
+
     public function testHaversineParisDistancePositive(): void
     {
         $km = TourProximity::haversineKm(48.8566, 2.3522, 48.8738, 2.2950);

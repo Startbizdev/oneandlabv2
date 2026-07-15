@@ -28,8 +28,30 @@
     </div>
 
     <UFormField v-if="planningMode !== 'custom_dates'" label="Date de fin (optionnelle)">
-      <UInput v-model="endDate" type="date" />
+      <UInput
+        v-model="endDate"
+        type="date"
+        :disabled="openEnded && (planningMode === 'interval' || planningMode === 'weekdays')"
+      />
     </UFormField>
+
+    <div
+      v-if="planningMode === 'interval' || planningMode === 'weekdays'"
+      class="rounded-xl border p-3 transition-colors"
+      :class="openEnded
+        ? 'border-primary-300 bg-primary-50 dark:border-primary-600 dark:bg-primary-950/30'
+        : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40'"
+    >
+      <UCheckbox
+        v-model="openEnded"
+        label="Passage chronique (sans date de fin)"
+        :ui="{ label: 'text-sm font-semibold' }"
+        @update:model-value="onOpenEndedToggle"
+      />
+      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        Les passages sont planifiés sur 1 an, renouvelables ensuite.
+      </p>
+    </div>
 
     <template v-if="planningMode === 'custom_dates'">
       <UFormField label="Ajouter une date">
@@ -86,7 +108,11 @@ const startDate = computed({
 });
 const endDate = computed({
   get: () => state.value.endDate,
-  set: (v) => { state.value = { ...state.value, endDate: v }; },
+  set: (v) => { state.value = { ...state.value, endDate: v, openEnded: false }; },
+});
+const openEnded = computed({
+  get: () => state.value.openEnded,
+  set: (v) => { state.value = { ...state.value, openEnded: v }; },
 });
 const everyDays = computed({
   get: () => state.value.everyDays,
@@ -100,6 +126,14 @@ const customDates = computed({
   get: () => state.value.customDates,
   set: (v) => { state.value = { ...state.value, customDates: v }; },
 });
+
+function onOpenEndedToggle(v: boolean) {
+  state.value = {
+    ...state.value,
+    openEnded: v,
+    ...(v ? { endDate: '' } : {}),
+  };
+}
 
 function toggleWeekday(iso: number) {
   if (weekdays.value.includes(iso)) {

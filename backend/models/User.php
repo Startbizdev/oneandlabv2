@@ -1281,6 +1281,26 @@ class User
         }
     }
 
+    public function findNurseIdByPhone(string $phoneRaw): ?string
+    {
+        if (!$this->hasPhoneDigitsHashColumn()) {
+            return null;
+        }
+        $normDigits = self::normalizeFrenchPatientPhoneDigits($phoneRaw);
+        if ($normDigits === null) {
+            return null;
+        }
+        $hash = self::patientPhoneDigitsHash($normDigits);
+        if ($hash === null) {
+            return null;
+        }
+        $stmt = $this->db->prepare('SELECT id FROM profiles WHERE phone_digits_hash = ? AND role = ? LIMIT 1');
+        $stmt->execute([$hash, 'nurse']);
+        $id = $stmt->fetchColumn();
+
+        return $id ? (string) $id : null;
+    }
+
     public function hasProfessionalAccessToPatient(string $requesterId, string $patientId): bool
     {
         if (!$this->hasPatientProfessionalAccessTable()) {
@@ -1293,6 +1313,73 @@ class User
         ');
         $stmt->execute([$patientId, $requesterId]);
         return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Même périmètre que GET /patients (liste « Mes patients ») pour un patient donné.
+     */
+    public function isPatientVisibleInStaffList(string $requesterId, string $requesterRole, string $patientId): bool
+    {
+        if ($patientId === '' || $requesterId === '') {
+            return false;
+        }
+        if ($requesterRole === 'super_admin') {
+            return $this->getRoleById($patientId) === 'patient';
+        }
+        if (!in_array($requesterRole, ['pro', 'nurse', 'lab', 'subaccount'], true)) {
+            return false;
+        }
+
+        $roleStmt = $this->db->prepare('SELECT role FROM profiles WHERE id = ? LIMIT 1');
+        $roleStmt->execute([$patientId]);
+        if ((string) ($roleStmt->fetchColumn() ?: '') !== 'patient') {
+            return false;
+        }
+
+        $filters = ['role' => 'patient'];
+        if (in_array($requesterRole, ['pro', 'nurse'], true)) {
+            $filters['created_by'] = $requesterId;
+        } elseif ($requesterRole === 'lab') {
+            $filters['for_lab_owner_id'] = $requesterId;
+        } else {
+            $filters['created_by'] = $requesterId;
+        }
+
+        $sql = 'SELECT 1 FROM profiles WHERE id = ? AND role = ?';
+        $params = [$patientId, 'patient'];
+        $this->appendPatientListScopeSql($sql, $params, $filters);
+        $sql .= ' LIMIT 1';
+        $check = $this->db->prepare($sql);
+        $check->execute($params);
+
+        return (bool) $check->fetchColumn();
+    }
+
+    /**
+     * Un professionnel peut-il modifier la fiche d'un patient depuis le wizard RDV ?
+     * Aligné sur la liste patients + liens RDV historiques (pro / infirmier).
+     */
+    public function canStaffEditPatientProfile(string $requesterId, string $requesterRole, string $patientId): bool
+    {
+        if ($patientId === '' || $requesterId === '') {
+            return false;
+        }
+        if ($requesterRole === 'super_admin') {
+            return $this->getRoleById($patientId) === 'patient';
+        }
+        if ($this->isPatientVisibleInStaffList($requesterId, $requesterRole, $patientId)) {
+            return true;
+        }
+        if ($requesterRole === 'pro') {
+            require_once __DIR__ . '/../lib/MedicalDocumentAccess.php';
+            return MedicalDocumentAccess::userHasAppointmentAsCreatorWithPatient($this->db, $requesterId, $patientId);
+        }
+        if ($requesterRole === 'nurse') {
+            require_once __DIR__ . '/../lib/MedicalDocumentAccess.php';
+            return MedicalDocumentAccess::userHasNurseAppointmentWithPatient($this->db, $requesterId, $patientId);
+        }
+
+        return false;
     }
 
     /**

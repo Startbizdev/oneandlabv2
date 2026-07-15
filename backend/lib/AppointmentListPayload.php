@@ -236,7 +236,59 @@ final class AppointmentListPayload
     }
 
     /**
-     * Photos / noms / genres pour fiche détail (GET /appointments/:id) — aligné liste cartes.
+     * Soins / prélèvements pour frères de lot (sans re-déchiffrer ni recharger les profils).
+     *
+     * @param list<array<string, mixed>> $appointments
+     * @return list<array<string, mixed>>
+     */
+    public static function attachListCatalogItems(
+        PDO $db,
+        Appointment $appointmentModel,
+        array $appointments,
+        bool $hasMergedColumn
+    ): array {
+        if ($appointments === []) {
+            return [];
+        }
+
+        $bloodTestIds = array_values(array_filter(array_map(
+            static fn(array $apt): string => (($apt['type'] ?? '') === 'blood_test') ? (string) ($apt['id'] ?? '') : '',
+            $appointments
+        )));
+        if ($bloodTestIds !== []) {
+            $itemsByAppointment = $appointmentModel->loadBloodTestItemsForAppointments($bloodTestIds);
+            foreach ($appointments as &$apt) {
+                if (($apt['type'] ?? '') !== 'blood_test') {
+                    continue;
+                }
+                $tid = (string) ($apt['id'] ?? '');
+                $pre = $tid !== '' ? ($itemsByAppointment[$tid] ?? []) : [];
+                $apt['blood_test_items'] = $appointmentModel->resolveBloodTestItemsForAppointment($apt, $pre);
+            }
+            unset($apt);
+        }
+
+        $nursingIds = array_values(array_filter(array_map(
+            static fn(array $apt): string => (($apt['type'] ?? '') === 'nursing') ? (string) ($apt['id'] ?? '') : '',
+            $appointments
+        )));
+        if ($nursingIds !== []) {
+            $nursingByAppointment = $appointmentModel->loadNursingItemsForAppointments($nursingIds);
+            foreach ($appointments as &$apt) {
+                if (($apt['type'] ?? '') !== 'nursing') {
+                    continue;
+                }
+                $tid = (string) ($apt['id'] ?? '');
+                $pre = $tid !== '' ? ($nursingByAppointment[$tid] ?? []) : [];
+                $apt['nursing_items'] = $appointmentModel->resolveNursingItemsForAppointment($apt, $pre);
+            }
+            unset($apt);
+        }
+
+        return $appointments;
+    }
+
+    /**
      *
      * @param array<string, mixed> $appointment
      * @return array<string, mixed>

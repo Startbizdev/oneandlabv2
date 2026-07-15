@@ -141,6 +141,7 @@ async function confirmDelete() {
       });
       isDeleteModalOpen.value = false;
       selectedAppointment.value = null;
+      listRef.value.invalidateAdminCardsCache?.();
       await listRef.value.fetchAppointments();
     } else {
       toast.add({

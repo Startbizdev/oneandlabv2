@@ -132,7 +132,7 @@
               Me connecter
             </NuxtLink>
             <NuxtLink
-              to="/nurse/register"
+              :to="registerUrl"
               class="w-full flex items-center justify-center gap-2 rounded-xl border border-gray-300 dark:border-gray-600 px-4 py-3.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               <UIcon name="i-lucide-user-plus" class="w-4 h-4 shrink-0" />
@@ -201,6 +201,11 @@ const careItemsList = computed((): SharedCareItem[] => {
 const loginUrl = computed(() => {
   const returnTo = `/p/rdv/${token.value}`;
   return { path: '/login', query: { returnTo } };
+});
+
+const registerUrl = computed(() => {
+  const returnTo = `/p/rdv/${token.value}`;
+  return { path: '/nurse/register', query: { returnTo } };
 });
 
 // Meta FOMO pour la carte de partage (WhatsApp, etc.)
