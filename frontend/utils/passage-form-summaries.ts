@@ -46,9 +46,10 @@ export function formatPlanningSummary(
 
 export function formatDailyTimesSummary(slots: PassageDailyTimeSlot[]): string {
   if (slots.length === 0) return 'Matin';
-  return slots
+  const label = slots
     .map((s) => PASSAGE_TIME_SLOT_LABELS[s.time_slot] ?? s.time_slot)
     .join(' + ');
+  return slots.length > 1 ? `${slots.length} passages · ${label}` : label;
 }
 
 export function formatTimeSummary(timeSlot: PassageTimeSlot, customTime: string): string {

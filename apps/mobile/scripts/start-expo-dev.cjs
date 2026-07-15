@@ -94,6 +94,67 @@ async function ensureTunnelReady() {
 
 const DEV_SCHEME = 'com.carybioapp.app.dev';
 
+/** Pré-compile le bundle iOS (~20 Mo) avant que Cary Dev se connecte — évite timeout iOS ~10s. */
+function scheduleBundlePrewarm(port) {
+  const http = require('http');
+  const manifestHeaders = {
+    'expo-platform': 'ios',
+    'expo-protocol-version': '1',
+    'expo-api-version': '1',
+  };
+  let started = false;
+
+  const tryPrewarm = (attempt) => {
+    if (started || attempt > 24) return;
+    const req = http.get(
+      { host: '127.0.0.1', port, path: '/', headers: manifestHeaders, timeout: 5000 },
+      (res) => {
+        const chunks = [];
+        res.on('data', (c) => chunks.push(c));
+        res.on('end', () => {
+          if (res.statusCode !== 200) {
+            setTimeout(() => tryPrewarm(attempt + 1), 2500);
+            return;
+          }
+          let manifest;
+          try {
+            manifest = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+          } catch {
+            setTimeout(() => tryPrewarm(attempt + 1), 2500);
+            return;
+          }
+          const launchPath = manifest.launchAsset?.url?.replace(/^https?:\/\/[^/]+/, '');
+          if (!launchPath) {
+            setTimeout(() => tryPrewarm(attempt + 1), 2500);
+            return;
+          }
+          started = true;
+          console.log('\n🔥 Pré-chauffage bundle iOS (attendez « Bundle prêt » avant Cary Dev)…');
+          const t0 = Date.now();
+          http
+            .get({ host: '127.0.0.1', port, path: launchPath, timeout: 180_000 }, (bundleRes) => {
+              bundleRes.on('data', () => {});
+              bundleRes.on('end', () => {
+                const sec = ((Date.now() - t0) / 1000).toFixed(1);
+                console.log(`✔ Bundle prêt (${sec}s) — connectez Cary Dev maintenant.\n`);
+              });
+            })
+            .on('error', () => {
+              console.warn('⚠️ Pré-chauffage bundle échoué — réessayez Reload dans Cary Dev.\n');
+            });
+        });
+      },
+    );
+    req.on('error', () => setTimeout(() => tryPrewarm(attempt + 1), 2500));
+    req.on('timeout', () => {
+      req.destroy();
+      setTimeout(() => tryPrewarm(attempt + 1), 2500);
+    });
+  };
+
+  setTimeout(() => tryPrewarm(0), 6000);
+}
+
 async function main() {
   if (useTunnel) {
     await ensureTunnelReady();
@@ -167,6 +228,8 @@ async function main() {
     console.error('\n❌ Impossible de lancer Expo :', err.message);
     process.exit(1);
   });
+
+  scheduleBundlePrewarm(port);
 
   child.on('exit', (code) => process.exit(code ?? 0));
 }
