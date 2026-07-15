@@ -78,27 +78,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         }
         if (!$allowed && in_array($user['role'], ['pro', 'nurse'], true)) {
-            // Pro/nurse peut consulter le profil de ses patients (created_by = pro/nurse)
             $allowed = (($userData['role'] ?? '') === 'patient')
-                && !empty($userData['created_by']) && $userData['created_by'] === $user['user_id'];
+                && $userModel->canStaffEditPatientProfile($user['user_id'], $user['role'], $id);
         }
         if (!$allowed && $user['role'] === 'subaccount') {
             $allowed = (($userData['role'] ?? '') === 'patient')
-                && !empty($userData['created_by']) && $userData['created_by'] === $user['user_id'];
+                && $userModel->canStaffEditPatientProfile($user['user_id'], $user['role'], $id);
         }
-        if (!$allowed && $user['role'] === 'lab' && ($userData['role'] ?? '') === 'patient' && !empty($userData['created_by'])) {
-            $cb = $userData['created_by'];
-            if ($cb === $user['user_id']) {
-                $allowed = true;
-            } else {
-                $creatorLabId = $userModel->getLabId($cb);
-                if ($creatorLabId === $user['user_id']) {
-                    $allowed = true;
-                }
-            }
-        }
-        if (!$allowed && ($userData['role'] ?? '') === 'patient' && in_array($user['role'], ['lab', 'subaccount', 'pro', 'nurse'], true)) {
-            $allowed = $userModel->hasProfessionalAccessToPatient($user['user_id'], $id);
+        if (!$allowed && $user['role'] === 'lab' && ($userData['role'] ?? '') === 'patient') {
+            $allowed = $userModel->canStaffEditPatientProfile($user['user_id'], $user['role'], $id);
         }
         if (!$allowed) {
             http_response_code(403);
@@ -166,40 +154,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     }
                 }
             }
+        } elseif ($targetRole === 'patient') {
+            $canEdit = $userModel->canStaffEditPatientProfile($user['user_id'], $user['role'], $id);
         }
     }
-    if (!$canEdit && in_array($user['role'], ['pro', 'nurse'], true)) {
-        $targetData = $userModel->getById($id, $user['user_id'], $user['role']);
-        $canEdit = $targetData && (($targetData['role'] ?? '') === 'patient')
-            && !empty($targetData['created_by']) && $targetData['created_by'] === $user['user_id'];
-        if (!$canEdit && $targetData && (($targetData['role'] ?? '') === 'patient')) {
-            $canEdit = $userModel->hasProfessionalAccessToPatient($user['user_id'], $id);
-        }
-    }
-    if (!$canEdit && $user['role'] === 'subaccount') {
-        $targetData = $userModel->getById($id, $user['user_id'], $user['role']);
-        $canEdit = $targetData && (($targetData['role'] ?? '') === 'patient')
-            && !empty($targetData['created_by']) && $targetData['created_by'] === $user['user_id'];
-        if (!$canEdit && $targetData && (($targetData['role'] ?? '') === 'patient')) {
-            $canEdit = $userModel->hasProfessionalAccessToPatient($user['user_id'], $id);
-        }
-    }
-    if (!$canEdit && $user['role'] === 'lab') {
-        $targetData = $userModel->getById($id, $user['user_id'], $user['role']);
-        if ($targetData && (($targetData['role'] ?? '') === 'patient') && !empty($targetData['created_by'])) {
-            $cb = $targetData['created_by'];
-            if ($cb === $user['user_id']) {
-                $canEdit = true;
-            } else {
-                $creatorLabId = $userModel->getLabId($cb);
-                if ($creatorLabId === $user['user_id']) {
-                    $canEdit = true;
-                }
-            }
-        }
-        if (!$canEdit && $targetData && (($targetData['role'] ?? '') === 'patient')) {
-            $canEdit = $userModel->hasProfessionalAccessToPatient($user['user_id'], $id);
-        }
+    if (!$canEdit && in_array($user['role'], ['pro', 'nurse', 'subaccount'], true)) {
+        $canEdit = $userModel->canStaffEditPatientProfile($user['user_id'], $user['role'], $id);
     }
     if (!$canEdit) {
         http_response_code(403);

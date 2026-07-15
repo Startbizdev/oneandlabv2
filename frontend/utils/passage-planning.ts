@@ -1,11 +1,13 @@
 import type {
   NursePassageNursingItem,
+  PassageDailyTimeSlot,
   PassagePlanningConfig,
   PassagePlanningType,
 } from '@oneandlab/shared-types';
 import {
   PASSAGE_INTERVAL_DEFAULT_DAYS,
   PASSAGE_MAX_DAYS_WITHOUT_END,
+  PASSAGE_OPEN_ENDED_HORIZON_DAYS,
 } from '@oneandlab/shared-types';
 import dayjs from 'dayjs';
 
@@ -16,17 +18,23 @@ export type PassagePlanningFormState = {
   startDate: string;
   everyDays: string;
   endDate: string;
+  /** Passage chronique : pas de date de fin (horizon 1 an). */
+  openEnded: boolean;
   /** ISO weekdays 1 (lun) … 7 (dim) */
   weekdays: number[];
   customDates: string[];
 };
 
-export function defaultPlanningFormState(startDate: string): PassagePlanningFormState {
+export function defaultPlanningFormState(
+  startDate: string,
+  opts?: { recurring?: boolean },
+): PassagePlanningFormState {
   return {
     planningMode: 'single_day',
     startDate,
     everyDays: String(PASSAGE_INTERVAL_DEFAULT_DAYS),
     endDate: '',
+    openEnded: Boolean(opts?.recurring),
     weekdays: [],
     customDates: [],
   };
@@ -84,7 +92,7 @@ export function suggestPlanningFromCare(
   if (duration == null || duration <= 1) return null;
 
   const patch: Partial<PassagePlanningFormState> = {};
-  if (!state.endDate.trim()) {
+  if (!state.endDate.trim() && !state.openEnded) {
     patch.endDate = endDateFromStartAndDays(state.startDate, duration);
   }
 
@@ -134,23 +142,27 @@ export function buildPlanningPayload(
   const planningType: PassagePlanningType = state.planningMode;
 
   if (planningType === 'interval') {
+    const openEnded = state.openEnded && !endDate;
     return {
       planning_type: 'interval',
       planning_config: {
         start_date: state.startDate,
         every_days: Math.max(1, parseInt(state.everyDays, 10) || PASSAGE_INTERVAL_DEFAULT_DAYS),
         ...(endDate ? { end_date: endDate } : {}),
+        ...(openEnded ? { open_ended: true } : {}),
       },
     };
   }
 
   if (planningType === 'weekdays') {
+    const openEnded = state.openEnded && !endDate;
     return {
       planning_type: 'weekdays',
       planning_config: {
         start_date: state.startDate,
         weekdays: state.weekdays,
         ...(endDate ? { end_date: endDate } : {}),
+        ...(openEnded ? { open_ended: true } : {}),
       },
     };
   }
@@ -184,11 +196,13 @@ export function planningStateFromSeries(
     state.startDate = config.start_date ?? fallbackStart;
     state.everyDays = String(config.every_days ?? PASSAGE_INTERVAL_DEFAULT_DAYS);
     state.endDate = config.end_date ?? '';
+    state.openEnded = Boolean((config as { open_ended?: boolean }).open_ended) && !state.endDate;
   } else if (planningType === 'weekdays' && 'weekdays' in config) {
     state.planningMode = 'weekdays';
     state.startDate = config.start_date ?? fallbackStart;
     state.weekdays = [...(config.weekdays ?? [])].sort((a, b) => a - b);
     state.endDate = config.end_date ?? '';
+    state.openEnded = Boolean((config as { open_ended?: boolean }).open_ended) && !state.endDate;
   } else if (planningType === 'custom_dates' && 'dates' in config) {
     state.planningMode = 'custom_dates';
     state.customDates = [...(config.dates ?? [])].sort();
@@ -206,10 +220,11 @@ export function previewPassageDates(
   planningType: PassagePlanningType,
   config: PassagePlanningConfig,
 ): string[] {
-  const capEnd = (start: string, end?: string | null): string => {
+  const capEnd = (start: string, end?: string | null, openEnded?: boolean): string => {
     if (end?.trim()) return end.trim();
+    const days = openEnded ? PASSAGE_OPEN_ENDED_HORIZON_DAYS : PASSAGE_MAX_DAYS_WITHOUT_END;
     return dayjs(start)
-      .add(PASSAGE_MAX_DAYS_WITHOUT_END - 1, 'day')
+      .add(days - 1, 'day')
       .format('YYYY-MM-DD');
   };
 
@@ -231,7 +246,8 @@ export function previewPassageDates(
   if (planningType === 'interval' && 'every_days' in config) {
     const start = config.start_date;
     const every = Math.max(1, config.every_days ?? PASSAGE_INTERVAL_DEFAULT_DAYS);
-    const end = capEnd(start, config.end_date);
+    const openEnded = Boolean((config as { open_ended?: boolean }).open_ended);
+    const end = capEnd(start, config.end_date, openEnded);
     const dates: string[] = [];
     let cursor = dayjs(start);
     const limit = dayjs(end);
@@ -244,7 +260,8 @@ export function previewPassageDates(
 
   if (planningType === 'weekdays' && 'weekdays' in config) {
     const start = config.start_date;
-    const end = capEnd(start, config.end_date);
+    const openEnded = Boolean((config as { open_ended?: boolean }).open_ended);
+    const end = capEnd(start, config.end_date, openEnded);
     const allowed = new Set(config.weekdays ?? []);
     const dates: string[] = [];
     let cursor = dayjs(start);
@@ -268,7 +285,26 @@ export function previewPassageDates(
 export function previewPassageCount(
   state: PassagePlanningFormState,
   items: NursePassageNursingItem[],
+  dailySlotsCount = 1,
 ): number {
   const { planning_type, planning_config } = buildPlanningPayload(state, items);
-  return previewPassageDates(planning_type, planning_config).length;
+  const dates = previewPassageDates(planning_type, planning_config).length;
+  return dates * Math.max(1, dailySlotsCount);
+}
+
+export function embedTimeRangeInPlanningConfig(
+  planningConfig: PassagePlanningConfig,
+  timeRange: [number, number] | null | undefined,
+  dailyTimeSlots?: PassageDailyTimeSlot[],
+): PassagePlanningConfig {
+  const base = { ...(planningConfig as Record<string, unknown>) };
+  if (!timeRange) {
+    delete base.time_range;
+  } else {
+    base.time_range = timeRange;
+  }
+  if (dailyTimeSlots && dailyTimeSlots.length > 0) {
+    base.daily_time_slots = dailyTimeSlots;
+  }
+  return base as PassagePlanningConfig;
 }

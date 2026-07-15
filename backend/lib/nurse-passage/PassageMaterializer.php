@@ -55,57 +55,82 @@ final class PassageMaterializer
         $durationMinutes = max(5, min(240, (int) ($series['duration_minutes'] ?? 30)));
         $batchId = nurse_passage_uuid();
 
+        $dailySlots = [];
+        if (isset($config['daily_time_slots']) && is_array($config['daily_time_slots'])) {
+            foreach ($config['daily_time_slots'] as $row) {
+                if (!is_array($row) || empty($row['time_slot'])) {
+                    continue;
+                }
+                $dailySlots[] = [
+                    'time_slot' => (string) $row['time_slot'],
+                    'custom_time' => isset($row['custom_time']) && $row['custom_time'] !== ''
+                        ? (string) $row['custom_time']
+                        : null,
+                ];
+            }
+        }
+        if ($dailySlots === []) {
+            $dailySlots[] = [
+                'time_slot' => $timeSlot,
+                'custom_time' => $timeSlot === 'custom' ? $customTime : null,
+            ];
+        }
+
         $createdIds = [];
         foreach ($dates as $dateYmd) {
-            $scheduledAt = PassageSlotResolver::effectiveScheduledAtForNursePassage(
-                $dateYmd,
-                $timeSlot,
-                $customTime,
-            );
-            if ($scheduledAt === null) {
-                continue;
+            foreach ($dailySlots as $slotRow) {
+                $slot = (string) $slotRow['time_slot'];
+                $slotCustom = $slotRow['custom_time'] ?? null;
+                $scheduledAt = PassageSlotResolver::effectiveScheduledAtForNursePassage(
+                    $dateYmd,
+                    $slot,
+                    $slotCustom,
+                );
+                if ($scheduledAt === null) {
+                    continue;
+                }
+                if ($this->appointmentExistsForDate($seriesId, $scheduledAt)) {
+                    continue;
+                }
+                $availability = PassageSlotResolver::availabilityJson($slot, $slotCustom, $timeRange);
+
+                $formData = [
+                    'first_name' => $patientCtx['first_name'],
+                    'last_name' => $patientCtx['last_name'],
+                    'phone' => $patientCtx['phone'] ?? '',
+                    'email' => $patientCtx['email'] ?? '',
+                    'address' => $address,
+                    'passage_time_slot' => $slot,
+                    'passage_duration_minutes' => $durationMinutes,
+                    'at_home' => $atHome,
+                    'passage_source' => 'nurse_passage',
+                    'custom_time' => $slot === 'custom' ? $slotCustom : null,
+                    'availability' => $availability,
+                    'availability_type' => 'custom',
+                    'consent' => true,
+                    'nursing_items' => self::normalizeNursingItemsForForm($nursingItems),
+                ];
+
+                $payload = [
+                    'type' => 'nursing',
+                    'form_type' => 'nursing',
+                    'patient_id' => $patientId,
+                    'category_id' => $nursingItems[0]['category_id'] ?? null,
+                    'scheduled_at' => $scheduledAt,
+                    'status' => 'confirmed',
+                    'assigned_nurse_id' => $nurseId,
+                    'creation_batch_id' => $batchId,
+                    'passage_series_id' => $seriesId,
+                    'passage_source' => 'nurse_passage',
+                    'address' => $address,
+                    'form_data' => $formData,
+                    'nursing_items' => $nursingItems,
+                ];
+
+                $aptId = $this->appointments->create($payload, $nurseId, 'nurse');
+                $this->linkPassageColumns($aptId, $seriesId);
+                $createdIds[] = $aptId;
             }
-            if ($this->appointmentExistsForDate($seriesId, $scheduledAt)) {
-                continue;
-            }
-            $availability = PassageSlotResolver::availabilityJson($timeSlot, $customTime, $timeRange);
-
-            $formData = [
-                'first_name' => $patientCtx['first_name'],
-                'last_name' => $patientCtx['last_name'],
-                'phone' => $patientCtx['phone'] ?? '',
-                'email' => $patientCtx['email'] ?? '',
-                'address' => $address,
-                'passage_time_slot' => $timeSlot,
-                'passage_duration_minutes' => $durationMinutes,
-                'at_home' => $atHome,
-                'passage_source' => 'nurse_passage',
-                'custom_time' => $timeSlot === 'custom' ? $customTime : null,
-                'availability' => $availability,
-                'availability_type' => 'custom',
-                'consent' => true,
-                'nursing_items' => self::normalizeNursingItemsForForm($nursingItems),
-            ];
-
-            $payload = [
-                'type' => 'nursing',
-                'form_type' => 'nursing',
-                'patient_id' => $patientId,
-                'category_id' => $nursingItems[0]['category_id'] ?? null,
-                'scheduled_at' => $scheduledAt,
-                'status' => 'confirmed',
-                'assigned_nurse_id' => $nurseId,
-                'creation_batch_id' => $batchId,
-                'passage_series_id' => $seriesId,
-                'passage_source' => 'nurse_passage',
-                'address' => $address,
-                'form_data' => $formData,
-                'nursing_items' => $nursingItems,
-            ];
-
-            $aptId = $this->appointments->create($payload, $nurseId, 'nurse');
-            $this->linkPassageColumns($aptId, $seriesId);
-            $createdIds[] = $aptId;
         }
 
         if ($dates !== [] && $createdIds === []) {

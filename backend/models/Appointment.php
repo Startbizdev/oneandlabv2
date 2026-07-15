@@ -11,6 +11,7 @@ require_once __DIR__ . '/../lib/EmailQueue.php';
 require_once __DIR__ . '/../lib/SmsQueue.php';
 require_once __DIR__ . '/../lib/Validation.php';
 require_once __DIR__ . '/../lib/PatientUrgencyGuard.php';
+require_once __DIR__ . '/../lib/admin/AdminDispatchEventLogger.php';
 
 /**
  * Modèle Appointment
@@ -24,6 +25,7 @@ class Appointment
     private ?Twilio $twilio = null;
     private Email $email;
     private NotificationService $notificationService;
+    private ?AdminDispatchEventLogger $dispatchEventLogger = null;
 
     public function __construct()
     {
@@ -51,6 +53,14 @@ class Appointment
         
         $this->email = new Email();
         $this->notificationService = new NotificationService();
+    }
+
+    private function dispatchLogger(): AdminDispatchEventLogger
+    {
+        if ($this->dispatchEventLogger === null) {
+            $this->dispatchEventLogger = new AdminDispatchEventLogger($this->db);
+        }
+        return $this->dispatchEventLogger;
     }
 
     private function hasColumn(string $table, string $column): bool
@@ -916,6 +926,38 @@ class Appointment
     }
 
     /**
+     * Évite les doublons staff (double-clic / retry réseau) : même patient, créneau et type < 45 s.
+     */
+    public function findRecentStaffDuplicate(string $createdBy, array $data, string $createdByRole): ?string
+    {
+        if (!in_array($createdByRole, ['pro', 'nurse', 'lab', 'subaccount', 'super_admin', 'preleveur'], true)) {
+            return null;
+        }
+        $patientId = trim((string) ($data['patient_id'] ?? ''));
+        $scheduledAt = trim((string) ($data['scheduled_at'] ?? ''));
+        $type = trim((string) ($data['type'] ?? ''));
+        if ($patientId === '' || $scheduledAt === '' || $type === '') {
+            return null;
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT id FROM appointments
+            WHERE created_by = ?
+              AND patient_id = ?
+              AND type = ?
+              AND scheduled_at = ?
+              AND status NOT IN ('canceled', 'refused', 'expired')
+              AND created_at >= DATE_SUB(NOW(), INTERVAL 45 SECOND)
+            ORDER BY created_at DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$createdBy, $patientId, $type, $scheduledAt]);
+        $id = $stmt->fetchColumn();
+
+        return $id ? (string) $id : null;
+    }
+
+    /**
      * Crée un nouveau rendez-vous
      * 
      * @param array $data Données du rendez-vous avec les clés suivantes :
@@ -1018,6 +1060,11 @@ class Appointment
         
         // Normaliser la date au format attendu
         $data['scheduled_at'] = $scheduledDate->format('Y-m-d H:i:s');
+
+        $duplicateId = $this->findRecentStaffDuplicate($createdBy, $data, $createdByRole);
+        if ($duplicateId !== null) {
+            return $duplicateId;
+        }
         
         // Référence « maintenant » en heure de Paris (cohérent avec les chaînes sans fuseau)
         $now = new DateTime('now', $tzParis);
@@ -1321,7 +1368,9 @@ class Appointment
 
         $skipDispatch = ($createdByRole === 'nurse' && ($data['type'] ?? '') === 'nursing')
             || (($data['type'] ?? '') === 'blood_test' && !empty($bloodTestAssignedLabId))
-            || (($data['type'] ?? '') === 'nursing' && !empty($nursingAssignedNurseId));
+            || (($data['type'] ?? '') === 'nursing' && !empty($nursingAssignedNurseId))
+            || !empty($data['skip_zone_dispatch'])
+            || !empty($data['external_nurse_invite_sent']);
 
         $assignedProId = $data['assigned_pro_id'] ?? null;
         if (empty($assignedProId) || trim((string) $assignedProId) === '') {
@@ -2339,6 +2388,14 @@ class Appointment
                     'action' => 'decline_offer',
                     'appointment_status_unchanged' => 'pending',
                 ]);
+                $this->dispatchLogger()->log(
+                    $id,
+                    'offer_declined',
+                    $actorId,
+                    $actorRole,
+                    $actorId,
+                    ['appointment_type' => $appointment['type'] ?? null]
+                );
                 return 'declined_offer';
             }
         }
@@ -2474,6 +2531,17 @@ class Appointment
         if (($atomicNurseConfirm || $atomicLabConfirm || $atomicPreleveurConfirm) && $mainUpdateAffected > 0) {
             $delMainOffers = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ?');
             $delMainOffers->execute([$id]);
+            $this->dispatchLogger()->log(
+                $id,
+                'offer_accepted',
+                $actorId,
+                $actorRole,
+                $actorId,
+                [
+                    'appointment_type' => $appointment['type'] ?? null,
+                    'new_status' => $newStatus,
+                ]
+            );
         }
 
         /** @var list<string> */
@@ -2682,6 +2750,17 @@ class Appointment
         
         // Si redispatch, relancer le dispatch géographique (exclure l'acteur des offres et notifications)
         if ($redispatch && $newStatus === 'pending') {
+            $this->dispatchLogger()->log(
+                $id,
+                'redispatch',
+                $actorId,
+                $actorRole,
+                null,
+                [
+                    'appointment_type' => $appointment['type'] ?? null,
+                    'old_status' => $oldStatus,
+                ]
+            );
             $formDataForDispatch = [];
             if (!empty($appointment['form_data_encrypted']) && !empty($appointment['form_data_dek'])) {
                 try {
@@ -3449,6 +3528,14 @@ class Appointment
         $this->logger->log($historyActorId, 'super_admin', 'update', 'appointment', $appointmentId, [
             'action' => 'nurse_share_redispatch_zone',
         ]);
+        $this->dispatchLogger()->log(
+            $appointmentId,
+            'nurse_share_redispatch_zone',
+            $historyActorId,
+            'super_admin',
+            null,
+            ['source' => 'cron']
+        );
     }
 
     /**
@@ -3673,6 +3760,27 @@ class Appointment
         
         // Enregistrer les offres (labs + infirmiers) pour afficher les RDV dans les listes et permettre la popup accepter/refuser
         $this->insertAppointmentOffers($appointmentId, $professionals);
+
+        $profMeta = array_values(array_map(static function (array $p): array {
+            return [
+                'id' => (string) ($p['id'] ?? ''),
+                'role' => $p['role'] ?? null,
+            ];
+        }, $professionals));
+        $this->dispatchLogger()->log(
+            $appointmentId,
+            'zone_dispatch',
+            null,
+            null,
+            null,
+            [
+                'recipient_count' => count($professionals),
+                'professionals' => $profMeta,
+                'excluded_profile_id' => $excludeProfileId,
+                'appointment_type' => $type,
+                'is_redispatch_wave' => $excludeProfileId !== null,
+            ]
+        );
         
         // Pour un lot multi-soins : identifier les professionnels déjà notifiés pour ce lot (1 notif/lot/pro)
         $alreadyNotifiedForBatch = [];
@@ -3897,6 +4005,14 @@ class Appointment
 
         $professionals = [['id' => $nurseId, 'role' => 'nurse']];
         $this->insertAppointmentOffers($appointmentId, $professionals);
+        $this->dispatchLogger()->log(
+            $appointmentId,
+            'direct_assign',
+            null,
+            null,
+            $nurseId,
+            ['target_role' => 'nurse', 'source' => 'directed_nurse_profile']
+        );
 
         foreach ($professionals as $professional) {
             try {

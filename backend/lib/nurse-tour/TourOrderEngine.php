@@ -65,10 +65,6 @@ final class TourOrderEngine
             }
         }
 
-        if ($origin !== null && count($flat) > 1) {
-            $flat = TourProximity::nearestNeighborOrder($flat, $origin);
-        }
-
         return array_values(array_filter(array_map(
             static fn (array $a): string => (string) ($a['id'] ?? ''),
             $flat,
@@ -143,15 +139,30 @@ final class TourOrderEngine
 
     private function scheduleTimestamp(array $apt): int
     {
+        $tz = new \DateTimeZone('Europe/Paris');
         $raw = (string) ($apt['scheduled_at'] ?? '');
         if ($raw !== '') {
-            $ts = strtotime($raw);
+            $dt = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $raw, $tz);
+            if (!$dt) {
+                try {
+                    $dt = new \DateTimeImmutable($raw, $tz);
+                } catch (\Throwable) {
+                    return PHP_INT_MAX;
+                }
+            }
 
-            return $ts !== false ? $ts : PHP_INT_MAX;
+            return $dt->getTimestamp();
         }
         $fd = is_array($apt['form_data'] ?? null) ? $apt['form_data'] : [];
         $start = (string) ($fd['availability_start'] ?? '');
+        if ($start !== '') {
+            try {
+                return (new \DateTimeImmutable($start, $tz))->getTimestamp();
+            } catch (\Throwable) {
+                return PHP_INT_MAX;
+            }
+        }
 
-        return $start !== '' ? (strtotime($start) ?: PHP_INT_MAX) : PHP_INT_MAX;
+        return PHP_INT_MAX;
     }
 }

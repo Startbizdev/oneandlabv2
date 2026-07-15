@@ -27,6 +27,13 @@ import { fetchPatientRelatives, fetchPatientRelative, type PatientRelative } fro
 import { normalizePatientGender } from '@/utils/patient-gender';
 import { normalizeCategorySkipPrescriptionDocuments } from '@/utils/category-skip-prescription-documents';
 import { validateBookingWizardSubstep } from '../utils/validate-booking-wizard-substep';
+import {
+  validateProNurseAssignment,
+  type NurseAssignmentMode,
+  type ProNurseAssignment,
+} from '../utils/pro-nurse-assignment';
+import { fetchLinkedNurses } from '@/features/patients/api/linked-nurses.service';
+import { isNursingAppointment } from '@oneandlab/shared-utils';
 import { servicesInActiveLot } from '../utils/booking-wizard-lot';
 import { bookingWizardProgressHint } from '../utils/booking-wizard-progress-label';
 import { recapDateLabel, type WizardRecapItem } from '../components/BookingWizardSegmentContext';
@@ -74,6 +81,29 @@ export function useBookingWizard(opts: {
   const [personalFiles, setPersonalFiles] = useState<
     Record<string, DocumentFileRef | undefined>
   >({});
+  const submissionLockedRef = useRef(false);
+
+  const [nurseAssignmentMode, setNurseAssignmentMode] = useState<NurseAssignmentMode>('cary_dispatch');
+  const [proLinkedNurseId, setProLinkedNurseId] = useState('');
+  const [externalNursePhone, setExternalNursePhone] = useState('');
+
+  const resetProNurseAssignment = useCallback(() => {
+    setNurseAssignmentMode('cary_dispatch');
+    setProLinkedNurseId('');
+    setExternalNursePhone('');
+  }, []);
+
+  const getProNurseAssignment = useCallback((): ProNurseAssignment | null => {
+    if (opts.role !== 'pro') return null;
+    return {
+      mode: nurseAssignmentMode,
+      linkedNurseId: proLinkedNurseId || undefined,
+      external:
+        !proLinkedNurseId && externalNursePhone.trim()
+          ? { phone: externalNursePhone }
+          : undefined,
+    };
+  }, [opts.role, nurseAssignmentMode, proLinkedNurseId, externalNursePhone]);
 
   const wizard = useMultiAppointmentWizard({
     role: opts.role,
@@ -83,7 +113,41 @@ export function useBookingWizard(opts: {
     bookingMode: opts.mode,
     getPatientBookingConsent:
       opts.mode === 'dashboard' ? () => consentRef.current : undefined,
+    getProNurseAssignment: opts.role === 'pro' ? getProNurseAssignment : undefined,
   });
+
+  const staffPatientIdForLinkedNurses =
+    opts.mode === 'dashboard' &&
+    opts.role === 'pro' &&
+    wizard.patientMode === 'existing' &&
+    wizard.selectedPatientId
+      ? wizard.selectedPatientId
+      : '';
+
+  const linkedNursesQ = useQuery({
+    queryKey: ['patients', staffPatientIdForLinkedNurses, 'linked-nurses'],
+    queryFn: async () => {
+      const res = await fetchLinkedNurses(staffPatientIdForLinkedNurses);
+      if (!res.success) throw new Error(res.error ?? 'Chargement infirmiers impossible');
+      return res.data ?? [];
+    },
+    enabled: Boolean(staffPatientIdForLinkedNurses),
+    staleTime: 30_000,
+  });
+
+  const hasNursingInSelection = useMemo(
+    () => wizard.selectedServices.some((s) => isNursingAppointment(s.type)),
+    [wizard.selectedServices],
+  );
+
+  const showProNurseAssignment =
+    opts.mode === 'dashboard' && opts.role === 'pro' && hasNursingInSelection;
+
+  useEffect(() => {
+    if (!staffPatientIdForLinkedNurses) {
+      resetProNurseAssignment();
+    }
+  }, [staffPatientIdForLinkedNurses, resetProNurseAssignment]);
 
   const patientProfileQ = useQuery({
     queryKey: queryKeys.profile.user(user?.id ?? ''),
@@ -464,6 +528,15 @@ export function useBookingWizard(opts: {
   });
 
   const validateCurrentStep = useCallback(() => {
+    if (section === 'personal' && showProNurseAssignment) {
+      const nurseErr = validateProNurseAssignment(getProNurseAssignment());
+      if (nurseErr) {
+        setValidationError(nurseErr);
+        toast(nurseErr, { type: 'error' });
+        return false;
+      }
+    }
+
     const patient = wizard.form.getValues();
     const address = patient.address
       ? { ...patient.address, complement: wizard.addressComplement || undefined }
@@ -521,6 +594,8 @@ export function useBookingWizard(opts: {
     consent,
     toast,
     opts.onConsentMissing,
+    showProNurseAssignment,
+    getProNurseAssignment,
   ]);
 
   const wizardNext = useCallback(() => {
@@ -530,8 +605,16 @@ export function useBookingWizard(opts: {
       }
       if (isFinalWizardStep) {
         if (!validateCurrentStep()) return;
-        if (opts.mode === 'patient') submitMut.mutate();
-        else {
+        if (opts.mode === 'patient') {
+          if (submissionLockedRef.current || submitMut.isPending) return;
+          submissionLockedRef.current = true;
+          submitMut.mutate(undefined, {
+            onSettled: () => {
+              submissionLockedRef.current = false;
+            },
+          });
+        } else {
+          if (wizard.saving) return;
           wizard.setPersonalFiles(personalFiles);
           wizard.submit();
         }
@@ -597,5 +680,22 @@ export function useBookingWizard(opts: {
     saving: wizard.saving || submitMut.isPending || patientVipIap.purchaseLoading,
     validationError,
     submit: () => submitMut.mutate(),
+    showProNurseAssignment,
+    nurseAssignmentMode,
+    setNurseAssignmentMode,
+    proLinkedNurseId,
+    setProLinkedNurseId,
+    externalNursePhone,
+    setExternalNursePhone,
+    linkedNurses: linkedNursesQ.data ?? [],
+    linkedNursesLoading: linkedNursesQ.isLoading,
+    onSelectLinkedNurse: (id: string) => {
+      setProLinkedNurseId(id);
+      if (id) setExternalNursePhone('');
+    },
+    onExternalNursePhoneChange: (value: string) => {
+      setExternalNursePhone(value);
+      if (value.trim()) setProLinkedNurseId('');
+    },
   };
 }

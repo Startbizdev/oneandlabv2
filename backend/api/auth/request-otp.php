@@ -74,9 +74,6 @@ try {
         ]
     );
 
-    // Envoyer l'email OTP
-    $emailLib->sendOTP($input['email'], $result['otp']);
-
     $payload = [
         'success' => true,
         'session_id' => $result['session_id'] ?? null,
@@ -84,6 +81,31 @@ try {
     ];
     if (authExposeOtpInResponse()) {
         $payload['otp'] = $result['otp'];
+    }
+
+    // Envoi SMTP synchrone : Brevo répond en ~200 ms. Le spawn async laissait des enveloppes
+    // orphelines sous PHP-FPM (/tmp/one-otp-*) sans envoyer l'email.
+    $emailSent = $emailLib->sendOTP($input['email'], $result['otp']);
+    if (!$emailSent) {
+        $logger->log(
+            $result['user_id'] ?? null,
+            null,
+            'otp_email_failed',
+            'auth',
+            null,
+            [
+                'email_hash' => hash('sha256', strtolower($input['email'])),
+                'ip_address' => $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? null,
+                'via' => 'sync',
+            ]
+        );
+        http_response_code(503);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Impossible d\'envoyer le code par email. Réessayez dans un instant.',
+            'code' => 'EMAIL_SEND_FAILED',
+        ]);
+        exit;
     }
 
     echo json_encode($payload);

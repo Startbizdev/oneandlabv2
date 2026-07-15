@@ -51,6 +51,8 @@ function InputComponent(
     style,
     keyboardType,
     returnKeyType,
+    multiline,
+    blurOnSubmit: blurOnSubmitProp,
     ...props
   }: InputProps,
   ref: React.ForwardedRef<TextInput>,
@@ -61,9 +63,7 @@ function InputComponent(
   const TextField = useSheetTextInputComponent();
   const inSheet = useInBottomSheet();
   const isNumeric = Boolean(keyboardType && NUMERIC_KEYBOARDS.has(String(keyboardType)));
-  const resolvedReturnKeyType = resolveReturnKeyType(keyboardType, returnKeyType, inSheet);
-  const iosNumericAccessory =
-    Platform.OS === 'ios' && inSheet && isNumeric ? SHEET_KEYBOARD_ACCESSORY_ID : undefined;
+  const isMultiline = Boolean(multiline);
 
   const borderColor = error
     ? c.borderError
@@ -87,44 +87,62 @@ function InputComponent(
     [onBlur],
   );
 
+  const resolvedReturnKeyType = isMultiline
+    ? (returnKeyType ?? 'default')
+    : resolveReturnKeyType(keyboardType, returnKeyType, inSheet);
+  const iosNumericAccessory =
+    Platform.OS === 'ios' && inSheet && isNumeric ? SHEET_KEYBOARD_ACCESSORY_ID : undefined;
+
+  const fieldStyle = [
+    styles.input,
+    isMultiline && styles.inputMultiline,
+    leftIcon ? styles.inputWithLeftIcon : null,
+    rightIcon ? styles.inputWithRightIcon : null,
+    style,
+  ];
+
+  const borderStyle = {
+    borderColor,
+    borderWidth: isFocused ? 1.5 : 1,
+  };
+
+  const textFieldProps = {
+    ref: ref as never,
+    onFocus: handleFocus,
+    onBlur: handleBlur,
+    keyboardType,
+    returnKeyType: resolvedReturnKeyType,
+    returnKeyLabel: Platform.OS === 'android' && isNumeric ? 'Valider' : undefined,
+    inputAccessoryViewID: iosNumericAccessory,
+    blurOnSubmit: isMultiline ? false : (blurOnSubmitProp ?? true),
+    submitBehavior: isMultiline ? 'newline' : 'blur',
+    accessibilityLabel: props.accessibilityLabel ?? label,
+    placeholderTextColor: c.textTertiary,
+    selectionColor: c.primary,
+    cursorColor: c.primary,
+    multiline,
+    ...props,
+  };
+
   return (
     <View style={styles.wrapper}>
       {label ? (
         <AppText style={[styles.label, isFocused && styles.labelFocused]}>{label}</AppText>
       ) : null}
 
-      <Row
-        style={[
-          styles.container,
-          { borderColor, borderWidth: isFocused ? 1.5 : 1 },
-        ]}
-      >
-        {leftIcon ? <View style={styles.iconLeft}>{leftIcon}</View> : null}
-
-        <TextField
-          ref={ref as never}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          keyboardType={keyboardType}
-          returnKeyType={resolvedReturnKeyType}
-          returnKeyLabel={Platform.OS === 'android' && isNumeric ? 'Valider' : undefined}
-          inputAccessoryViewID={iosNumericAccessory}
-          blurOnSubmit
-          accessibilityLabel={props.accessibilityLabel ?? label}
-          style={[
-            styles.input,
-            leftIcon ? styles.inputWithLeftIcon : null,
-            rightIcon ? styles.inputWithRightIcon : null,
-            style,
-          ]}
-          placeholderTextColor={c.textTertiary}
-          selectionColor={c.primary}
-          cursorColor={c.primary}
-          {...props}
-        />
-
-        {rightIcon ? <View style={styles.iconRight}>{rightIcon}</View> : null}
-      </Row>
+      {isMultiline ? (
+        <View style={[styles.container, styles.containerMultiline, borderStyle]}>
+          {leftIcon ? <View style={styles.iconLeftMultiline}>{leftIcon}</View> : null}
+          <TextField {...textFieldProps} style={fieldStyle} />
+          {rightIcon ? <View style={styles.iconRightMultiline}>{rightIcon}</View> : null}
+        </View>
+      ) : (
+        <Row style={[styles.container, borderStyle]}>
+          {leftIcon ? <View style={styles.iconLeft}>{leftIcon}</View> : null}
+          <TextField {...textFieldProps} style={fieldStyle} />
+          {rightIcon ? <View style={styles.iconRight}>{rightIcon}</View> : null}
+        </Row>
+      )}
 
       {error ? <AppText style={styles.error}>{error}</AppText> : hint ? <AppText style={styles.hint}>{hint}</AppText> : null}
     </View>
@@ -156,6 +174,9 @@ function buildStyles(c: AppColors) {
     minHeight: 52,
     overflow: 'hidden' as const,
   },
+  containerMultiline: {
+    minHeight: 120,
+  },
   input: {
     minWidth: 0,
     flex: 1,
@@ -166,6 +187,11 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[3],
     minHeight: 52,
   },
+  inputMultiline: {
+    minHeight: 120,
+    textAlignVertical: 'top' as const,
+    paddingTop: spacing[3],
+  },
   inputWithLeftIcon: {
     paddingLeft: spacing[2],
   },
@@ -175,8 +201,16 @@ function buildStyles(c: AppColors) {
   iconLeft: {
     paddingLeft: spacing[4],
   },
+  iconLeftMultiline: {
+    paddingLeft: spacing[4],
+    paddingTop: spacing[3],
+  },
   iconRight: {
     paddingRight: spacing[4],
+  },
+  iconRightMultiline: {
+    paddingRight: spacing[4],
+    paddingTop: spacing[3],
   },
   error: {
     fontFamily: fontFamily.medium,

@@ -446,6 +446,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 exit;
             }
             $redispatch = isset($input['redispatch']) && $input['redispatch'] === true;
+            $acceptedViaShareToken = null;
             if ($redispatch && $input['status'] !== 'pending') {
                 throw new Exception('Le redispatch nécessite un statut "pending"');
             }
@@ -572,6 +573,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                             ]);
                             exit;
                         }
+                        $acceptedViaShareToken = $shareTokPut;
                     }
                 }
             }
@@ -633,6 +635,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $cancellationPhotoDocumentId
             );
             $declinedOffer = ($statusResult === 'declined_offer');
+            if (
+                !$declinedOffer
+                && isset($input['status'])
+                && $input['status'] === 'confirmed'
+                && ($user['role'] ?? '') === 'nurse'
+                && !empty($acceptedViaShareToken)
+            ) {
+                require_once __DIR__ . '/../../lib/admin/AdminDispatchEventLogger.php';
+                $configPut = require __DIR__ . '/../../config/database.php';
+                $dsnPut = sprintf(
+                    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+                    $configPut['host'],
+                    $configPut['port'],
+                    $configPut['database'],
+                    $configPut['charset']
+                );
+                $dbPut = new PDO($dsnPut, $configPut['username'], $configPut['password'], $configPut['options'] ?? []);
+                $tokStmt = $dbPut->prepare('SELECT id FROM appointment_share_tokens WHERE token = ? AND appointment_id = ? LIMIT 1');
+                $tokStmt->execute([$acceptedViaShareToken, $id]);
+                $tokRow = $tokStmt->fetch(PDO::FETCH_ASSOC);
+                $dispatchLog = new AdminDispatchEventLogger($dbPut);
+                $dispatchLog->log(
+                    $id,
+                    'offer_accepted_via_share_token',
+                    $user['user_id'],
+                    $user['role'],
+                    $user['user_id'],
+                    [
+                        'share_token_id' => $tokRow['id'] ?? null,
+                    ]
+                );
+            }
             if ($redispatch) {
                 require_once __DIR__ . '/../../lib/Logger.php';
                 $logger = new Logger();

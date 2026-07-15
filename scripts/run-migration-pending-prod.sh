@@ -1,5 +1,5 @@
 #!/bin/bash
-# Migrations prod idempotentes après déploiement (093–098).
+# Migrations prod idempotentes après déploiement (093–100).
 # Usage: ./scripts/run-migration-pending-prod.sh
 set -euo pipefail
 
@@ -18,7 +18,7 @@ if [[ ! -f "$SSH_KEY" ]]; then
   exit 1
 fi
 
-echo "==> Migrations prod (093–098) sur $SSH_HOST..."
+echo "==> Migrations prod (093–100) sur $SSH_HOST..."
 
 echo "==> Vérification état actuel..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/verify-migrations-prod-status.php" || true
@@ -40,6 +40,12 @@ ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-m
 
 echo "==> Migration 098 (tournée préleveur GPS)..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-098.php"
+
+echo "==> Migration 099 (index perf liste RDV admin)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-099.php"
+
+echo "==> Migration 100 (journal dispatch admin)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-100.php"
 
 echo "==> Vérification finale..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/verify-migrations-prod-status.php"

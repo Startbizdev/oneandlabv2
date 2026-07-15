@@ -42,6 +42,10 @@ import type { AppointmentFormValues, AddressPayload } from '../types';
 import { NEW_PATIENT_ID } from '../types';
 import { buildSingleAppointmentPayload } from '../utils/build-single-payload';
 import { mergePersonalFilesIntoFormData } from '../utils/merge-wizard-files';
+import {
+  applyProNurseAssignmentToPayloads,
+  type ProNurseAssignment,
+} from '../utils/pro-nurse-assignment';
 import type { DocumentFileRef } from '../types/document-file-ref';
 import {
   uploadPatientProfileDocument,
@@ -50,6 +54,8 @@ import {
 import { buildAvailabilityPayload, isAvailabilityValid } from '../utils/availability';
 import { appointmentFormSchema, type AppointmentFormSchema } from '../schemas/appointment-form.schema';
 import { fetchUser } from '@/features/profile/api/profile.service';
+import { updatePatient } from '@/features/patients/api/patients.service';
+import { normalizePatientGender } from '@/utils/patient-gender';
 import { useProfileAddressSync } from './useProfileAddressSync';
 
 const defaultValues: AppointmentFormSchema = {
@@ -354,6 +360,7 @@ export function useMultiAppointmentWizard(opts: {
   syncPatientSelfAddress?: boolean;
   bookingMode?: 'patient' | 'dashboard';
   getPatientBookingConsent?: () => boolean;
+  getProNurseAssignment?: () => ProNurseAssignment | null;
 }) {
   const { show: toast } = useToast();
   const router = useRouter();
@@ -417,7 +424,7 @@ export function useMultiAppointmentWizard(opts: {
       form.setValue('last_name', p.last_name ?? '');
       form.setValue('email', p.email ?? '');
       form.setValue('phone', p.phone ?? '');
-      form.setValue('gender', (p.gender as string) ?? '');
+      form.setValue('gender', normalizePatientGender(p.gender));
       form.setValue('birth_date', (p.birth_date as string) ?? '');
       let full: PatientRow = p;
       try {
@@ -585,6 +592,8 @@ export function useMultiAppointmentWizard(opts: {
     [selectedServices],
   );
 
+  const [submissionLocked, setSubmissionLocked] = useState(false);
+
   const submitMut = useMutation({
     mutationFn: async () => {
       if (
@@ -635,6 +644,21 @@ export function useMultiAppointmentWizard(opts: {
 
       if (!patientId) throw new Error('Patient introuvable ou incomplet');
 
+      const genderNorm = normalizePatientGender(patient.gender);
+      if (patientMode === 'existing' && patientId) {
+        const syncBody: Record<string, unknown> = {
+          first_name: patient.first_name.trim(),
+          last_name: patient.last_name.trim(),
+          gender: genderNorm,
+          birth_date: patient.birth_date,
+          phone: patient.phone?.trim() || undefined,
+          ...(patient.email?.trim() ? { email: patient.email.trim() } : {}),
+          ...(address ? { address } : {}),
+        };
+        const upd = await updatePatient(patientId, syncBody);
+        if (!upd.success) throw new Error(upd.error ?? 'Mise à jour patient impossible');
+      }
+
       for (const [key, file] of Object.entries(personalFiles)) {
         if (!file || !('uri' in file)) continue;
         try {
@@ -663,11 +687,21 @@ export function useMultiAppointmentWizard(opts: {
       };
 
       const batchId = randomUUID();
-      const payloads = buildDashboardAppointmentPayloads(patientId, mergedFormData, selectedServices, {
+      let payloads = buildDashboardAppointmentPayloads(patientId, mergedFormData, selectedServices, {
         creationBatchId: batchId,
         creatorRole: opts.role,
         creatorUserId: user?.id ?? '',
-      });
+      }).map((p) => ({
+        ...p,
+        patient_booking_consent: true,
+        type: p.type ?? selectedServices[0]?.type,
+        form_type: p.form_type ?? p.type ?? selectedServices[0]?.type,
+      }));
+
+      payloads = applyProNurseAssignmentToPayloads(
+        payloads,
+        opts.getProNurseAssignment?.() ?? null,
+      );
 
       const result = await createMultipleAppointments(payloads);
       if (!result.success) throw new Error(result.error ?? 'Création impossible');
@@ -719,8 +753,14 @@ export function useMultiAppointmentWizard(opts: {
         ? nursingCatsQ.isLoading || bloodCatsQ.isLoading
         : patientsQ.isLoading || nursingCatsQ.isLoading || bloodCatsQ.isLoading,
     ensureCategoryReady,
-    saving: submitMut.isPending,
-    submit: () => submitMut.mutate(),
+    saving: submitMut.isPending || submissionLocked,
+    submit: useCallback(() => {
+      if (submissionLocked || submitMut.isPending) return;
+      setSubmissionLocked(true);
+      submitMut.mutate(undefined, {
+        onSettled: () => setSubmissionLocked(false),
+      });
+    }, [submitMut, submissionLocked]),
     isNewPatient: patientMode === 'new',
   };
 }

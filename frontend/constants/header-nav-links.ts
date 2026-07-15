@@ -9,6 +9,7 @@ const ADMIN_NAV_LINKS: HeaderNavLink[] = [
   { label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard', to: '/admin' },
   { label: 'Inscriptions', icon: 'i-lucide-user-plus', to: '/admin/inscriptions' },
   { label: 'Rendez-vous', icon: 'i-lucide-calendar', to: '/admin/appointments' },
+  { label: 'Dispatch', icon: 'i-lucide-radio-tower', to: '/admin/dispatch' },
   { label: 'Calendrier', icon: 'i-lucide-calendar-days', to: '/admin/calendar' },
   { label: 'Utilisateurs', icon: 'i-lucide-users', to: '/admin/users' },
   { label: 'Catégories', icon: 'i-lucide-tags', to: '/admin/categories' },

@@ -61,9 +61,21 @@ class Email
             } else {
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // TLS
             }
-            
+
             // Options de débogage (désactivé en production)
             $mail->SMTPDebug = 0;
+            $mail->Timeout = (int) ($_ENV['SMTP_TIMEOUT_SECONDS'] ?? 15);
+            $mail->SMTPKeepAlive = false;
+            // Connexion SMTP plus réactive (IONOS peut être lent sans limite explicite).
+            $mail->SMTPOptions = [
+                'ssl' => [
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
+                ],
+                'socket' => [
+                    'bindto' => '0:0',
+                ],
+            ];
             
             // Expéditeur
             $mail->setFrom($this->fromEmail, $this->fromName);
@@ -85,6 +97,7 @@ class Email
             // Envoi
             return $mail->send();
         } catch (Exception $e) {
+            error_log('Email::send failed to=' . $to . ' subject=' . $subject . ' error=' . $e->getMessage());
             return false;
         }
     }

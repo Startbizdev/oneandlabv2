@@ -1,4 +1,4 @@
-import type { NursePassageNursingItem, PassageTimeSlot } from '@oneandlab/shared-types';
+import type { NursePassageNursingItem, PassageDailyTimeSlot, PassageTimeSlot } from '@oneandlab/shared-types';
 import dayjs from 'dayjs';
 import { PASSAGE_TIME_SLOT_LABELS } from '@oneandlab/shared-utils';
 import type { PassagePlanningFormState } from './passage-planning';
@@ -34,12 +34,21 @@ export function formatPlanningSummary(
   parts.push(`début ${start}`);
   if (state.endDate.trim()) {
     parts.push(`fin ${dayjs(state.endDate).format('D MMM YYYY')}`);
+  } else if (state.openEnded && (state.planningMode === 'interval' || state.planningMode === 'weekdays')) {
+    parts.push('sans fin (chronique)');
   }
   if (passageCount > 0) {
     parts.push(`${passageCount} passage${passageCount > 1 ? 's' : ''}`);
   }
 
   return parts.join(' · ');
+}
+
+export function formatDailyTimesSummary(slots: PassageDailyTimeSlot[]): string {
+  if (slots.length === 0) return 'Matin';
+  return slots
+    .map((s) => PASSAGE_TIME_SLOT_LABELS[s.time_slot] ?? s.time_slot)
+    .join(' + ');
 }
 
 export function formatTimeSummary(timeSlot: PassageTimeSlot, customTime: string): string {

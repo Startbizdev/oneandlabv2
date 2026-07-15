@@ -23,6 +23,8 @@ export interface PassageIntervalConfig {
   every_days: number;
   start_date: string;
   end_date?: string | null;
+  /** Sans date de fin : génération sur l'horizon chronique (1 an). */
+  open_ended?: boolean;
 }
 
 export interface PassageWeekdaysConfig {
@@ -30,6 +32,12 @@ export interface PassageWeekdaysConfig {
   weekdays: number[];
   start_date: string;
   end_date?: string | null;
+  open_ended?: boolean;
+}
+
+export interface PassageDailyTimeSlot {
+  time_slot: PassageTimeSlot;
+  custom_time?: string | null;
 }
 
 export interface PassageCustomDatesConfig {
@@ -109,5 +117,8 @@ export const PASSAGE_SLOT_DEFAULT_HOURS: Record<
 export const PASSAGE_DURATION_PRESETS = [15, 30, 60] as const;
 
 export const PASSAGE_MAX_DAYS_WITHOUT_END = 90;
+
+/** Horizon passages chroniques sans date de fin (≈ 1 an). */
+export const PASSAGE_OPEN_ENDED_HORIZON_DAYS = 365;
 
 export const PASSAGE_INTERVAL_DEFAULT_DAYS = 3;

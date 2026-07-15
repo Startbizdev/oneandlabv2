@@ -27,6 +27,14 @@ const route = useRoute();
 const toast = useAppToast();
 const formRef = ref<{ setLoading: (v: boolean) => void } | null>(null);
 
+const registerSuccessRedirect = computed(() => {
+  const returnTo = typeof route.query.returnTo === 'string' ? route.query.returnTo.trim() : '';
+  if (returnTo.startsWith('/')) {
+    return { path: '/register/merci', query: { type: 'nurse', returnTo } };
+  }
+  return { path: '/register/merci', query: { type: 'nurse' } };
+});
+
 async function onSubmit(payload: Record<string, string>) {
   formRef.value?.setLoading(true);
   try {
@@ -35,7 +43,7 @@ async function onSubmit(payload: Record<string, string>) {
       body: payload,
     });
     if (response?.success) {
-      await navigateTo({ path: '/register/merci', query: { type: 'nurse' } });
+      await navigateTo(registerSuccessRedirect.value);
     } else {
       toast.add({
         title: 'Erreur',

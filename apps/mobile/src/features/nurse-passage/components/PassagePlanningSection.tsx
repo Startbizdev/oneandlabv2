@@ -61,9 +61,34 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
               <IsoDatePicker
                 label="Date de fin"
                 value={state.endDate}
-                onChange={(endDate) => onChange({ endDate })}
+                onChange={(endDate) => onChange({ endDate, openEnded: false })}
                 placeholder="Optionnelle"
+                disabled={state.openEnded && (state.planningMode === 'interval' || state.planningMode === 'weekdays')}
               />
+              {(state.planningMode === 'interval' || state.planningMode === 'weekdays') ? (
+                <Pressable
+                  onPress={() =>
+                    onChange({
+                      openEnded: !state.openEnded,
+                      ...(state.openEnded ? {} : { endDate: '' }),
+                    })
+                  }
+                  style={[
+                    styles.openEndedRow,
+                    {
+                      borderColor: state.openEnded ? c.primary : c.borderLight,
+                      backgroundColor: state.openEnded ? hexToRgba(c.primary, 0.08) : c.surface,
+                    },
+                  ]}
+                >
+                  <AppText style={{ fontFamily: fontFamily.semiBold, color: c.textPrimary }}>
+                    {state.openEnded ? '✓ ' : ''}Passage chronique (sans date de fin)
+                  </AppText>
+                  <AppText style={[styles.optionHint, { color: c.textSecondary }]}>
+                    Les passages sont planifiés sur 1 an, renouvelables ensuite.
+                  </AppText>
+                </Pressable>
+              ) : null}
             </Stack>
           )}
         </View>
@@ -190,6 +215,13 @@ function buildStyles(_c: AppColors) {
       fontFamily: fontFamily.regular,
       fontSize: fontSize.sm,
       lineHeight: 20,
+      marginTop: spacing[1],
+    },
+    openEndedRow: {
+      borderWidth: 1,
+      borderRadius: radius.lg,
+      padding: spacing[3],
+      gap: spacing[1],
       marginTop: spacing[1],
     },
     preview: {

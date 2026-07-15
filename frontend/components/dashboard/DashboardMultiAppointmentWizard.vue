@@ -295,11 +295,103 @@
                     <UIcon name="i-lucide-loader-2" class="w-3.5 h-3.5 animate-spin shrink-0" />
                     Chargement du dossier patient (adresse, documents)…
                   </p>
+                  <div
+                    v-else-if="selectedPatientId"
+                    class="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/40"
+                  >
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">Fiche patient</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      <template v-if="existingPatientProfileIncomplete">
+                        Complétez les informations manquantes ci-dessous (genre, date de naissance…) pour valider le rendez-vous.
+                      </template>
+                      <template v-else>
+                        Vous pouvez corriger les coordonnées ci-dessous avant la prise de rendez-vous.
+                      </template>
+                    </p>
+                  </div>
                 </UFormField>
               </div>
             </template>
 
             <template #footer>
+              <div
+                v-if="showProNurseAssignment && dashboardBookingWizardSection === 'personal'"
+                id="wizard-pro-nurse-assignment"
+                class="mb-4 scroll-mt-28 space-y-3 rounded-xl border border-gray-200/90 bg-gray-50/80 p-4 dark:border-gray-800 dark:bg-gray-900/40"
+              >
+                <div>
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">Affectation infirmier(ère)</p>
+                  <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    Dispatch Cary (par défaut) ou infirmier(ère) du patient.
+                  </p>
+                </div>
+                <div class="flex rounded-lg border border-gray-200/90 bg-white p-0.5 dark:border-gray-700 dark:bg-gray-950">
+                  <button
+                    type="button"
+                    class="flex-1 rounded-md px-2 py-2 text-[12px] font-medium transition-colors"
+                    :class="
+                      nurseAssignmentMode === 'cary_dispatch'
+                        ? 'bg-primary-50 text-primary-800 shadow-sm dark:bg-primary-950/40 dark:text-primary-100'
+                        : 'text-gray-500 hover:text-gray-800 dark:text-gray-400'
+                    "
+                    @click="nurseAssignmentMode = 'cary_dispatch'"
+                  >
+                    Trouver sur Cary
+                  </button>
+                  <button
+                    type="button"
+                    class="flex-1 rounded-md px-2 py-2 text-[12px] font-medium transition-colors"
+                    :class="
+                      nurseAssignmentMode === 'patient_nurse'
+                        ? 'bg-primary-50 text-primary-800 shadow-sm dark:bg-primary-950/40 dark:text-primary-100'
+                        : 'text-gray-500 hover:text-gray-800 dark:text-gray-400'
+                    "
+                    @click="nurseAssignmentMode = 'patient_nurse'"
+                  >
+                    Infirmier du patient
+                  </button>
+                </div>
+                <template v-if="nurseAssignmentMode === 'patient_nurse'">
+                  <UFormField label="Choisir dans la liste" name="pro_linked_nurse">
+                    <USelectMenu
+                      v-model="proLinkedNurseId"
+                      :items="proLinkedNurseSelectItems"
+                      value-key="value"
+                      placeholder="Infirmier(ère) déjà intervenu(e)…"
+                      class="w-full min-w-0"
+                      clearable
+                      :loading="proLinkedNursesLoading"
+                      :disabled="proLinkedNurseChoice === 'external'"
+                      :filter-fields="['label']"
+                      :search-input="{ placeholder: 'Rechercher…' }"
+                      @update:model-value="onProLinkedNursePick"
+                    >
+                      <template #label>
+                        <span v-if="!proLinkedNurseId" class="text-muted">Sélectionner ou ajouter ci-dessous</span>
+                        <span v-else>{{ proLinkedNurseSelectItems.find((i) => i.value === proLinkedNurseId)?.label }}</span>
+                      </template>
+                    </USelectMenu>
+                  </UFormField>
+                  <div class="relative flex items-center py-1">
+                    <div class="grow border-t border-gray-200 dark:border-gray-700" />
+                    <span class="mx-3 shrink-0 text-[11px] font-medium text-gray-400">ou inviter par SMS</span>
+                    <div class="grow border-t border-gray-200 dark:border-gray-700" />
+                  </div>
+                  <UFormField
+                    label="Téléphone mobile de l'infirmier(ère)"
+                    help="Un SMS avec votre nom, celui du patient et le lien Cary sera envoyé."
+                  >
+                    <UInput
+                      v-model="externalNursePhone"
+                      type="tel"
+                      autocomplete="off"
+                      placeholder="06 12 34 56 78"
+                      :disabled="!!proLinkedNurseId"
+                      @update:model-value="onExternalNursePhoneEdit"
+                    />
+                  </UFormField>
+                </template>
+              </div>
               <div
                 v-if="dashboardBookingWizardSection === 'personal'"
                 id="wizard-rgpd-consent"
@@ -401,6 +493,68 @@ const { createMultipleAppointments } = useAppointments();
 
 const isNurseDashboard = computed(() => props.basePath === '/nurse');
 const isAdminDashboard = computed(() => props.basePath === '/admin');
+const isProDashboard = computed(() => props.basePath === '/pro');
+
+const hasNursingInSelection = computed(() =>
+  selectedServices.value.some((s) => isNursingAppointment(s.type)),
+);
+
+/** Pro : dispatch Cary (défaut) ou infirmier du patient. */
+type NurseAssignmentMode = 'cary_dispatch' | 'patient_nurse';
+const nurseAssignmentMode = ref<NurseAssignmentMode>('cary_dispatch');
+const proLinkedNurseId = ref<string | undefined>(undefined);
+const proLinkedNurses = ref<Array<{ id: string; display_name: string; phone?: string | null }>>([]);
+const proLinkedNursesLoading = ref(false);
+const proLinkedNurseChoice = ref<'linked' | 'external' | ''>('');
+const externalNursePhone = ref('');
+
+const showProNurseAssignment = computed(
+  () => isProDashboard.value && hasNursingInSelection.value && step.value >= 1,
+);
+
+const proLinkedNurseSelectItems = computed(() =>
+  proLinkedNurses.value.map((n) => ({
+    label: n.display_name,
+    value: String(n.id),
+  })),
+);
+
+async function loadLinkedNursesForPatient(patientId: string) {
+  proLinkedNursesLoading.value = true;
+  try {
+    const res = await apiFetch(`/patients/${patientId}/linked-nurses`, { method: 'GET' });
+    proLinkedNurses.value = res.success && Array.isArray(res.data) ? res.data : [];
+  } catch {
+    proLinkedNurses.value = [];
+  } finally {
+    proLinkedNursesLoading.value = false;
+  }
+}
+
+function resetProNurseAssignment() {
+  nurseAssignmentMode.value = 'cary_dispatch';
+  proLinkedNurseId.value = undefined;
+  proLinkedNurseChoice.value = '';
+  externalNursePhone.value = '';
+}
+
+function onProLinkedNursePick(id: string | undefined) {
+  if (id) {
+    proLinkedNurseChoice.value = 'linked';
+    externalNursePhone.value = '';
+  } else if (proLinkedNurseChoice.value === 'linked') {
+    proLinkedNurseChoice.value = '';
+  }
+}
+
+function onExternalNursePhoneEdit() {
+  if (externalNursePhone.value.trim()) {
+    proLinkedNurseChoice.value = 'external';
+    proLinkedNurseId.value = undefined;
+  } else if (proLinkedNurseChoice.value === 'external') {
+    proLinkedNurseChoice.value = '';
+  }
+}
 
 /** Même API /patients/lookup pour pro, infirmier, laboratoire, sous-compte et super_admin (nouveau patient). */
 const canLookupPatientByContact = computed(() => {
@@ -697,6 +851,8 @@ const patients = ref<any[]>([]);
 const patientsLoading = ref(false);
 const patientProfileLoading = ref(false);
 const selectedPatientId = ref<string | undefined>(undefined);
+/** Snapshot fiche patient chargée — évite PUT inutile avant création RDV. */
+const loadedPatientSnapshot = ref<Record<string, string> | null>(null);
 /** Patient existant (liste) ou création inline. */
 const patientMode = ref<'existing' | 'new'>('existing');
 
@@ -724,6 +880,25 @@ const patientDocumentUserIdForForm = computed(() => {
     return s || undefined;
   }
   return undefined;
+});
+
+function patientGenderIsSet(raw?: string | null): boolean {
+  const g = String(raw ?? '').trim().toLowerCase();
+  return (
+    g === 'male'
+    || g === 'female'
+    || g === 'other'
+    || g === 'm'
+    || g === 'f'
+    || g === 'homme'
+    || g === 'femme'
+  );
+}
+
+const existingPatientProfileIncomplete = computed(() => {
+  if (patientMode.value !== 'existing' || !selectedPatientId.value) return false;
+  const fd = formData.value ?? {};
+  return !patientGenderIsSet(fd.gender) || !String(fd.birth_date ?? '').trim();
 });
 
 const patientSelectSearchPlaceholder = PATIENT_SELECT_SEARCH_PLACEHOLDER;
@@ -894,6 +1069,82 @@ function extractPatientCreateBody(payload: Record<string, any>): Record<string, 
   };
 }
 
+function buildPatientSnapshotFromPayload(payload: Record<string, any>): Record<string, string> {
+  const addr = payload.address;
+  let addressKey = '';
+  if (addr && typeof addr === 'object' && addr !== null && 'label' in addr) {
+    const a = addr as Record<string, unknown>;
+    const comp =
+      (payload.address_complement as string | undefined)?.trim() ||
+      (a.complement as string | undefined)?.trim() ||
+      '';
+    addressKey = JSON.stringify({
+      label: String(a.label ?? '').trim(),
+      lat: Number(a.lat),
+      lng: Number(a.lng),
+      complement: comp,
+    });
+  }
+  return {
+    first_name: String(payload.first_name ?? '').trim(),
+    last_name: String(payload.last_name ?? '').trim(),
+    gender: String(payload.gender ?? '').trim(),
+    birth_date: String(payload.birth_date ?? '').trim(),
+    phone: String(payload.phone ?? '').replace(/\s/g, '').trim(),
+    email: String(payload.email ?? '').trim(),
+    address: addressKey,
+  };
+}
+
+function patientPayloadDiffersFromSnapshot(payload: Record<string, any>): boolean {
+  if (!loadedPatientSnapshot.value) return true;
+  const next = buildPatientSnapshotFromPayload(payload);
+  const prev = loadedPatientSnapshot.value;
+  return (Object.keys(next) as Array<keyof typeof next>).some((k) => next[k] !== prev[k]);
+}
+
+async function syncExistingPatientFromPayload(
+  patientId: string,
+  payload: Record<string, any>,
+): Promise<void> {
+  if (!patientPayloadDiffersFromSnapshot(payload)) {
+    return;
+  }
+  const addr = payload.address;
+  let addressOut: Record<string, unknown> | null = null;
+  if (addr && typeof addr === 'object' && addr !== null && 'label' in addr) {
+    const a = addr as Record<string, unknown>;
+    const lat = Number(a.lat);
+    const lng = Number(a.lng);
+    addressOut = {
+      label: String(a.label ?? '').trim(),
+      lat: Number.isFinite(lat) ? lat : 0,
+      lng: Number.isFinite(lng) ? lng : 0,
+    };
+    const comp =
+      (payload.address_complement as string | undefined)?.trim() ||
+      (a.complement as string | undefined)?.trim();
+    if (comp) addressOut.complement = comp;
+  }
+  const body: Record<string, unknown> = {
+    first_name: payload.first_name,
+    last_name: payload.last_name,
+    gender: payload.gender || null,
+    birth_date: payload.birth_date || null,
+    phone: String(payload.phone ?? '').trim() || undefined,
+    email: String(payload.email ?? '').trim() || undefined,
+    ...(addressOut ? { address: addressOut } : {}),
+  };
+  const res = (await apiFetch(`/users/${encodeURIComponent(patientId)}`, {
+    method: 'PUT',
+    body,
+  })) as { success?: boolean; error?: string };
+  if (!res?.success) {
+    throw new Error(res?.error || 'Mise à jour du patient impossible');
+  }
+  loadedPatientSnapshot.value = buildPatientSnapshotFromPayload(payload);
+}
+
 async function createPatientRecord(payload: Record<string, any>): Promise<string> {
   const body = {
     ...extractPatientCreateBody(payload),
@@ -989,12 +1240,36 @@ async function fetchAndApplyPatientDetail(id: string) {
   } finally {
     patientProfileLoading.value = false;
   }
-  if (p?.id) await applyPatientToForm(p);
+  if (p?.id) {
+    const resolvedAddr = await resolvePatientAddressForRdvForm(p?.address);
+    const parsedAddr = parseRawPatientAddress(p?.address);
+    const complement = resolvedAddr?.complement ?? parsedAddr?.complement ?? '';
+    loadedPatientSnapshot.value = buildPatientSnapshotFromPayload({
+      first_name: p.first_name || '',
+      last_name: p.last_name || '',
+      email: p.email || '',
+      phone: p.phone || '',
+      birth_date: p.birth_date || '',
+      gender: p.gender || '',
+      address: resolvedAddr ?? null,
+      address_complement: complement || '',
+    });
+    await applyPatientToForm(p);
+  }
 }
 
 watch(selectedPatientId, (id) => {
-  if (patientMode.value !== 'existing' || !id) return;
+  if (patientMode.value !== 'existing' || !id) {
+    loadedPatientSnapshot.value = null;
+    resetProNurseAssignment();
+    proLinkedNurses.value = [];
+    return;
+  }
   void fetchAndApplyPatientDetail(id);
+  if (isProDashboard.value) {
+    void loadLinkedNursesForPatient(String(id));
+    resetProNurseAssignment();
+  }
 });
 
 watch(patientMode, (m, prev) => {
@@ -1260,6 +1535,17 @@ async function onUnifiedSubmit(payload: any) {
     return;
   }
 
+  if (showProNurseAssignment.value && nurseAssignmentMode.value === 'patient_nurse') {
+    const linked = proLinkedNurseId.value?.trim() || '';
+    const extPhone = externalNursePhone.value.replace(/\s/g, '').trim();
+    if (!linked && !extPhone) {
+      validationError.value =
+        'Choisissez un infirmier(ère) dans la liste ou renseignez son numéro de mobile pour l\'invitation SMS.';
+      scrollToValidationError('wizard-pro-nurse-assignment');
+      return;
+    }
+  }
+
   if (patientMode.value === 'existing' && !selectedPatientId.value) {
     validationError.value = 'Veuillez sélectionner un patient dans la liste.';
     scrollToValidationError('wizard-rdv-patient-card');
@@ -1293,6 +1579,17 @@ async function onUnifiedSubmit(payload: any) {
     let patientId: string;
     if (patientMode.value === 'existing') {
       patientId = String(selectedPatientId.value);
+      try {
+        await syncExistingPatientFromPayload(patientId, payload);
+      } catch (e: any) {
+        toast.add({
+          title: 'Mise à jour du patient',
+          description: e?.message || 'Impossible de mettre à jour la fiche patient',
+          color: 'error',
+        });
+        scrollToValidationError('wizard-rdv-patient-card');
+        return;
+      }
     } else {
       try {
         patientId = await createPatientRecord(payload);
@@ -1317,7 +1614,10 @@ async function onUnifiedSubmit(payload: any) {
       creationBatchId: batchId,
       creatorRole: role,
       creatorUserId: uid,
-    });
+    }).map((raw) => ({
+      ...raw,
+      patient_booking_consent: true,
+    }));
 
     const adminStatus = adminRdvStatus.value?.trim() || 'pending';
     const adminLab = adminAssignedLabId.value?.trim() || '';
@@ -1331,6 +1631,29 @@ async function onUnifiedSubmit(payload: any) {
         }
         if (adminNurse && typeof p.type === 'string' && isNursingAppointment(String(p.type))) {
           p.assigned_nurse_id = adminNurse;
+        }
+      }
+    }
+
+    if (isProDashboard.value && nurseAssignmentMode.value === 'patient_nurse') {
+      const linkedNurseId = proLinkedNurseId.value?.trim() || '';
+      const extPhone = externalNursePhone.value.replace(/\s/g, '').trim();
+      let externalInviteAttached = false;
+      for (const raw of payloads) {
+        const p = raw as Record<string, unknown>;
+        if (typeof p.type !== 'string' || !isNursingAppointment(String(p.type))) {
+          continue;
+        }
+        if (linkedNurseId) {
+          p.assigned_nurse_id = linkedNurseId;
+        } else if (extPhone) {
+          p.skip_zone_dispatch = true;
+          if (!externalInviteAttached) {
+            p.external_nurse_invite = {
+              phone: extPhone,
+            };
+            externalInviteAttached = true;
+          }
         }
       }
     }

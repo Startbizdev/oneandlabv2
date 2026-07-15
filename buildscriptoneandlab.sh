@@ -11,7 +11,7 @@ echo "==> buildscriptoneandlab : étape 1/3 menuswipe..."
 echo "==> buildscriptoneandlab : étape 2/3 build local + rsync + PM2..."
 "$SCRIPT_DIR/buildlocaloneandlab.sh"
 
-echo "==> buildscriptoneandlab : étape 3/4 migrations prod (093–098)..."
+echo "==> buildscriptoneandlab : étape 3/4 migrations prod (093–100)..."
 "$SCRIPT_DIR/scripts/run-migration-pending-prod.sh"
 
 echo "==> buildscriptoneandlab : étape 4/4 config prod (mobile 1.7.3 + voix Grok)..."
