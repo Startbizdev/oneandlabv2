@@ -25,6 +25,8 @@ config.resolver = {
     '@oneandlab/shared-constants': path.resolve(monorepoRoot, 'packages/shared-constants'),
     '@oneandlab/shared-types': path.resolve(monorepoRoot, 'packages/shared-types'),
     '@oneandlab/shared-utils': path.resolve(monorepoRoot, 'packages/shared-utils'),
+    // SDK 54 : une seule version worklets (0.5.1) alignée sur le binaire Cary Dev.
+    'react-native-worklets': path.resolve(projectRoot, 'node_modules/react-native-worklets'),
   },
 };
 

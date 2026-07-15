@@ -27,7 +27,6 @@ import { PassageFormHealthRecordPanel } from '../components/PassageFormHealthRec
 import { PassageFormLocationSheet } from '../components/PassageFormLocationSheet';
 import { PassageFormNotesSheet } from '../components/PassageFormNotesSheet';
 import { PassageFormPlanningSheet } from '../components/PassageFormPlanningSheet';
-import { PassageFormTimeSheet } from '../components/PassageFormTimeSheet';
 import {
   buildPlanningPayload,
   defaultPlanningFormState,
@@ -42,17 +41,15 @@ import {
   formatNotesSummary,
   formatPassageDurationSummary,
   formatPlanningSummary,
-  formatTimeSummary,
 } from '../utils/passage-form-summaries';
 import { useToast } from '@/providers/ToastProvider';
 import { parseProfileAddress, hasValidGeoAddress } from '@/features/profile/utils/parse-profile-address';
 import { useAuthStore } from '@/store/auth-store';
-import type { NursePassageNursingItem, PassageDailyTimeSlot, PassageTimeSlot } from '@oneandlab/shared-types';
-import { resolvePassageCustomTime } from '@oneandlab/shared-utils';
+import type { NursePassageNursingItem, PassageDailyTimeSlot } from '@oneandlab/shared-types';
 import { H_PADDING, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-type SheetKey = 'planning' | 'time' | 'daily_times' | 'location' | 'duration' | 'care' | 'notes' | null;
+type SheetKey = 'planning' | 'daily_times' | 'location' | 'duration' | 'care' | 'notes' | null;
 type SegmentId = 'information' | 'documents' | 'health_record';
 
 const PASSAGE_FORM_SEGMENTS = [
@@ -95,9 +92,6 @@ export function PassageFormScreen() {
     enabled: Boolean(patientId),
   });
 
-  const [timeSlot, setTimeSlot] = useState<PassageTimeSlot>('morning');
-  const [customTime, setCustomTime] = useState('09:00');
-  const [timeRange, setTimeRange] = useState<[number, number] | null>(null);
   const [atHome, setAtHome] = useState(true);
   const [duration, setDuration] = useState<number>(30);
   const [customDuration, setCustomDuration] = useState('');
@@ -221,12 +215,11 @@ export function PassageFormScreen() {
 
     const { planning_type, planning_config } = buildPlanningPayload(planningState, nursingItems);
     const slotsPayload: PassageDailyTimeSlot[] =
-      dailyTimeSlots.length === 1
-        ? [{ time_slot: timeSlot, custom_time: timeSlot === 'custom' ? customTime : null }]
-        : dailyTimeSlots;
+      dailyTimeSlots.length > 0 ? dailyTimeSlots : [{ time_slot: 'morning', custom_time: null }];
+    const primarySlot = slotsPayload[0];
     const planningWithRange = embedTimeRangeInPlanningConfig(
       planning_config,
-      timeSlot === 'all_day' ? null : timeRange,
+      null,
       slotsPayload,
     );
 
@@ -234,14 +227,9 @@ export function PassageFormScreen() {
       patient_id: patientId,
       planning_type,
       planning_config: planningWithRange,
-      time_slot: slotsPayload[0]?.time_slot ?? timeSlot,
-      custom_time: resolvePassageCustomTime({
-        time_slot: timeSlot,
-        custom_time: customTime,
-        time_range: timeSlot === 'all_day' ? null : timeRange,
-        planning_config: planningWithRange,
-      }),
-      time_range: timeSlot === 'all_day' ? null : timeRange,
+      time_slot: primarySlot.time_slot,
+      custom_time: primarySlot.time_slot === 'custom' ? primarySlot.custom_time ?? null : null,
+      time_range: null,
       duration_minutes: durationMinutes,
       at_home: atHome,
       nursing_items: nursingItems,
@@ -302,14 +290,9 @@ export function PassageFormScreen() {
                 onPress={() => setOpenSheet('planning')}
               />
               <PassageFormFieldRow
-                label="Passages dans la journée"
+                label="Créneaux de passage"
                 value={formatDailyTimesSummary(dailyTimeSlots)}
                 onPress={() => setOpenSheet('daily_times')}
-              />
-              <PassageFormFieldRow
-                label="Heure de passage"
-                value={formatTimeSummary(timeSlot, customTime, timeRange)}
-                onPress={() => setOpenSheet('time')}
               />
               <PassageFormFieldRow
                 label="Lieu"
@@ -378,22 +361,6 @@ export function PassageFormScreen() {
         onClose={() => setOpenSheet(null)}
         onConfirm={(slots) => {
           setDailyTimeSlots(slots);
-          if (slots.length === 1) {
-            setTimeSlot(slots[0].time_slot);
-          }
-        }}
-      />
-      <PassageFormTimeSheet
-        visible={openSheet === 'time'}
-        timeSlot={timeSlot}
-        customTime={customTime}
-        timeRange={timeRange}
-        passageDate={planningState.startDate}
-        onClose={() => setOpenSheet(null)}
-        onConfirm={(slot, time, range) => {
-          setTimeSlot(slot);
-          setCustomTime(time);
-          setTimeRange(range);
         }}
       />
       <PassageFormLocationSheet

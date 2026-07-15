@@ -12,7 +12,9 @@ import { layoutRowWrap } from '@/theme/layout-styles';
 import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-const MULTI_SLOT_OPTIONS: PassageTimeSlot[] = ['morning', 'noon', 'afternoon', 'evening'];
+const MULTI_SLOT_OPTIONS: PassageTimeSlot[] = ['morning', 'noon', 'afternoon', 'evening', 'night'];
+const ALL_DAY_SLOT: PassageTimeSlot = 'all_day';
+const SLOT_OPTIONS: PassageTimeSlot[] = [...MULTI_SLOT_OPTIONS, ALL_DAY_SLOT];
 
 type Props = {
   visible: boolean;
@@ -28,17 +30,21 @@ export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm 
 
   useEffect(() => {
     if (!visible) return;
-    const ids = slots.map((s) => s.time_slot).filter((id) => MULTI_SLOT_OPTIONS.includes(id));
+    const ids = slots.map((s) => s.time_slot).filter((id) => SLOT_OPTIONS.includes(id));
     setSelected(ids.length > 0 ? ids : ['morning']);
   }, [visible, slots]);
 
   const toggle = (id: PassageTimeSlot) => {
     setSelected((prev) => {
-      if (prev.includes(id)) {
-        if (prev.length <= 1) return prev;
-        return prev.filter((x) => x !== id);
+      if (id === ALL_DAY_SLOT) {
+        return [ALL_DAY_SLOT];
       }
-      return [...prev, id].sort(
+      const withoutAllDay = prev.filter((x) => x !== ALL_DAY_SLOT);
+      if (prev.includes(id)) {
+        if (withoutAllDay.length <= 1) return withoutAllDay;
+        return withoutAllDay.filter((x) => x !== id);
+      }
+      return [...withoutAllDay, id].sort(
         (a, b) => MULTI_SLOT_OPTIONS.indexOf(a) - MULTI_SLOT_OPTIONS.indexOf(b),
       );
     });
@@ -48,8 +54,8 @@ export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm 
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      title="Passages dans la journée"
-      subtitle="Sélectionnez un ou plusieurs créneaux (ex. matin + après-midi)"
+      title="Créneaux de passage"
+      subtitle="Choisissez les moments à créer chaque jour (ex. matin + midi)."
       snapPoints={['42%']}
       footer={
         <Button
@@ -63,7 +69,7 @@ export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm 
     >
       <View style={styles.body}>
         <View style={styles.presetWrap}>
-          {MULTI_SLOT_OPTIONS.map((id) => {
+          {SLOT_OPTIONS.map((id) => {
             const on = selected.includes(id);
             return (
               <Pressable

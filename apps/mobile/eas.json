@@ -7,6 +7,9 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "cache": {
+        "disabled": true
+      },
       "env": {
         "APP_VARIANT": "development",
         "EXPO_USE_PRECOMPILED_MODULES": "0"

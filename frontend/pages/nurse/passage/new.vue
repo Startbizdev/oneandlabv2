@@ -33,14 +33,9 @@
           @click="editModal = 'planning'"
         />
         <PassageFieldRow
-          label="Passages dans la journée"
+          label="Créneaux de passage"
           :value="dailyTimesSummary"
           @click="editModal = 'daily_times'"
-        />
-        <PassageFieldRow
-          label="Heure de passage"
-          :value="timeSummary"
-          @click="editModal = 'time'"
         />
         <PassageFieldRow
           label="Lieu"
@@ -100,9 +95,9 @@
       </div>
     </UModal>
 
-    <UModal v-model:open="dailyTimesOpen" title="Passages dans la journée">
+    <UModal v-model:open="dailyTimesOpen" title="Créneaux de passage">
       <div class="space-y-3 p-1">
-        <p class="text-sm text-gray-500">Sélectionnez un ou plusieurs créneaux (ex. matin + après-midi)</p>
+        <p class="text-sm text-gray-500">Choisissez les moments à créer chaque jour (ex. matin + midi).</p>
         <div class="flex flex-wrap gap-2">
           <UButton
             v-for="item in dailySlotItems"
@@ -114,14 +109,6 @@
             {{ item.label }}
           </UButton>
         </div>
-        <UButton block @click="editModal = null">Valider</UButton>
-      </div>
-    </UModal>
-
-    <UModal v-model:open="timeOpen" title="Heure de passage">
-      <div class="space-y-3 p-1">
-        <USelect v-model="timeSlot" :items="slotItems" />
-        <UInput v-if="timeSlot === 'custom'" v-model="customTime" type="time" label="Heure" />
         <UButton block @click="editModal = null">Valider</UButton>
       </div>
     </UModal>
@@ -174,7 +161,6 @@ import {
   formatNotesSummary,
   formatPassageDurationSummary,
   formatPlanningSummary,
-  formatTimeSummary,
 } from '~/utils/passage-form-summaries';
 import {
   buildPlanningPayload,
@@ -212,8 +198,6 @@ const tabItems = [
 
 const patientProfile = ref<Record<string, unknown> | null>(null);
 const careCategories = ref<Array<{ id: string; name?: string; label?: string; options?: unknown[] }>>([]);
-const timeSlot = ref<PassageTimeSlot>('morning');
-const customTime = ref('09:00');
 const duration = ref(30);
 const atHome = ref(true);
 const notes = ref('');
@@ -230,24 +214,14 @@ const planningState = ref<PassagePlanningFormState>(
 );
 const dailyTimeSlots = ref<PassageDailyTimeSlot[]>([{ time_slot: 'morning', custom_time: null }]);
 
-const editModal = ref<'planning' | 'time' | 'daily_times' | 'location' | 'duration' | 'care' | 'notes' | null>(null);
+const editModal = ref<'planning' | 'daily_times' | 'location' | 'duration' | 'care' | 'notes' | null>(null);
 const planningOpen = computed({ get: () => editModal.value === 'planning', set: (v) => { if (!v) editModal.value = null; } });
 const dailyTimesOpen = computed({ get: () => editModal.value === 'daily_times', set: (v) => { if (!v) editModal.value = null; } });
-const timeOpen = computed({ get: () => editModal.value === 'time', set: (v) => { if (!v) editModal.value = null; } });
 const locationOpen = computed({ get: () => editModal.value === 'location', set: (v) => { if (!v) editModal.value = null; } });
 const durationOpen = computed({ get: () => editModal.value === 'duration', set: (v) => { if (!v) editModal.value = null; } });
 const careOpen = computed({ get: () => editModal.value === 'care', set: (v) => { if (!v) editModal.value = null; } });
 const notesOpen = computed({ get: () => editModal.value === 'notes', set: (v) => { if (!v) editModal.value = null; } });
 
-const slotItems = [
-  { label: 'Toute la journée', value: 'all_day' },
-  { label: 'Matin', value: 'morning' },
-  { label: 'Midi', value: 'noon' },
-  { label: 'Après-midi', value: 'afternoon' },
-  { label: 'Soir', value: 'evening' },
-  { label: 'Nuit', value: 'night' },
-  { label: 'Personnalisée', value: 'custom' },
-];
 const durationItems = [
   { label: '15 min', value: 15 },
   { label: '30 min', value: 30 },
@@ -259,12 +233,13 @@ const dailySlotItems = [
   { label: 'Midi', value: 'noon' as PassageTimeSlot },
   { label: 'Après-midi', value: 'afternoon' as PassageTimeSlot },
   { label: 'Soir', value: 'evening' as PassageTimeSlot },
+  { label: 'Nuit', value: 'night' as PassageTimeSlot },
+  { label: 'Toute la journée', value: 'all_day' as PassageTimeSlot },
 ];
 
 const passageCount = computed(() => previewPassageCount(planningState.value, nursingItems.value, dailyTimeSlots.value.length));
 const planningSummary = computed(() => formatPlanningSummary(planningState.value, passageCount.value));
 const dailyTimesSummary = computed(() => formatDailyTimesSummary(dailyTimeSlots.value));
-const timeSummary = computed(() => formatTimeSummary(timeSlot.value, customTime.value));
 const durationSummary = computed(() => formatPassageDurationSummary(duration.value, ''));
 const careSummary = computed(() => formatCareSummary(nursingItems.value, careCategories.value));
 const notesSummary = computed(() => formatNotesSummary(notes.value));
@@ -296,15 +271,17 @@ watch(nursingItems, (items) => {
 function toggleDailySlot(slot: PassageTimeSlot) {
   const order = dailySlotItems.map((i) => i.value);
   const current = dailyTimeSlots.value.map((s) => s.time_slot);
-  if (current.includes(slot)) {
-    if (current.length <= 1) return;
-    dailyTimeSlots.value = dailyTimeSlots.value.filter((s) => s.time_slot !== slot);
-  } else {
-    dailyTimeSlots.value = [...dailyTimeSlots.value, { time_slot: slot, custom_time: null }]
-      .sort((a, b) => order.indexOf(a.time_slot) - order.indexOf(b.time_slot));
+  if (slot === 'all_day') {
+    dailyTimeSlots.value = [{ time_slot: 'all_day', custom_time: null }];
+    return;
   }
-  if (dailyTimeSlots.value.length === 1) {
-    timeSlot.value = dailyTimeSlots.value[0].time_slot;
+  const currentWithoutAllDay = dailyTimeSlots.value.filter((s) => s.time_slot !== 'all_day');
+  if (current.includes(slot)) {
+    if (currentWithoutAllDay.length <= 1) return;
+    dailyTimeSlots.value = currentWithoutAllDay.filter((s) => s.time_slot !== slot);
+  } else {
+    dailyTimeSlots.value = [...currentWithoutAllDay, { time_slot: slot, custom_time: null }]
+      .sort((a, b) => order.indexOf(a.time_slot) - order.indexOf(b.time_slot));
   }
 }
 
@@ -347,16 +324,17 @@ async function submit() {
 
   const built = buildPlanningPayload(planningState.value, nursingItems.value);
   const slotsPayload: PassageDailyTimeSlot[] =
-    dailyTimeSlots.value.length === 1
-      ? [{ time_slot: timeSlot.value, custom_time: timeSlot.value === 'custom' ? customTime.value : null }]
-      : dailyTimeSlots.value;
+    dailyTimeSlots.value.length > 0
+      ? dailyTimeSlots.value
+      : [{ time_slot: 'morning', custom_time: null }];
+  const primarySlot = slotsPayload[0];
   const planningConfig = embedTimeRangeInPlanningConfig(built.planning_config, null, slotsPayload);
   const input: NursePassageSeriesInput = {
     patient_id: patientId.value,
     planning_type: built.planning_type,
     planning_config: planningConfig,
-    time_slot: slotsPayload[0]?.time_slot ?? timeSlot.value,
-    custom_time: timeSlot.value === 'custom' ? customTime.value : null,
+    time_slot: primarySlot.time_slot,
+    custom_time: primarySlot.time_slot === 'custom' ? primarySlot.custom_time ?? null : null,
     duration_minutes: duration.value,
     at_home: atHome.value,
     nursing_items: nursingItems.value,
