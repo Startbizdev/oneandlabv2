@@ -115,7 +115,7 @@ function InputComponent(
     returnKeyLabel: Platform.OS === 'android' && isNumeric ? 'Valider' : undefined,
     inputAccessoryViewID: iosNumericAccessory,
     blurOnSubmit: isMultiline ? false : (blurOnSubmitProp ?? true),
-    submitBehavior: isMultiline ? 'newline' : 'blurAndSubmit',
+    submitBehavior: (isMultiline ? 'newline' : 'blurAndSubmit') as TextInputProps['submitBehavior'],
     accessibilityLabel: props.accessibilityLabel ?? label,
     placeholderTextColor: c.textTertiary,
     selectionColor: c.primary,

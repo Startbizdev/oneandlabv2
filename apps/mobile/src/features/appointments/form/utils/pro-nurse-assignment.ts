@@ -10,10 +10,10 @@ export type ProNurseAssignment = {
   };
 };
 
-export function applyProNurseAssignmentToPayloads(
-  payloads: Record<string, unknown>[],
+export function applyProNurseAssignmentToPayloads<T extends Record<string, unknown>>(
+  payloads: T[],
   assignment: ProNurseAssignment | null | undefined,
-): Record<string, unknown>[] {
+): T[] {
   if (!assignment || assignment.mode !== 'patient_nurse') {
     return payloads;
   }
@@ -27,20 +27,20 @@ export function applyProNurseAssignmentToPayloads(
 
   let externalAttached = false;
   return payloads.map((raw) => {
-    const p = { ...raw };
-    if (typeof p.type !== 'string' || !isNursingAppointment(String(p.type))) {
-      return p;
+    if (typeof raw.type !== 'string' || !isNursingAppointment(String(raw.type))) {
+      return raw;
     }
+    const extra: Record<string, unknown> = {};
     if (linkedNurseId) {
-      p.assigned_nurse_id = linkedNurseId;
+      extra.assigned_nurse_id = linkedNurseId;
     } else if (extPhone) {
-      p.skip_zone_dispatch = true;
+      extra.skip_zone_dispatch = true;
       if (!externalAttached) {
-        p.external_nurse_invite = { phone: extPhone };
+        extra.external_nurse_invite = { phone: extPhone };
         externalAttached = true;
       }
     }
-    return p;
+    return { ...raw, ...extra };
   });
 }
 
