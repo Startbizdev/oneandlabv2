@@ -691,12 +691,15 @@ export function useMultiAppointmentWizard(opts: {
         creationBatchId: batchId,
         creatorRole: opts.role,
         creatorUserId: user?.id ?? '',
-      }).map((p) => ({
-        ...p,
-        patient_booking_consent: true,
-        type: p.type ?? selectedServices[0]?.type,
-        form_type: p.form_type ?? p.type ?? selectedServices[0]?.type,
-      }));
+      }).map((p) => {
+        const type = typeof p.type === 'string' ? p.type : selectedServices[0]?.type;
+        return {
+          ...p,
+          patient_booking_consent: true,
+          type,
+          form_type: typeof p.form_type === 'string' ? p.form_type : type,
+        };
+      });
 
       payloads = applyProNurseAssignmentToPayloads(
         payloads,
