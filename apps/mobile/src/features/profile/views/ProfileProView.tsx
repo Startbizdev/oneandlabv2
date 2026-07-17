@@ -30,7 +30,9 @@ import { ProfilePhotosSheetContent } from '@/features/profile/components/Profile
 import { ProfileSecurityLinkRow } from '@/features/profile/components/ProfileSecurityLinkRow';
 import { ProfilePrescriptionSignatureSection } from '@/features/profile/components/ProfilePrescriptionSignatureSection';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
+import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
 import { fetchUser, updateProfileImages, updateUser } from '@/features/profile/api/profile.service';
+import { generateProPublicSlug } from '@/features/profile/utils/generate-public-slug';
 import {
   parseProfileSocialLinks,
   serializeProfileSocialLinks,
@@ -155,6 +157,20 @@ export function ProfileProView() {
     onError: (e) => handleApiError(e, toast, 'updateUser'),
   });
 
+  const saveToggle = useMutation({
+    mutationFn: (body: { is_public_profile_enabled: boolean; public_slug?: string }) =>
+      updateUser(user!.id, body),
+    onSuccess: async () => {
+      await fetchMe();
+      void qc.invalidateQueries({ queryKey: queryKeys.profile.user(user!.id) });
+      toast('Fiche publique mise à jour', { type: 'success' });
+    },
+    onError: (e) => handleApiError(e, toast, 'updateUser'),
+  });
+
+  const publicEnabled = !!q.data?.is_public_profile_enabled;
+  const publicSlug = q.data?.public_slug?.trim() ?? '';
+
   if (q.isLoading) {
     return <SkeletonProfileScreen cards={2} />;
   }
@@ -267,6 +283,36 @@ export function ProfileProView() {
           />
         </ProfileSection>
 
+        <ProfileSection
+          title="Fiche publique"
+          description="Rendez votre profil visible sur Cary pour recevoir des rendez-vous"
+          Icon={Globe}
+        >
+          <View style={styles.toggleCard}>
+            <ProfileToggleRow
+              label="Profil public"
+              hint={publicEnabled ? 'Visible sur Cary' : 'Non visible sur Cary'}
+              value={publicEnabled}
+              busy={saveToggle.isPending}
+              onValueChange={(v) => {
+                const payload: { is_public_profile_enabled: boolean; public_slug?: string } = {
+                  is_public_profile_enabled: v,
+                };
+                if (v && !publicSlug) {
+                  payload.public_slug = generateProPublicSlug(
+                    firstName || q.data?.first_name || user?.first_name,
+                    lastName || q.data?.last_name || user?.last_name,
+                  );
+                }
+                saveToggle.mutate(payload);
+              }}
+            />
+            {publicEnabled && publicSlug ? (
+              <AppText style={styles.slugText}>cary.fr/professionnel/{publicSlug}</AppText>
+            ) : null}
+          </View>
+        </ProfileSection>
+
         {user?.id ? (
           <ProfilePrescriptionSignatureSection
             userId={user.id}
@@ -331,6 +377,15 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
+  },
+  toggleCard: {
+    gap: spacing[1],
+  },
+  slugText: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
+    paddingHorizontal: spacing[2],
   },
 };
 }

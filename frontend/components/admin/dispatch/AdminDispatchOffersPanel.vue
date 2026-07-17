@@ -1,9 +1,9 @@
 <template>
   <div class="rounded-xl border border-default/50 bg-default p-4 shadow-sm">
-    <h3 class="mb-3 text-sm font-medium text-default">Offres et vagues</h3>
+    <h3 class="mb-3 text-sm font-medium text-default">Propositions et envois</h3>
 
     <div v-if="activeOffers.length" class="mb-4">
-      <p class="mb-2 text-xs font-medium text-muted uppercase tracking-wide">Offres actives ({{ activeOffers.length }})</p>
+      <p class="mb-2 text-xs font-medium text-muted uppercase tracking-wide">Propositions en cours ({{ activeOffers.length }})</p>
       <ul class="space-y-2">
         <li
           v-for="offer in activeOffers"
@@ -15,10 +15,10 @@
         </li>
       </ul>
     </div>
-    <p v-else class="mb-4 text-sm text-muted">Aucune offre active.</p>
+    <p v-else class="mb-4 text-sm text-muted">Aucune proposition en cours.</p>
 
     <div v-if="dispatchWaves.length">
-      <p class="mb-2 text-xs font-medium text-muted uppercase tracking-wide">Vagues dispatch</p>
+      <p class="mb-2 text-xs font-medium text-muted uppercase tracking-wide">Vagues d’envoi</p>
       <ul class="space-y-3">
         <li
           v-for="(wave, idx) in dispatchWaves"
@@ -76,8 +76,8 @@ function formatDate(d: string | null): string {
 function roleLabel(role: string | null | undefined): string {
   const map: Record<string, string> = {
     nurse: 'Infirmier',
-    lab: 'Labo',
-    subaccount: 'Sous-lab',
+    lab: 'Laboratoire',
+    subaccount: 'Sous-compte labo',
     preleveur: 'Préleveur',
   };
   return role ? (map[role] ?? role) : '—';
@@ -85,8 +85,8 @@ function roleLabel(role: string | null | undefined): string {
 
 function waveLabel(type: string): string {
   const map: Record<string, string> = {
-    zone_dispatch: 'Dispatch zone',
-    redispatch: 'Redispatch',
+    zone_dispatch: 'Envoi zone géographique',
+    redispatch: 'Nouvelle diffusion',
     nurse_share_redispatch_zone: 'Zone après partage',
   };
   return map[type] ?? type;

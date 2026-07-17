@@ -182,7 +182,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $roleStmt->execute([$providerId]);
             $providerRow = $roleStmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($providerRow && $providerRow['role'] === 'nurse') {
+            $providerRole = (string) ($providerRow['role'] ?? '');
+
+            if ($providerRole === 'nurse') {
                 // Infirmier : catégories nursing activées via nurse_category_preferences
                 $ccf = care_categories_column_fragment($db, 'cc');
                 $sql = "
@@ -198,14 +200,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $stmt = $db->prepare($sql);
                 $stmt->execute([$providerId]);
                 $categories = $stmt->fetchAll();
-                if (!$isPickerScope) {
-                    $categories = appendCategoryOptions($db, $categories);
-                } else {
-                    foreach ($categories as &$c) {
-                        $c['options'] = [];
-                    }
-                    unset($c);
-                }
+            } elseif ($providerRole === 'pro') {
+                // Pro de santé (QR) : prélèvements + soins infirmiers
+                $ccf = care_categories_column_fragment($db, '');
+                $sql = 'SELECT id, name, description, type' . $ccf . ', is_active, created_at
+                    FROM care_categories
+                    WHERE is_active = TRUE AND type IN (?, ?)
+                    ORDER BY FIELD(type, \'nursing\', \'blood_test\'), name ASC';
+                $stmt = $db->prepare($sql);
+                $stmt->execute(['nursing', 'blood_test']);
+                $categories = $stmt->fetchAll();
             } else {
                 // Lab/subaccount : toutes les catégories blood_test actives
                 $ccf = care_categories_column_fragment($db, '');
@@ -213,14 +217,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $stmt = $db->prepare($sql);
                 $stmt->execute(['blood_test']);
                 $categories = $stmt->fetchAll();
-                if (!$isPickerScope) {
-                    $categories = appendCategoryOptions($db, $categories);
-                } else {
-                    foreach ($categories as &$c) {
-                        $c['options'] = [];
-                    }
-                    unset($c);
+            }
+
+            if (!$isPickerScope) {
+                $categories = appendCategoryOptions($db, $categories);
+            } else {
+                foreach ($categories as &$c) {
+                    $c['options'] = [];
                 }
+                unset($c);
             }
         } else {
             $ccf = care_categories_column_fragment($db, '');

@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-# Met à jour les variables MOBILE_* dans /var/www/oneandlab/.env (prod).
+﻿#!/usr/bin/env bash
+# Met Ã  jour les variables MOBILE_* dans /var/www/oneandlab/.env (prod).
 set -euo pipefail
 
 ENV="${REMOTE_ENV:-/var/www/oneandlab/.env}"

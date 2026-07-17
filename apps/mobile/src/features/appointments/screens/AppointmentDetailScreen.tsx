@@ -42,6 +42,7 @@ import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
 import { filterListDocuments } from '../detail/utils/document-labels';
 import { staffPatientProfilePath } from '@/features/patients/utils/staff-hub-navigation';
+import { beneficiaryDisplayName } from '@/utils/beneficiary-display-name';
 import { StackScrollView } from '@/components/navigation/StackScrollView';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { spacing } from '@/theme';
@@ -242,6 +243,26 @@ export function AppointmentDetailScreen({ role }: Props) {
   const openPatientProfile = patientProfilePath
     ? () => router.push(patientProfilePath as never)
     : undefined;
+  // Bénéficiaire ≠ titulaire du compte (proche ou nom saisi dans le formulaire) :
+  // le bouton ouvre la fiche du titulaire, on l’annonce explicitement.
+  const accountHolderName = [
+    s.patientAccountProfile?.first_name,
+    s.patientAccountProfile?.last_name,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  const normalizeName = (v: string) => v.trim().replace(/\s+/g, ' ').toLowerCase();
+  const beneficiaryName = beneficiaryDisplayName(primary);
+  const beneficiaryDiffersFromHolder = Boolean(
+    accountHolderName &&
+      beneficiaryName &&
+      beneficiaryName !== '—' &&
+      normalizeName(accountHolderName) !== normalizeName(beneficiaryName),
+  );
+  const viewPatientProfileLabel = beneficiaryDiffersFromHolder
+    ? `Profil du titulaire · ${accountHolderName}`
+    : undefined;
   const showPrescription =
     role === 'pro' && config.showPrescriptionBlock && !isAppointmentCanceled(primary.status);
 
@@ -283,6 +304,7 @@ export function AppointmentDetailScreen({ role }: Props) {
                   batchLoading={s.siblingsLoading}
                   showMapActions={role !== 'patient'}
                   onViewPatientProfile={openPatientProfile}
+                  viewPatientProfileLabel={viewPatientProfileLabel}
                 />
               </View>
               <StaffPatientKvSection apt={primary} />

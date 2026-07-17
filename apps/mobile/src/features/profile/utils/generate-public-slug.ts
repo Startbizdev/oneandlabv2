@@ -18,3 +18,12 @@ export function generateNursePublicSlug(
   const slug = slugifySegment(`${firstName ?? ''}-${lastName ?? ''}`);
   return slug || 'profil';
 }
+
+/** Slug pro de santé : `prenom-nom` (URL `/professionnel/{slug}`). */
+export function generateProPublicSlug(
+  firstName?: string | null,
+  lastName?: string | null,
+): string {
+  const slug = slugifySegment(`${firstName ?? ''}-${lastName ?? ''}`);
+  return slug || 'profil';
+}

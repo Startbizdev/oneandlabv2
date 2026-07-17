@@ -39,6 +39,8 @@ interface Props {
   showMapActions?: boolean;
   /** Bouton « Voir le profil » (pro / infirmier). */
   onViewPatientProfile?: () => void;
+  /** Libellé custom du bouton profil (ex. « Profil du titulaire · X » quand bénéficiaire ≠ titulaire). */
+  viewPatientProfileLabel?: string;
 }
 
 const CONTACT_ICONS = {
@@ -75,10 +77,12 @@ function InfoRow({
   row,
   index,
   onViewPatientProfile,
+  viewPatientProfileLabel,
 }: {
   row: RdvInfoRow;
   index: number;
   onViewPatientProfile?: () => void;
+  viewPatientProfileLabel?: string;
 }) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'RdvAppointmentInfoSection.InfoRow');
@@ -112,13 +116,16 @@ function InfoRow({
             </Row>
             {onViewPatientProfile ? (
               <Button
-                title="Voir le profil"
+                title={viewPatientProfileLabel ?? 'Voir le profil'}
                 variant="muted"
                 size="sm"
                 leftIcon={<User size={iconSize.xs} color={c.textSecondary} strokeWidth={2.25} />}
                 onPress={onViewPatientProfile}
                 style={styles.profileButton}
-                accessibilityLabel={`Voir le profil de ${[row.firstName, row.lastName].filter(Boolean).join(' ')}`}
+                accessibilityLabel={
+                  viewPatientProfileLabel ??
+                  `Voir le profil de ${[row.firstName, row.lastName].filter(Boolean).join(' ')}`
+                }
               />
             ) : null}
           </View>
@@ -151,6 +158,7 @@ export function RdvAppointmentInfoSection({
   batchLoading = false,
   showMapActions = false,
   onViewPatientProfile,
+  viewPatientProfileLabel,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_RdvAppointmentInfoSection_tsx_RdvAppointmentInfoSection_styles');
@@ -226,6 +234,7 @@ export function RdvAppointmentInfoSection({
               row={row}
               index={rowIndex}
               onViewPatientProfile={row.kind === 'identity' ? onViewPatientProfile : undefined}
+              viewPatientProfileLabel={row.kind === 'identity' ? viewPatientProfileLabel : undefined}
             />
           );
           rowIndex += 1;
@@ -253,6 +262,7 @@ export function RdvAppointmentInfoSection({
               row={row}
               index={rowIndex}
               onViewPatientProfile={row.kind === 'identity' ? onViewPatientProfile : undefined}
+              viewPatientProfileLabel={row.kind === 'identity' ? viewPatientProfileLabel : undefined}
             />
           );
           rowIndex += 1;

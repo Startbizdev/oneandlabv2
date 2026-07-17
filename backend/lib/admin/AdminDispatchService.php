@@ -663,16 +663,16 @@ final class AdminDispatchService
     {
         $labels = [
             'created' => 'Création du rendez-vous',
-            'zone_dispatch' => 'Dispatch zone géographique',
-            'redispatch' => 'Redispatch',
+            'zone_dispatch' => 'Envoi zone géographique',
+            'redispatch' => 'Nouvelle diffusion',
             'external_nurse_invite' => 'Invitation SMS infirmier externe',
             'direct_assign' => 'Assignation directe',
-            'offer_declined' => 'Offre refusée',
-            'offer_accepted' => 'Offre acceptée',
+            'offer_declined' => 'Proposition refusée',
+            'offer_accepted' => 'Proposition acceptée',
             'offer_accepted_via_share_token' => 'Accepté via lien de partage',
             'nurse_share_release' => 'Partage lien — créneau libéré',
             'nurse_share_link_created' => 'Lien de partage généré',
-            'nurse_share_redispatch_zone' => 'Rediffusion zone après partage',
+            'nurse_share_redispatch_zone' => 'Nouvelle diffusion zone après partage',
             'reassign' => 'Réassignation',
         ];
         $base = $labels[$eventType] ?? $eventType;
@@ -690,13 +690,29 @@ final class AdminDispatchService
      */
     private function statusLabel(string $status, string $note, array $meta): string
     {
+        $statusFr = $this->statusToFrench($status);
         if (!empty($meta['redispatch'])) {
-            return 'Redispatch (changement statut)';
+            return 'Nouvelle diffusion (changement de statut)';
         }
         if ($note !== '') {
-            return "Statut → {$status} — {$note}";
+            return "Statut → {$statusFr} — {$note}";
         }
-        return "Statut → {$status}";
+        return "Statut → {$statusFr}";
+    }
+
+    private function statusToFrench(string $status): string
+    {
+        $map = [
+            'pending' => 'En attente',
+            'confirmed' => 'Confirmé',
+            'planned' => 'Planifié',
+            'inProgress' => 'En cours',
+            'completed' => 'Terminé',
+            'canceled' => 'Annulé',
+            'expired' => 'Expiré',
+            'refused' => 'Refusé',
+        ];
+        return $map[$status] ?? $status;
     }
 
     /**
@@ -706,15 +722,17 @@ final class AdminDispatchService
     {
         $key = $detailAction !== '' ? $detailAction : $action;
         $labels = [
-            'redispatch' => 'Redispatch (log)',
-            'decline_offer' => 'Refus d\'offre',
-            'nurse_share_redispatch_zone' => 'Rediffusion zone après partage',
-            'create' => 'Création (log)',
+            'redispatch' => 'Nouvelle diffusion (journal)',
+            'decline_offer' => 'Refus de proposition',
+            'nurse_share_redispatch_zone' => 'Nouvelle diffusion zone après partage',
+            'create' => 'Création (journal)',
             'update' => 'Mise à jour',
         ];
         $base = $labels[$key] ?? $key;
         if (!empty($details['old_status']) && !empty($details['new_status'])) {
-            return $base . ' : ' . $details['old_status'] . ' → ' . $details['new_status'];
+            $old = $this->statusToFrench((string) $details['old_status']);
+            $new = $this->statusToFrench((string) $details['new_status']);
+            return $base . ' : ' . $old . ' → ' . $new;
         }
         return $base;
     }

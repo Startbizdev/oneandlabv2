@@ -1,6 +1,6 @@
 <template>
   <div class="rounded-xl border border-default/50 bg-default p-4 shadow-sm">
-    <h3 class="mb-3 text-sm font-medium text-default">Acteurs</h3>
+    <h3 class="mb-3 text-sm font-medium text-default">Intervenants</h3>
     <dl class="grid gap-3 text-sm sm:grid-cols-2">
       <div v-if="identity.creator">
         <dt class="text-muted">Créé par</dt>
@@ -43,7 +43,7 @@
         <dd>{{ formatDate(identity.scheduled_at) }}<span v-if="identity.creneau"> — {{ identity.creneau }}</span></dd>
       </div>
       <div v-if="identity.dispatch_mode">
-        <dt class="text-muted">Mode dispatch</dt>
+        <dt class="text-muted">Mode d’envoi</dt>
         <dd>{{ dispatchModeLabel(identity.dispatch_mode) }}</dd>
       </div>
     </dl>
@@ -68,13 +68,13 @@ function formatDate(d: string | null): string {
 
 function roleLabel(role: string | null | undefined): string {
   const map: Record<string, string> = {
-    pro: 'Pro',
+    pro: 'Professionnel',
     nurse: 'Infirmier',
-    lab: 'Labo',
-    subaccount: 'Sous-lab',
+    lab: 'Laboratoire',
+    subaccount: 'Sous-compte labo',
     preleveur: 'Préleveur',
     patient: 'Patient',
-    super_admin: 'Admin',
+    super_admin: 'Administrateur',
   };
   return role ? (map[role] ?? role) : '—';
 }
@@ -82,7 +82,7 @@ function roleLabel(role: string | null | undefined): string {
 function dispatchModeLabel(mode: string): string {
   const map: Record<string, string> = {
     zone: 'Zone géographique',
-    external_invite: 'Invite SMS',
+    external_invite: 'Invitation SMS',
     direct_assign: 'Assignation directe',
     manual: 'Manuel (admin)',
   };
