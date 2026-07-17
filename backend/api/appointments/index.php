@@ -1242,7 +1242,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $dispatchMode = 'zone';
         if ($externalNurseInvite !== null && ($inputForCreate['type'] ?? '') === 'nursing') {
             $dispatchMode = 'external_invite';
-        } elseif (!empty($inputForCreate['assigned_pro_id']) || !empty($inputForCreate['assigned_nurse_id']) || !empty($inputForCreate['assigned_lab_id'])) {
+        } elseif (!empty($inputForCreate['assigned_nurse_id']) || !empty($inputForCreate['assigned_lab_id'])) {
+            // QR / fiche infirmier ou lab : attribution directe (pas de zone)
             $dispatchMode = 'direct_assign';
         } elseif (($user['role'] ?? '') === 'nurse' && ($inputForCreate['type'] ?? '') === 'nursing') {
             $dispatchMode = 'direct_assign';
@@ -1253,6 +1254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         } elseif (($user['role'] ?? '') === 'super_admin') {
             $dispatchMode = 'manual';
         }
+        // Note : assigned_pro_id seul (QR pro) reste en mode « zone » — le pro est notifié à part.
         $dispatchLogger->setDispatchMode($id, $dispatchMode);
         $dispatchLogger->log(
             $id,

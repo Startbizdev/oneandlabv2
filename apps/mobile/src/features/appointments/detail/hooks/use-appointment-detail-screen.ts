@@ -64,6 +64,7 @@ export function useAppointmentDetailScreen(
     return !ext.beneficiary_profile_image_url;
   }, [primary, patientId, relativeId, role]);
 
+  /** Fiche du titulaire du compte : avatar + détection bénéficiaire ≠ titulaire (« Voir le profil »). */
   const patientProfileQ = useQuery({
     queryKey: queryKeys.patients.detail(patientId ?? ''),
     queryFn: async () => {
@@ -71,7 +72,7 @@ export function useAppointmentDetailScreen(
       if (!res.success) return null;
       return res.data ?? null;
     },
-    enabled: needsPatientAvatarEnrichment,
+    enabled: Boolean(patientId) && STAFF_PROFILE_MERGE_ROLES.has(role),
     staleTime: 60_000,
   });
 
@@ -210,6 +211,8 @@ export function useAppointmentDetailScreen(
     id,
     config,
     apt,
+    /** Fiche du titulaire du compte (staff uniquement, null sinon). */
+    patientAccountProfile: patientProfileQ.data ?? null,
     primary: primaryForDisplay,
     batchSorted,
     isMultiBatch,

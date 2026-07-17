@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchHealthRecordCompletion,
@@ -46,6 +46,8 @@ export function useHealthRecordWizard(sectionFilter?: string, questionKey?: stri
 
   const [stepIndex, setStepIndex] = useState(0);
   const [localAnswers, setLocalAnswers] = useState<Record<string, unknown>>({});
+  /** Évite de re-seed l’index quand le cache recap se met à jour après chaque réponse. */
+  const seededQuestionKeyRef = useRef<string | undefined>(undefined);
 
   const savedAnswers = useMemo(() => {
     const map: Record<string, unknown> = {};
@@ -65,19 +67,21 @@ export function useHealthRecordWizard(sectionFilter?: string, questionKey?: stri
     return recapItemsToQuestions(section?.items);
   }, [recapQ.data?.sections, sectionFilter]);
 
+  const schemaSections = schemaQ.data?.sections;
   const questions = useMemo(() => {
-    const sections = schemaQ.data?.sections ?? [];
+    const sections = schemaSections ?? [];
     const filteredSections = sectionFilter
       ? sections.filter((s) => s.id === sectionFilter)
       : sections;
     const schemaQuestions = flattenQuestions(filteredSections);
     if (schemaQuestions.length > 0) return schemaQuestions;
     return recapQuestions;
-  }, [schemaQ.data, sectionFilter, recapQuestions]);
+    // schemaSections : stable tant que le schéma ne change pas (pas à chaque PATCH recap)
+  }, [schemaSections, sectionFilter, recapQuestions]);
 
   const sectionMeta = useMemo(() => {
     if (!sectionFilter) return null;
-    const fromSchema = schemaQ.data?.sections.find((s) => s.id === sectionFilter);
+    const fromSchema = schemaSections?.find((s) => s.id === sectionFilter);
     if (fromSchema) return fromSchema;
     const fromRecap = recapQ.data?.sections.find((s) => s.id === sectionFilter);
     if (!fromRecap) return null;
@@ -86,16 +90,24 @@ export function useHealthRecordWizard(sectionFilter?: string, questionKey?: stri
       label_fr: fromRecap.label_fr,
       questions: recapQuestions,
     };
-  }, [schemaQ.data, recapQ.data, sectionFilter, recapQuestions]);
+  }, [schemaSections, recapQ.data, sectionFilter, recapQuestions]);
 
+  // Reset uniquement au changement de section (pas quand `questions` est recalculé après save)
   useEffect(() => {
-    if (!questionKey || questions.length === 0) {
-      setStepIndex(0);
-      return;
-    }
+    setStepIndex(0);
+    seededQuestionKeyRef.current = undefined;
+  }, [sectionFilter]);
+
+  // Position initiale depuis deep-link `?question=` — une seule fois par clé
+  useEffect(() => {
+    if (!questionKey || questions.length === 0) return;
+    if (seededQuestionKeyRef.current === questionKey) return;
     const idx = questions.findIndex((q) => q.key === questionKey);
-    setStepIndex(idx >= 0 ? idx : 0);
-  }, [questionKey, sectionFilter, questions]);
+    if (idx >= 0) {
+      setStepIndex(idx);
+      seededQuestionKeyRef.current = questionKey;
+    }
+  }, [questionKey, questions]);
 
   const current = questions[stepIndex] ?? null;
   const sectionLabel = useMemo(() => {

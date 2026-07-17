@@ -1372,6 +1372,8 @@ class Appointment
             || !empty($data['skip_zone_dispatch'])
             || !empty($data['external_nurse_invite_sent']);
 
+        // Attribution marketing QR pro : le pro est notifié, mais le RDV part quand même en zone
+        // (sauf si un infirmier / lab est déjà assigné — cas QR infirmier / lab).
         $assignedProId = $data['assigned_pro_id'] ?? null;
         if (empty($assignedProId) || trim((string) $assignedProId) === '') {
             try {
@@ -1384,9 +1386,6 @@ class Appointment
             } catch (Exception $e) {
                 // ne pas bloquer
             }
-        }
-        if (!empty($assignedProId)) {
-            $skipDispatch = true;
         }
 
         if (!$skipDispatch) {

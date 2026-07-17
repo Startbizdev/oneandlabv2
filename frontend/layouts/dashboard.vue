@@ -647,7 +647,7 @@ const breadcrumbItems = computed(() => {
     "/admin": { label: "Tableau de bord", icon: "i-lucide-layout-dashboard" },
     "/admin/inscriptions": { label: "Inscriptions", icon: "i-lucide-user-plus" },
     "/admin/appointments": { label: "Rendez-vous", icon: "i-lucide-calendar" },
-    "/admin/dispatch": { label: "Dispatch", icon: "i-lucide-radio-tower" },
+    "/admin/dispatch": { label: "Attribution RDV", icon: "i-lucide-radio-tower" },
     "/admin/calendar": { label: "Calendrier", icon: "i-lucide-calendar-days" },
     "/admin/users": { label: "Utilisateurs", icon: "i-lucide-users" },
     "/admin/categories": { label: "Catégories", icon: "i-lucide-tags" },
@@ -807,7 +807,7 @@ const navigationItems = computed(() => {
           active: active("/admin/appointments"),
         },
         {
-          label: "Dispatch",
+          label: "Attribution RDV",
           icon: "i-lucide-radio-tower",
           to: "/admin/dispatch",
           active: active("/admin/dispatch"),

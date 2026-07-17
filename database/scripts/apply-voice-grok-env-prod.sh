@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-# Voix Cary (Grok STT/TTS xAI) — variables prod dans /var/www/oneandlab/.env
+﻿#!/usr/bin/env bash
+# Voix Cary (Grok STT/TTS xAI) â€” variables prod dans /var/www/oneandlab/.env
 set -euo pipefail
 
 ENV="${REMOTE_ENV:-/var/www/oneandlab/.env}"
@@ -20,7 +20,7 @@ set_kv XAI_TTS_VOICE_ID "$XAI_TTS_VOICE_ID"
 echo "==> Voix Grok (prod) dans $ENV:"
 sudo grep -E '^XAI_TTS_VOICE_ID=' "$ENV" || true
 if sudo grep -q '^XAI_API_KEY=' "$ENV" 2>/dev/null; then
-  echo "XAI_API_KEY=*** (présente)"
+  echo "XAI_API_KEY=*** (prÃ©sente)"
 else
-  echo "⚠️ XAI_API_KEY absente — mode vocal indisponible côté serveur"
+  echo "âš ï¸ XAI_API_KEY absente â€” mode vocal indisponible cÃ´tÃ© serveur"
 fi
