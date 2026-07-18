@@ -449,3 +449,88 @@ export function formatPassageTourListTimeLabel(input: PassageTourListTimeInput):
 
   return fromStop?.trim() || 'Horaire à confirmer';
 }
+
+export const PASSAGE_TIME_SLOT_SORT_ORDER: Record<PassageTimeSlot, number> = {
+  morning: 0,
+  noon: 1,
+  afternoon: 2,
+  evening: 3,
+  night: 4,
+  custom: 5,
+  all_day: 6,
+};
+
+export type TourStopPassageSlotGroup<T extends PassageTourListTimeInput = PassageTourListTimeInput> = {
+  slot: PassageTimeSlot | 'other';
+  label: string;
+  stops: T[];
+};
+
+const TOUR_SLOT_SECTION_ORDER: (PassageTimeSlot | 'other')[] = [
+  'morning',
+  'noon',
+  'afternoon',
+  'evening',
+  'night',
+  'custom',
+  'all_day',
+  'other',
+];
+
+export function resolveTourStopPassageSlot(stop: PassageTourListTimeInput): PassageTimeSlot | 'other' {
+  const explicit = String(stop.passage_time_slot ?? '').trim() as PassageTimeSlot;
+  if (explicit && PASSAGE_TIME_SLOTS.has(explicit)) {
+    return explicit;
+  }
+  if (isAllDayAvailability(stop.availability)) {
+    return 'all_day';
+  }
+  const inferred = inferPassageTimeSlotFromAvailability(stop.availability);
+  return inferred ?? 'other';
+}
+
+/** Regroupe les stops tournée par créneau (Matin, Midi, Après-midi, Soir…). */
+export function groupTourStopsByPassageSlot<T extends PassageTourListTimeInput>(
+  stops: T[],
+): TourStopPassageSlotGroup<T>[] {
+  const buckets = new Map<PassageTimeSlot | 'other', T[]>();
+  for (const stop of stops) {
+    const slot = resolveTourStopPassageSlot(stop);
+    const list = buckets.get(slot) ?? [];
+    list.push(stop);
+    buckets.set(slot, list);
+  }
+  return TOUR_SLOT_SECTION_ORDER.filter((slot) => (buckets.get(slot)?.length ?? 0) > 0).map(
+    (slot) => ({
+      slot,
+      label: slot === 'other' ? 'Autres' : PASSAGE_TIME_SLOT_LABELS[slot],
+      stops: buckets.get(slot)!,
+    }),
+  );
+}
+
+export type TourStopListRow<T extends PassageTourListTimeInput & { stop_id: string }> =
+  | { kind: 'section'; key: string; label: string; slot: PassageTimeSlot | 'other' }
+  | { kind: 'stop'; key: string; stop: T; index: number };
+
+/** Liste aplatie (en-têtes + stops) pour FlatList mobile. */
+export function flattenTourStopsWithSlotSections<T extends PassageTourListTimeInput & { stop_id: string }>(
+  stops: T[],
+): TourStopListRow<T>[] {
+  const groups = groupTourStopsByPassageSlot(stops);
+  const rows: TourStopListRow<T>[] = [];
+  let globalIndex = 0;
+  for (const group of groups) {
+    rows.push({
+      kind: 'section',
+      key: `section-${group.slot}`,
+      label: group.label,
+      slot: group.slot,
+    });
+    for (const stop of group.stops) {
+      rows.push({ kind: 'stop', key: stop.stop_id, stop, index: globalIndex });
+      globalIndex += 1;
+    }
+  }
+  return rows;
+}

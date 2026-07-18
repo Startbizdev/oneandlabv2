@@ -276,6 +276,85 @@ class NotificationMessageFormatter
         return $map[$dd] ?? $dd;
     }
 
+    /** @param array<string,mixed> $formData */
+    public static function shareCareDurationPart(array $formData): string
+    {
+        $passageSource = (string) ($formData['passage_source'] ?? '');
+        $passageMinutes = (int) ($formData['passage_duration_minutes'] ?? 0);
+        if ($passageSource === 'nurse_passage' || $passageMinutes > 0) {
+            if ($passageMinutes === 60) {
+                return '1 h';
+            }
+            if ($passageMinutes > 0 && $passageMinutes % 60 === 0) {
+                return (string) ((int) ($passageMinutes / 60)) . ' h';
+            }
+            if ($passageMinutes > 0) {
+                return $passageMinutes . ' min';
+            }
+        }
+
+        return self::nursingDurationLabel($formData);
+    }
+
+    /** Suffixe créneau pour partage WhatsApp (ex. « le matin », « à midi »). @param array<string,mixed> $formData */
+    public static function shareCreneauSuffix(array $formData): string
+    {
+        $slot = trim((string) ($formData['passage_time_slot'] ?? ''));
+        if ($slot === 'all_day') {
+            return '';
+        }
+
+        $slotLabels = [
+            'morning' => ' le matin',
+            'noon' => ' à midi',
+            'afternoon' => ' l\'après-midi',
+            'evening' => ' le soir',
+            'night' => ' la nuit',
+        ];
+        if ($slot !== '' && isset($slotLabels[$slot])) {
+            return $slotLabels[$slot];
+        }
+        if ($slot === 'custom') {
+            $custom = trim((string) ($formData['custom_time'] ?? ''));
+            if ($custom !== '') {
+                return ' à ' . substr($custom, 0, 5);
+            }
+        }
+
+        $availability = $formData['availability'] ?? $formData['availability_type'] ?? null;
+        if ($availability === null) {
+            return '';
+        }
+        $av = is_string($availability) ? json_decode($availability, true) : $availability;
+        if (!is_array($av) || !isset($av['type'])) {
+            return '';
+        }
+        if ($av['type'] === 'all_day') {
+            return '';
+        }
+        if (
+            $av['type'] === 'custom'
+            && !empty($av['range'])
+            && is_array($av['range'])
+            && count($av['range']) >= 2
+        ) {
+            $start = (int) $av['range'][0];
+            $end = (int) $av['range'][1];
+            $rangeToSuffix = [
+                '8-12' => ' le matin',
+                '12-14' => ' à midi',
+                '14-18' => ' l\'après-midi',
+                '18-21' => ' le soir',
+                '21-23' => ' la nuit',
+            ];
+            $key = $start . '-' . $end;
+
+            return $rangeToSuffix[$key] ?? (' à ' . $start . 'h - ' . $end . 'h');
+        }
+
+        return '';
+    }
+
     public static function preferredNurseGenderLabel(?string $gender): string
     {
         $g = trim((string) ($gender ?? ''));

@@ -5,7 +5,9 @@ import { isVersionLower } from '@oneandlab/shared-utils';
 import { getAppMeta } from '@/features/help/utils/app-meta';
 import {
   ANDROID_PLAY_STORE_URL,
+  APP_BUNDLE_ID,
   APP_DOWNLOAD_FALLBACK_URL,
+  IOS_APP_STORE_ID,
   IOS_APP_STORE_URL,
 } from '@/config/brand';
 
@@ -71,10 +73,53 @@ export function evaluateAppUpdateRequirement(policy: MobileAppVersionPolicy): Ap
   };
 }
 
-export function openAppStoreUrl(url: string): void {
-  const target =
-    Platform.OS === 'android' && url.startsWith('https://play.google.com/')
-      ? url.replace('https://play.google.com/', 'market://')
-      : url;
-  void Linking.openURL(target).catch(() => Linking.openURL(APP_DOWNLOAD_FALLBACK_URL));
+function resolveStoreHttpsUrl(url: string): string {
+  const trimmed = url.trim();
+  return trimmed || defaultStoreUrl();
+}
+
+function extractAndroidPackageId(url: string): string {
+  const match = url.match(/[?&]id=([^&]+)/);
+  return match?.[1] ?? APP_BUNDLE_ID;
+}
+
+function extractIosAppStoreId(url: string): string {
+  const match = url.match(/\/id(\d+)/);
+  if (match?.[1]) return match[1];
+  if (/^\d+$/.test(url.trim())) return url.trim();
+  return IOS_APP_STORE_ID;
+}
+
+function toAndroidPlayStoreDeepLink(httpsUrl: string): string {
+  return `market://details?id=${extractAndroidPackageId(httpsUrl)}`;
+}
+
+function toIosAppStoreDeepLink(httpsUrl: string): string {
+  return `itms-apps://apps.apple.com/app/id${extractIosAppStoreId(httpsUrl)}`;
+}
+
+async function openUrlWithFallbacks(primary: string, fallbacks: string[]): Promise<void> {
+  const candidates = [primary, ...fallbacks];
+  for (let i = 0; i < candidates.length; i += 1) {
+    try {
+      await Linking.openURL(candidates[i]!);
+      return;
+    } catch {
+      // Essayer l’URL suivante.
+    }
+  }
+}
+
+/** Ouvre la fiche store native (Play Store / App Store), avec repli HTTPS puis page Cary. */
+export async function openAppStoreUrl(url: string): Promise<void> {
+  const httpsUrl = resolveStoreHttpsUrl(url);
+
+  if (Platform.OS === 'ios') {
+    await openUrlWithFallbacks(toIosAppStoreDeepLink(httpsUrl), [httpsUrl, APP_DOWNLOAD_FALLBACK_URL]);
+    return;
+  }
+
+  if (Platform.OS === 'android') {
+    await openUrlWithFallbacks(toAndroidPlayStoreDeepLink(httpsUrl), [httpsUrl, APP_DOWNLOAD_FALLBACK_URL]);
+  }
 }

@@ -14,7 +14,7 @@ echo "==> buildscriptoneandlab : étape 2/3 build local + rsync + PM2..."
 echo "==> buildscriptoneandlab : étape 3/4 migrations prod (093–100)..."
 "$SCRIPT_DIR/scripts/run-migration-pending-prod.sh"
 
-echo "==> buildscriptoneandlab : étape 4/4 config prod (mobile 1.7.4 + voix Grok)..."
+echo "==> buildscriptoneandlab : étape 4/4 config prod (mobile 1.7.5 + voix Grok)..."
 SSH_KEY="${SSH_KEY:-$HOME/Desktop/oneandlab-key.pem}"
 if [[ ! -f "$SSH_KEY" && -f "$HOME/.ssh/oneandlab-key.pem" ]]; then
   SSH_KEY="$HOME/.ssh/oneandlab-key.pem"

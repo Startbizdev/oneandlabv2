@@ -131,22 +131,31 @@
 
     <template v-else-if="tour && tour.stops.length">
       <ul class="space-y-2">
-        <li v-for="(stop, index) in tour.stops" :key="stop.stop_id">
-          <PassageSimpleListRow
-            :stop="stop"
-            :index="index"
-            :total="tour.stops.length"
-            :is-next="stop.stop_id === tour.next_stop_id"
-            :categories="careCategories"
-            :saving="saving"
-            :show-reorder="showManualReorder"
-            @toggle-done="toggleStopDone(stop)"
-            @open-detail="openPassageDetail(stop)"
-            @manage-absence="openAbsenceModal(stop)"
-            @move-up="moveStop(index, -1)"
-            @move-down="moveStop(index, 1)"
-          />
-        </li>
+        <template v-for="group in tourStopGroups" :key="group.slot">
+          <li>
+            <p
+              class="mb-2 mt-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+            >
+              {{ group.label }}
+            </p>
+          </li>
+          <li v-for="(stop, index) in group.stops" :key="stop.stop_id">
+            <PassageSimpleListRow
+              :stop="stop"
+              :index="stopIndexById[stop.stop_id] ?? index"
+              :total="tour.stops.length"
+              :is-next="stop.stop_id === tour.next_stop_id"
+              :categories="careCategories"
+              :saving="saving"
+              :show-reorder="showManualReorder"
+              @toggle-done="toggleStopDone(stop)"
+              @open-detail="openPassageDetail(stop)"
+              @manage-absence="openAbsenceModal(stop)"
+              @move-up="moveStop(stopIndexById[stop.stop_id] ?? index, -1)"
+              @move-down="moveStop(stopIndexById[stop.stop_id] ?? index, 1)"
+            />
+          </li>
+        </template>
       </ul>
     </template>
 
@@ -212,7 +221,7 @@
 import type { NurseTourStop } from '~/composables/useNurseTourWeb';
 import type { CareCategoryRowMinimal } from '~/utils/care-icons';
 import type { PatientAbsenceInput } from '@oneandlab/shared-types';
-import { countTourActiveRemainingStops } from '@oneandlab/shared-utils';
+import { countTourActiveRemainingStops, groupTourStopsByPassageSlot } from '@oneandlab/shared-utils';
 import { apiFetch } from '~/utils/api';
 
 definePageMeta({
@@ -256,6 +265,16 @@ const sortFilterActive = computed(
 const showManualReorder = computed(
   () => tour.value?.plan.sort_mode === 'manual' || tour.value?.plan.manual_order_locked,
 );
+
+const tourStopGroups = computed(() => groupTourStopsByPassageSlot(tour.value?.stops ?? []));
+
+const stopIndexById = computed(() => {
+  const map: Record<string, number> = {};
+  (tour.value?.stops ?? []).forEach((stop, index) => {
+    map[stop.stop_id] = index;
+  });
+  return map;
+});
 
 onMounted(async () => {
   try {
