@@ -254,7 +254,10 @@ class PatientRelative
 
         if (isset($data['address'])) {
             if (!empty($data['address'])) {
-                $addressData = $this->crypto->encryptField($data['address']);
+                $addressToEncrypt = is_array($data['address'])
+                    ? json_encode($data['address'], JSON_UNESCAPED_UNICODE)
+                    : (string) $data['address'];
+                $addressData = $this->crypto->encryptField($addressToEncrypt);
                 $updates[] = 'address_encrypted = ?, address_dek = ?';
                 $params[] = $addressData['encrypted'];
                 $params[] = $addressData['dek'];
