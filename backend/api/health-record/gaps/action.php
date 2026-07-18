@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../../../lib/health/bootstrap.php';
-require_once __DIR__ . '/../../../../lib/health/CareGapActionService.php';
+require_once __DIR__ . '/../../../lib/health/bootstrap.php';
+require_once __DIR__ . '/../../../lib/health/CareGapActionService.php';
 
 health_handle_options(['POST', 'OPTIONS']);
 $user = health_require_patient();
@@ -23,7 +23,11 @@ if (!in_array($status, ['clicked', 'dismissed', 'shown'], true)) {
     health_json_error('status invalide', 400);
 }
 
-$service = new CareGapActionService();
-$result = $service->record((string) $user['user_id'], $gapKey, $actionKey, $status);
-
-health_json_response(['success' => true, 'data' => $result]);
+try {
+    $service = new CareGapActionService();
+    $result = $service->record((string) $user['user_id'], $gapKey, $actionKey, $status);
+    health_json_response(['success' => true, 'data' => $result]);
+} catch (Throwable $e) {
+    error_log('[health-record/gaps/action] ' . $e->getMessage());
+    health_json_error('Impossible d\'enregistrer l\'action', 500, 'SERVER_ERROR');
+}

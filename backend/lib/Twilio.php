@@ -88,6 +88,16 @@ class Twilio
     /**
      * Envoie un SMS
      */
+    /** Journalise les échecs SMS sans polluer nginx pour les erreurs d'auth Twilio (config). */
+    private function logSmsFailure(string $context, Throwable $e): void
+    {
+        $msg = $e->getMessage();
+        if (stripos($msg, 'Authenticate') !== false) {
+            return;
+        }
+        error_log($context . ': ' . $msg);
+    }
+
     public function sendSMS(string $to, string $message): array
     {
         $toE164 = self::normalizeRecipientE164($to);
@@ -173,7 +183,7 @@ class Twilio
             $this->sendSMS($to, $message);
             return true;
         } catch (Exception $e) {
-            error_log('Twilio sendNewAppointmentNotification: ' . $e->getMessage());
+            $this->logSmsFailure('Twilio sendNewAppointmentNotification', $e);
             return false;
         }
     }
@@ -211,7 +221,7 @@ class Twilio
             $this->sendSMS($to, $message);
             return true;
         } catch (Exception $e) {
-            error_log('Twilio sendAppointmentConfirmation: ' . $e->getMessage());
+            $this->logSmsFailure('Twilio sendAppointmentConfirmation', $e);
             return false;
         }
     }
@@ -251,7 +261,7 @@ class Twilio
             $this->sendSMS($to, $message);
             return true;
         } catch (Exception $e) {
-            error_log('Twilio sendAppointmentRescheduled: ' . $e->getMessage());
+            $this->logSmsFailure('Twilio sendAppointmentRescheduled', $e);
             return false;
         }
     }
@@ -265,7 +275,7 @@ class Twilio
             $this->sendSMS($to, $message);
             return true;
         } catch (Exception $e) {
-            error_log('Twilio sendProfessionalAppointmentUpdate: ' . $e->getMessage());
+            $this->logSmsFailure('Twilio sendProfessionalAppointmentUpdate', $e);
             return false;
         }
     }

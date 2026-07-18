@@ -117,15 +117,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'data' => $zone ? [$zone] : [],
     ]);
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT') {
-    // Log pour debug
-    error_log('coverage-zones: Début traitement POST/PUT');
-    
     // Vérifier CSRF pour les requêtes modifiantes
     CSRFMiddleware::handle();
 
     // Création ou mise à jour d'une zone de couverture (CERCLES UNIQUEMENT)
     $input = json_decode(file_get_contents('php://input'), true);
-    error_log('coverage-zones: Input reçu: ' . json_encode($input));
     
     $role = $input['role'] ?? $user['role'];
     $ownerId = $user['user_id'];

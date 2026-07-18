@@ -545,7 +545,9 @@ class RegistrationRequest
                     "{$greeting} votre compte Cary en tant que {$roleLabel} a été approuvé ! Connectez-vous dès maintenant : {$baseUrl}"
                 );
             } catch (Throwable $e) {
-                error_log('RegistrationRequest accept SMS: ' . $e->getMessage());
+                if (stripos($e->getMessage(), 'Authenticate') === false) {
+                    error_log('RegistrationRequest accept SMS: ' . $e->getMessage());
+                }
             }
         }
 
