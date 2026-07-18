@@ -6,6 +6,26 @@ require_once __DIR__ . '/TourProximity.php';
 
 final class TourOrderEngine
 {
+    /** @var array<string, int> */
+    private const PASSAGE_SLOT_ORDER = [
+        'morning' => 0,
+        'noon' => 1,
+        'afternoon' => 2,
+        'evening' => 3,
+        'night' => 4,
+        'custom' => 5,
+        'all_day' => 6,
+    ];
+
+    /** @var array<string, string> */
+    private const AVAILABILITY_RANGE_TO_SLOT = [
+        '8-12' => 'morning',
+        '12-14' => 'noon',
+        '14-18' => 'afternoon',
+        '18-21' => 'evening',
+        '21-23' => 'night',
+    ];
+
     /**
      * @param list<array<string, mixed>> $appointments
      * @param array<string, mixed> $plan
@@ -134,7 +154,55 @@ final class TourOrderEngine
 
     private function compareSchedule(array $a, array $b): int
     {
+        $slotCmp = $this->passageSlotRank($a) <=> $this->passageSlotRank($b);
+        if ($slotCmp !== 0) {
+            return $slotCmp;
+        }
+
         return $this->scheduleTimestamp($a) <=> $this->scheduleTimestamp($b);
+    }
+
+    private function passageSlotRank(array $apt): int
+    {
+        $fd = is_array($apt['form_data'] ?? null) ? $apt['form_data'] : [];
+        $slot = trim((string) ($fd['passage_time_slot'] ?? ''));
+        if ($slot !== '' && isset(self::PASSAGE_SLOT_ORDER[$slot])) {
+            return self::PASSAGE_SLOT_ORDER[$slot];
+        }
+
+        $inferred = $this->inferPassageSlotFromAvailability($fd['availability'] ?? $fd['availability_type'] ?? null);
+        if ($inferred !== null && isset(self::PASSAGE_SLOT_ORDER[$inferred])) {
+            return self::PASSAGE_SLOT_ORDER[$inferred];
+        }
+
+        return 99;
+    }
+
+    private function inferPassageSlotFromAvailability(mixed $availability): ?string
+    {
+        if ($availability === null) {
+            return null;
+        }
+        $av = is_string($availability) ? json_decode($availability, true) : $availability;
+        if (!is_array($av) || !isset($av['type'])) {
+            return null;
+        }
+        $type = (string) $av['type'];
+        if ($type === 'all_day') {
+            return 'all_day';
+        }
+        if (
+            $type === 'custom'
+            && !empty($av['range'])
+            && is_array($av['range'])
+            && count($av['range']) >= 2
+        ) {
+            $key = (int) $av['range'][0] . '-' . (int) $av['range'][1];
+
+            return self::AVAILABILITY_RANGE_TO_SLOT[$key] ?? null;
+        }
+
+        return null;
     }
 
     private function scheduleTimestamp(array $apt): int

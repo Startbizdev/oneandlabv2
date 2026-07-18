@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../../lib/AddressDisplayFr.php';
 require_once __DIR__ . '/../../../lib/admin/AdminDispatchEventLogger.php';
 require_once __DIR__ . '/../../../models/User.php';
 require_once __DIR__ . '/../../../models/Appointment.php';
+require_once __DIR__ . '/../../../lib/NotificationMessageFormatter.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -287,19 +288,8 @@ if ($scheduledAt) {
     }
 }
 
-// Créneau : si toute la journée, ne pas afficher de créneau
-$creneauPart = '';
-$availability = $formData['availability'] ?? $formData['availability_type'] ?? null;
-if ($availability !== null) {
-    $av = is_string($availability) ? json_decode($availability, true) : $availability;
-    if (is_array($av) && isset($av['type'])) {
-        if ($av['type'] === 'all_day') {
-            $creneauPart = '';
-        } elseif ($av['type'] === 'custom' && !empty($av['range']) && is_array($av['range']) && count($av['range']) >= 2) {
-            $creneauPart = ' à ' . (int)$av['range'][0] . 'h - ' . (int)$av['range'][1] . 'h';
-        }
-    }
-}
+// Créneau : passage_time_slot ou plage availability → « le matin », « à midi », etc.
+$creneauPart = NotificationMessageFormatter::shareCreneauSuffix($formData);
 
 // Âge et genre du patient (profil patient)
 $patientAge = null;
@@ -334,29 +324,8 @@ $agePart = $patientAge !== null ? $patientAge . ' ans' : '';
 // Un patient / une patiente selon le genre
 $patientLabel = (in_array(strtolower($patientGenre ?? ''), ['f', 'female'], true)) ? 'une patiente' : 'un patient';
 
-// Durée du soins (form_data.duration_days)
-$durationLabels = [
-    '1' => '1 jour',
-    '7' => '7 jours',
-    '10' => '10 jours',
-    '15' => '15 jours',
-    '30' => '30 jours',
-    '60+' => 'Longue durée',
-];
-$durationPart = '';
-$durationDays = isset($formData['duration_days']) ? trim((string) $formData['duration_days']) : '';
-if ($durationDays === 'custom' && !empty($formData['custom_days'])) {
-    $durationPart = trim((string) $formData['custom_days']) . ' jours';
-} elseif (
-    $durationDays !== ''
-    && strtolower($durationDays) !== 'undefined'
-    && strtolower($durationDays) !== 'null'
-) {
-    $mapped = $durationLabels[$durationDays] ?? $durationDays;
-    if ($mapped !== '' && strtolower((string) $mapped) !== 'undefined') {
-        $durationPart = $mapped;
-    }
-}
+// Durée : passage (minutes) ou durée classique (jours), jamais la valeur brute to_define
+$durationPart = NotificationMessageFormatter::shareCareDurationPart($formData);
 
 // Récupérer ou créer le token
 $stmt = $db->prepare('SELECT token, expires_at FROM appointment_share_tokens WHERE appointment_id = ? ORDER BY created_at DESC LIMIT 1');

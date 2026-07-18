@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActionSheetIOS, Alert, FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
 import dayjs from 'dayjs';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -23,7 +23,7 @@ import {
 import { PassageSimpleListRow } from '@/features/nurse-passage/components/PassageSimpleListRow';
 import { PatientAbsenceSheet } from '@/features/patient-absence/components/PatientAbsenceSheet';
 import { deletePatientAbsence } from '@/features/patient-absence/api/patient-absence.service';
-import { countTourActiveRemainingStops, isTourStopAbsent } from '@oneandlab/shared-utils';
+import { countTourActiveRemainingStops, flattenTourStopsWithSlotSections, isTourStopAbsent } from '@oneandlab/shared-utils';
 import { useNurseTour } from '../hooks/use-nurse-tour';
 import { TourCalendarExportAction } from '../components/TourCalendarExportAction';
 import {
@@ -35,6 +35,7 @@ import { TourEmptyPanel } from '../components/TourEmptyPanel';
 import { TourLoadingSkeleton } from '../components/TourLoadingSkeleton';
 import { TourLocateAction } from '../components/TourLocateAction';
 import { TourPassageSectionHeader } from '../components/TourPassageSectionHeader';
+import { TourSlotSectionLabel } from '../components/TourSlotSectionLabel';
 import { TourSortFilterSheet } from '../components/TourSortFilterSheet';
 import { TourStopRescheduleSheet } from '../components/TourStopRescheduleSheet';
 import { TourSummaryCard } from '../components/TourSummaryCard';
@@ -94,6 +95,10 @@ export function NurseTourneeScreen() {
   }, [date]);
 
   const displayStops = tour?.stops ?? [];
+  const tourListRows = useMemo(
+    () => flattenTourStopsWithSlotSections(displayStops),
+    [displayStops],
+  );
   const showManualReorder =
     manualOrderActive || tour?.plan.sort_mode === 'manual' || tour?.plan.manual_order_locked;
 
@@ -347,8 +352,8 @@ export function NurseTourneeScreen() {
           <TourLoadingSkeleton />
         ) : (
           <FlatList
-            data={displayStops}
-            keyExtractor={(item) => item.stop_id}
+            data={tourListRows}
+            keyExtractor={(item) => item.key}
             extraData={`${tour?.summary.done_stops}/${tour?.summary.total_stops}`}
             {...spreadTabSceneScrollProps(listScrollConfig)}
             contentContainerStyle={[
@@ -365,8 +370,12 @@ export function NurseTourneeScreen() {
               />
             }
             showsVerticalScrollIndicator={false}
-            renderItem={({ item: stop, index }) => {
+            renderItem={({ item }) => {
               if (!tour) return null;
+              if (item.kind === 'section') {
+                return <TourSlotSectionLabel label={item.label} />;
+              }
+              const stop = item.stop;
               const toggleDone = () => {
                 if (isTourStopAbsent(stop)) {
                   handleManageAbsence(stop);
@@ -381,7 +390,7 @@ export function NurseTourneeScreen() {
               return (
                 <PassageSimpleListRow
                   stop={stop}
-                  index={index}
+                  index={item.index}
                   total={displayStops.length}
                   isNext={stop.stop_id === tour.next_stop_id}
                   onPressName={() => openPassageDetail(stop)}
