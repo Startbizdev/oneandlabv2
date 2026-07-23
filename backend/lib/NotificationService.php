@@ -72,6 +72,22 @@ class NotificationService
         $this->sms->sendProfessionalAppointmentUpdate($phone, $message);
     }
 
+    /** SMS patient unique à la confirmation (RDV simple ou lot). */
+    private function sendPatientConfirmedSms(?string $phone, array $payload): void
+    {
+        if ($phone === null || trim($phone) === '' || $this->sms === null) {
+            return;
+        }
+        try {
+            if (!isset($payload['option_meta']) && !empty($payload['category_id'])) {
+                $payload['option_meta'] = $this->fetchCareOptionMeta((string) $payload['category_id']);
+            }
+            $this->sms->sendAppointmentConfirmation($phone, $payload);
+        } catch (Exception $e) {
+            error_log('sendPatientConfirmedSms: ' . $e->getMessage());
+        }
+    }
+
     private function resolveProfileRole(string $profileId): string
     {
         try {
@@ -510,21 +526,10 @@ class NotificationService
             ]);
         }
         
-        // SMS au patient (si provider SMS configuré)
-        if (!empty($appointmentData['patient_phone']) && $this->sms !== null) {
-            try {
-                $smsPayload = $appointmentData;
-                $smsPayload['option_meta'] = $this->fetchCareOptionMeta(
-                    isset($appointmentData['category_id']) ? (string) $appointmentData['category_id'] : null
-                );
-                $this->sms->sendAppointmentConfirmation(
-                    $appointmentData['patient_phone'],
-                    $smsPayload
-                );
-            } catch (Exception $e) {
-                error_log('notifyAppointmentConfirmed SMS patient: ' . $e->getMessage());
-            }
-        }
+        $this->sendPatientConfirmedSms(
+            isset($appointmentData['patient_phone']) ? (string) $appointmentData['patient_phone'] : null,
+            $appointmentData
+        );
     }
 
     /**
@@ -604,32 +609,7 @@ class NotificationService
             ]);
         }
 
-        if (!empty($patientPhone) && $this->sms !== null) {
-            try {
-                $professionalName = 'votre infirmier';
-                if ($nurseActorId) {
-                    require_once __DIR__ . '/../models/User.php';
-                    $nurse = (new User())->getById($nurseActorId, 'system', 'system');
-                    $first = trim((string) ($nurse['first_name'] ?? ''));
-                    if ($first !== '') {
-                        $professionalName = $first;
-                    }
-                }
-                $smsPayload = [
-                    'id' => $appointmentId,
-                    'type' => $appointment['type'] ?? 'nursing',
-                    'scheduled_at' => $scheduledAt,
-                    'category_name' => $appointment['category_name'] ?? null,
-                    'form_data' => $formData,
-                    'option_meta' => $this->fetchCareOptionMeta(
-                        isset($appointment['category_id']) ? (string) $appointment['category_id'] : null,
-                    ),
-                ];
-                $this->sms->sendAppointmentRescheduled($patientPhone, $smsPayload, $professionalName);
-            } catch (Exception $e) {
-                error_log('notifyAppointmentRescheduled SMS: ' . $e->getMessage());
-            }
-        }
+        // Pas de SMS patient (coût) : cloche + e-mail suffisent.
     }
 
     /**
@@ -734,25 +714,17 @@ class NotificationService
             ]);
         }
 
-        if (!empty($patientPhone) && $this->sms !== null) {
-            try {
-                $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
-                $url = rtrim($baseUrl, '/') . '/patient/appointments/' . $ids[0];
-                $fd0 = isset($batchRows[0]['form_data']) && is_array($batchRows[0]['form_data'])
-                    ? $batchRows[0]['form_data']
-                    : [];
-                $genderLabel = NotificationMessageFormatter::preferredNurseGenderLabel(
-                    isset($fd0['preferred_nurse_gender']) ? (string) $fd0['preferred_nurse_gender'] : ''
-                );
-                $genderPart = $genderLabel !== '' ? " · {$genderLabel}" : '';
-                $this->sms->sendSMS(
-                    $patientPhone,
-                    "[CONFIRME] Vos {$n} rendez-vous sont confirmés{$genderPart}. Détail : {$url}"
-                );
-            } catch (Exception $e) {
-                // Ne pas bloquer
-            }
-        }
+        $fd0 = isset($batchRows[0]['form_data']) && is_array($batchRows[0]['form_data'])
+            ? $batchRows[0]['form_data']
+            : [];
+        $this->sendPatientConfirmedSms($patientPhone, [
+            'id' => $ids[0],
+            'batch_count' => $n,
+            'scheduled_at' => $batchRows[0]['scheduled_at'] ?? null,
+            'type' => 'nursing',
+            'category_name' => $batchRows[0]['category_name'] ?? null,
+            'form_data' => $fd0,
+        ]);
 
         // Infirmier ayant accepté le lot (une seule notif)
         if (!empty($assignedNurseId)) {
@@ -880,18 +852,16 @@ class NotificationService
             ]);
         }
 
-        if (!empty($patientPhone) && $this->sms !== null) {
-            try {
-                $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
-                $url = rtrim($baseUrl, '/') . '/patient/appointments/' . $ids[0];
-                $this->sms->sendSMS(
-                    $patientPhone,
-                    "[CONFIRME] Vos {$n} rendez-vous de prélèvement sont confirmés. Détail : {$url}"
-                );
-            } catch (Exception $e) {
-                // Ne pas bloquer
-            }
-        }
+        $this->sendPatientConfirmedSms($patientPhone, [
+            'id' => $ids[0],
+            'batch_count' => $n,
+            'scheduled_at' => $batchRows[0]['scheduled_at'] ?? null,
+            'type' => 'blood_test',
+            'category_name' => $batchRows[0]['category_name'] ?? null,
+            'form_data' => isset($batchRows[0]['form_data']) && is_array($batchRows[0]['form_data'])
+                ? $batchRows[0]['form_data']
+                : null,
+        ]);
 
         if (!empty($assignedLabId)) {
             $msg = "Lot {$n} prélèvements · {$patientName}.";
@@ -1237,14 +1207,6 @@ class NotificationService
                     'form_data' => $appointmentData['form_data'] ?? null,
                 ]);
             }
-            // SMS au patient (annulation)
-            if (!empty($appointmentData['patient_phone']) && $this->sms !== null) {
-                try {
-                    $this->sms->sendAppointmentCanceled($appointmentData['patient_phone']);
-                } catch (Exception $e) {
-                    // Ne pas bloquer si l'envoi SMS échoue
-                }
-            }
             // Notification aux admins + préleveur / lab / infirmier : "Le laboratoire NOM a annulé le RDV de PRÉNOM NOM"
             if ($actorDisplayLabel !== null && $actorDisplayLabel !== '' && $patientName !== '') {
                 $messageToPros = $actorDisplayLabel . ' a annulé le RDV de ' . $patientName . '.';
@@ -1412,13 +1374,7 @@ class NotificationService
             'Aucun pro n’a confirmé à temps. Choisissez une autre date.',
             ['appointment_id' => $appointmentId]
         );
-        if (!empty($appointmentData['patient_phone']) && $this->sms !== null) {
-            try {
-                $this->sms->sendAppointmentExpired($appointmentData['patient_phone']);
-            } catch (Exception $e) {
-                // Ne pas bloquer si l'envoi SMS échoue
-            }
-        }
+        // Pas de SMS patient (coût) : cloche suffit.
     }
 
     /**
