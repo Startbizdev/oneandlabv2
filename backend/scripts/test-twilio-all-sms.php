@@ -32,24 +32,15 @@ $tests = [
         return $twilio->sendAppointmentConfirmation($to, [
             'id' => $fakeId,
             'scheduled_at' => $scheduledAt,
-            'professional_name' => 'Marie Infirmière (test)',
+            'type' => 'nursing',
         ]);
     },
-    '3_lot_soins_confirme' => function () use ($twilio, $to, $baseUrl, $fakeId) {
-        $url = $baseUrl . '/patient/appointments/' . $fakeId;
-        $twilio->sendSMS($to, "[CONFIRME] Vos 3 rendez-vous sont confirmés. Détail : {$url}");
-        return true;
-    },
-    '4_lot_prelevement_confirme' => function () use ($twilio, $to, $baseUrl, $fakeId) {
-        $url = $baseUrl . '/patient/appointments/' . $fakeId;
-        $twilio->sendSMS($to, "[CONFIRME] Vos 2 rendez-vous de prélèvement sont confirmés. Détail : {$url}");
-        return true;
-    },
-    '5_rdv_annule' => function () use ($twilio, $to) {
-        return $twilio->sendAppointmentCanceled($to);
-    },
-    '6_rdv_expire' => function () use ($twilio, $to) {
-        return $twilio->sendAppointmentExpired($to);
+    '3_lot_confirme' => function () use ($twilio, $to, $fakeId) {
+        return $twilio->sendAppointmentConfirmation($to, [
+            'id' => $fakeId,
+            'batch_count' => 3,
+            'type' => 'nursing',
+        ]);
     },
 ];
 

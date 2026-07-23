@@ -140,29 +140,34 @@ abstract class AbstractSmsProvider
 
     public function sendAppointmentConfirmation(string $to, array $appointmentData): bool
     {
-        $professionalName = $appointmentData['professional_name'] ?? 'votre professionnel';
         $appointmentId = (string) ($appointmentData['id'] ?? '');
         $url = $this->frontendBaseUrl() . '/patient/appointments/' . $appointmentId;
-        $optionMeta = is_array($appointmentData['option_meta'] ?? null)
-            ? $appointmentData['option_meta']
-            : [];
-        $details = NotificationMessageFormatter::appointmentContextShort(
-            is_array($appointmentData['form_data'] ?? null) ? $appointmentData['form_data'] : [],
-            $appointmentData['category_name'] ?? null,
-            ($appointmentData['type'] ?? '') === 'nursing' ? 'nursing' : 'blood_test',
-            isset($appointmentData['scheduled_at']) ? (string) $appointmentData['scheduled_at'] : null,
-            $optionMeta
-        );
-        $whenPart = $details !== '' ? $details : NotificationMessageFormatter::whenShort(
-            $appointmentData['form_data'] ?? null,
-            $appointmentData['scheduled_at'] ?? null
-        );
+        $batchCount = max(1, (int) ($appointmentData['batch_count'] ?? 1));
 
-        $message = "[CONFIRME] RDV confirmé avec {$professionalName}";
-        if ($whenPart !== '') {
-            $message .= " · {$whenPart}";
+        if ($batchCount > 1) {
+            $message = "Vos {$batchCount} RDV confirmés. Détail : {$url}";
+        } else {
+            $optionMeta = is_array($appointmentData['option_meta'] ?? null)
+                ? $appointmentData['option_meta']
+                : [];
+            $details = NotificationMessageFormatter::appointmentContextShort(
+                is_array($appointmentData['form_data'] ?? null) ? $appointmentData['form_data'] : [],
+                $appointmentData['category_name'] ?? null,
+                ($appointmentData['type'] ?? '') === 'nursing' ? 'nursing' : 'blood_test',
+                isset($appointmentData['scheduled_at']) ? (string) $appointmentData['scheduled_at'] : null,
+                $optionMeta
+            );
+            $whenPart = $details !== '' ? $details : NotificationMessageFormatter::whenShort(
+                $appointmentData['form_data'] ?? null,
+                $appointmentData['scheduled_at'] ?? null
+            );
+
+            $message = 'RDV confirmé';
+            if ($whenPart !== '') {
+                $message .= " · {$whenPart}";
+            }
+            $message .= ". Détail : {$url}";
         }
-        $message .= ".\nVoir détails : {$url}";
 
         try {
             $this->sendSMS($to, $message);
