@@ -7,10 +7,9 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../lib/SmsSender.php';
 
-$smtpPass = trim((string) ($_ENV['SMTP_PASS'] ?? ''));
-if (BrevoSms::resolveApiKey() === null && preg_match('/^xsmtpsib-/i', $smtpPass)) {
-    fwrite(STDERR, "SMS INFO: SMTP_PASS est une clé SMTP (xsmtpsib), pas REST.\n");
-    fwrite(STDERR, "Ajoutez BREVO_API_KEY=xkeysib-… dans .env (Brevo → SMTP & API → Clés API).\n");
+if (BrevoSms::hasSmtpOnlyKey()) {
+    fwrite(STDERR, "SMS INFO: SMTP_PASS est une clé SMTP Brevo (xsmtpsib), pas la clé API REST.\n");
+    fwrite(STDERR, "Brevo → SMTP & API → onglet « API keys » → générer une clé (xkeysib-…) → BREVO_API_KEY dans .env\n");
 }
 
 $sms = SmsSender::tryCreate();
@@ -21,9 +20,9 @@ if ($sms === null) {
 
 $provider = SmsSender::activeProviderLabel();
 if ($sms instanceof BrevoSms) {
-    echo "SMS OK — provider=brevo sender={$sms->getSender()}\n";
+    echo "SMS OK — provider=brevo sender={$sms->getSender()} brand=" . BrevoSms::resolveSenderId() . "\n";
     exit(0);
 }
 
-echo "SMS OK — provider={$provider} (repli Twilio — ajoutez BREVO_API_KEY pour Brevo)\n";
+echo "SMS OK — provider={$provider} (repli Twilio)\n";
 exit(0);
