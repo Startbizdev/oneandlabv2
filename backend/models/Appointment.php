@@ -3532,6 +3532,39 @@ class Appointment
     }
 
     /**
+     * @param array<int, array<string, mixed>> $professionals
+     * @return array<int, array<string, mixed>>
+     */
+    private function pickClosestProfessionalsForDispatchSms(array $professionals, int $limit = 10): array
+    {
+        if ($limit <= 0 || $professionals === []) {
+            return [];
+        }
+
+        $byId = [];
+        foreach ($professionals as $p) {
+            if (!isset($p['distance_km']) || !is_numeric($p['distance_km'])) {
+                continue;
+            }
+            $id = (string) ($p['id'] ?? '');
+            if ($id === '') {
+                continue;
+            }
+            $dist = (float) $p['distance_km'];
+            if (!isset($byId[$id]) || $dist < (float) $byId[$id]['distance_km']) {
+                $byId[$id] = $p;
+            }
+        }
+
+        $ranked = array_values($byId);
+        usort($ranked, static function (array $a, array $b): int {
+            return ((float) $a['distance_km']) <=> ((float) $b['distance_km']);
+        });
+
+        return array_slice($ranked, 0, $limit);
+    }
+
+    /**
      * Dispatch géographique : trouve les professionnels disponibles.
      * Pour blood_test : ne notifie que les labs qui acceptent les RDV et dont le délai min (min_booking_lead_time_hours) est respecté.
      * @param string|null $scheduledAt Date/heure du RDV (Y-m-d H:i:s) pour filtrer les labs par délai min
@@ -3603,6 +3636,7 @@ class Appointment
         
         foreach ($zones as $zone) {
             $isInZone = false;
+            $distance = null;
             
             // Utiliser l'adresse depuis profiles pour tous les professionnels (nurse, lab, subaccount)
             if ($zone['address_encrypted'] && $zone['address_dek']) {
@@ -3646,6 +3680,9 @@ class Appointment
                     'id' => $zone['profile_id'],
                     'role' => $zone['role'],
                 ];
+                if ($distance !== null) {
+                    $entry['distance_km'] = $distance;
+                }
                 if ($type === 'nursing') {
                     $entry['gender'] = null;
                     if (!empty($zone['gender_encrypted']) && !empty($zone['gender_dek'])) {
@@ -3747,6 +3784,9 @@ class Appointment
                 return ($p['id'] ?? '') !== $excludeProfileId;
             }));
         }
+
+        // SMS dispatch : 10 professionnels les plus proches (cloche/e-mail inchangés).
+        $professionalsForSms = $this->pickClosestProfessionalsForDispatchSms($professionals, 10);
         
         // Limiter le nombre de professionnels notifiés pour éviter surcharge/timeout (100 max)
         $professionals = array_slice($professionals, 0, 100);
@@ -3825,9 +3865,9 @@ class Appointment
             }
         }
         
-        // SMS en file (shutdown) pour ne pas bloquer la réponse
+        // SMS en file (shutdown) pour ne pas bloquer la réponse — 10 plus proches uniquement
         $scheduledAtStr = $scheduledAt ?? date('Y-m-d H:i:s');
-        foreach ($professionals as $professional) {
+        foreach ($professionalsForSms as $professional) {
             SmsQueue::addNewAppointment(
                 $professional['id'],
                 $appointmentId,
