@@ -6,7 +6,7 @@ declare(strict_types=1);
 
 
 
-require_once __DIR__ . '/Twilio.php';
+require_once __DIR__ . '/SmsSender.php';
 
 require_once __DIR__ . '/../models/User.php';
 
@@ -88,9 +88,12 @@ final class NurseInviteService
 
         try {
 
-            $twilio = new Twilio();
+            $sms = SmsSender::tryCreate();
+            if ($sms === null) {
+                throw new RuntimeException('SMS non configuré');
+            }
 
-            $twilio->sendSMS($phone, $message);
+            $sms->sendSMS($phone, $message);
 
             $smsSent = true;
 
