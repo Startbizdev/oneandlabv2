@@ -28,11 +28,30 @@ class BrevoSms extends AbstractSmsProvider
         return null;
     }
 
+    /** Indique si seule la clé SMTP Brevo (xsmtpsib) est présente — insuffisante pour l’API REST SMS. */
+    public static function hasSmtpOnlyKey(): bool
+    {
+        if (self::resolveApiKey() !== null) {
+            return false;
+        }
+        $smtpPass = trim((string) ($_ENV['SMTP_PASS'] ?? ''));
+
+        return preg_match('/^xsmtpsib-/i', $smtpPass) === 1;
+    }
+
+    public static function resolveSenderId(): string
+    {
+        return trim((string) (
+            $_ENV['BREVO_SMS_SENDER']
+            ?? $_ENV['TWILIO_SENDER_ID']
+            ?? 'CARY.BIO'
+        ));
+    }
+
     public function __construct()
     {
         $this->apiKey = (string) (self::resolveApiKey() ?? '');
-        $senderId = trim((string) ($_ENV['BREVO_SMS_SENDER'] ?? $_ENV['TWILIO_SENDER_ID'] ?? 'CaryBio'));
-        $this->sender = self::alphanumericSender($senderId);
+        $this->sender = self::alphanumericSender(self::resolveSenderId());
 
         if ($this->apiKey === '' || $this->sender === '') {
             throw new Exception('Configuration Brevo SMS incomplète');
@@ -57,6 +76,9 @@ class BrevoSms extends AbstractSmsProvider
             'recipient' => $recipient,
             'content' => $this->formatMessage($message),
             'type' => 'transactional',
+            'tag' => 'cary-notification',
+            'organisationPrefix' => self::alphanumericSender($this->brandLabel()),
+            'unicodeEnabled' => true,
         ], JSON_UNESCAPED_UNICODE);
 
         $ch = curl_init('https://api.brevo.com/v3/transactionalSMS/send');
