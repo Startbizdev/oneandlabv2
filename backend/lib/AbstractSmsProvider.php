@@ -10,11 +10,11 @@ require_once __DIR__ . '/../models/User.php';
 
 abstract class AbstractSmsProvider
 {
-    /** Libellé marque dans le corps du SMS (ex. Cary.bio). */
+    /** Libellé marque dans le corps du SMS (ex. CARYBIO). */
     protected function brandLabel(): string
     {
-        $brand = trim((string) ($_ENV['BREVO_SMS_BRAND'] ?? $_ENV['TWILIO_SMS_BRAND'] ?? 'Cary.bio'));
-        return $brand !== '' ? $brand : 'Cary.bio';
+        $brand = trim((string) ($_ENV['BREVO_SMS_BRAND'] ?? $_ENV['TWILIO_SMS_BRAND'] ?? 'CARYBIO'));
+        return $brand !== '' ? $brand : 'CARYBIO';
     }
 
     /** Expéditeur alphanumérique (max 11 caractères, sans ponctuation). */

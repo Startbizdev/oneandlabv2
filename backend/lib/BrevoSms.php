@@ -44,7 +44,7 @@ class BrevoSms extends AbstractSmsProvider
         return trim((string) (
             $_ENV['BREVO_SMS_SENDER']
             ?? $_ENV['TWILIO_SENDER_ID']
-            ?? 'CARY.BIO'
+            ?? 'CARYBIO'
         ));
     }
 
@@ -77,7 +77,6 @@ class BrevoSms extends AbstractSmsProvider
             'content' => $this->formatMessage($message),
             'type' => 'transactional',
             'tag' => 'cary-notification',
-            'organisationPrefix' => self::alphanumericSender($this->brandLabel()),
             'unicodeEnabled' => true,
         ], JSON_UNESCAPED_UNICODE);
 

@@ -14,8 +14,8 @@ set_kv() {
   fi
 }
 
-set_kv "BREVO_SMS_SENDER" "CARY.BIO"
-set_kv "BREVO_SMS_BRAND" "CARY.BIO"
+set_kv "BREVO_SMS_SENDER" "CARYBIO"
+set_kv "BREVO_SMS_BRAND" "CARYBIO"
 
-echo "OK — BREVO_SMS_SENDER/CARY.BIO appliqués."
+echo "OK — BREVO_SMS_SENDER/CARYBIO appliqués."
 echo "Ajoutez BREVO_API_KEY=xkeysib-… (onglet API keys Brevo, pas la clé SMTP xsmtpsib)."
