@@ -5,7 +5,7 @@
  */
 
 require_once __DIR__ . '/Crypto.php';
-require_once __DIR__ . '/Twilio.php';
+require_once __DIR__ . '/SmsSender.php';
 
 class SmsQueue
 {
@@ -113,10 +113,9 @@ class SmsQueue
         }
         $items = self::$queue;
         self::$queue = [];
-        try {
-            $twilio = new Twilio();
-        } catch (Exception $e) {
-            error_log('SmsQueue flush: Twilio non configuré — ' . $e->getMessage());
+        $sms = SmsSender::tryCreate();
+        if ($sms === null) {
+            error_log('SmsQueue flush: SMS non configuré (Brevo/Twilio)');
             return;
         }
         $config = require __DIR__ . '/../config/database.php';
@@ -183,7 +182,7 @@ class SmsQueue
                     ? $optionMetaCache[$categoryId]
                     : [];
 
-                $twilio->sendNewAppointmentNotification($phone, [
+                $sms->sendNewAppointmentNotification($phone, [
                     'id' => $appointmentId,
                     'scheduled_at' => (is_array($ctx) ? ($ctx['scheduled_at'] ?? null) : null) ?: $item['scheduled_at'],
                     'first_name' => $firstName,

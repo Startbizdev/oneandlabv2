@@ -534,13 +534,16 @@ class RegistrationRequest
         // SMS si numéro disponible
         if (!empty(trim((string)($req['phone'] ?? '')))) {
             try {
-                require_once __DIR__ . '/../lib/Twilio.php';
-                $twilio = new Twilio();
+                require_once __DIR__ . '/../lib/SmsSender.php';
+                $sms = SmsSender::tryCreate();
+                if ($sms === null) {
+                    throw new RuntimeException('SMS non configuré');
+                }
                 $firstName = trim((string)($req['first_name'] ?? ''));
                 $greeting = $firstName !== '' ? "Bonjour {$firstName}," : 'Bonjour,';
                 $baseUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? 'https://cary.bio'), '/');
                 $roleLabel = $req['role'] === 'nurse' ? 'infirmier(e)' : 'professionnel de santé';
-                $twilio->sendSMS(
+                $sms->sendSMS(
                     trim((string)$req['phone']),
                     "{$greeting} votre compte Cary en tant que {$roleLabel} a été approuvé ! Connectez-vous dès maintenant : {$baseUrl}"
                 );

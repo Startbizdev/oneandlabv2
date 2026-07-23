@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/Email.php';
 require_once __DIR__ . '/EmailQueue.php';
-require_once __DIR__ . '/Twilio.php';
+require_once __DIR__ . '/SmsSender.php';
 require_once __DIR__ . '/Crypto.php';
 require_once __DIR__ . '/NotificationMessageFormatter.php';
 
@@ -16,7 +16,7 @@ class NotificationService
 {
     private PDO $db;
     private Email $email;
-    private ?Twilio $twilio = null;
+    private ?AbstractSmsProvider $sms = null;
     private ?Crypto $crypto = null;
 
     public function __construct()
@@ -34,13 +34,8 @@ class NotificationService
         $this->db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
         $this->email = new Email();
         
-        // Twilio est optionnel - ne pas bloquer si les clés ne sont pas configurées
-        try {
-            $this->twilio = new Twilio();
-        } catch (Exception $e) {
-            // Twilio non configuré - SMS désactivés
-            $this->twilio = null;
-        }
+        // SMS optionnel (Brevo prioritaire, Twilio en repli)
+        $this->sms = SmsSender::tryCreate();
 
         try {
             $this->crypto = new Crypto();
@@ -63,10 +58,10 @@ class NotificationService
         }
     }
 
-    /** Envoie un SMS à un professionnel si Twilio + numéro disponibles. */
+    /** Envoie un SMS à un professionnel si Brevo/Twilio + numéro disponibles. */
     private function sendProfileSms(string $profileId, string $message): void
     {
-        if ($this->twilio === null) {
+        if ($this->sms === null) {
             return;
         }
         $phone = $this->resolveProfilePhone($profileId);
@@ -74,7 +69,7 @@ class NotificationService
             error_log('sendProfileSms: pas de téléphone pour ' . $profileId);
             return;
         }
-        $this->twilio->sendProfessionalAppointmentUpdate($phone, $message);
+        $this->sms->sendProfessionalAppointmentUpdate($phone, $message);
     }
 
     private function resolveProfileRole(string $profileId): string
@@ -515,14 +510,14 @@ class NotificationService
             ]);
         }
         
-        // SMS au patient (si Twilio est configuré)
-        if (!empty($appointmentData['patient_phone']) && $this->twilio !== null) {
+        // SMS au patient (si provider SMS configuré)
+        if (!empty($appointmentData['patient_phone']) && $this->sms !== null) {
             try {
                 $smsPayload = $appointmentData;
                 $smsPayload['option_meta'] = $this->fetchCareOptionMeta(
                     isset($appointmentData['category_id']) ? (string) $appointmentData['category_id'] : null
                 );
-                $this->twilio->sendAppointmentConfirmation(
+                $this->sms->sendAppointmentConfirmation(
                     $appointmentData['patient_phone'],
                     $smsPayload
                 );
@@ -609,7 +604,7 @@ class NotificationService
             ]);
         }
 
-        if (!empty($patientPhone) && $this->twilio !== null) {
+        if (!empty($patientPhone) && $this->sms !== null) {
             try {
                 $professionalName = 'votre infirmier';
                 if ($nurseActorId) {
@@ -630,7 +625,7 @@ class NotificationService
                         isset($appointment['category_id']) ? (string) $appointment['category_id'] : null,
                     ),
                 ];
-                $this->twilio->sendAppointmentRescheduled($patientPhone, $smsPayload, $professionalName);
+                $this->sms->sendAppointmentRescheduled($patientPhone, $smsPayload, $professionalName);
             } catch (Exception $e) {
                 error_log('notifyAppointmentRescheduled SMS: ' . $e->getMessage());
             }
@@ -739,7 +734,7 @@ class NotificationService
             ]);
         }
 
-        if (!empty($patientPhone) && $this->twilio !== null) {
+        if (!empty($patientPhone) && $this->sms !== null) {
             try {
                 $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
                 $url = rtrim($baseUrl, '/') . '/patient/appointments/' . $ids[0];
@@ -750,7 +745,7 @@ class NotificationService
                     isset($fd0['preferred_nurse_gender']) ? (string) $fd0['preferred_nurse_gender'] : ''
                 );
                 $genderPart = $genderLabel !== '' ? " · {$genderLabel}" : '';
-                $this->twilio->sendSMS(
+                $this->sms->sendSMS(
                     $patientPhone,
                     "[CONFIRME] Vos {$n} rendez-vous sont confirmés{$genderPart}. Détail : {$url}"
                 );
@@ -885,11 +880,11 @@ class NotificationService
             ]);
         }
 
-        if (!empty($patientPhone) && $this->twilio !== null) {
+        if (!empty($patientPhone) && $this->sms !== null) {
             try {
                 $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
                 $url = rtrim($baseUrl, '/') . '/patient/appointments/' . $ids[0];
-                $this->twilio->sendSMS(
+                $this->sms->sendSMS(
                     $patientPhone,
                     "[CONFIRME] Vos {$n} rendez-vous de prélèvement sont confirmés. Détail : {$url}"
                 );
@@ -1243,9 +1238,9 @@ class NotificationService
                 ]);
             }
             // SMS au patient (annulation)
-            if (!empty($appointmentData['patient_phone']) && $this->twilio !== null) {
+            if (!empty($appointmentData['patient_phone']) && $this->sms !== null) {
                 try {
-                    $this->twilio->sendAppointmentCanceled($appointmentData['patient_phone']);
+                    $this->sms->sendAppointmentCanceled($appointmentData['patient_phone']);
                 } catch (Exception $e) {
                     // Ne pas bloquer si l'envoi SMS échoue
                 }
@@ -1417,9 +1412,9 @@ class NotificationService
             'Aucun pro n’a confirmé à temps. Choisissez une autre date.',
             ['appointment_id' => $appointmentId]
         );
-        if (!empty($appointmentData['patient_phone']) && $this->twilio !== null) {
+        if (!empty($appointmentData['patient_phone']) && $this->sms !== null) {
             try {
-                $this->twilio->sendAppointmentExpired($appointmentData['patient_phone']);
+                $this->sms->sendAppointmentExpired($appointmentData['patient_phone']);
             } catch (Exception $e) {
                 // Ne pas bloquer si l'envoi SMS échoue
             }

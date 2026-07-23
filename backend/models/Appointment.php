@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../lib/Crypto.php';
 require_once __DIR__ . '/../lib/Logger.php';
-require_once __DIR__ . '/../lib/Twilio.php';
+require_once __DIR__ . '/../lib/SmsSender.php';
 require_once __DIR__ . '/../lib/Email.php';
 require_once __DIR__ . '/../lib/NotificationService.php';
 require_once __DIR__ . '/../lib/NotificationMessageFormatter.php';
@@ -22,7 +22,7 @@ class Appointment
     private PDO $db;
     private Crypto $crypto;
     private Logger $logger;
-    private ?Twilio $twilio = null;
+    private ?AbstractSmsProvider $sms = null;
     private Email $email;
     private NotificationService $notificationService;
     private ?AdminDispatchEventLogger $dispatchEventLogger = null;
@@ -43,13 +43,7 @@ class Appointment
         $this->crypto = new Crypto();
         $this->logger = new Logger();
         
-        // Twilio est optionnel - ne pas bloquer si les clés ne sont pas configurées
-        try {
-            $this->twilio = new Twilio();
-        } catch (Exception $e) {
-            // Twilio non configuré - SMS désactivés
-            $this->twilio = null;
-        }
+        $this->sms = SmsSender::tryCreate();
         
         $this->email = new Email();
         $this->notificationService = new NotificationService();
