@@ -4,6 +4,7 @@
 import { AVAILABILITY_MIN_SPAN_HOURS } from '@oneandlab/shared-constants';
 import { STAFF_ROLES_REQUIRING_PATIENT_BOOKING_CONSENT } from '@oneandlab/shared-constants';
 import { isBloodTestAppointment, isNursingAppointment } from './appointment-type-rules';
+import { applyLabPreferenceToBloodPayloads } from './lab-preference';
 
 export type SelectedServiceInput = {
   id: string;
@@ -508,5 +509,5 @@ export function buildDashboardAppointmentPayloads(
       out.push(dashboardSingleServicePayload(patientId, svc, formData, formDataByService, commonForm, ctx));
     }
   }
-  return out;
+  return applyLabPreferenceToBloodPayloads(out, formData);
 }

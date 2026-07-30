@@ -651,6 +651,7 @@ const breadcrumbItems = computed(() => {
     "/admin/calendar": { label: "Calendrier", icon: "i-lucide-calendar-days" },
     "/admin/users": { label: "Utilisateurs", icon: "i-lucide-users" },
     "/admin/categories": { label: "Catégories", icon: "i-lucide-tags" },
+    "/admin/lab-brands": { label: "Marques labo", icon: "i-lucide-building-2" },
     "/admin/coverage": { label: "Zones", icon: "i-lucide-map" },
     "/admin/reviews": { label: "Avis", icon: "i-lucide-star" },
     "/admin/notifications": { label: "Notifications", icon: "i-lucide-bell" },
@@ -829,6 +830,12 @@ const navigationItems = computed(() => {
           icon: "i-lucide-tags",
           to: "/admin/categories",
           active: active("/admin/categories"),
+        },
+        {
+          label: "Marques labo",
+          icon: "i-lucide-building-2",
+          to: "/admin/lab-brands",
+          active: active("/admin/lab-brands"),
         },
         {
           label: "Zones de couverture",

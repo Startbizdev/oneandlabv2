@@ -370,7 +370,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $sharePath = "/p/rdv/{$token}";
 
-// Message WhatsApp : nom de voie sans n° + arrondissement + Paris (ex. Google Maps), sans complément ni pays
+// Message WhatsApp : enrichir le label avec form_data.address (ville / CP) puis formater
+$addressFull = AddressDisplayFr::enrichLabelWithFormData($addressFull, $formData);
 $addressShare = $addressFull !== '' ? AddressDisplayFr::shareWhatsAppAddressLine($addressFull) : '';
 // Message WhatsApp humain — uniquement données réelles, pas de fallback
 $line1 = "Une prise en charge est disponible";

@@ -81,6 +81,7 @@
     </template>
 
     <template #mainExtra="{ appointment, loadAppointment }">
+      <AdminLabBrandChoiceBanner :appointment="appointment" class="mb-4" />
       <UCard v-if="statusHistory.length > 0" class="mt-6">
         <template #header>
           <h2 class="text-xl font-normal">Historique des statuts</h2>

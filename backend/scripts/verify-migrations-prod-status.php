@@ -31,6 +31,9 @@ $checks = [
     '097 offer_modal_snoozed_until' => "SHOW COLUMNS FROM appointment_offers LIKE 'modal_snoozed_until'",
     '098 preleveur_tour_plans' => "SHOW TABLES LIKE 'preleveur_tour_plans'",
     '098 preleveur_tour_stops' => "SHOW TABLES LIKE 'preleveur_tour_stops'",
+    '101 lab_brands' => "SHOW TABLES LIKE 'lab_brands'",
+    '101 appointments.lab_preference_mode' => "SHOW COLUMNS FROM appointments LIKE 'lab_preference_mode'",
+    '101 appointments.preferred_lab_brand_id' => "SHOW COLUMNS FROM appointments LIKE 'preferred_lab_brand_id'",
 ];
 
 echo "DB: {$config['database']}\n";

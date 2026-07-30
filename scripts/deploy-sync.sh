@@ -5,10 +5,15 @@ deploy_sync_dir() {
   local src="$1"
   local dest="$2"
   shift 2
+  local rsync_delete=()
+  if [[ "${1:-}" == "--delete" ]]; then
+    rsync_delete=(--delete)
+    shift
+  fi
   local excludes=("$@")
 
   if command -v rsync >/dev/null 2>&1; then
-    rsync -avz --partial "${excludes[@]}" "$src" "$dest"
+    rsync -avz --partial "${rsync_delete[@]}" "${excludes[@]}" "$src" "$dest"
     return
   fi
 
@@ -22,7 +27,11 @@ deploy_sync_dir() {
     fi
   done
 
-  ssh "${DEPLOY_SSH_OPTS[@]}" "$remote" "mkdir -p '$remote_path'"
+  if [[ ${#rsync_delete[@]} -gt 0 ]]; then
+    ssh "${DEPLOY_SSH_OPTS[@]}" "$remote" "rm -rf '$remote_path' && mkdir -p '$remote_path'"
+  else
+    ssh "${DEPLOY_SSH_OPTS[@]}" "$remote" "mkdir -p '$remote_path'"
+  fi
   tar -C "${src%/}" -czf - "${tar_ex[@]}" . | ssh "${DEPLOY_SSH_OPTS[@]}" "$remote" "tar -xzf - -C '$remote_path'"
 }
 

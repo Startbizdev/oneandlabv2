@@ -32,6 +32,18 @@ export function buildSingleAppointmentPayload(
       values.care_options && Object.keys(values.care_options).length ? values.care_options : undefined,
   };
 
+  if (values.address) {
+    const a = values.address;
+    form_data.address = {
+      label: a.label,
+      lat: a.lat,
+      lng: a.lng,
+      city: a.city,
+      postcode: a.postal_code,
+      postal_code: a.postal_code,
+    };
+  }
+
   if (isBloodTestAppointment(values.type)) {
     form_data.blood_test_type = values.blood_test_type;
     form_data.duration_days = values.blood_test_type === 'multiple' ? values.duration_days : undefined;

@@ -63,4 +63,7 @@ export const queryKeys = {
   qr: {
     me: (userId: string) => ['qr', 'me', userId] as const,
   },
+  labBrands: {
+    public: () => ['lab-brands', 'public'] as const,
+  },
 } as const;

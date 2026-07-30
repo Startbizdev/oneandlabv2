@@ -1251,6 +1251,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $dispatchMode = 'direct_assign';
         } elseif (!empty($inputForCreate['skip_zone_dispatch'])) {
             $dispatchMode = 'direct_assign';
+        } elseif (
+            ($inputForCreate['type'] ?? '') === 'blood_test'
+            && ($inputForCreate['lab_preference_mode'] ?? '') === 'brand_choice'
+        ) {
+            $dispatchMode = 'patient_brand_choice';
         } elseif (($user['role'] ?? '') === 'super_admin') {
             $dispatchMode = 'manual';
         }

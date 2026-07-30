@@ -182,6 +182,10 @@
                   {{ dispatchModeLabel(row.dispatch_mode) }}
                 </dd>
               </div>
+              <div v-if="row.preferred_lab_brand_name" class="flex gap-2">
+                <dt class="w-28 shrink-0 text-muted">Marque</dt>
+                <dd class="text-gray-800 dark:text-gray-200">{{ row.preferred_lab_brand_name }}</dd>
+              </div>
               <div class="flex gap-2">
                 <dt class="w-28 shrink-0 text-muted">Propositions</dt>
                 <dd class="text-gray-800 dark:text-gray-200">
@@ -356,6 +360,7 @@ const dispatchModeOptions = [
   { label: 'Invitation SMS', value: 'external_invite' },
   { label: 'Assignation directe', value: 'direct_assign' },
   { label: 'Manuel (admin)', value: 'manual' },
+  { label: 'Marque patient', value: 'patient_brand_choice' },
 ]
 
 const tableRows = computed(() => dashboardData.value?.rows ?? [])
@@ -496,6 +501,7 @@ function dispatchModeLabel(mode: string | null | undefined): string {
     external_invite: 'Invitation SMS',
     direct_assign: 'Assignation directe',
     manual: 'Manuel (admin)',
+    patient_brand_choice: 'Marque patient (sans dispatch)',
   }
   return map[mode] ?? mode
 }

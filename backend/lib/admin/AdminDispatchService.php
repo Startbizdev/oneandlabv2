@@ -339,6 +339,15 @@ final class AdminDispatchService
             $ln = trim((string) ($row['form_data']['last_name'] ?? ''));
             $patientName = trim($fn . ' ' . $ln) ?: null;
         }
+        $labPreferenceMode = null;
+        $preferredLabBrandName = null;
+        if (!empty($row['form_data']) && is_array($row['form_data'])) {
+            $labPreferenceMode = $row['form_data']['lab_preference_mode'] ?? null;
+            $preferredLabBrandName = $row['form_data']['preferred_lab_brand_name'] ?? null;
+        }
+        if ($labPreferenceMode === null && $this->columnExists('appointments', 'lab_preference_mode')) {
+            $labPreferenceMode = $row['lab_preference_mode'] ?? null;
+        }
 
         return [
             'id' => $row['id'] ?? null,
@@ -364,6 +373,8 @@ final class AdminDispatchService
             'assigned_to' => $row['assigned_to'] ?? null,
             'assigned_to_display_name' => $row['assigned_to_display_name'] ?? null,
             'creneau' => $this->extractCreneau($row),
+            'lab_preference_mode' => $labPreferenceMode,
+            'preferred_lab_brand_name' => $preferredLabBrandName,
         ];
     }
 

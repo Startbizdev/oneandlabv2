@@ -1,4 +1,9 @@
-export type DispatchMode = 'zone' | 'external_invite' | 'direct_assign' | 'manual';
+export type DispatchMode =
+  | 'zone'
+  | 'external_invite'
+  | 'direct_assign'
+  | 'manual'
+  | 'patient_brand_choice';
 
 export type DispatchEventType =
   | 'created'
@@ -47,6 +52,8 @@ export interface AdminDispatchListRow {
   assigned_to: string | null;
   assigned_to_display_name: string | null;
   creneau: string | null;
+  lab_preference_mode?: string | null;
+  preferred_lab_brand_name?: string | null;
 }
 
 export interface AdminDispatchActor {
