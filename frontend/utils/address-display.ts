@@ -111,8 +111,8 @@ function extractFrenchPostcodeFromLine(line: string): string | null {
 
 function formDataAddressPostcodeCity(fd: unknown): { postcode: string; city: string } | null {
   if (fd == null || typeof fd !== 'object' || Array.isArray(fd)) return null;
-  const o = fd as { postcode?: unknown; city?: unknown };
-  const raw = o.postcode;
+  const o = fd as { postcode?: unknown; postal_code?: unknown; city?: unknown };
+  const raw = o.postcode ?? o.postal_code;
   const pc = typeof raw === 'string' ? raw.replace(/\s/g, '').trim() : '';
   if (!/^\d{5}$/.test(pc)) return null;
   const city = typeof o.city === 'string' ? o.city.trim() : '';

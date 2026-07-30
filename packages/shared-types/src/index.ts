@@ -10,6 +10,7 @@ export * from './professional-id';
 export * from './pro-emploi';
 export * from './nurse-passage';
 export * from './admin-dispatch';
+export * from './lab-brands';
 export * from './patient-absence';
 export {
   GENDER_OPTIONS,

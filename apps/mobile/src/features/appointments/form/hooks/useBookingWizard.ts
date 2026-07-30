@@ -6,8 +6,11 @@ import {
   buildDashboardAppointmentPayloads,
   servicesRequiringOwnSlots,
   validateUnifiedRdvPayload,
+  bloodTestNeedsLabPreferenceStep,
+  validateLabPreferenceBeforeSubmit,
   type SelectedServiceInput,
 } from '@oneandlab/shared-utils';
+import type { LabPreferenceMode } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -65,6 +68,8 @@ export function useBookingWizard(opts: {
   const patientVipIap = usePatientVipIap();
 
   const [step, setStep] = useState(0);
+  const [labPreferenceMode, setLabPreferenceMode] = useState<LabPreferenceMode | ''>('platform_match');
+  const [preferredLabBrandId, setPreferredLabBrandId] = useState<string | null>(null);
   const [wizardIndex, setWizardIndex] = useState(0);
   const [consent, setConsent] = useState(false);
   const consentRef = useRef(false);
@@ -115,6 +120,12 @@ export function useBookingWizard(opts: {
       opts.mode === 'dashboard' ? () => consentRef.current : undefined,
     getProNurseAssignment: opts.role === 'pro' ? getProNurseAssignment : undefined,
   });
+
+  const needsLabPreferenceStep = useMemo(
+    () => opts.mode === 'patient' && bloodTestNeedsLabPreferenceStep(wizard.selectedServices),
+    [opts.mode, wizard.selectedServices],
+  );
+  const formWizardStep = needsLabPreferenceStep ? 2 : 1;
 
   const staffPatientIdForLinkedNurses =
     opts.mode === 'dashboard' &&
@@ -305,9 +316,9 @@ export function useBookingWizard(opts: {
 
   /** Recaler l’index si le nombre de sous-étapes change (web: nouveau.vue). */
   useEffect(() => {
-    if (step !== 1) return;
+    if (step !== formWizardStep) return;
     setWizardIndex((i) => (i > maxWizardIndex ? Math.max(0, maxWizardIndex) : i));
-  }, [step, maxWizardIndex]);
+  }, [step, maxWizardIndex, formWizardStep]);
 
   const isFinalWizardStep = section === 'personal';
 
@@ -396,20 +407,36 @@ export function useBookingWizard(opts: {
   }, [section, slotRows, documentsSlotRows, wizardIndex, wizard.formDataByService]);
 
   const wizardPageTitle = useMemo(() => {
+    if (step === 1 && needsLabPreferenceStep) return 'Votre laboratoire';
     if (section === 'personal') return 'Informations personnelles';
     if (section === 'documents') return 'Documents de votre rendez-vous';
     return 'Date de votre rendez-vous';
-  }, [section]);
+  }, [step, needsLabPreferenceStep, section]);
 
   const confirmStep0 = useCallback(() => {
     if (!wizard.selectedServices.length) {
       toast('Sélectionnez au moins un soin', { type: 'info' });
       return;
     }
-    setStep(1);
+    setStep(needsLabPreferenceStep ? 1 : formWizardStep);
     setWizardIndex(0);
     setValidationError('');
-  }, [wizard.selectedServices.length, toast]);
+  }, [wizard.selectedServices.length, toast, needsLabPreferenceStep, formWizardStep]);
+
+  const confirmLabPreferenceStep = useCallback(() => {
+    const err = validateLabPreferenceBeforeSubmit(
+      wizard.selectedServices,
+      labPreferenceMode,
+      preferredLabBrandId,
+    );
+    if (err) {
+      setValidationError(err);
+      return;
+    }
+    setValidationError('');
+    setStep(formWizardStep);
+    setWizardIndex(0);
+  }, [wizard.selectedServices, labPreferenceMode, preferredLabBrandId, formWizardStep]);
 
   const backToCareSelection = useCallback(() => {
     setStep(0);
@@ -419,12 +446,24 @@ export function useBookingWizard(opts: {
 
   const wizardPrev = useCallback(() => {
     setValidationError('');
-    if (wizardIndex > 0) {
+    if (step === 1 && needsLabPreferenceStep) {
+      backToCareSelection();
+      return;
+    }
+    if (step === formWizardStep && wizardIndex > 0) {
       setWizardIndex((i) => i - 1);
       return;
     }
+    if (step === formWizardStep && wizardIndex === 0) {
+      if (needsLabPreferenceStep) {
+        setStep(1);
+      } else {
+        backToCareSelection();
+      }
+      return;
+    }
     backToCareSelection();
-  }, [wizardIndex, backToCareSelection]);
+  }, [step, needsLabPreferenceStep, formWizardStep, wizardIndex, backToCareSelection]);
 
   const setPersonalFile = useCallback((key: string, file: DocumentFileRef | undefined) => {
     setPersonalFiles((prev) => ({ ...prev, [key]: file }));
@@ -459,6 +498,9 @@ export function useBookingWizard(opts: {
         ...patient,
         address,
         formDataByService: wizard.formDataByService,
+        lab_preference_mode: labPreferenceMode || 'platform_match',
+        preferred_lab_brand_id:
+          labPreferenceMode === 'brand_choice' ? preferredLabBrandId : null,
       };
 
       const err = validateUnifiedRdvPayload(formData, wizard.selectedServices, {
@@ -648,9 +690,16 @@ export function useBookingWizard(opts: {
     documentsSlotRows,
     allCategories,
     confirmStep0,
+    confirmLabPreferenceStep,
     backToCareSelection,
     wizardPrev,
     wizardNext,
+    needsLabPreferenceStep,
+    labPreferenceMode,
+    setLabPreferenceMode,
+    preferredLabBrandId,
+    setPreferredLabBrandId,
+    formWizardStep,
     section,
     isFinalWizardStep,
     wizardPageTitle,

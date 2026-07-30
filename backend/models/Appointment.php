@@ -1141,6 +1141,8 @@ class Appointment
             }
         }
 
+        $this->applyBloodTestLabPreference($data, $createdByRole);
+
         $creationBatchId = null;
         if (!empty($data['creation_batch_id']) && Validation::uuid((string) $data['creation_batch_id'])) {
             $creationBatchId = (string) $data['creation_batch_id'];
@@ -1236,9 +1238,13 @@ class Appointment
                 guest_token, guest_email_encrypted, guest_email_dek,
                 scheduled_at,
                 assigned_lab_id, assigned_nurse_id, assigned_to, attribution_qr_id, assigned_pro_id,
+                lab_preference_mode, preferred_lab_brand_id,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         ');
+
+        $labPreferenceMode = $data['lab_preference_mode'] ?? null;
+        $preferredLabBrandId = $data['preferred_lab_brand_id'] ?? null;
 
         $stmt->execute([
             $id,
@@ -1266,6 +1272,8 @@ class Appointment
             $assignedTo,
             $attributionQrId,
             $assignedProId,
+            $labPreferenceMode,
+            $preferredLabBrandId,
         ]);
 
         if (($data['type'] ?? '') === 'blood_test') {
@@ -1364,7 +1372,8 @@ class Appointment
             || (($data['type'] ?? '') === 'blood_test' && !empty($bloodTestAssignedLabId))
             || (($data['type'] ?? '') === 'nursing' && !empty($nursingAssignedNurseId))
             || !empty($data['skip_zone_dispatch'])
-            || !empty($data['external_nurse_invite_sent']);
+            || !empty($data['external_nurse_invite_sent'])
+            || (($data['type'] ?? '') === 'blood_test' && ($data['lab_preference_mode'] ?? '') === 'brand_choice');
 
         // Attribution marketing QR pro : le pro est notifié, mais le RDV part quand même en zone
         // (sauf si un infirmier / lab est déjà assigné — cas QR infirmier / lab).
@@ -1835,6 +1844,7 @@ class Appointment
         
         // Déchiffrer adresse + form_data (indépendamment — ne pas perdre form_data si l'adresse échoue)
         $this->decryptAppointmentSensitiveFields($appointment, $requesterId, $requesterRole);
+        $this->enrichPreferredLabBrand($appointment);
         
         // Nettoyer les champs chiffrés
         unset($appointment['address_encrypted'], $appointment['address_dek']);
@@ -2396,6 +2406,16 @@ class Appointment
         // Préparer la requête de mise à jour
         $updateFields = ['status = ?', 'updated_at = NOW()'];
         $params = [$newStatus];
+
+        // Admin : repasser en attente → redémarrer la fenêtre d'offre (TTL 2 h depuis created_at)
+        if (
+            $newStatus === 'pending'
+            && $oldStatus !== 'pending'
+            && $actorRole === 'super_admin'
+            && !$redispatch
+        ) {
+            $updateFields[] = 'created_at = NOW()';
+        }
         
         // Annulation par un pro : enregistrer motif, commentaire, photo
         if ($newStatus === 'canceled') {
@@ -2911,12 +2931,13 @@ class Appointment
      */
     public function update(string $id, array $data, string $actorId, string $actorRole): void
     {
-        $stmt = $this->db->prepare('SELECT id, type FROM appointments WHERE id = ?');
+        $stmt = $this->db->prepare('SELECT id, type, status FROM appointments WHERE id = ?');
         $stmt->execute([$id]);
         $existing = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$existing) {
             throw new Exception('Rendez-vous introuvable');
         }
+        $oldStatus = (string) ($existing['status'] ?? '');
 
         $updateFields = ['updated_at = NOW()'];
         $params = [];
@@ -2924,6 +2945,13 @@ class Appointment
         if (isset($data['status'])) {
             $updateFields[] = 'status = ?';
             $params[] = $data['status'];
+            if (
+                $data['status'] === 'pending'
+                && $oldStatus !== 'pending'
+                && $actorRole === 'super_admin'
+            ) {
+                $updateFields[] = 'created_at = NOW()';
+            }
         }
 
         if (!empty($data['scheduled_at'])) {
@@ -3928,19 +3956,31 @@ class Appointment
             
             // Type de rendez-vous en français pour le message
             $typeLabel = NotificationMessageFormatter::appointmentTypeLabel($appointmentType);
+            $brandName = '';
+            if (is_array($formData) && !empty($formData['preferred_lab_brand_name'])) {
+                $brandName = trim((string) $formData['preferred_lab_brand_name']);
+            }
+            $isBrandChoice = is_array($formData)
+                && ($formData['lab_preference_mode'] ?? '') === 'brand_choice'
+                && $brandName !== '';
             
             // Créer une notification pour chaque admin
             foreach ($admins as $admin) {
                 try {
+                    $title = $isBrandChoice ? 'Prélèvement — marque à traiter' : 'Nouveau RDV';
+                    $message = $isBrandChoice
+                        ? NotificationMessageFormatter::joinParts(['Marque', $brandName, $typeLabel])
+                        : NotificationMessageFormatter::joinParts(['À traiter', $typeLabel]);
                     $this->notificationService->createNotification(
                         $admin['id'],
-                        'new_appointment_created',
-                        'Nouveau RDV',
-                        NotificationMessageFormatter::joinParts(['À traiter', $typeLabel]),
+                        $isBrandChoice ? 'blood_test_brand_to_process' : 'new_appointment_created',
+                        $title,
+                        $message,
                         [
                             'appointment_id' => $appointmentId,
                             'type' => $appointmentType,
                             'scheduled_at' => $scheduledAt,
+                            'preferred_lab_brand_name' => $brandName !== '' ? $brandName : null,
                         ]
                     );
                 } catch (Exception $e) {
@@ -4178,6 +4218,82 @@ class Appointment
             return $out;
         } catch (Throwable $e) {
             return [];
+        }
+    }
+
+    /**
+     * Préférence labo patient (prélèvement) : relation Cary ou marque choisie sans dispatch zone.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function applyBloodTestLabPreference(array &$data, string $createdByRole): void
+    {
+        if (($data['type'] ?? '') !== 'blood_test') {
+            return;
+        }
+        if (!empty($data['assigned_lab_id'])) {
+            return;
+        }
+        if (in_array($createdByRole, ['lab', 'subaccount', 'super_admin'], true)) {
+            return;
+        }
+        if (!$this->hasColumn('appointments', 'lab_preference_mode')) {
+            return;
+        }
+
+        if (!isset($data['form_data']) || !is_array($data['form_data'])) {
+            $data['form_data'] = [];
+        }
+
+        $mode = $data['lab_preference_mode'] ?? ($data['form_data']['lab_preference_mode'] ?? 'platform_match');
+        if (!in_array($mode, ['platform_match', 'brand_choice'], true)) {
+            throw new Exception('Mode de préférence laboratoire invalide.');
+        }
+
+        $data['lab_preference_mode'] = $mode;
+        $data['form_data']['lab_preference_mode'] = $mode;
+
+        if ($mode !== 'brand_choice') {
+            $data['preferred_lab_brand_id'] = null;
+            unset($data['form_data']['preferred_lab_brand_id'], $data['form_data']['preferred_lab_brand_name']);
+            return;
+        }
+
+        $brandId = $data['preferred_lab_brand_id'] ?? ($data['form_data']['preferred_lab_brand_id'] ?? null);
+        if (empty($brandId) || !Validation::uuid((string) $brandId)) {
+            throw new Exception('Veuillez choisir une marque de laboratoire.');
+        }
+
+        require_once __DIR__ . '/LabBrand.php';
+        $brand = (new LabBrand($this->db))->getActiveById((string) $brandId);
+        if ($brand === null) {
+            throw new Exception('Marque de laboratoire invalide ou inactive.');
+        }
+
+        $data['preferred_lab_brand_id'] = (string) $brandId;
+        $data['form_data']['preferred_lab_brand_id'] = (string) $brandId;
+        $data['form_data']['preferred_lab_brand_name'] = (string) ($brand['name'] ?? '');
+    }
+
+    /** @param array<string, mixed> $appointment */
+    private function enrichPreferredLabBrand(array &$appointment): void
+    {
+        if (!$this->hasColumn('appointments', 'preferred_lab_brand_id')) {
+            return;
+        }
+        $brandId = $appointment['preferred_lab_brand_id'] ?? null;
+        if ($brandId === null || $brandId === '') {
+            return;
+        }
+        try {
+            require_once __DIR__ . '/LabBrand.php';
+            $brand = (new LabBrand($this->db))->getById((string) $brandId);
+            if ($brand !== null) {
+                $appointment['preferred_lab_brand_name'] = $brand['name'] ?? null;
+                $appointment['preferred_lab_brand_logo_url'] = $brand['logo_url'] ?? null;
+            }
+        } catch (Throwable $e) {
+            error_log('enrichPreferredLabBrand: ' . $e->getMessage());
         }
     }
 

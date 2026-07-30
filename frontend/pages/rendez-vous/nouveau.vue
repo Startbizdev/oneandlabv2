@@ -19,8 +19,18 @@
       @remove-service-from-cart="removeServiceFromCareSelection"
     />
 
+    <LabBrandPreferenceStep
+      v-else-if="step === 1 && patientNeedsLabPreferenceStep"
+      v-model:model-value-mode="labPreferenceMode"
+      v-model:model-value-brand-id="preferredLabBrandId"
+      :selected-services="selectedServices"
+      :validation-error="validationError"
+      @prev="prevStep"
+      @continue="confirmLabPreferenceAndNext"
+    />
+
     <RendezVousFormStep
-      v-else-if="step === 1"
+      v-else-if="step === 2"
       ref="rdvFormStepRef"
       v-model:form-data="formData"
       v-model:selected-relative="selectedRelative"
@@ -153,7 +163,7 @@
 
     <!-- Drawer de création/édition de proche -->
     <RelativeDrawer
-      v-if="step === 1 && bookingWizardPersonalStepVisible"
+      v-if="step === 2 && bookingWizardPersonalStepVisible"
       v-model:open="showRelativeDrawer"
       :relative="editingRelativeForDrawer"
       @saved="handleRelativeSaved"
@@ -161,7 +171,7 @@
 
     <!-- Modal de confirmation de suppression Tailwind -->
     <div
-      v-if="step === 1 && bookingWizardPersonalStepVisible && showDeleteModal"
+      v-if="step === 2 && bookingWizardPersonalStepVisible && showDeleteModal"
       class="fixed inset-0 z-50 flex items-center justify-center p-4"
       @click.self="showDeleteModal = false"
     >
@@ -225,7 +235,8 @@ import {
   type SelectedServiceInput,
 } from '~/utils/dashboard-unified-rdv';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
-import { filterStaffOnlyCareCategoriesForPatient, formSliceNeedsVipPayment } from '@oneandlab/shared-utils';
+import { filterStaffOnlyCareCategoriesForPatient, formSliceNeedsVipPayment, bloodTestNeedsLabPreferenceStep, applyLabPreferenceToBloodPayloads } from '@oneandlab/shared-utils';
+import type { LabPreferenceMode } from '@oneandlab/shared-types';
 import {
   type BookingServiceFormSlice,
   formDataSliceForQuickAddedService,
@@ -277,6 +288,14 @@ const { createMultipleAppointments, loading: appointmentsLoading } = useAppointm
 const { verifyOTP: verifyOTPAuth, isAuthenticated, user } = useAuth();
 
 const step = ref(0);
+const labPreferenceMode = ref<LabPreferenceMode | ''>('platform_match');
+const preferredLabBrandId = ref<string | null>(null);
+const patientNeedsLabPreferenceStep = computed(() =>
+  bloodTestNeedsLabPreferenceStep(selectedServices.value, { skipForProviderBooking: isProviderBooking.value }),
+);
+function firstStepAfterCareSelection(): number {
+  return patientNeedsLabPreferenceStep.value ? 1 : 2;
+}
 /** Sous-étapes après la sélection des soins : indices 0…N-1 créneaux par carte, N…2N-1 documents par carte, 2N infos perso + envoi. */
 const bookingWizardIndex = ref(0);
 const rdvFormStepRef = ref<{ flushBookingDraftToParent?: () => void } | null>(null);
@@ -411,7 +430,7 @@ const bookingCelebrationRotateIcons = computed(() => celebrationRotateIconsFromS
 
 /** Étape formulaire : évite double clic sur « Confirmer le rendez-vous » */
 const step1SubmitBusy = computed(
-  () => step.value === 1 && (requestingOTP.value || otpLoading.value || bookingSubmissionLocked.value),
+  () => step.value === 2 && (requestingOTP.value || otpLoading.value || bookingSubmissionLocked.value),
 );
 
 /** Étape OTP : évite double validation */
@@ -485,8 +504,21 @@ function confirmStep0AndNext() {
   if (selectedServices.value.length > 0) {
     consent.value = true;
     bookingWizardIndex.value = 0;
-    nextStep();
+    step.value = firstStepAfterCareSelection();
+    error.value = '';
+    validationError.value = '';
+    nextTick(() => { if (typeof window !== 'undefined') window.scrollTo(0, 0); });
   }
+}
+
+function confirmLabPreferenceAndNext() {
+  validationError.value = '';
+  formData.value.lab_preference_mode = labPreferenceMode.value;
+  formData.value.preferred_lab_brand_id = labPreferenceMode.value === 'brand_choice' ? preferredLabBrandId.value : null;
+  step.value = 2;
+  bookingWizardIndex.value = 0;
+  error.value = '';
+  nextTick(() => { if (typeof window !== 'undefined') window.scrollTo(0, 0); });
 }
 
 function onBackToCareSelection() {
@@ -626,7 +658,7 @@ const patientBookingWizardFinalStep = computed(() => patientBookingWizardSection
 
 /** En arrivant sur l’étape infos perso (changement d’index), effacer un message d’erreur résiduel — la validation ne s’affiche qu’après « Confirmer ». */
 watch(bookingWizardIndex, () => {
-  if (step.value === 1 && patientBookingWizardSection.value === 'personal') {
+  if (step.value === 2 && patientBookingWizardSection.value === 'personal') {
     validationError.value = '';
   }
 });
@@ -646,7 +678,7 @@ const patientActiveDocumentsServiceId = computed(() => {
 });
 
 const bookingWizardPersonalStepVisible = computed(
-  () => step.value === 1 && patientBookingWizardSection.value === 'personal',
+  () => step.value === 2 && patientBookingWizardSection.value === 'personal',
 );
 
 /** Recaler l’index si le nombre de sous-étapes « documents » baisse (ex. activation masquage ordonnance). */
@@ -900,14 +932,18 @@ const nextStep = () => {
 
 const prevStep = () => {
   if (step.value === 3) {
-    step.value = 1;
+    step.value = 2;
     bookingWizardIndex.value = Math.max(0, patientSlotRows.value.length + patientDocumentsSlotRows.value.length);
-  } else if (step.value === 1) {
+  } else if (step.value === 2) {
     if (bookingWizardIndex.value > 0) {
       bookingWizardIndex.value--;
+    } else if (patientNeedsLabPreferenceStep.value) {
+      step.value = 1;
     } else {
       step.value = 0;
     }
+  } else if (step.value === 1) {
+    step.value = 0;
   } else if (step.value > 0) {
     step.value--;
   } else {
@@ -1180,7 +1216,7 @@ function buildAppointmentPayloads(patientId: string): any[] {
   }
 
   if (!mergeBlood && !mergeNursing) {
-    return svcs.map(singlePayload);
+    return applyLabPreferenceToBloodPayloads(svcs.map(singlePayload), formData.value ?? {});
   }
 
   const out: any[] = [];
@@ -1205,7 +1241,7 @@ function buildAppointmentPayloads(patientId: string): any[] {
       out.push(singlePayload(svc));
     }
   }
-  return out;
+  return applyLabPreferenceToBloodPayloads(out, formData.value ?? {});
 }
 
 function patientBookingNeedsUrgentStripePayment(): boolean {
@@ -1499,6 +1535,8 @@ const saveFormState = () => {
       sessionId: sessionId.value,
       otpSent: otpSent.value,
       otpCode: otpCode.value,
+      labPreferenceMode: labPreferenceMode.value,
+      preferredLabBrandId: preferredLabBrandId.value,
       providerBooking:
         providerId.value && providerType.value
           ? {
@@ -1539,6 +1577,8 @@ watch(
     sessionId,
     otpSent,
     otpCode,
+    labPreferenceMode,
+    preferredLabBrandId,
   ],
   () => scheduleSaveFormState(),
   { deep: true },
@@ -1738,9 +1778,16 @@ onMounted(async () => {
         const state = JSON.parse(savedState);
         if (state.step !== undefined) {
           let s = state.step;
-          if (s === 2) s = 1; // récap supprimé : reprendre sur le formulaire
+          const hasFormProgress =
+            (typeof state.bookingWizardIndex === 'number' && state.bookingWizardIndex > 0) ||
+            !!state.formData?.email ||
+            !!state.formData?.first_name;
+          if (s === 1 && hasFormProgress) s = 2;
+          if (s === 1 && !patientNeedsLabPreferenceStep.value) s = 2;
           step.value = s;
         }
+        if (state.labPreferenceMode) labPreferenceMode.value = state.labPreferenceMode;
+        if ('preferredLabBrandId' in state) preferredLabBrandId.value = state.preferredLabBrandId ?? null;
         if (state.selectedServices?.length) {
           selectedServices.value = state.selectedServices.map((s: any) => ({
             ...s,
@@ -1818,14 +1865,14 @@ onMounted(async () => {
       const cat = careCategoriesList.value.find((c: any) => c.id === categoryFromUrl);
       if (cat) {
         selectedServices.value = [bookingServiceLineFromCategory(cat)];
-        step.value = 1;
+        step.value = firstStepAfterCareSelection();
         bookingWizardIndex.value = 0;
       }
     } else if (careCategoriesList.value.length === 0) {
       const fallback = serviceItems.find((i: any) => i.value === typeFromUrl);
       if (fallback) {
         selectedServices.value = [{ id: fallback.value, type: fallback.value, name: fallback.label, category_id: null, icon: fallback.icon }];
-        step.value = 1;
+        step.value = firstStepAfterCareSelection();
         bookingWizardIndex.value = 0;
       }
     }

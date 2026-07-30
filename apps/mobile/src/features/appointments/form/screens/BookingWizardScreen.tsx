@@ -11,6 +11,7 @@ import { BookingWizardChrome } from '../components/BookingWizardChrome';
 import { Plus } from 'lucide-react-native';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { FormScreen } from '@/components/layout/FormScreen';
+import { LabBrandPreferenceStep } from '../components/LabBrandPreferenceStep';
 import { BookingActionBar } from '../components/BookingActionBar';
 import { bookingWizardFooterCtaCopy } from '../utils/booking-wizard-titles';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
@@ -124,6 +125,36 @@ export function BookingWizardScreen({
         </View>
       </BookingWizardChrome>
     );
+  }
+
+  if (bw.step === 1 && bw.needsLabPreferenceStep) {
+    return (
+      <BookingWizardChrome {...chromeProps}>
+        <FormScreen
+          contentContainerStyle={scrollConfig.contentContainerStyle}
+          {...spreadTabSceneScrollProps(scrollConfig)}
+          backgroundColor={c.bookingCanvasLight}
+          footer={
+            <BookingActionBar
+              title="Continuer"
+              onPrimary={bw.confirmLabPreferenceStep}
+            />
+          }
+        >
+          <LabBrandPreferenceStep
+            mode={bw.labPreferenceMode}
+            brandId={bw.preferredLabBrandId}
+            onModeChange={bw.setLabPreferenceMode}
+            onBrandChange={bw.setPreferredLabBrandId}
+            validationError={bw.validationError}
+          />
+        </FormScreen>
+      </BookingWizardChrome>
+    );
+  }
+
+  if (bw.step !== bw.formWizardStep) {
+    return null;
   }
 
   const svc = bw.activeService;

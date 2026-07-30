@@ -6,6 +6,44 @@
 final class AddressDisplayFr
 {
     /**
+     * Enrichit un libellé d'adresse avec street / CP / ville depuis form_data.address.
+     */
+    public static function enrichLabelWithFormData(string $label, array $formData): string
+    {
+        $addr = $formData['address'] ?? null;
+        if (!is_array($addr)) {
+            return trim($label);
+        }
+
+        $street = trim((string) ($addr['street'] ?? ''));
+        $city = trim((string) ($addr['city'] ?? ''));
+        $postcode = trim((string) ($addr['postcode'] ?? $addr['postal_code'] ?? ''));
+        $postcode = preg_replace('/\s+/', '', $postcode);
+
+        $line = trim($label);
+        if ($line === '' && $street !== '') {
+            $line = $street;
+        }
+        if ($postcode !== '' && !preg_match('/\b' . preg_quote($postcode, '/') . '\b/u', $line)) {
+            $line = $line !== '' ? $line . ', ' . $postcode : $postcode;
+        }
+        if ($city !== '' && stripos($line, $city) === false) {
+            if ($postcode !== '' && preg_match('/\b' . preg_quote($postcode, '/') . '\b/u', $line)) {
+                $line = preg_replace(
+                    '/\b' . preg_quote($postcode, '/') . '\b/u',
+                    $postcode . ' ' . $city,
+                    $line,
+                    1
+                );
+            } else {
+                $line = trim($line) . ' ' . $city;
+            }
+        }
+
+        return trim((string) $line);
+    }
+
+    /**
      * Ligne courte pour partage (WhatsApp, SMS) : nom de voie **sans numéro** + arrondissement + Paris,
      * ou voie + CP + ville ailleurs (ex. libellé Google Maps). Sans complément d’étage/bâtiment, sans pays.
      */

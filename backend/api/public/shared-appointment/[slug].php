@@ -200,6 +200,18 @@ if (!empty($appointment['address_encrypted']) && !empty($appointment['address_de
     }
 }
 
+$shareFormData = [];
+if (!empty($appointment['form_data_encrypted']) && !empty($appointment['form_data_dek'])) {
+    try {
+        $shareFormDataJson = $crypto->decryptField($appointment['form_data_encrypted'], $appointment['form_data_dek']);
+        $shareFormData = json_decode($shareFormDataJson, true) ?? [];
+    } catch (Exception $e) {
+        $shareFormData = [];
+    }
+}
+require_once __DIR__ . '/../../../lib/AddressDisplayFr.php';
+$addressFull = AddressDisplayFr::enrichLabelWithFormData($addressFull, $shareFormData);
+
 $patientAge = null;
 $patientId = $appointment['patient_id'] ?? null;
 if ($patientId) {

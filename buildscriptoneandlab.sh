@@ -9,9 +9,11 @@ echo "==> buildscriptoneandlab : étape 1/3 menuswipe..."
 "$SCRIPT_DIR/buildscript.sh"
 
 echo "==> buildscriptoneandlab : étape 2/3 build local + rsync + PM2..."
+# Supprime sur le serveur les anciens assets Nuxt absents du nouveau build (évite les chunks _nuxt mixtes).
+export DEPLOY_SYNC_OUTPUT_DELETE=1
 "$SCRIPT_DIR/buildlocaloneandlab.sh"
 
-echo "==> buildscriptoneandlab : étape 3/4 migrations prod (093–100)..."
+echo "==> buildscriptoneandlab : étape 3/4 migrations prod (093–102)..."
 "$SCRIPT_DIR/scripts/run-migration-pending-prod.sh"
 
 echo "==> buildscriptoneandlab : étape 4/4 config prod (mobile 1.7.5 + voix Grok)..."

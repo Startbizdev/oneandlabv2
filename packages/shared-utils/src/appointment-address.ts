@@ -90,7 +90,7 @@ export function mergeStreetIntoAddressDisplayLine(primary: string, street: strin
 type AppointmentLikeForAddress = {
   address?: string | { label?: string } | null;
   form_data?: {
-    address?: string | { label?: string; street?: string; postcode?: string; city?: string } | null;
+    address?: string | { label?: string; street?: string; postcode?: string; postal_code?: string; city?: string } | null;
     address_label?: string;
   } | null;
 };
@@ -117,12 +117,35 @@ function extractFrenchPostcodeFromLine(line: string): string | null {
 
 function formDataAddressPostcodeCity(fd: unknown): { postcode: string; city: string } | null {
   if (fd == null || typeof fd !== 'object' || Array.isArray(fd)) return null;
-  const o = fd as { postcode?: unknown; city?: unknown };
-  const raw = o.postcode;
+  const o = fd as { postcode?: unknown; postal_code?: unknown; city?: unknown };
+  const raw = o.postcode ?? o.postal_code;
   const pc = typeof raw === 'string' ? raw.replace(/\s/g, '').trim() : '';
   if (!/^\d{5}$/.test(pc)) return null;
   const city = typeof o.city === 'string' ? o.city.trim() : '';
   return { postcode: pc, city };
+}
+
+/** Extrait le nom de ville depuis un libellé complet si absent de form_data. */
+function extractCityFromAddressLine(full: string, postcode: string | null): string {
+  if (!full) return '';
+  const parts = full
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const pc = (postcode || '').replace(/\D/g, '').slice(0, 5);
+  if (pc) {
+    for (const seg of parts) {
+      if (seg.includes(pc)) {
+        const rest = seg.replace(pc, '').trim().replace(/\bFrance\b/i, '').trim();
+        if (rest && !/^\d/.test(rest)) return rest;
+      }
+    }
+  }
+  const last = parts[parts.length - 1] ?? '';
+  if (last && !/^France$/i.test(last) && !/^\d{5}\b/.test(last) && !extractFrenchPostcodeFromLine(last)) {
+    return last.replace(/\bFrance\b/i, '').trim();
+  }
+  return '';
 }
 
 /** Libellé d’arrondissement (Paris, Lyon, Marseille) à partir du code postal. */
@@ -151,21 +174,34 @@ function stripLeadingHouseNumberFromLine(line: string): string {
   return (line || '').replace(/^\d+[a-zA-Zàâäéèêëïîôùûç\-]*\s+/u, '').trim();
 }
 
-/** Rue sans numéro + code postal (ex. « rue de la paix 75015 ») — modal offre avant acceptation. */
+/** Rue sans numéro + code postal + ville si connue (ex. « rue de la paix 75015 Paris »). */
 export function formatStreetAndPostcodeOfferLine(
   streetLine: string,
   postcode: string | null | undefined,
+  city?: string | null,
 ): string {
   const street = stripLeadingHouseNumberFromLine((streetLine || '').split(',')[0]?.trim() ?? '');
   const pc = (postcode || '').replace(/\D/g, '').slice(0, 5);
-  if (street && /^\d{5}$/.test(pc)) return `${street} ${pc}`;
-  if (/^\d{5}$/.test(pc)) return pc;
-  return street;
+  let line = '';
+  if (street && /^\d{5}$/.test(pc)) line = `${street} ${pc}`;
+  else if (/^\d{5}$/.test(pc)) line = pc;
+  else line = street;
+  if (!line) return '';
+
+  const cityTrim = (city || '').trim();
+  if (/^75/.test(pc)) {
+    if (!/\bParis\b/i.test(line)) line = `${line} Paris`;
+    return line;
+  }
+  if (cityTrim && !line.toLowerCase().includes(cityTrim.toLowerCase())) {
+    line = `${line} ${cityTrim}`;
+  }
+  return line;
 }
 
 /**
- * Modal offre (avant acceptation) : rue sans numéro + code postal (arrondissement implicite).
- * Ex. « rue de la paix 75015 » — jamais le numéro de rue ni la ville en doublon.
+ * Modal offre (avant acceptation) : rue sans numéro + code postal + ville.
+ * Ex. « rue de la paix 75015 Paris » ou « avenue Jean Jaurès 69003 Lyon ».
  */
 export function appointmentOfferAddressLine(apt: AppointmentLikeForAddress | null | undefined): string {
   if (!apt) return '';
@@ -173,6 +209,7 @@ export function appointmentOfferAddressLine(apt: AppointmentLikeForAddress | nul
   const full = appointmentListAddressLine(apt).trim();
   const fdMeta = formDataAddressPostcodeCity(apt?.form_data?.address);
   const pc = extractFrenchPostcodeFromLine(full) ?? fdMeta?.postcode ?? null;
+  const city = fdMeta?.city || extractCityFromAddressLine(full, pc) || '';
 
   const streetFromForm = formDataAddressStreet(apt?.form_data?.address);
   const streetSource =
@@ -180,7 +217,7 @@ export function appointmentOfferAddressLine(apt: AppointmentLikeForAddress | nul
     full.split(',')[0]?.trim() ||
     '';
 
-  const line = formatStreetAndPostcodeOfferLine(streetSource, pc);
+  const line = formatStreetAndPostcodeOfferLine(streetSource, pc, city);
   if (line) return line;
 
   const parts = full
@@ -188,7 +225,7 @@ export function appointmentOfferAddressLine(apt: AppointmentLikeForAddress | nul
     .map((p) => p.trim())
     .filter(Boolean);
   if (parts.length >= 2) {
-    return formatStreetAndPostcodeOfferLine(parts[0], pc);
+    return formatStreetAndPostcodeOfferLine(parts[0], pc, city);
   }
   return '';
 }
