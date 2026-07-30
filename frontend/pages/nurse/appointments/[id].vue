@@ -19,7 +19,7 @@
         </template>
         <div class="flex flex-col gap-2">
           <div
-            v-if="['confirmed', 'inProgress'].includes(appointment.status)"
+            v-if="nurseCanManageAppointmentActions(appointment)"
             class="grid grid-cols-2 gap-2 md:grid-cols-1 [&>*:only-child]:col-span-2 md:[&>*:only-child]:col-span-1"
           >
             <UButton
@@ -34,7 +34,7 @@
               Reprendre le RDV
             </UButton>
             <UButton
-              v-if="appointment.status === 'confirmed'"
+              v-if="nurseCanCancelAppointment(appointment)"
               color="error"
               variant="outline"
               size="md"
@@ -166,7 +166,7 @@ import { apiFetch } from '~/utils/api';
 import { cancelAppointmentWithOptionalPhoto } from '~/utils/appointment-cancellation';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
-import { isPendingIncomingOffer } from '~/utils/appointment-offer';
+import { isPendingIncomingOffer, staffCanManageOwnPendingBloodTest } from '@oneandlab/shared-utils';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { nurseAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
 import { isBloodTestAppointment } from '~/utils/appointment-type-rules';
@@ -183,8 +183,22 @@ function isAppointmentCanceled(status: unknown) {
 const detailRef = ref<{ loadAppointment: () => Promise<void>; loadDocuments: () => Promise<void>; appointment: { value: any } } | null>(null);
 
 const nurseSidebarActionsCardVisible = computed(() =>
-  nurseAppointmentSidebarCardVisible(getAppointmentFromDetailRef(detailRef)),
+  nurseAppointmentSidebarCardVisible(getAppointmentFromDetailRef(detailRef), user.value?.id),
 );
+
+function nurseCanManageAppointmentActions(appointment: unknown) {
+  const apt = appointment as { status?: string } | null | undefined;
+  if (!apt) return false;
+  if (['confirmed', 'inProgress'].includes(String(apt.status ?? ''))) return true;
+  return staffCanManageOwnPendingBloodTest(appointment as Parameters<typeof staffCanManageOwnPendingBloodTest>[0], user.value?.id);
+}
+
+function nurseCanCancelAppointment(appointment: unknown) {
+  const apt = appointment as { status?: string } | null | undefined;
+  if (!apt) return false;
+  if (String(apt.status ?? '') === 'confirmed') return true;
+  return staffCanManageOwnPendingBloodTest(appointment as Parameters<typeof staffCanManageOwnPendingBloodTest>[0], user.value?.id);
+}
 
 const shareTokenQuery = computed(() => {
   const q = route.query.shareToken ?? route.query.token;

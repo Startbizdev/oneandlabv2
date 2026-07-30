@@ -521,11 +521,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         echo json_encode(['success' => false, 'error' => 'Rendez-vous introuvable']);
                         exit;
                     }
-                    $isProCreator = ($user['role'] === 'pro' && ($apt['created_by'] ?? null) === $user['user_id']);
+                    $isCreator = ($apt['created_by'] ?? null) === $user['user_id']
+                        && in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount'], true);
                     $isAssigned = ($apt['assigned_nurse_id'] === $user['user_id'])
                         || ($apt['assigned_lab_id'] === $user['user_id'])
                         || ($apt['assigned_to'] === $user['user_id']);
-                    if (!$isProCreator && !$isAssigned) {
+                    if (!$isCreator && !$isAssigned) {
                         http_response_code(403);
                         echo json_encode(['success' => false, 'error' => 'Vous ne pouvez annuler que les rendez-vous que vous avez créés ou qui vous sont assignés']);
                         exit;

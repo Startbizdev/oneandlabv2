@@ -2,7 +2,7 @@
  * Aligné sur `frontend/utils/appointment-sidebar-terminal.ts`
  */
 import type { Appointment } from '@oneandlab/shared-types';
-import { isNursingAppointment } from '@oneandlab/shared-utils';
+import { isNursingAppointment, staffCanManageOwnPendingBloodTest } from '@oneandlab/shared-utils';
 
 export type AppointmentSidebarTerminalEmpty = {
   icon: 'calendar-x' | 'circle-check' | 'ban' | 'timer-off';
@@ -49,11 +49,15 @@ function isSidebarTerminalStatus(status: unknown): boolean {
   return getAppointmentSidebarTerminalEmpty(status) != null;
 }
 
-export function nurseAppointmentSidebarCardVisible(apt: Appointment | null | undefined): boolean {
+export function nurseAppointmentSidebarCardVisible(
+  apt: Appointment | null | undefined,
+  viewerUserId?: string | null,
+): boolean {
   if (!apt) return false;
   if (isSidebarTerminalStatus(apt.status)) return true;
   if (['confirmed', 'inProgress', 'in_progress'].includes(String(apt.status ?? ''))) return true;
   if (isNursingAppointment(apt.type)) return true;
+  if (staffCanManageOwnPendingBloodTest(apt, viewerUserId)) return true;
   return false;
 }
 
@@ -66,8 +70,9 @@ export function standardAppointmentSidebarCardVisible(apt: Appointment | null | 
 export function appointmentSidebarCardVisible(
   role: string,
   apt: Appointment | null | undefined,
+  viewerUserId?: string | null,
 ): boolean {
-  if (role === 'nurse') return nurseAppointmentSidebarCardVisible(apt);
+  if (role === 'nurse') return nurseAppointmentSidebarCardVisible(apt, viewerUserId);
   if (role === 'pro' || role === 'preleveur') return standardAppointmentSidebarCardVisible(apt);
   return false;
 }
