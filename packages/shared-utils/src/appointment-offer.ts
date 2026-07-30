@@ -43,3 +43,30 @@ export function isOfferModalSnoozed(
 }
 
 export { isBloodTestAppointment, isNursingAppointment } from './appointment-type-rules';
+import { isBloodTestAppointment } from './appointment-type-rules';
+
+const STAFF_CREATOR_ROLES = ['nurse', 'pro', 'lab', 'subaccount'] as const;
+
+/**
+ * Prélèvement créé par un pro (infirmier, pro santé, lab…) encore en attente labo :
+ * le créateur peut annuler / reprendre le RDV.
+ */
+export function staffCanManageOwnPendingBloodTest(
+  apt:
+    | {
+        type?: string | null;
+        status?: string | null;
+        created_by?: string | null;
+        created_by_role?: string | null;
+      }
+    | null
+    | undefined,
+  viewerUserId: string | null | undefined,
+): boolean {
+  if (!apt || viewerUserId == null || viewerUserId === '') return false;
+  if (!isBloodTestAppointment(apt.type)) return false;
+  if (String(apt.status ?? '') !== 'pending') return false;
+  if (String(apt.created_by ?? '') !== String(viewerUserId)) return false;
+  const creatorRole = String(apt.created_by_role ?? '');
+  return (STAFF_CREATOR_ROLES as readonly string[]).includes(creatorRole);
+}

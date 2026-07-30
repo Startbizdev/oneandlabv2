@@ -1,3 +1,5 @@
+import { staffCanManageOwnPendingBloodTest } from '@oneandlab/shared-utils';
+
 export type AppointmentSidebarTerminalEmpty = {
   icon: string;
   title: string;
@@ -48,12 +50,16 @@ function isSidebarTerminalStatus(status: unknown): boolean {
  * Afficher la carte « Actions » infirmier : statuts terminaux (empty state shell) ou boutons / partage utiles.
  * Évite un UCard vide (ex. prise de sang en attente sans bloc partage).
  */
-export function nurseAppointmentSidebarCardVisible(appointment: unknown): boolean {
+export function nurseAppointmentSidebarCardVisible(
+  appointment: unknown,
+  viewerUserId?: string | null,
+): boolean {
   const apt = appointment as Record<string, any> | null | undefined;
   if (!apt) return false;
   if (isSidebarTerminalStatus(apt.status)) return true;
   if (['confirmed', 'inProgress'].includes(apt.status)) return true;
   if (apt.type === 'nursing') return true;
+  if (staffCanManageOwnPendingBloodTest(apt, viewerUserId)) return true;
   return false;
 }
 

@@ -11,7 +11,7 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
-import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { isBloodTestAppointment, isNursingAppointment, staffCanManageOwnPendingBloodTest } from '@oneandlab/shared-utils';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -125,7 +125,7 @@ export function DetailSidebarActions({
     onError: (e) => handleApiError(e, toast, 'partage'),
   });
 
-  if (!appointmentSidebarCardVisible(role, apt)) return null;
+  if (!appointmentSidebarCardVisible(role, apt, viewerId)) return null;
   if (terminal) return null;
 
   const rawStatus = String(apt.status ?? '');
@@ -133,7 +133,9 @@ export function DetailSidebarActions({
   const canceled = isAppointmentCanceled(rawStatus);
   const nursing = isNursingAppointment(apt.type);
   const blood = isBloodTestAppointment(apt.type);
-  const nurseManage = nurseCanRescheduleOrCancel(apt, { role, viewerId });
+  const nurseManage =
+    nurseCanRescheduleOrCancel(apt, { role, viewerId }) ||
+    staffCanManageOwnPendingBloodTest(apt, viewerId);
 
   const showRescheduleNurse = role === 'nurse' && nurseManage;
   const showRescheduleOther = (role === 'pro' || role === 'preleveur') && active;
