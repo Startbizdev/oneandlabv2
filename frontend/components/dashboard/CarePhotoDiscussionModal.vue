@@ -25,7 +25,24 @@
                     <h2 class="truncate text-sm font-semibold text-gray-900 dark:text-white">
                       {{ isThreadOnlyMode ? 'Échange' : 'Photo — échanges' }}
                     </h2>
-                    <p v-if="photoDateSubtitle && !isThreadOnlyMode" class="truncate text-[11px] text-muted">
+                    <p
+                      v-if="patientDisplayName"
+                      class="truncate text-[11px] text-muted"
+                    >
+                      Patient :
+                      <NuxtLink
+                        v-if="patientProfileHref"
+                        :to="patientProfileHref"
+                        class="font-medium text-primary-600 underline-offset-2 hover:underline dark:text-primary-400"
+                        @click="open = false"
+                      >
+                        {{ patientDisplayName }}
+                      </NuxtLink>
+                      <span v-else class="font-medium text-gray-800 dark:text-gray-200">
+                        {{ patientDisplayName }}
+                      </span>
+                    </p>
+                    <p v-else-if="photoDateSubtitle && !isThreadOnlyMode" class="truncate text-[11px] text-muted">
                       {{ photoDateSubtitle }}
                     </p>
                   </div>
@@ -179,7 +196,7 @@
 
               <div
                 v-if="canComment || canUpload"
-                class="shrink-0 border-t border-gray-100 bg-white px-3 pt-2 pb-[max(0.625rem,env(safe-area-inset-bottom,0px))] dark:border-gray-800 dark:bg-gray-950 sm:px-4 sm:pb-3"
+                class="pointer-events-auto shrink-0 border-t border-gray-100 bg-white px-3 pt-2 pb-[max(0.625rem,env(safe-area-inset-bottom,0px))] dark:border-gray-800 dark:bg-gray-950 sm:px-4 sm:pb-3"
               >
                 <input
                   ref="cameraInputRef"
@@ -204,7 +221,7 @@
                   @change="onAttachFileChange"
                 >
                 <!-- Composer : + pièce jointe, message, envoyer -->
-                <div class="flex w-full min-w-0 items-end gap-2">
+                <div class="pointer-events-auto flex w-full min-w-0 items-end gap-2" @mousedown.stop @click.stop>
                   <div v-if="canUpload" class="relative shrink-0">
                     <button
                       type="button"
@@ -249,24 +266,13 @@
                       </button>
                     </div>
                   </div>
-                  <div v-if="canComment" class="min-h-0 min-w-0 flex-1">
-                    <UTextarea
+                  <div v-if="canComment" class="min-h-0 min-w-0 flex-1 pointer-events-auto">
+                    <textarea
                       v-model="draft"
-                      :rows="1"
-                      autoresize
-                      :maxrows="4"
-                      color="neutral"
+                      rows="2"
+                      maxlength="2000"
                       placeholder="Message…"
-                      class="care-chat-composer__textarea w-full min-w-0 touch-manipulation"
-                      :ui="{
-                        root: 'care-chat-composer__textarea-root w-full min-w-0 flex flex-col items-stretch',
-                        base: [
-                          'care-chat-composer__field',
-                          'box-border max-h-[5.75rem] min-h-[2.75rem] w-full min-w-0 resize-none',
-                          'px-3 py-2.5 text-base leading-snug sm:py-2 sm:text-sm',
-                          'rounded-lg',
-                        ].join(' '),
-                      }"
+                      class="care-chat-composer__field box-border max-h-[5.75rem] min-h-[2.75rem] w-full min-w-0 resize-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-base leading-snug text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-primary-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 sm:text-sm"
                       @keydown.meta.enter.prevent="sendComment"
                       @keydown.ctrl.enter.prevent="sendComment"
                     />
@@ -372,6 +378,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
+import { appointmentPatientDisplayName } from '~/utils/appointment-patient-display';
+import { staffAppointmentPatientProfileHref } from '~/utils/staff-appointment-patient-profile';
 import { carePhotoCommentsDigest } from '~/utils/care-photo-thread-digest';
 import {
   CARE_PHOTO_ACCEPT_ATTR,
@@ -400,6 +408,8 @@ const props = defineProps<{
   appointmentId?: string | null;
   documentId?: string | null;
   viewerUserId?: string | null;
+  viewerRole?: string | null;
+  appointment?: Record<string, unknown> | null;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -515,22 +525,48 @@ async function loadPreview(docId: string) {
   try {
     const apiBase = config.public?.apiBase || 'http://localhost:8888/api';
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const csrf = (typeof window !== 'undefined' && (window as any).__csrfTokenCache) || '';
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (csrf) headers['X-CSRF-Token'] = csrf;
     const res = await fetch(`${apiBase}/medical-documents/${encodeURIComponent(docId)}/download`, {
       method: 'GET',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
+      headers,
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
     const blob = await res.blob();
+    if (!blob.size) {
+      throw new Error('Fichier vide');
+    }
     previewBlobUrl = URL.createObjectURL(blob);
     previewUrl.value = previewBlobUrl;
-  } catch {
-    /* ignore preview errors */
+  } catch (e: unknown) {
+    previewUrl.value = null;
+    if (!loading.value) {
+      toast.add({
+        title: 'Aperçu indisponible',
+        description: e instanceof Error ? e.message : 'Impossible de charger le fichier.',
+        color: 'warning',
+      });
+    }
   } finally {
     previewLoading.value = false;
   }
 }
 
 const viewer = computed(() => (props.viewerUserId ? String(props.viewerUserId) : ''));
+
+const patientDisplayName = computed(() => {
+  if (!props.appointment) return '';
+  return appointmentPatientDisplayName(props.appointment) || '';
+});
+
+const patientProfileHref = computed(() =>
+  staffAppointmentPatientProfileHref(props.viewerRole ?? undefined, props.appointment ?? null),
+);
 
 const photoDateSubtitle = computed(() => {
   const raw = photo.value?.created_at;
@@ -716,7 +752,11 @@ async function loadThread(silent = false) {
     if (did) {
       const nextPhoto = rows.find((p) => String(p.id) === String(did)) ?? null;
       photo.value = nextPhoto;
-      if (!silent) void loadPreview(String(did));
+      if (!isCarePhotoThreadAnchor(nextPhoto ?? {})) {
+        void loadPreview(String(did));
+      } else {
+        revokePreviewBlob();
+      }
     } else if (thread?.document_id) {
       activeDocumentId.value = String(thread.document_id);
       photo.value = {

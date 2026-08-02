@@ -49,6 +49,7 @@ import {
 } from '../hooks/appointment-detail-result';
 import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
 import { rdvMaquetteAvatarCounterparty } from '@/utils/rdv-maquette-card-display';
+import { staffPatientProfilePath } from '@/features/patients/utils/staff-hub-navigation';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { SkeletonList } from '@/components/ui/skeletons';
@@ -103,6 +104,11 @@ export function CarePhotoDiscussionScreen({
     const cardRole = role === 'nurse' ? 'nurse' : role === 'pro' ? 'pro' : 'patient';
     return rdvMaquetteAvatarCounterparty(apt, cardRole);
   }, [apt, role]);
+
+  const patientProfilePath = useMemo(
+    () => staffPatientProfilePath(role, apt?.patient_id),
+    [apt?.patient_id, role],
+  );
 
   const headerSubtitle = useMemo(
     () => carePhotoDiscussionHeaderSubtitle(apt, role),
@@ -305,9 +311,21 @@ export function CarePhotoDiscussionScreen({
         >
           {patientHeader?.name ? (
             <View style={styles.headerCopy}>
-              <AppText style={styles.headerPatientName} numberOfLines={1}>
-                {patientHeader.name}
-              </AppText>
+              {patientProfilePath ? (
+                <Pressable
+                  onPress={() => router.push(patientProfilePath as never)}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Voir la fiche de ${patientHeader.name}`}
+                >
+                  <AppText style={[styles.headerPatientName, styles.headerPatientLink]} numberOfLines={1}>
+                    {patientHeader.name}
+                  </AppText>
+                </Pressable>
+              ) : (
+                <AppText style={styles.headerPatientName} numberOfLines={1}>
+                  {patientHeader.name}
+                </AppText>
+              )}
               <AppText style={styles.headerSub}>{headerSubtitle}</AppText>
             </View>
           ) : (
@@ -586,6 +604,10 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.base,
     color: c.textPrimary,
     letterSpacing: -0.2,
+  },
+  headerPatientLink: {
+    color: c.primaryDark,
+    textDecorationLine: 'underline' as const,
   },
   headerTitle: {
     fontFamily: fontFamily.bold,

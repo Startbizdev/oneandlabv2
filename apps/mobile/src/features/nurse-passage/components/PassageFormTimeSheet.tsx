@@ -16,7 +16,7 @@ import {
 import { PASSAGE_TIME_SLOT_LABELS } from '../utils/passage-display';
 import { PassageTimePicker } from './PassageTimePicker';
 import type { PassageTimeSlot } from '@oneandlab/shared-types';
-import { resolvePassageTimeRange, passageCustomTimeFromHour } from '@oneandlab/shared-utils';
+import { resolvePassageTimeRange, passageCustomTimeFromHour, passageSlotFromRange } from '@oneandlab/shared-utils';
 import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -29,9 +29,8 @@ const SLOT_OPTIONS: Array<{ id: DraftSelection; label: string }> = [
   { id: 'afternoon', label: PASSAGE_TIME_SLOT_LABELS.afternoon },
   { id: 'evening', label: PASSAGE_TIME_SLOT_LABELS.evening },
   { id: 'night', label: PASSAGE_TIME_SLOT_LABELS.night },
-  { id: 'custom', label: 'Personnalisée' },
   { id: 'all_day', label: 'Toute la journée' },
-  { id: 'range', label: 'Créneau' },
+  { id: 'range', label: 'Créneau horaire' },
 ];
 
 type Props = {
@@ -114,7 +113,10 @@ export function PassageFormTimeSheet({
             if (draftSelection === 'all_day') {
               onConfirm('all_day', '', null);
             } else if (draftSelection === 'range') {
-              onConfirm('custom', passageCustomTimeFromHour(draftRange[0]), draftRange);
+              const range = clampAvailabilityRange(draftRange[0], draftRange[1], maxHour, minHour);
+              const inferred = passageSlotFromRange(range);
+              const slot = inferred !== 'custom' ? inferred : 'custom';
+              onConfirm(slot, passageCustomTimeFromHour(range[0]), range);
             } else if (draftSelection === 'custom') {
               onConfirm('custom', draftCustomTime, null);
             } else {

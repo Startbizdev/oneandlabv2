@@ -1,5 +1,6 @@
 import type { NursePassageNursingItem, PassageDailyTimeSlot, PassageTimeSlot } from '@oneandlab/shared-types';
 import dayjs from 'dayjs';
+import { formatPassageTimeSelectionSummary, passageSlotFromRange } from '@oneandlab/shared-utils';
 import { PASSAGE_TIME_SLOT_LABELS } from './passage-display';
 import type { PassagePlanningFormState } from './passage-planning';
 import type { CareCategory } from '@/features/categories/api/categories.service';
@@ -51,15 +52,12 @@ export function formatTimeSummary(
   customTime: string,
   timeRange?: [number, number] | null,
 ): string {
+  let effectiveSlot = timeSlot;
   if (timeRange && timeRange.length >= 2) {
-    const fmt = (h: number) => `${String(h).padStart(2, '0')}h`;
-    return `Plage ${fmt(timeRange[0])} – ${fmt(timeRange[1])}`;
+    const inferred = passageSlotFromRange(timeRange);
+    if (inferred !== 'custom') effectiveSlot = inferred;
   }
-  if (timeSlot === 'custom') {
-    const t = customTime.trim() || '—';
-    return `Personnalisée · ${t}`;
-  }
-  return PASSAGE_TIME_SLOT_LABELS[timeSlot] ?? timeSlot;
+  return formatPassageTimeSelectionSummary(effectiveSlot, customTime, timeRange ?? null);
 }
 
 export function formatDailyTimesSummary(slots: PassageDailyTimeSlot[]): string {
@@ -81,7 +79,7 @@ export function formatLocationSummary(atHome: boolean, addressLabel?: string | n
 export function formatPassageDurationSummary(duration: number, customDuration: string): string {
   if (duration === -1) {
     const min = parseInt(customDuration, 10);
-    return min > 0 ? `${min} min (personnalisée)` : 'Durée personnalisée';
+    return min > 0 ? `${min} min` : 'Durée à préciser';
   }
   if (duration === 60) return '1 h';
   return `${duration} min`;

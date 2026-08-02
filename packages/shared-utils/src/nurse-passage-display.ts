@@ -147,16 +147,25 @@ export function formatPassageTimeSlotLabel(
   timeSlot: PassageTimeSlot | string | null | undefined,
   scheduledAt?: string | null,
   customTime?: string | null,
+  availability?: unknown,
 ): string {
   const slot = String(timeSlot ?? '').trim() as PassageTimeSlot;
   if (slot && slot !== 'custom') {
     return PASSAGE_TIME_SLOT_LABELS[slot] ?? slot;
   }
+  const range = parseAvailabilityRange(availability);
+  if (range) {
+    const preset = passageSlotFromRange(range);
+    if (preset !== 'custom' && PASSAGE_TIME_SLOT_LABELS[preset]) {
+      return `${PASSAGE_TIME_SLOT_LABELS[preset]} · ${formatPassageHourLabel(range[0])} — ${formatPassageHourLabel(range[1])}`;
+    }
+    return `${formatPassageHourLabel(range[0])} — ${formatPassageHourLabel(range[1])}`;
+  }
   if (slot === 'custom') {
     const raw = String(customTime ?? '').trim();
-    if (raw) return `Personnalisée · ${raw.slice(0, 5)}`;
+    if (raw) return raw.slice(0, 5).replace(':', 'h');
     const fromSchedule = formatParisTimeFromScheduledAt(scheduledAt);
-    return fromSchedule ? `Personnalisée · ${fromSchedule}` : 'Personnalisée';
+    return fromSchedule ? fromSchedule.replace(':', 'h') : '—';
   }
   return formatParisTimeFromScheduledAt(scheduledAt) ?? '—';
 }
@@ -170,6 +179,7 @@ export function formatPassageTimeSlotFromFormData(
     slot as PassageTimeSlot | undefined,
     scheduledAt,
     formData.custom_time != null ? String(formData.custom_time) : null,
+    formData.availability,
   );
 }
 
@@ -290,7 +300,7 @@ export function formatPassageTimeSelectionSummary(
     return `${formatPassageHourLabel(effectiveRange[0])} — ${formatPassageHourLabel(effectiveRange[1])}`;
   }
   if (timeSlot === 'custom' && customTime?.trim()) {
-    return `Personnalisée · ${customTime.trim().slice(0, 5)}`;
+    return customTime.trim().slice(0, 5).replace(':', 'h');
   }
   return PASSAGE_TIME_SLOT_LABELS[timeSlot] ?? timeSlot;
 }
@@ -479,13 +489,19 @@ const TOUR_SLOT_SECTION_ORDER: (PassageTimeSlot | 'other')[] = [
 
 export function resolveTourStopPassageSlot(stop: PassageTourListTimeInput): PassageTimeSlot | 'other' {
   const explicit = String(stop.passage_time_slot ?? '').trim() as PassageTimeSlot;
-  if (explicit && PASSAGE_TIME_SLOTS.has(explicit)) {
+  if (explicit && explicit !== 'custom' && PASSAGE_TIME_SLOTS.has(explicit)) {
     return explicit;
   }
   if (isAllDayAvailability(stop.availability)) {
     return 'all_day';
   }
   const inferred = inferPassageTimeSlotFromAvailability(stop.availability);
+  if (inferred && inferred !== 'custom') {
+    return inferred;
+  }
+  if (explicit === 'custom') {
+    return 'custom';
+  }
   return inferred ?? 'other';
 }
 

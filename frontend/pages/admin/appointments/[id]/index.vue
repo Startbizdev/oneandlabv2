@@ -73,11 +73,17 @@
     </template>
 
     <template #assignationSection="{ appointment, loadAppointment }">
-      <AdminAppointmentAssignmentCard
-        :appointment="appointment"
-        :load-appointment="loadAppointment"
-        :batch-count="assignBatchCount(appointment)"
-      />
+      <div class="space-y-4">
+        <AdminAppointmentAddressCard
+          :appointment="appointment"
+          :load-appointment="loadAppointment"
+        />
+        <AdminAppointmentAssignmentCard
+          :appointment="appointment"
+          :load-appointment="loadAppointment"
+          :batch-count="assignBatchCount(appointment)"
+        />
+      </div>
     </template>
 
     <template #mainExtra="{ appointment, loadAppointment }">
