@@ -26,7 +26,7 @@ const PRESET_OPTIONS = [
     value: min,
     label: min === 60 ? '1 h' : `${min} min`,
   })),
-  { value: -1, label: 'Personnalisée' },
+  { value: -1, label: 'Autre durée' },
 ];
 
 export function PassageFormDurationSheet({

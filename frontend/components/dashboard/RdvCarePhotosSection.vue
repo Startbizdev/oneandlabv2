@@ -211,6 +211,8 @@
       :appointment-id="primaryAppointment?.id ?? undefined"
       :document-id="careDiscussionDocId ?? undefined"
       :viewer-user-id="effectiveViewerId ?? undefined"
+      :viewer-role="user?.role ?? undefined"
+      :appointment="primaryAppointment ?? undefined"
       @comment-posted="onDiscussionCommentPosted"
       @file-uploaded="onDiscussionCommentPosted"
       @thread-loaded="onThreadLoaded"
