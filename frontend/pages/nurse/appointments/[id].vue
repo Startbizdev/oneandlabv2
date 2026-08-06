@@ -33,19 +33,6 @@
             >
               Reprendre le RDV
             </UButton>
-            <UButton
-              v-if="nurseCanCancelAppointment(appointment)"
-              color="error"
-              variant="outline"
-              size="md"
-              leading-icon="i-lucide-x-circle"
-              class="flex-1 min-w-0 justify-center"
-              :loading="processing"
-              :loading-auto="false"
-              :on-click="() => openCancelModal(appointment, loadAppointment)"
-            >
-              Annuler
-            </UButton>
           </div>
 
           <UButton
@@ -136,11 +123,6 @@
 
   </AppointmentDetailPage>
 
-  <CancelAppointmentModal
-    v-model:open="showCancelModal"
-    :loading="processing"
-    @confirm="onConfirmCancel"
-  />
   <RescheduleAppointmentModal
     v-model="showRescheduleModal"
     :appointment="rescheduleAppointment"
@@ -163,7 +145,6 @@ definePageMeta({
 
 import { computed, nextTick, onMounted, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
-import { cancelAppointmentWithOptionalPhoto } from '~/utils/appointment-cancellation';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
 import { isPendingIncomingOffer, staffCanManageOwnPendingBloodTest } from '@oneandlab/shared-utils';
@@ -190,13 +171,6 @@ function nurseCanManageAppointmentActions(appointment: unknown) {
   const apt = appointment as { status?: string } | null | undefined;
   if (!apt) return false;
   if (['confirmed', 'inProgress'].includes(String(apt.status ?? ''))) return true;
-  return staffCanManageOwnPendingBloodTest(appointment as Parameters<typeof staffCanManageOwnPendingBloodTest>[0], user.value?.id);
-}
-
-function nurseCanCancelAppointment(appointment: unknown) {
-  const apt = appointment as { status?: string } | null | undefined;
-  if (!apt) return false;
-  if (String(apt.status ?? '') === 'confirmed') return true;
   return staffCanManageOwnPendingBloodTest(appointment as Parameters<typeof staffCanManageOwnPendingBloodTest>[0], user.value?.id);
 }
 
@@ -248,9 +222,6 @@ watch(
 );
 
 const processing = ref(false);
-const showCancelModal = ref(false);
-const currentAppointmentForCancel = ref<any>(null);
-const currentLoadAppointmentForCancel = ref<(() => Promise<void>) | null>(null);
 const currentAppointmentForUpload = ref<any>(null);
 const showRescheduleModal = ref(false);
 const rescheduleAppointment = ref<any>(null);
@@ -282,12 +253,6 @@ const redispatchCareLines = computed((): { label: string; sub: string }[] => {
 
 function setAppointmentForUpload(apt: any) {
   currentAppointmentForUpload.value = apt;
-}
-
-function openCancelModal(apt: any, loadAppointment: () => Promise<void>) {
-  currentAppointmentForCancel.value = apt;
-  currentLoadAppointmentForCancel.value = loadAppointment;
-  showCancelModal.value = true;
 }
 
 function openRescheduleModal(apt: any) {
@@ -460,32 +425,6 @@ async function downloadDocument(doc: any) {
     toast.add({ title: 'Erreur', description: error.message || 'Impossible de télécharger le document', color: 'error' });
   } finally {
     downloadingDocuments.value.delete(doc.id);
-  }
-}
-
-async function onConfirmCancel(payload: { reason: string; comment: string; photoFile: File | null }) {
-  const appointment = currentAppointmentForCancel.value;
-  if (!appointment?.id) return;
-  const appointmentId = String(appointment.id);
-  currentAppointmentForCancel.value = null;
-  currentLoadAppointmentForCancel.value = null;
-  processing.value = true;
-  try {
-    const result = await cancelAppointmentWithOptionalPhoto(appointmentId, payload);
-    if (result.ok) {
-      toast.add({ title: 'Rendez-vous annulé', description: 'Le rendez-vous a été annulé avec succès.', color: 'success' });
-      await navigateTo('/nurse/appointments');
-    } else {
-      toast.add({
-        title: result.photoUploadFailed ? 'Photo non envoyée' : 'Erreur',
-        description: result.error,
-        color: 'error',
-      });
-    }
-  } catch (error: any) {
-    toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' });
-  } finally {
-    processing.value = false;
   }
 }
 

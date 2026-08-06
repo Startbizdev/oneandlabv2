@@ -149,7 +149,7 @@ export function AppointmentDetailActions({
     });
   }
 
-  if (active) {
+  if (active && role !== 'nurse') {
     actions.push({
       key: 'cancel',
       label: 'Annuler le rendez-vous',
