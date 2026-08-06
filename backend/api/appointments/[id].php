@@ -489,7 +489,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $cancellationReason = null;
             $cancellationComment = null;
             $cancellationPhotoDocumentId = null;
-            if ($input['status'] === 'canceled' && in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'preleveur', 'super_admin'])) {
+            if ($input['status'] === 'canceled' && ($user['role'] ?? '') === 'nurse') {
+                http_response_code(403);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Les infirmiers ne peuvent pas annuler un rendez-vous. Utilisez le partage ou le redispatch.',
+                    'code' => 'NURSE_CANCEL_FORBIDDEN',
+                ]);
+                exit;
+            }
+            if ($input['status'] === 'canceled' && in_array($user['role'], ['pro', 'lab', 'subaccount', 'preleveur', 'super_admin'])) {
                 $reasons = require __DIR__ . '/../../config/cancellation-reasons.php';
                 $cancellationReason = isset($input['cancellation_reason']) ? trim((string) $input['cancellation_reason']) : '';
                 $cancellationComment = isset($input['cancellation_comment']) ? trim((string) $input['cancellation_comment']) : '';

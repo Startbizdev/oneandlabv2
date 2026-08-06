@@ -139,7 +139,6 @@ export function DetailSidebarActions({
 
   const showRescheduleNurse = role === 'nurse' && nurseManage;
   const showRescheduleOther = (role === 'pro' || role === 'preleveur') && active;
-  const showCancelNurse = role === 'nurse' && nurseManage;
   const showCancelOther = (role === 'pro' || role === 'preleveur') && active;
   const showRedispatchNonNursing =
     role === 'nurse' && status === 'confirmed' && !nursing && !blood;
@@ -238,7 +237,7 @@ export function DetailSidebarActions({
     });
   }
 
-  if (showCancelNurse || showCancelOther) {
+  if (showCancelOther) {
     actions.push({
       key: 'cancel',
       label: 'Annuler le rendez-vous',
