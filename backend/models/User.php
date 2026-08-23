@@ -1384,12 +1384,16 @@ class User
 
     /**
      * Après redispatch : retire le patient de « Mes patients » s’il n’a été lié que via l’acceptation du RDV.
+     * Les infirmiers conservent le patient (lien PPA créé à l’acceptation).
      */
     public function revokePatientProfessionalAccessAfterRedispatch(
         string $patientId,
         string $professionalId,
         string $professionalRole
     ): void {
+        if ($professionalRole === 'nurse') {
+            return;
+        }
         if (!$this->hasPatientProfessionalAccessTable() || $patientId === '' || $professionalId === '') {
             return;
         }

@@ -82,6 +82,8 @@ export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: 
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.profile.user(patientId) });
+      await qc.invalidateQueries({ queryKey: queryKeys.patients.all });
+      await qc.invalidateQueries({ queryKey: ['patients', 'hub-search'] });
       await qc.invalidateQueries({ queryKey: ['prescriptions', 'patients'] });
       toast('Fiche patient enregistrée', { type: 'success' });
       onSaved?.();

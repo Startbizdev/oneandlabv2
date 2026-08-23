@@ -96,6 +96,8 @@ export function DetailSidebarActions({
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.appointments.detail(apt.id) });
       void qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      void qc.invalidateQueries({ queryKey: queryKeys.patients.all });
+      void qc.invalidateQueries({ queryKey: ['patients', 'hub-search'] });
       toast('Demande redispatchée', { type: 'success' });
     },
     onError: (e) => handleApiError(e, toast, 'redispatch'),

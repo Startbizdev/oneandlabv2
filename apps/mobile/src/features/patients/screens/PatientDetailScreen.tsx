@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
@@ -21,6 +21,7 @@ import {
   Mail,
   MapPin,
   MessageCircle,
+  Pencil,
   Phone,
   User,
 } from 'lucide-react-native';
@@ -44,6 +45,7 @@ import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { radius, spacing, iconSize, avatarSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { StaffPatientEditSheet } from '../components/StaffPatientEditSheet';
 import {
   buildTabSceneScrollConfig,
   spreadTabSceneScrollProps,
@@ -133,6 +135,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   });
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTopOnPop(scrollRef);
+  const [editOpen, setEditOpen] = useState(false);
 
   const p = profileQ.data;
   const canDelete = p?.created_by === user?.id;
@@ -283,6 +286,17 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
           </View>
         ) : null}
 
+        <View style={styles.card}>
+          <ProfileNavRow
+            icon={Pencil}
+            title="Modifier la fiche"
+            subtitle="Nom, téléphone, adresse, NIR…"
+            onPress={() => setEditOpen(true)}
+            iconColor={c.primary}
+            iconBg={c.primaryLight}
+          />
+        </View>
+
         {contactButtons.length > 0 ? (
           <Row gap={spacing[1.5]}>
             {contactButtons.map((btn) => {
@@ -368,6 +382,15 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
           />
         ) : null}
       </ScrollView>
+
+      <StaffPatientEditSheet
+        visible={editOpen}
+        patientId={id!}
+        onClose={() => setEditOpen(false)}
+        onSaved={() => {
+          void profileQ.refetch();
+        }}
+      />
     </StackChromeScreen>
   );
 }
