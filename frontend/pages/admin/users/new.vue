@@ -148,31 +148,18 @@
             <!-- Professionnel santé : profession + Adeli -->
             <div v-if="roleStr === 'pro'" class="space-y-4 pt-4 border-t border-zinc-100">
               <h2 class="text-sm font-bold uppercase tracking-wider text-zinc-400">Profession</h2>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-zinc-700 mb-1.5">Profession (emploi)</label>
-                  <select
-                    v-model="form.emploi"
-                    class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    <option value="">Sélectionner une profession...</option>
-                    <option v-for="item in proEmploiOptions" :key="item.value" :value="item.value">
-                      {{ item.label }}
-                    </option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-zinc-700 mb-1.5">Numéro RPPS</label>
-                  <div class="relative">
-                    <UIcon name="i-lucide-id-card" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
-                    <input
-                      v-model="form.rpps"
-                      type="text"
-                      placeholder="12345678901"
-                      maxlength="11"
-                      class="w-full rounded-lg border border-zinc-300 bg-white pl-10 pr-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
+              <ProEmploiField v-model="form.emploi" />
+              <div>
+                <label class="block text-sm font-medium text-zinc-700 mb-1.5">Numéro RPPS</label>
+                <div class="relative">
+                  <UIcon name="i-lucide-id-card" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                  <input
+                    v-model="form.rpps"
+                    type="text"
+                    placeholder="12345678901"
+                    maxlength="11"
+                    class="w-full rounded-lg border border-zinc-300 bg-white pl-10 pr-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
                 </div>
               </div>
             </div>
@@ -305,7 +292,7 @@
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api'
-import { PRO_SANTE_EMPLOIS } from '~/constants/proEmploi'
+import ProEmploiField from '~/components/profile/ProEmploiField.vue'
 import { splitProfessionalId } from '@oneandlab/shared-types'
 
 definePageMeta({
@@ -315,8 +302,6 @@ definePageMeta({
 })
 
 const toast = useAppToast()
-
-const proEmploiOptions = [...PRO_SANTE_EMPLOIS]
 
 const form = reactive({
   role: 'patient',
