@@ -87,24 +87,7 @@
 
         <!-- Pro: Emploi (profession de santé) + Numéro RPPS -->
         <template v-if="role === 'pro'">
-          <UFormField label="Profession (emploi)" name="emploi" required class="w-full">
-            <USelectMenu
-              v-model="form.emploi"
-              :items="proEmploiItems"
-              value-key="value"
-              placeholder="Rechercher votre profession..."
-              size="lg"
-              class="w-full"
-              :ui="{ rounded: 'rounded-xl' }"
-              searchable
-              by="value"
-            >
-              <template #label>
-                <span v-if="form.emploi">{{ form.emploi }}</span>
-                <span v-else class="text-gray-400">Rechercher votre profession...</span>
-              </template>
-            </USelectMenu>
-          </UFormField>
+          <ProEmploiField v-model="form.emploi" required />
           <UFormField
             :label="isProIpa ? PROFESSIONAL_ID_LABEL : 'Numéro RPPS'"
             name="rpps"
@@ -192,16 +175,13 @@
 </template>
 
 <script setup lang="ts">
-import { PRO_SANTE_EMPLOIS } from '~/constants/proEmploi';
+import ProEmploiField from '~/components/profile/ProEmploiField.vue';
 import {
   isProIpaEmploi,
   PROFESSIONAL_ID_LABEL,
   validateProfessionalId,
   splitProfessionalId,
 } from '@oneandlab/shared-types';
-
-const proEmploiItems = [...PRO_SANTE_EMPLOIS];
-
 const genderOptions = [
   { label: 'Homme', value: 'male' },
   { label: 'Femme', value: 'female' },

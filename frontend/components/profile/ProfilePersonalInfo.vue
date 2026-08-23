@@ -95,23 +95,7 @@
           maxlength="11"
         />
 
-        <UFormField v-if="isPro" label="Profession (emploi)" name="emploi" class="w-full">
-          <USelectMenu
-            v-model="form.emploi"
-            :items="proEmploiItems"
-            value-key="value"
-            placeholder="Rechercher votre profession..."
-            size="xl"
-            class="w-full"
-            searchable
-            by="value"
-          >
-            <template #label>
-              <span v-if="form.emploi">{{ form.emploi }}</span>
-              <span v-else class="text-gray-400">Rechercher votre profession...</span>
-            </template>
-          </USelectMenu>
-        </UFormField>
+        <ProEmploiField v-if="isPro" v-model="form.emploi" />
 
         <FormInput
           v-if="isPro"
@@ -207,10 +191,8 @@ import { watch, nextTick, computed } from 'vue'
 import type { ProfileForm } from '~/types/profile'
 import { GENDER_OPTIONS } from '~/types/profile'
 import { isTechnicalPatientEmail, patientUiEmailLine } from '~/utils/patient-address-rdv'
-import { PRO_SANTE_EMPLOIS } from '~/constants/proEmploi'
 import { isProIpaEmploi, PROFESSIONAL_ID_LABEL } from '@oneandlab/shared-types'
-
-const proEmploiItems = [...PRO_SANTE_EMPLOIS]
+import ProEmploiField from '~/components/profile/ProEmploiField.vue'
 
 interface Props {
   modelValue: ProfileForm
