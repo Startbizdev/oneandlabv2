@@ -194,6 +194,8 @@ export function OfferAppointmentModal({
           },
         }),
         qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+        qc.invalidateQueries({ queryKey: queryKeys.patients.all }),
+        qc.invalidateQueries({ queryKey: ['patients', 'hub-search'] }),
       ]);
     } catch {
       /* Navigation quand même — cache optimiste déjà à jour. */
