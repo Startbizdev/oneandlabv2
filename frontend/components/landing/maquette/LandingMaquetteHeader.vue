@@ -29,7 +29,7 @@
                 route.path === '/rendez-vous/nouveau',
             }"
           >
-            Patient
+            Vous êtes patient
             <UIcon name="i-lucide-chevron-down" class="h-4 w-4 shrink-0 text-[#9090A8]" />
           </button>
           <template #content>
@@ -62,7 +62,7 @@
                 route.path.startsWith('/pour-les-infirmiers'),
             }"
           >
-            Infirmiers
+            Vous êtes infirmier
             <UIcon name="i-lucide-chevron-down" class="h-4 w-4 shrink-0 text-[#9090A8]" />
           </button>
           <template #content>
@@ -95,7 +95,7 @@
                 route.path.startsWith('/pour-les-laboratoires'),
             }"
           >
-            Laboratoire
+            Vous êtes un laboratoire
             <UIcon name="i-lucide-chevron-down" class="h-4 w-4 shrink-0 text-[#9090A8]" />
           </button>
           <template #content>
@@ -127,7 +127,7 @@
               route.path === '/pour-les-professionnels',
           }"
         >
-          Professionnel
+          Vous êtes médecin
         </NuxtLink>
         <NuxtLink
           to="/contact"
@@ -301,8 +301,8 @@
           size="md"
           class="whitespace-nowrap font-medium"
         >
-          <span class="hidden sm:inline">Prendre rendez-vous</span>
-          <span class="sm:hidden">RDV</span>
+          <span class="hidden sm:inline">Réserver</span>
+          <span class="sm:hidden">Réserver</span>
         </UButton>
 
         <button
@@ -409,19 +409,19 @@ const loginHref = computed(
 );
 
 const patientMenuItems = computed(() => [
-  { label: 'Prendre rendez-vous', to: appointmentNewUrl.value },
-  { label: 'Explorer les laboratoires', to: '/laboratoires' },
-  { label: 'Explorer les infirmiers', to: '/infirmiers' },
-  { label: 'Pour les patients', to: '/pour-les-patients' },
+  { label: 'Réserver une visite', to: appointmentNewUrl.value },
+  { label: 'Laboratoires', to: '/laboratoires' },
+  { label: 'Infirmiers', to: '/infirmiers' },
+  { label: 'Comment ça marche', to: '/pour-les-patients' },
 ]);
 
 const nurseMenuItems = [
-  { label: 'Présentation', to: '/pour-les-infirmiers' },
+  { label: 'Pourquoi Cary', to: '/pour-les-infirmiers' },
   { label: 'Tarifs', to: '/pour-les-infirmiers/tarifs' },
 ];
 
 const labMenuItems = [
-  { label: 'Présentation', to: '/pour-les-laboratoires' },
+  { label: 'Pourquoi Cary', to: '/pour-les-laboratoires' },
   { label: 'Tarifs', to: '/pour-les-laboratoires/tarifs' },
 ];
 

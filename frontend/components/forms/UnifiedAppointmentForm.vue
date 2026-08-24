@@ -138,7 +138,7 @@
           <BookingDateCarousel
             v-if="!wizardUseServiceCard"
             v-model="formDataByService[svc.id].scheduled_at"
-            :min-lead-time-hours="minLeadTimeHours ?? undefined"
+            :min-lead-time-hours="effectiveMinLeadTimeHours ?? undefined"
             :accept-saturday="acceptSaturday !== false"
             :accept-sunday="acceptSunday !== false"
           />
@@ -147,7 +147,7 @@
             v-model="formDataByService[svc.id].scheduled_at"
             placeholder="Sélectionner une date"
             :appointment-type="isBloodTestAppointment(svc.type) ? 'lab' : 'nurse'"
-            :min-lead-time-hours="minLeadTimeHours ?? undefined"
+            :min-lead-time-hours="effectiveMinLeadTimeHours ?? undefined"
             :accept-saturday="acceptSaturday !== false"
             :accept-sunday="acceptSunday !== false"
           />
@@ -817,7 +817,7 @@ import {
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { getBloodTestPremiumDayKind, type PremiumDayKind } from '~/utils/french-public-holidays';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
-import { careCategoryEmojiForCategory, isCareCategoryEmoji, stripStalePatientUrgencyFromSlice } from '@oneandlab/shared-utils';
+import { careCategoryEmojiForCategory, isCareCategoryEmoji, stripStalePatientUrgencyFromSlice, isCareCategoryWithoutBookingOptions } from '@oneandlab/shared-utils';
 import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
 import {
   careAutreDetailKey,
@@ -911,6 +911,17 @@ const emit = defineEmits<{
 }>();
 
 const { user } = useAuth();
+
+/** Délai minimal date : prop explicite, sinon 0 h si certificat de décès dans le panier. */
+const effectiveMinLeadTimeHours = computed(() => {
+  if (props.minLeadTimeHours != null && props.minLeadTimeHours !== undefined) {
+    return props.minLeadTimeHours;
+  }
+  const hasDeathCertificate = props.selectedServices.some((s) =>
+    isCareCategoryWithoutBookingOptions({ name: s.name, label: s.name }),
+  );
+  return hasDeathCertificate ? 0 : undefined;
+});
 
 const hasLabService = computed(() => props.selectedServices.some(s => isBloodTestAppointment(s.type)));
 const isMultiServices = computed(() => props.selectedServices.length > 1);

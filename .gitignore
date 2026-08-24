@@ -43,6 +43,7 @@ data/legacy-export.json
 data/legacy-uploads/
 data/*.json
 
-
+# Backups locaux (exports serveur — hors EAS / git)
+backups/
 
 

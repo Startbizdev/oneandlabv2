@@ -52,6 +52,15 @@ $dsn = sprintf(
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
 $crypto = new Crypto();
 
+if (!PrescriptionService::isPrescriptionGenerationEnabled($db, (string) ($user['user_id'] ?? ''))) {
+    http_response_code(403);
+    echo json_encode([
+        'success' => false,
+        'error' => 'La génération d\'ordonnances est désactivée pour votre compte.',
+    ]);
+    exit;
+}
+
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $limit = (int) ($_GET['limit'] ?? 20);
 $patientId = isset($_GET['patient_id']) ? trim((string) $_GET['patient_id']) : null;

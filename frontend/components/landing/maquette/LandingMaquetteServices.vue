@@ -11,15 +11,15 @@
           <h2
             class="text-[clamp(1.875rem,2.5vw,2.625rem)] font-extrabold leading-[1.1] tracking-[-0.035em] text-[#0A0A0F] dark:text-white"
           >
-            Simple, rapide<br />
-            et sans effort
+            Trois minutes,<br />
+            et c’est réglé
           </h2>
         </div>
         <p
           class="pb-1 text-[1.0625rem] leading-[1.78] text-[#3D3D52] lg:pb-px dark:text-gray-300"
         >
-          De la réservation à l'intervention, tout se passe en quelques minutes. Aucun papier,
-          aucune démarche. Vous choisissez, nous nous occupons du reste.
+          Vous choisissez le soin et l’horaire. Nous trouvons le professionnel. Il vient chez
+          vous.
         </p>
       </div>
       <div class="grid gap-5 md:grid-cols-3">
@@ -81,21 +81,21 @@ const cards = [
   {
     highlight: true,
     icon: 'i-lucide-calendar-plus',
-    title: 'Réservez en ligne',
-    body: "Choisissez le type de soin, votre adresse et un créneau. La réservation prend moins de trois minutes depuis votre téléphone.",
+    title: 'Vous réservez',
+    body: 'Soin, adresse, créneau. Trois minutes, depuis votre téléphone.',
   },
   {
     highlight: false,
     icon: 'i-lucide-check-circle-2',
-    title: 'Confirmation immédiate',
-    body: 'Un professionnel qualifié disponible dans votre secteur accepte la demande. Vous recevez une confirmation par SMS et par email.',
+    title: 'On vous confirme',
+    body: 'Un professionnel près de chez vous accepte. Vous recevez un SMS et un email.',
     illustration: 'confirmation' as const,
   },
   {
     highlight: false,
     icon: 'i-lucide-house',
-    title: 'Soins à domicile',
-    body: "Le professionnel intervient chez vous à l'heure convenue avec le matériel adapté. Qualité hospitalière dans votre foyer.",
+    title: 'Il vient chez vous',
+    body: 'À l’heure convenue, avec le matériel. Vous n’avez pas à vous déplacer.',
     illustration: 'home-care' as const,
   },
 ] as const;

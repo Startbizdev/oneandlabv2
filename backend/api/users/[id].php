@@ -175,6 +175,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         unset($input['prescription_generation_enabled']);
     }
 
+    if (($user['role'] ?? '') === 'super_admin' && array_key_exists('prescription_generation_enabled', $input)) {
+        $targetForRx = $userModel->getById($id, $user['user_id'], $user['role']);
+        $targetRoleForRx = $targetForRx['role'] ?? '';
+        if (!in_array($targetRoleForRx, ['pro', 'nurse'], true)) {
+            unset($input['prescription_generation_enabled']);
+        }
+    }
+
     // Lab modifiant un préleveur/sous-compte : lab_id ne peut être que le lab principal ou un de ses sous-comptes
     if ($user['role'] === 'lab' && isset($input['lab_id'])) {
         $newLabId = !empty(trim((string)$input['lab_id'])) ? trim((string)$input['lab_id']) : null;

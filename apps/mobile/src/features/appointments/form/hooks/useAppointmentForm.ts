@@ -552,6 +552,7 @@ export function useMultiAppointmentWizard(opts: {
         slice,
         priorSelectedServices: selectedServices,
         priorFormDataByService: formDataByService as Record<string, BookingServiceFormSlice | undefined>,
+        careCategory: { name: service.name, label: service.name },
       });
       setSelectedServices((prev) => {
         const without = prev.filter((s) => s.id !== service.id);

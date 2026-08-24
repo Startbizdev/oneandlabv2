@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   careCategoryEmojiForCategory,
   isCareCategoryWithoutBookingOptions,
+  defaultBookingSliceForCareCategory,
   type SelectedServiceInput,
 } from '@oneandlab/shared-utils';
 import type { CareCategory } from '@/features/categories/api/categories.service';
@@ -298,7 +299,7 @@ export function CareSelectionStep({
                 ? { skip_prescription_documents: true as const }
                 : {}),
             },
-            slice: {},
+            slice: defaultBookingSliceForCareCategory(ready),
           });
           resetFilterAfterAdd();
           return;

@@ -255,7 +255,7 @@ class PrescriptionService
     ): array {
         $role = $user['role'] ?? '';
 
-        if ($role === 'pro' && !self::isPrescriptionGenerationEnabled($db, (string) ($user['user_id'] ?? ''))) {
+        if (in_array($role, ['pro', 'nurse'], true) && !self::isPrescriptionGenerationEnabled($db, (string) ($user['user_id'] ?? ''))) {
             return [
                 'success' => false,
                 'http' => 403,
@@ -847,7 +847,7 @@ class PrescriptionService
         return $e;
     }
 
-    /** Pro : génération d'ordonnances activée (défaut oui si colonne absente). */
+    /** Pro / infirmier : génération d'ordonnances activée (défaut oui si colonne absente). */
     public static function isPrescriptionGenerationEnabled(PDO $db, string $userId): bool
     {
         if ($userId === '') {
@@ -866,7 +866,11 @@ class PrescriptionService
         $stmt = $db->prepare('SELECT prescription_generation_enabled, role FROM profiles WHERE id = ? LIMIT 1');
         $stmt->execute([$userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$row || ($row['role'] ?? '') !== 'pro') {
+        if (!$row) {
+            return true;
+        }
+        $role = $row['role'] ?? '';
+        if ($role !== 'pro' && $role !== 'nurse') {
             return true;
         }
 

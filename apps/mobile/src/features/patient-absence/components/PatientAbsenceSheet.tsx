@@ -259,7 +259,7 @@ export function PatientAbsenceSheet({
               />
             ) : (historyQ.data?.length ?? 0) === 0 ? (
               <EmptyState
-                title="Aucune absence enregistrée"
+                title="Aucune absence notée"
                 description="Les absences déclarées pour ce patient apparaîtront ici."
                 Icon={History}
                 actionLabel="Déclarer une absence"

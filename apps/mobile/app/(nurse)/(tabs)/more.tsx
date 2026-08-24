@@ -17,6 +17,7 @@ import {
   Star,
   User,
 } from 'lucide-react-native';
+import { prescriptionGenerationEnabled } from '@/features/prescriptions/constants';
 import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { nursePublicProfilePath } from '@/features/profile/utils/nurse-public-profile';
@@ -124,12 +125,16 @@ export default function NurseMore() {
                 onPress: () => nav('/(nurse)/resultats'),
                 iconAccent: 'results',
               },
-              {
-                icon: FilePenLine,
-                label: 'Ordonnances',
-                onPress: () => nav('/(nurse)/prescriptions'),
-                iconAccent: 'teal',
-              },
+              ...(prescriptionGenerationEnabled(user)
+                ? [
+                    {
+                      icon: FilePenLine,
+                      label: 'Ordonnances',
+                      onPress: () => nav('/(nurse)/prescriptions'),
+                      iconAccent: 'teal' as const,
+                    },
+                  ]
+                : []),
               {
                 icon: CreditCard,
                 label: 'Abonnement',

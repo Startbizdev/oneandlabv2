@@ -1234,7 +1234,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     try {
         logAppointment('Appel à appointmentModel->create', ['user_id' => $user['user_id'], 'role' => $user['role']]);
-        $id = $appointmentModel->create($inputForCreate, $user['user_id'], $user['role']);
+        $createUserId = (string) $user['user_id'];
+        $createUserRole = (string) ($user['role'] ?? '');
+        $notifyCreatorRole = $createUserRole;
+
+        if (($user['role'] ?? '') === 'super_admin' && !empty($input['on_behalf_of_user_id'])) {
+            $onBehalfId = trim((string) $input['on_behalf_of_user_id']);
+            if (!Validation::uuid($onBehalfId)) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Identifiant créateur invalide',
+                    'code' => 'VALIDATION_ERROR',
+                ]);
+                exit;
+            }
+            $stmtOb = $db->prepare('SELECT id, role, banned_until FROM profiles WHERE id = ? LIMIT 1');
+            $stmtOb->execute([$onBehalfId]);
+            $obRow = $stmtOb->fetch(PDO::FETCH_ASSOC);
+            if (!$obRow || !in_array($obRow['role'] ?? '', ['pro', 'nurse'], true)) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Le créateur doit être un professionnel ou un infirmier actif',
+                    'code' => 'VALIDATION_ERROR',
+                ]);
+                exit;
+            }
+            if (!empty($obRow['banned_until']) && strtotime((string) $obRow['banned_until']) > time()) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Le profil sélectionné est suspendu ou banni',
+                    'code' => 'VALIDATION_ERROR',
+                ]);
+                exit;
+            }
+            $createUserId = $onBehalfId;
+            $createUserRole = (string) $obRow['role'];
+            $notifyCreatorRole = $createUserRole;
+        }
+
+        $id = $appointmentModel->create($inputForCreate, $createUserId, $createUserRole);
         logAppointment('Rendez-vous créé avec succès', ['appointment_id' => $id]);
 
         require_once __DIR__ . '/../../lib/admin/AdminDispatchEventLogger.php';
@@ -1256,7 +1297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             && ($inputForCreate['lab_preference_mode'] ?? '') === 'brand_choice'
         ) {
             $dispatchMode = 'patient_brand_choice';
-        } elseif (($user['role'] ?? '') === 'super_admin') {
+        } elseif (($user['role'] ?? '') === 'super_admin' && $createUserRole === 'super_admin') {
             $dispatchMode = 'manual';
         }
         // Note : assigned_pro_id seul (QR pro) reste en mode « zone » — le pro est notifié à part.
@@ -1271,6 +1312,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'dispatch_mode' => $dispatchMode,
                 'type' => $inputForCreate['type'] ?? null,
                 'assigned_pro_id' => $inputForCreate['assigned_pro_id'] ?? null,
+                'created_as_user_id' => $createUserId,
+                'created_as_role' => $createUserRole,
             ]
         );
 
@@ -1395,7 +1438,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         $notifyAppointmentId = $id;
         $notifyInput = $inputForCreate;
-        $notifyCreatorRole = $user['role'];
+        $notifyCreatorRole = $notifyCreatorRole ?? $user['role'];
 
         // Sous PHP-FPM, fastcgi_finish_request détache le client : le dispatch peut tourner sans timeout navigateur.
         // Sans FastCGI :

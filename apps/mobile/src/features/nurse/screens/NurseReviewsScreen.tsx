@@ -142,7 +142,7 @@ export function NurseReviewsScreen() {
         ListEmptyComponent={
           allReviews.length === 0 ? (
             <EmptyState
-              title="Aucun avis disponible"
+              title="Pas encore d’avis"
               description="Il n'y a pas encore d'avis. Dès qu'un patient laissera une note après un soin, elle s'affichera ici."
               imageSource={EMPTY_AVIS_IMAGE}
               imageWidth={EMPTY_AVIS_IMAGE_WIDTH}

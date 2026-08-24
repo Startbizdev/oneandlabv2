@@ -54,14 +54,14 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
   const emptyCopy = useMemo(() => {
     if (role === 'patient') {
       return {
-        title: 'Aucun résultat',
+        title: 'Pas encore de résultat',
         description:
-          'Vos résultats d’analyses apparaîtront ici dès que le laboratoire les aura déposés.',
+          'Ils s’affichent ici dès que le laboratoire les partage.',
       };
     }
     return {
-      title: 'Aucun résultat',
-      description: 'Les résultats déposés par les laboratoires pour vos patients s’afficheront ici.',
+      title: 'Pas encore de résultat',
+      description: 'Ils s’affichent ici dès que le laboratoire les partage.',
     };
   }, [role]);
 

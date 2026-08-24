@@ -77,8 +77,8 @@ export function HelpScreen() {
         <ProfileNavCard title="Prise en main">
           <ProfileNavRow
             icon={Sparkles}
-            title="Découvrir Cary en 2 minutes"
-            subtitle="Revoir le tutoriel de démarrage avec les onglets principaux."
+            title="Revoir le guide de démarrage"
+            subtitle="Deux minutes pour voir ce que vous pouvez faire."
             onPress={() => router.push(getOnboardingHref(role, true) as never)}
             iconColor={c.primary}
             iconBg={c.primaryLight}

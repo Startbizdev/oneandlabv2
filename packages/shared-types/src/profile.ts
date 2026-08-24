@@ -64,4 +64,6 @@ export interface AuthUser {
   must_change_password?: boolean;
   /** Adresse cabinet (infirmier / pro) — renvoyée par `/auth/me?scope=mobile`. */
   address?: Address | null;
+  /** Pro / infirmier : génération ordonnances (défaut activé). */
+  prescription_generation_enabled?: boolean;
 }

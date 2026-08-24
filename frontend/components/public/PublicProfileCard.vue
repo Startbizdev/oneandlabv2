@@ -57,7 +57,7 @@
         class="flex items-center justify-center w-full rounded-lg py-3 px-4 text-base font-medium bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 group-hover:bg-primary-200 dark:group-hover:bg-primary-800/50 transition-colors"
       >
         <UIcon name="i-lucide-calendar-plus" class="w-5 h-5 mr-2" />
-        Prendre rendez-vous
+        Réserver une visite
       </span>
     </div>
   </NuxtLink>

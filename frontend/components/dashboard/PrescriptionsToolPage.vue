@@ -232,7 +232,7 @@
 <script setup lang="ts">
 import PrescriptionHistoryRow from '~/components/dashboard/PrescriptionHistoryRow.vue';
 import { PATIENT_SELECT_SEARCH_PLACEHOLDER, buildPatientSelectRow } from '~/utils/patient-select-menu';
-import { proPrescriptionGenerationEnabled } from '~/utils/prescription-access';
+import { prescriptionGenerationEnabled } from '~/utils/prescription-access';
 import type { Appointment } from '~/types/appointments';
 
 const props = defineProps<{
@@ -246,7 +246,9 @@ const prescriptionKind = computed(() => props.prescriptionKind ?? 'medical');
 
 const { user } = useAuth();
 const prescriptionAccessBlocked = computed(
-  () => user.value?.role === 'pro' && !proPrescriptionGenerationEnabled(user.value),
+  () =>
+    (user.value?.role === 'pro' || user.value?.role === 'nurse') &&
+    !prescriptionGenerationEnabled(user.value),
 );
 const newPatientProfilePath = '/profile?newPatient=1';
 

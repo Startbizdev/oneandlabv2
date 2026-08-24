@@ -366,7 +366,7 @@ export function CalendarScreen({
         onClose={closeSheet}
         empty={
           <EmptyState
-            title="Aucun rendez-vous"
+            title="Rien ce jour-là"
             imageSource={EMPTY_RDV_IMAGE}
             imageWidth={EMPTY_RDV_IMAGE_WIDTH}
             imageHeight={EMPTY_RDV_IMAGE_HEIGHT}

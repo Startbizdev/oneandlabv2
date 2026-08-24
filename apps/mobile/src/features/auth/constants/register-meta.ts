@@ -12,19 +12,19 @@ export const REGISTER_META: Record<
 > = {
   patient: {
     headerTitle: 'Patient',
-    headerSubtitle: 'Compte pour vos rendez-vous à domicile',
+    headerSubtitle: 'Pour réserver et suivre vos visites chez vous',
     Icon: User,
     submit: 'Créer mon compte',
   },
   nurse: {
-    headerTitle: 'Infirmier(ère)',
-    headerSubtitle: 'Rejoindre le réseau Cary',
+    headerTitle: 'Infirmier ou infirmière',
+    headerSubtitle: 'Recevoir des demandes dans votre rayon',
     Icon: HeartPulse,
     submit: 'Envoyer ma demande',
   },
   pro: {
-    headerTitle: 'Professionnel de santé',
-    headerSubtitle: 'Professionnel prescripteur',
+    headerTitle: 'Médecin ou soignant',
+    headerSubtitle: 'Orienter vos patients vers le domicile',
     Icon: Stethoscope,
     submit: 'Envoyer ma demande',
   },

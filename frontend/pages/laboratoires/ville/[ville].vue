@@ -4,10 +4,10 @@
     <section class="relative py-12 sm:py-16 md:py-20 overflow-hidden bg-primary-50 dark:bg-primary-950/40 border-b border-primary-100 dark:border-primary-900/50">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl text-center">
         <h1 class="text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight text-gray-900 dark:text-white mb-4">
-          Laboratoire de prélèvements à domicile à {{ cityLabel }}
+          Prise de sang à domicile à {{ cityLabel }}
         </h1>
         <p class="text-lg sm:text-xl text-gray-700 dark:text-gray-300 max-w-2xl mx-auto mb-8">
-          Trouvez un laboratoire pour vos prélèvements à domicile à {{ cityLabel }}. Réservez en ligne.
+          Un préleveur vient chez vous, à {{ cityLabel }}. Vous réservez en ligne.
         </p>
         <UButton
           :to="appointmentNewUrl"
@@ -17,7 +17,7 @@
           icon="i-lucide-calendar-plus"
           class="min-w-[260px] sm:min-w-[280px] px-8 py-4 text-base sm:text-lg font-medium"
         >
-          Prendre rendez-vous à domicile
+          Réserver une visite
         </UButton>
         <ul class="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-400">
           <li class="inline-flex items-center gap-1.5">

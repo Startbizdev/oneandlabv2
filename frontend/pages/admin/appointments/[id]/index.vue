@@ -7,11 +7,34 @@
           <AppointmentStatusSelect
             :model-value="appointment.status === 'cancelled' ? 'canceled' : appointment.status"
             :appointment-id="String(appointment.id)"
+            admin-redispatch
             require-cancel-form
             @update:model-value="(v) => (appointment.status = v)"
             @updated="() => { loadAppointment(); loadStatusHistory(); }"
           />
         </div>
+        <UButton
+          v-if="canAdminRedispatch(appointment)"
+          type="button"
+          color="warning"
+          variant="outline"
+          size="md"
+          leading-icon="i-lucide-radar"
+          :loading="updatingStatus"
+          :on-click="() => adminRedispatchAppointment(appointment, loadAppointment)"
+        >
+          Redispatcher
+        </UButton>
+        <UButton
+          type="button"
+          color="neutral"
+          variant="outline"
+          size="md"
+          leading-icon="i-lucide-mail"
+          :to="`/admin/appointments/notifications?appointment_id=${appointment.id}`"
+        >
+          Renvoyer une notification
+        </UButton>
         <NurseRdvSharePanel
           v-if="appointment.type === 'nursing' && !appointmentCanceledOrCompleted(appointment.status)"
           :appointment-id="String(appointment.id)"
@@ -412,7 +435,7 @@ async function restoreAppointment(apt: any, loadAppointment: () => Promise<void>
   try {
     const response = await apiFetch(`/appointments/${apt.id}`, {
       method: 'PUT',
-      body: { status: 'pending', note: 'Restauré par administrateur' },
+      body: { status: 'pending', redispatch: true, note: 'Restauré et redispatché par administrateur' },
     });
     if (response.success) {
       await loadAppointment();
@@ -420,6 +443,38 @@ async function restoreAppointment(apt: any, loadAppointment: () => Promise<void>
     }
   } catch (error) {
     console.error('Erreur lors de la restauration:', error);
+  } finally {
+    updatingStatus.value = false;
+  }
+}
+
+const REDISPATCH_FROM = new Set(['confirmed', 'planned', 'inProgress', 'canceled']);
+
+function canAdminRedispatch(apt: { status?: string } | null | undefined): boolean {
+  const s = apt?.status === 'cancelled' ? 'canceled' : String(apt?.status ?? '');
+  return REDISPATCH_FROM.has(s);
+}
+
+async function adminRedispatchAppointment(apt: any, loadAppointment: () => Promise<void>) {
+  if (!apt?.id || !canAdminRedispatch(apt)) return;
+  if (!confirm('Remettre ce rendez-vous en dispatch ? Les assignations seront effacées et les professionnels éligibles re-notifiés.')) {
+    return;
+  }
+  updatingStatus.value = true;
+  try {
+    const response = await apiFetch(`/appointments/${apt.id}`, {
+      method: 'PUT',
+      body: { status: 'pending', redispatch: true },
+    });
+    if (response.success) {
+      await loadAppointment();
+      await loadStatusHistory();
+      toast.add({ title: 'Redispatch lancé', color: 'success' });
+    } else {
+      toast.add({ title: 'Erreur', description: (response as any)?.error, color: 'error' });
+    }
+  } catch (error: any) {
+    toast.add({ title: 'Erreur', description: error?.message, color: 'error' });
   } finally {
     updatingStatus.value = false;
   }

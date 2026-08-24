@@ -1,8 +1,16 @@
 # Archive EAS (monorepo Cary) — source : racine git, app dans apps/mobile/
-# Quand ce fichier existe, .gitignore n'est plus pris en compte par EAS.
+# IMPORTANT : lancer via npm run build:ios:store (scripts/run-eas-ios.cjs) qui définit EAS_NO_VCS=1.
+# Sans EAS_NO_VCS, .git (~2 Go) peut être inclus → échec upload metadata.
+
+# --- Git (critique Windows / monorepo) ---
+.git
+.git/
+**/.git
+**/.git/
 
 # --- Monorepo : hors build mobile ---
 backend/
+backend/uploads/
 frontend/
 apps/web/
 /database/
@@ -11,15 +19,13 @@ apps/web/
 /vendor/
 /uploads/
 /data/
+/backups/
 
-# --- Git / IDE / outils locaux ---
-.git/
+# --- Cursor / plans locaux ---
 .cursor/
-.expo/
-.idea/
-.vscode/
+**/.cursor/
 
-# --- Dépendances (réinstallées sur EAS) ---
+# --- Dépendances (réinstallées sur EAS via eas-build-pre-install) ---
 node_modules/
 **/node_modules/
 
@@ -27,6 +33,7 @@ node_modules/
 apps/mobile/ios/
 apps/mobile/android/
 apps/mobile/.kotlin/
+apps/mobile/.expo/
 
 # --- Secrets / env ---
 .env
@@ -66,3 +73,5 @@ Thumbs.db
 *.swo
 *.sqlite
 *.db
+*.tar.gz
+*.zip

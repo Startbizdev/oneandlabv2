@@ -31,19 +31,19 @@ const COMMON_SECTIONS: HelpFaqSectionDef[] = [
     title: 'Notifications',
     items: [
       {
-        question: 'Icône cloche en haut de l’écran',
+        question: 'À quoi sert la cloche ?',
         answer:
-          'La cloche dans l’en-tête ouvre votre centre de notifications Cary : rappels de rendez-vous, mises à jour de statut, messages importants. Un badge indique le nombre de notifications non lues.',
+          'Elle ouvre vos alertes : rappel de visite, changement, message. Un point indique celles non lues.',
       },
       {
-        question: 'Menu Notifications (Plus)',
+        question: 'Où est l’historique des alertes ?',
         answer:
-          'Depuis Plus > Notifications, consultez l’historique complet, marquez les messages comme lus et accédez rapidement au détail d’un rendez-vous concerné.',
+          'Plus, puis Notifications. Vous pouvez les marquer comme lues et ouvrir la visite concernée.',
       },
       {
-        question: 'Notifications push sur l’appareil',
+        question: 'Comment recevoir les alertes sur le téléphone ?',
         answer:
-          'Dans Plus > Paramètres de l’app, activez les notifications push pour recevoir des alertes même lorsque Cary n’est pas ouvert. Sur simulateur ou Expo Go, les push peuvent être limitées — utilisez un build de développement pour les tester.',
+          'Plus, puis Paramètres : activez les notifications. Elles arrivent même si Cary est fermé.',
       },
     ],
   },
@@ -51,24 +51,24 @@ const COMMON_SECTIONS: HelpFaqSectionDef[] = [
     title: 'Paramètres et sécurité',
     items: [
       {
-        question: 'Paramètres de l’app',
+        question: 'Que puis-je régler ?',
         answer:
-          'Personnalisez Cary : mode daltonien (type et aperçu des couleurs), notifications push, et informations sur la version installée. Les réglages s’appliquent immédiatement sur cet appareil.',
+          'Plus, puis Paramètres : affichage (dont le mode daltonien), notifications, version de l’app.',
       },
       {
-        question: 'Biométrie (Face ID / empreinte)',
+        question: 'Puis-je me connecter avec Face ID ?',
         answer:
-          'Plus > Sécurité permet de vous reconnecter rapidement sans code email, via Face ID ou empreinte. La biométrie stocke votre session (pas votre mot de passe) sur cet appareil ; changez d’utilisateur ou réinstallez l’app pour la reconfigurer. Vous pouvez aussi créer un mot de passe depuis la même page.',
+          'Oui, dans Plus, puis Sécurité. L’app se souvient de vous sur cet appareil. Vous pouvez aussi y créer un mot de passe.',
       },
       {
-        question: 'Informations légales',
+        question: 'Où sont les mentions légales ?',
         answer:
-          'Mentions légales, politique de confidentialité, conditions d’utilisation et page contact du site Cary s’ouvrent dans l’app, au même format que sur le web.',
+          'Dans Plus, puis Informations légales : confidentialité, conditions, contact.',
       },
       {
-        question: 'Déconnexion',
+        question: 'Comment me déconnecter ?',
         answer:
-          'Le bouton Déconnexion en bas de l’onglet Plus ferme votre session Cary sur cet appareil et vous ramène à l’écran de connexion.',
+          'En bas de Plus. Votre session se ferme sur cet appareil.',
       },
     ],
   },
@@ -76,14 +76,14 @@ const COMMON_SECTIONS: HelpFaqSectionDef[] = [
     title: 'Documents médicaux',
     items: [
       {
-        question: 'Consulter, remplacer ou télécharger un document',
+        question: 'Comment voir ou remplacer un document ?',
         answer:
-          'Pour chaque type de document (carte Vitale, ordonnance, etc.), trois actions sont disponibles : œil (aperçu), remplacer (nouvelle photo ou fichier), télécharger (export via le partage natif de l’appareil). Une ligne sur fond vert indique qu’un document est déjà enregistré.',
+          'Sur la ligne : aperçu, remplacer, télécharger. Une ligne verte signifie qu’il est déjà enregistré.',
       },
       {
-        question: 'Documents du profil et documents de rendez-vous',
+        question: 'Quelle différence entre documents du profil et de la visite ?',
         answer:
-          'Les documents ajoutés dans votre profil (Plus > Mes documents pour les patients) sont réutilisables lors d’une prise de rendez-vous. Lors d’un RDV, les documents du profil peuvent être fusionnés avec ceux spécifiques à la consultation.',
+          'Ceux du profil (carte Vitale, etc.) servent à toutes les réservations. Vous pouvez en ajouter d’autres sur une visite précise.',
       },
     ],
   },
@@ -94,29 +94,29 @@ const PATIENT_SECTIONS: HelpFaqSectionDef[] = [
     title: 'Onglets principaux',
     items: [
       {
-        question: 'RDV — Mes rendez-vous',
+        question: 'Où sont mes rendez-vous ?',
         answer:
-          'Liste de vos rendez-vous passés et à venir. Touchez une ligne pour ouvrir le détail : date, lieu, professionnel, statut, documents associés et actions disponibles (annulation selon les règles Cary).',
+          'Dans l’onglet RDV. Touchez une ligne pour la date, l’adresse, le professionnel, les documents. Vous pouvez annuler selon les règles indiquées.',
       },
       {
-        question: 'Réserver',
+        question: 'Comment réserver ?',
         answer:
-          'Assistant de prise de rendez-vous : choix du type de soin ou du professionnel, créneau, patient concerné (vous ou un proche), pièces jointes médicales et consentement RGPD. Validez pour envoyer la demande ou confirmer le RDV.',
+          'Onglet Réserver : type de soin, créneau, pour vous ou un proche, pièces utiles. Vous validez, la demande part.',
       },
       {
-        question: 'Proches',
+        question: 'Puis-je réserver pour un proche ?',
         answer:
-          'Gérez les membres de votre famille ou personnes à charge : fiche identité, coordonnées et historique. Vous pouvez réserver un rendez-vous au nom d’un proche depuis l’onglet Réserver.',
+          'Oui. Ajoutez sa fiche dans Proches, puis choisissez-le au moment de réserver.',
       },
       {
-        question: 'Avis',
+        question: 'Comment laisser un avis ?',
         answer:
-          'Consultez les avis que vous avez laissés après vos rendez-vous et accédez aux consultations éligibles pour noter votre expérience avec un professionnel Cary.',
+          'Après une visite, vous pouvez noter votre expérience. Vos avis déjà publiés sont dans Avis.',
       },
       {
-        question: 'Plus',
+        question: 'C’est quoi Plus ?',
         answer:
-          'Hub de votre compte : profil, documents, résultats, paramètres, notifications, biométrie, aide et déconnexion.',
+          'Votre compte : profil, documents, résultats, paramètres, notifications, aide, déconnexion.',
       },
     ],
   },
@@ -124,19 +124,19 @@ const PATIENT_SECTIONS: HelpFaqSectionDef[] = [
     title: 'Menu Plus — Mon compte',
     items: [
       {
-        question: 'Mon profil',
+        question: 'Comment mettre à jour mon profil ?',
         answer:
-          'Vos informations personnelles : identité, photo, coordonnées, adresse et données médicales utiles aux professionnels. Mettez à jour votre profil pour faciliter chaque rendez-vous.',
+          'Dans Plus, puis Mon profil : identité, photo, coordonnées, adresse. Un profil à jour aide le professionnel.',
       },
       {
-        question: 'Résultats',
+        question: 'Où sont mes résultats ?',
         answer:
-          'Accès à vos résultats d’analyses biologiques partagés via Cary, lorsque votre laboratoire ou professionnel les a mis à disposition.',
+          'Dans Plus, puis Résultats, quand le laboratoire les a partagés.',
       },
       {
-        question: 'Mes documents',
+        question: 'Où mettre ma carte Vitale ?',
         answer:
-          'Carte Vitale, ordonnances, mutuelle et autres pièces médicales stockées sur votre profil. Ils seront proposés automatiquement lors de vos prochaines réservations.',
+          'Dans Plus, puis Mes documents. Elle vous sera proposée à la prochaine réservation.',
       },
     ],
   },
@@ -144,14 +144,14 @@ const PATIENT_SECTIONS: HelpFaqSectionDef[] = [
     title: 'Détail d’un rendez-vous (patient)',
     items: [
       {
-        question: 'Informations et suivi',
+        question: 'Que vois-je sur une visite ?',
         answer:
-          'Sur la fiche RDV : rappel de la date et de l’adresse, contact du professionnel, statut en temps réel et historique des changements.',
+          'Date, adresse, contact du professionnel, statut, et l’historique des changements.',
       },
       {
-        question: 'Documents du rendez-vous',
+        question: 'Puis-je ajouter un document à une visite ?',
         answer:
-          'Ajoutez ou consultez les documents liés à ce RDV précis (ordonnance du jour, bon de transport, etc.), en plus de ceux déjà présents sur votre profil.',
+          'Oui, sur la fiche du rendez-vous, en plus de ceux déjà sur votre profil.',
       },
     ],
   },
@@ -162,24 +162,24 @@ const NURSE_SECTIONS: HelpFaqSectionDef[] = [
     title: 'Onglets principaux',
     items: [
       {
-        question: 'RDV — Rendez-vous',
+        question: 'Où est mon agenda ?',
         answer:
-          'Vue d’ensemble de votre agenda : rendez-vous du jour et à venir, filtres par statut, accès rapide au détail patient. Créez un RDV via Plus > Nouveau rendez-vous ou depuis la fiche d’un patient.',
+          'Onglet RDV : aujourd’hui et à venir. Ouvrez une fiche pour le patient. Vous pouvez aussi créer une visite depuis Plus.',
       },
       {
-        question: 'Demandes',
+        question: 'Comment traiter une demande ?',
         answer:
-          'Demandes de rendez-vous en attente de votre réponse (patients ou plateforme). Un badge sur l’onglet indique le nombre de demandes non traitées. Acceptez, refusez ou proposez un autre créneau selon votre disponibilité.',
+          'Onglet Demandes. Un point indique celles en attente. Vous acceptez, refusez, ou proposez un autre horaire.',
       },
       {
-        question: 'Calendrier',
+        question: 'Comment voir ma semaine ?',
         answer:
-          'Planning mensuel ou hebdomadaire de vos interventions. Visualisez vos créneaux occupés et libres pour organiser votre tournée.',
+          'Onglet Calendrier : jours occupés et libres, pour organiser la tournée.',
       },
       {
-        question: 'Patients',
+        question: 'Où sont mes patients ?',
         answer:
-          'Répertoire de vos patients Cary : recherche, fiche détail (coordonnées, antécédents, documents), historique des RDV et accès aux résultats lorsque disponibles.',
+          'Onglet Patients : recherche, fiche, historique, documents, résultats s’ils sont partagés.',
       },
       {
         question: 'Plus',
@@ -192,24 +192,24 @@ const NURSE_SECTIONS: HelpFaqSectionDef[] = [
     title: 'Menu Plus — Professionnel',
     items: [
       {
-        question: 'Nouveau rendez-vous',
+        question: 'Comment créer une visite ?',
         answer:
-          'Créez un rendez-vous pour un patient existant ou nouveau : type de soin, date, lieu et documents requis.',
+          'Plus, puis Nouveau rendez-vous : patient, soin, date, lieu, documents.',
       },
       {
-        question: 'Mon profil',
+        question: 'Comment soigner ma fiche ?',
         answer:
-          'Coordonnées professionnelles, présentation publique, diplômes, types de soins proposés et zone de couverture géographique. Un profil complet améliore votre visibilité auprès des patients.',
+          'Plus, puis Mon profil : présentation, diplômes, soins, zone. Plus elle est complète, plus les patients comprennent qui vous êtes.',
       },
       {
-        question: 'Partager mon profil',
+        question: 'Comment partager ma fiche ?',
         answer:
-          'Génère un lien vers votre fiche publique Cary (si activée dans Présentation) à envoyer par message ou réseaux sociaux pour que des patients réservent directement.',
+          'Plus, puis Partager mon profil : un lien à envoyer. Les patients réservent chez vous.',
       },
       {
-        question: 'Mes avis',
+        question: 'Où sont mes avis ?',
         answer:
-          'Avis laissés par vos patients après consultation. Consultez votre note moyenne et les commentaires pour suivre votre réputation sur Cary.',
+          'Plus, puis Mes avis : note et commentaires après les visites.',
       },
       {
         question: 'Résultats',
@@ -217,9 +217,9 @@ const NURSE_SECTIONS: HelpFaqSectionDef[] = [
           'Consultation des résultats biologiques de vos patients lorsque le laboratoire les partage via la plateforme.',
       },
       {
-        question: 'Abonnement',
+        question: 'Où gérer mon offre ?',
         answer:
-          'Gestion de votre offre Cary : formule active, facturation et options liées à votre activité d’infirmier(ère) libéral(e) sur la plateforme.',
+          'Plus, puis Abonnement : formule, facture, options.',
       },
     ],
   },
@@ -227,9 +227,9 @@ const NURSE_SECTIONS: HelpFaqSectionDef[] = [
     title: 'Détail d’un rendez-vous (infirmier)',
     items: [
       {
-        question: 'Actions sur le RDV',
+        question: 'Que faire sur une visite ?',
         answer:
-          'Mettez à jour le statut (confirmé, en cours, terminé, annulé), consultez l’adresse d’intervention, contactez le patient par téléphone ou message, et accédez aux documents médicaux du dossier.',
+          'Mettre à jour le statut, voir l’adresse, appeler ou écrire au patient, ouvrir les documents.',
       },
       {
         question: 'Documents patient',
@@ -372,20 +372,20 @@ const PRELEVEUR_SECTIONS: HelpFaqSectionDef[] = [
 
 const ROLE_LABELS: Record<MobileRole, string> = {
   patient: 'Patient',
-  nurse: 'Infirmier(ère)',
+  nurse: 'Infirmier ou infirmière',
   pro: 'Professionnel de santé',
   preleveur: 'Préleveur',
 };
 
 const ROLE_INTROS: Record<MobileRole, string> = {
   patient:
-    'Guide complet de l’application Cary pour les patients : chaque onglet, le menu Plus et les fonctionnalités de rendez-vous expliqués pas à pas.',
+    'Réserver, suivre une visite, ajouter un proche : les réponses, simplement.',
   nurse:
-    'Guide Cary pour les infirmier(ère)s libéraux : agenda, demandes, patients, profil public et outils professionnels.',
+    'Demandes, tournée, patients et fiche publique : ce qu’il faut savoir.',
   pro:
-    'Guide Cary pour les professionnels de santé : rendez-vous, patients, calendrier et gestion du dossier.',
+    'Rendez-vous, patients et dossier : le nécessaire, sans jargon.',
   preleveur:
-    'Guide Cary pour les préleveurs : tournées, rendez-vous de prélèvement et suivi terrain.',
+    'Tournée du jour, visites et suivi : le guide terrain.',
 };
 
 function slugify(text: string): string {

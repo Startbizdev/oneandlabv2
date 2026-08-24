@@ -7,19 +7,19 @@
             <UIcon name="i-lucide-check-circle" class="w-10 h-10 text-primary" />
           </div>
           <h1 class="text-2xl sm:text-3xl font-normal text-foreground">
-            Demande bien reçue
+            C’est bien reçu
           </h1>
           <p class="text-muted mt-2">
-            Merci pour votre inscription sur Cary.
+            Merci. Votre demande est entre nos mains.
           </p>
         </div>
       </template>
       <div class="space-y-4 text-center">
         <p class="text-foreground/90 leading-relaxed">
-          Notre équipe va <strong>analyser votre profil</strong> et reviendra vers vous dans les plus brefs délais pour finaliser votre accès à la plateforme.
+          Nous vérifions votre dossier, puis nous vous écrivons pour ouvrir votre accès. Comptez quelques jours ouvrés.
         </p>
         <p class="text-sm text-muted">
-          Vous recevrez un email à l’adresse indiquée dès que votre compte sera activé.
+          Vous recevrez un email dès que votre compte sera ouvert.
         </p>
         <div class="pt-4 flex flex-col sm:flex-row gap-3 justify-center">
           <UButton to="/" variant="soft" color="primary" size="lg">

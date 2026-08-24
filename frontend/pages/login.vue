@@ -305,25 +305,25 @@ const roleOptions = [
   {
     role: 'patient',
     label: 'Patient',
-    description: 'Prendre rendez-vous pour des soins à domicile',
+    description: 'Réserver une visite à domicile',
     icon: 'i-lucide-user',
   },
   {
     role: 'nurse',
     label: 'Infirmier · Infirmière',
-    description: 'Professionnel de santé infirmier',
+    description: 'Recevoir des demandes dans votre rayon',
     icon: 'i-lucide-heart-pulse',
   },
   {
     role: 'lab',
     label: 'Laboratoire',
-    description: 'Laboratoire d’analyses médicales',
+    description: 'Recevoir des demandes de prise de sang à domicile',
     icon: 'i-lucide-building-2',
   },
   {
     role: 'pro',
     label: 'Autre professionnel de santé',
-    description: 'Médecin, kinésithérapeute, etc.',
+    description: 'Orienter vos patients vers un soin à domicile',
     icon: 'i-lucide-stethoscope',
   },
 ]
@@ -333,20 +333,20 @@ const stepHeaderConfig = computed(() => {
   switch (step.value) {
     case 'email':
       return {
-        title: 'Connexion',
+        title: 'Bonjour',
         subtitle:
           loginMode.value === 'password'
-            ? 'Entrez votre mot de passe Cary'
-            : 'Recevez un code sécurisé par email',
+            ? 'Entrez votre mot de passe'
+            : 'Nous vous envoyons un code par email',
       }
     case 'role-select':
       return {
         title: 'Créer un compte',
-        subtitle: 'Choisissez votre espace.',
+        subtitle: 'Qui êtes-vous ?',
       }
     case 'otp':
       return {
-        title: 'Vérification',
+        title: 'Votre code',
         subtitle: '',
       }
     default:

@@ -883,7 +883,7 @@
                   <span v-if="adminEditedUser?.last_incident_at"> · Dernier : {{ formatDateShort(adminEditedUser.last_incident_at) }}</span>
                 </p>
                 <div
-                  v-if="role === 'pro'"
+                  v-if="role === 'pro' || role === 'nurse'"
                   class="rounded-lg border border-default/50 bg-muted/10 p-3 space-y-2"
                 >
                   <div class="flex items-start justify-between gap-3">
@@ -892,7 +892,7 @@
                         Génération d'ordonnances
                       </p>
                       <p class="text-xs text-muted mt-0.5 leading-relaxed">
-                        Si désactivé, le pro ne peut plus créer des ordonnances (onglet Prescriptions masqué).
+                        Si désactivé, le compte ne peut plus créer des ordonnances (onglet Prescriptions masqué).
                       </p>
                     </div>
                     <USwitch
@@ -1247,7 +1247,7 @@ const adminGetIncidentLabel = (action: string) => {
   return labels[action] || action
 }
 const adminTogglePrescriptionGeneration = async (enabled: boolean) => {
-  if (!editingUserId.value || role.value !== 'pro') return
+  if (!editingUserId.value || (role.value !== 'pro' && role.value !== 'nurse')) return
   adminPrescriptionToggleLoading.value = true
   try {
     const res = await apiFetch(`/users/${editingUserId.value}`, {

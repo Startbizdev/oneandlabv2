@@ -2,16 +2,16 @@
   <div>
     <LandingMaquetteHero
       eyebrow="Laboratoires · abonnement"
-      :title-lines="['Tarifs', 'pour votre structure']"
-      highlight="30 jours d’essai gratuit sur chaque offre · sans engagement"
-      description="Starter pour les petites équipes jusqu’à 2 préleveurs, Pro pour préleveurs et sous-comptes illimités avec statistiques étendues et gestion des avis."
+      :title-lines="['Deux offres,', 'un essai de']"
+      highlight="30 jours"
+      description="Starter : jusqu’à 2 préleveurs. Pro : équipe illimitée, chiffres complets, gestion des avis. Sans engagement."
       image-src="https://images.unsplash.com/photo-1579154341184-22069e4614d2?w=900&h=1200&q=80&auto=format&fit=crop"
       image-alt="Laboratoire d’analyses médicales"
       image-object-class="object-[center_40%]"
       hide-quote
       hide-stats
       :primary-cta="{ label: 'Inscrire mon laboratoire', to: '/lab/register', icon: 'i-lucide-building-2' }"
-      :secondary-cta="{ label: 'Retour page laboratoires', to: '/pour-les-laboratoires' }"
+      :secondary-cta="{ label: 'Retour à la page laboratoires', to: '/pour-les-laboratoires' }"
     />
     <LandingMaquetteMarketingBackdrop>
       <section class="border-t border-[#E8E8F0]/80 bg-[#F7F7FB] py-[72px] dark:border-gray-800 dark:bg-gray-900/75 lg:py-[100px]">
@@ -64,7 +64,7 @@
           </div>
 
           <p class="mt-10 text-center text-sm text-[#9090A8] dark:text-gray-500">
-            Annulation possible à tout moment. Gestion de l’abonnement depuis votre espace.
+            Vous annulez quand vous voulez, depuis votre espace.
           </p>
         </div>
       </section>
@@ -88,40 +88,40 @@ const loadingStarter = ref(false);
 const loadingPro = ref(false);
 
 const starterLines = [
-  "Vous pouvez ajouter jusqu'à 2 préleveurs à votre équipe.",
-  'Vous gérez les rendez-vous et leur assignation.',
-  'Vous avez accès au calendrier commun.',
-  'Vous consultez des statistiques basiques.',
+  'Jusqu’à 2 préleveurs.',
+  'Rendez-vous et assignation.',
+  'Calendrier partagé.',
+  'Chiffres essentiels.',
 ];
 
 const proLines = [
-  'Vous pouvez ajouter un nombre illimité de préleveurs.',
-  'Vous pouvez créer un nombre illimité de sous-comptes (sous-labos).',
-  'Vous gérez les rendez-vous et le calendrier.',
-  'Vous consultez des statistiques complètes.',
-  'Vous gérez les avis et la fiche laboratoire.',
+  'Préleveurs illimités.',
+  'Autant de sous-comptes que besoin.',
+  'Calendrier et rendez-vous.',
+  'Chiffres complets.',
+  'Avis et fiche laboratoire.',
 ];
 
 const faqItemsLab = [
   {
-    question: "Comment fonctionne l'essai gratuit de 30 jours ?",
+    question: 'Comment marche l’essai de 30 jours ?',
     answer:
-      "Vous souscrivez à l'offre de votre choix sans engagement. Pendant 30 jours vous avez accès à toutes les fonctionnalités du plan. Si vous annulez avant la fin, vous n'êtes pas facturé.",
+      'Vous prenez l’offre de votre choix. Pendant 30 jours, tout est ouvert. Si vous annulez avant la fin, vous n’êtes pas facturé.',
   },
   {
-    question: "Puis-je annuler ou changer de pack à tout moment ?",
+    question: 'Puis-je changer d’offre ?',
     answer:
-      "Oui. Vous pouvez annuler votre abonnement ou passer d'un pack à l'autre depuis votre espace abonnement. Aucun engagement.",
+      'Oui. Annuler ou passer d’un pack à l’autre, depuis votre espace. Sans engagement.',
   },
   {
-    question: 'Quelle est la différence entre Starter et Pro ?',
+    question: 'Starter ou Pro ?',
     answer:
-      "Starter permet jusqu'à 2 préleveurs et convient aux petits labos. Pro offre des préleveurs et sous-comptes illimités, des statistiques complètes et la gestion des avis.",
+      'Starter convient à une petite équipe (2 préleveurs). Pro : équipe illimitée, sous-comptes, chiffres complets, avis.',
   },
   {
-    question: "Comment est facturé l'abonnement ?",
+    question: 'Comment suis-je facturé ?',
     answer:
-      "L'abonnement est facturé mensuellement par carte bancaire via notre partenaire sécurisé Stripe. La facturation débute à l'issue des 30 jours d'essai si vous n'avez pas annulé.",
+      'Chaque mois, par carte, via Stripe. La facture commence après les 30 jours si vous n’avez pas annulé.',
   },
 ];
 

@@ -174,7 +174,7 @@ export function DetailCarePhotosPanel({
       {showEmptyReadOnly ? (
         <View style={styles.emptyCard}>
           <Camera size={iconSize['2xl']} color={c.textTertiary} strokeWidth={1.75} />
-          <AppText style={styles.emptyTitle}>Aucune photo pour l’instant</AppText>
+          <AppText style={styles.emptyTitle}>Pas encore de photo</AppText>
           <AppText style={styles.emptySub}>
             {viewerRole === 'pro'
               ? 'Vous et l’infirmier(ère) assigné(e) pourrez partager des photos de suivi ici.'

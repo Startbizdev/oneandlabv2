@@ -93,7 +93,7 @@
                 class="rounded-xl px-6 font-bold shadow-lg shadow-primary-500/20 transition-transform active:scale-95"
                 icon="i-lucide-calendar-check"
               >
-                Prendre rendez-vous
+                Réserver une visite
               </UButton>
               <PublicProfileShare
                 v-if="shareUrl"

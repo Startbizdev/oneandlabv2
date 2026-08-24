@@ -1,12 +1,17 @@
-import { SHOW_PRESCRIPTIONS_TAB_NAV } from '@/features/prescriptions/constants';
+import { SHOW_PRESCRIPTIONS_TAB_NAV, prescriptionGenerationEnabled } from '@/features/prescriptions/constants';
 import {
   APPOINTMENTS_TAB_TRIGGER,
   CALENDAR_TAB_TRIGGER,
   createRoleTabsLayout,
   MORE_TAB_TRIGGER,
 } from '@/components/navigation/RoleNativeTabsLayout';
+import { useAuthStore } from '@/store/auth-store';
 
-export default createRoleTabsLayout([
+export default createRoleTabsLayout(() => {
+  const user = useAuthStore((s) => s.user);
+  const showPrescriptions = SHOW_PRESCRIPTIONS_TAB_NAV && prescriptionGenerationEnabled(user);
+
+  return [
   {
     name: 'index',
     hidden: true,
@@ -23,11 +28,12 @@ export default createRoleTabsLayout([
   },
   {
     name: 'prescriptions',
-    hidden: !SHOW_PRESCRIPTIONS_TAB_NAV,
+    hidden: !showPrescriptions,
     accessibilityLabel: 'Prescriptions',
     sf: { default: 'doc.text', selected: 'doc.text.fill' },
     androidIcon: 'description',
   },
   { name: 'calendar', ...CALENDAR_TAB_TRIGGER },
   { name: 'more', ...MORE_TAB_TRIGGER },
-]);
+];
+});

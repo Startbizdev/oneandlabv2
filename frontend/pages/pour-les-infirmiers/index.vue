@@ -1,24 +1,24 @@
 <template>
   <div>
     <LandingMaquetteHero
-      eyebrow="Pour les infirmiers libéraux"
-      :title-lines="['Développez votre', 'activité']"
-      highlight="à domicile"
-      description="Recevez des demandes de soins à domicile via Cary : planning clair, périmètre géographique maîtrisable, profil visible par les patients et gestion des rendez-vous depuis un seul espace."
+      eyebrow="Pour les infirmiers et infirmières libéraux"
+      :title-lines="['Remplissez vos tournées,', 'sans courir après']"
+      highlight="les appels"
+      description="Les demandes arrivent dans votre rayon. Vous acceptez ou vous refusez. Planning, adresses et documents au même endroit."
       image-src="https://images.unsplash.com/photo-1631815589968-fdb09a223b1e?w=900&h=1200&q=80&auto=format&fit=crop"
       image-alt="Infirmière souriante en blouse"
       image-object-class="object-[center_20%]"
-      :primary-cta="{ label: 'Rejoindre le réseau', to: '/nurse/register', icon: 'i-lucide-user-plus' }"
-      :secondary-cta="{ label: 'Voir les tarifs infirmiers', to: '/pour-les-infirmiers/tarifs' }"
+      :primary-cta="{ label: 'Recevoir des demandes', to: '/nurse/register', icon: 'i-lucide-user-plus' }"
+      :secondary-cta="{ label: 'Voir les tarifs', to: '/pour-les-infirmiers/tarifs' }"
       :stats="nurseStats"
       :quote="nurseQuote"
     />
   <LandingMaquetteMarketingBackdrop>
 
     <LandingMaquettePillarGrid
-      eyebrow="Une console qui respecte vos tournées"
-      title="Une organisation pensée pour vos tournées"
-      subtitle="Réduisez les frictions administratives tout en gardant la maîtrise sur vos créneaux et votre rayon."
+      eyebrow="Vos tournées"
+      title="Pensé pour vos tournées, pas contre elles"
+      subtitle="Moins de paperasse. Vous gardez la main sur vos créneaux et votre rayon."
       :columns="4"
       section-class="bg-white dark:bg-gray-950"
       :items="trustItems"
@@ -26,7 +26,7 @@
 
     <LandingMaquettePillarGrid
       eyebrow="Avantages"
-      title="Une plateforme pensée avec les infirmiers libéraux"
+      title="Ce que les infirmiers utilisent vraiment"
       :columns="3"
       section-class="bg-[#F7F7FB] dark:bg-gray-900/80"
       :items="benefits"
@@ -34,8 +34,8 @@
 
     <LandingMaquetteStepsCards
       eyebrow="Pour commencer"
-      :heading-lines="['Trois étapes', 'pour être visible sur Cary']"
-      intro="Complétez votre dossier : après validation, votre profil peut recevoir des demandes alignées sur votre zone et vos disponibilités."
+      :heading-lines="['Trois étapes', 'pour recevoir vos premières demandes']"
+      intro="Vous déposez votre dossier. Nous le vérifions. Ensuite, les demandes arrivent."
       section-class="bg-white dark:bg-gray-950"
       :cards="stepCards"
     />
@@ -43,8 +43,8 @@
     <section class="border-y border-[#E8E8F0]/80 bg-white py-[72px] dark:border-gray-800 dark:bg-gray-950 lg:py-[100px]">
       <div class="mx-auto max-w-[1200px] px-6 lg:px-12">
         <Reviews
-          title="Infirmiers du réseau · retours terrain"
-          subtitle="Vies cliniques variées : zones rurales, métropoles, double activité libérale et salariée."
+          title="Ils sont sur Cary"
+          subtitle="Des retours d’infirmiers libéraux qui reçoivent des demandes dans leur rayon."
           :reviews="landingReviews"
           :max-reviews="6"
           background-class="!bg-transparent"
@@ -59,9 +59,9 @@
     />
 
     <LandingMaquetteInlineCta
-      eyebrow="Rejoindre le réseau"
-      title="Recevez des demandes de soins à domicile sur votre secteur"
-      subtitle="Inscription en ligne · équipe à votre écoute · tarifs consultables sur la page dédiée."
+      eyebrow="Rejoindre Cary"
+      title="Recevez des demandes sur votre secteur"
+      subtitle="Inscription en ligne. Une équipe à l’écoute. Tarifs transparents."
       :buttons="ctaButtons"
       outer-class="bg-[#F7F7FB] dark:bg-gray-900/70"
     />
@@ -73,17 +73,17 @@
 definePageMeta({ layout: 'default' });
 
 useLandingSeo({
-  title: 'Pour les infirmiers | Soins à domicile | Cary',
+  title: 'Infirmiers libéraux : recevez des demandes à domicile | Cary',
   description:
-    'Rejoignez Cary : demandes de soins à domicile, planning, profil public et avis patients.',
+    'Les demandes arrivent dans votre rayon. Vous acceptez ou refusez. Planning, adresses et documents au même endroit.',
   keywords: 'infirmier domicile, IDEL Cary, plateforme infirmiers, soins infirmiers à domicile',
   path: '/pour-les-infirmiers',
 });
 
 const nurseStats = [
-  { num: '+500', rest: ' infirmiers actifs' },
-  { num: '+2000', rest: ' demandes patients servies' },
-  { num: '4.9/5', rest: ' note moyenne sur les avis' },
+  { num: '40+', rest: ' infirmiers déjà sur Cary' },
+  { num: 'Votre rayon', rest: ' : seulement les demandes qui collent' },
+  { num: 'Libre', rest: ' d’accepter ou de refuser' },
 ];
 
 const nurseQuote = {
@@ -95,56 +95,56 @@ const nurseQuote = {
 const trustItems = [
   {
     icon: 'i-lucide-users',
-    title: 'Patients dans votre zone',
-    description: 'Demandes géolocalisées pour vous concentrer sur les trajets pertinents.',
+    title: 'Des patients sur votre chemin',
+    description: 'Uniquement les demandes qui collent à vos déplacements.',
   },
   {
     icon: 'i-lucide-calendar',
-    title: 'Planning lisible',
-    description: 'Indiquez vos disponibilités et ajustez votre charge au fil des semaines.',
+    title: 'Un planning lisible',
+    description: 'Vous indiquez vos disponibilités et ajustez votre charge.',
   },
   {
     icon: 'i-lucide-badge-check',
-    title: 'Profil professionnel',
-    description: 'Mettez en avant vos compétences et votre rayon pour rassurer les patients.',
+    title: 'Une fiche qui rassure',
+    description: 'Compétences et rayon, visibles par les patients.',
   },
   {
     icon: 'i-lucide-headphones',
-    title: 'Support dédié',
-    description: 'Une équipe pour vous accompagner lors de l’installation et au quotidien.',
+    title: 'Une équipe au bout du fil',
+    description: 'Pour le démarrage et le quotidien.',
   },
 ];
 
 const benefits = [
   {
     icon: 'i-lucide-map-pin',
-    title: 'Rayon paramétrable',
-    description: 'Vous définissez la zone dans laquelle vous souhaitez intervenir.',
+    title: 'Vous fixez votre rayon',
+    description: 'Et vous le changez quand votre charge change.',
   },
   {
     icon: 'i-lucide-star',
-    title: 'Avis patients',
-    description: 'Renforcez votre visibilité grâce aux retours patients et à votre réactivité.',
+    title: 'Les avis travaillent pour vous',
+    description: 'Les patients voient vos retours avant de réserver.',
   },
   {
     icon: 'i-lucide-bell',
-    title: 'Notifications',
-    description: 'Restez informé des nouvelles demandes et des confirmations de rendez-vous.',
+    title: 'Vous êtes prévenu tout de suite',
+    description: 'Nouvelle demande, confirmation, changement.',
   },
   {
     icon: 'i-lucide-layout-dashboard',
-    title: 'Tableau de bord',
-    description: 'Suivez vos rendez-vous et les indicateurs utiles à votre activité.',
+    title: 'Votre journée en un coup d’œil',
+    description: 'Rendez-vous, demandes, suite de la tournée.',
   },
   {
     icon: 'i-lucide-shield-check',
-    title: 'Données sécurisées',
-    description: 'Échanges et dossiers traités dans le respect des usages du secteur santé.',
+    title: 'Dossiers protégés',
+    description: 'Échanges traités comme des données de santé.',
   },
   {
     icon: 'i-lucide-line-chart',
-    title: 'Pilotage',
-    description: 'Anticipez vos créneaux et votre charge selon l’historique sur la plateforme.',
+    title: 'Vous voyez venir',
+    description: 'Historique et charge, pour anticiper la semaine.',
   },
 ];
 
@@ -152,18 +152,18 @@ const stepCards = [
   {
     highlight: true,
     icon: 'i-lucide-file-edit',
-    title: 'Inscription et dossier',
-    body: 'Créez votre compte et complétez votre dossier professionnel pour rejoindre le réseau.',
+    title: 'Vous vous inscrivez',
+    body: 'Compte et dossier professionnel, en ligne.',
   },
   {
     icon: 'i-lucide-shield-check',
-    title: 'Validation',
-    body: 'Notre équipe vérifie vos informations avant activation de votre profil.',
+    title: 'Nous vérifions',
+    body: 'Notre équipe active votre fiche une fois les informations confirmées.',
   },
   {
     icon: 'i-lucide-bell',
-    title: 'Réception des demandes',
-    body: 'Une fois validé, vous pouvez recevoir et accepter des rendez-vous selon vos disponibilités.',
+    title: 'Vous recevez des demandes',
+    body: 'Vous acceptez selon vos disponibilités.',
   },
 ];
 
@@ -220,34 +220,33 @@ const landingReviews = [
 
 const faqItems = [
   {
-    question: 'Cary peut-il remplacer mon cabinet ou mon activité habituelle ?',
+    question: 'Cary remplace-t-il mon activité ?',
     answer:
-      'Non. Il s’agit d’un canal supplémentaire pour recevoir des demandes de soins à domicile : vous restez libéral et responsable de vos actes comme d’habitude.',
+      'Non. C’est un canal de plus. Vous restez libéral, responsable de vos actes.',
   },
   {
-    question: 'Comment m’inscrire et quelles informations fournir ?',
+    question: 'Comment m’inscrire ?',
     answer:
-      'L’inscription se fait en ligne. Vous renseignez votre identité professionnelle, votre zone d’intervention et les éléments permettant de vérifier votre statut. La liste exacte des pièces est indiquée lors du parcours d’inscription.',
+      'En ligne : identité professionnelle, zone, pièces demandées au fil du formulaire.',
   },
   {
-    question: 'Comment définir ma zone géographique ?',
+    question: 'Comment je choisis ma zone ?',
     answer:
-      'Vous paramétrez un rayon ou une zone de couverture adaptée à vos déplacements. Vous pouvez l’ajuster selon votre charge et vos contraintes terrain.',
+      'Vous réglez un rayon adapté à vos tournées. Vous pouvez le changer.',
   },
   {
-    question: 'Quels sont les coûts pour les infirmiers ?',
+    question: 'Combien ça coûte ?',
     answer:
-      'Une offre gratuite limitée et une offre Pro sont proposées · détail et conditions sur la page tarifs infirmiers.',
+      'Une offre gratuite limitée, et une offre Pro. Détail sur la page tarifs. Sans engagement.',
   },
   {
-    question: 'Puis-je refuser une demande ?',
-    answer:
-      'Oui : vous restez libre d’accepter ou de refuser selon vos disponibilités et votre exercice professionnel.',
+    question: 'Puis-je refuser ?',
+    answer: 'Oui. Vous restez libre d’accepter ou non.',
   },
 ];
 
 const ctaButtons = [
-  { label: 'Rejoindre le réseau', to: '/nurse/register', icon: 'i-lucide-user-plus', variant: 'solid' as const },
-  { label: 'Consulter les tarifs', to: '/pour-les-infirmiers/tarifs', variant: 'outline' as const },
+  { label: 'Recevoir des demandes', to: '/nurse/register', icon: 'i-lucide-user-plus', variant: 'solid' as const },
+  { label: 'Voir les tarifs', to: '/pour-les-infirmiers/tarifs', variant: 'outline' as const },
 ];
 </script>

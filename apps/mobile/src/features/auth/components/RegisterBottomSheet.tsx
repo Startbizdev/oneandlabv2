@@ -18,8 +18,8 @@ const REGISTER_ROLE_META: {
   accent: 'primary' | 'success' | 'warning';
 }[] = [
   { role: 'patient', label: 'Patient', icon: User, accent: 'primary' },
-  { role: 'nurse', label: 'Infirmier(ère)', icon: HeartPulse, accent: 'success' },
-  { role: 'pro', label: 'Professionnel de santé', icon: Stethoscope, accent: 'warning' },
+  { role: 'nurse', label: 'Infirmier ou infirmière', icon: HeartPulse, accent: 'success' },
+  { role: 'pro', label: 'Médecin ou soignant', icon: Stethoscope, accent: 'warning' },
 ];
 
 function roleIconColors(c: AppColors, accent: 'primary' | 'success' | 'warning') {
@@ -68,7 +68,7 @@ export function RegisterBottomSheet({
       visible={visible}
       onClose={onClose}
       title="Créer un compte"
-      subtitle="Choisissez le profil qui correspond à votre situation"
+      subtitle="Qui êtes-vous ?"
       disableScroll
     >
       <View style={styles.body}>
@@ -80,7 +80,7 @@ export function RegisterBottomSheet({
             style={styles.emailBanner}
           >
             <View style={styles.emailTextCol}>
-              <AppText style={styles.emailLabel}>Aucun compte trouvé pour</AppText>
+              <AppText style={styles.emailLabel}>Aucun compte pour</AppText>
               <AppText style={styles.emailValue} numberOfLines={2}>
                 {pendingEmail}
               </AppText>

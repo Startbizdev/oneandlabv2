@@ -206,10 +206,10 @@ export function NurseAppointmentsListScreen() {
   );
 
   const isDemandesEmpty = segment === 'en_attente';
-  const emptyTitle = isDemandesEmpty ? 'Aucune demande en attente' : 'Aucun rendez-vous';
+  const emptyTitle = isDemandesEmpty ? 'Aucune demande pour le moment' : 'Aucune visite pour le moment';
   const emptyDescription = isDemandesEmpty
     ? 'Les nouvelles propositions de soins apparaîtront ici.'
-    : 'Modifiez les filtres ou créez un nouveau RDV.';
+    : 'Quand vous acceptez une demande, elle arrive ici.';
 
   return (
     <View style={styles.screen}>

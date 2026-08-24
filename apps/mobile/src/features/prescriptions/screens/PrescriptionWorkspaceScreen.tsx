@@ -39,6 +39,7 @@ import {
 import { usePrescriptionsHistoryInfinite } from '../hooks/use-prescriptions-history-infinite';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { useAuthStore } from '@/store/auth-store';
+import { prescriptionGenerationEnabled } from '../utils/prescription-access';
 import {
   buildTabSceneScrollConfig,
   spreadTabSceneScrollProps,
@@ -102,6 +103,7 @@ export function PrescriptionWorkspaceScreen({
   const afterSignatureSaveRef = useRef<(() => void) | null>(null);
 
   const user = useAuthStore((s) => s.user);
+  const accessBlocked = !prescriptionGenerationEnabled(user);
   const profileQ = useQuery({
     queryKey: queryKeys.profile.user(user?.id ?? ''),
     queryFn: async () => (await fetchUser(user!.id, 'full')).data,
@@ -352,7 +354,7 @@ export function PrescriptionWorkspaceScreen({
           ) : historyRows.length === 0 ? (
             <EmptyState
               Icon={FilePenLine}
-              title="Aucune ordonnance"
+              title="Aucune ordonnance pour le moment"
               description="Les ordonnances enregistrées apparaîtront ici."
             />
           ) : (
@@ -374,6 +376,18 @@ export function PrescriptionWorkspaceScreen({
       )}
     </>
   );
+
+  if (accessBlocked) {
+    return (
+      <View style={embedded ? styles.embeddedContainer : styles.container}>
+        <EmptyState
+          Icon={FilePenLine}
+          title="Génération d'ordonnances désactivée"
+          description="La création d'ordonnances n'est pas activée pour votre compte. Contactez l'administration Cary."
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={embedded ? styles.embeddedContainer : styles.container}>

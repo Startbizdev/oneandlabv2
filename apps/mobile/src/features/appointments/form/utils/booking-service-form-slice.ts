@@ -1,4 +1,4 @@
-import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
+import { isBloodTestAppointment, isNursingAppointment, defaultBookingSliceForCareCategory } from '@oneandlab/shared-utils';
 import type { SelectedServiceInput } from '@oneandlab/shared-utils';
 
 /** Aligné frontend/utils/booking-service-form-slice.ts */
@@ -45,8 +45,12 @@ export function formDataSliceForQuickAddedService(params: {
   slice: BookingServiceFormSlice;
   priorSelectedServices: SelectedServiceInput[];
   priorFormDataByService?: Record<string, BookingServiceFormSlice | undefined>;
+  careCategory?: { name?: string | null; label?: string | null } | null;
 }): BookingServiceFormSlice {
   const def = defaultBookingFormSliceForServiceType(params.serviceType);
+  const categoryDefaults = params.careCategory
+    ? defaultBookingSliceForCareCategory(params.careCategory)
+    : {};
 
   const addonLotNursing =
     isNursingAppointment(params.serviceType) &&
@@ -79,6 +83,7 @@ export function formDataSliceForQuickAddedService(params: {
 
   return {
     ...def,
+    ...categoryDefaults,
     ...commonFromLot,
     ...normalizedSlice,
     care_options: { ...def.care_options, ...(normalizedSlice.care_options || {}) },

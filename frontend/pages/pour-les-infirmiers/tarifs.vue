@@ -2,16 +2,16 @@
   <div>
     <LandingMaquetteHero
       eyebrow="Infirmiers · abonnement"
-      :title-lines="['Tarifs', 'pour votre activité']"
-      highlight="30 jours d’essai sans engagement sur l’offre Pro"
-      description="Démarrez gratuitement avec l’offre Découverte, puis passez à Pro lorsque vous souhaitez élargir rayon et volume de rendez-vous. Annulation possible à tout moment depuis votre espace."
+      :title-lines="['Des tarifs clairs,', 'sans']"
+      highlight="engagement"
+      description="Commencez gratuitement. Passez à Pro quand vous voulez plus de rayon et plus de rendez-vous. Annulation à tout moment. 30 jours d’essai sur l’offre Pro."
       image-src="https://images.unsplash.com/photo-1631815589968-fdb09a223b1e?w=900&h=1200&q=80&auto=format&fit=crop"
       image-alt="Infirmière en activité professionnelle"
       image-object-class="object-[center_25%]"
       hide-quote
       hide-stats
-      :primary-cta="{ label: 'S’inscrire gratuitement', to: '/nurse/register', icon: 'i-lucide-user-plus' }"
-      :secondary-cta="{ label: 'Retour page infirmiers', to: '/pour-les-infirmiers' }"
+      :primary-cta="{ label: 'Créer mon compte gratuit', to: '/nurse/register', icon: 'i-lucide-user-plus' }"
+      :secondary-cta="{ label: 'Retour à la page infirmiers', to: '/pour-les-infirmiers' }"
     />
     <LandingMaquetteMarketingBackdrop>
       <section class="border-t border-[#E8E8F0]/80 bg-[#F7F7FB] py-[72px] dark:border-gray-800 dark:bg-gray-900/75 lg:py-[100px]">
@@ -23,9 +23,9 @@
                 <p class="mt-2 text-3xl font-semibold text-[#0A0A0F] dark:text-white">
                   0 €<span class="text-base font-normal text-[#9090A8] dark:text-gray-400">/mois</span>
                 </p>
-                <p class="mt-1 text-sm text-[#3D3D52] dark:text-gray-400">Gratuit pour découvrir la plateforme</p>
+                <p class="mt-1 text-sm text-[#3D3D52] dark:text-gray-400">Pour essayer, sans carte bancaire</p>
                 <div class="mt-4">
-                  <UButton to="/nurse/register" block size="lg" variant="outline">S’inscrire gratuitement</UButton>
+                  <UButton to="/nurse/register" block size="lg" variant="outline">Créer mon compte gratuit</UButton>
                 </div>
               </template>
               <ul class="min-h-0 flex-1 space-y-3 text-[#3D3D52] dark:text-gray-300">
@@ -45,7 +45,7 @@
                 <p class="mt-2 text-3xl font-semibold text-[#0A0A0F] dark:text-white">
                   29 €<span class="text-base font-normal text-[#9090A8] dark:text-gray-400">/mois</span>
                 </p>
-                <p class="mt-1 text-sm text-[#3D3D52] dark:text-gray-400">30 jours d’essai gratuit</p>
+                <p class="mt-1 text-sm text-[#3D3D52] dark:text-gray-400">30 jours pour essayer, sans engagement</p>
                 <div class="mt-4">
                   <UButton block size="lg" color="primary" :loading="loadingCheckout" @click="startCheckout">
                     Commencer l’essai gratuit
@@ -62,7 +62,7 @@
           </div>
 
           <p class="mt-10 text-center text-sm text-[#9090A8] dark:text-gray-500">
-            Annulation possible à tout moment. Gestion de l’abonnement depuis votre espace.
+            Vous annulez quand vous voulez, depuis votre espace.
           </p>
         </div>
       </section>
@@ -89,40 +89,40 @@ const toast = useAppToast();
 const loadingCheckout = ref(false);
 
 const planDecouverte = [
-  "Votre rayon d'intervention peut aller jusqu'à 20 km.",
-  'Votre fiche professionnelle est visible par les patients.',
-  '10 rendez-vous par mois maximum (compteur remis à zéro le 1er de chaque mois).',
-  'Vous pouvez proposer tous les types de soins.',
+  'Rayon jusqu’à 20 km.',
+  'Fiche visible par les patients.',
+  'Jusqu’à 10 rendez-vous par mois (compteur remis à zéro le 1er de chaque mois).',
+  'Tous les types de soins.',
 ];
 
 const planPro = [
-  "Votre rayon d'intervention peut aller jusqu'à 100 km.",
-  'Vous recevez un nombre illimité de rendez-vous.',
-  'Vous pouvez proposer tous les types de soins.',
-  'Vous consultez les avis patients et pouvez y répondre.',
-  'Vous avez accès au tableau de bord et aux statistiques.',
+  'Rayon jusqu’à 100 km.',
+  'Rendez-vous illimités.',
+  'Tous les types de soins.',
+  'Avis patients, et vous pouvez y répondre.',
+  'Vue d’activité et chiffres utiles.',
 ];
 
 const faqItemsInfirmiers = [
   {
-    question: "Comment fonctionne l'essai gratuit de 30 jours ?",
+    question: 'Comment marche l’essai de 30 jours ?',
     answer:
-      "Vous souscrivez à l'offre Pro sans engagement. Pendant 30 jours vous avez accès à toutes les fonctionnalités. Si vous annulez avant la fin, vous n'êtes pas facturé.",
+      'Vous prenez Pro. Pendant 30 jours, tout est ouvert. Si vous annulez avant la fin, vous n’êtes pas facturé.',
   },
   {
-    question: "Puis-je annuler ou changer d'offre à tout moment ?",
+    question: 'Puis-je changer d’offre ?',
     answer:
-      "Oui. Vous pouvez annuler votre abonnement ou revenir à l'offre Découverte depuis votre espace abonnement. Aucun engagement.",
+      'Oui. Annuler ou revenir à Découverte, depuis votre espace. Sans engagement.',
   },
   {
-    question: "Comment est facturé mon abonnement ?",
+    question: 'Comment suis-je facturé ?',
     answer:
-      "L'abonnement Pro est facturé mensuellement par carte bancaire via notre partenaire sécurisé Stripe. La facturation débute à l'issue des 30 jours d'essai si vous n'avez pas annulé.",
+      'Chaque mois, par carte, via Stripe. La facture commence après les 30 jours si vous n’avez pas annulé.',
   },
   {
-    question: "Que se passe-t-il à la fin de l'essai gratuit ?",
+    question: 'Et après les 30 jours ?',
     answer:
-      "À l'issue des 30 jours, votre abonnement Pro est renouvelé automatiquement au tarif en vigueur. Vous pouvez désactiver le renouvellement à tout moment depuis votre espace.",
+      'Pro continue au tarif en vigueur, sauf si vous avez annulé.',
   },
 ];
 

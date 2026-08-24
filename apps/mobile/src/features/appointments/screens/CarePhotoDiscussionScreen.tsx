@@ -417,7 +417,7 @@ export function CarePhotoDiscussionScreen({
             </View>
           ) : photos.length === 0 && !threadQ.data?.thread?.comments?.length ? (
             <View style={styles.emptyCard}>
-              <AppText style={styles.emptyTitle}>Démarrez la conversation</AppText>
+              <AppText style={styles.emptyTitle}>Envoyez un premier message pour commencer</AppText>
               <AppText style={styles.emptySub}>
                 {canUpload
                   ? 'Envoyez un message ou utilisez le bouton + pour partager une photo ou un PDF.'

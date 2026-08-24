@@ -44,6 +44,23 @@ function runEas(easArgs) {
   process.env.EAS_NO_VCS = '1';
   process.env.EAS_PROJECT_ROOT = repoRoot;
 
+  const isBuild = easArgs.includes('build');
+  if (isBuild && !process.env.SKIP_EAS_VERIFY) {
+    console.log('→ Vérification taille archive EAS (verify-eas-archive-size)…');
+    const verify = spawnSync('node', [path.join(__dirname, 'verify-eas-archive-size.cjs')], {
+      cwd: mobileDir,
+      stdio: 'inherit',
+      shell: true,
+      env: process.env,
+    });
+    if (verify.status !== 0) {
+      console.error(
+        '\n❌ Archive EAS trop volumineuse. Utilisez npm run build:ios:store (pas npx eas-cli direct).'
+      );
+      return verify.status ?? 1;
+    }
+  }
+
   const result = spawnSync('npx', ['eas-cli', ...easArgs], {
     cwd: mobileDir,
     stdio: 'inherit',

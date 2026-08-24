@@ -135,6 +135,7 @@
             </h2>
           </div>
           <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <CreatorSelectField v-model="adminOnBehalfUserId" class="md:col-span-3" />
             <UFormField label="Statut à la création" name="admin_status">
               <USelect
                 v-model="adminRdvStatus"
@@ -786,6 +787,7 @@ const rgpdConsent = ref(false);
 
 /** Réglages admin : création avec statut libre et assignations optionnelles. */
 const adminRdvStatus = ref<string>('pending');
+const adminOnBehalfUserId = ref<string | null>(null);
 const adminAssignedLabId = ref<string | undefined>(undefined);
 const adminAssignedNurseId = ref<string | undefined>(undefined);
 const adminLabs = ref<any[]>([]);
@@ -1329,6 +1331,7 @@ function mergeQuickServiceIntoBooking(payload: { service: SelectedServiceInput; 
     slice,
     priorSelectedServices: existing,
     priorFormDataByService: priorFd,
+    careCategory: { name: service.name, label: service.name },
   });
 }
 
@@ -1626,6 +1629,9 @@ async function onUnifiedSubmit(payload: any) {
       for (const raw of payloads) {
         const p = raw as Record<string, unknown>;
         p.status = adminStatus;
+        if (adminOnBehalfUserId.value) {
+          p.on_behalf_of_user_id = adminOnBehalfUserId.value;
+        }
         if (adminLab && typeof p.type === 'string' && isBloodTestAppointment(String(p.type))) {
           p.assigned_lab_id = adminLab;
         }

@@ -249,7 +249,7 @@ export function ProfileHubScreen() {
   const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);
 
   const roleLabel: Record<string, string> = {
-    nurse: 'Infirmier(ère)',
+    nurse: 'Infirmier ou infirmière',
     patient: 'Patient',
     pro: 'Professionnel',
     preleveur: 'Préleveur',
