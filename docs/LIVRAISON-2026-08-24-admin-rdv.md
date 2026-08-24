@@ -1,7 +1,7 @@
 # Livraison Cary — 24 août 2026
 
 **Commit précédent :** `6adc070` — *feat(pro): option « Autre » pour la profession avec saisie libre* (build iOS 25 / Android 26)  
-**Commit actuel :** admin RDV, ordonnances, redispatch, renvoi emails, copy Cary, build mobile iOS 29 / Android 27  
+**Commit actuel :** admin RDV, ordonnances, redispatch, renvoi emails, copy Cary, build mobile **iOS 30 / Android 28**  
 **Déployé en prod :** backend + frontend sur cary.bio (24/08/2026)
 
 ---
@@ -147,7 +147,10 @@
 - **`.easignore`** — exclusion `.git` (~2 Go), `backend/uploads`, `.cursor`, archives ; fix upload Windows
 - **`.gitignore`** — entrées complémentaires
 - **`run-eas.cjs`** — `EAS_NO_VCS=1`, `EAS_PROJECT_ROOT` monorepo, vérif taille archive avant build
-- **Build numbers** : iOS **29**, Android **27** (version app **1.7.6**)
+- **Build numbers** : iOS **30**, Android **28** (version app **1.7.6**)
+- **Builds EAS (24/08/2026)** :
+  - iOS : https://expo.dev/accounts/startbiz/projects/cary-mobile/builds/739a104c-f5e0-4569-8a69-155560c050b2
+  - Android : https://expo.dev/accounts/startbiz/projects/cary-mobile/builds/031916bc-ba98-4a32-89ec-f552706890d9
 
 ---
 
@@ -191,7 +194,7 @@
 
 > Salut Joseph 👋
 >
-> Grosse livraison Cary — voici ce qui vient d’être mis en prod + dans l’app (build iOS 29 / Android 27) :
+> Grosse livraison Cary — voici ce qui vient d’être mis en prod + dans l’app (build iOS 30 / Android 28) :
 >
 > **1. Certificat de décès** — tu peux enfin créer un RDV certificat **le jour même**, créneau « toute la journée », sur le web (admin, pro, infirmier, labo) et dans l’app mobile.
 >
