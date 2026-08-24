@@ -1,4 +1,4 @@
-import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
+import { isBloodTestAppointment, isNursingAppointment, defaultBookingSliceForCareCategory } from '@oneandlab/shared-utils';
 import type { SelectedServiceInput } from '~/utils/dashboard-unified-rdv';
 
 /** Tranche minimale réutilisée avant hydratation par UnifiedAppointmentForm. */
@@ -46,8 +46,12 @@ export function formDataSliceForQuickAddedService(params: {
   /** Panier avant d’append la ligne `service` */
   priorSelectedServices: SelectedServiceInput[];
   priorFormDataByService?: Record<string, BookingServiceFormSlice | undefined>;
+  careCategory?: { name?: string | null; label?: string | null } | null;
 }): BookingServiceFormSlice {
   const def = defaultBookingFormSliceForServiceType(params.serviceType);
+  const categoryDefaults = params.careCategory
+    ? defaultBookingSliceForCareCategory(params.careCategory)
+    : {};
 
   const addonLotNursing =
     isNursingAppointment(params.serviceType) &&
@@ -80,6 +84,7 @@ export function formDataSliceForQuickAddedService(params: {
 
   return {
     ...def,
+    ...categoryDefaults,
     ...commonFromLot,
     ...normalizedSlice,
     care_options: { ...def.care_options, ...(normalizedSlice.care_options || {}) },

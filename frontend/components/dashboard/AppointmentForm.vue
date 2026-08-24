@@ -632,9 +632,9 @@
                       {{ formatTime(availabilityRange[0]) }} - {{ formatTime(availabilityRange[1]) }}
                     </span>
                   </div>
-                  <USlider v-model="availabilityRange" :min="6" :max="availabilitySliderMax" :step="1" color="primary" />
+                  <USlider v-model="availabilityRange" :min="availabilitySliderMin" :max="availabilitySliderMax" :step="1" color="primary" />
                   <div class="flex justify-between text-[10px] text-gray-400 mt-2 font-mono">
-                    <span>06:00</span>
+                    <span>{{ String(availabilitySliderMin).padStart(2, '0') }}:00</span>
                     <span>12:00</span>
                     <span v-if="availabilitySliderMax > 17">18:00</span>
                     <span>{{ String(availabilitySliderMax).padStart(2, '0') }}:00</span>
@@ -904,6 +904,7 @@ import {
 import DashboardPrescriptionSection from '~/components/dashboard/PrescriptionSection.vue';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
 import { isCareCategoryWithoutBookingOptions } from '@oneandlab/shared-utils';
+import { availabilitySliderMinHourParis } from '~/utils/booking-paris-availability';
 import {
   STAFF_PATIENT_BOOKING_CONSENT_LABEL,
   STAFF_PATIENT_BOOKING_CONSENT_ERROR,
@@ -1035,8 +1036,12 @@ function staffConsentPayloadFields(): Record<string, unknown> {
 }
 
 /** Créneau horaire : jusqu'à 22h pour les soins infirmiers (tous espaces), 17h pour prises de sang. */
+const AVAILABILITY_MIN = 6;
 const availabilitySliderMax = computed(() =>
   isNursingAppointment(form.type) ? AVAILABILITY_MAX_HOUR_NURSING : AVAILABILITY_MAX_HOUR_BLOOD_TEST,
+);
+const availabilitySliderMin = computed(() =>
+  availabilitySliderMinHourParis(form.scheduled_at, availabilitySliderMax.value, AVAILABILITY_MIN),
 );
 
 // --- STATE ---
@@ -1796,6 +1801,8 @@ function loadCategoryOptionsForCare(categoryId: string) {
       form.form_data.duration_days = '1';
       form.form_data.frequency = '';
       form.form_data.care_options = {};
+      form.form_data.availability_type = 'all_day';
+      form.form_data.availability = JSON.stringify({ type: 'all_day' });
     }
     return;
   }
@@ -2785,7 +2792,7 @@ watch(availabilityRange, (newVal) => {
   if (end - start < AVAILABILITY_MIN_SPAN_HOURS) {
     const [prevStart, prevEnd] = previousAvailabilityRange.value;
     if (Math.abs(end - prevEnd) > Math.abs(start - prevStart)) {
-      availabilityRange.value = [Math.max(6, end - AVAILABILITY_MIN_SPAN_HOURS), end];
+      availabilityRange.value = [Math.max(availabilitySliderMin.value, end - AVAILABILITY_MIN_SPAN_HOURS), end];
     } else {
       availabilityRange.value = [start, Math.min(availabilitySliderMax.value, start + AVAILABILITY_MIN_SPAN_HOURS)];
     }

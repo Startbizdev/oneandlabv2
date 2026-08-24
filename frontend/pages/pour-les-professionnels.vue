@@ -1,15 +1,15 @@
 <template>
   <div>
     <LandingMaquetteHero
-      eyebrow="Pour les professionnels de santé"
-      :title-lines="['Orientez vos patients', 'vers le']"
-      highlight="domicile"
-      description="Référencez vos patients sur Cary pour une prise de sang ou des soins infirmiers à domicile : ils réservent en quelques clics avec leur ordonnance et vous conservez une vision utile pour le suivi."
+      eyebrow="Pour les médecins et les soignants"
+      :title-lines="['Vos patients restent', 'chez eux. Vous']"
+      highlight="gardez le fil"
+      description="Après la consultation, ils réservent une prise de sang ou un soin à domicile. Vous voyez où ça en est, sans relancer le secrétariat."
       image-src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=900&h=1200&q=80&auto=format&fit=crop"
       image-alt="Médecin avec stéthoscope, en blouse blanche"
       image-object-class="object-[center_20%]"
-      :primary-cta="{ label: 'Rejoindre en tant que professionnel', to: '/pro/register', icon: 'i-lucide-stethoscope' }"
-      :secondary-cta="{ label: 'Parcours patients', to: '/pour-les-patients' }"
+      :primary-cta="{ label: 'Créer mon compte professionnel', to: '/pro/register', icon: 'i-lucide-stethoscope' }"
+      :secondary-cta="{ label: 'Voir le parcours patient', to: '/pour-les-patients' }"
       :stats="proStats"
       :quote="proQuote"
     />
@@ -17,8 +17,8 @@
 
     <LandingMaquettePillarGrid
       eyebrow="Synthèse"
-      title="Un relais simple entre votre prescription et la chaîne terrain"
-      subtitle="Une expérience sobre pour vous concentrer sur le fond médical, pas sur l’outil."
+      title="Moins de trajet pour eux. Moins de relances pour vous."
+      subtitle="Vous restez sur le soin. Cary s’occupe du déplacement à domicile."
       :columns="4"
       section-class="bg-white dark:bg-gray-950"
       :items="trustItems"
@@ -26,17 +26,17 @@
 
     <LandingMaquettePillarGrid
       eyebrow="Avantages"
-      title="Une plateforme pensée avec les cabinets et réseaux de santé"
-      subtitle="Référencer vos patients sans multiplier les emails ni les relances téléphoniques inutiles."
+      title="Utile au cabinet, sans nouvel usine à gaz"
+      subtitle="Plus besoin d’enchaîner les appels pour trouver un infirmier ou un labo à domicile."
       :columns="3"
       section-class="bg-[#F7F7FB] dark:bg-gray-900/80"
       :items="benefits"
     />
 
     <LandingMaquetteStepsCards
-      eyebrow="Feuille de route express"
-      :heading-lines="['Trois étapes', 'pour vos patients qui restent au domicile']"
-      intro="Une fois votre dossier validé depuis votre inscription professionnelle, vos patients retrouvent un tunnel patient identique quel que soit le médical prescripteur."
+      eyebrow="Pour commencer"
+      :heading-lines="['Trois étapes', 'pour vos patients qui ne peuvent plus se déplacer']"
+      intro="Une fois votre dossier validé, vos patients réservent comme n’importe quel patient Cary."
       section-class="bg-white dark:bg-gray-950"
       :cards="stepCards"
     />
@@ -44,8 +44,8 @@
     <section class="border-y border-[#E8E8F0]/80 bg-white py-[72px] dark:border-gray-800 dark:bg-gray-950 lg:py-[100px]">
       <div class="mx-auto max-w-[1200px] px-6 lg:px-12">
         <Reviews
-          title="Professionnels parlent du parcours avec Cary"
-          subtitle="Une sélection parmi médecins, kinés et autres professionnels utilisant ou recommandant le flux domiciliaire aux patients qui ne peuvent plus voyager jusqu’à la biologie ou l’IDEL au cabinet fixe."
+          title="Ils orientent leurs patients vers Cary"
+          subtitle="Médecins et soignants qui envoient leurs patients réserver un soin à domicile."
           :reviews="landingReviews"
           :max-reviews="6"
           background-class="!bg-transparent"
@@ -56,9 +56,9 @@
     <LandingMaquetteFaq anchor-id="faq" section-class="bg-[#F7F7FB] dark:bg-gray-900/70" :items="faqItems" />
 
     <LandingMaquetteInlineCta
-      eyebrow="Prêt à ouvrir un compte professionnel santé Cary"
-      title="Orientez désormais les patients depuis une interface commune infirmiers + laboratoires"
-      subtitle="Inscription décrite étape par étape : notre équipe vous aide si votre situation professionnelle sort des dossiers habituels (conventionnement, doubles activités, etc.)."
+      eyebrow="Prêt à y aller ?"
+      title="Un seul endroit pour orienter vers l’infirmier ou le laboratoire"
+      subtitle="Inscription guidée. Notre équipe vous aide si votre situation sort de l’ordinaire."
       :buttons="ctaButtons"
       outer-class="bg-[#F7F7FB] dark:bg-gray-900/70"
     />
@@ -70,18 +70,18 @@
 definePageMeta({ layout: 'default' });
 
 useLandingSeo({
-  title: 'Pour les professionnels de santé | Cary',
+  title: 'Médecins et soignants : orientez vos patients vers le domicile | Cary',
   description:
-    'Médecins, kinésithérapeutes et professionnels de santé : prescrivez le domicile via Cary.',
+    'Après la consultation, vos patients réservent une prise de sang ou un soin à domicile. Vous voyez où ça en est.',
   keywords:
     'médecin prescription domicile, kiné à domicile, professionnel santé Cary, prescription prélèvement',
   path: '/pour-les-professionnels',
 });
 
 const proStats = [
-  { num: 'Adeli vérifié', rest: ' à l’inscription' },
-  { num: 'Espace dédié', rest: ' aux orientations patients' },
-  { num: 'RGPD', rest: ' données santé maîtrisées' },
+  { num: 'Adeli', rest: ' vérifié à l’inscription' },
+  { num: 'Un espace', rest: ' pour suivre vos orientations' },
+  { num: 'RGPD', rest: ' données de santé protégées' },
 ];
 
 const proQuote = {
@@ -91,10 +91,10 @@ const proQuote = {
 };
 
 const trustItems = [
-  { icon: 'i-lucide-users', title: 'Orientation patient', description: 'Un lien clair à communiquer après la consultation.' },
-  { icon: 'i-lucide-calendar', title: 'Création de rendez-vous', description: 'Vous pouvez initier la demande depuis votre espace pro.' },
-  { icon: 'i-lucide-file-text', title: 'Suivi des soins', description: 'Vision utile sur les rendez-vous et documents partagés lorsque le patient est lié à votre compte.' },
-  { icon: 'i-lucide-shield', title: 'Traitement des données', description: 'Chaîne orientée conformité RGPD et exigences du secteur santé.' },
+  { icon: 'i-lucide-users', title: 'Un lien à leur donner', description: 'Après la consultation, ils réservent tout seuls.' },
+  { icon: 'i-lucide-calendar', title: 'Vous pouvez aussi créer le rendez-vous', description: 'Depuis votre espace, si vous préférez le lancer vous-même.' },
+  { icon: 'i-lucide-file-text', title: 'Vous voyez l’avancement', description: 'Quand le patient est lié à votre compte.' },
+  { icon: 'i-lucide-shield', title: 'Données protégées', description: 'RGPD et hébergement adapté à la santé.' },
 ];
 
 const benefits = [
@@ -102,37 +102,37 @@ const benefits = [
     icon: 'i-lucide-users',
     title: 'Orienter vos patients',
     description:
-      'Référencez le parcours pour une prise de sang ou des soins infirmiers à domicile : le patient complète en autonomie après votre orientation.',
+      'Ils réservent une prise de sang ou un soin infirmier à domicile, tout seuls, après votre indication.',
   },
   {
     icon: 'i-lucide-calendar',
-    title: 'Création de rendez-vous',
+    title: 'Créer le rendez-vous vous-même',
     description:
-      'Depuis votre espace, vous pouvez initier une demande en indiquant le type de soin et les préférences de créneau pour le patient.',
+      'Depuis votre espace : type de soin et créneaux, si vous préférez lancer la demande.',
   },
   {
     icon: 'i-lucide-file-text',
-    title: 'Suivi des soins',
+    title: 'Suivre l’avancement',
     description:
-      "Consultez l'historique lorsque le patient est rattaché à votre compte · utile pour vos bilans de suivi lorsque la structure l'autorise réglementairement.",
+      'Consultez l’historique lorsque le patient est rattaché à votre compte.',
   },
   {
     icon: 'i-lucide-badge-check',
-    title: 'Profil professionnel',
+    title: 'Votre fiche professionnelle',
     description:
-      'Adeli, spécialités : les patients identifient votre rôle prescripteur lorsqu’ils suivent votre lien Cary.',
+      'Adeli, spécialités : les patients voient qui les a orientés.',
   },
   {
     icon: 'i-lucide-shield',
-    title: 'Confidentialité renforcée',
+    title: 'Données protégées',
     description:
-      'Données de santé chiffrées en transit et au repos sur infrastructure adaptée aux usages médicaux français.',
+      'Données de santé chiffrées, hébergement adapté aux usages médicaux français.',
   },
   {
     icon: 'i-lucide-handshake',
-    title: 'Réseau partenaires',
+    title: 'Infirmiers et laboratoires partenaires',
     description:
-      'Accès à une base d’infirmiers et de laboratoires partenaires intervenant chez le patient sur des actes courants.',
+      'Des professionnels qui se déplacent chez le patient pour les actes courants.',
   },
 ];
 
@@ -140,18 +140,18 @@ const stepCards = [
   {
     highlight: true,
     icon: 'i-lucide-file-edit',
-    title: 'Inscrivez-vous',
-    body: 'Renseignez vos informations professionnelles et votre numéro Adeli pour que notre équipe valide votre dossier.',
+    title: 'Vous vous inscrivez',
+    body: 'Informations professionnelles et numéro Adeli. Nous validons le dossier.',
   },
   {
     icon: 'i-lucide-layout-dashboard',
-    title: 'Accédez à votre espace',
-    body: 'Après validation : création de demandes et vision utile pour vos patients orientés via Cary.',
+    title: 'Vous ouvrez votre espace',
+    body: 'Créer une demande, suivre vos patients orientés.',
   },
   {
     icon: 'i-lucide-user-check',
-    title: 'Orientez vos patients',
-    body: 'Indiquez à vos patients qu’ils peuvent réserver sur Cary : prise de sang ou soins infirmiers à domicile selon prescription.',
+    title: 'Vous leur indiquez Cary',
+    body: 'Prise de sang ou soin infirmier à domicile, selon l’ordonnance.',
   },
 ];
 
@@ -212,34 +212,34 @@ const landingReviews = [
 
 const faqItems = [
   {
-    question: 'Qu’est-ce qu’Cary pour un professionnel ?',
+    question: 'À quoi sert Cary pour un médecin ou un kiné ?',
     answer:
-      'Une plateforme qui met en relation patients et professionnels terrain (infirmiers, laboratoires) pour des soins à domicile. Vous orientez ou initiez la demande ; la réalisation technique est assurée par ces professionnels.',
+      'Cary met vos patients en relation avec des infirmiers et des laboratoires pour des soins à domicile. Vous orientez ou vous créez la demande. Ce sont eux qui réalisent le geste.',
   },
   {
-    question: 'Dois-je payer pour inscrire mes patients ?',
+    question: 'Est-ce payant pour moi ?',
     answer:
-      'Les conditions pour les professionnels vous sont communiquées lors de l’inscription : l’objectif est de faciliter l’orientation sans complexité inutile.',
+      'Les conditions vous sont indiquées à l’inscription. L’idée : orienter sans complexité inutile.',
   },
   {
-    question: 'Comment créer un rendez-vous pour un patient ?',
+    question: 'Comment je crée un rendez-vous ?',
     answer:
-      'Depuis votre espace pro, vous pouvez créer une demande en indiquant type de soin et préférences de créneaux. Le patient peut aussi réserver seul après votre indication.',
+      'Depuis votre espace : type de soin et créneaux. Le patient peut aussi réserver seul après votre indication.',
   },
   {
-    question: 'Les données de mes patients sont-elles protégées ?',
+    question: 'Les données sont-elles protégées ?',
     answer:
-      'Oui · traitées selon RGPD et bonnes pratiques du secteur santé français : données limitées aux besoins de la réservation ou du suivi convenu avec le patient.',
+      'Oui. RGPD, limitées à ce qui sert la réservation ou le suivi convenu avec le patient.',
   },
   {
-    question: 'Qui réalise les soins à domicile ?',
+    question: 'Qui fait le soin ?',
     answer:
-      'Ce sont nos partenaires infirmiers ou laboratoires : vous restez médecin prescripteur lorsque votre acte officiel précède leur intervention.',
+      'Les infirmiers et laboratoires partenaires. Vous restez le prescripteur.',
   },
 ];
 
 const ctaButtons = [
-  { label: 'Rejoindre en tant que professionnel', to: '/pro/register', icon: 'i-lucide-stethoscope', variant: 'solid' as const },
-  { label: 'Contact équipe onboarding', to: '/contact', variant: 'outline' as const },
+  { label: 'Créer mon compte professionnel', to: '/pro/register', icon: 'i-lucide-stethoscope', variant: 'solid' as const },
+  { label: 'Parler à l’équipe', to: '/contact', variant: 'outline' as const },
 ];
 </script>

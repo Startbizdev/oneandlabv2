@@ -11,10 +11,10 @@
           <h2
             class="mb-3 text-[clamp(1.875rem,2.5vw,2.625rem)] font-extrabold leading-[1.1] tracking-[-0.035em] text-[#0A0A0F] dark:text-white"
           >
-            Un réseau, chaque profil
+            Chacun trouve ce qu’il cherche
           </h2>
           <p class="mt-2 text-base leading-relaxed text-[#3D3D52] dark:text-gray-300">
-            Infirmiers, laboratoires, médecins et patients : un parcours dédié par rôle.
+            Patients, infirmiers, laboratoires et médecins : un parcours clair pour chacun.
           </p>
         </div>
         <div
@@ -41,16 +41,16 @@
               >
             </span>
             <span class="text-xl font-extrabold tracking-[-0.03em] text-white md:text-[1.25rem]"
-              >Rejoignez le réseau</span
+              >Des demandes près de chez vous</span
             >
           </template>
-          <template #lead> Plus de missions près de chez vous, sans engagement. </template>
+          <template #lead> Vous acceptez celles qui collent à votre tournée. Sans engagement. </template>
           <template #actions>
             <NuxtLink
               to="/nurse/register"
               class="inline-flex min-h-9 items-center justify-center rounded-md border border-transparent bg-primary-500 px-4 py-2 text-sm font-medium text-white shadow-[0_1px_2px_0_rgb(15_23_42_/_0.06)] transition-all hover:bg-primary-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
             >
-              Rejoindre le réseau
+              Recevoir des demandes
             </NuxtLink>
           </template>
         </LandingMaquetteBentoCard>
@@ -67,11 +67,11 @@
               >
             </span>
             <span class="text-xl font-extrabold tracking-[-0.03em] text-white md:text-[1.25rem]"
-              >Prélèvements pilotés</span
+              >Les prises de sang, organisées</span
             >
           </template>
           <template #lead>
-            Une console pour vos équipes et la conformité HDS.
+            Demandes, préleveurs, tournée du jour : tout au même endroit. Données de santé protégées.
           </template>
           <template #actions>
             <NuxtLink
@@ -98,13 +98,13 @@
               <sup class="mt-1 align-top text-[45%] font-extrabold">+</sup>
             </div>
             <p class="mb-4 max-w-none text-xs leading-snug text-white/82">
-              Professionnels certifiés
+              Infirmiers partenaires
             </p>
             <NuxtLink
               to="/infirmiers"
               class="inline-flex w-auto max-w-full items-center gap-[7px] rounded-md bg-white/18 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/28 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
             >
-              Voir le réseau
+              Voir les infirmiers
               <UIcon name="i-lucide-arrow-right" class="h-[15px] w-[15px]" />
             </NuxtLink>
           </div>
@@ -122,16 +122,16 @@
               >
             </span>
             <span class="text-xl font-extrabold tracking-[-0.03em] text-white md:text-[1.25rem]"
-              >Soins à domicile</span
+              >Un soin, sans sortir</span
             >
           </template>
-          <template #lead> Qualité d'un cabinet, confort de votre foyer. </template>
+          <template #lead> La qualité d’un cabinet, le calme de chez vous. </template>
           <template #actions>
             <NuxtLink
               :to="appointmentNewUrl"
               class="inline-flex min-h-9 items-center justify-center rounded-md border border-transparent bg-primary-500 px-4 py-2 text-sm font-medium text-white shadow-[0_1px_2px_0_rgb(15_23_42_/_0.06)] transition-all hover:bg-primary-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
             >
-              Prendre rendez-vous
+              Réserver une visite
             </NuxtLink>
           </template>
         </LandingMaquetteBentoCard>
@@ -148,11 +148,11 @@
               >
             </span>
             <span class="text-xl font-extrabold tracking-[-0.03em] text-white md:text-[1.25rem]"
-              >Orienter vers le domicile</span
+              >Vos patients restent chez eux</span
             >
           </template>
           <template #lead>
-            Moins d'administratif, suivi des soins simplifié.
+            Vous orientez. Ils réservent. Vous voyez où ça en est.
           </template>
           <template #actions>
             <NuxtLink
@@ -173,7 +173,7 @@ const { appointmentNewUrl } = useAppointmentNewUrl();
 
 const statCardEl = ref<HTMLElement | null>(null);
 const displayCount = ref('0');
-const TARGET = 500;
+const TARGET = 40;
 
 function animateCount(target: number, duration = 1400) {
   const el = displayCount;

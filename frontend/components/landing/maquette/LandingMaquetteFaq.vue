@@ -14,11 +14,10 @@
         <h2
           class="mb-4 text-[clamp(1.75rem,2.5vw,2.5rem)] font-extrabold leading-[1.15] tracking-[-0.03em] text-[#0A0A0F] dark:text-white"
         >
-          Tout ce que vous devez savoir
+          Les questions qu’on nous pose le plus
         </h2>
         <p class="text-base leading-[1.75] text-[#3D3D52] dark:text-gray-300">
-          Une question absente de cette liste ? Notre équipe répond en moins d'une heure, tous les
-          jours.
+          Une question absente ? Écrivez-nous : nous répondons sous 24 heures ouvrées.
         </p>
         <NuxtLink
           to="/contact"

@@ -1992,6 +1992,24 @@ class Appointment
                             'public_slug' => isset($cp['public_slug']) && trim((string) $cp['public_slug']) !== '' ? trim((string) $cp['public_slug']) : null,
                         ], $this->reviewStatsForUserId((string) $cb));
                     }
+                } elseif ($cbRole === 'super_admin') {
+                    $cp = $userModel->getById((string) $cb, 'system', 'system');
+                    if ($cp) {
+                        $fn = trim((string) ($cp['first_name'] ?? ''));
+                        $ln = trim((string) ($cp['last_name'] ?? ''));
+                        $appointment['creator_origin'] = [
+                            'kind' => 'admin',
+                            'id' => (string) $cb,
+                            'display_name' => trim($fn . ' ' . $ln) ?: 'Administration Cary',
+                            'badge' => 'Créé par l\'administration',
+                        ];
+                    } else {
+                        $appointment['creator_origin'] = [
+                            'kind' => 'admin',
+                            'display_name' => 'Administration Cary',
+                            'badge' => 'Créé par l\'administration',
+                        ];
+                    }
                 }
             }
         } catch (Exception $e) {
@@ -2431,12 +2449,44 @@ class Appointment
         }
         
         // Si c'est un redispatch, on remet les assignations à NULL et on relance le dispatch
+        $redispatchPreviousAssigneeId = null;
+        $redispatchPreviousAssigneeRole = null;
         if ($redispatch && $newStatus === 'pending') {
-            if (!in_array($oldStatus, ['confirmed', 'planned', 'inProgress'], true)) {
-                throw new Exception('Seuls les rendez-vous confirmés, planifiés ou en cours peuvent être redispatchés.');
+            $allowedRedispatchFrom = ['confirmed', 'planned', 'inProgress'];
+            if ($actorRole === 'super_admin') {
+                $allowedRedispatchFrom[] = 'canceled';
             }
-            // Vérifier que l'infirmier/labo est bien celui assigné
-            if ($appointment['type'] === 'nursing') {
+            if (!in_array($oldStatus, $allowedRedispatchFrom, true)) {
+                throw new Exception('Seuls les rendez-vous confirmés, planifiés, en cours ou annulés peuvent être redispatchés.');
+            }
+
+            if ($actorRole === 'super_admin') {
+                if ($appointment['type'] === 'nursing') {
+                    if (!empty($appointment['assigned_nurse_id'])) {
+                        $redispatchPreviousAssigneeId = (string) $appointment['assigned_nurse_id'];
+                        $redispatchPreviousAssigneeRole = 'nurse';
+                    }
+                    $updateFields[] = 'assigned_nurse_id = NULL';
+                } elseif ($appointment['type'] === 'blood_test') {
+                    if (!empty($appointment['assigned_lab_id'])) {
+                        $redispatchPreviousAssigneeId = (string) $appointment['assigned_lab_id'];
+                        $redispatchPreviousAssigneeRole = 'lab';
+                    } elseif (!empty($appointment['assigned_to'])) {
+                        $redispatchPreviousAssigneeId = (string) $appointment['assigned_to'];
+                        $redispatchPreviousAssigneeRole = 'preleveur';
+                    }
+                    $updateFields[] = 'assigned_lab_id = NULL';
+                    $updateFields[] = 'assigned_to = NULL';
+                }
+                if ($oldStatus === 'canceled') {
+                    $updateFields[] = 'canceled_by = NULL';
+                    $updateFields[] = 'canceled_at = NULL';
+                    $updateFields[] = 'cancellation_reason = NULL';
+                    $updateFields[] = 'cancellation_comment = NULL';
+                    $updateFields[] = 'cancellation_photo_document_id = NULL';
+                }
+                $updateFields[] = 'created_at = NOW()';
+            } elseif ($appointment['type'] === 'nursing') {
                 if ((string) $appointment['assigned_nurse_id'] !== (string) $actorId) {
                     throw new Exception('Vous ne pouvez redispatcher que les rendez-vous qui vous sont assignés');
                 }
@@ -2738,7 +2788,11 @@ class Appointment
         
         // Enregistrer dans l'historique
         $updateId = $this->generateUUID();
-        $noteToSave = $redispatch ? 'Rendez-vous redispatché par le professionnel' : $note;
+        $noteToSave = $redispatch
+            ? ($actorRole === 'super_admin'
+                ? 'Rendez-vous redispatché par l\'administration'
+                : 'Rendez-vous redispatché par le professionnel')
+            : $note;
         $stmt = $this->db->prepare('
             INSERT INTO appointment_status_updates 
             (id, appointment_id, status, actor_id, actor_role, note, created_at)
@@ -2786,6 +2840,13 @@ class Appointment
                     $formDataForDispatch = [];
                 }
             }
+            $excludeProfileId = $actorRole === 'super_admin'
+                ? ($redispatchPreviousAssigneeId ?: null)
+                : $actorId;
+            if ($actorRole === 'super_admin') {
+                $delOffersAdmin = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ?');
+                $delOffersAdmin->execute([$id]);
+            }
             $this->dispatchGeographic(
                 $id,
                 $appointment['type'],
@@ -2793,18 +2854,26 @@ class Appointment
                 (float) $appointment['location_lng'],
                 $appointment['scheduled_at'] ?? null,
                 $formDataForDispatch,
-                $actorId
+                $excludeProfileId
             );
-            $this->notifyActorAppointmentRedispatched($id, $appointment, $actorId, $actorRole);
+            if ($actorRole !== 'super_admin') {
+                $this->notifyActorAppointmentRedispatched($id, $appointment, $actorId, $actorRole);
+            }
 
-            if (!empty($appointment['patient_id']) && in_array($actorRole, ['nurse', 'lab', 'subaccount'], true)) {
+            $revokeProfileId = $actorRole === 'super_admin' ? $redispatchPreviousAssigneeId : $actorId;
+            $revokeProfileRole = $actorRole === 'super_admin' ? $redispatchPreviousAssigneeRole : $actorRole;
+            if (
+                !empty($appointment['patient_id'])
+                && !empty($revokeProfileId)
+                && in_array($revokeProfileRole, ['nurse', 'lab', 'subaccount'], true)
+            ) {
                 require_once __DIR__ . '/User.php';
                 try {
                     $userModel = new User();
                     $userModel->revokePatientProfessionalAccessAfterRedispatch(
                         (string) $appointment['patient_id'],
-                        $actorId,
-                        $actorRole
+                        (string) $revokeProfileId,
+                        (string) $revokeProfileRole
                     );
                 } catch (Throwable $e) {
                     error_log('PatientProfessionalAccess (redispatch revoke): ' . $e->getMessage());
@@ -2812,7 +2881,10 @@ class Appointment
             }
 
             // Lot multisoins : même redispatch pour les autres RDV nursing assignés au même infirmier
-            if ($appointment['type'] === 'nursing' && $actorRole === 'nurse') {
+            $batchRedispatchNurseId = $actorRole === 'nurse'
+                ? $actorId
+                : ($actorRole === 'super_admin' ? $redispatchPreviousAssigneeId : null);
+            if ($appointment['type'] === 'nursing' && !empty($batchRedispatchNurseId)) {
                 $batchIdRd = $appointment['creation_batch_id'] ?? null;
                 $patientIdRd = $appointment['patient_id'] ?? null;
                 if (!empty($batchIdRd) && !empty($patientIdRd)) {
@@ -2824,14 +2896,14 @@ class Appointment
                          AND assigned_nurse_id = ?
                          AND status IN (\'confirmed\', \'planned\', \'inProgress\')'
                     );
-                    $sibRd->execute([$batchIdRd, $patientIdRd, 'nursing', $id, $actorId]);
+                    $sibRd->execute([$batchIdRd, $patientIdRd, 'nursing', $id, $batchRedispatchNurseId]);
                     while ($sibRow = $sibRd->fetch(PDO::FETCH_ASSOC)) {
                         $sibId = (string) $sibRow['id'];
                         $updSib = $this->db->prepare(
                             'UPDATE appointments SET status = ?, assigned_nurse_id = NULL, updated_at = NOW()
                              WHERE id = ? AND assigned_nurse_id = ? AND status IN (\'confirmed\', \'planned\', \'inProgress\')'
                         );
-                        $updSib->execute(['pending', $sibId, $actorId]);
+                        $updSib->execute(['pending', $sibId, $batchRedispatchNurseId]);
                         if ($updSib->rowCount() === 0) {
                             continue;
                         }
@@ -2876,14 +2948,16 @@ class Appointment
                             (float) $sibRow['location_lng'],
                             $sibRow['scheduled_at'] ?? null,
                             $formSib,
-                            $actorId
+                            $batchRedispatchNurseId
                         );
-                        $this->notifyActorAppointmentRedispatched($sibId, array_merge($appointment, [
-                            'id' => $sibId,
-                            'scheduled_at' => $sibRow['scheduled_at'],
-                            'form_data_encrypted' => $sibRow['form_data_encrypted'] ?? null,
-                            'form_data_dek' => $sibRow['form_data_dek'] ?? null,
-                        ]), $actorId, $actorRole);
+                        if ($actorRole !== 'super_admin') {
+                            $this->notifyActorAppointmentRedispatched($sibId, array_merge($appointment, [
+                                'id' => $sibId,
+                                'scheduled_at' => $sibRow['scheduled_at'],
+                                'form_data_encrypted' => $sibRow['form_data_encrypted'] ?? null,
+                                'form_data_dek' => $sibRow['form_data_dek'] ?? null,
+                            ]), $actorId, $actorRole);
+                        }
                     }
                 }
             }

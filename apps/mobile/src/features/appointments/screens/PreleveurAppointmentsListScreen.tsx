@@ -123,7 +123,7 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix }: Props) {
               imageSource={EMPTY_RDV_IMAGE}
               imageWidth={EMPTY_RDV_IMAGE_WIDTH}
               imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-              title="Aucun rendez-vous"
+              title="Aucun prélèvement pour le moment"
               description="Vos missions confirmées apparaîtront ici."
             />
           ) : null

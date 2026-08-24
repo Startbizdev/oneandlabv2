@@ -46,6 +46,20 @@ if (!in_array($role, ['pro', 'nurse', 'super_admin'], true)) {
     exit;
 }
 
+if (in_array($role, ['pro', 'nurse'], true)) {
+    $config = require __DIR__ . '/../../config/database.php';
+    $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
+    $dbCheck = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
+    if (!PrescriptionService::isPrescriptionGenerationEnabled($dbCheck, (string) ($user['user_id'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'error' => 'La génération d\'ordonnances est désactivée pour votre compte. Contactez l\'administration.',
+        ]);
+        exit;
+    }
+}
+
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 
 if ($role === 'nurse' && ($input['prescription_kind'] ?? '') === PrescriptionService::KIND_MEDICAL) {

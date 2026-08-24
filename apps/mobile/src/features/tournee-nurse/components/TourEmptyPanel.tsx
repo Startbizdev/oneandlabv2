@@ -45,9 +45,9 @@ export function TourEmptyPanel({ date }: Props) {
         <Route size={iconSize['3xl']} color={c.primary} strokeWidth={1.8} />
       </View>
 
-      <AppText style={[styles.title, { color: c.textPrimary }]}>Journée libre</AppText>
+      <AppText style={[styles.title, { color: c.textPrimary }]}>Rien de prévu ce jour-là</AppText>
       <AppText style={[styles.description, { color: c.textSecondary, maxWidth: copyMaxWidth }]}>
-        Aucun soin planifié {label}. Parcourez le calendrier ci-dessus pour voir vos autres journées.
+        Aucun soin planifié {label}. Parcourez le calendrier pour voir les autres journées.
       </AppText>
 
       <View style={[styles.actions, { maxWidth: actionMaxWidth }]}>

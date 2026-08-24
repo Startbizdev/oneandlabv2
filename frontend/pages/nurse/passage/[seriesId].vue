@@ -99,7 +99,7 @@
             @upload="onUploadDocument"
           />
           <PrescriptionSection
-            v-if="!['canceled', 'cancelled'].includes(String(appointment.status ?? ''))"
+            v-if="canGeneratePrescription && !['canceled', 'cancelled'].includes(String(appointment.status ?? ''))"
             :patient-id="appointment.patient_id"
             :appointment="{ id: appointment.id }"
             :documents="documents"
@@ -253,6 +253,7 @@ import PassageFieldRow from '~/components/nurse/PassageFieldRow.vue';
 import PassagePlanningFormFields from '~/components/nurse/PassagePlanningFormFields.vue';
 import AppointmentDocumentsSection from '~/components/dashboard/AppointmentDocumentsSection.vue';
 import PrescriptionSection from '~/components/dashboard/PrescriptionSection.vue';
+import { prescriptionGenerationEnabled } from '~/utils/prescription-access';
 import PatientHealthRecordPanel from '~/components/dashboard/PatientHealthRecordPanel.vue';
 import { cancelAppointmentWithOptionalPhoto } from '~/utils/appointment-cancellation';
 import {
@@ -290,6 +291,8 @@ useHead({ title: 'Détail passage – Infirmier' });
 
 const route = useRoute();
 const router = useRouter();
+const { user } = useAuth();
+const canGeneratePrescription = computed(() => prescriptionGenerationEnabled(user.value));
 const { saving, fetchSeries, updateSeries, materializeSeries, deleteSeries } = useNursePassageWeb();
 const { markEnRoute, markDone } = useNurseTourWeb();
 

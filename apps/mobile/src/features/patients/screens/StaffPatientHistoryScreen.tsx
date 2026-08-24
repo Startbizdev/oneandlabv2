@@ -131,7 +131,7 @@ export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
           imageSource={EMPTY_RDV_IMAGE}
           imageWidth={EMPTY_RDV_IMAGE_WIDTH}
           imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-          title="Aucun historique"
+          title="Pas encore d’historique"
           description="Aucun rendez-vous enregistré pour ce patient."
         />
       }

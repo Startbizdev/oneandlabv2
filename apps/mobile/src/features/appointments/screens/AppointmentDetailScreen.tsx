@@ -8,6 +8,7 @@ import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
+import { prescriptionGenerationEnabled } from '@/features/prescriptions/utils/prescription-access';
 import { SkeletonStaffAppointmentDetail } from '@/components/ui/skeletons';
 import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
 import { useAppointmentDetailScreen } from '../detail/hooks/use-appointment-detail-screen';
@@ -264,7 +265,10 @@ export function AppointmentDetailScreen({ role }: Props) {
     ? `Profil du titulaire · ${accountHolderName}`
     : undefined;
   const showPrescription =
-    role === 'pro' && config.showPrescriptionBlock && !isAppointmentCanceled(primary.status);
+    (role === 'pro' || role === 'nurse') &&
+    config.showPrescriptionBlock &&
+    prescriptionGenerationEnabled(user) &&
+    !isAppointmentCanceled(primary.status);
 
   return (
     <>

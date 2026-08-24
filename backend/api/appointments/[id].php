@@ -450,8 +450,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             if ($redispatch && $input['status'] !== 'pending') {
                 throw new Exception('Le redispatch nécessite un statut "pending"');
             }
-            if ($redispatch && !in_array($user['role'], ['nurse', 'lab', 'subaccount'])) {
-                throw new Exception('Seuls les professionnels de santé assignés peuvent redispatcher un rendez-vous');
+            if ($redispatch && !in_array($user['role'], ['nurse', 'lab', 'subaccount', 'super_admin'], true)) {
+                throw new Exception('Seuls les professionnels de santé assignés ou l\'administration peuvent redispatcher un rendez-vous');
             }
 
             // Pour completed / inProgress : vérifier que l'utilisateur est assigné, créateur, ou (pour lab) dans l'équipe du RDV

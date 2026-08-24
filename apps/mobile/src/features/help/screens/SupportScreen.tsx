@@ -22,7 +22,7 @@ import { fontFamily, fontSize } from '@/theme/typography';
 
 const ROLE_LABELS: Record<string, string> = {
   patient: 'Patient',
-  nurse: 'Infirmier(ère)',
+  nurse: 'Infirmier ou infirmière',
   pro: 'Professionnel de santé',
   preleveur: 'Préleveur',
 };

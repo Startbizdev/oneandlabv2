@@ -2,14 +2,14 @@
   <div>
     <LandingMaquetteHero
       eyebrow="Assistance Cary"
-      :title-lines="['Parlons de', 'votre']"
-      highlight="besoin"
-      description="Une question sur un rendez-vous, un projet de partenariat laboratoire ou infirmier, ou une demande générale : choisissez un motif et envoyez votre message — réponse sous 24-48 h ouvrées."
+      :title-lines="['Une question ?']"
+      highlight="Écrivez-nous"
+      description="Rendez-vous, partenariat, réclamation : choisissez un motif, envoyez votre message. Nous répondons sous 24 heures ouvrées."
       image-src="https://images.unsplash.com/photo-1573497019418-b400bb3ab074?w=900&h=1200&q=80&auto=format&fit=crop"
       image-alt="Téléconseillère souriante avec un casque"
       image-object-class="object-[center_25%]"
-      :primary-cta="{ label: 'Écrire à l’équipe', to: '#message', icon: 'i-lucide-mail' }"
-      :secondary-cta="{ label: 'Voir nos coordonnées', to: '#coordonnees', icon: 'i-lucide-map-pin' }"
+      :primary-cta="{ label: 'Écrire un message', to: '#message', icon: 'i-lucide-mail' }"
+      :secondary-cta="{ label: 'Voir l’adresse', to: '#coordonnees', icon: 'i-lucide-map-pin' }"
       :stats="contactStats"
       hide-quote
     />
@@ -26,9 +26,9 @@
           >
             <UIcon name="i-lucide-check" class="h-6 w-6" />
           </div>
-          <h2 class="mb-2 text-lg font-semibold text-[#0A0A0F] dark:text-white">Message envoyé</h2>
+          <h2 class="mb-2 text-lg font-semibold text-[#0A0A0F] dark:text-white">Message bien reçu</h2>
           <p class="mb-8 text-sm leading-relaxed text-[#3D3D52] dark:text-gray-300">
-            Nous avons bien reçu votre message et vous répondrons à l’adresse indiquée dans les plus brefs délais.
+            Nous vous répondons à l’adresse indiquée, sous 24 heures ouvrées.
           </p>
           <UButton color="primary" variant="soft" class="font-medium" @click="sent = false">
             Envoyer un autre message
@@ -143,7 +143,7 @@
                 <UFormField label="Message" name="message" required>
                   <UTextarea
                     v-model="form.message"
-                    placeholder="Décrivez votre demande..."
+                    placeholder="Dites-nous comment vous aider"
                     :rows="5"
                     size="lg"
                     class="min-h-[140px] w-full resize-y"
@@ -160,7 +160,7 @@
                     :disabled="!canSubmit"
                     class="min-w-[160px] font-medium"
                   >
-                    Envoyer
+                    Envoyer le message
                     <template #trailing>
                       <UIcon name="i-lucide-send" class="h-4 w-4" />
                     </template>
@@ -192,17 +192,17 @@ definePageMeta({
 });
 
 const contactStats = [
-  { num: '24-48 h', rest: ' délai de réponse ouvré' },
+  { num: '24 h', rest: ' ouvrées pour vous répondre' },
   { num: 'Lun–Ven 9h–18h', rest: ' équipe joignable' },
   { num: 'Sam 9h–12h', rest: ' permanence courte' },
 ];
 
 const contactOptions = [
-  { value: 'rdv', label: 'Problème avec un rendez-vous', icon: 'i-lucide-calendar-clock' },
-  { value: 'partenariat_labo', label: 'Partenariat laboratoire', icon: 'i-lucide-building-2' },
-  { value: 'partenariat_infirmier', label: 'Partenariat infirmier', icon: 'i-lucide-stethoscope' },
-  { value: 'question', label: 'Question générale', icon: 'i-lucide-help-circle' },
-  { value: 'reclamation', label: 'Réclamation', icon: 'i-lucide-alert-circle' },
+  { value: 'rdv', label: 'Un souci avec un rendez-vous', icon: 'i-lucide-calendar-clock' },
+  { value: 'partenariat_labo', label: 'Devenir laboratoire partenaire', icon: 'i-lucide-building-2' },
+  { value: 'partenariat_infirmier', label: 'Devenir infirmier partenaire', icon: 'i-lucide-stethoscope' },
+  { value: 'question', label: 'Une question', icon: 'i-lucide-help-circle' },
+  { value: 'reclamation', label: 'Une réclamation', icon: 'i-lucide-alert-circle' },
   { value: 'autre', label: 'Autre', icon: 'i-lucide-message-square' },
 ];
 

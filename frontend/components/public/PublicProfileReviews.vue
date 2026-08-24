@@ -147,7 +147,7 @@
           <!-- Patient : aucun RDV éligible -->
           <div v-else-if="eligibleAppointments.length === 0" class="text-center py-4">
             <p class="text-gray-600 dark:text-gray-400">Vous pourrez laisser un avis après un rendez-vous terminé avec ce professionnel.</p>
-            <UButton :to="appointmentNewUrl" color="primary" variant="soft" class="mt-4" block>Prendre rendez-vous</UButton>
+            <UButton :to="appointmentNewUrl" color="primary" variant="soft" class="mt-4" block>Réserver une visite</UButton>
           </div>
 
           <!-- Patient : formulaire avis -->
@@ -228,7 +228,7 @@ const { appointmentNewUrl } = useAppointmentNewUrl();
 
 const nonPatientBookingActions = computed(() => [
   {
-    label: 'Prendre rendez-vous à domicile',
+    label: 'Réserver une visite à domicile',
     icon: 'i-lucide-calendar-plus',
     to: appointmentNewUrl.value,
     color: 'primary',

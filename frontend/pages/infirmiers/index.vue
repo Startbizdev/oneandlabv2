@@ -4,10 +4,10 @@
     <section class="relative py-12 sm:py-16 md:py-20 overflow-hidden bg-primary-50 dark:bg-primary-950/40 border-b border-primary-100 dark:border-primary-900/50">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl text-center">
         <h1 class="text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight text-gray-900 dark:text-white mb-4">
-          Infirmier libéral à domicile en France
+          Trouver un infirmier à domicile, près de chez vous
         </h1>
         <p class="text-lg sm:text-xl text-gray-700 dark:text-gray-300 max-w-2xl mx-auto mb-8">
-          Trouvez un infirmier libéral à domicile pour vos soins et prises de sang. Réservez en ligne en quelques clics.
+          Soins et prises de sang à domicile. Vous réservez en ligne. Un professionnel vient chez vous.
         </p>
         <UButton
           :to="appointmentNewUrl"
@@ -17,7 +17,7 @@
           icon="i-lucide-calendar-plus"
           class="min-w-[260px] sm:min-w-[280px] px-8 py-4 text-base sm:text-lg font-medium"
         >
-          Prendre rendez-vous à domicile
+          Réserver une visite
         </UButton>
         <ul class="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-400">
           <li class="inline-flex items-center gap-1.5">
@@ -30,7 +30,7 @@
           </li>
           <li class="inline-flex items-center gap-1.5">
             <UIcon name="i-lucide-clock" class="w-4 h-4 text-primary-500" />
-            Réservation en 1 min
+            Réservation en quelques minutes
           </li>
         </ul>
       </div>
@@ -51,9 +51,9 @@
         <template v-else>
           <div v-if="nurses.length === 0" class="text-center py-16">
             <UIcon name="i-lucide-heart-pulse" class="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <h2 class="text-xl font-medium text-gray-900 dark:text-white mb-2">Aucun infirmier pour le moment</h2>
-            <p class="text-gray-600 dark:text-gray-400 mb-6">Les infirmiers partenaires apparaîtront ici.</p>
-            <UButton :to="appointmentNewUrl" color="primary" size="lg">Prendre rendez-vous</UButton>
+            <h2 class="text-xl font-medium text-gray-900 dark:text-white mb-2">Pas encore d’infirmier visible</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">Les fiches apparaîtront ici. Vous pouvez déjà réserver une visite : nous trouvons un professionnel dans votre zone.</p>
+            <UButton :to="appointmentNewUrl" color="primary" size="lg">Réserver une visite</UButton>
           </div>
 
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -120,8 +120,8 @@ const { data: nursesData, pending: loading, refresh } = await useAsyncData(
 const nurses = computed(() => nursesData.value?.success ? (nursesData.value.data ?? []) : [])
 const pagination = computed(() => nursesData.value?.pagination ?? { page: 1, limit: 24, total: 0, pages: 0 })
 
-const seoTitle = 'Infirmier libéral à domicile en France | Soins et prises de sang | Cary'
-const seoDescription = 'Trouvez un infirmier libéral à domicile pour vos soins et prises de sang. Réservez en ligne. Gratuit, sans engagement, réservation en 1 min.'
+const seoTitle = 'Infirmier à domicile en France | Soins et prises de sang | Cary'
+const seoDescription = 'Trouvez un infirmier à domicile pour un soin ou une prise de sang. Réservez en ligne, sans engagement.'
 
 useHead({
   title: seoTitle,

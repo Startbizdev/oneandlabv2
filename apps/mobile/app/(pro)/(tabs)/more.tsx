@@ -14,7 +14,7 @@ import {
   Smile,
   User,
 } from 'lucide-react-native';
-import { SHOW_PRESCRIPTIONS_TAB_NAV } from '@/features/prescriptions/constants';
+import { SHOW_PRESCRIPTIONS_TAB_NAV, prescriptionGenerationEnabled } from '@/features/prescriptions/constants';
 import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { proPublicProfilePath } from '@/features/profile/utils/pro-public-profile';
@@ -45,6 +45,7 @@ export default function ProMore() {
     profileQ.data?.is_public_profile_enabled !== 0;
 
   const nav = (href: string) => router.push(href as never);
+  const rxNavEnabled = SHOW_PRESCRIPTIONS_TAB_NAV && prescriptionGenerationEnabled(user);
 
   const sharePublicProfile = async () => {
     if (!publicSlug || !publicProfileEnabled) {
@@ -110,7 +111,7 @@ export default function ProMore() {
                 onPress: () => nav('/(pro)/resultats'),
                 iconAccent: 'results',
               },
-              ...(!SHOW_PRESCRIPTIONS_TAB_NAV
+              ...(!rxNavEnabled && prescriptionGenerationEnabled(user)
                 ? [
                     {
                       icon: FilePenLine,

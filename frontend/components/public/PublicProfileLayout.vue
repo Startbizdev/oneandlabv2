@@ -84,7 +84,7 @@
           class="font-medium justify-center text-base py-4"
         >
           <UIcon name="i-lucide-calendar-plus" class="h-5 w-5 mr-2" />
-          Prendre rendez-vous
+          Réserver une visite
         </UButton>
       </div>
     </div>
@@ -311,7 +311,7 @@
                 class="font-medium justify-center text-base py-4"
               >
                 <UIcon name="i-lucide-calendar-plus" class="h-5 w-5 mr-2" />
-                Prendre rendez-vous
+                Réserver une visite
               </UButton>
               <!-- Lab : horaires juste en dessous -->
               <OpeningHoursWeek

@@ -4,8 +4,8 @@
   >
     <div class="mx-auto flex w-full max-w-[380px] flex-1 flex-col justify-center">
       <div class="rounded-xl border border-gray-200/90 bg-white px-5 py-6 dark:border-gray-800 dark:bg-gray-950">
-        <h1 class="text-[15px] font-semibold text-gray-900 dark:text-gray-100">Nouveau mot de passe</h1>
-        <p class="mt-1 text-[13px] text-gray-500">Minimum 8 caractères, une lettre et un chiffre.</p>
+        <h1 class="text-[15px] font-semibold text-gray-900 dark:text-gray-100">Choisissez un nouveau mot de passe</h1>
+        <p class="mt-1 text-[13px] text-gray-500">Au moins 8 caractères, une lettre et un chiffre.</p>
 
         <div class="mt-4 flex gap-2">
           <UButton

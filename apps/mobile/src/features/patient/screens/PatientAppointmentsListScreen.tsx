@@ -191,8 +191,12 @@ export function PatientAppointmentsListScreen() {
               imageSource={EMPTY_RDV_IMAGE}
               imageWidth={EMPTY_RDV_IMAGE_WIDTH}
               imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-              title={tab === 'upcoming' ? 'Aucun rendez-vous à venir' : 'Aucun rendez-vous terminé'}
-              description="Réservez un nouveau rendez-vous avec le bouton ci-dessus."
+              title={tab === 'upcoming' ? 'Pas encore de visite prévue' : 'Aucune visite terminée pour le moment'}
+              description={
+                tab === 'upcoming'
+                  ? 'Réservez une visite à domicile : cela prend quelques minutes.'
+                  : 'Vos visites passées apparaîtront ici.'
+              }
             />
           ) : null
         }

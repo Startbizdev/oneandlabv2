@@ -26,11 +26,11 @@
           id="patient-focus-heading"
           class="mb-[18px] text-[clamp(1.75rem,2.5vw,2.5rem)] font-extrabold leading-[1.15] tracking-[-0.03em] text-[#0A0A0F] dark:text-white"
         >
-          Une plateforme simple pour vos soins à la maison
+          Moins de trajet. Plus de calme.
         </h2>
         <p class="mb-[22px] text-[1.0625rem] leading-[1.75] text-[#3D3D52] dark:text-gray-300">
-          Avec Cary, vous réservez un infirmier ou un prélèvement labo près de chez vous, sans
-          courir après les cabinets.
+          Vous réservez un infirmier ou une prise de sang chez vous, sans courir après les
+          cabinets.
         </p>
         <ul class="m-0 flex list-none flex-col gap-3 p-0">
           <li
@@ -48,8 +48,8 @@
 
 <script setup lang="ts">
 const lines = [
-  'Réponse rapide et créneaux choisis sur la plateforme',
-  'Professionnels diplômés, intervenant au domicile dans vos horaires',
-  'Confirmation et rappels par SMS ou e-mail',
+  'Un créneau que vous choisissez',
+  'Des professionnels vérifiés',
+  'Un SMS pour confirmer et rappeler',
 ] as const;
 </script>

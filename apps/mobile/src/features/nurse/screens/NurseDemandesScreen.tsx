@@ -101,8 +101,8 @@ export function NurseDemandesScreen() {
         skeletonHeight={168}
         ListEmptyComponent={
           <EmptyState
-            title="Aucune demande en attente"
-            description="Les nouvelles propositions de soins apparaîtront ici. La liste se met à jour automatiquement."
+            title="Aucune demande pour le moment"
+            description="Les nouvelles propositions de soins apparaîtront ici."
             imageSource={EMPTY_DEMANDE_IMAGE}
             imageWidth={EMPTY_DEMANDE_IMAGE_WIDTH}
             imageHeight={EMPTY_DEMANDE_IMAGE_HEIGHT}

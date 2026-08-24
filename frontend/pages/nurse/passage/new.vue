@@ -66,15 +66,25 @@
       </div>
 
       <div v-else-if="tab === 'documents'" class="space-y-4">
-        <UAlert
-          color="neutral"
-          variant="subtle"
-          title="Ordonnance"
-          description="Générez une ordonnance ici ou depuis le détail du passage après création. Elle sera rattachée au rendez-vous si vous l'enregistrez depuis la fiche passage."
-        />
-        <PrescriptionSection
-          :patient-id="patientId"
-          prescription-kind="nursing"
+        <template v-if="canGeneratePrescription">
+          <UAlert
+            color="neutral"
+            variant="subtle"
+            title="Ordonnance"
+            description="Générez une ordonnance ici ou depuis le détail du passage après création. Elle sera rattachée au rendez-vous si vous l'enregistrez depuis la fiche passage."
+          />
+          <PrescriptionSection
+            :patient-id="patientId"
+            prescription-kind="nursing"
+          />
+        </template>
+        <UEmpty
+          v-else
+          icon="i-lucide-file-pen-line"
+          title="Génération d'ordonnances désactivée"
+          description="Contactez l'administration Cary pour activer cette fonctionnalité."
+          variant="outline"
+          class="py-12"
         />
       </div>
 
@@ -153,6 +163,7 @@ import PassageCarePicker from '~/components/nurse/PassageCarePicker.vue';
 import PassageFieldRow from '~/components/nurse/PassageFieldRow.vue';
 import PassagePlanningFormFields from '~/components/nurse/PassagePlanningFormFields.vue';
 import PrescriptionSection from '~/components/dashboard/PrescriptionSection.vue';
+import { prescriptionGenerationEnabled } from '~/utils/prescription-access';
 import PatientHealthRecordPanel from '~/components/dashboard/PatientHealthRecordPanel.vue';
 import {
   formatCareSummary,
@@ -183,6 +194,7 @@ const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const { user } = useAuth();
+const canGeneratePrescription = computed(() => prescriptionGenerationEnabled(user.value));
 const { saving, createSeries } = useNursePassageWeb();
 
 const patientId = computed(() => String(route.query.patient_id ?? ''));

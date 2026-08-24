@@ -156,20 +156,20 @@ const props = withDefaults(
 const { appointmentNewUrl } = useAppointmentNewUrl();
 
 const defaultPrimaryCta = computed<HeroCta>(() => ({
-  label: 'Prendre rendez-vous',
+  label: 'Réserver une visite',
   to: appointmentNewUrl.value,
 }));
 
 const defaultTitleLines = ['Un professionnel', 'de santé chez vous,'];
 const defaultHighlight = 'en moins de 2h';
 const defaultDescription =
-  "Infirmiers diplômés et préleveurs certifiés interviennent directement à votre domicile. Sans file d'attente, remboursé par l'Assurance Maladie.";
+  'Prise de sang, pansement, injection : vous réservez en quelques minutes. Un professionnel vérifié vient chez vous. Sur ordonnance, c’est pris en charge comme en ville.';
 const defaultImageSrc = '/images/landing/hero-cary-home-nurse.png';
 const defaultImageAlt = 'Infirmier diplômé Cary préparant une visite à domicile';
 const defaultStats: HeroStat[] = [
-  { num: '+2000', rest: ' patients accompagnés' },
-  { num: '+500', rest: ' professionnels certifiés' },
-  { num: '98%', rest: ' taux de satisfaction' },
+  { num: '+300', rest: ' visites à domicile' },
+  { num: '40+', rest: ' infirmiers partenaires' },
+  { num: 'Souvent', rest: ' possible le jour même' },
 ];
 const defaultQuote: HeroQuote = {
   text:

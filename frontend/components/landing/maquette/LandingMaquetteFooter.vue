@@ -59,7 +59,7 @@
           <div
             class="flex flex-col items-start justify-between gap-4 text-[0.8125rem] text-white/32 sm:flex-row sm:items-center"
           >
-            <span>© {{ year }} Cary · Hébergement HDS, conforme RGPD.</span>
+            <span>© {{ year }} Cary · Données de santé hébergées, conforme RGPD.</span>
             <div class="flex flex-wrap gap-x-[22px] gap-y-2">
               <NuxtLink
                 to="/politique-confidentialite"
@@ -110,9 +110,9 @@ const footerBlocks = computed(() => {
     title: 'Services',
     links: [
       { label: 'Soins infirmiers', to: `${rdv}${nursingQ}`, external: false },
-      { label: 'Prélèvements à domicile', to: `${rdv}${bloodQ}`, external: false },
-      { label: 'Seniors et dépendance', to: '/pour-les-patients', external: false },
-      { label: 'Tarifs patients', to: '/pour-les-infirmiers/tarifs', external: false },
+      { label: 'Prise de sang à domicile', to: `${rdv}${bloodQ}`, external: false },
+      { label: 'Pour les patients', to: '/pour-les-patients', external: false },
+      { label: 'Comment réserver', to: `${rdv}`, external: false },
     ],
   },
   {
@@ -120,17 +120,16 @@ const footerBlocks = computed(() => {
     links: [
       { label: 'Infirmiers', to: '/pour-les-infirmiers', external: false },
       { label: 'Laboratoires', to: '/pour-les-laboratoires', external: false },
-      { label: 'Rejoindre le réseau', to: '/nurse/register', external: false },
-      { label: 'Espace professionnel', to: '/pour-les-professionnels', external: false },
+      { label: 'Devenir infirmier', to: '/nurse/register', external: false },
+      { label: 'Espace médecin', to: '/pour-les-professionnels', external: false },
     ],
   },
   {
-    title: 'Entreprise & aide',
+    title: 'Aide',
     links: [
-      { label: 'À propos', to: '/pour-les-patients', external: false },
       { label: 'Contact', to: '/contact', external: false },
-      { label: 'FAQ', to: '/#faq', external: false },
-      { label: "Centre d'aide", to: '/contact', external: false },
+      { label: 'Questions fréquentes', to: '/#faq', external: false },
+      { label: 'Nous écrire', to: '/contact', external: false },
     ],
   },
   ];

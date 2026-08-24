@@ -27,7 +27,7 @@
           class="rounded-xl px-3 py-3.5 text-[15px] font-semibold tracking-[-0.01em] text-[#0A0A0F] transition-colors hover:bg-[#F2F4FA] dark:text-white dark:hover:bg-gray-800"
           @click="emit('navigate')"
         >
-          Professionnel
+          Vous êtes médecin
         </NuxtLink>
         <NuxtLink
           to="/contact"
@@ -48,7 +48,7 @@
           class="font-semibold"
           @click="emit('navigate')"
         >
-          Prendre rendez-vous
+          Réserver une visite
         </UButton>
 
         <NuxtLink
@@ -121,17 +121,17 @@ const emit = defineEmits<{
 const route = useRoute();
 
 const groups = [
-  { id: 'patient' as const, label: 'Patient' },
-  { id: 'nurse' as const, label: 'Infirmiers' },
-  { id: 'lab' as const, label: 'Laboratoire' },
+  { id: 'patient' as const, label: 'Vous êtes patient' },
+  { id: 'nurse' as const, label: 'Vous êtes infirmier' },
+  { id: 'lab' as const, label: 'Vous êtes un laboratoire' },
 ];
 
 const activeGroup = ref<null | 'patient' | 'nurse' | 'lab'>(null);
 
 const activeGroupLabel = computed(() => {
-  if (activeGroup.value === 'patient') return 'Patient';
-  if (activeGroup.value === 'nurse') return 'Infirmiers';
-  if (activeGroup.value === 'lab') return 'Laboratoire';
+  if (activeGroup.value === 'patient') return 'Vous êtes patient';
+  if (activeGroup.value === 'nurse') return 'Vous êtes infirmier';
+  if (activeGroup.value === 'lab') return 'Vous êtes un laboratoire';
   return '';
 });
 

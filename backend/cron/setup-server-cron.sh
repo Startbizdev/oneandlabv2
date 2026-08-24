@@ -193,3 +193,33 @@ EOFHR
   "${SUDO[@]}" chown "$WWW_USER:$WWW_USER" "$HR_NUDGE_LOG"
   echo "OK : $CRON_HR (07:00 Europe/Paris chaque jour)."
 fi
+
+PURGE_ACCESS_LOGS_SCRIPT="$REMOTE_BASE/backend/cron/purge-access-logs.php"
+PURGE_ACCESS_LOGS_LOG="/var/log/oneandlab-purge-access-logs.log"
+PURGE_ACCESS_LOGS_CRON_NAME="oneandlab-purge-access-logs"
+if [[ -f "$PURGE_ACCESS_LOGS_SCRIPT" ]]; then
+  CRON_PURGE="/etc/cron.d/${PURGE_ACCESS_LOGS_CRON_NAME}"
+  "${SUDO[@]}" tee "$CRON_PURGE" > /dev/null <<EOFPURGE
+# Purge access_logs HDS (> ACCESS_LOG_RETENTION_MONTHS, défaut 12) — OneAndLab
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+TZ=Europe/Paris
+15 3 1 * * $WWW_USER $PHP_BIN $PURGE_ACCESS_LOGS_SCRIPT >> $PURGE_ACCESS_LOGS_LOG 2>&1
+EOFPURGE
+  "${SUDO[@]}" chmod 644 "$CRON_PURGE"
+  "${SUDO[@]}" touch "$PURGE_ACCESS_LOGS_LOG"
+  "${SUDO[@]}" chown "$WWW_USER:$WWW_USER" "$PURGE_ACCESS_LOGS_LOG"
+  echo "OK : $CRON_PURGE (03:15 Europe/Paris le 1er de chaque mois)."
+  echo "Test manuel : sudo -u $WWW_USER $PHP_BIN $PURGE_ACCESS_LOGS_SCRIPT"
+else
+  echo "Ignoré : $PURGE_ACCESS_LOGS_SCRIPT absent."
+fi
+
+if [[ -f "$ENV_FILE" ]] && ! grep -q '^ACCESS_LOG_RETENTION_MONTHS=' "$ENV_FILE"; then
+  {
+    echo ""
+    echo "# Rétention logs traçabilité HDS (access_logs), purge cron mensuelle"
+    echo "ACCESS_LOG_RETENTION_MONTHS=12"
+  } >> "$ENV_FILE"
+  echo "ACCESS_LOG_RETENTION_MONTHS=12 ajouté dans $ENV_FILE."
+fi

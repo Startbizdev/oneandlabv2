@@ -54,6 +54,33 @@
         </button>
       </div>
     </div>
+
+    <div
+      v-if="showRedispatchConfirm"
+      class="mt-2 p-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 space-y-3 min-w-[280px]"
+    >
+      <p class="text-sm font-medium text-amber-900 dark:text-amber-100">Remettre en dispatch ?</p>
+      <p class="text-xs text-amber-800/90 dark:text-amber-200/90 leading-relaxed">
+        Les assignations seront effacées et les infirmiers/laboratoires éligibles seront re-notifiés (emails + offres zone).
+      </p>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          class="px-3 py-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors"
+          @click="showRedispatchConfirm = false; pendingStatusSelection = null"
+        >
+          Annuler
+        </button>
+        <button
+          type="button"
+          :disabled="updating"
+          class="px-3 py-1.5 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          @click="updateStatus('pending', undefined, true)"
+        >
+          Confirmer le redispatch
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -67,8 +94,10 @@ const props = withDefaults(
     disabled?: boolean
     /** Si true, sélectionner "Annulé" ouvre le formulaire motif+commentaire au lieu d'appeler l'API directement */
     requireCancelForm?: boolean
+    /** Admin : passage à pending depuis un statut actif déclenche un redispatch complet */
+    adminRedispatch?: boolean
   }>(),
-  { disabled: false, requireCancelForm: true }
+  { disabled: false, requireCancelForm: true, adminRedispatch: false }
 )
 
 const emit = defineEmits<{
@@ -81,6 +110,8 @@ const toast = useAppToast()
 
 const updating = ref(false)
 const showCancelForm = ref(false)
+const showRedispatchConfirm = ref(false)
+const pendingStatusSelection = ref<string | null>(null)
 const previousStatus = ref(props.modelValue)
 const cancelReason = ref('')
 const cancelComment = ref('')
@@ -98,11 +129,18 @@ const statusOptions = [
 
 const cancellationReasonOptions = CANCELLATION_REASON_OPTIONS
 
-async function updateStatus(newStatus: string, cancelPayload?: { cancellation_reason: string; cancellation_comment: string }) {
+const REDISPATCH_FROM_STATUSES = new Set(['confirmed', 'planned', 'inProgress', 'canceled'])
+
+async function updateStatus(
+  newStatus: string,
+  cancelPayload?: { cancellation_reason: string; cancellation_comment: string },
+  redispatch = false,
+) {
   if (!props.appointmentId) return
   updating.value = true
   try {
     const body: Record<string, unknown> = { status: newStatus }
+    if (redispatch) body.redispatch = true
     if (newStatus === 'canceled' && cancelPayload) {
       body.cancellation_reason = cancelPayload.cancellation_reason
       body.cancellation_comment = cancelPayload.cancellation_comment
@@ -111,7 +149,13 @@ async function updateStatus(newStatus: string, cancelPayload?: { cancellation_re
     if (res?.success) {
       emit('update:modelValue', newStatus)
       emit('updated')
-      toast.add({ title: 'Statut mis à jour', color: 'green' })
+      toast.add({
+        title: redispatch ? 'Redispatch lancé' : 'Statut mis à jour',
+        description: redispatch
+          ? 'Les professionnels éligibles ont été re-notifiés.'
+          : undefined,
+        color: 'green',
+      })
     } else {
       toast.add({ title: 'Erreur', description: (res as any)?.error || 'Impossible de mettre à jour le statut', color: 'red' })
     }
@@ -119,6 +163,8 @@ async function updateStatus(newStatus: string, cancelPayload?: { cancellation_re
     toast.add({ title: 'Erreur', description: err?.message || 'Une erreur est survenue', color: 'red' })
   } finally {
     updating.value = false
+    showRedispatchConfirm.value = false
+    pendingStatusSelection.value = null
   }
 }
 
@@ -131,6 +177,18 @@ function onSelect(event: Event) {
     showCancelForm.value = true
     cancelReason.value = ''
     cancelComment.value = ''
+    emit('update:modelValue', props.modelValue)
+    return
+  }
+  if (
+    props.adminRedispatch
+    && newStatus === 'pending'
+    && newStatus !== props.modelValue
+    && REDISPATCH_FROM_STATUSES.has(props.modelValue)
+  ) {
+    previousStatus.value = props.modelValue
+    pendingStatusSelection.value = newStatus
+    showRedispatchConfirm.value = true
     emit('update:modelValue', props.modelValue)
     return
   }

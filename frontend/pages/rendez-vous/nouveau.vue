@@ -542,6 +542,7 @@ function mergeQuickServiceIntoBooking(payload: { service: SelectedServiceInput; 
     slice,
     priorSelectedServices: existing,
     priorFormDataByService: priorFd,
+    careCategory: { name: service.name, label: service.name },
   });
 }
 

@@ -647,6 +647,7 @@ const breadcrumbItems = computed(() => {
     "/admin": { label: "Tableau de bord", icon: "i-lucide-layout-dashboard" },
     "/admin/inscriptions": { label: "Inscriptions", icon: "i-lucide-user-plus" },
     "/admin/appointments": { label: "Rendez-vous", icon: "i-lucide-calendar" },
+    "/admin/appointments/notifications": { label: "Renvoi emails RDV", icon: "i-lucide-mail" },
     "/admin/dispatch": { label: "Attribution RDV", icon: "i-lucide-radio-tower" },
     "/admin/calendar": { label: "Calendrier", icon: "i-lucide-calendar-days" },
     "/admin/users": { label: "Utilisateurs", icon: "i-lucide-users" },
@@ -806,6 +807,12 @@ const navigationItems = computed(() => {
           icon: "i-lucide-calendar",
           to: "/admin/appointments",
           active: active("/admin/appointments"),
+        },
+        {
+          label: "Renvoi emails RDV",
+          icon: "i-lucide-mail",
+          to: "/admin/appointments/notifications",
+          active: active("/admin/appointments/notifications"),
         },
         {
           label: "Attribution RDV",
@@ -1150,9 +1157,13 @@ const navigationItems = computed(() => {
   };
 
   const base = menus[role] || [[], []];
-  if (role === 'pro' && user.value?.prescription_generation_enabled === false) {
+  if (
+    (role === 'pro' || role === 'nurse') &&
+    user.value?.prescription_generation_enabled === false
+  ) {
+    const blockedPath = role === 'pro' ? '/pro/prescriptions' : '/nurse/prescriptions';
     return [
-      base[0].filter((item) => item.to !== '/pro/prescriptions'),
+      base[0].filter((item) => item.to !== blockedPath),
       base[1] ?? [],
     ];
   }

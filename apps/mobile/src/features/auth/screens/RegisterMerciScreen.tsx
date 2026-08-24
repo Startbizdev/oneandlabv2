@@ -17,7 +17,7 @@ export function RegisterMerciScreen() {
   const router = useRouter();
 
   const roleLabel =
-    type === 'nurse' ? 'infirmier·ère' : type === 'pro' ? 'professionnel de santé' : 'professionnel';
+    type === 'nurse' ? 'd’infirmier' : type === 'pro' ? 'professionnel' : 'professionnel';
 
   return (
     <ScrollView
@@ -30,14 +30,14 @@ export function RegisterMerciScreen() {
         <View style={styles.iconWrap}>
           <CheckCircle2 size={iconSize['4xl']} color={c.primary} strokeWidth={2} />
         </View>
-        <AppText style={styles.title}>Demande bien reçue</AppText>
-        <AppText style={styles.sub}>Merci pour votre inscription sur Cary.</AppText>
+        <AppText style={styles.title}>C’est bien reçu</AppText>
+        <AppText style={styles.sub}>Merci. Votre demande est entre nos mains.</AppText>
         <AppText style={styles.body}>
-          Notre équipe va analyser votre profil {roleLabel} et reviendra vers vous dans les plus brefs
-          délais pour finaliser votre accès.
+          Nous vérifions votre dossier {roleLabel}, puis nous vous écrivons pour ouvrir l’accès.
+          Comptez quelques jours ouvrés.
         </AppText>
         <AppText style={styles.hint}>
-          Vous recevrez un email dès que votre compte sera activé.
+          Vous recevrez un email dès que votre compte sera ouvert.
         </AppText>
         <View style={styles.actions}>
           <Button title="Retour à l'accueil" fullWidth size="lg" onPress={() => router.replace('/(auth)/welcome')} />

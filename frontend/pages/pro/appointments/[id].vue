@@ -128,12 +128,12 @@ import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
 import { standardAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
 import { isCarePhotoGalleryContext, canUploadCarePhotos } from '~/utils/care-photo-gallery-context';
-import { proPrescriptionGenerationEnabled } from '~/utils/prescription-access';
+import { prescriptionGenerationEnabled } from '~/utils/prescription-access';
 
 const route = useRoute();
 const toast = useAppToast();
 const { user } = useAuth();
-const proCanGeneratePrescription = computed(() => proPrescriptionGenerationEnabled(user.value));
+const proCanGeneratePrescription = computed(() => prescriptionGenerationEnabled(user.value));
 const patientReview = ref<Record<string, unknown> | null>(null);
 
 async function loadPatientReviewForRoute() {

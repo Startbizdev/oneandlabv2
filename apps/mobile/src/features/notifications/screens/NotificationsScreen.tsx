@@ -172,8 +172,8 @@ export function NotificationsScreen() {
           <View style={[styles.centered, styles.emptyPad]}>
             <EmptyState
               Icon={Bell}
-              title="Aucune notification"
-              description="Vos alertes rendez-vous et activité apparaîtront ici."
+              title="Rien de nouveau"
+              description="Les rappels et messages arriveront ici."
             />
           </View>
         ) : (

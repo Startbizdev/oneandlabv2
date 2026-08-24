@@ -83,12 +83,12 @@ export function WelcomeScreen() {
             />
 
             <AppText style={[styles.audienceKicker, { maxWidth: textMaxWidth }]}>
-              Patients et professionnels de santé
+              Le soin vient à vous
             </AppText>
 
             <AppText style={[styles.tagline, { maxWidth: textMaxWidth }]}>
-              Soins et prélèvements{'\n'}
-              <AppText style={styles.taglineAccent}>à domicile</AppText>
+              Un infirmier ou une prise de sang{'\n'}
+              <AppText style={styles.taglineAccent}>chez vous</AppText>
             </AppText>
 
             <View style={styles.taglineRule} />
@@ -97,7 +97,7 @@ export function WelcomeScreen() {
           <View style={styles.footer}>
             <View style={[styles.actionsCard, elevation.sm]}>
               <BiometricLoginButton onSuccess={onLoginSuccess} />
-              <Button title="Connexion par email" size="lg" fullWidth onPress={() => setLoginOpen(true)} />
+              <Button title="Se connecter" size="lg" fullWidth onPress={() => setLoginOpen(true)} />
               <Button
                 title="Créer un compte"
                 variant="outline"

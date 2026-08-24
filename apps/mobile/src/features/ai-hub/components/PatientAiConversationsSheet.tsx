@@ -294,7 +294,7 @@ export function PatientAiConversationsSheet({
               keyboardShouldPersistTaps="handled"
               ListEmptyComponent={
                 <View style={styles.emptyWrap}>
-                  <AppText style={styles.emptyTitle}>Aucune conversation</AppText>
+                  <AppText style={styles.emptyTitle}>Pas encore de conversation</AppText>
                   <AppText style={styles.emptyBody}>Vos échanges avec Cary apparaîtront ici.</AppText>
                 </View>
               }

@@ -216,7 +216,7 @@ export function RoleFilteredAppointmentsListScreen({
             imageSource={EMPTY_RDV_IMAGE}
             imageWidth={EMPTY_RDV_IMAGE_WIDTH}
             imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-            title="Aucun rendez-vous"
+            title="Aucune visite pour le moment"
             description="Modifiez les filtres pour élargir la liste."
           />
         }

@@ -2,14 +2,14 @@
   <div>
     <LandingMaquetteHero
       eyebrow="Pour les laboratoires"
-      :title-lines="['Prélèvements', 'à domicile']"
-      highlight="pilotés"
-      description="Recevez les demandes de prélèvement à domicile, gérez vos préleveurs, assignez les tournées et suivez votre activité. Une solution pensée pour développer vos prélèvements à domicile tout en restant pilotable au quotidien."
+      :title-lines="['Plus de prises de sang', 'à domicile, sans le']"
+      highlight="tableau Excel"
+      description="Les demandes arrivent. Vous les donnez à vos préleveurs. Chacun voit sa tournée. Vous voyez le volume, en direct."
       image-src="https://images.unsplash.com/photo-1579154341184-22069e4614d2?w=900&h=1200&q=80&auto=format&fit=crop"
       image-alt="Tubes à essai en laboratoire d'analyses médicales"
       image-object-class="object-[center_40%]"
       :primary-cta="{ label: 'Inscrire mon laboratoire', to: '/lab/register', icon: 'i-lucide-building-2' }"
-      :secondary-cta="{ label: 'Voir les tarifs laboratoires', to: '/pour-les-laboratoires/tarifs' }"
+      :secondary-cta="{ label: 'Voir les tarifs', to: '/pour-les-laboratoires/tarifs' }"
       :stats="labStats"
       :quote="labQuote"
     />
@@ -17,8 +17,8 @@
 
     <LandingMaquettePillarGrid
       eyebrow="En résumé"
-      title="Ce que votre laboratoire gagne avec la plateforme"
-      subtitle="Des flux patients structurés, une organisation terrain plus lisible pour vos équipes."
+      title="Ce que votre laboratoire gagne"
+      subtitle="Des demandes claires. Une équipe qui sait qui va où."
       :columns="4"
       section-class="bg-white dark:bg-gray-950"
       :items="trustItems"
@@ -26,8 +26,8 @@
 
     <LandingMaquettePillarGrid
       eyebrow="Avantages"
-      title="Une solution pour structurer vos prélèvements à domicile"
-      subtitle="De la réception des demandes au suivi des rendez-vous — sans multiplier les tableurs ni les circuits informels."
+      title="De la demande à la tournée, sans circuits informels"
+      subtitle="De la réception des demandes au suivi des rendez-vous — sans multiplier les tableurs."
       :columns="3"
       section-class="bg-[#F7F7FB] dark:bg-gray-900/80"
       :items="benefits"
@@ -35,8 +35,8 @@
 
     <LandingMaquetteStepsCards
       eyebrow="Intégration"
-      :heading-lines="['Trois étapes', 'pour rejoindre le réseau']"
-      intro="En quelques étapes, votre laboratoire est paramétré : couverture, préleveurs et réception des demandes."
+      :heading-lines="['Trois étapes', 'pour recevoir vos premières demandes']"
+      intro="Dossier, préleveurs, puis les demandes dans votre zone."
       section-class="bg-white dark:bg-gray-950"
       :cards="stepCards"
     />
@@ -61,8 +61,8 @@
 
     <LandingMaquetteInlineCta
       eyebrow="Prêt à vous lancer ?"
-      title="Développez vos prélèvements à domicile"
-      subtitle="Rejoignez les laboratoires qui utilisent Cary : mise en place guidée, préleveurs et tournées depuis un seul espace."
+      title="Lancez vraiment le domicile"
+      subtitle="Mise en place guidée. Préleveurs et tournées au même endroit."
       :buttons="ctaButtons"
       outer-class="bg-[#F7F7FB] dark:bg-gray-900/70"
     />
@@ -74,18 +74,18 @@
 definePageMeta({ layout: 'default' });
 
 useLandingSeo({
-  title: 'Pour les laboratoires | Prélèvement à domicile | Cary',
+  title: 'Laboratoires : prises de sang à domicile, tournées et préleveurs | Cary',
   description:
-    "Laboratoires d'analyses : proposez des prises de sang à domicile avec Cary. Gérez les demandes et vos préleveurs.",
+    'Les demandes arrivent. Vous les donnez à vos préleveurs. Chacun voit sa tournée. Vous voyez le volume, en direct.',
   keywords:
     'laboratoire à domicile, prise de sang à domicile, préleveur, plateforme laboratoire, Cary, analyses à domicile',
   path: '/pour-les-laboratoires',
 });
 
 const labStats = [
-  { num: '+50', rest: ' laboratoires partenaires' },
-  { num: '+10 000', rest: ' prélèvements à domicile coordonnés' },
-  { num: 'Temps réel', rest: ' suivi des tournées' },
+  { num: '8+', rest: ' laboratoires partenaires' },
+  { num: 'En direct', rest: ' suivi des tournées' },
+  { num: '1 an', rest: ' déjà sur le terrain' },
 ];
 
 const labQuote = {
@@ -95,10 +95,10 @@ const labQuote = {
 };
 
 const trustItems = [
-  { icon: 'i-lucide-droplet', title: 'Demandes de prélèvements', description: 'Dans votre secteur d’intervention.' },
-  { icon: 'i-lucide-users', title: 'Préleveurs et sous-comptes', description: 'Gestion centralisée de l’équipe.' },
-  { icon: 'i-lucide-bar-chart', title: 'Statistiques et suivi', description: 'Tableaux de bord pour piloter l’activité.' },
-  { icon: 'i-lucide-file-check', title: 'Conformité et traçabilité', description: 'Données et parcours sécurisés.' },
+  { icon: 'i-lucide-droplet', title: 'Des demandes dans votre secteur', description: 'Les prises de sang qui correspondent à votre zone.' },
+  { icon: 'i-lucide-users', title: 'Votre équipe, au même endroit', description: 'Préleveurs et accès séparés.' },
+  { icon: 'i-lucide-bar-chart', title: 'Vous voyez l’activité', description: 'Volume, journées, charge.' },
+  { icon: 'i-lucide-file-check', title: 'Traçabilité', description: 'Qui est passé, quand, sur quel rendez-vous.' },
 ];
 
 const benefits = [
@@ -106,7 +106,7 @@ const benefits = [
     icon: 'i-lucide-droplet',
     title: 'Demandes de prélèvements',
     description:
-      'Recevez les demandes de prise de sang à domicile dans votre secteur. Acceptez ou déléguez selon votre capacité.',
+      'Recevez les demandes de prise de sang à domicile dans votre secteur. Vous acceptez ou vous déléguez selon votre capacité.',
   },
   {
     icon: 'i-lucide-users',
@@ -141,21 +141,21 @@ const stepCards = [
   {
     highlight: true,
     icon: 'i-lucide-file-edit',
-    title: 'Inscrivez votre laboratoire',
+    title: 'Vous inscrivez le laboratoire',
     body:
-      'Renseignez les informations du laboratoire (SIRET, raison sociale, zone de couverture) et envoyez votre demande d’inscription.',
+      'SIRET, raison sociale, zone. Vous envoyez le dossier.',
   },
   {
     icon: 'i-lucide-settings',
-    title: 'Validation et paramétrage',
+    title: 'Nous validons, vous paramétrez',
     body:
-      'Notre équipe valide votre dossier et vous donne accès à l’espace laboratoire. Ajoutez vos préleveurs et vos créneaux.',
+      'Accès laboratoire, préleveurs, créneaux.',
   },
   {
     icon: 'i-lucide-calendar-check',
-    title: 'Recevez et assignez les demandes',
+    title: 'Vous recevez et vous assignez',
     body:
-      'Les demandes de prélèvement à domicile vous sont notifiées. Assignez vos préleveurs et suivez les rendez-vous.',
+      'Notification, préleveur, suivi du rendez-vous.',
   },
 ];
 
@@ -218,29 +218,29 @@ const landingReviews = [
 
 const faqItems = [
   {
-    question: 'Quels documents pour inscrire mon laboratoire ?',
+    question: 'Quels documents ?',
     answer:
-      "Vous aurez besoin du SIRET, de la raison sociale et des coordonnées du laboratoire. Un justificatif d'activité peut être demandé pour valider l'inscription.",
+      'SIRET, raison sociale, coordonnées. Un justificatif d’activité peut être demandé.',
   },
   {
     question: 'Comment gérer les préleveurs ?',
     answer:
-      "Depuis votre espace laboratoire, créez les comptes préleveurs (ou sous-comptes), assignez les rendez-vous et suivez l'activité. Chaque préleveur accède à son planning.",
+      'Vous créez leurs accès, vous assignez les rendez-vous, chacun voit son planning.',
   },
   {
-    question: 'Comment sont réparties les demandes ?',
+    question: 'Comment arrivent les demandes ?',
     answer:
-      "Les demandes de prise de sang à domicile sont adressées aux laboratoires dont la zone de couverture correspond à l'adresse du patient. Vous acceptez ou déléguez selon votre capacité.",
+      'Elles vont aux laboratoires dont la zone couvre l’adresse du patient. Vous acceptez selon votre capacité.',
   },
   {
-    question: "Y a-t-il des frais ou un engagement ?",
+    question: 'Y a-t-il un engagement ?',
     answer:
-      "Les conditions tarifaires et d'engagement vous sont communiquées lors de l'inscription. Nous privilégions la transparence.",
+      'Les tarifs sont sur la page dédiée. Vous pouvez annuler à tout moment.',
   },
   {
-    question: 'Les données patients sont-elles sécurisées ?',
+    question: 'Les données sont-elles protégées ?',
     answer:
-      'Oui. Les données de santé sont traitées de façon sécurisée et conforme au RGPD et aux usages du secteur. Traçabilité et confidentialité sont assurées.',
+      'Oui. Données de santé, RGPD, traçabilité.',
   },
 ];
 

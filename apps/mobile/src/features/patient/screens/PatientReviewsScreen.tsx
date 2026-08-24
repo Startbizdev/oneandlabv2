@@ -157,7 +157,7 @@ export function PatientReviewsScreen() {
         }}
         ListEmptyComponent={
           <EmptyState
-            title="Aucun avis disponible"
+            title="Pas encore d’avis"
             description="Il n'y a pas encore d'avis. Après un rendez-vous terminé, vous pourrez noter votre expérience."
             imageSource={EMPTY_AVIS_IMAGE}
             imageWidth={EMPTY_AVIS_IMAGE_WIDTH}

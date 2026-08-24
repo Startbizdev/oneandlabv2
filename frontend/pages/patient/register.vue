@@ -8,10 +8,10 @@
               <UIcon name="i-lucide-user" class="w-7 h-7 text-white" />
             </div>
             <h1 class="text-2xl sm:text-3xl font-normal text-foreground">
-              {{ step === 'form' ? 'Inscription patient' : 'Vérification' }}
+              {{ step === 'form' ? 'Votre compte patient' : 'Votre code' }}
             </h1>
             <p class="text-muted mt-2 text-sm sm:text-base">
-              {{ step === 'form' ? 'Renseignez vos informations pour créer votre compte' : 'Entrez le code reçu par email' }}
+              {{ step === 'form' ? 'Quelques informations, et vous pourrez suivre vos visites.' : 'Entrez le code reçu par email' }}
             </p>
           </div>
         </template>

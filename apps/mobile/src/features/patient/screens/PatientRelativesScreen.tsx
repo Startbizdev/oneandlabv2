@@ -172,15 +172,15 @@ export function PatientRelativesScreen({
         skeletonCount={2}
         ListHeaderComponent={
           <AppText style={styles.subtitle}>
-            Touchez une carte pour modifier · appui long pour supprimer
+            Touchez une fiche pour la modifier. Appui long pour la retirer.
           </AppText>
         }
         ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <EmptyState
-            title="Aucun proche"
-            description="Ajoutez un proche pour prendre rendez-vous en son nom."
+            title="Aucun proche pour le moment"
+            description="Ajoutez un proche pour réserver à sa place."
             imageSource={EMPTY_PROCHE_IMAGE}
             imageWidth={EMPTY_PROCHE_IMAGE_WIDTH}
             imageHeight={EMPTY_PROCHE_IMAGE_HEIGHT}
