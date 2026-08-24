@@ -16,7 +16,7 @@ export default defineNuxtConfig({
     runtimeConfig: {
       public: {
         // En dev : /api pour passer par le proxy Nitro (évite CORS / connexion refusée)
-        apiBase: process.env.NUXT_PUBLIC_API_BASE || (process.env.NODE_ENV === 'development' ? '/api' : 'http://localhost:8888/api'),
+        apiBase: process.env.NUXT_PUBLIC_API_BASE || (process.env.NODE_ENV === 'development' ? '/api' : 'https://cary.bio/api'),
         siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://cary.bio',
       },
     },

@@ -100,11 +100,7 @@ export NUXT_PUBLIC_SITE_URL="https://cary.bio"
 npm run build
 
 echo "==> Envoi du build vers le serveur..."
-OUTPUT_SYNC_EXTRA=()
-if [[ "${DEPLOY_SYNC_OUTPUT_DELETE:-}" == "1" ]]; then
-  OUTPUT_SYNC_EXTRA=(--delete)
-  echo "    (rsync --delete : suppression des anciens chunks _nuxt sur le serveur)"
-fi
+OUTPUT_SYNC_EXTRA=(--delete)
 retry_cmd 3 deploy_sync_dir \
   "$FRONTEND_DIR/.output/" \
   "$SSH_TARGET:$REMOTE_DIR/.output/" \
