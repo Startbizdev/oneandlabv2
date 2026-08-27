@@ -35,6 +35,8 @@
         </UButton>
       </div>
     </div>
+    <NursePrescriptionScopeHelp v-if="showNurseScopeHelp" class="mb-1" />
+
     <div class="space-y-4">
       <PrescriptionProfileGapsAlert
         :gaps="profileGaps"
@@ -131,12 +133,14 @@
 import PrescriptionSignaturePad from '~/components/prescription/PrescriptionSignaturePad.vue';
 import PrescriptionProfileGapsAlert from '~/components/prescription/PrescriptionProfileGapsAlert.vue';
 import PrescriptionMedicalFields from '~/components/prescription/PrescriptionMedicalFields.vue';
+import NursePrescriptionScopeHelp from '~/components/prescription/NursePrescriptionScopeHelp.vue';
 import {
   getPrescriptionProfileGaps,
   type PrescriptionProfileSnapshot,
   composeMedicalPrescriptionText,
   hasMedicalPrescriptionContent,
   parseMedicalPrescriptionText,
+  shouldShowNursePrescriptionScopeHelp,
   type MedicalPrescriptionFields,
 } from '@oneandlab/shared-utils';
 const props = defineProps<{
@@ -153,6 +157,9 @@ const config = useRuntimeConfig();
 const { user } = useAuth();
 
 const kind = computed(() => props.prescriptionKind ?? 'medical');
+const showNurseScopeHelp = computed(() =>
+  shouldShowNursePrescriptionScopeHelp(user.value?.role, kind.value),
+);
 const linkedToAppointment = computed(() => Boolean(props.appointment?.id));
 const sectionTitle = computed(() =>
   kind.value === 'nursing' ? 'Prescription d\'actes infirmiers' : 'Créer une ordonnance',
