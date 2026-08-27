@@ -21,3 +21,4 @@ export * from './open-navigation';
 export * from './nurse-passage-display';
 export * from './patient-absence-display';
 export * from './lab-preference';
+export * from './nurse-prescription-scope';

@@ -100,8 +100,8 @@ export const MORE_TAB_TRIGGER: Omit<NativeTabTriggerConfig, 'name'> = {
 
 export const APPOINTMENTS_TAB_TRIGGER: Omit<NativeTabTriggerConfig, 'name'> = {
   accessibilityLabel: 'Rendez-vous',
-  sf: { default: 'calendar', selected: 'calendar' },
-  androidIcon: 'event',
+  sf: { default: 'list.bullet', selected: 'list.bullet' },
+  androidIcon: 'format-list-bulleted',
 };
 
 /** Onglet calendrier / agenda — sans le cercle `calendar.circle`. */

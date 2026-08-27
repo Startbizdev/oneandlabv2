@@ -31,8 +31,10 @@ import {
   composeMedicalPrescriptionText,
   hasMedicalPrescriptionContent,
   parseMedicalPrescriptionText,
+  shouldShowNursePrescriptionScopeHelp,
   type MedicalPrescriptionFields,
 } from '@oneandlab/shared-utils';
+import { NursePrescriptionScopeHelp } from '@/features/prescriptions/components/NursePrescriptionScopeHelp';
 import type { OpenPrescriptionSignatureOptions } from '@/features/prescriptions/components/PrescriptionSignatureSheet';
 import { PrescriptionSignatureSheet } from '@/features/prescriptions/components/PrescriptionSignatureSheet';
 import { PrescriptionDatePicker } from '@/features/prescriptions/components/PrescriptionDatePicker';
@@ -84,6 +86,7 @@ export function PrescriptionComposer({
   const user = useAuthStore((s) => s.user);
   const linkedToAppointment = Boolean(appointmentId);
   const isNursing = prescriptionKind === 'nursing';
+  const showNurseScopeHelp = shouldShowNursePrescriptionScopeHelp(user?.role, prescriptionKind);
   const [medicalFields, setMedicalFields] = useState<MedicalPrescriptionFields>(() =>
     parseMedicalPrescriptionText(initialText),
   );
@@ -338,6 +341,8 @@ export function PrescriptionComposer({
           </Row>
         </View>
       ) : null}
+
+      {showNurseScopeHelp ? <NursePrescriptionScopeHelp /> : null}
 
       {deferSaveForPassage && pdfUri ? (
         <View style={styles.passageDraftReady}>
