@@ -12,6 +12,14 @@ import {
   resizeSquareFromCorner,
   resolveZoneBounds,
   MIN_HALF_SIDE_KM,
+  defaultSquareVertices,
+  pointInPolygon,
+  polygonAreaKm2,
+  clampVertexToMaxKm,
+  maxVertexDistanceKm,
+  ensureSixVertices,
+  toPolygonPayload,
+  COVERAGE_VERTEX_COUNT,
 } from '../src/coverage-zone-geo.ts';
 
 function assert(cond, msg) {
@@ -53,5 +61,24 @@ assert(resized.halfSideKm >= MIN_HALF_SIDE_KM, 'Resize depuis coin');
 
 const legacy = resolveZoneBounds('square', center, 20, null);
 assert(isPointInBounds(center, legacy), 'Legacy sans bounds_json → carré depuis radius');
+
+const square = defaultSquareVertices(center, 15);
+assert(square.length === COVERAGE_VERTEX_COUNT, 'Carré = 6 poignées (4 angles + 2 milieux)');
+assert(pointInPolygon(center, square), 'Centre dans le carré');
+assert(polygonAreaKm2(square) > 800, 'Surface carré 15 km > 800 km²');
+assert(
+  !pointInPolygon({ lat: 50.0, lng: 3.0 }, square),
+  'Lille hors carré Paris',
+);
+
+const pulled = clampVertexToMaxKm(center, { lat: center.lat + 2, lng: center.lng }, 20);
+assert(maxVertexDistanceKm(center, [pulled]) <= 20.05, 'Poignée clampée au max plan');
+
+const payload = toPolygonPayload(square);
+assert(payload.vertices.length === 6, 'Payload vertices');
+assert(payload.max_lat > payload.min_lat, 'AABB du polygone');
+
+const six = ensureSixVertices(center, square.slice(0, 4), 12);
+assert(six.length === 6, 'ensureSixVertices complète à 6');
 
 console.log('\n=== Tous les tests shared-utils OK ===');

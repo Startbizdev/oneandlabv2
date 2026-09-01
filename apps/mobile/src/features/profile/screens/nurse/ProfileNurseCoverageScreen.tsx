@@ -22,8 +22,8 @@ import { handleApiError } from '@/lib/errors/handle-api-error';
 import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import type { AddressPayload } from '@/features/appointments/form/types';
-import type { CoverageBounds } from '@oneandlab/shared-utils';
-import { halfSideKmToBounds } from '@oneandlab/shared-utils';
+import type { CoveragePolygonPayload, CoverageVertex } from '@oneandlab/shared-utils';
+import { toPolygonPayload } from '@oneandlab/shared-utils';
 
 const MIN_RADIUS = 5;
 const DEFAULT_RADIUS = 20;
@@ -35,12 +35,12 @@ export function ProfileNurseCoverageScreen() {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
   const qc = useQueryClient();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydratedRef = useRef(false);
 
   const [address, setAddress] = useState<AddressPayload | null>(null);
   const [halfSideKm, setHalfSideKm] = useState(DEFAULT_RADIUS);
-  const [bounds, setBounds] = useState<CoverageBounds | null>(null);
+  const [bounds, setBounds] = useState<CoveragePolygonPayload | null>(null);
+  const [vertices, setVertices] = useState<CoverageVertex[] | null>(null);
 
   const userQ = useQuery({
     queryKey: queryKeys.profile.user(user?.id ?? ''),
@@ -73,12 +73,18 @@ export function ProfileNurseCoverageScreen() {
       }
     }
     if (zone?.bounds_json) {
-      setBounds(zone.bounds_json);
+      const b = zone.bounds_json as CoveragePolygonPayload;
+      setBounds(b);
+      if (Array.isArray(b.vertices)) setVertices(b.vertices);
     }
   }, [zoneQ.data]);
 
   const save = useMutation({
-    mutationFn: async (payload: { halfSide: number; bounds: CoverageBounds | null }) => {
+    mutationFn: async (payload: {
+      halfSide: number;
+      bounds: CoveragePolygonPayload | null;
+      vertices: CoverageVertex[] | null;
+    }) => {
       if (!hasValidGeoAddress(address)) {
         throw new Error('ADDRESS_REQUIRED');
       }
@@ -92,12 +98,12 @@ export function ProfileNurseCoverageScreen() {
       });
       const zoneBounds =
         payload.bounds ??
-        halfSideKmToBounds({ lat: address!.lat, lng: address!.lng }, payload.halfSide);
+        toPolygonPayload(payload.vertices ?? []);
       await saveCoverageZone({
         center_lat: address!.lat,
         center_lng: address!.lng,
         radius_km: payload.halfSide,
-        zone_type: 'square',
+        zone_type: 'polygon',
         bounds_json: zoneBounds,
         role: 'nurse',
       });
@@ -122,28 +128,23 @@ export function ProfileNurseCoverageScreen() {
     },
   });
 
-  const onDragEnd = (half: number, b: CoverageBounds) => {
+  const onSaveZone = (
+    half: number,
+    b: CoveragePolygonPayload,
+    verts: CoverageVertex[],
+  ) => {
     setHalfSideKm(half);
     setBounds(b);
+    setVertices(verts);
     if (!hydratedRef.current) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      if (!save.isPending) save.mutate({ halfSide: half, bounds: b });
-    }, 500);
+    if (!save.isPending) save.mutate({ halfSide: half, bounds: b, vertices: verts });
   };
-
-  useEffect(
-    () => () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    },
-    [],
-  );
 
   return (
     <ProfileSubScreenLayout hideSave>
       <AppText style={styles.intro}>
         Consultez votre zone sur la carte, puis ouvrez l’éditeur plein écran pour l’ajuster au doigt.
-        Chaque modification est enregistrée automatiquement.
+        Appuyez sur Valider pour enregistrer.
       </AppText>
       <AppText style={styles.hint}>
         Adresse issue de vos coordonnées — modifiez-la dans Coordonnées si besoin.
@@ -156,7 +157,8 @@ export function ProfileNurseCoverageScreen() {
         halfSideKm={halfSideKm}
         onHalfSideKmChange={setHalfSideKm}
         onBoundsChange={setBounds}
-        onDragEnd={onDragEnd}
+        onVerticesChange={setVertices}
+        onSaveZone={onSaveZone}
         savingZone={save.isPending}
       />
     </ProfileSubScreenLayout>

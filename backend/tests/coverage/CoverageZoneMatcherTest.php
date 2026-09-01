@@ -66,4 +66,21 @@ final class CoverageZoneMatcherTest extends TestCase
         $addr = ['lat' => 48.9, 'lng' => 2.4];
         $this->assertTrue(CoverageZoneMatcher::appointmentInZone(48.9, 2.4, $zone, $addr));
     }
+
+    public function testPolygonHexagonInside(): void
+    {
+        $centerLat = 48.8566;
+        $centerLng = 2.3522;
+        $vertices = CoverageZoneGeo::defaultSquareSixVertices($centerLat, $centerLng, 15.0);
+        $zone = [
+            'zone_type' => 'polygon',
+            'radius_km' => 15.0,
+            'center_lat' => $centerLat,
+            'center_lng' => $centerLng,
+            'bounds_json' => json_encode(CoverageZoneGeo::polygonPayload($vertices)),
+        ];
+        $addr = ['lat' => $centerLat, 'lng' => $centerLng];
+        $this->assertTrue(CoverageZoneMatcher::appointmentInZone($centerLat, $centerLng, $zone, $addr));
+        $this->assertFalse(CoverageZoneMatcher::appointmentInZone(50.0, 3.0, $zone, $addr));
+    }
 }

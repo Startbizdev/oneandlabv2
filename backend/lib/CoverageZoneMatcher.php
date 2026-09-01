@@ -3,7 +3,7 @@
 require_once __DIR__ . '/CoverageZoneGeo.php';
 
 /**
- * Matching RDV ↔ zone de couverture (carré ou cercle legacy).
+ * Matching RDV ↔ zone de couverture (polygone, carré ou cercle legacy).
  */
 final class CoverageZoneMatcher
 {
@@ -48,8 +48,13 @@ final class CoverageZoneMatcher
             }
         }
 
+        $vertices = CoverageZoneGeo::normalizeVertices($boundsJson);
+        if ($vertices !== null && count($vertices) >= 3) {
+            return CoverageZoneGeo::pointInPolygon($aptLat, $aptLng, $vertices);
+        }
+
         $bounds = CoverageZoneGeo::resolveZoneBounds(
-            'square',
+            $zoneType,
             $centerLat,
             $centerLng,
             $radiusKm,

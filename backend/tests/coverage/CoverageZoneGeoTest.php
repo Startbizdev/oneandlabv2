@@ -43,4 +43,11 @@ final class CoverageZoneGeoTest extends TestCase
         $half = CoverageZoneGeo::boundsToHalfSideKm(self::PARIS_LAT, self::PARIS_LNG, $bounds);
         $this->assertEqualsWithDelta(8.0, $half, 0.3);
     }
+
+    public function testSquareSixVerticesContainsCenter(): void
+    {
+        $square = CoverageZoneGeo::defaultSquareSixVertices(self::PARIS_LAT, self::PARIS_LNG, 12.0);
+        $this->assertCount(6, $square);
+        $this->assertTrue(CoverageZoneGeo::pointInPolygon(self::PARIS_LAT, self::PARIS_LNG, $square));
+    }
 }

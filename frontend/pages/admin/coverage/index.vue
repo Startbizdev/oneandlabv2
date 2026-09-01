@@ -79,7 +79,7 @@
             <UEmpty
               icon="i-lucide-map"
               title="Aucune zone"
-              description="Aucune zone de couverture. Créez une zone carrée pour un infirmier (adresse + demi-côté km)."
+              description="Aucune zone de couverture. Créez une zone pour un infirmier (adresse + polygone)."
               :actions="[{ label: 'Créer une zone', variant: 'solid', onClick: openCreateModal }]"
               variant="naked"
             />
@@ -171,7 +171,7 @@
 
               <UFormField
                 v-if="zoneForm.center_lat && zoneForm.center_lng"
-                label="Zone carrée"
+                label="Zone d'intervention"
                 class="w-full"
               >
                 <div class="space-y-3 rounded-xl border border-default/50 bg-muted/10 p-3">
@@ -180,6 +180,7 @@
                     :lng="zoneForm.center_lng"
                     :half-side-km="zoneForm.radius_km"
                     :max-half-side-km="100"
+                    :vertices="mapEditorVertices"
                     read-only
                     :show-footer="false"
                     map-min-height="min-h-[200px]"
@@ -187,7 +188,7 @@
                   />
                   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <p class="text-sm text-muted">
-                      {{ zoneForm.radius_km }} km du centre au bord · ~{{ Math.round(zoneForm.radius_km * 2) ** 2 }} km²
+                      {{ zoneForm.radius_km }} km du centre au sommet le plus loin
                     </p>
                     <UButton
                       size="sm"
@@ -202,12 +203,12 @@
                 </div>
               </UFormField>
 
-              <UFormField label="Demi-côté carré (km du centre au bord)" name="radius_km" required class="w-full">
+              <UFormField label="Portée max (km)" name="radius_km" required class="w-full">
                 <p class="text-sm text-muted py-2">
-                  {{ zoneForm.radius_km }} km — zone carrée (~{{ Math.round(zoneForm.radius_km * 2) ** 2 }} km²).
+                  {{ zoneForm.radius_km }} km — polygone à 6 poignets.
                   L'infirmier peut affiner sur la carte de son profil.
                 </p>
-                <UInput v-model.number="zoneForm.radius_km" type="number" :min="5" :max="100" :step="1" size="md" class="w-full max-w-xs" />
+                <UInput v-model.number="zoneForm.radius_km" type="number" :min="1" :max="100" :step="1" size="md" class="w-full max-w-xs" />
               </UFormField>
 
               <UFormField label="Statut" name="is_active" class="w-full">
@@ -238,10 +239,10 @@
       :lng="mapEditorLng"
       :half-side-km="mapEditorHalfSide"
       :max-half-side-km="100"
+      :vertices="mapEditorVertices"
       :title="mapEditorTitle"
-      subtitle="Ajustez la zone carrée d'intervention de l'utilisateur"
-      @update:half-side-km="onMapEditorHalfSide"
-      @drag-end="onMapEditorDragEnd"
+      subtitle="Glissez les 6 poignets pour dessiner la zone d'intervention"
+      @save="onMapEditorSave"
     />
   </AppPageShell>
 </template>
@@ -254,7 +255,7 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
-import { halfSideKmToBounds } from '@oneandlab/shared-utils';
+import { ensureSixVertices, toPolygonPayload, type CoverageEditorSavePayload, type CoverageVertex } from '@oneandlab/shared-utils';
 const toast = useAppToast();
 
 const zones = ref<any[]>([]);
@@ -270,6 +271,7 @@ const mapEditorOpen = ref(false);
 const mapEditorLat = ref<number | null>(null);
 const mapEditorLng = ref<number | null>(null);
 const mapEditorHalfSide = ref(20);
+const mapEditorVertices = ref<CoverageVertex[] | null>(null);
 const mapEditorZoneId = ref<string | null>(null);
 const mapEditorOwnerLabel = ref('');
 const selectedNurse = ref<{ id: string; label: string; email: string } | null>(null);
@@ -302,7 +304,7 @@ const columns = [
   { id: 'owner', accessorKey: 'owner', header: 'Utilisateur' },
   { id: 'role', accessorKey: 'role', header: 'Rôle' },
   { id: 'address', accessorKey: 'owner_address_label', header: 'Adresse de départ' },
-  { id: 'radius_km', accessorKey: 'radius_km', header: 'Demi-côté (km)' },
+  { id: 'radius_km', accessorKey: 'radius_km', header: 'Portée (km)' },
   { id: 'is_active', accessorKey: 'is_active', header: 'Statut' },
   { id: 'actions', accessorKey: 'actions', header: 'Actions' },
 ];
@@ -330,7 +332,7 @@ const canSave = computed(() => {
   if (editingZone.value) return true;
   if (!zoneForm.value.owner_id) return false;
   if (!zoneForm.value.center_lat || !zoneForm.value.center_lng) return false;
-  if (!zoneForm.value.radius_km || zoneForm.value.radius_km < 5) return false;
+  if (!zoneForm.value.radius_km || zoneForm.value.radius_km < 1) return false;
   return true;
 });
 
@@ -345,6 +347,7 @@ function openMapEditorFromForm() {
   mapEditorLat.value = zoneForm.value.center_lat;
   mapEditorLng.value = zoneForm.value.center_lng;
   mapEditorHalfSide.value = zoneForm.value.radius_km;
+  mapEditorVertices.value = mapEditorVertices.value;
   mapEditorZoneId.value = editingZone.value?.id ?? null;
   mapEditorOwnerLabel.value = editingZone.value
     ? getOwnerName(editingZone.value)
@@ -357,35 +360,29 @@ function openMapEditorFromRow(zone: any) {
   mapEditorLat.value = Number(zone.center_lat);
   mapEditorLng.value = Number(zone.center_lng);
   mapEditorHalfSide.value = Number(zone.radius_km) || 20;
+  mapEditorVertices.value = zone.bounds_json?.vertices ?? null;
   mapEditorZoneId.value = zone.id ?? null;
   mapEditorOwnerLabel.value = getOwnerName(zone);
   mapEditorOpen.value = true;
 }
 
-function onMapEditorHalfSide(km: number) {
-  mapEditorHalfSide.value = km;
-  zoneForm.value.radius_km = km;
-}
-
-async function onMapEditorDragEnd() {
+async function onMapEditorSave(payload: CoverageEditorSavePayload) {
+  mapEditorHalfSide.value = payload.halfSideKm;
+  mapEditorVertices.value = payload.vertices;
+  zoneForm.value.radius_km = payload.halfSideKm;
   if (!mapEditorLat.value || !mapEditorLng.value) return;
   if (!mapEditorZoneId.value) return;
   try {
-    const bounds = halfSideKmToBounds(
-      { lat: mapEditorLat.value, lng: mapEditorLng.value },
-      mapEditorHalfSide.value,
-    );
     await apiFetch(`/coverage-zones/${mapEditorZoneId.value}`, {
       method: 'PUT',
       body: {
         center_lat: mapEditorLat.value,
         center_lng: mapEditorLng.value,
-        radius_km: mapEditorHalfSide.value,
-        zone_type: 'square',
-        bounds_json: bounds,
+        radius_km: payload.halfSideKm,
+        zone_type: 'polygon',
+        bounds_json: payload.bounds,
       },
     });
-    zoneForm.value.radius_km = mapEditorHalfSide.value;
     toast.add({ title: 'Secteur enregistré', color: 'success' });
     await fetchZones();
   } catch (error: any) {
@@ -496,6 +493,7 @@ const editZone = (zone: any) => {
     is_active: !!zone.is_active,
     address_label: zone.owner_address_label || '',
   };
+  mapEditorVertices.value = zone.bounds_json?.vertices ?? null;
   showCreateModal.value = true;
 };
 
@@ -515,17 +513,19 @@ const toggleZone = async (zone: any) => {
 const saveZone = async () => {
   saving.value = true;
   try {
-    const bounds = halfSideKmToBounds(
+    const vertices = ensureSixVertices(
       { lat: zoneForm.value.center_lat, lng: zoneForm.value.center_lng },
+      mapEditorVertices.value,
       zoneForm.value.radius_km,
     );
+    const bounds = toPolygonPayload(vertices);
     const body = {
       owner_id: zoneForm.value.owner_id,
       role: zoneForm.value.role,
       center_lat: zoneForm.value.center_lat,
       center_lng: zoneForm.value.center_lng,
       radius_km: zoneForm.value.radius_km,
-      zone_type: 'square',
+      zone_type: 'polygon',
       bounds_json: bounds,
       is_active: zoneForm.value.is_active,
     };
@@ -536,7 +536,7 @@ const saveZone = async () => {
           center_lat: body.center_lat,
           center_lng: body.center_lng,
           radius_km: body.radius_km,
-          zone_type: 'square',
+          zone_type: 'polygon',
           bounds_json: bounds,
           is_active: body.is_active,
         },

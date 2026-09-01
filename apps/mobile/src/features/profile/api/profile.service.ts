@@ -31,12 +31,13 @@ export interface CoverageZone {
   center_lat?: number;
   center_lng?: number;
   radius_km?: number;
-  zone_type?: 'circle' | 'square';
+  zone_type?: 'circle' | 'square' | 'polygon';
   bounds_json?: {
     min_lat: number;
     max_lat: number;
     min_lng: number;
     max_lng: number;
+    vertices?: { lat: number; lng: number }[];
   };
   label?: string;
 }
@@ -49,7 +50,7 @@ export async function saveCoverageZone(body: {
   center_lat: number;
   center_lng: number;
   radius_km: number;
-  zone_type?: 'circle' | 'square';
+  zone_type?: 'circle' | 'square' | 'polygon';
   bounds_json?: CoverageZone['bounds_json'];
   role: string;
   owner_id?: string;
