@@ -1,9 +1,9 @@
 <template>
-  <div class="space-y-3">
+  <div :class="fillHeight ? 'flex flex-col flex-1 min-h-0 gap-3' : 'space-y-3'">
     <div
       ref="mapEl"
       class="relative z-0 isolate w-full rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-      :class="mapMinHeight"
+      :class="fillHeight ? ['flex-1', 'min-h-0', mapMinHeight] : mapMinHeight"
     />
     <div v-if="showFooter" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
       <p class="text-sm text-gray-700 dark:text-gray-300">
@@ -50,6 +50,8 @@ const props = withDefaults(
     mapMinHeight?: string;
     /** Afficher le résumé km sous la carte. */
     showFooter?: boolean;
+    /** Remplir la hauteur du conteneur parent (modal plein écran). */
+    fillHeight?: boolean;
   }>(),
   {
     maxHalfSideKm: 100,
@@ -57,6 +59,7 @@ const props = withDefaults(
     largeHandles: false,
     mapMinHeight: 'min-h-[240px] sm:min-h-[280px]',
     showFooter: true,
+    fillHeight: false,
   },
 );
 
