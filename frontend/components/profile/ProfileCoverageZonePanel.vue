@@ -31,10 +31,12 @@
             read-only
             :show-footer="false"
             map-min-height="min-h-[280px] sm:min-h-[360px] lg:min-h-[400px]"
-            class="rounded-xl overflow-hidden"
+            class="rounded-xl overflow-hidden border border-default/40 shadow-sm"
           />
           <template #fallback>
-            <div class="w-full min-h-[280px] rounded-xl bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center">
+            <div
+              class="w-full min-h-[280px] rounded-xl bg-muted/30 border border-default/40 flex items-center justify-center"
+            >
               <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-primary" />
             </div>
           </template>
@@ -42,7 +44,7 @@
 
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div class="space-y-0.5">
-            <p class="text-sm text-gray-700 dark:text-gray-300">
+            <p class="text-sm text-foreground">
               <span class="font-semibold text-primary tabular-nums">{{ displayHalfSide }} km</span>
               <span class="text-muted"> du centre au bord</span>
               <span class="text-muted hidden sm:inline"> · ~{{ displayArea }} km²</span>
@@ -77,62 +79,22 @@
     </template>
   </UCard>
 
-  <ClientOnly>
-    <Teleport to="body">
-      <UModal
-        v-model:open="editorOpen"
-        :ui="editorModalUi"
-      >
-        <template #header>
-          <div class="flex items-start justify-between gap-3 pr-8">
-            <div class="min-w-0 space-y-1">
-              <p class="text-lg font-semibold text-gray-900 dark:text-white">
-                Modifier mon secteur
-              </p>
-              <p class="text-sm text-muted font-normal">
-                Glissez un coin du carré pour agrandir ou réduire votre zone
-              </p>
-            </div>
-          </div>
-        </template>
-
-        <template #body>
-          <div class="flex flex-col flex-1 min-h-0 gap-4 px-4 sm:px-6 pb-4 sm:pb-6">
-            <ProfileCoverageSquareMap
-              v-if="editorOpen && lat != null && lng != null"
-              ref="editorMapRef"
-              :lat="lat"
-              :lng="lng"
-              :half-side-km="halfSideKm"
-              :max-half-side-km="maxHalfSideKm"
-              large-handles
-              map-min-height="min-h-[min(68vh,720px)]"
-              class="flex-1 min-h-0 rounded-xl overflow-hidden"
-              @update:half-side-km="emit('update:halfSideKm', $event)"
-              @update:bounds="emit('update:bounds', $event)"
-              @drag-end="emit('dragEnd')"
-            />
-
-            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 shrink-0 pt-2 border-t border-default/50">
-              <UButton
-                variant="ghost"
-                color="neutral"
-                class="w-full sm:w-auto"
-                @click="editorOpen = false"
-              >
-                Terminer
-              </UButton>
-            </div>
-          </div>
-        </template>
-      </UModal>
-    </Teleport>
-  </ClientOnly>
+  <CoverageZoneEditorModal
+    v-model:open="editorOpen"
+    :lat="lat"
+    :lng="lng"
+    :half-side-km="halfSideKm"
+    :max-half-side-km="maxHalfSideKm"
+    title="Modifier mon secteur"
+    subtitle="Glissez un coin du carré pour agrandir ou réduire votre zone"
+    @update:half-side-km="emit('update:halfSideKm', $event)"
+    @update:bounds="emit('update:bounds', $event)"
+    @drag-end="emit('dragEnd')"
+  />
 </template>
 
 <script setup lang="ts">
 import { squareAreaKm2, type CoverageBounds } from '@oneandlab/shared-utils';
-import { nextTick } from 'vue';
 
 const props = withDefaults(
   defineProps<{
@@ -159,20 +121,6 @@ const emit = defineEmits<{
 }>();
 
 const editorOpen = ref(false);
-const editorMapRef = ref<{ invalidateSize?: () => void } | null>(null);
-
-watch(editorOpen, async (open) => {
-  if (!open) return;
-  await nextTick();
-  setTimeout(() => editorMapRef.value?.invalidateSize?.(), 400);
-});
-
-const editorModalUi = {
-  content:
-    'fixed inset-0 z-[200] m-0 max-w-none w-full h-[100dvh] sm:inset-3 sm:h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-1.5rem)] sm:rounded-2xl flex flex-col overflow-hidden',
-  body: 'flex-1 min-h-0 flex flex-col p-0 sm:p-0 overflow-hidden',
-  header: 'shrink-0 border-b border-default/50',
-};
 
 const hasValidAddress = computed(() => props.lat != null && props.lng != null);
 const displayHalfSide = computed(() => Math.round(props.halfSideKm));

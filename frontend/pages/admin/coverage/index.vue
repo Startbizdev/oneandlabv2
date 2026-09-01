@@ -50,7 +50,17 @@
           </UBadge>
         </template>
         <template #actions-cell="{ row }">
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <UButton
+              size="xs"
+              variant="soft"
+              color="primary"
+              leading-icon="i-lucide-map"
+              :disabled="!(row.original ?? row).center_lat"
+              :on-click="() => openMapEditorFromRow(row.original ?? row)"
+            >
+              Secteur
+            </UButton>
             <UButton size="xs" variant="outline" leading-icon="i-lucide-pencil" :on-click="() => editZone(row.original ?? row)">
               Modifier
             </UButton>
@@ -161,16 +171,35 @@
 
               <UFormField
                 v-if="zoneForm.center_lat && zoneForm.center_lng"
-                label="Aperçu zone carrée"
+                label="Zone carrée"
                 class="w-full"
               >
-                <ProfileCoverageSquareMap
-                  :lat="zoneForm.center_lat"
-                  :lng="zoneForm.center_lng"
-                  :half-side-km="zoneForm.radius_km"
-                  :max-half-side-km="100"
-                  @update:half-side-km="zoneForm.radius_km = $event"
-                />
+                <div class="space-y-3 rounded-xl border border-default/50 bg-muted/10 p-3">
+                  <ProfileCoverageSquareMap
+                    :lat="zoneForm.center_lat"
+                    :lng="zoneForm.center_lng"
+                    :half-side-km="zoneForm.radius_km"
+                    :max-half-side-km="100"
+                    read-only
+                    :show-footer="false"
+                    map-min-height="min-h-[200px]"
+                    class="rounded-lg overflow-hidden border border-default/40"
+                  />
+                  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <p class="text-sm text-muted">
+                      {{ zoneForm.radius_km }} km du centre au bord · ~{{ Math.round(zoneForm.radius_km * 2) ** 2 }} km²
+                    </p>
+                    <UButton
+                      size="sm"
+                      color="primary"
+                      variant="soft"
+                      icon="i-lucide-maximize-2"
+                      @click="openMapEditorFromForm"
+                    >
+                      Modifier le secteur
+                    </UButton>
+                  </div>
+                </div>
               </UFormField>
 
               <UFormField label="Demi-côté carré (km du centre au bord)" name="radius_km" required class="w-full">
@@ -202,6 +231,18 @@
         </UModal>
       </Teleport>
     </ClientOnly>
+
+    <CoverageZoneEditorModal
+      v-model:open="mapEditorOpen"
+      :lat="mapEditorLat"
+      :lng="mapEditorLng"
+      :half-side-km="mapEditorHalfSide"
+      :max-half-side-km="100"
+      :title="mapEditorTitle"
+      subtitle="Ajustez la zone carrée d'intervention de l'utilisateur"
+      @update:half-side-km="onMapEditorHalfSide"
+      @drag-end="onMapEditorDragEnd"
+    />
   </AppPageShell>
 </template>
 
@@ -225,6 +266,12 @@ const roleFilter = ref('all');
 const statusFilter = ref('all');
 const showCreateModal = ref(false);
 const editingZone = ref<any>(null);
+const mapEditorOpen = ref(false);
+const mapEditorLat = ref<number | null>(null);
+const mapEditorLng = ref<number | null>(null);
+const mapEditorHalfSide = ref(20);
+const mapEditorZoneId = ref<string | null>(null);
+const mapEditorOwnerLabel = ref('');
 const selectedNurse = ref<{ id: string; label: string; email: string } | null>(null);
 const selectedNurseProfile = ref<any>(null);
 
@@ -286,6 +333,65 @@ const canSave = computed(() => {
   if (!zoneForm.value.radius_km || zoneForm.value.radius_km < 5) return false;
   return true;
 });
+
+const mapEditorTitle = computed(() =>
+  mapEditorOwnerLabel.value
+    ? `Secteur — ${mapEditorOwnerLabel.value}`
+    : 'Modifier le secteur',
+);
+
+function openMapEditorFromForm() {
+  if (!zoneForm.value.center_lat || !zoneForm.value.center_lng) return;
+  mapEditorLat.value = zoneForm.value.center_lat;
+  mapEditorLng.value = zoneForm.value.center_lng;
+  mapEditorHalfSide.value = zoneForm.value.radius_km;
+  mapEditorZoneId.value = editingZone.value?.id ?? null;
+  mapEditorOwnerLabel.value = editingZone.value
+    ? getOwnerName(editingZone.value)
+    : selectedNurse.value?.label ?? '';
+  mapEditorOpen.value = true;
+}
+
+function openMapEditorFromRow(zone: any) {
+  if (!zone?.center_lat || !zone?.center_lng) return;
+  mapEditorLat.value = Number(zone.center_lat);
+  mapEditorLng.value = Number(zone.center_lng);
+  mapEditorHalfSide.value = Number(zone.radius_km) || 20;
+  mapEditorZoneId.value = zone.id ?? null;
+  mapEditorOwnerLabel.value = getOwnerName(zone);
+  mapEditorOpen.value = true;
+}
+
+function onMapEditorHalfSide(km: number) {
+  mapEditorHalfSide.value = km;
+  zoneForm.value.radius_km = km;
+}
+
+async function onMapEditorDragEnd() {
+  if (!mapEditorLat.value || !mapEditorLng.value) return;
+  if (!mapEditorZoneId.value) return;
+  try {
+    const bounds = halfSideKmToBounds(
+      { lat: mapEditorLat.value, lng: mapEditorLng.value },
+      mapEditorHalfSide.value,
+    );
+    await apiFetch(`/coverage-zones/${mapEditorZoneId.value}`, {
+      method: 'PUT',
+      body: {
+        center_lat: mapEditorLat.value,
+        center_lng: mapEditorLng.value,
+        radius_km: mapEditorHalfSide.value,
+        zone_type: 'square',
+        bounds_json: bounds,
+      },
+    });
+    zoneForm.value.radius_km = mapEditorHalfSide.value;
+    toast.add({ title: 'Secteur enregistré', color: 'success' });
+    await fetchZones();
+  } catch (error: any) {
+    toast.add({ title: 'Erreur', description: (error as Error).message, color: 'error' });
+  }
+}
 
 function getOwnerName(row: any): string {
   if (row.owner_entity_name) return row.owner_entity_name;
