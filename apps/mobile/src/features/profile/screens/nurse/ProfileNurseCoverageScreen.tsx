@@ -142,8 +142,8 @@ export function ProfileNurseCoverageScreen() {
   return (
     <ProfileSubScreenLayout hideSave>
       <AppText style={styles.intro}>
-        Glissez un coin de la carte pour ajuster votre zone carrée. Chaque modification est
-        enregistrée automatiquement.
+        Consultez votre zone sur la carte, puis ouvrez l’éditeur plein écran pour l’ajuster au doigt.
+        Chaque modification est enregistrée automatiquement.
       </AppText>
       <AppText style={styles.hint}>
         Adresse issue de vos coordonnées — modifiez-la dans Coordonnées si besoin.
