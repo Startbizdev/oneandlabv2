@@ -118,4 +118,24 @@ ok(
 $clamped = CoverageZoneGeo::clampHalfSideKm(25.0, 20.0);
 ok($clamped === 20.0, 'Clamp demi-côté 25 → max plan 20 km');
 
+$square = CoverageZoneGeo::defaultSquareSixVertices($centerLat, $centerLng, 15.0);
+ok(count($square) === 6, 'Carré 6 sommets');
+$zonePoly = [
+    'zone_type' => 'polygon',
+    'radius_km' => 15.0,
+    'center_lat' => $centerLat,
+    'center_lng' => $centerLng,
+    'bounds_json' => json_encode(CoverageZoneGeo::polygonPayload($square)),
+];
+ok(
+    CoverageZoneMatcher::appointmentInZone($centerLat, $centerLng, $zonePoly, $profAddr),
+    'RDV au centre dans polygone 15 km'
+);
+ok(
+    !CoverageZoneMatcher::appointmentInZone(50.6292, 3.0573, $zonePoly, $profAddr),
+    'RDV Lille hors polygone 15 km Paris'
+);
+
+echo PHP_EOL . '=== Simulation OK ===' . PHP_EOL;
+
 echo PHP_EOL . '=== Toutes les simulations OK ===' . PHP_EOL;

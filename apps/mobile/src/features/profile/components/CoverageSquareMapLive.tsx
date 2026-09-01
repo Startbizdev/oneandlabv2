@@ -1,6 +1,5 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
@@ -8,16 +7,24 @@ import { getAppColors } from '@/theme/colors';
 import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import {
-  halfSideKmToBounds,
-  squareAreaKm2,
+  COVERAGE_MAP_TILE_ATTRIBUTION,
+  COVERAGE_MAP_TILE_MAX_ZOOM,
+  COVERAGE_MAP_TILE_SUBDOMAINS,
+  COVERAGE_MAP_TILE_URL,
+  COVERAGE_VERTEX_COUNT,
+  ensureSixVertices,
+  maxVertexDistanceKm,
+  polygonAreaKm2,
   zoomForCoverageHalfSideKm,
-  type CoverageBounds,
+  type CoveragePolygonPayload,
+  type CoverageVertex,
 } from '@oneandlab/shared-utils';
 
 export interface CoverageSquareMapMessage {
   type: 'boundsChanged' | 'dragEnd' | 'ready';
   halfSideKm?: number;
-  bounds?: CoverageBounds;
+  bounds?: CoveragePolygonPayload;
+  vertices?: CoverageVertex[];
 }
 
 interface Props {
@@ -25,20 +32,22 @@ interface Props {
   lng: number;
   halfSideKm: number;
   maxHalfSideKm: number;
+  vertices?: CoverageVertex[] | null;
   height?: number;
   readOnly?: boolean;
   largeHandles?: boolean;
   showSummary?: boolean;
   showHint?: boolean;
   onHalfSideKmChange?: (km: number) => void;
-  onBoundsChange?: (bounds: CoverageBounds) => void;
-  onDragEnd?: (halfSideKm: number, bounds: CoverageBounds) => void;
+  onBoundsChange?: (bounds: CoveragePolygonPayload) => void;
+  onVerticesChange?: (vertices: CoverageVertex[]) => void;
+  onDragEnd?: (halfSideKm: number, bounds: CoveragePolygonPayload, vertices: CoverageVertex[]) => void;
 }
 
 function buildInteractiveMapHtml(
   lat: number,
   lng: number,
-  halfSideKm: number,
+  vertices: CoverageVertex[],
   maxHalfSideKm: number,
   primary: string,
   primaryMid: string,
@@ -46,10 +55,13 @@ function buildInteractiveMapHtml(
   largeHandles: boolean,
   mapZoom: number,
 ): string {
-  const bounds = halfSideKmToBounds({ lat, lng }, halfSideKm);
   const readOnlyFlag = readOnly ? 'true' : 'false';
   const handlePx = largeHandles ? 32 : 22;
-  const handleRadius = largeHandles ? 7 : 5;
+  const vertsJson = JSON.stringify(vertices);
+  const tileUrl = COVERAGE_MAP_TILE_URL;
+  const tileAttr = COVERAGE_MAP_TILE_ATTRIBUTION.replace(/'/g, "\\'");
+  const tileSub = COVERAGE_MAP_TILE_SUBDOMAINS;
+  const tileMax = COVERAGE_MAP_TILE_MAX_ZOOM;
   return `<!DOCTYPE html>
 <html><head>
 <meta charset="utf-8"/>
@@ -57,7 +69,7 @@ function buildInteractiveMapHtml(
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 html,body,#map{margin:0;padding:0;width:100%;height:100%;touch-action:none;}
-.handle{width:${handlePx}px;height:${handlePx}px;border-radius:${handleRadius}px;background:${primary};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:grab;touch-action:none;}
+.handle{width:${handlePx}px;height:${handlePx}px;border-radius:999px;background:${primary};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:grab;touch-action:none;}
 </style>
 </head><body>
 <div id="map"></div>
@@ -65,71 +77,88 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;touch-action:none;}
 <script>
 var center = { lat: ${lat}, lng: ${lng} };
 var maxHalf = ${maxHalfSideKm};
-var minHalf = 5;
+var minDist = 0.2;
 var readOnly = ${readOnlyFlag};
 var KM_PER_DEG_LAT = 111.32;
 function kmPerDegLng(lat){ return KM_PER_DEG_LAT * Math.max(0.01, Math.abs(Math.cos(lat * Math.PI / 180))); }
-function halfToBounds(h){
-  var latD = h / KM_PER_DEG_LAT, lngD = h / kmPerDegLng(center.lat);
-  return { min_lat: center.lat - latD, max_lat: center.lat + latD, min_lng: center.lng - lngD, max_lng: center.lng + lngD };
+function distKm(a,b){
+  var dLat = (b.lat-a.lat)*KM_PER_DEG_LAT;
+  var dLng = (b.lng-a.lng)*kmPerDegLng(a.lat);
+  return Math.sqrt(dLat*dLat+dLng*dLng);
 }
-function boundsToHalf(b){
-  var latH = ((b.max_lat - b.min_lat)/2)*KM_PER_DEG_LAT;
-  var lngH = ((b.max_lng - b.min_lng)/2)*kmPerDegLng(center.lat);
-  return Math.min(latH, lngH);
+function bearing(from,to){
+  var dLat = (to.lat-from.lat)*KM_PER_DEG_LAT;
+  var dLng = (to.lng-from.lng)*kmPerDegLng(from.lat);
+  return (Math.atan2(dLng,dLat)*180/Math.PI+360)%360;
 }
-function resizeFromCorner(corner){
-  var dLat = Math.abs(corner.lat - center.lat) * KM_PER_DEG_LAT;
-  var dLng = Math.abs(corner.lng - center.lng) * kmPerDegLng(center.lat);
-  var raw = Math.max(dLat, dLng);
-  var half = Math.min(maxHalf, Math.max(minHalf, raw));
-  return { half: half, bounds: halfToBounds(half) };
+function offset(c, km, deg){
+  var rad = deg*Math.PI/180;
+  return { lat: c.lat + (km*Math.cos(rad))/KM_PER_DEG_LAT, lng: c.lng + (km*Math.sin(rad))/kmPerDegLng(c.lat) };
 }
-function corners(b){
-  return [[b.max_lat,b.min_lng],[b.max_lat,b.max_lng],[b.min_lat,b.max_lng],[b.min_lat,b.min_lng]];
+function clampVertex(v){
+  var d = distKm(center, v);
+  var b = d < 1e-9 ? 0 : bearing(center, v);
+  if (d < minDist) return offset(center, minDist, b);
+  if (d > maxHalf) return offset(center, maxHalf, b);
+  return { lat: v.lat, lng: v.lng };
 }
-function post(type, half, bounds){
+function maxReach(vs){
+  var m = 0;
+  vs.forEach(function(v){ var d = distKm(center,v); if(d>m) m=d; });
+  return m;
+}
+function toBounds(vs){
+  var lats = vs.map(function(v){return v.lat;});
+  var lngs = vs.map(function(v){return v.lng;});
+  return {
+    min_lat: Math.min.apply(null,lats), max_lat: Math.max.apply(null,lats),
+    min_lng: Math.min.apply(null,lngs), max_lng: Math.max.apply(null,lngs),
+    vertices: vs
+  };
+}
+function post(type, vs){
   if(window.ReactNativeWebView){
-    window.ReactNativeWebView.postMessage(JSON.stringify({ type: type, halfSideKm: half, bounds: bounds }));
+    window.ReactNativeWebView.postMessage(JSON.stringify({
+      type: type, halfSideKm: maxReach(vs), bounds: toBounds(vs), vertices: vs
+    }));
   }
 }
-var map = L.map('map',{zoomControl:true}).setView([center.lat,center.lng],${mapZoom});
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  maxZoom:19, attribution:'© OpenStreetMap'
+var vertices = ${vertsJson};
+var map = L.map('map',{zoomControl:true,attributionControl:true}).setView([center.lat,center.lng],${mapZoom});
+L.tileLayer('${tileUrl}',{
+  maxZoom:${tileMax}, subdomains:'${tileSub}', attribution:'${tileAttr}'
 }).addTo(map);
-var bounds = halfToBounds(${halfSideKm});
-var rect = L.rectangle([[bounds.min_lat,bounds.min_lng],[bounds.max_lat,bounds.max_lng]],{
-  color:'${primary}', fillColor:'${primaryMid}', fillOpacity:0.22, weight:2
+var poly = L.polygon(vertices.map(function(v){return [v.lat,v.lng];}),{
+  color:'${primary}', fillColor:'${primaryMid}', fillOpacity:0.18, weight:2.5
 }).addTo(map);
 L.circleMarker([center.lat,center.lng],{radius:7,color:'#fff',fillColor:'${primary}',fillOpacity:1,weight:2}).addTo(map);
 var markers = [];
-function applyBounds(b, fit){
-  rect.setBounds([[b.min_lat,b.min_lng],[b.max_lat,b.max_lng]]);
-  var cs = corners(b);
-  markers.forEach(function(m,i){ m.setLatLng(cs[i]); });
-  if(fit) map.setView([center.lat,center.lng],${mapZoom});
+function applyVerts(vs){
+  vertices = vs;
+  poly.setLatLngs(vs.map(function(v){return [v.lat,v.lng];}));
+  markers.forEach(function(m,i){ if(vs[i]) m.setLatLng([vs[i].lat,vs[i].lng]); });
 }
 if(!readOnly){
-  corners(bounds).forEach(function(c, idx){
+  vertices.forEach(function(v, idx){
     var icon = L.divIcon({className:'', html:'<div class="handle"></div>', iconSize:[${handlePx},${handlePx}], iconAnchor:[${handlePx / 2},${handlePx / 2}]});
-    var m = L.marker(c,{icon:icon, draggable:true, zIndexOffset:1000}).addTo(map);
+    var m = L.marker([v.lat,v.lng],{icon:icon, draggable:true, zIndexOffset:1000}).addTo(map);
     m.on('drag', function(){
-      var r = resizeFromCorner(m.getLatLng());
-      rect.setBounds([[r.bounds.min_lat,r.bounds.min_lng],[r.bounds.max_lat,r.bounds.max_lng]]);
-      var cs = corners(r.bounds);
-      markers.forEach(function(mm,i){ if(i!==idx) mm.setLatLng(cs[i]); });
-      post('boundsChanged', r.half, r.bounds);
+      var c = clampVertex(m.getLatLng());
+      m.setLatLng([c.lat,c.lng]);
+      vertices[idx] = c;
+      poly.setLatLngs(vertices.map(function(p){return [p.lat,p.lng];}));
+      post('boundsChanged', vertices);
     });
     m.on('dragend', function(){
-      var r = resizeFromCorner(m.getLatLng());
-      applyBounds(r.bounds);
-      post('dragEnd', r.half, r.bounds);
+      var c = clampVertex(m.getLatLng());
+      vertices[idx] = c;
+      applyVerts(vertices);
+      post('dragEnd', vertices);
     });
     markers.push(m);
   });
 }
-map.setView([center.lat,center.lng],${mapZoom});
-post('ready', boundsToHalf(bounds), bounds);
+post('ready', vertices);
 </script></body></html>`;
 }
 
@@ -138,6 +167,7 @@ export function CoverageSquareMapLive({
   lng,
   halfSideKm,
   maxHalfSideKm,
+  vertices: verticesProp,
   height = 280,
   readOnly = false,
   largeHandles = false,
@@ -145,23 +175,27 @@ export function CoverageSquareMapLive({
   showHint = true,
   onHalfSideKmChange,
   onBoundsChange,
+  onVerticesChange,
   onDragEnd,
 }: Props) {
-  const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'CoverageSquareMapLive');
-  const sessionHalfSideKm = useRef(halfSideKm);
+  const sessionVertices = useRef<CoverageVertex[] | null>(null);
+  const center = { lat, lng };
+  const initialVertices = ensureSixVertices(center, verticesProp ?? null, halfSideKm);
   if (readOnly) {
-    sessionHalfSideKm.current = halfSideKm;
+    sessionVertices.current = initialVertices;
   }
 
   const html = useMemo(() => {
     const colors = getAppColors();
-    const mapHalfSide = readOnly ? halfSideKm : sessionHalfSideKm.current;
-    const mapZoom = zoomForCoverageHalfSideKm(mapHalfSide);
+    const verts = readOnly
+      ? ensureSixVertices(center, verticesProp ?? null, halfSideKm)
+      : (sessionVertices.current ?? initialVertices);
+    const mapZoom = zoomForCoverageHalfSideKm(maxVertexDistanceKm(center, verts));
     return buildInteractiveMapHtml(
       lat,
       lng,
-      mapHalfSide,
+      verts,
       maxHalfSideKm,
       colors.primary,
       colors.primaryMid,
@@ -169,9 +203,11 @@ export function CoverageSquareMapLive({
       largeHandles,
       mapZoom,
     );
-  }, [lat, lng, maxHalfSideKm, readOnly, largeHandles, readOnly ? halfSideKm : null]);
+  }, [lat, lng, maxHalfSideKm, readOnly, largeHandles, halfSideKm, verticesProp]);
 
-  const areaLabel = useMemo(() => Math.round(squareAreaKm2(halfSideKm)), [halfSideKm]);
+  const displayVerts = verticesProp?.length === COVERAGE_VERTEX_COUNT ? verticesProp : initialVertices;
+  const areaLabel = useMemo(() => Math.round(polygonAreaKm2(displayVerts)), [displayVerts]);
+  const reachLabel = Math.round(maxVertexDistanceKm(center, displayVerts));
 
   return (
     <View style={styles.wrap}>
@@ -187,10 +223,14 @@ export function CoverageSquareMapLive({
         onMessage={(e) => {
           try {
             const data = JSON.parse(e.nativeEvent.data) as CoverageSquareMapMessage;
+            if (data.vertices) {
+              sessionVertices.current = data.vertices;
+              onVerticesChange?.(data.vertices);
+            }
             if (data.halfSideKm != null) onHalfSideKmChange?.(data.halfSideKm);
             if (data.bounds) onBoundsChange?.(data.bounds);
-            if (data.type === 'dragEnd' && data.halfSideKm != null && data.bounds) {
-              onDragEnd?.(data.halfSideKm, data.bounds);
+            if (data.type === 'dragEnd' && data.halfSideKm != null && data.bounds && data.vertices) {
+              onDragEnd?.(data.halfSideKm, data.bounds, data.vertices);
             }
           } catch {
             /* ignore */
@@ -199,14 +239,14 @@ export function CoverageSquareMapLive({
       />
       {showSummary ? (
         <AppText style={styles.summary}>
-          <AppText style={styles.summaryStrong}>{Math.round(halfSideKm)} km</AppText>
-          {' du centre au bord · ~'}
+          <AppText style={styles.summaryStrong}>{reachLabel} km</AppText>
+          {' du centre au sommet le plus loin · ~'}
           {areaLabel}
           {' km²'}
         </AppText>
       ) : null}
       {!readOnly && showHint ? (
-        <AppText style={styles.hint}>Glissez un coin pour ajuster votre zone</AppText>
+        <AppText style={styles.hint}>Glissez un poignet pour former votre zone</AppText>
       ) : null}
     </View>
   );

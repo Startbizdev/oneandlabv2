@@ -2,15 +2,14 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, MapPin, Maximize2 } from 'lucide-react-native';
+import { AlertTriangle, MapPin, Pencil } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { SheetModal } from '@/components/ui/SheetModal';
 import { Skeleton, SkeletonList } from '@/components/ui/skeletons';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import type { AddressPayload } from '@/features/appointments/form/types';
@@ -28,9 +27,8 @@ import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
-import type { CoverageBounds } from '@oneandlab/shared-utils';
-import { halfSideKmToBounds, squareAreaKm2 } from '@oneandlab/shared-utils';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { CoveragePolygonPayload, CoverageVertex } from '@oneandlab/shared-utils';
+import { ensureSixVertices, maxVertexDistanceKm, polygonAreaKm2, toPolygonPayload } from '@oneandlab/shared-utils';
 
 const MIN_RADIUS = 5;
 const DEFAULT_RADIUS = 20;
@@ -47,8 +45,9 @@ interface Props {
   embedded?: boolean;
   halfSideKm?: number;
   onHalfSideKmChange?: (km: number) => void;
-  onBoundsChange?: (bounds: CoverageBounds) => void;
-  onDragEnd?: (halfSideKm: number, bounds: CoverageBounds) => void;
+  onBoundsChange?: (bounds: CoveragePolygonPayload) => void;
+  onVerticesChange?: (vertices: CoverageVertex[]) => void;
+  onSaveZone?: (halfSideKm: number, bounds: CoveragePolygonPayload, vertices: CoverageVertex[]) => void;
   savingZone?: boolean;
 }
 
@@ -60,7 +59,8 @@ export function ProfileCoverageEditor({
   halfSideKm: controlledHalfSide,
   onHalfSideKmChange,
   onBoundsChange,
-  onDragEnd,
+  onVerticesChange,
+  onSaveZone,
   savingZone = false,
 }: Props) {
   const c = useAppColors();
@@ -73,14 +73,17 @@ export function ProfileCoverageEditor({
   const [address, setAddress] = useState<AddressPayload | null>(null);
   const [addressComplement, setAddressComplement] = useState('');
   const [internalHalfSide, setInternalHalfSide] = useState(DEFAULT_RADIUS);
-  const [bounds, setBounds] = useState<CoverageBounds | null>(null);
+  const [bounds, setBounds] = useState<CoveragePolygonPayload | null>(null);
+  const [vertices, setVertices] = useState<CoverageVertex[] | null>(null);
   const [addressDirty, setAddressDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draftHalfSide, setDraftHalfSide] = useState(DEFAULT_RADIUS);
+  const [draftVertices, setDraftVertices] = useState<CoverageVertex[] | null>(null);
+  const [draftBounds, setDraftBounds] = useState<CoveragePolygonPayload | null>(null);
 
   const { height: windowHeight } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const editorMapHeight = Math.max(360, windowHeight - insets.top - insets.bottom - 180);
+  const mapHeight = Math.max(380, Math.min(560, windowHeight * 0.48));
 
   const halfSideKm = controlledHalfSide ?? internalHalfSide;
   const setHalfSideKm = onHalfSideKmChange ?? setInternalHalfSide;
@@ -130,17 +133,65 @@ export function ProfileCoverageEditor({
       setInternalHalfSide(Math.min(Math.max(MIN_RADIUS, r), maxHalfSideKm));
     }
     if (zone?.bounds_json && typeof zone.bounds_json === 'object') {
-      setBounds(zone.bounds_json as CoverageBounds);
+      const b = zone.bounds_json as CoveragePolygonPayload;
+      setBounds(b);
+      if (Array.isArray(b.vertices) && b.vertices.length >= 3) {
+        setVertices(b.vertices);
+      }
     }
   }, [zoneQ.data, maxHalfSideKm, controlledHalfSide]);
 
   const handleBoundsChange = useCallback(
-    (b: CoverageBounds) => {
+    (b: CoveragePolygonPayload) => {
       setBounds(b);
       onBoundsChange?.(b);
     },
     [onBoundsChange],
   );
+
+  const handleVerticesChange = useCallback(
+    (v: CoverageVertex[]) => {
+      if (editing) {
+        setDraftVertices(v);
+      } else {
+        setVertices(v);
+      }
+      onVerticesChange?.(v);
+    },
+    [editing, onVerticesChange],
+  );
+
+  const resetDraft = useCallback(() => {
+    if (!hasValidGeoAddress(address)) return;
+    const center = { lat: address!.lat, lng: address!.lng };
+    const verts = ensureSixVertices(center, vertices, halfSideKm);
+    setDraftVertices(verts);
+    setDraftHalfSide(maxVertexDistanceKm(center, verts));
+    setDraftBounds(toPolygonPayload(verts));
+  }, [address, vertices, halfSideKm]);
+
+  const startEdit = useCallback(() => {
+    resetDraft();
+    setEditing(true);
+  }, [resetDraft]);
+
+  const cancelEdit = useCallback(() => {
+    setEditing(false);
+    resetDraft();
+  }, [resetDraft]);
+
+  const validateEdit = useCallback(() => {
+    if (!hasValidGeoAddress(address)) return;
+    const center = { lat: address!.lat, lng: address!.lng };
+    const verts = ensureSixVertices(center, draftVertices ?? vertices, draftHalfSide);
+    const b = toPolygonPayload(verts);
+    const reach = maxVertexDistanceKm(center, verts);
+    setHalfSideKm(reach);
+    setBounds(b);
+    setVertices(verts);
+    onSaveZone?.(reach, b, verts);
+    setEditing(false);
+  }, [address, draftVertices, draftHalfSide, vertices, setHalfSideKm, onSaveZone]);
 
   const onAddressChange = useCallback((addr: AddressPayload | null) => {
     setAddress(addr);
@@ -167,20 +218,24 @@ export function ProfileCoverageEditor({
           },
         });
       }
-      const zoneBounds =
-        bounds ??
-        halfSideKmToBounds({ lat: address!.lat, lng: address!.lng }, halfSideKm);
+      const zoneVertices = ensureSixVertices(
+        { lat: address!.lat, lng: address!.lng },
+        vertices,
+        halfSideKm,
+      );
+      const zoneBounds = toPolygonPayload(zoneVertices);
+      const reach = maxVertexDistanceKm({ lat: address!.lat, lng: address!.lng }, zoneVertices);
       await saveCoverageZone({
         center_lat: address!.lat,
         center_lng: address!.lng,
-        radius_km: halfSideKm,
-        zone_type: 'square',
+        radius_km: reach,
+        zone_type: 'polygon',
         bounds_json: zoneBounds,
         role: user!.role,
       });
       setAddressDirty(false);
       await fetchMe();
-      toast(`Zone carrée de ${Math.round(halfSideKm)} km enregistrée`, { type: 'success' });
+      toast(`Zone de ${Math.round(reach)} km enregistrée`, { type: 'success' });
     } catch (e) {
       handleApiError(e, toast, 'saveCoverageZone');
     } finally {
@@ -222,62 +277,67 @@ export function ProfileCoverageEditor({
           <CoverageSquareMapLive
             lat={address!.lat}
             lng={address!.lng}
-            halfSideKm={halfSideKm}
+            halfSideKm={editing ? draftHalfSide : halfSideKm}
             maxHalfSideKm={maxHalfSideKm}
-            height={240}
-            readOnly
-            showHint={false}
+            vertices={editing ? draftVertices : vertices}
+            height={mapHeight}
+            readOnly={!editing}
+            largeHandles={editing}
+            showHint={editing}
+            onHalfSideKmChange={editing ? setDraftHalfSide : setHalfSideKm}
+            onBoundsChange={editing ? setDraftBounds : handleBoundsChange}
+            onVerticesChange={handleVerticesChange}
           />
           <View style={styles.previewMeta}>
             <View style={styles.previewMetaText}>
               <AppText style={styles.previewSummary}>
-                <AppText style={styles.previewSummaryStrong}>{Math.round(halfSideKm)} km</AppText>
-                {' du centre au bord · ~'}
-                {Math.round(squareAreaKm2(halfSideKm))}
+                <AppText style={styles.previewSummaryStrong}>
+                  {Math.round(
+                    maxVertexDistanceKm(
+                      { lat: address!.lat, lng: address!.lng },
+                      ensureSixVertices(
+                        { lat: address!.lat, lng: address!.lng },
+                        editing ? draftVertices : vertices,
+                        editing ? draftHalfSide : halfSideKm,
+                      ),
+                    ),
+                  )}{' '}
+                  km
+                </AppText>
+                {' du centre au sommet le plus loin · ~'}
+                {Math.round(
+                  polygonAreaKm2(
+                    ensureSixVertices(
+                      { lat: address!.lat, lng: address!.lng },
+                      editing ? draftVertices : vertices,
+                      editing ? draftHalfSide : halfSideKm,
+                    ),
+                  ),
+                )}
                 {' km²'}
               </AppText>
               <AppText style={styles.previewCaption}>
-                Touchez « Modifier mon secteur » pour ajuster la zone au doigt.
+                {editing
+                  ? 'Glissez les poignées puis validez.'
+                  : 'Touchez « Modifier mon secteur » pour ajuster la zone au doigt.'}
               </AppText>
             </View>
-            <Button
-              title="Modifier mon secteur"
-              variant="secondary"
-              size="md"
-              leftIcon={<Maximize2 size={iconSize.sm} color={c.primary} strokeWidth={2} />}
-              onPress={() => setEditorOpen(true)}
-              style={styles.editSectorBtn}
-            />
-          </View>
-
-          <SheetModal
-            visible={editorOpen}
-            onClose={() => setEditorOpen(false)}
-            title="Modifier mon secteur"
-            subtitle="Glissez un coin du carré pour agrandir ou réduire"
-            snapPoints={['100%']}
-            disableScroll
-            footer={
+            {editing ? (
+              <View style={styles.editActions}>
+                <Button title="Annuler" variant="ghost" size="md" onPress={cancelEdit} disabled={savingZone} />
+                <Button title="Valider" size="md" loading={savingZone} onPress={validateEdit} />
+              </View>
+            ) : (
               <Button
-                title="Terminer"
-                size="lg"
-                fullWidth
-                onPress={() => setEditorOpen(false)}
+                title="Modifier mon secteur"
+                variant="secondary"
+                size="md"
+                leftIcon={<Pencil size={iconSize.sm} color={c.primary} strokeWidth={2} />}
+                onPress={startEdit}
+                style={styles.editSectorBtn}
               />
-            }
-          >
-            <CoverageSquareMapLive
-              lat={address!.lat}
-              lng={address!.lng}
-              halfSideKm={halfSideKm}
-              maxHalfSideKm={maxHalfSideKm}
-              height={editorMapHeight}
-              largeHandles
-              onHalfSideKmChange={setHalfSideKm}
-              onBoundsChange={handleBoundsChange}
-              onDragEnd={(half, b) => onDragEnd?.(half, b)}
-            />
-          </SheetModal>
+            )}
+          </View>
 
           {savingZone ? (
             <AppText style={styles.savingHint}>Enregistrement de la zone…</AppText>
@@ -311,7 +371,7 @@ export function ProfileCoverageEditor({
     return (
       <ProfileSection
         title="Zone de couverture"
-        description="Aperçu de votre secteur — modifiez-le en plein écran"
+        description="Aperçu de votre secteur — polygone à 6 poignets"
         Icon={MapPin}
       >
         {zoneContent}
@@ -342,7 +402,7 @@ export function ProfileCoverageEditor({
 
       <Animated.View entering={FadeInDown.delay(60).duration(280).springify()} style={[styles.card, elevation.xs]}>
         <AppText style={styles.cardTitle}>Zone de couverture</AppText>
-        <AppText style={styles.cardDesc}>Aperçu de votre secteur — modifiez-le en plein écran</AppText>
+        <AppText style={styles.cardDesc}>Aperçu de votre secteur — polygone à 6 poignets</AppText>
         {zoneContent}
       </Animated.View>
     </View>
@@ -432,6 +492,11 @@ function buildStyles(c: AppColors) {
     },
     editSectorBtn: {
       alignSelf: 'stretch',
+    },
+    editActions: {
+      flexDirection: 'row',
+      gap: spacing[2],
+      justifyContent: 'flex-end',
     },
   });
 }

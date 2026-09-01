@@ -156,19 +156,18 @@
               @reset="resetForm"
             />
 
-            <!-- Zone carrée (nurse, lab, subaccount) — colonne principale, grande carte + édition plein écran -->
+            <!-- Zone de couverture (nurse, lab, subaccount) — colonne principale, grande carte + édition plein écran -->
             <ProfileCoverageZonePanel
               v-if="hasCoverageZone"
               :lat="profileForm.address?.lat != null ? Number(profileForm.address.lat) : null"
               :lng="profileForm.address?.lng != null ? Number(profileForm.address.lng) : null"
               :half-side-km="coverageHalfSideKm"
               :max-half-side-km="maxRadiusKm"
+              :vertices="coverageVertices"
               :saving="savingCoverage"
               :discovery-hint="isNurseOnDiscovery && maxRadiusKm <= 20 ? 'Offre Découverte : zone limitée à 20 km du centre au bord.' : null"
               :discovery-link="isNurseOnDiscovery && maxRadiusKm <= 20 ? '/nurse/abonnement' : null"
-              @update:half-side-km="onCoverageHalfSideChange"
-              @update:bounds="onCoverageBoundsChange"
-              @drag-end="debouncedSaveCoverageFromMap"
+              @save="onCoverageEditorSave"
             />
 
             <div id="securite">
@@ -981,7 +980,7 @@
               @saved="() => loadProfile()"
             />
 
-            <!-- Zone carrée : voir colonne principale (ProfileCoverageZonePanel) -->
+            <!-- Zone de couverture : voir colonne principale (ProfileCoverageZonePanel) -->
 
             <!-- Bouton Enregistrer mon profil (en bas de la colonne droite, pleine largeur) -->
             <div class="pt-2 w-full flex-shrink-0">
@@ -1549,9 +1548,9 @@ const profileFormSafe = computed(() => {
 // -- Zone de couverture --
 const coverageZone = ref<any>(null)
 const coverageHalfSideKm = ref(20)
-const coverageBounds = ref<{ min_lat: number; max_lat: number; min_lng: number; max_lng: number } | null>(null)
+const coverageBounds = ref<{ min_lat: number; max_lat: number; min_lng: number; max_lng: number; vertices?: { lat: number; lng: number }[] } | null>(null)
+const coverageVertices = ref<{ lat: number; lng: number }[] | null>(null)
 const savingCoverage = ref(false)
-let coverageSaveTimer: ReturnType<typeof setTimeout> | null = null
 
 // Limites d'abonnement (nurse: rayon + types de soins ; lab: préleveurs, sous-comptes)
 const planLimits = ref<{ plan_slug?: string; max_radius_km?: number; max_care_types?: number | null; max_preleveurs?: number; max_subaccounts?: number } | null>(null)
@@ -2399,14 +2398,21 @@ const loadCoverage = async () => {
         const r = Number(coverageZone.value.radius_km)
         coverageHalfSideKm.value = Math.min(r, maxRadiusKm.value)
       }
-      if (coverageZone.value.bounds_json) {
-        coverageBounds.value = coverageZone.value.bounds_json
-      } else if (profileForm.value.address?.lat != null && profileForm.value.address?.lng != null) {
-        const { halfSideKmToBounds } = await import('@oneandlab/shared-utils')
-        coverageBounds.value = halfSideKmToBounds(
-          { lat: Number(profileForm.value.address.lat), lng: Number(profileForm.value.address.lng) },
+      const { resolveCoverageVertices, toPolygonPayload } = await import('@oneandlab/shared-utils')
+      if (profileForm.value.address?.lat != null && profileForm.value.address?.lng != null) {
+        const center = {
+          lat: Number(profileForm.value.address.lat),
+          lng: Number(profileForm.value.address.lng),
+        }
+        coverageVertices.value = resolveCoverageVertices(
+          center,
           coverageHalfSideKm.value,
+          coverageZone.value.bounds_json,
         )
+        coverageBounds.value = toPolygonPayload(coverageVertices.value)
+      } else if (coverageZone.value.bounds_json) {
+        coverageBounds.value = coverageZone.value.bounds_json
+        coverageVertices.value = coverageZone.value.bounds_json.vertices ?? null
       }
     } else {
       coverageZone.value = null
@@ -2416,41 +2422,43 @@ const loadCoverage = async () => {
   }
 }
 
-function onCoverageHalfSideChange(km: number) {
-  coverageHalfSideKm.value = km
-}
-
-function onCoverageBoundsChange(bounds: { min_lat: number; max_lat: number; min_lng: number; max_lng: number }) {
-  coverageBounds.value = bounds
-}
-
-function debouncedSaveCoverageFromMap() {
-  if (coverageSaveTimer) clearTimeout(coverageSaveTimer)
-  coverageSaveTimer = setTimeout(() => {
-    void saveCoverage(false)
-  }, 500)
+async function onCoverageEditorSave(payload: {
+  halfSideKm: number
+  bounds: { min_lat: number; max_lat: number; min_lng: number; max_lng: number; vertices: { lat: number; lng: number }[] }
+  vertices: { lat: number; lng: number }[]
+}) {
+  coverageHalfSideKm.value = payload.halfSideKm
+  coverageBounds.value = payload.bounds
+  coverageVertices.value = payload.vertices
+  await saveCoverage(false)
 }
 
 const saveCoverage = async (fromSaveAll = false) => {
   if (!hasValidAddress.value) {
     toast.add({ title: 'Adresse requise', description: "Définissez d'abord votre adresse.", color: 'red' })
-    return
+    return false
   }
   if (!fromSaveAll) savingCoverage.value = true
   try {
     const coverageRole = role.value === 'subaccount' ? 'subaccount' : role.value
     const lat = Number(profileForm.value.address.lat)
     const lng = Number(profileForm.value.address.lng)
-    let bounds = coverageBounds.value
-    if (!bounds) {
-      const { halfSideKmToBounds } = await import('@oneandlab/shared-utils')
-      bounds = halfSideKmToBounds({ lat, lng }, coverageHalfSideKm.value)
-    }
+    const { ensureSixVertices, toPolygonPayload, maxVertexDistanceKm } = await import('@oneandlab/shared-utils')
+    const vertices = ensureSixVertices(
+      { lat, lng },
+      coverageVertices.value,
+      coverageHalfSideKm.value,
+    )
+    const bounds = toPolygonPayload(vertices)
+    const reach = maxVertexDistanceKm({ lat, lng }, vertices)
+    coverageVertices.value = vertices
+    coverageBounds.value = bounds
+    coverageHalfSideKm.value = reach
     const body: Record<string, unknown> = {
       center_lat: lat,
       center_lng: lng,
-      radius_km: coverageHalfSideKm.value,
-      zone_type: 'square',
+      radius_km: reach,
+      zone_type: 'polygon',
       bounds_json: bounds,
       role: coverageRole,
     }
@@ -2465,16 +2473,18 @@ const saveCoverage = async (fromSaveAll = false) => {
       if (!fromSaveAll) {
         toast.add({
           title: 'Zone enregistrée',
-          description: `Zone carrée de ${Math.round(coverageHalfSideKm.value)} km du centre au bord.`,
+          description: `Polygone d'environ ${Math.round(reach)} km du centre au sommet le plus loin.`,
           color: 'green',
         })
       }
       await loadCoverage()
-    } else {
-      toast.add({ title: 'Limite de votre offre', description: response.error || "Impossible d'enregistrer", color: 'red' })
+      return true
     }
+    toast.add({ title: 'Limite de votre offre', description: response.error || "Impossible d'enregistrer", color: 'red' })
+    return false
   } catch (err: any) {
     toast.add({ title: 'Erreur', description: err.message || 'Une erreur est survenue', color: 'red' })
+    return false
   } finally {
     if (!fromSaveAll) savingCoverage.value = false
   }

@@ -597,11 +597,12 @@ class RegistrationRequest
         if ($check->fetch()) return;
 
         $id = bin2hex(random_bytes(16));
-        $bounds = CoverageZoneGeo::halfSideKmToBounds($lat, $lng, $radiusKm);
+        $vertices = CoverageZoneGeo::defaultSquareSixVertices($lat, $lng, $radiusKm);
+        $bounds = CoverageZoneGeo::polygonPayload($vertices);
         $this->db->prepare(
             'INSERT INTO coverage_zones (id, owner_id, role, center_lat, center_lng, radius_km, zone_type, bounds_json, is_active, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())'
-        )->execute([$id, $userId, $role, $lat, $lng, $radiusKm, 'square', json_encode($bounds)]);
+        )->execute([$id, $userId, $role, $lat, $lng, $radiusKm, 'polygon', json_encode($bounds)]);
     }
 
     /**

@@ -5,16 +5,14 @@
     :lng="Number(address!.lng)"
     :half-side-km="halfSideKm"
     :max-half-side-km="maxHalfSideKm"
-    @update:half-side-km="emit('update:halfSideKm', $event)"
-    @update:bounds="emit('update:bounds', $event)"
-    @drag-end="emit('dragEnd')"
+    @save="emit('save', $event)"
   />
   <UCard v-else>
     <template #header>
       <CardHeader
         icon="i-lucide-map-pin"
         title="Zone de couverture"
-        description="Carré d'intervention autour de votre adresse professionnelle"
+        description="Polygone d'intervention autour de votre adresse professionnelle"
       />
     </template>
     <UAlert
@@ -29,7 +27,7 @@
 
 <script setup lang="ts">
 import type { Address } from '~/types/profile'
-import type { CoverageBounds } from '@oneandlab/shared-utils'
+import type { CoverageEditorSavePayload } from '@oneandlab/shared-utils'
 
 interface Props {
   halfSideKm: number
@@ -38,9 +36,7 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'update:halfSideKm', value: number): void
-  (e: 'update:bounds', value: CoverageBounds): void
-  (e: 'dragEnd'): void
+  (e: 'save', value: CoverageEditorSavePayload): void
 }
 
 const props = withDefaults(defineProps<Props>(), {

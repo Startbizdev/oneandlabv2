@@ -93,14 +93,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $centerLat = array_key_exists('center_lat', $input) ? (float) $input['center_lat'] : (float) $existing['center_lat'];
     $centerLng = array_key_exists('center_lng', $input) ? (float) $input['center_lng'] : (float) $existing['center_lng'];
     $radiusKm = array_key_exists('radius_km', $input) ? (float) $input['radius_km'] : (float) $existing['radius_km'];
-    $zoneType = isset($input['zone_type']) ? (string) $input['zone_type'] : ($existing['zone_type'] ?? 'square');
-    if ($zoneType !== 'circle') {
-        $zoneType = 'square';
+    $zoneType = isset($input['zone_type']) ? (string) $input['zone_type'] : ($existing['zone_type'] ?? 'polygon');
+    if (!in_array($zoneType, ['circle', 'square', 'polygon'], true)) {
+        $zoneType = 'polygon';
     }
     $isActive = !array_key_exists('is_active', $input) ? (bool) $existing['is_active'] : ($input['is_active'] === true || $input['is_active'] === 1 || $input['is_active'] === '1');
 
     $boundsJson = null;
-    if ($zoneType === 'square') {
+    if ($zoneType === 'polygon') {
+        $rawBounds = $input['bounds_json'] ?? null;
+        if (is_string($rawBounds)) {
+            $rawBounds = json_decode($rawBounds, true);
+        }
+        if (!is_array($rawBounds) && isset($existing['bounds_json'])) {
+            $existingBounds = is_string($existing['bounds_json'])
+                ? json_decode($existing['bounds_json'], true)
+                : $existing['bounds_json'];
+            $rawBounds = is_array($existingBounds) ? $existingBounds : null;
+        }
+        $sanitized = CoverageZoneGeo::sanitizePolygonInput(
+            $centerLat,
+            $centerLng,
+            is_array($rawBounds) ? $rawBounds : null,
+            CoverageZoneGeo::MAX_HALF_SIDE_KM_LAB
+        );
+        if ($sanitized === null) {
+            $half = max(CoverageZoneGeo::MIN_VERTEX_DISTANCE_KM, min(CoverageZoneGeo::MAX_HALF_SIDE_KM_LAB, $radiusKm));
+            $verts = CoverageZoneGeo::defaultSquareSixVertices($centerLat, $centerLng, $half);
+            $sanitized = [
+                'bounds' => CoverageZoneGeo::polygonPayload($verts),
+                'radius_km' => CoverageZoneGeo::maxVertexDistanceKm($centerLat, $centerLng, $verts),
+            ];
+        }
+        $boundsJson = $sanitized['bounds'];
+        $radiusKm = $sanitized['radius_km'];
+    } elseif ($zoneType === 'square') {
         $rawBounds = $input['bounds_json'] ?? null;
         if (is_string($rawBounds)) {
             $rawBounds = json_decode($rawBounds, true);
