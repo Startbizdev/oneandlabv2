@@ -21,6 +21,24 @@ export const MAX_HALF_SIDE_KM_LAB = 100;
 export const DEFAULT_HALF_SIDE_KM_NURSE = 10;
 export const DEFAULT_HALF_SIDE_KM_LAB = 25;
 
+/** Tuiles OSM gratuites (sans clé API — Carto basemaps exige une clé). */
+export const COVERAGE_MAP_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+export const COVERAGE_MAP_TILE_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
+/**
+ * Zoom Leaflet avec contexte autour du carré (évite fitBounds trop serré).
+ * halfSideKm = demi-côté km du centre au bord.
+ */
+export function zoomForCoverageHalfSideKm(halfSideKm: number): number {
+  const r = Math.max(MIN_HALF_SIDE_KM, halfSideKm);
+  if (r <= 12) return 9;
+  if (r <= 25) return 8;
+  if (r <= 45) return 7;
+  if (r <= 70) return 6;
+  return 5;
+}
+
 /** ~km par degré de latitude (WGS84 approximation). */
 const KM_PER_DEG_LAT = 111.32;
 

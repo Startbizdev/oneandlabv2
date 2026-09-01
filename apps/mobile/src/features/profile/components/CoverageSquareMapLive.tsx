@@ -10,6 +10,7 @@ import { fontFamily, fontSize } from '@/theme/typography';
 import {
   halfSideKmToBounds,
   squareAreaKm2,
+  zoomForCoverageHalfSideKm,
   type CoverageBounds,
 } from '@oneandlab/shared-utils';
 
@@ -43,6 +44,7 @@ function buildInteractiveMapHtml(
   primaryMid: string,
   readOnly: boolean,
   largeHandles: boolean,
+  mapZoom: number,
 ): string {
   const bounds = halfSideKmToBounds({ lat, lng }, halfSideKm);
   const readOnlyFlag = readOnly ? 'true' : 'false';
@@ -91,9 +93,9 @@ function post(type, half, bounds){
     window.ReactNativeWebView.postMessage(JSON.stringify({ type: type, halfSideKm: half, bounds: bounds }));
   }
 }
-var map = L.map('map',{zoomControl:true}).setView([center.lat,center.lng],10);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
-  maxZoom:19, attribution:'© OSM © CARTO'
+var map = L.map('map',{zoomControl:true}).setView([center.lat,center.lng],${mapZoom});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19, attribution:'© OpenStreetMap'
 }).addTo(map);
 var bounds = halfToBounds(${halfSideKm});
 var rect = L.rectangle([[bounds.min_lat,bounds.min_lng],[bounds.max_lat,bounds.max_lng]],{
@@ -105,7 +107,7 @@ function applyBounds(b, fit){
   rect.setBounds([[b.min_lat,b.min_lng],[b.max_lat,b.max_lng]]);
   var cs = corners(b);
   markers.forEach(function(m,i){ m.setLatLng(cs[i]); });
-  if(fit) map.fitBounds([[b.min_lat,b.min_lng],[b.max_lat,b.max_lng]],{padding:[20,20],maxZoom:12});
+  if(fit) map.setView([center.lat,center.lng],${mapZoom});
 }
 if(!readOnly){
   corners(bounds).forEach(function(c, idx){
@@ -126,7 +128,7 @@ if(!readOnly){
     markers.push(m);
   });
 }
-map.fitBounds([[bounds.min_lat,bounds.min_lng],[bounds.max_lat,bounds.max_lng]],{padding:[20,20],maxZoom:12});
+map.setView([center.lat,center.lng],${mapZoom});
 post('ready', boundsToHalf(bounds), bounds);
 </script></body></html>`;
 }
@@ -155,6 +157,7 @@ export function CoverageSquareMapLive({
   const html = useMemo(() => {
     const colors = getAppColors();
     const mapHalfSide = readOnly ? halfSideKm : sessionHalfSideKm.current;
+    const mapZoom = zoomForCoverageHalfSideKm(mapHalfSide);
     return buildInteractiveMapHtml(
       lat,
       lng,
@@ -164,6 +167,7 @@ export function CoverageSquareMapLive({
       colors.primaryMid,
       readOnly,
       largeHandles,
+      mapZoom,
     );
   }, [lat, lng, maxHalfSideKm, readOnly, largeHandles, readOnly ? halfSideKm : null]);
 

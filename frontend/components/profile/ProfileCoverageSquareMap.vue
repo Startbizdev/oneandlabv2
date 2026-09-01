@@ -30,6 +30,9 @@ import {
   squareAreaKm2,
   clampHalfSideKm,
   MIN_HALF_SIDE_KM,
+  COVERAGE_MAP_TILE_URL,
+  COVERAGE_MAP_TILE_ATTRIBUTION,
+  zoomForCoverageHalfSideKm,
   type CoverageBounds,
 } from '@oneandlab/shared-utils';
 
@@ -79,8 +82,13 @@ const isValid = computed(
   () => props.lat && props.lng && !Number.isNaN(props.lat) && !Number.isNaN(props.lng),
 );
 
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>';
+const TILE_URL = COVERAGE_MAP_TILE_URL;
+const TILE_ATTRIBUTION = COVERAGE_MAP_TILE_ATTRIBUTION;
+
+function applyMapView(bounds: CoverageBounds) {
+  if (!map || !L) return;
+  map.setView([props.lat, props.lng], zoomForCoverageHalfSideKm(props.halfSideKm));
+}
 
 function cornersFromBounds(bounds: CoverageBounds): Array<[number, number]> {
   return [
@@ -104,7 +112,7 @@ function applyBounds(bounds: CoverageBounds, fit = false) {
   });
   centerMarker?.setLatLng([props.lat, props.lng]);
   if (fit) {
-    map.fitBounds(latLngBounds, { padding: [24, 24], maxZoom: 12 });
+    applyMapView(bounds);
   }
 }
 
@@ -159,7 +167,10 @@ async function initMap() {
     clampHalfSideKm(props.halfSideKm, props.maxHalfSideKm),
   );
 
-  map = L.map(mapEl.value, { zoomControl: true }).setView([props.lat, props.lng], 10);
+  map = L.map(mapEl.value, { zoomControl: true }).setView(
+    [props.lat, props.lng],
+    zoomForCoverageHalfSideKm(props.halfSideKm),
+  );
   L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
 
   rectangle = L.rectangle(
@@ -218,10 +229,7 @@ async function initMap() {
     });
   }
 
-  map.fitBounds(
-    L.latLngBounds([bounds.min_lat, bounds.min_lng], [bounds.max_lat, bounds.max_lng]),
-    { padding: [24, 24], maxZoom: 12 },
-  );
+  applyMapView(bounds);
 }
 
 function refreshFromProps() {
@@ -231,6 +239,7 @@ function refreshFromProps() {
     clampHalfSideKm(props.halfSideKm, props.maxHalfSideKm),
   );
   applyBounds(bounds);
+  applyMapView(bounds);
 }
 
 onMounted(async () => {

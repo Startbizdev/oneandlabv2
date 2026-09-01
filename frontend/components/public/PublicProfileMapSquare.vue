@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { halfSideKmToBounds } from '@oneandlab/shared-utils';
+import { halfSideKmToBounds, zoomForCoverageHalfSideKm } from '@oneandlab/shared-utils';
 
 const props = defineProps<{
   lat: number;
@@ -24,9 +24,13 @@ onMounted(() => {
       [bounds.min_lat, bounds.min_lng],
       [bounds.max_lat, bounds.max_lng],
     );
-    const map = L.default.map(mapEl.value!).fitBounds(latLngBounds, { padding: [16, 16], maxZoom: 11 });
-    L.default.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© OSM © CARTO',
+    const map = L.default.map(mapEl.value!).setView(
+      [props.lat, props.lng],
+      zoomForCoverageHalfSideKm(props.halfSideKm),
+    );
+    L.default.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 19,
     }).addTo(map);
     L.default.rectangle(latLngBounds, {
       color: 'var(--color-primary-500)',
