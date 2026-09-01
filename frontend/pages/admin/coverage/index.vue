@@ -3,7 +3,7 @@
     <template #pageHeader>
     <AppPageHeader :edge-bleed="false" 
       title="Zones de couverture"
-      description="Gérez les zones d'intervention des infirmiers : adresse de départ et rayon."
+      description="Gérez les zones carrées d'intervention des infirmiers (demi-côté km du centre au bord)."
     >
       <template #actions>
         <UButton color="primary" icon="i-lucide-plus" :on-click="openCreateModal">
@@ -69,7 +69,7 @@
             <UEmpty
               icon="i-lucide-map"
               title="Aucune zone"
-              description="Aucune zone de couverture. Créez une zone pour un infirmier (adresse + rayon)."
+              description="Aucune zone de couverture. Créez une zone carrée pour un infirmier (adresse + demi-côté km)."
               :actions="[{ label: 'Créer une zone', variant: 'solid', onClick: openCreateModal }]"
               variant="naked"
             />
@@ -90,7 +90,7 @@
                     {{ editingZone ? 'Modifier la zone' : 'Créer une zone' }}
                   </h2>
                   <p class="text-sm text-muted mt-1">
-                    {{ editingZone ? 'Modifiez le rayon et le statut.' : 'Choisissez un infirmier et définissez le rayon depuis son adresse.' }}
+                    {{ editingZone ? 'Modifiez la zone carrée et le statut.' : 'Choisissez un infirmier et définissez la zone depuis son adresse.' }}
                   </p>
                 </div>
                 <UButton variant="ghost" color="neutral" icon="i-lucide-x" size="sm" aria-label="Fermer" :on-click="close" />
@@ -159,17 +159,26 @@
                 </div>
               </UFormField>
 
-              <UFormField label="Rayon (km)" name="radius_km" required class="w-full">
-                <div class="flex items-center gap-3">
-                  <USlider
-                    v-model="zoneForm.radius_km"
-                    :min="5"
-                    :max="100"
-                    :step="5"
-                    class="flex-1"
-                  />
-                  <span class="font-normal text-primary-600 w-14">{{ zoneForm.radius_km }} km</span>
-                </div>
+              <UFormField
+                v-if="zoneForm.center_lat && zoneForm.center_lng"
+                label="Aperçu zone carrée"
+                class="w-full"
+              >
+                <ProfileCoverageSquareMap
+                  :lat="zoneForm.center_lat"
+                  :lng="zoneForm.center_lng"
+                  :half-side-km="zoneForm.radius_km"
+                  :max-half-side-km="100"
+                  @update:half-side-km="zoneForm.radius_km = $event"
+                />
+              </UFormField>
+
+              <UFormField label="Demi-côté carré (km du centre au bord)" name="radius_km" required class="w-full">
+                <p class="text-sm text-muted py-2">
+                  {{ zoneForm.radius_km }} km — zone carrée (~{{ Math.round(zoneForm.radius_km * 2) ** 2 }} km²).
+                  L'infirmier peut affiner sur la carte de son profil.
+                </p>
+                <UInput v-model.number="zoneForm.radius_km" type="number" :min="5" :max="100" :step="1" size="md" class="w-full max-w-xs" />
               </UFormField>
 
               <UFormField label="Statut" name="is_active" class="w-full">
@@ -204,6 +213,7 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
+import { halfSideKmToBounds } from '@oneandlab/shared-utils';
 const toast = useAppToast();
 
 const zones = ref<any[]>([]);
@@ -245,7 +255,7 @@ const columns = [
   { id: 'owner', accessorKey: 'owner', header: 'Utilisateur' },
   { id: 'role', accessorKey: 'role', header: 'Rôle' },
   { id: 'address', accessorKey: 'owner_address_label', header: 'Adresse de départ' },
-  { id: 'radius_km', accessorKey: 'radius_km', header: 'Rayon' },
+  { id: 'radius_km', accessorKey: 'radius_km', header: 'Demi-côté (km)' },
   { id: 'is_active', accessorKey: 'is_active', header: 'Statut' },
   { id: 'actions', accessorKey: 'actions', header: 'Actions' },
 ];
@@ -399,12 +409,18 @@ const toggleZone = async (zone: any) => {
 const saveZone = async () => {
   saving.value = true;
   try {
+    const bounds = halfSideKmToBounds(
+      { lat: zoneForm.value.center_lat, lng: zoneForm.value.center_lng },
+      zoneForm.value.radius_km,
+    );
     const body = {
       owner_id: zoneForm.value.owner_id,
       role: zoneForm.value.role,
       center_lat: zoneForm.value.center_lat,
       center_lng: zoneForm.value.center_lng,
       radius_km: zoneForm.value.radius_km,
+      zone_type: 'square',
+      bounds_json: bounds,
       is_active: zoneForm.value.is_active,
     };
     if (editingZone.value) {
@@ -414,6 +430,8 @@ const saveZone = async () => {
           center_lat: body.center_lat,
           center_lng: body.center_lng,
           radius_km: body.radius_km,
+          zone_type: 'square',
+          bounds_json: bounds,
           is_active: body.is_active,
         },
       });

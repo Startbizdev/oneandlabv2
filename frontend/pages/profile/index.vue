@@ -966,13 +966,13 @@
               @saved="() => loadProfile()"
             />
 
-            <!-- Mini carte + Rayon (nurse, lab, subaccount) -->
+            <!-- Zone carrée (nurse, lab, subaccount) -->
             <UCard v-if="hasCoverageZone" class="overflow-hidden">
               <template #header>
                 <CardHeader
                   icon="i-lucide-map-pin"
                   title="Zone de couverture"
-                  description="Rayon d'intervention autour de votre adresse (en km)"
+                  description="Carré d'intervention autour de votre adresse — glissez un coin pour ajuster"
                 />
               </template>
               <template v-if="!hasValidAddress">
@@ -986,14 +986,18 @@
                 />
               </template>
               <template v-else>
-                <div class="space-y-4">
+                <div class="space-y-3">
                   <ClientOnly>
-                    <ProfileCoverageMapLive
+                    <ProfileCoverageSquareMap
                       v-if="profileForm.address?.lat != null && profileForm.address?.lng != null"
                       :lat="Number(profileForm.address.lat)"
                       :lng="Number(profileForm.address.lng)"
-                      :radius-km="coverageRadius"
-                      class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 min-h-[180px]"
+                      :half-side-km="coverageHalfSideKm"
+                      :max-half-side-km="maxRadiusKm"
+                      class="rounded-lg overflow-hidden min-h-[180px]"
+                      @update:half-side-km="onCoverageHalfSideChange"
+                      @update:bounds="onCoverageBoundsChange"
+                      @drag-end="debouncedSaveCoverageFromMap"
                     />
                     <div
                       v-else
@@ -1007,24 +1011,15 @@
                       </div>
                     </template>
                   </ClientOnly>
-                    <div>
-                    <div class="flex items-center justify-between mb-1">
-                      <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Rayon</span>
-                      <span class="text-lg font-semibold tabular-nums text-primary">{{ coverageRadius }} km</span>
-                    </div>
-                    <USlider
-                      :model-value="coverageRadius"
-                      @update:model-value="(v: number) => (coverageRadius = Math.min(v, maxRadiusKm))"
-                      :min="5"
-                      :max="maxRadiusKm"
-                      :step="5"
-                      class="w-full"
-                    />
-                    <p v-if="isNurseOnDiscovery && maxRadiusKm <= 20" class="mt-2 text-sm text-amber-600 dark:text-amber-400">
-                      <UIcon name="i-lucide-info" class="w-4 h-4 inline-block align-middle mr-1.5 shrink-0" aria-hidden="true" />
-                      Offre Découverte : rayon limité à 20 km. <NuxtLink to="/nurse/abonnement" class="underline font-medium">Passez en Pro</NuxtLink> pour étendre jusqu'à 100 km.
-                    </p>
-                  </div>
+                  <p v-if="isNurseOnDiscovery && maxRadiusKm <= 20" class="text-sm text-amber-600 dark:text-amber-400">
+                    <UIcon name="i-lucide-info" class="w-4 h-4 inline-block align-middle mr-1.5 shrink-0" aria-hidden="true" />
+                    Offre Découverte : zone limitée à 20 km du centre au bord.
+                    <NuxtLink to="/nurse/abonnement" class="underline font-medium">Passez en Pro</NuxtLink> pour étendre jusqu'à 100 km.
+                  </p>
+                  <p v-if="savingCoverage" class="text-xs text-muted flex items-center gap-1.5">
+                    <UIcon name="i-lucide-loader-2" class="w-3.5 h-3.5 animate-spin" />
+                    Enregistrement de la zone…
+                  </p>
                 </div>
               </template>
             </UCard>
@@ -1594,8 +1589,10 @@ const profileFormSafe = computed(() => {
 
 // -- Zone de couverture --
 const coverageZone = ref<any>(null)
-const coverageRadius = ref(20)
+const coverageHalfSideKm = ref(20)
+const coverageBounds = ref<{ min_lat: number; max_lat: number; min_lng: number; max_lng: number } | null>(null)
 const savingCoverage = ref(false)
+let coverageSaveTimer: ReturnType<typeof setTimeout> | null = null
 
 // Limites d'abonnement (nurse: rayon + types de soins ; lab: préleveurs, sous-comptes)
 const planLimits = ref<{ plan_slug?: string; max_radius_km?: number; max_care_types?: number | null; max_preleveurs?: number; max_subaccounts?: number } | null>(null)
@@ -2441,7 +2438,16 @@ const loadCoverage = async () => {
       coverageZone.value = response.data[0]
       if (coverageZone.value.radius_km) {
         const r = Number(coverageZone.value.radius_km)
-        coverageRadius.value = Math.min(r, maxRadiusKm.value)
+        coverageHalfSideKm.value = Math.min(r, maxRadiusKm.value)
+      }
+      if (coverageZone.value.bounds_json) {
+        coverageBounds.value = coverageZone.value.bounds_json
+      } else if (profileForm.value.address?.lat != null && profileForm.value.address?.lng != null) {
+        const { halfSideKmToBounds } = await import('@oneandlab/shared-utils')
+        coverageBounds.value = halfSideKmToBounds(
+          { lat: Number(profileForm.value.address.lat), lng: Number(profileForm.value.address.lng) },
+          coverageHalfSideKm.value,
+        )
       }
     } else {
       coverageZone.value = null
@@ -2449,6 +2455,21 @@ const loadCoverage = async () => {
   } catch {
     // Valeurs par défaut conservées
   }
+}
+
+function onCoverageHalfSideChange(km: number) {
+  coverageHalfSideKm.value = km
+}
+
+function onCoverageBoundsChange(bounds: { min_lat: number; max_lat: number; min_lng: number; max_lng: number }) {
+  coverageBounds.value = bounds
+}
+
+function debouncedSaveCoverageFromMap() {
+  if (coverageSaveTimer) clearTimeout(coverageSaveTimer)
+  coverageSaveTimer = setTimeout(() => {
+    void saveCoverage(false)
+  }, 500)
 }
 
 const saveCoverage = async (fromSaveAll = false) => {
@@ -2459,10 +2480,19 @@ const saveCoverage = async (fromSaveAll = false) => {
   if (!fromSaveAll) savingCoverage.value = true
   try {
     const coverageRole = role.value === 'subaccount' ? 'subaccount' : role.value
+    const lat = Number(profileForm.value.address.lat)
+    const lng = Number(profileForm.value.address.lng)
+    let bounds = coverageBounds.value
+    if (!bounds) {
+      const { halfSideKmToBounds } = await import('@oneandlab/shared-utils')
+      bounds = halfSideKmToBounds({ lat, lng }, coverageHalfSideKm.value)
+    }
     const body: Record<string, unknown> = {
-      center_lat: profileForm.value.address.lat,
-      center_lng: profileForm.value.address.lng,
-      radius_km: coverageRadius.value,
+      center_lat: lat,
+      center_lng: lng,
+      radius_km: coverageHalfSideKm.value,
+      zone_type: 'square',
+      bounds_json: bounds,
       role: coverageRole,
     }
     if (effectiveUserId.value && effectiveUserId.value !== user.value?.id) {
@@ -2474,7 +2504,11 @@ const saveCoverage = async (fromSaveAll = false) => {
     })
     if (response.success) {
       if (!fromSaveAll) {
-        toast.add({ title: 'Rayon enregistré', description: `Zone de ${coverageRadius.value} km mise à jour.`, color: 'green' })
+        toast.add({
+          title: 'Zone enregistrée',
+          description: `Zone carrée de ${Math.round(coverageHalfSideKm.value)} km du centre au bord.`,
+          color: 'green',
+        })
       }
       await loadCoverage()
     } else {

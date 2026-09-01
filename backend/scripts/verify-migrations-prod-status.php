@@ -34,6 +34,8 @@ $checks = [
     '101 lab_brands' => "SHOW TABLES LIKE 'lab_brands'",
     '101 appointments.lab_preference_mode' => "SHOW COLUMNS FROM appointments LIKE 'lab_preference_mode'",
     '101 appointments.preferred_lab_brand_id' => "SHOW COLUMNS FROM appointments LIKE 'preferred_lab_brand_id'",
+    '103 coverage_zones.zone_type' => "SHOW COLUMNS FROM coverage_zones LIKE 'zone_type'",
+    '103 coverage_zones.bounds_json' => "SHOW COLUMNS FROM coverage_zones LIKE 'bounds_json'",
 ];
 
 echo "DB: {$config['database']}\n";

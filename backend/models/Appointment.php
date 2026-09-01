@@ -12,6 +12,8 @@ require_once __DIR__ . '/../lib/SmsQueue.php';
 require_once __DIR__ . '/../lib/Validation.php';
 require_once __DIR__ . '/../lib/PatientUrgencyGuard.php';
 require_once __DIR__ . '/../lib/admin/AdminDispatchEventLogger.php';
+require_once __DIR__ . '/../lib/CoverageZoneMatcher.php';
+require_once __DIR__ . '/../lib/CoverageZoneGeo.php';
 
 /**
  * Modèle Appointment
@@ -3739,44 +3741,43 @@ class Appointment
         foreach ($zones as $zone) {
             $isInZone = false;
             $distance = null;
-            
-            // Utiliser l'adresse depuis profiles pour tous les professionnels (nurse, lab, subaccount)
+            $profAddress = null;
+
             if ($zone['address_encrypted'] && $zone['address_dek']) {
                 try {
                     $addressJson = $this->crypto->decryptField($zone['address_encrypted'], $zone['address_dek']);
                     $address = json_decode($addressJson, true);
-                    
-                    if ($address && isset($address['lat'], $address['lng'], $zone['radius_km'])) {
-                        // Calculer la distance avec la formule Haversine
+                    if ($address && isset($address['lat'], $address['lng'])) {
+                        $profAddress = $address;
                         $profLat = floatval($address['lat']);
                         $profLng = floatval($address['lng']);
-                        $radiusKm = floatval($zone['radius_km']);
-                        
                         $distance = 6371 * acos(
-                            cos(deg2rad($lat)) * cos(deg2rad($profLat)) *
-                            cos(deg2rad($profLng) - deg2rad($lng)) +
-                            sin(deg2rad($lat)) * sin(deg2rad($profLat))
+                            min(1.0, max(-1.0,
+                                cos(deg2rad($lat)) * cos(deg2rad($profLat)) *
+                                cos(deg2rad($profLng) - deg2rad($lng)) +
+                                sin(deg2rad($lat)) * sin(deg2rad($profLat))
+                            ))
                         );
-                        
-                        $isInZone = $distance <= $radiusKm;
+                        $isInZone = CoverageZoneMatcher::appointmentInZone($lat, $lng, $zone, $profAddress);
                     }
                 } catch (Exception $e) {
-                    // Continuer avec le prochain professionnel si erreur de déchiffrement
                     continue;
                 }
             } else {
-                // Fallback : utiliser center_lat/lng si l'adresse n'est pas disponible
                 if (isset($zone['center_lat'], $zone['center_lng'], $zone['radius_km'])) {
+                    $profLat = floatval($zone['center_lat']);
+                    $profLng = floatval($zone['center_lng']);
                     $distance = 6371 * acos(
-                        cos(deg2rad($lat)) * cos(deg2rad($zone['center_lat'])) *
-                        cos(deg2rad($zone['center_lng']) - deg2rad($lng)) +
-                        sin(deg2rad($lat)) * sin(deg2rad($zone['center_lat']))
+                        min(1.0, max(-1.0,
+                            cos(deg2rad($lat)) * cos(deg2rad($profLat)) *
+                            cos(deg2rad($profLng) - deg2rad($lng)) +
+                            sin(deg2rad($lat)) * sin(deg2rad($profLat))
+                        ))
                     );
-                    
-                    $isInZone = $distance <= floatval($zone['radius_km']);
+                    $isInZone = CoverageZoneMatcher::appointmentInZone($lat, $lng, $zone, null);
                 }
             }
-            
+
             if ($isInZone) {
                 $entry = [
                     'id' => $zone['profile_id'],

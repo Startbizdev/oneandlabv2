@@ -22,12 +22,14 @@ import { handleApiError } from '@/lib/errors/handle-api-error';
 import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import type { AddressPayload } from '@/features/appointments/form/types';
+import type { CoverageBounds } from '@oneandlab/shared-utils';
+import { halfSideKmToBounds } from '@oneandlab/shared-utils';
 
 const MIN_RADIUS = 5;
 const DEFAULT_RADIUS = 20;
 
 export function ProfileNurseCoverageScreen() {
-  const styles = useThemedStyles(buildStyles, 'features_profile_screens_nurse_ProfileNurseCoverageScreen_tsx_ProfileNurseCoverageScreen_styles');
+  const styles = useThemedStyles(buildStyles, 'ProfileNurseCoverageScreen');
 
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
@@ -37,7 +39,8 @@ export function ProfileNurseCoverageScreen() {
   const hydratedRef = useRef(false);
 
   const [address, setAddress] = useState<AddressPayload | null>(null);
-  const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS);
+  const [halfSideKm, setHalfSideKm] = useState(DEFAULT_RADIUS);
+  const [bounds, setBounds] = useState<CoverageBounds | null>(null);
 
   const userQ = useQuery({
     queryKey: queryKeys.profile.user(user?.id ?? ''),
@@ -65,14 +68,17 @@ export function ProfileNurseCoverageScreen() {
     if (zone?.radius_km != null) {
       const r = Number(zone.radius_km);
       if (Number.isFinite(r)) {
-        setRadiusKm(Math.max(MIN_RADIUS, r));
+        setHalfSideKm(Math.max(MIN_RADIUS, r));
         hydratedRef.current = true;
       }
+    }
+    if (zone?.bounds_json) {
+      setBounds(zone.bounds_json);
     }
   }, [zoneQ.data]);
 
   const save = useMutation({
-    mutationFn: async (radius: number) => {
+    mutationFn: async (payload: { halfSide: number; bounds: CoverageBounds | null }) => {
       if (!hasValidGeoAddress(address)) {
         throw new Error('ADDRESS_REQUIRED');
       }
@@ -84,10 +90,15 @@ export function ProfileNurseCoverageScreen() {
           complement: address!.complement,
         },
       });
+      const zoneBounds =
+        payload.bounds ??
+        halfSideKmToBounds({ lat: address!.lat, lng: address!.lng }, payload.halfSide);
       await saveCoverageZone({
         center_lat: address!.lat,
         center_lng: address!.lng,
-        radius_km: radius,
+        radius_km: payload.halfSide,
+        zone_type: 'square',
+        bounds_json: zoneBounds,
         role: 'nurse',
       });
     },
@@ -97,7 +108,7 @@ export function ProfileNurseCoverageScreen() {
       void qc.invalidateQueries({
         queryKey: queryKeys.profile.coverageZones(user!.id, 'nurse'),
       });
-      toast('Rayon enregistré', { type: 'success' });
+      toast('Zone enregistrée', { type: 'success' });
     },
     onError: (e) => {
       if (e instanceof Error && e.message === 'ADDRESS_REQUIRED') {
@@ -111,12 +122,13 @@ export function ProfileNurseCoverageScreen() {
     },
   });
 
-  const onRadiusChange = (km: number) => {
-    setRadiusKm(km);
+  const onDragEnd = (half: number, b: CoverageBounds) => {
+    setHalfSideKm(half);
+    setBounds(b);
     if (!hydratedRef.current) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      if (!save.isPending) save.mutate(km);
+      if (!save.isPending) save.mutate({ halfSide: half, bounds: b });
     }, 500);
   };
 
@@ -130,7 +142,7 @@ export function ProfileNurseCoverageScreen() {
   return (
     <ProfileSubScreenLayout hideSave>
       <AppText style={styles.intro}>
-        Ajustez le rayon autour de votre adresse professionnelle. Chaque modification est
+        Glissez un coin de la carte pour ajuster votre zone carrée. Chaque modification est
         enregistrée automatiquement.
       </AppText>
       <AppText style={styles.hint}>
@@ -141,28 +153,30 @@ export function ProfileNurseCoverageScreen() {
         showDiscoveryHint
         hideAddressCard
         externalAddress={address}
-        radiusKm={radiusKm}
-        onRadiusKmChange={onRadiusChange}
-        savingRadius={save.isPending}
+        halfSideKm={halfSideKm}
+        onHalfSideKmChange={setHalfSideKm}
+        onBoundsChange={setBounds}
+        onDragEnd={onDragEnd}
+        savingZone={save.isPending}
       />
     </ProfileSubScreenLayout>
   );
 }
 
 function buildStyles(c: AppColors) {
-  return {
-  intro: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-    lineHeight: fontSize.sm * 1.45,
-  },
-  hint: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    lineHeight: fontSize.xs * 1.45,
-    marginTop: -spacing[2],
-  },
-};
+  return StyleSheet.create({
+    intro: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+      lineHeight: fontSize.sm * 1.45,
+    },
+    hint: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.xs,
+      color: c.textTertiary,
+      lineHeight: fontSize.xs * 1.45,
+      marginTop: -spacing[2],
+    },
+  });
 }

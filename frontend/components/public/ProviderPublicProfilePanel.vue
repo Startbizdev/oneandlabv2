@@ -142,7 +142,9 @@
             <div class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
               <p class="font-medium text-gray-900 dark:text-white">{{ displayAddressFormatted }}</p>
               <p v-if="radiusKm" class="mt-1 text-sm text-gray-500">
-                Intervient dans un rayon de <span class="font-bold text-gray-700 dark:text-gray-300">{{ Math.round(radiusKm) }} km</span>
+                Zone carrée d'intervention :
+                <span class="font-bold text-gray-700 dark:text-gray-300">{{ Math.round(radiusKm) }} km</span>
+                du centre au bord (~{{ Math.round(radiusKm * 2) ** 2 }} km²)
               </p>
               <UButton
                 v-if="mapsExternalUrl"
