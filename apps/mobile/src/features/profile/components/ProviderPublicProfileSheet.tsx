@@ -331,8 +331,11 @@ export function ProviderPublicProfileSheet({
                 ) : null}
                 {nurseMeta?.radius_km ? (
                   <AppText style={styles.infoHint}>
-                    Intervient dans un rayon de{' '}
-                    <AppText style={styles.infoHintStrong}>{Math.round(nurseMeta.radius_km)} km</AppText>
+                    Zone carrée :{' '}
+                    <AppText style={styles.infoHintStrong}>
+                      {Math.round(nurseMeta.radius_km)} km
+                    </AppText>{' '}
+                    du centre au bord (~{Math.round(nurseMeta.radius_km * 2) ** 2} km²)
                   </AppText>
                 ) : null}
                 {itinerary ? (

@@ -13,7 +13,7 @@ echo "==> buildscriptoneandlab : étape 2/3 build local + rsync + PM2..."
 export DEPLOY_SYNC_OUTPUT_DELETE=1
 "$SCRIPT_DIR/buildlocaloneandlab.sh"
 
-echo "==> buildscriptoneandlab : étape 3/4 migrations prod (093–102)..."
+echo "==> buildscriptoneandlab : étape 3/4 migrations prod (093–103)..."
 "$SCRIPT_DIR/scripts/run-migration-pending-prod.sh"
 
 echo "==> buildscriptoneandlab : étape 4/4 config prod (mobile 1.7.6 + voix Grok)..."

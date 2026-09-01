@@ -426,10 +426,10 @@
               <!-- Carte -->
               <div v-if="mapQuery" class="rounded-none overflow-hidden bg-gray-100 dark:bg-gray-800 h-[200px] w-full border-b border-gray-100 dark:border-gray-800">
                 <ClientOnly v-if="mapCenter && radiusKm != null && radiusKm > 0">
-                  <PublicProfileMapCircle
+                  <PublicProfileMapSquare
                     :lat="mapCenter.lat"
                     :lng="mapCenter.lng"
-                    :radius-km="radiusKm"
+                    :half-side-km="radiusKm"
                   />
                   <template #fallback>
                     <div class="w-full h-[200px] flex items-center justify-center">
@@ -461,9 +461,9 @@
                   <span v-else class="text-xs text-gray-400 dark:text-gray-500">Non renseignée</span>
                 </li>
                 <li v-if="(type === 'nurse' || type === 'lab') && radiusKm != null && radiusKm > 0" class="flex items-center justify-between gap-2 px-2.5 py-1.5">
-                  <span class="w-16 shrink-0 text-xs font-medium text-gray-700 dark:text-gray-300">{{ type === 'nurse' ? 'Rayon' : 'Rayon' }}</span>
-                  <span class="text-xs tabular-nums text-primary-600 dark:text-primary-400 font-medium">
-                    {{ Math.round(radiusKm) }} km
+                  <span class="w-24 shrink-0 text-xs font-medium text-gray-700 dark:text-gray-300">Zone carrée</span>
+                  <span class="text-xs tabular-nums text-primary-600 dark:text-primary-400 font-medium text-right">
+                    {{ Math.round(radiusKm) }} km du centre au bord
                   </span>
                 </li>
               </ul>
@@ -492,7 +492,7 @@ const props = defineProps<{
   address?: string | null
   /** Centre carte (infirmier : zone de couverture) */
   mapCenter?: { lat: number; lng: number } | null
-  /** Rayon en km (infirmier) pour afficher "Rayon d'intervention" */
+  /** Demi-côté km (centre → bord) pour la zone carrée d'intervention */
   radiusKm?: number | null
   type: 'nurse' | 'lab' | 'pro'
   /** Panneau latéral / embed : pas de plein écran ni empty state marketing */

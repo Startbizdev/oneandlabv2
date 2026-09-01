@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../middleware/RoleMiddleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../../lib/CoverageZoneGeo.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -59,6 +60,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (isset($zone['zone_metadata']) && $zone['zone_metadata']) {
         $zone['zone_metadata'] = json_decode($zone['zone_metadata'], true);
     }
+    if (isset($zone['bounds_json']) && is_string($zone['bounds_json'])) {
+        $zone['bounds_json'] = json_decode($zone['bounds_json'], true);
+    }
     if ($isAdmin) {
         $userModel = new User();
         $owner = $userModel->getById($zone['owner_id'], $user['user_id'], $user['role']);
@@ -89,15 +93,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $centerLat = array_key_exists('center_lat', $input) ? (float) $input['center_lat'] : (float) $existing['center_lat'];
     $centerLng = array_key_exists('center_lng', $input) ? (float) $input['center_lng'] : (float) $existing['center_lng'];
     $radiusKm = array_key_exists('radius_km', $input) ? (float) $input['radius_km'] : (float) $existing['radius_km'];
+    $zoneType = isset($input['zone_type']) ? (string) $input['zone_type'] : ($existing['zone_type'] ?? 'square');
+    if ($zoneType !== 'circle') {
+        $zoneType = 'square';
+    }
     $isActive = !array_key_exists('is_active', $input) ? (bool) $existing['is_active'] : ($input['is_active'] === true || $input['is_active'] === 1 || $input['is_active'] === '1');
+
+    $boundsJson = null;
+    if ($zoneType === 'square') {
+        $rawBounds = $input['bounds_json'] ?? null;
+        if (is_string($rawBounds)) {
+            $rawBounds = json_decode($rawBounds, true);
+        }
+        $boundsJson = CoverageZoneGeo::normalizeBounds(is_array($rawBounds) ? $rawBounds : null);
+        if ($boundsJson === null) {
+            $radiusKm = CoverageZoneGeo::clampHalfSideKm($radiusKm, CoverageZoneGeo::MAX_HALF_SIDE_KM_LAB);
+            $boundsJson = CoverageZoneGeo::halfSideKmToBounds($centerLat, $centerLng, $radiusKm);
+        } else {
+            $radiusKm = CoverageZoneGeo::boundsToHalfSideKm($centerLat, $centerLng, $boundsJson);
+            $radiusKm = CoverageZoneGeo::clampHalfSideKm($radiusKm, CoverageZoneGeo::MAX_HALF_SIDE_KM_LAB);
+            $boundsJson = CoverageZoneGeo::halfSideKmToBounds($centerLat, $centerLng, $radiusKm);
+        }
+    } else {
+        $radiusKm = CoverageZoneGeo::clampHalfSideKm($radiusKm, CoverageZoneGeo::MAX_HALF_SIDE_KM_LAB);
+    }
 
     try {
         $stmt = $db->prepare('
             UPDATE coverage_zones 
-            SET center_lat = ?, center_lng = ?, radius_km = ?, is_active = ?, updated_at = NOW()
+            SET center_lat = ?, center_lng = ?, radius_km = ?, zone_type = ?, bounds_json = ?,
+                is_active = ?, updated_at = NOW()
             WHERE id = ?
         ');
-        $stmt->execute([$centerLat, $centerLng, $radiusKm, $isActive ? 1 : 0, $id]);
+        $stmt->execute([
+            $centerLat,
+            $centerLng,
+            $radiusKm,
+            $zoneType,
+            $boundsJson !== null ? json_encode($boundsJson) : null,
+            $isActive ? 1 : 0,
+            $id,
+        ]);
         echo json_encode(['success' => true, 'data' => ['id' => $id]]);
     } catch (PDOException $e) {
         http_response_code(500);

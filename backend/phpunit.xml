@@ -8,6 +8,8 @@
       <directory>tests/qr</directory>
       <directory>tests/mobile</directory>
       <directory>tests/nurse-tour</directory>
+      <directory>tests/coverage</directory>
+      <directory>tests/admin</directory>
     </testsuite>
     <testsuite name="AI">
       <directory>tests/ai</directory>

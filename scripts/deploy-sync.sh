@@ -32,7 +32,7 @@ deploy_sync_dir() {
   else
     ssh "${DEPLOY_SSH_OPTS[@]}" "$remote" "mkdir -p '$remote_path'"
   fi
-  tar -C "${src%/}" -czf - "${tar_ex[@]}" . | ssh "${DEPLOY_SSH_OPTS[@]}" "$remote" "tar -xzf - -C '$remote_path'"
+  tar -C "${src%/}" -h -czf - "${tar_ex[@]}" . | ssh "${DEPLOY_SSH_OPTS[@]}" "$remote" "sudo tar -xzf - -C '$remote_path' --no-same-owner --no-same-permissions"
 }
 
 deploy_sync_menuswipe() {

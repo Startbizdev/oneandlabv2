@@ -18,7 +18,7 @@ export function ProfileCoverageScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <AppText style={styles.subtitle}>
-          Définissez le rayon d'intervention autour de votre adresse professionnelle.
+          Définissez votre zone carrée d'intervention autour de votre adresse professionnelle (km du centre au bord).
         </AppText>
         <ProfileCoverageEditor />
       </ScrollView>
