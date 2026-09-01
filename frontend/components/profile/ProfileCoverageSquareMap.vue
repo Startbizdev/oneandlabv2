@@ -2,15 +2,16 @@
   <div class="space-y-3">
     <div
       ref="mapEl"
-      class="relative z-0 isolate w-full rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 min-h-[240px] sm:min-h-[280px]"
+      class="relative z-0 isolate w-full rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+      :class="mapMinHeight"
     />
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div v-if="showFooter" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
       <p class="text-sm text-gray-700 dark:text-gray-300">
         <span class="font-medium text-primary tabular-nums">{{ displayHalfSide }} km</span>
         <span class="text-muted"> du centre au bord</span>
         <span class="text-muted hidden sm:inline"> · ~{{ displayArea }} km²</span>
       </p>
-      <p class="text-xs text-muted flex items-center gap-1.5">
+      <p v-if="!readOnly" class="text-xs text-muted flex items-center gap-1.5">
         <UIcon name="i-lucide-move" class="w-3.5 h-3.5 shrink-0" />
         Glissez un coin pour ajuster votre zone
       </p>
@@ -40,10 +41,19 @@ const props = withDefaults(
     maxHalfSideKm?: number;
     /** Lecture seule (pas de drag). */
     readOnly?: boolean;
+    /** Poignées plus grandes (plein écran / tactile). */
+    largeHandles?: boolean;
+    /** Classes min-height / height du conteneur carte. */
+    mapMinHeight?: string;
+    /** Afficher le résumé km sous la carte. */
+    showFooter?: boolean;
   }>(),
   {
     maxHalfSideKm: 100,
     readOnly: false,
+    largeHandles: false,
+    mapMinHeight: 'min-h-[240px] sm:min-h-[280px]',
+    showFooter: true,
   },
 );
 
@@ -128,11 +138,14 @@ function onCornerDragEnd(markerIndex: number) {
 }
 
 function createCornerIcon() {
+  const size = props.largeHandles ? 28 : 20;
+  const dot = props.largeHandles ? 24 : 16;
+  const margin = props.largeHandles ? 2 : 2;
   return L.divIcon({
     className: 'coverage-square-handle',
-    html: '<div class="coverage-square-handle-dot"></div>',
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
+    html: `<div class="coverage-square-handle-dot" style="width:${dot}px;height:${dot}px;margin:${margin}px"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
   });
 }
 
@@ -224,15 +237,7 @@ onMounted(async () => {
   await initMap();
 });
 
-watch(
-  () => [props.lat, props.lng, props.halfSideKm, props.maxHalfSideKm, props.readOnly],
-  () => {
-    if (map && rectangle) refreshFromProps();
-    else if (isValid.value && mapEl.value && !map) initMap();
-  },
-);
-
-onBeforeUnmount(() => {
+function destroyMap() {
   if (map) {
     map.remove();
     map = null;
@@ -240,6 +245,32 @@ onBeforeUnmount(() => {
     centerMarker = null;
     cornerMarkers = [];
   }
+}
+
+watch(
+  () => [props.readOnly, props.largeHandles],
+  () => {
+    destroyMap();
+    if (isValid.value && mapEl.value) void initMap();
+  },
+);
+
+watch(
+  () => [props.lat, props.lng, props.halfSideKm, props.maxHalfSideKm],
+  () => {
+    if (map && rectangle) refreshFromProps();
+    else if (isValid.value && mapEl.value && !map) void initMap();
+  },
+);
+
+onBeforeUnmount(() => {
+  destroyMap();
+});
+
+defineExpose({
+  invalidateSize: () => {
+    map?.invalidateSize?.();
+  },
 });
 </script>
 

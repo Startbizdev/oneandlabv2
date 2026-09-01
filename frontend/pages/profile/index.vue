@@ -156,6 +156,21 @@
               @reset="resetForm"
             />
 
+            <!-- Zone carrée (nurse, lab, subaccount) — colonne principale, grande carte + édition plein écran -->
+            <ProfileCoverageZonePanel
+              v-if="hasCoverageZone"
+              :lat="profileForm.address?.lat != null ? Number(profileForm.address.lat) : null"
+              :lng="profileForm.address?.lng != null ? Number(profileForm.address.lng) : null"
+              :half-side-km="coverageHalfSideKm"
+              :max-half-side-km="maxRadiusKm"
+              :saving="savingCoverage"
+              :discovery-hint="isNurseOnDiscovery && maxRadiusKm <= 20 ? 'Offre Découverte : zone limitée à 20 km du centre au bord.' : null"
+              :discovery-link="isNurseOnDiscovery && maxRadiusKm <= 20 ? '/nurse/abonnement' : null"
+              @update:half-side-km="onCoverageHalfSideChange"
+              @update:bounds="onCoverageBoundsChange"
+              @drag-end="debouncedSaveCoverageFromMap"
+            />
+
             <div id="securite">
               <ProfileAccountSecurity v-if="!editingUserId && !newPatientMode && !newPreleveurMode" />
             </div>
@@ -966,63 +981,7 @@
               @saved="() => loadProfile()"
             />
 
-            <!-- Zone carrée (nurse, lab, subaccount) -->
-            <UCard v-if="hasCoverageZone" class="overflow-hidden">
-              <template #header>
-                <CardHeader
-                  icon="i-lucide-map-pin"
-                  title="Zone de couverture"
-                  description="Carré d'intervention autour de votre adresse — glissez un coin pour ajuster"
-                />
-              </template>
-              <template v-if="!hasValidAddress">
-                <UAlert
-                  color="amber"
-                  variant="soft"
-                  icon="i-lucide-alert-circle"
-                  title="Adresse requise"
-                  description="Définissez votre adresse dans la colonne de gauche."
-                  class="rounded-lg"
-                />
-              </template>
-              <template v-else>
-                <div class="space-y-3">
-                  <ClientOnly>
-                    <ProfileCoverageSquareMap
-                      v-if="profileForm.address?.lat != null && profileForm.address?.lng != null"
-                      :lat="Number(profileForm.address.lat)"
-                      :lng="Number(profileForm.address.lng)"
-                      :half-side-km="coverageHalfSideKm"
-                      :max-half-side-km="maxRadiusKm"
-                      class="rounded-lg overflow-hidden min-h-[180px]"
-                      @update:half-side-km="onCoverageHalfSideChange"
-                      @update:bounds="onCoverageBoundsChange"
-                      @drag-end="debouncedSaveCoverageFromMap"
-                    />
-                    <div
-                      v-else
-                      class="w-full min-h-[180px] rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 flex items-center justify-center"
-                    >
-                      <p class="text-xs text-gray-500">Carte après adresse</p>
-                    </div>
-                    <template #fallback>
-                      <div class="w-full min-h-[180px] rounded-lg bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center">
-                        <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-primary" />
-                      </div>
-                    </template>
-                  </ClientOnly>
-                  <p v-if="isNurseOnDiscovery && maxRadiusKm <= 20" class="text-sm text-amber-600 dark:text-amber-400">
-                    <UIcon name="i-lucide-info" class="w-4 h-4 inline-block align-middle mr-1.5 shrink-0" aria-hidden="true" />
-                    Offre Découverte : zone limitée à 20 km du centre au bord.
-                    <NuxtLink to="/nurse/abonnement" class="underline font-medium">Passez en Pro</NuxtLink> pour étendre jusqu'à 100 km.
-                  </p>
-                  <p v-if="savingCoverage" class="text-xs text-muted flex items-center gap-1.5">
-                    <UIcon name="i-lucide-loader-2" class="w-3.5 h-3.5 animate-spin" />
-                    Enregistrement de la zone…
-                  </p>
-                </div>
-              </template>
-            </UCard>
+            <!-- Zone carrée : voir colonne principale (ProfileCoverageZonePanel) -->
 
             <!-- Bouton Enregistrer mon profil (en bas de la colonne droite, pleine largeur) -->
             <div class="pt-2 w-full flex-shrink-0">

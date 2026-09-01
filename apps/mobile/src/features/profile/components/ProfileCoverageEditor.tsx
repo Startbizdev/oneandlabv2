@@ -3,13 +3,14 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, MapPin } from 'lucide-react-native';
+import { AlertTriangle, MapPin, Maximize2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Skeleton, SkeletonList } from '@/components/ui/skeletons';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import type { AddressPayload } from '@/features/appointments/form/types';
@@ -28,7 +29,8 @@ import { useToast } from '@/providers/ToastProvider';
 import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import type { CoverageBounds } from '@oneandlab/shared-utils';
-import { halfSideKmToBounds } from '@oneandlab/shared-utils';
+import { halfSideKmToBounds, squareAreaKm2 } from '@oneandlab/shared-utils';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const MIN_RADIUS = 5;
 const DEFAULT_RADIUS = 20;
@@ -74,6 +76,11 @@ export function ProfileCoverageEditor({
   const [bounds, setBounds] = useState<CoverageBounds | null>(null);
   const [addressDirty, setAddressDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+
+  const { height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const editorMapHeight = Math.max(360, windowHeight - insets.top - insets.bottom - 180);
 
   const halfSideKm = controlledHalfSide ?? internalHalfSide;
   const setHalfSideKm = onHalfSideKmChange ?? setInternalHalfSide;
@@ -217,10 +224,61 @@ export function ProfileCoverageEditor({
             lng={address!.lng}
             halfSideKm={halfSideKm}
             maxHalfSideKm={maxHalfSideKm}
-            onHalfSideKmChange={setHalfSideKm}
-            onBoundsChange={handleBoundsChange}
-            onDragEnd={(half, b) => onDragEnd?.(half, b)}
+            height={240}
+            readOnly
+            showHint={false}
           />
+          <View style={styles.previewMeta}>
+            <View style={styles.previewMetaText}>
+              <AppText style={styles.previewSummary}>
+                <AppText style={styles.previewSummaryStrong}>{Math.round(halfSideKm)} km</AppText>
+                {' du centre au bord · ~'}
+                {Math.round(squareAreaKm2(halfSideKm))}
+                {' km²'}
+              </AppText>
+              <AppText style={styles.previewCaption}>
+                Touchez « Modifier mon secteur » pour ajuster la zone au doigt.
+              </AppText>
+            </View>
+            <Button
+              title="Modifier mon secteur"
+              variant="secondary"
+              size="md"
+              leftIcon={<Maximize2 size={iconSize.sm} color={c.primary} strokeWidth={2} />}
+              onPress={() => setEditorOpen(true)}
+              style={styles.editSectorBtn}
+            />
+          </View>
+
+          <SheetModal
+            visible={editorOpen}
+            onClose={() => setEditorOpen(false)}
+            title="Modifier mon secteur"
+            subtitle="Glissez un coin du carré pour agrandir ou réduire"
+            snapPoints={['100%']}
+            disableScroll
+            footer={
+              <Button
+                title="Terminer"
+                size="lg"
+                fullWidth
+                onPress={() => setEditorOpen(false)}
+              />
+            }
+          >
+            <CoverageSquareMapLive
+              lat={address!.lat}
+              lng={address!.lng}
+              halfSideKm={halfSideKm}
+              maxHalfSideKm={maxHalfSideKm}
+              height={editorMapHeight}
+              largeHandles
+              onHalfSideKmChange={setHalfSideKm}
+              onBoundsChange={handleBoundsChange}
+              onDragEnd={(half, b) => onDragEnd?.(half, b)}
+            />
+          </SheetModal>
+
           {savingZone ? (
             <AppText style={styles.savingHint}>Enregistrement de la zone…</AppText>
           ) : null}
@@ -253,7 +311,7 @@ export function ProfileCoverageEditor({
     return (
       <ProfileSection
         title="Zone de couverture"
-        description="Glissez un coin de la carte pour ajuster votre zone"
+        description="Aperçu de votre secteur — modifiez-le en plein écran"
         Icon={MapPin}
       >
         {zoneContent}
@@ -284,7 +342,7 @@ export function ProfileCoverageEditor({
 
       <Animated.View entering={FadeInDown.delay(60).duration(280).springify()} style={[styles.card, elevation.xs]}>
         <AppText style={styles.cardTitle}>Zone de couverture</AppText>
-        <AppText style={styles.cardDesc}>Carré d'intervention autour de votre adresse</AppText>
+        <AppText style={styles.cardDesc}>Aperçu de votre secteur — modifiez-le en plein écran</AppText>
         {zoneContent}
       </Animated.View>
     </View>
@@ -349,6 +407,31 @@ function buildStyles(c: AppColors) {
       fontSize: fontSize.xs,
       color: c.primary,
       textAlign: 'center',
+    },
+    previewMeta: {
+      gap: spacing[3],
+    },
+    previewMetaText: {
+      gap: spacing[1],
+    },
+    previewSummary: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+      lineHeight: fontSize.sm * 1.45,
+    },
+    previewSummaryStrong: {
+      fontFamily: fontFamily.semiBold,
+      color: c.primary,
+    },
+    previewCaption: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSize.xs,
+      color: c.textTertiary,
+      lineHeight: fontSize.xs * 1.45,
+    },
+    editSectorBtn: {
+      alignSelf: 'stretch',
     },
   });
 }

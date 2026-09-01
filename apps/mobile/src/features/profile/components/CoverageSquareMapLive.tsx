@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { getAppColors } from '@/theme/colors';
@@ -26,6 +26,9 @@ interface Props {
   maxHalfSideKm: number;
   height?: number;
   readOnly?: boolean;
+  largeHandles?: boolean;
+  showSummary?: boolean;
+  showHint?: boolean;
   onHalfSideKmChange?: (km: number) => void;
   onBoundsChange?: (bounds: CoverageBounds) => void;
   onDragEnd?: (halfSideKm: number, bounds: CoverageBounds) => void;
@@ -39,9 +42,12 @@ function buildInteractiveMapHtml(
   primary: string,
   primaryMid: string,
   readOnly: boolean,
+  largeHandles: boolean,
 ): string {
   const bounds = halfSideKmToBounds({ lat, lng }, halfSideKm);
   const readOnlyFlag = readOnly ? 'true' : 'false';
+  const handlePx = largeHandles ? 32 : 22;
+  const handleRadius = largeHandles ? 7 : 5;
   return `<!DOCTYPE html>
 <html><head>
 <meta charset="utf-8"/>
@@ -49,7 +55,7 @@ function buildInteractiveMapHtml(
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 html,body,#map{margin:0;padding:0;width:100%;height:100%;touch-action:none;}
-.handle{width:22px;height:22px;border-radius:5px;background:${primary};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:grab;}
+.handle{width:${handlePx}px;height:${handlePx}px;border-radius:${handleRadius}px;background:${primary};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:grab;touch-action:none;}
 </style>
 </head><body>
 <div id="map"></div>
@@ -103,7 +109,7 @@ function applyBounds(b, fit){
 }
 if(!readOnly){
   corners(bounds).forEach(function(c, idx){
-    var icon = L.divIcon({className:'', html:'<div class="handle"></div>', iconSize:[22,22], iconAnchor:[11,11]});
+    var icon = L.divIcon({className:'', html:'<div class="handle"></div>', iconSize:[${handlePx},${handlePx}], iconAnchor:[${handlePx / 2},${handlePx / 2}]});
     var m = L.marker(c,{icon:icon, draggable:true, zIndexOffset:1000}).addTo(map);
     m.on('drag', function(){
       var r = resizeFromCorner(m.getLatLng());
@@ -132,25 +138,34 @@ export function CoverageSquareMapLive({
   maxHalfSideKm,
   height = 280,
   readOnly = false,
+  largeHandles = false,
+  showSummary = true,
+  showHint = true,
   onHalfSideKmChange,
   onBoundsChange,
   onDragEnd,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'CoverageSquareMapLive');
+  const sessionHalfSideKm = useRef(halfSideKm);
+  if (readOnly) {
+    sessionHalfSideKm.current = halfSideKm;
+  }
 
   const html = useMemo(() => {
     const colors = getAppColors();
+    const mapHalfSide = readOnly ? halfSideKm : sessionHalfSideKm.current;
     return buildInteractiveMapHtml(
       lat,
       lng,
-      halfSideKm,
+      mapHalfSide,
       maxHalfSideKm,
       colors.primary,
       colors.primaryMid,
       readOnly,
+      largeHandles,
     );
-  }, [lat, lng, halfSideKm, maxHalfSideKm, readOnly]);
+  }, [lat, lng, maxHalfSideKm, readOnly, largeHandles, readOnly ? halfSideKm : null]);
 
   const areaLabel = useMemo(() => Math.round(squareAreaKm2(halfSideKm)), [halfSideKm]);
 
@@ -178,13 +193,15 @@ export function CoverageSquareMapLive({
           }
         }}
       />
-      <AppText style={styles.summary}>
-        <AppText style={styles.summaryStrong}>{Math.round(halfSideKm)} km</AppText>
-        {' du centre au bord · ~'}
-        {areaLabel}
-        {' km²'}
-      </AppText>
-      {!readOnly ? (
+      {showSummary ? (
+        <AppText style={styles.summary}>
+          <AppText style={styles.summaryStrong}>{Math.round(halfSideKm)} km</AppText>
+          {' du centre au bord · ~'}
+          {areaLabel}
+          {' km²'}
+        </AppText>
+      ) : null}
+      {!readOnly && showHint ? (
         <AppText style={styles.hint}>Glissez un coin pour ajuster votre zone</AppText>
       ) : null}
     </View>

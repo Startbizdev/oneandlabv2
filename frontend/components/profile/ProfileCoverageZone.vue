@@ -1,43 +1,29 @@
 <template>
-  <UCard>
+  <ProfileCoverageZonePanel
+    v-if="hasValidAddress"
+    :lat="Number(address!.lat)"
+    :lng="Number(address!.lng)"
+    :half-side-km="halfSideKm"
+    :max-half-side-km="maxHalfSideKm"
+    @update:half-side-km="emit('update:halfSideKm', $event)"
+    @update:bounds="emit('update:bounds', $event)"
+    @drag-end="emit('dragEnd')"
+  />
+  <UCard v-else>
     <template #header>
       <CardHeader
         icon="i-lucide-map-pin"
         title="Zone de couverture"
-        description="Carré d'intervention — glissez un coin sur la carte pour ajuster"
+        description="Carré d'intervention autour de votre adresse professionnelle"
       />
     </template>
-
-    <template v-if="!hasValidAddress">
-      <UAlert
-        color="amber"
-        variant="soft"
-        icon="i-lucide-alert-circle"
-        title="Adresse requise"
-        description="Définissez d'abord votre adresse dans la section ci-dessus pour configurer votre zone de couverture."
-      />
-    </template>
-
-    <template v-else>
-      <ClientOnly>
-        <ProfileCoverageSquareMap
-          v-if="address?.lat != null && address?.lng != null"
-          :lat="Number(address.lat)"
-          :lng="Number(address.lng)"
-          :half-side-km="halfSideKm"
-          :max-half-side-km="maxHalfSideKm"
-          class="rounded-xl overflow-hidden shadow-sm"
-          @update:half-side-km="emit('update:halfSideKm', $event)"
-          @update:bounds="emit('update:bounds', $event)"
-          @drag-end="emit('dragEnd')"
-        />
-        <template #fallback>
-          <div class="w-full min-h-[280px] rounded-xl bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center">
-            <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-primary" />
-          </div>
-        </template>
-      </ClientOnly>
-    </template>
+    <UAlert
+      color="amber"
+      variant="soft"
+      icon="i-lucide-alert-circle"
+      title="Adresse requise"
+      description="Définissez d'abord votre adresse pour configurer votre zone de couverture."
+    />
   </UCard>
 </template>
 
