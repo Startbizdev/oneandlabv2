@@ -23,6 +23,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $body = json_decode(file_get_contents('php://input'), true) ?: [];
     $role = trim((string)($body['role'] ?? ''));
+    require_once __DIR__ . '/../../lib/ProfessionalId.php';
+    $emploi = trim((string)($body['emploi'] ?? ''));
+    if ($role === 'pro' && ProfessionalId::isProIpaEmploi($emploi)) {
+        $role = 'nurse';
+        $body['role'] = 'nurse';
+    }
     if (!in_array($role, ['lab', 'pro', 'nurse'], true)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Rôle invalide. Attendu: lab, pro ou nurse.']);
@@ -42,29 +48,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     if ($role === 'pro') {
-        require_once __DIR__ . '/../../lib/ProfessionalId.php';
-        $emploi = trim((string)($body['emploi'] ?? ''));
-        if (ProfessionalId::isProIpaEmploi($emploi)) {
-            $profErr = ProfessionalId::validate(ProfessionalId::fromRequestBody($body));
-            if ($profErr !== null) {
-                http_response_code(400);
-                echo json_encode(['success' => false, 'error' => $profErr]);
-                exit;
-            }
-            $split = ProfessionalId::split(ProfessionalId::fromRequestBody($body));
-            $body['rpps'] = $split['rpps'] ?? '';
-            $body['adeli'] = $split['adeli'] ?? '';
-        } else {
-            $proRpps = trim((string)($body['rpps'] ?? ''));
-            if (strlen($proRpps) !== 11 || !ctype_digit($proRpps)) {
-                http_response_code(400);
-                echo json_encode(['success' => false, 'error' => 'Le numéro RPPS est obligatoire pour un professionnel de santé (11 chiffres).']);
-                exit;
-            }
+        $proRpps = trim((string)($body['rpps'] ?? ''));
+        if (strlen($proRpps) !== 11 || !ctype_digit($proRpps)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Le numéro RPPS est obligatoire pour un professionnel de santé (11 chiffres).']);
+            exit;
         }
     }
     if ($role === 'nurse') {
-        require_once __DIR__ . '/../../lib/ProfessionalId.php';
         $profErr = ProfessionalId::validate(ProfessionalId::fromRequestBody($body));
         if ($profErr !== null) {
             http_response_code(400);

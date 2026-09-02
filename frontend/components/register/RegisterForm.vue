@@ -85,9 +85,21 @@
           </UFormField>
         </template>
 
-        <!-- Pro: Emploi (profession de santé) + Numéro RPPS -->
+        <!-- Pro: Emploi (profession de santé) + Numéro RPPS ; IPA → champs infirmier -->
         <template v-if="role === 'pro'">
           <ProEmploiField v-model="form.emploi" required />
+          <UFormField v-if="isProIpa" label="Genre" name="gender" required class="w-full">
+            <USelect
+              v-model="form.gender"
+              :items="genderOptions"
+              placeholder="Homme, femme ou autre"
+              size="lg"
+              class="w-full"
+            />
+            <template #hint>
+              <span class="text-xs text-muted">Indispensable pour le matching avec les préférences des patients.</span>
+            </template>
+          </UFormField>
           <UFormField
             :label="isProIpa ? PROFESSIONAL_ID_LABEL : 'Numéro RPPS'"
             name="rpps"
@@ -178,6 +190,7 @@
 import ProEmploiField from '~/components/profile/ProEmploiField.vue';
 import {
   isProIpaEmploi,
+  resolveRegistrationRole,
   PROFESSIONAL_ID_LABEL,
   validateProfessionalId,
   splitProfessionalId,
@@ -250,7 +263,7 @@ const canSubmit = computed(() => {
   if (props.role === 'lab' && !form.siret?.replace(/\s/g, '')) return false;
   if (props.role === 'pro') {
     if (!form.emploi?.trim()) return false;
-    if (isProIpa.value) return !validateProfessionalId(form.rpps || '');
+    if (isProIpa.value) return !validateProfessionalId(form.rpps || '') && !!form.gender?.trim();
     return form.rpps?.replace(/\s/g, '').length === 11;
   }
   if (props.role === 'nurse' && (validateProfessionalId(form.rpps || '') || !form.gender?.trim())) return false;
@@ -258,8 +271,10 @@ const canSubmit = computed(() => {
 });
 
 function onSubmit() {
+  const effectiveRole =
+    props.role === 'pro' ? resolveRegistrationRole('pro', form.emploi) : props.role;
   const payload: Record<string, string> = {
-    role: props.role,
+    role: effectiveRole,
     email: form.email.trim(),
     first_name: form.first_name.trim(),
     last_name: form.last_name.trim(),
@@ -277,10 +292,11 @@ function onSubmit() {
       const split = splitProfessionalId(form.rpps || '');
       if (split.rpps) payload.rpps = split.rpps;
       if (split.adeli) payload.adeli = split.adeli;
+      payload.gender = form.gender.trim();
     } else {
       payload.rpps = (form.rpps || '').replace(/\s/g, '');
+      if (form.emploi?.trim()) payload.emploi = form.emploi.trim();
     }
-    if (form.emploi?.trim()) payload.emploi = form.emploi.trim();
   }
   if (props.role === 'nurse') {
     const split = splitProfessionalId(form.rpps || '');

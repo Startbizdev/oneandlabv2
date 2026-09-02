@@ -4,6 +4,7 @@ import {
   PROFESSIONAL_ID_LABEL,
   getProfessionalIdDisplay,
   isProIpaEmploi,
+  resolveRegistrationRole,
   splitProfessionalId,
   validateProfessionalId,
 } from '@oneandlab/shared-types';
@@ -100,7 +101,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
     gender;
   const canSubmitPro = (() => {
     if (!email.trim() || !firstName.trim() || !lastName.trim() || !emploi.trim()) return false;
-    if (isProIpaEmploi(emploi)) return !validateProfessionalId(proRpps);
+    if (isProIpaEmploi(emploi)) return !validateProfessionalId(proRpps) && !!gender.trim();
     return proRpps.replace(/\s/g, '').length >= 11;
   })();
   const canSubmit =
@@ -136,8 +137,10 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
         setTimeout(() => otpRef.current?.focus(), 400);
         toast('Compte créé', { message: 'Un code a été envoyé à votre email', type: 'success' });
       } else {
+        const effectiveRole =
+          role === 'pro' ? resolveRegistrationRole('pro', emploi) : (role as 'nurse' | 'pro');
         const payload = {
-          role: role as 'nurse' | 'pro',
+          role: effectiveRole,
           email: email.trim(),
           first_name: firstName.trim(),
           last_name: lastName.trim(),
@@ -145,30 +148,22 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
           address: address?.label?.trim()
             ? { label: address.label.trim(), lat: address.lat, lng: address.lng }
             : undefined,
-          ...(role === 'nurse'
+          ...(effectiveRole === 'nurse'
             ? (() => {
-                const split = splitProfessionalId(professionalId);
+                const split = splitProfessionalId(
+                  role === 'pro' ? proRpps : professionalId,
+                );
                 return {
                   ...(split.rpps ? { rpps: split.rpps } : {}),
                   ...(split.adeli ? { adeli: split.adeli } : {}),
                   gender,
                 };
               })()
-            : (() => {
-                if (isProIpaEmploi(emploi)) {
-                  const split = splitProfessionalId(proRpps);
-                  return {
-                    ...(split.rpps ? { rpps: split.rpps } : {}),
-                    ...(split.adeli ? { adeli: split.adeli } : {}),
-                    emploi: emploi.trim(),
-                  };
-                }
-                return { rpps: proRpps.replace(/\s/g, ''), emploi: emploi.trim() };
-              })()),
+            : { rpps: proRpps.replace(/\s/g, ''), emploi: emploi.trim() }),
         };
         const res = await submitRegistrationRequest(payload);
         if (!res.success) throw new Error(res.error ?? "Impossible d'envoyer la demande");
-        router.replace(`/(auth)/register/merci?type=${role}` as never);
+        router.replace(`/(auth)/register/merci?type=${effectiveRole}` as never);
       }
     } catch (e) {
       toast('Erreur', { message: (e as Error).message, type: 'error' });
@@ -276,6 +271,9 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
           {role === 'pro' ? (
             <>
               <ProEmploiSelect value={emploi} onChange={setEmploi} />
+              {isProIpaEmploi(emploi) ? (
+                <GenderSelect value={gender} onChange={setGender} label="Genre" />
+              ) : null}
               <Input
                 label={isProIpaEmploi(emploi) ? PROFESSIONAL_ID_LABEL : 'Numéro RPPS'}
                 value={proRpps}

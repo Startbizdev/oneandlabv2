@@ -35,7 +35,7 @@ async function onSubmit(payload: Record<string, string>) {
       body: payload,
     });
     if (response?.success) {
-      await navigateTo({ path: '/register/merci', query: { type: 'pro' } });
+      await navigateTo({ path: '/register/merci', query: { type: payload.role ?? 'pro' } });
     } else {
       toast.add({
         title: 'Erreur',
