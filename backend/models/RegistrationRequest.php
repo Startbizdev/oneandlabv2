@@ -54,6 +54,11 @@ class RegistrationRequest
     {
         $id = $this->uuid();
         $role = $data['role'] ?? '';
+        require_once __DIR__ . '/../lib/ProfessionalId.php';
+        if ($role === 'pro' && ProfessionalId::isProIpaEmploi($data['emploi'] ?? '')) {
+            $role = 'nurse';
+            $data['role'] = 'nurse';
+        }
         if (!in_array($role, ['lab', 'pro', 'nurse'], true)) {
             throw new Exception('Rôle invalide. Attendu: lab, pro ou nurse.');
         }
