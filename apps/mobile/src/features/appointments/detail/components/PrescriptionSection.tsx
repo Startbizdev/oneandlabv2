@@ -10,6 +10,7 @@ interface Props {
   onDocumentsChanged?: () => void | Promise<void>;
   initialPrescriptionText?: string;
   onEditPatient?: () => void;
+  embedded?: boolean;
 }
 
 export function PrescriptionSection({
@@ -20,6 +21,7 @@ export function PrescriptionSection({
   onDocumentsChanged,
   initialPrescriptionText,
   onEditPatient,
+  embedded = false,
 }: Props) {
   if (role !== 'pro' && role !== 'nurse') return null;
 
@@ -34,6 +36,7 @@ export function PrescriptionSection({
       initialText={initialPrescriptionText}
       prescriptionKind={prescriptionKind}
       onEditPatient={onEditPatient}
+      embedded={embedded}
     />
   );
 }

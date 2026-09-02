@@ -32,6 +32,10 @@ export default function NurseLayout() {
         name="appointment/[id]/exchange"
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
+      <Stack.Screen
+        name="appointment/[id]/prescription"
+        options={{ title: "Prescription d'actes infirmiers", animation: 'slide_from_right' }}
+      />
       <Stack.Screen name="appointment/[id]/edit" options={{ title: 'Reprendre le RDV' }} />
       <Stack.Screen name="reviews" options={{
         title: 'Mes avis',
