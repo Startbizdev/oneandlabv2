@@ -3,7 +3,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../../middleware/RoleMiddleware.php';
-require_once __DIR__ . '/../../../models/Notification.php';
+require_once __DIR__ . '/../../../lib/NotificationService.php';
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 
@@ -116,7 +116,7 @@ $campaignId = sprintf(
     random_int(0, 0xffff)
 );
 
-$notificationModel = new Notification();
+$notificationService = new NotificationService();
 $sentCount = 0;
 $metadata = [
     'campaign_id' => $campaignId,
@@ -131,7 +131,7 @@ if ($targetType === 'role') {
 
 foreach ($userIds as $recipientId) {
     try {
-        $notificationModel->create(
+        $notificationService->createNotification(
             $recipientId,
             'marketing',
             $title,

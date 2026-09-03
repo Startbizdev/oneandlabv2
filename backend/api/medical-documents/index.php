@@ -370,7 +370,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         } else {
             // Vérifier les permissions (inclure relative_id pour documents proche)
             $stmt = $db->prepare('
-                SELECT patient_id, relative_id, assigned_to, assigned_nurse_id, assigned_lab_id, created_by
+                SELECT patient_id, relative_id, assigned_to, assigned_nurse_id, assigned_lab_id, created_by, created_by_role
                 FROM appointments
                 WHERE id = ?
             ');
@@ -655,8 +655,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     error_log('Erreur notification/email résultats: ' . $e->getMessage());
                 }
             }
-            $nurseId = $appointment['assigned_nurse_id'] ?? null;
-            if ($nurseId) {
+            // Infirmiers concernés : assigné, créateur du RDV (bilan sanguin), créateur du dossier patient
+            $nurseIds = [];
+            $assignedNurseId = (string) ($appointment['assigned_nurse_id'] ?? '');
+            if ($assignedNurseId !== '') {
+                $nurseIds[$assignedNurseId] = true;
+            }
+            $aptCreatorId = (string) ($appointment['created_by'] ?? '');
+            $aptCreatorRole = (string) ($appointment['created_by_role'] ?? '');
+            if ($aptCreatorId !== '' && $aptCreatorRole === 'nurse') {
+                $nurseIds[$aptCreatorId] = true;
+            }
+            if ($patientId) {
+                $patNurseStmt = $db->prepare('
+                    SELECT p.created_by, pr.role AS creator_role
+                    FROM profiles p
+                    LEFT JOIN profiles pr ON pr.id = p.created_by
+                    WHERE p.id = ?
+                    LIMIT 1
+                ');
+                $patNurseStmt->execute([$patientId]);
+                $patNurseRow = $patNurseStmt->fetch(PDO::FETCH_ASSOC);
+                if ($patNurseRow && ($patNurseRow['creator_role'] ?? '') === 'nurse' && !empty($patNurseRow['created_by'])) {
+                    $nurseIds[(string) $patNurseRow['created_by']] = true;
+                }
+            }
+            if ($nurseIds !== []) {
                 try {
                     $notificationService = new NotificationService();
                     $patientLabel = 'Patient';
@@ -672,24 +696,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                             $patientLabel = trim($fn . ' ' . $ln) ?: 'Patient';
                         }
                     }
-                    $notificationService->createNotification(
-                        $nurseId,
-                        'results_available',
-                        'Résultats disponibles',
-                        'De nouveaux résultats d’analyses sont disponibles pour le rendez-vous de ' . $patientLabel . '.',
-                        [
-                            'appointment_id' => $appointmentId,
-                            'medical_document_id' => $id,
-                        ]
-                    );
+                    $uploaderId = (string) ($user['user_id'] ?? '');
+                    foreach (array_keys($nurseIds) as $nurseId) {
+                        if ($nurseId === $uploaderId) {
+                            continue;
+                        }
+                        $notificationService->createNotification(
+                            $nurseId,
+                            'results_available',
+                            'Résultats disponibles',
+                            'De nouveaux résultats d’analyses sont disponibles pour le rendez-vous de ' . $patientLabel . '.',
+                            [
+                                'appointment_id' => $appointmentId,
+                                'medical_document_id' => $id,
+                            ]
+                        );
+                    }
                 } catch (Exception $e) {
                     error_log('Erreur notification infirmier résultats: ' . $e->getMessage());
                 }
             }
 
             $proIds = [];
-            $aptCreatorId = (string) ($appointment['created_by'] ?? '');
-            $aptCreatorRole = (string) ($appointment['created_by_role'] ?? '');
             if ($aptCreatorId !== '' && $aptCreatorRole === 'pro') {
                 $proIds[$aptCreatorId] = true;
             }

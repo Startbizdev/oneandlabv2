@@ -4,7 +4,7 @@
     <AppPageHeader
       :edge-bleed="false"
       title="Notifications"
-      description="Envoyez des notifications dans les cloches des espaces (lab, patient, infirmier, super admin). Choisissez à qui envoyer pour du marketing ou des tests."
+      description="Envoyez des notifications dans les cloches et en push mobile (iOS/Android) des espaces lab, patient, infirmier, pro, etc. Choisissez à qui envoyer pour du marketing ou des tests."
     />
     </template>
 
