@@ -296,18 +296,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $sql .= " AND a.type = 'blood_test' AND a.created_by = ?";
                 $params[] = $userId;
             } elseif ($nurseSegment === 'en_attente') {
-                $sql .= " AND a.type = 'nursing' AND a.status = 'pending'
-                    AND a.assigned_nurse_id IS NULL
-                    AND " . PendingOfferExpiry::sqlCreatedWithinTtl('a') . "
-                    AND EXISTS (SELECT 1 FROM appointment_offers o2 WHERE o2.appointment_id = a.id AND o2.profile_id = ?)";
+                // Soins proposés à accepter + bilans sanguins créés par l’infirmier encore en attente
+                $sql .= " AND (
+                    (a.type = 'nursing' AND a.status = 'pending'
+                        AND a.assigned_nurse_id IS NULL
+                        AND " . PendingOfferExpiry::sqlCreatedWithinTtl('a') . "
+                        AND EXISTS (SELECT 1 FROM appointment_offers o2 WHERE o2.appointment_id = a.id AND o2.profile_id = ?))
+                    OR (a.type = 'blood_test' AND a.created_by = ? AND a.status = 'pending')
+                )";
+                $params[] = $userId;
                 $params[] = $userId;
             } elseif ($nurseSegment === 'acceptes') {
                 $parisStart = new DateTime('today', new DateTimeZone('Europe/Paris'));
                 $parisStart->setTimezone(new DateTimeZone('UTC'));
-                $sql .= " AND a.type = 'nursing' AND a.assigned_nurse_id = ? AND a.status IN ('confirmed','inProgress','planned')
-                    AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?)";
+                $parisStartStr = $parisStart->format('Y-m-d H:i:s');
+                // Soins assignés + bilans sanguins créés par l’infirmier (confirmés / en cours)
+                $sql .= " AND (
+                    (a.type = 'nursing' AND a.assigned_nurse_id = ? AND a.status IN ('confirmed','inProgress','planned')
+                        AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?))
+                    OR (a.type = 'blood_test' AND a.created_by = ? AND a.status IN ('confirmed','inProgress','planned')
+                        AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?))
+                )";
                 $params[] = $userId;
-                $params[] = $parisStart->format('Y-m-d H:i:s');
+                $params[] = $parisStartStr;
+                $params[] = $userId;
+                $params[] = $parisStartStr;
             } elseif ($nurseSegment === 'historique') {
                 $parisStart = new DateTime('today', new DateTimeZone('Europe/Paris'));
                 $parisStart->setTimezone(new DateTimeZone('UTC'));
