@@ -20,7 +20,7 @@ header('Access-Control-Allow-Credentials: true');
 /**
  * PATCH créneau passage infirmier (form_data + scheduled_at) — pas une refonte admin complète.
  */
-function appointment_is_nurse_passage_schedule_patch(array $input): bool
+function appointment_is_schedule_only_patch(array $input): bool
 {
     if (isset($input['address']) || isset($input['status']) || isset($input['category_id'])) {
         return false;
@@ -32,6 +32,24 @@ function appointment_is_nurse_passage_schedule_patch(array $input): bool
     }
 
     return isset($input['form_data']) || isset($input['scheduled_at']);
+}
+
+/** @deprecated alias */
+function appointment_is_nurse_passage_schedule_patch(array $input): bool
+{
+    return appointment_is_schedule_only_patch($input);
+}
+
+function appointment_patient_owns_pending(PDO $db, string $appointmentId, string $patientId): bool
+{
+    $stmt = $db->prepare("
+        SELECT id FROM appointments
+        WHERE id = ? AND patient_id = ? AND status = 'pending'
+        LIMIT 1
+    ");
+    $stmt->execute([$appointmentId, $patientId]);
+
+    return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
 function appointment_nurse_assigned_to_nursing(PDO $db, string $appointmentId, string $nurseId): bool
@@ -413,7 +431,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         if ($isFullUpdate) {
             $allowNursePassagePatch = false;
-            if (($user['role'] ?? '') === 'nurse' && appointment_is_nurse_passage_schedule_patch($input)) {
+            $allowPatientSchedulePatch = false;
+            if (($user['role'] ?? '') === 'nurse' && appointment_is_schedule_only_patch($input)) {
                 $config = require __DIR__ . '/../../config/database.php';
                 $dsn = sprintf(
                     'mysql:host=%s;port=%d;dbname=%s;charset=%s',
@@ -429,7 +448,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     (string) ($user['user_id'] ?? ''),
                 );
             }
-            if (!$allowNursePassagePatch) {
+            if (($user['role'] ?? '') === 'patient' && appointment_is_schedule_only_patch($input)) {
+                $config = require __DIR__ . '/../../config/database.php';
+                $dsn = sprintf(
+                    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+                    $config['host'],
+                    $config['port'],
+                    $config['database'],
+                    $config['charset'],
+                );
+                $dbPatientPatch = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
+                $allowPatientSchedulePatch = appointment_patient_owns_pending(
+                    $dbPatientPatch,
+                    $id,
+                    (string) ($user['user_id'] ?? ''),
+                );
+            }
+            if (!$allowNursePassagePatch && !$allowPatientSchedulePatch) {
                 require_once __DIR__ . '/../../middleware/RoleMiddleware.php';
                 $roleMiddleware = new RoleMiddleware();
                 $roleMiddleware->handle($user, ['super_admin']);

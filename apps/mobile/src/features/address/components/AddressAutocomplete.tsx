@@ -2,9 +2,10 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Keyboard, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { MapPin, X } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
+import { useFormScroll } from '@/components/layout/form-scroll-context';
 import { searchAddresses, type AddressSuggestion } from '../api/address.service';
 import type { AddressPayload } from '@/features/appointments/form/types';
 import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
@@ -35,6 +36,36 @@ export function AddressAutocomplete({
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<View>(null);
+  const formScroll = useFormScroll();
+
+  const scrollSuggestionsIntoView = useCallback(() => {
+    const scroll = formScroll?.scrollRef.current;
+    const wrapper = wrapperRef.current;
+    if (!scroll || !wrapper) return;
+
+    wrapper.measureInWindow((_x, y, _w, h) => {
+      const windowH = Dimensions.get('window').height;
+      const keyboardH = Keyboard.metrics()?.height ?? (Platform.OS === 'ios' ? 320 : 280);
+      const visibleBottom = windowH - keyboardH - 24;
+      const blockBottom = y + h;
+      if (blockBottom > visibleBottom) {
+        const delta = blockBottom - visibleBottom;
+        scroll.scrollTo({
+          y: (formScroll.scrollYRef.current ?? 0) + delta,
+          animated: true,
+        });
+      }
+    });
+  }, [formScroll]);
+
+  useEffect(() => {
+    if (!open || suggestions.length === 0) return;
+    const frame = requestAnimationFrame(() => {
+      scrollSuggestionsIntoView();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, suggestions.length, scrollSuggestionsIntoView]);
 
   useEffect(() => {
     if (value?.label) setQuery(value.label);
@@ -85,7 +116,7 @@ export function AddressAutocomplete({
   };
 
   return (
-    <View style={styles.wrapper}>
+    <View ref={wrapperRef} style={styles.wrapper} collapsable={false}>
       <View style={styles.inputWrap}>
         <Input
           label={label}

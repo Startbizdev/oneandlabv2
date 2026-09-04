@@ -63,6 +63,24 @@
             </div>
           </div>
           <div
+            v-if="canPatientEditSchedule(appointment)"
+            :class="kvRow"
+          >
+            <div :class="kvLabel">Date et créneau</div>
+            <div class="min-w-0">
+              <UButton
+                color="primary"
+                variant="soft"
+                size="sm"
+                class="w-full sm:w-auto justify-center"
+                icon="i-lucide-calendar-clock"
+                @click="showEditScheduleModal = true"
+              >
+                Modifier date et créneau
+              </UButton>
+            </div>
+          </div>
+          <div
             v-if="appointmentsToCancelForPatient.length > 0"
             :class="kvRow"
           >
@@ -327,6 +345,13 @@
       </template>
     </AppointmentDetailPage>
 
+    <PatientEditScheduleModal
+      :open="showEditScheduleModal"
+      :appointment="appointment"
+      @close="showEditScheduleModal = false"
+      @saved="onScheduleSaved"
+    />
+
     <AlertModal
       v-model="showCancelModal"
       title="Confirmer l'annulation"
@@ -417,6 +442,17 @@ const reviewHasReviewed = ref<Record<string, boolean>>({});
 const submittingReview = ref(false);
 const canceling = ref(false);
 const showCancelModal = ref(false);
+const showEditScheduleModal = ref(false);
+
+function canPatientEditSchedule(apt: any) {
+  return !!apt && String(apt.status ?? '').toLowerCase() === 'pending';
+}
+
+async function onScheduleSaved() {
+  showEditScheduleModal.value = false;
+  toast.add({ title: 'Date et créneau mis à jour', color: 'green' });
+  await detailRef.value?.loadAppointment?.(undefined, { silent: true });
+}
 
 const reviewForms = reactive<Record<string, { rating: number; comment: string }>>({});
 
