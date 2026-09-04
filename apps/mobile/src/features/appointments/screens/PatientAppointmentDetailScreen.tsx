@@ -102,6 +102,8 @@ export function PatientAppointmentDetailScreen() {
 
   const { batchSorted, isMultiBatch, canceled, cancellableForPatient } = s;
   const terminal = getAppointmentSidebarTerminalEmpty(primary.status);
+  const canEditSchedule =
+    !canceled && String(primary.status ?? '').toLowerCase() === 'pending';
 
   return (
     <>
@@ -147,6 +149,10 @@ export function PatientAppointmentDetailScreen() {
                   batch={batchSorted}
                   canceled={canceled}
                   cancelCount={cancellableForPatient.length}
+                  canEditSchedule={canEditSchedule}
+                  onEditSchedule={() =>
+                    router.push(`/(patient)/appointment/${id}/edit-schedule` as never)
+                  }
                   onCancel={() => setCancelOpen(true)}
                 />
               </View>

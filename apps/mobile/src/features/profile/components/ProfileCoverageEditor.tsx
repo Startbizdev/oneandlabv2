@@ -283,7 +283,8 @@ export function ProfileCoverageEditor({
             height={mapHeight}
             readOnly={!editing}
             largeHandles={editing}
-            showHint={editing}
+            showSummary={false}
+            showHint={false}
             onHalfSideKmChange={editing ? setDraftHalfSide : setHalfSideKm}
             onBoundsChange={editing ? setDraftBounds : handleBoundsChange}
             onVerticesChange={handleVerticesChange}

@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useMemo, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { getAppColors } from '@/theme/colors';
 import { radius, spacing, AppText } from '@/theme';
@@ -116,12 +116,21 @@ function toBounds(vs){
     vertices: vs
   };
 }
+var postRaf = 0;
 function post(type, vs){
-  if(window.ReactNativeWebView){
-    window.ReactNativeWebView.postMessage(JSON.stringify({
-      type: type, halfSideKm: maxReach(vs), bounds: toBounds(vs), vertices: vs
-    }));
+  if(!window.ReactNativeWebView) return;
+  var payload = JSON.stringify({
+    type: type, halfSideKm: maxReach(vs), bounds: toBounds(vs), vertices: vs
+  });
+  if(type === 'boundsChanged'){
+    if(postRaf) cancelAnimationFrame(postRaf);
+    postRaf = requestAnimationFrame(function(){
+      postRaf = 0;
+      window.ReactNativeWebView.postMessage(payload);
+    });
+    return;
   }
+  window.ReactNativeWebView.postMessage(payload);
 }
 var vertices = ${vertsJson};
 var map = L.map('map',{zoomControl:true,attributionControl:true}).setView([center.lat,center.lng],${mapZoom});
@@ -142,6 +151,7 @@ if(!readOnly){
   vertices.forEach(function(v, idx){
     var icon = L.divIcon({className:'', html:'<div class="handle"></div>', iconSize:[${handlePx},${handlePx}], iconAnchor:[${handlePx / 2},${handlePx / 2}]});
     var m = L.marker([v.lat,v.lng],{icon:icon, draggable:true, zIndexOffset:1000}).addTo(map);
+    m.on('dragstart', function(){ map.dragging.disable(); map.touchZoom.disable(); });
     m.on('drag', function(){
       var c = clampVertex(m.getLatLng());
       m.setLatLng([c.lat,c.lng]);
@@ -150,6 +160,8 @@ if(!readOnly){
       post('boundsChanged', vertices);
     });
     m.on('dragend', function(){
+      map.dragging.enable();
+      map.touchZoom.enable();
       var c = clampVertex(m.getLatLng());
       vertices[idx] = c;
       applyVerts(vertices);
@@ -180,17 +192,24 @@ export function CoverageSquareMapLive({
 }: Props) {
   const styles = useThemedStyles(buildStyles, 'CoverageSquareMapLive');
   const sessionVertices = useRef<CoverageVertex[] | null>(null);
-  const center = { lat, lng };
-  const initialVertices = ensureSixVertices(center, verticesProp ?? null, halfSideKm);
-  if (readOnly) {
-    sessionVertices.current = initialVertices;
-  }
+  const [mapReady, setMapReady] = useState(false);
+  const center = useMemo(() => ({ lat, lng }), [lat, lng]);
+
+  /** Ne regénère le HTML qu’au changement de centre / mode — pas à chaque drag (évite le flash WebView). */
+  const mapInitKey = useMemo(
+    () =>
+      `${lat.toFixed(6)}|${lng.toFixed(6)}|${readOnly ? 1 : 0}|${largeHandles ? 1 : 0}|${maxHalfSideKm}`,
+    [lat, lng, readOnly, largeHandles, maxHalfSideKm],
+  );
+
+  const readOnlyVertsKey = readOnly
+    ? `${JSON.stringify(verticesProp ?? null)}|${halfSideKm}`
+    : '';
 
   const html = useMemo(() => {
     const colors = getAppColors();
-    const verts = readOnly
-      ? ensureSixVertices(center, verticesProp ?? null, halfSideKm)
-      : (sessionVertices.current ?? initialVertices);
+    const verts = ensureSixVertices(center, verticesProp ?? null, halfSideKm);
+    sessionVertices.current = verts;
     const mapZoom = zoomForCoverageHalfSideKm(maxVertexDistanceKm(center, verts));
     return buildInteractiveMapHtml(
       lat,
@@ -203,34 +222,56 @@ export function CoverageSquareMapLive({
       largeHandles,
       mapZoom,
     );
-  }, [lat, lng, maxHalfSideKm, readOnly, largeHandles, halfSideKm, verticesProp]);
+    // readOnlyVertsKey : preview seulement ; mapInitKey : (re)montage éditeur
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapInitKey, readOnlyVertsKey]);
 
-  const displayVerts = verticesProp?.length === COVERAGE_VERTEX_COUNT ? verticesProp : initialVertices;
-  const areaLabel = useMemo(() => Math.round(polygonAreaKm2(displayVerts)), [displayVerts]);
-  const reachLabel = Math.round(maxVertexDistanceKm(center, displayVerts));
+  const webViewKey = `${mapInitKey}|${readOnlyVertsKey}`;
+
+  useEffect(() => {
+    setMapReady(false);
+  }, [webViewKey]);
+
+  const liveVerts = useMemo(() => {
+    if (verticesProp?.length === COVERAGE_VERTEX_COUNT) return verticesProp;
+    return ensureSixVertices(center, verticesProp ?? null, halfSideKm);
+  }, [verticesProp, center, halfSideKm]);
+  const areaLabel = useMemo(() => Math.round(polygonAreaKm2(liveVerts)), [liveVerts]);
+  const reachLabel = Math.round(maxVertexDistanceKm(center, liveVerts));
 
   return (
     <View style={styles.wrap}>
       <WebView
+        key={webViewKey}
         source={{ html }}
-        style={[styles.webview, { height }]}
+        style={[styles.webview, { height }, !mapReady ? styles.webviewLoading : null]}
         scrollEnabled={false}
         bounces={false}
         overScrollMode="never"
         originWhitelist={['*']}
         javaScriptEnabled
         domStorageEnabled
+        androidLayerType={Platform.OS === 'android' ? 'hardware' : undefined}
+        setSupportMultipleWindows={false}
         onMessage={(e) => {
           try {
             const data = JSON.parse(e.nativeEvent.data) as CoverageSquareMapMessage;
+            if (data.type === 'ready') {
+              setMapReady(true);
+            }
             if (data.vertices) {
               sessionVertices.current = data.vertices;
               onVerticesChange?.(data.vertices);
             }
-            if (data.halfSideKm != null) onHalfSideKmChange?.(data.halfSideKm);
-            if (data.bounds) onBoundsChange?.(data.bounds);
-            if (data.type === 'dragEnd' && data.halfSideKm != null && data.bounds && data.vertices) {
-              onDragEnd?.(data.halfSideKm, data.bounds, data.vertices);
+            if (data.type === 'boundsChanged' && data.bounds) {
+              onBoundsChange?.(data.bounds);
+            }
+            if (data.type === 'dragEnd') {
+              if (data.bounds) onBoundsChange?.(data.bounds);
+              if (data.halfSideKm != null) onHalfSideKmChange?.(data.halfSideKm);
+              if (data.halfSideKm != null && data.bounds && data.vertices) {
+                onDragEnd?.(data.halfSideKm, data.bounds, data.vertices);
+              }
             }
           } catch {
             /* ignore */
@@ -262,6 +303,9 @@ function buildStyles(c: AppColors) {
       borderWidth: 1,
       borderColor: c.border,
       backgroundColor: c.surfaceAlt,
+    },
+    webviewLoading: {
+      opacity: 0.01,
     },
     summary: {
       fontFamily: fontFamily.regular,
