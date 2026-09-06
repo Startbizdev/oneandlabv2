@@ -52,7 +52,7 @@ export function LabBrandPreferenceStep({
         style={[styles.option, selectedMode === 'brand_choice' && styles.optionSelected]}
         onPress={() => onModeChange('brand_choice')}
       >
-        <AppText style={styles.optionTitle}>Choisir une marque</AppText>
+        <AppText style={styles.optionTitle}>Choisissez votre labo</AppText>
         <AppText style={styles.optionHint}>
           Sélectionnez un réseau (Biogroup, Cerballiance, etc.). Notre équipe vous contactera.
         </AppText>
@@ -61,9 +61,9 @@ export function LabBrandPreferenceStep({
       {selectedMode === 'brand_choice' ? (
         <View style={styles.gridWrap}>
           {brandsQ.isLoading ? (
-            <AppText style={styles.muted}>Chargement des marques…</AppText>
+            <AppText style={styles.muted}>Chargement des laboratoires…</AppText>
           ) : brandsQ.isError ? (
-            <AppText style={[styles.muted, { color: c.error }]}>Impossible de charger les marques.</AppText>
+            <AppText style={[styles.muted, { color: c.error }]}>Impossible de charger les laboratoires.</AppText>
           ) : (
             <View style={styles.grid}>
               {(brandsQ.data ?? []).map((brand) => {

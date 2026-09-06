@@ -49,7 +49,7 @@ export function validateLabPreferenceBeforeSubmit(
     return 'Indiquez comment vous souhaitez être pris en charge par un laboratoire.';
   }
   if (mode === 'brand_choice' && (!brandId || String(brandId).trim() === '')) {
-    return 'Choisissez une marque de laboratoire.';
+    return 'Choisissez votre labo.';
   }
   return null;
 }

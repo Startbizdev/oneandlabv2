@@ -42,7 +42,7 @@
         >
           <UIcon name="i-lucide-building-2" class="mt-0.5 h-5 w-5 shrink-0 text-primary-500" />
           <div>
-            <p class="font-medium text-gray-900 dark:text-white">Choisir une marque de laboratoire</p>
+            <p class="font-medium text-gray-900 dark:text-white">Choisissez votre labo</p>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Sélectionnez un réseau (Biogroup, Cerballiance, etc.). Notre équipe vous contactera pour organiser le prélèvement.
             </p>
@@ -52,7 +52,7 @@
 
       <div v-if="mode === 'brand_choice'" class="mt-6">
         <p class="mb-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          Marques disponibles
+          Laboratoires disponibles
         </p>
 
         <div v-if="loading" class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
@@ -169,10 +169,10 @@ onMounted(async () => {
     if (res?.success && Array.isArray(res.data)) {
       brands.value = res.data;
     } else {
-      loadError.value = res?.error || 'Impossible de charger les marques.';
+      loadError.value = res?.error || 'Impossible de charger les laboratoires.';
     }
   } catch (e) {
-    loadError.value = e instanceof Error ? e.message : 'Impossible de charger les marques.';
+    loadError.value = e instanceof Error ? e.message : 'Impossible de charger les laboratoires.';
   } finally {
     loading.value = false;
   }
