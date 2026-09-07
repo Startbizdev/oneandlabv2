@@ -8,6 +8,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { fetchAppointment, updateAppointment } from '@/features/appointments/api/appointments.service';
+import { isAppointmentDetailBlocked } from '@/features/appointments/hooks/appointment-detail-result';
 import {
   availabilityMaxHour,
   clampAvailabilityRange,
@@ -59,9 +60,9 @@ export function usePatientEditSchedule(appointmentId: string) {
   const qc = useQueryClient();
 
   const detailQ = useQuery({
-    queryKey: queryKeys.appointments.detail(appointmentId),
+    queryKey: queryKeys.appointments.patientEditSchedule(appointmentId),
     queryFn: async () => {
-      const res = await fetchAppointment(appointmentId);
+      const res = await fetchAppointment(appointmentId, { includeBatch: true });
       if (!res.success || !res.data) throw new Error(res.error ?? 'RDV introuvable');
       return res.data;
     },
@@ -96,11 +97,22 @@ export function usePatientEditSchedule(appointmentId: string) {
       };
       const res = await updateAppointment(appointmentId, { scheduled_at, form_data });
       if (!res.success) throw new Error(res.error ?? 'Enregistrement impossible');
-      return res.data;
+      return { scheduled_at, form_data };
     },
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: queryKeys.appointments.detail(appointmentId) });
-      await qc.invalidateQueries({ queryKey: ['appointments'] });
+    onSuccess: async (patch) => {
+      const detailKey = queryKeys.appointments.detail(appointmentId);
+      qc.setQueryData(detailKey, (prev: unknown) => {
+        if (!prev || isAppointmentDetailBlocked(prev) || typeof prev !== 'object' || !('id' in prev)) {
+          return prev;
+        }
+        return {
+          ...(prev as Appointment),
+          scheduled_at: patch.scheduled_at,
+          form_data: patch.form_data,
+        };
+      });
+      await qc.refetchQueries({ queryKey: detailKey, type: 'active' });
+      await qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
       toast('Date et créneau mis à jour', { type: 'success' });
       router.back();
     },

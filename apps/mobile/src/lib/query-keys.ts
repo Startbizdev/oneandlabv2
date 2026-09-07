@@ -9,6 +9,7 @@ export const queryKeys = {
     list: (filters: AppointmentListFilters) => ['appointments', 'list', filters] as const,
     infinite: (filters: AppointmentListFilters) => ['appointments', 'infinite', filters] as const,
     detail: (id: string) => ['appointments', 'detail', id] as const,
+    patientEditSchedule: (id: string) => ['appointments', 'detail', id, 'patient-edit-schedule'] as const,
     pendingOffers: (role: string) => ['appointments', 'pending-offers', role] as const,
     history: (id: string) => ['appointments', 'history', id] as const,
   },

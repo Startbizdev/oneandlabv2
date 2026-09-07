@@ -1,6 +1,6 @@
-import { createElement, useCallback, useEffect, useMemo } from 'react';
+import { createElement, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useNavigation, useRouter } from 'expo-router';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import type { Appointment } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
 import { HeaderBackButton } from '@/navigation/HeaderBackButton';
@@ -144,6 +144,19 @@ export function useAppointmentDetailScreen(
     needsPatientAvatarEnrichment,
     patientProfileQ,
   ]);
+
+  const detailFocusSkipRef = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (!id) return undefined;
+      if (detailFocusSkipRef.current) {
+        detailFocusSkipRef.current = false;
+        return undefined;
+      }
+      refreshAll();
+      return undefined;
+    }, [id, refreshAll]),
+  );
 
   const isRefreshing =
     detailQ.isRefetching ||
