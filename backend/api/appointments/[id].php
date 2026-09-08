@@ -34,6 +34,22 @@ function appointment_is_schedule_only_patch(array $input): bool
     return isset($input['form_data']) || isset($input['scheduled_at']);
 }
 
+/** Reprise RDV par l’infirmier assigné (date, créneau, adresse, type de soin) — sans recréer ni annuler. */
+function appointment_is_nurse_reschedule_patch(array $input): bool
+{
+    if (isset($input['status']) || isset($input['assigned_nurse_id']) || isset($input['assigned_lab_id'])) {
+        return false;
+    }
+    $allowed = ['form_data', 'scheduled_at', 'address', 'category_id'];
+    foreach (array_keys($input) as $key) {
+        if (!in_array($key, $allowed, true)) {
+            return false;
+        }
+    }
+
+    return isset($input['form_data']) || isset($input['scheduled_at']) || isset($input['address']);
+}
+
 /** @deprecated alias */
 function appointment_is_nurse_passage_schedule_patch(array $input): bool
 {
@@ -432,7 +448,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if ($isFullUpdate) {
             $allowNursePassagePatch = false;
             $allowPatientSchedulePatch = false;
-            if (($user['role'] ?? '') === 'nurse' && appointment_is_schedule_only_patch($input)) {
+            if (($user['role'] ?? '') === 'nurse' && appointment_is_nurse_reschedule_patch($input)) {
                 $config = require __DIR__ . '/../../config/database.php';
                 $dsn = sprintf(
                     'mysql:host=%s;port=%d;dbname=%s;charset=%s',

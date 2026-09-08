@@ -203,7 +203,7 @@ export function shouldShowNursePrescriptionScopeHelp(
   role: string | null | undefined,
   prescriptionKind: 'medical' | 'nursing' | null | undefined,
 ): boolean {
-  return role === 'nurse' && prescriptionKind === 'nursing';
+  return (role === 'nurse' || role === 'pro') && prescriptionKind === 'nursing';
 }
 
 /** Items accordéon Nuxt UI { label, content, value }. */

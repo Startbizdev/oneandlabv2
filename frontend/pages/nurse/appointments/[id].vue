@@ -4,6 +4,16 @@
     base-path="/nurse"
     :show-sidebar-actions-card="nurseSidebarActionsCardVisible"
   >
+    <template #prescriptionSection="{ appointment, documents, loadDocuments }">
+      <PrescriptionSection
+        v-if="appointment && !['canceled'].includes(appointment.status) && nurseCanGeneratePrescription"
+        :patient-id="appointment.patient_id"
+        :appointment="{ id: appointment.id }"
+        :documents="documents"
+        :load-documents="loadDocuments"
+        prescription-kind="nursing"
+      />
+    </template>
     <template #sidebarActions="{ appointment, loadAppointment }">
       <AppointmentDetailSidebarTerminalShell :status="appointment.status">
         <template #after>
@@ -152,9 +162,11 @@ import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailR
 import { nurseAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
 import { isBloodTestAppointment } from '~/utils/appointment-type-rules';
 import { isCarePhotoGalleryContext, canUploadCarePhotos } from '~/utils/care-photo-gallery-context';
+import { prescriptionGenerationEnabled } from '~/utils/prescription-access';
 
 const toast = useAppToast();
 const { user } = useAuth();
+const nurseCanGeneratePrescription = computed(() => prescriptionGenerationEnabled(user.value));
 const route = useRoute();
 
 function isAppointmentCanceled(status: unknown) {

@@ -243,7 +243,7 @@
                 <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                {{ choiceMode === 'cancel_and_new' ? 'Annuler l\'ancien et créer' : 'Créer le RDV' }}
+                {{ submitButtonLabel }}
               </button>
             </template>
           </div>
@@ -256,6 +256,7 @@
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api'
 import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot'
+import { buildReschedulePutPayload, nurseCanRescheduleInPlace } from '~/utils/build-reschedule-payload'
 
 const availabilityMinHours = AVAILABILITY_MIN_SPAN_HOURS
 
@@ -345,6 +346,18 @@ const patientPhone = computed(() => {
   const a = props.appointment
   if (!a) return ''
   return (a.relative?.phone ?? a.form_data?.phone ?? '')?.trim() || ''
+})
+
+const submitButtonLabel = computed(() => {
+  if (
+    choiceMode.value === 'cancel_and_new' &&
+    user.value?.role === 'nurse' &&
+    nurseCanRescheduleInPlace(props.appointment, user.value?.id)
+  ) {
+    return 'Enregistrer les modifications'
+  }
+  if (choiceMode.value === 'cancel_and_new') return 'Annuler l\'ancien et créer'
+  return 'Créer le RDV'
 })
 
 function formatTime(h: number) {
@@ -540,6 +553,46 @@ async function submit() {
   }
   saving.value = true
   try {
+    const uid = user.value?.id
+    const role = user.value?.role
+
+    if (
+      choiceMode.value === 'cancel_and_new' &&
+      role === 'nurse' &&
+      nurseCanRescheduleInPlace(a, uid)
+    ) {
+      const hour = form.availability_type === 'custom' ? Math.floor(availabilityRange.value[0]) : 9
+      const scheduledAt = form.scheduled_at ? `${form.scheduled_at} ${String(hour).padStart(2, '0')}:00:00` : undefined
+      const availabilityPayload =
+        form.availability_type === 'custom'
+          ? JSON.stringify({ type: 'custom', range: [availabilityRange.value[0], availabilityRange.value[1]] })
+          : JSON.stringify({ type: 'all_day' })
+      const addressPayload =
+        form.address?.label && form.address?.lat != null && form.address?.lng != null
+          ? { ...form.address, complement: form.address_complement || undefined }
+          : null
+      if (!addressPayload || !scheduledAt) {
+        toast.add({ title: 'Champs requis', description: 'Veuillez remplir la date et l\'adresse.', color: 'error' })
+        return
+      }
+      const putBody = buildReschedulePutPayload({
+        appointment: a,
+        form,
+        scheduledAt,
+        availabilityPayload,
+        addressPayload,
+      })
+      const updateRes = await apiFetch(`/appointments/${a.id}`, { method: 'PUT', body: putBody })
+      if (!updateRes?.success) {
+        toast.add({ title: 'Erreur', description: (updateRes as { error?: string })?.error || 'Impossible de modifier le rendez-vous', color: 'error' })
+        return
+      }
+      toast.add({ title: 'Rendez-vous mis à jour', description: 'Les modifications ont été enregistrées.', color: 'success' })
+      close()
+      emit('done', a.id as string)
+      return
+    }
+
     const createRes = await apiFetch('/appointments', {
       method: 'POST',
       body: { ...payload, ...staffConsentPayloadFields() },
@@ -550,7 +603,7 @@ async function submit() {
     }
     const newId = createRes.data.id as string
 
-    if (choiceMode.value === 'cancel_and_new') {
+    if (choiceMode.value === 'cancel_and_new' && role !== 'nurse') {
       const cancelRes = await apiFetch(`/appointments/${a.id}`, {
         method: 'PUT',
         body: { status: 'canceled', cancellation_reason: 'reschedule', cancellation_comment: 'Remplacé par un nouveau rendez-vous (reprise).' },

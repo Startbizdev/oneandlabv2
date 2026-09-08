@@ -21,6 +21,8 @@ import {
 import { isAvailabilityValid } from '../../form/utils/availability';
 import {
   buildReschedulePayload,
+  buildReschedulePutPayload,
+  nurseCanRescheduleInPlace,
   type RescheduleChoiceMode,
   type RescheduleFormValues,
 } from '../utils/build-reschedule-payload';
@@ -204,45 +206,76 @@ export function useRescheduleAppointment(opts: {
       }
 
       const labId = (user as { lab_id?: string } | null)?.lab_id ?? null;
-      const payload = buildReschedulePayload({
+      const buildCtx = {
         appointment: apt,
         form,
         role: opts.role,
         userId: user?.id ?? '',
         labId,
-      });
+      };
+
+      if (
+        choiceMode === 'cancel_and_new' &&
+        nurseCanRescheduleInPlace(apt, user?.id)
+      ) {
+        const putPayload = buildReschedulePutPayload(buildCtx);
+        if (!putPayload) throw new Error('Veuillez remplir la date et l’adresse.');
+        const updateRes = await updateAppointment(apt.id, putPayload);
+        if (!updateRes.success) {
+          throw new Error(updateRes.error ?? 'Impossible de modifier le rendez-vous');
+        }
+        return apt.id;
+      }
+
+      const payload = buildReschedulePayload(buildCtx);
       if (!payload) throw new Error('Veuillez remplir la date et l’adresse.');
 
-      if (choiceMode === 'cancel_and_new') {
+      const createRes = await createAppointment(payload);
+      if (!createRes.success || !createRes.data?.id) {
+        throw new Error(createRes.error ?? 'Impossible de créer le rendez-vous');
+      }
+      const newId = createRes.data.id;
+
+      if (choiceMode === 'cancel_and_new' && opts.role !== 'nurse') {
         const cancelRes = await updateAppointment(apt.id, {
           status: 'canceled',
           cancellation_reason: 'reschedule',
           cancellation_comment: 'Remplacé par un nouveau rendez-vous (reprise).',
         });
         if (!cancelRes.success) {
-          throw new Error(cancelRes.error ?? "Impossible d'annuler l'ancien rendez-vous");
+          throw new Error(
+            cancelRes.error ??
+              "Le nouveau RDV est créé, mais l'ancien n'a pas pu être annulé automatiquement.",
+          );
         }
       }
 
-      const createRes = await createAppointment(payload);
-      if (!createRes.success || !createRes.data?.id) {
-        throw new Error(createRes.error ?? 'Impossible de créer le rendez-vous');
-      }
-      return createRes.data.id;
+      return newId;
     },
-    onSuccess: (newId) => {
-      toast('Rendez-vous créé', { type: 'success' });
+    onSuccess: (resultId) => {
+      const inPlace = resultId === opts.appointmentId;
+      toast(inPlace ? 'Rendez-vous mis à jour' : 'Rendez-vous créé', { type: 'success' });
       void qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
       void qc.invalidateQueries({ queryKey: queryKeys.appointments.detail(opts.appointmentId) });
-      router.replace(`${opts.basePath}/appointment/${newId}` as never);
+      if (inPlace) {
+        void qc.invalidateQueries({ queryKey: queryKeys.appointments.detail(resultId) });
+      }
+      router.replace(`${opts.basePath}/appointment/${resultId}` as never);
     },
     onError: (e) => handleApiError(e, toast, 'rescheduleAppointment'),
   });
 
   const submitLabel = useMemo(() => {
+    if (
+      choiceMode === 'cancel_and_new' &&
+      apt &&
+      nurseCanRescheduleInPlace(apt, user?.id)
+    ) {
+      return 'Enregistrer les modifications';
+    }
     if (choiceMode === 'cancel_and_new') return "Annuler l'ancien et créer";
     return 'Créer le RDV';
-  }, [choiceMode]);
+  }, [choiceMode, apt, user?.id]);
 
   return {
     step,

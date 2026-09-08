@@ -52,44 +52,14 @@ export function formDataSliceForQuickAddedService(params: {
     ? defaultBookingSliceForCareCategory(params.careCategory)
     : {};
 
-  const addonLotNursing =
-    isNursingAppointment(params.serviceType) &&
-    params.priorSelectedServices.some((s) => isNursingAppointment(s.type));
-
-  let normalizedSlice = { ...params.slice };
-  let commonFromLot: Partial<BookingServiceFormSlice> = {};
-
-  if (addonLotNursing && params.priorFormDataByService) {
-    const nurses = params.priorSelectedServices.filter((s) => isNursingAppointment(s.type));
-    const firstId = nurses[0]?.id;
-    const fd = firstId ? params.priorFormDataByService[firstId] : undefined;
-    if (fd) {
-      commonFromLot = {
-        duration_days: fd.duration_days,
-        custom_days: fd.custom_days ?? null,
-        frequency: fd.frequency ?? '',
-        preferred_nurse_gender: fd.preferred_nurse_gender ?? 'any',
-      };
-    }
-    const {
-      duration_days: _dur,
-      custom_days: _cd,
-      frequency: _freq,
-      preferred_nurse_gender: _pn,
-      ...rest
-    } = normalizedSlice;
-    normalizedSlice = rest;
-  }
-
   return {
     ...def,
     ...categoryDefaults,
-    ...commonFromLot,
-    ...normalizedSlice,
-    care_options: { ...def.care_options, ...(normalizedSlice.care_options || {}) },
+    ...params.slice,
+    care_options: { ...def.care_options, ...(params.slice.care_options || {}) },
     availabilityRange:
-      normalizedSlice.availabilityRange !== undefined
-        ? normalizedSlice.availabilityRange
+      params.slice.availabilityRange !== undefined
+        ? params.slice.availabilityRange
         : def.availabilityRange,
   };
 }

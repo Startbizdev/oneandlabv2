@@ -29,7 +29,15 @@ export function DayAppointmentsSheet<T>({
 }: DayAppointmentsSheetProps<T>) {
   const styles = useThemedStyles(buildStyles);
   return (
-    <SheetModal visible={visible} onClose={onClose} title={title} subtitle={subtitle}>
+    <SheetModal
+      visible={visible}
+      onClose={onClose}
+      title={title}
+      subtitle={subtitle}
+      snapPoints={['85%']}
+      stackBehavior="push"
+      presentKey={title}
+    >
       {data.length === 0 ? (
         <View style={styles.emptyWrap}>{empty}</View>
       ) : (

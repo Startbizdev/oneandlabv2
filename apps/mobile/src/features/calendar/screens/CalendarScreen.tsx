@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -91,6 +91,8 @@ export function CalendarScreen({
   const listRole = listRoleProp ?? listRoleFromDetailPrefix(detailPathPrefix);
   const layout = useLayoutMetrics();
   const router = useRouter();
+  const scrollRef = useRef<ScrollView>(null);
+  const dayListAnchorY = useRef(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [cursor, setCursor] = useState(dayjs());
@@ -190,12 +192,26 @@ export function CalendarScreen({
     (typeFilter ? 1 : 0);
 
   const goPrevMonth = useCallback(() => {
-    setCursor((c) => c.subtract(1, 'month'));
-  }, []);
+    setCursor((c) => {
+      const next = c.subtract(1, 'month');
+      const monthKey = next.format('YYYY-MM');
+      if (!selectedDay.startsWith(monthKey)) {
+        setSelectedDay(next.format('YYYY-MM-DD'));
+      }
+      return next;
+    });
+  }, [selectedDay]);
 
   const goNextMonth = useCallback(() => {
-    setCursor((c) => c.add(1, 'month'));
-  }, []);
+    setCursor((c) => {
+      const next = c.add(1, 'month');
+      const monthKey = next.format('YYYY-MM');
+      if (!selectedDay.startsWith(monthKey)) {
+        setSelectedDay(next.format('YYYY-MM-DD'));
+      }
+      return next;
+    });
+  }, [selectedDay]);
 
   const monthSwipeGesture = useMemo(
     () =>
@@ -212,10 +228,19 @@ export function CalendarScreen({
     [goNextMonth, goPrevMonth],
   );
 
-  const openDaySheet = useCallback((dayKey: string) => {
-    setSelectedDay(dayKey);
-    setSheetOpen(true);
-  }, []);
+  const openDaySheet = useCallback(
+    (dayKey: string) => {
+      setSelectedDay(dayKey);
+      setSheetOpen(true);
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, dayListAnchorY.current - spacing[2]),
+          animated: true,
+        });
+      });
+    },
+    [],
+  );
   const closeSheet = useCallback(() => setSheetOpen(false), []);
 
   const renderDayItem = useCallback(
@@ -241,6 +266,7 @@ export function CalendarScreen({
   return (
     <View style={styles.container}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         collapsable={false}
         keyboardShouldPersistTaps="handled"
@@ -349,11 +375,33 @@ export function CalendarScreen({
               actions={<ChevronRight size={iconSize.xs} color={c.primary} strokeWidth={2.5} />}
             >
               <AppText style={styles.daySummaryText} numberOfLines={1}>
-                {dayjs(selectedDay).format('dddd D MMMM')} · {dayItems.length} RDV
+                {dayjs(selectedDay).format('dddd D MMMM')} · {dayDisplayRows.length} RDV
               </AppText>
             </Cluster>
           </Pressable>
         </Animated.View>
+
+        <View
+          onLayout={(e) => {
+            dayListAnchorY.current = e.nativeEvent.layout.y;
+          }}
+          style={styles.dayListSection}
+        >
+          {dayDisplayRows.length === 0 ? (
+            <EmptyState
+              title="Rien ce jour-là"
+              imageSource={EMPTY_RDV_IMAGE}
+              imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+              imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
+            />
+          ) : (
+            <View style={styles.dayList}>
+              {dayDisplayRows.map((row, index) => (
+                <View key={dayRowKey(row)}>{renderDayItem(row, index)}</View>
+              ))}
+            </View>
+          )}
+        </View>
       </ScrollView>
 
       <DayAppointmentsSheet
@@ -482,6 +530,12 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.sm,
     color: c.primary,
     textTransform: 'capitalize' as const,
+  },
+  dayListSection: {
+    gap: spacing[2],
+  },
+  dayList: {
+    gap: spacing[2],
   },
 };
 }

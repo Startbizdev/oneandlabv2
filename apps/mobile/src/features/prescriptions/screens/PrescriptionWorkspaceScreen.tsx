@@ -38,6 +38,7 @@ import {
 } from '../hooks/use-prescription-patient-picker-infinite';
 import { usePrescriptionsHistoryInfinite } from '../hooks/use-prescriptions-history-infinite';
 import { fetchUser } from '@/features/profile/api/profile.service';
+import { resolvePrescriptionKindForRole } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
 import { prescriptionGenerationEnabled } from '../utils/prescription-access';
 import {
@@ -83,7 +84,7 @@ export function PrescriptionWorkspaceScreen({
   const styles = useThemedStyles(buildStyles, 'PrescriptionWorkspaceScreen');
   const sceneInsets = useTabSceneInsets();
   const scrollConfig = buildTabSceneScrollConfig(sceneInsets, embedded ? styles.embeddedContent : styles.content);
-  const prescriptionKind = roleBase === 'nurse' ? 'nursing' : 'medical';
+  const prescriptionKind = resolvePrescriptionKindForRole(roleBase === 'nurse' ? 'nurse' : 'pro');
   const router = useRouter();
   const qc = useQueryClient();
   const { show: toast } = useToast();

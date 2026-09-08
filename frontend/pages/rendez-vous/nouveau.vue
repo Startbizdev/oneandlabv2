@@ -235,7 +235,7 @@ import {
   type SelectedServiceInput,
 } from '~/utils/dashboard-unified-rdv';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
-import { filterStaffOnlyCareCategoriesForPatient, formSliceNeedsVipPayment, bloodTestNeedsLabPreferenceStep, applyLabPreferenceToBloodPayloads } from '@oneandlab/shared-utils';
+import { filterStaffOnlyCareCategoriesForPatient, formSliceNeedsVipPayment, bloodTestNeedsLabPreferenceStep, applyLabPreferenceToBloodPayloads, mergeSchedulingMetaIntoItemCareOptions, servicesRequiringSchedulingValidation } from '@oneandlab/shared-utils';
 import type { LabPreferenceMode } from '@oneandlab/shared-types';
 import {
   type BookingServiceFormSlice,
@@ -894,6 +894,9 @@ const validateAndNextStep = async () => {
       missingFields.push(`La date souhaitée est obligatoire pour ${svc.name}`);
     }
     pushPatientAvailabilityErrors(svcData, svc.name, missingFields);
+  }
+
+  for (const svc of servicesRequiringSchedulingValidation(selectedServices.value as SelectedServiceInput[])) {
     pushPatientServiceBusinessErrorsForSlot(svc, missingFields);
   }
 
@@ -1140,12 +1143,19 @@ function buildAppointmentPayloads(patientId: string): any[] {
   function mergedBloodPayload() {
     const firstSvc = bloodList[0];
     const firstSvcData = formDataByService[firstSvc.id] ?? {};
-    const bloodTestItems = bloodList.map((svc, index) => ({
-      category_id: svc.category_id,
-      label: svc.name,
-      care_options: formDataByService[svc.id]?.care_options ?? {},
-      sort_order: index,
-    }));
+    const bloodTestItems = bloodList.map((svc, index) => {
+      const svcData = formDataByService[svc.id] ?? {};
+      return {
+        category_id: svc.category_id,
+        label: svc.name,
+        care_options: mergeSchedulingMetaIntoItemCareOptions(
+          svcData.care_options as Record<string, string | number> | undefined,
+          svcData,
+          svc.type,
+        ),
+        sort_order: index,
+      };
+    });
     const baseFormData = {
       ...commonForm,
       address: formData.value?.address,
@@ -1179,12 +1189,19 @@ function buildAppointmentPayloads(patientId: string): any[] {
   function mergedNursingPayload() {
     const firstSvc = nursingList[0];
     const firstSvcData = formDataByService[firstSvc.id] ?? {};
-    const nursingItems = nursingList.map((svc, index) => ({
-      category_id: svc.category_id,
-      label: svc.name,
-      care_options: formDataByService[svc.id]?.care_options ?? {},
-      sort_order: index,
-    }));
+    const nursingItems = nursingList.map((svc, index) => {
+      const svcData = formDataByService[svc.id] ?? {};
+      return {
+        category_id: svc.category_id,
+        label: svc.name,
+        care_options: mergeSchedulingMetaIntoItemCareOptions(
+          svcData.care_options as Record<string, string | number> | undefined,
+          svcData,
+          svc.type,
+        ),
+        sort_order: index,
+      };
+    });
     const baseFormData: Record<string, unknown> = {
       ...commonForm,
       address: formData.value?.address,

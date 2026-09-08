@@ -91,7 +91,16 @@
       @remove-service-from-cart="removeServiceFromCareSelection"
     />
 
-    <div v-else class="min-h-[calc(100vh-4rem)] bg-app-canvas dark:bg-gray-950 pb-32">
+    <LabBrandPreferenceStep
+      v-else-if="step === 1 && staffNeedsLabPreferenceStep"
+      v-model:model-value-mode="labPreferenceMode"
+      v-model:model-value-brand-id="preferredLabBrandId"
+      :selected-services="selectedServices"
+      @prev="prevStep"
+      @continue="confirmLabPreferenceStep"
+    />
+
+    <div v-else-if="step === staffFormWizardStep" class="min-h-[calc(100vh-4rem)] bg-app-canvas dark:bg-gray-950 pb-32">
       <div class="mx-auto w-full max-w-5xl px-0 pt-3 pb-5 sm:px-6 sm:pt-4 sm:pb-6 md:max-w-3xl">
         <template v-if="selectedServices.length > 0">
           <header
@@ -452,6 +461,8 @@ import {
   buildDashboardAppointmentPayloads,
   countGroupedAppointmentPayloads,
   servicesRequiringOwnSlots,
+  bloodTestNeedsLabPreferenceStep,
+  validateLabPreferenceBeforeSubmit,
   type SelectedServiceInput,
 } from '~/utils/dashboard-unified-rdv';
 import {
@@ -469,6 +480,7 @@ import {
   STAFF_PATIENT_BOOKING_CONSENT_ERROR,
 } from '~/constants/staff-patient-booking-consent';
 import { lookupPatientByContact } from '~/utils/patient-contact-lookup';
+import type { LabPreferenceMode } from '@oneandlab/shared-types';
 
 function patientContactSuppressKey(email: string, phone: string, patientId: string): string {
   return `${email.trim().toLowerCase()}|${phone.replace(/\D/g, '')}|${patientId}`;
@@ -510,7 +522,7 @@ const proLinkedNurseChoice = ref<'linked' | 'external' | ''>('');
 const externalNursePhone = ref('');
 
 const showProNurseAssignment = computed(
-  () => isProDashboard.value && hasNursingInSelection.value && step.value >= 1,
+  () => isProDashboard.value && hasNursingInSelection.value && step.value >= staffFormWizardStep.value,
 );
 
 const proLinkedNurseSelectItems = computed(() =>
@@ -564,6 +576,13 @@ const canLookupPatientByContact = computed(() => {
 });
 
 const step = ref(0);
+const labPreferenceMode = ref<LabPreferenceMode | ''>('platform_match');
+const preferredLabBrandId = ref<string | null>(null);
+
+const staffNeedsLabPreferenceStep = computed(() =>
+  bloodTestNeedsLabPreferenceStep(selectedServices.value),
+);
+const staffFormWizardStep = computed(() => (staffNeedsLabPreferenceStep.value ? 2 : 1));
 const saving = ref(false);
 const bookingOverlayShow = ref(false);
 const bookingSubmissionLocked = ref(false);
@@ -637,7 +656,7 @@ const dashboardActiveDocumentsServiceId = computed(() => {
 });
 
 watch(bookingWizardIndex, () => {
-  if (step.value === 1 && dashboardBookingWizardSection.value === 'personal') {
+  if (step.value === staffFormWizardStep.value && dashboardBookingWizardSection.value === 'personal') {
     validationError.value = '';
   }
 });
@@ -1345,10 +1364,8 @@ function removeServiceFromCareSelection(serviceId: string) {
   }
 }
 
-async function confirmStep0() {
-  if (selectedServices.value.length === 0) return;
-  bookingWizardIndex.value = 0;
-  step.value = 1;
+async function goToStaffFormStep() {
+  step.value = staffFormWizardStep.value;
   await loadPatients();
   if (isAdminDashboard.value) {
     await loadLabsAndNursesForAdminDashboard();
@@ -1357,6 +1374,39 @@ async function confirmStep0() {
   nextTick(() => {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   });
+}
+
+async function confirmStep0() {
+  if (selectedServices.value.length === 0) return;
+  bookingWizardIndex.value = 0;
+  if (staffNeedsLabPreferenceStep.value) {
+    step.value = 1;
+    nextTick(() => {
+      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    return;
+  }
+  await goToStaffFormStep();
+}
+
+function confirmLabPreferenceStep() {
+  const err = validateLabPreferenceBeforeSubmit(
+    selectedServices.value,
+    labPreferenceMode.value,
+    preferredLabBrandId.value,
+  );
+  if (err) {
+    validationError.value = err;
+    return;
+  }
+  validationError.value = '';
+  formData.value = {
+    ...formData.value,
+    lab_preference_mode: labPreferenceMode.value,
+    preferred_lab_brand_id:
+      labPreferenceMode.value === 'brand_choice' ? preferredLabBrandId.value : null,
+  };
+  void goToStaffFormStep();
 }
 
 function pushPatientAvailabilityErrors(
@@ -1490,10 +1540,19 @@ function onDashboardFooterPrimary() {
 
 function prevStep() {
   if (step.value <= 0) return;
-  if (step.value === 1 && bookingWizardIndex.value > 0) {
+  if (step.value === staffFormWizardStep.value && bookingWizardIndex.value > 0) {
     bookingWizardIndex.value--;
     validationError.value = '';
     scrollWizardToTop();
+    return;
+  }
+  if (step.value === staffFormWizardStep.value && staffNeedsLabPreferenceStep.value) {
+    step.value = 1;
+    bookingWizardIndex.value = 0;
+    validationError.value = '';
+    nextTick(() => {
+      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
     return;
   }
   step.value = 0;
@@ -1565,6 +1624,26 @@ async function onUnifiedSubmit(payload: any) {
     return;
   }
 
+  const labErr = validateLabPreferenceBeforeSubmit(
+    selectedServices.value,
+    (payload.lab_preference_mode as LabPreferenceMode | '') || labPreferenceMode.value,
+    (payload.preferred_lab_brand_id as string | null) ?? preferredLabBrandId.value,
+  );
+  if (labErr) {
+    validationError.value = labErr;
+    scrollToValidationError();
+    return;
+  }
+
+  const submitPayload = {
+    ...payload,
+    lab_preference_mode:
+      payload.lab_preference_mode ?? labPreferenceMode.value ?? 'platform_match',
+    preferred_lab_brand_id:
+      payload.preferred_lab_brand_id ??
+      (labPreferenceMode.value === 'brand_choice' ? preferredLabBrandId.value : null),
+  };
+
   const uid = user.value?.id;
   const role = user.value?.role || '';
   if (!uid) {
@@ -1613,7 +1692,7 @@ async function onUnifiedSubmit(payload: any) {
       typeof globalThis.crypto.randomUUID === 'function'
         ? globalThis.crypto.randomUUID()
         : undefined;
-    const payloads = buildDashboardAppointmentPayloads(patientId, payload, selectedServices.value, {
+    const payloads = buildDashboardAppointmentPayloads(patientId, submitPayload, selectedServices.value, {
       creationBatchId: batchId,
       creatorRole: role,
       creatorUserId: uid,
@@ -1625,6 +1704,7 @@ async function onUnifiedSubmit(payload: any) {
     const adminStatus = adminRdvStatus.value?.trim() || 'pending';
     const adminLab = adminAssignedLabId.value?.trim() || '';
     const adminNurse = adminAssignedNurseId.value?.trim() || '';
+    const labPrefMode = (submitPayload.lab_preference_mode as string) || labPreferenceMode.value || 'platform_match';
     if (isAdminDashboard.value) {
       for (const raw of payloads) {
         const p = raw as Record<string, unknown>;
@@ -1632,7 +1712,12 @@ async function onUnifiedSubmit(payload: any) {
         if (adminOnBehalfUserId.value) {
           p.on_behalf_of_user_id = adminOnBehalfUserId.value;
         }
-        if (adminLab && typeof p.type === 'string' && isBloodTestAppointment(String(p.type))) {
+        if (
+          adminLab &&
+          labPrefMode !== 'brand_choice' &&
+          typeof p.type === 'string' &&
+          isBloodTestAppointment(String(p.type))
+        ) {
           p.assigned_lab_id = adminLab;
         }
         if (adminNurse && typeof p.type === 'string' && isNursingAppointment(String(p.type))) {

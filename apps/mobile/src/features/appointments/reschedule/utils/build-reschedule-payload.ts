@@ -23,8 +23,15 @@ type BuildCtx = {
   labId?: string | null;
 };
 
-export function buildReschedulePayload(ctx: BuildCtx): Record<string, unknown> | null {
-  const { appointment: a, form, role, userId } = ctx;
+const STAFF_ROLES_REQUIRING_CONSENT = new Set(['nurse', 'pro', 'lab', 'subaccount']);
+
+function buildRescheduleCore(ctx: BuildCtx): {
+  scheduledAt: string;
+  addressPayload: Record<string, unknown>;
+  formData: Record<string, unknown>;
+  categoryId: string | undefined;
+} | null {
+  const { appointment: a, form } = ctx;
   const hour = form.availability_type === 'custom' ? Math.floor(form.availability_range[0]) : 9;
   const scheduledAt = form.scheduled_at
     ? `${normalizeRescheduleDate(form.scheduled_at)} ${String(hour).padStart(2, '0')}:00:00`
@@ -50,18 +57,56 @@ export function buildReschedulePayload(ctx: BuildCtx): Record<string, unknown> |
     notes: form.notes?.trim() || undefined,
   };
 
+  return {
+    scheduledAt,
+    addressPayload,
+    formData,
+    categoryId: form.category_id || a.category_id || undefined,
+  };
+}
+
+/** Infirmier assigné à un soin confirmé : modifier le RDV existant (PUT), pas annuler + recréer. */
+export function nurseCanRescheduleInPlace(appointment: Appointment, userId: string | undefined): boolean {
+  if (!userId || appointment.type !== 'nursing') return false;
+  const assigned = (appointment as Appointment & { assigned_nurse_id?: string }).assigned_nurse_id;
+  if (String(assigned ?? '') !== String(userId)) return false;
+  const status = String(appointment.status ?? '');
+  return status === 'confirmed' || status === 'inProgress' || status === 'planned';
+}
+
+export function buildReschedulePutPayload(ctx: BuildCtx): Record<string, unknown> | null {
+  const core = buildRescheduleCore(ctx);
+  if (!core) return null;
+  return {
+    scheduled_at: core.scheduledAt,
+    address: core.addressPayload,
+    form_data: core.formData,
+    category_id: core.categoryId,
+  };
+}
+
+export function buildReschedulePayload(ctx: BuildCtx): Record<string, unknown> | null {
+  const { appointment: a, form, role, userId } = ctx;
+  const core = buildRescheduleCore(ctx);
+  if (!core) return null;
+
   const payload: Record<string, unknown> = {
     type: a.type,
     form_type: a.type,
-    scheduled_at: scheduledAt,
-    address: addressPayload,
-    form_data: formData,
+    scheduled_at: core.scheduledAt,
+    address: core.addressPayload,
+    form_data: core.formData,
     status: 'confirmed',
     patient_id: a.patient_id || undefined,
     relative_id: a.relative_id || undefined,
-    category_id: form.category_id || a.category_id || undefined,
+    category_id: core.categoryId,
   };
 
+  if (STAFF_ROLES_REQUIRING_CONSENT.has(role)) {
+    payload.patient_booking_consent = true;
+  }
+
+  const fd = (a.form_data ?? {}) as Record<string, unknown>;
   const rel = (a as Appointment & { relative?: { email?: string } }).relative;
   if (!payload.patient_id && (fd.email || rel?.email)) {
     payload.guest_email = fd.email || rel?.email;

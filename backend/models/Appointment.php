@@ -4309,9 +4309,6 @@ class Appointment
         if (!empty($data['assigned_lab_id'])) {
             return;
         }
-        if (in_array($createdByRole, ['lab', 'subaccount', 'super_admin'], true)) {
-            return;
-        }
         if (!$this->hasColumn('appointments', 'lab_preference_mode')) {
             return;
         }
