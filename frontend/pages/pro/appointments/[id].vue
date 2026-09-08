@@ -7,6 +7,7 @@
         :appointment="{ id: appointment.id }"
         :documents="documents"
         :load-documents="loadDocuments"
+        prescription-kind="nursing"
       />
     </template>
     <template #carePhotosCard="{ appointment, documents, documentsLoading, loadDocuments }">

@@ -107,15 +107,16 @@ function pushKvRows(rows: RdvInfoRow[], kv: { label: string; value: string; stri
   rows.push(...kvToInfoRows(kv));
 }
 
-/** Prise en charge / fréquence communes au RDV, affichées après le 1er acte si absentes sur l’acte. */
+/** Prise en charge / fréquence communes au RDV, affichées après le 1er acte si absentes sur l’acte (mono-soin uniquement). */
 function appendSharedNursingFormMetaAfterItem(
   rows: RdvInfoRow[],
   apt: Appointment,
   itemIndex: number,
   itemHasDuration: boolean,
   itemHasFrequency: boolean,
+  totalItems: number,
 ): void {
-  if (itemIndex !== 0) return;
+  if (itemIndex !== 0 || totalItems > 1) return;
   const fd = (apt.form_data ?? {}) as Record<string, unknown>;
   if (!itemHasDuration) {
     const dur = getNursingDurationLabel(String(fd.duration_days ?? ''), fd.custom_days as number | null);
@@ -161,7 +162,7 @@ function buildNursingItemGroupRows(
   const itemFreq = nursingItemMetaFrequencyLabel(item);
   if (itemFreq) pushCareField(rows, 'Fréquence', itemFreq);
 
-  appendSharedNursingFormMetaAfterItem(rows, apt, idx, Boolean(itemDur), Boolean(itemFreq));
+  appendSharedNursingFormMetaAfterItem(rows, apt, idx, Boolean(itemDur), Boolean(itemFreq), total);
 
   return rows;
 }

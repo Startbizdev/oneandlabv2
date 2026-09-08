@@ -1055,7 +1055,9 @@ const appointment = ref<Appointment | null>(null);
 /** Après création (pro uniquement) : afficher la section ordonnance au lieu de rediriger */
 const postCreateAppointmentId = ref<string | null>(null);
 const postCreateDocuments = ref<any[]>([]);
-const showPrescriptionAfterCreate = computed(() => props.basePath === '/pro');
+const showPrescriptionAfterCreate = computed(
+  () => props.basePath === '/pro' || props.basePath === '/nurse',
+);
 
 /** Champs ordonnance saisis pendant la création du RDV (pro) — générés et enregistrés à la soumission */
 const medicalFieldsDuringCreate = ref<MedicalPrescriptionFields>({ ald: '', horsAld: '' });

@@ -110,7 +110,7 @@
       >
         <aside
           v-if="selectedDay"
-          class="w-full xl:w-80 xl:max-w-[20rem] shrink-0 min-w-0"
+          class="hidden xl:block w-full xl:w-80 xl:max-w-[20rem] shrink-0 min-w-0"
           aria-label="Rendez-vous du jour sélectionné"
         >
           <div class="sticky top-4 rounded-xl border border-default bg-default p-3 sm:p-4 shadow-sm">
@@ -335,7 +335,7 @@ function fetchCalendarAppointments() {
       limit: props.calendarFetchLimit,
     });
   }
-  return fetchAppointments();
+  return fetchAppointments({ page: 1, limit: props.calendarFetchLimit });
 }
 
 const refresh = () => fetchCalendarAppointments();

@@ -72,6 +72,8 @@ class AppleIapVerifier
             $status = 'canceled';
         } elseif ($notificationType === 'DID_FAIL_TO_RENEW') {
             $status = 'past_due';
+        } elseif (in_array($notificationType, ['DID_RENEW', 'SUBSCRIBED', 'OFFER_REDEEMED', 'RENEWAL_EXTENDED'], true)) {
+            $status = 'active';
         } elseif ($notificationType === 'DID_CHANGE_RENEWAL_STATUS' && $subtype === 'AUTO_RENEW_DISABLED') {
             $status = 'active';
         }
@@ -82,6 +84,55 @@ class AppleIapVerifier
             'notification_type' => $notificationType,
             'transaction' => $txPayload ? $this->normalizeTransactionPayload($txPayload) : null,
         ];
+    }
+
+    /**
+     * Dernière transaction connue pour un originalTransactionId (resync admin/cron).
+     */
+    public function fetchLatestSubscriptionTransaction(string $originalTransactionId): ?array
+    {
+        if (empty($this->iapConfig['allow_unverified'])) {
+            $token = $this->createAppStoreJwt();
+            $base = ($this->config['environment'] ?? 'production') === 'sandbox'
+                ? 'https://api.storekit-sandbox.itunes.apple.com'
+                : 'https://api.storekit.itunes.apple.com';
+
+            $url = $base . '/inApps/v1/subscriptions/' . rawurlencode($originalTransactionId);
+            $response = $this->httpGet($url, ['Authorization: Bearer ' . $token]);
+            if (!$response) {
+                return null;
+            }
+
+            $json = json_decode($response, true);
+            $items = $json['data'] ?? [];
+            if (!is_array($items) || $items === []) {
+                return null;
+            }
+
+            $lastSigned = null;
+            foreach ($items as $item) {
+                $signed = $item['lastTransactions'][0]['signedTransactionInfo'] ?? null;
+                if ($signed) {
+                    $lastSigned = $signed;
+                }
+            }
+
+            if (!$lastSigned) {
+                return null;
+            }
+
+            $payload = IapJwtHelper::decodeJwsPayload($lastSigned);
+
+            return $payload ? $this->normalizeTransactionPayload($payload) : null;
+        }
+
+        return null;
+    }
+
+    /** Exposé pour tests/simulations (payload décodé App Store). */
+    public function normalizeTransactionForTest(array $payload): array
+    {
+        return $this->normalizeTransactionPayload($payload);
     }
 
     private function fetchTransactionFromApple(string $transactionId): ?array
@@ -145,10 +196,10 @@ class AppleIapVerifier
         }
 
         $offerType = $payload['offerType'] ?? null;
-        $trialEnds = null;
-        if ($offerType === 1 || ($payload['isTrialPeriod'] ?? false)) {
-            $trialEnds = $periodEnd;
-        }
+        $inTrial = ($offerType === 1 || ($payload['isTrialPeriod'] ?? false))
+            && $periodEnd
+            && strtotime($periodEnd) >= time();
+        $trialEnds = $inTrial ? $periodEnd : null;
 
         $revocationDate = $payload['revocationDate'] ?? null;
         $status = 'active';
@@ -156,6 +207,8 @@ class AppleIapVerifier
             $status = 'canceled';
         } elseif ($periodEnd && strtotime($periodEnd) < time()) {
             $status = 'canceled';
+        } elseif ($inTrial) {
+            $status = 'trialing';
         }
 
         return [

@@ -150,8 +150,11 @@
               <UBadge :color="roleColor(sub.role)" variant="soft" size="sm">
                 {{ roleLabel(sub.role) }}
               </UBadge>
-              <UBadge :color="statusColor(sub.status)" variant="subtle" size="sm">
-                {{ statusLabel(sub.status) }}
+              <UBadge :color="statusColor(sub.effective_status ?? sub.status)" variant="subtle" size="sm">
+                {{ statusLabel(sub.effective_status ?? sub.status) }}
+              </UBadge>
+              <UBadge v-if="sub.needs_resync" color="warning" variant="soft" size="sm">
+                Sync store requise
               </UBadge>
             </div>
 
@@ -166,8 +169,12 @@
 
             <dl class="space-y-2.5 text-sm">
               <div class="flex gap-2">
+                <dt class="w-32 shrink-0 text-muted">Paiement</dt>
+                <dd class="text-gray-800 dark:text-gray-200">{{ billingSourceLabel(sub.billing_source) }}</dd>
+              </div>
+              <div class="flex gap-2">
                 <dt class="w-32 shrink-0 text-muted">Fin d’essai</dt>
-                <dd class="text-gray-800 dark:text-gray-200">{{ formatDate(sub.trial_ends_at) }}</dd>
+                <dd class="text-gray-800 dark:text-gray-200">{{ formatTrialEnd(sub) }}</dd>
               </div>
               <div class="flex gap-2">
                 <dt class="w-32 shrink-0 text-muted">Prochaine facture</dt>
@@ -197,6 +204,10 @@ type SubscriptionRow = {
   role: string
   plan_slug: string | null
   status: string
+  effective_status?: string
+  is_trialing?: boolean
+  needs_resync?: boolean
+  billing_source?: string
   trial_ends_at: string | null
   current_period_end: string | null
   updated_at: string | null
@@ -265,6 +276,29 @@ function statusColor(status: string) {
   return 'warning'
 }
 
+function billingSourceLabel(source?: string) {
+  const labels: Record<string, string> = {
+    stripe: 'Stripe (web)',
+    apple: 'Apple App Store',
+    google: 'Google Play',
+  }
+  return labels[source ?? ''] || source || '—'
+}
+
+function formatTrialEnd(sub: SubscriptionRow) {
+  if (sub.is_trialing && sub.trial_ends_at) {
+    return formatDate(sub.trial_ends_at)
+  }
+  if (sub.trial_ends_at) {
+    return `Terminé le ${formatDate(sub.trial_ends_at)}`
+  }
+  return '—'
+}
+
+function effectiveStatus(row: SubscriptionRow) {
+  return row.effective_status ?? row.status
+}
+
 function formatDate(value: string | null) {
   if (!value) return '—'
   return new Date(value).toLocaleDateString('fr-FR', {
@@ -278,10 +312,11 @@ const stats = computed(() => {
   const rows = subscriptions.value
   return {
     total: rows.length,
-    active: rows.filter((r) => r.status === 'active').length,
-    trialing: rows.filter((r) => r.status === 'trialing').length,
-    pastDue: rows.filter((r) => r.status === 'past_due' || r.status === 'unpaid').length,
-    canceled: rows.filter((r) => r.status === 'canceled').length,
+    active: rows.filter((r) => effectiveStatus(r) === 'active').length,
+    trialing: rows.filter((r) => effectiveStatus(r) === 'trialing').length,
+    pastDue: rows.filter((r) => effectiveStatus(r) === 'past_due' || effectiveStatus(r) === 'unpaid').length,
+    canceled: rows.filter((r) => effectiveStatus(r) === 'canceled').length,
+    needsResync: rows.filter((r) => r.needs_resync).length,
     nurses: rows.filter((r) => r.role === 'nurse').length,
     labs: rows.filter((r) => r.role === 'lab').length,
   }
@@ -307,7 +342,9 @@ const kpiCards = computed(() => [
     label: 'En essai',
     value: stats.value.trialing,
     icon: 'i-lucide-hourglass',
-    hint: 'Période d’essai gratuite',
+    hint: stats.value.needsResync > 0
+      ? `Essai gratuit · ${stats.value.needsResync} sync store en attente`
+      : 'Période d’essai gratuite',
   },
   {
     key: 'attention',
@@ -337,13 +374,13 @@ const filteredSubscriptions = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   return subscriptions.value.filter((row) => {
     if (roleFilter.value !== 'all' && row.role !== roleFilter.value) return false
-    if (statusFilter.value !== 'all' && row.status !== statusFilter.value) return false
+    if (statusFilter.value !== 'all' && effectiveStatus(row) !== statusFilter.value) return false
     if (!q) return true
     const haystack = [
       row.email,
       row.plan_slug,
       planLabel(row.plan_slug),
-      statusLabel(row.status),
+      statusLabel(effectiveStatus(row)),
       roleLabel(row.role),
     ]
       .filter(Boolean)

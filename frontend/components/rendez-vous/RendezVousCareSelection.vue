@@ -762,15 +762,8 @@ function categoryOptionsLength(catId: string): number {
   return Array.isArray(opts) ? opts.length : 0;
 }
 
-/** 2ᵉ prélèvement ou 2ᵉ soin infirmier : champs communs déjà saisis sur le 1ᵉʳ acte. */
-function onlyCategoryOptionsForCandidate(cat: CareCategoryRow): boolean {
-  const sel = selectedServices.value;
-  if (isBloodTestAppointment(cat.type)) {
-    return bloodServicesInSelection(sel).length > 0;
-  }
-  if (isNursingAppointment(cat.type)) {
-    return nursingServicesInSelection(sel).length > 0;
-  }
+/** Chaque acte conserve ses propres champs fréquence / prise en charge à l’ajout. */
+function onlyCategoryOptionsForCandidate(_cat: CareCategoryRow): boolean {
   return false;
 }
 

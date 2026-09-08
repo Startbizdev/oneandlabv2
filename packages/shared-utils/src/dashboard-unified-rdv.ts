@@ -5,6 +5,11 @@ import { AVAILABILITY_MIN_SPAN_HOURS } from '@oneandlab/shared-constants';
 import { STAFF_ROLES_REQUIRING_PATIENT_BOOKING_CONSENT } from '@oneandlab/shared-constants';
 import { isBloodTestAppointment, isNursingAppointment } from './appointment-type-rules';
 import { applyLabPreferenceToBloodPayloads } from './lab-preference';
+import type { LabPreferenceMode } from '@oneandlab/shared-types';
+import {
+  mergeSchedulingMetaIntoItemCareOptions,
+  servicesRequiringSchedulingValidation,
+} from './booking-item-scheduling-meta';
 
 export type SelectedServiceInput = {
   id: string;
@@ -221,7 +226,7 @@ export function validateUnifiedRdvPayload(
     }
   }
 
-  for (const svc of servicesRequiringOwnSlot) {
+  for (const svc of servicesRequiringSchedulingValidation(selectedServices)) {
     const svcData = formDataByService[svc.id] ?? {};
     if (isBloodTestAppointment(svc.type)) {
       if (!svcData.blood_test_type) {
@@ -287,6 +292,15 @@ function applyStaffPatientBookingConsent(
   return payload;
 }
 
+function labPreferenceFromFormData(formData: Record<string, unknown>): LabPreferenceMode {
+  const mode = formData.lab_preference_mode;
+  return mode === 'brand_choice' ? 'brand_choice' : 'platform_match';
+}
+
+function shouldAutoAssignCreatorLab(formData: Record<string, unknown>): boolean {
+  return labPreferenceFromFormData(formData) !== 'brand_choice';
+}
+
 function dashboardSingleServicePayload(
   patientId: string,
   svc: SelectedServiceInput,
@@ -340,7 +354,11 @@ function dashboardSingleServicePayload(
     files: svcData.files ?? {},
   };
   if (ctx.creationBatchId) payload.creation_batch_id = ctx.creationBatchId;
-  if (isBloodTestAppointment(svc.type) && (ctx.creatorRole === 'lab' || ctx.creatorRole === 'subaccount')) {
+  if (
+    isBloodTestAppointment(svc.type) &&
+    (ctx.creatorRole === 'lab' || ctx.creatorRole === 'subaccount') &&
+    shouldAutoAssignCreatorLab(formData)
+  ) {
     payload.assigned_lab_id = ctx.creatorUserId;
   }
   if (ctx.creatorRole === 'nurse' && isNursingAppointment(svc.type)) {
@@ -364,12 +382,19 @@ function dashboardMergedBloodPayload(
     firstData.scheduled_at,
     firstData.availability,
   );
-  const bloodTestItems = bloodServices.map((svc, index) => ({
-    category_id: svc.category_id,
-    label: svc.name,
-    care_options: formDataByService[svc.id]?.care_options ?? {},
-    sort_order: index,
-  }));
+  const bloodTestItems = bloodServices.map((svc, index) => {
+    const svcData = formDataByService[svc.id] ?? {};
+    return {
+      category_id: svc.category_id,
+      label: svc.name,
+      care_options: mergeSchedulingMetaIntoItemCareOptions(
+        svcData.care_options as Record<string, string | number> | undefined,
+        svcData as Parameters<typeof mergeSchedulingMetaIntoItemCareOptions>[1],
+        svc.type,
+      ),
+      sort_order: index,
+    };
+  });
   const baseFormData: Record<string, unknown> = {
     ...commonForm,
     address: formData.address,
@@ -397,7 +422,10 @@ function dashboardMergedBloodPayload(
     blood_test_items: bloodTestItems,
   };
   if (ctx.creationBatchId) payload.creation_batch_id = ctx.creationBatchId;
-  if (ctx.creatorRole === 'lab' || ctx.creatorRole === 'subaccount') {
+  if (
+    (ctx.creatorRole === 'lab' || ctx.creatorRole === 'subaccount') &&
+    shouldAutoAssignCreatorLab(formData)
+  ) {
     payload.assigned_lab_id = ctx.creatorUserId;
   }
   if (ctx.creatorRole === 'nurse') {
@@ -421,12 +449,19 @@ function dashboardMergedNursingPayload(
     firstData.scheduled_at,
     firstData.availability,
   );
-  const nursingItems = nursingServices.map((svc, index) => ({
-    category_id: svc.category_id,
-    label: svc.name,
-    care_options: formDataByService[svc.id]?.care_options ?? {},
-    sort_order: index,
-  }));
+  const nursingItems = nursingServices.map((svc, index) => {
+    const svcData = formDataByService[svc.id] ?? {};
+    return {
+      category_id: svc.category_id,
+      label: svc.name,
+      care_options: mergeSchedulingMetaIntoItemCareOptions(
+        svcData.care_options as Record<string, string | number> | undefined,
+        svcData as Parameters<typeof mergeSchedulingMetaIntoItemCareOptions>[1],
+        svc.type,
+      ),
+      sort_order: index,
+    };
+  });
   const baseFormData: Record<string, unknown> = {
     ...commonForm,
     address: formData.address,
@@ -478,8 +513,11 @@ export function buildDashboardAppointmentPayloads(
   const mergeNursing = shouldMergeNursingServices(selectedServices);
 
   if (!mergeBlood && !mergeNursing) {
-    return selectedServices.map((svc) =>
-      dashboardSingleServicePayload(patientId, svc, formData, formDataByService, commonForm, ctx),
+    return applyLabPreferenceToBloodPayloads(
+      selectedServices.map((svc) =>
+        dashboardSingleServicePayload(patientId, svc, formData, formDataByService, commonForm, ctx),
+      ),
+      formData,
     );
   }
 

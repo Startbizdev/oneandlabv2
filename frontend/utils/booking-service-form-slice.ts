@@ -35,11 +35,6 @@ export function defaultBookingFormSliceForServiceType(serviceType: string): Book
   };
 }
 
-/**
- * Nouvel acte infirmier alors qu’un autre figure déjà au panier :
- * même lot (fusion API) ⇒ prise en charge, fréquence et préférence infirmière
- * sont forcées depuis le **premier** soin du panier, pas depuis la modal d’addon.
- */
 export function formDataSliceForQuickAddedService(params: {
   serviceType: string;
   slice: BookingServiceFormSlice;
@@ -53,44 +48,14 @@ export function formDataSliceForQuickAddedService(params: {
     ? defaultBookingSliceForCareCategory(params.careCategory)
     : {};
 
-  const addonLotNursing =
-    isNursingAppointment(params.serviceType) &&
-    params.priorSelectedServices.some((s) => isNursingAppointment(s.type));
-
-  let normalizedSlice = { ...params.slice };
-  let commonFromLot: Partial<BookingServiceFormSlice> = {};
-
-  if (addonLotNursing && params.priorFormDataByService) {
-    const nurses = params.priorSelectedServices.filter((s) => isNursingAppointment(s.type));
-    const firstId = nurses[0]?.id;
-    const fd = firstId ? params.priorFormDataByService[firstId] : undefined;
-    if (fd) {
-      commonFromLot = {
-        duration_days: fd.duration_days,
-        custom_days: fd.custom_days ?? null,
-        frequency: fd.frequency ?? '',
-        preferred_nurse_gender: fd.preferred_nurse_gender ?? 'any',
-      };
-    }
-    const {
-      duration_days: _dur,
-      custom_days: _cd,
-      frequency: _freq,
-      preferred_nurse_gender: _pn,
-      ...rest
-    } = normalizedSlice;
-    normalizedSlice = rest;
-  }
-
   return {
     ...def,
     ...categoryDefaults,
-    ...commonFromLot,
-    ...normalizedSlice,
-    care_options: { ...def.care_options, ...(normalizedSlice.care_options || {}) },
+    ...params.slice,
+    care_options: { ...def.care_options, ...(params.slice.care_options || {}) },
     availabilityRange:
-      normalizedSlice.availabilityRange !== undefined
-        ? normalizedSlice.availabilityRange
+      params.slice.availabilityRange !== undefined
+        ? params.slice.availabilityRange
         : def.availabilityRange,
   };
 }

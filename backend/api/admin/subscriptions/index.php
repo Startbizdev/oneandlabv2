@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../../middleware/RoleMiddleware.php';
 require_once __DIR__ . '/../../../models/User.php';
+require_once __DIR__ . '/../../../lib/SubscriptionDisplay.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -46,7 +47,7 @@ $pdo = new PDO($dsn, $config['username'], $config['password'], $config['options'
 $roleFilter = trim((string)($_GET['role'] ?? ''));
 $statusFilter = trim((string)($_GET['status'] ?? ''));
 
-$sql = 'SELECT s.id, s.user_id, s.plan_slug, s.status, s.trial_ends_at, s.current_period_end, s.updated_at, p.role FROM subscriptions s JOIN profiles p ON p.id = s.user_id WHERE 1=1';
+$sql = 'SELECT s.id, s.user_id, s.plan_slug, s.status, s.billing_source, s.trial_ends_at, s.current_period_end, s.updated_at, p.role FROM subscriptions s JOIN profiles p ON p.id = s.user_id WHERE 1=1';
 $params = [];
 if ($roleFilter !== '') {
     $sql .= ' AND p.role = ?';
@@ -75,17 +76,18 @@ foreach ($rows as $row) {
             $cache[$uid] = ['email' => '(inconnu)', 'role' => $row['role']];
         }
     }
-    $list[] = [
+    $list[] = SubscriptionDisplay::enrich([
         'id' => $row['id'],
         'user_id' => $row['user_id'],
         'email' => $cache[$uid]['email'],
         'role' => $cache[$uid]['role'],
         'plan_slug' => $row['plan_slug'],
         'status' => $row['status'],
+        'billing_source' => $row['billing_source'] ?? 'stripe',
         'trial_ends_at' => $row['trial_ends_at'],
         'current_period_end' => $row['current_period_end'],
         'updated_at' => $row['updated_at'],
-    ];
+    ]);
 }
 
 echo json_encode(['success' => true, 'data' => $list]);

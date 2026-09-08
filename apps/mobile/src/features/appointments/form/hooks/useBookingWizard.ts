@@ -119,11 +119,15 @@ export function useBookingWizard(opts: {
     getPatientBookingConsent:
       opts.mode === 'dashboard' ? () => consentRef.current : undefined,
     getProNurseAssignment: opts.role === 'pro' ? getProNurseAssignment : undefined,
+    getLabPreference: () => ({
+      mode: labPreferenceMode,
+      brandId: preferredLabBrandId,
+    }),
   });
 
   const needsLabPreferenceStep = useMemo(
-    () => opts.mode === 'patient' && bloodTestNeedsLabPreferenceStep(wizard.selectedServices),
-    [opts.mode, wizard.selectedServices],
+    () => bloodTestNeedsLabPreferenceStep(wizard.selectedServices),
+    [wizard.selectedServices],
   );
   const formWizardStep = needsLabPreferenceStep ? 2 : 1;
 

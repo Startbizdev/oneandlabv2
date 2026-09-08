@@ -167,7 +167,7 @@
           </div>
 
           <!-- Mobile : liste des RDV (filtrée par jour sélectionné) -->
-          <div class="md:hidden flex-1 overflow-y-auto min-h-0 border-t border-default/50 bg-muted/5">
+          <div id="calendar-mobile-day-list" class="md:hidden flex-1 overflow-y-auto min-h-0 border-t border-default/50 bg-muted/5">
             <div class="p-3 space-y-4">
               <div
                 v-if="mobileListFromToday && !selectedDayId"
@@ -428,7 +428,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { appointmentListAddressLine } from '~/utils/address-display';
 import { appointmentPatientDisplayName } from '~/utils/appointment-patient-display';
 
@@ -567,7 +567,12 @@ const groupedItems = computed(() => {
 const mobileListGroups = computed(() => {
   if (selectedDayId.value) {
     const id = selectedDayId.value;
-    const items = groupedItems.value[id] || [];
+    const items = props.items
+      .filter((item) => formatDateId(new Date(item[props.itemDateKey])) === id)
+      .sort(
+        (a, b) =>
+          new Date(a[props.itemDateKey]).getTime() - new Date(b[props.itemDateKey]).getTime(),
+      );
     return items.length ? { [id]: items } : {};
   }
   const base = groupedItems.value;
@@ -684,6 +689,14 @@ function goToToday() {
 
 function handleDayClick(day: any) {
   emit('day-click', day);
+  if (import.meta.client) {
+    nextTick(() => {
+      document.getElementById('calendar-mobile-day-list')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+  }
 }
 
 // Drag & Drop Logic

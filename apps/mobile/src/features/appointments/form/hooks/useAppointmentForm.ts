@@ -7,8 +7,10 @@ import {
   buildDashboardAppointmentPayloads,
   filterStaffOnlyCareCategoriesForPatient,
   validateUnifiedRdvPayload,
+  validateLabPreferenceBeforeSubmit,
   type SelectedServiceInput,
 } from '@oneandlab/shared-utils';
+import type { LabPreferenceMode } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -361,6 +363,7 @@ export function useMultiAppointmentWizard(opts: {
   bookingMode?: 'patient' | 'dashboard';
   getPatientBookingConsent?: () => boolean;
   getProNurseAssignment?: () => ProNurseAssignment | null;
+  getLabPreference?: () => { mode: LabPreferenceMode | ''; brandId: string | null };
 }) {
   const { show: toast } = useToast();
   const router = useRouter();
@@ -580,18 +583,7 @@ export function useMultiAppointmentWizard(opts: {
     });
   }, []);
 
-  const onlyCategoryOptionsFor = useCallback(
-    (cat: CareCategory): boolean => {
-      if (isBloodTestAppointment(cat.type)) {
-        return selectedServices.some((s) => isBloodTestAppointment(s.type));
-      }
-      if (isNursingAppointment(cat.type)) {
-        return selectedServices.some((s) => isNursingAppointment(s.type));
-      }
-      return false;
-    },
-    [selectedServices],
-  );
+  const onlyCategoryOptionsFor = useCallback((_cat: CareCategory): boolean => false, []);
 
   const [submissionLocked, setSubmissionLocked] = useState(false);
 
@@ -609,11 +601,22 @@ export function useMultiAppointmentWizard(opts: {
       const address = patient.address
         ? { ...patient.address, complement: addressComplement || undefined }
         : null;
+      const labPref = opts.getLabPreference?.();
       const formData: Record<string, unknown> = {
         ...patient,
         address,
         formDataByService,
+        lab_preference_mode: labPref?.mode || 'platform_match',
+        preferred_lab_brand_id:
+          labPref?.mode === 'brand_choice' ? labPref.brandId : null,
       };
+
+      const labErr = validateLabPreferenceBeforeSubmit(
+        selectedServices,
+        (labPref?.mode as LabPreferenceMode | '') || 'platform_match',
+        labPref?.brandId,
+      );
+      if (labErr) throw new Error(labErr);
 
       const err = validateUnifiedRdvPayload(formData, selectedServices, {
         patientEmailOptional: opts.role === 'nurse' || opts.role === 'pro',

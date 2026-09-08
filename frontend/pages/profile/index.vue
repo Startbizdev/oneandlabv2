@@ -1383,7 +1383,7 @@ const staffPrescriptionsRoleBase = computed(() =>
   user.value?.role === 'nurse' ? '/nurse' : '/pro'
 )
 const staffPrescriptionKind = computed<'medical' | 'nursing'>(() =>
-  user.value?.role === 'nurse' ? 'nursing' : 'medical'
+  user.value?.role === 'nurse' || user.value?.role === 'pro' ? 'nursing' : 'medical'
 )
 /** Grille du profil : 3 cols (historique | formulaire | panneau) quand historique patient, sinon 2 cols classiques */
 const profilePatientLayoutGridClass = computed(() => {

@@ -128,13 +128,13 @@
         </div>
       </template>
 
-      <div v-if="appt.type === 'nursing' && nursingItems.length > 0 && rdvNursingCareTypeDurationLabel()" :class="kvRow">
+      <div v-if="appt.type === 'nursing' && nursingItems.length === 0 && rdvNursingCareTypeDurationLabel()" :class="kvRow">
         <div :class="kvLabel">Type de prise en charge</div>
         <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
           rdvNursingCareTypeDurationLabel()
         }}</p>
       </div>
-      <div v-if="appt.type === 'nursing' && nursingItems.length > 0 && rdvNursingCareFrequencyLabel()" :class="kvRow">
+      <div v-if="appt.type === 'nursing' && nursingItems.length === 0 && rdvNursingCareFrequencyLabel()" :class="kvRow">
         <div :class="kvLabel">Fréquence</div>
         <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
           rdvNursingCareFrequencyLabel()
@@ -492,13 +492,13 @@
             nursingItemMetaFrequencyLabel(nItem)
           }}</p>
         </div>
-        <div v-if="appt.type === 'nursing' && rdvNursingCareTypeDurationLabel()" :class="kvRow">
+        <div v-if="appt.type === 'nursing' && !nursingItemMetaDurationLabel(nItem) && rdvNursingCareTypeDurationLabel()" :class="kvRow">
           <div :class="kvLabel">Type de prise en charge</div>
           <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
             rdvNursingCareTypeDurationLabel()
           }}</p>
         </div>
-        <div v-if="appt.type === 'nursing' && rdvNursingCareFrequencyLabel()" :class="kvRow">
+        <div v-if="appt.type === 'nursing' && !nursingItemMetaFrequencyLabel(nItem) && rdvNursingCareFrequencyLabel()" :class="kvRow">
           <div :class="kvLabel">Fréquence</div>
           <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
             rdvNursingCareFrequencyLabel()
@@ -521,18 +521,6 @@
           <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ row.value }}</p>
         </div>
       </template>
-      <div v-if="rdvNursingCareTypeDurationLabel()" :class="kvRow">
-        <div :class="kvLabel">Type de prise en charge</div>
-        <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
-          rdvNursingCareTypeDurationLabel()
-        }}</p>
-      </div>
-      <div v-if="rdvNursingCareFrequencyLabel()" :class="kvRow">
-        <div :class="kvLabel">Fréquence</div>
-        <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
-          rdvNursingCareFrequencyLabel()
-        }}</p>
-      </div>
     </template>
     <template v-for="(bItem, bIdx) in bloodTestItems" :key="`bdef-${String(bItem?.id ?? '')}-${bIdx}`">
       <template v-if="appt.type === 'blood_test' && bloodTestItems.length > 1">
