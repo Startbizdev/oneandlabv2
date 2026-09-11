@@ -9,7 +9,7 @@
       class="w-full min-w-0"
       clearable
       :filter-fields="['label', 'description', 'searchText', 'group']"
-      :search-input="{ placeholder: 'Rechercher un pro ou infirmier…' }"
+      :search-input="{ placeholder: 'Rechercher un pro, infirmier ou labo…' }"
     >
       <template #label>
         <span v-if="!selectedValue" class="text-muted">{{ emptyLabel }}</span>
@@ -41,7 +41,7 @@ const props = withDefaults(
     modelValue: null,
     label: 'Créateur du rendez-vous',
     name: 'on_behalf_of_user_id',
-    help: 'Optionnel — le pro ou l\'infirmier sélectionné apparaîtra comme créateur du RDV (audit HDS).',
+    help: 'Optionnel — le professionnel sélectionné apparaîtra comme créateur du RDV et aura accès au patient (audit HDS).',
     emptyLabel: 'Moi (administration Cary)',
   },
 );
@@ -59,6 +59,8 @@ const selectedValue = computed({
 const roleLabel: Record<string, string> = {
   pro: 'Professionnel',
   nurse: 'Infirmier(ère)',
+  lab: 'Laboratoire',
+  subaccount: 'Sous-compte labo',
 };
 
 function userCity(u: Record<string, unknown>): string {
@@ -93,11 +95,13 @@ const selectedLabel = computed(() => {
 onMounted(async () => {
   loading.value = true;
   try {
-    const [pros, nurses] = await Promise.all([
+    const [pros, nurses, labs, subaccounts] = await Promise.all([
       fetchAllUsers({ role: 'pro', status: 'active' }),
       fetchAllUsers({ role: 'nurse', status: 'active' }),
+      fetchAllUsers({ role: 'lab', status: 'active' }),
+      fetchAllUsers({ role: 'subaccount', status: 'active' }),
     ]);
-    users.value = sortUsersByLabel([...pros, ...nurses]);
+    users.value = sortUsersByLabel([...pros, ...nurses, ...labs, ...subaccounts]);
   } finally {
     loading.value = false;
   }

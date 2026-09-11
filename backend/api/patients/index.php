@@ -121,6 +121,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     // Créer le patient
     try {
+        $patientOwnerId = (string) $user['user_id'];
+        $patientOwnerRole = (string) $user['role'];
+        if ($user['role'] === 'super_admin' && !empty($input['on_behalf_of_user_id'])) {
+            try {
+                $onBehalf = $userModel->resolveAdminOnBehalfStaffProfile((string) $input['on_behalf_of_user_id']);
+                $patientOwnerId = $onBehalf['id'];
+                $patientOwnerRole = $onBehalf['role'];
+            } catch (Exception $e) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+                exit;
+            }
+        }
+
         $birthDate = $input['birth_date'] ?? $input['date_of_birth'] ?? null;
         $patientData = [
             'email' => $emailTrim,
@@ -131,10 +145,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'gender' => isset($input['gender']) && trim((string) $input['gender']) !== '' ? trim((string) $input['gender']) : null,
             'address' => $input['address'] ?? null,
             'role' => 'patient',
-            'created_by' => $user['user_id'], // Associer au pro qui crée
+            'created_by' => $patientOwnerId,
         ];
         
         $patientId = $userModel->create($patientData, $user['user_id'], $user['role']);
+
+        if (
+            $user['role'] === 'super_admin'
+            && in_array($patientOwnerRole, User::patientListStaffRoles(), true)
+            && $patientOwnerId !== (string) $user['user_id']
+        ) {
+            $userModel->linkPatientProfessional($patientId, $patientOwnerId, null, 'created');
+        }
 
         StaffPatientConsent::logRecorded($user, $patientId, 'patient_create');
         
