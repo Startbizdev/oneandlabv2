@@ -1252,39 +1252,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $notifyCreatorRole = $createUserRole;
 
         if (($user['role'] ?? '') === 'super_admin' && !empty($input['on_behalf_of_user_id'])) {
-            $onBehalfId = trim((string) $input['on_behalf_of_user_id']);
-            if (!Validation::uuid($onBehalfId)) {
+            require_once __DIR__ . '/../../models/User.php';
+            $onBehalfUserModel = new User();
+            try {
+                $obProfile = $onBehalfUserModel->resolveAdminOnBehalfStaffProfile((string) $input['on_behalf_of_user_id']);
+            } catch (Exception $e) {
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'error' => 'Identifiant créateur invalide',
+                    'error' => $e->getMessage(),
                     'code' => 'VALIDATION_ERROR',
                 ]);
                 exit;
             }
-            $stmtOb = $db->prepare('SELECT id, role, banned_until FROM profiles WHERE id = ? LIMIT 1');
-            $stmtOb->execute([$onBehalfId]);
-            $obRow = $stmtOb->fetch(PDO::FETCH_ASSOC);
-            if (!$obRow || !in_array($obRow['role'] ?? '', ['pro', 'nurse'], true)) {
-                http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Le créateur doit être un professionnel ou un infirmier actif',
-                    'code' => 'VALIDATION_ERROR',
-                ]);
-                exit;
-            }
-            if (!empty($obRow['banned_until']) && strtotime((string) $obRow['banned_until']) > time()) {
-                http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Le profil sélectionné est suspendu ou banni',
-                    'code' => 'VALIDATION_ERROR',
-                ]);
-                exit;
-            }
-            $createUserId = $onBehalfId;
-            $createUserRole = (string) $obRow['role'];
+            $createUserId = $obProfile['id'];
+            $createUserRole = $obProfile['role'];
             $notifyCreatorRole = $createUserRole;
         }
 
@@ -1388,12 +1370,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     error_log('PatientProfessionalAccess (qr_booking): ' . $e->getMessage());
                 }
             }
-            if (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'], true)) {
-                try {
-                    $userModel->linkPatientProfessional((string) $input['patient_id'], $user['user_id'], $id, 'appointment_linked');
-                } catch (Throwable $e) {
-                    error_log('PatientProfessionalAccess (appointment_linked): ' . $e->getMessage());
-                }
+            try {
+                $userModel->linkPatientAccessAfterAppointmentCreate(
+                    (string) $input['patient_id'],
+                    $id,
+                    $user,
+                    $createUserId,
+                    $createUserRole,
+                    $inputForCreate
+                );
+            } catch (Throwable $e) {
+                error_log('PatientProfessionalAccess (appointment_linked): ' . $e->getMessage());
             }
             
             // Extraire les données à synchroniser depuis form_data ou directement depuis input

@@ -1167,10 +1167,13 @@ async function syncExistingPatientFromPayload(
 }
 
 async function createPatientRecord(payload: Record<string, any>): Promise<string> {
-  const body = {
+  const body: Record<string, unknown> = {
     ...extractPatientCreateBody(payload),
     patient_booking_consent: true,
   };
+  if (isAdminDashboard.value && adminOnBehalfUserId.value) {
+    body.on_behalf_of_user_id = adminOnBehalfUserId.value;
+  }
   try {
     const res = (await apiFetch('/patients', { method: 'POST', body })) as {
       success?: boolean;

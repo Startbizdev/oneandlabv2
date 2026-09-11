@@ -1253,6 +1253,88 @@ class User
         return $out;
     }
 
+    /** Rôles staff avec liste « Mes patients » (pro, infirmier, labo, sous-compte). */
+    public static function patientListStaffRoles(): array
+    {
+        return ['pro', 'nurse', 'lab', 'subaccount'];
+    }
+
+    /**
+     * Profil staff cible quand un super_admin agit « au nom de » (création patient ou RDV).
+     *
+     * @return array{id: string, role: string}
+     */
+    public function resolveAdminOnBehalfStaffProfile(string $onBehalfId): array
+    {
+        require_once __DIR__ . '/../lib/Validation.php';
+        $onBehalfId = trim($onBehalfId);
+        if ($onBehalfId === '' || !Validation::uuid($onBehalfId)) {
+            throw new Exception('Identifiant créateur invalide');
+        }
+        $stmt = $this->db->prepare('SELECT id, role, banned_until FROM profiles WHERE id = ? LIMIT 1');
+        $stmt->execute([$onBehalfId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row || !in_array($row['role'] ?? '', self::patientListStaffRoles(), true)) {
+            throw new Exception('Le créateur doit être un professionnel, infirmier ou laboratoire actif');
+        }
+        if (!empty($row['banned_until']) && strtotime((string) $row['banned_until']) > time()) {
+            throw new Exception('Le profil sélectionné est suspendu ou banni');
+        }
+
+        return [
+            'id' => (string) $row['id'],
+            'role' => (string) $row['role'],
+        ];
+    }
+
+    /**
+     * Liens patient_professional_access après création d'un RDV (session staff ou admin + assignations).
+     */
+    public function linkPatientAccessAfterAppointmentCreate(
+        string $patientId,
+        string $appointmentId,
+        array $sessionUser,
+        string $createUserId,
+        string $createUserRole,
+        array $appointmentInput
+    ): void {
+        if (!$this->hasPatientProfessionalAccessTable() || $patientId === '') {
+            return;
+        }
+
+        $staffRoles = self::patientListStaffRoles();
+        $linkIds = [];
+
+        $sessionRole = (string) ($sessionUser['role'] ?? '');
+        $sessionId = (string) ($sessionUser['user_id'] ?? '');
+        if (in_array($sessionRole, array_merge($staffRoles, ['preleveur']), true) && $sessionId !== '') {
+            if (in_array($sessionRole, $staffRoles, true)) {
+                $linkIds[] = $sessionId;
+            }
+        }
+
+        if ($sessionRole === 'super_admin') {
+            if (in_array($createUserRole, $staffRoles, true) && $createUserId !== '') {
+                $linkIds[] = $createUserId;
+            }
+            foreach (['assigned_pro_id', 'assigned_nurse_id', 'assigned_lab_id'] as $key) {
+                $assignedId = trim((string) ($appointmentInput[$key] ?? ''));
+                if ($assignedId !== '') {
+                    $linkIds[] = $assignedId;
+                }
+            }
+        }
+
+        $linkIds = array_values(array_unique(array_filter($linkIds)));
+        foreach ($linkIds as $profId) {
+            try {
+                $this->linkPatientProfessional($patientId, $profId, $appointmentId, 'appointment_linked');
+            } catch (Throwable $e) {
+                error_log('linkPatientAccessAfterAppointmentCreate: ' . $e->getMessage());
+            }
+        }
+    }
+
     /**
      * Lien patient ↔ professionnel (liste « Mes patients » au-delà de created_by).
      */
