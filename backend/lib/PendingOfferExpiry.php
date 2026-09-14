@@ -49,10 +49,11 @@ class PendingOfferExpiry
         }
 
         $date = $paris->format('Y-m-d');
+        $expireHour = self::MORNING_WINDOW_START + self::ttlHours();
         $morningExpire = new DateTimeImmutable(
-            $date . ' 0' . self::MORNING_WINDOW_START . ':00:00',
+            sprintf('%s %02d:00:00', $date, $expireHour),
             $tz
-        )->modify('+' . self::ttlHours() . ' hours');
+        );
 
         $hour = (int) $paris->format('G');
         if ($hour < self::OFF_HOURS_END) {
