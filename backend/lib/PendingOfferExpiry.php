@@ -114,16 +114,26 @@ class PendingOfferExpiry
         return self::computeExpiresAt($created);
     }
 
+    /** Instant « maintenant » Paris pour comparaisons SQL (sans SET time_zone MySQL). */
+    public static function sqlParisNowLiteral(): string
+    {
+        return "'" . AppTimezone::sqlDateTime() . "'";
+    }
+
     /** SQL : RDV encore dans la fenêtre d'offre. */
     public static function sqlCreatedWithinTtl(string $appointmentAlias = 'a'): string
     {
-        return "({$appointmentAlias}.pending_offer_expires_at IS NOT NULL AND {$appointmentAlias}.pending_offer_expires_at > NOW())";
+        $now = self::sqlParisNowLiteral();
+
+        return "({$appointmentAlias}.pending_offer_expires_at IS NOT NULL AND {$appointmentAlias}.pending_offer_expires_at > {$now})";
     }
 
     /** SQL : RDV à expirer (pending non assigné, fenêtre dépassée). */
     public static function sqlReadyToExpire(string $appointmentAlias = 'a'): string
     {
-        return "({$appointmentAlias}.pending_offer_expires_at IS NOT NULL AND {$appointmentAlias}.pending_offer_expires_at <= NOW())";
+        $now = self::sqlParisNowLiteral();
+
+        return "({$appointmentAlias}.pending_offer_expires_at IS NOT NULL AND {$appointmentAlias}.pending_offer_expires_at <= {$now})";
     }
 
     public static function isUnassignedPendingRow(array $row): bool
