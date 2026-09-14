@@ -867,6 +867,10 @@ const validateAndNextStep = async () => {
   // Vérifier chaque champ obligatoire
   const missingFields: string[] = [];
   
+  if (showRelativesSelector.value && typeof selectedRelative.value !== 'string') {
+    missingFields.push('Veuillez sélectionner un proche ou choisir « Pour moi-même ».');
+  }
+
   for (const [field, message] of Object.entries(requiredFields)) {
     const value = getField(field);
     
@@ -1900,7 +1904,15 @@ onMounted(async () => {
   if (isAuthenticated.value) {
     await fetchRelatives();
     if (!restoredFromDraft) {
-      selectForMyself();
+      const relativeIdFromUrl =
+        typeof route.query.relative_id === 'string' ? route.query.relative_id.trim() : '';
+      if (relativeIdFromUrl && relatives.value.some((r) => r.id === relativeIdFromUrl)) {
+        selectedRelative.value = relativeIdFromUrl;
+        showRelativesSelector.value = true;
+        loadRelativeData(relativeIdFromUrl);
+      } else {
+        selectForMyself();
+      }
     }
   }
 });
