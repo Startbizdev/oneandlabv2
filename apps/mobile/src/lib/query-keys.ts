@@ -12,6 +12,7 @@ export const queryKeys = {
     patientEditSchedule: (id: string) => ['appointments', 'detail', id, 'patient-edit-schedule'] as const,
     pendingOffers: (role: string) => ['appointments', 'pending-offers', role] as const,
     history: (id: string) => ['appointments', 'history', id] as const,
+    conversation: (id: string) => ['appointments', 'conversation', id] as const,
   },
   notifications: {
     list: (limit?: number) => ['notifications', 'list', limit ?? 10] as const,

@@ -189,6 +189,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('Erreur lecture fichier');
         }
 
+        if (in_array($mimeType, ['image/heic', 'image/heif'], true) && class_exists('Imagick')) {
+            try {
+                $imagick = new Imagick();
+                $imagick->readImage($file['tmp_name']);
+                $imagick->setImageFormat('jpeg');
+                $fileContent = $imagick->getImageBlob();
+                $mimeType = 'image/jpeg';
+                $imagick->clear();
+            } catch (Throwable $heicErr) {
+                error_log('care_photo HEIC conversion: ' . $heicErr->getMessage());
+            }
+        }
+
         $encryptedData = $crypto->encryptFile($fileContent);
 
         $backendDir = realpath(__DIR__ . '/../../../');

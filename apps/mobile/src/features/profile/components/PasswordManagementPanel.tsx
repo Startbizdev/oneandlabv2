@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { Lock } from 'lucide-react-native';
-import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 import { forgotPassword, updatePassword } from '@/features/auth/api/auth.service';
 import { useAuthStore } from '@/store/auth-store';
@@ -90,15 +90,22 @@ export function PasswordManagementPanel() {
         </View>
       </Cluster>
       {hasPassword ? (
-        <Input label="Mot de passe actuel" value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry />
+        <PasswordInput label="Mot de passe actuel" value={currentPassword} onChangeText={setCurrentPassword} />
       ) : null}
-      <Input
+      <PasswordInput
         label={hasPassword ? 'Nouveau mot de passe' : 'Mot de passe'}
         value={newPassword}
         onChangeText={setNewPassword}
-        secureTextEntry
+        autoComplete="new-password"
+        textContentType="newPassword"
       />
-      <Input label="Confirmation" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
+      <PasswordInput
+        label="Confirmation"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        autoComplete="new-password"
+        textContentType="newPassword"
+      />
       <Button
         title={hasPassword ? 'Mettre à jour' : 'Enregistrer'}
         loading={loading}

@@ -10,6 +10,8 @@
       <directory>tests/nurse-tour</directory>
       <directory>tests/coverage</directory>
       <directory>tests/admin</directory>
+      <directory>tests/appointments</directory>
+      <directory>tests/users</directory>
     </testsuite>
     <testsuite name="AI">
       <directory>tests/ai</directory>

@@ -224,7 +224,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { readCarePhotoSeenDigest, writeCarePhotoSeenDigest } from '~/utils/care-photo-thread-digest';
-import { CARE_PHOTO_ACCEPT_ATTR, isCarePhotoPdf } from '~/utils/care-photo-file';
+import { CARE_PHOTO_ACCEPT_ATTR, isCarePhotoPdf, isCarePhotoThreadAnchor } from '~/utils/care-photo-file';
 import { useCareGalleryNotificationDeepLink } from '~/composables/useCareGalleryNotificationDeepLink';
 
 const carePhotoAccept = CARE_PHOTO_ACCEPT_ATTR;
@@ -274,7 +274,10 @@ const primaryCareDocs = computed(() =>
   !aptIdPrimary.value
     ? []
     : (props.documents || []).filter(
-        (d: any) => d.document_type === 'care_photo' && String(d.appointment_id || '') === aptIdPrimary.value,
+        (d: any) =>
+          d.document_type === 'care_photo'
+          && String(d.appointment_id || '') === aptIdPrimary.value
+          && !isCarePhotoThreadAnchor(d),
       ),
 );
 
@@ -507,8 +510,17 @@ watch(
   { immediate: true },
 );
 
+function openDiscussionFromHash() {
+  if (typeof window === 'undefined') return;
+  const match = window.location.hash.match(/^#rdv-care-photo-(.+)$/);
+  if (match?.[1]) {
+    openCareDiscussion({ id: match[1] });
+  }
+}
+
 onMounted(() => {
   if (aptIdPrimary.value) startPolling();
+  openDiscussionFromHash();
 });
 
 onBeforeUnmount(() => {

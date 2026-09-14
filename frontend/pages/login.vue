@@ -90,13 +90,7 @@
                 <UInput v-model="email" type="email" autocomplete="email" class="w-full" :disabled="loading" />
               </UFormField>
               <UFormField label="Mot de passe" name="password">
-                <UInput
-                  v-model="password"
-                  type="password"
-                  autocomplete="current-password"
-                  class="w-full"
-                  :disabled="loading"
-                />
+                <PasswordInput v-model="password" autocomplete="current-password" :disabled="loading" />
               </UFormField>
               <div
                 v-if="noPasswordHint"

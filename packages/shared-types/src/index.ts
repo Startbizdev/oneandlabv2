@@ -12,6 +12,7 @@ export * from './nurse-passage';
 export * from './admin-dispatch';
 export * from './lab-brands';
 export * from './patient-absence';
+export * from './appointment-conversation';
 export {
   GENDER_OPTIONS,
   type ProfileForm,

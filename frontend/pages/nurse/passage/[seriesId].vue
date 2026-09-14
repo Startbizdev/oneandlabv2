@@ -605,7 +605,14 @@ async function onDeleteSeries() {
 async function downloadDocument(doc: { id: string; file_name?: string }) {
   downloadingDocIds.value.push(doc.id);
   try {
-    window.open(`/api/medical-documents/${doc.id}/download`, '_blank');
+    const { downloadMedicalDocument } = await import('~/utils/download-medical-document');
+    await downloadMedicalDocument(doc.id, doc.file_name);
+  } catch (e: unknown) {
+    toast.add({
+      title: 'Téléchargement',
+      description: e instanceof Error ? e.message : 'Impossible de télécharger le document',
+      color: 'error',
+    });
   } finally {
     downloadingDocIds.value = downloadingDocIds.value.filter((id) => id !== doc.id);
   }

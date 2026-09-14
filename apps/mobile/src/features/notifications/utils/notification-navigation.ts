@@ -118,6 +118,13 @@ export function resolveNotificationNavigation(
     return { kind: 'route', pathname: `${prefix}/reviews` };
   }
 
+  if (aptId && type === 'conversation_message') {
+    return {
+      kind: 'route',
+      pathname: `${prefix}/appointment/${aptId}/conversation`,
+    };
+  }
+
   if (aptId && type === 'appointment_request_sent') {
     return { kind: 'route', pathname: `${prefix}/appointment/${aptId}` };
   }

@@ -1,5 +1,8 @@
 <template>
   <AppointmentDetailPage ref="detailRef" base-path="/lab" :show-sidebar-actions-card="standardSidebarActionsCardVisible">
+    <template #conversationCard="{ appointment }">
+      <AppointmentConversationPanel v-if="appointment?.id" :appointment-id="String(appointment.id)" />
+    </template>
     <template #documentsCard="{ appointment, documents, documentsLoading, loadDocuments }">
       <AppointmentDocumentsSection
         :documents="documents || []"
