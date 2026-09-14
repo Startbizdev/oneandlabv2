@@ -1101,6 +1101,17 @@ class Appointment
         if (!empty($data['relative_id']) && !Validation::uuid($data['relative_id'])) {
             throw new Exception('ID de proche invalide (format UUID requis).');
         }
+        if (!empty($data['relative_id'])) {
+            if (empty($data['patient_id'])) {
+                throw new Exception('patient_id requis lorsque relative_id est renseigné.');
+            }
+            require_once __DIR__ . '/PatientRelative.php';
+            $relativeModel = new PatientRelative();
+            $relativeRow = $relativeModel->getById((string) $data['relative_id'], (string) $data['patient_id']);
+            if ($relativeRow === null) {
+                throw new Exception('Proche introuvable ou non rattaché à ce patient.');
+            }
+        }
         
         $status = 'pending';
         if (!empty($data['status']) && Validation::appointmentStatus($data['status'])) {
@@ -1260,7 +1271,6 @@ class Appointment
                 scheduled_at,
                 assigned_lab_id, assigned_nurse_id, assigned_to, attribution_qr_id, assigned_pro_id,
                 lab_preference_mode, preferred_lab_brand_id';
-        $insertPlaceholders = '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?';
         $insertParams = [
             $id,
             $creationBatchId,
@@ -1292,11 +1302,10 @@ class Appointment
         ];
         if ($pendingOfferExpiresAt !== null) {
             $insertFields .= ', pending_offer_expires_at';
-            $insertPlaceholders .= ', ?';
             $insertParams[] = $pendingOfferExpiresAt;
         }
         $insertFields .= ', created_at, updated_at';
-        $insertPlaceholders .= ', NOW(), NOW()';
+        $insertPlaceholders = implode(', ', array_fill(0, count($insertParams), '?')) . ', NOW(), NOW()';
 
         $stmt = $this->db->prepare('INSERT INTO appointments (' . $insertFields . ') VALUES (' . $insertPlaceholders . ')');
         $stmt->execute($insertParams);
