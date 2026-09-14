@@ -1907,10 +1907,48 @@ class User
     }
 
     /**
+     * Recherche admin (nom, prénom, email, société, téléphone) sur profils déchiffrés.
+     */
+    private function profileMatchesAdminSearch(array $user, string $search): bool
+    {
+        $q = mb_strtolower(trim($search));
+        if ($q === '') {
+            return true;
+        }
+        if (preg_match('/^[0-9a-f-]{8,}$/i', $search)) {
+            return str_contains(strtolower((string) ($user['id'] ?? '')), strtolower($search));
+        }
+        $haystacks = [
+            (string) ($user['first_name'] ?? ''),
+            (string) ($user['last_name'] ?? ''),
+            trim(((string) ($user['first_name'] ?? '')) . ' ' . ((string) ($user['last_name'] ?? ''))),
+            (string) ($user['email'] ?? ''),
+            (string) ($user['email_display'] ?? ''),
+            (string) ($user['company_name'] ?? ''),
+            (string) ($user['phone'] ?? ''),
+        ];
+        foreach ($haystacks as $field) {
+            if ($field !== '' && str_contains(mb_strtolower($field), $q)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Récupère la liste des utilisateurs avec pagination et filtres
      */
     public function getAll(array $filters = [], int $page = 1, int $limit = 20, string $requesterId = '', string $requesterRole = ''): array
     {
+        $searchText = trim((string) ($filters['search'] ?? ''));
+        $textSearchMode = $searchText !== '' && $requesterRole === 'super_admin';
+        $emailSearchHash = ($textSearchMode && filter_var($searchText, FILTER_VALIDATE_EMAIL))
+            ? hash('sha256', strtolower($searchText))
+            : null;
+        if ($emailSearchHash !== null) {
+            $textSearchMode = false;
+        }
         $sql = 'SELECT id, role, created_at, updated_at, banned_until, incident_count, last_incident_at,
             email_encrypted, email_dek, first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek,
             phone_encrypted, phone_dek, profile_image_url';
@@ -1941,6 +1979,10 @@ class User
             $params[] = $filters['lab_id'];
         }
         $this->appendPatientListScopeSql($sql, $params, $filters);
+        if ($emailSearchHash !== null) {
+            $sql .= ' AND email_hash = ?';
+            $params[] = $emailSearchHash;
+        }
         // Filtrer par statut (active, suspended, banned)
         if (!empty($filters['status'])) {
             if ($filters['status'] === 'banned') {
@@ -1964,6 +2006,10 @@ class User
             $countParams[] = $filters['lab_id'];
         }
         $this->appendPatientListScopeSql($countSql, $countParams, $filters);
+        if ($emailSearchHash !== null) {
+            $countSql .= ' AND email_hash = ?';
+            $countParams[] = $emailSearchHash;
+        }
         if (!empty($filters['status'])) {
             if ($filters['status'] === 'banned') {
                 $countSql .= " AND banned_until > '9999-12-30'";
@@ -1974,13 +2020,19 @@ class User
             }
         }
 
-        $countStmt = $this->db->prepare($countSql);
-        $countStmt->execute($countParams);
-        $total = (int) $countStmt->fetch()['total'];
+        if (!$textSearchMode) {
+            $countStmt = $this->db->prepare($countSql);
+            $countStmt->execute($countParams);
+            $total = (int) $countStmt->fetch()['total'];
+        }
         
         // Pagination
-        $offset = ($page - 1) * $limit;
-        $sql .= ' ORDER BY created_at DESC LIMIT ' . (int)$limit . ' OFFSET ' . (int)$offset;
+        if ($textSearchMode) {
+            $sql .= ' ORDER BY created_at DESC LIMIT 5000';
+        } else {
+            $offset = ($page - 1) * $limit;
+            $sql .= ' ORDER BY created_at DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
+        }
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -2071,13 +2123,23 @@ class User
             }
         }
         unset($u);
+
+        if ($textSearchMode) {
+            $decryptedUsers = array_values(array_filter(
+                $decryptedUsers,
+                fn (array $u): bool => $this->profileMatchesAdminSearch($u, $searchText)
+            ));
+            $total = count($decryptedUsers);
+            $offset = ($page - 1) * $limit;
+            $decryptedUsers = array_slice($decryptedUsers, $offset, $limit);
+        }
         
         return [
             'data' => $decryptedUsers,
             'total' => $total,
             'page' => $page,
             'limit' => $limit,
-            'pages' => ceil($total / $limit),
+            'pages' => max(1, (int) ceil($total / $limit)),
         ];
     }
 

@@ -129,6 +129,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if ($status && in_array($status, ['active', 'suspended', 'banned'], true)) {
         $filters['status'] = $status;
     }
+    $search = isset($_GET['search']) ? trim((string) $_GET['search']) : '';
+    if ($search !== '' && $isSuperAdmin) {
+        $filters['search'] = $search;
+    }
     
     // Récupérer les utilisateurs avec pagination
     $result = $userModel->getAll($filters, $page, $limit, $user['user_id'], $user['role']);
