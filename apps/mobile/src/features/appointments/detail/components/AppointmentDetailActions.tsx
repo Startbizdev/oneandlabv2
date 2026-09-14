@@ -81,6 +81,7 @@ export function AppointmentDetailActions({
   const showRescheduleNurse =
     role === 'nurse' && ['confirmed', 'inProgress', 'in_progress'].includes(status);
   const showRescheduleOther = (role === 'pro' || role === 'preleveur') && active;
+  const showCancelNurse = showRescheduleNurse;
   const showRedispatchNurse =
     role === 'nurse' &&
     status === 'confirmed' &&
@@ -149,7 +150,7 @@ export function AppointmentDetailActions({
     });
   }
 
-  if (active && role !== 'nurse') {
+  if ((active && role !== 'nurse') || showCancelNurse) {
     actions.push({
       key: 'cancel',
       label: 'Annuler le rendez-vous',
