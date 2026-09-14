@@ -8,11 +8,14 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../lib/PendingOfferExpiry.php';
 
 $config = require __DIR__ . '/../config/database.php';
+$pdoOptions = array_merge($config['options'] ?? [], [
+    PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,
+]);
 $pdo = new PDO(
     sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']),
     $config['username'],
     $config['password'],
-    $config['options'] ?? []
+    $pdoOptions
 );
 try {
     $pdo->exec("SET time_zone = 'Europe/Paris'");
