@@ -83,7 +83,7 @@
       </div>
     </div>
 
-    <div v-else-if="filteredUsers.length === 0" class="px-4 py-12 sm:py-14">
+    <div v-else-if="users.length === 0" class="px-4 py-12 sm:py-14">
       <UEmpty
         icon="i-lucide-users"
         title="Aucun utilisateur"
@@ -101,7 +101,7 @@
 
     <div v-else class="divide-y divide-gray-100 dark:divide-gray-800">
       <AdminUserListRow
-        v-for="u in filteredUsers"
+        v-for="u in users"
         :key="u.id"
         :user="u"
         :display-name="getUserDisplayName(u)"
@@ -224,20 +224,6 @@ const statusVal = computed(() => {
   return (typeof v === 'object' && v?.value != null) ? v.value : v;
 });
 
-const filteredUsers = computed(() => {
-  let filtered = [...(users.value || [])];
-  const query = debouncedSearch.value.trim().toLowerCase();
-  if (query) {
-    filtered = filtered.filter((u) =>
-      u.email?.toLowerCase().includes(query)
-      || u.email_display?.toLowerCase().includes(query)
-      || u.first_name?.toLowerCase().includes(query)
-      || u.last_name?.toLowerCase().includes(query)
-      || (u.company_name && u.company_name.toLowerCase().includes(query))
-    );
-  }
-  return filtered;
-});
 
 const totalPages = computed(() => Math.ceil(Math.max(0, totalItems.value) / pageSize));
 
@@ -309,6 +295,10 @@ watch([roleFilter, statusFilter], () => {
   currentPage.value = 1;
   fetchUsers();
 });
+watch(debouncedSearch, () => {
+  currentPage.value = 1;
+  fetchUsers();
+});
 watch(currentPage, () => {
   fetchUsers();
 });
@@ -322,6 +312,8 @@ const fetchUsers = async () => {
     };
     if (roleVal.value && roleVal.value !== 'all') params.role = roleVal.value;
     if (statusVal.value && statusVal.value !== 'all') params.status = statusVal.value;
+    const q = debouncedSearch.value.trim();
+    if (q) params.search = q;
     const queryString = new URLSearchParams(params).toString();
     const response = await apiFetch(`/users?${queryString}`, { method: 'GET' });
     if (response?.success && Array.isArray(response.data)) {
