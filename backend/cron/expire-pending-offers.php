@@ -24,11 +24,16 @@ $dsn = sprintf(
 );
 
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
+try {
+    $db->exec("SET time_zone = 'Europe/Paris'");
+} catch (Throwable) {
+    // ignore
+}
 $logger = new Logger();
 $appointmentModel = new Appointment();
 
 $hours = PendingOfferExpiry::ttlHours();
-$note = "Expiré automatiquement : aucun professionnel disponible sous {$hours} h";
+$note = "Expiré automatiquement : délai d'acceptation dépassé ({$hours} h ou fenêtre matinale)";
 
 $envActor = $_ENV['CRON_AUTO_COMPLETE_ACTOR_ID'] ?? getenv('CRON_AUTO_COMPLETE_ACTOR_ID');
 $actorId = is_string($envActor) ? trim($envActor) : '';

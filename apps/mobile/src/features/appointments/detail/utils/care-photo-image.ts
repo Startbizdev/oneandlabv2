@@ -2,18 +2,26 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { getApiBase } from '@/config/env';
 import { getAuthToken } from '@/lib/auth-token';
 
-function cachePath(documentId: string): string | null {
+function cacheExtension(mimeType?: string | null): string {
+  const mime = String(mimeType ?? '').toLowerCase();
+  if (mime.includes('png')) return '.png';
+  if (mime.includes('pdf')) return '.pdf';
+  if (mime.includes('webp')) return '.webp';
+  return '.jpg';
+}
+
+function cachePath(documentId: string, mimeType?: string | null): string | null {
   const dir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
   if (!dir) return null;
-  return `${dir}care-photo-${documentId}.bin`;
+  return `${dir}care-photo-${documentId}${cacheExtension(mimeType)}`;
 }
 
 /** Télécharge la photo de soin (auth) vers le cache local pour affichage Image / lightbox. */
 export async function loadCarePhotoLocalUri(
   documentId: string,
-  opts?: { bustCache?: boolean },
+  opts?: { bustCache?: boolean; mimeType?: string | null },
 ): Promise<string | null> {
-  const dest = cachePath(documentId);
+  const dest = cachePath(documentId, opts?.mimeType);
   if (!dest) return null;
 
   const token = getAuthToken();

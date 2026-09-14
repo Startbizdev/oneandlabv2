@@ -14,6 +14,7 @@ require_once __DIR__ . '/../lib/PatientUrgencyGuard.php';
 require_once __DIR__ . '/../lib/admin/AdminDispatchEventLogger.php';
 require_once __DIR__ . '/../lib/CoverageZoneMatcher.php';
 require_once __DIR__ . '/../lib/CoverageZoneGeo.php';
+require_once __DIR__ . '/../lib/PendingOfferExpiry.php';
 
 /**
  * Modèle Appointment
@@ -42,6 +43,11 @@ class Appointment
         );
         
         $this->db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
+        try {
+            $this->db->exec("SET time_zone = 'Europe/Paris'");
+        } catch (Throwable) {
+            // ignore if MySQL timezone tables unavailable
+        }
         $this->crypto = new Crypto();
         $this->logger = new Logger();
         
@@ -1230,8 +1236,21 @@ class Appointment
             $status = 'confirmed';
         }
 
-        $stmt = $this->db->prepare('
-            INSERT INTO appointments (
+        $pendingOfferExpiresAt = null;
+        if ($this->hasColumn('appointments', 'pending_offer_expires_at')) {
+            $expires = PendingOfferExpiry::computeExpiresAtForRow([
+                'status' => $status,
+                'type' => (string) ($data['type'] ?? ''),
+                'assigned_nurse_id' => $assignedNurseId,
+                'assigned_lab_id' => $assignedLabId,
+                'created_at' => $now->format('Y-m-d H:i:s'),
+            ]);
+            if ($expires !== null) {
+                $pendingOfferExpiresAt = PendingOfferExpiry::formatSqlDateTime($expires);
+            }
+        }
+
+        $insertFields = '
                 id, creation_batch_id, type, status, patient_id, relative_id, created_by, created_by_role,
                 category_id, form_type,
                 location_lat, location_lng,
@@ -1240,15 +1259,9 @@ class Appointment
                 guest_token, guest_email_encrypted, guest_email_dek,
                 scheduled_at,
                 assigned_lab_id, assigned_nurse_id, assigned_to, attribution_qr_id, assigned_pro_id,
-                lab_preference_mode, preferred_lab_brand_id,
-                created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-        ');
-
-        $labPreferenceMode = $data['lab_preference_mode'] ?? null;
-        $preferredLabBrandId = $data['preferred_lab_brand_id'] ?? null;
-
-        $stmt->execute([
+                lab_preference_mode, preferred_lab_brand_id';
+        $insertPlaceholders = '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?';
+        $insertParams = [
             $id,
             $creationBatchId,
             $data['type'],
@@ -1274,9 +1287,19 @@ class Appointment
             $assignedTo,
             $attributionQrId,
             $assignedProId,
-            $labPreferenceMode,
-            $preferredLabBrandId,
-        ]);
+            $data['lab_preference_mode'] ?? null,
+            $data['preferred_lab_brand_id'] ?? null,
+        ];
+        if ($pendingOfferExpiresAt !== null) {
+            $insertFields .= ', pending_offer_expires_at';
+            $insertPlaceholders .= ', ?';
+            $insertParams[] = $pendingOfferExpiresAt;
+        }
+        $insertFields .= ', created_at, updated_at';
+        $insertPlaceholders .= ', NOW(), NOW()';
+
+        $stmt = $this->db->prepare('INSERT INTO appointments (' . $insertFields . ') VALUES (' . $insertPlaceholders . ')');
+        $stmt->execute($insertParams);
 
         if (($data['type'] ?? '') === 'blood_test') {
             $this->insertBloodTestItems($id, $bloodTestItems);

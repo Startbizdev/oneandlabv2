@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
 import { Modal, StyleSheet, View } from 'react-native';
-import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 import { updatePassword } from '@/features/auth/api/auth.service';
 import { useAuthStore } from '@/store/auth-store';
@@ -64,8 +64,8 @@ export function ForcePasswordChangeModal({ visible, onDone }: Props) {
           Pour continuer, définissez un mot de passe personnel.
         </AppText>
         <View style={styles.form}>
-          <Input label="Nouveau mot de passe" value={newPassword} onChangeText={setNewPassword} secureTextEntry />
-          <Input label="Confirmation" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
+          <PasswordInput label="Nouveau mot de passe" value={newPassword} onChangeText={setNewPassword} />
+          <PasswordInput label="Confirmation" value={confirmPassword} onChangeText={setConfirmPassword} />
           <Button title="Continuer" loading={loading} onPress={() => void onSubmit()} fullWidth />
         </View>
       </View>

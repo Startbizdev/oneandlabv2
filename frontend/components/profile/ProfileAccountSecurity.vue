@@ -19,15 +19,15 @@
 
     <form class="space-y-4" @submit.prevent="onSubmit">
       <UFormField v-if="hasPassword" label="Mot de passe actuel" name="current_password">
-        <UInput v-model="currentPassword" type="password" autocomplete="current-password" class="w-full" />
+        <PasswordInput v-model="currentPassword" autocomplete="current-password" />
       </UFormField>
 
       <UFormField :label="hasPassword ? 'Nouveau mot de passe' : 'Mot de passe'" name="new_password">
-        <UInput v-model="newPassword" type="password" autocomplete="new-password" class="w-full" />
+        <PasswordInput v-model="newPassword" autocomplete="new-password" />
       </UFormField>
 
       <UFormField label="Confirmation" name="confirm_password">
-        <UInput v-model="confirmPassword" type="password" autocomplete="new-password" class="w-full" />
+        <PasswordInput v-model="confirmPassword" autocomplete="new-password" />
       </UFormField>
 
       <p v-if="validationError" class="text-sm text-red-600">{{ validationError }}</p>

@@ -325,6 +325,9 @@
         </template>
       </template>
 
+      <template #conversationCard="{ appointment }">
+        <AppointmentConversationPanel v-if="appointment?.id" :appointment-id="String(appointment.id)" />
+      </template>
       <template #documentsCard="{ appointment, documents, documentsLoading, loadDocuments }">
         <div id="resultats" class="scroll-mt-24">
           <AppointmentDocumentsSection

@@ -10,6 +10,9 @@
         prescription-kind="nursing"
       />
     </template>
+    <template #conversationCard="{ appointment }">
+      <AppointmentConversationPanel v-if="appointment?.id" :appointment-id="String(appointment.id)" />
+    </template>
     <template #carePhotosCard="{ appointment, documents, documentsLoading, loadDocuments }">
       <RdvCarePhotosSection
         v-if="appointment && isCarePhotoGalleryContext(appointment)"

@@ -42,6 +42,7 @@ import {
 } from '../detail/utils/care-photo-deep-link';
 import { reschedulePathForRole } from '../detail/utils/appointment-detail-role-config';
 import { carePhotoDiscussionHref } from '../detail/utils/care-photo-navigation';
+import { appointmentConversationHref } from '../detail/utils/conversation-navigation';
 import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-store';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
@@ -300,6 +301,13 @@ export function AppointmentDetailScreen({ role }: Props) {
                 <CareExchangeHintBanner
                   hint={careExchangeHint}
                   onPress={() => setSegment('exchange')}
+                />
+              ) : null}
+              {id ? (
+                <PrescriptionNavRow
+                  title="Messages"
+                  subtitle="Discuter avec le patient ou l'équipe soignante"
+                  onPress={() => router.push(appointmentConversationHref(role, String(id)))}
                 />
               ) : null}
               <View style={styles.edgeBleed}>

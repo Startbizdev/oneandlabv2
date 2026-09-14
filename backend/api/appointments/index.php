@@ -333,6 +333,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             } elseif ($nurseSegment === 'relais') {
                 // Relais : créés par l’infirmier, encore à prendre par un confrère — pas ceux qu’il a lui-même redispatchés
                 $sql .= " AND a.type = 'nursing' AND a.created_by = ? AND a.status = 'pending' AND (a.assigned_nurse_id IS NULL OR a.assigned_nurse_id <> ?)
+                    AND " . PendingOfferExpiry::sqlCreatedWithinTtl('a') . "
                     AND NOT EXISTS (
                         SELECT 1 FROM appointment_status_updates u
                         WHERE u.appointment_id = a.id AND u.actor_id = ? AND u.note LIKE ?

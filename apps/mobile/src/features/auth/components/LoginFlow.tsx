@@ -5,8 +5,9 @@ import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import type { AuthUser } from '@oneandlab/shared-types';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 import { ForgotPasswordPanel } from '@/features/auth/components/ForgotPasswordPanel';
 import {
@@ -54,7 +55,6 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
   const [passwordView, setPasswordView] = useState<PasswordView>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [hasPassword, setHasPassword] = useState<boolean | null>(null);
   const [forgotSent, setForgotSent] = useState(false);
   const [otp, setOtp] = useState('');
@@ -348,24 +348,12 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
             autoComplete="email"
             placeholder="prenom@exemple.fr"
           />
-          <Input
+          <PasswordInput
             label="Mot de passe"
             value={password}
             onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            autoComplete="password"
-            textContentType="password"
             onSubmitEditing={onPasswordSubmit}
             returnKeyType="done"
-            rightIcon={
-              <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
-                {showPassword ? (
-                  <EyeOff size={iconSize.md} color={c.textSecondary} strokeWidth={2} />
-                ) : (
-                  <Eye size={iconSize.md} color={c.textSecondary} strokeWidth={2} />
-                )}
-              </Pressable>
-            }
           />
           {hasPassword === false ? (
             <View style={[styles.infoBox, { backgroundColor: c.primaryLight, borderColor: c.primary }]}>

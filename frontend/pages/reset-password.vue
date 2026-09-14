@@ -32,10 +32,10 @@
             <UInput v-model="code" maxlength="6" class="w-full font-mono" />
           </UFormField>
           <UFormField label="Nouveau mot de passe" name="new_password">
-            <UInput v-model="newPassword" type="password" autocomplete="new-password" class="w-full" />
+            <PasswordInput v-model="newPassword" autocomplete="new-password" />
           </UFormField>
           <UFormField label="Confirmation" name="confirm_password">
-            <UInput v-model="confirmPassword" type="password" autocomplete="new-password" class="w-full" />
+            <PasswordInput v-model="confirmPassword" autocomplete="new-password" />
           </UFormField>
           <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
           <UButton type="submit" block :loading="loading">Enregistrer</UButton>
