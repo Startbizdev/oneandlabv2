@@ -17,28 +17,37 @@ $pdo = new PDO(
     $config['password'],
     $pdoOptions
 );
-try {
-    $pdo->exec("SET time_zone = 'Europe/Paris'");
-} catch (Throwable) {
-    // MySQL sans tables fuseaux : backfill PHP en heure Paris, comparaisons via PendingOfferExpiry.
+
+$hasColumn = (int) $pdo->query("
+    SELECT COUNT(*) FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'appointments'
+      AND column_name = 'pending_offer_expires_at'
+")->fetchColumn();
+
+if ($hasColumn === 0) {
+    $pdo->exec(
+        'ALTER TABLE appointments ADD COLUMN pending_offer_expires_at DATETIME NULL DEFAULT NULL AFTER updated_at'
+    );
+    echo "OK: colonne pending_offer_expires_at ajoutée.\n";
+} else {
+    echo "SKIP: colonne pending_offer_expires_at existe déjà.\n";
 }
 
-$sqlFile = dirname(__DIR__, 2) . '/database/migrations/105_pending_offer_expires_at.sql';
-if (!is_readable($sqlFile)) {
-    fwrite(STDERR, "Fichier migration introuvable: $sqlFile\n");
-    exit(1);
-}
+$hasIndex = (int) $pdo->query("
+    SELECT COUNT(*) FROM information_schema.statistics
+    WHERE table_schema = DATABASE()
+      AND table_name = 'appointments'
+      AND index_name = 'idx_appointments_pending_offer_expires_at'
+")->fetchColumn();
 
-foreach (array_filter(array_map('trim', explode(';', file_get_contents($sqlFile)))) as $stmt) {
-    if ($stmt === '') {
-        continue;
-    }
-    try {
-        $pdo->exec($stmt);
-        echo "OK: " . substr(str_replace("\n", ' ', $stmt), 0, 80) . "...\n";
-    } catch (PDOException $e) {
-        echo 'SKIP/ERR: ' . $e->getMessage() . "\n";
-    }
+if ($hasIndex === 0) {
+    $pdo->exec(
+        'CREATE INDEX idx_appointments_pending_offer_expires_at ON appointments (status, pending_offer_expires_at)'
+    );
+    echo "OK: index idx_appointments_pending_offer_expires_at créé.\n";
+} else {
+    echo "SKIP: index idx_appointments_pending_offer_expires_at existe déjà.\n";
 }
 
 $rows = $pdo->query("
@@ -51,9 +60,13 @@ $rows = $pdo->query("
         (type = 'blood_test' AND (assigned_lab_id IS NULL OR TRIM(assigned_lab_id) = ''))
       )
 ")->fetchAll(PDO::FETCH_ASSOC);
+
 $upd = $pdo->prepare('UPDATE appointments SET pending_offer_expires_at = ? WHERE id = ?');
 $backfilled = 0;
 foreach ($rows as $row) {
+    if (!empty($row['pending_offer_expires_at'])) {
+        continue;
+    }
     $expires = PendingOfferExpiry::computeExpiresAtForRow($row);
     if ($expires === null) {
         continue;

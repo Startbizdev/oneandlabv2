@@ -1,6 +1,6 @@
 {
   "name": "@oneandlab/mobile",
-  "version": "1.8.4",
+  "version": "1.8.7",
   "private": true,
   "main": "index.js",
   "scripts": {
@@ -25,6 +25,7 @@
     "ios:dev-build": "expo run:ios",
     "icons:generate": "bash scripts/generate-brand-icons.sh",
     "build:ios:store": "node scripts/run-eas-ios.cjs",
+    "bump:ios:store": "node scripts/bump-ios-store-version.cjs",
     "build:android:store": "node scripts/run-eas-android.cjs",
     "build:dev:ios": "node scripts/run-eas-ios.cjs build --platform ios --profile development",
     "build:dev:ios:clean": "node scripts/run-eas-ios.cjs build --platform ios --profile development --clear-cache",
