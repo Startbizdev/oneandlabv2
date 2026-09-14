@@ -41,7 +41,7 @@ foreach (array_filter(array_map('trim', explode(';', file_get_contents($sqlFile)
     }
 }
 
-$sel = $pdo->query("
+$rows = $pdo->query("
     SELECT id, type, status, assigned_nurse_id, assigned_lab_id, created_at, pending_offer_expires_at
     FROM appointments
     WHERE status = 'pending'
@@ -50,10 +50,10 @@ $sel = $pdo->query("
         OR
         (type = 'blood_test' AND (assigned_lab_id IS NULL OR TRIM(assigned_lab_id) = ''))
       )
-");
+")->fetchAll(PDO::FETCH_ASSOC);
 $upd = $pdo->prepare('UPDATE appointments SET pending_offer_expires_at = ? WHERE id = ?');
 $backfilled = 0;
-while ($row = $sel->fetch(PDO::FETCH_ASSOC)) {
+foreach ($rows as $row) {
     $expires = PendingOfferExpiry::computeExpiresAtForRow($row);
     if ($expires === null) {
         continue;
