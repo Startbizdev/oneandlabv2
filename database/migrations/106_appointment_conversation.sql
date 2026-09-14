@@ -30,6 +30,7 @@ SET @preparedStatement = (SELECT IF(
         ''autres_assurances'',
         ''resultats'',
         ''care_photo'',
+        ''cancellation_photo'',
         ''conversation_attachment'',
         ''other''
     ) DEFAULT ''other'''
