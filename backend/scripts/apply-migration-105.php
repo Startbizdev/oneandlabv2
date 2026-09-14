@@ -14,7 +14,11 @@ $pdo = new PDO(
     $config['password'],
     $config['options'] ?? []
 );
-$pdo->exec("SET time_zone = 'Europe/Paris'");
+try {
+    $pdo->exec("SET time_zone = 'Europe/Paris'");
+} catch (Throwable) {
+    // MySQL sans tables fuseaux : backfill PHP en heure Paris, comparaisons via PendingOfferExpiry.
+}
 
 $sqlFile = dirname(__DIR__, 2) . '/database/migrations/105_pending_offer_expires_at.sql';
 if (!is_readable($sqlFile)) {
