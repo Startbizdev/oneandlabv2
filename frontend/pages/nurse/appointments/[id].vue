@@ -43,6 +43,18 @@
             >
               Reprendre le RDV
             </UButton>
+            <UButton
+              type="button"
+              color="error"
+              variant="outline"
+              size="md"
+              leading-icon="i-lucide-x-circle"
+              :loading="canceling"
+              class="flex-1 min-w-0 justify-center"
+              :on-click="() => openCancelModal(appointment, loadAppointment)"
+            >
+              Annuler le rendez-vous
+            </UButton>
           </div>
 
           <UButton
@@ -136,6 +148,11 @@
 
   </AppointmentDetailPage>
 
+  <CancelAppointmentModal
+    v-model:open="showCancelModal"
+    :loading="canceling"
+    @confirm="onConfirmCancel"
+  />
   <RescheduleAppointmentModal
     v-model="showRescheduleModal"
     :appointment="rescheduleAppointment"
@@ -158,6 +175,7 @@ definePageMeta({
 
 import { computed, nextTick, onMounted, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
+import { cancelAppointmentWithOptionalPhoto } from '~/utils/appointment-cancellation';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
 import { isPendingIncomingOffer, staffCanManageOwnPendingBloodTest } from '@oneandlab/shared-utils';
@@ -185,7 +203,7 @@ const nurseSidebarActionsCardVisible = computed(() =>
 function nurseCanManageAppointmentActions(appointment: unknown) {
   const apt = appointment as { status?: string } | null | undefined;
   if (!apt) return false;
-  if (['confirmed', 'inProgress'].includes(String(apt.status ?? ''))) return true;
+  if (['pending', 'confirmed', 'inProgress'].includes(String(apt.status ?? ''))) return true;
   return staffCanManageOwnPendingBloodTest(appointment as Parameters<typeof staffCanManageOwnPendingBloodTest>[0], user.value?.id);
 }
 
@@ -238,7 +256,11 @@ watch(
 
 const processing = ref(false);
 const currentAppointmentForUpload = ref<any>(null);
+const showCancelModal = ref(false);
 const showRescheduleModal = ref(false);
+const currentAppointmentForCancel = ref<any>(null);
+const currentLoadAppointmentForCancel = ref<(() => Promise<void>) | null>(null);
+const canceling = ref(false);
 const rescheduleAppointment = ref<any>(null);
 const showRedispatchModal = ref(false);
 const currentAppointmentForRedispatch = ref<any>(null);
@@ -270,9 +292,43 @@ function setAppointmentForUpload(apt: any) {
   currentAppointmentForUpload.value = apt;
 }
 
+function openCancelModal(apt: any, loadAppointment: () => Promise<void>) {
+  currentAppointmentForCancel.value = apt;
+  currentLoadAppointmentForCancel.value = loadAppointment;
+  showCancelModal.value = true;
+}
+
 function openRescheduleModal(apt: any) {
   rescheduleAppointment.value = apt ?? null;
   showRescheduleModal.value = true;
+}
+
+async function onConfirmCancel(payload: { reason: string; comment: string; photoFile: File | null }) {
+  const apt = currentAppointmentForCancel.value;
+  const loadAppointment = currentLoadAppointmentForCancel.value;
+  const appointmentId = String(apt?.id ?? route.params?.id ?? '');
+  if (!appointmentId || typeof loadAppointment !== 'function') return;
+  currentAppointmentForCancel.value = null;
+  currentLoadAppointmentForCancel.value = null;
+  canceling.value = true;
+  try {
+    const result = await cancelAppointmentWithOptionalPhoto(appointmentId, payload);
+    if (result.ok) {
+      showCancelModal.value = false;
+      await loadAppointment();
+      toast.add({ title: 'Rendez-vous annulé', description: "L'annulation a été enregistrée.", color: 'success' });
+    } else {
+      toast.add({
+        title: result.photoUploadFailed ? 'Photo non envoyée' : 'Erreur',
+        description: result.error,
+        color: 'error',
+      });
+    }
+  } catch (error: any) {
+    toast.add({ title: 'Erreur', description: error.message || 'Une erreur est survenue', color: 'error' });
+  } finally {
+    canceling.value = false;
+  }
 }
 
 function onRescheduleDone(newAppointmentId?: string) {
