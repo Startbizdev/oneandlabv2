@@ -93,6 +93,7 @@ class Email
             $mail->isHTML($isHTML);
             $mail->Subject = $subject;
             $mail->Body = $body;
+            if ($isHTML) $mail->AltBody = self::plainTextFromHtml($body);
             $mail->CharSet = 'UTF-8';
             
             // Envoi
@@ -138,31 +139,31 @@ class Email
         return $datePart ?: $creneauPart;
     }
 
-    /** Couleur primaire (alignée Nuxt UI primary blue). Surcharge : EMAIL_BRAND_PRIMARY */
+    /** Cary primary; the former default blue is migrated to the current identity. */
     private function emailBrandPrimary(): string
     {
         $c = $_ENV['EMAIL_BRAND_PRIMARY'] ?? '';
-        return $c !== '' ? $c : '#2563eb';
+        return preg_match('/^#[0-9a-f]{6}$/i', $c) && strtolower($c) !== '#2563eb' ? $c : '#1CC7B5';
     }
 
     private function emailText(): string
     {
-        return '#0f172a';
+        return '#123C36';
     }
 
     private function emailMuted(): string
     {
-        return '#64748b';
+        return '#526863';
     }
 
     private function emailPageBg(): string
     {
-        return '#f1f5f9';
+        return '#F3F7F5';
     }
 
     private function emailCardBorder(): string
     {
-        return '#e2e8f0';
+        return '#DFEAE5';
     }
 
     /** Logo Cary servi depuis le frontend public (aligné site / app). */
@@ -196,8 +197,8 @@ class Email
     /** Largeur logo (px) — évite l’étirement : width fixe + height:auto */
     private function emailLogoMaxWidth(): int
     {
-        $w = (int) ($_ENV['EMAIL_LOGO_MAX_WIDTH'] ?? 168);
-        return $w >= 80 && $w <= 280 ? $w : 168;
+        $w = (int) ($_ENV['EMAIL_LOGO_MAX_WIDTH'] ?? 112);
+        return $w >= 80 && $w <= 280 ? $w : 112;
     }
 
     /**
@@ -222,8 +223,8 @@ class Email
         $l = $this->escapeHtml($label);
         return '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:28px 0 0 0;"><tr><td align="left">'
             . '<table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>'
-            . '<td align="center" bgcolor="' . $this->escapeHtml($primary) . '" style="border-radius:8px;">'
-            . '<a href="' . $u . '" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:14px 28px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Helvetica Neue\',Arial,sans-serif;font-size:15px;font-weight:600;line-height:1.2;color:#ffffff;text-decoration:none;border-radius:8px;">' . $l . '</a>'
+            . '<td align="center" bgcolor="' . $this->escapeHtml($primary) . '" style="border-radius:12px;mso-padding-alt:17px 26px;">'
+            . '<a href="' . $u . '" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:17px 26px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Helvetica Neue\',Arial,sans-serif;font-size:16px;font-weight:700;line-height:1.25;color:#123C36;text-decoration:none;border-radius:12px;mso-padding-alt:0;text-align:center;">' . $l . '</a>'
             . '</td></tr></table></td></tr></table>';
     }
 
@@ -232,10 +233,9 @@ class Email
      */
     private function emailSecondaryCta(string $url, string $label): string
     {
-        $primary = $this->emailBrandPrimary();
         $muted = $this->emailMuted();
         return '<p style="margin:18px 0 0 0;font-size:14px;line-height:1.5;color:' . $this->escapeHtml($muted) . ';font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;">'
-            . '<a href="' . $this->escapeHtml($url) . '" target="_blank" rel="noopener noreferrer" style="color:' . $this->escapeHtml($primary) . ';text-decoration:underline;font-weight:500;">' . $this->escapeHtml($label) . '</a>'
+            . '<a href="' . $this->escapeHtml($url) . '" target="_blank" rel="noopener noreferrer" style="color:#126B5E;text-decoration:underline;font-weight:500;">' . $this->escapeHtml($label) . '</a>'
             . '</p>';
     }
 
@@ -245,52 +245,49 @@ class Email
     private function emailWrap(string $preheader, string $cardInnerHtml): string
     {
         $bg = $this->emailPageBg();
-        $border = $this->emailCardBorder();
         $primary = $this->emailBrandPrimary();
-        $muted = $this->emailMuted();
-        $pre = $preheader !== ''
-            ? '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">' . $this->escapeHtml($preheader) . '</div>'
-            : '';
-
+        $logo = $this->emailLogoBlock();
+        $pre = $this->escapeHtml($preheader);
+        $base = $this->escapeHtml(rtrim((string) ($_ENV['FRONTEND_URL'] ?? 'https://cary.bio'), '/'));
         return '<!DOCTYPE html>
-<html lang="fr" xmlns="http://www.w3.org/1999/xhtml">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="x-apple-disable-message-reformatting">
-<meta name="color-scheme" content="light">
-<meta name="supported-color-schemes" content="light">
-<!--[if mso]><style type="text/css">table {border-collapse:collapse;border-spacing:0;} a {text-decoration:none;}</style><![endif]-->
-<title>Cary</title>
-</head>
-<body style="margin:0;padding:0;word-spacing:normal;background-color:' . $bg . ';-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
-' . $pre . '
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:' . $bg . ';">
-<tr>
-<td align="center" style="padding:28px 12px;">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;width:100%;">
-<tr>
-<td style="background:#ffffff;border:1px solid ' . $border . ';border-radius:10px;overflow:hidden;">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-<tr><td style="height:3px;line-height:3px;font-size:0;background-color:' . $primary . ';">&nbsp;</td></tr>
-<tr><td style="padding:28px 24px 26px 24px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Helvetica Neue\',Arial,sans-serif;font-size:16px;line-height:1.55;color:' . $this->emailText() . ';">
+<html lang="fr" xmlns="http://www.w3.org/1999/xhtml"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting"><meta name="color-scheme" content="light">
+<title>Cary — Vos soins, simplement</title>
+<style>body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table{border-spacing:0}img{border:0;max-width:100%}a{word-break:break-word}p{overflow-wrap:anywhere}@media(max-width:600px){.email-outer{padding:20px 12px!important}.email-content{padding:28px 22px!important}h1{font-size:28px!important}.email-footer{padding:24px 12px!important}}</style>
+<!--[if mso]><style>table{border-collapse:collapse}body,table,td,a{font-family:Arial,sans-serif!important}</style><![endif]-->
+</head><body style="margin:0;padding:0;background:' . $bg . ';word-spacing:normal;">
+<div aria-hidden="true" style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;font-size:1px;line-height:1px;mso-hide:all;">' . $pre . '</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="' . $bg . '"><tr><td class="email-outer" align="center" style="padding:40px 16px;">
+<!--[if mso]><table role="presentation" width="600" align="center"><tr><td><![endif]-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+<tr><td style="padding:0 8px 4px;">' . $logo . '</td></tr>
+<tr><td bgcolor="#FFFFFF" style="background:#FFFFFF;border:1px solid #DFEAE5;border-radius:24px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="email-content" style="padding:40px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.65;color:#123C36;overflow-wrap:anywhere;word-break:break-word;">
+<p style="margin:0 0 20px;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:2px;color:#126B5E;">VOTRE ESPACE CARY</p>
 ' . $cardInnerHtml . '
+</td></tr><tr><td style="padding:0 40px 32px;"><table role="presentation" width="48" cellpadding="0" cellspacing="0" border="0"><tr><td height="4" bgcolor="' . $primary . '" style="height:4px;line-height:4px;border-radius:2px;">&nbsp;</td></tr></table></td></tr></table>
 </td></tr>
-</table>
-</td>
-</tr>
-<tr>
-<td style="padding:20px 12px 8px 12px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;font-size:12px;line-height:1.5;color:' . $muted . ';">
-Cary — Prélèvement et soins infirmiers à domicile
-</td>
-</tr>
-</table>
-</td>
-</tr>
-</table>
-</body>
-</html>';
+<tr><td class="email-footer" style="padding:26px 24px 8px;font-family:Arial,Helvetica,sans-serif;text-align:center;font-size:12px;line-height:1.7;color:#526863;">
+<p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#123C36;">Vos soins, simplement.</p>
+<p style="margin:0 0 12px;">Prélèvements et soins infirmiers à domicile.</p>
+<p style="margin:0;"><a href="' . $base . '/contact" style="display:inline-block;padding:8px;color:#126B5E;text-decoration:underline;">Besoin d’aide ?</a> &nbsp;·&nbsp; <a href="' . $base . '" style="display:inline-block;padding:8px;color:#126B5E;text-decoration:underline;">cary.bio</a></p>
+</td></tr></table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr></table></body></html>';
+    }
+
+    public static function plainTextFromHtml(string $html): string
+    {
+        $html = preg_replace('~<(head|style|script)\b[^>]*>.*?</\1>~is', '', $html);
+        $html = preg_replace('~<div\b[^>]*aria-hidden="true"[^>]*>.*?</div>~is', '', $html);
+        $html = preg_replace_callback('~<a\b[^>]*href="([^"]+)"[^>]*>(.*?)</a>~is', static function ($match) {
+            return strip_tags($match[2]) . ' : ' . $match[1];
+        }, $html);
+        $html = preg_replace('~<br\s*/?>|</(?:p|h[1-6]|tr|div|table)>~i', "\n", $html);
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/[^\S\r\n]+/u', ' ', $text);
+        return trim(preg_replace('/\n[ \t]*\n(?:[ \t]*\n)+/', "\n\n", $text));
     }
 
     /**
@@ -309,13 +306,13 @@ Cary — Prélèvement et soins infirmiers à domicile
     public function buildStaffAlertBody(string $title, string $innerHtml, array $options = []): string
     {
         $preheader = (string) ($options['preheader'] ?? $title);
-        $h1 = '<h1 style="margin:0 0 18px 0;font-size:20px;font-weight:600;line-height:1.3;letter-spacing:-0.02em;color:' . $this->emailText() . ';">' . $this->escapeHtml($title) . '</h1>';
-        $block = '<div style="font-size:15px;line-height:1.6;color:' . $this->emailMuted() . ';">' . $innerHtml . '</div>';
+        $h1 = '<h1 style="margin:0 0 18px 0;font-size:30px;font-weight:700;line-height:1.15;letter-spacing:-0.035em;color:' . $this->emailText() . ';">' . $this->escapeHtml($title) . '</h1>';
+        $block = '<div style="font-size:16px;line-height:1.65;color:' . $this->emailMuted() . ';">' . $innerHtml . '</div>';
         $ctaUrl = (string) ($options['ctaUrl'] ?? '');
         $ctaLabel = (string) ($options['ctaLabel'] ?? '');
         $ctaBlock = ($ctaUrl !== '' && $ctaLabel !== '') ? $this->emailPrimaryCta($ctaUrl, $ctaLabel) : '';
 
-        return $this->emailWrap($preheader, $this->emailLogoBlock() . $h1 . $block . $ctaBlock);
+        return $this->emailWrap($preheader, $h1 . $block . $ctaBlock);
     }
 
     /**
@@ -357,24 +354,24 @@ Cary — Prélèvement et soins infirmiers à domicile
     private function emailInfoBox(string $innerHtml): string
     {
         $primary = $this->emailBrandPrimary();
-        return '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0;"><tr><td style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid ' . $primary . ';border-radius:0 8px 8px 0;padding:16px 18px;font-size:14px;line-height:1.55;color:#334155;">' . $innerHtml . '</td></tr></table>';
+        return '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0;"><tr><td style="background:#F0F8F5;border:1px solid #D8EBE3;border-top:3px solid ' . $primary . ';border-radius:14px;padding:20px;font-size:15px;line-height:1.55;color:#234D45;">' . $innerHtml . '</td></tr></table>';
     }
 
     private function emailOtpCodeBlock(string $otp): string
     {
-        return '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0;"><tr><td align="center" style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:22px 16px;">'
-            . '<span style="font-family:ui-monospace,\'SF Mono\',Menlo,Consolas,monospace;font-size:24px;font-weight:600;letter-spacing:0.22em;color:' . $this->emailText() . ';">' . $this->escapeHtml($otp) . '</span>'
+        return '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0;"><tr><td align="center" style="background:#E5F8F1;border:1px solid #C4EADF;border-radius:16px;padding:26px 12px;">'
+            . '<span style="font-family:ui-monospace,\'SF Mono\',Menlo,Consolas,monospace;font-size:34px;font-weight:700;letter-spacing:0.18em;color:' . $this->emailText() . ';">' . $this->escapeHtml($otp) . '</span>'
             . '</td></tr></table>';
     }
 
     private function emailWarningBox(string $innerHtml): string
     {
-        return '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0;"><tr><td style="background:#fffbeb;border:1px solid #fde68a;border-left:4px solid #ca8a04;border-radius:0 8px 8px 0;padding:16px 18px;font-size:14px;line-height:1.55;color:#422006;">' . $innerHtml . '</td></tr></table>';
+        return '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0;"><tr><td style="background:#fffbeb;border:1px solid #fde68a;border-left:4px solid #ca8a04;border-radius:14px;padding:20px;font-size:15px;line-height:1.55;color:#422006;">' . $innerHtml . '</td></tr></table>';
     }
 
     private function emailAlertBox(string $innerHtml): string
     {
-        return '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0;"><tr><td style="background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:0 8px 8px 0;padding:16px 18px;font-size:14px;line-height:1.55;color:#450a0a;">' . $innerHtml . '</td></tr></table>';
+        return '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0;"><tr><td style="background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:14px;padding:20px;font-size:15px;line-height:1.55;color:#450a0a;">' . $innerHtml . '</td></tr></table>';
     }
 
     /**
@@ -390,26 +387,26 @@ Cary — Prélèvement et soins infirmiers à domicile
         $cta2Url = $options['ctaSecondaryUrl'] ?? '';
         $cta2Label = $options['ctaSecondaryLabel'] ?? '';
 
-        $h1 = '<h1 style="margin:0 0 18px 0;font-size:22px;font-weight:600;line-height:1.25;letter-spacing:-0.02em;color:' . $this->emailText() . ';">' . $this->escapeHtml($title) . '</h1>';
-        $bodyWrap = '<div style="font-size:15px;line-height:1.6;color:' . $this->emailMuted() . ';">' . $content . '</div>';
+        $h1 = '<h1 style="margin:0 0 18px 0;font-size:30px;font-weight:700;line-height:1.15;letter-spacing:-0.035em;color:' . $this->emailText() . ';">' . $this->escapeHtml($title) . '</h1>';
+        $bodyWrap = '<div style="font-size:16px;line-height:1.65;color:' . $this->emailMuted() . ';">' . $content . '</div>';
 
         $ctaBlock = '';
         if ($ctaUrl !== '' && $ctaLabel !== '') {
             $ctaBlock .= $this->emailPrimaryCta($ctaUrl, $ctaLabel);
         }
-        if ($cta2Url !== '' && $cta2Label !== '') {
+        if ($cta2Url !== '' && $cta2Label !== '' && $cta2Url !== $ctaUrl) {
             $ctaBlock .= $this->emailSecondaryCta($cta2Url, $cta2Label);
         }
 
-        return $this->emailWrap($preheader, $this->emailLogoBlock() . $h1 . $bodyWrap . $ctaBlock);
+        return $this->emailWrap($preheader, $h1 . $bodyWrap . $ctaBlock);
     }
 
     public function sendWelcome(string $to, array $p): bool
     {
-        $content = '<p style="margin:0 0 14px 0;">Bienvenue sur Cary.</p><p style="margin:0 0 14px 0;">Vous pouvez désormais prendre rendez-vous pour des prises de sang ou soins infirmiers à domicile.</p>';
-        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
+        $content = '<p style="margin:0 0 14px 0;">Vos soins, plus simplement.</p><p style="margin:0 0 14px 0;">Prenez rendez-vous à domicile et retrouvez vos soins et vos documents au même endroit.</p>';
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
         $body = $this->baseLayout($content, [
-            'title' => 'Bienvenue',
+            'title' => 'Bienvenue chez Cary.',
             'preheader' => 'Votre compte Cary est prêt. Accédez à votre espace.',
             'ctaUrl' => $baseUrl . '/patient',
             'ctaLabel' => 'Ouvrir mon espace',
@@ -421,14 +418,14 @@ Cary — Prélèvement et soins infirmiers à domicile
 
     public function sendAppointmentCreated(string $to, array $p): bool
     {
-        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
         if (!empty($p['batch_summaries']) && is_array($p['batch_summaries'])) {
             $n = count($p['batch_summaries']);
             $content = '<p style="margin:0 0 14px 0;">Vos ' . $n . ' rendez-vous ont bien été enregistrés.</p>';
             foreach ($p['batch_summaries'] as $line) {
                 $content .= '<p style="margin:6px 0 0 0;">• ' . htmlspecialchars((string) $line) . '</p>';
             }
-            $content .= '<p style="margin:0;">Ils seront pris en charge par un professionnel sous peu. Vous recevrez une confirmation par email.</p>';
+            $content .= '<p style="margin:0;">Vous recevrez un email dès leur prise en charge par un professionnel.</p>';
             $body = $this->baseLayout($content, [
                 'title' => 'Rendez-vous enregistrés',
                 'preheader' => $n . ' rendez-vous enregistrés sur Cary. Suivez-les depuis votre espace.',
@@ -448,7 +445,7 @@ Cary — Prélèvement et soins infirmiers à domicile
         if ($dateCreneau) {
             $content .= '<p style="margin:0 0 14px 0;"><strong>Date et créneau :</strong> ' . htmlspecialchars($dateCreneau) . '</p>';
         }
-        $content .= '<p style="margin:0;">Il sera pris en charge par un professionnel sous peu. Vous recevrez une confirmation par email.</p>';
+        $content .= '<p style="margin:0;">Vous recevrez un email dès sa prise en charge par un professionnel.</p>';
         $body = $this->baseLayout($content, [
             'title' => 'Rendez-vous enregistré',
             'preheader' => 'Votre demande est bien enregistrée. Consultez le suivi dans votre espace.',
@@ -469,12 +466,12 @@ Cary — Prélèvement et soins infirmiers à domicile
             $content .= '<p style="margin:0 0 14px 0;"><strong>Date prévue :</strong> ' . htmlspecialchars($dateCreneau) . '</p>';
         }
         $content .= '<p style="margin:0;">Vous pouvez prendre un nouveau rendez-vous à tout moment.</p>';
-        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
         $body = $this->baseLayout($content, [
             'title' => 'Rendez-vous annulé',
             'preheader' => 'Votre rendez-vous a été annulé. Réservez un nouveau créneau quand vous voulez.',
             'ctaUrl' => $baseUrl . '/rendez-vous/nouveau',
-            'ctaLabel' => 'Prendre un nouveau rendez-vous',
+            'ctaLabel' => 'Reprendre rendez-vous',
             'ctaSecondaryUrl' => $baseUrl . '/patient',
             'ctaSecondaryLabel' => 'Mon espace patient',
         ]);
@@ -489,7 +486,7 @@ Cary — Prélèvement et soins infirmiers à domicile
             $content .= '<p style="margin:0 0 14px 0;"><strong>Date et créneau :</strong> ' . htmlspecialchars($dateCreneau) . '</p>';
         }
         $content .= '<p style="margin:0;">Ouvrez la demande dans votre espace pour consulter les détails et les actions disponibles.</p>';
-        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
         $appointmentId = $p['appointment_id'] ?? '';
         $role = (string) ($p['role'] ?? 'lab');
         $listPath = ProfessionalAppointmentLinks::listPath($role);
@@ -500,20 +497,20 @@ Cary — Prélèvement et soins infirmiers à domicile
             'ctaUrl' => $baseUrl . $detailPath,
             'ctaLabel' => $appointmentId ? 'Ouvrir le rendez-vous' : 'Voir mes rendez-vous',
             'ctaSecondaryUrl' => $baseUrl . $listPath,
-            'ctaSecondaryLabel' => 'Liste de mes rendez-vous',
+            'ctaSecondaryLabel' => 'Tous mes rendez-vous',
         ]);
         return $this->send($to, 'Nouveau rendez-vous disponible — Cary', $body, true);
     }
 
     public function sendAppointmentAssignedToPreleveur(string $to, array $p): bool
     {
-        $content = '<p style="margin:0 0 14px 0;">Un rendez-vous vous a été assigné.</p>';
+        $content = '<p style="margin:0 0 14px 0;">Un nouveau rendez-vous vous a été confié.</p>';
         $dateCreneau = $this->formatDateAndCreneau($p['scheduled_at'] ?? null, $p['form_data'] ?? null);
         if ($dateCreneau) {
             $content .= '<p style="margin:0 0 14px 0;"><strong>Date et créneau :</strong> ' . htmlspecialchars($dateCreneau) . '</p>';
         }
         $content .= '<p style="margin:0;">Consultez votre calendrier pour les détails.</p>';
-        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
+        $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://cary.bio';
         $appointmentId = $p['appointment_id'] ?? '';
         $detailUrl = $baseUrl . '/preleveur/calendar';
         if ($appointmentId) {
@@ -521,10 +518,10 @@ Cary — Prélèvement et soins infirmiers à domicile
         }
         $calUrl = $baseUrl . '/preleveur/calendar';
         $body = $this->baseLayout($content, [
-            'title' => 'Rendez-vous assigné',
+            'title' => 'Un rendez-vous pour vous',
             'preheader' => 'Un rendez-vous vous a été assigné sur Cary.',
             'ctaUrl' => $detailUrl,
-            'ctaLabel' => $appointmentId ? 'Ouvrir la fiche RDV' : 'Voir mon calendrier',
+            'ctaLabel' => $appointmentId ? 'Voir le rendez-vous' : 'Voir mon calendrier',
             'ctaSecondaryUrl' => $calUrl,
             'ctaSecondaryLabel' => 'Ouvrir le calendrier',
         ]);
@@ -564,18 +561,17 @@ Cary — Prélèvement et soins infirmiers à domicile
      */
     private function getOTPTemplate(string $otp): string
     {
-        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
-        $h1 = '<h1 style="margin:0 0 18px 0;font-size:22px;font-weight:600;line-height:1.25;letter-spacing:-0.02em;color:' . $this->emailText() . ';">' . $this->escapeHtml('Votre code de connexion') . '</h1>';
-        $inner = '<div style="font-size:15px;line-height:1.6;color:' . $this->emailMuted() . ';">'
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://cary.bio', '/');
+        $h1 = '<h1 style="margin:0 0 18px 0;font-size:30px;font-weight:700;line-height:1.15;letter-spacing:-0.035em;color:' . $this->emailText() . ';">' . $this->escapeHtml('Ravi de vous retrouver.') . '</h1>';
+        $inner = '<div style="font-size:16px;line-height:1.65;color:' . $this->emailMuted() . ';">'
             . '<p style="margin:0 0 14px 0;">Bonjour,</p>'
-            . '<p style="margin:0 0 14px 0;">Utilisez ce code pour vous connecter à Cary (usage unique) :</p>'
+            . '<p style="margin:0 0 14px 0;">Saisissez ce code dans Cary pour vous connecter. Il est à usage unique.</p>'
             . $this->emailOtpCodeBlock($otp)
             . '<p style="margin:0 0 14px 0;">Il expire dans <strong style="color:' . $this->emailText() . ';">5 minutes</strong>.</p>'
             . '<p style="margin:0;">Si vous n\'êtes pas à l\'origine de cette demande, ignorez simplement cet email.</p>'
             . '</div>';
         $cta = $this->emailPrimaryCta($baseUrl . '/login', 'Se connecter');
-        $secondary = $this->emailSecondaryCta($baseUrl . '/patient', 'Accéder à mon espace patient');
-        return $this->emailWrap('Code de connexion Cary — valable 5 minutes', $this->emailLogoBlock() . $h1 . $inner . $cta . $secondary);
+        return $this->emailWrap('Code de connexion Cary — valable 5 minutes', $h1 . $inner . $cta);
     }
 
     /**
@@ -605,7 +601,7 @@ Cary — Prélèvement et soins infirmiers à domicile
             $dashboardLabel = 'Accéder à mon espace';
         }
 
-        $inner = '<div style="font-size:15px;line-height:1.6;color:' . $this->emailMuted() . ';">'
+        $inner = '<div style="font-size:16px;line-height:1.65;color:' . $this->emailMuted() . ';">'
             . '<p style="margin:0 0 14px 0;">' . $greeting . '</p>'
             . '<p style="margin:0 0 14px 0;">Votre demande d\'inscription en tant que <strong style="color:' . $this->emailText() . ';">' . $this->escapeHtml($roleLabel) . '</strong> sur Cary a été <strong style="color:' . $this->emailText() . ';">approuvée</strong>.</p>'
             . '<p style="margin:0;">Vous pouvez dès à présent vous connecter et accéder à votre espace.</p>'
@@ -633,7 +629,7 @@ Cary — Prélèvement et soins infirmiers à domicile
             return true;
         }
 
-        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://cary.bio', '/');
         $resetUrl = $baseUrl . '/reset-password?token=' . urlencode($plainToken);
         $subject = 'Réinitialisez votre mot de passe Cary';
         $body = $this->getPasswordResetTemplate($resetUrl, $code, $expiresMinutes);
@@ -645,15 +641,15 @@ Cary — Prélèvement et soins infirmiers à domicile
         if (empty($this->smtpUser) || empty($this->smtpPass)) {
             return true;
         }
-        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://cary.bio', '/');
         $subject = 'Réinitialisation de votre mot de passe Cary';
-        $h1 = '<h1 style="margin:0 0 18px 0;font-size:22px;font-weight:600;line-height:1.25;letter-spacing:-0.02em;color:' . $this->emailText() . ';">' . $this->escapeHtml('Réinitialisation demandée') . '</h1>';
-        $inner = '<div style="font-size:15px;line-height:1.6;color:' . $this->emailMuted() . ';">'
+        $h1 = '<h1 style="margin:0 0 18px 0;font-size:30px;font-weight:700;line-height:1.15;letter-spacing:-0.035em;color:' . $this->emailText() . ';">' . $this->escapeHtml('Réinitialisation demandée') . '</h1>';
+        $inner = '<div style="font-size:16px;line-height:1.65;color:' . $this->emailMuted() . ';">'
             . '<p style="margin:0 0 14px 0;">Bonjour,</p>'
             . '<p style="margin:0 0 14px 0;">Un administrateur Cary a déclenché une réinitialisation de votre mot de passe. Consultez l’email avec le lien ou le code, ou contactez le support si vous n’êtes pas à l’origine de cette demande.</p>'
             . '</div>';
         $cta = $this->emailPrimaryCta($baseUrl . '/login', 'Se connecter');
-        $body = $this->emailWrap('Réinitialisation mot de passe Cary', $this->emailLogoBlock() . $h1 . $inner . $cta);
+        $body = $this->emailWrap('Réinitialisation mot de passe Cary', $h1 . $inner . $cta);
         return $this->send($to, $subject, $body, true);
     }
 
@@ -662,23 +658,23 @@ Cary — Prélèvement et soins infirmiers à domicile
         if (empty($this->smtpUser) || empty($this->smtpPass)) {
             return true;
         }
-        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://cary.bio', '/');
         $subject = 'Votre mot de passe Cary a été réinitialisé';
-        $h1 = '<h1 style="margin:0 0 18px 0;font-size:22px;font-weight:600;line-height:1.25;letter-spacing:-0.02em;color:' . $this->emailText() . ';">' . $this->escapeHtml('Mot de passe réinitialisé') . '</h1>';
-        $inner = '<div style="font-size:15px;line-height:1.6;color:' . $this->emailMuted() . ';">'
+        $h1 = '<h1 style="margin:0 0 18px 0;font-size:30px;font-weight:700;line-height:1.15;letter-spacing:-0.035em;color:' . $this->emailText() . ';">' . $this->escapeHtml('Mot de passe réinitialisé') . '</h1>';
+        $inner = '<div style="font-size:16px;line-height:1.65;color:' . $this->emailMuted() . ';">'
             . '<p style="margin:0 0 14px 0;">Bonjour,</p>'
             . '<p style="margin:0 0 14px 0;">Votre mot de passe Cary a été réinitialisé par un administrateur. Vous devrez choisir un nouveau mot de passe lors de votre prochaine connexion.</p>'
             . '<p style="margin:0;">Si vous n’êtes pas à l’origine de cette action, contactez immédiatement le support Cary.</p>'
             . '</div>';
         $cta = $this->emailPrimaryCta($baseUrl . '/login', 'Se connecter');
-        $body = $this->emailWrap('Mot de passe Cary réinitialisé', $this->emailLogoBlock() . $h1 . $inner . $cta);
+        $body = $this->emailWrap('Mot de passe Cary réinitialisé', $h1 . $inner . $cta);
         return $this->send($to, $subject, $body, true);
     }
 
     private function getPasswordResetTemplate(string $resetUrl, string $code, int $expiresMinutes): string
     {
-        $h1 = '<h1 style="margin:0 0 18px 0;font-size:22px;font-weight:600;line-height:1.25;letter-spacing:-0.02em;color:' . $this->emailText() . ';">' . $this->escapeHtml('Réinitialisez votre mot de passe') . '</h1>';
-        $inner = '<div style="font-size:15px;line-height:1.6;color:' . $this->emailMuted() . ';">'
+        $h1 = '<h1 style="margin:0 0 18px 0;font-size:30px;font-weight:700;line-height:1.15;letter-spacing:-0.035em;color:' . $this->emailText() . ';">' . $this->escapeHtml('Réinitialisez votre mot de passe') . '</h1>';
+        $inner = '<div style="font-size:16px;line-height:1.65;color:' . $this->emailMuted() . ';">'
             . '<p style="margin:0 0 14px 0;">Bonjour,</p>'
             . '<p style="margin:0 0 14px 0;">Choisissez un nouveau mot de passe pour votre compte Cary :</p>'
             . $this->emailOtpCodeBlock($code)
@@ -687,7 +683,7 @@ Cary — Prélèvement et soins infirmiers à domicile
             . '</div>';
         $cta = $this->emailPrimaryCta($resetUrl, 'Choisir un nouveau mot de passe');
         $secondary = $this->emailSecondaryCta($resetUrl, 'Ouvrir le lien de réinitialisation');
-        return $this->emailWrap('Réinitialisation mot de passe Cary', $this->emailLogoBlock() . $h1 . $inner . $cta . $secondary);
+        return $this->emailWrap('Réinitialisation mot de passe Cary', $h1 . $inner . $cta . $secondary);
     }
 
     /**
@@ -1044,7 +1040,7 @@ Cary — Prélèvement et soins infirmiers à domicile
      */
     private function getAppointmentConfirmationTemplate(array $data): string
     {
-        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://cary.bio', '/');
         $aid = isset($data['id']) ? (string) $data['id'] : '';
         $ctx = $this->loadConfirmationContext($aid !== '' ? $aid : null);
         $full = $ctx['full'];
@@ -1081,7 +1077,7 @@ Cary — Prélèvement et soins infirmiers à domicile
                 'title' => 'Vos rendez-vous sont confirmés',
                 'preheader' => $n . ' rendez-vous confirmés — professionnel, adresse et créneaux dans cet email.',
                 'ctaUrl' => $detailUrl,
-                'ctaLabel' => 'Voir le détail du rendez-vous',
+                'ctaLabel' => 'Voir mes rendez-vous',
                 'ctaSecondaryUrl' => $baseUrl . '/patient',
                 'ctaSecondaryLabel' => 'Mon espace patient',
             ]);
@@ -1097,7 +1093,7 @@ Cary — Prélèvement et soins infirmiers à domicile
             'title' => 'Votre rendez-vous est confirmé',
             'preheader' => 'Confirmation Cary — professionnel assigné, horaires et lieu.',
             'ctaUrl' => $detailUrl,
-            'ctaLabel' => 'Ouvrir la fiche du rendez-vous',
+            'ctaLabel' => 'Voir mon rendez-vous',
             'ctaSecondaryUrl' => $baseUrl . '/rendez-vous/nouveau',
             'ctaSecondaryLabel' => 'Prendre un autre rendez-vous',
         ]);
@@ -1119,7 +1115,7 @@ Cary — Prélèvement et soins infirmiers à domicile
      */
     private function getReviewInvitationTemplate(string $appointmentId, array $data): string
     {
-        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://cary.bio', '/');
         $reviewUrl = $baseUrl . '/patient/appointments/' . $appointmentId;
         $when = $this->formatDateAndCreneau($data['scheduled_at'] ?? null, $data['form_data'] ?? null) ?: '-';
         $content = '<p style="margin:0 0 14px 0;">Bonjour,</p>'
@@ -1141,7 +1137,7 @@ Cary — Prélèvement et soins infirmiers à domicile
      */
     public function sendIncidentWarning(string $to, int $incidentCount, string $reason): bool
     {
-        $subject = 'Avertissement - Incident enregistré';
+        $subject = 'Un point sur votre compte — Cary';
         $body = $this->getIncidentWarningTemplate($incidentCount, $reason);
         
         return $this->send($to, $subject, $body, true);
@@ -1167,7 +1163,7 @@ Cary — Prélèvement et soins infirmiers à domicile
     public function sendResultsReadyToPatient(string $to, string $appointmentId): bool
     {
         $subject = 'Vos résultats sont disponibles — Cary';
-        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://cary.bio', '/');
         $detailUrl = $baseUrl . '/patient/appointments/' . $appointmentId;
         $content = '<p style="margin:0 0 14px 0;">Bonjour,</p>'
             . '<p style="margin:0 0 14px 0;">Les résultats liés à votre rendez-vous sont disponibles. Vous pouvez les consulter et les télécharger en toute sécurité depuis votre espace.</p>'
@@ -1196,7 +1192,7 @@ Cary — Prélèvement et soins infirmiers à domicile
      */
     private function getIncidentWarningTemplate(int $incidentCount, string $reason): string
     {
-        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://cary.bio', '/');
         $warnInner = '<p style="margin:0;"><strong>Un incident a été enregistré sur votre compte.</strong></p>'
             . '<p style="margin:8px 0 0 0;"><strong>Raison :</strong> ' . $this->escapeHtml($reason) . '</p>'
             . '<p style="margin:8px 0 0 0;"><strong>Nombre d\'incidents :</strong> ' . (int) $incidentCount . '</p>';
@@ -1211,7 +1207,7 @@ Cary — Prélèvement et soins infirmiers à domicile
             'ctaUrl' => $baseUrl . '/contact',
             'ctaLabel' => 'Contacter le support',
             'ctaSecondaryUrl' => 'mailto:contact@oneandlab.fr',
-            'ctaSecondaryLabel' => 'Écrire à contact@oneandlab.fr',
+            'ctaSecondaryLabel' => 'Écrire à notre équipe',
         ]);
     }
 
@@ -1220,7 +1216,7 @@ Cary — Prélèvement et soins infirmiers à domicile
      */
     private function getSuspensionTemplate(int $days, string $reason): string
     {
-        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://cary.bio', '/');
         $alertInner = '<p style="margin:0;"><strong>Votre compte est suspendu pour ' . (int) $days . ' jour(s).</strong></p>'
             . '<p style="margin:8px 0 0 0;"><strong>Raison :</strong> ' . $this->escapeHtml($reason) . '</p>';
         $content = '<p style="margin:0 0 14px 0;">Bonjour,</p>'
@@ -1234,7 +1230,7 @@ Cary — Prélèvement et soins infirmiers à domicile
             'ctaUrl' => $baseUrl . '/contact',
             'ctaLabel' => 'Nous contacter',
             'ctaSecondaryUrl' => 'mailto:contact@oneandlab.fr',
-            'ctaSecondaryLabel' => 'Écrire à contact@oneandlab.fr',
+            'ctaSecondaryLabel' => 'Écrire à notre équipe',
         ]);
     }
 
@@ -1243,7 +1239,7 @@ Cary — Prélèvement et soins infirmiers à domicile
      */
     private function getBanTemplate(string $reason): string
     {
-        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr', '/');
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://cary.bio', '/');
         $alertInner = '<p style="margin:0;"><strong>Votre compte a été définitivement exclu de la plateforme Cary.</strong></p>'
             . '<p style="margin:8px 0 0 0;"><strong>Raison indiquée :</strong> ' . $this->escapeHtml($reason) . '</p>';
         $content = '<p style="margin:0 0 14px 0;">Bonjour,</p>'
