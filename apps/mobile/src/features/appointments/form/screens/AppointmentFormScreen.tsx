@@ -82,6 +82,7 @@ export function AppointmentFormScreen(props: Props) {
       />
 
       <FormScheduleSection
+        autoAdvanceClosedDay={props.mode === 'create'}
         scheduledAt={f.values.scheduled_at}
         serviceType={f.values.type}
         availabilityType={f.values.availability_type}

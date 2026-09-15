@@ -141,7 +141,7 @@
           <BookingDateCarousel
             v-if="!wizardUseServiceCard"
             v-model="formDataByService[svc.id].scheduled_at"
-            :min-lead-time-hours="effectiveMinLeadTimeHours ?? undefined"
+            :min-lead-time-hours="bookingLeadTimeForService(svc)"
             :accept-saturday="acceptSaturday !== false"
             :accept-sunday="acceptSunday !== false"
           />
@@ -150,7 +150,7 @@
             v-model="formDataByService[svc.id].scheduled_at"
             placeholder="Sélectionner une date"
             :appointment-type="isBloodTestAppointment(svc.type) ? 'lab' : 'nurse'"
-            :min-lead-time-hours="effectiveMinLeadTimeHours ?? undefined"
+            :min-lead-time-hours="bookingLeadTimeForService(svc)"
             :accept-saturday="acceptSaturday !== false"
             :accept-sunday="acceptSunday !== false"
           />
@@ -830,6 +830,8 @@ import {
 } from '~/utils/care-category-autre-detail';
 import { buildBookingWizardSegmentIntro } from '~/utils/booking-wizard-segment';
 import { servicesRequiringOwnSlots } from '~/utils/dashboard-unified-rdv';
+import { useNow } from '@vueuse/core';
+import { bookingLeadTimeAfterClosing, nextBookingDateAfterClosing } from '@oneandlab/shared-utils';
 import { availabilitySliderMinHourParis } from '~/utils/booking-paris-availability';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
 
@@ -1159,6 +1161,12 @@ function availabilityMaxHour(serviceType: string): number {
   return isBloodTestAppointment(serviceType) ? AVAILABILITY_MAX_HOUR_BLOOD_TEST : AVAILABILITY_MAX_HOUR_NURSING;
 }
 
+const bookingClockNow = useNow({ interval: 60_000 });
+function bookingLeadTimeForService(svc: { id: string; type: string }): number | undefined {
+  if (props.bookingWizardSection !== 'slot-datetime' || formDataByService[svc.id]?.availability_type === 'urgent') return effectiveMinLeadTimeHours.value ?? undefined;
+  return bookingLeadTimeAfterClosing(availabilityMaxHour(svc.type), effectiveMinLeadTimeHours.value ?? 0, bookingClockNow.value.getTime());
+}
+
 function availabilityRangeSliderMinForService(svc: { id: string; type: string }): number {
   return availabilitySliderMinHourParis(
     formDataByService[svc.id]?.scheduled_at,
@@ -1268,9 +1276,21 @@ watch(() => props.selectedServices, (svcs) => {
 }, { immediate: true, deep: true });
 
 // Enforcer l'écart minimum et les bornes max par type de soin (+ plancher jour même, heure de Paris)
-watch(formDataByService, () => {
+watch([formDataByService, bookingClockNow, () => props.bookingWizardSection, () => props.activeSlotServiceId], () => {
   props.selectedServices.forEach((s) => {
     const max = availabilityMaxHour(s.type);
+    if (props.bookingWizardSection === 'slot-datetime' && formDataByService[s.id]?.availability_type !== 'urgent' && renderedServices.value.some((row) => row.id === s.id)) {
+      const next = nextBookingDateAfterClosing(formDataByService[s.id]?.scheduled_at, max, {
+        minLeadTimeHours: effectiveMinLeadTimeHours.value,
+        acceptSaturday: props.acceptSaturday,
+        acceptSunday: props.acceptSunday,
+      }, bookingClockNow.value.getTime());
+      if (next && formDataByService[s.id]) {
+        formDataByService[s.id].scheduled_at = next;
+        const previousRange = formDataByService[s.id].availabilityRange;
+        if (previousRange[1] <= previousRange[0]) formDataByService[s.id].availabilityRange = [9, 11];
+      }
+    }
     const range = formDataByService[s.id]?.availabilityRange;
     if (!range || !Array.isArray(range) || range.length !== 2) return;
     const smin = availabilitySliderMinHourParis(formDataByService[s.id]?.scheduled_at, max, AVAILABILITY_MIN);

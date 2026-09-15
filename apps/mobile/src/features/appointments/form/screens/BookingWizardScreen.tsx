@@ -273,6 +273,7 @@ export function BookingWizardScreen({
         {bw.section === 'slot-datetime' && svc ? (
           <Animated.View entering={FadeInDown.delay(60).duration(260).springify()} style={styles.section}>
             <FormScheduleSection
+        autoAdvanceClosedDay
               scheduledAt={String(fd.scheduled_at ?? '')}
               serviceType={svc.type}
               availabilityType={availability.type}

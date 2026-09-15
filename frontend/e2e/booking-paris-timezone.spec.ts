@@ -5,7 +5,7 @@ for (const timezoneId of ['Europe/Paris', 'Asia/Dubai', 'America/New_York']) {
     test.use({ timezoneId });
     for (const admin of [true, false]) for (const type of ['blood_test', 'nursing']) {
       test(`${admin ? 'admin' : 'patient'} ${type}: today uses Paris and allows widening the slot`, async ({ page }) => {
-        await page.clock.setFixedTime(new Date('2026-09-15T12:30:00Z'));
+        await page.clock.install({ time: new Date('2026-09-15T12:30:00Z') });
         const user = { id: 'fixture-admin', role: 'super_admin', first_name: 'Camille', last_name: 'Exemple' };
         if (admin) await page.addInitScript(user => {
           localStorage.setItem('auth_token', 'local-ui-fixture');
@@ -40,11 +40,15 @@ for (const timezoneId of ['Europe/Paris', 'Asia/Dubai', 'America/New_York']) {
         await expect(page.getByText(/Horaires de Paris/)).toBeVisible();
         await available.nth(1).click();
         await expect(sliders.first()).toHaveAttribute('aria-valuemin', '6');
-        // After closing, selecting today must never silently manufacture a past one-hour slot.
-        await page.clock.setFixedTime(new Date('2026-09-15T21:30:00Z'));
+        // A future choice remains valid; today advances automatically when the Paris day closes.
         await available.first().click();
-        await expect(page.getByText('Aucun créneau restant aujourd’hui. Choisissez une autre date.')).toBeVisible();
-        await expect(sliders).toHaveCount(0);
+        await page.clock.setSystemTime(new Date('2026-09-15T21:30:00Z'));
+        await page.clock.fastForward(60_000);
+        await expect(dates.locator('button[aria-pressed="true"]')).toHaveAttribute('aria-label', /16 sept.*2026/);
+        await expect(sliders.first()).toHaveAttribute('aria-valuemin', '6');
+        await expect(sliders.last()).toHaveAttribute('aria-valuemax', type === 'blood_test' ? '17' : '22');
+        await expect(page.getByText('Aucun créneau restant aujourd’hui. Choisissez une autre date.')).toBeHidden();
+        await expect(dates.getByRole('button', { name: /15 sept.*2026/ })).toHaveCount(0);
       });
     }
   });
