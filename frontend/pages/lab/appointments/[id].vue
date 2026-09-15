@@ -191,7 +191,7 @@ function getDocumentTypeLabel(type: string) {
 async function downloadDocument(doc: { id: string; file_name: string }) {
   downloadingDocId.value = doc.id;
   try {
-    const apiBase = config.public?.apiBase || 'http://localhost:8888/api';
+    const apiBase = config.public?.apiBase || '/api';
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
     const res = await fetch(`${apiBase}/medical-documents/${doc.id}/download`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) {

@@ -26,7 +26,7 @@
       variant="soft"
       class="shrink-0 self-start sm:self-center"
       icon="i-lucide-book-open"
-      @click="open = true"
+      @click="($event) => { open = true }"
     >
       Voir la liste
     </UButton>
@@ -146,7 +146,7 @@
 
     <template #footer>
       <div class="flex justify-end w-full">
-        <UButton color="neutral" variant="soft" @click="open = false">
+        <UButton color="neutral" variant="soft" @click="($event) => { open = false }">
           Fermer
         </UButton>
       </div>
@@ -178,17 +178,8 @@ const formattedUpdatedAt = computed(() => {
 
 const accordionUi = {
   root: 'space-y-2',
-  item: {
-    base: 'border border-default/60 rounded-xl overflow-hidden bg-default/40',
-    padding: 'p-0',
-  },
-  trigger: {
-    base: 'flex items-center justify-between w-full text-left px-4 py-3.5 hover:bg-muted/40 transition-colors',
-    padding: 'p-0',
-  },
-  content: {
-    base: 'px-4 pb-4 pt-0 border-t border-default/40',
-    padding: 'pt-3',
-  },
+  item: 'border border-default/60 rounded-xl overflow-hidden bg-default/40',
+  trigger: 'flex items-center justify-between w-full text-left px-4 py-3.5 hover:bg-muted/40 transition-colors',
+  content: 'px-4 pb-4 pt-3 border-t border-default/40',
 };
 </script>

@@ -7,21 +7,21 @@
     ]"
   >
     <div
-      class="px-4 md:px-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4"
-      :class="compact ? 'py-3' : 'py-4'"
+      class="px-4 md:px-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-6"
+      :class="compact ? 'py-3' : 'py-4 md:py-5'"
     >
       <!-- Titre + description -->
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-3 min-w-0 flex-wrap">
           <h1
-            class="font-normal text-gray-900 truncate"
-            :class="compact ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'"
+            class="font-semibold leading-tight tracking-tight text-gray-900 dark:text-white break-words text-balance"
+            :class="compact ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'"
           >
             {{ title }}
           </h1>
           <UBadge
-            v-if="badge"
-            :color="badgeColor"
+            v-if="badge !== undefined && badge !== null && badge !== ''"
+          :color="resolveUiColor(badgeColor, 'primary')"
             variant="subtle"
             size="sm"
             class="flex-shrink-0"
@@ -31,21 +31,24 @@
         </div>
         <p
           v-if="description || $slots.description"
-          class="text-gray-500 dark:text-gray-400"
-          :class="compact ? 'text-xs mt-0.5' : 'text-sm mt-1'"
+          class="max-w-[64ch] text-pretty text-sm leading-relaxed text-gray-500 dark:text-gray-400"
+          :class="compact ? 'mt-0.5' : 'mt-1'"
         >
           <slot name="description">{{ description }}</slot>
         </p>
       </div>
 
       <!-- Actions -->
-      <div v-if="$slots.actions || actions" class="flex items-center gap-2 flex-shrink-0">
+      <div v-if="$slots.actions || actions?.length" class="flex min-w-0 flex-wrap items-center gap-2 lg:max-w-[45%] [&_button]:min-h-11 [&_a]:min-h-11 [&_button]:whitespace-normal [&_a]:whitespace-normal">
         <slot name="actions">
           <template v-if="actions">
             <UButton
               v-for="(action, index) in actions"
               :key="index"
               v-bind="action"
+              :color="resolveUiColor(action.color, 'primary')"
+              :variant="resolveUiButtonVariant(action.variant ?? 'solid')"
+              @click="action.click?.()"
               :class="action.class"
             >
               {{ action.label }}
@@ -58,6 +61,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveUiColor, resolveUiButtonVariant } from '~/utils/ui-appearance';
 interface Action {
   label: string;
   icon?: string;
@@ -92,4 +96,3 @@ withDefaults(defineProps<Props>(), {
   edgeBleed: true,
 });
 </script>
-

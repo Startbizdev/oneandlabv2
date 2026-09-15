@@ -82,7 +82,7 @@
             </div>
           </div>
           
-          <UBadge :color="review.is_visible ? 'green' : 'gray'">
+          <UBadge :color="review.is_visible ? 'success' : 'neutral'">
             {{ review.is_visible ? 'Visible' : 'Masqué' }}
           </UBadge>
         </div>

@@ -1,7 +1,8 @@
 import { isProIpaEmploi } from '@oneandlab/shared-types';
 import { labelFromAppointmentAddressField } from './appointment-address';
 
-export type PrescriptionKind = 'medical' | 'nursing';
+import type { PrescriptionKind } from './prescription-kind';
+export type { PrescriptionKind } from './prescription-kind';
 
 export type PrescriptionGapAction = 'edit_patient' | 'edit_prescriber' | 'sign_prescriber';
 

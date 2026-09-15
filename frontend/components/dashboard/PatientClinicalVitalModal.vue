@@ -13,7 +13,7 @@
             :key="item.type"
             size="sm"
             :variant="vitalType === item.type ? 'solid' : 'outline'"
-            @click="vitalType = item.type"
+            @click="($event) => { vitalType = item.type }"
           >
             {{ item.emoji }} {{ item.label_fr }}
           </UButton>
@@ -70,7 +70,7 @@ const emit = defineEmits<{
 }>();
 
 const runtimeConfig = useRuntimeConfig();
-const apiBase = runtimeConfig.public.apiBase || 'http://localhost:8888/api';
+const apiBase = runtimeConfig.public.apiBase || '/api';
 
 const openProxy = computed({
   get: () => props.open,

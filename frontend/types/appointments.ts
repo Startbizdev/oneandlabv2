@@ -69,9 +69,11 @@ export interface AppointmentFormData {
 }
 
 export interface AppointmentCreatePayload {
+  client_request_id?: string;
   type: AppointmentType;
   form_type: AppointmentType;
   patient_id?: string;
+  patient_email?: string;
   relative_id?: string;
   category_id?: string;
   address: Address;
@@ -126,6 +128,9 @@ export interface Appointment {
 }
 
 export interface AppointmentFilters {
+  date_from?: string;
+  date_to?: string;
+  filter_assigned_to?: string;
   status?: AppointmentStatus | string;
   type?: AppointmentType;
   page?: number;
@@ -138,5 +143,3 @@ export interface AppointmentFilters {
   /** Patient : à venir vs passés (pagination serveur, aligné mobile). */
   patient_period?: 'upcoming' | 'past';
 }
-
-

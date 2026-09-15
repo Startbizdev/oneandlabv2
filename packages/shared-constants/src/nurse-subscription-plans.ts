@@ -21,7 +21,7 @@ export const NURSE_PLANS: Record<NursePlanSlug, NursePlanDefinition> = {
     name: 'Découverte',
     priceLabel: '0 €',
     priceSuffix: '/mois',
-    tagline: 'Gratuit pour découvrir la plateforme',
+    tagline: 'Pour démarrer, jusqu’à 10 rendez-vous par mois.',
     features: [
       "Rayon d'intervention jusqu'à 20 km.",
       'Fiche professionnelle visible par les patients.',
@@ -34,7 +34,7 @@ export const NURSE_PLANS: Record<NursePlanSlug, NursePlanDefinition> = {
     name: 'Pro',
     priceLabel: '29 €',
     priceSuffix: '/mois',
-    tagline: "30 jours d'essai gratuit",
+    tagline: 'Pour une activité régulière et un secteur plus large.',
     recommended: true,
     productId: NURSE_IAP_PRODUCT_ID,
     features: [

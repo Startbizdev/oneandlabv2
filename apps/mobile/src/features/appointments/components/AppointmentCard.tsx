@@ -42,6 +42,7 @@ function AppointmentCardComponent({
   appointment,
   onPress,
   index = 0,
+  subtitle,
   showOfferActions,
   onAccept,
   onRefuse,
@@ -88,6 +89,8 @@ function AppointmentCardComponent({
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
           onPress={handlePress}
+          accessibilityRole="button"
+          accessibilityLabel={`Ouvrir le rendez-vous de ${patientName}`}
           style={[styles.card, elevation.sm]}
         >
           <Cluster
@@ -97,14 +100,13 @@ function AppointmentCardComponent({
             actions={<StatusBadge status={appointment.status} />}
           >
             <Stack gap={4}>
-              <Animated.Text style={styles.patientName} numberOfLines={1}>
+              <Animated.Text style={styles.patientName}>
                 {patientName}
               </Animated.Text>
-              {careLines.length > 0 ? (
-                <Animated.Text style={styles.careText} numberOfLines={1}>
-                  {careLines[0]}
-                </Animated.Text>
-              ) : null}
+              {careLines.map((line, index) => (
+                <Animated.Text key={`${index}-${line}`} style={styles.careText}>{line}</Animated.Text>
+              ))}
+              {subtitle ? <Animated.Text style={styles.careText}>{subtitle}</Animated.Text> : null}
             </Stack>
           </Cluster>
 
@@ -135,7 +137,7 @@ function AppointmentCardComponent({
                 <View style={styles.metaIconWrap}>
                   <MapPin size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2.5} />
                 </View>
-                <Animated.Text style={[styles.metaText, styles.metaAddress]} numberOfLines={1}>
+                <Animated.Text style={[styles.metaText, styles.metaAddress]} numberOfLines={2}>
                   {address}
                 </Animated.Text>
               </Row>
@@ -201,7 +203,7 @@ function buildStyles(c: AppColors) {
     },
     careText: {
       fontFamily: fontFamily.regular,
-      fontSize: fontSize.xs,
+      fontSize: fontSize.sm,
       color: c.textSecondary,
     },
     divider: {
@@ -223,7 +225,7 @@ function buildStyles(c: AppColors) {
     },
     metaTime: {
       fontFamily: fontFamily.bold,
-      color: c.primary,
+      color: c.textLink,
     },
     metaAddress: {
       color: c.textTertiary,

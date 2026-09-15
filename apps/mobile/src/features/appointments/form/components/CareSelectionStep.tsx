@@ -6,22 +6,18 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, Plus } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Check, Plus, Droplet, Syringe, Bandage, HeartPulse, ShowerHead, Stethoscope } from 'lucide-react-native';
 import {
-  careCategoryEmojiForCategory,
+  careSymbol,
   isCareCategoryWithoutBookingOptions,
   defaultBookingSliceForCareCategory,
   type SelectedServiceInput,
 } from '@oneandlab/shared-utils';
 import type { CareCategory } from '@/features/categories/api/categories.service';
-import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import type { BookingServiceFormSlice } from '../utils/booking-service-form-slice';
 import {
   buildCareFilterTabs,
-  buildCareTileOrbColorMap,
   careListHeading,
-  careTileEmojiOrbColor,
   filterCategoriesByTab,
   isAutreCareCategory,
   sortCareCategoriesWithAutreLast,
@@ -43,7 +39,14 @@ import { fontFamily, fontSize } from '@/theme/typography';
 const H_PAD = spacing[4];
 /** Hauteur pill CTA flottant (étape 1). */
 const PREMIUM_CTA_HEIGHT = 58;
-const TILE_EMOJI_ORB = 52;
+const CARE_SYMBOLS = {
+  droplet: Droplet,
+  syringe: Syringe,
+  bandage: Bandage,
+  'heart-pulse': HeartPulse,
+  'shower-head': ShowerHead,
+  stethoscope: Stethoscope,
+};
 const LIST_GAP = spacing[2.5];
 
 interface Props {
@@ -62,56 +65,20 @@ interface Props {
   progressTotal?: number;
 }
 
-function CareEmojiOrb({
-  emoji,
-  backgroundColor,
-  size,
-}: {
-  emoji: string;
-  backgroundColor: string;
-  size: number;
-}) {
-  const styles = useThemedStyles(buildStyles, 'CareSelectionStep.CareEmojiOrb');
-  const glyphSize = Math.round(size * 0.46);
-  return (
-    <View
-      style={[
-        styles.emojiOrb,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor,
-        },
-      ]}
-    >
-      <AppText
-        style={[styles.emojiOrbGlyph, { fontSize: glyphSize, lineHeight: glyphSize + 2 }]}
-        accessibilityElementsHidden
-      >
-        {emoji}
-      </AppText>
-    </View>
-  );
-}
-
 function CareListTile({
   cat,
-  orbColor,
   selected,
   hint,
   onPress,
 }: {
   cat: CareCategory;
-  orbColor: string;
   selected: boolean;
   hint?: string;
   onPress: () => void;
 }) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'CareSelectionStep.CareListTile');
-  const emoji =
-    careCategoryEmojiForCategory({ name: cat.name, icon: cat.icon, type: cat.type }) || '➕';
+  const CareIcon = CARE_SYMBOLS[careSymbol(cat)];
 
   return (
     <Pressable
@@ -124,17 +91,9 @@ function CareListTile({
       style={({ pressed }) => [styles.tileHit, pressed && styles.tilePressed]}
     >
       <Row gap={spacing[3]} align="center" style={[styles.tile, selected ? styles.tileSelected : styles.tileDefault]}>
-        {selected ? (
-          <LinearGradient
-            pointerEvents="none"
-            colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0)']}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-          />
-        ) : null}
-
-        <CareEmojiOrb emoji={emoji} backgroundColor={orbColor} size={TILE_EMOJI_ORB} />
+        <View style={styles.careSymbol} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <CareIcon size={iconSize.lg} color={c.textLink} strokeWidth={1.75} />
+        </View>
 
         <View style={styles.tileCopy}>
           <AppText
@@ -154,9 +113,9 @@ function CareListTile({
           pointerEvents="none"
         >
           {selected ? (
-            <Check size={iconSize.mdSm} color={c.textInverse} strokeWidth={3} />
+            <Check size={iconSize.mdSm} color={c.onPrimary} strokeWidth={2} />
           ) : (
-            <Plus size={iconSize.mdSm} color={c.primary} strokeWidth={2.75} />
+            <Plus size={iconSize.mdSm} color={c.textLink} strokeWidth={2} />
           )}
         </View>
       </Row>
@@ -201,16 +160,9 @@ export function CareSelectionStep({
     setDetailSheetOpen(true);
   }, []);
 
-  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
-
   const fullList = useMemo(
     () => [...nursingCategories, ...bloodCategories],
     [nursingCategories, bloodCategories],
-  );
-
-  const tileOrbColorMap = useMemo(
-    () => buildCareTileOrbColorMap(fullList),
-    [fullList, colorblindType],
   );
 
   const filterTabs = useMemo(() => buildCareFilterTabs(fullList), [fullList]);
@@ -347,7 +299,7 @@ export function CareSelectionStep({
             <AppText style={styles.metaSubtitle}>
               {hasSelection
                 ? `${selectionCount} sélectionné${selectionCount > 1 ? 's' : ''} — touchez à nouveau pour retirer`
-                : 'Choisissez un ou plusieurs soins ci-dessous'}
+                : 'Ajoutez vos soins, puis choisissez le lieu et les dates.'}
             </AppText>
           </View>
           <Row gap={spacing[1]} align="baseline" style={styles.metaCountPill}>
@@ -366,6 +318,7 @@ export function CareSelectionStep({
       hasSelection,
       progressTotal,
       selectionCount,
+      styles,
     ],
   );
 
@@ -385,14 +338,13 @@ export function CareSelectionStep({
           <CareListTile
             key={cat.id}
             cat={cat}
-            orbColor={careTileEmojiOrbColor(cat, tileOrbColorMap)}
             selected={isSelected(cat.id)}
             onPress={() => void attemptAdd(cat)}
           />
         ))}
       </View>
     );
-  }, [attemptAdd, filterTab, gridItems, isSelected, tileOrbColorMap]);
+  }, [attemptAdd, filterTab, gridItems, isSelected, styles]);
 
   const autreFooter = useMemo(() => {
     if (autreItems.length === 0) return null;
@@ -403,7 +355,6 @@ export function CareSelectionStep({
           <CareListTile
             key={cat.id}
             cat={cat}
-            orbColor={careTileEmojiOrbColor(cat, tileOrbColorMap)}
             selected={isSelected(cat.id)}
             hint="Soin non listé ci-dessus"
             onPress={() => void attemptAdd(cat)}
@@ -411,7 +362,7 @@ export function CareSelectionStep({
         ))}
       </View>
     );
-  }, [autreItems, attemptAdd, isSelected, tileOrbColorMap]);
+  }, [autreItems, attemptAdd, isSelected, styles]);
 
   return (
     <>
@@ -552,21 +503,21 @@ function buildStyles(c: AppColors) {
   tile: {
     minWidth: 0,
     width: '100%' as const,
-    minHeight: 88,
+    minHeight: 80,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3.5],
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     overflow: 'hidden' as const,
   },
   tileDefault: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: c.border,
     backgroundColor: c.surface,
   },
   tileSelected: {
-    borderWidth: 2,
-    borderColor: c.primary,
-    backgroundColor: c.primaryMid,
+    borderWidth: 1,
+    borderColor: c.primaryDark,
+    backgroundColor: c.primaryLight,
   },
   tileCopy: {
     flex: 1,
@@ -606,13 +557,14 @@ function buildStyles(c: AppColors) {
   tileActionSelected: {
     backgroundColor: c.primary,
   },
-  emojiOrb: {
+  careSymbol: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: c.surfaceAlt,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     flexShrink: 0,
-  },
-  emojiOrbGlyph: {
-    textAlign: 'center' as const,
   },
   autreBlock: {
     marginTop: spacing[4],

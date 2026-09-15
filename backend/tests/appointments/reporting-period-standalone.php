@@ -1,0 +1,26 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/../../lib/AppointmentReportingPeriod.php';
+$period = new AppointmentReportingPeriod(new DateTimeImmutable('2026-10-15 10:00:00+04:00'));
+$checks = 0;
+$check = static function (bool $condition) use (&$checks): void { if (!$condition) throw new RuntimeException('Reporting period regression ' . ($checks + 1)); $checks++; };
+$check($period->containsMonth('2026-10-01 00:00:00'));
+$check($period->containsMonth('2026-10-31 23:59:59'));
+$check(!$period->containsMonth('2026-11-01 00:00:00'));
+$check(!$period->containsMonth('2027-01-01 12:00:00'));
+$check(!$period->containsMonth('2026-09-30 23:59:59'));
+$check($period->containsMonth('2026-09-30T22:00:00Z'));
+$check($period->containsDay('2026-10-15 00:00:00'));
+$check(!$period->containsDay('2026-10-16 00:00:00'));
+$check(!$period->containsDay(null));
+$check(!$period->containsMonth(''));
+$check(!$period->containsMonth('not-a-date'));
+$check(!$period->containsMonth('2026-10-32'));
+$boundary = new AppointmentReportingPeriod(new DateTimeImmutable('2026-11-01 00:30:00+04:00'));
+$check($boundary->containsMonth('2026-10-01 00:00:00'));
+$check(!$boundary->containsMonth('2026-11-01 00:00:00'));
+$dst = new AppointmentReportingPeriod(new DateTimeImmutable('2026-10-25T12:00:00Z'));
+$check($dst->containsDay('2026-10-25T00:30:00Z'));
+$check($dst->containsDay('2026-10-25T01:30:00Z'));
+$check(!$dst->containsDay('2026-10-25T23:00:00Z'));
+echo "$checks reporting period assertions passed: future month exclusion, France dates, DST and missing or invalid schedules.\n";

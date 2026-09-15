@@ -1,40 +1,6 @@
 <template>
   <div>
-    <!-- Hero bleu clair SEO -->
-    <section class="relative py-12 sm:py-16 md:py-20 overflow-hidden bg-primary-50 dark:bg-primary-950/40 border-b border-primary-100 dark:border-primary-900/50">
-      <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl text-center">
-        <h1 class="text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight text-gray-900 dark:text-white mb-4">
-          Trouver un infirmier à domicile, près de chez vous
-        </h1>
-        <p class="text-lg sm:text-xl text-gray-700 dark:text-gray-300 max-w-2xl mx-auto mb-8">
-          Soins et prises de sang à domicile. Vous réservez en ligne. Un professionnel vient chez vous.
-        </p>
-        <UButton
-          :to="appointmentNewUrl"
-          color="primary"
-          size="xl"
-          variant="solid"
-          icon="i-lucide-calendar-plus"
-          class="min-w-[260px] sm:min-w-[280px] px-8 py-4 text-base sm:text-lg font-medium"
-        >
-          Réserver une visite
-        </UButton>
-        <ul class="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-400">
-          <li class="inline-flex items-center gap-1.5">
-            <UIcon name="i-lucide-badge-check" class="w-4 h-4 text-primary-500" />
-            Gratuit
-          </li>
-          <li class="inline-flex items-center gap-1.5">
-            <UIcon name="i-lucide-shield-check" class="w-4 h-4 text-primary-500" />
-            Sans engagement
-          </li>
-          <li class="inline-flex items-center gap-1.5">
-            <UIcon name="i-lucide-clock" class="w-4 h-4 text-primary-500" />
-            Réservation en quelques minutes
-          </li>
-        </ul>
-      </div>
-    </section>
+    <PublicDirectoryHero kind="nurses" :city="searchCity" :appointment-url="appointmentNewUrl" @search="searchCity = $event" />
 
     <section class="relative py-12 sm:py-16 md:py-20 overflow-hidden bg-app-canvas dark:bg-gray-950">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
@@ -48,6 +14,10 @@
           </div>
         </div>
 
+        <div v-else-if="loadError" class="space-y-4">
+          <UAlert color="error" title="Annuaire indisponible" description="La liste ne peut pas être chargée pour le moment." />
+          <UButton color="neutral" variant="outline" @click="retry">Réessayer</UButton>
+        </div>
         <template v-else>
           <div v-if="nurses.length === 0" class="text-center py-16">
             <UIcon name="i-lucide-heart-pulse" class="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
@@ -103,22 +73,9 @@ definePageMeta({ layout: 'default' })
 
 const { appointmentNewUrl } = useAppointmentNewUrl()
 const config = useRuntimeConfig()
-const base = config.public.apiBase || '/api'
-const apiBase = import.meta.server && (base.startsWith('/') || !base.startsWith('http'))
-  ? 'http://127.0.0.1:8888/api'
-  : base
-
-const page = ref(1)
-const { data: nursesData, pending: loading, refresh } = await useAsyncData(
-  () => `nurses-list-${page.value}`,
-  () => $fetch<{ success: boolean; data: any[]; pagination: any }>(
-    `${apiBase}/public/nurses?page=${page.value}&limit=24`,
-    { method: 'GET' }
-  ),
-  { watch: [page] }
-)
-const nurses = computed(() => nursesData.value?.success ? (nursesData.value.data ?? []) : [])
-const pagination = computed(() => nursesData.value?.pagination ?? { page: 1, limit: 24, total: 0, pages: 0 })
+const searchCity = ref('')
+const { profiles: nurses, loading, loadError, retry, pageNumber: page, totalPages } = await usePublicDirectory('nurses', searchCity)
+const pagination = computed(() => ({ page: page.value, pages: totalPages.value }))
 
 const seoTitle = 'Infirmier à domicile en France | Soins et prises de sang | Cary'
 const seoDescription = 'Trouvez un infirmier à domicile pour un soin ou une prise de sang. Réservez en ligne, sans engagement.'
@@ -131,7 +88,7 @@ useHead({
     { property: 'og:description', content: seoDescription },
     { property: 'og:type', content: 'website' },
   ],
-  link: [{ rel: 'canonical', href: `${config.public.siteUrl || ''}/infirmiers` }],
+  link: [{ rel: 'canonical', href: `${String(config.public.siteUrl || 'https://cary.bio').replace(/\/$/, '')}/infirmiers` }],
 })
 
 function loadPage(p: number) {

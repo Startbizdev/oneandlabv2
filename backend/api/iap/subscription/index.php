@@ -1,7 +1,7 @@
 <?php
 
 header('Content-Type: application/json');
-require_once __DIR__ . '/_bootstrap.php';
+require_once __DIR__ . '/../_bootstrap.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);
@@ -17,7 +17,7 @@ try {
     /** @var SubscriptionService $service */
     $service = $ctx['subscriptionService'];
 
-    $latest = $service->getLatestSubscription($userId);
+    $latest = $service->getSubscriptionForManagement($userId);
     $activePlan = $service->getActiveNursePlan($userId);
     $data = $service->formatMobileSubscription($latest, $activePlan);
     $data['can_purchase_store'] = $service->canPurchaseStorePro($userId)['allowed'];

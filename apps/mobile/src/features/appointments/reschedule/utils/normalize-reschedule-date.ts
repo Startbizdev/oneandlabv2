@@ -1,3 +1,4 @@
+import { parseAppointmentDateFrance } from '@oneandlab/shared-utils';
 export function parisDateYmd(value: Date = new Date()): string {
   return value.toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
 }
@@ -9,7 +10,7 @@ export function normalizeRescheduleDate(dateValue: string | null | undefined): s
   const raw = String(dateValue).trim();
   const originalYmd = /^\d{4}-\d{2}-\d{2}$/.test(raw)
     ? raw
-    : parisDateYmd(new Date(raw));
+    : parisDateYmd(parseAppointmentDateFrance(raw));
   if (!/^\d{4}-\d{2}-\d{2}$/.test(originalYmd)) return todayParis;
   return originalYmd < todayParis ? todayParis : originalYmd;
 }

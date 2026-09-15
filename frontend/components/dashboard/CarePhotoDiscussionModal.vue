@@ -523,7 +523,7 @@ async function loadPreview(docId: string) {
   previewLoading.value = true;
   revokePreviewBlob();
   try {
-    const apiBase = config.public?.apiBase || 'http://localhost:8888/api';
+    const apiBase = config.public?.apiBase || '/api';
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
     const csrf = (typeof window !== 'undefined' && (window as any).__csrfTokenCache) || '';
     const headers: Record<string, string> = {};

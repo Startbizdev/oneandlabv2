@@ -22,7 +22,7 @@
       </div>
     </div>
 
-    <UButton variant="outline" icon="i-lucide-plus" block @click="pickerOpen = true">
+    <UButton variant="outline" icon="i-lucide-plus" block @click="($event) => { pickerOpen = true }">
       Ajouter un soin
     </UButton>
 
@@ -31,15 +31,21 @@
         <div class="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
           <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold">Choisir un soin</h3>
-            <UButton icon="i-lucide-x" variant="ghost" color="neutral" @click="pickerOpen = false" />
+            <UButton icon="i-lucide-x" variant="ghost" color="neutral" aria-label="Fermer le choix du soin" @click="($event) => { pickerOpen = false }" />
           </div>
-          <div class="space-y-2">
+          <div v-if="loadError" class="space-y-3">
+            <UAlert color="error" title="Soins indisponibles" :description="loadError" />
+            <UButton color="neutral" variant="outline" @click="loadCategories">Réessayer</UButton>
+          </div>
+          <p v-else-if="loading" role="status" class="py-4 text-sm text-muted">Chargement des soins…</p>
+          <UAlert v-if="selectionError" color="error" title="Soin non ajouté" :description="selectionError" />
+          <div v-if="!loadError && !loading" class="space-y-2">
             <button
               v-for="cat in categories"
               :key="cat.id"
               type="button"
               class="flex w-full items-center gap-3 rounded-lg border border-default px-3 py-3 text-left transition hover:bg-elevated disabled:opacity-50"
-              :disabled="isTaken(cat.id)"
+              :disabled="isTaken(cat.id) || selecting"
               @click="pickCategory(cat)"
             >
               <span class="text-xl">{{ categoryEmoji(cat) }}</span>
@@ -83,6 +89,10 @@ const emit = defineEmits<{
 }>();
 
 const categories = ref<CareCategoryRow[]>([]);
+const loading = ref(false);
+const loadError = ref('');
+const selecting = ref(false);
+const selectionError = ref('');
 const pickerOpen = ref(false);
 const optionsOpen = ref(false);
 const optionsCategory = ref<CareCategoryRow | null>(null);
@@ -113,17 +123,21 @@ function buildServiceLine(cat: QuickModalCategoryRow): SelectedServiceInput {
 
 async function ensureCategoryReady(cat: CareCategoryRow): Promise<CareCategoryRow> {
   if ((cat.options?.length ?? 0) > 0) return cat;
-  const res = await apiFetch<NonNullable<CareCategoryRow['options']>>(
+  const res = await apiFetch<{ success: boolean; data?: NonNullable<CareCategoryRow['options']>; error?: string }>(
     `/categories?category_options_for=${encodeURIComponent(cat.id)}`,
   );
-  const options = res?.data ?? [];
+  if (!res?.success || !Array.isArray(res.data)) throw new Error(res?.error || 'Options indisponibles. Sélectionnez à nouveau ce soin pour réessayer.');
+  const options = res.data;
   const patched = { ...cat, options };
   categories.value = categories.value.map((c) => (c.id === cat.id ? patched : c));
   return patched;
 }
 
 async function pickCategory(cat: CareCategoryRow) {
-  if (isTaken(cat.id)) return;
+  if (isTaken(cat.id) || selecting.value) return;
+  selecting.value = true;
+  selectionError.value = '';
+  try {
   const ready = await ensureCategoryReady(cat);
   const optionCount = ready.options?.length ?? 0;
   if (isCareCategoryWithoutBookingOptions(ready) || optionCount === 0) {
@@ -133,6 +147,11 @@ async function pickCategory(cat: CareCategoryRow) {
   }
   optionsCategory.value = ready;
   optionsOpen.value = true;
+  } catch (error) {
+    selectionError.value = error instanceof Error ? error.message : 'Impossible de charger les options de ce soin.';
+  } finally {
+    selecting.value = false;
+  }
 }
 
 function onOptionsConfirm(payload: { service: SelectedServiceInput; slice: BookingServiceFormSlice }) {
@@ -161,8 +180,18 @@ function removeItem(categoryId: string) {
   );
 }
 
-onMounted(async () => {
-  const res = await apiFetch<CareCategoryRow[]>('/categories?type=nursing&scope=picker');
-  categories.value = (res?.data ?? []) as CareCategoryRow[];
-});
+async function loadCategories() {
+  loading.value = true;
+  loadError.value = '';
+  try {
+    const res = await apiFetch<{ success: boolean; data?: CareCategoryRow[]; error?: string }>('/categories?type=nursing&scope=picker');
+    if (!res?.success || !Array.isArray(res.data)) throw new Error(res?.error || 'Impossible de charger le catalogue.');
+    categories.value = res.data;
+  } catch (error) {
+    loadError.value = error instanceof Error ? error.message : 'Réessayez dans un instant.';
+  } finally {
+    loading.value = false;
+  }
+}
+onMounted(loadCategories);
 </script>

@@ -5,7 +5,7 @@
         <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30">
           <UIcon name="i-lucide-message-square" class="w-5 h-5 text-primary-600 dark:text-primary-400" />
         </div>
-        <h2 class="text-xl font-normal text-gray-900 dark:text-white">Avis clients</h2>
+        <h2 class="text-xl font-normal text-gray-900 dark:text-white">Avis des patients</h2>
       </div>
       <UButton
         v-if="revieweeId && revieweeType"
@@ -16,16 +16,16 @@
         icon="i-lucide-pencil"
         @click="openReviewModal"
       >
-        Mettre un avis
+        Laisser un avis
       </UButton>
     </div>
     
     <!-- Statistiques -->
-    <div v-if="reviews.stats && reviews.stats.total_reviews > 0" class="mb-8 p-6 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800/50">
+    <div v-if="reviews.stats && reviews.stats.total_reviews > 0" class="mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
       <div class="flex items-center gap-6 flex-wrap">
         <div class="flex items-baseline gap-3">
           <div class="text-5xl font-normal text-gray-900 dark:text-white">
-            {{ reviews.stats.average_rating.toFixed(1) }}
+            {{ Number(reviews.stats.average_rating).toFixed(1) }}
           </div>
           <div class="flex flex-col gap-1">
             <div class="flex items-center gap-0.5">
@@ -55,10 +55,10 @@
         v-for="review in reviews.items" 
         :key="review.id"
         class="hover:shadow-md transition-all duration-300 border-0 ring-1 ring-gray-200 dark:ring-gray-800"
-        :ui="{ body: { padding: 'p-5 lg:p-6' } }"
+        :ui="{ body: 'p-5 lg:p-6' }"
       >
         <div class="space-y-4">
-          <div class="flex items-start justify-between gap-4">
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div class="flex items-center gap-3 flex-1 min-w-0">
               <div class="flex items-center gap-1 flex-shrink-0">
                 <UIcon 
@@ -99,26 +99,12 @@
       </UCard>
     </div>
 
-    <!-- Placeholder : aucun avis + bouton Mettre un avis -->
-    <div v-else class="text-center py-12">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
-        <UIcon name="i-lucide-message-square" class="w-8 h-8 text-gray-400 dark:text-gray-500" />
-      </div>
-      <p class="text-gray-500 dark:text-gray-400 font-medium">Aucun avis pour le moment</p>
-      <p class="text-sm text-gray-400 dark:text-gray-500 mt-1 mb-6">Soyez le premier à laisser un avis !</p>
-      <UButton
-        v-if="revieweeId && revieweeType"
-        color="primary"
-        size="md"
-        icon="i-lucide-pencil"
-        @click="openReviewModal"
-      >
-        Mettre un avis
-      </UButton>
+    <div v-else class="rounded-xl bg-gray-50 p-4 dark:bg-gray-900">
+      <p class="text-sm text-gray-600 dark:text-gray-300">Aucun avis pour le moment. Les patients peuvent partager leur expérience après un rendez-vous terminé.</p>
     </div>
 
     <!-- Modal formulaire avis -->
-    <USlideover v-model:open="reviewModalOpen" title="Laisser un avis" :ui="{ width: 'max-w-md' }">
+    <USlideover v-model:open="reviewModalOpen" title="Laisser un avis" :ui="{ content: 'max-w-md' }" :dismissible="!submitting" :close="!submitting">
       <template #body>
         <div class="p-6 space-y-6">
           <!-- Non connecté -->
@@ -145,6 +131,7 @@
           </div>
 
           <!-- Patient : aucun RDV éligible -->
+          <UAlert v-else-if="eligibleError" title="Impossible de charger vos rendez-vous" color="error" variant="soft"><template #actions><UButton color="neutral" variant="outline" @click="openReviewModal">Réessayer</UButton></template></UAlert>
           <div v-else-if="eligibleAppointments.length === 0" class="text-center py-4">
             <p class="text-gray-600 dark:text-gray-400">Vous pourrez laisser un avis après un rendez-vous terminé avec ce professionnel.</p>
             <UButton :to="appointmentNewUrl" color="primary" variant="soft" class="mt-4" block>Réserver une visite</UButton>
@@ -158,7 +145,7 @@
                   v-for="i in 5"
                   :key="i"
                   type="button"
-                  class="p-1 rounded transition-colors"
+                  class="h-11 w-11 rounded transition-colors" :aria-label="`${i} sur 5`" :aria-pressed="form.rating === i" :disabled="submitting"
                   :class="form.rating >= i ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600 hover:text-yellow-300'"
                   @click="form.rating = i"
                 >
@@ -182,7 +169,7 @@
               />
             </UFormField>
             <div class="flex gap-3 pt-2">
-              <UButton type="button" variant="outline" color="neutral" block :on-click="() => reviewModalOpen = false">
+              <UButton type="button" variant="outline" color="neutral" block :disabled="submitting" @click="() => { reviewModalOpen = false }">
                 Annuler
               </UButton>
               <UButton type="submit" color="primary" block :loading="submitting">
@@ -238,6 +225,7 @@ const nonPatientBookingActions = computed(() => [
 
 const reviewModalOpen = ref(false);
 const eligibleLoading = ref(false);
+const eligibleError = ref(false);
 const eligibleAppointments = ref<any[]>([]);
 const submitting = ref(false);
 
@@ -265,12 +253,14 @@ const eligibleAppointmentOptions = computed(() =>
 );
 
 async function openReviewModal() {
+  if (submitting.value) return;
   reviewModalOpen.value = true;
   if (!isAuthenticated.value || user.value?.role !== 'patient' || !props.revieweeId || !props.revieweeType) {
     eligibleAppointments.value = [];
     return;
   }
   eligibleLoading.value = true;
+  eligibleError.value = false;
   eligibleAppointments.value = [];
   form.rating = 0;
   form.comment = '';
@@ -278,14 +268,15 @@ async function openReviewModal() {
   try {
     const [appointmentsRes, reviewsRes] = await Promise.all([
       apiFetch('/appointments?status=completed&limit=100', { method: 'GET' }),
-      apiFetch(`/reviews?reviewee_id=${props.revieweeId}&reviewee_type=${props.revieweeType}&limit=100`, { method: 'GET' }),
+      apiFetch(`/reviews?patient_id=${encodeURIComponent(user.value.id)}&limit=100`, { method: 'GET' }),
     ]);
-    const appointments = (appointmentsRes as any)?.data ?? [];
+    if (!appointmentsRes?.success || !Array.isArray(appointmentsRes.data) || !reviewsRes?.success || !Array.isArray(reviewsRes.data)) throw new Error('Chargement impossible');
+    const appointments = appointmentsRes.data;
     const myReviewedIds = new Set<string>();
     const reviewsData = (reviewsRes as any)?.data ?? [];
     const myId = user.value?.id;
     reviewsData.forEach((r: any) => {
-      if (r.patient_id === myId) myReviewedIds.add(r.appointment_id);
+      if (r.patient_id === myId && r.reviewee_id === props.revieweeId) myReviewedIds.add(r.appointment_id);
     });
     const revieweeId = props.revieweeId;
     const revieweeType = props.revieweeType;
@@ -297,6 +288,7 @@ async function openReviewModal() {
     eligibleAppointments.value = eligible;
     if (eligible.length > 0) form.appointment_id = eligible[0].id;
   } catch (e) {
+    eligibleError.value = true;
     toast.add({ title: 'Erreur', description: 'Impossible de charger les rendez-vous', color: 'red' });
   } finally {
     eligibleLoading.value = false;
@@ -304,13 +296,14 @@ async function openReviewModal() {
 }
 
 async function submitReview() {
+  if (submitting.value) return;
   if (form.rating < 1 || form.rating > 5 || !form.appointment_id || !props.revieweeId || !props.revieweeType) {
     toast.add({ title: 'Veuillez sélectionner une note', color: 'red' });
     return;
   }
   submitting.value = true;
   try {
-    await apiFetch('/reviews', {
+    const result = await apiFetch('/reviews', {
       method: 'POST',
       body: {
         appointment_id: form.appointment_id,
@@ -320,6 +313,7 @@ async function submitReview() {
         comment: form.comment.trim() || undefined,
       },
     });
+    if (!result?.success) throw new Error(result?.error || 'Impossible d’enregistrer l’avis');
     toast.add({ title: 'Avis enregistré', color: 'green' });
     reviewModalOpen.value = false;
     emit('submitted');

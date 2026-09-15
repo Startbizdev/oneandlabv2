@@ -1,10 +1,10 @@
 <template>
   <div>
-    <LandingMaquetteHero
+    <LandingMaquetteHero audience="labs"
       eyebrow="Pour les laboratoires"
-      :title-lines="['Plus de prises de sang', 'à domicile, sans le']"
-      highlight="tableau Excel"
-      description="Les demandes arrivent. Vous les donnez à vos préleveurs. Chacun voit sa tournée. Vous voyez le volume, en direct."
+      :title-lines="['Vos prélèvements,']"
+      highlight="une équipe coordonnée"
+      description="Centralisez les demandes à domicile, affectez vos préleveurs et suivez les rendez-vous de votre équipe."
       image-src="https://images.unsplash.com/photo-1579154341184-22069e4614d2?w=900&h=1200&q=80&auto=format&fit=crop"
       image-alt="Tubes à essai en laboratoire d'analyses médicales"
       image-object-class="object-[center_40%]"
@@ -76,7 +76,7 @@ definePageMeta({ layout: 'default' });
 useLandingSeo({
   title: 'Laboratoires : prises de sang à domicile, tournées et préleveurs | Cary',
   description:
-    'Les demandes arrivent. Vous les donnez à vos préleveurs. Chacun voit sa tournée. Vous voyez le volume, en direct.',
+    'Centralisez les demandes à domicile, affectez vos préleveurs et suivez les rendez-vous de votre équipe.',
   keywords:
     'laboratoire à domicile, prise de sang à domicile, préleveur, plateforme laboratoire, Cary, analyses à domicile',
   path: '/pour-les-laboratoires',

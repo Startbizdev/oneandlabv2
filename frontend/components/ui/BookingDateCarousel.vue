@@ -97,7 +97,7 @@ function calendarDayRibbonLabel(day: CalendarDate): string {
 
 function calendarDayAriaLabel(day: CalendarDate): string {
   const mo = dayMonthShortLabel(day);
-  return `${weekdayShort(day)} ${day.day} ${mo}`;
+  return `${weekdayShort(day)} ${day.day} ${mo} ${day.year}`;
 }
 
 function dayMonthShortLabel(day: CalendarDate): string {
@@ -143,6 +143,13 @@ function slideIndexForDate(target: CalendarDate): number | null {
 const scrollerRef = ref<HTMLElement | null>(null);
 let resizeObserver: ResizeObserver | undefined;
 
+const currentSlide = ref(0);
+const visiblePeriod = computed(() => {
+  const days = slides.value[currentSlide.value];
+  if (!days?.length) return '';
+  const formatter = new DateFormatter('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: PARIS_TZ });
+  return `${formatter.format(toParisDate(days[0]))} – ${formatter.format(toParisDate(days[days.length - 1]))}`;
+});
 const canScrollPrev = ref(false);
 const canScrollNext = ref(false);
 
@@ -159,6 +166,7 @@ function updateArrowAffordance() {
     return;
   }
   const { scrollLeft, scrollWidth, clientWidth } = el;
+  currentSlide.value = Math.max(0, Math.min(slides.value.length - 1, Math.round(scrollLeft / clientWidth)));
   const maxScroll = Math.max(0, Math.round(scrollWidth - clientWidth));
   const x = Math.round(scrollLeft);
   const eps = 3;
@@ -185,7 +193,8 @@ function goPage(delta: -1 | 1) {
   let idx = Math.round(el.scrollLeft / w);
   idx = Math.max(0, Math.min(idx, n - 1));
   const target = Math.max(0, Math.min(idx + delta, n - 1));
-  el.scrollTo({ left: target * w, behavior: 'smooth' });
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  el.scrollTo({ left: target * w, behavior: reduceMotion ? 'auto' : 'smooth' });
   requestAnimationFrame(() => updateArrowAffordance());
 }
 
@@ -286,6 +295,15 @@ const screenReaderInstructions =
     <p class="sr-only">{{ screenReaderInstructions }}</p>
 
     <ClientOnly>
+      <nav class="mb-3 flex items-center justify-between gap-2" aria-label="Changer la période du calendrier">
+        <button type="button" :disabled="disabled || !canScrollPrev" class="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200" aria-label="Période précédente" @click="arrowPrev">
+          <UIcon name="i-lucide-chevron-left" class="size-5" aria-hidden="true" />
+        </button>
+        <p class="min-w-0 text-center text-xs font-medium leading-relaxed text-gray-700 dark:text-gray-300" aria-live="polite">{{ visiblePeriod }}</p>
+        <button type="button" :disabled="disabled || !canScrollNext" class="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200" aria-label="Période suivante" @click="arrowNext">
+          <UIcon name="i-lucide-chevron-right" class="size-5" aria-hidden="true" />
+        </button>
+      </nav>
       <div
         ref="scrollerRef"
         class="booking-date-carousel__scroller touch-pan-x flex w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain py-1 [scrollbar-width:none] sm:py-1.5 [&::-webkit-scrollbar]:hidden"
@@ -296,6 +314,8 @@ const screenReaderInstructions =
         <div
           v-for="(slide, sIdx) in slides"
           :key="`${isSmAndUp ? 'd' : 'm'}-${sIdx}`"
+          :inert="sIdx !== currentSlide"
+          :aria-hidden="sIdx !== currentSlide"
           class="box-border w-full shrink-0 snap-start snap-always"
           style="flex: 0 0 100%; min-width: 100%; max-width: 100%"
         >
@@ -315,16 +335,16 @@ const screenReaderInstructions =
                   disabled || isUnavailable(day)
                     ? 'cursor-not-allowed border border-gray-100/95 bg-gray-50/98 text-gray-400 shadow-none dark:border-gray-800/85 dark:bg-gray-950/55 dark:text-gray-600 dark:shadow-none'
                     : isDaySelected(day)
-                      ? 'border border-emerald-800/95 bg-emerald-600 text-white shadow-none ring-0 hover:bg-emerald-600 dark:border-emerald-300/90 dark:bg-emerald-600 dark:text-white dark:shadow-none'
-                      : 'border border-gray-200/90 bg-white ring-1 ring-inset ring-gray-950/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_1px_2px_-0.25px_rgba(15,23,42,0.08)] hover:-translate-y-px hover:border-gray-300/95 hover:bg-white hover:ring-gray-950/[0.06] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_2px_4px_-0.25px_rgba(15,23,42,0.1)] dark:border-gray-600/90 dark:bg-gray-950 dark:ring-white/[0.05] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_2px_-0.25px_rgba(0,0,0,0.6)] dark:hover:border-gray-500 dark:hover:bg-gray-900 dark:hover:ring-white/[0.08] dark:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_6px_-1px_rgba(0,0,0,0.65)] active:translate-y-0'
+                      ? 'border border-primary-500 bg-primary-500 text-primary-950 shadow-none'
+                      : 'border border-gray-200 bg-white hover:border-primary-500 hover:bg-primary-50 dark:border-gray-700 dark:bg-gray-950 dark:hover:bg-primary-950'
                 "
                 @click="selectDay(day)"
               >
                 <span
-                  class="text-[11px] font-semibold capitalize leading-none tracking-wide sm:text-[10px] md:text-xs md:font-semibold"
+                  class="text-xs font-medium capitalize leading-none"
                   :class="
                     isDaySelected(day)
-                      ? 'text-white/90'
+                      ? 'text-primary-950'
                       : 'text-gray-500 dark:text-gray-400'
                   "
                   >{{ calendarDayRibbonLabel(day) }}</span
@@ -333,16 +353,16 @@ const screenReaderInstructions =
                   class="text-[18px] tabular-nums leading-none sm:text-[17px] md:text-xl md:font-bold lg:text-2xl"
                   :class="
                     isDaySelected(day)
-                      ? 'font-bold text-white'
+                      ? 'font-bold text-primary-950'
                       : 'font-semibold text-gray-900 dark:text-gray-50'
                   "
                   >{{ day.day }}</span
                 >
                 <span
-                  class="text-[10px] capitalize leading-none sm:text-[10px] md:text-xs"
+                  class="text-xs capitalize leading-none"
                   :class="
                     isDaySelected(day)
-                      ? 'font-medium text-white/85'
+                      ? 'font-medium text-primary-950'
                       : 'font-normal text-gray-500 dark:text-gray-400'
                   "
                   >{{ dayMonthShortLabel(day) }}</span
@@ -353,29 +373,7 @@ const screenReaderInstructions =
         </div>
       </div>
 
-      <nav
-        class="pointer-events-none absolute inset-y-0 left-0 right-0 z-30"
-        aria-label="Changer la période du calendrier"
-      >
-        <button
-          v-if="!disabled && canScrollPrev"
-          type="button"
-          class="pointer-events-auto absolute left-1 top-1/2 z-10 inline-flex shrink-0 -translate-y-1/2 items-center justify-center rounded-full bg-gray-800 p-[2px] leading-none text-white shadow-md ring-1 ring-black/10 transition-[transform,background-color] hover:bg-gray-900 active:scale-[0.98] dark:bg-gray-700 dark:text-white dark:ring-white/10 dark:hover:bg-gray-600 sm:left-1.5"
-          aria-label="Période précédente"
-          @click="arrowPrev"
-        >
-          <UIcon name="i-lucide-chevron-left" class="block size-[14px] shrink-0" aria-hidden="true" />
-        </button>
-        <button
-          v-if="!disabled && canScrollNext"
-          type="button"
-          class="pointer-events-auto absolute right-1 top-1/2 z-10 inline-flex shrink-0 -translate-y-1/2 items-center justify-center rounded-full bg-gray-800 p-[2px] leading-none text-white shadow-md ring-1 ring-black/10 transition-[transform,background-color] hover:bg-gray-900 active:scale-[0.98] dark:bg-gray-700 dark:text-white dark:ring-white/10 dark:hover:bg-gray-600 sm:right-1.5"
-          aria-label="Période suivante"
-          @click="arrowNext"
-        >
-          <UIcon name="i-lucide-chevron-right" class="block size-[14px] shrink-0" aria-hidden="true" />
-        </button>
-      </nav>
+
 
       <template #fallback>
         <div

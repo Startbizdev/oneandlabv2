@@ -15,7 +15,7 @@
     <UDropdownMenu
       :items="shareMenuItems"
       :popper="{ placement: splitRow ? 'bottom-end' : 'bottom', offsetDistance: 6 }"
-      :ui="{ width: 'w-56' }"
+      :ui="{ content: 'w-56' }"
     >
       <UButton
         variant="outline"

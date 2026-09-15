@@ -21,7 +21,7 @@
           </p>
           <p
             v-if="displayAddress(row.appointments[0])"
-            class="mt-1 text-[11px] font-medium leading-snug text-gray-500 dark:text-gray-400 whitespace-normal break-words"
+            class="mt-1 text-xs font-medium leading-snug text-gray-500 dark:text-gray-400 whitespace-normal break-words"
           >
             {{ displayAddress(row.appointments[0]) }}
           </p>
@@ -35,7 +35,7 @@
                 <p class="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] leading-snug text-gray-900 dark:text-gray-100">
                   <span class="inline-flex shrink-0 items-center gap-1 font-semibold tabular-nums leading-none">
                     <UIcon
-                      name="i-solar:calendar-linear"
+                      name="i-lucide-calendar"
                       class="h-[15px] w-[15px] shrink-0 text-gray-500 dark:text-gray-400"
                       aria-hidden="true"
                     />
@@ -44,7 +44,7 @@
                   <span class="shrink-0 text-gray-300 dark:text-gray-600" aria-hidden="true">·</span>
                   <span class="inline-flex min-w-0 items-center gap-1 font-medium tabular-nums leading-none text-gray-600 dark:text-gray-400">
                     <UIcon
-                      name="i-solar:clock-circle-linear"
+                      name="i-lucide-clock"
                       class="h-[15px] w-[15px] shrink-0 text-gray-500 dark:text-gray-400"
                       aria-hidden="true"
                     />
@@ -57,7 +57,7 @@
                     :color="getStatusColor(apt.status)"
                     variant="subtle"
                     size="sm"
-                    class="shrink-0 px-2 py-0.5 text-[11px] font-semibold leading-tight tracking-tight"
+                    class="shrink-0 px-2 py-0.5 text-xs font-semibold leading-tight tracking-tight"
                     :label="getStatusLabel(apt.status)"
                   />
                 </div>
@@ -95,7 +95,7 @@
             color="error"
             variant="soft"
             size="sm"
-            class="min-h-9 flex-1 justify-center"
+            class="min-h-11 flex-1 justify-center"
             :loading="offerLoadingRefuse"
             label="Refuser"
             @click.stop="emit('refuseBatch')"
@@ -103,7 +103,7 @@
           <UButton
             color="primary"
             size="sm"
-            class="min-h-9 flex-1 justify-center"
+            class="min-h-11 flex-1 justify-center"
             :loading="offerLoadingAccept"
             label="Accepter"
             @click.stop="emit('acceptBatch')"
@@ -130,7 +130,7 @@
           </p>
           <p
             v-if="displayAddress(singleDisplayAppointment)"
-            class="mt-1 text-[11px] font-medium leading-snug text-gray-500 dark:text-gray-400 whitespace-normal break-words"
+            class="mt-1 text-xs font-medium leading-snug text-gray-500 dark:text-gray-400 whitespace-normal break-words"
           >
             {{ displayAddress(singleDisplayAppointment) }}
           </p>
@@ -141,7 +141,7 @@
             <p class="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] leading-snug text-gray-900 dark:text-gray-100">
               <span class="inline-flex shrink-0 items-center gap-1 font-semibold tabular-nums leading-none">
                 <UIcon
-                  name="i-solar:calendar-linear"
+                  name="i-lucide-calendar"
                   class="h-[15px] w-[15px] shrink-0 text-gray-500 dark:text-gray-400"
                   aria-hidden="true"
                 />
@@ -150,7 +150,7 @@
               <span class="shrink-0 text-gray-300 dark:text-gray-600" aria-hidden="true">·</span>
               <span class="inline-flex min-w-0 items-center gap-1 font-medium tabular-nums leading-none text-gray-600 dark:text-gray-400">
                 <UIcon
-                  name="i-solar:clock-circle-linear"
+                  name="i-lucide-clock"
                   class="h-[15px] w-[15px] shrink-0 text-gray-500 dark:text-gray-400"
                   aria-hidden="true"
                 />
@@ -163,7 +163,7 @@
                 :color="getStatusColor(singleDisplayAppointment.status)"
                 variant="subtle"
                 size="sm"
-                class="shrink-0 px-2 py-0.5 text-[11px] font-semibold leading-tight tracking-tight"
+                class="shrink-0 px-2 py-0.5 text-xs font-semibold leading-tight tracking-tight"
                 :label="getStatusLabel(singleDisplayAppointment.status)"
               />
             </div>
@@ -214,7 +214,7 @@
             color="error"
             variant="soft"
             size="sm"
-            class="min-h-9 flex-1 justify-center"
+            class="min-h-11 flex-1 justify-center"
             :loading="offerLoadingRefuse"
             label="Refuser"
             @click.stop="emit('refuseBatch')"
@@ -222,7 +222,7 @@
           <UButton
             color="primary"
             size="sm"
-            class="min-h-9 flex-1 justify-center"
+            class="min-h-11 flex-1 justify-center"
             :loading="offerLoadingAccept"
             label="Accepter"
             @click.stop="emit('acceptBatch')"
@@ -237,7 +237,7 @@
             color="error"
             variant="soft"
             size="sm"
-            class="min-h-9 flex-1 justify-center"
+            class="min-h-11 flex-1 justify-center"
             :loading="offerLoadingRefuse"
             label="Refuser"
             @click.stop="emit('refuseOffer')"
@@ -245,7 +245,7 @@
           <UButton
             color="primary"
             size="sm"
-            class="min-h-9 flex-1 justify-center"
+            class="min-h-11 flex-1 justify-center"
             :loading="offerLoadingAccept"
             label="Accepter"
             @click.stop="emit('acceptOffer')"

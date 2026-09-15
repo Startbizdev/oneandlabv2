@@ -1,10 +1,10 @@
 <template>
   <div>
-    <LandingMaquetteHero
+    <LandingMaquetteHero audience="patients"
       eyebrow="Pour vous, à la maison"
-      :title-lines="['Un soin chez vous,', 'à l’heure qui']"
-      highlight="vous arrange"
-      description="Prise de sang ou soin infirmier : vous réservez, un professionnel vérifié vient chez vous. Confirmation par SMS et email."
+      :title-lines="['Vos soins,']"
+      highlight="chez vous"
+      description="Choisissez vos soins et proposez vos disponibilités. Retrouvez la confirmation et vos documents dans votre espace."
       image-src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&h=1200&q=80&auto=format&fit=crop"
       image-alt="Soins et accompagnement d'un patient à domicile"
       image-object-class="object-[center_30%]"

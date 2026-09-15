@@ -6,6 +6,7 @@
  */
 
 require_once __DIR__ . '/NotificationMessageFormatter.php';
+require_once __DIR__ . '/ProfessionalAppointmentLinks.php';
 require_once __DIR__ . '/../models/User.php';
 
 abstract class AbstractSmsProvider
@@ -120,13 +121,11 @@ abstract class AbstractSmsProvider
         $detailsPart = $details !== '' ? " ({$details})" : '';
 
         $base = $this->frontendBaseUrl();
-        $isLab = in_array($role, ['lab', 'subaccount'], true) || $appointmentType === 'blood_test';
-        if ($isLab) {
-            $url = $base . '/lab/appointments?openAppointment=' . rawurlencode($appointmentId);
+        $url = $base . ProfessionalAppointmentLinks::requestPath($role, $appointmentId);
+        if ($appointmentType === 'blood_test') {
             $message = "{$greeting} demande de prélèvement disponible dans votre secteur{$detailsPart}. Consultez : {$url}";
         } else {
-            $url = $base . '/nurse/demandes?openAppointment=' . rawurlencode($appointmentId);
-            $message = "{$greeting} nouvelle demande de soin dans votre secteur{$detailsPart}. Accepter : {$url}";
+            $message = "{$greeting} nouvelle demande de soin dans votre secteur{$detailsPart}. Consultez : {$url}";
         }
 
         try {

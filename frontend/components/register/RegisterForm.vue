@@ -168,7 +168,7 @@
           :loading="loading"
           :disabled="!canSubmit"
           class="mt-6 w-full py-3 text-base font-medium"
-          :color="submitColor"
+          :color="resolveUiColor(submitColor)"
         >
           {{ submitLabel }}
         </UButton>
@@ -187,6 +187,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveUiColor } from '~/utils/ui-appearance';
 import ProEmploiField from '~/components/profile/ProEmploiField.vue';
 import {
   isProIpaEmploi,

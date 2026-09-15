@@ -15,6 +15,12 @@ require_once __DIR__ . '/../lib/admin/AdminDispatchEventLogger.php';
 require_once __DIR__ . '/../lib/CoverageZoneMatcher.php';
 require_once __DIR__ . '/../lib/CoverageZoneGeo.php';
 require_once __DIR__ . '/../lib/PendingOfferExpiry.php';
+require_once __DIR__ . '/../lib/DatabaseTransaction.php';
+require_once __DIR__ . '/../lib/AppointmentItemsWriter.php';
+require_once __DIR__ . '/../lib/AppointmentSchedule.php';
+require_once __DIR__ . '/../lib/AppointmentRequestFingerprint.php';
+require_once __DIR__ . '/../lib/AppointmentCreationRequest.php';
+require_once __DIR__ . '/../lib/NurseQuotaGuard.php';
 
 /**
  * Modèle Appointment
@@ -29,8 +35,19 @@ class Appointment
     private Email $email;
     private NotificationService $notificationService;
     private ?AdminDispatchEventLogger $dispatchEventLogger = null;
+    private ?array $creationRequestContext = null;
+    private bool $creationResponseReplayed = false;
 
-    public function __construct()
+    public function creationResponseAlreadyCompleted(): bool { return $this->creationResponseReplayed; }
+
+    public function markCreationResponseCompleted(): void
+    {
+        if ($this->creationRequestContext === null) return;
+        $statement = $this->db->prepare('UPDATE appointment_creation_requests SET response_completed = 1 WHERE actor_id = ? AND request_key = ?');
+        $statement->execute($this->creationRequestContext);
+    }
+
+    public function __construct(?PDO $db = null)
     {
         $config = require __DIR__ . '/../config/database.php';
         
@@ -42,14 +59,14 @@ class Appointment
             $config['charset']
         );
         
-        $this->db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
+        $this->db = $db ?? new PDO($dsn, $config['username'], $config['password'], $config['options']);
         try {
             $this->db->exec("SET time_zone = 'Europe/Paris'");
         } catch (Throwable) {
             // ignore if MySQL timezone tables unavailable
         }
         $this->crypto = new Crypto();
-        $this->logger = new Logger();
+        $this->logger = new Logger($this->db);
         
         $this->sms = SmsSender::tryCreate();
         
@@ -928,7 +945,7 @@ class Appointment
     }
 
     /**
-     * Évite les doublons staff (double-clic / retry réseau) : même patient, créneau et type < 45 s.
+     * Reprise staff < 45 s : seules les demandes complètes identiques sont réutilisées.
      */
     public function findRecentStaffDuplicate(string $createdBy, array $data, string $createdByRole): ?string
     {
@@ -943,7 +960,7 @@ class Appointment
         }
 
         $stmt = $this->db->prepare("
-            SELECT id FROM appointments
+            SELECT id, form_data_encrypted, form_data_dek FROM appointments
             WHERE created_by = ?
               AND patient_id = ?
               AND type = ?
@@ -951,12 +968,23 @@ class Appointment
               AND status NOT IN ('canceled', 'refused', 'expired')
               AND created_at >= DATE_SUB(NOW(), INTERVAL 45 SECOND)
             ORDER BY created_at DESC
-            LIMIT 1
+            LIMIT 20
         ");
         $stmt->execute([$createdBy, $patientId, $type, $scheduledAt]);
-        $id = $stmt->fetchColumn();
-
-        return $id ? (string) $id : null;
+        $fingerprint = AppointmentRequestFingerprint::forInput($data);
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            try {
+                if (empty($row['form_data_encrypted']) || empty($row['form_data_dek'])) continue;
+                $json = $this->crypto->decryptField($row['form_data_encrypted'], $row['form_data_dek']);
+                $fields = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+                $stored = is_array($fields) ? ($fields[AppointmentRequestFingerprint::FIELD] ?? null) : null;
+                if (is_string($stored) && hash_equals($stored, $fingerprint)) return (string) $row['id'];
+            } catch (Throwable $error) {
+                // An unreadable historical record cannot prove an identical request.
+                continue;
+            }
+        }
+        return null;
     }
 
     /**
@@ -977,7 +1005,26 @@ class Appointment
      * @return string ID du rendez-vous créé
      * @throws Exception Si les données sont invalides
      */
-    public function create(array $data, string $createdBy, string $createdByRole): string
+    public function create(array $data, string $createdBy, string $createdByRole, bool $verifiedPatientPayment = false, ?string $requestActorId = null, ?string $requestFingerprint = null): string
+    {
+        $this->creationRequestContext = null;
+        $this->creationResponseReplayed = false;
+        if (isset($data['client_request_id'])) {
+            $key = $data['client_request_id'];
+            if (!is_string($key)) throw new AppointmentCreationConflict('Identifiant de demande invalide.');
+            unset($data['client_request_id']);
+            $this->creationRequestContext = [$requestActorId ?? $createdBy, $key];
+            return AppointmentCreationRequest::run($this->db, $requestActorId ?? $createdBy, $key,
+                $requestFingerprint ?? AppointmentRequestFingerprint::forInput([$createdBy, $createdByRole, $verifiedPatientPayment, $data]),
+                fn(): string => $this->createWithinTransaction($data, $createdBy, $createdByRole, $verifiedPatientPayment),
+                function (bool $completed): void { $this->creationResponseReplayed = $completed; });
+        }
+        return DatabaseTransaction::run($this->db, function () use ($data, $createdBy, $createdByRole, $verifiedPatientPayment): string {
+            return $this->createWithinTransaction($data, $createdBy, $createdByRole, $verifiedPatientPayment);
+        });
+    }
+
+    private function createWithinTransaction(array $data, string $createdBy, string $createdByRole, bool $verifiedPatientPayment): string
     {
         // Validation des champs requis
         if (empty($data['type']) || !Validation::appointmentType($data['type'])) {
@@ -1063,6 +1110,7 @@ class Appointment
         // Normaliser la date au format attendu
         $data['scheduled_at'] = $scheduledDate->format('Y-m-d H:i:s');
 
+        $requestFingerprint = AppointmentRequestFingerprint::forInput($data);
         $duplicateId = $this->findRecentStaffDuplicate($createdBy, $data, $createdByRole);
         if ($duplicateId !== null) {
             return $duplicateId;
@@ -1090,7 +1138,7 @@ class Appointment
             throw new Exception('Email invité invalide.');
         }
 
-        PatientUrgencyGuard::assertPaidOrNotRequired($data, $createdByRole);
+        PatientUrgencyGuard::assertPaidOrNotRequired($data, $createdByRole, $verifiedPatientPayment);
         
         // Validation category_id si présent
         if (!empty($data['category_id']) && !Validation::uuid($data['category_id'])) {
@@ -1170,6 +1218,8 @@ class Appointment
         // Chiffrer l'adresse
         $addressEncrypted = $this->crypto->encryptField($data['address']['label']);
         
+        // Server-owned marker: different relatives, acts, options and batches must never collapse.
+        $data['form_data'][AppointmentRequestFingerprint::FIELD] = $requestFingerprint;
         // Chiffrer les données du formulaire (JSON)
         $formDataJson = json_encode($data['form_data'] ?? []);
         $formDataEncrypted = $this->crypto->encryptField($formDataJson);
@@ -2615,6 +2665,7 @@ class Appointment
         $setParams = array_slice($params, 0, -1);
         $finalParams = array_merge($setParams, $whereParams);
 
+        $writeStatus = function () use ($updateFields, $whereSql, $finalParams, $atomicNurseConfirm, $atomicLabConfirm, $atomicPreleveurConfirm, $id, $actorId, $actorRole, $appointment, $newStatus, $preleveurLabId, $redispatch, $note, $oldStatus): array {
         // Mettre à jour le statut (et potentiellement l'assignation)
         $sql = 'UPDATE appointments SET ' . implode(', ', $updateFields) . ' ' . $whereSql;
         $stmt = $this->db->prepare($sql);
@@ -2849,6 +2900,20 @@ class Appointment
             ]
         );
         
+        return $batchSiblingIdsConfirmed;
+        };
+
+        if ($atomicNurseConfirm) {
+            require_once __DIR__ . '/../lib/SubscriptionService.php';
+            $plan = (new SubscriptionService($this->db))->getActiveNursePlan($actorId);
+            $planLimits = require __DIR__ . '/../config/plan-limits.php';
+            $nurseLimits = $planLimits['nurse'][$plan] ?? $planLimits['nurse']['discovery'];
+            $maximum = $nurseLimits['max_appointments_per_month'];
+            $batchSiblingIdsConfirmed = NurseQuotaGuard::run($this->db, $actorId, $maximum, $writeStatus);
+        } else {
+            $batchSiblingIdsConfirmed = DatabaseTransaction::run($this->db, $writeStatus);
+        }
+
         // Si redispatch, relancer le dispatch géographique (exclure l'acteur des offres et notifications)
         if ($redispatch && $newStatus === 'pending') {
             $this->dispatchLogger()->log(
@@ -3039,13 +3104,34 @@ class Appointment
      */
     public function update(string $id, array $data, string $actorId, string $actorRole): void
     {
-        $stmt = $this->db->prepare('SELECT id, type, status FROM appointments WHERE id = ?');
+        DatabaseTransaction::run($this->db, function () use ($id, $data, $actorId, $actorRole): void {
+            $this->updateWithinTransaction($id, $data, $actorId, $actorRole);
+        });
+    }
+
+    private function updateWithinTransaction(string $id, array $data, string $actorId, string $actorRole): void
+    {
+        $lock = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? ' FOR UPDATE' : '';
+        $stmt = $this->db->prepare('SELECT id, type, status FROM appointments WHERE id = ?' . $lock);
         $stmt->execute([$id]);
         $existing = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$existing) {
             throw new Exception('Rendez-vous introuvable');
         }
         $oldStatus = (string) ($existing['status'] ?? '');
+        $itemType = (string) $existing['type'];
+        $itemKey = $itemType === 'blood_test' ? 'blood_test_items' : 'nursing_items';
+        $editedItems = null;
+        $fields = is_array($data['form_data'] ?? null) ? $data['form_data'] : [];
+        if (array_key_exists($itemKey, $data) || array_key_exists($itemKey, $fields)) {
+            if (!is_array($data['form_data'] ?? null)) throw new InvalidArgumentException('Le formulaire complet est requis pour modifier les actes.');
+            $rawItems = $data[$itemKey] ?? $fields[$itemKey] ?? null;
+            if (!is_array($rawItems) || !$rawItems) throw new InvalidArgumentException('Au moins un acte est requis.');
+            $editedItems = $this->parseBloodTestItemsInputArray($rawItems);
+            if (count($editedItems) !== count($rawItems)) throw new InvalidArgumentException('Un acte est invalide. Aucun changement enregistré.');
+            $data['form_data'] = $fields;
+            $data['form_data'][$itemKey] = $editedItems;
+        }
 
         $updateFields = ['updated_at = NOW()'];
         $params = [];
@@ -3063,11 +3149,7 @@ class Appointment
         }
 
         if (!empty($data['scheduled_at'])) {
-            $scheduledAt = $data['scheduled_at'];
-            if (is_string($scheduledAt) && preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/', $scheduledAt)) {
-                $dt = new \DateTime($scheduledAt);
-                $scheduledAt = $dt->format('Y-m-d H:i:s');
-            }
+            $scheduledAt = AppointmentSchedule::forStorage((string) $data['scheduled_at']);
             $updateFields[] = 'scheduled_at = ?';
             $params[] = $scheduledAt;
         }
@@ -3084,6 +3166,8 @@ class Appointment
         }
 
         if (isset($data['form_data']) && is_array($data['form_data'])) {
+            // An edited record is no longer proof of the original creation request.
+            unset($data['form_data'][AppointmentRequestFingerprint::FIELD]);
             $formDataJson = json_encode($data['form_data']);
             $formDataEncrypted = $this->crypto->encryptField($formDataJson);
             $updateFields[] = 'form_data_encrypted = ?, form_data_dek = ?';
@@ -3117,6 +3201,9 @@ class Appointment
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
 
+        if ($editedItems !== null && $this->hasTable('appointment_' . $itemKey)) {
+            AppointmentItemsWriter::replace($this->db, $itemType, $id, $editedItems, fn (): string => $this->generateUUID());
+        }
         $this->logger->log($actorId, $actorRole, 'update', 'appointment', $id, [
             'fields' => array_keys($data),
         ]);
@@ -3992,7 +4079,7 @@ class Appointment
                 EmailQueue::add('new_appointment_pro', null, [
                     'appointment_id' => $appointmentId,
                     'scheduled_at' => $scheduledAt ?? date('Y-m-d H:i:s'),
-                    'role' => $type === 'nursing' ? 'nurse' : 'lab',
+                    'role' => $professional['role'] ?? ($type === 'nursing' ? 'nurse' : 'lab'),
                     'form_data' => $formData,
                 ], $professional['id']);
             } catch (Exception $e) {
@@ -4412,4 +4499,3 @@ class Appointment
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
 }
-

@@ -11,7 +11,7 @@
         searchable
         by="value"
       >
-        <template #label>
+        <template #default>
           <span v-if="selectValue">{{ selectLabel }}</span>
           <span v-else class="text-gray-400">{{ placeholder }}</span>
         </template>
@@ -67,7 +67,7 @@ withDefaults(
   },
 );
 
-const proEmploiItems = [...PRO_SANTE_EMPLOIS];
+const proEmploiItems: Array<{ label: string; value: string }> = [...PRO_SANTE_EMPLOIS];
 const selectValue = ref('');
 const customValue = ref('');
 const syncing = ref(false);

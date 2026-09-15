@@ -11,8 +11,12 @@ class Logger
 {
     private PDO $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
+        if ($db !== null) {
+            $this->db = $db;
+            return;
+        }
         $config = require __DIR__ . '/../config/database.php';
         
         $dsn = sprintf(
@@ -92,6 +96,28 @@ class Logger
         );
     }
 
+    /** Preserve one audit record per resource while avoiding one commit per profile. */
+    public function logDecryptBatch(string $userId, string $role, string $resourceType, array $resources): void
+    {
+        foreach (array_chunk($resources, 250, true) as $chunk) {
+            $values = [];
+            $params = [];
+            foreach ($chunk as $id => $fields) {
+                $values[] = '(?, ?, ?, ?, ?, ?, ?, ?, NOW())';
+                array_push($params,
+                    ($userId === '' || $userId === 'system') ? null : $userId,
+                    in_array($role, self::ALLOWED_ROLES, true) ? $role : null,
+                    'decrypt', $resourceType, (string) $id,
+                    json_encode(['fields' => $fields]), $this->getIpAddress(), $this->getUserAgent()
+                );
+            }
+            $stmt = $this->db->prepare('INSERT INTO access_logs
+                (user_id, role, action, resource_type, resource_id, details, ip_address, user_agent, created_at)
+                VALUES ' . implode(',', $values));
+            $stmt->execute($params);
+        }
+    }
+
     /**
      * Récupère l'adresse IP de la requête
      */
@@ -126,7 +152,5 @@ class Logger
         return $_SERVER['HTTP_USER_AGENT'] ?? null;
     }
 }
-
-
 
 

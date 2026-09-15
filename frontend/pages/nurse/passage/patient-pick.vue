@@ -1,25 +1,22 @@
 <template>
-  <AppPageShell class="space-y-4">
-    <AppPageHeader title="Choisir un patient" :edge-bleed="false" />
-    <UInput v-model="search" icon="i-lucide-search" placeholder="Rechercher un patient…" />
-    <div v-if="loading" class="py-10 text-center text-gray-500">Chargement…</div>
-    <ul v-else class="divide-y divide-gray-100 dark:divide-gray-800">
-      <li v-for="item in patients" :key="item.patient_id">
-        <button
-          type="button"
-          class="flex w-full items-center gap-3 px-1 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-900"
-          @click="goForm(item.patient_id)"
-        >
-          <span class="font-semibold">{{ item.first_name }} {{ item.last_name }}</span>
-        </button>
-      </li>
-    </ul>
-    <UEmpty v-if="!loading && patients.length === 0" title="Aucun patient" variant="naked" />
+  <AppPageShell class="space-y-5">
+    <AppPageHeader title="Pour quel patient ?" description="Choisissez la personne concernée par ce passage." :edge-bleed="false" />
+    <UInput v-model="searchQuery" icon="i-lucide-search" placeholder="Rechercher un patient…" aria-label="Rechercher un patient pour ce passage" class="w-full" />
+    <div v-if="loading" class="py-10 text-center text-sm text-gray-500" role="status">Chargement des patients…</div>
+    <UAlert v-else-if="error" color="error" variant="soft" :title="error">
+      <template #actions><UButton color="neutral" variant="outline" @click="reload">Réessayer</UButton></template>
+    </UAlert>
+    <div v-else-if="patients.length" class="rounded-2xl border border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-950">
+      <StaffPatientHubList :items="patients" @select="item => goForm(item.patient_id)" />
+    </div>
+    <UEmpty v-else title="Aucun patient trouvé" description="Essayez un autre nom ou ajoutez un patient à votre espace.">
+      <template #actions><UButton to="/profile?newPatient=1" variant="outline">Ajouter un patient</UButton></template>
+    </UEmpty>
   </AppPageShell>
 </template>
 
 <script setup lang="ts">
-import { fetchStaffPatientHubSearch } from '~/utils/staff-patient-hub-search';
+import type { StaffHubPatientItem } from '@oneandlab/shared-types';
 
 definePageMeta({
   layout: 'dashboard',
@@ -34,23 +31,8 @@ const router = useRouter();
 const startDate = computed(() => String(route.query.start_date ?? new Date().toISOString().slice(0, 10)));
 const mode = computed(() => (route.query.mode === 'recurring' ? 'recurring' : 'single_day'));
 
-const search = ref('');
-const loading = ref(false);
-const patients = ref<Array<{ patient_id: string; first_name?: string; last_name?: string }>>([]);
-
-watchDebounced(
-  search,
-  async () => {
-    loading.value = true;
-    try {
-      const res = await fetchStaffPatientHubSearch(search.value.trim());
-      patients.value = (res?.items ?? []).filter((i) => i.kind === 'patient');
-    } finally {
-      loading.value = false;
-    }
-  },
-  { debounce: 300, immediate: true },
-);
+const { searchQuery, items, loading, error, reload } = useStaffPatientHubSearch();
+const patients = computed(() => items.value.filter((item): item is StaffHubPatientItem => item.kind === 'patient'));
 
 function goForm(patientId: string) {
   router.push({

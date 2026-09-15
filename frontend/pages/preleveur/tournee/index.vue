@@ -19,7 +19,7 @@
               variant="outline"
               size="sm"
               icon="i-lucide-sliders-horizontal"
-              @click="sortModalOpen = true"
+              @click="($event) => { sortModalOpen = true }"
             >
               {{ sortModeLabel }}
             </UButton>

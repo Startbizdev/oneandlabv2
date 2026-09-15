@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
+    "typecheck": "nuxt prepare && vue-tsc --noEmit",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "test:e2e": "playwright test",
@@ -31,6 +32,7 @@
     "@playwright/test": "^1.58.2",
     "@types/node": "^24.10.1",
     "tailwindcss": "^4.1.11",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vue-tsc": "3.3.11"
   }
 }

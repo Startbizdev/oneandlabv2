@@ -11,7 +11,6 @@
           icon="i-lucide-search"
           placeholder="Rechercher un patient, une analyse, un fichier…"
           size="lg"
-          :ui="{ icon: { trailing: { pointer: '' } } }"
         />
       </div>
 

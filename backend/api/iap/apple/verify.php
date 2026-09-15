@@ -60,7 +60,7 @@ try {
 
     echo json_encode([
         'success' => true,
-        'data' => $service->formatMobileSubscription($row, 'nurse_pro'),
+        'data' => $service->formatMobileSubscription($row, $service->getActiveNursePlan($userId)),
     ]);
 } catch (Throwable $e) {
     error_log('iap/apple/verify: ' . $e->getMessage());

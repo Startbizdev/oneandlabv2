@@ -3,7 +3,7 @@
     <template #pageHeader>
     <AppPageHeader :edge-bleed="false" 
       title="Rendez-vous"
-      description="Rendez-vous assignés à ce sous-compte. Assignez un préleveur pour les prendre en charge."
+      description="Vos rendez-vous à affecter et à suivre."
     >
       <template #actions>
         <UButton to="/subaccount/appointments/new" color="primary" icon="i-lucide-plus">
@@ -17,7 +17,7 @@
       base-path="/subaccount"
       hide-header
       title="Rendez-vous"
-      subtitle="Rendez-vous assignés à ce sous-compte. Assignez un préleveur pour les prendre en charge."
+      subtitle="Vos rendez-vous à affecter et à suivre."
       empty-title="Aucun rendez-vous"
       empty-description="Aucun rendez-vous n'est assigné à ce sous-compte. Les nouveaux rendez-vous apparaîtront ici."
       :card-href="(a) => (a.status === 'pending' ? null : `/subaccount/appointments/${a.id}`)"
@@ -36,26 +36,23 @@
     </AppointmentListPage>
 
     <!-- Modal assign préleveur -->
-    <UModal v-model="showAssignModal">
-      <UCard>
-        <template #header>
-          <h2 class="text-xl font-normal">Assigner un préleveur</h2>
-        </template>
+    <UModal v-model:open="showAssignModal" title="Assigner un préleveur">
+      <template #body>
 
         <div class="space-y-4">
-          <UFormGroup label="Sélectionner un préleveur">
+          <UFormField label="Sélectionner un préleveur">
             <USelect v-model="selectedPreleveur" :items="preleveurOptions" placeholder="Choisir..." />
-          </UFormGroup>
+          </UFormField>
 
           <div class="flex justify-end gap-2">
-            <UButton variant="ghost" :on-click="() => showAssignModal = false">Annuler</UButton>
-            <UButton :on-click="assignPreleveur" :loading="assigning">Assigner</UButton>
+            <UButton variant="ghost" :on-click="() => { showAssignModal = false }">Annuler</UButton>
+            <UButton :on-click="assignPreleveur" :loading="assigning" :disabled="!selectedPreleveur">Assigner</UButton>
           </div>
         </div>
-      </UCard>
+      </template>
     </UModal>
 
-    <DashboardAppointmentListAccessModals list-path="/subaccount/appointments" />
+    <AppointmentListAccessModals list-path="/subaccount/appointments" />
   </AppPageShell>
 </template>
 

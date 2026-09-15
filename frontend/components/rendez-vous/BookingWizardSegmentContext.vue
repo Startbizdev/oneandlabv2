@@ -48,13 +48,13 @@
         <div class="min-w-0 flex-1 space-y-1.5">
           <div class="space-y-1">
             <UBadge
-              :color="intro.kind === 'blood' ? 'error' : 'info'"
+              color="primary"
               variant="subtle"
               size="xs"
               class="inline-flex max-w-full font-medium"
               :leading-icon="segmentKindIcon"
             >
-              <span class="truncate">{{ segmentStepLabel }}</span>
+              <span>{{ mode === 'documents' ? 'Documents' : 'Rendez-vous' }} {{ slotIndex + 1 }} / {{ slotRows.length }}</span>
             </UBadge>
             <p
               class="text-pretty text-sm font-semibold leading-snug tracking-tight text-gray-900 break-words dark:text-white sm:text-[0.9375rem]"
@@ -93,7 +93,6 @@ import {
   type BookingWizardSegmentIntro,
   type BookingWizardSlotRow,
 } from '~/utils/booking-wizard-segment';
-import { joinFrenchAndList } from '~/utils/join-french-list';
 
 const props = withDefaults(
   defineProps<{
@@ -131,7 +130,7 @@ const heroLine = computed(() => intro.value?.lines[0] ?? null);
 const heroTitle = computed(() => {
   if (!intro.value) return '';
   if (intro.value.lines.length > 1) {
-    return joinFrenchAndList(intro.value.lines.map((l) => l.name));
+    return `${intro.value.lines.length} soins · ${segmentStepLabel.value}`;
   }
   return intro.value.lines[0]?.name ?? segmentStepLabel.value;
 });

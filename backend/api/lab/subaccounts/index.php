@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $planSlug = $sub ? ($sub['plan_slug'] ?? 'free') : 'free';
     $limits = require __DIR__ . '/../../../config/plan-limits.php';
     $labLimits = $limits['lab'][$planSlug] ?? $limits['lab']['free'];
-    $maxSubaccounts = $labLimits['max_subaccounts'] ?? 0;
+    $maxSubaccounts = array_key_exists('max_subaccounts', $labLimits) ? $labLimits['max_subaccounts'] : 0;
     if ($maxSubaccounts !== null) {
         $stmt = $db->prepare('SELECT COUNT(*) FROM profiles WHERE lab_id = ? AND role = \'subaccount\'');
         $stmt->execute([$labId]);
@@ -105,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if ($count >= $maxSubaccounts) {
             http_response_code(403);
             $msg = $planSlug === 'free'
-                ? 'Souscrivez à un abonnement Starter ou Pro pour créer des sous-comptes.'
+                ? 'Souscrivez à l’offre Pro pour créer des sous-comptes.'
                 : 'Limite de sous-comptes atteinte pour votre offre. Passez à l\'offre Pro pour des sous-comptes illimités.';
             echo json_encode(['success' => false, 'error' => $msg]);
             exit;

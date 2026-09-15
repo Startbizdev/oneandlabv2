@@ -39,6 +39,7 @@ export function ProfileToggleRow({
       actions={
         <ToggleSwitch
           value={value}
+          accessibilityLabel={label}
           disabled={inactive}
           onValueChange={onValueChange}
         />

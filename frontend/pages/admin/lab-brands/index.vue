@@ -18,6 +18,11 @@
       <div v-for="i in 6" :key="i" class="h-14 animate-pulse rounded-lg bg-muted/40" />
     </div>
 
+    <div v-else-if="loadError" role="alert" class="rounded-xl border border-default bg-default p-5 space-y-3">
+      <h2 class="font-semibold">Marques indisponibles</h2>
+      <p class="text-sm text-muted">Impossible de charger les marques de laboratoire.</p>
+      <UButton variant="outline" color="neutral" @click="loadBrands">Réessayer</UButton>
+    </div>
     <UEmpty
       v-else-if="brands.length === 0"
       icon="i-lucide-building-2"
@@ -47,18 +52,20 @@
         <span class="text-xs text-muted">Ordre {{ brand.sort_order }}</span>
         <USwitch
           :model-value="!!brand.is_active"
+          :aria-label="`Activer ${brand.name}`"
           :disabled="togglingId === brand.id"
           size="xs"
           @update:model-value="toggleActive(brand)"
         />
         <div class="flex gap-1">
-          <UButton size="xs" variant="ghost" square icon="i-lucide-pencil" @click="editBrand(brand)" />
+          <UButton size="xs" variant="ghost" square icon="i-lucide-pencil" :aria-label="`Modifier ${brand.name}`" @click="editBrand(brand)" />
           <UButton
             size="xs"
             variant="ghost"
             color="error"
             square
             icon="i-lucide-trash-2"
+            :aria-label="`Supprimer ${brand.name}`"
             :loading="deletingId === brand.id"
             @click="removeBrand(brand)"
           />
@@ -74,27 +81,27 @@
           </template>
           <form class="space-y-4" @submit.prevent="saveBrand">
             <UFormField label="Nom" required>
-              <UInput v-model="form.name" placeholder="Biogroup" />
+              <UInput v-model="form.name" placeholder="Nom du réseau" class="w-full" />
             </UFormField>
-            <UFormField label="Slug">
-              <UInput v-model="form.slug" placeholder="biogroup" />
+            <UFormField label="Identifiant dans les liens" help="Laissez vide pour le créer à partir du nom.">
+              <UInput v-model="form.slug" placeholder="nom-du-reseau" class="w-full" />
             </UFormField>
             <UFormField label="URL logo">
-              <UInput v-model="form.logo_url" placeholder="https://..." />
+              <UInput v-model="form.logo_url" placeholder="https://..." class="w-full" />
             </UFormField>
             <UFormField label="Site web">
-              <UInput v-model="form.website_url" placeholder="https://..." />
+              <UInput v-model="form.website_url" placeholder="https://..." class="w-full" />
             </UFormField>
             <UFormField label="Ordre d’affichage">
-              <UInput v-model.number="form.sort_order" type="number" min="0" />
+              <UInput v-model.number="form.sort_order" type="number" min="0" class="w-full" />
             </UFormField>
             <div class="flex items-center gap-2">
-              <USwitch v-model="form.is_active" />
+              <USwitch v-model="form.is_active" aria-label="Marque active" />
               <span class="text-sm">Active</span>
             </div>
             <UAlert v-if="formError" color="error" variant="soft" :title="formError" />
             <div class="flex justify-end gap-2">
-              <UButton variant="outline" color="neutral" @click="modalOpen = false">Annuler</UButton>
+              <UButton variant="outline" color="neutral" @click="($event) => { modalOpen = false }">Annuler</UButton>
               <UButton type="submit" color="primary" :loading="saving">Enregistrer</UButton>
             </div>
           </form>
@@ -117,6 +124,7 @@ definePageMeta({
 const toast = useAppToast();
 const brands = ref<LabBrandAdmin[]>([]);
 const loading = ref(true);
+const loadError = ref(false);
 const saving = ref(false);
 const deletingId = ref('');
 const togglingId = ref('');
@@ -135,6 +143,7 @@ const form = reactive({
 
 async function loadBrands() {
   loading.value = true;
+  loadError.value = false;
   try {
     const res = (await apiFetch('/admin/lab-brands', { method: 'GET' })) as {
       success?: boolean;
@@ -142,10 +151,12 @@ async function loadBrands() {
       error?: string;
     };
     if (res?.success && Array.isArray(res.data)) {
-      brands.value = res.data;
+      brands.value = res.data.map(brand => ({ ...brand, is_active: Number(brand.is_active) === 1 }));
     } else {
-      toast.add({ title: 'Erreur', description: res?.error || 'Chargement impossible', color: 'error' });
+      throw new Error('Chargement impossible');
     }
+  } catch {
+    loadError.value = true;
   } finally {
     loading.value = false;
   }
@@ -180,6 +191,7 @@ function editBrand(brand: LabBrandAdmin) {
 }
 
 async function saveBrand() {
+  if (saving.value) return;
   if (!form.name.trim()) {
     formError.value = 'Le nom est requis.';
     return;
@@ -213,19 +225,24 @@ async function saveBrand() {
 }
 
 async function toggleActive(brand: LabBrandAdmin) {
+  if (togglingId.value) return;
   togglingId.value = brand.id;
   try {
-    await apiFetch(`/admin/lab-brands/${brand.id}`, {
+    const response = await apiFetch(`/admin/lab-brands/${brand.id}`, {
       method: 'PUT',
       body: { ...brand, is_active: brand.is_active ? 0 : 1 },
     });
+    if (!response?.success) throw new Error('La visibilité de la marque n’a pas été modifiée. Réessayez.');
     await loadBrands();
+  } catch (error) {
+    toast.add({ title: 'Modification non enregistrée', description: error instanceof Error ? error.message : 'Réessayez.', color: 'error' });
   } finally {
     togglingId.value = '';
   }
 }
 
 async function removeBrand(brand: LabBrandAdmin) {
+  if (deletingId.value) return;
   if (!confirm(`Supprimer la marque « ${brand.name} » ?`)) return;
   deletingId.value = brand.id;
   try {
@@ -239,6 +256,8 @@ async function removeBrand(brand: LabBrandAdmin) {
     } else {
       toast.add({ title: 'Erreur', description: res?.error || 'Suppression impossible', color: 'error' });
     }
+  } catch {
+    toast.add({ title: 'Suppression impossible', description: 'La marque est conservée. Réessayez.', color: 'error' });
   } finally {
     deletingId.value = '';
   }

@@ -25,3 +25,8 @@ export * from './patient-absence-display';
 export * from './lab-preference';
 export * from './nurse-prescription-scope';
 export * from './coverage-zone-geo';
+export * from './care-symbol';
+
+export * from './resumable-appointment-batch';
+export * from './care-duration';
+export * from './appointment-date-france';

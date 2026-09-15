@@ -96,7 +96,7 @@ const props = defineProps<{
 }>();
 
 const config = useRuntimeConfig();
-const apiBase = config.public.apiBase || 'http://localhost:8888/api';
+const apiBase = config.public.apiBase || '/api';
 
 const loading = ref(true);
 const latest = ref<Partial<Record<ClinicalVitalType, ClinicalVitalReading>>>({});

@@ -9,6 +9,7 @@ import {
   AVAILABILITY_MIN_SPAN_HOURS,
 } from '~/constants/availability-slot';
 import { isBloodTestAppointment } from '~/utils/appointment-type-rules';
+import { appointmentRecord, appointmentAvailability, appointmentEditAddress } from '~/utils/appointmentEditData';
 
 type CareCategoryLite = {
   id: string;
@@ -41,6 +42,7 @@ function parseAvailabilitySlices(
       if (av?.type === 'custom' && Array.isArray(av.range) && av.range.length === 2) {
         let r0 = Number(av.range[0]);
         let r1 = Number(av.range[1]);
+        if (!Number.isFinite(r0) || !Number.isFinite(r1)) throw new Error('Invalid availability');
         r1 = Math.min(maxH, Math.max(r1, r0 + AVAILABILITY_MIN_SPAN_HOURS));
         r0 = Math.max(6, Math.min(r0, r1 - AVAILABILITY_MIN_SPAN_HOURS));
         const availability = JSON.stringify({ type: 'custom', range: [r0, r1] });
@@ -80,8 +82,8 @@ export function hydrateAdminUnifiedAppointment(
   formData: Record<string, unknown>;
 } {
   const catMap = new Map(categories.map((c) => [String(c.id), c]));
-  const fd = (apt.form_data || {}) as Record<string, unknown>;
-  const availStr = fd.availability != null ? String(fd.availability) : '';
+  const fd = appointmentRecord(apt.form_data);
+  const availStr = appointmentAvailability(fd.availability);
 
   const typeStr = isBloodTestAppointment(apt.type) ? 'blood_test' : 'nursing';
 
@@ -97,7 +99,7 @@ export function hydrateAdminUnifiedAppointment(
     phone: (fd.phone as string) || '',
     gender: (fd.gender as string) || '',
     birth_date: (fd.birth_date as string) || '',
-    address: apt.address && typeof apt.address === 'object' ? apt.address : null,
+    address: appointmentEditAddress(apt),
     address_complement: (fd.address_complement as string) || (apt.address as { complement?: string } | null)?.complement || '',
   };
 

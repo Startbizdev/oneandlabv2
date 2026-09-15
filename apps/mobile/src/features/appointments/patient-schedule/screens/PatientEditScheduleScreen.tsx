@@ -82,8 +82,8 @@ export function PatientEditScheduleScreen({ appointmentId }: Props) {
 function buildStyles(c: AppColors) {
   return {
     content: { paddingHorizontal: spacing[4], paddingTop: spacing[2], gap: spacing[4] },
-    loading: { flex: 1, alignItems: 'center' as const, justifyContent: 'center' as const },
-    blocked: { flex: 1, padding: spacing[4] },
+    loading: { flex: 1, minWidth: 0, alignItems: 'center' as const, justifyContent: 'center' as const },
+    blocked: { flex: 1, minWidth: 0, padding: spacing[4] },
     blockedText: {
       fontFamily: fontFamily.regular,
       fontSize: fontSize.sm,

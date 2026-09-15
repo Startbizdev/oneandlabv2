@@ -47,7 +47,7 @@ interface Props {
   onHalfSideKmChange?: (km: number) => void;
   onBoundsChange?: (bounds: CoveragePolygonPayload) => void;
   onVerticesChange?: (vertices: CoverageVertex[]) => void;
-  onSaveZone?: (halfSideKm: number, bounds: CoveragePolygonPayload, vertices: CoverageVertex[]) => void;
+  onSaveZone?: (halfSideKm: number, bounds: CoveragePolygonPayload, vertices: CoverageVertex[]) => Promise<boolean>;
   savingZone?: boolean;
 }
 
@@ -83,14 +83,20 @@ export function ProfileCoverageEditor({
   const [draftBounds, setDraftBounds] = useState<CoveragePolygonPayload | null>(null);
 
   const { height: windowHeight } = useWindowDimensions();
-  const mapHeight = Math.max(380, Math.min(560, windowHeight * 0.48));
+  const mapHeight = editing
+    ? Math.max(220, Math.min(440, windowHeight * 0.5))
+    : Math.max(200, Math.min(280, windowHeight * 0.32));
 
   const halfSideKm = controlledHalfSide ?? internalHalfSide;
   const setHalfSideKm = onHalfSideKmChange ?? setInternalHalfSide;
 
   const userQ = useQuery({
-    queryKey: queryKeys.profile.user(user?.id ?? ''),
-    queryFn: async () => (await fetchUser(user!.id, 'full')).data,
+    queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
+    queryFn: async () => {
+      const res = await fetchUser(user!.id, 'full');
+      if (!res.success || !res.data) throw new Error('Profil indisponible');
+      return res.data;
+    },
     enabled: !!user?.id && !embedded,
   });
 
@@ -105,7 +111,11 @@ export function ProfileCoverageEditor({
 
   const limitsQ = useQuery({
     queryKey: queryKeys.planLimits.current,
-    queryFn: async () => (await api.get<PlanLimits>('/plan-limits')).data,
+    queryFn: async () => {
+      const res = await api.get<PlanLimits>('/plan-limits');
+      if (!res.success || !res.data || !Number.isFinite(res.data.max_radius_km)) throw new Error('Limites de votre offre indisponibles');
+      return res.data;
+    },
     enabled: user?.role === 'nurse',
   });
 
@@ -180,18 +190,18 @@ export function ProfileCoverageEditor({
     resetDraft();
   }, [resetDraft]);
 
-  const validateEdit = useCallback(() => {
-    if (!hasValidGeoAddress(address)) return;
+  const validateEdit = useCallback(async () => {
+    if (savingZone || !hasValidGeoAddress(address)) return;
     const center = { lat: address!.lat, lng: address!.lng };
     const verts = ensureSixVertices(center, draftVertices ?? vertices, draftHalfSide);
     const b = toPolygonPayload(verts);
     const reach = maxVertexDistanceKm(center, verts);
+    if (onSaveZone && !(await onSaveZone(reach, b, verts))) return;
     setHalfSideKm(reach);
     setBounds(b);
     setVertices(verts);
-    onSaveZone?.(reach, b, verts);
     setEditing(false);
-  }, [address, draftVertices, draftHalfSide, vertices, setHalfSideKm, onSaveZone]);
+  }, [address, draftVertices, draftHalfSide, vertices, setHalfSideKm, onSaveZone, savingZone]);
 
   const onAddressChange = useCallback((addr: AddressPayload | null) => {
     setAddress(addr);
@@ -199,6 +209,7 @@ export function ProfileCoverageEditor({
   }, []);
 
   const saveStandalone = async () => {
+    if (saving || limitsQ.isError || zoneQ.isError || userQ.isError) return;
     if (!hasValidGeoAddress(address)) {
       toast('Adresse requise', {
         type: 'error',
@@ -256,6 +267,16 @@ export function ProfileCoverageEditor({
     );
   }
 
+  if (limitsQ.isError || zoneQ.isError || (!embedded && userQ.isError)) {
+    return <View style={styles.stack}>
+      <AppText style={styles.cardDesc}>Impossible de charger votre secteur et les limites de votre offre.</AppText>
+      <Button title="Réessayer" loading={limitsQ.isFetching || zoneQ.isFetching || userQ.isFetching} onPress={() => {
+        if (user?.role === 'nurse') { void limitsQ.refetch(); void zoneQ.refetch(); }
+        if (!embedded) void userQ.refetch();
+      }} />
+    </View>;
+  }
+
   const zoneContent = (
     <>
       {!hasAddress ? (
@@ -305,7 +326,7 @@ export function ProfileCoverageEditor({
                   )}{' '}
                   km
                 </AppText>
-                {' du centre au sommet le plus loin · ~'}
+                {' au maximum de votre adresse · ~'}
                 {Math.round(
                   polygonAreaKm2(
                     ensureSixVertices(
@@ -324,10 +345,10 @@ export function ProfileCoverageEditor({
               </AppText>
             </View>
             {editing ? (
-              <View style={styles.editActions}>
+              <Row gap={spacing[2]} wrap justify="end">
                 <Button title="Annuler" variant="ghost" size="md" onPress={cancelEdit} disabled={savingZone} />
-                <Button title="Valider" size="md" loading={savingZone} onPress={validateEdit} />
-              </View>
+                <Button title={onSaveZone ? 'Enregistrer mon secteur' : 'Appliquer le tracé'} size="md" loading={savingZone} onPress={() => void validateEdit()} />
+              </Row>
             ) : (
               <Button
                 title="Modifier mon secteur"
@@ -371,8 +392,8 @@ export function ProfileCoverageEditor({
   if (embedded) {
     return (
       <ProfileSection
-        title="Zone de couverture"
-        description="Aperçu de votre secteur — polygone à 6 poignets"
+        title="Votre secteur d’intervention"
+        description="Les quartiers où vous souhaitez recevoir des demandes de soins."
         Icon={MapPin}
       >
         {zoneContent}
@@ -402,8 +423,8 @@ export function ProfileCoverageEditor({
       ) : null}
 
       <Animated.View entering={FadeInDown.delay(60).duration(280).springify()} style={[styles.card, elevation.xs]}>
-        <AppText style={styles.cardTitle}>Zone de couverture</AppText>
-        <AppText style={styles.cardDesc}>Aperçu de votre secteur — polygone à 6 poignets</AppText>
+        <AppText style={styles.cardTitle}>Votre secteur d’intervention</AppText>
+        <AppText style={styles.cardDesc}>Les quartiers où vous souhaitez recevoir des demandes de soins.</AppText>
         {zoneContent}
       </Animated.View>
     </View>
@@ -411,7 +432,7 @@ export function ProfileCoverageEditor({
 }
 
 function buildStyles(c: AppColors) {
-  return StyleSheet.create({
+  return {
     stack: { gap: spacing[4] },
     card: {
       backgroundColor: c.surface,
@@ -494,10 +515,5 @@ function buildStyles(c: AppColors) {
     editSectorBtn: {
       alignSelf: 'stretch',
     },
-    editActions: {
-      flexDirection: 'row',
-      gap: spacing[2],
-      justifyContent: 'flex-end',
-    },
-  });
+  } satisfies Parameters<typeof StyleSheet.create>[0];
 }

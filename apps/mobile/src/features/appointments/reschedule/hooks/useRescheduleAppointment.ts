@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { appointmentTimeFrance, createAppointmentRequestId } from '@oneandlab/shared-utils';
+import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { AVAILABILITY_MIN_SPAN_HOURS } from '@oneandlab/shared-constants';
@@ -98,7 +99,7 @@ function initialAvailabilityFromAppointment(apt: Appointment): {
       /* default */
     }
   } else if (apt.scheduled_at) {
-    const h = new Date(apt.scheduled_at).getHours();
+    const h = Number((appointmentTimeFrance(apt.scheduled_at) || '09:00').split(':')[0]);
     const start = Math.max(6, Math.min(15, h));
     range = [start, start + AVAILABILITY_MIN_SPAN_HOURS];
   }
@@ -113,6 +114,7 @@ export function useRescheduleAppointment(opts: {
   role: string;
   basePath: string;
 }) {
+  const requestId = useRef(createAppointmentRequestId());
   const { show: toast } = useToast();
   const router = useRouter();
   const qc = useQueryClient();
@@ -230,7 +232,7 @@ export function useRescheduleAppointment(opts: {
       const payload = buildReschedulePayload(buildCtx);
       if (!payload) throw new Error('Veuillez remplir la date et l’adresse.');
 
-      const createRes = await createAppointment(payload);
+      const createRes = await createAppointment({ ...payload, client_request_id: requestId.current });
       if (!createRes.success || !createRes.data?.id) {
         throw new Error(createRes.error ?? 'Impossible de créer le rendez-vous');
       }

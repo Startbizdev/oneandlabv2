@@ -621,6 +621,7 @@ const props = withDefaults(
     appt: any;
     categoriesForDetail: Array<{
       id: string;
+      name?: string;
       icon?: string | null;
       image_url?: string | null;
       type?: string;
@@ -1345,25 +1346,12 @@ function getCareOptionLabel(optionKey: string): string {
 
 function getCareOptionValueLabel(
   optionKey: string,
-  value: string | number,
+  value: unknown,
   careOptions?: Record<string, unknown> | null,
 ): string {
   const bag = careOptions ?? asCareOptionsRecord(props.appt?.form_data?.care_options);
   const catId = props.appt?.category_id ?? (props.appt?.form_data as any)?.category_id;
-  if (!catId) {
-    const base = String(value);
-    return formatCareSelectValueWithAutreDetail(base, optionKey, value, bag);
-  }
-  const cat = props.categoriesForDetail.find((c) => String(c.id) === String(catId));
-  const opt = cat?.options?.find((o) => o.option_key === optionKey);
-  let base: string;
-  if (opt?.options && Array.isArray(opt.options)) {
-    const found = opt.options.find((o) => String(o.value) === String(value));
-    base = found?.label ?? String(value);
-  } else {
-    base = String(value);
-  }
-  return formatCareSelectValueWithAutreDetail(base, optionKey, value, bag);
+  return getCareOptionValueLabelForCategory(optionKey, value, catId, bag);
 }
 
 function getBloodTestTypeLabel(fd: any) {

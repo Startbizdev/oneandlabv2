@@ -84,9 +84,9 @@ test.describe('Flux patient - Documents (Charle Barth)', () => {
     const birthSelects = page.locator('select').filter({ has: page.locator('option') });
     const birthCount = await birthSelects.count();
     if (birthCount >= 3) {
-      await birthSelects.nth(0).selectOption({ label: /15|16/ });
-      await birthSelects.nth(1).selectOption({ label: /janvier|01/ });
-      await birthSelects.nth(2).selectOption({ label: /1990/ });
+      await birthSelects.nth(0).selectOption({ value: '15' });
+      await birthSelects.nth(1).selectOption({ value: '1' });
+      await birthSelects.nth(2).selectOption({ value: '1990' });
     }
 
     // 7. Adresse - chercher un champ adresse

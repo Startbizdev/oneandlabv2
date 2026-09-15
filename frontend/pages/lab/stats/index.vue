@@ -2,10 +2,8 @@
   <AppPageShell class="space-y-8">
     <template #pageHeader>
     <AppPageHeader :edge-bleed="false" 
-      :title="isLabView ? 'Statistiques — Vue équipe' : 'Statistiques'"
-      :description="isLabView
-        ? `Prises de sang — lab + ${teamSummary?.subaccounts ?? 0} sous-compte(s) + ${teamSummary?.preleveurs ?? 0} préleveur(s). Tous les RDV et stats de l'équipe.`
-        : 'Prises de sang — laboratoire et sous-comptes.'"
+      title="Statistiques"
+      description="Suivez les prélèvements et l’activité de votre équipe."
     >
       <template #actions>
         <UButton
@@ -21,30 +19,31 @@
   </template>
 
     <!-- Loading -->
-    <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
+    <div v-if="loading" class="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
       <div v-for="i in 4" :key="i" class="rounded-xl border border-default/50 p-5 h-28 bg-muted/20" />
     </div>
 
+    <UAlert v-else-if="loadError" title="Statistiques indisponibles" :description="loadError" color="error" :actions="[{ label: 'Réessayer', onClick: fetchStats }]" />
     <template v-else>
       <!-- Cartes KPIs -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div
-          class="rounded-xl border border-default/50 bg-default p-5 shadow-sm hover:shadow-md transition-shadow"
+          class="rounded-xl border border-default/50 bg-default p-4 sm:p-5 shadow-sm"
         >
           <div class="flex items-start justify-between">
             <div>
-              <p class="text-sm font-medium text-muted">Total RDV</p>
+              <p class="text-sm font-medium text-muted">Rendez-vous au total</p>
               <p class="text-2xl sm:text-3xl font-normal text-default tabular-nums mt-1">
                 {{ stats.totalAppointments }}
               </p>
             </div>
-            <div class="rounded-lg bg-primary/10 p-2">
+            <div class="hidden rounded-lg bg-primary/10 p-2 sm:block">
               <UIcon name="i-lucide-calendar" class="w-6 h-6 text-primary" />
             </div>
           </div>
         </div>
         <div
-          class="rounded-xl border border-default/50 bg-default p-5 shadow-sm hover:shadow-md transition-shadow"
+          class="rounded-xl border border-default/50 bg-default p-4 sm:p-5 shadow-sm"
         >
           <div class="flex items-start justify-between">
             <div>
@@ -53,38 +52,38 @@
                 {{ stats.monthAppointments }}
               </p>
             </div>
-            <div class="rounded-lg bg-blue-500/10 p-2">
-              <UIcon name="i-lucide-calendar-days" class="w-6 h-6 text-blue-500" />
+            <div class="hidden rounded-lg bg-primary/10 p-2 sm:block">
+              <UIcon name="i-lucide-calendar-days" class="w-6 h-6 text-primary" />
             </div>
           </div>
         </div>
         <div
-          class="rounded-xl border border-default/50 bg-default p-5 shadow-sm hover:shadow-md transition-shadow"
+          class="rounded-xl border border-default/50 bg-default p-4 sm:p-5 shadow-sm"
         >
           <div class="flex items-start justify-between">
             <div>
-              <p class="text-sm font-medium text-muted">Taux de complétion</p>
+              <p class="text-sm font-medium text-muted">Rendez-vous terminés</p>
               <p class="text-2xl sm:text-3xl font-normal text-default tabular-nums mt-1">
                 {{ stats.completionRate }}%
               </p>
             </div>
-            <div class="rounded-lg bg-emerald-500/10 p-2">
-              <UIcon name="i-lucide-check-circle" class="w-6 h-6 text-emerald-500" />
+            <div class="hidden rounded-lg bg-primary/10 p-2 sm:block">
+              <UIcon name="i-lucide-check-circle" class="w-6 h-6 text-primary" />
             </div>
           </div>
         </div>
         <div
-          class="rounded-xl border border-default/50 bg-default p-5 shadow-sm hover:shadow-md transition-shadow"
+          class="rounded-xl border border-default/50 bg-default p-4 sm:p-5 shadow-sm"
         >
           <div class="flex items-start justify-between">
             <div>
               <p class="text-sm font-medium text-muted">Durée moyenne</p>
               <p class="text-2xl sm:text-3xl font-normal text-default tabular-nums mt-1">
-                {{ stats.averageDuration }} min
+                {{ stats.averageDuration > 0 ? `${stats.averageDuration} min` : '—' }}
               </p>
             </div>
-            <div class="rounded-lg bg-violet-500/10 p-2">
-              <UIcon name="i-lucide-clock" class="w-6 h-6 text-violet-500" />
+            <div class="hidden rounded-lg bg-primary/10 p-2 sm:block">
+              <UIcon name="i-lucide-clock" class="w-6 h-6 text-primary" />
             </div>
           </div>
         </div>
@@ -92,9 +91,22 @@
 
       <!-- Répartition par sous-compte / préleveur (vue lab uniquement) -->
       <div v-if="isLabView && byAssignedLab?.length" class="rounded-xl border border-default/50 bg-default p-6 shadow-sm">
-        <h2 class="text-lg font-normal text-default mb-1">Répartition par assigné</h2>
-        <p class="text-sm text-muted mb-4">Détail des RDV et stats par labo, sous-compte ou préleveur.</p>
-        <div class="overflow-x-auto">
+        <h2 class="text-lg font-normal text-default mb-1">Activité par équipe</h2>
+        <p class="text-sm text-muted mb-4">Rendez-vous attribués au laboratoire et à ses équipes.</p>
+        <div class="space-y-3 sm:hidden">
+          <article v-for="row in byAssignedLab" :key="row.id" class="rounded-lg border border-default/50 p-3">
+            <h3 class="break-words font-medium">{{ row.displayName }}</h3>
+            <p class="mt-1 text-xs text-muted">{{ row.role === 'subaccount' ? 'Sous-compte' : row.role === 'preleveur' ? 'Préleveur' : 'Laboratoire' }}</p>
+            <dl class="mt-3 grid grid-cols-2 gap-3 text-sm">
+              <div><dt class="text-xs text-muted">Total</dt><dd class="tabular-nums">{{ row.total }}</dd></div>
+              <div><dt class="text-xs text-muted">Ce mois</dt><dd class="tabular-nums">{{ row.month }}</dd></div>
+              <div><dt class="text-xs text-muted">Aujourd’hui</dt><dd class="tabular-nums">{{ row.today }}</dd></div>
+              <div><dt class="text-xs text-muted">Terminés</dt><dd class="tabular-nums">{{ row.completed }}</dd></div>
+              <div><dt class="text-xs text-muted">Taux de réalisation</dt><dd class="tabular-nums">{{ row.completionRate }} %</dd></div>
+            </dl>
+          </article>
+        </div>
+        <div class="hidden overflow-x-auto sm:block">
           <table class="w-full text-sm">
             <thead>
               <tr class="border-b border-default/50">
@@ -134,7 +146,7 @@
       </div>
 
       <!-- Graphiques -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
         <!-- RDV par statut -->
         <div class="rounded-xl border border-default/50 bg-default p-6 shadow-sm">
           <h2 class="text-lg font-normal text-default mb-4">Répartition par statut</h2>
@@ -176,15 +188,13 @@
             description="Aucun rendez-vous enregistré."
             variant="naked"
           />
-          <div v-else class="flex items-center justify-center py-8">
-            <div class="text-center">
-              <p class="text-4xl font-normal text-primary tabular-nums">
-                {{ stats.byType?.blood_test ?? 0 }}
-              </p>
-              <p class="text-sm text-muted mt-1">sur {{ stats.totalAppointments }} RDV total</p>
-              <div class="mt-4 w-32 h-32 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-                <UIcon name="i-lucide-droplet" class="w-14 h-14 text-primary" />
-              </div>
+          <div v-else class="flex items-center gap-4">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+              <UIcon name="i-lucide-droplet" class="h-6 w-6 text-primary" />
+            </div>
+            <div class="min-w-0">
+              <p class="text-3xl font-medium tabular-nums">{{ stats.byType?.blood_test ?? 0 }}</p>
+              <p class="mt-1 text-sm text-muted">sur {{ stats.totalAppointments }} rendez-vous</p>
             </div>
           </div>
         </div>
@@ -195,7 +205,7 @@
         <div class="flex flex-wrap items-center gap-2">
           <h2 class="text-lg font-normal text-default">Rendez-vous récents</h2>
           <span v-if="isLabView" class="text-sm text-muted">
-            — Vue équipe (lab + sous-comptes + préleveurs)
+            Laboratoire et équipes
           </span>
         </div>
         <UEmpty
@@ -206,163 +216,45 @@
           variant="naked"
         />
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 items-stretch">
-          <div
+          <DashboardAppointmentCard
             v-for="appointment in recentAppointments"
             :key="appointment.id"
-            class="bg-white dark:bg-gray-900 rounded-[24px] shadow-sm hover:shadow-md border border-gray-100 dark:border-gray-800 transition-all duration-200 flex flex-col h-full overflow-hidden relative"
+            :appointment="appointment"
+            base-path="/lab"
+            :format-date-label="apt => formatDateTime(apt.scheduled_at)"
           >
-            <div class="p-5 flex-1 flex flex-col">
-              <!-- Badge assigné (vue lab) -->
-              <div v-if="isLabView && (appointment.assigned_lab_display_name || appointment.assigned_to_display_name)" class="mb-3">
-                <UBadge
-                  variant="soft"
-                  size="xs"
-                  color="neutral"
-                  class="rounded-full font-medium"
-                >
-                  <UIcon name="i-lucide-user-check" class="w-3.5 h-3.5 mr-1" />
-                  <template v-if="appointment.assigned_lab_display_name">
-                    {{ appointment.assigned_lab_role === 'subaccount' ? 'Sous-compte' : 'Labo' }} {{ appointment.assigned_lab_display_name }}
-                  </template>
-                  <template v-if="appointment.assigned_lab_display_name && appointment.assigned_to_display_name"> · </template>
-                  <template v-if="appointment.assigned_to_display_name">Préleveur {{ appointment.assigned_to_display_name }}</template>
-                </UBadge>
-              </div>
-              <div class="flex items-start justify-between mb-5 gap-3">
-                <div class="flex items-center gap-3.5 min-w-0">
-                  <div
-                    class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-red-50 dark:bg-red-500/10 text-red-500"
-                  >
-                    <UIcon name="i-lucide-droplet" class="w-6 h-6" />
-                  </div>
-                  <div class="min-w-0">
-                    <h3 class="text-[17px] font-bold text-gray-900 dark:text-white truncate">
-                      {{ appointment.form_data?.first_name }} {{ appointment.form_data?.last_name }}
-                    </h3>
-                    <p v-if="appointment.form_data?.phone" class="text-[14px] text-gray-500 dark:text-gray-400 truncate mt-0.5 flex items-center gap-1">
-                      <UIcon name="i-lucide-phone" class="w-3.5 h-3.5" />
-                      {{ appointment.form_data?.phone }}
-                    </p>
-                  </div>
+            <template #details>
+              <dl class="space-y-2 border-t border-default/50 py-3 text-xs">
+                <div v-if="appointment.form_data?.duration_days || appointment.form_data?.frequency">
+                  <dt class="text-muted">Récurrence</dt>
+                  <dd class="mt-0.5">
+                    <span v-if="appointment.form_data?.duration_days">{{ appointment.type === 'nursing' ? getNursingDurationLabel(appointment.form_data.duration_days, appointment.form_data.custom_days) : formatBloodTestSeriesDurationDays(appointment.form_data.duration_days, appointment.form_data.custom_days) }}</span>
+                    <span v-if="appointment.form_data?.frequency"> · {{ getFrequencyLabel(appointment.form_data.frequency) }}</span>
+                  </dd>
                 </div>
-                <UBadge
-                  :color="getStatusColor(appointment.status)"
-                  variant="subtle"
-                  size="xs"
-                  class="rounded-full px-2.5 py-1 font-medium whitespace-nowrap"
-                  :label="getStatusLabel(appointment.status)"
-                />
-              </div>
-
-              <div class="bg-gray-50/80 dark:bg-gray-800/40 rounded-2xl p-4 space-y-3.5 flex-1">
-                <div class="flex items-start gap-3">
-                  <UIcon name="i-lucide-droplet" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Intervention</p>
-                    <p class="text-[14px] font-medium text-gray-900 dark:text-white">
-                      Prélèvement
-                      <span v-if="appointment.category_name" class="text-gray-500 font-normal"> • {{ appointment.category_name }}</span>
-                    </p>
-                  </div>
+                <div v-if="appointment.assigned_lab_display_name || appointment.assigned_to_display_name">
+                  <dt class="text-muted">Équipe</dt>
+                  <dd class="mt-0.5 break-words">
+                    <span v-if="appointment.assigned_lab_display_name">{{ appointment.assigned_lab_role === 'subaccount' ? 'Sous-compte' : 'Laboratoire' }} {{ appointment.assigned_lab_display_name }}</span>
+                    <span v-if="appointment.assigned_lab_display_name && appointment.assigned_to_display_name"> · </span>
+                    <span v-if="appointment.assigned_to_display_name">Préleveur {{ appointment.assigned_to_display_name }}</span>
+                  </dd>
                 </div>
-
-                <div v-if="getBloodTestTypeLabel(appointment.form_data)" class="flex items-start gap-3">
-                  <UIcon name="i-lucide-pipette" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Prélèvement</p>
-                    <p class="text-[14px] font-medium text-gray-900 dark:text-white">{{ getBloodTestTypeLabel(appointment.form_data) }}</p>
-                  </div>
+                <div v-if="appointment.address">
+                  <dt class="text-muted">Adresse</dt>
+                  <dd class="mt-0.5 break-words">{{ typeof appointment.address === 'object' ? appointment.address.label : appointment.address }}</dd>
                 </div>
-
-                <div class="flex items-start gap-3">
-                  <UIcon name="i-lucide-calendar-clock" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Date & Heure</p>
-                    <p class="text-[14px] font-medium text-gray-900 dark:text-white capitalize">
-                      {{ formatDateTime(appointment.scheduled_at) }}
-                    </p>
-                    <p class="text-[13px] text-gray-500 mt-0.5">{{ getCreneauHoraireLabel(appointment) }}</p>
-                  </div>
+                <div v-if="appointment.status === 'inProgress' && appointment.started_at">
+                  <dt class="text-muted">Début du prélèvement</dt>
+                  <dd class="mt-0.5">{{ formatTimeOnly(appointment.started_at) }}</dd>
                 </div>
-
-                <div v-if="appointment.form_data?.duration_days || appointment.form_data?.frequency" class="flex items-start gap-3">
-                  <UIcon name="i-lucide-repeat" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Récurrence</p>
-                    <p v-if="appointment.form_data?.duration_days" class="text-[14px] font-medium text-gray-900 dark:text-white">
-                      {{
-                        appointment.type === 'nursing'
-                          ? getNursingDurationLabel(appointment.form_data.duration_days, appointment.form_data.custom_days)
-                          : formatBloodTestSeriesDurationDays(appointment.form_data.duration_days, appointment.form_data.custom_days)
-                      }}
-                    </p>
-                    <p v-if="appointment.form_data?.frequency" class="text-[13px] text-gray-500 mt-0.5">
-                      {{ getFrequencyLabel(appointment.form_data.frequency) }}
-                    </p>
-                  </div>
+                <div v-if="getAppointmentNotes(appointment)">
+                  <dt class="text-muted">Message</dt>
+                  <dd class="mt-0.5 whitespace-pre-line break-words">{{ getAppointmentNotes(appointment) }}</dd>
                 </div>
-
-                <div v-if="appointment.assigned_lab_display_name || appointment.assigned_to_display_name" class="flex items-start gap-3">
-                  <UIcon name="i-lucide-user-check" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Assigné à</p>
-                    <p class="text-[14px] font-medium text-gray-900 dark:text-white">
-                      <template v-if="appointment.assigned_lab_display_name">
-                        {{ appointment.assigned_lab_role === 'subaccount' ? 'Sous-compte' : 'Labo' }} {{ appointment.assigned_lab_display_name }}
-                      </template>
-                      <template v-if="appointment.assigned_lab_display_name && appointment.assigned_to_display_name"> · </template>
-                      <template v-if="appointment.assigned_to_display_name">Préleveur {{ appointment.assigned_to_display_name }}</template>
-                    </p>
-                  </div>
-                </div>
-
-                <div v-if="appointment.address" class="flex items-start gap-3">
-                  <UIcon name="i-lucide-map-pin" class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Adresse</p>
-                    <p class="text-[14px] font-medium text-gray-900 dark:text-white leading-snug">
-                      {{ typeof appointment.address === 'object' && appointment.address?.label ? appointment.address.label : appointment.address }}
-                    </p>
-                  </div>
-                </div>
-
-                <div v-if="appointment.status === 'inProgress' && appointment.started_at" class="flex items-start gap-3 mt-2">
-                  <UIcon name="i-lucide-play-circle" class="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <p class="text-[13px] font-medium text-primary-600 dark:text-primary-400">
-                      Démarré à {{ formatTimeOnly(appointment.started_at) }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="getAppointmentNotes(appointment)" class="mt-4 p-3.5 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800/50">
-                <div class="flex items-start gap-2.5">
-                  <UIcon name="i-lucide-alert-circle" class="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <p class="text-[11px] font-bold text-amber-600/80 dark:text-amber-400/80 uppercase tracking-wider mb-1">Message</p>
-                    <p class="text-[13px] text-amber-800 dark:text-amber-300 leading-relaxed line-clamp-3">
-                      {{ getAppointmentNotes(appointment) }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="px-5 pb-5 pt-0 mt-auto">
-              <UButton
-                variant="solid"
-                color="gray"
-                size="md"
-                class="w-full justify-center rounded-full font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-                icon="i-lucide-chevron-right"
-                trailing
-                :to="`/lab/appointments/${appointment.id}`"
-              >
-                Voir les détails
-              </UButton>
-            </div>
-          </div>
+              </dl>
+            </template>
+          </DashboardAppointmentCard>
         </div>
       </div>
     </template>
@@ -381,11 +273,13 @@ useHead({
 });
 
 import { apiFetch } from '~/utils/api';
+import { parseAppointmentDateFrance } from '@oneandlab/shared-utils';
 import { getAppointmentNotes } from '~/utils/appointment-notes';
 import { getNursingDurationLabel } from '~/constants/nursing-duration';
 import { formatBloodTestSeriesDurationDays } from '~/utils/duration-display';
 
 const loading = ref(true);
+const loadError = ref('');
 const appointments = ref<any[]>([]);
 const stats = ref({
   totalAppointments: 0,
@@ -411,17 +305,18 @@ const byAssignedLab = ref<Array<{
 
 const fetchStats = async () => {
   loading.value = true;
+  loadError.value = '';
   try {
     const res = await apiFetch('/lab/stats', { method: 'GET' });
-    if (res.success && res.data) {
+    if (res.success && res.data?.stats && Array.isArray(res.data.appointments)) {
       appointments.value = res.data.appointments ?? [];
       stats.value = res.data.stats ?? stats.value;
       isLabView.value = !!res.data.isLabView;
       teamSummary.value = res.data.teamSummary ?? null;
       byAssignedLab.value = res.data.byAssignedLab ?? [];
-    }
+    } else throw new Error('Statistiques indisponibles');
   } catch {
-    // ignore
+    loadError.value = 'Impossible de charger les statistiques de votre équipe. Réessayez.';
   } finally {
     loading.value = false;
   }
@@ -466,26 +361,13 @@ const getStatusBarColor = (status: string) => {
   return colors[status] ?? 'bg-muted';
 };
 
-function getStatusColor(status: string): 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral' {
-  const colors: Record<string, 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral'> = {
-    pending: 'warning',
-    confirmed: 'info',
-    planned: 'info',
-    inProgress: 'primary',
-    completed: 'success',
-    canceled: 'error',
-    cancelled: 'error',
-    refused: 'error',
-    expired: 'neutral',
-  };
-  return colors[status] ?? 'neutral';
-}
-
 function formatDateTime(date: string) {
   if (!date) return '-';
   try {
-    const d = new Date(date);
+    const d = parseAppointmentDateFrance(date);
+    if (Number.isNaN(d.getTime())) return 'Date non renseignée';
     return d.toLocaleDateString('fr-FR', {
+      timeZone: 'Europe/Paris',
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -497,53 +379,8 @@ function formatDateTime(date: string) {
 }
 
 function formatTimeOnly(date: string) {
-  return new Date(date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatAvailability(availability: string | object | null | undefined): string {
-  if (availability == null) return '';
-  try {
-    let avail: any = availability;
-    if (typeof availability === 'string') {
-      const trimmed = availability.trim();
-      if (!trimmed) return '';
-      avail = JSON.parse(trimmed);
-    }
-    if (!avail || typeof avail !== 'object') return '';
-    if (avail.type === 'all_day') return 'Toute la journée';
-    if (avail.type === 'custom' && Array.isArray(avail.range) && avail.range.length >= 2) {
-      const start = Math.floor(Number(avail.range[0]));
-      const end = Math.floor(Number(avail.range[1]));
-      if (!Number.isNaN(start) && !Number.isNaN(end)) return `${start}h00 - ${end}h00`;
-    }
-  } catch {
-    // ignore
-  }
-  return '';
-}
-
-function getCreneauHoraireLabel(appointment: any): string {
-  const formatted = formatAvailability(appointment.form_data?.availability);
-  if (formatted) return formatted;
-  if (appointment.scheduled_at) {
-    try {
-      const d = new Date(appointment.scheduled_at);
-      return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      // ignore
-    }
-  }
-  return 'Non précisé';
-}
-
-function getBloodTestTypeLabel(fd: any): string {
-  if (!fd?.blood_test_type) return '';
-  if (fd.blood_test_type === 'single') return 'Une seule fois';
-  if (fd.blood_test_type === 'multiple') {
-    const days = formatBloodTestSeriesDurationDays(fd.duration_days, fd.custom_days);
-    return days ? `Série sur ${days}` : 'Plusieurs prélèvements';
-  }
-  return '';
+  const value = parseAppointmentDateFrance(date);
+  return Number.isNaN(value.getTime()) ? '—' : value.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
 }
 
 function getFrequencyLabel(v: string) {

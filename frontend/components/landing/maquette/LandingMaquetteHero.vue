@@ -1,109 +1,39 @@
 <template>
-  <section
-    class="landing-hero-maquette relative overflow-hidden bg-gradient-to-br from-[#F0FAF9] via-white to-[#E8FBF9] dark:from-gray-950 dark:via-gray-950 dark:to-gray-900"
-  >
-    <div class="landing-hero-maquette-grid pointer-events-none absolute inset-0 z-0" aria-hidden="true" />
-
-    <div
-      class="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_90%_50%_at_50%_-15%,rgb(28_199_181/0.12),transparent_55%)] dark:bg-[radial-gradient(ellipse_90%_50%_at_50%_-15%,rgb(28_199_181/0.18),transparent_55%)]"
-      aria-hidden="true"
-    />
-
-    <div
-      class="relative z-[1] mx-auto grid w-full max-w-[1200px] grid-cols-1 items-center gap-12 px-6 pb-20 pt-10 sm:pt-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-20 lg:px-12 lg:pb-28 lg:pt-14"
-    >
-      <div class="flex flex-col">
-        <span
-          v-if="eyebrow"
-          class="mb-4 inline-block text-[11px] font-semibold uppercase tracking-[0.12em] text-primary-500"
-        >
-          {{ eyebrow }}
-        </span>
-
-        <h1
-          class="mb-6 max-w-[18ch] text-balance text-[clamp(2.5rem,4vw,4rem)] font-extrabold leading-[1.07] tracking-[-0.04em] text-[#0A0A0F] dark:text-white"
-        >
-          {{ resolvedTitleText }}<template v-if="highlight">{{ ' ' }}<em class="font-light italic text-primary-500">{{ highlight }}</em></template>
-        </h1>
-
-        <p
-          class="mb-9 max-w-[480px] text-[1.0625rem] leading-[1.78] text-[#3D3D52] dark:text-gray-300"
-        >
-          {{ description }}
-        </p>
-
-        <div class="mb-10 flex flex-wrap items-center gap-3">
-          <NuxtLink
-            :to="primaryCta.to"
-            class="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-transparent bg-primary-500 px-5 py-2.5 text-base font-medium text-white shadow-[0_1px_2px_0_rgb(15_23_42_/_0.06)] transition-all hover:bg-primary-600 hover:shadow-[0_2px_6px_-1px_rgb(15_23_42_/_0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500/45"
-          >
-            <UIcon v-if="primaryCta.icon" :name="primaryCta.icon" class="h-5 w-5" />
-            {{ primaryCta.label }}
-          </NuxtLink>
-          <NuxtLink
-            v-if="secondaryCta"
-            :to="secondaryCta.to"
-            class="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[#E8E8F0] bg-white px-5 py-2.5 text-base font-medium text-[#0A0A0F] shadow-[0_1px_2px_0_rgb(15_23_42_/_0.04)] transition-colors hover:bg-[#F7F7FB] dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
-          >
-            <UIcon v-if="secondaryCta.icon" :name="secondaryCta.icon" class="h-5 w-5" />
-            {{ secondaryCta.label }}
-          </NuxtLink>
-        </div>
-
-        <ul
-          v-if="!hideStats && resolvedStats.length > 0"
-          class="flex flex-col gap-3.5"
-          aria-label="Chiffres clés"
-        >
-          <li
-            v-for="(s, i) in resolvedStats"
-            :key="i"
-            class="flex min-w-0 items-center gap-3 text-left"
-          >
-            <UIcon name="i-lucide-check" class="h-5 w-5 shrink-0 text-emerald-600" />
-            <p
-              class="m-0 text-[clamp(0.9375rem,calc(0.35vw+0.88rem),1.0625rem)] font-medium leading-[1.45] tracking-[-0.01em] text-[#3D3D52] dark:text-gray-300"
-            >
-              <span class="font-extrabold tracking-[-0.03em] text-[#0A0A0F] dark:text-white">
-                {{ s.num }}
-              </span>
-              {{ s.rest }}
-            </p>
-          </li>
-        </ul>
-      </div>
-
-      <div class="flex flex-col items-center lg:items-stretch">
-        <div class="landing-hero-maquette-figure relative mx-auto w-full max-w-[460px] lg:max-w-none">
-          <img
-            :src="imageSrc"
-            width="800"
-            height="1200"
-            class="block aspect-[3/4] h-auto w-full object-cover"
-            :class="imageObjectClass"
-            :alt="imageAlt"
-            fetchpriority="high"
-          />
-
-          <figure
-            v-if="!hideQuote && resolvedQuote"
-            class="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-[rgb(8_12_24/0.92)] via-[rgb(8_12_24/0.55)] to-transparent px-6 pb-7 pt-12 sm:px-8"
-            :aria-label="resolvedQuote.ariaLabel ?? 'Témoignage'"
-          >
-            <blockquote class="m-0 max-w-[42ch]">
-              <p
-                class="mb-2 text-[clamp(0.875rem,1.25vw,0.975rem)] font-medium italic leading-[1.55] text-white"
-              >
-                « {{ resolvedQuote.text }} »
-              </p>
-              <figcaption class="text-[0.8125rem] font-medium text-white/80">
-                — {{ resolvedQuote.author }}
-              </figcaption>
-            </blockquote>
-          </figure>
-        </div>
+  <section class="public-hero" :class="{ 'public-hero--compact': compact }">
+    <div class="public-hero__intro">
+      <p class="public-hero__eyebrow"><span aria-hidden="true" />{{ eyebrow || journey.label }}</p>
+      <h1>{{ resolvedTitleText }}<em v-if="highlight">{{ highlight }}</em></h1>
+      <p class="public-hero__description">{{ description }}</p>
+      <div class="public-hero__actions">
+        <NuxtLink :to="primaryCta.to" class="public-hero__primary">
+          {{ primaryCta.label }}<UIcon name="i-lucide-arrow-up-right" class="size-5 shrink-0" aria-hidden="true" />
+        </NuxtLink>
+        <NuxtLink v-if="secondaryCta" :to="secondaryCta.to" class="public-hero__secondary">
+          {{ secondaryCta.label }}<UIcon name="i-lucide-arrow-right" class="size-4 shrink-0" aria-hidden="true" />
+        </NuxtLink>
       </div>
     </div>
+
+    <div v-if="!compact" class="public-hero__stage">
+      <div class="public-hero__journey">
+        <span class="public-hero__wordmark" aria-hidden="true">Cary</span>
+        <h2>{{ journey.title }}</h2>
+        <ol>
+          <li v-for="(step, index) in journey.steps" :key="step"><span>{{ String(index + 1).padStart(2, '0') }}</span>{{ step }}</li>
+        </ol>
+      </div>
+      <div class="public-hero__photo">
+        <img :src="imageSrc" :alt="imageAlt" :class="imageObjectClass" width="1200" height="800" fetchpriority="high" />
+        <figure v-if="!hideQuote && resolvedQuote" class="public-hero__quote">
+          <blockquote>« {{ resolvedQuote.text }} »</blockquote>
+          <figcaption>{{ resolvedQuote.author }}</figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <ul v-if="resolvedStats.length" class="public-hero__benefits" aria-label="Les avantages Cary">
+      <li v-for="(stat, index) in resolvedStats" :key="index"><strong>{{ stat.num }}</strong><span>{{ stat.rest.trim() }}</span></li>
+    </ul>
   </section>
 </template>
 
@@ -128,6 +58,7 @@ interface HeroQuote {
 const props = withDefaults(
   defineProps<{
     eyebrow?: string;
+    audience?: 'home' | 'patients' | 'nurses' | 'labs' | 'professionals' | 'contact';
     titleLines?: string[];
     highlight?: string;
     description?: string;
@@ -141,14 +72,16 @@ const props = withDefaults(
     hideQuote?: boolean;
     /** Masque la liste de stats (utile pages type tarifs). */
     hideStats?: boolean;
+    compact?: boolean;
   }>(),
   {
+    audience: 'home',
     titleLines: () => [],
     highlight: '',
     description: '',
     stats: () => [],
     imageObjectClass: 'object-[center_15%]',
-    hideQuote: false,
+    hideQuote: true,
     hideStats: false,
   },
 );
@@ -156,26 +89,21 @@ const props = withDefaults(
 const { appointmentNewUrl } = useAppointmentNewUrl();
 
 const defaultPrimaryCta = computed<HeroCta>(() => ({
-  label: 'Réserver une visite',
+  label: 'Prendre rendez-vous',
   to: appointmentNewUrl.value,
 }));
 
-const defaultTitleLines = ['Un professionnel', 'de santé chez vous,'];
-const defaultHighlight = 'en moins de 2h';
+const defaultTitleLines = ['Les soins viennent'];
+const defaultHighlight = 'à vous.';
 const defaultDescription =
-  'Prise de sang, pansement, injection : vous réservez en quelques minutes. Un professionnel vérifié vient chez vous. Sur ordonnance, c’est pris en charge comme en ville.';
+  'Prise de sang, pansement, injection : demandez vos soins à domicile et suivez votre rendez-vous dans un seul espace.';
 const defaultImageSrc = '/images/landing/hero-cary-home-nurse.png';
 const defaultImageAlt = 'Infirmier diplômé Cary préparant une visite à domicile';
 const defaultStats: HeroStat[] = [
-  { num: '+300', rest: ' visites à domicile' },
-  { num: '40+', rest: ' infirmiers partenaires' },
-  { num: 'Souvent', rest: ' possible le jour même' },
+  { num: 'Plusieurs soins', rest: ' en une demande' },
+  { num: 'Des professionnels', rest: ' dans votre secteur' },
+  { num: 'Vos documents', rest: ' au même endroit' },
 ];
-const defaultQuote: HeroQuote = {
-  text:
-    "Un professionnel à l'écoute et d'un grand sérieux. Je me suis senti en totale confiance pour mes soins à domicile.",
-  author: 'Marc D., patient',
-};
 
 const resolvedTitleLines = computed(() =>
   props.titleLines && props.titleLines.length > 0 ? props.titleLines : defaultTitleLines,
@@ -195,38 +123,69 @@ const highlight = computed(() =>
 );
 const imageSrc = computed(() => props.imageSrc || defaultImageSrc);
 const imageAlt = computed(() => props.imageAlt || defaultImageAlt);
-const resolvedQuote = computed(() => props.quote ?? defaultQuote);
+const resolvedQuote = computed(() => props.quote);
+const journeys = {
+  home: { label: 'Votre santé, à domicile', title: 'Un seul endroit. Du soin au suivi.', steps: ['Choisissez vos soins', 'Proposez vos disponibilités', 'Retrouvez votre suivi'] },
+  patients: { label: 'Pour vous et vos proches', title: 'Le soin commence chez vous.', steps: ['Une demande pour vos soins', 'Des disponibilités à proposer', 'Vos documents à retrouver'] },
+  nurses: { label: 'Votre activité, votre rythme', title: 'Une tournée qui vous ressemble.', steps: ['Définissez votre secteur', 'Choisissez vos demandes', 'Organisez vos visites'] },
+  labs: { label: 'Du laboratoire au domicile', title: 'Toute votre équipe au même endroit.', steps: ['Centralisez les demandes', 'Affectez vos préleveurs', 'Suivez les rendez-vous'] },
+  professionals: { label: 'La continuité des soins', title: 'Gardez le lien après la consultation.', steps: ['Orientez vos patients', 'Organisez leurs soins', 'Suivez les patients liés'] },
+  contact: { label: 'Parlons de votre besoin', title: 'Un contact, le bon interlocuteur.', steps: ['Choisissez votre sujet', 'Décrivez votre demande', 'Retrouvez notre réponse par email'] },
+};
+const journey = computed(() => journeys[props.audience]);
 </script>
 
 <style scoped>
-.landing-hero-maquette-grid {
-  opacity: 0.5;
-  background-image:
-    linear-gradient(rgb(47 128 237 / 0.065) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(47 128 237 / 0.065) 1px, transparent 1px);
-  background-size: 32px 32px;
-  background-position: 0 0;
-}
-
-:global(.dark) .landing-hero-maquette-grid {
-  opacity: 0.22;
-  background-image:
-    linear-gradient(rgb(148 163 184 / 0.14) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(148 163 184 / 0.14) 1px, transparent 1px);
-}
-
-.landing-hero-maquette-figure {
-  -webkit-mask-image: radial-gradient(
-    ellipse 95% 90% at 50% 55%,
-    #000 55%,
-    rgba(0, 0, 0, 0.4) 85%,
-    transparent 100%
-  );
-  mask-image: radial-gradient(
-    ellipse 95% 90% at 50% 55%,
-    #000 55%,
-    rgba(0, 0, 0, 0.4) 85%,
-    transparent 100%
-  );
+.public-hero { --hero-ink: #112e2b; --hero-muted: #526461; padding: 60px 24px 0; background: #fafbf8; color: var(--hero-ink); }
+.public-hero__intro { max-width: 1000px; margin: 0 auto; text-align: center; }
+.public-hero__eyebrow { display: inline-flex; align-items: center; gap: 9px; margin: 0 0 24px; font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+.public-hero__eyebrow > span { width: 7px; height: 7px; border-radius: 50%; background: #1cc7b5; }
+.public-hero h1 { margin: 0; font-size: clamp(40px, 5.4vw, 76px); font-weight: 600; line-height: 1.04; letter-spacing: -.055em; text-wrap: balance; overflow-wrap: anywhere; }
+.public-hero h1 em { display: block; font-style: normal; color: #168577; }
+.public-hero__description { max-width: 54ch; margin: 24px auto 0; font-size: 16px; line-height: 1.65; color: var(--hero-muted); text-wrap: pretty; }
+.public-hero__actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px 24px; margin: 28px 0 40px; }
+.public-hero__primary, .public-hero__secondary { display: inline-flex; min-height: 52px; align-items: center; justify-content: center; gap: 16px; padding: 14px 22px; border-radius: 14px; font-size: 14px; font-weight: 600; transition: background-color 150ms; }
+.public-hero__primary { background: #1cc7b5; color: #082f2b; }
+.public-hero__primary:hover { background: #19b8a7; }
+.public-hero__secondary { padding-inline: 6px; }
+.public-hero__secondary:hover { background: #eaf2ed; }
+.public-hero a:focus-visible { outline: 2px solid #168577; outline-offset: 5px; }
+.public-hero__stage { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); max-width: 1120px; min-height: 320px; margin: 0 auto; border-radius: 24px; overflow: hidden; background: #123d36; }
+.public-hero__journey { display: flex; flex-direction: column; align-items: flex-start; padding: 30px 36px; color: #f5fbf8; }
+.public-hero__wordmark { font-size: 23px; letter-spacing: -.05em; font-weight: 600; color: #70e0c4; }
+.public-hero__wordmark > span { margin-left: 3px; font-size: 11px; vertical-align: top; }
+.public-hero__journey h2 { max-width: 18ch; margin: 22px 0 24px; font-size: clamp(23px, 2.3vw, 30px); font-weight: 500; letter-spacing: -.035em; line-height: 1.16; text-wrap: balance; }
+.public-hero__journey ol { display: grid; gap: 12px; margin: auto 0 0; padding: 0; list-style: none; }
+.public-hero__journey li { display: flex; align-items: baseline; gap: 14px; font-size: 13px; line-height: 1.4; }
+.public-hero__journey li > span { font-size: 11px; font-variant-numeric: tabular-nums; color: #70e0c4; }
+.public-hero__photo { position: relative; min-width: 0; min-height: 320px; }
+.public-hero__photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.public-hero__quote { position: absolute; inset: auto 20px 20px; padding: 20px; border-radius: 12px; background: #112e2bef; color: white; font-size: 14px; }
+.public-hero__quote figcaption { margin-top: 8px; font-size: 12px; }
+.public-hero__benefits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 1120px; margin: 0 auto; padding: 28px 0; list-style: none; }
+.public-hero__benefits li { display: flex; flex-direction: column; gap: 4px; padding: 0 24px; text-align: center; font-size: 12px; line-height: 1.5; color: var(--hero-muted); }
+.public-hero__benefits li + li { border-left: 1px solid #dbe4de; }
+.public-hero__benefits strong { color: var(--hero-ink); font-size: 14px; font-weight: 600; }
+.public-hero--compact { padding-bottom: 20px; border-bottom: 1px solid #dbe4de; }
+:global(.dark) .public-hero { --hero-ink: #eff9f5; --hero-muted: #b0c5be; background: #101d1b; }
+:global(.dark) .public-hero h1 em { color: #70e0c4; }
+:global(.dark) .public-hero__secondary:hover { background: #203e35; }
+@media (max-width: 640px) {
+  .public-hero { padding: 32px 20px 0; }
+  .public-hero__eyebrow { margin-bottom: 18px; font-size: 11px; }
+  .public-hero h1 { font-size: clamp(36px, 9.5vw, 54px); }
+  .public-hero__description { margin-top: 20px; font-size: 14px; }
+  .public-hero__actions { margin: 24px 0 28px; gap: 6px; flex-direction: column; align-items: stretch; }
+  .public-hero__stage { grid-template-columns: 1fr; border-radius: 20px; }
+  .public-hero__journey { padding: 24px; }
+  .public-hero__wordmark { display: none; }
+  .public-hero__journey h2 { max-width: 22ch; margin: 0 0 20px; }
+  .public-hero__journey ol { gap: 10px; }
+  .public-hero__photo { min-height: 180px; }
+  .public-hero__benefits { gap: 18px; grid-template-columns: 1fr; padding: 24px 0; }
+  .public-hero__benefits li { flex-direction: row; justify-content: center; flex-wrap: wrap; gap: 4px; padding: 0; }
+  .public-hero__benefits li + li { border-left: 0; }
+  .public-hero__benefits strong { font-size: 12px; }
+  .public-hero--compact { padding-bottom: 8px; }
 }
 </style>

@@ -3,10 +3,10 @@
     <!-- Bandeau site unique (layout patient) ; repère : classe patient-layout-site-header -->
     <header
       class="patient-layout-site-header relative z-50 overflow-visible border-b border-gray-200 bg-white pt-[env(safe-area-inset-top)] dark:border-gray-800 dark:bg-gray-900"
-      :class="isRendezVousFlow ? '' : 'sticky top-0'"
+      :class="isRendezVousFlow ? '[&_button]:min-h-11 [&_button]:min-w-11' : 'sticky top-0'"
     >
       <div class="container mx-auto px-4">
-        <div class="flex h-12 min-h-[48px] w-full min-w-0 items-center justify-between gap-2 sm:gap-3">
+        <div class="flex min-h-[48px] w-full min-w-0 items-center justify-between gap-2 sm:gap-3" :class="isRendezVousFlow ? 'h-16' : 'h-12'">
           <!-- Left: Hamburger mobile (patient) + Logo — flex-1 sur mobile pour pousser cloche + menu à droite sans les écraser -->
           <div class="flex min-w-0 flex-1 items-center gap-2 md:flex-initial md:shrink-0">
             <!-- Hamburger : visible uniquement sur mobile pour le patient -->
@@ -33,11 +33,13 @@
               <img 
                 src="/images/logo-cary.png" 
                 alt="Cary" 
-                class="h-[22px] w-auto max-w-[min(104px,32vw)] object-contain object-left sm:h-[26px] sm:max-w-[118px]"
+                class="w-auto max-w-[min(104px,32vw)] object-contain object-left sm:max-w-[118px]"
+                :class="isRendezVousFlow ? 'h-7 sm:h-8' : 'h-[22px] sm:h-[26px]'"
                 loading="eager"
                 decoding="async"
               />
             </NuxtLink>
+            <span v-if="isRendezVousFlow" class="ml-2 border-l border-gray-200 pl-3 text-xs font-semibold text-primary-800 dark:border-gray-700 dark:text-primary-200">Rendez-vous</span>
           </div>
 
           <!-- Centre (patient) : liens — ClientOnly évite mismatch SSR/client si session uniquement côté client -->
@@ -309,11 +311,13 @@
     />
     <aside
       :class="[
-        'fixed inset-y-0 left-0 z-[1050] flex w-[7.25rem] min-w-[7.25rem] max-w-[7.25rem] shrink-0 flex-col overflow-x-hidden border-r border-gray-200 bg-white transition-transform duration-300 ease-in-out dark:border-gray-800 dark:bg-gray-950 md:hidden',
-        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none',
+        'fixed inset-y-0 left-0 z-[1050] flex w-[var(--workspace-nav-width)] min-w-[var(--workspace-nav-width)] max-w-[var(--workspace-nav-width)] shrink-0 flex-col overflow-x-hidden border-r border-gray-200 bg-white transition-transform duration-300 ease-in-out dark:border-gray-800 dark:bg-gray-950 md:hidden',
+        mobileMenuOpen ? 'translate-x-0 visible' : '-translate-x-full invisible pointer-events-none',
       ]"
       aria-label="Menu patient"
       :aria-hidden="!mobileMenuOpen"
+      :inert="!mobileMenuOpen"
+      @keydown.esc="mobileMenuOpen = false"
     >
         <div
           class="relative flex h-14 w-full shrink-0 items-center justify-center border-b border-gray-200 dark:border-gray-800 px-2"
@@ -352,10 +356,10 @@
                 <li v-for="item in patientMobileNavItems" :key="item.to">
                   <NuxtLink
                     :to="item.to"
-                    class="group relative flex flex-col items-center gap-1.5 rounded-lg px-1 py-2.5 text-center transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 active:scale-[0.98] dark:focus-visible:ring-offset-gray-950"
+                    class="group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-950"
                     :class="
                       isPatientMobileNavActive(item.to)
-                        ? ''
+                        ? 'bg-primary-50 dark:bg-primary-950/40'
                         : 'hover:bg-gray-50 dark:hover:bg-gray-900/60'
                     "
                     :aria-current="isPatientMobileNavActive(item.to) ? 'page' : undefined"
@@ -373,7 +377,7 @@
                       />
                     </span>
                     <span
-                      class="max-w-full break-words border-b-[3px] pb-0.5 text-[10px] font-semibold leading-snug transition-colors duration-200 sm:text-[11px]"
+                      class="min-w-0 break-words text-sm font-medium leading-snug transition-colors duration-200"
                       :class="
                         isPatientMobileNavActive(item.to)
                           ? 'border-primary-600 text-gray-900 dark:border-primary-400 dark:text-white'
@@ -411,6 +415,7 @@
 </template>
 
 <script setup lang="ts">
+useHead({ meta: [{ name: 'robots', content: 'noindex, nofollow' }] });
 import { apiFetch } from '~/utils/api'
 
 const { holdCount } = useBookingApiHold()
@@ -642,7 +647,7 @@ const unreadCount = computed(
   () => notifications.value.filter(n => !n.read_at).length
 )
 
-const notificationItems = computed(() => {
+const notificationItems = computed<Array<{ label: string; description?: string; isRead?: boolean; disabled?: boolean; click?: () => void }>>(() => {
   if (!notifications.value.length) {
     return [
       {
@@ -725,4 +730,3 @@ const { start: startPolling } = usePolling(
   { shouldSkip: () => holdCount.value > 0 },
 )
 </script>
-

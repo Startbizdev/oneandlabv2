@@ -18,7 +18,7 @@
         size="sm"
         clearable
         class="min-w-0 flex-1"
-        :ui="{ rounded: 'rounded-lg' }"
+        :ui="{ base: 'rounded-lg' }"
       />
       <USelect
         v-model="roleFilter"
@@ -31,6 +31,15 @@
     </div>
 
     <div
+      v-if="loadError"
+      role="alert"
+      class="rounded-xl border border-red-200 bg-white p-4 text-sm text-red-700 dark:border-red-800 dark:bg-gray-950 dark:text-red-300"
+    >
+      <p>{{ loadError }}</p>
+      <UButton class="mt-3" color="neutral" variant="outline" :on-click="load">Réessayer</UButton>
+    </div>
+    <div
+      v-else
       class="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-gray-800 dark:bg-gray-950"
     >
       <UTable :data="paginatedItems" :columns="columns" :loading="loading">
@@ -117,7 +126,7 @@
           :items-per-page="pageSize"
           :sibling-count="1"
           show-edges
-          :ui="{ wrapper: 'gap-1', rounded: 'rounded-lg' }"
+          :ui="{ list: 'gap-1', item: 'rounded-lg' }"
         />
       </div>
     </div>
@@ -143,6 +152,7 @@ type AdminQrRow = {
 };
 
 const loading = ref(true);
+const loadError = ref('');
 const downloadingKey = ref<string | null>(null);
 const items = ref<AdminQrRow[]>([]);
 const roleFilter = ref('all');
@@ -203,16 +213,16 @@ const paginatedItems = computed(() => {
   return filteredItems.value.slice(start, start + pageSize);
 });
 
-function rowData(row: { original?: AdminQrRow } & AdminQrRow): AdminQrRow {
-  return (row.original ?? row) as AdminQrRow;
+function rowData(row: { original: AdminQrRow } | AdminQrRow): AdminQrRow {
+  return 'original' in row ? row.original : row;
 }
 
-function rowLabel(row: { original?: AdminQrRow } & AdminQrRow, key: keyof AdminQrRow): string {
+function rowLabel(row: { original: AdminQrRow } | AdminQrRow, key: keyof AdminQrRow): string {
   const v = rowData(row)[key];
   return v == null ? '' : String(v);
 }
 
-function qrStats(row: { original?: AdminQrRow } & AdminQrRow) {
+function qrStats(row: { original: AdminQrRow } | AdminQrRow) {
   const a = rowData(row).analytics ?? {};
   return {
     scans: a.scans ?? 0,
@@ -275,22 +285,29 @@ function resetFilters() {
 
 async function load() {
   loading.value = true;
+  loadError.value = '';
   try {
-    const res = await apiFetch<{ success: boolean; data: { items: AdminQrRow[]; total?: number } }>(
-      '/admin/qr?limit=100&offset=0',
-      { method: 'GET' },
-    );
-    const payload = res.data;
-    items.value = Array.isArray(payload)
-      ? payload
-      : (payload?.items ?? []);
+    const collected: AdminQrRow[] = [];
+    const ids = new Set<string>();
+    for (let offset = 0; ; offset += 100) {
+      const res = await apiFetch<{ success: boolean; data: { items: AdminQrRow[]; total?: number } | AdminQrRow[] }>(
+        `/admin/qr?limit=100&offset=${offset}`, { method: 'GET' },
+      );
+      const payload = res.data;
+      const rows = Array.isArray(payload) ? payload : payload?.items;
+      if (!res.success || !Array.isArray(rows)) throw new Error('La liste des QR codes est indisponible. Réessayez.');
+      const before = collected.length;
+      for (const row of rows) {
+        if (!ids.has(row.profile_id)) { ids.add(row.profile_id); collected.push(row); }
+      }
+      const total = Array.isArray(payload) ? undefined : payload?.total;
+      if (typeof total === 'number' ? collected.length >= total : rows.length < 100) break;
+      if (collected.length === before) throw new Error('La liste complète des QR codes n’a pas pu être chargée. Réessayez.');
+    }
+    items.value = collected;
   } catch (e: unknown) {
     items.value = [];
-    toast.add({
-      title: 'Chargement impossible',
-      description: e instanceof Error ? e.message : 'Erreur serveur',
-      color: 'error',
-    });
+    loadError.value = e instanceof Error ? e.message : 'La liste des QR codes est indisponible. Réessayez.';
   } finally {
     loading.value = false;
   }

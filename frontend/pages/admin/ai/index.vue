@@ -3,15 +3,19 @@
     <template #pageHeader>
       <AppPageHeader
         :edge-bleed="false"
-        title="Cockpit IA Cary"
-        description="Routing Grok par tâche, usage tokens, audits et disclaimer."
+        title="Assistants"
+        description="Configurez les modèles et suivez leur utilisation."
       />
     </template>
 
-    <div v-if="loading" class="text-sm text-muted">Chargement…</div>
-    <div v-else-if="error" class="text-sm text-red-600">{{ error }}</div>
+    <div v-if="loading" role="status" class="text-sm text-muted">Chargement…</div>
+    <div v-else-if="error" class="space-y-3">
+      <UAlert color="error" title="Configuration indisponible" :description="error" />
+      <UButton color="neutral" variant="outline" @click="load">Réessayer</UButton>
+    </div>
 
     <template v-else>
+      <UAlert v-if="actionError" color="error" title="Action non effectuée" :description="actionError" />
       <UCard>
         <template #header>
           <h2 class="text-lg font-normal flex items-center gap-2">
@@ -21,7 +25,7 @@
         </template>
         <div v-if="usage?.totals" class="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <div class="rounded-lg border border-default/50 p-4">
-            <p class="text-xs text-muted">Appels LLM</p>
+            <p class="text-xs text-muted">Requêtes</p>
             <p class="text-2xl font-medium">{{ usage.totals.total_calls ?? 0 }}</p>
           </div>
           <div class="rounded-lg border border-default/50 p-4">
@@ -33,7 +37,7 @@
             <p class="text-2xl font-medium">{{ usage.totals.total_errors ?? 0 }}</p>
           </div>
           <div class="rounded-lg border border-default/50 p-4">
-            <p class="text-xs text-muted">Latence p50</p>
+            <p class="text-xs text-muted">Temps médian</p>
             <p class="text-2xl font-medium">{{ formatMs(usage.latency?.p50) }}</p>
           </div>
           <div class="rounded-lg border border-default/50 p-4">
@@ -49,9 +53,9 @@
           <table class="w-full min-w-[480px] text-left text-sm">
             <thead>
               <tr class="border-b border-default/50 text-muted">
-                <th class="py-2 pr-4">Provider</th>
-                <th class="py-2 pr-4">Tokens in</th>
-                <th class="py-2 pr-4">Tokens out</th>
+                <th class="py-2 pr-4">Fournisseur</th>
+                <th class="py-2 pr-4">Tokens reçus</th>
+                <th class="py-2 pr-4">Tokens générés</th>
                 <th class="py-2">Coût estimé (USD)</th>
               </tr>
             </thead>
@@ -72,7 +76,7 @@
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 class="text-lg font-normal flex items-center gap-2">
               <UIcon name="i-lucide-route" class="w-5 h-5" />
-              Routing par tâche
+              Modèle par usage
             </h2>
             <UButton
               size="sm"
@@ -81,7 +85,7 @@
               :loading="exportingAudits"
               @click="exportAudits"
             >
-              Export audits CSV
+              Exporter le journal CSV
             </UButton>
           </div>
         </template>
@@ -102,19 +106,20 @@
                 <td class="py-2 pr-4">
                   <USelect
                     v-model="row.provider"
+                    :aria-label="`Fournisseur pour ${row.task_type}`"
                     :items="providerOptions"
                     size="xs"
                     class="min-w-[120px]"
                   />
                 </td>
                 <td class="py-2 pr-4">
-                  <UInput v-model="row.model" size="xs" class="min-w-[100px]" />
+                  <UInput v-model="row.model" :aria-label="`Modèle pour ${row.task_type}`" size="xs" class="min-w-[100px]" />
                 </td>
                 <td class="py-2 pr-4">
-                  <UCheckbox v-model="row.enabled" />
+                  <UCheckbox v-model="row.enabled" :aria-label="`Activer ${row.task_type}`" />
                 </td>
                 <td class="py-2">
-                  <UButton size="xs" variant="soft" @click="saveRouting(row)">Enregistrer</UButton>
+                  <UButton size="xs" variant="soft" :loading="savingRouting.has(row.task_type)" @click="saveRouting(row)">Enregistrer</UButton>
                 </td>
               </tr>
             </tbody>
@@ -126,14 +131,14 @@
         <template #header>
           <h2 class="text-lg font-normal flex items-center gap-2">
             <UIcon name="i-lucide-shield-alert" class="w-5 h-5" />
-            Disclaimer & température
+            Message et comportement des assistants
           </h2>
         </template>
         <form class="space-y-4" @submit.prevent="saveSettings">
-          <UFormField label="Disclaimer FR">
+          <UFormField label="Message d’information affiché">
             <UTextarea v-model="settings.disclaimer_fr" :rows="3" class="w-full" />
           </UFormField>
-          <UFormField label="Température">
+          <UFormField label="Variété des réponses" description="De 0 pour des réponses plus constantes à 1 pour davantage de variations.">
             <UInput v-model.number="settings.temperature" type="number" step="0.1" min="0" max="1" class="max-w-[120px]" />
           </UFormField>
           <UButton type="submit" color="primary" :loading="savingSettings">Enregistrer</UButton>
@@ -150,8 +155,11 @@ definePageMeta({ layout: 'dashboard', middleware: ['auth', 'role'], role: 'super
 
 const loading = ref(true);
 const error = ref<string | null>(null);
+const actionError = ref('');
+const savingRouting = ref(new Set<string>());
+const toast = useToast();
 const exportingAudits = ref(false);
-const routing = ref<Array<Record<string, unknown>>>([]);
+const routing = ref<Array<{ task_type: string; provider: string; model: string; enabled: boolean }>>([]);
 const usage = ref<{
   totals?: Record<string, number>;
   by_task?: unknown[];
@@ -202,7 +210,10 @@ async function load() {
 
     routing.value = (routingRes.data ?? []).map((r: Record<string, unknown>) => ({
       ...r,
-      enabled: Boolean(r.enabled),
+      task_type: String(r.task_type ?? ''),
+      provider: String(r.provider ?? ''),
+      model: String(r.model ?? ''),
+      enabled: r.enabled === true || r.enabled === 1 || r.enabled === '1',
     }));
     usage.value = usageRes.data ?? null;
     const settingsData = settingsRes.data ?? {};
@@ -216,6 +227,11 @@ async function load() {
 }
 
 async function saveRouting(row: Record<string, unknown>) {
+  const task = String(row.task_type);
+  if (savingRouting.value.has(task)) return;
+  savingRouting.value.add(task);
+  actionError.value = '';
+  try {
   const res = await apiFetch('/admin/ai/routing', {
     method: 'PATCH',
     body: {
@@ -226,16 +242,26 @@ async function saveRouting(row: Record<string, unknown>) {
     },
   });
   if (!res.success) throw new Error(res.error ?? 'Enregistrement impossible');
+  toast.add({ title: 'Configuration enregistrée', color: 'success' });
+  } catch (error) {
+    actionError.value = error instanceof Error ? error.message : 'Réessayez.';
+  } finally {
+    savingRouting.value.delete(task);
+  }
 }
 
 async function saveSettings() {
   savingSettings.value = true;
+  actionError.value = '';
   try {
     const res = await apiFetch('/admin/ai/settings', {
       method: 'PUT',
       body: { disclaimer_fr: settings.disclaimer_fr, temperature: settings.temperature },
     });
     if (!res.success) throw new Error(res.error ?? 'Enregistrement impossible');
+    toast.add({ title: 'Paramètres enregistrés', color: 'success' });
+  } catch (error) {
+    actionError.value = error instanceof Error ? error.message : 'Réessayez.';
   } finally {
     savingSettings.value = false;
   }
@@ -243,11 +269,12 @@ async function saveSettings() {
 
 async function exportAudits() {
   exportingAudits.value = true;
+  actionError.value = '';
   try {
     const { blob, filenameHint } = await apiFetchBlob('/admin/ai/audits/export?days=30');
     triggerBlobDownload(blob, filenameHint ?? `ai_audits_${new Date().toISOString().slice(0, 10)}.csv`);
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Export impossible';
+    actionError.value = e instanceof Error ? e.message : 'Export impossible';
   } finally {
     exportingAudits.value = false;
   }

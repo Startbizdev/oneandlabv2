@@ -24,10 +24,10 @@ type Props = {
     first_name: string;
     last_name: string;
     relationship_type: string;
-    gender?: string;
-    birth_date?: string;
-    email?: string;
-    phone?: string;
+    gender?: string | null;
+    birth_date?: string | null;
+    email?: string | null;
+    phone?: string | null;
     address?: AddressPayload | null;
   }) => void;
 };
@@ -71,6 +71,7 @@ export function PatientRelativeFormSheet({
   }, [visible, initial]);
 
   const submit = () => {
+    if (saving) return;
     if (!firstName.trim() || !lastName.trim() || !relationshipType) {
       setError('Prénom, nom et lien sont requis.');
       return;
@@ -89,10 +90,10 @@ export function PatientRelativeFormSheet({
       first_name: firstName.trim(),
       last_name: lastName.trim(),
       relationship_type: relationshipType,
-      gender: gender || undefined,
-      birth_date: birthDate.trim() || undefined,
-      email: email.trim() || undefined,
-      phone: phone.trim() || undefined,
+      gender: gender || null,
+      birth_date: birthDate.trim() || null,
+      email: email.trim() || null,
+      phone: phone.trim() || null,
       address: addr,
     });
   };
@@ -100,7 +101,7 @@ export function PatientRelativeFormSheet({
   return (
     <BottomSheet
       visible={visible}
-      onClose={onClose}
+      onClose={() => { if (!saving) onClose(); }}
       title={initial ? 'Modifier le proche' : 'Ajouter un proche'}
     >
       <View style={styles.fields}>

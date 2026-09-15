@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Hero bleu clair SEO : Laboratoires à [Ville] -->
-    <section class="relative py-12 sm:py-16 md:py-20 overflow-hidden bg-primary-50 dark:bg-primary-950/40 border-b border-primary-100 dark:border-primary-900/50">
+    <section class="relative py-12 sm:py-16 md:py-20 overflow-hidden bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl text-center">
         <h1 class="text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight text-gray-900 dark:text-white mb-4">
           Prise de sang à domicile à {{ cityLabel }}
@@ -15,14 +15,14 @@
           size="xl"
           variant="solid"
           icon="i-lucide-calendar-plus"
-          class="min-w-[260px] sm:min-w-[280px] px-8 py-4 text-base sm:text-lg font-medium"
+          class="w-full sm:w-auto px-8 py-4 text-base sm:text-lg font-medium"
         >
           Réserver une visite
         </UButton>
         <ul class="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-400">
           <li class="inline-flex items-center gap-1.5">
             <UIcon name="i-lucide-badge-check" class="w-4 h-4 text-primary-500" />
-            Gratuit
+            Demande en ligne
           </li>
           <li class="inline-flex items-center gap-1.5">
             <UIcon name="i-lucide-shield-check" class="w-4 h-4 text-primary-500" />
@@ -30,7 +30,7 @@
           </li>
           <li class="inline-flex items-center gap-1.5">
             <UIcon name="i-lucide-clock" class="w-4 h-4 text-primary-500" />
-            Réservation en 1 min
+            Parcours guidé
           </li>
         </ul>
       </div>
@@ -47,6 +47,9 @@
           </div>
         </div>
 
+        <UAlert v-else-if="loadError" title="Impossible de charger les professionnels" description="Réessayez dans un instant pour consulter les profils disponibles." color="error" variant="soft">
+          <template #actions><UButton color="neutral" variant="outline" @click="retry">Réessayer</UButton></template>
+        </UAlert>
         <template v-else>
           <div v-if="labs.length === 0" class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-12 text-center">
             <UIcon name="i-lucide-building-2" class="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
@@ -69,6 +72,11 @@
               :average-rating="lab.average_rating ?? 0"
             />
           </div>
+          <nav v-if="totalPages > 1" aria-label="Pages de professionnels" class="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <UButton color="neutral" variant="outline" :disabled="pageNumber <= 1" @click="() => { pageNumber-- }">Précédent</UButton>
+            <span class="text-sm text-gray-500">Page {{ pageNumber }} sur {{ totalPages }}</span>
+            <UButton color="neutral" variant="outline" :disabled="pageNumber >= totalPages" @click="() => { pageNumber++ }">Suivant</UButton>
+          </nav>
         </template>
       </div>
     </section>
@@ -82,7 +90,6 @@ const { appointmentNewUrl } = useAppointmentNewUrl()
 
 const route = useRoute()
 const config = useRuntimeConfig()
-const apiBase = config.public.apiBase || '/api'
 
 const ville = computed(() => (route.params.ville as string) || '')
 const cityLabel = computed(() => {
@@ -91,11 +98,10 @@ const cityLabel = computed(() => {
   return v.charAt(0).toUpperCase() + v.slice(1).toLowerCase()
 })
 
-const loading = ref(true)
-const labs = ref<{ id: string; slug: string; name: string; profile_image_url?: string; city?: string; presentation?: string }[]>([])
+const { profiles: labs, loading, loadError, retry, pageNumber, totalPages } = await usePublicDirectory('labs', ville)
 
 const seoTitle = computed(() => `Laboratoire de prélèvements à domicile à ${cityLabel.value} | Cary`)
-const seoDescription = computed(() => `Trouvez un laboratoire à ${cityLabel.value} pour vos prélèvements à domicile. Réservez en ligne. Gratuit, sans engagement.`)
+const seoDescription = computed(() => `Trouvez un laboratoire à ${cityLabel.value} pour vos prélèvements à domicile. Consultez les professionnels et demandez un rendez-vous en ligne.`)
 
 useHead({
   title: seoTitle,
@@ -105,21 +111,7 @@ useHead({
     { property: 'og:description', content: seoDescription },
     { property: 'og:type', content: 'website' },
   ],
-  link: [{ rel: 'canonical', href: computed(() => `${config.public.siteUrl || ''}/laboratoires/ville/${ville.value}`) }],
+  link: [{ rel: 'canonical', href: computed(() => `${String(config.public.siteUrl || 'https://cary.bio').replace(/\/$/, '')}/laboratoires/ville/${encodeURIComponent(ville.value)}`) }],
 })
 
-async function fetchLabs() {
-  loading.value = true
-  try {
-    const cityParam = ville.value ? `&city=${encodeURIComponent(ville.value)}` : ''
-    const res = await $fetch<{ success: boolean; data: any[] }>(`${apiBase}/public/labs?limit=24${cityParam}`, { method: 'GET' })
-    labs.value = res?.success ? (res.data ?? []) : []
-  } catch {
-    labs.value = []
-  } finally {
-    loading.value = false
-  }
-}
-
-watch(ville, () => fetchLabs(), { immediate: true })
 </script>

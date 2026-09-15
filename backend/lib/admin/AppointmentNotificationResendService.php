@@ -207,13 +207,8 @@ final class AppointmentNotificationResendService
 
         if ($type === 'new_appointment_pro') {
             $role = $target['role'] ?? '';
-            if ($role === 'nurse') {
-                $emailRole = 'nurse';
-            } elseif ($role === 'pro') {
-                $emailRole = 'pro';
-            } else {
-                $emailRole = ($apt['type'] ?? '') === 'nursing' ? 'nurse' : 'lab';
-            }
+            $emailRole = in_array($role, ['nurse', 'pro', 'lab', 'subaccount', 'preleveur'], true)
+                ? $role : '';
             return [
                 'appointment_id' => (string) ($apt['id'] ?? ''),
                 'scheduled_at' => $apt['scheduled_at'] ?? date('Y-m-d H:i:s'),

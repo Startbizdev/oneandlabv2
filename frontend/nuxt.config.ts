@@ -1,4 +1,12 @@
+import { fileURLToPath } from 'node:url';
+
 export default defineNuxtConfig({
+    alias: Object.fromEntries(
+      ['shared-api', 'shared-types', 'shared-utils', 'shared-constants', 'onboarding'].map((name) => [
+        `@oneandlab/${name}`,
+        fileURLToPath(new URL(`../packages/${name}/src/index.ts`, import.meta.url)),
+      ]),
+    ),
     ssr: true, // SSR activé pour les pages publiques
   
     compatibilityDate: '2024-11-01',
@@ -14,6 +22,8 @@ export default defineNuxtConfig({
     css: ['~/assets/css/main.css', 'leaflet/dist/leaflet.css'],
   
     runtimeConfig: {
+      // PHP origin for SSR when the browser uses the relative /api endpoint.
+      apiInternalBase: process.env.NUXT_API_INTERNAL_BASE || 'http://127.0.0.1:8888/api',
       public: {
         // En dev : /api pour passer par le proxy Nitro (évite CORS / connexion refusée)
         apiBase: process.env.NUXT_PUBLIC_API_BASE || (process.env.NODE_ENV === 'development' ? '/api' : 'https://cary.bio/api'),
@@ -35,6 +45,11 @@ export default defineNuxtConfig({
     // Icônes via CDN Iconify (api.iconify.design) — pas de route serveur, pas de conflit avec /api
     icon: {
       provider: 'iconify',
+      // Core navigation and booking icons remain available without a CDN round trip.
+      clientBundle: {
+        icons: ['lucide:droplet', 'lucide:syringe', 'lucide:bandage', 'lucide:heart-pulse', 'lucide:shower-head', 'lucide:stethoscope'],
+        scan: { globInclude: ['layouts/*.vue', 'components/shell/*.vue', 'components/rendez-vous/RendezVousCareSelection.vue'] },
+      },
     },
   
     components: {
@@ -72,7 +87,7 @@ export default defineNuxtConfig({
           {
             name: 'viewport',
             content:
-              'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover',
+              'width=device-width, initial-scale=1, viewport-fit=cover',
           },
           { name: 'description', content: 'Plateforme Cary : rendez-vous médicaux et soins à domicile' },
         ],
@@ -91,4 +106,3 @@ export default defineNuxtConfig({
       },
     },
   })
-  

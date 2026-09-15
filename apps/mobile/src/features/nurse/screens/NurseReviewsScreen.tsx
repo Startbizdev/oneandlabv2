@@ -47,6 +47,7 @@ export function NurseReviewsScreen() {
     queryKey: queryKeys.reviews.list(user?.id ?? ''),
     queryFn: async () => {
       const res = await api.get<Review[]>(`/reviews?reviewee_id=${user!.id}&limit=100`);
+      if (!res.success || !Array.isArray(res.data)) throw new Error(res.error || 'Impossible de charger les avis.');
       return res.data ?? [];
     },
     enabled: !!user?.id,
@@ -62,8 +63,11 @@ export function NurseReviewsScreen() {
   });
 
   const respond = useMutation({
-    mutationFn: ({ id, response }: { id: string; response: string }) =>
-      api.put(`/reviews/${id}/response`, { response }),
+    mutationFn: async ({ id, response }: { id: string; response: string }) => {
+      const result = await api.put(`/reviews/${id}/response`, { response });
+      if (!result.success) throw new Error(result.error || 'Envoi impossible. Votre réponse est conservée.');
+      return result;
+    },
     onSuccess: () => {
       toast('Réponse publiée', { type: 'success' });
       setReplyTarget(null);
@@ -167,11 +171,12 @@ export function NurseReviewsScreen() {
         draft={replyDraft}
         onChangeDraft={setReplyDraft}
         onClose={() => {
+          if (respond.isPending) return;
           setReplyTarget(null);
           setReplyDraft('');
         }}
         onSubmit={() => {
-          if (!replyTarget || !replyDraft.trim()) return;
+          if (respond.isPending || !replyTarget || !replyDraft.trim()) return;
           respond.mutate({ id: replyTarget.id, response: replyDraft.trim() });
         }}
         submitting={respond.isPending}

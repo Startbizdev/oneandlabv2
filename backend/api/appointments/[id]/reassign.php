@@ -274,29 +274,8 @@ try {
             ? $nurseLimits['max_appointments_per_month']
             : ($limits['nurse']['discovery']['max_appointments_per_month'] ?? 10);
         if ($maxPerMonth !== null) {
-            $tz = new DateTimeZone('Europe/Paris');
-            $now = new DateTime('now', $tz);
-            $monthStart = $now->format('Y-m-01 00:00:00');
-            $monthEnd = $now->format('Y-m-t 23:59:59');
-            $stmtCount = $pdo->prepare('
-                SELECT COUNT(*) FROM (
-                    SELECT a.id FROM appointments a
-                    LEFT JOIN (
-                        SELECT appointment_id, MIN(created_at) as first_accepted_at
-                        FROM appointment_status_updates
-                        WHERE status = \'confirmed\' AND actor_role = \'nurse\' AND actor_id = ?
-                        GROUP BY appointment_id
-                    ) u ON u.appointment_id = a.id
-                    WHERE a.assigned_nurse_id = ?
-                    AND a.status NOT IN (\'canceled\', \'refused\')
-                    AND (
-                        (u.first_accepted_at IS NOT NULL AND u.first_accepted_at >= ? AND u.first_accepted_at <= ?)
-                        OR (u.first_accepted_at IS NULL AND a.scheduled_at >= ? AND a.scheduled_at <= ?)
-                    )
-                ) x
-            ');
-            $stmtCount->execute([$assignedNurseId, $assignedNurseId, $monthStart, $monthEnd, $monthStart, $monthEnd]);
-            $count = (int) $stmtCount->fetchColumn();
+            require_once __DIR__ . '/../../../lib/NurseMonthlyAllowance.php';
+            $count = NurseMonthlyAllowance::count($pdo, $assignedNurseId, null, $appointmentId);
             if ($count >= $maxPerMonth) {
                 http_response_code(403);
                 echo json_encode([
@@ -308,12 +287,15 @@ try {
             }
         }
         // Assignation à un infirmier (soins infirmiers uniquement)
+        require_once __DIR__ . '/../../../lib/NurseQuotaGuard.php';
+        NurseQuotaGuard::run($pdo, $assignedNurseId, $maxPerMonth, static function () use ($pdo, $assignedNurseId, $appointmentId): void {
         $sql = 'UPDATE appointments SET assigned_nurse_id = :assigned_nurse_id, assigned_lab_id = NULL, assigned_to = NULL, updated_at = NOW() WHERE id = :id';
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             ':assigned_nurse_id' => $assignedNurseId,
             ':id' => $appointmentId,
         ]);
+        });
         $deferredLog = ['user' => $user, 'appointmentId' => $appointmentId, 'details' => ['assigned_nurse_id' => $assignedNurseId]];
         $reassignNotifyUserId = $assignedNurseId;
         $responseData = ['success' => true, 'data' => ['assigned_nurse_id' => $assignedNurseId]];
@@ -442,6 +424,6 @@ try {
         }
     }
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    http_response_code($e instanceof NurseQuotaExceeded ? 403 : 500);
+    echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => $e instanceof NurseQuotaExceeded ? 'PLAN_LIMIT' : 'SERVER_ERROR']);
 }

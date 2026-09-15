@@ -208,7 +208,7 @@
 
     <CarePhotoDiscussionModal
       v-model:open="careDiscussionOpen"
-      :appointment-id="primaryAppointment?.id ?? undefined"
+      :appointment-id="typeof primaryAppointment?.id === 'string' ? primaryAppointment.id : undefined"
       :document-id="careDiscussionDocId ?? undefined"
       :viewer-user-id="effectiveViewerId ?? undefined"
       :viewer-role="user?.role ?? undefined"
@@ -467,7 +467,7 @@ async function loadThumb(docId: string) {
   if (thumbUrls.value[id] || thumbFetchInFlight.value.has(id)) return;
   thumbFetchInFlight.value = new Set(thumbFetchInFlight.value).add(id);
   try {
-    const apiBase = config.public?.apiBase || 'http://localhost:8888/api';
+    const apiBase = config.public?.apiBase || '/api';
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
     const res = await fetch(`${apiBase}/medical-documents/${encodeURIComponent(id)}/download`, {
       method: 'GET',

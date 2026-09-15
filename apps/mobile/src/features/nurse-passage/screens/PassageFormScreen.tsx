@@ -16,6 +16,7 @@ import { DetailSegmentBar } from '@/features/appointments/detail/components/layo
 import { fetchPatientProfile } from '@/features/patients/api/patient-profile.service';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
 import { createNursePassageSeries } from '../api/nurse-passage.service';
+import { PassageCreationAttempt } from '../utils/passage-creation-attempt';
 import type { PassagePrescriptionDraft } from '@/features/prescriptions/api/prescriptions.service';
 import { savePrescriptionPdf } from '@/features/prescriptions/api/prescriptions.service';
 import { PassageFormCareSheet } from '../components/PassageFormCareSheet';
@@ -113,6 +114,7 @@ export function PassageFormScreen() {
   const [passagePrescriptionDraft, setPassagePrescriptionDraft] =
     useState<PassagePrescriptionDraft | null>(null);
   const prescriptionDraftRef = useRef<PassagePrescriptionDraft | null>(null);
+  const creationAttempt = useRef(new PassageCreationAttempt());
 
   useEffect(() => {
     prescriptionDraftRef.current = passagePrescriptionDraft;
@@ -145,10 +147,10 @@ export function PassageFormScreen() {
 
   const createMut = useMutation({
     mutationFn: async (input: Parameters<typeof createNursePassageSeries>[0]) => {
-      const data = await createNursePassageSeries(input);
+      return creationAttempt.current.run(input, createNursePassageSeries, async (data) => {
       const draft = prescriptionDraftRef.current;
       const appointmentId = data.appointment_ids?.[0];
-      if (draft && appointmentId) {
+      if (draft) {
         const saveRes = await savePrescriptionPdf(draft.pdfUri, {
           patientId: input.patient_id,
           appointmentId,
@@ -161,11 +163,11 @@ export function PassageFormScreen() {
           throw new Error(saveRes.error ?? 'Passage créé mais ordonnance non enregistrée');
         }
       }
-      return data;
+      });
     },
     onSuccess: (data) => {
       void qc.invalidateQueries({ queryKey: ['nurse-tour'] });
-      const ordonnanceMsg = prescriptionDraftRef.current ? ' Ordonnance ajoutée au passage.' : '';
+      const ordonnanceMsg = prescriptionDraftRef.current ? (data.appointment_ids?.length ? ' Ordonnance ajoutée au passage.' : ' Ordonnance enregistrée dans les documents du patient.') : '';
       toast(`${data.created_appointments} passage(s) planifié(s).${ordonnanceMsg}`, { type: 'success' });
       router.replace('/(nurse)/tournee' as never);
     },
@@ -242,6 +244,19 @@ export function PassageFormScreen() {
       <StackChromeScreen title="Prise en charge">
         <View style={[styles.centered, { paddingTop: contentTopInset }]}>
           <ActivityIndicator size="large" color={c.primary} />
+        </View>
+      </StackChromeScreen>
+    );
+  }
+
+  if (patientQ.isError || !patientId) {
+    return (
+      <StackChromeScreen title="Prise en charge">
+        <View style={[styles.centered, { paddingTop: contentTopInset }]}>
+          <Stack gap={spacing[4]}>
+            <AppText>Le patient ne peut pas être chargé.</AppText>
+            <Button title={patientId ? 'Réessayer' : 'Choisir un patient'} variant="outline" onPress={() => patientId ? void patientQ.refetch() : router.back()} />
+          </Stack>
         </View>
       </StackChromeScreen>
     );

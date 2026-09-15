@@ -4,7 +4,7 @@
     :class="{ 'shadow-[0_2px_20px_rgba(0,0,0,0.06)]': scrolled }"
   >
     <div
-      class="mx-auto flex h-[66px] w-full max-w-[1200px] items-center gap-4 px-6 md:gap-10 lg:px-12"
+      class="mx-auto flex h-[66px] w-full max-w-[1200px] items-center gap-3 px-4 sm:px-8 lg:gap-6 lg:px-12"
     >
       <NuxtLink to="/" class="flex shrink-0 items-center gap-2" aria-label="Cary — Accueil">
         <img
@@ -16,129 +16,20 @@
         />
       </NuxtLink>
 
-      <nav class="hidden min-w-0 flex-1 items-center gap-1 overflow-visible lg:flex" aria-label="Navigation principale">
-        <UPopover mode="hover" :open-delay="100" :close-delay="80">
-          <button
-            type="button"
-            class="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-[#3D3D52] transition-colors hover:bg-[#F7F7FB] hover:text-[#0A0A0F] dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
-            :class="{
-              'bg-primary-50 text-primary-600 dark:bg-primary-950/50 dark:text-primary-400':
-                route.path === '/pour-les-patients' ||
-                route.path.startsWith('/laboratoires') ||
-                route.path.startsWith('/infirmiers') ||
-                route.path === '/rendez-vous/nouveau',
-            }"
-          >
-            Vous êtes patient
-            <UIcon name="i-lucide-chevron-down" class="h-4 w-4 shrink-0 text-[#9090A8]" />
+      <span v-if="isBooking" class="flex min-w-0 items-center gap-2 border-l border-gray-200 pl-3 text-xs font-semibold text-primary-800 dark:border-gray-700 dark:text-primary-200 sm:pl-5 sm:text-sm"><UIcon name="i-lucide-calendar" class="hidden size-4 shrink-0 sm:block" aria-hidden="true" />Votre rendez-vous</span>
+      <nav v-else class="hidden min-w-0 flex-1 items-center gap-1 lg:flex" aria-label="Navigation principale">
+        <UPopover v-for="group in navigationGroups" :key="group.label">
+          <button type="button" class="nav-link gap-1" :class="{ 'text-primary-700 dark:text-primary-300': group.items.some(item => route.path === item.to) }">
+            {{ group.label }}<UIcon name="i-lucide-chevron-down" class="size-3.5" aria-hidden="true" />
           </button>
           <template #content>
-            <div
-              class="w-[240px] rounded-xl border border-[#E8E8F0] bg-white p-1.5 shadow-[0_8px_24px_-6px_rgb(15_23_42/0.12)] dark:border-gray-800 dark:bg-gray-900"
-            >
-              <NuxtLink
-                v-for="item in patientMenuItems"
-                :key="item.to"
-                :to="item.to"
-                class="block rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-                :class="[
-                  route.path === item.to
-                    ? 'bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400'
-                    : 'text-[#3D3D52] hover:bg-[#F7F7FB] hover:text-[#0A0A0F] dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white',
-                ]"
-              >
-                {{ item.label }}
-              </NuxtLink>
+            <div class="w-60 space-y-1 p-2">
+              <NuxtLink v-for="item in group.items" :key="item.to" :to="item.to" class="nav-link w-full" :aria-current="route.path === item.to ? 'page' : undefined">{{ item.label }}</NuxtLink>
             </div>
           </template>
         </UPopover>
-
-        <UPopover mode="hover" :open-delay="100" :close-delay="80">
-          <button
-            type="button"
-            class="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-[#3D3D52] transition-colors hover:bg-[#F7F7FB] hover:text-[#0A0A0F] dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
-            :class="{
-              'bg-primary-50 text-primary-600 dark:bg-primary-950/50 dark:text-primary-400':
-                route.path.startsWith('/pour-les-infirmiers'),
-            }"
-          >
-            Vous êtes infirmier
-            <UIcon name="i-lucide-chevron-down" class="h-4 w-4 shrink-0 text-[#9090A8]" />
-          </button>
-          <template #content>
-            <div
-              class="w-[200px] rounded-xl border border-[#E8E8F0] bg-white p-1.5 shadow-[0_8px_24px_-6px_rgb(15_23_42/0.12)] dark:border-gray-800 dark:bg-gray-900"
-            >
-              <NuxtLink
-                v-for="item in nurseMenuItems"
-                :key="item.to"
-                :to="item.to"
-                class="block rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-                :class="[
-                  route.path === item.to
-                    ? 'bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400'
-                    : 'text-[#3D3D52] hover:bg-[#F7F7FB] hover:text-[#0A0A0F] dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white',
-                ]"
-              >
-                {{ item.label }}
-              </NuxtLink>
-            </div>
-          </template>
-        </UPopover>
-
-        <UPopover mode="hover" :open-delay="100" :close-delay="80">
-          <button
-            type="button"
-            class="flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-[#3D3D52] transition-colors hover:bg-[#F7F7FB] hover:text-[#0A0A0F] dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
-            :class="{
-              'bg-primary-50 text-primary-600 dark:bg-primary-950/50 dark:text-primary-400':
-                route.path.startsWith('/pour-les-laboratoires'),
-            }"
-          >
-            Vous êtes un laboratoire
-            <UIcon name="i-lucide-chevron-down" class="h-4 w-4 shrink-0 text-[#9090A8]" />
-          </button>
-          <template #content>
-            <div
-              class="w-[200px] rounded-xl border border-[#E8E8F0] bg-white p-1.5 shadow-[0_8px_24px_-6px_rgb(15_23_42/0.12)] dark:border-gray-800 dark:bg-gray-900"
-            >
-              <NuxtLink
-                v-for="item in labMenuItems"
-                :key="item.to"
-                :to="item.to"
-                class="block rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-                :class="[
-                  route.path === item.to
-                    ? 'bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400'
-                    : 'text-[#3D3D52] hover:bg-[#F7F7FB] hover:text-[#0A0A0F] dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white',
-                ]"
-              >
-                {{ item.label }}
-              </NuxtLink>
-            </div>
-          </template>
-        </UPopover>
-
-        <NuxtLink
-          to="/pour-les-professionnels"
-          class="rounded-lg px-3 py-2 text-sm text-[#3D3D52] transition-colors hover:bg-[#F7F7FB] hover:text-[#0A0A0F] dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
-          :class="{
-            'bg-primary-50 text-primary-600 dark:bg-primary-950/50 dark:text-primary-400':
-              route.path === '/pour-les-professionnels',
-          }"
-        >
-          Vous êtes médecin
-        </NuxtLink>
-        <NuxtLink
-          to="/contact"
-          class="rounded-lg px-3 py-2 text-sm text-[#3D3D52] transition-colors hover:bg-[#F7F7FB] hover:text-[#0A0A0F] dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
-          :class="{
-            'bg-primary-50 text-primary-600 dark:bg-primary-950/50 dark:text-primary-400':
-              route.path === '/contact',
-          }"
-        >
-          Contact
-        </NuxtLink>
+        <NuxtLink to="/pour-les-professionnels" class="nav-link" :aria-current="route.path === '/pour-les-professionnels' ? 'page' : undefined">Médecins</NuxtLink>
+        <NuxtLink to="/contact" class="nav-link" :aria-current="route.path === '/contact' ? 'page' : undefined">Contact</NuxtLink>
       </nav>
 
       <div class="ml-auto flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
@@ -295,11 +186,12 @@
         </NuxtLink>
 
         <UButton
+          v-if="!isBooking"
           :to="appointmentNewUrl"
           color="primary"
           icon="i-lucide-calendar-plus"
           size="md"
-          class="whitespace-nowrap font-medium"
+          class="min-h-11 rounded-xl whitespace-nowrap font-semibold"
         >
           <span class="hidden sm:inline">Réserver</span>
           <span class="sm:hidden">Réserver</span>
@@ -308,81 +200,55 @@
         <button
           type="button"
           class="ml-1 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg text-[#3D3D52] hover:bg-[#F7F7FB] lg:hidden dark:text-gray-300 dark:hover:bg-gray-800"
-          aria-label="Menu"
+          ref="mobileTrigger"
+          aria-label="Ouvrir le menu"
+          aria-controls="public-mobile-navigation"
           :aria-expanded="mobileOpen"
-          @click="mobileOpen = !mobileOpen"
+          @click="mobileOpen = true"
         >
           <UIcon :name="mobileOpen ? 'i-lucide-x' : 'i-lucide-menu'" class="h-5 w-5" />
         </button>
       </div>
     </div>
 
+    <ClientOnly>
     <Teleport to="body">
-      <div v-if="mobileOpen" class="fixed inset-0 z-[199] lg:hidden">
-        <button
-          type="button"
-          class="absolute inset-0 bg-black/40"
-          aria-label="Fermer le menu"
-          @click="mobileOpen = false"
-        />
-        <div
-          class="absolute right-0 top-0 bottom-0 flex w-[min(100%,22rem)] flex-col overflow-hidden bg-white shadow-xl dark:bg-gray-900 pt-[calc(66px+env(safe-area-inset-top))]"
-        >
-          <div
-            v-if="isAuthenticated && user"
-            class="max-h-[min(40vh,280px)] shrink-0 overflow-y-auto border-b border-gray-200 px-4 py-5 dark:border-gray-800"
-          >
-            <div class="mb-4 flex items-center gap-3">
-              <img
-                v-if="user?.profile_image_url ?? user?.avatar"
-                :src="(user?.profile_image_url ?? user?.avatar) as string"
-                :alt="userDisplayName"
-                class="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-700"
-              />
-              <div
-                v-else
-                class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-600 font-normal text-white ring-2 ring-gray-100 dark:ring-gray-700"
-              >
-                {{ (user?.first_name?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase() }}
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-normal text-gray-900 dark:text-white">{{ userDisplayName }}</p>
-                <span
-                  class="inline-flex items-center rounded-md bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700"
-                >
-                  {{ roleLabel }}
-                </span>
-              </div>
-            </div>
-            <div class="space-y-1">
-              <template v-for="(item, idx) in userMenuItems" :key="idx">
-                <div v-if="item.type === 'divider'" class="my-2 border-t border-gray-200 dark:border-gray-700" />
-                <button
-                  v-else
-                  type="button"
-                  class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
-                  @click="handleMobileUserItem(item)"
-                >
-                  <UIcon v-if="item.icon" :name="item.icon" class="h-5 w-5 shrink-0" />
-                  <span>{{ item.label }}</span>
-                </button>
-              </template>
-            </div>
+      <dialog ref="mobileDialog" id="public-mobile-navigation" aria-labelledby="mobile-navigation-title"
+        class="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 text-gray-900 backdrop:bg-gray-950/35 dark:text-white"
+        @cancel="mobileOpen = false" @close="mobileOpen = false">
+        <button type="button" class="absolute inset-0 h-full w-full cursor-default" aria-label="Fermer le menu en arrière-plan" tabindex="-1" @click="mobileOpen = false" />
+        <div class="relative ml-auto flex h-full w-full max-w-sm flex-col bg-white shadow-xl dark:bg-gray-950">
+          <div class="flex shrink-0 items-center justify-between border-b border-gray-200 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-4 dark:border-gray-800">
+            <h2 id="mobile-navigation-title" class="text-lg font-semibold">Explorer Cary</h2>
+            <button autofocus type="button" aria-label="Fermer le menu" class="nav-link size-11 justify-center !p-0" @click="mobileOpen = false"><UIcon name="i-lucide-x" class="size-5" /></button>
           </div>
-
-          <LandingMaquetteMarketingMobileDrill
-            class="flex min-h-0 flex-1 flex-col"
-            :patient-links="patientMenuItems"
-            :nurse-links="nurseMenuItems"
-            :lab-links="labMenuItems"
-            :appointment-url="appointmentNewUrl"
-            :login-href="loginHref"
-            :show-login="!isAuthenticated"
-            @navigate="mobileOpen = false"
-          />
+          <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+            <section v-if="isAuthenticated && user" class="mb-4 border-b border-gray-200 pb-4 dark:border-gray-800" aria-label="Mon compte">
+              <p class="break-words text-sm font-semibold">{{ userDisplayName }}</p>
+              <p class="mb-2 text-xs text-gray-500">{{ roleLabel }}</p>
+              <template v-for="(item, index) in userMenuItems" :key="index">
+                <button v-if="item.type !== 'divider'" type="button" class="nav-link w-full gap-3" @click="handleMobileUserItem(item)"><UIcon v-if="item.icon" :name="item.icon" class="size-4" />{{ item.label }}</button>
+              </template>
+            </section>
+            <nav aria-label="Navigation mobile" class="space-y-1">
+              <details v-for="group in navigationGroups" :key="group.label" class="group border-b border-gray-100 dark:border-gray-800">
+                <summary class="flex min-h-14 cursor-pointer list-none items-center justify-between text-base font-semibold [&::-webkit-details-marker]:hidden">{{ group.label }}<UIcon name="i-lucide-plus" class="size-4 group-open:rotate-45" aria-hidden="true" /></summary>
+                <div class="space-y-1 pb-3">
+                  <NuxtLink v-for="item in group.items" :key="item.to" :to="item.to" class="nav-link w-full" :aria-current="route.path === item.to ? 'page' : undefined" @click="mobileOpen = false">{{ item.label }}</NuxtLink>
+                </div>
+              </details>
+              <NuxtLink to="/pour-les-professionnels" class="nav-link !min-h-14 w-full !px-0 !text-base !font-semibold" @click="mobileOpen = false">Médecins</NuxtLink>
+              <NuxtLink to="/contact" class="nav-link !min-h-14 w-full !px-0 !text-base !font-semibold" @click="mobileOpen = false">Contact</NuxtLink>
+            </nav>
+          </div>
+          <div class="shrink-0 space-y-2 border-t border-gray-200 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-gray-800">
+            <NuxtLink :to="appointmentNewUrl" class="flex min-h-12 items-center justify-center rounded-xl bg-primary-500 px-4 text-sm font-semibold text-primary-950 hover:bg-primary-600" @click="mobileOpen = false">Prendre rendez-vous</NuxtLink>
+            <NuxtLink v-if="!isAuthenticated" :to="loginHref" class="nav-link w-full justify-center" @click="mobileOpen = false">Se connecter</NuxtLink>
+          </div>
         </div>
-      </div>
+      </dialog>
     </Teleport>
+    </ClientOnly>
   </header>
 </template>
 
@@ -399,6 +265,14 @@ const notifications = useState<any[]>('notifications.list', () => []);
 
 const scrolled = ref(false);
 const mobileOpen = ref(false);
+const mobileDialog = ref<HTMLDialogElement | null>(null);
+const mobileTrigger = ref<HTMLButtonElement | null>(null);
+const isBooking = computed(() => route.path.startsWith('/rendez-vous'));
+let previousBodyOverflow = '';
+let desktopQuery: MediaQueryList | undefined;
+function closeMenuOnDesktop() {
+  if (desktopQuery?.matches) mobileOpen.value = false;
+}
 const userMenuOpen = ref(false);
 const userMenuRef = ref<HTMLElement | null>(null);
 const notificationsMenuOpen = ref(false);
@@ -424,6 +298,12 @@ const labMenuItems = [
   { label: 'Pourquoi Cary', to: '/pour-les-laboratoires' },
   { label: 'Tarifs', to: '/pour-les-laboratoires/tarifs' },
 ];
+
+const navigationGroups = computed(() => [
+  { label: 'Patients', items: patientMenuItems.value },
+  { label: 'Infirmiers', items: nurseMenuItems },
+  { label: 'Laboratoires', items: labMenuItems },
+]);
 
 function toggleNotificationsMenu() {
   if (!notificationsMenuOpen.value) {
@@ -512,9 +392,19 @@ watch(
   },
 );
 
-watch(mobileOpen, (open) => {
-  if (import.meta.client) {
-    document.body.style.overflow = open ? 'hidden' : '';
+watch(mobileOpen, async (open) => {
+  if (!import.meta.client) return;
+  await nextTick();
+  if (open) {
+    userMenuOpen.value = false;
+    notificationsMenuOpen.value = false;
+    previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    mobileDialog.value?.showModal();
+  } else {
+    mobileDialog.value?.close();
+    document.body.style.overflow = previousBodyOverflow;
+    mobileTrigger.value?.focus({ preventScroll: true });
   }
 });
 
@@ -522,13 +412,14 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
   window.removeEventListener('scroll', onScroll);
   if (import.meta.client) {
-    document.body.style.overflow = '';
+    if (mobileOpen.value) document.body.style.overflow = previousBodyOverflow;
+    desktopQuery?.removeEventListener('change', closeMenuOnDesktop);
   }
 });
 
 const unreadCount = computed(() => notifications.value.filter((n) => !n.read_at).length);
 
-const notificationItems = computed(() => {
+const notificationItems = computed<Array<{ label: string; description?: string; isRead?: boolean; disabled?: boolean; click?: () => void }>>(() => {
   if (!notifications.value.length) {
     return [{ label: 'Aucune notification', disabled: true }];
   }
@@ -600,6 +491,8 @@ const { start: startPolling } = usePolling(
 );
 
 onMounted(async () => {
+  desktopQuery = window.matchMedia('(min-width: 1024px)');
+  desktopQuery.addEventListener('change', closeMenuOnDesktop);
   document.addEventListener('click', handleClickOutside);
   onScroll();
   window.addEventListener('scroll', onScroll, { passive: true });
@@ -611,3 +504,20 @@ onMounted(async () => {
   }
 });
 </script>
+
+<style scoped>
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border-radius: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
+  transition: background-color 150ms;
+}
+.nav-link:hover { background: color-mix(in srgb, currentColor 5%, transparent); }
+.nav-link:focus-visible, summary:focus-visible { outline: 2px solid #159587; outline-offset: 2px; }
+.nav-link[aria-current='page'] { background: #e9faf7; color: #12675e; }
+</style>

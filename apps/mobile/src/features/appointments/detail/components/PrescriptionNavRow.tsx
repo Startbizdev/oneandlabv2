@@ -40,7 +40,7 @@ export function PrescriptionNavRow({ title, subtitle, onPress }: Props) {
 }
 
 function buildStyles(c: AppColors) {
-  return StyleSheet.create({
+  return {
     card: {
       backgroundColor: c.surface,
       borderRadius: radius.xl,
@@ -69,5 +69,5 @@ function buildStyles(c: AppColors) {
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },
-  });
+  } satisfies Parameters<typeof StyleSheet.create>[0];
 }

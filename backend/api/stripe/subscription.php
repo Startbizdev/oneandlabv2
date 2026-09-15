@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/RoleMiddleware.php';
+require_once __DIR__ . '/../../lib/SubscriptionManagement.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -43,9 +44,7 @@ $config = require __DIR__ . '/../../config/database.php';
 $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
 $pdo = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
 
-$stmt = $pdo->prepare('SELECT id, user_id, stripe_customer_id, stripe_subscription_id, price_id, plan_slug, status, trial_ends_at, current_period_end, created_at, updated_at FROM subscriptions WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1');
-$stmt->execute([$userId]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$row = SubscriptionManagement::find($pdo, $userId);
 
 if (!$row) {
     echo json_encode(['success' => true, 'data' => null]);
@@ -55,6 +54,7 @@ if (!$row) {
 $data = [
     'id' => $row['id'],
     'user_id' => $row['user_id'],
+    'billing_source' => $row['billing_source'] ?? 'stripe',
     'plan_slug' => $row['plan_slug'],
     'status' => $row['status'],
     'trial_ends_at' => $row['trial_ends_at'],

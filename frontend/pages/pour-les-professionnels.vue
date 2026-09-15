@@ -1,14 +1,14 @@
 <template>
   <div>
-    <LandingMaquetteHero
+    <LandingMaquetteHero audience="professionals"
       eyebrow="Pour les médecins et les soignants"
-      :title-lines="['Vos patients restent', 'chez eux. Vous']"
-      highlight="gardez le fil"
-      description="Après la consultation, ils réservent une prise de sang ou un soin à domicile. Vous voyez où ça en est, sans relancer le secrétariat."
+      :title-lines="['Vos patients à domicile,']"
+      highlight="le suivi avec vous"
+      description="Organisez leurs soins à domicile et suivez les rendez-vous des patients liés à votre compte."
       image-src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=900&h=1200&q=80&auto=format&fit=crop"
       image-alt="Médecin avec stéthoscope, en blouse blanche"
       image-object-class="object-[center_20%]"
-      :primary-cta="{ label: 'Créer mon compte professionnel', to: '/pro/register', icon: 'i-lucide-stethoscope' }"
+      :primary-cta="{ label: 'Créer mon compte', to: '/pro/register', icon: 'i-lucide-stethoscope' }"
       :secondary-cta="{ label: 'Voir le parcours patient', to: '/pour-les-patients' }"
       :stats="proStats"
       :quote="proQuote"

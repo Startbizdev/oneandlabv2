@@ -155,7 +155,7 @@
           color="neutral"
           variant="soft"
           icon="i-lucide-x"
-          @click="searchQuery = ''"
+          @click="($event) => { searchQuery = '' }"
         >
           Effacer la recherche
         </UButton>

@@ -8,7 +8,7 @@ import {
   validateProfessionalId,
   PROFESSIONAL_ID_LABEL,
 } from '@oneandlab/shared-types';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +18,8 @@ import { AddressAutocomplete } from '@/features/address/components/AddressAutoco
 import type { AddressPayload } from '@/features/appointments/form/types';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
+import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
+import { useProfileDraft } from '@/features/profile/hooks/useProfileDraft';
 import { fetchUser, updateUser } from '@/features/profile/api/profile.service';
 import { parseProfileAddress } from '@/features/profile/utils/parse-profile-address';
 import { queryKeys } from '@/lib/query-keys';
@@ -75,23 +77,18 @@ export function ProfileNurseCoordinatesScreen() {
   const [addressComplement, setAddressComplement] = useState('');
 
   const q = useQuery({
-    queryKey: queryKeys.profile.user(user?.id ?? ''),
+    queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
     queryFn: async () => (await fetchUser(user!.id, 'full')).data,
     enabled: !!user?.id,
   });
 
-  useEffect(() => {
-    const d = q.data;
-    if (!d) return;
-    setFirstName(d.first_name ?? '');
-    setLastName(d.last_name ?? '');
-    setPhone(d.phone ?? '');
-    setGender(d.gender ?? '');
-    setProfessionalId(getProfessionalIdDisplay(d.rpps, d.adeli));
-    const parsed = parseProfileAddress(d.address);
-    setAddress(parsed);
-    setAddressComplement(parsed?.complement ?? '');
-  }, [q.data]);
+  useProfileDraft(user?.id, q.data, { firstName, lastName, phone, gender, professionalId, address, addressComplement },
+    d => {
+      const parsed = parseProfileAddress(d.address);
+      return { firstName: d.first_name ?? '', lastName: d.last_name ?? '', phone: d.phone ?? '', gender: d.gender ?? '', professionalId: getProfessionalIdDisplay(d.rpps, d.adeli), address: parsed, addressComplement: parsed?.complement ?? '' };
+    },
+    d => { setFirstName(d.firstName); setLastName(d.lastName); setPhone(d.phone); setGender(d.gender); setProfessionalId(d.professionalId); setAddress(d.address); setAddressComplement(d.addressComplement); },
+  );
 
   const onAddressChange = useCallback((addr: AddressPayload | null) => {
     setAddress(addr);
@@ -146,6 +143,8 @@ export function ProfileNurseCoordinatesScreen() {
       handleApiError(e, toast, 'updateUser');
     },
   });
+
+  if (q.isLoading || q.isError || !q.data) return <ProfileLoadState loading={q.isLoading || !user?.id} refreshing={q.isFetching} onRetry={() => void q.refetch()} />;
 
   return (
     <ProfileSubScreenLayout

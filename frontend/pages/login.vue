@@ -280,7 +280,7 @@ const otpLoading = ref(false)
 const resending = ref(false)
 const userId = ref('')
 const sessionId = ref('')
-const otpDigits = ref<string[]>([])
+const otpDigits = ref<number[]>([])
 const countdown = ref(0)
 
 const otpString = computed(() => {
@@ -422,11 +422,14 @@ async function onCheckEmail() {
       body: { email: trimmed },
     })
 
+    if (!result.success || typeof result.exists !== 'boolean') {
+      throw new Error(result.error || 'Vérification indisponible. Réessayez dans un instant.');
+    }
     // OTP uniquement si le backend confirme explicitement que le compte existe
     if (result.success && result.exists === true) {
       await sendOTP()
     } else {
-      // Compte introuvable ou réponse ambiguë → proposer inscription (patient / labo / infirmier / pro)
+      // Proposer une inscription uniquement pour un compte explicitement introuvable.
       step.value = 'role-select'
     }
   } catch (err: any) {

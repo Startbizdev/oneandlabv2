@@ -4,7 +4,7 @@
       <AppPageHeader
         :edge-bleed="false"
         title="Mes patients"
-        description="Patients, documents et échanges — recherchez depuis la barre ci-dessous."
+        description="Retrouvez un patient, ses documents et vos échanges."
       >
         <template #actions>
           <UButton color="primary" icon="i-lucide-plus" to="/profile?newPatient=1">
@@ -21,18 +21,23 @@
         <UInput
           v-model="searchQuery"
           placeholder="Patient, document, échange…"
+          aria-label="Rechercher un patient, un document ou un échange"
           icon="i-lucide-search"
           size="md"
           class="w-full min-w-0"
-          :ui="{ rounded: 'rounded-lg' }"
+          :ui="{ base: 'rounded-lg' }"
           clearable
         />
       </div>
 
-      <div v-if="loading" class="flex flex-col items-center justify-center py-20">
+      <div v-if="loading" class="flex flex-col items-center justify-center py-20" role="status">
         <UIcon name="i-lucide-loader-2" class="mb-4 h-10 w-10 animate-spin text-primary-500" />
         <p class="text-[15px] font-medium text-gray-500 dark:text-gray-400">Chargement…</p>
       </div>
+
+      <UAlert v-else-if="error" color="error" variant="soft" :title="error" icon="i-lucide-wifi-off">
+        <template #actions><UButton variant="outline" color="neutral" @click="reload">Réessayer</UButton></template>
+      </UAlert>
 
       <UEmpty
         v-else-if="items.length === 0"
@@ -46,7 +51,8 @@
         class="py-12"
       >
         <template #actions>
-          <UButton to="/profile?newPatient=1" color="primary" icon="i-lucide-plus">
+          <UButton v-if="searchQuery.trim()" variant="outline" color="neutral" @click="($event) => { searchQuery = '' }">Effacer la recherche</UButton>
+          <UButton v-else to="/profile?newPatient=1" color="primary" icon="i-lucide-plus">
             Ajouter un patient
           </UButton>
         </template>
@@ -76,7 +82,7 @@ const props = defineProps<{
 
 useHead({ title: props.pageTitle });
 
-const { searchQuery, items, loading, reload } = useStaffPatientHubSearch();
+const { searchQuery, items, loading, error, reload } = useStaffPatientHubSearch();
 
 const listHeader = computed(() => staffHubListHeader(searchQuery.value, items.value.length));
 

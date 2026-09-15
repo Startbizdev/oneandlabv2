@@ -6,7 +6,7 @@
   >
     <UInput
       :model-value="modelValue"
-      @update:model-value="$emit('update:modelValue', $event)"
+      @update:model-value="$emit('update:modelValue', $event ?? '')"
       :type="type"
       :placeholder="placeholder"
       :disabled="disabled"

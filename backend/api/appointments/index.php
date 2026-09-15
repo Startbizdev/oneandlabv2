@@ -136,7 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $page = (int) ($_GET['page'] ?? 1);
     $limit = (int) ($_GET['limit'] ?? 20);
     // Pagination mobile : 20 par page ; plafond 50 pour éviter les abus.
-    $limit = min(max($limit, 1), 50);
+    $calendarView = ($_GET['view'] ?? '') === 'calendar';
+    $limit = min(max($limit, 1), $calendarView ? 250 : 50);
     $offset = ($page - 1) * $limit;
     $patientPeriod = isset($_GET['patient_period']) ? trim((string) $_GET['patient_period']) : null;
     if ($patientPeriod !== null && !in_array($patientPeriod, ['upcoming', 'past'], true)) {
@@ -826,6 +827,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ];
             }
         }
+        // Calendar needs dates, beneficiary, address and slot, not cards' reviews or merged care details.
+        if (!$calendarView) {
         // Batch lookup noms + photos (assignés + patient bénéficiaire pour cartes liste)
         $userIds = [];
         foreach ($decryptedAppointments as $apt) {
@@ -973,6 +976,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 }
             }
             unset($apt);
+        }
         }
     } else {
         foreach ($appointments as $appointment) {
@@ -1271,7 +1275,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $notifyCreatorRole = $createUserRole;
         }
 
-        $id = $appointmentModel->create($inputForCreate, $createUserId, $createUserRole);
+        $id = $appointmentModel->create($inputForCreate, $createUserId, $createUserRole, false, (string) $user['user_id'], AppointmentRequestFingerprint::forInput($input));
+        if ($appointmentModel->creationResponseAlreadyCompleted()) {
+            echo json_encode(['success' => true, 'data' => ['id' => $id]]);
+            exit;
+        }
         logAppointment('Rendez-vous créé avec succès', ['appointment_id' => $id]);
 
         require_once __DIR__ . '/../../lib/admin/AdminDispatchEventLogger.php';
@@ -1384,33 +1392,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 error_log('PatientProfessionalAccess (appointment_linked): ' . $e->getMessage());
             }
             
-            // Extraire les données à synchroniser depuis form_data ou directement depuis input
-            $formData = $input['form_data'] ?? [];
-            $profileUpdates = [];
-            
-            // Vérifier d'abord dans form_data, puis dans input directement
-            $checkBirthDate = $formData['birth_date'] ?? $input['birth_date'] ?? null;
-            $checkGender = $formData['gender'] ?? $input['gender'] ?? null;
-            $checkAddress = $formData['address'] ?? $input['address'] ?? null;
-            
-            // Synchroniser birth_date, gender, address si présents
-            if (!empty($checkBirthDate)) {
-                $profileUpdates['birth_date'] = $checkBirthDate;
-            }
-            
-            if (!empty($checkGender)) {
-                $profileUpdates['gender'] = $checkGender;
-            }
-            
-            if (!empty($checkAddress)) {
-                // S'assurer que le complément est bien inclus dans l'objet address
-                // Si address_complement existe séparément dans form_data, l'ajouter à l'objet address
-                $addressComplement = $formData['address_complement'] ?? $input['address_complement'] ?? null;
-                if (!empty($addressComplement) && empty($checkAddress['complement'])) {
-                    $checkAddress['complement'] = $addressComplement;
-                }
-                $profileUpdates['address'] = $checkAddress;
-            }
+            require_once __DIR__ . '/../../lib/AppointmentProfileUpdates.php';
+            $profileUpdates = AppointmentProfileUpdates::forAccountHolder($inputForCreate);
             
             // Mettre à jour le profil seulement si des données sont à synchroniser
             if (!empty($profileUpdates)) {
@@ -1430,6 +1413,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if ($successJson === false) {
             throw new Exception('Erreur encodage JSON (réponse création RDV)');
         }
+        $appointmentModel->markCreationResponseCompleted();
         header('Content-Length: ' . strlen($successJson));
         echo $successJson;
         if (ob_get_level()) {
@@ -1521,11 +1505,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'line' => $e->getLine(),
             'trace' => $e->getTraceAsString()
         ]);
-        http_response_code(400);
+        http_response_code($e instanceof AppointmentCreationConflict ? 409 : 400);
         echo json_encode([
             'success' => false,
             'error' => $e->getMessage(),
-            'code' => 'VALIDATION_ERROR',
+            'code' => $e instanceof AppointmentCreationConflict ? 'CREATION_REQUEST_CONFLICT' : 'VALIDATION_ERROR',
         ]);
     }
 } else {

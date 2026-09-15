@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/stripe.php';
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/RoleMiddleware.php';
+require_once __DIR__ . '/../../lib/SubscriptionManagement.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -59,9 +60,7 @@ $config = require __DIR__ . '/../../config/database.php';
 $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
 $pdo = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
 
-$stmt = $pdo->prepare('SELECT stripe_customer_id FROM subscriptions WHERE user_id = ? AND stripe_customer_id IS NOT NULL LIMIT 1');
-$stmt->execute([$userId]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$row = SubscriptionManagement::find($pdo, $userId, true);
 $stripeCustomerId = $row['stripe_customer_id'] ?? null;
 
 if (!$stripeCustomerId) {

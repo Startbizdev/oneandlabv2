@@ -11,14 +11,14 @@
           <UButton
             size="xs"
             :variant="useCode ? 'solid' : 'outline'"
-            @click="useCode = true"
+            @click="($event) => { useCode = true }"
           >
             J'ai reçu un code
           </UButton>
           <UButton
             size="xs"
             :variant="!useCode ? 'solid' : 'outline'"
-            @click="useCode = false"
+            @click="($event) => { useCode = false }"
           >
             Lien email
           </UButton>

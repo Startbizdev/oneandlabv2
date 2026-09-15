@@ -1,0 +1,106 @@
+{
+    "generated_at": "2026-09-15T13:56:27+00:00",
+    "mode": "read-only",
+    "month": "2026-09",
+    "checks": {
+        "professional_accounts": [
+            {
+                "role": "lab",
+                "total": 12
+            },
+            {
+                "role": "preleveur",
+                "total": 8
+            },
+            {
+                "role": "nurse",
+                "total": 329
+            },
+            {
+                "role": "pro",
+                "total": 46
+            }
+        ],
+        "subscription_sources": [
+            {
+                "plan_slug": "nurse_pro",
+                "status": "active",
+                "billing_source": "stripe",
+                "total": 3
+            },
+            {
+                "plan_slug": "nurse_pro",
+                "status": "active",
+                "billing_source": "apple",
+                "total": 1
+            },
+            {
+                "plan_slug": "nurse_pro",
+                "status": "canceled",
+                "billing_source": "stripe",
+                "total": 1
+            },
+            {
+                "plan_slug": "nurse_pro",
+                "status": "canceled",
+                "billing_source": "apple",
+                "total": 1
+            },
+            {
+                "plan_slug": "nurse_pro",
+                "status": "trialing",
+                "billing_source": "apple",
+                "total": 1
+            },
+            {
+                "plan_slug": "nurse_pro",
+                "status": "trialing",
+                "billing_source": "stripe",
+                "total": 1
+            }
+        ],
+        "store_sync_attention": [
+            {
+                "billing_source": "apple",
+                "total": 1
+            }
+        ],
+        "nurse_monthly_usage": [
+            {
+                "offer_group": "free_status",
+                "usage_band": "0",
+                "accounts": 286
+            },
+            {
+                "offer_group": "free_status",
+                "usage_band": "1-4",
+                "accounts": 36
+            },
+            {
+                "offer_group": "free_status",
+                "usage_band": "5-9",
+                "accounts": 1
+            },
+            {
+                "offer_group": "pro_status",
+                "usage_band": "0",
+                "accounts": 3
+            },
+            {
+                "offer_group": "pro_status",
+                "usage_band": "1-4",
+                "accounts": 2
+            },
+            {
+                "offer_group": "pro_status",
+                "usage_band": "10+",
+                "accounts": 1
+            }
+        ]
+    },
+    "limitations": [
+        "Subscription statuses are local records, not verified receipts.",
+        "Current month is incomplete.",
+        "No invoice amount or realized MRR is inferred from plan labels."
+    ]
+}

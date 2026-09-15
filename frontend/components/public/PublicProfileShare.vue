@@ -2,12 +2,12 @@
   <div class="relative">
     <UDropdownMenu
       :items="shareMenuItems"
-      :popper="{ placement: 'bottom-end' }"
-      :ui="{ width: 'w-56' }"
+      :content="{ align: 'end' }"
+      :ui="{ content: 'w-56' }"
     >
       <UButton
         :variant="compact ? 'soft' : 'outline'"
-        :color="compact ? 'white' : 'neutral'"
+        color="neutral"
         :size="compact ? 'md' : 'md'"
         :block="!compact"
         :class="[
@@ -27,7 +27,7 @@ const props = withDefaults(
   defineProps<{
     shareUrl: string
     profileName: string
-    profileType: 'nurse' | 'lab'
+    profileType: 'nurse' | 'lab' | 'pro'
     address?: string | null
     /** Style compact (icône seule) pour le header / bannière */
     compact?: boolean
@@ -36,7 +36,7 @@ const props = withDefaults(
 )
 
 const profileLabel = computed(() =>
-  props.profileType === 'nurse' ? 'Infirmier(e) à domicile' : 'Laboratoire — Prélèvement à domicile'
+  props.profileType === 'nurse' ? 'Infirmier(e) à domicile' : props.profileType === 'pro' ? 'Professionnel de santé' : 'Laboratoire — Prélèvement à domicile'
 )
 
 /** Message court pour SMS (infos utiles + lien unique) */
@@ -64,10 +64,13 @@ const emailBody = computed(() => {
 })
 
 const toast = useAppToast()
-const copyLink = () => {
-  if (typeof navigator !== 'undefined' && navigator.clipboard) {
-    navigator.clipboard.writeText(props.shareUrl)
+const copyLink = async () => {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) throw new Error('Presse-papiers indisponible')
+    await navigator.clipboard.writeText(props.shareUrl)
     toast.add({ title: 'Lien copié', color: 'green', timeout: 2000 })
+  } catch {
+    toast.add({ title: 'Copie impossible', description: 'Vous pouvez copier le lien dans la barre d’adresse.', color: 'error' })
   }
 }
 

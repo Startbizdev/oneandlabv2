@@ -4,12 +4,13 @@ import { apiFetch } from '~/utils/api';
 export async function fetchStaffPatientHubSearch(
   q: string,
   limit = 50,
+  signal?: AbortSignal,
 ): Promise<StaffHubSearchResponse> {
   const params = new URLSearchParams();
   if (q.trim()) params.set('q', q.trim());
   params.set('limit', String(limit));
   const qs = params.toString();
-  const res = (await apiFetch(`/search${qs ? `?${qs}` : ''}`, { method: 'GET' })) as {
+  const res = (await apiFetch(`/search${qs ? `?${qs}` : ''}`, { method: 'GET', signal })) as {
     success?: boolean;
     data?: StaffHubSearchResponse;
     error?: string;

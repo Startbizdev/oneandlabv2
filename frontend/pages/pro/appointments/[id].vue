@@ -62,7 +62,7 @@
             <UIcon
               v-for="i in 5"
               :key="i"
-              :name="i <= (patientReview.rating || 0) ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+              :name="i <= Number(patientReview.rating || 0) ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
               class="w-5 h-5 text-amber-400"
             />
           </div>
@@ -159,7 +159,7 @@ watch(
   async () => {
     await loadPatientReviewForRoute();
     const r = route.query.review;
-    const highlight = r === '1' || r === 1;
+    const highlight = r === '1';
     if (highlight && patientReview.value) {
       nextTick(() => {
         document.getElementById('pro-patient-review-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -187,7 +187,7 @@ function getDocumentTypeLabel(type: string) {
 async function downloadDocument(doc: { id: string; file_name: string }) {
   downloadingDocId.value = doc.id;
   try {
-    const apiBase = config.public?.apiBase || 'http://localhost:8888/api';
+    const apiBase = config.public?.apiBase || '/api';
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
     const res = await fetch(`${apiBase}/medical-documents/${doc.id}/download`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) {

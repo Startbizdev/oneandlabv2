@@ -149,7 +149,7 @@ const parseFaq = (raw: unknown): any[] => {
 const getApiUrl = (type: 'nurse' | 'lab', slug: string) => {
   const base = config.public.apiBase || '/api';
   const apiBase = (import.meta.server && !base.startsWith('http')) 
-    ? 'http://127.0.0.1:8888/api' 
+    ? String(config.apiInternalBase).replace(/\/$/, '')
     : base;
   
   const path = type === 'nurse' ? 'public/nurse' : 'public/lab';

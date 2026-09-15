@@ -21,16 +21,26 @@ type Pagination = { page?: number; limit?: number; pages?: number };
 export async function fetchAllPatients(queryExtra = ''): Promise<PatientRow[]> {
   const sep = queryExtra && !queryExtra.startsWith('&') ? `&${queryExtra}` : queryExtra;
   const all: PatientRow[] = [];
+  const seen = new Set<string>();
   let page = 1;
   const limit = 100;
 
   for (;;) {
     const res = await api.get<PatientRow[]>(`/patients?page=${page}&limit=${limit}${sep}`);
-    if (!res.success || !Array.isArray(res.data)) break;
-    all.push(...res.data);
+    if (!res.success || !Array.isArray(res.data)) throw new Error('Impossible de charger tous les patients. Réessayez.');
+    for (const patient of res.data) {
+      const id = String(patient?.id ?? '');
+      if (!id) throw new Error('Un dossier patient est incomplet. Réessayez.');
+      if (!seen.has(id)) {
+        seen.add(id);
+        all.push(patient);
+      }
+    }
     const pag = res.pagination as Pagination | undefined;
-    const totalPages = typeof pag?.pages === 'number' && pag.pages > 0 ? pag.pages : 1;
-    if (page >= totalPages || res.data.length < limit) break;
+    const totalPages = Number(pag?.pages ?? 1);
+    if (!Number.isInteger(totalPages) || totalPages < 1) throw new Error('Pagination des patients indisponible. Réessayez.');
+    if (page >= totalPages) break;
+    if (res.data.length === 0) throw new Error('La liste des patients est incomplète. Réessayez.');
     page += 1;
   }
   return all;

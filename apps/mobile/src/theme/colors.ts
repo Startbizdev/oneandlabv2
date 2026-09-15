@@ -1,4 +1,5 @@
 import { getColorblindSemantic } from './colorblind-palette';
+import { contrastForeground } from './color-utils';
 import {
   DEFAULT_COLORBLIND_TYPE,
   type ActiveColorblindType,
@@ -35,9 +36,9 @@ export const palette = {
     600: brand.gradientEnd,
   },
   canvas: {
-    base: '#F4FAFA',
-    light: '#F8FCFC',
-    muted: '#EEF6F5',
+    base: '#F6F8F8',
+    light: '#FAFBFB',
+    muted: '#F0F4F4',
   },
   warm: {
     50: '#F7F4EF',
@@ -140,9 +141,10 @@ function buildAppColorsSync(type: ColorblindType) {
     textSecondary: palette.slate[600],
     textTertiary: palette.slate[500],
     textInverse: palette.white,
-    textLink: cb?.textLink ?? brand.primary,
+    textLink: cb?.textLink ?? palette.brand[900],
 
     primary: cb?.primary ?? brand.primary,
+    onPrimary: contrastForeground(cb?.primary ?? brand.primary, palette.slate[900], palette.white),
     primaryLight: cb?.primaryLight ?? palette.brand[50],
     primaryMid: cb?.primaryMid ?? palette.brand[100],
     primaryDark: cb?.primaryDark ?? palette.brand[700],

@@ -13,7 +13,7 @@
                 <h1
                   :class="[
                     'text-lg font-semibold tracking-tight text-gray-900 dark:text-white sm:text-xl',
-                    wizardBookingHeaderIntro ? '' : 'hidden sm:block',
+                    'text-balance',
                   ]"
                 >
                   {{ wizardBookingPageHeading }}
@@ -82,7 +82,7 @@
                   ref="unifiedFormRef"
                   v-model="formData"
                   :selected-services="selectedServices"
-                  :categories="categories"
+                  :categories="categories.map(category => ({ ...category, options: category.options?.map(option => ({ ...option, field_type: option.field_type ?? 'text' })) }))"
                   :relative="relativeForForm"
                   :hide-personal-info="hidePersonalInfo"
                   :min-lead-time-hours="minLeadTimeHours ?? undefined"
@@ -536,9 +536,9 @@ const wizardBookingHeaderIntro = computed(() => {
 const wizardBookingPageTitle = computed(() => {
   const sec = effectiveBookingWizardSection.value;
   if (sec === 'personal') return 'Informations personnelles';
-  if (sec === 'documents') return 'Documents de votre rendez-vous';
-  if (sec === 'slot-datetime') return 'Date de votre rendez-vous';
-  return 'Date de votre rendez-vous';
+  if (sec === 'documents') return 'Vos documents';
+  if (sec === 'slot-datetime') return 'Date et disponibilités';
+  return 'Date et disponibilités';
 });
 
 /** Titre page : le détail des soins est dans la carte visuelle sous le H1. */

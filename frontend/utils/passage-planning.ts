@@ -1,3 +1,4 @@
+import { careDurationInDays } from '@oneandlab/shared-utils';
 import type {
   NursePassageNursingItem,
   PassageDailyTimeSlot,
@@ -42,15 +43,7 @@ export function defaultPlanningFormState(
 
 /** Nombre de jours calendaires d'un soin (1 = une seule fois). */
 export function careItemDurationDays(item: NursePassageNursingItem): number | null {
-  const raw = item.duration_days?.trim();
-  if (!raw || raw === '1' || raw === 'to_define') return raw === '1' ? 1 : null;
-  if (raw === 'custom') {
-    const n = item.custom_days ?? 0;
-    return n > 0 ? n : null;
-  }
-  if (raw === '60+') return 60;
-  const n = parseInt(raw, 10);
-  return Number.isFinite(n) && n > 0 ? n : null;
+  return careDurationInDays(item.duration_days, item.custom_days);
 }
 
 export function maxCareDurationDays(items: NursePassageNursingItem[]): number | null {

@@ -41,7 +41,7 @@ export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: 
   const [addressComplement, setAddressComplement] = useState('');
 
   const profileQ = useQuery({
-    queryKey: queryKeys.profile.user(patientId),
+    queryKey: queryKeys.profile.fullUser(patientId),
     queryFn: async () => (await fetchUser(patientId, 'full')).data,
     enabled: visible && Boolean(patientId),
   });

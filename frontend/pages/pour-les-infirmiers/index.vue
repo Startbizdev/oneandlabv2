@@ -1,10 +1,10 @@
 <template>
   <div>
-    <LandingMaquetteHero
+    <LandingMaquetteHero audience="nurses"
       eyebrow="Pour les infirmiers et infirmières libéraux"
-      :title-lines="['Remplissez vos tournées,', 'sans courir après']"
-      highlight="les appels"
-      description="Les demandes arrivent dans votre rayon. Vous acceptez ou vous refusez. Planning, adresses et documents au même endroit."
+      :title-lines="['Vos tournées,']"
+      highlight="bien organisées"
+      description="Recevez des demandes près de vous. Choisissez vos rendez-vous et retrouvez tout pour votre tournée."
       image-src="https://images.unsplash.com/photo-1631815589968-fdb09a223b1e?w=900&h=1200&q=80&auto=format&fit=crop"
       image-alt="Infirmière souriante en blouse"
       image-object-class="object-[center_20%]"

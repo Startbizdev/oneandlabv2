@@ -17,8 +17,11 @@ final class PatientBookingDraftExecutor
     /**
      * @return list<string> IDs RDV créés
      */
-    public static function run(PDO $db, array $draftRow): array
+    public static function run(PDO $db, array $draftRow, array &$afterCommit, BookingFileJournal $fileJournal): array
     {
+        if (!$db->inTransaction()) {
+            throw new LogicException('La finalisation doit conserver le verrou du brouillon jusqu’au commit.');
+        }
         $payloads = json_decode($draftRow['payload_json'], true);
         if (!is_array($payloads) || $payloads === []) {
             throw new RuntimeException('Payload brouillon invalide');
@@ -37,9 +40,9 @@ final class PatientBookingDraftExecutor
         $paymentRef = (string) ($draftRow['stripe_checkout_session_id'] ?? '');
         $storageDir = PatientBookingDraftStorage::draftDir((string) $draftRow['storage_subdir']);
 
-        $appointmentModel = new Appointment();
+        $appointmentModel = new Appointment($db);
         $crypto = new Crypto();
-        $logger = new Logger();
+        $logger = new Logger($db);
 
         $createdIds = [];
 
@@ -70,14 +73,13 @@ final class PatientBookingDraftExecutor
             $fd['patient_urgency'] = array_merge($existingUrgent, $urgentPaid);
             $sanitized['form_data'] = $fd;
 
-            $aptId = $appointmentModel->create($sanitized, $userId, 'patient');
+            $aptId = $appointmentModel->create($sanitized, $userId, 'patient', true);
             $createdIds[] = $aptId;
 
-            try {
+            $afterCommit[] = static function () use ($appointmentModel, $aptId, $sanitized, $db, $userId): void {
+                self::syncPatientProfileFromPayload($db, $userId, $sanitized);
                 $appointmentModel->runPostCreateNotifications($aptId, $sanitized, 'patient');
-            } catch (Throwable $e) {
-                error_log('PatientBookingDraftExecutor runPostCreateNotifications: ' . $e->getMessage());
-            }
+            };
 
             self::attachArtifactsForPayload(
                 $db,
@@ -88,14 +90,28 @@ final class PatientBookingDraftExecutor
                 $aptId,
                 $input,
                 $uploads,
-                $storageDir
+                $storageDir,
+                $fileJournal
             );
 
-            /** @disregard Sync patient profile fields (aligné POST /appointments) */
-            self::syncPatientProfileFromPayload($db, $userId, $sanitized);
         }
 
         return $createdIds;
+    }
+
+    /** Call only after the draft and all its appointments have committed. */
+    public static function afterCommit(PDO $db, array $callbacks): void
+    {
+        if ($db->inTransaction()) {
+            throw new LogicException('Notifications interdites avant le commit.');
+        }
+        foreach ($callbacks as $callback) {
+            try {
+                $callback();
+            } catch (Throwable $error) {
+                error_log('PatientBookingDraftExecutor post-commit: ' . $error->getMessage());
+            }
+        }
     }
 
     private static function sanitizeAppointmentInput(array $input): array
@@ -111,27 +127,8 @@ final class PatientBookingDraftExecutor
         if (!$patientId || (string) $patientId !== $actorPatientId) {
             return;
         }
-        $formData = $input['form_data'] ?? [];
-        if (!is_array($formData)) {
-            $formData = [];
-        }
-        $profileUpdates = [];
-        $checkBirthDate = $formData['birth_date'] ?? $input['birth_date'] ?? null;
-        $checkGender = $formData['gender'] ?? $input['gender'] ?? null;
-        $checkAddress = $formData['address'] ?? $input['address'] ?? null;
-        if (!empty($checkBirthDate)) {
-            $profileUpdates['birth_date'] = $checkBirthDate;
-        }
-        if (!empty($checkGender)) {
-            $profileUpdates['gender'] = $checkGender;
-        }
-        if (!empty($checkAddress)) {
-            $addressComplement = $formData['address_complement'] ?? $input['address_complement'] ?? null;
-            if (!empty($addressComplement) && empty($checkAddress['complement'])) {
-                $checkAddress['complement'] = $addressComplement;
-            }
-            $profileUpdates['address'] = $checkAddress;
-        }
+        require_once __DIR__ . '/AppointmentProfileUpdates.php';
+        $profileUpdates = AppointmentProfileUpdates::forAccountHolder($input);
         if ($profileUpdates === []) {
             return;
         }
@@ -156,7 +153,8 @@ final class PatientBookingDraftExecutor
         string $appointmentId,
         array $originalInput,
         array $uploads,
-        string $storageDir
+        string $storageDir,
+        BookingFileJournal $fileJournal
     ): void {
         $formData = $originalInput['form_data'] ?? [];
         if (!is_array($formData)) {
@@ -171,19 +169,16 @@ final class PatientBookingDraftExecutor
                 $isNew = array_key_exists('isNew', $fileData) ? (bool) $fileData['isNew'] : true;
                 $mid = $fileData['medical_document_id'] ?? null;
                 if (!$isNew && $mid) {
-                    try {
-                        $docType = (string) ($fileData['field'] ?? $fieldName);
-                        MedicalDocumentsInternal::copyDocumentToAppointmentAsPatient(
-                            $db,
-                            $logger,
-                            $patientUserId,
-                            (string) $mid,
-                            $appointmentId,
-                            $docType !== '' ? $docType : null
-                        );
-                    } catch (Throwable $e) {
-                        error_log('Draft copy doc ' . (string) $fieldName . ': ' . $e->getMessage());
-                    }
+                    $docType = (string) ($fileData['field'] ?? $fieldName);
+                    MedicalDocumentsInternal::copyDocumentToAppointmentAsPatient(
+                        $db,
+                        $logger,
+                        $patientUserId,
+                        (string) $mid,
+                        $appointmentId,
+                        $docType !== '' ? $docType : null,
+                        $fileJournal
+                    );
                 }
             }
         }
@@ -205,29 +200,25 @@ final class PatientBookingDraftExecutor
             $fieldKey = (string) ($u['field_key'] ?? '');
             $basename = (string) ($u['stored_basename'] ?? '');
             if ($fieldKey === '' || $basename === '') {
-                continue;
+                throw new RuntimeException('Pièce du brouillon invalide');
             }
             $local = $storageDir . '/' . basename($basename);
             if (!is_file($local)) {
-                error_log('Draft upload manquant: ' . $local);
-                continue;
+                throw new RuntimeException('Une pièce du brouillon est manquante');
             }
             $origName = (string) ($u['original_name'] ?? $basename);
             $docType = $fieldToDocType[$fieldKey] ?? 'other';
-            try {
-                MedicalDocumentsInternal::uploadFromPathToAppointment(
-                    $db,
-                    $crypto,
-                    $logger,
-                    $patientUserId,
-                    $appointmentId,
-                    $local,
-                    $origName,
-                    $docType
-                );
-            } catch (Throwable $e) {
-                error_log('Draft upload file ' . $fieldKey . ': ' . $e->getMessage());
-            }
+            MedicalDocumentsInternal::uploadFromPathToAppointment(
+                $db,
+                $crypto,
+                $logger,
+                $patientUserId,
+                $appointmentId,
+                $local,
+                $origName,
+                $docType,
+                $fileJournal
+            );
         }
     }
 }

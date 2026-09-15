@@ -25,7 +25,7 @@
         <UButton variant="ghost" size="xs" icon="i-lucide-upload" :on-click="triggerProfileInput">
           {{ profileImage ? 'Changer' : 'Ajouter' }}
         </UButton>
-        <UButton v-if="profileImage" variant="ghost" size="xs" color="red" icon="i-lucide-trash-2" :on-click="removeProfile" />
+        <UButton v-if="profileImage" variant="ghost" size="xs" color="error" icon="i-lucide-trash-2" :on-click="removeProfile" />
       </div>
     </div>
 
@@ -51,7 +51,7 @@
         <UButton variant="ghost" size="xs" icon="i-lucide-upload" :on-click="triggerCoverInput">
           {{ coverImage ? 'Changer' : 'Ajouter' }}
         </UButton>
-        <UButton v-if="coverImage" variant="ghost" size="xs" color="red" icon="i-lucide-trash-2" :on-click="removeCover" />
+        <UButton v-if="coverImage" variant="ghost" size="xs" color="error" icon="i-lucide-trash-2" :on-click="removeCover" />
       </div>
     </div>
 

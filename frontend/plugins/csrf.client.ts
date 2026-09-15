@@ -7,7 +7,7 @@ export default defineNuxtPlugin(async () => {
     try {
       // Utiliser directement fetch pour éviter les dépendances circulaires
       const config = useRuntimeConfig();
-      const apiBase = config.public.apiBase || 'http://localhost:8888/api';
+      const apiBase = config.public.apiBase || '/api';
       
       const response = await fetch(`${apiBase}/auth/csrf-token`, {
         method: 'GET',
@@ -31,4 +31,3 @@ export default defineNuxtPlugin(async () => {
     }
   }
 });
-

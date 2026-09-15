@@ -1,7 +1,7 @@
 <template>
   <NuxtLink
     :to="profileUrl"
-    class="group flex flex-col h-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden shadow-sm hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-800 transition-all duration-200 text-center"
+    class="group flex flex-col h-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden shadow-sm hover:shadow-md hover:border-primary-200 dark:hover:border-primary-800 transition-all duration-200 text-center"
   >
     <!-- Contenu centré en long (vertical) -->
     <div class="flex flex-col items-center flex-1 p-5 sm:p-6">
@@ -21,7 +21,7 @@
         </div>
       </div>
       <!-- Nom -->
-      <h2 class="mt-4 text-lg font-medium text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-1 w-full">
+      <h2 class="mt-4 text-lg font-medium text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors break-words w-full">
         {{ name }}
       </h2>
       <!-- Note + nombre d'avis (étoiles vides si aucun avis) -->
@@ -38,7 +38,7 @@
           />
         </div>
         <span class="text-gray-500 dark:text-gray-400">
-          {{ reviewsCount > 0 ? `${reviewsCount} avis` : 'Aucun avis' }}
+          {{ (reviewsCount ?? 0) > 0 ? `${reviewsCount} avis` : 'Aucun avis' }}
         </span>
       </div>
       <!-- Ville -->
@@ -78,10 +78,10 @@ const props = defineProps<{
 }>()
 
 const profileUrl = computed(() =>
-  props.type === 'nurse' ? `/infirmier/${props.slug}` : `/Laboratoire/${props.slug}`
+  props.type === 'nurse' ? `/infirmier/${encodeURIComponent(props.slug)}` : `/Laboratoire/${encodeURIComponent(props.slug)}`
 )
 
 const starCount = computed(() =>
-  props.reviewsCount && props.reviewsCount > 0 ? Math.round(Math.min(5, Math.max(0, props.averageRating ?? 0))) : 0
+  (props.reviewsCount ?? 0) > 0 ? Math.round(Math.min(5, Math.max(0, props.averageRating ?? 0))) : 0
 )
 </script>

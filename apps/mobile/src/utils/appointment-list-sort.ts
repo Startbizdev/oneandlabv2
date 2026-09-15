@@ -1,4 +1,4 @@
-import dayjs from 'dayjs';
+import { appointmentDayFrance, parseAppointmentDateFrance } from '@oneandlab/shared-utils';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import {
@@ -13,8 +13,8 @@ export function appointmentListPrimaryApt(row: AppointmentListRow): Appointment 
   if (row.kind === 'single') return row.appointment;
   const sorted = [...row.appointments].sort(
     (a, b) =>
-      new Date(a.scheduled_at || a.created_at || 0).getTime() -
-      new Date(b.scheduled_at || b.created_at || 0).getTime(),
+      parseAppointmentDateFrance(a.scheduled_at || a.created_at).getTime() -
+      parseAppointmentDateFrance(b.scheduled_at || b.created_at).getTime(),
   );
   return sorted[0]!;
 }
@@ -22,7 +22,7 @@ export function appointmentListPrimaryApt(row: AppointmentListRow): Appointment 
 /** RDV prévu le jour même (badge « Aujourd'hui »). */
 export function isAppointmentScheduledToday(apt: Appointment): boolean {
   if (!apt.scheduled_at) return false;
-  return dayjs(apt.scheduled_at).isSame(dayjs(), 'day');
+  return appointmentDayFrance(apt.scheduled_at) === appointmentDayFrance(new Date());
 }
 
 function compareBySchedule(
@@ -34,8 +34,8 @@ function compareBySchedule(
   const todayB = isAppointmentScheduledToday(b);
   if (todayA !== todayB) return todayA ? -1 : 1;
 
-  const da = dayjs(a.scheduled_at || a.created_at || 0).valueOf();
-  const db = dayjs(b.scheduled_at || b.created_at || 0).valueOf();
+  const da = parseAppointmentDateFrance(a.scheduled_at || a.created_at).getTime();
+  const db = parseAppointmentDateFrance(b.scheduled_at || b.created_at).getTime();
   if (da !== db) return direction === 'upcoming' ? da - db : db - da;
 
   return String(a.id).localeCompare(String(b.id));
@@ -122,8 +122,8 @@ function coalesceBatchSinglesFromList(
       kind: 'batch',
       appointments: [...group].sort(
         (x, y) =>
-          new Date(x.scheduled_at || x.created_at || 0).getTime() -
-          new Date(y.scheduled_at || y.created_at || 0).getTime(),
+          parseAppointmentDateFrance(x.scheduled_at || x.created_at).getTime() -
+          parseAppointmentDateFrance(y.scheduled_at || y.created_at).getTime(),
       ),
       key,
     });

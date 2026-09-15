@@ -33,8 +33,8 @@
         :key="i"
         :icon="action.icon"
         :label="action.label"
-        :variant="action.variant ?? 'outline'"
-        :color="action.color ?? 'primary'"
+        :variant="resolveUiButtonVariant(action.variant)"
+        :color="resolveUiColor(action.color, 'primary')"
         :to="action.to"
         :href="action.href"
         @click="action.onClick?.($event)"
@@ -44,6 +44,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveUiColor, resolveUiButtonVariant } from '~/utils/ui-appearance';
 export interface EmptyAction {
   label: string
   icon?: string

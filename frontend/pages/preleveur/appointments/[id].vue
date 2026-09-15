@@ -105,7 +105,7 @@ import { standardAppointmentSidebarCardVisible } from '~/utils/appointment-sideb
 const route = useRoute();
 const toast = useAppToast();
 const { user } = useAuth();
-const detailRef = ref<{ loadAppointment: () => Promise<void>; appointment: { value: any } } | null>(null);
+const detailRef = ref<{ loadAppointment: () => Promise<void>; loadDocuments?: () => Promise<void>; appointment: { value: any } } | null>(null);
 const standardSidebarActionsCardVisible = computed(() =>
   standardAppointmentSidebarCardVisible(getAppointmentFromDetailRef(detailRef)),
 );
@@ -193,7 +193,7 @@ async function downloadDocument(doc: any) {
   downloadingDocuments.value.add(doc.id);
   try {
     const config = useRuntimeConfig();
-    const apiBase = config.public.apiBase || 'http://localhost:8888/api';
+    const apiBase = config.public.apiBase || '/api';
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
     const response = await fetch(`${apiBase}/medical-documents/${doc.id}/download`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } });
     if (!response.ok) {

@@ -106,7 +106,7 @@ export function PrescriptionWorkspaceScreen({
   const user = useAuthStore((s) => s.user);
   const accessBlocked = !prescriptionGenerationEnabled(user);
   const profileQ = useQuery({
-    queryKey: queryKeys.profile.user(user?.id ?? ''),
+    queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
     queryFn: async () => (await fetchUser(user!.id, 'full')).data,
     enabled: !!user?.id,
   });

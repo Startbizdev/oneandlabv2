@@ -12,13 +12,13 @@ const emit = defineEmits<{
 }>()
 
 // Variables internes pour les selects
-const birthDay = ref<number | null>(null)
-const birthMonth = ref<number | null>(null)
-const birthYear = ref<number | null>(null)
+const birthDay = ref<number>()
+const birthMonth = ref<number>()
+const birthYear = ref<number>()
 
 // Options pour la date de naissance
 const currentYear = new Date().getFullYear()
-const dayOptions = Array.from({length: 31}, (_, i) => ({ label: i + 1, value: i + 1 }))
+const dayOptions = computed(() => Array.from({ length: birthYear.value && birthMonth.value ? new Date(birthYear.value, birthMonth.value, 0).getDate() : 31 }, (_, i) => ({ label: String(i + 1), value: i + 1 })))
 const monthOptions = [
   { label: 'Janvier', value: 1 },
   { label: 'Février', value: 2 },
@@ -45,6 +45,12 @@ onMounted(() => {
 
 // Parser la valeur initiale
 const parseModelValue = (value: string | null | undefined) => {
+  if (!value) {
+    birthYear.value = undefined
+    birthMonth.value = undefined
+    birthDay.value = undefined
+    return
+  }
   if (value) {
     const [year, month, day] = value.split('-')
     if (year && month && day) {
@@ -57,6 +63,7 @@ const parseModelValue = (value: string | null | undefined) => {
 
 // Mettre à jour modelValue quand les selects changent
 const updateModelValue = () => {
+  if (birthDay.value && birthDay.value > dayOptions.value.length) birthDay.value = undefined
   if (birthYear.value && birthMonth.value && birthDay.value) {
     const formattedDate = `${birthYear.value}-${String(birthMonth.value).padStart(2, '0')}-${String(birthDay.value).padStart(2, '0')}`
     emit('update:modelValue', formattedDate)
@@ -83,11 +90,12 @@ const getCurrentFormattedValue = () => {
 </script>
 
 <template>
-  <div class="flex space-x-2">
+  <div class="flex min-w-0 gap-2">
     <USelect 
       v-model="birthDay" 
       :items="dayOptions" 
       placeholder="Jour"
+      aria-label="Jour de naissance"
       size="xl" 
       class="flex-1" 
       :disabled="disabled"
@@ -97,6 +105,7 @@ const getCurrentFormattedValue = () => {
       v-model="birthMonth" 
       :items="monthOptions" 
       placeholder="Mois"
+      aria-label="Mois de naissance"
       size="xl" 
       class="flex-1" 
       :disabled="disabled"
@@ -106,6 +115,7 @@ const getCurrentFormattedValue = () => {
       v-model="birthYear" 
       :items="yearOptions" 
       placeholder="Année"
+      aria-label="Année de naissance"
       size="xl" 
       class="flex-1" 
       :disabled="disabled"

@@ -17,7 +17,7 @@
 
     <!-- Erreur -->
     <div v-else-if="error" class="mb-6">
-      <UAlert color="red" :title="error" />
+      <UAlert color="error" :title="error" />
     </div>
 
     <UCard v-else-if="!loading && !error" class="overflow-hidden mb-6">
@@ -103,7 +103,8 @@
         <!-- Genre -->
         <UFormField label="Genre" name="gender">
           <USelect
-            v-model="profileForm.gender"
+            :model-value="profileForm.gender ?? undefined"
+            @update:model-value="profileForm.gender = $event ?? null"
             :items="genderOptions"
             placeholder="Sélectionner votre genre (optionnel)"
             size="xl"
@@ -117,7 +118,7 @@
           label="Adresse"
           name="address"
           :show-complement="true"
-          :complement-value="profileForm.address_complement"
+          :complement-value="profileForm.address_complement ?? ''"
           @update:complement="profileForm.address_complement = $event"
         />
 
@@ -419,7 +420,7 @@ async function handleDocumentChange(documentType: string, file: File | null) {
 async function downloadDocument(documentId: string, fileName?: string) {
   downloadingDocumentId.value = documentId
   try {
-    const apiBase = useRuntimeConfig().public.apiBase || 'http://localhost:8888/api'
+    const apiBase = useRuntimeConfig().public.apiBase || '/api'
     const token = localStorage.getItem('auth_token')
     const url = `${apiBase}/medical-documents/${documentId}/download?t=${Date.now()}`
     const response = await fetch(url, {

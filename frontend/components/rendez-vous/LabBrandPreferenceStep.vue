@@ -3,16 +3,17 @@
     <div class="mx-auto w-full max-w-3xl px-4 pt-3 pb-5 sm:px-6 sm:pt-4 sm:pb-6">
       <header class="mb-6 text-left">
         <h1 class="text-lg font-semibold tracking-tight text-gray-900 dark:text-white sm:text-xl">
-          Votre laboratoire
+          Choix du laboratoire
         </h1>
         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          Indiquez comment vous souhaitez être pris en charge pour votre prélèvement.
+          Choisissez comment organiser le prélèvement à domicile.
         </p>
       </header>
 
       <div class="space-y-3">
         <button
           type="button"
+          :aria-pressed="mode === 'platform_match'"
           class="flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors"
           :class="
             mode === 'platform_match'
@@ -23,15 +24,16 @@
         >
           <UIcon name="i-lucide-handshake" class="mt-0.5 h-5 w-5 shrink-0 text-primary-500" />
           <div>
-            <p class="font-medium text-gray-900 dark:text-white">Cary me met en relation</p>
+            <p class="font-medium text-gray-900 dark:text-white">Trouver un laboratoire avec Cary</p>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Nous proposons votre demande aux laboratoires Cary disponibles près de chez vous.
+              La demande est proposée aux laboratoires Cary disponibles près du lieu de prélèvement.
             </p>
           </div>
         </button>
 
         <button
           type="button"
+          :aria-pressed="mode === 'brand_choice'"
           class="flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors"
           :class="
             mode === 'brand_choice'
@@ -42,7 +44,7 @@
         >
           <UIcon name="i-lucide-building-2" class="mt-0.5 h-5 w-5 shrink-0 text-primary-500" />
           <div>
-            <p class="font-medium text-gray-900 dark:text-white">Choisissez votre labo</p>
+            <p class="font-medium text-gray-900 dark:text-white">Choisir un réseau de laboratoires</p>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Sélectionnez un réseau (Biogroup, Cerballiance, etc.). Notre équipe vous contactera pour organiser le prélèvement.
             </p>
@@ -51,7 +53,7 @@
       </div>
 
       <div v-if="mode === 'brand_choice'" class="mt-6">
-        <p class="mb-3 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        <p class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
           Laboratoires disponibles
         </p>
 
@@ -66,13 +68,16 @@
           icon="i-lucide-alert-circle"
           :title="loadError"
           class="mb-4"
-        />
+        ><template #actions><UButton color="neutral" variant="outline" @click="loadBrands">Réessayer</UButton></template></UAlert>
+
+        <p v-else-if="!brands.length" class="rounded-xl border border-gray-200 p-4 text-sm text-gray-600 dark:border-gray-800 dark:text-gray-300">Aucun réseau n’est disponible pour le moment. Vous pouvez demander une mise en relation avec Cary.</p>
 
         <div v-else class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
           <button
             v-for="brand in brands"
             :key="brand.id"
             type="button"
+            :aria-pressed="selectedBrandId === brand.id"
             class="flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition-colors"
             :class="
               selectedBrandId === brand.id
@@ -157,7 +162,7 @@ const brands = ref<LabBrandPublic[]>([]);
 const loading = ref(true);
 const loadError = ref('');
 
-onMounted(async () => {
+async function loadBrands() {
   loading.value = true;
   loadError.value = '';
   try {
@@ -176,7 +181,8 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
-});
+}
+onMounted(loadBrands);
 
 function onContinue() {
   const err = validateLabPreferenceBeforeSubmit(

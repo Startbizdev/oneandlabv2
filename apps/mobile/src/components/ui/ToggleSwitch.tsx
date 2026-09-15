@@ -15,6 +15,7 @@ type Props = {
   value: boolean;
   onValueChange: (value: boolean) => void;
   disabled?: boolean;
+  accessibilityLabel?: string;
 };
 
 const TRACK_W = 46;
@@ -24,7 +25,7 @@ const PAD = 3;
 const TRAVEL = TRACK_W - THUMB - PAD * 2;
 
 /** Toggle custom taille fixe — ne casse pas le flex row (contrairement au Switch natif iOS). */
-export function ToggleSwitch({ value, onValueChange, disabled }: Props) {
+export function ToggleSwitch({ value, onValueChange, disabled, accessibilityLabel }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'components_ui_ToggleSwitch_tsx_ToggleSwitch_styles');
 
@@ -55,6 +56,7 @@ export function ToggleSwitch({ value, onValueChange, disabled }: Props) {
       disabled={disabled}
       hitSlop={6}
       accessibilityRole="switch"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ checked: value, disabled: !!disabled }}
       style={[styles.root, disabled && styles.disabled]}
     >
@@ -69,7 +71,8 @@ function buildStyles(c: AppColors) {
   return {
   root: {
     width: TRACK_W,
-    height: TRACK_H,
+    height: 44,
+    justifyContent: 'center' as const,
     flexShrink: 0,
   },
   disabled: {

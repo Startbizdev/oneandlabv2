@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
@@ -17,6 +17,8 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
+import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
+import { useProfileDraft } from '@/features/profile/hooks/useProfileDraft';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
 import { ProfileSecurityLinkRow } from '@/features/profile/components/ProfileSecurityLinkRow';
@@ -52,14 +54,10 @@ export function ProfilePreleveurView() {
     enabled: !!user?.id,
   });
 
-  useEffect(() => {
-    const d = q.data;
-    if (!d) return;
-    setFirstName(d.first_name ?? '');
-    setLastName(d.last_name ?? '');
-    setPhone(d.phone ?? '');
-    setProfileUrl(d.profile_image_url ?? null);
-  }, [q.data]);
+  useProfileDraft(user?.id, q.data, { firstName, lastName, phone, profileUrl },
+    d => ({ firstName: d.first_name ?? '', lastName: d.last_name ?? '', phone: d.phone ?? '', profileUrl: d.profile_image_url ?? null }),
+    d => { setFirstName(d.firstName); setLastName(d.lastName); setPhone(d.phone); setProfileUrl(d.profileUrl); },
+  );
 
   const savePhotos = useMutation({
     mutationFn: (url: string | null) => updateProfileImages(user!.id, { profile_image_url: url }),
@@ -95,9 +93,10 @@ export function ProfilePreleveurView() {
     onError: (e) => handleApiError(e, toast, 'updateUser'),
   });
 
-  if (q.isLoading) {
+  if (q.isLoading || !user?.id) {
     return <SkeletonProfileScreen cards={2} />;
   }
+  if (q.isError || !q.data) return <ProfileLoadState refreshing={q.isFetching} onRetry={() => void q.refetch()} />;
 
   return (
     <StackChromeScreen>

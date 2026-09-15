@@ -6,7 +6,7 @@
   >
     <div class="flex min-h-0 min-w-0 flex-1 flex-col px-4 py-2.5 sm:px-5 sm:py-3">
       <!-- Nom + statut -->
-      <div class="mb-2 flex items-start justify-between gap-2 pr-1">
+      <div class="mb-2 flex flex-wrap items-start justify-between gap-2 pr-1">
         <div class="flex min-w-0 items-center gap-2.5">
           <div
             class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-gray-200/80 bg-white dark:border-gray-700 dark:bg-gray-950"
@@ -25,10 +25,10 @@
             />
           </div>
           <div class="min-w-0">
-            <h3 class="truncate text-sm font-semibold leading-snug text-gray-900 dark:text-white">
+            <h3 class="break-words text-sm font-semibold leading-snug text-gray-900 dark:text-white">
               {{ displayPatientName(appointment) }}
             </h3>
-            <p v-if="displayPhone(appointment)" class="mt-0.5 flex items-center gap-1 truncate text-[11px] text-gray-500 dark:text-gray-400">
+            <p v-if="displayPhone(appointment)" class="mt-0.5 flex items-center gap-1 truncate text-xs text-gray-500 dark:text-gray-400">
               <UIcon name="i-lucide-phone" class="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />
               {{ displayPhone(appointment) }}
             </p>
@@ -40,7 +40,7 @@
             :color="getStatusColor(appointment.status)"
             variant="subtle"
             size="sm"
-            class="shrink-0 px-2 py-0.5 text-[11px] font-semibold leading-tight tracking-tight"
+            class="shrink-0 px-2 py-0.5 text-xs font-semibold leading-tight tracking-tight"
             :label="getStatusLabel(appointment.status)"
           />
         </div>
@@ -51,7 +51,7 @@
         <p class="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] leading-snug text-gray-900 dark:text-gray-100">
           <span class="inline-flex shrink-0 items-center gap-1 font-semibold tabular-nums leading-none">
             <UIcon
-              name="i-solar:calendar-linear"
+              name="i-lucide-calendar"
               class="h-[15px] w-[15px] shrink-0 text-gray-500 dark:text-gray-400"
               aria-hidden="true"
             />
@@ -62,7 +62,7 @@
             v-if="getCreneauHoraireLabel(appointment)"
             class="inline-flex min-w-0 items-center gap-1 font-medium tabular-nums leading-none text-gray-600 dark:text-gray-400"
           >
-            <UIcon name="i-solar:clock-circle-linear" class="h-[15px] w-[15px] shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            <UIcon name="i-lucide-clock" class="h-[15px] w-[15px] shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
             <span class="min-w-0">{{ getCreneauHoraireLabel(appointment) }}</span>
           </span>
         </p>
@@ -96,6 +96,7 @@
           <span class="leading-snug text-gray-700 dark:text-gray-300">{{ getBloodTestTypeLabel(appointment.form_data) }}</span>
         </div>
       </div>
+      <slot name="details" :appointment="appointment" />
     </div>
 
     <!-- Action -->
@@ -104,21 +105,21 @@
         <UButton
           v-if="onAction"
           color="primary"
-          size="xs"
+          size="md"
           icon="i-lucide-eye"
           @click.stop="onAction(appointment)"
         >
-          Voir détails
+          Ouvrir la demande
         </UButton>
         <UButton
           v-else
           variant="outline"
-          size="xs"
+          size="md"
           icon="i-lucide-chevron-right"
           :to="`${basePath}/appointments/${appointment.id}`"
           trailing
         >
-          Voir
+          Voir le rendez-vous
         </UButton>
       </slot>
     </div>
@@ -181,6 +182,7 @@ const headerCareBadge = computed(() => {
   return {
     iconName: resolveCareIconFromCategory({ type: t, icon: props.appointment?.category_icon ?? null }),
     iconColor: '',
+    emoji: undefined,
     tileBg: '',
     imageSrc: resolveCareCategoryImageSrc(props.appointment?.category_image_url ?? null, config.public.apiBase),
   };

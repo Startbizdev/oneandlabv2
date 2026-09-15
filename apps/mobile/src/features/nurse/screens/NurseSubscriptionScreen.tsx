@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { NURSE_PLAN_LIST, NURSE_PLANS } from '@oneandlab/shared-constants';
 import { useMemo } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SubscriptionPlanCard } from '@/features/nurse/components/SubscriptionPlanCard';
 import { useNurseIap } from '@/features/nurse/hooks/use-nurse-iap';
@@ -26,9 +26,12 @@ function billingSourceLabel(source: string | null | undefined): string | null {
   return null;
 }
 
-function openManageSubscriptions() {
-  const url = Platform.OS === 'ios' ? IOS_SUBSCRIPTIONS_URL : ANDROID_SUBSCRIPTIONS_URL;
-  void Linking.openURL(url);
+function openManageSubscriptions(source?: string | null) {
+  const url = source === 'stripe' ? 'https://cary.bio/nurse/abonnement'
+    : source === 'apple' ? IOS_SUBSCRIPTIONS_URL
+    : source === 'google' ? ANDROID_SUBSCRIPTIONS_URL
+    : Platform.OS === 'ios' ? IOS_SUBSCRIPTIONS_URL : ANDROID_SUBSCRIPTIONS_URL;
+  void Linking.openURL(url).catch(() => Alert.alert('Lien indisponible', 'Impossible d’ouvrir la gestion de votre abonnement. Réessayez dans un instant.'));
 }
 
 export function NurseSubscriptionScreen() {
@@ -44,6 +47,7 @@ export function NurseSubscriptionScreen() {
   const {
     subscription,
     subscriptionLoading,
+    subscriptionError,
     refetchSubscription,
     localizedProPrice,
     purchasePro,
@@ -74,13 +78,13 @@ export function NurseSubscriptionScreen() {
         if (isProPlan) {
           if (isCurrent) {
             ctaLabel = 'Gérer mon abonnement';
-            onCtaPress = openManageSubscriptions;
+            onCtaPress = () => openManageSubscriptions(subscription?.billing_source);
           } else if (canPurchaseStore) {
             const storePending = connected && storeLoading;
             ctaLabel = !connected || storePending ? 'Chargement boutique…' : 'Passer en Pro';
             onCtaPress = purchasePro;
             ctaLoading = purchaseLoading || storeLoading;
-            disabled = !connected || storePending;
+            disabled = !connected || storePending || subscriptionLoading || subscriptionError || !subscription;
           } else {
             ctaLabel = 'Géré sur cary.bio';
             disabled = true;
@@ -113,6 +117,9 @@ export function NurseSubscriptionScreen() {
       purchaseLoading,
       purchasePro,
       storeLoading,
+      subscription,
+      subscriptionLoading,
+      subscriptionError,
     ],
   );
 
@@ -134,7 +141,13 @@ export function NurseSubscriptionScreen() {
         {Platform.OS === 'ios' ? 'l’App Store' : 'Google Play'}.
       </AppText>
 
-      {subscriptionLoading && !subscription ? (
+      {subscriptionError ? (
+        <View style={[styles.statusCard, { backgroundColor: c.surface, borderColor: c.borderLight }]}>
+          <AppText accessibilityRole="alert" style={[styles.statusTitle, { color: c.textPrimary }]}>Abonnement indisponible</AppText>
+          <AppText style={[styles.statusMeta, { color: c.textSecondary }]}>Impossible de vérifier votre offre. Réessayez pour retrouver votre abonnement.</AppText>
+          <Button title="Réessayer" variant="outline" loading={subscriptionLoading} onPress={() => void refetchSubscription()} fullWidth />
+        </View>
+      ) : subscriptionLoading && !subscription ? (
         <ActivityIndicator style={styles.loader} color={c.primary} />
       ) : (
         <View style={styles.cards}>{cards}</View>
@@ -148,7 +161,7 @@ export function NurseSubscriptionScreen() {
           </AppText>
           {subscription?.current_period_end ? (
             <AppText style={[styles.statusMeta, { color: c.textSecondary }]}>
-              Renouvellement :{' '}
+              Fin de la période en cours :{' '}
               {new Date(subscription.current_period_end).toLocaleDateString('fr-FR')}
             </AppText>
           ) : null}
@@ -158,22 +171,14 @@ export function NurseSubscriptionScreen() {
               title="Gérer dans les réglages"
               variant="outline"
               size="sm"
-              onPress={openManageSubscriptions}
+              onPress={() => openManageSubscriptions(subscription?.billing_source)}
               fullWidth
             />
           )}
         </View>
       ) : null}
 
-      <Pressable onPress={() => void restore()} disabled={restoreLoading} style={styles.restore}>
-        {restoreLoading ? (
-          <ActivityIndicator color={c.primary} />
-        ) : (
-          <AppText style={[styles.restoreText, { color: c.primary }]}>
-            Restaurer mes achats
-          </AppText>
-        )}
-      </Pressable>
+      <Button title="Restaurer mes achats" variant="outline" onPress={() => void restore()} loading={restoreLoading} fullWidth />
 
       <AppText style={[styles.legal, { color: c.textTertiary }]}>
         Le paiement est débité sur votre compte {Platform.OS === 'ios' ? 'Apple' : 'Google'}.

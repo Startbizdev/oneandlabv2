@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../config/stripe.php';
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/RoleMiddleware.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../../lib/SubscriptionCheckoutPolicy.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -60,19 +61,14 @@ if (empty($stripeConfig['secret_key'])) {
     exit;
 }
 
-if ($priceId === '' && $planSlug !== '') {
-    $allowed = $role === 'nurse' ? ['nurse_pro'] : ['lab_starter', 'lab_pro'];
-    if (!in_array($planSlug, $allowed, true)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Plan non autorisé pour ce rôle']);
-        exit;
-    }
-    $priceId = $stripeConfig['prices'][$planSlug] ?? '';
-    if ($priceId === '') {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Price ID non configuré pour ce plan']);
-        exit;
-    }
+try {
+    $plan = SubscriptionCheckoutPolicy::plan($role, $planSlug, $priceId, $stripeConfig['prices'] ?? []);
+    $planSlug = $plan['slug'];
+    $priceId = $plan['price_id'];
+} catch (InvalidArgumentException $error) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => $error->getMessage()]);
+    exit;
 }
 
 if ($successUrl === '' || $cancelUrl === '') {
@@ -88,10 +84,18 @@ $config = require __DIR__ . '/../../config/database.php';
 $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
 $pdo = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
 
+$historyStmt = $pdo->prepare('SELECT status, trial_ends_at FROM subscriptions WHERE user_id = ?');
+$historyStmt->execute([$userId]);
+$history = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
+if (SubscriptionCheckoutPolicy::hasCurrentSubscription($history)) {
+    http_response_code(409);
+    echo json_encode(['success' => false, 'code' => 'subscription_exists', 'error' => 'Vous avez déjà un abonnement. Gérez votre offre depuis la rubrique Mon abonnement.']);
+    exit;
+}
+
 $stripeCustomerId = null;
-$stmt = $pdo->prepare('SELECT stripe_customer_id FROM subscriptions WHERE user_id = ? AND stripe_customer_id IS NOT NULL LIMIT 1');
-$stmt->execute([$userId]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+require_once __DIR__ . '/../../lib/SubscriptionManagement.php';
+$row = SubscriptionManagement::find($pdo, $userId, true);
 if ($row && !empty($row['stripe_customer_id'])) {
     $stripeCustomerId = $row['stripe_customer_id'];
 }
@@ -110,7 +114,6 @@ $sessionParams = [
         ],
     ],
     'subscription_data' => [
-        'trial_period_days' => 30,
         'metadata' => [
             'user_id' => $userId,
             'plan_slug' => $planSlug ?: 'unknown',
@@ -125,6 +128,11 @@ $sessionParams = [
     ],
 ];
 
+$trialDays = SubscriptionCheckoutPolicy::trialDays($history);
+if ($trialDays > 0) {
+    $sessionParams['subscription_data']['trial_period_days'] = $trialDays;
+}
+
 if ($stripeCustomerId) {
     $sessionParams['customer'] = $stripeCustomerId;
 } elseif ($customerEmail) {
@@ -132,7 +140,9 @@ if ($stripeCustomerId) {
 }
 
 try {
-    $session = \Stripe\Checkout\Session::create($sessionParams);
+    // Repeated clicks/retries reuse the same Checkout session during the day.
+    $idempotencyKey = 'cary-checkout-' . hash('sha256', $userId . gmdate('Y-m-d') . json_encode($sessionParams));
+    $session = \Stripe\Checkout\Session::create($sessionParams, ['idempotency_key' => $idempotencyKey]);
     echo json_encode(['success' => true, 'url' => $session->url]);
 } catch (\Stripe\Exception\ApiErrorException $e) {
     http_response_code(400);

@@ -3,10 +3,13 @@
  */
 
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/fr';
 import {
   formatPassageTimeSlotFromFormData,
   isNursePassageFormData,
+  parseAppointmentDateFrance,
 } from '@oneandlab/shared-utils';
 import {
   formatPatientUrgentCreneauShortFr,
@@ -14,6 +17,13 @@ import {
 } from './patient-urgency-display';
 
 dayjs.locale('fr');
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+function appointmentCalendarDate(scheduledAt: string, pattern: string): string {
+  const date = parseAppointmentDateFrance(scheduledAt);
+  return Number.isNaN(date.getTime()) ? '' : dayjs(date).tz('Europe/Paris').format(pattern);
+}
 
 /** « vendredi » → « Vendredi » */
 export function capitalizeFrench(s: string): string {
@@ -27,18 +37,33 @@ export function formatFrenchWeekdayDate(
   pattern = 'dddd D MMMM YYYY',
 ): string {
   if (!scheduledAt) return '';
-  return capitalizeFrench(dayjs(scheduledAt).format(pattern));
+  return capitalizeFrench(appointmentCalendarDate(scheduledAt, pattern));
 }
 
 const MIN_SLOT_SPAN_HOURS = 1;
 const PARIS_TZ = 'Europe/Paris';
 
+function clockMinutes(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const minutes = Math.round(value * 60);
+    return minutes >= 0 && minutes <= 1440 ? minutes : null;
+  }
+  if (typeof value !== 'string') return null;
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (match) {
+    const hour = Number(match[1]), minute = Number(match[2]);
+    return minute < 60 && (hour < 24 || (hour === 24 && minute === 0)) ? hour * 60 + minute : null;
+  }
+  return value.trim() && Number.isFinite(Number(value)) ? clockMinutes(Number(value)) : null;
+}
+
 function rangeToHourSpanLabel(range: unknown[]): string {
-  const start = Math.floor(Number(range[0]));
-  const end = Math.floor(Number(range[1]));
-  if (Number.isNaN(start) || Number.isNaN(end)) return '';
-  if (end - start < MIN_SLOT_SPAN_HOURS) return '';
-  return `${start}h à ${end}h`;
+  const start = clockMinutes(range[0]);
+  const end = clockMinutes(range[1]);
+  if (start == null || end == null || end - start < MIN_SLOT_SPAN_HOURS * 60) return '';
+  if (start % 60 === 0 && end % 60 === 0) return `${start / 60}h à ${end / 60}h`;
+  const clock = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+  return `créneau ${clock(start)} - ${clock(end)}`;
 }
 
 function specificSlotFreeformLabel(avail: Record<string, unknown>): string {
@@ -138,6 +163,10 @@ export function formatAvailabilitySlotFr(availability: unknown): string {
       if (label) return label;
     }
 
+    if (typ === 'custom' || typ === 'specificslot' || typ === 'specific_slot' || typ === '') {
+      const explicit = rangeToHourSpanLabel([avail.start ?? avail.start_time, avail.end ?? avail.end_time]);
+      if (explicit) return explicit;
+    }
     if (typ === 'specificslot' || typ === 'specific_slot') {
       return specificSlotFreeformLabel(avail);
     }
@@ -149,7 +178,7 @@ export function formatAvailabilitySlotFr(availability: unknown): string {
 
 function formatScheduledDateOnlyParis(scheduledAt: string): string {
   try {
-    const d = new Date(scheduledAt);
+    const d = parseAppointmentDateFrance(scheduledAt);
     if (Number.isNaN(d.getTime())) return '';
     return d.toLocaleDateString('fr-FR', {
       timeZone: PARIS_TZ,
@@ -191,7 +220,7 @@ export function formatScheduledDateWithAvailabilityLineFr(
   }
 
   try {
-    const d = new Date(scheduledAt);
+    const d = parseAppointmentDateFrance(scheduledAt);
     if (!Number.isNaN(d.getTime())) {
       const timePart = d.toLocaleTimeString('fr-FR', {
         timeZone: PARIS_TZ,
@@ -234,7 +263,7 @@ export function formatAvailabilityDisplayFr(
   }
   if (scheduledAt) {
     try {
-      const d = new Date(scheduledAt);
+      const d = parseAppointmentDateFrance(scheduledAt);
       if (!Number.isNaN(d.getTime())) {
         return d.toLocaleTimeString('fr-FR', {
           timeZone: PARIS_TZ,
@@ -254,7 +283,8 @@ export function formatAppointmentDateTime(
   availability?: unknown,
 ): string {
   if (!scheduledAt) return '—';
-  const datePart = dayjs(scheduledAt).format('dddd D MMMM YYYY');
+  const datePart = appointmentCalendarDate(scheduledAt, 'dddd D MMMM YYYY');
+  if (!datePart) return '—';
   const slot = formatAvailabilityDisplayFr(availability, scheduledAt);
   return slot ? `${datePart} · ${slot}` : datePart;
 }
@@ -264,7 +294,8 @@ export function formatAppointmentDateShort(
   availability?: unknown,
 ): string {
   if (!scheduledAt) return '—';
-  const datePart = dayjs(scheduledAt).format('ddd D MMM');
+  const datePart = appointmentCalendarDate(scheduledAt, 'ddd D MMM');
+  if (!datePart) return '—';
   const slot = formatAvailabilityDisplayFr(availability, scheduledAt);
   return slot ? `${datePart} · ${slot}` : datePart;
 }

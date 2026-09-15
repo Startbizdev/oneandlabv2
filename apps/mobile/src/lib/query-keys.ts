@@ -6,6 +6,7 @@ export const queryKeys = {
   },
   appointments: {
     all: ['appointments'] as const,
+    calendar: (filters: AppointmentListFilters) => ['appointments', 'calendar', filters] as const,
     list: (filters: AppointmentListFilters) => ['appointments', 'list', filters] as const,
     infinite: (filters: AppointmentListFilters) => ['appointments', 'infinite', filters] as const,
     detail: (id: string) => ['appointments', 'detail', id] as const,
@@ -39,6 +40,7 @@ export const queryKeys = {
   },
   profile: {
     user: (id: string) => ['profile', 'user', id] as const,
+    fullUser: (id: string) => ['profile', 'user', id, 'full'] as const,
     coverageZones: (ownerId: string, role: string) =>
       ['profile', 'coverage-zones', ownerId, role] as const,
     nursePreferences: ['profile', 'nurse-category-preferences'] as const,

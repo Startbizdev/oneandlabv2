@@ -14,13 +14,29 @@
       :compact="true"
     />
 
+    <ul v-if="pendingDocuments.length" class="mb-4 space-y-2" aria-label="Documents prêts à envoyer">
+      <li v-for="doc in pendingDocuments" :key="doc.type" class="rounded-lg border border-default/50 p-3 text-sm">
+        <p class="font-medium">{{ doc.label }}</p>
+        <p class="mt-1 break-words text-muted">{{ doc.fileName }}</p>
+        <p class="mt-1 text-xs text-muted">À envoyer lors de l’enregistrement</p>
+      </li>
+    </ul>
+
+    <UAlert
+      v-if="!isLoading && loadError"
+      color="error"
+      title="Documents indisponibles"
+      :description="loadError"
+      :actions="[{ label: 'Réessayer', onClick: () => emit('retry') }]"
+    />
+
     <AppointmentDocumentsSection
-      v-else
+      v-if="!isLoading && !loadError"
       :documents="documentsList"
       :loading="false"
       empty-description="Aucun document de couverture enregistré."
       :show-upload-area="true"
-      :upload-types="profileUploadTypes"
+      :upload-types="[...profileUploadTypes]"
       :can-replace="true"
       :downloading-ids="downloadingIdsSet"
       :uploading-types="uploadingTypesSet"
@@ -30,7 +46,7 @@
 
     <UAlert
       v-if="error"
-      color="red"
+      color="error"
       variant="soft"
       :title="error"
       class="mt-4"
@@ -49,6 +65,7 @@ interface Props {
   isLoading: boolean
   uploadingType: string | null
   error: string | null
+  loadError?: string | null
   /** Optionnel : id du document médical en cours de téléchargement (pour le spinner) */
   downloadingDocumentId?: string | null
 }
@@ -57,6 +74,7 @@ interface Emits {
   (e: 'upload', type: DocumentType, file: File): void
   (e: 'download', id: string, fileName: string): void
   (e: 'update:error', value: string | null): void
+  (e: 'retry'): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -94,6 +112,13 @@ const profileUploadTypes = [
     hint: 'JPG, PNG, PDF • max 25 Mo',
   },
 ] as const
+
+const pendingDocuments = computed(() => profileUploadTypes.flatMap(type => {
+  const doc = props.documents[type.value]
+  return doc?.file_name && !doc.medical_document_id
+    ? [{ type: type.value, label: type.label, fileName: doc.file_name }]
+    : []
+}))
 
 const documentsList = computed(() => {
   const list: Array<{

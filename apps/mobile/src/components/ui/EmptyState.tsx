@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React from 'react';
-import { Image, type ImageSourcePropType, View, StyleSheet } from 'react-native';
+import { Image, type ImageSourcePropType, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import type { LucideIcon } from 'lucide-react-native';
 import {
@@ -38,9 +38,9 @@ function EmptyStateComponent({
   description,
   Icon,
   emoji,
-  emojiSize = 56,
+  emojiSize = 36,
   imageSource,
-  imageWidth = 220,
+  imageWidth = 112,
   imageHeight,
   actionLabel,
   onAction,
@@ -67,12 +67,12 @@ function EmptyStateComponent({
             },
           ]}
           resizeMode="contain"
-          accessibilityRole="image"
+          accessible={false}
         />
       ) : emoji ? (
         <AppText
           style={[styles.emoji, { fontSize: emojiSize, lineHeight: emojiSize * 1.08 }]}
-          accessibilityRole="image"
+          accessible={false}
         >
           {emoji}
         </AppText>
@@ -82,7 +82,7 @@ function EmptyStateComponent({
         </View>
       ) : null}
 
-      <AppText style={styles.title}>{title}</AppText>
+      <AppText style={styles.title} accessibilityRole="header">{title}</AppText>
 
       {description ? (
         <AppText style={[styles.description, { maxWidth: descriptionMaxWidth }]}>{description}</AppText>
@@ -104,7 +104,7 @@ function buildStyles(c: AppColors) {
   container: {
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    paddingVertical: spacing[12],
+    paddingVertical: spacing[8],
     paddingHorizontal: spacing[6],
     gap: spacing[3],
   },

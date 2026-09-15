@@ -4,19 +4,20 @@
       <AppPageHeader
         :edge-bleed="false"
         title="Mon abonnement"
-        description="Consultez les offres et gérez votre abonnement Cary"
+        description="Un espace gratuit pour démarrer. Pro pour accompagner le développement de votre activité."
       />
     </template>
 
     <!-- Onglets : index 0 = Offres, 1 = Mon abonnement -->
-    <div class="flex gap-2 mb-6">
+    <div class="flex flex-wrap gap-2 mb-6" role="group" aria-label="Rubrique abonnement">
       <UButton
         v-for="(tab, index) in tabs"
         :key="tab.value"
         :variant="activeTabIndex === index ? 'solid' : 'ghost'"
-        :color="activeTabIndex === index ? 'primary' : 'gray'"
+        :color="activeTabIndex === index ? 'primary' : 'neutral'"
         size="md"
-        :on-click="() => activeTabIndex = index"
+        :aria-pressed="activeTabIndex === index"
+        :on-click="() => { activeTabIndex = index }"
       >
         <UIcon :name="tab.icon" class="w-4 h-4 mr-2" />
         {{ tab.label }}
@@ -24,85 +25,11 @@
     </div>
 
     <!-- Tab Offres : cartes tarifs -->
+    <UAlert v-if="loadError" color="error" variant="soft" title="Impossible de vérifier votre abonnement">
+      <template #actions><UButton color="neutral" variant="outline" :loading="loading" @click="loadSubscription">Réessayer</UButton></template>
+    </UAlert>
     <div v-show="activeTabIndex === 0" class="space-y-6">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl">
-        <!-- Découverte (gratuit) -->
-        <UCard class="flex flex-col h-full overflow-visible">
-          <template #header>
-            <h2 class="text-xl font-normal text-gray-900 dark:text-white">Découverte</h2>
-            <p class="text-3xl font-normal text-gray-900 dark:text-white mt-2">0 €<span class="text-base text-gray-500">/mois</span></p>
-            <p class="text-sm text-gray-500 mt-1">Gratuit pour découvrir la plateforme</p>
-            <div class="mt-4">
-              <UButton to="/nurse/register" block size="lg" variant="outline">
-                S'inscrire gratuitement
-              </UButton>
-            </div>
-          </template>
-          <ul class="space-y-3 text-gray-600 dark:text-gray-400 flex-1 min-h-0">
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Rayon d'intervention jusqu'à 20 km.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Fiche professionnelle visible par les patients.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>10 rendez-vous par mois maximum (compteur remis à zéro le 1er de chaque mois).</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Tous les types de soins.</span>
-            </li>
-          </ul>
-        </UCard>
-
-        <!-- Pro -->
-        <UCard class="relative flex flex-col h-full border-2 border-primary-500">
-          <div class="absolute top-3 right-3 z-10">
-            <UBadge color="primary" size="sm">Recommandé</UBadge>
-          </div>
-          <template #header>
-            <h2 class="text-xl font-normal text-gray-900 dark:text-white">Pro</h2>
-            <p class="text-3xl font-normal text-gray-900 dark:text-white mt-2">29 €<span class="text-base text-gray-500">/mois</span></p>
-            <p class="text-sm text-gray-500 mt-1">30 jours d'essai gratuit</p>
-            <div class="mt-4">
-              <UButton
-                block
-                size="lg"
-                color="primary"
-                :loading="loadingCheckout"
-                @click="startCheckout"
-              >
-                Commencer l'essai gratuit
-              </UButton>
-            </div>
-          </template>
-          <ul class="space-y-3 text-gray-600 dark:text-gray-400 flex-1">
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Rayon jusqu'à 100 km.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Rendez-vous illimités.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Tous les types de soins.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Avis patients et réponses.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Tableau de bord et statistiques.</span>
-            </li>
-          </ul>
-        </UCard>
-      </div>
+      <NursePlanCards :busy="loadingCheckout" :disabled="loading || loadError" free-to="/nurse" free-label="Accéder à mon espace" :pro-label="hasCurrentSubscription ? 'Gérer mon abonnement' : 'Choisir Pro'" @choose-pro="hasCurrentSubscription ? activeTabIndex = 1 : startCheckout()" />
       <p class="text-sm text-gray-500">
         Annulation possible à tout moment. Gérez votre abonnement dans l'onglet « Mon abonnement ».
       </p>
@@ -114,19 +41,19 @@
         <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-primary-500" />
       </div>
 
-      <UCard v-else-if="!subscription" class="max-w-xl">
+      <UCard v-else-if="!subscription && !loadError" class="max-w-xl">
         <template #header>
           <h2 class="text-xl font-normal text-gray-900 dark:text-white">Aucun abonnement actif</h2>
         </template>
         <p class="text-gray-600 dark:text-gray-400 mb-6">
           Vous n'avez pas encore d'abonnement actif. Passez à l'offre Pro dans l'onglet « Offres » pour débloquer tous les avantages (rayon 100 km, rendez-vous illimités, avis, statistiques).
         </p>
-        <UButton variant="outline" size="lg" :on-click="() => activeTabIndex = 0">
+        <UButton variant="outline" size="lg" :on-click="() => { activeTabIndex = 0 }">
           Voir les offres
         </UButton>
       </UCard>
 
-      <UCard v-else class="max-w-xl">
+      <UCard v-else-if="subscription" class="max-w-xl">
         <template #header>
           <h2 class="text-xl font-normal text-gray-900 dark:text-white">Votre abonnement</h2>
         </template>
@@ -146,12 +73,12 @@
             <dd class="text-gray-900 dark:text-white">{{ formatDate(subscription.trial_ends_at) }}</dd>
           </div>
           <div v-if="subscription.current_period_end">
-            <dt class="text-sm text-gray-500 dark:text-gray-400">Prochaine facturation</dt>
+            <dt class="text-sm text-gray-500 dark:text-gray-400">Fin de la période en cours</dt>
             <dd class="text-gray-900 dark:text-white">{{ formatDate(subscription.current_period_end) }}</dd>
           </div>
         </dl>
         <p class="text-sm text-gray-500 mt-4">
-          Depuis le portail de gestion vous pouvez mettre à jour votre moyen de paiement, consulter vos factures ou annuler votre abonnement à tout moment.
+          {{ storeName ? `Votre abonnement est facturé par ${storeName}. Retrouvez sa gestion et son annulation dans votre compte ${storeName}.` : 'Depuis le portail de gestion vous pouvez mettre à jour votre moyen de paiement, consulter vos factures ou annuler votre abonnement à tout moment.' }}
         </p>
         <template #footer>
           <div class="flex flex-wrap gap-3">
@@ -161,7 +88,7 @@
               @click="openPortal"
             >
               <UIcon name="i-lucide-external-link" class="w-4 h-4 mr-2" />
-              Gérer ou annuler mon abonnement
+              {{ storeName ? `Gérer sur ${storeName}` : 'Gérer ou annuler mon abonnement' }}
             </UButton>
           </div>
         </template>
@@ -171,11 +98,12 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: 'dashboard', middleware: ['auth'] })
+definePageMeta({ layout: 'dashboard', middleware: ['auth', 'role'], role: 'nurse' })
 
 const { user } = useAuth()
 const toast = useAppToast()
 const loading = ref(true)
+const loadError = ref(false)
 const loadingPortal = ref(false)
 const loadingCheckout = ref(false)
 const activeTabIndex = ref(0) // 0 = Offres, 1 = Mon abonnement
@@ -191,12 +119,16 @@ const subscription = ref<{
   status: string
   trial_ends_at: string | null
   current_period_end: string | null
+  billing_source?: string | null
 } | null>(null)
+
+const hasCurrentSubscription = computed(() => !!subscription.value && ['active', 'trialing', 'past_due', 'unpaid', 'incomplete', 'paused'].includes(subscription.value.status))
+const storeName = computed(() => subscription.value?.billing_source === 'apple' ? 'App Store' : subscription.value?.billing_source === 'google' ? 'Google Play' : null)
 
 const planLabel = computed(() => {
   if (!subscription.value?.plan_slug) return '—'
   const labels: Record<string, string> = {
-    nurse_pro: 'Pro (29 €/mois)',
+    nurse_pro: 'Pro',
   }
   return labels[subscription.value.plan_slug] || subscription.value.plan_slug
 })
@@ -209,15 +141,18 @@ const statusLabel = computed(() => {
     past_due: 'Paiement en attente',
     canceled: 'Annulé',
     incomplete: 'Incomplet',
+    incomplete_expired: 'Souscription expirée',
+    unpaid: 'Paiement à régulariser',
+    paused: 'En pause',
   }
   return labels[subscription.value.status] || subscription.value.status
 })
 
 const statusColor = computed(() => {
   const s = subscription.value?.status
-  if (s === 'active' || s === 'trialing') return 'green'
-  if (s === 'canceled') return 'gray'
-  return 'amber'
+  if (s === 'active' || s === 'trialing') return 'success'
+  if (s === 'canceled') return 'neutral'
+  return 'warning'
 })
 
 function formatDate(value: string | null) {
@@ -227,18 +162,29 @@ function formatDate(value: string | null) {
 
 async function loadSubscription() {
   loading.value = true
+  loadError.value = false
   try {
     const res = await apiFetch('/stripe/subscription', { method: 'GET' })
-    if (res?.success) subscription.value = res.data ?? null
+    if (!res?.success) throw new Error('Chargement impossible')
+    subscription.value = res.data ?? null
     if (subscription.value?.id) activeTabIndex.value = 1
   } catch {
-    subscription.value = null
+    loadError.value = true
   } finally {
     loading.value = false
   }
 }
 
 async function openPortal() {
+  if (loadingPortal.value) return
+  if (subscription.value?.billing_source === 'apple') {
+    window.location.href = 'https://apps.apple.com/account/subscriptions'
+    return
+  }
+  if (subscription.value?.billing_source === 'google') {
+    window.location.href = 'https://play.google.com/store/account/subscriptions'
+    return
+  }
   loadingPortal.value = true
   try {
     const base = typeof window !== 'undefined' ? window.location.origin : ''
@@ -260,6 +206,8 @@ async function openPortal() {
 }
 
 async function startCheckout() {
+  if (loadingCheckout.value || loading.value || loadError.value) return
+  if (hasCurrentSubscription.value) { activeTabIndex.value = 1; return }
   loadingCheckout.value = true
   try {
     const base = typeof window !== 'undefined' ? window.location.origin : ''

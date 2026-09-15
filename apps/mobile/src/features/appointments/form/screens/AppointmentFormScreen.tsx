@@ -45,13 +45,17 @@ export function AppointmentFormScreen(props: Props) {
     <FormScreen contentContainerStyle={styles.content} backgroundColor={c.background}>
       <FormPatientSection
         patients={f.patientOptions}
-        patientMode={
-          f.selectedPatientId && f.selectedPatientId !== NEW_PATIENT_ID ? 'existing' : 'new'
-        }
+        patientsLoading={f.patientsLoading}
+        patientsError={f.patientsError}
+        retryPatients={f.retryPatients}
+        patientProfileLoading={f.patientProfileLoading}
+        patientProfileError={f.patientProfileError}
+        retryPatientProfile={f.retryPatientProfile}
+        patientMode={f.patientMode}
         onPatientModeChange={(m) => {
-          if (m === 'new') f.onSelectPatient(NEW_PATIENT_ID);
+          if (m !== f.patientMode) f.onSelectPatient(m === 'new' ? NEW_PATIENT_ID : '');
         }}
-        selectedPatientId={f.selectedPatientId || NEW_PATIENT_ID}
+        selectedPatientId={f.selectedPatientId}
         onSelectPatient={f.onSelectPatient}
         firstName={f.values.first_name}
         lastName={f.values.last_name}
@@ -121,7 +125,7 @@ export function AppointmentFormScreen(props: Props) {
       <Button
         title={f.saving ? 'Enregistrement…' : 'Enregistrer'}
         onPress={f.submit}
-        disabled={f.saving}
+        disabled={f.saving || (f.patientMode === 'existing' && (f.patientProfileLoading || f.patientProfileError))}
         fullWidth
         size="lg"
       />

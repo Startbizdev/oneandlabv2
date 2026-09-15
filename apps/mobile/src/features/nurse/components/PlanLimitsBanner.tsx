@@ -28,12 +28,13 @@ export function PlanLimitsBanner() {
     queryKey: queryKeys.planLimits.current,
     queryFn: async () => {
       const res = await api.get<NursePlanLimitsApi>('/plan-limits');
+      if (!res.success || !res.data) throw new Error('Limites de votre offre indisponibles');
       return res.data;
     },
   });
 
   const limits = data ? normalizeNursePlanLimits(data) : null;
-  if (!limits?.showQuota) return null;
+  if (!limits?.showQuota || limits.used < Math.ceil(limits.max * 0.8)) return null;
 
   const { used, max, quotaFull: full } = limits;
   const pct = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
@@ -51,7 +52,7 @@ export function PlanLimitsBanner() {
           </View>
         }
       >
-        <Row justify="between" align="center" flex={1}>
+        <Row justify="between" align="center" flex={1} wrap gap={spacing[2]}>
           <AppText style={styles.title}>Offre Découverte</AppText>
           <AppText style={[styles.pill, full ? styles.pillFull : styles.pillActive]}>
             {full ? 'Quota atteint' : 'Ce mois-ci'}
@@ -64,7 +65,10 @@ export function PlanLimitsBanner() {
         {' / '}{max} rendez-vous
       </AppText>
 
-      <View style={styles.trackBg}>
+      <AppText style={styles.countText}>
+        {full ? 'Votre limite mensuelle est atteinte. Pro permet de recevoir des rendez-vous sans limite.' : `${Math.max(0, max - used)} rendez-vous encore disponibles ce mois-ci.`}
+      </AppText>
+      <View style={styles.trackBg} accessibilityRole="progressbar" accessibilityLabel="Rendez-vous acceptés ce mois-ci" accessibilityValue={{ min: 0, max, now: Math.min(used, max) }}>
         <View
           style={[
             styles.trackFill,
@@ -75,9 +79,9 @@ export function PlanLimitsBanner() {
       </View>
 
       <Button
-        title="Passer en PRO"
+        title="Découvrir l’offre Pro"
         variant={full ? 'primary' : 'outline'}
-        size="sm"
+        size="md"
         onPress={() => router.push('/(nurse)/abonnement')}
         fullWidth
       />
@@ -113,14 +117,13 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.xs,
     letterSpacing: 0.5,
-    textTransform: 'uppercase' as const,
     paddingHorizontal: spacing[2],
     paddingVertical: 3,
     borderRadius: radius.full,
   },
   pillActive: {
     backgroundColor: c.primaryLight,
-    color: c.primary,
+    color: c.textLink,
   },
   pillFull: {
     backgroundColor: c.warningLight,
@@ -134,7 +137,7 @@ function buildStyles(c: AppColors) {
   countBig: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize.xl,
-    color: c.primary,
+    color: c.textLink,
   },
   countBigFull: {
     color: c.warning,

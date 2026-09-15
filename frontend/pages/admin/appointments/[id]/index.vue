@@ -272,7 +272,7 @@ async function downloadDocument(doc: any) {
   downloadingDocuments.value = new Set([...downloadingDocuments.value, doc.id]);
   try {
     const config = useRuntimeConfig();
-    const apiBase = config.public.apiBase || 'http://localhost:8888/api';
+    const apiBase = config.public.apiBase || '/api';
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
     const response = await fetch(`${apiBase}/medical-documents/${doc.id}/download`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } });
     if (!response.ok) {
@@ -369,17 +369,17 @@ function formatDate(date: string) {
 }
 
 function getStatusColor(status: string) {
-  const colors: Record<string, string> = {
-    pending: 'yellow',
-    confirmed: 'blue',
-    planned: 'sky',
-    inProgress: 'purple',
-    completed: 'green',
-    canceled: 'red',
-    expired: 'gray',
-    refused: 'orange',
+  const colors: Record<string, 'primary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'> = {
+    pending: 'warning',
+    confirmed: 'info',
+    planned: 'info',
+    inProgress: 'primary',
+    completed: 'success',
+    canceled: 'error',
+    expired: 'neutral',
+    refused: 'warning',
   };
-  return colors[status] || 'gray';
+  return colors[status] || 'neutral';
 }
 
 function getStatusLabel(status: string) {

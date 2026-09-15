@@ -20,10 +20,10 @@
               >
                 <div class="flex flex-col gap-2.5 items-start sm:gap-3">
                   <div
-                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-100/90 ring-1 ring-sky-200/70 dark:bg-sky-950/55 dark:ring-sky-800/55"
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-100/90 ring-1 ring-primary-200/70 dark:bg-primary-950/55 dark:ring-primary-800/55"
                     aria-hidden="true"
                   >
-                    <UIcon name="i-lucide-user-search" class="h-[22px] w-[22px] text-sky-600 dark:text-sky-400" />
+                    <UIcon name="i-lucide-user-search" class="h-[22px] w-[22px] text-primary-600 dark:text-primary-400" />
                   </div>
                   <div class="w-full min-w-0 text-left">
                     <p class="text-base font-semibold leading-snug text-gray-900 dark:text-white sm:text-[1.05rem]">Patient déjà enregistré</p>
@@ -77,8 +77,11 @@
       </Teleport>
     </ClientOnly>
 
+    <UAlert v-if="step === 0 && categoriesError" title="Catalogue de soins indisponible" color="error" variant="soft" class="m-4">
+      <template #description><UButton label="Réessayer" variant="outline" color="neutral" :loading="categoriesLoading" @click="loadCareCategories" /></template>
+    </UAlert>
     <RendezVousCareSelection
-      v-if="step === 0"
+      v-else-if="step === 0"
       v-model:selected-services="selectedServices"
       :categories="careCategoriesList"
       :loading="categoriesLoading"
@@ -144,6 +147,9 @@
             </h2>
           </div>
           <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <UAlert v-if="adminAssignmentsError" class="md:col-span-3" title="Liste des professionnels indisponible" color="error" variant="soft">
+              <template #description><UButton label="Recharger les professionnels" variant="outline" color="neutral" :loading="adminLabsLoading || adminNursesLoading" @click="loadLabsAndNursesForAdminDashboard" /></template>
+            </UAlert>
             <CreatorSelectField v-model="adminOnBehalfUserId" class="md:col-span-3" />
             <UFormField label="Statut à la création" name="admin_status">
               <USelect
@@ -160,16 +166,18 @@
             >
               <USelectMenu
                 v-model="adminAssignedLabId"
+                aria-label="Laboratoire à affecter"
                 :items="adminLabSelectItems"
                 value-key="value"
                 placeholder="Libre ou auto…"
                 class="w-full min-w-0"
                 clearable
                 :loading="adminLabsLoading"
+                :disabled="adminLabsLoading || adminAssignmentsError"
                 :filter-fields="['label']"
                 :search-input="{ placeholder: 'Rechercher un lab…' }"
               >
-                <template #label>
+                <template #default>
                   <span v-if="!adminAssignedLabId" class="text-muted">Sans assignation laboratoire</span>
                   <span v-else>{{ adminLabSelectItems.find((i) => i.value === adminAssignedLabId)?.label }}</span>
                 </template>
@@ -181,16 +189,18 @@
             >
               <USelectMenu
                 v-model="adminAssignedNurseId"
+                aria-label="Infirmier à affecter"
                 :items="adminNurseSelectItems"
                 value-key="value"
                 placeholder="Sans assignation préalable…"
                 class="w-full min-w-0"
                 clearable
                 :loading="adminNursesLoading"
+                :disabled="adminNursesLoading || adminAssignmentsError"
                 :filter-fields="['label']"
                 :search-input="{ placeholder: 'Rechercher un infirmier…' }"
               >
-                <template #label>
+                <template #default>
                   <span v-if="!adminAssignedNurseId" class="text-muted">Sans assignation infirmier</span>
                   <span v-else>{{ adminNurseSelectItems.find((i) => i.value === adminAssignedNurseId)?.label }}</span>
                 </template>
@@ -225,18 +235,17 @@
               <div class="flex flex-col gap-3 sm:gap-4">
                 <div
                   class="relative overflow-visible rounded-2xl border border-gray-200/95 bg-gray-100/80 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-gray-700/90 dark:bg-gray-900/55 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-2"
-                  role="tablist"
+                  role="group"
                   aria-label="Mode patient"
                 >
                   <div class="grid grid-cols-2 gap-1.5 sm:gap-2">
                     <button
                       type="button"
-                      role="tab"
-                      :aria-selected="patientMode === 'existing'"
-                      class="group relative flex min-h-[2.75rem] min-w-0 flex-row items-center justify-center gap-2 rounded-xl px-2.5 py-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-gray-900 sm:min-h-[3rem] sm:rounded-[0.8125rem] sm:px-3 sm:py-2.5"
+                      :aria-pressed="patientMode === 'existing'"
+                      class="group relative flex min-h-[2.75rem] min-w-0 flex-row items-center justify-center gap-2 rounded-xl px-2.5 py-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-gray-900 sm:min-h-[3rem] sm:rounded-[0.8125rem] sm:px-3 sm:py-2.5"
                       :class="
                         patientMode === 'existing'
-                          ? 'z-[1] bg-sky-50 text-sky-950 shadow-[0_1px_3px_rgba(14,165,233,0.14)] outline outline-1 outline-sky-300/75 dark:bg-sky-950/40 dark:text-sky-50 dark:shadow-[0_2px_8px_-2px_rgba(14,165,233,0.2)] dark:outline-sky-500/35'
+                          ? 'z-[1] bg-primary-50 text-primary-950 shadow-[0_1px_3px_rgba(14,165,233,0.14)] outline outline-1 outline-primary-300/75 dark:bg-primary-950/40 dark:text-primary-50 dark:shadow-[0_2px_8px_-2px_rgba(14,165,233,0.2)] dark:outline-primary-500/35'
                           : 'z-0 text-gray-600 hover:bg-white/75 hover:text-gray-900 active:bg-white/90 dark:text-gray-400 dark:hover:bg-gray-800/80 dark:hover:text-gray-50 dark:active:bg-gray-800'
                       "
                       @click="patientMode = 'existing'"
@@ -246,18 +255,17 @@
                         class="size-4 shrink-0 transition-[color] sm:size-[1.125rem]"
                         aria-hidden="true"
                       />
-                      <span class="max-w-full text-left text-[11px] font-semibold leading-tight sm:text-sm">
-                        Patient dans la liste
+                      <span class="max-w-full text-left text-sm font-semibold leading-tight">
+                        Patient existant
                       </span>
                     </button>
                     <button
                       type="button"
-                      role="tab"
-                      :aria-selected="patientMode === 'new'"
-                      class="group relative flex min-h-[2.75rem] min-w-0 flex-row items-center justify-center gap-2 rounded-xl px-2.5 py-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-gray-900 sm:min-h-[3rem] sm:rounded-[0.8125rem] sm:px-3 sm:py-2.5"
+                      :aria-pressed="patientMode === 'new'"
+                      class="group relative flex min-h-[2.75rem] min-w-0 flex-row items-center justify-center gap-2 rounded-xl px-2.5 py-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-gray-900 sm:min-h-[3rem] sm:rounded-[0.8125rem] sm:px-3 sm:py-2.5"
                       :class="
                         patientMode === 'new'
-                          ? 'z-[1] bg-sky-50 text-sky-950 shadow-[0_1px_3px_rgba(14,165,233,0.14)] outline outline-1 outline-sky-300/75 dark:bg-sky-950/40 dark:text-sky-50 dark:shadow-[0_2px_8px_-2px_rgba(14,165,233,0.2)] dark:outline-sky-500/35'
+                          ? 'z-[1] bg-primary-50 text-primary-950 shadow-[0_1px_3px_rgba(14,165,233,0.14)] outline outline-1 outline-primary-300/75 dark:bg-primary-950/40 dark:text-primary-50 dark:shadow-[0_2px_8px_-2px_rgba(14,165,233,0.2)] dark:outline-primary-500/35'
                           : 'z-0 text-gray-600 hover:bg-white/75 hover:text-gray-900 active:bg-white/90 dark:text-gray-400 dark:hover:bg-gray-800/80 dark:hover:text-gray-50 dark:active:bg-gray-800'
                       "
                       @click="patientMode = 'new'"
@@ -267,25 +275,30 @@
                         class="size-4 shrink-0 transition-[color] sm:size-[1.125rem]"
                         aria-hidden="true"
                       />
-                      <span class="max-w-full text-left text-[11px] font-semibold leading-tight sm:text-sm">
+                      <span class="max-w-full text-left text-sm font-semibold leading-tight">
                         Nouveau patient
                       </span>
                     </button>
                   </div>
                 </div>
                 <UFormField v-if="patientMode === 'existing'" label="Choisir un patient" name="patient_id" required>
+                  <UAlert v-if="patientsError" title="Liste des patients indisponible" color="error" variant="soft" class="mb-3">
+                    <template #description><UButton label="Recharger les patients" variant="outline" color="neutral" :loading="patientsLoading" @click="loadPatients" /></template>
+                  </UAlert>
                   <USelectMenu
                     v-model="selectedPatientId"
+                    aria-label="Choisir un patient"
                     :items="patientSelectItems"
                     value-key="value"
                     :loading="patientsLoading || patientProfileLoading"
+                    :disabled="patientsLoading || patientsError"
                     placeholder="Sélectionner un patient…"
-                    size="lg"
+                    size="md"
                     class="w-full min-w-0"
                     :search-input="{ placeholder: patientSelectSearchPlaceholder }"
                     :filter-fields="['label', 'searchText']"
                   >
-                    <template #label>
+                    <template #default>
                       <span v-if="!selectedPatientId" class="text-gray-400">Sélectionner un patient…</span>
                       <span v-else>{{ selectedPatientSelectLabel }}</span>
                     </template>
@@ -301,6 +314,9 @@
                       <PatientSelectMenuEmpty :search-term="searchTerm" :suggest-new-patient-option="false" />
                     </template>
                   </USelectMenu>
+                  <UAlert v-if="patientProfileError" title="Dossier patient indisponible" description="Rechargez le dossier pour utiliser les bonnes coordonnées." color="error" variant="soft" class="mt-3">
+                    <template #actions><UButton label="Recharger le dossier" variant="outline" color="neutral" :loading="patientProfileLoading" @click="selectedPatientId ? fetchAndApplyPatientDetail(selectedPatientId) : undefined" /></template>
+                  </UAlert>
                   <p v-if="patientProfileLoading" class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
                     <UIcon name="i-lucide-loader-2" class="w-3.5 h-3.5 animate-spin shrink-0" />
                     Chargement du dossier patient (adresse, documents)…
@@ -332,7 +348,7 @@
                 <div>
                   <p class="text-sm font-semibold text-gray-900 dark:text-white">Affectation infirmier(ère)</p>
                   <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    Dispatch Cary (par défaut) ou infirmier(ère) du patient.
+                    Trouvez un infirmier disponible ou choisissez celui qui suit déjà le patient.
                   </p>
                 </div>
                 <div class="flex rounded-lg border border-gray-200/90 bg-white p-0.5 dark:border-gray-700 dark:bg-gray-950">
@@ -362,21 +378,25 @@
                   </button>
                 </div>
                 <template v-if="nurseAssignmentMode === 'patient_nurse'">
+                  <UAlert v-if="proLinkedNursesError" title="Infirmiers du patient indisponibles" color="error" variant="soft">
+                    <template #actions><UButton label="Recharger les infirmiers" color="neutral" variant="outline" :loading="proLinkedNursesLoading" @click="selectedPatientId ? loadLinkedNursesForPatient(selectedPatientId) : undefined" /></template>
+                  </UAlert>
                   <UFormField label="Choisir dans la liste" name="pro_linked_nurse">
                     <USelectMenu
                       v-model="proLinkedNurseId"
+                      aria-label="Infirmier du patient"
                       :items="proLinkedNurseSelectItems"
                       value-key="value"
                       placeholder="Infirmier(ère) déjà intervenu(e)…"
                       class="w-full min-w-0"
                       clearable
                       :loading="proLinkedNursesLoading"
-                      :disabled="proLinkedNurseChoice === 'external'"
+                      :disabled="proLinkedNurseChoice === 'external' || proLinkedNursesLoading || proLinkedNursesError"
                       :filter-fields="['label']"
                       :search-input="{ placeholder: 'Rechercher…' }"
                       @update:model-value="onProLinkedNursePick"
                     >
-                      <template #label>
+                      <template #default>
                         <span v-if="!proLinkedNurseId" class="text-muted">Sélectionner ou ajouter ci-dessous</span>
                         <span v-else>{{ proLinkedNurseSelectItems.find((i) => i.value === proLinkedNurseId)?.label }}</span>
                       </template>
@@ -420,7 +440,7 @@
                 "
                 :primary-submit="false"
                 :primary-loading="saving"
-                :primary-disabled="saving || bookingSubmissionLocked"
+                  :primary-disabled="saving || bookingSubmissionLocked || (patientMode === 'existing' && (patientProfileLoading || patientProfileError))"
                 :back-disabled="saving || bookingSubmissionLocked"
                 @back="prevStep"
                 @primary="onDashboardFooterPrimary"
@@ -450,10 +470,10 @@
 import { computed, nextTick, onUnmounted, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
-import { joinFrenchAndList } from '~/utils/join-french-list';
 import { runWithBookingCelebrationOverlay } from '~/composables/useBookingCelebrationOverlay';
 import { bookingDbg, celebrationRotateIconsFromServices } from '~/utils/booking-celebration-debug';
 import { fetchAllPatientsForDashboard } from '~/utils/fetch-all-patients';
+import { fetchAllUsers } from '~/utils/fetch-all-users';
 import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import {
@@ -532,15 +552,22 @@ const proLinkedNurseSelectItems = computed(() =>
   })),
 );
 
+const proLinkedNursesError = ref(false);
+let linkedNursesVersion = 0;
 async function loadLinkedNursesForPatient(patientId: string) {
+  const version = ++linkedNursesVersion;
   proLinkedNursesLoading.value = true;
+  proLinkedNursesError.value = false;
+  proLinkedNurses.value = [];
   try {
     const res = await apiFetch(`/patients/${patientId}/linked-nurses`, { method: 'GET' });
-    proLinkedNurses.value = res.success && Array.isArray(res.data) ? res.data : [];
+    if (version !== linkedNursesVersion) return;
+    if (!res.success || !Array.isArray(res.data)) throw new Error('Infirmiers indisponibles');
+    proLinkedNurses.value = res.data;
   } catch {
-    proLinkedNurses.value = [];
+    if (version === linkedNursesVersion) proLinkedNursesError.value = true;
   } finally {
-    proLinkedNursesLoading.value = false;
+    if (version === linkedNursesVersion) proLinkedNursesLoading.value = false;
   }
 }
 
@@ -742,27 +769,16 @@ const dashboardWizardBookingHeaderIntro = computed(() => {
   return null;
 });
 
-const dashboardWizardCareTypesLine = computed(() => {
-  const intro = dashboardWizardBookingHeaderIntro.value;
-  if (!intro?.lines?.length) return '';
-  return joinFrenchAndList(intro.lines.map((l) => l.name));
-});
-
 /** Même logique titres que `RendezVousFormStep` (parcours `/rendez-vous/nouveau`). */
 const dashboardWizardPageTitle = computed(() => {
   const sec = dashboardBookingWizardSection.value;
   if (sec === 'personal') return 'Informations personnelles';
-  if (sec === 'documents') return 'Documents de votre rendez-vous';
-  if (sec === 'slot-datetime') return 'Date de votre rendez-vous';
-  return 'Date de votre rendez-vous';
+  if (sec === 'documents') return 'Vos documents';
+  if (sec === 'slot-datetime') return 'Date et disponibilités';
+  return 'Date et disponibilités';
 });
 
-const dashboardWizardPageHeading = computed(() => {
-  const base = dashboardWizardPageTitle.value;
-  const care = dashboardWizardCareTypesLine.value;
-  if (!care) return base;
-  return `${base} — ${care}`;
-});
+const dashboardWizardPageHeading = computed(() => dashboardWizardPageTitle.value);
 
 const bookingCelebrationImageUrls = computed(() => {
   const base = runtimeConfig.public.apiBase as string | undefined;
@@ -813,6 +829,8 @@ const adminLabs = ref<any[]>([]);
 const adminNurses = ref<any[]>([]);
 const adminLabsLoading = ref(false);
 const adminNursesLoading = ref(false);
+const adminAssignmentsError = ref(false);
+const categoriesError = ref(false);
 
 const adminStatusSelectOptions = [
   { label: 'En attente', value: 'pending' },
@@ -846,22 +864,21 @@ const adminNurseSelectItems = computed(() =>
 );
 
 async function loadLabsAndNursesForAdminDashboard() {
+  adminAssignmentsError.value = false;
   adminLabsLoading.value = true;
   adminNursesLoading.value = true;
   try {
-    const [labRes, subRes, nurseRes] = await Promise.all([
-      apiFetch('/users?role=lab&limit=500', { method: 'GET' }),
-      apiFetch('/users?role=subaccount&limit=500', { method: 'GET' }),
-      apiFetch('/users?role=nurse&limit=500', { method: 'GET' }),
+    const [labs, subs, nurses] = await Promise.all([
+      fetchAllUsers({ role: 'lab' }),
+      fetchAllUsers({ role: 'subaccount' }),
+      fetchAllUsers({ role: 'nurse' }),
     ]);
     adminLabs.value = [
-      ...(labRes.success && labRes.data ? (labRes.data as any[]) : []),
-      ...(subRes.success && subRes.data ? (subRes.data as any[]) : []),
+      ...labs, ...subs,
     ];
-    adminNurses.value = nurseRes.success && nurseRes.data ? (nurseRes.data as any[]) : [];
+    adminNurses.value = nurses;
   } catch {
-    adminLabs.value = [];
-    adminNurses.value = [];
+    adminAssignmentsError.value = true;
   } finally {
     adminLabsLoading.value = false;
     adminNursesLoading.value = false;
@@ -870,6 +887,9 @@ async function loadLabsAndNursesForAdminDashboard() {
 
 const patients = ref<any[]>([]);
 const patientsLoading = ref(false);
+const patientsError = ref(false);
+const patientProfileError = ref(false);
+let patientProfileVersion = 0;
 const patientProfileLoading = ref(false);
 const selectedPatientId = ref<string | undefined>(undefined);
 /** Snapshot fiche patient chargée — évite PUT inutile avant création RDV. */
@@ -992,6 +1012,7 @@ async function runPatientContactLookup() {
 
   try {
     const row = await lookupPatientByContact(apiFetch, email, phone);
+    if (patientMode.value !== 'new' || email !== String(formData.value?.email ?? '').trim() || phone !== String(formData.value?.phone ?? '').trim()) return;
     if (!row || row.id == null) {
       duplicatePatientModalOpen.value = false;
       duplicatePatientRow.value = null;
@@ -1166,7 +1187,13 @@ async function syncExistingPatientFromPayload(
   loadedPatientSnapshot.value = buildPatientSnapshotFromPayload(payload);
 }
 
+const patientCreatedForAttempt = ref<string | null>(null);
+
 async function createPatientRecord(payload: Record<string, any>): Promise<string> {
+  if (patientCreatedForAttempt.value) {
+    await syncExistingPatientFromPayload(patientCreatedForAttempt.value, payload);
+    return patientCreatedForAttempt.value;
+  }
   const body: Record<string, unknown> = {
     ...extractPatientCreateBody(payload),
     patient_booking_consent: true,
@@ -1181,14 +1208,16 @@ async function createPatientRecord(payload: Record<string, any>): Promise<string
       error?: string;
     };
     if (res?.success && res.data?.id) {
-      return String(res.data.id);
+      patientCreatedForAttempt.value = String(res.data.id);
+      loadedPatientSnapshot.value = buildPatientSnapshotFromPayload(payload);
+      return patientCreatedForAttempt.value;
     }
     throw new Error(res?.error || 'Création du patient impossible');
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes('existe déjà') || msg.includes('déjà avec cet email')) {
       throw new Error(
-        'Un patient existe déjà avec cet e-mail. Choisissez « Patient dans la liste » ou modifiez l’e-mail.',
+        'Un patient existe déjà avec cet e-mail. Choisissez « Patient existant » ou modifiez l’e-mail.',
       );
     }
     throw e instanceof Error ? e : new Error(msg);
@@ -1197,9 +1226,10 @@ async function createPatientRecord(payload: Record<string, any>): Promise<string
 
 async function loadCareCategories() {
   categoriesLoading.value = true;
-  careCategoriesList.value = [];
+  categoriesError.value = false;
   try {
     const response = await apiFetch('/categories', { method: 'GET' });
+    if (!response.success || !Array.isArray(response.data)) throw new Error('Catalogue indisponible');
     if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
       careCategoriesList.value = (response.data as Array<Record<string, unknown>>).map((c) => ({
         ...(c as object),
@@ -1207,7 +1237,7 @@ async function loadCareCategories() {
       })) as typeof careCategoriesList.value;
     }
   } catch (e) {
-    console.error('Chargement catégories:', e);
+    categoriesError.value = true;
   } finally {
     categoriesLoading.value = false;
   }
@@ -1216,18 +1246,20 @@ async function loadCareCategories() {
 async function loadPatients() {
   if (!user.value?.id) return;
   patientsLoading.value = true;
+  patientsError.value = false;
   try {
     patients.value = await fetchAllPatientsForDashboard(apiFetch);
   } catch {
-    patients.value = [];
+    patientsError.value = true;
   } finally {
     patientsLoading.value = false;
   }
 }
 
-async function applyPatientToForm(p: any) {
+async function applyPatientToForm(p: any, version?: number) {
   if (!p) return;
   const addr = await resolvePatientAddressForRdvForm(p?.address);
+  if (version !== undefined && version !== patientProfileVersion) return;
   const parsed = parseRawPatientAddress(p?.address);
   const complement = addr?.complement ?? parsed?.complement ?? '';
   formData.value = {
@@ -1245,11 +1277,16 @@ async function applyPatientToForm(p: any) {
 
 async function fetchAndApplyPatientDetail(id: string) {
   if (!id) return;
+  const version = ++patientProfileVersion;
   let p: any = patients.value.find((x) => String(x.id) === String(id));
   patientProfileLoading.value = true;
+  patientProfileError.value = false;
+  loadedPatientSnapshot.value = null;
+  clearPatientFieldsInForm();
   try {
     const res = await apiFetch(`/users/${encodeURIComponent(id)}`, { method: 'GET' });
-    if (res?.success && res.data && typeof res.data === 'object') {
+    if (version !== patientProfileVersion) return;
+    if (res?.success && res.data && typeof res.data === 'object' && String(res.data.id) === String(id)) {
       const full = { ...(p || {}), ...res.data };
       const idx = patients.value.findIndex((x) => String(x.id) === String(id));
       if (idx >= 0) {
@@ -1258,14 +1295,12 @@ async function fetchAndApplyPatientDetail(id: string) {
         patients.value = [...patients.value, full];
       }
       p = full;
+    } else {
+      throw new Error('Dossier indisponible');
     }
-  } catch {
-    /* conserver la ligne liste si l’API échoue */
-  } finally {
-    patientProfileLoading.value = false;
-  }
   if (p?.id) {
     const resolvedAddr = await resolvePatientAddressForRdvForm(p?.address);
+    if (version !== patientProfileVersion) return;
     const parsedAddr = parseRawPatientAddress(p?.address);
     const complement = resolvedAddr?.complement ?? parsedAddr?.complement ?? '';
     loadedPatientSnapshot.value = buildPatientSnapshotFromPayload({
@@ -1278,12 +1313,23 @@ async function fetchAndApplyPatientDetail(id: string) {
       address: resolvedAddr ?? null,
       address_complement: complement || '',
     });
-    await applyPatientToForm(p);
+    await applyPatientToForm(p, version);
+  }
+  } catch {
+    if (version === patientProfileVersion) patientProfileError.value = true;
+  } finally {
+    if (version === patientProfileVersion) patientProfileLoading.value = false;
   }
 }
 
 watch(selectedPatientId, (id) => {
   if (patientMode.value !== 'existing' || !id) {
+    patientProfileVersion++;
+    linkedNursesVersion++;
+    proLinkedNursesLoading.value = false;
+    proLinkedNursesError.value = false;
+    patientProfileLoading.value = false;
+    patientProfileError.value = false;
     loadedPatientSnapshot.value = null;
     resetProNurseAssignment();
     proLinkedNurses.value = [];
@@ -1297,6 +1343,7 @@ watch(selectedPatientId, (id) => {
 });
 
 watch(patientMode, (m, prev) => {
+  if (m === 'new' && prev === 'existing') patientCreatedForAttempt.value = null;
   if (m !== 'new') {
     clearPatientContactLookupTimer();
     duplicatePatientModalOpen.value = false;
@@ -1334,6 +1381,8 @@ watch(
 );
 
 onUnmounted(() => {
+  patientProfileVersion++;
+  linkedNursesVersion++;
   clearPatientContactLookupTimer();
 });
 
@@ -1534,6 +1583,7 @@ async function onDashboardWizardContinue() {
 }
 
 function onDashboardFooterPrimary() {
+  if (patientMode.value === 'existing' && (patientProfileLoading.value || patientProfileError.value)) return;
   if (dashboardBookingWizardFinalStep.value) {
     unifiedFormRef.value?.commitPatientWizardSubmit?.();
     return;
@@ -1591,6 +1641,7 @@ function scrollToValidationError(anchor?: string) {
 }
 
 async function onUnifiedSubmit(payload: any) {
+  if (patientMode.value === 'existing' && (patientProfileLoading.value || patientProfileError.value)) return;
   validationError.value = '';
   formData.value = payload;
 
@@ -1771,6 +1822,8 @@ async function onUnifiedSubmit(payload: any) {
       .result;
 
     if (wrapped.success !== true) {
+      validationError.value = appointmentResult?.error || 'Création impossible';
+      scrollToValidationError();
       toast.add({
         title: 'Erreur',
         description: appointmentResult?.error || 'Création impossible',

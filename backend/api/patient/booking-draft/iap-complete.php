@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/PatientUrgencyConfig.php';
 require_once __DIR__ . '/../../../lib/PatientBookingDraftExecutor.php';
+require_once __DIR__ . '/../../../lib/PaymentReceiptClaim.php';
 require_once __DIR__ . '/../../../lib/AppleIapVerifier.php';
 require_once __DIR__ . '/../../../lib/GoogleIapVerifier.php';
 require_once __DIR__ . '/../../../lib/IapJwtHelper.php';
@@ -55,6 +56,7 @@ $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $c
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
 
 $stmt = $db->prepare('SELECT * FROM patient_booking_drafts WHERE id = ? AND user_id = ? LIMIT 1 FOR UPDATE');
+$fileJournal = new BookingFileJournal();
 $db->beginTransaction();
 try {
     $stmt->execute([$draftId, $uid]);
@@ -160,22 +162,24 @@ try {
         exit;
     }
 
-    $db->prepare(
-        "UPDATE patient_booking_drafts SET status = 'paid_processing', stripe_checkout_session_id = ?, payment_provider = ?, iap_product_id = ? WHERE id = ?"
-    )->execute([$transactionId, $paymentProvider, $productId, $draftId]);
+    PaymentReceiptClaim::claim($db, $draftId, $paymentProvider, $transactionId, $productId);
 
     $draft['stripe_checkout_session_id'] = $transactionId;
     $draft['payment_provider'] = $paymentProvider;
     $draft['iap_product_id'] = $productId;
     $draft['status'] = 'paid_processing';
 
-    $createdIds = PatientBookingDraftExecutor::run($db, $draft);
+    $afterCommit = [];
+    $createdIds = PatientBookingDraftExecutor::run($db, $draft, $afterCommit, $fileJournal);
 
     $db->prepare(
         "UPDATE patient_booking_drafts SET status = 'completed', created_appointment_ids_json = ?, completed_at = NOW() WHERE id = ?"
     )->execute([json_encode($createdIds, JSON_UNESCAPED_UNICODE), $draftId]);
 
     $db->commit();
+
+    $fileJournal->commit();
+    PatientBookingDraftExecutor::afterCommit($db, $afterCommit);
 
     try {
         require_once __DIR__ . '/../../../lib/AdminEmailNotifier.php';
@@ -201,13 +205,14 @@ try {
     if ($db->inTransaction()) {
         $db->rollBack();
     }
+    $fileJournal->rollback($db);
     try {
         $db->prepare(
-            "UPDATE patient_booking_drafts SET status = 'failed', error_message = ? WHERE id = ? AND status IN ('pending_payment','paid_processing')"
+            "UPDATE patient_booking_drafts SET error_message = ? WHERE id = ? AND status IN ('pending_payment','paid_processing')"
         )->execute([substr($e->getMessage(), 0, 500), $draftId]);
     } catch (Throwable $ignored) {
     }
     error_log('patient/booking-draft/iap-complete: ' . $e->getMessage());
-    http_response_code(502);
-    echo json_encode(['success' => false, 'error' => 'Finalisation IAP échouée']);
+    http_response_code($e instanceof PaymentReceiptAlreadyUsed ? 409 : 502);
+    echo json_encode(['success' => false, 'error' => $e instanceof PaymentReceiptAlreadyUsed ? 'Transaction déjà utilisée' : 'Finalisation IAP échouée']);
 }

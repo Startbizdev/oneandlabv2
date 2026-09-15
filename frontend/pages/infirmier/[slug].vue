@@ -17,12 +17,8 @@ definePageMeta({
   layout: 'default',
 });
 
-const route = useRoute();
-const config = useRuntimeConfig();
 
-const profile = ref<any>(null);
-const loading = ref(true);
-const error = ref<string | null>(null);
+const { profile, loading, error, fetchProfile, locationLabel: metaLocation } = await usePublicProfile('nurse');
 
 // FAQ par défaut pour les infirmiers (généraliste, SEO, sans horaires ni infos non disponibles)
 const defaultNurseFaq = [
@@ -44,7 +40,7 @@ const defaultNurseFaq = [
   },
   {
     question: 'Prélèvement à domicile : c’est remboursé ?',
-    answer: 'Les actes infirmiers à domicile prescrits par un médecin sont pris en charge par l\'Assurance maladie. Le remboursement dépend de votre convention avec l\'infirmier et de votre couverture complémentaire.',
+    answer: 'La prise en charge dépend des actes prescrits, de votre situation et des conditions de déplacement à domicile. Vérifiez les modalités avec le professionnel et votre organisme de couverture avant le rendez-vous.',
   },
 ];
 
@@ -52,11 +48,6 @@ const defaultNurseFaq = [
 const faqToDisplay = computed(() => defaultNurseFaq);
 
 // Lieu pour meta (ville + code postal)
-const metaLocation = computed(() => {
-  const p = profile.value;
-  if (!p) return '';
-  return (p.address || p.city_plain || '').toString().trim() || '';
-});
 
 // Meta tags dynamiques (SEO : Nom prénom - Infirmier libéral à Ville CODE POSTAL)
 useHead({
@@ -119,40 +110,4 @@ useHead({
 });
 
 // Fetch du profil en SSR
-const fetchProfile = async () => {
-  loading.value = true;
-  error.value = null;
-
-  try {
-    const slug = route.params.slug as string;
-    const base = config.public.apiBase || '/api';
-    const apiBase = import.meta.server && (base.startsWith('/') || !base.startsWith('http'))
-      ? 'http://127.0.0.1:8888/api'
-      : base;
-    const url = `${apiBase}/public/nurse/${slug}`;
-
-    const response = await $fetch<{ success: boolean; data?: any; error?: string }>(url, {
-      method: 'GET',
-    });
-
-    if (response.success && response.data) {
-      const data = response.data;
-      profile.value = {
-        ...data,
-        role: 'nurse',
-        name: `${data.first_name} ${data.last_name}`,
-        faq: data.faq ? (typeof data.faq === 'string' ? JSON.parse(data.faq) : data.faq) : [],
-      };
-    } else {
-      error.value = response.error || 'Profil introuvable';
-    }
-  } catch (err: any) {
-    console.error('Erreur lors du chargement du profil:', err);
-    error.value = err.data?.error || err.message || 'Erreur lors du chargement du profil';
-  } finally {
-    loading.value = false;
-  }
-};
-
-await fetchProfile();
 </script>

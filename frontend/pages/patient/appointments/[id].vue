@@ -74,7 +74,7 @@
                 size="sm"
                 class="w-full sm:w-auto justify-center"
                 icon="i-lucide-calendar-clock"
-                @click="showEditScheduleModal = true"
+                @click="($event) => { showEditScheduleModal = true }"
               >
                 Modifier date et créneau
               </UButton>
@@ -92,7 +92,7 @@
                 size="sm"
                 class="w-full sm:w-auto justify-center"
                 icon="i-lucide-x-circle"
-                @click="showCancelModal = true"
+                @click="($event) => { showCancelModal = true }"
               >
                 {{
                   appointmentsToCancelForPatient.length > 1
@@ -278,7 +278,7 @@
                     >
                       <UTextarea
                         :model-value="reviewForms[String(appt.id)]?.comment ?? ''"
-                        rows="4"
+                        :rows="4"
                         autoresize
                         placeholder="Ex. : professionnel à l’écoute, soin effectué avec douceur…"
                         class="w-full"
@@ -425,7 +425,7 @@ function relativePourQuiDisplayName(rel: any): string {
   return full || '—';
 }
 
-const detailRef = ref<{ loadAppointment: (m?: any, o?: { silent?: boolean }) => Promise<void>; loadDocuments?: () => Promise<void> } | null>(
+const detailRef = ref<{ appointment?: unknown; batchAppointmentsSorted?: unknown; documents?: unknown; loadAppointment: (m?: any, o?: { silent?: boolean }) => Promise<void>; loadDocuments?: () => Promise<void> } | null>(
   null,
 );
 
@@ -1064,7 +1064,7 @@ async function downloadDocument(doc: { id: string; file_name?: string }) {
   try {
     const merged = documentsList.value.find((d: any) => d.id === doc.id);
     const config = useRuntimeConfig();
-    const apiBase = config.public.apiBase || 'http://localhost:8888/api';
+    const apiBase = config.public.apiBase || '/api';
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : '';
     const response = await fetch(`${apiBase}/medical-documents/${doc.id}/download?id=${doc.id}`, {
       method: 'GET',

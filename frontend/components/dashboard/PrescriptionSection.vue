@@ -119,7 +119,7 @@
       </template>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton color="neutral" variant="ghost" @click="signatureModalOpen = false">Annuler</UButton>
+          <UButton color="neutral" variant="ghost" @click="($event) => { signatureModalOpen = false }">Annuler</UButton>
           <UButton color="primary" :loading="signatureSaving" @click="saveSignatureAndGenerate">
             Enregistrer et générer
           </UButton>

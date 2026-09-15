@@ -26,7 +26,7 @@ const props = withDefaults(
      * `dashboard` : zone `p-4 md:p-6` du layout tableau de bord.
      * `patient` : `main` patient `py-6 px-4 sm:px-6 lg:px-8`.
      */
-    headerBleed?: 'dashboard' | 'patient';
+    headerBleed?: 'dashboard' | 'patient' | false;
   }>(),
   {
     maxWidth: '7xl',
@@ -53,7 +53,7 @@ const maxWidthClass = computed(() => {
 const horizontalPad = computed(() => (props.padded ? 'px-4 sm:px-6' : ''));
 
 const headerBleedClass = computed(() =>
-  props.headerBleed === 'patient'
+  props.headerBleed === false ? '' : props.headerBleed === 'patient'
     ? '-mx-4 -mt-6 sm:-mx-6 lg:-mx-8'
     : '-mx-4 -mt-4 md:-mx-6 md:-mt-6'
 );

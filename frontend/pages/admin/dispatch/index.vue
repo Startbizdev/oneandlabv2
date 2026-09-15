@@ -25,6 +25,7 @@
       variant="subtle"
       icon="i-lucide-alert-circle"
       :title="error"
+      :actions="[{ label: 'Réessayer', onClick: reload }]"
     />
 
     <!-- KPIs -->
@@ -39,7 +40,7 @@
           <UIcon :name="kpi.icon" class="size-4 shrink-0 text-muted" />
         </div>
         <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">
-          {{ loading && !dashboardData ? '—' : kpi.value }}
+          {{ !dashboardData ? '—' : kpi.value }}
         </p>
         <p v-if="kpi.hint" class="mt-1 text-xs text-muted">{{ kpi.hint }}</p>
       </div>
@@ -52,11 +53,12 @@
       <UInput
         v-model="filters.search"
         placeholder="Patient, créateur, identifiant…"
+        aria-label="Rechercher une attribution"
         class="min-w-0 flex-1"
         icon="i-lucide-search"
         size="sm"
         clearable
-        :ui="{ rounded: 'rounded-lg' }"
+        :ui="{ base: 'rounded-lg' }"
       />
       <div class="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:justify-end">
         <USelect
@@ -64,6 +66,7 @@
           :items="typeOptions"
           value-key="value"
           placeholder="Type de soin"
+          aria-label="Type de soin"
           size="sm"
           class="min-w-[9.5rem] flex-1 sm:flex-none sm:min-w-[10.5rem]"
         />
@@ -72,6 +75,7 @@
           :items="statusOptions"
           value-key="value"
           placeholder="Statut"
+          aria-label="Statut du rendez-vous"
           size="sm"
           class="min-w-[9.5rem] flex-1 sm:flex-none sm:min-w-[10.5rem]"
         />
@@ -80,6 +84,7 @@
           :items="dispatchModeOptions"
           value-key="value"
           placeholder="Mode d’envoi"
+          aria-label="Mode d’envoi"
           size="sm"
           class="min-w-[9.5rem] flex-1 sm:flex-none sm:min-w-[11rem]"
         />
@@ -114,7 +119,7 @@
 
     <!-- Vide -->
     <div
-      v-else-if="!loading && tableRows.length === 0"
+      v-else-if="!loading && !error && tableRows.length === 0"
       class="rounded-xl border border-gray-200/90 bg-white px-6 py-14 dark:border-gray-800 dark:bg-gray-950"
     >
       <UEmpty
@@ -127,7 +132,7 @@
     </div>
 
     <!-- Cartes RDV -->
-    <template v-else>
+    <template v-else-if="!error">
       <p class="text-sm text-muted">
         {{ pagination.total }} rendez-vous
         <span v-if="pagination.total_pages > 1">
@@ -164,7 +169,7 @@
               </h2>
               <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">
                 {{ formatDateOnly(row.scheduled_at) }}
-                <span v-if="row.creneau"> · {{ row.creneau }}</span>
+                <span v-if="row.creneau"> · {{ formatAvailabilityDisplayFr(row.creneau) }}</span>
               </p>
             </div>
 
@@ -251,7 +256,7 @@
       v-model:open="detailOpen"
       :title="detailTitle"
       description="Parcours complet : création, envois, propositions et acceptation."
-      :ui="{ width: 'max-w-2xl', body: 'space-y-4 overflow-y-auto' }"
+      :ui="{ content: 'max-w-2xl', body: 'space-y-4 overflow-y-auto' }"
       @update:open="onDetailOpenChange"
     >
       <template #body>
@@ -261,6 +266,7 @@
           color="error"
           variant="subtle"
           :title="detailError"
+          :actions="[{ label: 'Réessayer', onClick: () => { if (selectedId) return fetchDetail(selectedId) } }]"
         />
         <template v-else-if="detailData">
           <UAlert
@@ -303,6 +309,7 @@
 
 <script setup lang="ts">
 import type { AdminDispatchListRow } from '@oneandlab/shared-types'
+import { formatAvailabilityDisplayFr } from '~/utils/appointment-datetime-fr'
 import type { AdminDispatchFilters } from '~/composables/useAdminDispatch'
 
 definePageMeta({
@@ -398,7 +405,7 @@ const kpiCards = computed(() => {
       value:
         kpis?.median_accept_minutes != null ? `${kpis.median_accept_minutes} min` : '—',
       icon: 'i-lucide-timer',
-      hint: 'Temps moyen avant acceptation',
+      hint: 'La moitié des acceptations intervient avant ce délai',
     },
   ]
 })
@@ -558,4 +565,5 @@ watch(
 )
 
 onMounted(() => reload())
+onBeforeUnmount(() => { if (debounceTimer) clearTimeout(debounceTimer) })
 </script>

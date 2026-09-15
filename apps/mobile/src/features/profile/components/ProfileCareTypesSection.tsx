@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import { Button } from '@/components/ui/Button';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { HeartPulse } from 'lucide-react-native';
 import { careCategoryEmojiForCategory } from '@oneandlab/shared-utils';
@@ -65,6 +66,11 @@ export function ProfileCareTypesSection({ bare }: Props) {
 
   const body = q.isLoading ? (
     <SkeletonList count={6} itemHeight={48} gap={spacing[2]} />
+  ) : q.isError ? (
+    <View style={styles.list}>
+      <AppText style={styles.empty}>Impossible de charger vos préférences de soins.</AppText>
+      <Button title="Réessayer" loading={q.isFetching} onPress={() => void q.refetch()} />
+    </View>
   ) : prefs.length === 0 ? (
     <AppText style={[styles.empty, bare && styles.emptyBare]}>
       Aucune catégorie de soins disponible pour le moment.
@@ -88,7 +94,8 @@ export function ProfileCareTypesSection({ bare }: Props) {
             actions={
               <ToggleSwitch
                 value={enabled}
-                disabled={busy}
+                disabled={toggle.isPending}
+                accessibilityLabel={p.name ?? 'Ce soin'}
                 onValueChange={(v) => toggle.mutate({ categoryId: p.category_id, enabled: v })}
               />
             }

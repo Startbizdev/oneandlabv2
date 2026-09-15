@@ -7,7 +7,7 @@ declare(strict_types=1);
  */
 final class PatientUrgencyGuard
 {
-    public static function assertPaidOrNotRequired(array $data, string $createdByRole): void
+    public static function assertPaidOrNotRequired(array $data, string $createdByRole, bool $verifiedPayment = false): void
     {
         if ($createdByRole !== 'patient') {
             return;
@@ -23,7 +23,7 @@ final class PatientUrgencyGuard
             return;
         }
         $pu = $fd['patient_urgency'] ?? [];
-        if (is_array($pu) && !empty($pu['paid'])) {
+        if ($verifiedPayment && is_array($pu) && !empty($pu['paid'])) {
             return;
         }
         throw new Exception(

@@ -21,24 +21,28 @@
 
     <!-- KPIs -->
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <div
+      <button
         v-for="kpi in kpiCards"
         :key="kpi.key"
-        class="rounded-xl border border-gray-200/90 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-gray-800 dark:bg-gray-950"
+        type="button"
+        :disabled="loading || loadError"
+        :aria-pressed="statusFilter === (kpi.key === 'total' ? 'all' : kpi.key)"
+        class="rounded-xl border border-gray-200/90 bg-white p-4 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:border-primary-500 focus-visible:outline-2 focus-visible:outline-primary-600 dark:border-gray-800 dark:bg-gray-950"
+        @click="statusFilter = kpi.key === 'total' ? 'all' : kpi.key"
       >
         <div class="flex items-start justify-between gap-2">
           <p class="text-xs font-medium text-muted">{{ kpi.label }}</p>
           <UIcon :name="kpi.icon" class="size-4 shrink-0 text-muted" />
         </div>
         <p class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">
-          {{ loading ? '—' : kpi.value }}
+          {{ loading || loadError ? '—' : kpi.value }}
         </p>
         <p v-if="kpi.hint" class="mt-1 text-xs text-muted">{{ kpi.hint }}</p>
-      </div>
+      </button>
     </div>
 
     <!-- Répartition -->
-    <div class="grid gap-3 sm:grid-cols-2">
+    <div v-if="!loading && !loadError" class="grid gap-3 sm:grid-cols-2">
       <div
         class="rounded-xl border border-gray-200/90 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-gray-800 dark:bg-gray-950"
       >
@@ -77,11 +81,12 @@
       <UInput
         v-model="searchQuery"
         placeholder="Rechercher par email ou offre…"
+        aria-label="Rechercher un abonnement"
         class="min-w-0 flex-1"
         icon="i-lucide-search"
         size="sm"
         clearable
-        :ui="{ rounded: 'rounded-lg' }"
+        :ui="{ base: 'rounded-lg' }"
       />
       <div class="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:justify-end">
         <USelect
@@ -89,6 +94,7 @@
           :items="roleOptions"
           value-key="value"
           placeholder="Profil"
+          aria-label="Profil de l’abonné"
           size="sm"
           class="min-w-[9.5rem] flex-1 sm:flex-none sm:min-w-[10.5rem]"
         />
@@ -97,6 +103,7 @@
           :items="statusOptions"
           value-key="value"
           placeholder="Statut"
+          aria-label="Statut de l’abonnement"
           size="sm"
           class="min-w-[9.5rem] flex-1 sm:flex-none sm:min-w-[10.5rem]"
         />
@@ -118,6 +125,12 @@
         :key="i"
         class="h-56 animate-pulse rounded-xl border border-gray-200/90 bg-white dark:border-gray-800 dark:bg-gray-950"
       />
+    </div>
+
+    <div v-else-if="loadError" role="alert" class="rounded-xl border border-default bg-default p-5 space-y-3">
+      <h2 class="font-semibold">Abonnements indisponibles</h2>
+      <p class="text-sm text-muted">Impossible de charger les abonnements. Réessayez pour retrouver les offres et les paiements à suivre.</p>
+      <UButton color="neutral" variant="outline" @click="loadSubscriptions">Réessayer</UButton>
     </div>
 
     <!-- Vide -->
@@ -154,7 +167,7 @@
                 {{ statusLabel(sub.effective_status ?? sub.status) }}
               </UBadge>
               <UBadge v-if="sub.needs_resync" color="warning" variant="soft" size="sm">
-                Sync store requise
+                Boutique à synchroniser
               </UBadge>
             </div>
 
@@ -177,7 +190,7 @@
                 <dd class="text-gray-800 dark:text-gray-200">{{ formatTrialEnd(sub) }}</dd>
               </div>
               <div class="flex gap-2">
-                <dt class="w-32 shrink-0 text-muted">Prochaine facture</dt>
+                <dt class="w-32 shrink-0 text-muted">Fin de période</dt>
                 <dd class="text-gray-800 dark:text-gray-200">{{ formatDate(sub.current_period_end) }}</dd>
               </div>
               <div class="flex gap-2">
@@ -214,6 +227,7 @@ type SubscriptionRow = {
 }
 
 const loading = ref(true)
+const loadError = ref(false)
 const subscriptions = ref<SubscriptionRow[]>([])
 const roleFilter = ref('all')
 const statusFilter = ref('all')
@@ -232,12 +246,16 @@ const statusOptions = [
   { label: 'Paiement en retard', value: 'past_due' },
   { label: 'Annulé', value: 'canceled' },
   { label: 'Incomplet', value: 'incomplete' },
+  { label: 'À traiter', value: 'attention' },
+  { label: 'Impayé', value: 'unpaid' },
+  { label: 'En pause', value: 'paused' },
+  { label: 'Souscription expirée', value: 'incomplete_expired' },
 ]
 
 const PLAN_LABELS: Record<string, string> = {
-  nurse_pro: 'Infirmier Pro · 29 €/mois',
-  lab_starter: 'Labo Starter · 49 €/mois',
-  lab_pro: 'Labo Pro · 129 €/mois',
+  nurse_pro: 'Infirmier Pro',
+  lab_starter: 'Labo Starter',
+  lab_pro: 'Labo Pro',
 }
 
 function roleLabel(role: string) {
@@ -264,6 +282,8 @@ function statusLabel(status: string) {
     past_due: 'Paiement en retard',
     incomplete: 'Incomplet',
     unpaid: 'Impayé',
+    paused: 'En pause',
+    incomplete_expired: 'Souscription expirée',
   }
   return labels[status] || status
 }
@@ -299,6 +319,10 @@ function effectiveStatus(row: SubscriptionRow) {
   return row.effective_status ?? row.status
 }
 
+function needsAttention(row: SubscriptionRow) {
+  return row.needs_resync || ['past_due', 'unpaid', 'incomplete'].includes(effectiveStatus(row))
+}
+
 function formatDate(value: string | null) {
   if (!value) return '—'
   return new Date(value).toLocaleDateString('fr-FR', {
@@ -317,6 +341,7 @@ const stats = computed(() => {
     pastDue: rows.filter((r) => effectiveStatus(r) === 'past_due' || effectiveStatus(r) === 'unpaid').length,
     canceled: rows.filter((r) => effectiveStatus(r) === 'canceled').length,
     needsResync: rows.filter((r) => r.needs_resync).length,
+    attention: rows.filter(needsAttention).length,
     nurses: rows.filter((r) => r.role === 'nurse').length,
     labs: rows.filter((r) => r.role === 'lab').length,
   }
@@ -343,15 +368,15 @@ const kpiCards = computed(() => [
     value: stats.value.trialing,
     icon: 'i-lucide-hourglass',
     hint: stats.value.needsResync > 0
-      ? `Essai gratuit · ${stats.value.needsResync} sync store en attente`
+      ? `Essai gratuit · ${stats.value.needsResync} boutique(s) à synchroniser`
       : 'Période d’essai gratuite',
   },
   {
     key: 'attention',
-    label: 'À surveiller',
-    value: stats.value.pastDue + stats.value.canceled,
+    label: 'À traiter',
+    value: stats.value.attention,
     icon: 'i-lucide-triangle-alert',
-    hint: `${stats.value.pastDue} retard · ${stats.value.canceled} annulé${stats.value.canceled > 1 ? 's' : ''}`,
+    hint: 'Paiements à régulariser ou boutique à synchroniser',
   },
 ])
 
@@ -374,7 +399,8 @@ const filteredSubscriptions = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   return subscriptions.value.filter((row) => {
     if (roleFilter.value !== 'all' && row.role !== roleFilter.value) return false
-    if (statusFilter.value !== 'all' && effectiveStatus(row) !== statusFilter.value) return false
+    if (statusFilter.value === 'attention' && !needsAttention(row)) return false
+    if (!['all', 'attention'].includes(statusFilter.value) && effectiveStatus(row) !== statusFilter.value) return false
     if (!q) return true
     const haystack = [
       row.email,
@@ -397,13 +423,15 @@ function resetFilters() {
 }
 
 async function loadSubscriptions() {
+  if (loading.value && subscriptions.value.length) return
   loading.value = true
+  loadError.value = false
   try {
     const res = await apiFetch('/admin/subscriptions', { method: 'GET' })
-    if (res?.success) subscriptions.value = (res.data ?? []) as SubscriptionRow[]
-    else subscriptions.value = []
+    if (!res?.success || !Array.isArray(res.data)) throw new Error('Chargement impossible')
+    subscriptions.value = res.data as SubscriptionRow[]
   } catch {
-    subscriptions.value = []
+    loadError.value = true
   } finally {
     loading.value = false
   }

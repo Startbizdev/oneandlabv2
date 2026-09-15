@@ -2,6 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo, useState } from 'react';
+import { Row } from '@/components/layout/primitives';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { BookOpen, ChevronDown, ChevronUp, ExternalLink, Info, Scale } from 'lucide-react-native';
 import {
@@ -37,8 +38,8 @@ function CategoryBlock({ category }: { category: NursePrescriptionScopeCategory 
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         onPress={() => setOpen((v) => !v)}
-        style={styles.trigger}
       >
+        <Row align="start" style={styles.trigger}>
         <View style={styles.triggerText}>
           <AppText style={styles.catTitle}>{category.title}</AppText>
           <AppText style={styles.catSummary} numberOfLines={open ? undefined : 2}>
@@ -50,17 +51,18 @@ function CategoryBlock({ category }: { category: NursePrescriptionScopeCategory 
         ) : (
           <ChevronDown size={iconSize.sm} color={c.textSecondary} strokeWidth={2} />
         )}
+        </Row>
       </Pressable>
       {open ? (
         <View style={styles.body}>
           {category.items.map((item) => (
-            <View key={item.id} style={styles.bulletRow}>
+            <Row key={item.id} align="start" style={styles.bulletRow}>
               <AppText style={styles.bullet}>•</AppText>
               <AppText style={styles.itemText}>
                 {item.label}
                 {item.detail ? ` — ${item.detail}` : ''}
               </AppText>
-            </View>
+            </Row>
           ))}
           {category.limits?.map((lim) => (
             <View key={lim} style={styles.limitBox}>
@@ -78,7 +80,7 @@ function SourceRow({ source }: { source: NursePrescriptionLegalSource }) {
   const styles = useThemedStyles(buildSourceStyles, 'NursePrescriptionScopeSheet_source');
 
   return (
-    <View style={styles.row}>
+    <Row align="start" style={styles.row}>
       <View style={styles.textCol}>
         <AppText style={styles.label}>{source.label}</AppText>
         {source.note ? <AppText style={styles.note}>{source.note}</AppText> : null}
@@ -96,7 +98,7 @@ function SourceRow({ source }: { source: NursePrescriptionLegalSource }) {
       >
         <ExternalLink size={iconSize.sm} color={c.primary} strokeWidth={2} />
       </Pressable>
-    </View>
+    </Row>
   );
 }
 
@@ -109,7 +111,7 @@ export function NursePrescriptionScopeHelp() {
 
   return (
     <>
-      <View style={styles.banner}>
+      <Row wrap align="start" style={styles.banner}>
         <View style={styles.bannerIcon}>
           <Scale size={iconSize.md} color={c.primary} strokeWidth={2} />
         </View>
@@ -127,7 +129,7 @@ export function NursePrescriptionScopeHelp() {
           onPress={() => setSheetOpen(true)}
           style={styles.bannerBtn}
         />
-      </View>
+      </Row>
 
       <SheetModal
         visible={sheetOpen}
@@ -138,10 +140,10 @@ export function NursePrescriptionScopeHelp() {
       >
         <AppText style={styles.intro}>{scope.intro}</AppText>
 
-        <View style={styles.caryNotice}>
+        <Row align="start" style={styles.caryNotice}>
           <Info size={iconSize.sm} color={c.primary} strokeWidth={2} style={styles.caryIcon} />
           <AppText style={styles.caryText}>{scope.caryNotice}</AppText>
-        </View>
+        </Row>
 
         <AppText style={styles.sectionLabel}>Domaines autorisés</AppText>
         {scope.categories.map((cat) => (
@@ -172,9 +174,8 @@ export function NursePrescriptionScopeHelp() {
 }
 
 function buildStyles(c: AppColors) {
-  return StyleSheet.create({
+  return {
     banner: {
-      flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'flex-start',
       gap: spacing[3],
@@ -214,7 +215,6 @@ function buildStyles(c: AppColors) {
       marginBottom: spacing[4],
     },
     caryNotice: {
-      flexDirection: 'row',
       gap: spacing[3],
       padding: spacing[3],
       borderRadius: radius.lg,
@@ -226,6 +226,7 @@ function buildStyles(c: AppColors) {
     caryIcon: { marginTop: 2 },
     caryText: {
       flex: 1,
+      minWidth: 0,
       fontFamily: fontFamily.regular,
       fontSize: fontSize.xs,
       color: c.textPrimary,
@@ -271,11 +272,11 @@ function buildStyles(c: AppColors) {
       borderTopColor: c.border,
       marginBottom: spacing[6],
     },
-  });
+  } satisfies Parameters<typeof StyleSheet.create>[0];
 }
 
 function buildCategoryStyles(c: AppColors) {
-  return StyleSheet.create({
+  return {
     wrap: {
       borderWidth: 1,
       borderColor: c.border,
@@ -285,12 +286,11 @@ function buildCategoryStyles(c: AppColors) {
       backgroundColor: c.surface,
     },
     trigger: {
-      flexDirection: 'row',
       alignItems: 'flex-start',
       gap: spacing[2],
       padding: spacing[3],
     },
-    triggerText: { flex: 1, gap: spacing[0.5] },
+    triggerText: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     catTitle: {
       fontFamily: fontFamily.medium,
       fontSize: fontSize.sm,
@@ -309,10 +309,11 @@ function buildCategoryStyles(c: AppColors) {
       borderTopColor: c.border,
       gap: spacing[1],
     },
-    bulletRow: { flexDirection: 'row', gap: spacing[2], paddingRight: spacing[1] },
+    bulletRow: { gap: spacing[2], paddingRight: spacing[1] },
     bullet: { fontFamily: fontFamily.regular, fontSize: fontSize.sm, color: c.primary },
     itemText: {
       flex: 1,
+      minWidth: 0,
       fontFamily: fontFamily.regular,
       fontSize: fontSize.xs,
       color: c.textPrimary,
@@ -330,13 +331,12 @@ function buildCategoryStyles(c: AppColors) {
       color: c.textSecondary,
       lineHeight: 16,
     },
-  });
+  } satisfies Parameters<typeof StyleSheet.create>[0];
 }
 
 function buildSourceStyles(c: AppColors) {
-  return StyleSheet.create({
+  return {
     row: {
-      flexDirection: 'row',
       alignItems: 'flex-start',
       gap: spacing[2],
       padding: spacing[3],
@@ -345,7 +345,7 @@ function buildSourceStyles(c: AppColors) {
       borderColor: c.border,
       marginBottom: spacing[2],
     },
-    textCol: { flex: 1, gap: spacing[0.5] },
+    textCol: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     label: {
       fontFamily: fontFamily.medium,
       fontSize: fontSize.sm,
@@ -365,5 +365,5 @@ function buildSourceStyles(c: AppColors) {
       padding: spacing[2],
       borderRadius: radius.md,
     },
-  });
+  } satisfies Parameters<typeof StyleSheet.create>[0];
 }

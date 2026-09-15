@@ -3,14 +3,14 @@
     <template #header>
       <CardHeader
         icon="i-lucide-map-pin"
-        title="Zone de couverture"
-        description="Polygone d'intervention autour de votre adresse professionnelle"
+        title="Votre secteur d’intervention"
+        description="Choisissez les quartiers où vous souhaitez recevoir des demandes de soins."
       />
     </template>
 
     <template v-if="!hasValidAddress">
       <UAlert
-        color="amber"
+        color="warning"
         variant="soft"
         icon="i-lucide-alert-circle"
         title="Adresse requise"
@@ -34,8 +34,8 @@
             :large-handles="editing"
             :show-footer="false"
             fill-height
-            map-min-height="min-h-[320px]"
-            map-height-class="h-[min(58vh,560px)] sm:h-[min(62vh,620px)] w-full rounded-xl border border-default/40"
+            map-min-height="min-h-[220px]"
+            :map-height-class="editing ? 'h-[min(55dvh,440px)] w-full rounded-xl border border-default/40' : 'h-[240px] sm:h-[280px] w-full rounded-xl border border-default/40'"
             class="w-full"
             @update:half-side-km="draftHalfSide = $event"
             @update:vertices="draftVertices = $event"
@@ -43,7 +43,7 @@
           />
           <template #fallback>
             <div
-              class="w-full h-[min(58vh,560px)] min-h-[320px] rounded-xl bg-muted/30 border border-default/40 flex items-center justify-center"
+              class="w-full h-[240px] sm:h-[280px] rounded-xl bg-muted/30 border border-default/40 flex items-center justify-center"
             >
               <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-primary" />
             </div>
@@ -52,18 +52,18 @@
 
         <p v-if="editing" class="text-xs text-muted flex items-center gap-1.5">
           <UIcon name="i-lucide-move" class="w-3.5 h-3.5 shrink-0" />
-          Carré par défaut — 4 coins + 2 milieux (nord et sud). Glissez pour ajuster, puis validez.
+          Déplacez les points sur la carte pour suivre les limites de votre secteur, puis enregistrez.
         </p>
 
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div class="space-y-0.5">
             <p class="text-sm text-foreground">
               <span class="font-semibold text-primary tabular-nums">{{ displayReach }} km</span>
-              <span class="text-muted"> du centre au sommet le plus loin</span>
+              <span class="text-muted"> au maximum de votre adresse</span>
               <span class="text-muted hidden sm:inline"> · ~{{ displayArea }} km²</span>
             </p>
             <p class="text-xs text-muted">
-              Les patients dans ce polygone peuvent vous contacter via Cary.
+              Votre secteur détermine les demandes de soins que vous pouvez recevoir.
             </p>
           </div>
 
@@ -72,7 +72,7 @@
               Annuler
             </UButton>
             <UButton color="primary" class="w-full sm:w-auto" :loading="saving" @click="validateEdit">
-              Valider
+              Enregistrer mon secteur
             </UButton>
           </div>
           <UButton

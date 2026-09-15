@@ -115,13 +115,13 @@ export function PrescriptionComposer({
   const canGenerate = Boolean(patientId?.trim()) && hasMedicalPrescriptionContent(medicalFields);
 
   const profileQ = useQuery({
-    queryKey: queryKeys.profile.user(user?.id ?? ''),
+    queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
     queryFn: async () => (await fetchUser(user!.id, 'full')).data,
     enabled: !!user?.id,
   });
 
   const patientQ = useQuery({
-    queryKey: queryKeys.profile.user(patientId),
+    queryKey: queryKeys.profile.fullUser(patientId),
     queryFn: async () => (await fetchUser(patientId, 'full')).data,
     enabled: Boolean(patientId?.trim()),
   });

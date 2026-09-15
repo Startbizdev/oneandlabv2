@@ -34,6 +34,7 @@ import { handleApiError } from '@/lib/errors/handle-api-error';
 import { nursePublicProfilePath } from '@/features/profile/utils/nurse-public-profile';
 import { spacing } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
+import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
 
 export function ProfileNurseHubView() {
   const c = useAppColors();
@@ -53,7 +54,7 @@ export function ProfileNurseHubView() {
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
 
   const profileQ = useQuery({
-    queryKey: queryKeys.profile.user(user?.id ?? ''),
+    queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
     queryFn: async () => (await fetchUser(user!.id, 'full')).data,
     enabled: !!user?.id,
   });
@@ -113,6 +114,8 @@ export function ProfileNurseHubView() {
       `/(nurse)/web?path=${encodeURIComponent(path)}&title=${encodeURIComponent('Mon profil public')}` as never,
     );
   }, [publicSlug, push]);
+
+  if (profileQ.isLoading || profileQ.isError || !profileQ.data) return <ProfileLoadState loading={profileQ.isLoading || !user?.id} refreshing={profileQ.isFetching} onRetry={() => void profileQ.refetch()} />;
 
   return (
     <StackChromeScreen>

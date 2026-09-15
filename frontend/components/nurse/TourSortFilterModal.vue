@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import type { TourSortMode } from '~/composables/useNurseTourWeb';
+import type { NurseTourSortMode as TourSortMode } from '~/composables/useNurseTourWeb';
 
 const modes: { value: TourSortMode; label: string; hint: string }[] = [
   { value: 'smart', label: 'Intelligent', hint: 'Créneaux + proximité GPS' },

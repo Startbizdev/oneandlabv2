@@ -12,14 +12,16 @@ const BLOOD_TEST_SERIES_LABELS: Record<string, string> = {
 };
 
 export function formatBloodTestSeriesDurationDays(
-  durationDays: string | null | undefined,
+  durationDays: string | number | null | undefined,
   customDays?: number | null
 ): string {
-  const v = (durationDays ?? '').trim();
+  if (typeof durationDays === 'number' && (!Number.isFinite(durationDays) || durationDays <= 0)) return '';
+  const v = typeof durationDays === 'string' ? durationDays.trim() : typeof durationDays === 'number' ? String(durationDays) : '';
   if (!v) return '';
   if (v === 'custom') {
-    if (customDays != null && customDays > 0) return `${customDays} jours`;
+    if (customDays != null && customDays > 0) return `${customDays} ${Number(customDays) === 1 ? 'jour' : 'jours'}`;
     return 'Durée personnalisée';
   }
+  if (v === '1') return '1 jour';
   return BLOOD_TEST_SERIES_LABELS[v] || `${v} jours`;
 }

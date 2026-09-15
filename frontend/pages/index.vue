@@ -14,6 +14,12 @@ definePageMeta({
   layout: 'default',
 });
 
+useLandingSeo({
+  title: 'Prise de sang et soins infirmiers à domicile | Cary',
+  description: 'Réservez une prise de sang ou des soins infirmiers à domicile. Choisissez vos disponibilités, suivez la confirmation et retrouvez vos documents avec Cary.',
+  path: '/',
+});
+
 const faqItems = [
   {
     question: 'Comment réserver ?',
@@ -23,7 +29,9 @@ const faqItems = [
   {
     question: 'Est-ce remboursé ?',
     answer:
-      'Oui, dans la grande majorité des cas, sur ordonnance et avec un professionnel conventionné. Comme en ville : carte Vitale, télétransmission.',
+      'La prise en charge dépend de votre prescription, des soins et de votre situation. Le déplacement à domicile a ses propres conditions. Demandez au professionnel de vous préciser les frais éventuels avant la visite.',
+    sourceUrl: 'https://www.ameli.fr/infirmier/exercice-liberal/facturation-remuneration/tarifs-conventionnels/actes-domicile',
+    sourceLabel: 'Conditions de déplacement à domicile sur ameli.fr',
   },
   {
     question: 'Je suis infirmier ou laboratoire, comment rejoindre ?',
@@ -33,7 +41,7 @@ const faqItems = [
   {
     question: 'Mes données sont-elles protégées ?',
     answer:
-      'Oui. Cary est hébergée pour les données de santé et respecte le RGPD. Vos informations ne sont pas vendues.',
+      'Votre espace rassemble vos rendez-vous et vos documents. Les accès dépendent du rôle et de la prise en charge. Consultez notre politique de confidentialité pour connaître les traitements de données et exercer vos droits.',
   },
   {
     question: 'Puis-je annuler ou décaler ?',

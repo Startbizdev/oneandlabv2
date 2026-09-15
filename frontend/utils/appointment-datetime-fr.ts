@@ -1,3 +1,4 @@
+import { parseAppointmentDateFrance, parisWallClockDate } from '@oneandlab/shared-utils';
 /**
  * Créneau horaire patient (form_data.availability), aligné listes + fiche.
  * Gère all_day, custom, legacy specificSlot, mots-clés non JSON (fullday / specificslot), Horaire VIP patient.
@@ -14,12 +15,27 @@ import {
 
 const MIN_SLOT_SPAN_HOURS = 1;
 
+function clockMinutes(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const minutes = Math.round(value * 60);
+    return minutes >= 0 && minutes <= 1440 ? minutes : null;
+  }
+  if (typeof value !== 'string') return null;
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (match) {
+    const hour = Number(match[1]), minute = Number(match[2]);
+    return minute < 60 && (hour < 24 || (hour === 24 && minute === 0)) ? hour * 60 + minute : null;
+  }
+  return value.trim() && Number.isFinite(Number(value)) ? clockMinutes(Number(value)) : null;
+}
+
 function rangeToHourSpanLabel(range: unknown[]): string {
-  const start = Math.floor(Number(range[0]));
-  const end = Math.floor(Number(range[1]));
-  if (Number.isNaN(start) || Number.isNaN(end)) return '';
-  if (end - start < MIN_SLOT_SPAN_HOURS) return '';
-  return `${start}h à ${end}h`;
+  const start = clockMinutes(range[0]);
+  const end = clockMinutes(range[1]);
+  if (start == null || end == null || end - start < MIN_SLOT_SPAN_HOURS * 60) return '';
+  if (start % 60 === 0 && end % 60 === 0) return `${start / 60}h à ${end / 60}h`;
+  const clock = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+  return `créneau ${clock(start)} - ${clock(end)}`;
 }
 
 /** Heures « libres » legacy (time / timeSlot) : plage ou une seule heure → au moins 1 h. */
@@ -120,6 +136,10 @@ export function formatAvailabilitySlotFr(availability: unknown): string {
       if (label) return label;
     }
 
+    if (typ === 'custom' || typ === 'specificslot' || typ === 'specific_slot' || typ === '') {
+      const explicit = rangeToHourSpanLabel([avail.start ?? avail.start_time, avail.end ?? avail.end_time]);
+      if (explicit) return explicit;
+    }
     if (typ === 'specificslot' || typ === 'specific_slot') {
       return specificSlotFreeformLabel(avail);
     }
@@ -145,61 +165,11 @@ function parisCalendarPartsFromInstant(ms: number): { y: number; m: number; d: n
 
 /** Instant UTC correspondant à une heure murale Paris (jour Y-M-D). */
 function utcMillisForParisWallClock(y: number, m: number, d: number, hour: number, minute: number): number {
-  let t = Date.UTC(y, m - 1, d, hour - 1, minute, 0, 0);
-  for (let i = 0; i < 14; i++) {
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: PARIS_TZ,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).formatToParts(new Date(t));
-    const read = (typ: Intl.DateTimeFormatPartTypes) =>
-      parseInt(parts.find((p) => p.type === typ)?.value ?? '0', 10);
-    const gy = read('year');
-    const gm = read('month');
-    const gd = read('day');
-    const gh = read('hour');
-    const gmin = read('minute');
-    if (gy === y && gm === m && gd === d && gh === hour && gmin === minute) return t;
-    t += ((hour - gh) * 3600 + (minute - gmin) * 60) * 1000;
+  if (hour === 24 && minute === 0) {
+    const next = new Date(Date.UTC(y, m - 1, d + 1));
+    return parisWallClockDate(next.getUTCFullYear(), next.getUTCMonth() + 1, next.getUTCDate()).getTime();
   }
-  return t;
-}
-
-function tryAvailabilityRangeHours(
-  availability: unknown,
-): { start: number; end: number } | null {
-  if (availability == null) return null;
-  try {
-    let avail: any = availability;
-    if (typeof availability === 'string') {
-      const trimmed = availability.trim();
-      if (!trimmed) return null;
-      const low = trimmed.toLowerCase();
-      if (low === 'allday' || low === 'full_day' || low === 'fullday') return null;
-      avail = JSON.parse(trimmed);
-    }
-    if (!avail || typeof avail !== 'object') return null;
-    const typ = String(avail.type ?? '').toLowerCase().replace(/-/g, '_');
-    if (typ === 'all_day' || typ === 'fullday' || typ === 'full_day') return null;
-    if (
-      (typ === 'custom' || typ === 'specificslot' || typ === 'specific_slot' || typ === '') &&
-      Array.isArray(avail.range) &&
-      avail.range.length >= 2
-    ) {
-      const start = Math.floor(Number(avail.range[0]));
-      const end = Math.floor(Number(avail.range[1]));
-      if (!Number.isNaN(start) && !Number.isNaN(end) && end - start >= MIN_SLOT_SPAN_HOURS) {
-        return { start, end };
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
+  return parisWallClockDate(y, m, d, hour, minute).getTime();
 }
 
 /**
@@ -212,17 +182,11 @@ export function isAppointmentSlotEndedForPreleveurTournee(apt: {
 }): boolean {
   const scheduledAt = apt?.scheduled_at;
   if (!scheduledAt) return false;
-  const tSched = new Date(scheduledAt).getTime();
+  const tSched = parseAppointmentDateFrance(scheduledAt).getTime();
   if (Number.isNaN(tSched)) return false;
   const now = Date.now();
 
   const { y, m, d } = parisCalendarPartsFromInstant(tSched);
-
-  const rangeH = tryAvailabilityRangeHours(apt?.form_data?.availability);
-  if (rangeH) {
-    const endMs = utcMillisForParisWallClock(y, m, d, rangeH.end, 0);
-    return now > endMs;
-  }
 
   const raw = formatAvailabilitySlotFr(apt?.form_data?.availability);
   if (raw === 'toute la journée') {
@@ -248,7 +212,7 @@ export function isAppointmentSlotEndedForPreleveurTournee(apt: {
 
 function formatScheduledDateOnlyParis(scheduledAt: string): string {
   try {
-    const d = new Date(scheduledAt);
+    const d = parseAppointmentDateFrance(scheduledAt);
     if (Number.isNaN(d.getTime())) return '';
     return d.toLocaleDateString('fr-FR', {
       timeZone: PARIS_TZ,
@@ -300,7 +264,7 @@ export function formatScheduledDateWithAvailabilityLineFr(
   }
 
   try {
-    const d = new Date(scheduledAt);
+    const d = parseAppointmentDateFrance(scheduledAt);
     if (!Number.isNaN(d.getTime())) {
       const timePart = d.toLocaleTimeString('fr-FR', {
         timeZone: PARIS_TZ,
@@ -346,7 +310,7 @@ export function formatAvailabilityDisplayFr(
   }
   if (scheduledAt) {
     try {
-      const d = new Date(scheduledAt);
+      const d = parseAppointmentDateFrance(scheduledAt);
       if (!Number.isNaN(d.getTime())) {
         return d.toLocaleTimeString('fr-FR', { timeZone: PARIS_TZ, hour: '2-digit', minute: '2-digit' });
       }
@@ -367,13 +331,14 @@ export function formatAppointmentWhenForSms(apt: {
   if (!apt?.scheduled_at) return '';
   let d: Date;
   try {
-    d = new Date(apt.scheduled_at);
+    d = parseAppointmentDateFrance(apt.scheduled_at);
     if (Number.isNaN(d.getTime())) return String(apt.scheduled_at);
   } catch {
     return String(apt.scheduled_at);
   }
 
   const datePart = d.toLocaleDateString('fr-FR', {
+    timeZone: PARIS_TZ,
     weekday: 'long',
     day: 'numeric',
     month: 'long',

@@ -1,3 +1,4 @@
+import { ResumableAppointmentBatch } from '@oneandlab/shared-utils';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CACHE_STALE_RELATIVES_MS } from '@oneandlab/shared-constants';
@@ -14,7 +15,7 @@ import type { LabPreferenceMode } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { createMultipleAppointments } from '@/features/appointments/api/create-multiple-appointments';
+import { createMultipleAppointments, type AppointmentCreatePayload } from '@/features/appointments/api/create-multiple-appointments';
 import {
   createPatientBookingDraft,
 } from '@/features/appointments/api/booking-draft.service';
@@ -61,6 +62,7 @@ export function useBookingWizard(opts: {
   initialRelativeId?: string;
   onConsentMissing?: () => void;
 }) {
+  const bookingBatchAttempt = useRef(new ResumableAppointmentBatch<AppointmentCreatePayload>());
   const { show: toast } = useToast();
   const router = useRouter();
   const qc = useQueryClient();
@@ -115,6 +117,7 @@ export function useBookingWizard(opts: {
     basePath: opts.basePath,
     initialPatientId: opts.initialPatientId,
     syncPatientSelfAddress: opts.mode === 'patient',
+    patientRelativeId: selectedRelativeId,
     bookingMode: opts.mode,
     getPatientBookingConsent:
       opts.mode === 'dashboard' ? () => consentRef.current : undefined,
@@ -286,6 +289,18 @@ export function useBookingWizard(opts: {
     patientUserId: staffPatientUserId ?? undefined,
     relativeId: opts.mode === 'patient' ? selectedRelativeId : null,
   });
+
+  const documentSubject = opts.mode === 'patient'
+    ? `patient:${user?.id ?? ''}:${selectedRelativeId ?? 'self'}`
+    : `staff:${staffPatientUserId ?? 'new'}`;
+  const lastDocumentSubject = useRef(documentSubject);
+  const { setFormDataByService } = wizard;
+  useEffect(() => {
+    if (lastDocumentSubject.current === documentSubject) return;
+    lastDocumentSubject.current = documentSubject;
+    setPersonalFiles({});
+    setFormDataByService(previous => Object.fromEntries(Object.entries(previous).map(([id, data]) => [id, { ...data, files: {} }])));
+  }, [documentSubject, setFormDataByService]);
 
   useEffect(() => {
     const map = profileDocsQ.data;
@@ -552,7 +567,7 @@ export function useBookingWizard(opts: {
         return appointmentIds[0];
       }
 
-      const result = await createMultipleAppointments(payloads);
+      const result = await createMultipleAppointments(payloads, bookingBatchAttempt.current);
       if (!result.success) throw new Error(result.error ?? 'Création impossible');
       return result.createdIds[0];
     },
@@ -721,6 +736,8 @@ export function useBookingWizard(opts: {
     setPersonalFile,
     profileDocs: profileDocsQ.data ?? {},
     profileDocsLoading: profileDocsQ.isLoading,
+    profileDocsError: profileDocsQ.isError,
+    retryProfileDocs: () => { void profileDocsQ.refetch(); },
     staffPatientUserId,
     careSkipsPrescription,
     consent,

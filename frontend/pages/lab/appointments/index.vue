@@ -37,7 +37,7 @@
       @card-click="(a) => openAppointmentModal(a.id)"
     />
 
-  <DashboardAppointmentListAccessModals list-path="/lab/appointments" />
+  <AppointmentListAccessModals list-path="/lab/appointments" />
   </AppPageShell>
 </template>
 

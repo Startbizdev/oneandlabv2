@@ -409,29 +409,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     ? $nurseLimits['max_appointments_per_month']
                     : ($limits['nurse']['discovery']['max_appointments_per_month'] ?? 10);
                 if ($maxPerMonth !== null) {
-                    $tz = new DateTimeZone('Europe/Paris');
-                    $now = new DateTime('now', $tz);
-                    $monthStart = $now->format('Y-m-01 00:00:00');
-                    $monthEnd = $now->format('Y-m-t 23:59:59');
-                    $stmtCount = $dbCheck->prepare('
-                        SELECT COUNT(*) FROM (
-                            SELECT a.id FROM appointments a
-                            LEFT JOIN (
-                                SELECT appointment_id, MIN(created_at) as first_accepted_at
-                                FROM appointment_status_updates
-                                WHERE status = \'confirmed\' AND actor_role = \'nurse\' AND actor_id = ?
-                                GROUP BY appointment_id
-                            ) u ON u.appointment_id = a.id
-                            WHERE a.assigned_nurse_id = ?
-                            AND a.status NOT IN (\'canceled\', \'refused\')
-                            AND (
-                                (u.first_accepted_at IS NOT NULL AND u.first_accepted_at >= ? AND u.first_accepted_at <= ?)
-                                OR (u.first_accepted_at IS NULL AND a.scheduled_at >= ? AND a.scheduled_at <= ?)
-                            )
-                        ) x
-                    ');
-                    $stmtCount->execute([$user['user_id'], $user['user_id'], $monthStart, $monthEnd, $monthStart, $monthEnd]);
-                    $count = (int) $stmtCount->fetchColumn();
+                    require_once __DIR__ . '/../../lib/NurseMonthlyAllowance.php';
+                    $count = NurseMonthlyAllowance::count($dbCheck, $user['user_id'], null, $id);
                     if ($count >= $maxPerMonth) {
                         http_response_code(403);
                         echo json_encode([
@@ -747,11 +726,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             flush();
         }
     } catch (Exception $e) {
-        http_response_code(400);
+        http_response_code($e instanceof NurseQuotaExceeded ? 403 : 400);
         echo json_encode([
             'success' => false,
             'error' => $e->getMessage(),
-            'code' => 'VALIDATION_ERROR',
+            'code' => $e instanceof NurseQuotaExceeded ? 'PLAN_LIMIT' : 'VALIDATION_ERROR',
         ]);
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {

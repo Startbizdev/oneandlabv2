@@ -1,5 +1,6 @@
 <template>
-  <div class="flex flex-col h-screen bg-app-canvas dark:bg-gray-950">
+  <div class="flex flex-col h-dvh bg-app-canvas dark:bg-gray-950" @keydown.esc="mobileSidebarOpen = false">
+    <a href="#workspace-content" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[1100] focus:rounded-xl focus:bg-white focus:px-4 focus:py-3 focus:text-gray-900">Aller au contenu</a>
     <ClientOnly>
       <SubscriptionBanner />
       <template #fallback>
@@ -9,10 +10,11 @@
     <div class="flex flex-1 min-h-0">
     <!-- Sidebar -->
     <aside
+      id="workspace-navigation"
       :class="[
         /* Largeur rail fixe : min/max + shrink-0 + overflow-x évite que le flex ou le contenu « élargisse » la colonne (bug flex min-width:auto). */
-        'flex flex-col bg-white border-r border-gray-200 w-[7.25rem] min-w-[7.25rem] max-w-[7.25rem] shrink-0 overflow-x-hidden fixed md:static inset-y-0 left-0 z-[1000] md:z-auto transition-transform duration-300 ease-in-out',
-        mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        'flex flex-col bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 w-[var(--workspace-nav-width)] min-w-[var(--workspace-nav-width)] max-w-[var(--workspace-nav-width)] shrink-0 overflow-x-hidden fixed md:static inset-y-0 left-0 z-[1000] md:z-auto transition-transform duration-300 ease-in-out',
+        mobileSidebarOpen ? 'translate-x-0 visible' : '-translate-x-full invisible md:visible md:translate-x-0'
       ]"
     >
       <!-- Header Sidebar -->
@@ -36,7 +38,7 @@
 
       <!-- Navigation -->
       <div class="flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll">
-        <!-- Navigation principale : icône au-dessus, libellé souligné si actif (rail étroit) -->
+        <!-- Navigation principale : icône et libellé, fond de sélection discret. -->
         <ClientOnly>
           <nav class="flex-1 px-2 py-3" aria-label="Navigation principale">
             <ul class="flex flex-col gap-0.5">
@@ -45,10 +47,10 @@
                   :to="item.to"
                   @click="(e) => handleSidebarNavigate(e, item.to)"
                   :class="[
-                    'group relative flex flex-col items-center gap-1.5 rounded-lg px-1 py-2.5 text-center transition-colors duration-200 ease-in-out',
+                    'group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors duration-200 ease-in-out',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-950',
                     'active:scale-[0.98]',
-                    item.active ? '' : 'hover:bg-gray-50 dark:hover:bg-gray-900/60',
+                    item.active ? 'bg-primary-50 dark:bg-primary-950/40' : 'hover:bg-gray-50 dark:hover:bg-gray-900/60',
                   ]"
                   :aria-current="item.active ? 'page' : undefined"
                   :aria-busy="sidebarPendingTo === item.to && isSidebarCalendarLink(item.to) ? 'true' : undefined"
@@ -75,7 +77,7 @@
                     </span>
                   </span>
                   <span
-                    class="max-w-full break-words border-b-[3px] pb-0.5 text-[10px] font-semibold leading-snug transition-colors duration-200 sm:text-[11px]"
+                    class="min-w-0 break-words text-sm font-medium leading-snug transition-colors duration-200"
                     :class="
                       item.active
                         ? 'border-primary-600 text-gray-900 dark:border-primary-400 dark:text-white'
@@ -101,10 +103,10 @@
                   :to="item.to"
                   @click="(e) => handleSidebarNavigate(e, item.to)"
                   :class="[
-                    'group relative flex flex-col items-center gap-1.5 rounded-lg px-1 py-2.5 text-center transition-colors duration-200 ease-in-out',
+                    'group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors duration-200 ease-in-out',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-950',
                     'active:scale-[0.98]',
-                    item.active ? '' : 'hover:bg-gray-50 dark:hover:bg-gray-900/60',
+                    item.active ? 'bg-primary-50 dark:bg-primary-950/40' : 'hover:bg-gray-50 dark:hover:bg-gray-900/60',
                   ]"
                   :aria-current="item.active ? 'page' : undefined"
                   :aria-busy="sidebarPendingTo === item.to && isSidebarCalendarLink(item.to) ? 'true' : undefined"
@@ -131,7 +133,7 @@
                     </span>
                   </span>
                   <span
-                    class="max-w-full break-words border-b-[3px] pb-0.5 text-[10px] font-semibold leading-snug transition-colors duration-200 sm:text-[11px]"
+                    class="min-w-0 break-words text-sm font-medium leading-snug transition-colors duration-200"
                     :class="
                       item.active
                         ? 'border-primary-600 text-gray-900 dark:border-primary-400 dark:text-white'
@@ -161,15 +163,17 @@
     />
 
     <!-- Zone principale : header et page dans le même flux scroll (pas de bandeau « collé » au-dessus) -->
-    <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <main class="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-canvas dark:bg-gray-950">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <main class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-app-canvas dark:bg-gray-950">
         <header class="relative z-50 shrink-0 overflow-visible bg-white border-b border-gray-200 px-4 md:px-6 h-[60px] flex items-center">
           <div class="flex w-full min-w-0 items-center justify-between gap-3 sm:gap-4">
           <!-- Menu mobile -->
           <button
             @click="mobileSidebarOpen = !mobileSidebarOpen"
-            class="md:hidden shrink-0 h-9 w-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+            class="md:hidden shrink-0 h-11 w-11 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
             aria-label="Ouvrir le menu"
+            aria-controls="workspace-navigation"
+            :aria-expanded="mobileSidebarOpen"
           >
             <UIcon name="i-lucide-menu" class="h-5 w-5" />
           </button>
@@ -294,14 +298,12 @@
               >
                 <template v-for="(item, index) in headerUserMenuItems" :key="index">
                   <button
-                    v-if="item.type !== 'divider'"
                     @click="handleUserMenuItemClick(item)"
                     class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors text-left"
                   >
                     <UIcon v-if="item.icon" :name="item.icon" class="h-4 w-4" />
                     <span>{{ item.label }}</span>
                   </button>
-                  <div v-else class="border-t border-gray-200 my-1" />
                 </template>
               </div>
             </div>
@@ -310,6 +312,8 @@
         </header>
 
         <div
+          id="workspace-content"
+          tabindex="-1"
           class="dashboard-main-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:px-6 md:py-6"
         >
           <slot />
@@ -335,6 +339,7 @@
 </template>
 
 <script setup lang="ts">
+useHead({ meta: [{ name: 'robots', content: 'noindex, nofollow' }] });
 import type { NavigationMenuItem } from "@nuxt/ui";
 import { apiFetch } from "~/utils/api";
 import { isPendingIncomingOffer, isOfferModalSnoozed } from "~/utils/appointment-offer";
@@ -787,7 +792,7 @@ const navigationItems = computed(() => {
   };
   const isOwnProfilePage = p === "/profile" && !route.query.userId && route.query.newPreleveur !== "1" && route.query.newPreleveur !== "true";
 
-  const menus: Record<string, NavigationMenuItem[][]> = {
+  const menus: Record<string, (NavigationMenuItem & { to: string; icon: string })[][]> = {
     super_admin: [
       [
         {
@@ -1513,6 +1518,7 @@ watch(
           : '/lab/appointments';
     if (curr.path !== appointmentsPath) return;
     const id = Array.isArray(curr.openAppointment) ? curr.openAppointment[0] : curr.openAppointment;
+    if (typeof id !== 'string' || !id) return;
     await openAppointmentModalByIdIfEligible(id);
     await navigateTo(appointmentsPath, { replace: true });
   },

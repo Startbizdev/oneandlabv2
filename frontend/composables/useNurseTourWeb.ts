@@ -8,7 +8,7 @@ import {
 } from '@oneandlab/shared-utils';
 
 export type TourVisitStatus = 'todo' | 'en_route' | 'on_site' | 'done' | 'skipped';
-export type TourSortMode = 'smart' | 'schedule' | 'nearest' | 'manual';
+export type NurseTourSortMode = 'smart' | 'schedule' | 'nearest' | 'manual';
 
 export interface NurseTourStop {
   stop_id: string;
@@ -51,7 +51,7 @@ export interface NurseTourPayload {
   date: string;
   plan: {
     id: string;
-    sort_mode: TourSortMode;
+    sort_mode: NurseTourSortMode;
     manual_order_locked: boolean;
     nav_app_pref: string;
   };
@@ -83,14 +83,16 @@ function withDerivedTourSummary(data: NurseTourPayload): NurseTourPayload {
 
 export function useNurseTourWeb() {
   const selectedDate = ref(formatDateYmd(new Date()));
-  const loading = ref(false);
+  const loading = ref(true);
+  const error = ref<string | null>(null);
+  let requestVersion = 0;
   const saving = ref(false);
   const tour = ref<NurseTourPayload | null>(null);
   const dayCounts = ref<Record<string, number>>({});
   const dragIndex = ref<number | null>(null);
   const toast = useToast();
 
-  const sortModes: { value: TourSortMode; label: string }[] = [
+  const sortModes: { value: NurseTourSortMode; label: string }[] = [
     { value: 'smart', label: 'Intelligent' },
     { value: 'schedule', label: 'Créneaux' },
     { value: 'nearest', label: 'Proximité' },
@@ -98,6 +100,7 @@ export function useNurseTourWeb() {
   ];
 
   async function loadSummary() {
+    const date = selectedDate.value;
     const base = new Date(selectedDate.value + 'T12:00:00');
     const from = new Date(base);
     from.setDate(from.getDate() - 3);
@@ -107,27 +110,35 @@ export function useNurseTourWeb() {
       from: formatDateYmd(from),
       to: formatDateYmd(to),
     });
-    const res = await apiFetch(`/nurse/tour/summary?${qs}`);
-    if (res?.success && res.data?.counts) {
-      dayCounts.value = res.data.counts;
+    try {
+      const res = await apiFetch(`/nurse/tour/summary?${qs}`);
+      if (date === selectedDate.value && res?.success && res.data?.counts) {
+        dayCounts.value = res.data.counts;
+      }
+    } catch {
+      // The daily tour remains usable when only the date-strip counts are unavailable.
     }
   }
 
   async function loadTour() {
+    const version = ++requestVersion;
     loading.value = true;
+    error.value = null;
     try {
       const qs = new URLSearchParams({ date: selectedDate.value });
       const res = await apiFetch(`/nurse/tour?${qs}`);
+      if (version !== requestVersion) return;
       if (res?.success && res.data) {
         tour.value = withDerivedTourSummary(res.data as NurseTourPayload);
       } else {
-        tour.value = null;
+        throw new Error('Tournée indisponible');
       }
     } catch {
+      if (version !== requestVersion) return;
       tour.value = null;
-      toast.add({ title: 'Tournée indisponible', color: 'error' });
+      error.value = 'Impossible de charger votre tournée. Réessayez dans quelques instants.';
     } finally {
-      loading.value = false;
+      if (version === requestVersion) loading.value = false;
     }
   }
 
@@ -204,7 +215,7 @@ export function useNurseTourWeb() {
     await persistOrder(ids);
   }
 
-  async function applySortMode(mode: TourSortMode) {
+  async function applySortMode(mode: NurseTourSortMode) {
     if (!tour.value) return;
     if (tour.value.plan.manual_order_locked && mode !== 'manual') {
       const ok = window.confirm('Remplacer votre ordre manuel par un tri automatique ?');
@@ -367,7 +378,10 @@ export function useNurseTourWeb() {
       })),
   );
 
-  watch(selectedDate, () => void refresh(), { immediate: true });
+  if (import.meta.client) {
+    watch(selectedDate, () => void refresh(), { immediate: true });
+  }
+  onScopeDispose(() => { requestVersion++; });
 
   // Prefetch jour adjacent pour navigation rapide du strip
   watch(selectedDate, (d) => {
@@ -383,6 +397,7 @@ export function useNurseTourWeb() {
   return {
     selectedDate,
     loading,
+    error,
     saving,
     tour,
     dayStrip,

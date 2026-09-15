@@ -4,7 +4,7 @@ import {
   resolveTourNextStopId,
 } from '@oneandlab/shared-utils';
 
-export type TourSortMode = 'smart' | 'schedule' | 'nearest' | 'manual';
+export type PreleveurTourSortMode = 'smart' | 'schedule' | 'nearest' | 'manual';
 
 export interface PreleveurTourStop {
   stop_id: string;
@@ -27,7 +27,7 @@ export interface PreleveurTourPayload {
   date: string;
   plan: {
     id: string;
-    sort_mode: TourSortMode;
+    sort_mode: PreleveurTourSortMode;
     manual_order_locked: boolean;
     nav_app_pref: string;
   };
@@ -65,7 +65,7 @@ export function usePreleveurTourWeb() {
   const coords = ref<{ lat: number; lng: number } | null>(null);
   const toast = useToast();
 
-  const sortModes: { value: TourSortMode; label: string }[] = [
+  const sortModes: { value: PreleveurTourSortMode; label: string }[] = [
     { value: 'smart', label: 'Intelligent' },
     { value: 'schedule', label: 'Créneaux' },
     { value: 'nearest', label: 'Proximité' },
@@ -158,7 +158,7 @@ export function usePreleveurTourWeb() {
     await persistOrder(ids);
   }
 
-  async function applySortMode(mode: TourSortMode) {
+  async function applySortMode(mode: PreleveurTourSortMode) {
     if (!tour.value) return;
     if (tour.value.plan.manual_order_locked && mode !== 'manual') {
       const ok = window.confirm('Remplacer votre ordre manuel par un tri automatique ?');

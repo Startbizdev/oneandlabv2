@@ -9,8 +9,9 @@
         v-else-if="error"
         icon="i-lucide-alert-circle"
         :title="error"
-        description="Ce lien est invalide ou a expiré."
-        variant="outline"
+        description="Réessayez le chargement. Si ce lien a expiré, retrouvez vos demandes dans votre espace."
+        variant="default"
+        :actions="[{ label: 'Réessayer', variant: 'outline', onClick: fetchSharedAppointment }]"
       />
 
       <template v-else-if="data">
@@ -19,13 +20,13 @@
             <UIcon name="i-lucide-heart-pulse" class="w-6 h-6 text-primary-600 dark:text-primary-400" />
           </div>
           <h1 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white leading-tight">
-            {{ data.isBatch && careItemsList.length > 1 ? 'Lot de soins infirmiers disponible' : 'Rendez-vous soins infirmiers disponible' }}
+            {{ data.isBatch && careItemsList.length > 1 ? 'Plusieurs soins à domicile' : 'Demande de soins à domicile' }}
           </h1>
           <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">
             Connectez-vous pour voir le détail et l’accepter.
           </p>
         </div>
-        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden max-h-[calc(100vh-8rem)] flex flex-col">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col">
         <div v-if="data.addressFull" class="px-4 pt-4 pb-2 shrink-0">
           <div class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 min-w-0">
             <UIcon name="i-lucide-map-pin" class="w-5 h-5 text-primary-500 flex-shrink-0" />
@@ -167,6 +168,7 @@ type SharedCareItem = {
 
 const loading = ref(true);
 const error = ref<string | null>(null);
+let requestVersion = 0;
 const data = ref<{
   appointmentId: string;
   categoryName: string;
@@ -208,16 +210,15 @@ const registerUrl = computed(() => {
   return { path: '/nurse/register', query: { returnTo } };
 });
 
-// Meta FOMO pour la carte de partage (WhatsApp, etc.)
 const metaTitle = computed(() => {
   if (!data.value) return 'Prise en charge à domicile – Cary';
   const n = careItemsList.value.length;
   if (n > 1) {
-    return `🩺 Lot de ${n} soins à domicile – À pourvoir maintenant | Cary`;
+    return `${n} soins à domicile | Cary`;
   }
   const cat = data.value.categoryName;
   const date = data.value.dateShort;
-  return `🩺 ${cat} le ${date} – À pourvoir maintenant | Cary`;
+  return `${cat} le ${date} | Cary`;
 });
 const metaDescription = computed(() => {
   if (!data.value) return "Une prise en charge à domicile est disponible. Connectez-vous pour voir le détail et l'accepter.";
@@ -227,13 +228,14 @@ const metaDescription = computed(() => {
   }
   const cat = data.value.categoryName;
   const date = data.value.dateShort;
-  return `Prise en charge ${cat} disponible le ${date}. Une place à pourvoir – connectez-vous pour l'accepter avant qu'un autre ne la prenne.`;
+  return `${cat} le ${date}. Connectez-vous pour consulter la demande et proposer votre prise en charge.`;
 });
 
 useHead(() => {
   return {
     title: metaTitle.value,
     meta: [
+      { name: 'robots', content: 'noindex, nofollow' },
       { name: 'description', content: metaDescription.value },
       { property: 'og:title', content: metaTitle.value },
       { property: 'og:description', content: metaDescription.value },
@@ -262,22 +264,27 @@ function readNurseShareJustSent(): { appointmentId: string; at: number } | null 
 }
 
 async function fetchSharedAppointment() {
+  const version = ++requestVersion;
+  loading.value = true;
+  error.value = null;
+  data.value = null;
   if (!token.value) {
     error.value = 'Lien invalide';
     loading.value = false;
     return;
   }
   try {
-    const res = await apiFetch(`/public/shared-appointment/${token.value}`, { method: 'GET' });
+    const res = await apiFetch(`/public/shared-appointment/${encodeURIComponent(token.value)}`, { method: 'GET' });
+    if (version !== requestVersion) return;
     if (res?.success && res?.data) {
       data.value = res.data;
     } else {
-      error.value = (res as any)?.error ?? 'Lien introuvable ou expiré';
+      error.value = 'Demande indisponible';
     }
   } catch (e: any) {
-    error.value = e?.message ?? 'Impossible de charger les informations';
+    if (version === requestVersion) error.value = 'Impossible de charger la demande';
   } finally {
-    loading.value = false;
+    if (version === requestVersion) loading.value = false;
   }
 }
 
@@ -327,4 +334,5 @@ watch(token, () => {
     fetchSharedAppointment();
   }
 }, { immediate: false });
+onBeforeUnmount(() => { requestVersion++; });
 </script>

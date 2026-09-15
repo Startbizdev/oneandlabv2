@@ -14,8 +14,14 @@ class PatientRelative
     private Crypto $crypto;
     private Logger $logger;
 
-    public function __construct()
+    public function __construct(?PDO $db = null, ?Crypto $crypto = null)
     {
+        if ($db !== null) {
+            $this->db = $db;
+            $this->crypto = $crypto ?? new Crypto();
+            $this->logger = new Logger($db);
+            return;
+        }
         $config = require __DIR__ . '/../config/database.php';
 
         $dsn = sprintf(
@@ -228,7 +234,7 @@ class PatientRelative
         }
 
         // Champs optionnels
-        if (isset($data['email'])) {
+        if (array_key_exists('email', $data)) {
             if (!empty($data['email'])) {
                 $emailEncrypted = $this->crypto->encryptField($data['email']);
                 $emailHash = hash('sha256', strtolower($data['email']));
@@ -241,7 +247,7 @@ class PatientRelative
             }
         }
 
-        if (isset($data['phone'])) {
+        if (array_key_exists('phone', $data)) {
             if (!empty($data['phone'])) {
                 $phoneData = $this->crypto->encryptField($data['phone']);
                 $updates[] = 'phone_encrypted = ?, phone_dek = ?';
@@ -252,7 +258,7 @@ class PatientRelative
             }
         }
 
-        if (isset($data['address'])) {
+        if (array_key_exists('address', $data)) {
             if (!empty($data['address'])) {
                 $addressToEncrypt = is_array($data['address'])
                     ? json_encode($data['address'], JSON_UNESCAPED_UNICODE)
@@ -266,7 +272,7 @@ class PatientRelative
             }
         }
 
-        if (isset($data['gender'])) {
+        if (array_key_exists('gender', $data)) {
             if (!empty($data['gender'])) {
                 $genderData = $this->crypto->encryptField($data['gender']);
                 $updates[] = 'gender_encrypted = ?, gender_dek = ?';
@@ -277,7 +283,7 @@ class PatientRelative
             }
         }
 
-        if (isset($data['birth_date'])) {
+        if (array_key_exists('birth_date', $data)) {
             if (!empty($data['birth_date'])) {
                 $birthDateData = $this->crypto->encryptField($data['birth_date']);
                 $updates[] = 'birth_date_encrypted = ?, birth_date_dek = ?';
@@ -306,7 +312,7 @@ class PatientRelative
                 'update',
                 'patient_relative',
                 $id,
-                $data
+                ['fields' => array_keys($data)]
             );
         }
 
@@ -383,6 +389,5 @@ class PatientRelative
         ];
     }
 }
-
 
 

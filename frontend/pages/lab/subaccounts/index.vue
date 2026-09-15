@@ -3,7 +3,7 @@
     <template #pageHeader>
     <AppPageHeader :edge-bleed="false" 
       title="Sous-comptes"
-      description="Gérez les sous-comptes qui gèrent les rendez-vous pour votre laboratoire."
+      description="Les espaces de votre équipe."
     >
       <template #actions>
         <div class="flex items-center gap-2">
@@ -42,7 +42,7 @@
         <UButton size="xs" variant="soft" color="primary" icon="i-lucide-calendar" :to="`/lab/appointments?assigned_lab_id=${item.id}`">
           RDV
         </UButton>
-        <UButton size="xs" variant="soft" color="red" icon="i-lucide-trash-2" :on-click="() => confirmDelete(item)">
+        <UButton size="xs" variant="soft" color="error" icon="i-lucide-trash-2" :on-click="() => confirmDelete(item)">
           Supprimer
         </UButton>
       </template>
@@ -121,7 +121,7 @@
     >
       <template #footer="{ close }">
         <UButton variant="ghost" :on-click="close">Annuler</UButton>
-        <UButton color="red" :loading="deleting" :on-click="deleteSubaccount">Supprimer</UButton>
+        <UButton color="error" :loading="deleting" :on-click="deleteSubaccount">Supprimer</UButton>
       </template>
     </UModal>
   </AppPageShell>

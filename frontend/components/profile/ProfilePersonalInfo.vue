@@ -92,10 +92,10 @@
           name="rpps"
           placeholder="9 chiffres (Adeli) ou 11 chiffres (RPPS)"
           hint="9 chiffres (Adeli) ou 11 chiffres (RPPS) — un seul numéro"
-          maxlength="11"
+          :maxlength="11"
         />
 
-        <ProEmploiField v-if="isPro" v-model="form.emploi" />
+        <ProEmploiField v-if="isPro" :model-value="form.emploi ?? ''" @update:model-value="form.emploi = $event" />
 
         <FormInput
           v-if="isPro"
@@ -104,7 +104,7 @@
           name="rpps"
           :placeholder="isProIpa ? '9 chiffres (Adeli) ou 11 chiffres (RPPS)' : '12345678901'"
           :hint="isProIpa ? '9 chiffres (Adeli) ou 11 chiffres (RPPS) — un seul numéro' : undefined"
-          :maxlength="isProIpa ? '11' : undefined"
+          :maxlength="isProIpa ? 11 : undefined"
         />
 
         <FormInput
@@ -139,8 +139,9 @@
         :required="isNurse"
       >
         <USelect
-          v-model="form.gender"
-          :items="GENDER_OPTIONS"
+          :model-value="form.gender ?? undefined"
+          @update:model-value="form.gender = $event ?? null"
+          :items="[...GENDER_OPTIONS] as Array<{ label: string; value: string }>"
           :placeholder="isNurse ? 'Homme, femme ou autre (matching des RDV soins)' : 'Sélectionner votre genre (optionnel)'"
           size="xl"
           class="w-full"
@@ -153,10 +154,11 @@
       </UFormField>
 
       <AddressSelector
-        v-model="form.address"
+        :model-value="form.address ? { ...form.address, label: form.address.label ?? '' } : null"
+        @update:model-value="form.address = $event"
         label="Adresse"
         :show-complement="isPatient"
-        :complement-value="form.address_complement"
+        :complement-value="form.address_complement ?? ''"
         @update:complement="form.address_complement = $event"
       />
 

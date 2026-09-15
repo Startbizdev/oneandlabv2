@@ -1,10 +1,10 @@
 <template>
   <div>
-    <LandingMaquetteHero
+    <LandingMaquetteHero compact
       eyebrow="Infirmiers · abonnement"
       :title-lines="['Des tarifs clairs,', 'sans']"
       highlight="engagement"
-      description="Commencez gratuitement. Passez à Pro quand vous voulez plus de rayon et plus de rendez-vous. Annulation à tout moment. 30 jours d’essai sur l’offre Pro."
+      description="Commencez gratuitement. Avec Pro, élargissez votre rayon et recevez plus de rendez-vous. Sans engagement."
       image-src="https://images.unsplash.com/photo-1631815589968-fdb09a223b1e?w=900&h=1200&q=80&auto=format&fit=crop"
       image-alt="Infirmière en activité professionnelle"
       image-object-class="object-[center_25%]"
@@ -16,50 +16,7 @@
     <LandingMaquetteMarketingBackdrop>
       <section class="border-t border-[#E8E8F0]/80 bg-[#F7F7FB] py-[72px] dark:border-gray-800 dark:bg-gray-900/75 lg:py-[100px]">
         <div class="mx-auto max-w-[1200px] px-6 lg:px-12">
-          <div class="grid max-w-4xl grid-cols-1 gap-8 md:mx-auto md:grid-cols-2">
-            <UCard class="flex h-full flex-col overflow-visible">
-              <template #header>
-                <h2 class="text-xl font-semibold text-[#0A0A0F] dark:text-white">Découverte</h2>
-                <p class="mt-2 text-3xl font-semibold text-[#0A0A0F] dark:text-white">
-                  0 €<span class="text-base font-normal text-[#9090A8] dark:text-gray-400">/mois</span>
-                </p>
-                <p class="mt-1 text-sm text-[#3D3D52] dark:text-gray-400">Pour essayer, sans carte bancaire</p>
-                <div class="mt-4">
-                  <UButton to="/nurse/register" block size="lg" variant="outline">Créer mon compte gratuit</UButton>
-                </div>
-              </template>
-              <ul class="min-h-0 flex-1 space-y-3 text-[#3D3D52] dark:text-gray-300">
-                <li v-for="(line, i) in planDecouverte" :key="i" class="flex items-start gap-2">
-                  <UIcon name="i-lucide-check" class="mt-0.5 h-5 w-5 shrink-0 text-primary-500" />
-                  <span>{{ line }}</span>
-                </li>
-              </ul>
-            </UCard>
-
-            <UCard class="relative flex h-full flex-col border-2 border-primary-500 shadow-[0_8px_32px_-12px_rgb(28_199_181/0.25)]">
-              <div class="absolute right-3 top-3 z-10">
-                <UBadge color="primary" size="sm">Recommandé</UBadge>
-              </div>
-              <template #header>
-                <h2 class="text-xl font-semibold text-[#0A0A0F] dark:text-white">Pro</h2>
-                <p class="mt-2 text-3xl font-semibold text-[#0A0A0F] dark:text-white">
-                  29 €<span class="text-base font-normal text-[#9090A8] dark:text-gray-400">/mois</span>
-                </p>
-                <p class="mt-1 text-sm text-[#3D3D52] dark:text-gray-400">30 jours pour essayer, sans engagement</p>
-                <div class="mt-4">
-                  <UButton block size="lg" color="primary" :loading="loadingCheckout" @click="startCheckout">
-                    Commencer l’essai gratuit
-                  </UButton>
-                </div>
-              </template>
-              <ul class="flex-1 space-y-3 text-[#3D3D52] dark:text-gray-300">
-                <li v-for="(line, i) in planPro" :key="i" class="flex items-start gap-2">
-                  <UIcon name="i-lucide-check" class="mt-0.5 h-5 w-5 shrink-0 text-primary-500" />
-                  <span>{{ line }}</span>
-                </li>
-              </ul>
-            </UCard>
-          </div>
+          <NursePlanCards class="mx-auto" :busy="loadingCheckout" :free-to="isAuthenticated && user?.role === 'nurse' ? '/nurse' : '/nurse/register'" :free-label="isAuthenticated && user?.role === 'nurse' ? 'Accéder à mon espace' : 'Créer mon compte gratuit'" @choose-pro="startCheckout" />
 
           <p class="mt-10 text-center text-sm text-[#9090A8] dark:text-gray-500">
             Vous annulez quand vous voulez, depuis votre espace.
@@ -79,45 +36,27 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' });
 
-useHead({
-  title: 'Tarifs infirmiers | Cary',
-  meta: [{ name: 'description', content: "Tarifs pour les infirmiers : Découverte gratuit, Pro 29 €/mois avec 30 jours d'essai." }],
-});
+useLandingSeo({"title": "Tarifs infirmiers : gratuit et Pro | Cary", "description": "Découvrez le pack gratuit Cary et l’offre Pro à 29 €/mois : demandes de soins, secteur d’intervention et suivi d’activité.", "path": "/pour-les-infirmiers/tarifs"});
 
 const { isAuthenticated, user } = useAuth();
 const toast = useAppToast();
 const loadingCheckout = ref(false);
 
-const planDecouverte = [
-  'Rayon jusqu’à 20 km.',
-  'Fiche visible par les patients.',
-  'Jusqu’à 10 rendez-vous par mois (compteur remis à zéro le 1er de chaque mois).',
-  'Tous les types de soins.',
-];
-
-const planPro = [
-  'Rayon jusqu’à 100 km.',
-  'Rendez-vous illimités.',
-  'Tous les types de soins.',
-  'Avis patients, et vous pouvez y répondre.',
-  'Vue d’activité et chiffres utiles.',
-];
-
 const faqItemsInfirmiers = [
   {
     question: 'Comment marche l’essai de 30 jours ?',
     answer:
-      'Vous prenez Pro. Pendant 30 jours, tout est ouvert. Si vous annulez avant la fin, vous n’êtes pas facturé.',
+      'Lors d’un premier abonnement éligible, vous découvrez Pro pendant 30 jours. Les dates et le montant à venir sont indiqués avant confirmation du paiement. Un essai déjà utilisé ne se renouvelle pas.',
   },
   {
     question: 'Puis-je changer d’offre ?',
     answer:
-      'Oui. Annuler ou revenir à Découverte, depuis votre espace. Sans engagement.',
+      'Vous pouvez annuler Pro depuis votre espace et retrouver le pack Découverte à la fin de la période déjà souscrite. Votre compte reste accessible.',
   },
   {
     question: 'Comment suis-je facturé ?',
     answer:
-      'Chaque mois, par carte, via Stripe. La facture commence après les 30 jours si vous n’avez pas annulé.',
+      'Sur le site, le paiement mensuel est géré par Stripe. Le premier paiement intervient à la fin d’un essai éligible, ou dès la souscription si vous avez déjà utilisé votre essai. Dans l’application, retrouvez les conditions indiquées par l’App Store ou Google Play avant de confirmer.',
   },
   {
     question: 'Et après les 30 jours ?',
@@ -127,16 +66,23 @@ const faqItemsInfirmiers = [
 ];
 
 async function startCheckout() {
+  if (loadingCheckout.value) return;
   if (!isAuthenticated.value || !user.value) {
     await navigateTo(`/login?redirect=${encodeURIComponent('/pour-les-infirmiers/tarifs')}`);
     return;
   }
   if (user.value?.role !== 'nurse') {
-    await navigateTo(`/login?redirect=${encodeURIComponent('/pour-les-infirmiers/tarifs')}`);
+    toast.add({ title: 'Offre réservée aux infirmiers', description: 'Utilisez votre compte infirmier pour souscrire à Pro.', color: 'info' });
     return;
   }
   loadingCheckout.value = true;
   try {
+    const subscription = await apiFetch('/stripe/subscription', { method: 'GET' });
+    if (!subscription?.success) throw new Error('Impossible de vérifier votre abonnement. Réessayez.');
+    if (['active', 'trialing', 'past_due', 'unpaid', 'incomplete', 'paused'].includes(subscription.data?.status)) {
+      await navigateTo('/nurse/abonnement');
+      return;
+    }
     const base = typeof window !== 'undefined' ? window.location.origin : '';
     const res = await apiFetch('/stripe/create-checkout-session', {
       method: 'POST',

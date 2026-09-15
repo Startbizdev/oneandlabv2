@@ -78,12 +78,13 @@ function variantStyleFor(variant: Variant, c: ReturnType<typeof useAppColors>): 
 function textColorFor(variant: Variant, c: ReturnType<typeof useAppColors>): string {
   switch (variant) {
     case 'primary':
+      return c.onPrimary;
     case 'destructive':
     case 'teal':
       return c.textInverse;
     case 'secondary':
     case 'outline':
-      return c.primary;
+      return c.textLink;
     case 'dangerOutline':
       return c.error;
     default:
@@ -162,6 +163,7 @@ function ButtonComponent({
           style,
         ]}
         {...props}
+        accessibilityState={{ ...props.accessibilityState, disabled: !!isDisabled, busy: !!loading }}
       >
         {loading ? (
           <ActivityIndicator
@@ -174,7 +176,7 @@ function ButtonComponent({
                 ? c.primary
                 : variant === 'dangerOutline'
                   ? c.error
-                  : c.textInverse
+                  : textColorFor(variant, c)
             }
           />
         ) : iconOnly ? (

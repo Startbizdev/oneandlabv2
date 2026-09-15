@@ -12,9 +12,9 @@
               v-for="tab in dateTabs"
               :key="tab.value"
               :variant="dateFilter === tab.value ? 'solid' : 'ghost'"
-              :color="dateFilter === tab.value ? 'primary' : 'gray'"
+              :color="dateFilter === tab.value ? 'primary' : 'neutral'"
               size="sm"
-              @click="dateFilter = tab.value"
+              @click="() => { dateFilter = tab.value }" :aria-pressed="dateFilter === tab.value"
               class="transition-all"
             >
               {{ tab.label }}
@@ -30,6 +30,7 @@
       <p class="text-gray-500 dark:text-gray-400">Chargement des plans de soins...</p>
     </div>
     
+    <UAlert v-else-if="error" title="Impossible de charger les plans de soins" color="error" variant="soft"><template #actions><UButton color="neutral" variant="outline" @click="loadCarePlans">Réessayer</UButton></template></UAlert>
     <UEmpty
       v-else-if="recurringCaresByPatient.length === 0"
       icon="i-lucide-calendar-check"
@@ -38,18 +39,18 @@
     />
     
     <!-- Grille de cartes -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       <UCard 
         v-for="care in recurringCaresByPatient" 
         :key="care.id"
         class="hover:shadow-lg transition-shadow duration-200 relative"
         :ui="{
-          body: { padding: 'p-4' },
-          footer: { padding: 'p-4 pt-3' }
+          body: 'p-4',
+          footer: 'p-4 pt-3'
         }"
       >
         <!-- Badge de statut en haut à droite -->
-        <div class="absolute top-4 right-4 z-10">
+        <div class="mb-4 flex justify-end">
           <UBadge 
             :color="getStatusColor(care.status)" 
             variant="subtle"
@@ -227,9 +228,10 @@ definePageMeta({
 });
 
 import { apiFetch } from '~/utils/api';
+import type { AppointmentFormData } from '~/types/appointments';
 import { getNursingDurationLabel } from '~/constants/nursing-duration';
 
-const { appointments, loading, fetchAppointments } = useAppointments();
+const { appointments, loading, error, fetchAppointments } = useAppointments();
 const toast = useAppToast();
 
 // Par défaut "À venir" : les plans de soins sont souvent programmés pour les jours à venir
@@ -261,33 +263,32 @@ const recurringCaresByPatient = computed(() => {
       // Critères pour identifier un soin récurrent :
       // 1. duration_days > 1 (plus d'un jour)
       // 2. OU frequency définie et différente de 'single'
-      const hasMultipleDays = formData.duration_days && 
-                              formData.duration_days !== '1' && 
-                              formData.duration_days !== 'single';
+      const duration = String(formData.duration_days || '');
+      if (duration === '1' || duration === 'single' || (duration === 'custom' && Number(formData.custom_days) === 1)) return false;
+      const hasMultipleDays = Number(duration) > 1 || ['60+', 'custom', 'to_define'].includes(duration);
       const hasRecurringFrequency = formData.frequency && 
-                                   formData.frequency !== 'single' &&
                                    ['once_daily', 'twice_daily', 'thrice_daily', 'twice_weekly', 'thrice_weekly', 'to_define', 'daily', 'every_other_day'].includes(formData.frequency);
       
       return hasMultipleDays || hasRecurringFrequency;
     })
     .map(a => {
       // Extraire les données du form_data
-      const formData = a.form_data || {};
+      const formData: Partial<AppointmentFormData> = a.form_data || {};
       return {
         id: a.id,
         status: a.status,
         scheduled_at: a.scheduled_at,
         started_at: a.started_at,
         address: a.address,
-        category_name: a.category_name || formData.category_name,
+        category_name: a.category_name,
         patient_name: `${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Patient',
         patient_phone: formData.phone,
         patient_email: formData.email,
-        duration_days: formData.duration_days || '7',
+        duration_days: formData.duration_days ? String(formData.duration_days) : 'to_define',
         custom_days: formData.custom_days ?? null,
-        frequency: formData.frequency || 'once_daily',
+        frequency: formData.frequency || 'to_define',
         availability: formData.availability,
-        notes: formData.notes || a.notes,
+        notes: formData.notes,
       };
     });
   
@@ -317,19 +318,8 @@ const recurringCaresByPatient = computed(() => {
   return filtered.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 });
 
-onMounted(() => {
-  // Limite élevée + statuts actifs pour récupérer tous les plans de soins récurrents
-  fetchAppointments({
-    status: 'confirmed,inProgress',
-    limit: 1000,
-  });
-});
-
-// Watcher pour recharger quand on change de filtre
-watch(dateFilter, () => {
-  // Pas besoin de recharger depuis le serveur, 
-  // le computed property `recurringCaresByPatient` se met à jour automatiquement
-});
+const loadCarePlans = () => fetchAppointments({ status: 'confirmed,inProgress', type: 'nursing', nurse_tab: 'soins' }, { allPages: true });
+onMounted(loadCarePlans);
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleString('fr-FR', {
@@ -357,7 +347,7 @@ const formatNextVisit = (date: string) => {
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   
   if (diffMs < 0) {
-    return 'Maintenant';
+    return `Prévu le ${scheduled.toLocaleDateString('fr-FR')} à ${formatTime(date)}`;
   }
   
   if (diffHours < 1) {
@@ -461,6 +451,7 @@ const formatAvailability = (availability: string) => {
 };
 
 const completeAppointment = async (id: string) => {
+  if (processingAppointments.value.has(id)) return;
   processingAppointments.value.add(id);
   try {
     const response = await apiFetch(`/appointments/${id}`, {
@@ -473,7 +464,7 @@ const completeAppointment = async (id: string) => {
         description: 'Le soin a été terminé avec succès.',
         color: 'green',
       });
-      await fetchAppointments();
+      await loadCarePlans();
     } else {
       toast.add({
         title: 'Erreur',

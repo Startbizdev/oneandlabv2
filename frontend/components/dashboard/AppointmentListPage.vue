@@ -10,7 +10,7 @@
         </p>
       </div>
 
-      <div v-if="$slots.headerActions" class="flex items-center gap-2">
+      <div v-if="$slots.headerActions" class="flex flex-wrap items-center gap-2">
         <slot name="headerActions" />
       </div>
     </div>
@@ -23,15 +23,16 @@
       <!-- Infirmier : recherche à gauche, une ligne ; scroll horizontal si besoin (pas de troncature des libellés) -->
       <div
         v-if="basePath === '/nurse'"
-        class="flex flex-nowrap items-center gap-2.5 min-w-0 overflow-x-auto overscroll-x-contain scrollbar-thin pb-0.5 -mx-0.5 px-0.5 touch-pan-x"
+        class="flex flex-wrap items-center gap-2.5 min-w-0"
       >
         <UInput
           v-model="searchQuery"
           placeholder="Nom, adresse, téléphone…"
+          aria-label="Rechercher un rendez-vous"
           icon="i-lucide-search"
           size="sm"
-          class="flex-1 min-w-[11rem] max-w-[min(100%,24rem)] lg:max-w-none"
-          :ui="{ rounded: 'rounded-lg' }"
+          class="w-full min-w-0 basis-full sm:w-auto sm:flex-1 sm:basis-auto"
+          :ui="{ base: 'rounded-lg' }"
           clearable
         />
         <div v-if="nurseLockedSegment == null" class="flex items-center gap-1 shrink-0">
@@ -45,7 +46,7 @@
             class="shrink-0 whitespace-nowrap"
             aria-label="Filtrer les demandes à accepter ou refuser"
             title="Afficher uniquement les soins où vous êtes proposé(e) · à accepter ou refuser."
-            @click="nurseSegment = 'en_attente'"
+            @click="($event) => { nurseSegment = 'en_attente' }"
           >
             À accepter
           </UButton>
@@ -59,7 +60,7 @@
             class="shrink-0 whitespace-nowrap"
             aria-label="Afficher tous vos rendez-vous concernés"
             title="Revenir à la vue complète : tous les soins qui vous concernent (assignés, offres, créations)."
-            @click="nurseSegment = 'tous'"
+            @click="($event) => { nurseSegment = 'tous' }"
           >
             Tout afficher
           </UButton>
@@ -71,9 +72,9 @@
             color="neutral"
             variant="soft"
             size="sm"
-            class="shrink-0 whitespace-nowrap text-[11px] font-medium px-2 sm:px-2.5"
+            class="shrink-0 whitespace-nowrap text-sm font-medium px-2 sm:px-2.5"
             :title="`${activeNurseSegmentShortLabel} · Ouvrir les filtres pour changer de vue`"
-            @click="filtersSheetOpen = true"
+            @click="($event) => { filtersSheetOpen = true }"
           >
             {{ activeNurseSegmentShortLabel }}
           </UButton>
@@ -84,7 +85,7 @@
             size="sm"
             class="shrink-0 whitespace-nowrap px-2 sm:px-2.5"
             :aria-label="`Filtres${extraFiltersCount ? `, ${extraFiltersCount} actif(s)` : ''}`"
-            @click="filtersSheetOpen = true"
+            @click="($event) => { filtersSheetOpen = true }"
           >
             <UIcon name="i-lucide-sliders-horizontal" class="w-4 h-4 sm:mr-0.5" />
             <span class="text-xs">Filtres</span>
@@ -108,10 +109,11 @@
         <UInput
           v-model="searchQuery"
           placeholder="Nom, adresse, téléphone…"
+          aria-label="Rechercher un rendez-vous"
           icon="i-lucide-search"
           size="sm"
           class="flex-1 min-w-0 md:min-w-[12rem]"
-          :ui="{ rounded: 'rounded-lg' }"
+          :ui="{ base: 'rounded-lg' }"
           clearable
         />
         <div class="flex items-center gap-1.5 shrink-0 md:ml-auto">
@@ -122,10 +124,10 @@
             size="sm"
             class="shrink-0 px-2 sm:px-2.5"
             :aria-label="`Filtres${extraFiltersCount ? `, ${extraFiltersCount} actif(s)` : ''}`"
-            @click="filtersSheetOpen = true"
+            @click="($event) => { filtersSheetOpen = true }"
           >
             <UIcon name="i-lucide-sliders-horizontal" class="w-4 h-4 sm:mr-0.5" />
-            <span class="hidden sm:inline text-xs">Filtres</span>
+            <span class="text-sm">Filtres</span>
             <UBadge
               v-if="extraFiltersCount > 0"
               :label="String(extraFiltersCount)"
@@ -152,7 +154,7 @@
           :key="t.value"
           type="button"
           role="tab"
-          class="inline-flex items-center gap-1.5 border-b-[3px] pb-1 text-left text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950"
+          class="inline-flex min-h-11 items-center gap-1.5 border-b-[3px] pb-1 text-left text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950"
           :class="
             nurseListTab === t.value
               ? 'border-b-primary-600 text-gray-950 dark:border-b-primary-500 dark:text-white'
@@ -216,10 +218,10 @@
           :offer-loading-refuse="isOfferProcessing(offerTermsKey(row), 'refuse')"
           :categories="careCategoriesList"
           @card-click="emit('cardClick', $event)"
-          @accept-batch="openAcceptOfferConfirmBatch(row)"
-          @refuse-batch="nurseRefuseOfferBatch(row)"
-          @accept-offer="openAcceptOfferConfirmSingle(row.appointment)"
-          @refuse-offer="nurseRefuseOffer(row.appointment)"
+          @accept-batch="row.kind === 'batch' && openAcceptOfferConfirmBatch(row)"
+          @refuse-batch="row.kind === 'batch' && nurseRefuseOfferBatch(row)"
+          @accept-offer="row.kind === 'single' && openAcceptOfferConfirmSingle(row.appointment)"
+          @refuse-offer="row.kind === 'single' && nurseRefuseOffer(row.appointment)"
         >
           <template v-if="slots.cardActions" #cardActions="slotProps">
             <slot name="cardActions" v-bind="slotProps" />
@@ -242,7 +244,7 @@
           :items-per-page="pageSize"
           :sibling-count="2"
           show-edges
-          :ui="{ wrapper: 'gap-1', rounded: 'rounded-lg' }"
+          :ui="{ list: 'gap-1', item: 'rounded-lg' }"
         />
       </div>
     </div>
@@ -657,7 +659,7 @@ const displayRows = computed((): AppointmentListRow[] => {
   }
   return groupAppointmentsByBatch(list);
 });
-const dateFilter = ref('upcoming');
+const dateFilter = ref<'upcoming' | 'past'>('upcoming');
 const searchQuery = ref('');
 const filtersSheetOpen = ref(false);
 const statusFilter = ref('all');
@@ -814,7 +816,7 @@ const emptyStateDescription = computed(() => {
   }
   if (!props.useDateFilter) {
     if (props.basePath === '/admin') {
-      return 'Soit aucun RDV en base, soit un filtre restreint la liste (statut, dates dans Filtres, recherche). Vérifiez aussi l’URL : un paramètre user_id limite la vue au périmètre de cet utilisateur.';
+      return 'Aucun rendez-vous ne correspond à votre recherche. Modifiez les dates ou réinitialisez les filtres.';
     }
     return 'Aucun RDV ne correspond aux critères (recherche, statut, plage de dates dans Filtres).';
   }

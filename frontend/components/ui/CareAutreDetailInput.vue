@@ -16,10 +16,9 @@
       base: 'w-full min-w-0 max-w-full flex-1',
       item: 'gap-1.5',
       itemLabel: 'min-w-0 !whitespace-normal text-left text-sm',
+      content: 'care-autre-detail-popover max-h-[min(55vh,320px)] min-w-[min(100vw-2rem,18rem)] max-w-[min(100vw-2rem,26rem)] z-[200000]',
     }"
     :content="{
-      class:
-        'care-autre-detail-popover max-h-[min(55vh,320px)] min-w-[min(100vw-2rem,18rem)] max-w-[min(100vw-2rem,26rem)] z-[200000]',
       side: 'bottom',
       sideOffset: 8,
       collisionPadding: 16,

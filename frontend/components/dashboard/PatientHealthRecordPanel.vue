@@ -168,7 +168,7 @@ interface HealthRecordRecap {
 }
 
 const config = useRuntimeConfig();
-const apiBase = config.public.apiBase || 'http://localhost:8888/api';
+const apiBase = config.public.apiBase || '/api';
 
 const loading = ref(true);
 const error = ref<string | null>(null);

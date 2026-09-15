@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { FadeInDown, runOnJS } from 'react-native-reanimated';
@@ -12,13 +12,12 @@ import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
 import type { Appointment, AppointmentListFilters, AppointmentType } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
-import { fetchAppointments } from '@/features/appointments/api/appointments.service';
+import { fetchCalendarAppointments } from '@/features/appointments/api/appointments.service';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import {
   appointmentCalendarDayKey,
-  appointmentInCalendarMonth,
 } from '@/utils/appointment-calendar-day-key';
 import { CalendarFilterSheet } from '@/features/calendar/components/CalendarFilterSheet';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
@@ -106,32 +105,17 @@ export function CalendarScreen({
   const apiStatus = nurseCalendar
     ? statusFilter || NURSE_CALENDAR_STATUSES
     : statusFilter || undefined;
-  const calendarLimit = nurseCalendar ? 50 : 200;
-
+  const calendarFilters: AppointmentListFilters = {
+    ...baseFilters,
+    ...(nurseCalendar ? { nurse_tab: nurseTab } : {}),
+    date_from: `${rangeFrom} 00:00:00`,
+    date_to: `${rangeTo} 23:59:59`,
+    ...(apiStatus ? { status: apiStatus } : {}),
+    ...(typeFilter ? { type: typeFilter as AppointmentType } : {}),
+  };
   const listQ = useQuery({
-    queryKey: queryKeys.appointments.list({
-      ...baseFilters,
-      ...(nurseCalendar ? { nurse_tab: nurseTab, status: apiStatus } : {}),
-      ...(nurseCalendar ? {} : { date_from: rangeFrom, date_to: rangeTo }),
-      limit: calendarLimit,
-      status: apiStatus,
-      type: (typeFilter || undefined) as AppointmentType | undefined,
-    }),
-    queryFn: async () => {
-      const res = await fetchAppointments({
-        ...baseFilters,
-        ...(nurseCalendar ? { nurse_tab: nurseTab } : {}),
-        ...(nurseCalendar ? {} : { date_from: rangeFrom, date_to: rangeTo }),
-        limit: calendarLimit,
-        ...(apiStatus ? { status: apiStatus } : {}),
-        ...(typeFilter ? { type: typeFilter as AppointmentType } : {}),
-      });
-      let items = res.data ?? [];
-      if (nurseCalendar) {
-        items = items.filter((a) => appointmentInCalendarMonth(a, rangeFrom, rangeTo));
-      }
-      return items;
-    },
+    queryKey: queryKeys.appointments.calendar(calendarFilters),
+    queryFn: () => fetchCalendarAppointments(calendarFilters),
   });
 
   const { refreshing, onRefresh } = useManualRefresh(listQ.refetch);
@@ -368,14 +352,14 @@ export function CalendarScreen({
         </GestureDetector>
 
         <Animated.View entering={FadeInDown.delay(160).duration(280).springify()}>
-          <Pressable onPress={() => openDaySheet(selectedDay)} style={styles.daySummary}>
+          <Pressable onPress={() => openDaySheet(selectedDay)} disabled={listQ.isPending || listQ.isError} style={styles.daySummary}>
             <Cluster
               gap={spacing[2]}
               leading={<Calendar size={iconSize.xs} color={c.primary} strokeWidth={2} />}
               actions={<ChevronRight size={iconSize.xs} color={c.primary} strokeWidth={2.5} />}
             >
               <AppText style={styles.daySummaryText} numberOfLines={1}>
-                {dayjs(selectedDay).format('dddd D MMMM')} · {dayDisplayRows.length} RDV
+                {dayjs(selectedDay).format('dddd D MMMM')} · {listQ.isPending ? 'Chargement…' : listQ.isError ? 'Indisponible' : `${dayDisplayRows.length} RDV`}
               </AppText>
             </Cluster>
           </Pressable>
@@ -387,7 +371,11 @@ export function CalendarScreen({
           }}
           style={styles.dayListSection}
         >
-          {dayDisplayRows.length === 0 ? (
+          {listQ.isPending ? (
+            <ActivityIndicator color={c.primary} accessibilityLabel="Chargement du calendrier" />
+          ) : listQ.isError ? (
+            <EmptyState title="Calendrier indisponible" description="Les rendez-vous n’ont pas pu être chargés." actionLabel="Réessayer" onAction={() => { void listQ.refetch(); }} />
+          ) : dayDisplayRows.length === 0 ? (
             <EmptyState
               title="Rien ce jour-là"
               imageSource={EMPTY_RDV_IMAGE}
