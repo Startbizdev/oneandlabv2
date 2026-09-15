@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cary",
     "slug": "cary-mobile",
-    "version": "1.8.9",
+    "version": "1.8.13",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "cary",
@@ -30,7 +30,7 @@
           "NSAllowsLocalNetworking": true
         }
       },
-      "buildNumber": "58"
+      "buildNumber": "64"
     },
     "android": {
       "adaptiveIcon": {
@@ -109,6 +109,7 @@
           "speechRecognitionPermission": "Cary transcrit votre voix pour répondre en conversation."
         }
       ],
+      "@edkimmel/expo-audio-stream",
       [
         "expo-calendar",
         {

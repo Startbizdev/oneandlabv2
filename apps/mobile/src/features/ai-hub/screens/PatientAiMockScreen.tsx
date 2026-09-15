@@ -293,6 +293,7 @@ export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: Screen
         speechError={voice.speechError}
         onStart={() => void voice.startConversation()}
         onStop={voice.stopConversation}
+        onInterrupt={() => void voice.interruptAssistant()}
       />
 
       <PatientAiConversationsSheet

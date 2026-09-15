@@ -22,10 +22,22 @@ import {
   type VoiceTurn,
 } from '../utils/voice-session-utils';
 import { resetVoiceMeterLogThrottle, voiceLog, voiceLogMeterSample } from '../utils/voice-debug-log';
+import { CaryVoiceRealtimeClient, type RealtimeClientPhase } from '../utils/voice-realtime-client';
 import { useVoiceAudioCapture } from './use-voice-audio-capture';
 
 export type { VoiceTurn } from '../utils/voice-session-utils';
-export type VoicePhase = 'idle' | 'listening' | 'processing' | 'speaking';
+
+export type VoicePhase =
+  | 'idle'
+  | 'connecting'
+  | 'listening'
+  | 'processing'
+  | 'speaking'
+  | 'reconnecting'
+  | 'fallback'
+  | 'error';
+
+export type VoiceTransport = 'none' | 'realtime' | 'rest';
 
 export type VoiceSessionOptions = {
   conversationId?: string;
@@ -35,7 +47,13 @@ export type VoiceSessionOptions = {
   onAppointmentCreated?: (appointmentId: string) => void | Promise<void>;
 };
 
-/** Micro → Grok STT + Grok LLM + Grok TTS. */
+function mapRealtimePhase(phase: RealtimeClientPhase): VoicePhase {
+  if (phase === 'fallback') return 'fallback';
+  if (phase === 'error') return 'error';
+  return phase;
+}
+
+/** Voix Cary : Realtime xAI en priorité, repli REST (.m4a → STT → LLM → TTS). */
 export function useVoiceSession(options: VoiceSessionOptions = {}) {
   const { conversationId, onConversationSync, onDraftSync, onAppointmentCreated } = options;
   const capture = useVoiceAudioCapture();
@@ -43,6 +61,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
   captureRef.current = capture;
 
   const [phase, setPhase] = useState<VoicePhase>('idle');
+  const [transport, setTransport] = useState<VoiceTransport>('none');
   const [active, setActive] = useState(false);
   const [recording, setRecording] = useState(false);
   const [turns, setTurns] = useState<VoiceTurn[]>([]);
@@ -66,6 +85,8 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
   const meteringUnavailableLoggedRef = useRef(false);
   const vadCalibratedLoggedRef = useRef(false);
   const submitRecordingRef = useRef<() => Promise<unknown>>(async () => null);
+  const realtimeClientRef = useRef<CaryVoiceRealtimeClient | null>(null);
+  const restFallbackStartedRef = useRef(false);
   const onSyncRef = useRef(onConversationSync);
   const onDraftSyncRef = useRef(onDraftSync);
   const onAppointmentCreatedRef = useRef(onAppointmentCreated);
@@ -87,6 +108,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     return () => {
       stopCaryVoice();
       void captureRef.current.discard();
+      void realtimeClientRef.current?.stop();
     };
   }, []);
 
@@ -236,7 +258,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
   const recorderState = useAudioRecorderState(capture.recorder, 100);
 
   useEffect(() => {
-    if (!recording || phase !== 'listening' || submittingRef.current) return;
+    if (transport !== 'rest' || !recording || phase !== 'listening' || submittingRef.current) return;
 
     if (recorderState.mediaServicesDidReset) {
       voiceLog('listen.media-reset');
@@ -324,6 +346,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
       void submitRecordingRef.current();
     }
   }, [
+    transport,
     phase,
     recording,
     recorderState.metering,
@@ -334,17 +357,15 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     startRecording,
   ]);
 
-  const startConversation = useCallback(async () => {
-    voiceLog('session.open');
-    setActive(true);
-    setTurns([]);
-    setVoiceError(null);
-    setLastConversationId(conversationId ?? null);
-    setPhase('processing');
-    await prepareVoiceConversationAudio();
+  const startRestConversation = useCallback(async () => {
+    if (restFallbackStartedRef.current) return;
+    restFallbackStartedRef.current = true;
+    setTransport('rest');
+    setPhase('fallback');
+    voiceLog('session.fallback.rest');
     try {
       const sid = await ensureSession();
-      voiceLog('session.created', {
+      voiceLog('session.created.rest', {
         sessionId: sid,
         hasWelcomeText: !!welcomeRef.current.text,
         hasWelcomeAudio: !!welcomeRef.current.audio,
@@ -353,7 +374,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
       voiceLog('session.error', { message: getErrorMessage(e, 'Impossible d’ouvrir la conversation vocale') });
       setVoiceError(getErrorMessage(e, 'Impossible d’ouvrir la conversation vocale'));
       setActive(false);
-      setPhase('idle');
+      setPhase('error');
       return;
     }
     if (!activeRef.current) return;
@@ -370,7 +391,90 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     }
     if (!activeRef.current) return;
     await startRecording();
-  }, [conversationId, ensureSession, playAudio, startRecording]);
+  }, [ensureSession, playAudio, startRecording]);
+
+  const startRealtimeConversation = useCallback(async () => {
+    setPhase('connecting');
+    setTransport('realtime');
+    voiceLog('session.realtime.start');
+
+    const client = new CaryVoiceRealtimeClient();
+    realtimeClientRef.current = client;
+
+    const ok = await client.start(conversationId, {
+      onSessionReady: (sessionId, convId) => {
+        sessionIdRef.current = sessionId;
+        setLastConversationId(convId);
+      },
+      onPhase: (p) => {
+        if (!activeRef.current) return;
+        setPhase(mapRealtimePhase(p));
+        setRecording(p === 'listening');
+      },
+      onUserTranscript: (text, interim) => {
+        if (interim) return;
+        setTurns((prev) => {
+          const last = prev[prev.length - 1];
+          if (last?.role === 'user' && last.text === text) return prev;
+          return appendVoiceTurn(prev, createVoiceTurn('user', text));
+        });
+      },
+      onAssistantTranscript: (text, final) => {
+        setTurns((prev) => {
+          const last = prev[prev.length - 1];
+          if (last?.role === 'assistant') {
+            const updated = [...prev];
+            updated[updated.length - 1] = { ...last, text };
+            return updated;
+          }
+          if (!final && text.length < 4) return prev;
+          return appendVoiceTurn(prev, createVoiceTurn('assistant', text));
+        });
+      },
+      onDraftSync: async (draft) => {
+        if (onDraftSyncRef.current) await onDraftSyncRef.current(draft);
+      },
+      onConversationSync: async (convId) => {
+        setLastConversationId(convId);
+        if (onSyncRef.current) await onSyncRef.current(convId);
+      },
+      onEnergy: (energy) => setVoiceEnergy(energy),
+      onError: (message) => setVoiceError(message),
+      onFallbackRequired: () => {
+        voiceLog('session.realtime.fallback-required');
+        void client.stop();
+        realtimeClientRef.current = null;
+        void startRestConversation();
+      },
+    });
+
+    if (!ok && activeRef.current) {
+      realtimeClientRef.current = null;
+      await startRestConversation();
+    }
+  }, [conversationId, startRestConversation]);
+
+  const startConversation = useCallback(async () => {
+    voiceLog('session.open');
+    setActive(true);
+    setTurns([]);
+    setVoiceError(null);
+    setLastConversationId(conversationId ?? null);
+    restFallbackStartedRef.current = false;
+    await prepareVoiceConversationAudio();
+    await startRealtimeConversation();
+  }, [conversationId, startRealtimeConversation]);
+
+  const interruptAssistant = useCallback(async () => {
+    if (transport === 'realtime') {
+      await realtimeClientRef.current?.interruptAssistant();
+      return;
+    }
+    stopCaryVoice();
+    if (activeRef.current) {
+      await startRecording({ clearError: false });
+    }
+  }, [startRecording, transport]);
 
   const stopConversation = useCallback(() => {
     voiceLog('session.stop');
@@ -379,11 +483,14 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     setVoiceEnergy(0);
     stopCaryVoice();
     void captureRef.current.discard();
-    // Always close the server session when the overlay is dismissed. Without
-    // this, every cancelled voice conversation remains open until expiration.
+    void realtimeClientRef.current?.stop();
+    realtimeClientRef.current = null;
+    restFallbackStartedRef.current = false;
+
     const sid = sessionIdRef.current;
     sessionIdRef.current = null;
     if (sid) void endVoiceSession(sid).catch(() => undefined);
+    setTransport('none');
     setPhase('idle');
   }, []);
 
@@ -416,6 +523,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
 
   return {
     phase,
+    transport,
     active,
     available: capture.available,
     recognizing: recording,
@@ -428,6 +536,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     processing: phase === 'processing',
     startConversation,
     stopConversation,
+    interruptAssistant,
     endSession,
     reset,
   };

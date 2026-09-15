@@ -536,6 +536,7 @@ export function CaryAiHubScreen({
         }
         onStart={() => void voice.startConversation()}
         onStop={voice.stopConversation}
+        onInterrupt={() => void voice.interruptAssistant()}
       />
 
       <PatientAiConversationsSheet

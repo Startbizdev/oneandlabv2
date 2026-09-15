@@ -75,14 +75,16 @@ final class VoiceService
 
         $session = $this->getSession($id, (string) $user['user_id']);
         $welcomeText = $this->buildVoiceWelcomeMessage($user);
-        try {
-            $welcomeAudio = $this->grokAudio->synthesize($welcomeText, $locale);
-            $session['welcome_text'] = $welcomeText;
-            $session['welcome_audio_base64'] = $welcomeAudio['audio_base64'];
-            $session['welcome_audio_mime'] = $welcomeAudio['mime'];
-        } catch (Throwable $e) {
-            error_log('[voice] welcome TTS: ' . $e->getMessage());
-            $session['welcome_text'] = $welcomeText;
+        $skipWelcomeTts = !empty($input['skip_welcome_tts']);
+        $session['welcome_text'] = $welcomeText;
+        if (!$skipWelcomeTts) {
+            try {
+                $welcomeAudio = $this->grokAudio->synthesize($welcomeText, $locale);
+                $session['welcome_audio_base64'] = $welcomeAudio['audio_base64'];
+                $session['welcome_audio_mime'] = $welcomeAudio['mime'];
+            } catch (Throwable $e) {
+                error_log('[voice] welcome TTS: ' . $e->getMessage());
+            }
         }
 
         return $session;
@@ -180,19 +182,12 @@ final class VoiceService
         $assistantText = AiVoiceAssistantGuard::normalize($transcript, trim($turn['content']), is_array($draft) ? $draft : null);
         $appointmentId = null;
 
+        // RDV : jamais de confirmation automatique en vocal — l'utilisateur doit appuyer sur Valider.
         if ($this->isBookingConfirmIntent($transcript) && is_array($draft) && !empty($draft['id'])) {
             $draft = $this->reconcileVoiceDraft($user, (string) $draft['id'], $transcript, $draft) ?? $draft;
             $freshDraft = $this->booking->getDraft((string) $draft['id'], (string) $user['user_id']);
             if (is_array($freshDraft) && ($freshDraft['status'] ?? '') === 'ready') {
-                try {
-                    $confirmed = $this->booking->confirmDraft((string) $draft['id'], $user);
-                    $draft = $confirmed['draft'] ?? $freshDraft;
-                    $appointmentId = (string) ($confirmed['appointment_id'] ?? '');
-                    $assistantText = 'Parfait, le rendez-vous est créé. Vous le retrouverez dans votre tournée.';
-                } catch (Throwable $e) {
-                    error_log('[voice] confirmDraft: ' . $e->getMessage());
-                    $assistantText = 'Il manque encore une information pour finaliser — vérifiez le récap et appuyez sur Valider.';
-                }
+                $assistantText = 'Parfait — appuyez sur Valider sur la carte récap pour créer le rendez-vous.';
             } elseif (is_array($freshDraft) && ($freshDraft['status'] ?? '') !== 'confirmed') {
                 $assistantText = 'Presque fini — appuyez sur Valider sur la carte récap pour créer le rendez-vous.';
             }

@@ -5,6 +5,9 @@ import type {
   AiHubPayload,
   AiMessage,
   AiQuickSuggestion,
+  VoiceRealtimeEventSyncResponse,
+  VoiceRealtimeStartResponse,
+  VoiceRealtimeToolResponse,
 } from '@oneandlab/shared-types';
 import { apiRequest } from '@/api/client';
 import { getApiBase } from '@/config/env';
@@ -336,6 +339,47 @@ export async function sendVoiceTurn(
 export async function endVoiceSession(sessionId: string): Promise<void> {
   const res = await apiRequest<null>(`/ai/voice/sessions/${sessionId}/end`, { method: 'POST' });
   if (!res.success) throw new Error(res.error ?? 'Clôture session vocale impossible');
+}
+
+export async function startVoiceRealtimeSession(input?: {
+  conversation_id?: string;
+  locale?: string;
+}): Promise<VoiceRealtimeStartResponse> {
+  const res = await apiRequest<VoiceRealtimeStartResponse>('/ai/voice/realtime', {
+    method: 'POST',
+    body: input ?? {},
+  });
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Session vocale temps réel indisponible');
+  return res.data;
+}
+
+export async function executeVoiceRealtimeTool(
+  sessionId: string,
+  input: { name: string; arguments: Record<string, unknown> },
+): Promise<VoiceRealtimeToolResponse> {
+  const res = await apiRequest<VoiceRealtimeToolResponse>(`/ai/voice/sessions/${sessionId}/tool`, {
+    method: 'POST',
+    body: input,
+  });
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Outil vocal indisponible');
+  return res.data;
+}
+
+export async function syncVoiceRealtimeEvent(
+  sessionId: string,
+  input: {
+    event_id: string;
+    event_type: string;
+    payload?: Record<string, unknown>;
+    latency_ms?: number;
+  },
+): Promise<VoiceRealtimeEventSyncResponse> {
+  const res = await apiRequest<VoiceRealtimeEventSyncResponse>(`/ai/voice/sessions/${sessionId}/events`, {
+    method: 'POST',
+    body: input,
+  });
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Sync événement vocal impossible');
+  return res.data;
 }
 
 export async function submitAiFeedback(input: {

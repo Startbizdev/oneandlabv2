@@ -15,8 +15,11 @@ final class AiEndpointsInventoryTest extends TestCase
         $this->assertIsString($root);
         $required = [
             'voice/sessions/index.php',
+            'voice/realtime/index.php',
             'voice/sessions/[id]/turn.php',
             'voice/sessions/[id]/end.php',
+            'voice/sessions/[id]/tool.php',
+            'voice/sessions/[id]/events.php',
             'search/index.php',
             'export/index.php',
             'trends/index.php',
