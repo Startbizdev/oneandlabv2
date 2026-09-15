@@ -417,7 +417,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
   return {
     phase,
     active,
-    available: true,
+    available: capture.available,
     recognizing: recording,
     voiceEnergy,
     speechError: voiceError,

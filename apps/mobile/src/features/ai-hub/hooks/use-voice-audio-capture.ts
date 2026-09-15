@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   AudioModule,
   setIsAudioActiveAsync,
@@ -27,10 +27,12 @@ async function waitForRecorderActive(
 export function useVoiceAudioCapture() {
   const recorder = useAudioRecorder(VOICE_CAPTURE_OPTIONS);
   const uriRef = useRef<string | null>(null);
+  const [available, setAvailable] = useState(false);
 
   const start = useCallback(async (): Promise<boolean> => {
     try {
       const status = await AudioModule.requestRecordingPermissionsAsync();
+      setAvailable(status.granted);
       voiceLog('permission', { granted: status.granted, canAskAgain: status.canAskAgain });
       if (!status.granted) return false;
 
@@ -48,6 +50,7 @@ export function useVoiceAudioCapture() {
 
       let recorderStatus = await waitForRecorderActive(recorder, 1200);
       if (!recorderStatus.isRecording) {
+        setAvailable(false);
         voiceLog('record.start.retry', {
           canRecord: recorderStatus.canRecord,
           isRecording: recorderStatus.isRecording,
@@ -74,9 +77,11 @@ export function useVoiceAudioCapture() {
         return false;
       }
 
+      setAvailable(true);
       return true;
     } catch (e) {
       voiceLog('record.start.error', { message: e instanceof Error ? e.message : String(e) });
+      setAvailable(false);
       return false;
     }
   }, [recorder]);
@@ -97,6 +102,7 @@ export function useVoiceAudioCapture() {
     try {
       const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
       voiceLog('record.stop', { uri, base64Len: base64.length });
+      void FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => undefined);
       return base64;
     } catch (e) {
       voiceLog('record.read.error', { message: e instanceof Error ? e.message : String(e), uri });
@@ -117,10 +123,11 @@ export function useVoiceAudioCapture() {
   return useMemo(
     () => ({
       recorder,
+      available,
       start,
       stopAndReadBase64,
       discard,
     }),
-    [recorder, start, stopAndReadBase64, discard],
+    [recorder, available, start, stopAndReadBase64, discard],
   );
 }
