@@ -19,7 +19,7 @@ export function isBookingDateUnavailable(
   date: CalendarDate,
   opts: { acceptSaturday?: boolean; acceptSunday?: boolean },
 ): boolean {
-  const day = date.toDate(PARIS_TZ).getDay();
+  const day = new Date(Date.UTC(date.year, date.month - 1, date.day)).getUTCDay();
   if (day === 0 && opts.acceptSunday === false) return true;
   if (day === 6 && opts.acceptSaturday === false) return true;
   return false;

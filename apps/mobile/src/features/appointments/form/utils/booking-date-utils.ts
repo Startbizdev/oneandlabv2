@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { parisBookingClock } from '@oneandlab/shared-utils';
 
 const PARIS_OFFSET_HINT = 'Europe/Paris';
 
@@ -6,9 +7,9 @@ const PARIS_OFFSET_HINT = 'Europe/Paris';
 export function bookingMinDate(minLeadTimeHours = 0): dayjs.Dayjs {
   const h = Number(minLeadTimeHours);
   if (Number.isFinite(h) && h > 0) {
-    return dayjs().add(Math.floor(h), 'hour').startOf('day');
+    return dayjs(parisBookingClock(Date.now() + Math.floor(h) * 3_600_000).date).startOf('day');
   }
-  return dayjs().startOf('day');
+  return dayjs(parisBookingClock().date).startOf('day');
 }
 
 export function isBookingDateUnavailable(
