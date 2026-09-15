@@ -22,6 +22,10 @@ if (!$id) {
 $service = new VoiceService();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'POST';
 
+if ($method !== 'POST') {
+    ai_json_error('Méthode non autorisée', 405);
+}
+
 try {
     if (str_ends_with(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '', '/end')) {
         $service->endSession((string) $id, (string) $user['user_id']);

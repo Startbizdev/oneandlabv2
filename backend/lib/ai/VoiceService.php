@@ -49,6 +49,14 @@ final class VoiceService
         if ($conversationId === '') {
             $conversationId = null;
         }
+        if ($conversationId !== null) {
+            // A voice session must never be attached to another user's thread.
+            // The UUID alone is not an authorization check.
+            $ownedConversation = $this->conversations->getById($conversationId, (string) $user['user_id']);
+            if ($ownedConversation === null) {
+                throw new InvalidArgumentException('Conversation vocale introuvable');
+            }
+        }
         if ($conversationId === null) {
             $conv = $this->conversations->create($user, [
                 'conversation_type' => 'voice',
@@ -89,6 +97,9 @@ final class VoiceService
         $session = $this->getSession($sessionId, (string) $user['user_id']);
         if (!$session) {
             throw new RuntimeException('Session vocale introuvable');
+        }
+        if (!empty($session['ended_at'])) {
+            throw new RuntimeException('Session vocale déjà clôturée');
         }
         $rawTranscript = trim((string) ($input['transcript'] ?? ''));
         $sttProvider = (string) ($input['stt_provider'] ?? 'client');
