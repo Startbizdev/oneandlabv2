@@ -19,6 +19,7 @@ export default function PatientLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={onboardingScreenOptions()} />
         <Stack.Screen name="appointment/[id]" options={{ title: 'Détail du rendez-vous' }} />
+        <Stack.Screen name="appointment/[id]/conversation" options={{ title: 'Échanges du rendez-vous' }} />
         <Stack.Screen
           name="appointment/[id]/documents"
           options={{ headerShown: false }}

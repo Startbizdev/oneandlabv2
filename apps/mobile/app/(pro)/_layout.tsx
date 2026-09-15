@@ -19,6 +19,7 @@ export default function ProLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={onboardingScreenOptions()} />
         <Stack.Screen name="appointment/[id]" options={{ title: 'Détail du rendez-vous' }} />
+        <Stack.Screen name="appointment/[id]/conversation" options={{ title: 'Échanges du rendez-vous' }} />
         <Stack.Screen
           name="appointment/[id]/care-photo/[photoId]"
           options={{ headerShown: false, animation: 'slide_from_right' }}
