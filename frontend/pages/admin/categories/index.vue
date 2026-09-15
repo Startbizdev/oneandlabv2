@@ -3,7 +3,7 @@
     <template #pageHeader>
     <AppPageHeader :edge-bleed="false" 
       title="Catégories de soins"
-      description="Gérez les types de soins : nom, type (prise de sang ou soins infirmiers), activation et suppression."
+      description="Les soins proposés, leurs icônes et leurs options."
     >
       <template #actions>
         <UButton color="primary" icon="i-lucide-plus" size="md" :on-click="openCreateModal">
@@ -70,7 +70,7 @@
             <CareCategoryVisual
               :emoji="categoryListEmoji(cat)"
               :image-src="categoryListImageSrc(cat)"
-              :icon-name="getIconName(cat.icon)"
+              :icon-name="resolveCareIconFromCategory(cat)"
               icon-class="h-4 w-4 text-muted"
               img-class="h-7 w-7 object-contain"
             />
@@ -135,38 +135,41 @@
     <!-- Modal Créer / Modifier : sections linéaires, scroll interne -->
     <ClientOnly>
       <Teleport to="body">
-        <UModal v-model:open="showCreateModal" :ui="{ content: 'max-w-md w-full max-h-[min(92dvh,44rem)] flex flex-col overflow-hidden sm:rounded-xl' }">
+        <UModal v-model:open="showCreateModal" :ui="{ content: 'max-w-2xl w-full max-h-[min(92dvh,52rem)] flex flex-col overflow-hidden rounded-2xl' }">
           <template #content="{ close }">
             <UCard
               :ui="{
-                root: 'flex flex-col max-h-[min(92dvh,44rem)] overflow-hidden divide-y divide-default shadow-none ring-0',
-                header: 'p-4 sm:p-4 shrink-0',
+                root: 'flex flex-col max-h-[min(92dvh,52rem)] overflow-hidden divide-y divide-default shadow-none ring-0',
+                header: 'p-5 sm:p-6 shrink-0',
                 body: 'p-0 flex-1 flex flex-col min-h-0 overflow-hidden',
               }"
             >
               <template #header>
                 <div class="flex items-start gap-3">
+                  <div class="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary-50 dark:bg-primary-950">
+                    <CareCategoryVisual :image-src="modalCategoryImageSrc" :icon-name="getIconName(categoryForm.icon)" icon-class="size-6 text-primary-700" img-class="size-9 object-contain" />
+                  </div>
                   <div class="min-w-0 flex-1 space-y-0.5">
-                    <h2 class="text-base font-semibold tracking-tight text-foreground leading-snug">
-                      {{ editingCategory ? 'Modifier la catégorie' : 'Nouvelle catégorie' }}
+                    <h2 class="text-xl font-semibold tracking-tight text-foreground leading-snug">
+                      {{ editingCategory ? 'Modifier le soin' : 'Ajouter un soin' }}
                     </h2>
                     <p class="text-xs text-muted leading-relaxed">
-                      {{ editingCategory ? 'Nom, type, apparence (icône / image), options du formulaire RDV.' : 'Remplissez chaque bloc — le type définit où le soin apparaît.' }}
+                      {{ editingCategory ? 'Mettez à jour sa présentation et ses options.' : 'Créez un soin facile à reconnaître et à réserver.' }}
                     </p>
                   </div>
-                  <UButton variant="ghost" color="neutral" icon="i-lucide-x" size="xs" square class="shrink-0" aria-label="Fermer" :on-click="close" />
+                  <UButton variant="ghost" color="neutral" icon="i-lucide-x" size="md" square class="shrink-0 min-h-11 min-w-11" aria-label="Fermer" :on-click="close" />
                 </div>
               </template>
               <UForm :state="categoryForm" class="flex flex-1 flex-col min-h-0" @submit="saveCategory">
                 <div class="flex-1 overflow-y-auto overflow-x-hidden">
                   <!-- ① Texte catalogue -->
-                  <div class="px-4 py-3 space-y-3 sm:px-4 border-b border-default">
-                    <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Nom & description</p>
+                  <div class="px-5 py-5 space-y-3 sm:px-6 border-b border-default">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-muted">Nom & description</p>
                     <UFormField label="Nom du soin" name="name" required class="w-full">
                       <UInput
                         v-model="categoryForm.name"
                         placeholder="Ex. Bilan sanguin, pansement…"
-                        size="sm"
+                        size="md"
                         class="w-full"
                       />
                     </UFormField>
@@ -175,7 +178,7 @@
                       name="description"
                       description="Facultatif, affichée si renseignée."
                       class="w-full"
-                      :ui="{ description: 'text-[11px] text-muted leading-snug' }"
+                      :ui="{ description: 'text-xs text-muted leading-snug' }"
                     >
                       <UTextarea
                         v-model="categoryForm.description"
@@ -184,14 +187,14 @@
                         autoresize
                         :maxrows="4"
                         class="w-full"
-                        size="sm"
+                        size="md"
                       />
                     </UFormField>
                   </div>
 
                   <!-- ② Type -->
-                  <div class="px-4 py-3 space-y-2.5 sm:px-4 border-b border-default">
-                    <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Type</p>
+                  <div class="px-5 py-5 space-y-2.5 sm:px-6 border-b border-default">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-muted">Type</p>
                     <UFormField label="Nature du rendez-vous" name="type" required class="w-full" :ui="{ label: 'text-xs font-medium text-muted' }">
                       <div class="flex flex-wrap gap-1.5">
                         <UButton
@@ -200,7 +203,7 @@
                           type="button"
                           :variant="categoryForm.type === t.value ? 'solid' : 'outline'"
                           :color="categoryForm.type === t.value ? 'primary' : 'neutral'"
-                          size="sm"
+                          size="md"
                           class="rounded-lg px-3"
                           :on-click="() => { categoryForm.type = t.value }"
                         >
@@ -211,14 +214,14 @@
                   </div>
 
                   <!-- ③ Apparence -->
-                  <div class="px-4 py-3 space-y-3 sm:px-4 border-b border-default">
-                    <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Apparence</p>
+                  <div class="px-5 py-5 space-y-3 sm:px-6 border-b border-default">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-muted">Apparence</p>
                     <UFormField
                       name="icon"
-                      label="Icône (sans image)"
-                      description="Utilisée partout tant qu’aucune image maison."
+                      label="Icône du soin"
+                      description="La même icône dans le catalogue, le panier et les étapes du rendez-vous."
                       class="w-full"
-                      :ui="{ label: 'text-xs font-medium text-muted', description: 'text-[11px] text-muted leading-snug' }"
+                      :ui="{ label: 'text-xs font-medium text-muted', description: 'text-xs text-muted leading-snug' }"
                     >
                       <USelectMenu
                         v-model="categoryForm.icon"
@@ -226,7 +229,7 @@
                         value-key="value"
                         :search-input="{ placeholder: 'Rechercher une icône…' }"
                         :filter-fields="['label']"
-                        placeholder="Icône Lucide ou Medical…"
+                        placeholder="Choisir une icône"
                         size="md"
                         class="w-full"
                       >
@@ -250,11 +253,11 @@
                     <UFormField
                       label="Image personnalisée"
                       name="category_image"
-                      description="JPEG, PNG, WebP ou GIF · max 2 Mo — prime sur l’icône."
+                      description="JPEG, PNG, WebP ou GIF · max 2 Mo — remplace l’icône si vous choisissez une nouvelle image."
                       class="w-full"
                       :ui="{
                         label: 'text-xs font-medium text-muted',
-                        description: 'text-[11px] text-muted leading-snug',
+                        description: 'text-xs text-muted leading-snug',
                       }"
                     >
                       <div class="flex items-start gap-3">
@@ -279,7 +282,7 @@
                         <div class="flex min-w-0 flex-1 flex-wrap gap-2">
                           <UButton
                             type="button"
-                            size="sm"
+                            size="md"
                             variant="outline"
                             color="neutral"
                             icon="i-lucide-image-plus"
@@ -290,7 +293,7 @@
                           <UButton
                             v-if="pendingImageFile || editingCategory?.image_url"
                             type="button"
-                            size="sm"
+                            size="md"
                             variant="ghost"
                             color="error"
                             icon="i-lucide-trash-2"
@@ -305,40 +308,40 @@
                   </div>
 
                   <!-- ④ Statut -->
-                  <div class="px-4 py-3 sm:px-4 border-b border-default">
+                  <div class="px-5 py-5 sm:px-6 border-b border-default">
                     <div class="flex items-center justify-between gap-4">
                       <div class="min-w-0 space-y-0.5">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Statut</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-muted">Statut</p>
                         <p class="text-xs text-muted">Visible dans les listes si actif.</p>
                       </div>
                       <div class="flex shrink-0 items-center gap-2">
-                        <USwitch v-model="categoryForm.is_active" size="sm" />
+                        <USwitch v-model="categoryForm.is_active" size="md" />
                         <span class="text-xs font-medium text-foreground">{{ categoryForm.is_active ? 'Actif' : 'Inactif' }}</span>
                       </div>
                     </div>
                   </div>
 
                   <!-- ④ bis Parcours patient : documents prescription -->
-                  <div class="px-4 py-3 sm:px-4 border-b border-default">
+                  <div class="px-5 py-5 sm:px-6 border-b border-default">
                     <div class="flex items-center justify-between gap-4">
                       <div class="min-w-0 space-y-0.5">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Documents prescription</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-muted">Documents prescription</p>
                         <p class="text-xs text-muted leading-relaxed">
                           Si activé : l’ordonnance et l’« autre prescription » ne sont pas demandés (wizard RDV patient, formulaires).
                         </p>
                       </div>
                       <div class="flex shrink-0 items-center gap-2">
-                        <USwitch v-model="categoryForm.skip_prescription_documents" size="sm" />
+                        <USwitch v-model="categoryForm.skip_prescription_documents" size="md" />
                         <span class="text-xs font-medium text-foreground">{{ categoryForm.skip_prescription_documents ? 'Masqués' : 'Demandés' }}</span>
                       </div>
                     </div>
                   </div>
 
                   <!-- ⑤ Options formulaire RDV -->
-                  <div class="px-4 py-3 space-y-2.5 sm:px-4">
+                  <div class="px-5 py-5 space-y-2.5 sm:px-6">
                     <div class="flex items-start justify-between gap-3">
                       <div class="min-w-0 space-y-1">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Champs lors du RDV</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-muted">Champs lors du RDV</p>
                         <p class="text-xs text-muted leading-relaxed">
                           Options affichées sous ce soin (ex. type de plaie).
                         </p>
@@ -362,17 +365,17 @@
                         class="bg-muted/20 dark:bg-muted/10 px-3 py-2.5 space-y-2"
                       >
                         <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
-                          <span class="text-[11px] font-mono tabular-nums text-muted w-6 shrink-0">{{ idx + 1 }}.</span>
+                          <span class="text-xs font-mono tabular-nums text-muted w-6 shrink-0">{{ idx + 1 }}.</span>
                           <UInput
                             v-model="opt.option_key"
                             placeholder="clé_technique"
-                            size="sm"
+                            size="md"
                             class="w-[9.25rem] min-w-[7rem]"
                           />
                           <UInput
                             v-model="opt.label"
                             placeholder="Libellé affiché"
-                            size="sm"
+                            size="md"
                             class="min-w-[10rem] flex-1"
                           />
                           <UButton
@@ -396,12 +399,12 @@
                               { label: 'Nombre', value: 'number' },
                             ]"
                             value-key="value"
-                            size="sm"
+                            size="md"
                             class="w-[7.75rem]"
                           />
                           <div class="flex items-center gap-1.5">
                             <USwitch v-model="opt.is_required" size="xs" />
-                            <span class="text-[11px] text-muted whitespace-nowrap">Obligatoire</span>
+                            <span class="text-xs text-muted whitespace-nowrap">Obligatoire</span>
                           </div>
                         </div>
                         <UTextarea
@@ -409,7 +412,7 @@
                           v-model="opt.optionsText"
                           placeholder="Une valeur par ligne"
                           :rows="2"
-                          size="sm"
+                          size="md"
                           class="w-full sm:max-w-none"
                         />
                       </li>
@@ -420,11 +423,11 @@
                   </div>
                 </div>
 
-                <div class="flex shrink-0 items-center justify-end gap-2 bg-default px-4 py-3 sm:px-4">
-                  <UButton variant="ghost" color="neutral" size="sm" :on-click="close">
+                <div class="flex shrink-0 items-center justify-end gap-3 border-t border-default bg-default px-5 py-5 sm:px-6">
+                  <UButton variant="ghost" color="neutral" size="md" :on-click="close">
                     Annuler
                   </UButton>
-                  <UButton type="submit" color="primary" size="sm" :loading="saving || uploadingImage">
+                  <UButton type="submit" color="primary" size="md" :loading="saving || uploadingImage">
                     {{ editingCategory ? 'Enregistrer' : 'Créer' }}
                   </UButton>
                 </div>
@@ -478,7 +481,7 @@ definePageMeta({
 
 import { apiFetch } from '~/utils/api';
 import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils';
-import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
+import { resolveCareCategoryImageSrc, resolveCareIconFromCategory } from '~/utils/care-icons';
 const toast = useAppToast();
 
 const categories = ref<any[]>([]);
@@ -515,8 +518,8 @@ const typeOptionsForm = [
 const LUCIDE_MEDICAL_ICON_NAMES = [
   'activity', 'ambulance', 'bandage', 'beaker', 'heart', 'heart-pulse', 'stethoscope', 'syringe', 'pill', 'thermometer',
   'bone', 'brain', 'eye', 'ear', 'hand-heart', 'baby', 'user-round', 'droplet', 'flask-conical', 'test-tubes',
-  'microscope', 'scan', 'scan-heart', 'pulse', 'apple', 'carrot', 'clipboard-list', 'file-text', 'file',
-  'hospital', 'cross', 'first-aid', 'badge-check', 'tag', 'tags',
+  'microscope', 'scan', 'scan-heart', 'apple', 'carrot', 'clipboard-list', 'file-text', 'file',
+  'hospital', 'cross', 'briefcase-medical', 'badge-check', 'tag', 'tags',
 ];
 
 // Set "Medical Icons" (Iconify) — icônes médicales
@@ -553,11 +556,7 @@ const COVID_ICON_NAMES = [
 
 /** Retourne le nom d’icône pour UIcon (rétrocompat: anciennes valeurs sans préfixe = Lucide) */
 function getIconName(icon: string | null | undefined): string {
-  if (!icon) return 'i-lucide-tag';
-  if (icon.startsWith('medical-icon:')) return 'i-medical-icon-' + icon.slice('medical-icon:'.length);
-  if (icon.startsWith('healthicons:')) return 'i-healthicons-' + icon.slice('healthicons:'.length);
-  if (icon.startsWith('covid:')) return 'i-covid-' + icon.slice('covid:'.length);
-  return 'i-lucide-' + icon;
+  return resolveCareIconFromCategory({ icon, type: categoryForm.value.type || 'nursing' });
 }
 
 function iconLabel(prefix: string, name: string): string {
@@ -665,8 +664,7 @@ function categoryListEmoji(cat: { name?: string; icon?: string | null; type?: st
 }
 
 function categoryListImageSrc(cat: any): string | null {
-  if (isCareCategoryEmoji(cat?.icon)) return null;
-  return resolveCareCategoryImageSrc(cat?.image_url ?? null, config.public.apiBase);
+  return resolveCareCategoryImageSrc(cat?.image_url ?? null, config.public.apiBase, cat?.icon);
 }
 
 const modalCategoryEmoji = computed((): string | null => {
@@ -679,9 +677,13 @@ const modalCategoryEmoji = computed((): string | null => {
   return e || null;
 });
 
+watch(() => categoryForm.value.icon, (icon) => {
+  if (icon && pendingImageFile.value) clearSelectedCategoryImageFile();
+});
+
 const modalCategoryImageSrc = computed(() => {
   if (pendingImageObjectUrl.value) return pendingImageObjectUrl.value;
-  return resolveCareCategoryImageSrc(editingCategory.value?.image_url ?? null, config.public.apiBase);
+  return resolveCareCategoryImageSrc(editingCategory.value?.image_url ?? null, config.public.apiBase, categoryForm.value.icon);
 });
 
 function onCategoryImageFileChange(e: Event) {
@@ -689,6 +691,11 @@ function onCategoryImageFileChange(e: Event) {
   const file = el.files?.[0];
   el.value = '';
   if (!file) return;
+  if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+    toast.add({ title: 'Image non acceptée', description: 'Choisissez un JPEG, PNG, WebP ou GIF de moins de 2 Mo.', color: 'red' });
+    return;
+  }
+  categoryForm.value.icon = '';
   revokePendingImagePreview();
   pendingImageFile.value = file;
   pendingImageObjectUrl.value = URL.createObjectURL(file);

@@ -1,4 +1,5 @@
 import { layoutRowBetween, layoutRowCenter } from '@/theme/layout-styles';
+import { CarePictogram } from '@/components/ui/CarePictogram';
 import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { useThemedStyles } from '@/theme/use-themed-styles';
@@ -8,7 +9,6 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react-native';
 import {
-  careCategoryEmojiForCategory,
   isCareCategoryWithoutBookingOptions,
   type SelectedServiceInput,
 } from '@oneandlab/shared-utils';
@@ -174,9 +174,6 @@ export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiP
     >
       {categories.map((cat) => {
         const taken = selectedIds.has(cat.id);
-        const emoji =
-          careCategoryEmojiForCategory({ name: cat.name, icon: cat.icon, type: cat.type }) ||
-          '💉';
         return (
           <Pressable
             key={cat.id}
@@ -191,7 +188,7 @@ export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiP
               },
             ]}
           >
-            <AppText style={styles.pickerEmoji}>{emoji}</AppText>
+            <CarePictogram label={cat.name} type={cat.type} icon={cat.icon} imageUrl={cat.image_url} size={24} />
             <AppText style={[styles.pickerLabel, { color: c.textPrimary }]}>{cat.name}</AppText>
           </Pressable>
         );

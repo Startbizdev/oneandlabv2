@@ -48,7 +48,7 @@
               :disabled="isTaken(cat.id) || selecting"
               @click="pickCategory(cat)"
             >
-              <span class="text-xl">{{ categoryEmoji(cat) }}</span>
+              <CareCategoryVisual :image-src="null" :icon-name="resolveCareIconFromCategory(cat)" icon-class="size-5 shrink-0 text-primary-700" />
               <span class="font-medium">{{ cat.name }}</span>
             </button>
           </div>
@@ -73,7 +73,7 @@ import type { SelectedServiceInput } from '@oneandlab/shared-utils';
 import { isCareCategoryWithoutBookingOptions } from '@oneandlab/shared-utils';
 import type { BookingServiceFormSlice } from '~/utils/booking-service-form-slice';
 import { buildPassageNursingItemLabel } from '~/utils/passage-nursing-item-label';
-import { careCategoryEmojiForCategory } from '@oneandlab/shared-utils';
+import { resolveCareIconFromCategory } from '~/utils/care-icons';
 import CareServiceQuickOptionsModal from '~/components/rendez-vous/CareServiceQuickOptionsModal.vue';
 import type { QuickModalCategoryRow } from '~/components/rendez-vous/CareServiceQuickOptionsModal.vue';
 import { apiFetch } from '~/utils/api';
@@ -103,9 +103,7 @@ function isTaken(id: string) {
   return takenIds.value.has(id);
 }
 
-function categoryEmoji(cat: CareCategoryRow) {
-  return careCategoryEmojiForCategory({ name: cat.name, icon: cat.icon, type: cat.type }) || '💉';
-}
+
 
 function displayLabel(item: NursePassageNursingItem) {
   const cat = categories.value.find((c) => String(c.id) === String(item.category_id));

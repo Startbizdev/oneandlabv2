@@ -1,4 +1,4 @@
-import { careSymbol, isCareCategoryEmoji } from '@oneandlab/shared-utils'
+import { explicitCareIcon, resolveCareCategoryIcon } from '@oneandlab/shared-utils'
 
 /**
  * URL affichable pour une image de catégorie (`care_categories.image_url`, ex. `/api/categories/care-image?name=…`).
@@ -7,7 +7,9 @@ import { careSymbol, isCareCategoryEmoji } from '@oneandlab/shared-utils'
 export function resolveCareCategoryImageSrc(
   imageUrl: string | null | undefined,
   apiBase?: string | null,
+  icon?: string | null,
 ): string | null {
+  if (explicitCareIcon(icon)) return null;
   const raw = imageUrl != null && String(imageUrl).trim() !== '' ? String(imageUrl).trim() : '';
   if (!raw) return null;
   if (/^https?:\/\//i.test(raw)) return raw;
@@ -24,7 +26,7 @@ export function resolveCareCategoryImageSrc(
  * Mappe une entrée care_categories (icône BDD) vers un nom d’icône Nuxt UI (UIcon).
  */
 export function resolveCareIconFromCategory(cat: { icon?: string | null; type: string; name?: string | null }): string {
-  return `i-lucide-${careSymbol({ type: cat.type, name: cat.name, label: cat.icon })}`
+  return `i-${resolveCareCategoryIcon(cat).replace(':', '-')}`
 }
 
 /** Couleur par défaut si besoin (analyses vs domicile) */
@@ -51,8 +53,7 @@ function careCategoryImageSrcForDisplay(
   icon: string | null | undefined,
   apiBase?: string | null,
 ): string | null {
-  if (isCareCategoryEmoji(icon)) return null
-  return resolveCareCategoryImageSrc(imageUrl, apiBase)
+  return resolveCareCategoryImageSrc(imageUrl, apiBase, icon)
 }
 
 const ACCENT_FALLBACK: CareAccent = {

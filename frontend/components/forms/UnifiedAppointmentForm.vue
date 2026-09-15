@@ -27,7 +27,7 @@
             <CareCategoryVisual
               :emoji="serviceHeaderEmoji(svc)"
               :image-src="serviceHeaderImageSrc(svc)"
-              :icon-name="svc.icon || (isBloodTestAppointment(svc.type) ? 'i-lucide-droplet' : 'i-lucide-heart-pulse')"
+              :icon-name="resolveCareIconFromCategory(svc)"
               img-class="block max-h-full max-w-full min-h-0 min-w-0 object-contain"
               icon-class="max-h-[92%] max-w-[92%] shrink-0 text-gray-600 dark:text-gray-400"
             />
@@ -821,7 +821,7 @@ import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { getBloodTestPremiumDayKind, type PremiumDayKind } from '~/utils/french-public-holidays';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import { careCategoryEmojiForCategory, isCareCategoryEmoji, stripStalePatientUrgencyFromSlice, isCareCategoryWithoutBookingOptions } from '@oneandlab/shared-utils';
-import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
+import { resolveCareCategoryImageSrc, resolveCareIconFromCategory } from '~/utils/care-icons';
 import {
   careAutreDetailKey,
   categorySelectHasAutreOption,
@@ -904,8 +904,7 @@ function serviceHeaderEmoji(svc: { type: string; name: string; icon?: string | n
 }
 
 function serviceHeaderImageSrc(svc: { category_image_url?: string | null; icon?: string | null }) {
-  if (isCareCategoryEmoji(svc.icon)) return null;
-  return resolveCareCategoryImageSrc(svc.category_image_url ?? null, config.public.apiBase);
+  return resolveCareCategoryImageSrc(svc.category_image_url ?? null, config.public.apiBase, svc.icon);
 }
 
 const emit = defineEmits<{
@@ -1021,7 +1020,7 @@ function wizardDocumentBadgeLines(svc: (typeof props.selectedServices)[number]) 
       name: s.name,
       emoji: serviceHeaderEmoji(s),
       imageSrc: serviceHeaderImageSrc(s),
-      iconName: s.icon || 'i-lucide-droplet',
+      iconName: resolveCareIconFromCategory(s),
     }));
   }
   if (hasGroupedNursingActs.value && isNursingAppointment(svc.type)) {
@@ -1030,7 +1029,7 @@ function wizardDocumentBadgeLines(svc: (typeof props.selectedServices)[number]) 
       name: s.name,
       emoji: serviceHeaderEmoji(s),
       imageSrc: serviceHeaderImageSrc(s),
-      iconName: s.icon || 'i-lucide-heart-pulse',
+      iconName: resolveCareIconFromCategory(s),
     }));
   }
   return [
@@ -1039,7 +1038,7 @@ function wizardDocumentBadgeLines(svc: (typeof props.selectedServices)[number]) 
       name: svc.name,
       emoji: serviceHeaderEmoji(svc),
       imageSrc: serviceHeaderImageSrc(svc),
-      iconName: svc.icon || (isBloodTestAppointment(svc.type) ? 'i-lucide-droplet' : 'i-lucide-heart-pulse'),
+      iconName: resolveCareIconFromCategory(svc),
     },
   ];
 }

@@ -98,7 +98,7 @@ export function RdvCareTagsRow({
               },
             ]}
           >
-            <CarePictogram label={line.label} type={apt.type} size={compact ? 14 : 16} />
+            <CarePictogram icon={categories.find((c) => c.id === line.category_id)?.icon ?? line.category_icon} imageUrl={categories.find((c) => c.id === line.category_id)?.image_url ?? line.category_image_url} label={line.label} type={apt.type} size={compact ? 14 : 16} />
             <AppText style={styles.label}>
               {line.label}
             </AppText>

@@ -1,3 +1,4 @@
+import { CarePictogram } from '@/components/ui/CarePictogram';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
@@ -62,17 +63,19 @@ export function BookingWizardSegmentContext({
         <View style={styles.accent} />
         <View style={styles.copy}>
           <AppText style={styles.badge}>{stepLabel}</AppText>
-          <AppText style={styles.title} numberOfLines={3}>
-            {title}
-          </AppText>
+          <Row align="center" gap={spacing[2]}>
+            <CarePictogram label={activeService.name} type={activeService.type} icon={activeService.icon} imageUrl={activeService.category_image_url} size={24} />
+            <AppText style={[styles.title, { flex: 1, minWidth: 0 }]} numberOfLines={3}>{title}</AppText>
+          </Row>
           {lotServices.length > 1 ? (
             <Row wrap gap={spacing[1.5]}>
               {lotServices.map((s) => (
-                <View key={s.id} style={styles.pill}>
+                <Row key={s.id} style={styles.pill} align="center" gap={spacing[1]}>
+                  <CarePictogram label={s.name} type={s.type} icon={s.icon} imageUrl={s.category_image_url} />
                   <AppText style={styles.pillText} numberOfLines={1}>
                     {bookingWizardServiceDisplayName(s)}
                   </AppText>
-                </View>
+                </Row>
               ))}
             </Row>
           ) : null}

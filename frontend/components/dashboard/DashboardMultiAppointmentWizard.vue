@@ -469,7 +469,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
-import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
+import { resolveCareCategoryImageSrc, resolveCareIconFromCategory } from '~/utils/care-icons';
 import { runWithBookingCelebrationOverlay } from '~/composables/useBookingCelebrationOverlay';
 import { bookingDbg, celebrationRotateIconsFromServices } from '~/utils/booking-celebration-debug';
 import { fetchAllPatientsForDashboard } from '~/utils/fetch-all-patients';
@@ -712,7 +712,7 @@ function buildDashboardWizardSegmentIntro(activeServiceId: string | null): {
 
   const base = String(runtimeConfig.public.apiBase ?? '');
   const img = (svc: SelectedServiceInput) =>
-    resolveCareCategoryImageSrc(svc.category_image_url ?? null, base);
+    resolveCareCategoryImageSrc(svc.category_image_url ?? null, base, svc.icon);
 
   if (isNursingAppointment(rep.type)) {
     const nurs = selectedServices.value.filter((s) => isNursingAppointment(s.type));
@@ -720,7 +720,7 @@ function buildDashboardWizardSegmentIntro(activeServiceId: string | null): {
       id: s.id,
       name: s.name,
       imageSrc: img(s),
-      iconName: s.icon || 'i-lucide-heart-pulse',
+      iconName: resolveCareIconFromCategory(s),
     }));
     return { title: 'soins infirmiers', lines };
   }
@@ -731,7 +731,7 @@ function buildDashboardWizardSegmentIntro(activeServiceId: string | null): {
       id: s.id,
       name: s.name,
       imageSrc: img(s),
-      iconName: s.icon || 'i-lucide-droplet',
+      iconName: resolveCareIconFromCategory(s),
     }));
     return { title: 'prélèvement', lines };
   }

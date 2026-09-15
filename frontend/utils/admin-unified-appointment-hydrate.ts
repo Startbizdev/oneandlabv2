@@ -128,7 +128,7 @@ export function hydrateAdminUnifiedAppointment(
         type: 'blood_test',
         name: String((row as { label?: string }).label ?? cat?.name ?? apt.category_name ?? 'Prélèvement'),
         category_id: cid != null ? String(cid) : null,
-        icon: cat?.icon || 'i-lucide-droplet',
+        icon: cat?.icon ?? undefined,
         category_image_url: cat?.image_url ?? apt.category_image_url ?? null,
       };
     });
@@ -198,7 +198,7 @@ export function hydrateAdminUnifiedAppointment(
         type: 'nursing',
         name: String((row as { label?: string }).label ?? cat?.name ?? apt.category_name ?? 'Soin infirmier'),
         category_id: cid != null ? String(cid) : null,
-        icon: cat?.icon || 'i-lucide-heart-pulse',
+        icon: cat?.icon ?? undefined,
         category_image_url: cat?.image_url ?? apt.category_image_url ?? null,
       };
     });

@@ -210,6 +210,8 @@ export function CareServiceQuickOptionsSheet({
       type: category.type,
       name: resolveRdvCareDisplayLabel(category.label, coPayload),
       category_id: category.id,
+      icon: category.icon ?? undefined,
+      category_image_url: category.image_url ?? null,
       ...(category.skip_prescription_documents
         ? { skip_prescription_documents: true as const }
         : {}),

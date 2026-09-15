@@ -1,0 +1,110 @@
+{
+  "lucide": {
+    "name": "Lucide",
+    "total": 1837,
+    "author": {
+      "name": "Lucide Contributors",
+      "url": "https://github.com/lucide-icons/lucide"
+    },
+    "license": {
+      "title": "ISC",
+      "spdx": "ISC",
+      "url": "https://github.com/lucide-icons/lucide/blob/main/LICENSE"
+    },
+    "samples": [
+      "circle-check",
+      "award",
+      "house",
+      "check",
+      "mountain",
+      "chevron-up"
+    ],
+    "height": 24,
+    "category": "UI 24px",
+    "tags": [
+      "Precise Shapes",
+      "Has Padding",
+      "Uses Stroke"
+    ],
+    "palette": false
+  },
+  "medical-icon": {
+    "name": "Medical Icons",
+    "total": 144,
+    "version": "1.0.0",
+    "author": {
+      "name": "Samuel Frémondière",
+      "url": "https://github.com/samcome/webfont-medical-icons"
+    },
+    "license": {
+      "title": "MIT",
+      "spdx": "MIT",
+      "url": "https://github.com/samcome/webfont-medical-icons/blob/master/LICENSE"
+    },
+    "samples": [
+      "i-care-staff-area",
+      "i-nursery",
+      "immunizations",
+      "i-chapel",
+      "stairs",
+      "health-services"
+    ],
+    "category": "Thematic",
+    "palette": false
+  },
+  "healthicons": {
+    "name": "Health Icons",
+    "total": 2042,
+    "version": "2.0.0",
+    "author": {
+      "name": "Resolve to Save Lives",
+      "url": "https://github.com/resolvetosavelives/healthicons"
+    },
+    "license": {
+      "title": "MIT",
+      "spdx": "MIT",
+      "url": "https://github.com/resolvetosavelives/healthicons/blob/main/LICENSE"
+    },
+    "samples": [
+      "cold-chain",
+      "emergency-post",
+      "asthma-outline",
+      "exercise",
+      "health-alt",
+      "heart"
+    ],
+    "height": 24,
+    "category": "Thematic",
+    "tags": [
+      "Precise Shapes"
+    ],
+    "palette": false
+  },
+  "covid": {
+    "name": "Covid Icons",
+    "total": 142,
+    "author": {
+      "name": "Streamline",
+      "url": "https://github.com/webalys-hq/streamline-vectors"
+    },
+    "license": {
+      "title": "CC BY 4.0",
+      "spdx": "CC-BY-4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    "samples": [
+      "social-distancing-correct-2",
+      "personal-hygiene-clean-toothpaste",
+      "vaccine-protection-medicine-pill",
+      "social-distancing-not-allowed-space-man",
+      "graph-cured-increasing",
+      "social-distancing-attention"
+    ],
+    "height": 24,
+    "category": "Thematic",
+    "tags": [
+      "Uses Stroke"
+    ],
+    "palette": false
+  }
+}

@@ -1,3 +1,4 @@
+import { CarePictogram } from '@/components/ui/CarePictogram';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
@@ -61,11 +62,13 @@ export function SelectedServicesDetailSheet({
     >
       {selectedServices.map((svc, index) => {
         const lines = detailLinesForSelectedService(svc, categories, formDataByService);
+        const cat = categories.find((c) => c.id === svc.category_id);
         const isLast = index === selectedServices.length - 1;
 
         return (
           <View key={svc.id} style={[styles.item, !isLast && styles.itemBorder]}>
             <Cluster
+              leading={<CarePictogram label={svc.name} type={svc.type} icon={cat ? cat.icon : svc.icon} imageUrl={cat ? cat.image_url : svc.category_image_url} size={24} />}
               align="start"
               gap={spacing[2]}
               actions={

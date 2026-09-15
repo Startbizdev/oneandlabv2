@@ -1,5 +1,4 @@
 import {
-  careCategoryEmojiForCategory,
   isBloodTestAppointment,
   isNursingAppointment,
   type SelectedServiceInput,
@@ -36,17 +35,9 @@ export function bookingWizardLotStepLabel(kind: BookingWizardLotKind): string {
   return 'Prestation';
 }
 
-/** Libellé soin avec emoji (catalogue / `icon` / type). */
+/** Text label; the selected pictogram is rendered separately. */
 export function bookingWizardServiceDisplayName(svc: SelectedServiceInput): string {
-  const name = String(svc.name ?? '').trim();
-  if (!name) return '';
-  const emoji = careCategoryEmojiForCategory({
-    name,
-    icon: svc.icon ?? null,
-    type: svc.type,
-  });
-  if (!emoji || name.startsWith(emoji)) return name;
-  return `${emoji} ${name}`;
+  return String(svc.name ?? '').trim();
 }
 
 /** Titre du lot (un ou plusieurs actes). */

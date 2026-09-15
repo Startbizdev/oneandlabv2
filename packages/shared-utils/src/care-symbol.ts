@@ -12,3 +12,17 @@ export function careSymbol(category: { name?: string | null; label?: string | nu
   if (/surveillance|suivi|tension|diabet/.test(label)) return 'heart-pulse';
   return 'stethoscope';
 }
+
+/** Selected catalogue icon, shared by web and native; old emoji use a semantic fallback. */
+export function explicitCareIcon(icon?: string | null): string | null {
+  let value = String(icon ?? '').trim();
+  value = value.replace(/^i-(medical-icon|healthicons|lucide|covid)-/, '$1:');
+  if (/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(value)) value = `lucide:${value}`;
+  if (value === 'lucide:pulse') value = 'lucide:activity';
+  if (value === 'lucide:first-aid') value = 'lucide:briefcase-medical';
+  return /^(lucide|medical-icon|healthicons|covid):[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) ? value : null;
+}
+
+export function resolveCareCategoryIcon(category: { icon?: string | null; name?: string | null; type?: string | null }): string {
+  return explicitCareIcon(category.icon) ?? `lucide:${careSymbol(category)}`;
+}

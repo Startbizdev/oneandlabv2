@@ -1021,6 +1021,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveCareIconFromCategory } from "~/utils/care-icons";
 import type { ProfilePersonalInfo } from '#components';
 import { nextTick } from 'vue'
 import { splitProfessionalId, validateProfessionalId, isProIpaEmploi } from '@oneandlab/shared-types'
@@ -2600,15 +2601,7 @@ async function savePublicProfile(fromSaveAll = false) {
 
 /** Convertit l’icône stockée en admin (care_categories.icon) en nom UIcon */
 function careCategoryIconName(icon: string | null | undefined): string {
-  if (!icon || typeof icon !== 'string') return 'i-lucide-heart-pulse'
-  const raw = icon.trim()
-  if (!raw) return 'i-lucide-heart-pulse'
-  if (raw.startsWith('i-')) return raw
-  if (raw.startsWith('medical-icon:')) return 'i-medical-icon-' + raw.slice('medical-icon:'.length)
-  if (raw.startsWith('healthicons:')) return 'i-healthicons-' + raw.slice('healthicons:'.length)
-  if (raw.startsWith('covid:')) return 'i-covid-' + raw.slice('covid:'.length)
-  const name = raw.replace(/^lucide:/, '').replace(/\s+/g, '-').toLowerCase()
-  return name ? `i-lucide-${name}` : 'i-lucide-heart-pulse'
+  return resolveCareIconFromCategory({ icon, type: 'nursing' });
 }
 
 const loadCategoryPreferences = async () => {

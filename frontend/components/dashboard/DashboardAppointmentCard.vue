@@ -184,7 +184,7 @@ const headerCareBadge = computed(() => {
     iconColor: '',
     emoji: undefined,
     tileBg: '',
-    imageSrc: resolveCareCategoryImageSrc(props.appointment?.category_image_url ?? null, config.public.apiBase),
+    imageSrc: resolveCareCategoryImageSrc(props.appointment?.category_image_url ?? null, config.public.apiBase, props.appointment?.category_icon),
   };
 });
 

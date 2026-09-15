@@ -267,7 +267,7 @@ function bookingServiceLineFromCategory(cat: {
     type: cat.type,
     name: cat.name,
     category_id: cat.id,
-    icon: resolveCareIconFromCategory(cat),
+    icon: cat.icon ?? '',
     category_image_url: cat.image_url ?? null,
     ...(normalizeCategorySkipPrescriptionDocuments((cat as { skip_prescription_documents?: unknown }).skip_prescription_documents)
       ? { skip_prescription_documents: true as const }
