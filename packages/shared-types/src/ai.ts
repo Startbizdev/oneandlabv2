@@ -107,3 +107,51 @@ export interface AiChatResponse {
   audit_id?: string | null;
   conversation?: AiConversation | null;
 }
+
+export type VoiceTransport = 'rest' | 'realtime';
+
+export interface VoiceRealtimeSessionConfig {
+  voice: string;
+  instructions: string;
+  turn_detection: { type: 'server_vad' };
+  tools: Array<Record<string, unknown>>;
+  audio: {
+    input: {
+      format: { type: string; rate: number };
+      transport: 'binary' | 'json';
+      transcription?: { language_hint?: string };
+    };
+    output: {
+      format: { type: string; rate: number };
+      transport: 'binary' | 'json';
+    };
+  };
+  resumption?: { enabled: boolean };
+}
+
+export interface VoiceRealtimeStartResponse {
+  session_id: string;
+  conversation_id: string;
+  transport: VoiceTransport;
+  ephemeral_token: string;
+  token_expires_at: number;
+  websocket_url: string;
+  disclaimer: string;
+  draft?: AiAppointmentDraft | null;
+  session_config: VoiceRealtimeSessionConfig;
+  welcome_text?: string | null;
+}
+
+export interface VoiceRealtimeToolResponse {
+  tool: string;
+  result: Record<string, unknown>;
+  draft?: AiAppointmentDraft | null;
+  conversation_id: string;
+}
+
+export interface VoiceRealtimeEventSyncResponse {
+  duplicate: boolean;
+  event_id: string;
+  conversation_id?: string;
+  draft?: AiAppointmentDraft | null;
+}

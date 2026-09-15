@@ -1,6 +1,6 @@
 {
   "name": "@oneandlab/mobile",
-  "version": "1.8.9",
+  "version": "1.8.13",
   "private": true,
   "main": "index.js",
   "scripts": {
@@ -38,6 +38,7 @@
     "typecheck": "tsc --noEmit",
     "simulate:iap": "node scripts/simulate-iap-purchase.cjs",
     "test:voice-utils": "node scripts/test-voice-session-utils.cjs",
+    "test:voice-realtime": "node scripts/test-voice-realtime-events.cjs",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:styles": "node scripts/lint-themed-styles.mjs",
     "lint:styles:strict": "node scripts/lint-themed-styles.mjs --strict-colors",

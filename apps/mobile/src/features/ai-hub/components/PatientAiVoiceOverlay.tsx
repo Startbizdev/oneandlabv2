@@ -4,7 +4,9 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { AiAppointmentDraft } from '@oneandlab/shared-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import Svg, { Rect } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
@@ -36,7 +38,7 @@ import { fontFamily, fontSize, lh } from '@/theme/typography';
 /** Réserve bas d’écran pour l’orbe + safe area — évite que le fil soit masqué. */
 const TRANSCRIPT_DOCK_CLEARANCE = 196;
 
-type ActivityMode = 'idle' | 'user' | 'assistant' | 'processing';
+type ActivityMode = 'idle' | 'user' | 'assistant' | 'processing' | 'connecting' | 'reconnecting';
 
 interface Props {
   visible: boolean;
@@ -54,9 +56,12 @@ interface Props {
   onAttachDocument?: (source: CarePhotoPickSource) => void;
   onStart: () => void;
   onStop: () => void;
+  onInterrupt?: () => void;
 }
 
 function resolveActivityMode(phase: VoicePhase, sessionActive: boolean): ActivityMode {
+  if (phase === 'connecting' || phase === 'fallback') return 'connecting';
+  if (phase === 'reconnecting') return 'reconnecting';
   if (phase === 'processing') return 'processing';
   if (phase === 'speaking') return 'assistant';
   if (sessionActive && phase === 'listening') return 'user';
@@ -70,10 +75,48 @@ function statusTitle(
   hasUserMessage: boolean,
 ): string | null {
   if (!available) return 'Voix indisponible';
+  if (phase === 'connecting') return 'Connexion…';
+  if (phase === 'reconnecting') return 'Reconnexion…';
+  if (phase === 'fallback') return 'Mode classique…';
+  if (phase === 'error') return 'Erreur vocale';
   if (phase === 'processing') return hasUserMessage ? 'Réflexion…' : 'Connexion…';
   if (phase === 'speaking') return 'Cary parle';
-  if (sessionActive && phase === 'listening') return null;
+  if (sessionActive && phase === 'listening') return 'Parlez…';
   return '…';
+}
+
+function VoiceWaveform({
+  energy,
+  active,
+  color,
+}: {
+  energy: number;
+  active: boolean;
+  color: string;
+}) {
+  const bars = 12;
+  const heights = Array.from({ length: bars }, (_, i) => {
+    const wave = Math.sin((i / bars) * Math.PI * 2 + energy * 6);
+    const base = active ? 0.25 + energy * 0.75 : 0.15;
+    return Math.max(0.12, Math.min(1, base + wave * 0.18 * (active ? 1 : 0.3)));
+  });
+
+  return (
+    <Svg width={120} height={28} accessibilityElementsHidden importantForAccessibility="no">
+      {heights.map((h, i) => (
+        <Rect
+          key={i}
+          x={i * 10 + 2}
+          y={(1 - h) * 14 + 7}
+          width={6}
+          height={h * 22}
+          rx={3}
+          fill={color}
+          opacity={0.55 + h * 0.45}
+        />
+      ))}
+    </Svg>
+  );
 }
 
 function TurnBubble({
@@ -149,12 +192,14 @@ function VoiceOrbDock({
   title,
   voiceEnergy,
   sessionActive,
+  onOrbPress,
   styles,
 }: {
   mode: ActivityMode;
   title: string | null;
   voiceEnergy: number;
   sessionActive: boolean;
+  onOrbPress?: () => void;
   styles: ReturnType<typeof buildStyles>;
 }) {
   const c = useAppColors();
@@ -221,10 +266,25 @@ function VoiceOrbDock({
     transform: [{ scale: 0.42 + energy.value * 0.12 }],
   }));
 
+  const orbInteractive = sessionActive && mode === 'assistant';
+
   return (
     <View style={[styles.dock, { backgroundColor: c.background }]}>
       <View style={styles.dockInner}>
-        <View style={styles.orbStage}>
+        <Pressable
+          onPress={orbInteractive ? onOrbPress : undefined}
+          disabled={!orbInteractive}
+          accessibilityRole="button"
+          accessibilityLabel={
+            mode === 'assistant'
+              ? 'Interrompre Cary'
+              : mode === 'user'
+                ? 'Écoute en cours'
+                : 'Assistant vocal Cary'
+          }
+          accessibilityHint={mode === 'assistant' ? 'Toucher pour reprendre la parole' : undefined}
+          style={styles.orbStage}
+        >
           <Animated.View
             style={[styles.orbRing, ring2Style, { borderColor: hexToRgba(orbColor, 0.18) }]}
           />
@@ -246,10 +306,21 @@ function VoiceOrbDock({
               ]}
             />
           </Animated.View>
-        </View>
+        </Pressable>
+
+        <VoiceWaveform
+          energy={voiceEnergy}
+          active={mode === 'user' || mode === 'assistant'}
+          color={orbColor}
+        />
 
         {title ? (
-          <AppText style={[styles.dockTitle, { color: c.textSecondary }]}>{title}</AppText>
+          <AppText
+            style={[styles.dockTitle, { color: c.textSecondary }]}
+            accessibilityLiveRegion="polite"
+          >
+            {title}
+          </AppText>
         ) : null}
       </View>
     </View>
@@ -272,6 +343,7 @@ export function PatientAiVoiceOverlay({
   onAttachDocument,
   onStart,
   onStop,
+  onInterrupt,
 }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles);
@@ -294,6 +366,8 @@ export function PatientAiVoiceOverlay({
       ? 'Joignez votre ordonnance'
       : 'Joignez le document';
 
+  const prevPhaseRef = useRef<VoicePhase>('idle');
+
   useEffect(() => {
     if (visible && !started) {
       setStarted(true);
@@ -306,10 +380,26 @@ export function PatientAiVoiceOverlay({
   }, [onStart, onStop, started, visible]);
 
   useEffect(() => {
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = phase;
+    if (prev === phase || !visible) return;
+    if (phase === 'listening') {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void AccessibilityInfo.announceForAccessibility('Parlez maintenant');
+    } else if (phase === 'speaking') {
+      void Haptics.selectionAsync();
+    } else if (phase === 'error') {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+  }, [phase, visible]);
+
+  useEffect(() => {
     if (turns.length > 0 || phase === 'processing' || phase === 'speaking') {
       transcriptRef.current?.scrollToEnd({ animated: true });
     }
   }, [turns.length, phase]);
+
+  const micDenied = speechError?.toLowerCase().includes('micro') ?? false;
 
   const handleClose = useCallback(() => {
     onStop();
@@ -407,11 +497,37 @@ export function PatientAiVoiceOverlay({
             title={title}
             voiceEnergy={voiceEnergy}
             sessionActive={sessionActive}
+            onOrbPress={onInterrupt}
             styles={styles}
           />
 
           {speechError ? (
-            <AppText style={[styles.errorCaption, { color: c.error }]}>{speechError}</AppText>
+            <View style={styles.errorWrap}>
+              <AppText style={[styles.errorCaption, { color: c.error }]} accessibilityRole="alert">
+                {speechError}
+              </AppText>
+              {micDenied ? (
+                <Pressable
+                  onPress={() => void Linking.openSettings()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ouvrir les réglages du micro"
+                  hitSlop={8}
+                >
+                  <AppText style={[styles.settingsLink, { color: c.primary }]}>Ouvrir Réglages</AppText>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+
+          {sessionActive ? (
+            <Pressable
+              onPress={handleClose}
+              style={[styles.endBtn, { backgroundColor: hexToRgba(c.textPrimary, 0.06) }]}
+              accessibilityRole="button"
+              accessibilityLabel="Terminer la conversation vocale"
+            >
+              <AppText style={[styles.endBtnText, { color: c.textSecondary }]}>Terminer</AppText>
+            </Pressable>
           ) : null}
         </View>
         </View>
@@ -517,14 +633,37 @@ function buildStyles(_c: AppColors) {
       height: 96,
       borderRadius: 48,
     },
+    errorWrap: {
+      alignItems: 'center' as const,
+      gap: spacing[1],
+      paddingHorizontal: spacing[5],
+      paddingTop: spacing[1],
+    },
     errorCaption: {
       fontFamily: fontFamily.medium,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.45),
       textAlign: 'center' as const,
-      paddingHorizontal: spacing[5],
-      paddingTop: spacing[1],
-      paddingBottom: spacing[2],
+    },
+    settingsLink: {
+      fontFamily: fontFamily.semiBold,
+      fontSize: fontSize.sm,
+      textDecorationLine: 'underline' as const,
+      paddingVertical: spacing[1],
+    },
+    endBtn: {
+      alignSelf: 'center' as const,
+      marginTop: spacing[1],
+      marginBottom: spacing[2],
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[2],
+      borderRadius: radius.full,
+      minHeight: 44,
+      justifyContent: 'center' as const,
+    },
+    endBtnText: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSize.sm,
     },
   };
 }
