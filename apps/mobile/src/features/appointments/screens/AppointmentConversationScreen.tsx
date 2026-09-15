@@ -98,7 +98,10 @@ export function AppointmentConversationScreen() {
       ) : isError ? (
         <EmptyState Icon={WifiOff} title="Les échanges n’ont pas pu être chargés" description="Votre message en cours reste disponible." actionLabel="Réessayer" onAction={() => void refetch()} />
       ) : (
-        <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.list, !messages.length && styles.listEmpty]}
+          keyboardShouldPersistTaps="handled"
+        >
           {!messages.length ? <EmptyState Icon={MessageCircle} title="Vos échanges, au même endroit" description="Les messages et pièces jointes de ce rendez-vous apparaîtront ici." /> : null}
           {messages.map((msg) => (
             <View
@@ -140,6 +143,7 @@ function buildStyles(_c: AppColors) {
   return {
     root: { flex: 1, minWidth: 0 },
     list: { padding: spacing[4], gap: spacing[3], paddingBottom: spacing[24] },
+    listEmpty: { flexGrow: 1, justifyContent: 'center' as const },
     bubble: { borderWidth: 1, borderRadius: 12, padding: spacing[3], maxWidth: '88%' },
     bubbleMine: { alignSelf: 'flex-end' },
     bubbleOther: { alignSelf: 'flex-start' },
