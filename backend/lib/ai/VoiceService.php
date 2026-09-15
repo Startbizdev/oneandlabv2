@@ -104,10 +104,17 @@ final class VoiceService
         $rawTranscript = trim((string) ($input['transcript'] ?? ''));
         $sttProvider = (string) ($input['stt_provider'] ?? 'client');
 
+        // Bound client supplied audio before base64 decoding to avoid a memory
+        // spike on the PHP worker (roughly 10 MB of compressed audio).
+        $audioBase64 = (string) ($input['audio_base64'] ?? '');
+        if (strlen($audioBase64) > 15 * 1024 * 1024) {
+            throw new InvalidArgumentException('Fichier audio trop volumineux');
+        }
+
         if ($rawTranscript !== '' && in_array($sttProvider, ['device', 'client'], true)) {
             $sttProvider = 'device';
-        } elseif (!empty($input['audio_base64'])) {
-            $grokText = trim($this->grokAudio->transcribe((string) $input['audio_base64'], (string) ($session['locale'] ?? 'fr')));
+        } elseif ($audioBase64 !== '') {
+            $grokText = trim($this->grokAudio->transcribe($audioBase64, (string) ($session['locale'] ?? 'fr')));
             $rawTranscript = $grokText;
             $sttProvider = 'grok_stt';
         }
