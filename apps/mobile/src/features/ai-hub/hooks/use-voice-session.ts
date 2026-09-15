@@ -379,6 +379,11 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     setVoiceEnergy(0);
     stopCaryVoice();
     void captureRef.current.discard();
+    // Always close the server session when the overlay is dismissed. Without
+    // this, every cancelled voice conversation remains open until expiration.
+    const sid = sessionIdRef.current;
+    sessionIdRef.current = null;
+    if (sid) void endVoiceSession(sid).catch(() => undefined);
     setPhase('idle');
   }, []);
 
