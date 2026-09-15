@@ -2,13 +2,12 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { Row } from '@/components/layout/primitives';
 import { useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageCircle, Send, WifiOff } from 'lucide-react-native';
-import { Input } from '@/components/ui/Input';
+import { MessageCircle, Paperclip, Send, WifiOff } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
@@ -126,12 +125,21 @@ export function AppointmentConversationScreen() {
       )}
       {canPost ? (
         <View style={[styles.composer, { borderTopColor: c.border, backgroundColor: c.surface }]}>
-          <Input value={draft} onChangeText={setDraft} placeholder="Votre message…" accessibilityLabel="Votre message" editable={!sendMutation.isPending} multiline />
-          <Row gap={spacing[2]} justify="between">
-            <Button title="Joindre" variant="outline" disabled={sendMutation.isPending} onPress={() => void onPickAttachment()} />
-            <Button title="Envoyer" loading={sendMutation.isPending} disabled={!draft.trim()}
-              onPress={() => sendMutation.mutate({ body: draft.trim() })}
-              leftIcon={<Send color={c.onPrimary} size={18} />} />
+          <Row style={[styles.composerBar, { backgroundColor: c.background, borderColor: c.border }]}>
+            <Pressable onPress={() => void onPickAttachment()} disabled={sendMutation.isPending}
+              style={({ pressed }) => [styles.iconButton, pressed && styles.iconPressed]}
+              accessibilityRole="button" accessibilityLabel="Joindre une photo ou un document">
+              <Paperclip size={20} color={c.textSecondary} />
+            </Pressable>
+            <TextInput value={draft} onChangeText={setDraft} placeholder="Écrire un message…"
+              placeholderTextColor={c.textTertiary} accessibilityLabel="Votre message"
+              editable={!sendMutation.isPending} multiline maxLength={2000} style={[styles.composerInput, { color: c.textPrimary }]} />
+            <Pressable onPress={() => sendMutation.mutate({ body: draft.trim() })}
+              disabled={sendMutation.isPending || !draft.trim()}
+              style={({ pressed }) => [styles.iconButton, pressed && styles.iconPressed]}
+              accessibilityRole="button" accessibilityLabel="Envoyer le message">
+              <Send size={20} color={draft.trim() && !sendMutation.isPending ? c.primary : c.textTertiary} />
+            </Pressable>
           </Row>
         </View>
       ) : null}
@@ -150,5 +158,9 @@ function buildStyles(_c: AppColors) {
     author: { fontFamily: fontFamily.medium, fontSize: fontSize.xs, marginBottom: spacing[1] },
     attachment: { marginTop: spacing[2], fontFamily: fontFamily.medium, fontSize: fontSize.xs },
     composer: { borderTopWidth: 1, padding: spacing[3], gap: spacing[2] },
+    composerBar: { minHeight: 48, maxHeight: 112, borderWidth: 1, borderRadius: 24, alignItems: 'center' as const, paddingHorizontal: spacing[1], paddingVertical: spacing[1] },
+    composerInput: { flex: 1, minHeight: 34, maxHeight: 96, paddingHorizontal: spacing[2], paddingVertical: spacing[1], fontSize: fontSize.md, textAlignVertical: 'center' as const },
+    iconButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center' as const, justifyContent: 'center' as const },
+    iconPressed: { opacity: 0.6 },
   } satisfies Parameters<typeof StyleSheet.create>[0];
 }
