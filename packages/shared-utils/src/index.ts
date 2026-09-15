@@ -30,3 +30,5 @@ export * from './care-symbol';
 export * from './resumable-appointment-batch';
 export * from './care-duration';
 export * from './appointment-date-france';
+
+export * from './booking-paris-clock';

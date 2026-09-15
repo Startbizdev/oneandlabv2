@@ -1,11 +1,9 @@
-import dayjs from 'dayjs';
 import {
   AVAILABILITY_MAX_HOUR_BLOOD_TEST,
   AVAILABILITY_MAX_HOUR_NURSING,
   AVAILABILITY_MIN_SPAN_HOURS,
 } from '@oneandlab/shared-constants';
-import { isBloodTestAppointment } from '@oneandlab/shared-utils';
-import { parseIsoDay } from './booking-date-utils';
+import { bookingSlotMinHourParis, isBloodTestAppointment } from '@oneandlab/shared-utils';
 
 export const AVAILABILITY_MIN_HOUR = 6;
 
@@ -27,16 +25,7 @@ export function availabilitySliderMinHour(
   maxHour: number,
   minHour = AVAILABILITY_MIN_HOUR,
 ): number {
-  const date = parseIsoDay(scheduledAt);
-  if (!date?.isSame(dayjs(), 'day')) return minHour;
-
-  const now = dayjs();
-  let h = now.hour();
-  if (now.minute() > 0 || now.second() > 0) h += 1;
-
-  const upper = maxHour - AVAILABILITY_MIN_SPAN_HOURS;
-  if (upper < minHour) return minHour;
-  return Math.max(minHour, Math.min(h, upper));
+  return bookingSlotMinHourParis(scheduledAt, maxHour, minHour);
 }
 
 export function clampAvailabilityRange(

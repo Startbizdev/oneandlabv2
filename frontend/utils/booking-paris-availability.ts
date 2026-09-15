@@ -1,6 +1,5 @@
-import { CalendarDate, now, parseDate, today } from '@internationalized/date';
-import { PARIS_TZ } from '~/utils/booking-date-constraints';
-import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot';
+import { CalendarDate, parseDate } from '@internationalized/date';
+import { bookingSlotMinHourParis, parisBookingClock } from '@oneandlab/shared-utils';
 
 /** Extrait la partie date `YYYY-MM-DD` du champ « date du RDV » (formulaire). */
 export function extractBookingCalendarDateYmd(raw: string | undefined | null): CalendarDate | null {
@@ -15,18 +14,12 @@ export function extractBookingCalendarDateYmd(raw: string | undefined | null): C
 }
 
 export function isParisCalendarToday(date: CalendarDate): boolean {
-  const t = today(PARIS_TZ);
-  return date.compare(t) === 0;
+  return date.toString() === parisBookingClock().date;
 }
 
 /** Heure entière minimale pour un créneau « le jour même » à Paris (strictement après l’instant présent). */
 export function parisNextWholeHourFromNow(): number {
-  const n = now(PARIS_TZ);
-  let h = n.hour;
-  if (n.minute > 0 || n.second > 0 || n.millisecond > 0) {
-    h += 1;
-  }
-  return h;
+  return parisBookingClock().nextHour;
 }
 
 /**
@@ -38,16 +31,5 @@ export function availabilitySliderMinHourParis(
   slotMaxHour: number,
   availabilityMin = 6,
 ): number {
-  const cd = extractBookingCalendarDateYmd(scheduledRaw ?? '');
-  if (!cd || !isParisCalendarToday(cd)) {
-    return availabilityMin;
-  }
-  const ceil = parisNextWholeHourFromNow();
-  let lo = Math.max(availabilityMin, ceil);
-  const upper = slotMaxHour - AVAILABILITY_MIN_SPAN_HOURS;
-  if (upper < availabilityMin) {
-    return availabilityMin;
-  }
-  lo = Math.min(lo, upper);
-  return Math.max(availabilityMin, lo);
+  return bookingSlotMinHourParis(scheduledRaw, slotMaxHour, availabilityMin);
 }
