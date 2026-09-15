@@ -1,0 +1,3 @@
+
+# Deployment scripts must execute on Linux after git archive.
+*.sh text eol=lf
