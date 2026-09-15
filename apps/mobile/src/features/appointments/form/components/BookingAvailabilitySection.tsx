@@ -117,7 +117,9 @@ export function BookingAvailabilitySection({
         })}
       </Row>
 
-      {availabilityType === 'custom' ? (
+      {availabilityType === 'custom' && minHour >= maxHour ? (
+        <AppText>Aucun créneau restant aujourd’hui (heure de Paris). Choisissez une autre date.</AppText>
+      ) : availabilityType === 'custom' ? (
         <BookingTimeRangeSlider
           min={minHour}
           max={maxHour}

@@ -207,7 +207,11 @@ function moveTab(event: KeyboardEvent, currentId: string) {
       leave-to-class="opacity-0 -translate-y-0.5"
     >
       <div v-if="availabilityType === 'custom'" class="space-y-2">
-        <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Horaires de Paris · jusqu’à {{ formatHour(maxHour) }}</p>
+        <p v-if="effectiveRangeSliderMin >= maxHour" role="status" class="text-sm text-gray-700 dark:text-gray-300">
+          Aucun créneau restant aujourd’hui. Choisissez une autre date.
+        </p>
+        <div v-else>
           <div
             class="mb-2 flex justify-between gap-3 text-base font-semibold tabular-nums text-gray-900 dark:text-gray-100 sm:text-lg"
           >
@@ -231,7 +235,7 @@ function moveTab(event: KeyboardEvent, currentId: string) {
             @update:model-value="(v) => v != null && updateRange(v as [number, number])"
           />
         </div>
-        <p v-if="rangeWarn" class="text-xs text-error-500">
+        <p v-if="rangeWarn && effectiveRangeSliderMin < maxHour" class="text-xs text-error-500">
           L'écart minimum est de {{ AVAILABILITY_MIN_SPAN_HOURS }} h
         </p>
       </div>
