@@ -22,6 +22,10 @@ for (const path of ['/infirmier', '/Laboratoire', '/professionnel']) {
     await expect(page.getByRole('link', { name: 'Réserver une visite', exact: true }).first()).toHaveAttribute('href', /provider_id=fixture-profile/);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     expect(errors).toEqual([]);
+    if (path !== '/professionnel') {
+      await expect(page.locator('[class*="syringe"]').first()).toBeVisible();
+      await expect(page.locator('img[src="/api/old-care.png"]')).toHaveCount(0);
+    }
     await page.screenshot({ path: `test-results/public-profile-${path.slice(1)}-360.png`, fullPage: true });
   });
 

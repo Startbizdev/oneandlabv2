@@ -12,6 +12,7 @@ export type RdvCatalogLine = {
   label: string;
   /** Emoji affiché dans les mini-tags liste RDV. */
   emoji: string;
+  category_icon?: string | null;
   category_image_url?: string | null;
   care_options?: Record<string, string | number>;
 };
@@ -62,6 +63,7 @@ function mapItem(
     category_id: categoryId,
     label,
     emoji: careEmojiForCareItem(it, apt.type, undefined, emojiSource),
+    category_icon: it?.category_icon ?? (apt as AptWithIcon).category_icon,
     category_image_url: it?.category_image_url ?? apt.category_image_url ?? null,
     care_options: mapCareOptions(it?.care_options),
   };
@@ -137,6 +139,7 @@ export function rdvCatalogDisplayLines(apt: Appointment, opts?: RdvCatalogDispla
           categoryId: catId,
           categoryIcon: ext.category_icon ?? null,
         }),
+        category_icon: (apt as AptWithIcon).category_icon,
         category_image_url: apt.category_image_url ?? null,
         care_options: fdCareOpts,
       },

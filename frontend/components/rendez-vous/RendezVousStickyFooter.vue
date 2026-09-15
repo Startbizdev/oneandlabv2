@@ -11,7 +11,6 @@
       :class="[
         'mx-auto flex w-full max-w-5xl items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3 shadow-[0_8px_40px_rgba(17,46,43,0.12)] dark:border-gray-700 dark:bg-gray-950 sm:gap-6 sm:p-4',
         !dashboardLayout && 'md:max-w-3xl',
-        dashboardLayout ? 'md:px-0' : '',
       ]"
     >
       <!-- Le retour reste lisible et accessible au toucher sur toutes les tailles. -->

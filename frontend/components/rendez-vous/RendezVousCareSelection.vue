@@ -83,7 +83,7 @@
                 class="care-add-flight-visual flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-gray-100/90 bg-gray-50/90 dark:border-gray-700/80 dark:bg-gray-900/60"
                 aria-hidden="true"
               >
-                <UIcon :name="`i-lucide-${careSymbol({ label: item.label, type: item.raw.type })}`" class="h-5 w-5 text-primary-900 dark:text-primary-300" />
+                <CareCategoryVisual :image-src="item.imageSrc" :icon-name="item.iconName" img-class="h-8 w-8 object-contain" icon-class="h-5 w-5 text-primary-900 dark:text-primary-300" />
               </div>
               <p
                 class="min-w-0 flex-1 break-words text-sm font-medium text-gray-900 dark:text-white"
@@ -568,9 +568,7 @@ const allItems = computed((): CareItem[] => {
       catalogGroup,
       emoji: careCategoryEmojiForCategory({ name: cat.name, icon: cat.icon, type: cat.type }),
       iconName: resolveCareIconFromCategory(cat),
-      imageSrc: isCareCategoryEmoji(cat.icon)
-        ? null
-        : resolveCareCategoryImageSrc(cat.image_url ?? null, config.public.apiBase),
+      imageSrc: resolveCareCategoryImageSrc(cat.image_url ?? null, config.public.apiBase, cat.icon),
       iconColor: accent.iconColor,
       appointmentCount: Number(cat.appointment_count ?? 0),
       raw: cat,
@@ -739,8 +737,8 @@ function categoryLineFromCatalog(cat: CareCategoryRow): SelectedServiceInput {
     type: cat.type,
     name: cat.name,
     category_id: cat.id,
-    icon: cat.icon && String(cat.icon).trim() !== '' ? String(cat.icon) : resolveCareIconFromCategory(cat),
-    category_image_url: isCareCategoryEmoji(cat.icon) ? null : (cat.image_url ?? null),
+    icon: cat.icon ?? undefined,
+    category_image_url: cat.image_url ?? null,
   };
   if (normalizeCategorySkipPrescriptionDocuments(cat.skip_prescription_documents)) {
     line.skip_prescription_documents = true;

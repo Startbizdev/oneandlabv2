@@ -1,11 +1,26 @@
-import { Bandage, Droplet, HeartPulse, ShowerHead, Stethoscope, Syringe } from 'lucide-react-native';
-import { careSymbol } from '@oneandlab/shared-utils';
+import { useState } from 'react';
+import { Image } from 'react-native';
+import { SvgXml } from 'react-native-svg';
+import { careSymbol, explicitCareIcon, resolveCareCategoryIcon } from '@oneandlab/shared-utils';
 import { useAppColors } from '@/theme/use-app-colors';
+import { resolveCareCategoryImageSrc } from '@/utils/care-category-image';
+import catalogueIcons from '@/assets/care-icons.json';
 
-const symbols = { droplet: Droplet, syringe: Syringe, bandage: Bandage, 'heart-pulse': HeartPulse, 'shower-head': ShowerHead, stethoscope: Stethoscope };
+const icons: Record<string, string> = catalogueIcons;
 
-export function CarePictogram({ label, type, size = 16 }: { label: string; type?: string; size?: number }) {
+/** Exact catalogue artwork, bundled locally so it also works offline. */
+export function CarePictogram({ label, type, icon, imageUrl, size = 16, color }: {
+  label: string; type?: string | null; icon?: string | null; imageUrl?: string | null; size?: number; color?: string;
+}) {
   const c = useAppColors();
-  const Icon = symbols[careSymbol({ name: label, type })];
-  return <Icon size={size} color={c.textSecondary} strokeWidth={1.75} accessibilityElementsHidden importantForAccessibility="no" />;
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const src = explicitCareIcon(icon) ? null : resolveCareCategoryImageSrc(imageUrl);
+  if (src && failedImage !== src) {
+    return <Image source={{ uri: src }} style={{ width: size, height: size }} resizeMode="contain"
+      onError={() => setFailedImage(src)} accessible={false} />;
+  }
+  const name = resolveCareCategoryIcon({ name: label, type, icon });
+  const xml = icons[name] ?? icons[`lucide:${careSymbol({ name: label, type })}`];
+  return <SvgXml xml={xml} width={size} height={size} color={color ?? c.textSecondary}
+    accessibilityElementsHidden importantForAccessibility="no" />;
 }

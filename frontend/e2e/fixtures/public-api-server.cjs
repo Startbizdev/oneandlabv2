@@ -23,7 +23,7 @@ http.createServer((request, response) => {
       id: 'fixture-profile', first_name: 'Camille', last_name: 'Exemple', name: 'Camille Exemple',
       role: kind === 'lab' ? 'subaccount' : kind, city_plain: 'Paris', address: 'Paris',
       biography: 'Présentation fictive pour la recette.', is_accepting_appointments: true,
-      reviews: { stats: { total_reviews: 0, average_rating: 0 } }, specializations: [], services: [],
+      reviews: { stats: { total_reviews: 0, average_rating: 0 } }, specializations: [{ id: 'fixture-care', name: 'Soin de suivi', type: 'nursing', icon: 'syringe', image_url: '/api/old-care.png' }], services: [{ id: 'fixture-care', name: 'Prélèvement', type: 'blood_test', icon: 'syringe', image_url: '/api/old-care.png' }],
     } }));
   }
   if (!['/api/public/nurses', '/api/public/labs'].includes(url.pathname)) {

@@ -7,7 +7,7 @@ import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { Button } from '@/components/ui/Button';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { HeartPulse } from 'lucide-react-native';
-import { careCategoryEmojiForCategory } from '@oneandlab/shared-utils';
+import { CarePictogram } from '@/components/ui/CarePictogram';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import {
   fetchNurseCategoryPreferences,
@@ -25,13 +25,6 @@ interface Props {
   bare?: boolean;
 }
 
-function preferenceEmoji(p: NurseCategoryPreference): string {
-  return careCategoryEmojiForCategory({
-    name: p.name ?? '',
-    icon: p.icon ?? null,
-    type: p.type === 'blood_test' ? 'blood_test' : 'nursing',
-  });
-}
 
 export function ProfileCareTypesSection({ bare }: Props) {
   const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileCareTypesSection_tsx_styles');
@@ -86,9 +79,7 @@ export function ProfileCareTypesSection({ bare }: Props) {
             gap={spacing[3]}
             leading={
               <View style={[styles.emojiTile, enabled && styles.emojiTileEnabled]}>
-                <AppText style={styles.emoji} accessibilityElementsHidden>
-                  {preferenceEmoji(p)}
-                </AppText>
+                <CarePictogram label={p.name ?? ''} type={p.type} icon={p.icon} size={24} />
               </View>
             }
             actions={

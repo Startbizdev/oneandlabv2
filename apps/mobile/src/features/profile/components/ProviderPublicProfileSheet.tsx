@@ -22,7 +22,7 @@ import {
   Stethoscope,
   User,
 } from 'lucide-react-native';
-import { careCategoryEmojiForCategory } from '@oneandlab/shared-utils';
+import { CarePictogram } from '@/components/ui/CarePictogram';
 import { SheetModal, PROFILE_SHEET_SNAP_POINTS } from '@/components/ui/SheetModal';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { Button } from '@/components/ui/Button';
@@ -30,7 +30,6 @@ import { fetchPublicProviderProfile } from '@/features/profile/api/public-profil
 import type {
   PublicLabProfile,
   PublicNurseProfile,
-  PublicProfileSpecialization,
 } from '@/features/profile/types/public-profile.types';
 import { openingHoursRows } from '@/features/profile/utils/opening-hours-display';
 import { parseProfileSocialLinks } from '@/features/profile/utils/profile-social-links';
@@ -62,15 +61,6 @@ function isNurseProfile(
   return providerType === 'nurse';
 }
 
-function specializationEmoji(item: PublicProfileSpecialization): string {
-  return (
-    careCategoryEmojiForCategory({
-      name: item.name,
-      icon: item.icon ?? undefined,
-      type: item.type,
-    }) || '•'
-  );
-}
 
 function mapsUrl(address?: string | null, mapCenter?: { lat: number; lng: number } | null): string {
   const addr = address?.trim();
@@ -305,7 +295,7 @@ export function ProviderPublicProfileSheet({
               <Row wrap gap={spacing[2]} style={styles.chipWrap}>
                 {services.map((item) => (
                   <Row key={String(item.id)} gap={spacing[1]} align="center" style={styles.chip}>
-                    <AppText style={styles.chipEmoji}>{specializationEmoji(item)}</AppText>
+                    <CarePictogram label={item.name} type={item.type} icon={item.icon} imageUrl={item.image_url} size={20} />
                     <AppText style={styles.chipLabel} numberOfLines={2}>
                       {item.name}
                     </AppText>

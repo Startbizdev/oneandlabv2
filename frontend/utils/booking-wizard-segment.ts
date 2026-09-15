@@ -1,6 +1,6 @@
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils';
-import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
+import { resolveCareCategoryImageSrc, resolveCareIconFromCategory } from '~/utils/care-icons';
 
 export type BookingWizardSegmentLine = {
   id: string;
@@ -41,9 +41,7 @@ export function buildBookingWizardSegmentIntro(
       icon: svc.icon ?? null,
       type: typeStr,
     });
-    const imageSrc = isCareCategoryEmoji(svc.icon)
-      ? null
-      : resolveCareCategoryImageSrc(svc.category_image_url ?? null, apiBase);
+    const imageSrc = resolveCareCategoryImageSrc(svc.category_image_url ?? null, apiBase, svc.icon);
     return { emoji, imageSrc };
   };
 
@@ -56,7 +54,7 @@ export function buildBookingWizardSegmentIntro(
         id: s.id,
         name: s.name,
         ...visual(s),
-        iconName: s.icon || 'i-lucide-heart-pulse',
+        iconName: resolveCareIconFromCategory(s),
       })),
     };
   }
@@ -70,7 +68,7 @@ export function buildBookingWizardSegmentIntro(
         id: s.id,
         name: s.name,
         ...visual(s),
-        iconName: s.icon || 'i-lucide-droplet',
+        iconName: resolveCareIconFromCategory(s),
       })),
     };
   }
@@ -83,7 +81,7 @@ export function buildBookingWizardSegmentIntro(
         id: rep.id,
         name: rep.name,
         ...visual(rep),
-        iconName: rep.icon || 'i-lucide-stethoscope',
+        iconName: resolveCareIconFromCategory(rep),
       },
     ],
   };

@@ -74,7 +74,7 @@
                     <CareCategoryVisual
                       :emoji="emojiFor(svc)"
                       :image-src="imageSrcFor(svc)"
-                      :icon-name="svc.icon || 'i-lucide-stethoscope'"
+                      :icon-name="iconFor(svc)"
                       img-class="block max-h-full max-w-full object-contain"
                       icon-class="max-h-[90%] max-w-[90%] shrink-0 text-gray-600 dark:text-gray-400"
                     />
@@ -137,7 +137,7 @@ import {
   shouldHideAutrePreciserDetailRow,
 } from '~/utils/rdv-care-display-label';
 import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils';
-import { resolveCareCategoryImageSrc } from '~/utils/care-icons';
+import { resolveCareCategoryImageSrc, resolveCareIconFromCategory } from '~/utils/care-icons';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import type { SelectedServiceInput } from '~/utils/dashboard-unified-rdv';
 import type { BookingServiceFormSlice } from '~/utils/booking-service-form-slice';
@@ -200,10 +200,14 @@ function emojiFor(svc: SelectedServiceInput): string {
   });
 }
 
+function iconFor(svc: SelectedServiceInput): string {
+  const cat = categoryFor(svc);
+  return resolveCareIconFromCategory({ icon: cat?.icon ?? svc.icon, name: cat?.name ?? svc.name, type: cat?.type ?? svc.type });
+}
+
 function imageSrcFor(svc: SelectedServiceInput): string | null {
   const cat = categoryFor(svc);
-  if (isCareCategoryEmoji(cat?.icon ?? svc.icon)) return null;
-  return resolveCareCategoryImageSrc(svc.category_image_url ?? null, config.public.apiBase);
+  return resolveCareCategoryImageSrc(cat?.image_url ?? svc.category_image_url ?? null, config.public.apiBase, cat ? cat.icon : svc.icon);
 }
 
 function categoryFor(svc: SelectedServiceInput): CartSummaryCategory | undefined {

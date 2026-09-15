@@ -136,7 +136,7 @@ function InfoRow({
           <AppText style={styles.label}>{row.label}</AppText>
           <Row align="start" wrap gap={6}>
             {row.emoji ? (
-              <CarePictogram label={String(row.value)} />
+              <CarePictogram label={String(row.value)} icon={row.careIcon} type={row.careType} imageUrl={row.careImage} />
             ) : null}
             <AppText style={[styles.value, row.strikethrough && styles.valueMuted]}>
               {row.value}

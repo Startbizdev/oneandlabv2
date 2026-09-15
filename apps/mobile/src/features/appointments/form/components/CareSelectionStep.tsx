@@ -1,3 +1,4 @@
+import { CarePictogram } from '@/components/ui/CarePictogram';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
@@ -6,9 +7,8 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, Plus, Droplet, Syringe, Bandage, HeartPulse, ShowerHead, Stethoscope } from 'lucide-react-native';
+import { Check, Plus } from 'lucide-react-native';
 import {
-  careSymbol,
   isCareCategoryWithoutBookingOptions,
   defaultBookingSliceForCareCategory,
   type SelectedServiceInput,
@@ -39,14 +39,6 @@ import { fontFamily, fontSize } from '@/theme/typography';
 const H_PAD = spacing[4];
 /** Hauteur pill CTA flottant (étape 1). */
 const PREMIUM_CTA_HEIGHT = 58;
-const CARE_SYMBOLS = {
-  droplet: Droplet,
-  syringe: Syringe,
-  bandage: Bandage,
-  'heart-pulse': HeartPulse,
-  'shower-head': ShowerHead,
-  stethoscope: Stethoscope,
-};
 const LIST_GAP = spacing[2.5];
 
 interface Props {
@@ -78,7 +70,6 @@ function CareListTile({
 }) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'CareSelectionStep.CareListTile');
-  const CareIcon = CARE_SYMBOLS[careSymbol(cat)];
 
   return (
     <Pressable
@@ -92,7 +83,7 @@ function CareListTile({
     >
       <Row gap={spacing[3]} align="center" style={[styles.tile, selected ? styles.tileSelected : styles.tileDefault]}>
         <View style={styles.careSymbol} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <CareIcon size={iconSize.lg} color={c.textLink} strokeWidth={1.75} />
+          <CarePictogram label={cat.name} type={cat.type} icon={cat.icon} imageUrl={cat.image_url} size={iconSize.lg} color={c.textLink} />
         </View>
 
         <View style={styles.tileCopy}>
@@ -247,6 +238,8 @@ export function CareSelectionStep({
               type: ready.type,
               name: ready.label,
               category_id: ready.id,
+              icon: ready.icon ?? undefined,
+              category_image_url: ready.image_url ?? null,
               ...(ready.skip_prescription_documents
                 ? { skip_prescription_documents: true as const }
                 : {}),

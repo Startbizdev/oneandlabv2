@@ -77,7 +77,7 @@ function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
                 },
               ]}
             >
-              <CarePictogram label={line.label} type={primaryType} />
+              <CarePictogram icon={categories.find((c) => c.id === line.category_id)?.icon ?? line.category_icon} imageUrl={categories.find((c) => c.id === line.category_id)?.image_url ?? line.category_image_url} label={line.label} type={primaryType} />
               <AppText style={tagStyles.careTagLabel} numberOfLines={1}>
                 {line.label}
               </AppText>

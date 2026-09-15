@@ -52,7 +52,7 @@ import { isAppointmentForRelative } from '@/utils/patient-appointment-list';
 dayjs.locale('fr');
 
 export type RdvInfoRow =
-  | { kind: 'field'; label: string; value: string; emoji?: string; strikethrough?: boolean }
+  | { kind: 'field'; label: string; value: string; emoji?: string; careIcon?: string | null; careType?: string; careImage?: string | null; strikethrough?: boolean }
   | {
       kind: 'identity';
       firstName: string;
@@ -93,14 +93,24 @@ const CARE_META_LABELS = new Set([
   'Prise en charge',
 ]);
 
+function careVisual(item: Record<string, unknown>, apt: Appointment, categories?: CareCategory[]) {
+  const cat = categories?.find((c) => c.id === String(item.category_id ?? apt.category_id ?? ''));
+  return {
+    careIcon: cat ? cat.icon : typeof item.category_icon === 'string' ? item.category_icon : undefined,
+    careType: apt.type,
+    careImage: cat ? cat.image_url : typeof item.category_image_url === 'string' ? item.category_image_url : undefined,
+  };
+}
+
 function pushCareField(
   rows: RdvInfoRow[],
   label: string,
   value: string,
   emoji?: string,
+  visual?: { careIcon?: string | null; careType?: string; careImage?: string | null },
 ): void {
   if (!value.trim()) return;
-  rows.push({ kind: 'field', label, value, emoji });
+  rows.push({ kind: 'field', label, value, emoji, ...visual });
 }
 
 function pushKvRows(rows: RdvInfoRow[], kv: { label: string; value: string; strikethrough?: boolean }[]): void {
@@ -146,6 +156,7 @@ function buildNursingItemGroupRows(
     fieldLabel,
     itemLabel,
     careEmojiForCareItem(item, apt.type, categories, itemLabel),
+    careVisual(item, apt, categories),
   );
 
   if (categories?.length) {
@@ -183,6 +194,7 @@ function buildBloodItemGroupRows(
     fieldLabel,
     itemLabel,
     careEmojiForCareItem(item, apt.type, categories, itemLabel),
+    careVisual(item, apt, categories),
   );
 
   if (categories?.length) {
@@ -235,7 +247,7 @@ function buildCareRows(apt: Appointment, categories?: CareCategory[]): RdvInfoRo
   }
 
   if (careName) {
-    pushCareField(rows, 'Soin', careName, careEmojiForAppointment(apt, careName, categories));
+    pushCareField(rows, 'Soin', careName, careEmojiForAppointment(apt, careName, categories), careVisual(apt as unknown as Record<string, unknown>, apt, categories));
     if (categories?.length) {
       pushKvRows(rows, buildAppointmentCareOptionKvRows(apt, categories));
     }
